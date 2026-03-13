@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient, authenticateRequest } from '@/lib/supabase';
-import { computeReceiptComposite, computeReceiptHash } from '@/lib/scoring';
+import { computeReceiptComposite, computeReceiptHash, behaviorToSatisfaction } from '@/lib/scoring';
+import { runReceiptFraudChecks } from '@/lib/sybil';
 import crypto from 'crypto';
 
 /**
@@ -11,6 +12,7 @@ import crypto from 'crypto';
  * - Append-only (cannot be modified or deleted)
  * - Cryptographically hashed (tamper-evident)
  * - Chain-linked (each receipt references the previous one)
+ * - Fraud-checked (sybil resistance layer)
  * 
  * Auth: Bearer ep_live_...
  * 
@@ -22,7 +24,8 @@ import crypto from 'crypto';
  *   product_accuracy: 88,                 // 0-100, optional
  *   price_integrity: 100,                 // 0-100, optional
  *   return_processing: null,              // 0-100, optional (null if no return)
- *   agent_satisfaction: 90,               // 0-100, optional
+ *   agent_satisfaction: 90,               // 0-100, optional (overridden by agent_behavior if provided)
+ *   agent_behavior: "completed",          // optional: completed | retried_same | retried_different | abandoned | disputed
  *   evidence: {                           // structured evidence, not opinions
  *     promised_delivery: "2 business days",
  *     actual_delivery: "2.5 business days",
@@ -54,6 +57,11 @@ export async function POST(request) {
       return NextResponse.json({ error: `transaction_type must be one of: ${validTypes.join(', ')}` }, { status: 400 });
     }
 
+    const validBehaviors = ['completed', 'retried_same', 'retried_different', 'abandoned', 'disputed'];
+    if (body.agent_behavior && !validBehaviors.includes(body.agent_behavior)) {
+      return NextResponse.json({ error: `agent_behavior must be one of: ${validBehaviors.join(', ')}` }, { status: 400 });
+    }
+
     // Cannot score yourself
     if (body.entity_id === auth.entity.id) {
       return NextResponse.json({ error: 'An entity cannot submit receipts for itself' }, { status: 403 });
@@ -70,13 +78,30 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Target entity not found' }, { status: 404 });
     }
 
+    // === SYBIL RESISTANCE: Run fraud checks ===
+    const fraudCheck = await runReceiptFraudChecks(supabase, body.entity_id, auth.entity.id);
+    if (!fraudCheck.allowed) {
+      return NextResponse.json({
+        error: fraudCheck.detail,
+        flags: fraudCheck.flags,
+      }, { status: 429 });
+    }
+
+    // === BEHAVIORAL AGENT SATISFACTION ===
+    // If agent_behavior is provided, compute agent_satisfaction from behavior
+    // This replaces the subjective 0-100 rating with an observable behavioral signal
+    let agentSatisfaction = body.agent_satisfaction ?? null;
+    if (body.agent_behavior) {
+      agentSatisfaction = behaviorToSatisfaction(body.agent_behavior);
+    }
+
     // Compute composite score
     const composite = computeReceiptComposite({
       delivery_accuracy: body.delivery_accuracy,
       product_accuracy: body.product_accuracy,
       price_integrity: body.price_integrity,
       return_processing: body.return_processing,
-      agent_satisfaction: body.agent_satisfaction,
+      agent_satisfaction: agentSatisfaction,
     });
 
     // Get previous receipt hash for chain integrity
@@ -103,13 +128,13 @@ export async function POST(request) {
       product_accuracy: body.product_accuracy ?? null,
       price_integrity: body.price_integrity ?? null,
       return_processing: body.return_processing ?? null,
-      agent_satisfaction: body.agent_satisfaction ?? null,
+      agent_satisfaction: agentSatisfaction,
       evidence: body.evidence || {},
     };
 
     const receiptHash = await computeReceiptHash(receiptData, previousHash);
 
-    // Insert receipt (triggers score recomputation via DB trigger)
+    // Insert receipt (triggers score recomputation + unique_submitters update via DB triggers)
     const { data: receipt, error: insertError } = await supabase
       .from('receipts')
       .insert({
@@ -122,7 +147,8 @@ export async function POST(request) {
         product_accuracy: body.product_accuracy ?? null,
         price_integrity: body.price_integrity ?? null,
         return_processing: body.return_processing ?? null,
-        agent_satisfaction: body.agent_satisfaction ?? null,
+        agent_satisfaction: agentSatisfaction,
+        agent_behavior: body.agent_behavior || null,
         evidence: body.evidence || {},
         composite_score: composite,
         receipt_hash: receiptHash,
@@ -143,7 +169,7 @@ export async function POST(request) {
       .eq('id', body.entity_id)
       .single();
 
-    return NextResponse.json({
+    const response = {
       receipt: {
         receipt_id: receipt.receipt_id,
         entity_id: receipt.entity_id,
@@ -155,7 +181,14 @@ export async function POST(request) {
         emilia_score: updatedEntity.emilia_score,
         total_receipts: updatedEntity.total_receipts,
       },
-    }, { status: 201 });
+    };
+
+    // Include fraud warnings (non-blocking flags like closed_loop)
+    if (fraudCheck.flags.length > 0) {
+      response.warnings = fraudCheck.flags;
+    }
+
+    return NextResponse.json(response, { status: 201 });
   } catch (err) {
     console.error('Receipt submission error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

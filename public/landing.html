@@ -182,6 +182,17 @@
   .api-desc { font-size: 13px; color: var(--t2); line-height: 1.5; }
 
   /* REGISTER */
+  .faq-item { background: var(--bg-card); border: 1px solid var(--brd); border-radius: 12px; overflow: hidden; cursor: pointer; transition: all 0.3s; }
+  .faq-item:hover { border-color: var(--brd-a); }
+  .faq-q { font-family: var(--disp); font-weight: 600; font-size: 15px; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+  .faq-q::after { content: '+'; font-family: var(--mono); font-size: 18px; color: var(--cyan); flex-shrink: 0; transition: transform 0.3s; }
+  .faq-item.open .faq-q::after { transform: rotate(45deg); }
+  .faq-a { font-size: 14px; color: var(--t2); line-height: 1.7; padding: 0 24px; max-height: 0; overflow: hidden; transition: all 0.4s ease; }
+  .faq-a strong { color: var(--t1); }
+  .faq-a code { font-family: var(--mono); font-size: 12px; background: rgba(0,212,255,0.08); color: var(--cyan); padding: 2px 6px; border-radius: 4px; }
+  .faq-item.open .faq-a { max-height: 600px; padding: 0 24px 24px; }
+
+  /* REGISTER (continued) */
   .reg { max-width: 700px; margin: 0 auto; text-align: center; }
   .reg-form { display: flex; gap: 12px; margin-top: 40px; max-width: 500px; margin-left: auto; margin-right: auto; }
   .reg-inp { flex: 1; background: var(--bg-card); border: 1px solid var(--brd); border-radius: 10px; padding: 16px 20px; font-family: var(--mono); font-size: 13px; color: var(--t1); outline: none; transition: border-color 0.3s; }
@@ -250,6 +261,7 @@
     <a href="#algorithm">Algorithm</a>
     <a href="#verify">Verify</a>
     <a href="#api">API</a>
+    <a href="#faq">FAQ</a>
     <a href="#register">Register</a>
     <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" style="color: var(--t1);">GitHub</a>
   </div>
@@ -558,6 +570,51 @@
         View on GitHub
       </a>
       <a href="https://github.com/emiliaprotocol/emilia-protocol#readme" target="_blank" class="btn-g" style="font-size: 12px; padding: 12px 24px;">Read the Docs</a>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+  <div style="max-width: 800px; margin: 0 auto;">
+    <div class="reveal" style="text-align: center;">
+      <div class="st">// Hard Questions, Straight Answers</div>
+      <div class="sh">FAQ</div>
+    </div>
+    <div style="margin-top: 48px; display: flex; flex-direction: column; gap: 12px;">
+
+      <div class="faq-item reveal" onclick="this.classList.toggle('open')">
+        <div class="faq-q">Who submits receipts? Can't merchants just submit good ones?</div>
+        <div class="faq-a">They don't. In EP, the <strong>purchasing agent</strong> submits the receipt about the merchant — not the other way around. Both parties can score each other (bidirectional), but the entity being scored never controls their own receipts.<br><br>The purchaser has no incentive to inflate scores — if they score a bad merchant highly, their own agent will route back and get burned. This creates natural incentive alignment that review systems lack: the scorer is also the buyer, and the buyer wants accurate data for their own future decisions.</div>
+      </div>
+
+      <div class="faq-item reveal" onclick="this.classList.toggle('open')">
+        <div class="faq-q">Isn't "agent satisfaction" (10%) subjective? Doesn't that reintroduce the review problem?</div>
+        <div class="faq-a">Fair concern. That's why <code>agent_satisfaction</code> is measured by <strong>what the agent did</strong>, not what it felt.<br><br>
+          <span style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0;font-family:var(--mono);font-size:11px;">
+            <span style="color:var(--green);">Completed without retry → 95</span>
+            <span style="color:var(--cyan);">Retried same entity → 75</span>
+            <span style="color:var(--amber);">Switched entity → 40</span>
+            <span style="color:var(--red);">Abandoned → 15</span>
+          </span>
+          FICO doesn't ask borrowers to rate their lender. It watches whether they pay. EP doesn't ask agents to rate merchants. It watches whether they come back. At 10% weight, even a fully gamed signal barely moves the score — the other 90% is cryptographic fact.
+        </div>
+      </div>
+
+      <div class="faq-item reveal" onclick="this.classList.toggle('open')">
+        <div class="faq-q">How do you prevent fake entities from gaming the system?</div>
+        <div class="faq-a"><strong>Three layers:</strong><br><br>
+          <strong style="color:var(--cyan);">Layer 1 — Registration friction.</strong> Rate-limited registration (max 5 entities/day per owner), email verification, optional micro-deposit staking.<br><br>
+          <strong style="color:var(--cyan);">Layer 2 — Graph analysis.</strong> Closed-loop detection (A scores B, B scores A), thin-graph flagging (many receipts but few unique submitters), velocity monitoring, cluster detection.<br><br>
+          <strong style="color:var(--cyan);">Layer 3 — Protocol design.</strong> No self-scoring. Rolling window of 200 receipts. New entity dampening. Bidirectional scoring means creating a fake buyer leaves a permanent, auditable trail. Every fake receipt is recorded forever — you can't clean up after a Sybil attack.
+        </div>
+      </div>
+
+      <div class="faq-item reveal" onclick="this.classList.toggle('open')">
+        <div class="faq-q">There are only 2 entities. Where's the traction?</div>
+        <div class="faq-a">EMILIA is a <strong>protocol</strong>, not a product. TCP/IP didn't have "users" — it had implementations. HTTPS didn't have "customers" — it had adoption.<br><br>What's live today: 14 API endpoints, published scoring algorithm (Apache 2.0), MCP server, TypeScript + Python SDKs, blockchain verification layer, and a formal protocol specification. Rex (#1) and Ruby (#2) are live AI agents that will generate real transaction data as agent commerce goes live.<br><br>The traction metric for a protocol is adoption, not MAU. The MCP server means any AI agent can check trust scores with one config line. That's the distribution channel.</div>
+      </div>
+
     </div>
   </div>
 </section>

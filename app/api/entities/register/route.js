@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient, generateApiKey } from '@/lib/supabase';
 import { computeReceiptComposite } from '@/lib/scoring';
+import { checkRegistrationLimits } from '@/lib/sybil';
 
 /**
  * POST /api/entities/register
@@ -52,6 +53,13 @@ export async function POST(request) {
 
     if (existing) {
       return NextResponse.json({ error: `entity_id "${body.entity_id}" is already registered` }, { status: 409 });
+    }
+
+    // === SYBIL RESISTANCE: Rate limit registrations ===
+    const ownerId = body.owner_id || body.entity_id;
+    const regCheck = await checkRegistrationLimits(supabase, ownerId);
+    if (!regCheck.allowed) {
+      return NextResponse.json({ error: regCheck.reason }, { status: 429 });
     }
 
     // Generate embedding from description + capabilities
