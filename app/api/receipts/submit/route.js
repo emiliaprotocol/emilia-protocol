@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient, authenticateRequest } from '@/lib/supabase';
 import { computeReceiptComposite, computeReceiptHash } from '@/lib/scoring';
-import { randomBytes } from 'crypto';
+import crypto from 'crypto';
 
 /**
  * POST /api/receipts/submit
@@ -91,7 +91,7 @@ export async function POST(request) {
     const previousHash = prevReceipt?.receipt_hash || null;
 
     // Generate receipt ID
-    const receiptId = `ep_rcpt_${randomBytes(16).toString('hex')}`;
+    const receiptId = `ep_rcpt_${crypto.randomBytes(16).toString('hex')}`;
 
     // Compute receipt hash
     const receiptData = {
