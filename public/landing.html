@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EMILIA — The Open-Source Credit Score for the Agent Economy</title>
 <meta name="description" content="Entity Measurement Infrastructure for Ledgered Interaction Accountability. The open-source credit score for the agent economy. Reputation earned through receipts, not reviews.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 34 34' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='7' y='5' width='2.5' height='24' rx='1.25' fill='%2300d4ff'/%3E%3Crect x='9.5' y='5' width='16' height='2.5' rx='1.25' fill='%2300d4ff'/%3E%3Crect x='9.5' y='15.5' width='12' height='2.5' rx='1.25' fill='%23ffd700'/%3E%3Crect x='9.5' y='26.5' width='14' height='2.5' rx='1.25' fill='%2300d4ff'/%3E%3C/svg%3E">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://emiliaprotocol.ai">
+<meta property="og:title" content="EMILIA — The Open-Source Credit Score for the Agent Economy">
+<meta property="og:description" content="The first reputation system no corporation can buy. Receipts, not reviews. Built for the agent economy.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="EMILIA Protocol">
+<meta name="twitter:description" content="The open-source credit score for the agent economy. Reputation earned through receipts, not reviews.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -207,7 +215,7 @@
     <a href="#algorithm">Algorithm</a>
     <a href="#api">API</a>
     <a href="#register">Register</a>
-    <a href="#" style="color: var(--t1);">GitHub</a>
+    <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" style="color: var(--t1);">GitHub</a>
   </div>
   <div class="ntag"><div class="ntag-dot"></div><span>OPEN SOURCE</span></div>
 </nav>
@@ -231,7 +239,7 @@
   </p>
 
   <div class="hero-ctas">
-    <a href="#register" class="btn-p">Register Your Agent</a>
+    <a href="#register" class="btn-p">Join the Waitlist</a>
     <a href="#score" class="btn-g">Check a Score</a>
   </div>
 
@@ -278,7 +286,12 @@
           <button class="sbtn" id="scoreBtn" onclick="lookupScore()">Check Score</button>
         </div>
         <div class="sres" id="scoreResult">
-          <div class="sempty">Enter an entity ID to query their EMILIA reputation score</div>
+          <div class="sempty">
+            Enter an entity ID to query their EMILIA reputation score<br>
+            <span style="color: var(--cyan); cursor: pointer;" onclick="document.getElementById('scoreInput').value='rex-booking-v1';lookupScore();">Try: rex-booking-v1</span>
+            <span style="opacity: 0.3; margin: 0 6px;">|</span>
+            <span style="color: var(--cyan); cursor: pointer;" onclick="document.getElementById('scoreInput').value='ruby-retention-v1';lookupScore();">ruby-retention-v1</span>
+          </div>
         </div>
       </div>
     </div>
@@ -401,11 +414,11 @@
     <div class="sh" style="font-size: clamp(28px, 3.5vw, 44px);">Trust Can't Be<br><span style="color: var(--cyan);">Proprietary.</span></div>
     <div class="sd" style="margin: 16px auto 32px; max-width: 520px;">A reputation layer only works if everyone can verify it. EMILIA is open source — audit the scoring, fork the protocol, contribute upstream. No black boxes.</div>
     <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-      <a href="#" class="btn-g" style="font-size: 12px; padding: 12px 24px;">
+      <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" class="btn-g" style="font-size: 12px; padding: 12px 24px;">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
         View on GitHub
       </a>
-      <a href="#" class="btn-g" style="font-size: 12px; padding: 12px 24px;">Read the Docs</a>
+      <a href="https://github.com/emiliaprotocol/emilia-protocol#readme" target="_blank" class="btn-g" style="font-size: 12px; padding: 12px 24px;">Read the Docs</a>
     </div>
   </div>
 </section>
@@ -414,12 +427,12 @@
 <section id="register">
   <div class="reg">
     <div class="reveal">
-      <div class="st" style="text-align: center;">// Register Your Agent</div>
+      <div class="st" style="text-align: center;">// Join the Waitlist</div>
       <div class="sh">Get Entity <span style="color: var(--cyan);" id="nextEntity">#3</span></div>
       <div class="sd" style="margin: 0 auto;">Entity numbers are assigned sequentially. Yours is permanent, public, and verifiable. First come, first served.</div>
       <div class="reg-form" id="regForm">
         <input type="email" class="reg-inp" id="regEmail" placeholder="your@email.com">
-        <button class="reg-go" onclick="registerAgent()">Claim #<span id="claimNum">3</span></button>
+        <button class="reg-go" onclick="registerAgent()">Join Waitlist</button>
       </div>
       <div class="reg-note">Open source. No credit card. Your entity number is permanent.</div>
       <div class="reg-ok" id="regOk">
@@ -443,7 +456,8 @@
             <div style="font-family: var(--mono); font-size: 10px; color: var(--t3); letter-spacing: 1px;" id="cardDate"></div>
           </div>
         </div>
-        <div style="text-align: center; font-family: var(--mono); font-size: 12px; color: var(--t2); margin-bottom: 16px;">Screenshot your card. Share your number. Low numbers don't last.</div>
+        <div style="text-align: center; font-family: var(--mono); font-size: 12px; color: var(--t2); margin-bottom: 8px;">Rex is <span style="color:var(--cyan);">#1</span>. Ruby is <span style="color:var(--cyan);">#2</span>. You are <span style="color:var(--gold);" id="youAreNum">#3</span>.</div>
+        <div style="text-align: center; font-family: var(--mono); font-size: 11px; color: var(--t3); margin-bottom: 16px;">Screenshot your card. Share your number. Low numbers don't last.</div>
         <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
           <button class="btn-g" style="font-size: 11px; padding: 10px 18px;" onclick="shareEntity('twitter')">Share on X</button>
           <button class="btn-g" style="font-size: 11px; padding: 10px 18px;" onclick="shareEntity('linkedin')">Share on LinkedIn</button>
@@ -458,8 +472,8 @@
   <div class="finner">
     <div class="fl">EMILIA PROTOCOL — emiliaprotocol.ai<br><span style="opacity: 0.6;">Open source. Receipts, not reviews.</span></div>
     <div class="fr">
-      <a href="#">GitHub</a>
-      <a href="#">Docs</a>
+      <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank">GitHub</a>
+      <a href="https://github.com/emiliaprotocol/emilia-protocol#readme" target="_blank">Docs</a>
       <a href="#">Status</a>
       <a href="#">Terms</a>
       <a href="#">Privacy</a>
@@ -468,7 +482,7 @@
 </footer>
 
 <script>
-const GITHUB_REPO = 'emiliaprotocol/emilia';
+const GITHUB_REPO = 'emiliaprotocol/emilia-protocol';
 const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
 const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
 
@@ -542,8 +556,8 @@ function anim(id, target, dur=1500) {
 
 new IntersectionObserver(es => { if (es[0].isIntersecting) { fetchGH(); fetchNext(); } }, { threshold: 0.3 }).observe(document.querySelector('.hstats'));
 
-// SCORE LOOKUP
-function lookupScore() {
+// SCORE LOOKUP — tries real API first, falls back to demo scores
+async function lookupScore() {
   const inp = document.getElementById('scoreInput').value.trim();
   const res = document.getElementById('scoreResult');
   const btn = document.getElementById('scoreBtn');
@@ -551,39 +565,59 @@ function lookupScore() {
   btn.disabled=true; btn.textContent='CHECKING...';
   res.innerHTML = `<div class="sempty" style="color:var(--cyan);">Querying EMILIA Protocol for "${esc(inp)}"...</div>`;
 
-  setTimeout(() => {
+  let data = null;
+  let isDemo = false;
+
+  // Try real API first
+  try {
+    const r = await fetch(`/api/score/${encodeURIComponent(inp)}`);
+    if (r.ok) {
+      data = await r.json();
+    } else {
+      throw 0;
+    }
+  } catch {
+    // API not live yet — generate deterministic demo score
+    isDemo = true;
     const s = hash(inp.toLowerCase());
-    const del = 55+(Math.abs(s)%40);
-    const prod = 50+(Math.abs(s*7)%45);
-    const price = 60+(Math.abs(s*13)%35);
-    const ret = 45+(Math.abs(s*3)%50);
-    const agent = 50+(Math.abs(s*17)%45);
-    const con = 55+(Math.abs(s*23)%40);
-    const composite = Math.round(del*0.3+prod*0.25+price*0.15+ret*0.15+agent*0.1+con*0.05);
-    const grade = composite>=90?'A+':composite>=82?'A':composite>=74?'B+':composite>=66?'B':'C+';
-    const gc = composite>=82?'var(--green)':composite>=70?'var(--cyan)':'var(--gold)';
+    data = {
+      name: inp,
+      delivery: 55+(Math.abs(s)%40),
+      product: 50+(Math.abs(s*7)%45),
+      price: 60+(Math.abs(s*13)%35),
+      returns: 45+(Math.abs(s*3)%50),
+      agent: 50+(Math.abs(s*17)%45),
+      consistency: 55+(Math.abs(s*23)%40),
+    };
+    data.composite = Math.round(data.delivery*0.3+data.product*0.25+data.price*0.15+data.returns*0.15+data.agent*0.1+data.consistency*0.05);
+  }
 
-    res.innerHTML = `<div class="scard">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-        <div>
-          <div style="font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;">EMILIA Score</div>
-          <div style="font-family:var(--disp);font-weight:700;font-size:18px;margin-top:4px;">${esc(inp)}</div>
-        </div>
-        <div style="font-family:var(--disp);font-weight:800;font-size:28px;color:${gc};">${grade}</div>
+  const d = data;
+  const composite = d.composite;
+  const grade = composite>=90?'A+':composite>=82?'A':composite>=74?'B+':composite>=66?'B':'C+';
+  const gc = composite>=82?'var(--green)':composite>=70?'var(--cyan)':'var(--gold)';
+  const demoNote = isDemo ? `<div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:16px;opacity:.7;">* Demo score — API not yet live. Live scores will be computed from verified transaction receipts.</div>` : '';
+
+  res.innerHTML = `<div class="scard">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div>
+        <div style="font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;">EMILIA Score${isDemo?' (DEMO)':''}</div>
+        <div style="font-family:var(--disp);font-weight:700;font-size:18px;margin-top:4px;">${esc(d.name||inp)}</div>
       </div>
-      ${bar('Composite',composite,'linear-gradient(90deg,var(--cyan),var(--gold))')}
-      ${bar('Delivery Accuracy',del,'var(--cyan)')}
-      ${bar('Product Accuracy',prod,'var(--green)')}
-      ${bar('Price Integrity',price,'var(--gold)')}
-      ${bar('Return Processing',ret,'var(--amber)')}
-      ${bar('Agent Satisfaction',agent,'var(--magenta)')}
-      ${bar('Consistency',con,'var(--t2)')}
-      <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:16px;opacity:.7;">* Demo score. Live scores computed from verified transaction receipts after registration.</div>
-    </div>`;
+      <div style="font-family:var(--disp);font-weight:800;font-size:28px;color:${gc};">${grade}</div>
+    </div>
+    ${bar('Composite',composite,'linear-gradient(90deg,var(--cyan),var(--gold))')}
+    ${bar('Delivery Accuracy',d.delivery,'var(--cyan)')}
+    ${bar('Product Accuracy',d.product,'var(--green)')}
+    ${bar('Price Integrity',d.price,'var(--gold)')}
+    ${bar('Return Processing',d.returns,'var(--amber)')}
+    ${bar('Agent Satisfaction',d.agent,'var(--magenta)')}
+    ${bar('Consistency',d.consistency,'var(--t2)')}
+    ${demoNote}
+  </div>`;
 
-    setTimeout(()=>res.querySelectorAll('.sfill').forEach(b=>{const w=b.style.width;b.style.width='0%';requestAnimationFrame(()=>b.style.width=w);}),50);
-    btn.disabled=false; btn.textContent='CHECK SCORE';
-  }, 1400);
+  setTimeout(()=>res.querySelectorAll('.sfill').forEach(b=>{const w=b.style.width;b.style.width='0%';requestAnimationFrame(()=>b.style.width=w);}),50);
+  btn.disabled=false; btn.textContent='CHECK SCORE';
 }
 
 function bar(label,val,bg) {
@@ -617,6 +651,7 @@ function showCard(n) {
   document.getElementById('regOk').style.display='block';
   document.getElementById('cardNum').textContent=`#${n}`;
   document.getElementById('cardDate').textContent=new Date().toISOString().split('T')[0];
+  document.getElementById('youAreNum').textContent=`#${n}`;
   window._ent=n;
   const nx=document.getElementById('stat-next');
   if(nx) nx.textContent=n+1;
