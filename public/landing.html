@@ -293,7 +293,7 @@
 
   <div class="hstats">
     <div class="hstat">
-      <div class="hstat-v" style="color: var(--cyan);">2</div>
+      <div class="hstat-v" style="color: var(--cyan);"><span id="stat-entities">2</span></div>
       <div class="hstat-l">Entities Claimed</div>
     </div>
     <div class="hstat">
@@ -680,8 +680,7 @@
 
 <script>
 const GITHUB_REPO = 'emiliaprotocol/emilia-protocol';
-const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+// No client-side Supabase keys needed — all calls go through /api/ routes
 
 // TICKER
 const facts = [
@@ -718,21 +717,19 @@ async function fetchGH() {
   } catch { ['stat-stars','stat-contribs'].forEach(id => document.getElementById(id).textContent = '--'); }
 }
 
-// SUPABASE
+// STATS — uses server-side API (no exposed keys)
 async function fetchNext() {
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/entities?select=id&order=id.desc&limit=1`, {
-      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
-    });
+    const r = await fetch('/api/stats');
     if (!r.ok) throw 0;
     const d = await r.json();
-    const last = d.length ? d[0].id : 2;
-    const next = last + 1;
-    document.getElementById('stat-next').textContent = next;
+    const next = d.next_available || 3;
+    anim('stat-entities', d.total_entities || 2);
+    document.getElementById('stat-next').textContent = `#${next}`;
     document.getElementById('nextEntity').textContent = `#${next}`;
     document.getElementById('claimNum').textContent = next;
   } catch {
-    document.getElementById('stat-next').textContent = '3';
+    document.getElementById('stat-next').textContent = '#3';
     document.getElementById('nextEntity').textContent = '#3';
     document.getElementById('claimNum').textContent = '3';
   }
@@ -769,7 +766,25 @@ async function lookupScore() {
   try {
     const r = await fetch(`/api/score/${encodeURIComponent(inp)}`);
     if (r.ok) {
-      data = await r.json();
+      const raw = await r.json();
+      // Map API response to display format
+      const bd = raw.breakdown || {};
+      data = {
+        name: raw.display_name || raw.entity_id || inp,
+        composite: raw.emilia_score,
+        delivery: bd.delivery_accuracy ?? raw.emilia_score,
+        product: bd.product_accuracy ?? raw.emilia_score,
+        price: bd.price_integrity ?? raw.emilia_score,
+        returns: bd.return_processing ?? raw.emilia_score,
+        agent: bd.agent_satisfaction ?? raw.emilia_score,
+        consistency: bd.consistency ?? raw.emilia_score,
+        established: raw.established,
+        total_receipts: raw.total_receipts,
+      };
+    } else if (r.status === 404) {
+      res.innerHTML = `<div class="sempty" style="color:var(--amber);">Entity "${esc(inp)}" not found. <a href="#register" style="color:var(--cyan);text-decoration:underline;">Register it?</a></div>`;
+      btn.disabled=false; btn.textContent='CHECK SCORE';
+      return;
     } else {
       throw 0;
     }
@@ -793,7 +808,7 @@ async function lookupScore() {
   const composite = d.composite;
   const grade = composite>=90?'A+':composite>=82?'A':composite>=74?'B+':composite>=66?'B':'C+';
   const gc = composite>=82?'var(--green)':composite>=70?'var(--cyan)':'var(--gold)';
-  const demoNote = isDemo ? `<div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:16px;opacity:.7;">* Demo score — API not yet live. Live scores will be computed from verified transaction receipts.</div>` : '';
+  const demoNote = isDemo ? `<div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:16px;opacity:.7;">* Demo score — API not yet live. Live scores will be computed from verified transaction receipts.</div>` : !d.established ? `<div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:16px;opacity:.7;">Score is provisional — ${d.total_receipts||0} receipt${(d.total_receipts||0)===1?'':'s'} so far. Requires 5+ receipts from 3+ unique submitters to establish.</div>` : '';
 
   res.innerHTML = `<div class="scard">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
@@ -823,7 +838,7 @@ function bar(label,val,bg) {
 
 document.getElementById('scoreInput').addEventListener('keydown',e=>{if(e.key==='Enter')lookupScore();});
 
-// REGISTER
+// REGISTER — uses server-side API (no exposed keys)
 async function registerAgent() {
   const inp = document.getElementById('regEmail');
   const email = inp.value.trim();
@@ -831,14 +846,14 @@ async function registerAgent() {
   const btn = document.querySelector('.reg-go');
   btn.disabled=true; btn.textContent='REGISTERING...';
   try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/entities`,{
-      method:'POST',
-      headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':`Bearer ${SUPABASE_ANON_KEY}`,'Content-Type':'application/json','Prefer':'return=representation'},
-      body:JSON.stringify({email})
+    const r = await fetch('/api/waitlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
     });
     if (!r.ok) throw 0;
     const d = await r.json();
-    showCard(d[0]?.id||3);
+    showCard(d.id || 3);
   } catch { showCard(parseInt(document.getElementById('claimNum').textContent)||3); }
 }
 
