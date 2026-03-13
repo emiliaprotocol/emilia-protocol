@@ -2,17 +2,12 @@ import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 import { runAnchorBatch } from '@/lib/blockchain';
 
-/**
- * POST /api/blockchain/anchor
- *
- * Cron endpoint: collects unanchored receipts, builds Merkle tree,
- * anchors root to Base L2. Called every 6 hours via Vercel Cron.
- *
- * Auth: CRON_SECRET header required.
- *
- * Vercel cron config (vercel.json):
- *   { "crons": [{ "path": "/api/blockchain/anchor", "schedule": "0 */6 * * *" }] }
- */
+// POST /api/blockchain/anchor
+//
+// Cron endpoint: collects unanchored receipts, builds Merkle tree,
+// anchors root to Base L2. Called every 6 hours via Vercel Cron.
+// Auth: CRON_SECRET header required.
+// Vercel cron config: see vercel.json (schedule: every 6 hours)
 export async function POST(request) {
   try {
     // Verify cron secret
