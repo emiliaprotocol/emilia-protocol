@@ -3,16 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EMILIA — The Open-Source Credit Score for the Agent Economy</title>
-<meta name="description" content="Entity Measurement Infrastructure for Ledgered Interaction Accountability. The open-source credit score for the agent economy. Reputation earned through receipts, not reviews.">
+<title>EMILIA Protocol (EP) — The Trust Layer for Agentic Commerce</title>
+<meta name="description" content="EMILIA Protocol (EP) is the trust layer for agentic commerce. Open-source reputation scoring from verified receipts. The missing layer in the MCP/A2A/UCP stack.">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 34 34' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='7' y='5' width='2.5' height='24' rx='1.25' fill='%2300d4ff'/%3E%3Crect x='9.5' y='5' width='16' height='2.5' rx='1.25' fill='%2300d4ff'/%3E%3Crect x='9.5' y='15.5' width='12' height='2.5' rx='1.25' fill='%23ffd700'/%3E%3Crect x='9.5' y='26.5' width='14' height='2.5' rx='1.25' fill='%2300d4ff'/%3E%3C/svg%3E">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://emiliaprotocol.ai">
-<meta property="og:title" content="EMILIA — The Open-Source Credit Score for the Agent Economy">
+<meta property="og:title" content="EMILIA Protocol (EP) — The Trust Layer for Agentic Commerce">
 <meta property="og:description" content="The first reputation system no corporation can buy. Receipts, not reviews. Built for the agent economy.">
+<meta property="og:image" content="https://emiliaprotocol.ai/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="EMILIA Protocol">
+<meta name="twitter:title" content="EMILIA Protocol (EP) — The Trust Layer for Agentic Commerce">
 <meta name="twitter:description" content="The open-source credit score for the agent economy. Reputation earned through receipts, not reviews.">
+<meta name="twitter:image" content="https://emiliaprotocol.ai/og.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -118,6 +120,34 @@
   .sbar { height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
   .sfill { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
 
+  /* PROTOCOL STACK */
+  .stack-section { max-width: 900px; margin: 0 auto; }
+  .stack-table { width: 100%; margin-top: 48px; border-collapse: separate; border-spacing: 0; overflow: hidden; border-radius: 12px; border: 1px solid var(--brd); }
+  .stack-table th { font-family: var(--mono); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--t3); background: rgba(255,255,255,0.02); padding: 14px 20px; text-align: left; border-bottom: 1px solid var(--brd); }
+  .stack-table td { font-family: var(--body); font-size: 14px; color: var(--t2); padding: 14px 20px; border-bottom: 1px solid var(--brd); background: var(--bg-card); }
+  .stack-table tr:last-child td { border-bottom: none; }
+  .stack-table tr.ep-row td { background: var(--cyan-d); color: var(--t1); font-weight: 600; }
+  .stack-table .proto-badge { display: inline-block; font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: 1px; padding: 3px 10px; border-radius: 4px; }
+  .stack-table .proto-badge.mcp { background: rgba(147,51,234,0.15); color: #a78bfa; }
+  .stack-table .proto-badge.a2a { background: rgba(59,130,246,0.15); color: #60a5fa; }
+  .stack-table .proto-badge.ucp { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .stack-table .proto-badge.pay { background: rgba(251,146,60,0.15); color: #fb923c; }
+  .stack-table .proto-badge.ep { background: rgba(0,212,255,0.2); color: var(--cyan); }
+
+  /* BLOCKCHAIN VERIFY */
+  .verify-section { max-width: 800px; margin: 0 auto; }
+  .verify-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 48px; }
+  .verify-card { background: var(--bg-card); border: 1px solid var(--brd); border-radius: 12px; padding: 24px; transition: all 0.3s; }
+  .verify-card:hover { border-color: var(--brd-a); transform: translateY(-2px); }
+  .verify-icon { font-size: 28px; margin-bottom: 12px; }
+  .verify-title { font-family: var(--disp); font-weight: 700; font-size: 16px; margin-bottom: 8px; }
+  .verify-desc { font-size: 13px; color: var(--t2); line-height: 1.6; }
+  .verify-chain { margin-top: 32px; background: var(--bg-card); border: 1px solid var(--brd); border-radius: 12px; padding: 28px; font-family: var(--mono); font-size: 12px; }
+  .verify-chain-title { font-family: var(--disp); font-weight: 700; font-size: 18px; margin-bottom: 16px; color: var(--t1); }
+  .verify-chain-flow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; color: var(--t3); }
+  .verify-chain-flow .vc-node { background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.15); border-radius: 8px; padding: 10px 16px; color: var(--cyan); font-size: 11px; letter-spacing: 1px; }
+  .verify-chain-flow .vc-arrow { color: var(--t3); font-size: 16px; }
+
   /* RECEIPTS NOT REVIEWS */
   .rnr-section { max-width: 800px; margin: 0 auto; }
   .rnr-text { font-size: 16px; color: var(--t2); line-height: 1.8; margin-top: 24px; max-width: 700px; }
@@ -177,7 +207,11 @@
   @media (max-width: 900px) {
     nav { padding: 12px 20px; } .nlinks { display: none; }
     section { padding: 80px 20px; } .hero { padding: 100px 20px 60px; }
-    .steps, .algo-grid { grid-template-columns: 1fr; }
+    .steps, .algo-grid, .verify-grid { grid-template-columns: 1fr; }
+    .stack-table { font-size: 12px; }
+    .stack-table th, .stack-table td { padding: 10px 12px; }
+    .verify-chain-flow { flex-direction: column; }
+    .verify-chain-flow .vc-arrow { transform: rotate(90deg); }
     .hstats { gap: 24px; flex-wrap: wrap; justify-content: center; }
     .hero-ctas, .srow, .reg-form { flex-direction: column; align-items: center; }
     .finner { flex-direction: column; gap: 20px; text-align: center; }
@@ -211,13 +245,15 @@
   </a>
   <div class="nlinks">
     <a href="#score">Score</a>
+    <a href="#stack">Protocol Stack</a>
     <a href="#how">How It Works</a>
     <a href="#algorithm">Algorithm</a>
+    <a href="#verify">Verify</a>
     <a href="#api">API</a>
     <a href="#register">Register</a>
     <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" style="color: var(--t1);">GitHub</a>
   </div>
-  <div class="ntag"><div class="ntag-dot"></div><span>OPEN SOURCE</span></div>
+  <div class="ntag"><div class="ntag-dot"></div><span>EP PROTOCOL</span></div>
 </nav>
 
 <!-- HERO -->
@@ -225,7 +261,7 @@
   <div class="hero-orb hero-orb1"></div>
   <div class="hero-orb hero-orb2"></div>
 
-  <div class="htag">OPEN SOURCE PROTOCOL <span class="dim">v1.0</span></div>
+  <div class="htag">EP — THE TRUST LAYER <span class="dim">v1.0</span></div>
 
   <h1>
     <span class="gr">EMILIA</span>
@@ -234,8 +270,8 @@
   <div class="hero-acro">Entity Measurement Infrastructure for Ledgered Interaction Accountability</div>
 
   <p class="hero-sub">
-    The first reputation system no corporation can buy.<br>
-    Open source. Receipts, not reviews. <strong>Built for the agent economy.</strong>
+    The trust layer for agentic commerce.<br>
+    Open source. Receipts, not reviews. <strong>The missing protocol in the MCP / A2A / UCP stack.</strong>
   </p>
 
   <div class="hero-ctas">
@@ -293,6 +329,62 @@
             <span style="color: var(--cyan); cursor: pointer;" onclick="document.getElementById('scoreInput').value='ruby-retention-v1';lookupScore();">ruby-retention-v1</span>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROTOCOL STACK -->
+<section id="stack">
+  <div class="stack-section">
+    <div class="reveal" style="text-align: center;">
+      <div class="st">// The Agentic Commerce Stack</div>
+      <div class="sh">The Missing Protocol Layer</div>
+      <div class="sd" style="margin: 0 auto;">Every layer handles the mechanics of transacting. None of them answer the fundamental question: <strong style="color:var(--t1);">should you trust this entity?</strong></div>
+    </div>
+    <table class="stack-table reveal">
+      <thead>
+        <tr><th>Layer</th><th>Protocol</th><th>What It Does</th><th>Who Built It</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Tools</td>
+          <td><span class="proto-badge mcp">MCP</span></td>
+          <td>Agents connect to external tools and APIs</td>
+          <td style="color:var(--t3);">Anthropic</td>
+        </tr>
+        <tr>
+          <td>Communication</td>
+          <td><span class="proto-badge a2a">A2A</span></td>
+          <td>Agent-to-agent task delegation and messaging</td>
+          <td style="color:var(--t3);">Google</td>
+        </tr>
+        <tr>
+          <td>Commerce</td>
+          <td><span class="proto-badge ucp">UCP</span></td>
+          <td>Discovery, checkout, payments, post-purchase</td>
+          <td style="color:var(--t3);">Google + Shopify</td>
+        </tr>
+        <tr>
+          <td>Payments</td>
+          <td><span class="proto-badge pay">AP2 / ACP</span></td>
+          <td>Secure autonomous agent payments</td>
+          <td style="color:var(--t3);">Google / OpenAI + Stripe</td>
+        </tr>
+        <tr class="ep-row">
+          <td style="color:var(--cyan);">Trust</td>
+          <td><span class="proto-badge ep">EP</span></td>
+          <td>Reputation scoring from verified receipts</td>
+          <td style="color:var(--cyan);">EMILIA Protocol</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="reveal" style="text-align: center; margin-top: 32px;">
+      <div style="font-family: var(--mono); font-size: 12px; color: var(--t3); line-height: 1.8;">
+        MCP = <span style="color:var(--t2);">USB-C</span> &nbsp;·&nbsp;
+        A2A = <span style="color:var(--t2);">TCP/IP</span> &nbsp;·&nbsp;
+        UCP = <span style="color:var(--t2);">HTTP</span> &nbsp;·&nbsp;
+        EP = <span style="color:var(--cyan); font-weight: 600;">FICO / SSL Certificates</span>
       </div>
     </div>
   </div>
@@ -372,6 +464,53 @@
         <div class="algo-weight">5%</div>
         <div class="algo-name">Consistency</div>
         <div class="algo-desc">Low variance over time</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BLOCKCHAIN VERIFICATION -->
+<section id="verify">
+  <div class="verify-section">
+    <div class="reveal" style="text-align: center;">
+      <div class="st">// Blockchain Verification</div>
+      <div class="sh">Receipts Are Immutable.<br><span style="color: var(--cyan);">Provably.</span></div>
+      <div class="sd" style="margin: 0 auto;">EP receipts are stored in Supabase and cryptographically anchored on-chain via Merkle root publishing on Base (Coinbase L2). Not a crypto product — no tokens, no wallets. Just math.</div>
+    </div>
+
+    <div class="verify-grid">
+      <div class="verify-card reveal">
+        <div class="verify-icon">🔗</div>
+        <div class="verify-title">Chained Receipts</div>
+        <div class="verify-desc">Every receipt includes a SHA-256 hash of its contents plus the previous receipt's hash, forming a tamper-evident chain.</div>
+      </div>
+      <div class="verify-card reveal">
+        <div class="verify-icon">🌳</div>
+        <div class="verify-title">Merkle Anchoring</div>
+        <div class="verify-desc">Batches of receipt hashes are compiled into a Merkle tree. The root is published to Base L2 at ~$0.60/month at launch scale.</div>
+      </div>
+      <div class="verify-card reveal">
+        <div class="verify-icon">✅</div>
+        <div class="verify-title">Proof Verification</div>
+        <div class="verify-desc">Anyone can verify any receipt against the on-chain Merkle root. No trust in EMILIA required — verify the math yourself.</div>
+      </div>
+    </div>
+
+    <div class="verify-chain reveal">
+      <div class="verify-chain-title" style="text-align: center;">Verification Flow</div>
+      <div class="verify-chain-flow">
+        <div class="vc-node">RECEIPT SUBMITTED</div>
+        <div class="vc-arrow">→</div>
+        <div class="vc-node">SHA-256 HASH</div>
+        <div class="vc-arrow">→</div>
+        <div class="vc-node">MERKLE TREE BATCH</div>
+        <div class="vc-arrow">→</div>
+        <div class="vc-node" style="border-color: rgba(255,215,0,0.3); color: var(--gold);">BASE L2 ANCHOR</div>
+        <div class="vc-arrow">→</div>
+        <div class="vc-node" style="border-color: rgba(0,255,136,0.3); color: var(--green);">ANYONE CAN VERIFY</div>
+      </div>
+      <div style="text-align: center; margin-top: 16px; font-size: 11px; color: var(--t3);">
+        Cost: ~$0.60/mo at launch &nbsp;·&nbsp; ~$600/mo at 2M receipts/day &nbsp;·&nbsp; No tokens &nbsp;·&nbsp; No DeFi &nbsp;·&nbsp; No wallets
       </div>
     </div>
   </div>
@@ -470,9 +609,10 @@
 
 <footer>
   <div class="finner">
-    <div class="fl">EMILIA PROTOCOL — emiliaprotocol.ai<br><span style="opacity: 0.6;">Open source. Receipts, not reviews.</span></div>
+    <div class="fl">EMILIA PROTOCOL (EP) — emiliaprotocol.ai<br><span style="opacity: 0.6;">The trust layer for agentic commerce. Receipts, not reviews.</span></div>
     <div class="fr">
       <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank">GitHub</a>
+      <a href="https://spec.emiliaprotocol.ai" target="_blank">Spec</a>
       <a href="https://github.com/emiliaprotocol/emilia-protocol#readme" target="_blank">Docs</a>
       <a href="#">Status</a>
       <a href="#">Terms</a>
@@ -488,18 +628,18 @@ const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
 
 // TICKER
 const facts = [
-  { c: 'g',  t: 'Humans have FICO. <strong>Agents need EMILIA.</strong>' },
-  { c: 'c',  t: 'The first reputation system <strong>no corporation can buy</strong>' },
+  { c: 'g',  t: 'Humans have FICO. <strong>Agents need EP.</strong>' },
+  { c: 'c',  t: 'EP is the <strong>trust layer</strong> for the MCP / A2A / UCP stack' },
   { c: 'gr', t: 'Scoring algorithm is <strong>open source on GitHub</strong> — every weight published' },
-  { c: 'a',  t: 'Agents don\'t write opinions — they record <strong>what happened</strong>' },
+  { c: 'a',  t: 'Receipts anchored on <strong>Base L2 via Merkle roots</strong> — no tokens, just math' },
   { c: 'g',  t: 'You can\'t fake a delivery receipt. <strong>That\'s the point.</strong>' },
   { c: 'c',  t: 'Three API calls. <strong>That\'s the entire protocol.</strong>' },
   { c: 'gr', t: 'Entity numbers are <strong>permanent and sequential</strong> — claim yours' },
-  { c: 'a',  t: '<strong>Receipts, not reviews.</strong> Built for the agent economy.' },
-  { c: 'g',  t: 'Delivery accuracy · Product accuracy · Price integrity — <strong>all verifiable facts</strong>' },
+  { c: 'a',  t: '<strong>Receipts, not reviews.</strong> The trust layer for agentic commerce.' },
+  { c: 'g',  t: 'Compatible with <strong>UCP · A2A · MCP · ACP · AP2</strong>' },
   { c: 'c',  t: 'No one can buy their score. <strong>The algorithm is public.</strong>' },
-  { c: 'gr', t: 'EMILIA doesn\'t handle the transaction. <strong>It scores the outcome.</strong>' },
-  { c: 'a',  t: 'Entity Measurement Infrastructure for <strong>Ledgered Interaction Accountability</strong>' },
+  { c: 'gr', t: 'EP doesn\'t handle the transaction. <strong>It scores the outcome.</strong>' },
+  { c: 'a',  t: 'EMILIA Protocol — <strong>the missing layer in the agentic commerce stack</strong>' },
 ];
 document.getElementById('ticker').innerHTML = [...facts,...facts].map(f=>`<div class="ticker-i"><span class="td ${f.c}"></span>${f.t}</div>`).join('');
 
