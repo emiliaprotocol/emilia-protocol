@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
+import { computeTrustProfile } from '@/lib/scoring-v2';
 
 /**
  * GET /api/score/[entityId]
@@ -52,40 +53,45 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Entity is not active' }, { status: 404 });
     }
 
-    // CANONICAL ESTABLISHMENT via DB function
-    let established = false;
+    // HISTORICAL ESTABLISHMENT via DB function (all receipts, permanent)
+    let historicalEstablished = false;
+    let historicalEvidence = 0;
     let uniqueSubmitters = 0;
-    let effectiveEvidence = 0;
     try {
       const { data: estData } = await supabase.rpc('is_entity_established', { p_entity_id: entity.id });
       if (estData && estData[0]) {
-        established = estData[0].established;
+        historicalEstablished = estData[0].established;
+        historicalEvidence = estData[0].effective_evidence;
         uniqueSubmitters = estData[0].unique_submitters;
-        effectiveEvidence = estData[0].effective_evidence;
       }
     } catch {
-      established = false;
+      historicalEstablished = false;
     }
 
-    // Confidence is driven by EFFECTIVE EVIDENCE, not raw receipt count.
-    // Establishment is HISTORICAL (has this entity ever been credible?).
-    // Confidence is CURRENT (how much should you trust this score right now?).
-    let confidence, confidence_message;
-    if (effectiveEvidence === 0) {
-      confidence = 'pending';
-      confidence_message = 'No meaningful evidence yet. Score is default.';
-    } else if (effectiveEvidence < 1.0) {
-      confidence = 'insufficient';
-      confidence_message = `Effective evidence: ${effectiveEvidence}. Receipts exist but carry very low credibility weight. Needs receipts from established entities.`;
-    } else if (effectiveEvidence < 5.0) {
-      confidence = 'provisional';
-      confidence_message = `Effective evidence: ${effectiveEvidence}/5.0 needed. Building credible history.`;
-    } else if (effectiveEvidence < 20.0) {
-      confidence = 'emerging';
-      confidence_message = `Effective evidence: ${effectiveEvidence}. Score is meaningful and building depth.`;
+    // CURRENT CONFIDENCE from rolling window (via computeTrustProfile)
+    const { data: receipts } = await supabase
+      .from('receipts')
+      .select('*')
+      .eq('entity_id', entity.id)
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    const profile = computeTrustProfile(receipts || [], entity);
+
+    // Current confidence from the windowed trust profile
+    const confidence = profile.confidence;
+    const currentEvidence = profile.effectiveEvidence;
+    let confidence_message;
+    if (currentEvidence === 0) {
+      confidence_message = 'No meaningful evidence in current window.';
+    } else if (currentEvidence < 1.0) {
+      confidence_message = `Current effective evidence: ${currentEvidence}. Very low credibility weight.`;
+    } else if (currentEvidence < 5.0) {
+      confidence_message = `Current effective evidence: ${currentEvidence}/5.0 needed. Building history.`;
+    } else if (currentEvidence < 20.0) {
+      confidence_message = `Current effective evidence: ${currentEvidence}. Score is meaningful.`;
     } else {
-      confidence = 'confident';
-      confidence_message = `Effective evidence: ${effectiveEvidence} from ${uniqueSubmitters} unique submitters. High confidence.`;
+      confidence_message = `Current effective evidence: ${currentEvidence} from ${profile.uniqueSubmitters} submitters. High confidence.`;
     }
 
     return NextResponse.json({
@@ -98,13 +104,17 @@ export async function GET(request, { params }) {
       
       // Compatibility score — use POST /api/trust/evaluate for full trust profiles
       emilia_score: entity.emilia_score,
-      _score_note: 'Compatibility score. For trust decisions, use POST /api/trust/evaluate with a policy.',
+      _score_note: 'Compatibility score. For trust decisions, use GET /api/trust/profile/:entityId or POST /api/trust/evaluate.',
       
-      // Trust status
-      established,
-      effective_evidence: effectiveEvidence,
+      // Historical establishment (permanent, all receipts)
+      established: historicalEstablished,
+      effective_evidence_historical: historicalEvidence,
+
+      // Current confidence (rolling window)
       confidence,
       confidence_message,
+      effective_evidence_current: currentEvidence,
+
       total_receipts: entity.total_receipts,
       unique_submitters: uniqueSubmitters,
       successful_receipts: entity.successful_receipts,

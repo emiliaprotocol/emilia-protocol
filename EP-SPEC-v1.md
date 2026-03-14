@@ -1,8 +1,10 @@
 # EP (EMILIA Protocol) Specification v1.0
 
+> **⚠️ DEPRECATED:** This document describes the v1.0 scoring-first design. The canonical specification is now [EP Core RFC v1.1](docs/EP-CORE-RFC.md), which reflects the current runtime: behavioral-first scoring, trust profiles as the primary output, policy evaluation, effective-evidence dampening, and graph-weight integration. Please refer to the RFC for all new implementations.
+
 **Entity Measurement Infrastructure for Ledgered Interaction Accountability**
 
-*The trust layer for agentic commerce.*
+*A vendor-neutral trust attestation standard for agentic commerce.*
 
 ---
 

@@ -1,4 +1,5 @@
 import { getServiceClient } from '@/lib/supabase';
+import { computeTrustProfile } from '@/lib/scoring-v2';
 import { notFound } from 'next/navigation';
 
 export async function generateMetadata({ params }) {
@@ -21,7 +22,7 @@ async function getEntity(entityId) {
 
   if (!entity || entity.status !== 'active') return null;
 
-  // Get recent receipts
+  // Get recent receipts for display
   const { data: receipts } = await supabase
     .from('receipts')
     .select('receipt_id, transaction_type, composite_score, agent_behavior, anchor_batch_id, created_at')
@@ -29,7 +30,15 @@ async function getEntity(entityId) {
     .order('created_at', { ascending: false })
     .limit(50);
 
-  // Get canonical establishment via DB function
+  // Get full receipts for trust profile computation (needs all fields)
+  const { data: fullReceipts } = await supabase
+    .from('receipts')
+    .select('*')
+    .eq('entity_id', entity.id)
+    .order('created_at', { ascending: false })
+    .limit(200);
+
+  // Get canonical establishment via DB function (historical)
   let estResult = { established: false, unique_submitters: 0, effective_evidence: 0 };
   try {
     const { data: estData } = await supabase.rpc('is_entity_established', { p_entity_id: entity.id });
@@ -38,7 +47,10 @@ async function getEntity(entityId) {
     }
   } catch {}
 
-  return { entity, receipts: receipts || [], establishment: estResult };
+  // Compute current trust profile from rolling window
+  const trustProfile = computeTrustProfile(fullReceipts || [], entity);
+
+  return { entity, receipts: receipts || [], establishment: estResult, trustProfile };
 }
 
 function ScoreBar({ label, value, color }) {
@@ -83,35 +95,36 @@ export default async function EntityProfile({ params }) {
 
   if (!result) notFound();
 
-  const { entity, receipts, establishment } = result;
+  const { entity, receipts, establishment, trustProfile } = result;
   const score = entity.emilia_score;
   const { grade, color } = gradeInfo(score);
   const established = establishment.established;
   const uniqueSubmitters = establishment.unique_submitters;
-  const effectiveEvidence = establishment.effective_evidence;
 
-  // Confidence driven by EFFECTIVE EVIDENCE, not raw receipt count
+  // CURRENT confidence from rolling-window trust profile (not historical)
+  const currentEvidence = trustProfile.effectiveEvidence;
+
   let confidence, confidenceColor, confidenceMessage;
-  if (effectiveEvidence === 0) {
+  if (currentEvidence === 0) {
     confidence = 'PENDING';
     confidenceColor = '#4a4f6a';
-    confidenceMessage = 'No meaningful evidence yet.';
-  } else if (effectiveEvidence < 1.0) {
+    confidenceMessage = 'No meaningful evidence in current window.';
+  } else if (currentEvidence < 1.0) {
     confidence = 'LOW CONFIDENCE';
     confidenceColor = '#ff9f1c';
-    confidenceMessage = `Effective evidence: ${effectiveEvidence}. Receipts carry very low credibility weight.`;
-  } else if (effectiveEvidence < 5.0) {
+    confidenceMessage = `Current effective evidence: ${currentEvidence}. Very low credibility weight.`;
+  } else if (currentEvidence < 5.0) {
     confidence = 'PROVISIONAL';
     confidenceColor = '#ffd700';
-    confidenceMessage = `Effective evidence: ${effectiveEvidence}/5.0 needed for establishment.`;
-  } else if (effectiveEvidence < 20.0) {
+    confidenceMessage = `Current effective evidence: ${currentEvidence}/5.0 needed.`;
+  } else if (currentEvidence < 20.0) {
     confidence = 'EMERGING';
     confidenceColor = '#00d4ff';
-    confidenceMessage = `Effective evidence: ${effectiveEvidence}. Score is meaningful.`;
+    confidenceMessage = `Current effective evidence: ${currentEvidence}. Score is meaningful.`;
   } else {
     confidence = 'CONFIDENT';
     confidenceColor = '#00ff88';
-    confidenceMessage = `Effective evidence: ${effectiveEvidence} from ${uniqueSubmitters} submitters. High confidence.`;
+    confidenceMessage = `Current effective evidence: ${currentEvidence} from ${trustProfile.uniqueSubmitters} submitters.`;
   }
 
   const showBreakdown = confidence === 'EMERGING' || confidence === 'CONFIDENT';
@@ -236,10 +249,10 @@ export default async function EntityProfile({ params }) {
               <div style={{ marginTop: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--mono)', fontSize: 10, color: '#4a4f6a', marginBottom: 4 }}>
                   <span>Progress to meaningful score</span>
-                  <span>Effective evidence: {effectiveEvidence}/20.0</span>
+                  <span>Current effective evidence: {currentEvidence}/20.0</span>
                 </div>
                 <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${Math.min(100, Math.round((effectiveEvidence / 20) * 100))}%`, background: confidenceColor, borderRadius: 2 }} />
+                  <div style={{ height: '100%', width: `${Math.min(100, Math.round((currentEvidence / 20) * 100))}%`, background: confidenceColor, borderRadius: 2 }} />
                 </div>
               </div>
             </div>
