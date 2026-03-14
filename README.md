@@ -1,6 +1,6 @@
 # EMILIA Protocol
 
-**Evidence-based Mediation & Identity Layer for Interactions and Appeals**
+**Evidence-based Mediation & Integrity Layer for Interactions and Appeals**
 
 Portable trust for machine counterparties and third-party software.
 Compatible with ACP. Usable through MCP. Apache 2.0.
