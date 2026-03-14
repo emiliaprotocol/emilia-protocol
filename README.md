@@ -110,6 +110,11 @@ curl -X POST https://emiliaprotocol.ai/api/receipts/submit \
 
 ### Look up a trust profile
 ```bash
+curl https://emiliaprotocol.ai/api/trust/profile/merchant-xyz
+```
+
+### Look up compatibility score (legacy)
+```bash
 curl https://emiliaprotocol.ai/api/score/merchant-xyz
 ```
 

@@ -3,35 +3,25 @@
 /**
  * EMILIA Protocol — MCP Server
  *
- * Trust layer tools for AI agents.
- * Add this server to any MCP-compatible client (Claude, etc.)
- * to give your agent access to EMILIA Scores.
+ * Trust evaluation tools for AI agents.
+ * Add this server to any MCP-compatible client to give your agent
+ * access to EP trust profiles and policy evaluation.
  *
- * Tools provided:
- *   ep_score_lookup   — Check any entity's EMILIA Score (no auth)
- *   ep_submit_receipt — Submit a transaction receipt (requires API key)
- *   ep_verify_receipt — Verify a receipt against on-chain Merkle root (no auth)
- *   ep_search_entities — Search for entities by name or capability
- *   ep_register_entity — Register a new entity in the EMILIA network
- *   ep_leaderboard     — Get the top-scored entities
+ * PRIMARY TOOLS (trust-profile-first):
+ *   ep_trust_profile   — Get an entity's full trust profile (canonical)
+ *   ep_trust_evaluate  — Evaluate an entity against a trust policy
+ *   ep_submit_receipt  — Submit a transaction receipt
+ *
+ * SECONDARY TOOLS:
+ *   ep_search_entities — Search for entities
+ *   ep_verify_receipt  — Verify receipt against Merkle root
+ *   ep_register_entity — Register a new entity
+ *   ep_leaderboard     — Get top entities
+ *   ep_score_lookup    — Legacy compatibility score (use ep_trust_profile instead)
  *
  * Setup:
- *   EP_BASE_URL=https://emiliaprotocol.ai  (or your self-hosted instance)
- *   EP_API_KEY=ep_live_...                  (for write operations)
- *
- * Claude Desktop config (~/.claude/claude_desktop_config.json):
- *   {
- *     "mcpServers": {
- *       "emilia": {
- *         "command": "npx",
- *         "args": ["@emilia-protocol/mcp-server"],
- *         "env": {
- *           "EP_BASE_URL": "https://emiliaprotocol.ai",
- *           "EP_API_KEY": "ep_live_your_key_here"
- *         }
- *       }
- *     }
- *   }
+ *   EP_BASE_URL=https://emiliaprotocol.ai
+ *   EP_API_KEY=ep_live_...  (for write operations)
  *
  * @license Apache-2.0
  */
@@ -46,209 +36,166 @@ import {
 const BASE_URL = process.env.EP_BASE_URL || 'https://emiliaprotocol.ai';
 const API_KEY = process.env.EP_API_KEY || '';
 
-// =============================================================================
-// HTTP helpers
-// =============================================================================
-
 async function epFetch(path, options = {}) {
   const url = `${BASE_URL}${path}`;
   const headers = {
     'Content-Type': 'application/json',
     ...(options.auth && API_KEY ? { Authorization: `Bearer ${API_KEY}` } : {}),
   };
-
   const res = await fetch(url, {
     method: options.method || 'GET',
     headers,
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
-
   const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.error || `EP API error: ${res.status}`);
-  }
+  if (!res.ok) throw new Error(data.error || `EP API error: ${res.status}`);
   return data;
 }
 
 // =============================================================================
-// Tool definitions
+// Tool definitions — trust-profile-first
 // =============================================================================
 
 const TOOLS = [
+  // PRIMARY: Trust profile (canonical read surface)
   {
-    name: 'ep_score_lookup',
+    name: 'ep_trust_profile',
     description:
-      'Look up an entity\'s EMILIA Score. Scores are public — no authentication required. ' +
-      'Returns the trust score (0-100), breakdown by signal, receipt count, and verification status. ' +
-      'Use this before transacting with any agent, merchant, or service provider.',
+      'Get an entity\'s full trust profile. This is the CANONICAL way to check trust in EP. ' +
+      'Returns behavioral rates (completion, retry, abandon, dispute), signal breakdowns, ' +
+      'consistency, anomaly alerts, current confidence, historical establishment, and a ' +
+      'compatibility score. Use this before transacting with any counterparty.',
     inputSchema: {
       type: 'object',
       properties: {
         entity_id: {
           type: 'string',
-          description: 'The entity ID (slug like "rex-booking-v1") or UUID to look up',
+          description: 'Entity ID (slug like "merchant-xyz") or UUID',
         },
       },
       required: ['entity_id'],
     },
   },
+
+  // PRIMARY: Trust evaluation (policy consumption)
   {
-    name: 'ep_submit_receipt',
+    name: 'ep_trust_evaluate',
     description:
-      'Submit a transaction receipt to the EMILIA ledger. Requires an EP API key. ' +
-      'Receipts are append-only, cryptographically hashed, and chain-linked. ' +
-      'Each signal is 0-100: delivery_accuracy, product_accuracy, price_integrity, ' +
-      'return_processing, agent_satisfaction. At least one signal is required.',
+      'Evaluate an entity against a trust policy. Returns pass/fail with specific failure reasons. ' +
+      'Built-in policies: "strict" (high-value), "standard" (normal), "permissive" (low-risk), "discovery" (allow unscored). ' +
+      'Use this to make routing and payment decisions.',
     inputSchema: {
       type: 'object',
       properties: {
         entity_id: {
           type: 'string',
-          description: 'UUID of the entity being scored',
+          description: 'Entity ID to evaluate',
         },
+        policy: {
+          type: 'string',
+          description: 'Policy name: "strict", "standard", "permissive", "discovery", or a custom policy object',
+        },
+      },
+      required: ['entity_id'],
+    },
+  },
+
+  // PRIMARY: Submit receipt
+  {
+    name: 'ep_submit_receipt',
+    description:
+      'Submit a transaction receipt to the EP ledger. Requires an API key. ' +
+      'Receipts are append-only, cryptographically hashed, and chain-linked. ' +
+      'transaction_ref is REQUIRED. agent_behavior is the strongest signal.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        entity_id: { type: 'string', description: 'Entity being scored' },
+        transaction_ref: { type: 'string', description: 'External transaction reference (required)' },
         transaction_type: {
           type: 'string',
           enum: ['purchase', 'service', 'task_completion', 'delivery', 'return'],
-          description: 'Type of transaction',
         },
-        transaction_ref: {
+        agent_behavior: {
           type: 'string',
-          description: 'External reference (UCP order ID, A2A task ID, etc.)',
+          enum: ['completed', 'retried_same', 'retried_different', 'abandoned', 'disputed'],
+          description: 'Observable behavioral outcome (strongest Phase 1 signal)',
         },
-        delivery_accuracy: {
-          type: 'number',
-          description: '0-100: Did it arrive when promised?',
-        },
-        product_accuracy: {
-          type: 'number',
-          description: '0-100: Did the listing match reality?',
-        },
-        price_integrity: {
-          type: 'number',
-          description: '0-100: Was the price honored?',
-        },
-        return_processing: {
-          type: 'number',
-          description: '0-100: Was the return policy followed?',
-        },
-        agent_satisfaction: {
-          type: 'number',
-          description: '0-100: Was the purchasing agent satisfied?',
-        },
-        evidence: {
+        delivery_accuracy: { type: 'number', description: '0-100' },
+        product_accuracy: { type: 'number', description: '0-100' },
+        price_integrity: { type: 'number', description: '0-100' },
+        return_processing: { type: 'number', description: '0-100' },
+        claims: { type: 'object', description: 'Structured claims (delivered, on_time, price_honored, as_described)' },
+        evidence: { type: 'object', description: 'Supporting evidence references' },
+        context: {
           type: 'object',
-          description: 'Structured evidence — e.g. { promised_delivery: "2d", actual_delivery: "3d" }',
+          description: 'Context key: { task_type, category, geo, modality, value_band, risk_class }',
         },
       },
-      required: ['entity_id', 'transaction_type'],
+      required: ['entity_id', 'transaction_type', 'transaction_ref'],
     },
   },
-  {
-    name: 'ep_verify_receipt',
-    description:
-      'Verify a receipt against the on-chain Merkle root. No auth required. ' +
-      'Returns the Merkle proof, verification status, and a link to the Base L2 transaction. ' +
-      '"Don\'t trust EMILIA. Verify the math yourself."',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        receipt_id: {
-          type: 'string',
-          description: 'The receipt ID (e.g. "ep_rcpt_abc123...")',
-        },
-      },
-      required: ['receipt_id'],
-    },
-  },
+
+  // SECONDARY
   {
     name: 'ep_search_entities',
-    description:
-      'Search for entities in the EMILIA network by name, capability, or category. ' +
-      'Returns matching entities with their scores and capabilities.',
+    description: 'Search for entities by name, capability, or category.',
     inputSchema: {
       type: 'object',
       properties: {
-        query: {
-          type: 'string',
-          description: 'Search query — entity name, capability, or category',
-        },
-        entity_type: {
-          type: 'string',
-          enum: ['agent', 'merchant', 'service_provider'],
-          description: 'Filter by entity type',
-        },
-        min_score: {
-          type: 'number',
-          description: 'Minimum EMILIA Score (0-100)',
-        },
+        query: { type: 'string', description: 'Search query' },
+        entity_type: { type: 'string', enum: ['agent', 'merchant', 'service_provider'] },
       },
       required: ['query'],
     },
   },
   {
-    name: 'ep_register_entity',
-    description:
-      'Register a new entity in the EMILIA network. Requires an EP API key. ' +
-      'Returns the entity ID, entity number, and a new API key for the entity.',
+    name: 'ep_verify_receipt',
+    description: 'Verify a receipt against the on-chain Merkle root.',
     inputSchema: {
       type: 'object',
       properties: {
-        entity_id: {
-          type: 'string',
-          description: 'Human-readable slug (e.g. "my-agent-v1"). Lowercase, hyphens, no spaces.',
-        },
-        display_name: {
-          type: 'string',
-          description: 'Display name (e.g. "My AI Shopping Agent")',
-        },
-        entity_type: {
-          type: 'string',
-          enum: ['agent', 'merchant', 'service_provider'],
-          description: 'Type of entity',
-        },
-        description: {
-          type: 'string',
-          description: 'What this entity does',
-        },
-        capabilities: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'List of capabilities (e.g. ["price_comparison", "booking"])',
-        },
-        website_url: {
-          type: 'string',
-          description: 'Website URL',
-        },
-        a2a_endpoint: {
-          type: 'string',
-          description: 'A2A Agent Card endpoint URL',
-        },
-        ucp_profile_url: {
-          type: 'string',
-          description: 'UCP merchant profile URL',
-        },
+        receipt_id: { type: 'string', description: 'Receipt ID (ep_rcpt_...)' },
+      },
+      required: ['receipt_id'],
+    },
+  },
+  {
+    name: 'ep_register_entity',
+    description: 'Register a new entity. Requires an API key.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        entity_id: { type: 'string', description: 'Slug (lowercase, hyphens)' },
+        display_name: { type: 'string' },
+        entity_type: { type: 'string', enum: ['agent', 'merchant', 'service_provider'] },
+        description: { type: 'string' },
+        capabilities: { type: 'array', items: { type: 'string' } },
       },
       required: ['entity_id', 'display_name', 'entity_type', 'description'],
     },
   },
   {
     name: 'ep_leaderboard',
-    description:
-      'Get the top-scored entities in the EMILIA network. ' +
-      'Returns entities ranked by EMILIA Score with their breakdowns.',
+    description: 'Get top entities ranked by compatibility score.',
     inputSchema: {
       type: 'object',
       properties: {
-        limit: {
-          type: 'number',
-          description: 'Number of entities to return (default: 10, max: 50)',
-        },
-        entity_type: {
-          type: 'string',
-          enum: ['agent', 'merchant', 'service_provider'],
-          description: 'Filter by entity type',
-        },
+        limit: { type: 'number', description: 'Max entities (default 10, max 50)' },
+        entity_type: { type: 'string', enum: ['agent', 'merchant', 'service_provider'] },
       },
+    },
+  },
+  // LEGACY COMPAT
+  {
+    name: 'ep_score_lookup',
+    description: 'LEGACY: Look up compatibility score. Use ep_trust_profile instead for full trust data.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        entity_id: { type: 'string', description: 'Entity ID or UUID' },
+      },
+      required: ['entity_id'],
     },
   },
 ];
@@ -259,73 +206,63 @@ const TOOLS = [
 
 async function handleTool(name, args) {
   switch (name) {
-    case 'ep_score_lookup': {
-      const data = await epFetch(`/api/score/${encodeURIComponent(args.entity_id)}`);
-      return formatScore(data);
+    case 'ep_trust_profile': {
+      const data = await epFetch(`/api/trust/profile/${encodeURIComponent(args.entity_id)}`);
+      return formatTrustProfile(data);
+    }
+
+    case 'ep_trust_evaluate': {
+      const body = { entity_id: args.entity_id, policy: args.policy || 'standard' };
+      const data = await epFetch('/api/trust/evaluate', { method: 'POST', body });
+      return formatEvaluation(data);
     }
 
     case 'ep_submit_receipt': {
-      if (!API_KEY) {
-        return 'Error: EP_API_KEY is required for submitting receipts. Set it in your MCP server config.';
-      }
-      const data = await epFetch('/api/receipts/submit', {
-        method: 'POST',
-        auth: true,
-        body: {
-          entity_id: args.entity_id,
-          transaction_type: args.transaction_type,
-          transaction_ref: args.transaction_ref,
-          delivery_accuracy: args.delivery_accuracy,
-          product_accuracy: args.product_accuracy,
-          price_integrity: args.price_integrity,
-          return_processing: args.return_processing,
-          agent_satisfaction: args.agent_satisfaction,
-          evidence: args.evidence,
-        },
-      });
+      if (!API_KEY) return 'Error: EP_API_KEY required. Set it in MCP server config.';
+      const body = { ...args };
+      const data = await epFetch('/api/receipts/submit', { method: 'POST', auth: true, body });
       return `Receipt submitted.\n` +
-        `Receipt ID: ${data.receipt.receipt_id}\n` +
-        `Composite Score: ${data.receipt.composite_score}\n` +
+        `ID: ${data.receipt.receipt_id}\n` +
         `Hash: ${data.receipt.receipt_hash}\n` +
-        `Entity Score Updated: ${data.entity_score.emilia_score} (${data.entity_score.total_receipts} receipts)`;
-    }
-
-    case 'ep_verify_receipt': {
-      const data = await epFetch(`/api/verify/${encodeURIComponent(args.receipt_id)}`);
-      return formatVerification(data);
+        `Updated score: ${data.entity_score.emilia_score} (${data.entity_score.total_receipts} receipts)`;
     }
 
     case 'ep_search_entities': {
       const params = new URLSearchParams({ q: args.query });
       if (args.entity_type) params.set('type', args.entity_type);
-      if (args.min_score) params.set('min_score', args.min_score.toString());
       const data = await epFetch(`/api/entities/search?${params}`);
-      return formatSearch(data);
+      const entities = data.entities || data.results || [];
+      if (!entities.length) return 'No entities found.';
+      return entities.map(e =>
+        `${e.display_name} (${e.entity_id}) — score: ${e.emilia_score}, receipts: ${e.total_receipts}`
+      ).join('\n');
+    }
+
+    case 'ep_verify_receipt': {
+      const data = await epFetch(`/api/verify/${encodeURIComponent(args.receipt_id)}`);
+      return `Receipt: ${data.receipt_id}\nHash: ${data.receipt_hash}\nAnchored: ${data.anchored ? 'Yes' : 'No'}\nVerified: ${data.verified ? 'YES' : 'FAILED'}`;
     }
 
     case 'ep_register_entity': {
-      if (!API_KEY) {
-        return 'Error: EP_API_KEY is required for registration. Set it in your MCP server config.';
-      }
-      const data = await epFetch('/api/entities/register', {
-        method: 'POST',
-        auth: true,
-        body: args,
-      });
-      return `Entity registered!\n` +
-        `Entity ID: ${data.entity.entity_id}\n` +
-        `Entity #: ${data.entity.entity_number || 'N/A'}\n` +
-        `EMILIA Score: ${data.entity.emilia_score} (new entity — score starts at 50)\n` +
-        `API Key: ${data.api_key}\n\n` +
-        `⚠️  Save this API key — it won't be shown again.`;
+      if (!API_KEY) return 'Error: EP_API_KEY required.';
+      const data = await epFetch('/api/entities/register', { method: 'POST', auth: true, body: args });
+      return `Registered: ${data.entity.entity_id}\nAPI Key: ${data.api_key}\n⚠️ Save this key — it won't be shown again.`;
     }
 
     case 'ep_leaderboard': {
       const params = new URLSearchParams();
-      if (args?.limit) params.set('limit', Math.min(args.limit, 50).toString());
+      if (args?.limit) params.set('limit', String(Math.min(args.limit, 50)));
       if (args?.entity_type) params.set('type', args.entity_type);
       const data = await epFetch(`/api/leaderboard?${params}`);
-      return formatLeaderboard(data);
+      const lb = data.leaderboard || [];
+      if (!lb.length) return 'No entities in leaderboard yet.';
+      return lb.map(e => `#${e.rank} ${e.display_name} — ${e.emilia_score}/100 (${e.total_receipts} receipts)`).join('\n');
+    }
+
+    case 'ep_score_lookup': {
+      const data = await epFetch(`/api/score/${encodeURIComponent(args.entity_id)}`);
+      return `${data.display_name}: ${data.emilia_score}/100 (${data.confidence})\n` +
+        `Note: Use ep_trust_profile for full trust data.`;
     }
 
     default:
@@ -337,117 +274,80 @@ async function handleTool(name, args) {
 // Formatters
 // =============================================================================
 
-function formatScore(data) {
-  let out = `EMILIA Score for ${data.display_name} (${data.entity_id})\n`;
+function formatTrustProfile(data) {
+  let out = `Trust Profile: ${data.display_name} (${data.entity_id})\n`;
   out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  out += `Score: ${data.emilia_score}/100`;
-  out += data.established ? ' (established)' : ' (new entity — score dampened)';
-  out += `\nType: ${data.entity_type}\n`;
-  out += `Total Receipts: ${data.total_receipts}\n`;
-  out += `Verified: ${data.verified ? 'Yes' : 'No'}\n`;
+  out += `Confidence: ${data.current_confidence}\n`;
+  out += `Established: ${data.historical_establishment ? 'Yes' : 'No'}\n`;
+  out += `Effective Evidence: ${data.effective_evidence_current} (current) / ${data.effective_evidence_historical} (historical)\n`;
+  out += `Compatibility Score: ${data.compat_score}/100\n`;
 
-  if (data.breakdown) {
-    out += `\nBreakdown:\n`;
-    out += `  Delivery Accuracy:  ${data.breakdown.delivery_accuracy ?? 'N/A'}\n`;
-    out += `  Product Accuracy:   ${data.breakdown.product_accuracy ?? 'N/A'}\n`;
-    out += `  Price Integrity:    ${data.breakdown.price_integrity ?? 'N/A'}\n`;
-    out += `  Return Processing:  ${data.breakdown.return_processing ?? 'N/A'}\n`;
-    out += `  Agent Satisfaction: ${data.breakdown.agent_satisfaction ?? 'N/A'}\n`;
-    out += `  Consistency:        ${data.breakdown.consistency ?? 'N/A'}\n`;
-  }
-
-  if (data.description) {
-    out += `\n${data.description}\n`;
-  }
-
-  return out;
-}
-
-function formatVerification(data) {
-  let out = `Verification for ${data.receipt_id}\n`;
-  out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  out += `Receipt Hash: ${data.receipt_hash}\n`;
-  out += `Anchored: ${data.anchored ? 'Yes (on Base L2)' : 'No'}\n`;
-  out += `Proof Valid: ${data.verified ? '✓ VERIFIED' : '✗ FAILED'}\n`;
-
-  if (data.batch) {
-    out += `\nBatch Details:\n`;
-    out += `  Merkle Root: ${data.batch.merkle_root}\n`;
-    out += `  Leaf Count: ${data.batch.leaf_count}\n`;
-    if (data.batch.tx_hash) {
-      out += `  TX Hash: ${data.batch.tx_hash}\n`;
-      out += `  Explorer: https://basescan.org/tx/${data.batch.tx_hash}\n`;
+  const p = data.trust_profile;
+  if (p) {
+    if (p.behavioral) {
+      out += `\nBehavioral:\n`;
+      out += `  Completion rate: ${p.behavioral.completion_rate ?? 'N/A'}%\n`;
+      out += `  Retry rate:      ${p.behavioral.retry_rate ?? 'N/A'}%\n`;
+      out += `  Abandon rate:    ${p.behavioral.abandon_rate ?? 'N/A'}%\n`;
+      out += `  Dispute rate:    ${p.behavioral.dispute_rate ?? 'N/A'}%\n`;
     }
+    if (p.signals) {
+      out += `\nSignals:\n`;
+      out += `  Delivery:  ${p.signals.delivery_accuracy ?? 'N/A'}\n`;
+      out += `  Product:   ${p.signals.product_accuracy ?? 'N/A'}\n`;
+      out += `  Price:     ${p.signals.price_integrity ?? 'N/A'}\n`;
+      out += `  Returns:   ${p.signals.return_processing ?? 'N/A'}\n`;
+    }
+    out += `  Consistency: ${p.consistency ?? 'N/A'}\n`;
+  }
+
+  if (data.anomaly) {
+    out += `\n⚠️ ANOMALY: ${data.anomaly.type} (${data.anomaly.delta} points, ${data.anomaly.alert})\n`;
   }
 
   return out;
 }
 
-function formatSearch(data) {
-  const entities = data.entities || data.results || [];
-  if (entities.length === 0) {
-    return 'No entities found matching your query.';
+function formatEvaluation(data) {
+  let out = `Trust Evaluation: ${data.display_name} (${data.entity_id})\n`;
+  out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  out += `Policy: ${data.policy_used}\n`;
+  out += `Decision: ${data.pass ? '✓ PASS' : '✗ FAIL'}\n`;
+  out += `Score: ${data.score}/100\n`;
+  out += `Confidence: ${data.confidence}\n`;
+
+  if (data.failures?.length > 0) {
+    out += `\nFailures:\n`;
+    for (const f of data.failures) out += `  ✗ ${f}\n`;
+  }
+  if (data.warnings?.length > 0) {
+    out += `\nWarnings:\n`;
+    for (const w of data.warnings) out += `  ⚠ ${w}\n`;
   }
 
-  let out = `Found ${entities.length} entities:\n\n`;
-  for (const e of entities) {
-    out += `${e.display_name} (${e.entity_id})\n`;
-    out += `  Score: ${e.emilia_score}/100 | Type: ${e.entity_type} | Receipts: ${e.total_receipts}\n`;
-    if (e.description) out += `  ${e.description}\n`;
-    out += `\n`;
-  }
-  return out;
-}
-
-function formatLeaderboard(data) {
-  if (!data.entities || data.entities.length === 0) {
-    return 'No entities in the leaderboard yet.';
-  }
-
-  let out = `EMILIA Leaderboard\n`;
-  out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-  for (let i = 0; i < data.entities.length; i++) {
-    const e = data.entities[i];
-    out += `#${i + 1}  ${e.display_name} — ${e.emilia_score}/100 (${e.total_receipts} receipts)\n`;
-  }
   return out;
 }
 
 // =============================================================================
-// Server setup
+// Server
 // =============================================================================
 
 const server = new Server(
-  {
-    name: 'emilia-protocol',
-    version: '0.1.0',
-  },
-  {
-    capabilities: {
-      tools: {},
-    },
-  }
+  { name: 'emilia-protocol', version: '0.2.0' },
+  { capabilities: { tools: {} } }
 );
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: TOOLS,
-}));
+server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
   try {
     const result = await handleTool(name, args || {});
-    return {
-      content: [{ type: 'text', text: result }],
-    };
+    return { content: [{ type: 'text', text: result }] };
   } catch (err) {
-    return {
-      content: [{ type: 'text', text: `Error: ${err.message}` }],
-      isError: true,
-    };
+    return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
   }
 });
 
-// Start
 const transport = new StdioServerTransport();
 await server.connect(transport);

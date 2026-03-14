@@ -6,7 +6,7 @@ export async function generateMetadata({ params }) {
   const { entityId } = await params;
   return {
     title: `${entityId} — EMILIA Protocol`,
-    description: `EMILIA Score and receipt history for ${entityId}`,
+    description: `Trust profile and receipt history for ${entityId}`,
   };
 }
 
