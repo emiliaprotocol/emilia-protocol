@@ -63,6 +63,7 @@ export async function POST(request) {
       agentBehavior: body.agent_behavior || null,
       claims: body.claims || null,
       evidence: body.evidence || {},
+      context: body.context || null,
     });
 
     if (result.error) {

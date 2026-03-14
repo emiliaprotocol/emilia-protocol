@@ -39,10 +39,11 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Cannot claim your own need' }, { status: 403 });
     }
 
-    // Check EMILIA Score requirement
+    // Check trust threshold (compatibility score gate — needs may specify minimum)
     if (auth.entity.emilia_score < need.min_emilia_score) {
       return NextResponse.json({
-        error: `Your EMILIA Score (${auth.entity.emilia_score}) is below the minimum required (${need.min_emilia_score})`,
+        error: `Your trust score (${auth.entity.emilia_score}) is below the minimum required (${need.min_emilia_score}). Build trust through verified receipts.`,
+        _hint: 'For richer trust evaluation, use POST /api/trust/evaluate with a policy.',
       }, { status: 403 });
     }
 
