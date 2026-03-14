@@ -9,11 +9,11 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://emiliaprotocol.ai">
 <meta property="og:title" content="EMILIA Protocol (EP) — The Trust Layer for Agentic Commerce">
-<meta property="og:description" content="The first reputation system no corporation can buy. Receipts, not reviews. Built for the agent economy.">
+<meta property="og:description" content="A vendor-neutral trust attestation standard for agentic commerce. Trust profiles, not scores. Policies, not thresholds. Receipts, not reviews.">
 <meta property="og:image" content="https://emiliaprotocol.ai/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="EMILIA Protocol (EP) — The Trust Layer for Agentic Commerce">
-<meta name="twitter:description" content="The open-source credit score for the agent economy. Reputation earned through receipts, not reviews.">
+<meta name="twitter:description" content="A vendor-neutral trust attestation standard for agentic commerce. Receipts, not reviews.">
 <meta name="twitter:image" content="https://emiliaprotocol.ai/og.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -1210,7 +1210,7 @@ const facts = [
   { c: 'g',  t: 'You can\'t fake a delivery receipt. <strong>That\'s the point.</strong>' },
   { c: 'c',  t: 'Three API calls. <strong>That\'s the entire protocol.</strong>' },
   { c: 'gr', t: 'Entity numbers are <strong>permanent and sequential</strong> — claim yours' },
-  { c: 'a',  t: '<strong>Receipts, not reviews.</strong> The trust layer for agentic commerce.' },
+  { c: 'a',  t: '<strong>Receipts, not reviews.</strong> Trust profiles, not scores. Policies, not thresholds.' },
   { c: 'g',  t: 'Compatible with <strong>UCP · A2A · MCP · ACP · AP2</strong>' },
   { c: 'c',  t: 'No one can buy their score. <strong>The algorithm is public.</strong>' },
   { c: 'gr', t: 'EP doesn\'t handle the transaction. <strong>It scores the outcome.</strong>' },
@@ -1449,7 +1449,7 @@ function showCard(n) {
 
 function shareEntity(p) {
   const n=window._ent||3;
-  const txt=`I just claimed Entity #${n} on the EMILIA Protocol.\n\nThe open-source credit score for the agent economy. Receipts, not reviews.\n\nClaim yours:`;
+  const txt=`I just claimed Entity #${n} on the EMILIA Protocol.\n\nA vendor-neutral trust attestation standard for agentic commerce. Receipts, not reviews.\n\nClaim yours:`;
   const url=`https://emiliaprotocol.ai?ref=entity-${n}`;
   if(p==='twitter') window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(txt)}&url=${encodeURIComponent(url)}`,'_blank');
   else if(p==='linkedin') window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,'_blank');

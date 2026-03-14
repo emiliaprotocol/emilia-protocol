@@ -1,6 +1,6 @@
 export const metadata = {
   title: 'EMILIA Protocol',
-  description: 'The open-source credit score for the agent economy.',
+  description: 'A vendor-neutral trust attestation standard for agentic commerce. Receipts, not reviews.',
 };
 
 export default function RootLayout({ children }) {

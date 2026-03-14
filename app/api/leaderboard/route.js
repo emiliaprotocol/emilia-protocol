@@ -40,6 +40,8 @@ export async function GET(request) {
       .range(offset, offset + limit - 1);
 
     if (!includeNew) {
+      // Pre-filter: total_receipts >= 5 is a performance optimization.
+      // Canonical establishment is checked per-entity below via is_entity_established().
       query = query.gte('total_receipts', 5);
     }
     if (type) query = query.eq('entity_type', type);
@@ -53,7 +55,7 @@ export async function GET(request) {
     }
 
     // Compute establishment status for each entity using canonical DB function
-    const leaderboard = await Promise.all((entities || []).map(async (e, i) => {
+    let leaderboard = await Promise.all((entities || []).map(async (e) => {
       let established = false;
       let effectiveEvidence = 0;
       if (e.total_receipts >= 5) {
@@ -64,7 +66,6 @@ export async function GET(request) {
         }
       }
       return {
-        rank: offset + i + 1,
         entity_id: e.entity_id,
         display_name: e.display_name,
         entity_type: e.entity_type,
@@ -79,6 +80,14 @@ export async function GET(request) {
         established,
       };
     }));
+
+    // When not including new entities, filter by CANONICAL establishment
+    if (!includeNew) {
+      leaderboard = leaderboard.filter(e => e.established);
+    }
+
+    // Re-rank after filtering
+    leaderboard = leaderboard.map((e, i) => ({ ...e, rank: offset + i + 1 }));
 
     return NextResponse.json({
       leaderboard,
