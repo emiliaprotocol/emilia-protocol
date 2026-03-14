@@ -617,7 +617,7 @@
       <div class="st">// How It Works</div>
       <div class="sh">Receipts, Not Reviews</div>
       <div class="rnr-text">
-        Every review system has failed because the platform hosting reviews profits from the businesses being reviewed. EMILIA is different. The <strong>buying agent</strong> submits a receipt about the seller — not the other way around. The buyer has no incentive to inflate scores. If they score a bad merchant highly, their own agent routes back and gets burned. <strong>The scorer and the consumer of the score are the same entity.</strong> This creates natural incentive alignment that no review system has ever achieved.
+        Every review system has failed because the platform hosting reviews profits from the businesses being reviewed. EMILIA is different. The <strong>buying agent</strong> submits a receipt about the seller — and then uses that same score to decide where to transact next. <strong>You rate what you eat. Lie, and you eat bad food again.</strong> The scorer and the consumer of the score are the same entity. This creates natural incentive alignment that no review system has ever achieved.
       </div>
     </div>
 
@@ -664,7 +664,7 @@
           <span style="font-family: var(--mono); font-size: 9px; color: var(--cyan); background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.2); padding: 3px 8px; border-radius: 100px;">IN DEV</span>
         </div>
         <h3 style="color: var(--cyan);">Evidence-Backed Truth</h3>
-        <p>Agents submit structured claims + evidence: "delivered 3 days late" with tracking ID, "price overcharged 5%" with payment ref. The engine computes the score from facts, not opinions.</p>
+        <p>Agents submit structured claims + evidence: "delivered 3 days late" with tracking ID, "price overcharged 5%" with payment ref. The engine computes the score from facts. Counter-receipts within 48hrs. Conflicting claims enter disputed state — the dispute rate itself becomes a trust signal.</p>
       </div>
       <div class="problem-card reveal" style="border-color: rgba(255,215,0,0.2);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
@@ -672,7 +672,7 @@
           <span style="font-family: var(--mono); font-size: 9px; color: var(--gold); background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.2); padding: 3px 8px; border-radius: 100px;">ROADMAP</span>
         </div>
         <h3 style="color: var(--gold);">Protocol-Observed Truth</h3>
-        <p>EP listens to MCP/A2A/UCP protocol events and auto-generates receipts. Verification oracles confirm claims against carrier APIs, payment processors, and listing snapshots. Zero-knowledge score proofs.</p>
+        <p>EP listens to MCP/A2A/UCP protocol events and auto-generates receipts. Decentralized verification oracles (with their own EP scores — bad oracle gets scored down) confirm claims against carrier APIs and payment processors. Zero-knowledge score proofs for privacy.</p>
       </div>
     </div>
   </div>
@@ -745,7 +745,8 @@
       <div class="problem-card reveal" style="border-color: rgba(255,45,120,0.15);">
         <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--magenta); margin-bottom: 12px;">WHY LYING HURTS THE LIAR</div>
         <p style="font-size: 13px; line-height: 1.7; color: var(--t2);">
-          The buying agent submits receipts AND consumes them for routing. If Clara scores a bad seller highly, <strong style="color:var(--t1);">Clara's own agent routes back to that seller and gets burned</strong>. The scorer and the consumer of the score are the same entity. <strong style="color:var(--magenta);">Self-enforcing honesty.</strong>
+          <strong style="color:var(--t1);">You rate what you eat. Lie, and you eat bad food again.</strong><br><br>
+          The buying agent submits receipts AND uses those same scores to decide where to transact next. If Clara scores a bad seller highly, Clara's own routing sends her back to that seller. <strong style="color:var(--magenta);">Self-enforcing honesty.</strong> No other trust system has this structural alignment.
         </p>
       </div>
     </div>
@@ -968,14 +969,15 @@
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
         <div class="faq-q">Isn't "agent satisfaction" (10%) subjective? Doesn't that reintroduce the review problem?</div>
-        <div class="faq-a">Fair concern. That's why <code>agent_satisfaction</code> is measured by <strong>what the agent did</strong>, not what it felt.<br><br>
-          <span style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0;font-family:var(--mono);font-size:11px;">
-            <span style="color:var(--green);">Completed without retry → 95</span>
-            <span style="color:var(--cyan);">Retried same entity → 75</span>
-            <span style="color:var(--amber);">Switched entity → 40</span>
-            <span style="color:var(--red);">Abandoned → 15</span>
+        <div class="faq-a">Fair concern. That's why <code>agent_satisfaction</code> is measured by <strong>what the agent did</strong>, not what it felt. The submitting agent reports its own next action — this is self-reported but self-enforcing, because the agent's behavior is also observable by its own user.<br><br>
+          <span style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:12px 0;font-family:var(--mono);font-size:11px;">
+            <span style="color:var(--green);">completed → 95</span><span style="color:var(--t2);">Transaction finished, no retry needed</span>
+            <span style="color:var(--cyan);">retried_same → 75</span><span style="color:var(--t2);">Same agent, same counterparty, new attempt (minor issue resolved)</span>
+            <span style="color:var(--amber);">retried_different → 40</span><span style="color:var(--t2);">Same task, switched to a different counterparty</span>
+            <span style="color:var(--red);">abandoned → 15</span><span style="color:var(--t2);">Agent stopped pursuing this task category entirely</span>
+            <span style="color:var(--magenta);">disputed → 5</span><span style="color:var(--t2);">Agent filed a formal dispute against the counterparty</span>
           </span>
-          FICO doesn't ask borrowers to rate their lender. It watches whether they pay. EP doesn't ask agents to rate merchants. It watches whether they come back. At 10% weight, even a fully gamed signal barely moves the score — the other 90% is cryptographic fact.
+          FICO doesn't ask borrowers to rate their lender. It watches whether they pay. EP doesn't ask agents to rate merchants. It watches whether they come back.<br><br>Why only 10%? Because the other 90% is computed from verifiable transaction data — delivery timing, price accuracy, product match. The behavioral signal is a tiebreaker, not the foundation. Even a fully gamed 10% signal barely moves the overall score.
         </div>
       </div>
 
@@ -1008,8 +1010,15 @@
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
         <div class="faq-q">What's coming in Phase 2 and Phase 3?</div>
-        <div class="faq-a"><strong style="color:var(--cyan);">Phase 2 — Evidence-Backed Truth (in development):</strong> Instead of asking agents to rate 0-100, agents submit structured claims + evidence: "delivered 3 days late" with tracking ID, "overcharged 5%" with payment ref. The engine computes the score from facts. Counter-receipts: sellers can respond within 48 hours. Conflicting receipts enter a "disputed" state with an evidence window — transparency over arbitration.<br><br>
-          <strong style="color:var(--gold);">Phase 3 — Protocol-Observed Truth (roadmap):</strong> EP listens to MCP/A2A/UCP protocol events and auto-generates receipts. Decentralized verification oracles (with their own EP scores) confirm claims against carrier APIs, payment processors, and listing snapshots. Zero-knowledge score proofs — prove your score without revealing transaction history. Cross-chain anchoring beyond Base L2.
+        <div class="faq-a"><strong style="color:var(--cyan);">Phase 2 — Evidence-Backed Truth (in development):</strong><br>
+          &bull; <strong>Claims + evidence receipts:</strong> Instead of rating 0-100, agents submit "delivered 3 days late" with tracking ID, "overcharged 5%" with payment ref. The engine computes the score from facts.<br>
+          &bull; <strong>Counter-receipts:</strong> Sellers can respond within 48 hours with their own evidence.<br>
+          &bull; <strong>Conflict resolution:</strong> When receipts conflict, both enter "disputed" state. 48-hour evidence window. If an oracle can verify a claim (e.g., carrier tracking confirms delivery time), it overrides. Otherwise both receipts are stored at 0.5x weight with a <code>disputed</code> flag. Entities with high dispute rates become inherently less trustworthy — the dispute rate itself is a signal.<br><br>
+          <strong style="color:var(--gold);">Phase 3 — Protocol-Observed Truth (roadmap):</strong><br>
+          &bull; <strong>Protocol listeners:</strong> EP observes MCP/A2A/UCP events and auto-generates receipts — no manual submission needed.<br>
+          &bull; <strong>Decentralized oracles:</strong> DeliveryOracle (carrier APIs), PaymentOracle (Stripe/AP2), ListingOracle (IPFS snapshots). Each oracle has its own EP score — bad oracle gets scored down. Trust is recursive all the way down.<br>
+          &bull; <strong>ZK score proofs:</strong> Prove "I have a score above 80 with 50+ receipts" without revealing any transaction details. Privacy-preserving trust.<br>
+          &bull; <strong>Cross-chain anchoring:</strong> Ethereum L1, Arbitrum, beyond Base L2.
         </div>
       </div>
 
