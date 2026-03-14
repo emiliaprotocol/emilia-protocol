@@ -14,12 +14,12 @@ import crypto from 'crypto';
  * 
  * Body: {
  *   capability_needed: "price_comparison",
- *   context: "Need to compare prices for a Sony WH-1000XM5 across 5 retailers",
+ *   context: { "task_type": "purchase", "category": "electronics", "geo": "US-CA" },
  *   input_data: { product_id: "...", max_results: 5 },
  *   budget_cents: 50,
  *   deadline_ms: 30000,
  *   min_emilia_score: 70,
- *   trust_policy: "standard",    // optional: "strict", "standard", "permissive", "discovery" or custom JSON
+ *   trust_policy: "standard",
  * }
  */
 export async function POST(request) {
@@ -67,6 +67,24 @@ export async function POST(request) {
       }
     }
 
+    // Validate context — must be a structured object, not a freeform string
+    let needContext = null;
+    if (body.context) {
+      if (typeof body.context === 'object' && body.context !== null) {
+        needContext = body.context;
+      } else if (typeof body.context === 'string') {
+        // Attempt to parse JSON string; reject freeform text
+        try {
+          const parsed = JSON.parse(body.context);
+          if (typeof parsed === 'object') needContext = parsed;
+        } catch {
+          return NextResponse.json({
+            error: 'context must be a structured object (e.g. { "category": "electronics", "geo": "US-CA" }), not freeform text.',
+          }, { status: 400 });
+        }
+      }
+    }
+
     const needId = `ep_need_${crypto.randomBytes(16).toString('hex')}`;
 
     const { data: need, error: insertError } = await supabase
@@ -75,7 +93,7 @@ export async function POST(request) {
         need_id: needId,
         from_entity_id: auth.entity.id,
         capability_needed: body.capability_needed,
-        context: body.context || null,
+        context: needContext,
         input_data: body.input_data || null,
         budget_cents: body.budget_cents || null,
         deadline_ms: body.deadline_ms || null,
@@ -122,16 +140,37 @@ export async function POST(request) {
         policy = TRUST_POLICIES.standard;
       }
 
-      // Evaluate each candidate against the policy
+      // Evaluate each candidate against the policy — context-aware
       const evaluated = await Promise.all(matches.map(async (m) => {
-        const { data: receipts } = await supabase
+        // Build context-aware receipt query (same logic as claim and evaluate routes)
+        let receiptQuery = supabase
           .from('receipts')
           .select('*')
           .eq('entity_id', m.id)
           .order('created_at', { ascending: false })
           .limit(200);
 
-        const profile = computeTrustProfile(receipts || [], m);
+        if (needContext) {
+          receiptQuery = receiptQuery.contains('context', needContext);
+        }
+
+        const { data: contextReceipts } = await receiptQuery;
+        let receipts = contextReceipts || [];
+        let contextUsed = needContext ? needContext : 'global';
+
+        // Fall back to global if context-specific data is too sparse
+        if (needContext && receipts.length < 3) {
+          const { data: globalReceipts } = await supabase
+            .from('receipts')
+            .select('*')
+            .eq('entity_id', m.id)
+            .order('created_at', { ascending: false })
+            .limit(200);
+          receipts = globalReceipts || [];
+          contextUsed = 'global_fallback';
+        }
+
+        const profile = computeTrustProfile(receipts, m);
         const result = evaluateTrustPolicy(profile, policy);
         return {
           entity_id: m.entity_id,
@@ -140,6 +179,8 @@ export async function POST(request) {
           match_score: m.match_score,
           trust_pass: result.pass,
           confidence: profile.confidence,
+          effective_evidence: profile.effectiveEvidence,
+          context_used: contextUsed,
           effective_evidence: profile.effectiveEvidence,
         };
       }));
