@@ -39,6 +39,7 @@ export async function GET(request) {
               need_id, capability_needed, context,
               budget_cents, deadline_ms, min_emilia_score,
               trust_policy, status, created_at, expires_at,
+              from_entity_id,
               from_entity:entities!needs_from_entity_id_fkey(entity_id, display_name, emilia_score)
             `)
             .eq('status', 'open')
@@ -72,7 +73,31 @@ export async function GET(request) {
             return;
           }
 
-          for (const need of (needs || [])) {
+          let filtered = needs || [];
+
+          // Enforce min_confidence — filter needs whose broadcasting entity meets the threshold
+          if (minConfidence && filtered.length > 0) {
+            const confLevels = ['pending', 'insufficient', 'provisional', 'emerging', 'confident'];
+            const minIdx = confLevels.indexOf(minConfidence);
+            if (minIdx >= 0) {
+              const enriched = await Promise.all(filtered.map(async (n) => {
+                const fromId = n.from_entity?.entity_id;
+                if (!fromId) return { ...n, _broadcaster_confidence: 'pending' };
+                let ee = 0;
+                try {
+                  const { data: estData } = await supabase.rpc('is_entity_established', {
+                    p_entity_id: n.from_entity_id || n.from_entity?.id,
+                  });
+                  if (estData && estData[0]) ee = estData[0].effective_evidence;
+                } catch {}
+                const conf = ee === 0 ? 'pending' : ee < 1 ? 'insufficient' : ee < 5 ? 'provisional' : ee < 20 ? 'emerging' : 'confident';
+                return { ...n, _broadcaster_confidence: conf };
+              }));
+              filtered = enriched.filter(n => confLevels.indexOf(n._broadcaster_confidence) >= minIdx);
+            }
+          }
+
+          for (const need of filtered) {
             controller.enqueue(
               encoder.encode(`event: need\ndata: ${JSON.stringify(need)}\n\n`)
             );
