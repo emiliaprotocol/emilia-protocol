@@ -1188,11 +1188,11 @@ async function fetchNext() {
     const d = await r.json();
     const next = d.next_available || 3;
     anim('stat-entities', d.total_entities || 2);
-    document.getElementById('stat-next').textContent = `#${next}`;
+    document.getElementById('stat-next').textContent = next;
     document.getElementById('nextEntity').textContent = `#${next}`;
     document.getElementById('claimNum').textContent = next;
   } catch {
-    document.getElementById('stat-next').textContent = '#3';
+    document.getElementById('stat-next').textContent = '3';
     document.getElementById('nextEntity').textContent = '#3';
     document.getElementById('claimNum').textContent = '3';
   }

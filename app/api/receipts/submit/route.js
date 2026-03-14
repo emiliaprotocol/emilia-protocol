@@ -44,12 +44,15 @@ export async function POST(request) {
     const body = await request.json();
     const supabase = getServiceClient();
 
-    // Validate
+    // Validate required fields
     if (!body.entity_id) {
       return NextResponse.json({ error: 'entity_id is required' }, { status: 400 });
     }
     if (!body.transaction_type) {
       return NextResponse.json({ error: 'transaction_type is required' }, { status: 400 });
+    }
+    if (!body.transaction_ref) {
+      return NextResponse.json({ error: 'transaction_ref is required — every receipt must reference an external transaction' }, { status: 400 });
     }
 
     const validTypes = ['purchase', 'service', 'task_completion', 'delivery', 'return'];
@@ -60,6 +63,16 @@ export async function POST(request) {
     const validBehaviors = ['completed', 'retried_same', 'retried_different', 'abandoned', 'disputed'];
     if (body.agent_behavior && !validBehaviors.includes(body.agent_behavior)) {
       return NextResponse.json({ error: `agent_behavior must be one of: ${validBehaviors.join(', ')}` }, { status: 400 });
+    }
+
+    // Require at least one meaningful signal OR a claims object
+    const hasSignal = [body.delivery_accuracy, body.product_accuracy, body.price_integrity,
+      body.return_processing, body.agent_satisfaction].some(v => v != null && !isNaN(v));
+    const hasClaims = body.claims && typeof body.claims === 'object' && Object.keys(body.claims).length > 0;
+    const hasBehavior = !!body.agent_behavior;
+
+    if (!hasSignal && !hasClaims && !hasBehavior) {
+      return NextResponse.json({ error: 'Receipt must include at least one signal (delivery_accuracy, product_accuracy, etc.), a claims object, or an agent_behavior' }, { status: 400 });
     }
 
     // Verify the target entity exists — accept both UUID and slug
@@ -116,11 +129,20 @@ export async function POST(request) {
     }
 
     // Capture submitter's current score and establishment status
+    // CANONICAL DEFINITION: established = 5+ receipts from 3+ unique submitters
     const submitterScore = auth.entity.emilia_score ?? 50;
-    const submitterEstablished = (auth.entity.total_receipts ?? 0) >= 5;
-    // Note: full establishment check requires 3+ unique submitters too,
-    // but total_receipts >= 5 is a fast proxy. Submitters who have received
-    // 5+ receipts themselves have proven history.
+    const submitterTotalReceipts = auth.entity.total_receipts ?? 0;
+
+    // Check unique submitters for the submitting entity
+    let submitterEstablished = false;
+    if (submitterTotalReceipts >= 5) {
+      const { data: subSubmitters } = await supabase
+        .from('receipts')
+        .select('submitted_by')
+        .eq('entity_id', auth.entity.id);
+      const uniqueSubSubmitters = new Set((subSubmitters || []).map(r => r.submitted_by)).size;
+      submitterEstablished = uniqueSubSubmitters >= 3;
+    }
 
     // Compute composite score
     const composite = computeReceiptComposite({
@@ -145,18 +167,22 @@ export async function POST(request) {
     // Generate receipt ID
     const receiptId = `ep_rcpt_${crypto.randomBytes(16).toString('hex')}`;
 
-    // Compute receipt hash
+    // Compute receipt hash — includes ALL truth-bearing fields
     const receiptData = {
       entity_id: targetEntityId,
       submitted_by: auth.entity.id,
-      transaction_ref: body.transaction_ref || null,
+      transaction_ref: body.transaction_ref,
       transaction_type: body.transaction_type,
       delivery_accuracy: deliveryAccuracy,
       product_accuracy: productAccuracy,
       price_integrity: priceIntegrity,
       return_processing: returnProcessing,
       agent_satisfaction: agentSatisfaction,
+      agent_behavior: body.agent_behavior || null,
+      claims: body.claims || null,
       evidence: body.evidence || {},
+      submitter_score: submitterScore,
+      submitter_established: submitterEstablished,
     };
 
     const receiptHash = await computeReceiptHash(receiptData, previousHash);

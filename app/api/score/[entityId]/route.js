@@ -52,7 +52,16 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Entity is not active' }, { status: 404 });
     }
 
-    const established = entity.total_receipts >= 5;
+    // CANONICAL DEFINITION: established = 5+ receipts AND 3+ unique submitters
+    let uniqueSubmitters = 0;
+    if (entity.total_receipts >= 5) {
+      const { data: submitters } = await supabase
+        .from('receipts')
+        .select('submitted_by')
+        .eq('entity_id', entity.id);
+      uniqueSubmitters = new Set((submitters || []).map(r => r.submitted_by)).size;
+    }
+    const established = entity.total_receipts >= 5 && uniqueSubmitters >= 3;
 
     // Compute score confidence state
     // This tells consumers HOW MUCH to trust this score

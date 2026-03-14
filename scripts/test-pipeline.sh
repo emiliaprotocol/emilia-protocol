@@ -152,6 +152,7 @@ submit_receipt() {
 # Sender 1 → Rex: Great booking experience
 submit_receipt "$KEY1" "rex-booking-v1" '{
   "entity_id": "rex-booking-v1",
+  "transaction_ref": "test-txn-001",
   "transaction_type": "service",
   "delivery_accuracy": 95,
   "product_accuracy": 90,
@@ -162,6 +163,7 @@ submit_receipt "$KEY1" "rex-booking-v1" '{
 # Sender 2 → Rex: Good but slightly late
 submit_receipt "$KEY2" "rex-booking-v1" '{
   "entity_id": "rex-booking-v1",
+  "transaction_ref": "test-txn-002",
   "transaction_type": "service",
   "delivery_accuracy": 78,
   "product_accuracy": 92,
@@ -172,6 +174,7 @@ submit_receipt "$KEY2" "rex-booking-v1" '{
 # Sender 3 → Rex: Perfect
 submit_receipt "$KEY3" "rex-booking-v1" '{
   "entity_id": "rex-booking-v1",
+  "transaction_ref": "test-txn-003",
   "transaction_type": "service",
   "delivery_accuracy": 100,
   "product_accuracy": 95,
@@ -189,6 +192,7 @@ echo -e "${GOLD}[3] Submitting v1 receipts about Ruby...${NC}"
 # Sender 1 → Ruby: Great retention campaign
 submit_receipt "$KEY1" "ruby-retention-v1" '{
   "entity_id": "ruby-retention-v1",
+  "transaction_ref": "test-txn-004",
   "transaction_type": "service",
   "delivery_accuracy": 88,
   "product_accuracy": 94,
@@ -199,6 +203,7 @@ submit_receipt "$KEY1" "ruby-retention-v1" '{
 # Sender 2 → Ruby: Retry needed
 submit_receipt "$KEY2" "ruby-retention-v1" '{
   "entity_id": "ruby-retention-v1",
+  "transaction_ref": "test-txn-005",
   "transaction_type": "service",
   "delivery_accuracy": 85,
   "product_accuracy": 80,
@@ -209,6 +214,7 @@ submit_receipt "$KEY2" "ruby-retention-v1" '{
 # Sender 3 → Ruby: Excellent
 submit_receipt "$KEY3" "ruby-retention-v1" '{
   "entity_id": "ruby-retention-v1",
+  "transaction_ref": "test-txn-006",
   "transaction_type": "service",
   "delivery_accuracy": 92,
   "product_accuracy": 96,
@@ -225,6 +231,7 @@ echo -e "${GOLD}[4] Submitting v2 claims-based receipt about Rex...${NC}"
 
 submit_receipt "$KEY1" "rex-booking-v1" '{
   "entity_id": "rex-booking-v1",
+  "transaction_ref": "test-txn-007",
   "transaction_type": "service",
   "claims": {
     "delivered": true,
@@ -254,6 +261,7 @@ echo -e "${GOLD}[5] Submitting additional receipts to reach establishment thresh
 
 submit_receipt "$KEY2" "rex-booking-v1" '{
   "entity_id": "rex-booking-v1",
+  "transaction_ref": "test-txn-008",
   "transaction_type": "service",
   "delivery_accuracy": 90,
   "product_accuracy": 88,
@@ -263,6 +271,7 @@ submit_receipt "$KEY2" "rex-booking-v1" '{
 
 submit_receipt "$KEY3" "ruby-retention-v1" '{
   "entity_id": "ruby-retention-v1",
+  "transaction_ref": "test-txn-009",
   "transaction_type": "service",
   "delivery_accuracy": 90,
   "product_accuracy": 92,
@@ -272,6 +281,7 @@ submit_receipt "$KEY3" "ruby-retention-v1" '{
 
 submit_receipt "$KEY1" "ruby-retention-v1" '{
   "entity_id": "ruby-retention-v1",
+  "transaction_ref": "test-txn-010",
   "transaction_type": "service",
   "delivery_accuracy": 94,
   "product_accuracy": 91,

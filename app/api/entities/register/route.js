@@ -56,8 +56,11 @@ export async function POST(request) {
     }
 
     // === SYBIL RESISTANCE: Rate limit registrations ===
-    const ownerId = body.owner_id || body.entity_id;
-    const regCheck = await checkRegistrationLimits(supabase, ownerId);
+    // Use IP address for rate limiting, NOT caller-supplied owner_id (which is bypassable)
+    const clientIP = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || request.headers.get('x-real-ip')
+      || 'unknown';
+    const regCheck = await checkRegistrationLimits(supabase, clientIP);
     if (!regCheck.allowed) {
       return NextResponse.json({ error: regCheck.reason }, { status: 429 });
     }
