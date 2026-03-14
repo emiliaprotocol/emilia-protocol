@@ -56,10 +56,9 @@ export async function POST(request) {
     }
 
     // === SYBIL RESISTANCE: IP-based rate limiting ===
-    // Uses lib/rate-limit.js (in-memory sliding window per IP)
-    // NOT the old owner_id-based check which was bypassable
+    // Uses Upstash Redis in production, in-memory fallback in dev
     const clientIP = getClientIP(request);
-    const regLimit = checkRateLimit(clientIP, 'register');
+    const regLimit = await checkRateLimit(clientIP, 'register');
     if (!regLimit.allowed) {
       return NextResponse.json({
         error: `Rate limit: max registrations per hour exceeded. Retry in ${regLimit.reset}s.`,

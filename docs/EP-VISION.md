@@ -211,6 +211,23 @@ This is how FICO works too. A bankruptcy stays on your credit report for 7-10 ye
 
 ## Score Confidence States
 
+---
+
+## Establishment vs Scoring: Deliberate Windowing Distinction
+
+`is_entity_established()` uses ALL receipts. `compute_emilia_score()` uses a rolling 200-receipt window.
+
+These are deliberately different:
+
+- **Establishment is historical:** "Has this entity ever built enough credible history to be considered real?" Once established, the entity retains that status. This prevents an attacker from de-establishing a legitimate entity by flooding it with low-weight receipts.
+- **Scoring is current:** "How is this entity performing right now?" Only recent receipts (200 window + time decay) affect the score. Old good behavior doesn't excuse current poor performance.
+
+An entity can be established (from past history) but have a low current score (recent performance is poor). The confidence state system communicates this: an established entity with a declining score shows "ESTABLISHED" status but the score itself drops. The anomaly detector flags the velocity of change.
+
+This is analogous to how FICO works: you can have a long credit history (established) but a currently declining score (missed recent payments). The length of history and the current performance are different dimensions.
+
+---
+
 Not all scores are equally trustworthy. EP communicates this transparently through confidence states — visible in the API response and on entity profile pages.
 
 | State | Condition | Display | Meaning |

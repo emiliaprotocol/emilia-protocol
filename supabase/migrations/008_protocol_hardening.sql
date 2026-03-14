@@ -63,6 +63,22 @@ CREATE TRIGGER trg_receipts_immutable
   EXECUTE FUNCTION enforce_receipt_immutability();
 
 -- 3. Canonical is_entity_established() function
+--
+-- DESIGN NOTE: Establishment vs Scoring Windows
+-- This function uses ALL receipts (no window limit).
+-- compute_emilia_score() uses a rolling 200-receipt window.
+--
+-- These are deliberately different:
+--   - Establishment is a HISTORICAL property: "has this entity ever built enough
+--     credible history to be considered real?" Once established, the entity
+--     retains that status even if recent receipts are sparse.
+--   - Scoring is a CURRENT property: "how is this entity performing right now?"
+--     Only recent receipts (200 window + time decay) affect the score.
+--
+-- An entity can be established (from past history) but have a low current score
+-- (recent performance is poor). That is correct behavior — the confidence state
+-- system communicates this: established + low score = "real entity, declining."
+--
 CREATE OR REPLACE FUNCTION is_entity_established(p_entity_id uuid)
 RETURNS TABLE(
   total_receipts integer,

@@ -115,9 +115,17 @@ if effective_count < 5:
 | `emerging` | 5+ effective, established | Yes |
 | `confident` | 20+ receipts, multiple submitters | Yes |
 
----
+### 3.5 Establishment vs Scoring Windows
 
-## 4. Score Proof Format
+`is_entity_established()` operates over ALL receipts. Score computation uses a rolling 200-receipt window with time decay.
+
+These are deliberately different:
+- **Establishment** = historical property. "Has this entity ever accumulated enough credible evidence?" Permanent once achieved.
+- **Score** = current property. "How is this entity performing now?" Only recent, weighted receipts count.
+
+An established entity with declining recent performance will show `established: true` but a dropping score. The anomaly detection system flags rapid changes.
+
+---
 
 An EP Score Proof is a portable attestation that can be attached to ACP payments, MCP tool responses, or A2A Agent Cards.
 

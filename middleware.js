@@ -30,7 +30,7 @@ export function middleware(request) {
   if (!category) return NextResponse.next();
 
   const ip = getClientIP(request);
-  const result = checkRateLimit(ip, category);
+  const result = await checkRateLimit(ip, category);
 
   if (!result.allowed) {
     const config = RATE_LIMITS[category];
