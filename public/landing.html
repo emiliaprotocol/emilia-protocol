@@ -227,6 +227,53 @@
     .hero-ctas, .srow, .reg-form { flex-direction: column; align-items: center; }
     .finner { flex-direction: column; gap: 20px; text-align: center; }
   }
+
+  /* === KIMI-INSPIRED ADDITIONS === */
+
+  /* PROBLEM CARDS */
+  .problem-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 48px; }
+  .problem-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 32px; transition: all 0.3s ease; }
+  .problem-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(251,191,36,0.06); border-color: rgba(255,159,28,0.2); }
+  .problem-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; font-size: 22px; }
+  .problem-card h3 { font-family: var(--disp); font-weight: 700; font-size: 20px; margin-bottom: 10px; }
+  .problem-card p { color: var(--t2); font-size: 14px; line-height: 1.7; }
+
+  /* RECEIPT EXPLORER PREVIEW */
+  .explorer-wrap { margin-top: 48px; }
+  .explorer-preview { background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%); border: 1px solid rgba(255,255,255,0.12); border-radius: 16px; padding: 24px; position: relative; overflow: hidden; max-width: 480px; margin: 0 auto; }
+  .explorer-preview::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at top right, rgba(255,159,28,0.08), transparent 70%); pointer-events: none; }
+  .explorer-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; position: relative; }
+  .explorer-badge { font-family: var(--mono); font-size: 10px; letter-spacing: 1px; color: var(--green); background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.2); padding: 4px 10px; border-radius: 100px; }
+  .receipt-item { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; position: relative; animation: slideIn 0.5s ease-out forwards; opacity: 0; }
+  .receipt-item:nth-child(1) { animation-delay: 0.1s; }
+  .receipt-item:nth-child(2) { animation-delay: 0.2s; }
+  .receipt-item:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+  .receipt-item:last-child { margin-bottom: 0; }
+  .receipt-row { display: flex; align-items: center; justify-content: space-between; }
+  .receipt-hash { font-family: var(--mono); font-size: 12px; color: var(--amber); }
+  .receipt-time { font-family: var(--mono); font-size: 10px; color: var(--t3); }
+  .receipt-flow { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--t2); margin-top: 6px; }
+  .receipt-flow .arrow { color: var(--t3); }
+  .receipt-verified { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-family: var(--mono); font-size: 10px; color: var(--green); }
+
+  /* ARCHITECTURE LAYERS */
+  .arch-stack { display: flex; flex-direction: column; gap: 12px; margin-top: 48px; max-width: 700px; margin-left: auto; margin-right: auto; }
+  .arch-layer { display: flex; align-items: center; gap: 16px; padding: 18px 24px; border-radius: 12px; border: 1px solid; transition: all 0.3s; }
+  .arch-layer:hover { transform: translateX(4px); }
+  .arch-layer.l-app { background: rgba(255,159,28,0.06); border-color: rgba(255,159,28,0.2); }
+  .arch-layer.l-proto { background: rgba(0,212,255,0.06); border-color: rgba(0,212,255,0.2); }
+  .arch-layer.l-data { background: rgba(0,255,136,0.06); border-color: rgba(0,255,136,0.2); }
+  .arch-layer.l-anchor { background: rgba(255,215,0,0.06); border-color: rgba(255,215,0,0.2); }
+  .arch-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .arch-layer.l-app .arch-icon { background: rgba(255,159,28,0.15); }
+  .arch-layer.l-proto .arch-icon { background: rgba(0,212,255,0.15); }
+  .arch-layer.l-data .arch-icon { background: rgba(0,255,136,0.15); }
+  .arch-layer.l-anchor .arch-icon { background: rgba(255,215,0,0.15); }
+  .arch-desc { font-family: var(--mono); font-size: 11px; color: var(--t3); margin-left: 8px; }
+
+  /* CTA BANNER */
+  .cta-banner { background: linear-gradient(135deg, rgba(255,159,28,0.12) 0%, rgba(255,215,0,0.08) 50%, rgba(255,159,28,0.12) 100%); border: 1px solid rgba(255,159,28,0.2); border-radius: 20px; padding: 56px 32px; text-align: center; margin: 0 auto; max-width: 800px; }
 </style>
 </head>
 <body>
@@ -313,6 +360,34 @@
 
 <!-- TICKER -->
 <div class="ticker"><div class="ticker-in" id="ticker"></div></div>
+
+<!-- THE PROBLEM (Kimi-inspired) -->
+<section style="padding: 100px 24px 60px;">
+  <div style="max-width: 900px; margin: 0 auto;">
+    <div class="reveal" style="text-align: center;">
+      <div class="st">// The Problem</div>
+      <div class="sh">The Corruption of Trust</div>
+      <div class="sd" style="margin: 0 auto; max-width: 580px;">Review systems were supposed to help consumers. Instead, they became another revenue stream for platforms.</div>
+    </div>
+    <div class="problem-grid reveal">
+      <div class="problem-card">
+        <div class="problem-icon" style="background: rgba(255,59,59,0.1);">&#9888;</div>
+        <h3>Pay-to-Play</h3>
+        <p>Businesses pay platforms for better visibility, featured placement, and removal of negative reviews. The referee is also a player.</p>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon" style="background: rgba(255,159,28,0.1);">&#128274;</div>
+        <h3>Fake Reviews</h3>
+        <p>20-30% of online reviews are fake. Bots, farms, and competitors game the system daily. Star ratings are meaningless.</p>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon" style="background: rgba(255,45,120,0.1);">&#128270;</div>
+        <h3>Black Box</h3>
+        <p>No one knows how ratings are calculated. Algorithms change without notice. EMILIA's scoring is open source — every weight published.</p>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- SCORE LOOKUP -->
 <section id="score">
@@ -574,6 +649,87 @@
   </div>
 </section>
 
+<!-- ARCHITECTURE (Kimi-inspired) -->
+<section style="padding: 80px 24px;">
+  <div style="max-width: 900px; margin: 0 auto;">
+    <div class="reveal" style="text-align: center;">
+      <div class="st">// Architecture</div>
+      <div class="sh">Four Layers. One Protocol.</div>
+      <div class="sd" style="margin: 0 auto; max-width: 560px;">Each layer is independent. Swap out the anchor chain, change the data store — the scoring algorithm stays the same.</div>
+    </div>
+    <div class="arch-stack reveal">
+      <div class="arch-layer l-app">
+        <div class="arch-icon">&#9881;</div>
+        <div><strong style="color: var(--amber);">Application Layer</strong><span class="arch-desc">MCP Server &middot; TypeScript SDK &middot; Python SDK &middot; Score Lookup</span></div>
+      </div>
+      <div class="arch-layer l-proto">
+        <div class="arch-icon">&#9878;</div>
+        <div><strong style="color: var(--cyan);">Protocol Layer</strong><span class="arch-desc">Receipt Validation &middot; Score Calculation &middot; Sybil Resistance</span></div>
+      </div>
+      <div class="arch-layer l-data">
+        <div class="arch-icon">&#9776;</div>
+        <div><strong style="color: var(--green);">Data Layer</strong><span class="arch-desc">Receipt Database &middot; Entity Registry &middot; Fraud Flags</span></div>
+      </div>
+      <div class="arch-layer l-anchor">
+        <div class="arch-icon">&#9875;</div>
+        <div><strong style="color: var(--gold);">Anchor Layer</strong><span class="arch-desc">Base L2 Merkle Roots &middot; SHA-256 Chain Linking &middot; Verification</span></div>
+      </div>
+    </div>
+
+    <!-- RECEIPT EXPLORER PREVIEW -->
+    <div class="explorer-wrap reveal" style="margin-top: 56px;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <div class="st">// Live Receipt Feed</div>
+      </div>
+      <div class="explorer-preview">
+        <div class="explorer-header">
+          <span style="font-family: var(--mono); font-size: 12px; color: var(--t2);">Receipt Explorer</span>
+          <span class="explorer-badge">&#9679; Live</span>
+        </div>
+        <div class="receipt-item">
+          <div class="receipt-row">
+            <span class="receipt-hash">ep_rcpt_7a2f...9e4d</span>
+            <span class="receipt-time">Rex &rarr; Ruby</span>
+          </div>
+          <div class="receipt-flow">
+            <span>Booking Agent</span>
+            <span class="arrow">&rarr;</span>
+            <span>Retention Agent</span>
+          </div>
+          <div class="receipt-verified">&#10003; SHA-256 chained &middot; Merkle anchored</div>
+        </div>
+        <div class="receipt-item">
+          <div class="receipt-row">
+            <span class="receipt-hash">ep_rcpt_3b9c...1f8a</span>
+            <span class="receipt-time">Ruby &rarr; Rex</span>
+          </div>
+          <div class="receipt-flow">
+            <span>Retention Agent</span>
+            <span class="arrow">&rarr;</span>
+            <span>Booking Agent</span>
+          </div>
+          <div class="receipt-verified">&#10003; SHA-256 chained &middot; Merkle anchored</div>
+        </div>
+        <div style="text-align: center; margin-top: 16px; font-family: var(--mono); font-size: 10px; color: var(--t3);">
+          GET /api/verify/{receiptId} &mdash; verify any receipt independently
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA BANNER (Kimi-inspired) -->
+<section style="padding: 40px 24px 80px;">
+  <div class="cta-banner reveal">
+    <div class="sh" style="font-size: clamp(28px, 3.5vw, 42px);">The Inevitable Trust Layer</div>
+    <div class="sd" style="margin: 12px auto 32px; max-width: 520px;">Not sexy. But true infrastructure never is — until everyone uses it. EMILIA is the trust layer the agent economy will need.</div>
+    <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+      <a href="#score" class="btn-p" style="font-size: 12px; padding: 14px 28px;">Check a Score</a>
+      <a href="#register" class="btn-g" style="font-size: 12px; padding: 14px 28px;">Claim Your Entity</a>
+    </div>
+  </div>
+</section>
+
 <!-- FAQ -->
 <section id="faq">
   <div style="max-width: 800px; margin: 0 auto;">
@@ -665,16 +821,39 @@
 </section>
 
 <footer>
-  <div class="finner">
-    <div class="fl">EMILIA PROTOCOL (EP) — emiliaprotocol.ai<br><span style="opacity: 0.6;">The trust layer for agentic commerce. Receipts, not reviews.</span></div>
-    <div class="fr">
-      <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank">GitHub</a>
-      <a href="https://spec.emiliaprotocol.ai" target="_blank">Spec</a>
-      <a href="https://github.com/emiliaprotocol/emilia-protocol#readme" target="_blank">Docs</a>
-      <a href="#">Status</a>
-      <a href="#">Terms</a>
-      <a href="#">Privacy</a>
+  <div class="finner" style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 32px; max-width: 900px; margin: 0 auto; text-align: left;">
+    <div>
+      <div style="font-family: var(--disp); font-weight: 700; font-size: 16px; margin-bottom: 8px;">EMILIA</div>
+      <div style="font-family: var(--mono); font-size: 11px; color: var(--t3); line-height: 1.7;">The trust layer for the agent economy.<br>Open source. Apache 2.0.</div>
     </div>
+    <div>
+      <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--t3); margin-bottom: 12px;">PROTOCOL</div>
+      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+        <a href="/spec" style="color: var(--t2); text-decoration: none;">Specification</a>
+        <a href="https://github.com/emiliaprotocol/emilia-protocol#readme" target="_blank" style="color: var(--t2); text-decoration: none;">API Docs</a>
+        <a href="https://www.npmjs.com/package/@emilia-protocol/sdk" target="_blank" style="color: var(--t2); text-decoration: none;">SDK</a>
+      </div>
+    </div>
+    <div>
+      <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--t3); margin-bottom: 12px;">COMMUNITY</div>
+      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+        <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" style="color: var(--t2); text-decoration: none;">GitHub</a>
+        <a href="https://www.npmjs.com/package/@emilia-protocol/mcp-server" target="_blank" style="color: var(--t2); text-decoration: none;">MCP Server</a>
+        <a href="https://pypi.org/project/emilia-protocol/" target="_blank" style="color: var(--t2); text-decoration: none;">PyPI</a>
+      </div>
+    </div>
+    <div>
+      <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--t3); margin-bottom: 12px;">RESOURCES</div>
+      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+        <a href="/spec" style="color: var(--t2); text-decoration: none;">EP-SPEC v1.0</a>
+        <a href="https://emiliaprotocol.ai" style="color: var(--t2); text-decoration: none;">Status</a>
+        <a href="https://basescan.org" target="_blank" style="color: var(--t2); text-decoration: none;">Base Explorer</a>
+      </div>
+    </div>
+  </div>
+  <div style="max-width: 900px; margin: 24px auto 0; padding-top: 20px; border-top: 1px solid var(--brd); display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 10px; color: var(--t3);">
+    <span>&copy; 2026 EMILIA Protocol. Apache 2.0 License.</span>
+    <span>emiliaprotocol.ai</span>
   </div>
 </footer>
 
