@@ -9,9 +9,11 @@ Compatible with ACP. Usable through MCP. Apache 2.0.
 
 ## What is EP?
 
-EP is an open protocol that computes trust profiles for commercial entities in the agent economy — merchants, agents, service providers — from verified transaction receipts.
+EP is an open protocol that computes trust profiles for principals in machine-mediated systems — merchants, agents, service providers, GitHub Apps, MCP servers, npm packages, Chrome extensions, marketplace plugins, and agent tools — from verified transaction and interaction receipts.
 
-EP outputs **trust profiles**, not just scores. A trust profile includes behavioral rates (completion, retry, abandon, dispute), per-signal breakdowns, consistency, anomaly alerts, and confidence levels. Agents evaluate counterparties against **trust policies** — configurable decision frameworks — not raw score thresholds.
+EP outputs **trust profiles**, not just scores. A trust profile includes behavioral rates (completion, retry, abandon, dispute), per-signal breakdowns, provenance composition, consistency, anomaly alerts, and confidence levels. Agents and systems evaluate counterparties against **trust policies** — configurable decision frameworks — not raw score thresholds.
+
+For software entities, EP provides **install preflight** — "should I install this plugin?" — evaluating publisher verification, permission risk, provenance, and incident history against host-specific policies.
 
 ### Primary output: Trust Profile + Policy Evaluation
 

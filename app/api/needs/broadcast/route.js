@@ -8,7 +8,7 @@ import crypto from 'crypto';
  * 
  * Broadcast a need to the EMILIA network.
  * Agents declare what capability they need, and the network
- * matches them with entities that have the right skills + reputation.
+ * matches them with entities that have the right skills + trust profile.
  * 
  * Auth: Bearer ep_live_...
  * 
