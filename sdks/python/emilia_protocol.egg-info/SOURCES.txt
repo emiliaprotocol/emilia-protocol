@@ -1,0 +1,8 @@
+README.md
+setup.py
+emilia_protocol/__init__.py
+emilia_protocol.egg-info/PKG-INFO
+emilia_protocol.egg-info/SOURCES.txt
+emilia_protocol.egg-info/dependency_links.txt
+emilia_protocol.egg-info/requires.txt
+emilia_protocol.egg-info/top_level.txt

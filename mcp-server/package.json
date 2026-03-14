@@ -1,0 +1,30 @@
+{
+  "name": "@emilia-protocol/mcp-server",
+  "version": "0.1.0",
+  "description": "EMILIA Protocol MCP Server — Trust layer tools for AI agents. Check scores, submit receipts, verify transactions.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "emilia-mcp": "./index.js"
+  },
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "keywords": [
+    "mcp",
+    "emilia",
+    "trust",
+    "reputation",
+    "ai-agents",
+    "agentic-commerce"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol"
+  },
+  "homepage": "https://emiliaprotocol.ai"
+}
