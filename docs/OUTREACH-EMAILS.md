@@ -9,43 +9,48 @@ Hi,
 
 I'm writing to propose a Trust Attestation Working Group within AAIF.
 
-The current AAIF stack covers tool connectivity (MCP), agent execution (goose), and agent instructions (AGENTS.md). None of these address a fundamental question in agentic commerce: should you trust this counterparty?
+The current AAIF stack covers tool connectivity (MCP), agent execution (goose), and agent instructions (AGENTS.md). None address a fundamental question in agentic commerce: should you trust this counterparty?
 
-EMILIA Protocol (EP) is an open-source trust attestation standard that answers this question through cryptographically verified transaction receipts — not opinions or star ratings. It's compatible with ACP payment flows and usable through MCP tool calls today.
+EMILIA Protocol (EP) is an open-source trust attestation standard that answers this through cryptographically verified transaction receipts. Unlike traditional review systems, EP outputs multi-dimensional trust profiles evaluated against configurable policies — not scalar scores.
 
-We're not asking AAIF to adopt our product. We're asking to establish a neutral working group to develop the trust attestation standard together, using EP as the initial reference implementation and draft specification.
+We're not asking AAIF to adopt our product. We're proposing a neutral working group to develop the trust attestation standard together, using EP as the initial reference implementation.
 
-What's live today:
-- EP Core Spec v1.0 (Apache 2.0)
-- 15 API endpoints deployed at emiliaprotocol.ai
-- MCP server with 6 tools (published on npm)
-- TypeScript + Python SDKs (npm + PyPI)
-- Sybil-resistant scoring with submitter credibility weighting
-- Base L2 Merkle root anchoring
+What's deployed today:
+- Trust profile endpoint (GET /api/trust/profile/:entityId) — behavioral rates, signal breakdowns, anomaly detection, confidence levels
+- Policy evaluation (POST /api/trust/evaluate) — structured decision frameworks with 4 built-in + custom policies
+- Behavioral-first scoring — completion/retry/abandon/dispute as primary signals (40% weight)
+- 4-layer Sybil resistance — effective-evidence dampening, graph analysis in scoring, submitter credibility, Upstash Redis rate limiting
+- Context keys on receipts — task_type, category, geo, modality for future contextual trust
+- Canonical JSON hashing for cross-language verification
+- Receipt immutability via DB triggers
+- Unified receipt pipeline with canonical establishment stamped via SQL function
+- Compatible with ACP payment flows, usable through MCP tools
+- MCP server, TypeScript + Python SDKs published
+- Two test suites (v1 scoring + v2 trust profiles/policies)
 
 Full proposal attached. I'll be at MCP Dev Summit NYC April 2-3 and would welcome the opportunity to discuss in person.
 
 Best,
 [Your name]
 team@emiliaprotocol.ai
-emiliaprotocol.ai | github.com/emiliaprotocol/emilia-protocol
+https://emiliaprotocol.ai | https://github.com/emiliaprotocol/emilia-protocol
 
 ---
 
 ## 2. NIST Submission Email
 
-**To:** NCCoE contact (see NIST-ENGAGEMENT-PLAN.md)
+**To:** NCCoE contact
 **Subject:** Response to ITL AI Agent Identity and Authorization Concept Paper — EMILIA Protocol
 
 Dear NCCoE team,
 
 Please find attached our response to the ITL AI Agent Identity and Authorization Concept Paper.
 
-EMILIA Protocol (EP) proposes a complementary approach to AI agent identity through reputation-based trust scoring. While traditional identity frameworks answer "who is this agent?", EP answers "should you trust this agent?" — a question that identity alone cannot resolve.
+EMILIA Protocol (EP) proposes a complementary approach to AI agent identity through reputation-based trust attestation. While traditional identity frameworks answer "who is this agent?", EP answers "should you trust this agent?" — through multi-dimensional trust profiles computed from verified transaction receipts, evaluated against configurable trust policies.
 
-EP is an open-source protocol (Apache 2.0) that computes trust scores from verified transaction receipts. It is compatible with MCP, ACP, A2A, and UCP — the emerging agent protocol stack. The scoring algorithm is published, auditable, and Sybil-resistant.
+EP is an open-source protocol (Apache 2.0) that outputs trust profiles — not scalar scores. The protocol includes behavioral-first scoring, effective-evidence Sybil resistance, context-aware receipts, and policy evaluation as first-class primitives. It is compatible with MCP, ACP, A2A, and UCP.
 
-We welcome NIST's guidance on how EP can align with the AI Agent Standards Initiative and participate in future CAISI convenings.
+We welcome NIST's guidance on how EP can align with the AI Agent Standards Initiative.
 
 Attached: NIST-ITL-ConceptPaper-EP-Response.pdf
 
@@ -58,25 +63,31 @@ team@emiliaprotocol.ai
 ## 3. Design Partner Outreach — Shopify App Developer
 
 **To:** [Shopify agent/app developer]
-**Subject:** Trust scoring for your Shopify agent — pilot opportunity
+**Subject:** Trust profiles for your Shopify agent — pilot opportunity
 
 Hi [name],
 
-I'm building EMILIA Protocol — an open-source trust scoring layer for AI agents in commerce. Think FICO for the agent economy.
+I'm building EMILIA Protocol — an open-source trust attestation standard for AI agents in commerce. Not another review score — EP outputs multi-dimensional trust profiles that agents evaluate against configurable policies.
 
 I'm looking for 3-5 design partners to pilot EP with real transaction data. Your Shopify agent would be a great fit because:
 
-- EP scores delivery accuracy, product accuracy, and price integrity — the exact signals your buyers care about
-- Integration is 3 API calls (register, submit receipt, check score)
-- Your agent gets a public, verifiable trust score that no competitor can fake
-- MCP server means any AI agent can check your score with one config line
+- EP profiles measure delivery accuracy, product accuracy, price integrity, and behavioral outcomes — the exact signals your buyers care about
+- Context keys let receipts specify category, geo, and value band — so trust is contextual, not generic
+- Integration is 3 API calls: register, submit receipt, evaluate trust
+- Your agent gets a verifiable trust profile that no competitor can fake
+- MCP server means any AI agent can check your profile with one config line
 
-What's in it for you: a Founding Entity number (permanently low, publicly visible), early input on the spec, and a trust score that differentiates you from unscored competitors.
+What's deployed right now:
+- GET /api/trust/profile/:entityId — full behavioral breakdown, anomaly detection, confidence
+- POST /api/trust/evaluate — "does this merchant pass my strict policy for furniture?" → pass/fail with reasons
+- 4-layer Sybil resistance so fake receipts can't game the system
 
-Live demo: emiliaprotocol.ai (try the score lookup)
-GitHub: github.com/emiliaprotocol/emilia-protocol
+What's in it for you: a Founding Entity number, early input on the spec, and a trust profile that differentiates you from unscored competitors.
 
-Would you be open to a 15-minute call this week?
+Live: https://emiliaprotocol.ai
+GitHub: https://github.com/emiliaprotocol/emilia-protocol
+
+15-minute call this week?
 
 Best,
 [Your name]
@@ -86,33 +97,37 @@ Best,
 ## 4. Design Partner Outreach — AI Agent Framework (LangChain/CrewAI/AutoGen)
 
 **To:** [Agent framework team]
-**Subject:** Adding trust signals to agent routing — EP integration
+**Subject:** Adding trust-aware routing to your agent framework
 
 Hi [name],
 
 When your agents route tasks to external services, how do they decide who to trust?
 
-EMILIA Protocol is an open-source trust scoring layer for agent-to-agent commerce. Agents submit receipts after transactions, and scores are computed from verifiable outcomes — not reviews.
+EMILIA Protocol is an open-source trust attestation standard for agent-to-agent commerce. Instead of opaque reputation scores, EP outputs trust profiles that agents evaluate against configurable policies.
 
-Integration for agent frameworks:
+Your agents can now do:
 
-```json
-{
-  "mcpServers": {
-    "emilia": {
-      "command": "npx",
-      "args": ["@emilia-protocol/mcp-server"]
-    }
-  }
-}
+```
+POST /api/trust/evaluate
+{ "entity_id": "merchant-xyz", "policy": "strict" }
+→ { "pass": true, "confidence": "confident", "completion_rate": 94.3%, "dispute_rate": 0.7% }
 ```
 
-One config line. Your agents can then call `ep_score_lookup` before routing to any external service.
+Or via MCP:
+```json
+{ "mcpServers": { "emilia": { "command": "npx", "args": ["@emilia-protocol/mcp-server"] } } }
+```
 
-We're looking for 3-5 design partners to shape the spec. Your framework would give EP real-world coverage across thousands of agent deployments.
+One config line. Your agents can then evaluate any counterparty against trust policies before routing.
 
-Live: emiliaprotocol.ai
-Spec: github.com/emiliaprotocol/emilia-protocol/blob/main/EP-SPEC-v1.md
+What makes EP different from reputation scores:
+- Trust profiles, not scalar scores — behavioral rates, signal breakdowns, anomaly alerts
+- Trust policies, not thresholds — structured decision frameworks with pass/fail/reasons
+- Context keys — trust is contextual (a merchant good for beauty products may be bad for furniture)
+- 4-layer Sybil resistance — fake receipts from throwaway entities carry 0.1x weight
+- Effective-evidence dampening — 5 perfect receipts from nobody produces score ~55, not 100
+
+We're looking for 3-5 design partners to shape the spec. Your framework would give EP coverage across thousands of agent deployments.
 
 Interested?
 
@@ -130,16 +145,27 @@ Hi [name],
 
 As AI agents begin handling autonomous purchases, there's a missing layer in the commerce stack: how does a paying agent decide whether a merchant is trustworthy?
 
-EMILIA Protocol is building the trust attestation standard for agentic commerce. We've drafted an ACP Trust Extension that adds optional trust checks to payment flows — before completing a payment, verify the merchant's EP score.
+EMILIA Protocol is building the trust attestation standard for agentic commerce. We've drafted an ACP Trust Extension that adds optional trust evaluation to payment flows:
 
-The spec is lightweight (no changes to your payment API required), open source (Apache 2.0), and vendor-neutral. We're submitting it to AAIF as a working group proposal.
+```
+Before completing payment:
+POST /api/trust/evaluate
+{ "entity_id": "merchant-xyz", "policy": "standard" }
+→ { "pass": true, "completion_rate": 94.3%, "dispute_rate": 0.7% }
+```
 
-We're looking for design partners to validate the spec against real payment flows. Your platform handles [millions of transactions / agent-initiated payments / etc.] — real-world feedback would be invaluable.
+The agent sees a multi-dimensional trust profile — not just a number. It evaluates against a configurable policy. If the merchant doesn't pass, the agent can decline or warn before money moves.
 
-Would your developer relations or standards team be interested in reviewing the draft spec?
+Key properties:
+- No changes to your payment API required — purely additive
+- Open source (Apache 2.0), vendor-neutral
+- Behavioral-first scoring — completion/retry/abandon/dispute as primary signals
+- Context-aware — receipts carry task_type, category, geo, value_band
+- Sybil-resistant — 4-layer defense, effective-evidence dampening
 
-Live: emiliaprotocol.ai
-ACP Extension draft: github.com/emiliaprotocol/emilia-protocol/blob/main/docs/EP-ACP-EXTENSION.md
+We're submitting this to AAIF as a working group proposal. Would your developer relations or standards team be interested in reviewing the draft spec?
+
+ACP Extension draft: https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/EP-ACP-EXTENSION.md
 
 Best,
 [Your name]

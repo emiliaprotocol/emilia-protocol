@@ -1,6 +1,6 @@
 # EP-ACP Trust Extension — Draft Specification
 
-**Version:** 0.1-draft
+**Version:** 0.2-draft
 **Status:** Proposal
 **Extends:** Agent Commerce Protocol (ACP) by OpenAI + Stripe
 **License:** Apache-2.0
@@ -9,9 +9,9 @@
 
 ## 1. Purpose
 
-ACP defines how AI agents discover, negotiate, and pay merchants autonomously. ACP does not define how an agent decides whether a merchant is **trustworthy** before initiating payment.
+ACP defines how AI agents discover, negotiate, and pay merchants. ACP does not define how an agent decides whether a merchant is **trustworthy** before initiating payment.
 
-This extension adds an optional EP trust check to the ACP payment flow. Agents can set minimum trust thresholds before completing transactions.
+This extension adds optional EP trust evaluation to the ACP payment flow. Agents evaluate counterparties against trust policies before completing transactions.
 
 ---
 
@@ -22,26 +22,56 @@ Standard ACP:
   Agent discovers merchant → Negotiates → Pays via Stripe
 
 ACP + EP Trust Extension:
-  Agent discovers merchant → Checks EP score → If score ≥ threshold → Pays via Stripe
-                                              → If score < threshold → Declines or warns
+  Agent discovers merchant → Evaluates trust profile against policy
+    → If pass → Pays via Stripe
+    → If fail → Declines, warns, or routes elsewhere
 ```
 
 ---
 
-## 3. Trust Check Request
+## 3. Trust Evaluation
 
-Before completing an ACP payment, the agent queries the merchant's EP score:
+Before completing an ACP payment, the agent evaluates the merchant:
 
 ```json
-POST /api/score/{merchant_entity_id}
+POST /api/trust/evaluate
+{
+  "entity_id": "merchant-xyz",
+  "policy": "strict"
+}
 
 Response:
 {
-  "entity_id": "merchant-xyz",
-  "emilia_score": 87.3,
+  "pass": true,
+  "score": 87.3,
   "confidence": "confident",
-  "total_receipts": 142,
-  "established": true
+  "profile": {
+    "behavioral": {
+      "completion_rate": 94.3,
+      "dispute_rate": 0.7
+    },
+    "signals": {
+      "delivery_accuracy": 89.1,
+      "price_integrity": 99.1
+    }
+  },
+  "failures": [],
+  "warnings": []
+}
+```
+
+Or for full profile inspection:
+
+```json
+GET /api/trust/profile/merchant-xyz
+
+Response:
+{
+  "trust_profile": { ... },
+  "current_confidence": "confident",
+  "historical_establishment": true,
+  "effective_evidence_current": 37.6,
+  "compat_score": 87.3
 }
 ```
 
@@ -61,11 +91,18 @@ The ACP payment object includes an optional `ep_trust` field:
   },
   "ep_trust": {
     "entity_id": "merchant-xyz",
-    "score_at_payment": 87.3,
+    "policy_used": "strict",
+    "result": "pass",
     "confidence": "confident",
-    "min_score_required": 70,
-    "check_timestamp": "2026-03-14T12:00:00Z",
-    "verify_url": "https://emiliaprotocol.ai/api/score/merchant-xyz"
+    "completion_rate": 94.3,
+    "dispute_rate": 0.7,
+    "context": {
+      "task_type": "purchase",
+      "category": "electronics",
+      "geo": "US-CA"
+    },
+    "evaluated_at": "2026-03-14T12:00:00Z",
+    "verify_url": "https://emiliaprotocol.ai/api/trust/profile/merchant-xyz"
   }
 }
 ```
@@ -74,24 +111,23 @@ The ACP payment object includes an optional `ep_trust` field:
 
 ## 5. Agent Configuration
 
-Agents configure trust thresholds in their ACP settings:
+Agents configure trust policies in their ACP settings:
 
 ```json
 {
   "acp_config": {
     "ep_trust_policy": {
       "enabled": true,
-      "min_score": 70,
-      "min_confidence": "emerging",
+      "policy": "standard",
       "on_fail": "decline",
-      "on_no_score": "warn"
+      "on_no_profile": "warn"
     }
   }
 }
 ```
 
-| `on_fail` | Behavior when score < threshold |
-|-----------|--------------------------------|
+| `on_fail` | Behavior when policy fails |
+|-----------|---------------------------|
 | `decline` | Do not proceed with payment |
 | `warn` | Proceed but flag to user |
 | `allow` | Proceed regardless (log only) |
@@ -108,21 +144,25 @@ Authorization: Bearer ep_live_...
 
 {
   "entity_id": "merchant-xyz",
-  "transaction_type": "purchase",
   "transaction_ref": "acp_txn_abc123",
-  "delivery_accuracy": 92,
-  "product_accuracy": 88,
-  "price_integrity": 100,
+  "transaction_type": "purchase",
   "agent_behavior": "completed",
+  "delivery_accuracy": 92,
+  "price_integrity": 100,
+  "context": {
+    "task_type": "purchase",
+    "category": "electronics",
+    "geo": "US-CA",
+    "value_band": "100-500"
+  },
   "evidence": {
     "acp_transaction_id": "acp_txn_abc123",
-    "payment_ref": "stripe_pi_xyz",
-    "amount_cents": 4990
+    "payment_ref": "stripe_pi_xyz"
   }
 }
 ```
 
-This closes the loop: ACP handles the payment, EP scores the outcome.
+This closes the loop: ACP handles the payment, EP evaluates trust and records the outcome.
 
 ---
 
@@ -130,31 +170,30 @@ This closes the loop: ACP handles the payment, EP scores the outcome.
 
 | For Agents | For Merchants | For Platforms |
 |-----------|--------------|--------------|
-| Avoid bad merchants before paying | High scores = more transactions | Reduced fraud/chargebacks |
-| Automated trust decisions | Reputation is portable across platforms | Lower dispute costs |
-| No human review needed | Good performance compounds | Trust without gatekeeping |
+| Evaluate trust before paying | High trust profiles = more transactions | Reduced fraud/chargebacks |
+| Policy-based decisions, not guesswork | Portable reputation across platforms | Lower dispute costs |
+| Context-aware (category, geo, value) | Behavioral track record compounds | Trust without gatekeeping |
 
 ---
 
 ## 8. Implementation
 
-The EP MCP server already provides `ep_score_lookup` as a tool. Any ACP-compatible agent using MCP can check scores today:
+The EP MCP server provides `ep_trust_evaluate` as a tool. Any ACP-compatible agent using MCP can evaluate trust today:
 
 ```json
 {
   "mcpServers": {
     "emilia": {
       "command": "npx",
-      "args": ["@emilia-protocol/mcp-server"],
-      "env": { "EP_BASE_URL": "https://emiliaprotocol.ai" }
+      "args": ["@emilia-protocol/mcp-server"]
     }
   }
 }
 ```
 
-No changes to ACP are required. This extension is purely additive — agents that don't use EP continue to work normally.
+No changes to ACP are required. This extension is purely additive.
 
 ---
 
-*EP-ACP Trust Extension v0.1-draft*
-*A vendor-neutral trust layer for ACP payment flows.*
+*EP-ACP Trust Extension v0.2-draft*
+*A vendor-neutral trust evaluation layer for ACP payment flows.*

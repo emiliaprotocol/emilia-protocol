@@ -25,7 +25,7 @@ Neither outcome serves the AAIF's mission of transparent, collaborative agentic 
 
 We propose a **Trust Attestation Working Group** within AAIF to develop a vendor-neutral standard for portable, cross-platform counterparty trust in agentic commerce.
 
-EMILIA Protocol (EP) is offered as the **initial reference implementation and draft specification** for this working group — not as a finished standard, but as a working starting point with a deployed canonical implementation.
+EMILIA Protocol (EP) is offered as the **initial reference implementation and draft specification** — not as a finished standard, but as a working starting point with a deployed canonical implementation.
 
 **What we're NOT asking:** "AAIF, adopt our product."
 **What we ARE asking:** "Let's build a neutral trust attestation standard together, starting from a working reference."
@@ -34,28 +34,23 @@ EMILIA Protocol (EP) is offered as the **initial reference implementation and dr
 
 ## 3. Scope — Core vs. Product
 
-Following AAIF precedent (MCP is a spec, not an app), we propose separating EP into:
-
 | Layer | What It Is | Governance |
 |-------|-----------|-----------|
-| **EP Core Spec** | Receipt schema, scoring algorithm interface, score proof format | AAIF working group deliverable |
+| **EP Core Spec** | Receipt schema, trust profile format, policy evaluation interface, context keys | AAIF working group deliverable |
 | **EP Reference Implementation** | Canonical API, MCP server, SDKs | Open source, community-maintained |
 | **EP Product Surfaces** | Leaderboard, explorer, entity profiles, landing page | Separate from the spec — not AAIF scope |
 
-The working group owns the **spec and proof format**. The reference implementation and product surfaces remain community projects that implement the spec.
-
 ---
 
-## 4. What the Spec Defines
+## 4. What the Spec Defines (EP Core RFC v1.1)
 
-The EP Core Spec (2 pages) defines:
-
-1. **Trust Receipt Schema** — A standardized format for recording transaction outcomes between agents/merchants
-2. **Scoring Algorithm Interface** — The 6-signal weighted formula (open source, auditable, deterministic)
-3. **Score Proof Format** — How an entity proves its trust score to a counterparty (compatible with ACP payment flows and MCP tool responses)
-4. **Verification Flow** — Merkle tree batching + blockchain anchoring for independent verification
-
-The spec does NOT define: leaderboards, entity profiles, explorer UIs, registration flows, or any application-layer concerns.
+1. **Trust Receipt Schema** — Append-only, cryptographically hashed transaction records with mandatory `transaction_ref`, optional context keys (`task_type`, `category`, `geo`, `modality`, `value_band`, `risk_class`)
+2. **Trust Profile** — The primary protocol output. Multi-dimensional: behavioral rates (completion, retry, abandon, dispute), per-signal breakdowns, consistency, anomaly alerts, confidence levels
+3. **Trust Policies** — Portable decision frameworks. Agents evaluate counterparties against structured policies, not raw score thresholds. Built-in: `strict`, `standard`, `permissive`, `discovery`
+4. **Receipt Weighting** — Three-factor: submitter credibility × time decay × graph health. Effective-evidence dampening prevents Sybil attacks
+5. **Establishment & Confidence** — Historical establishment (permanent, all receipts) separated from current confidence (rolling window). Two distinct protocol objects
+6. **Sybil Resistance** — 4 layers: IP-based rate limiting, graph analysis (closed-loop/cluster/thin-graph penalties), submitter credibility (unestablished = 0.1x), effective-evidence dampening
+7. **Cryptographic Integrity** — Canonical JSON with sorted keys, SHA-256 receipt chains, Merkle anchoring, DB immutability triggers
 
 ---
 
@@ -63,12 +58,12 @@ The spec does NOT define: leaderboards, entity profiles, explorer UIs, registrat
 
 | AAIF Project | Integration Point |
 |-------------|------------------|
-| **MCP** | EP MCP tools: `ep_score_lookup`, `ep_submit_receipt`, `ep_verify_receipt` — any MCP client can check trust |
-| **ACP** | EP trust proofs attached to ACP payment flows: "Before completing payment, verify merchant EP score ≥ 70" |
-| **A2A** | EP score field in A2A Agent Cards for routing decisions |
-| **goose** | Goose agents query EP scores before executing transactions |
+| **MCP** | EP MCP tools: `ep_trust_profile`, `ep_trust_evaluate`, `ep_submit_receipt` |
+| **ACP** | EP trust proofs attached to ACP payment flows: "Before completing payment, evaluate merchant against trust policy" |
+| **A2A** | EP trust context in A2A Agent Cards for routing decisions |
+| **goose** | Goose agents query EP trust profiles before executing transactions |
 
-EP is designed as a **composable layer**, not a competing protocol. It attaches to ACP, is usable through MCP, and informs A2A routing.
+EP is a **composable layer**, not a competing protocol. It attaches to ACP, is usable through MCP, and informs A2A routing.
 
 ---
 
@@ -76,16 +71,22 @@ EP is designed as a **composable layer**, not a competing protocol. It attaches 
 
 | Component | Status |
 |-----------|--------|
-| Protocol specification (EP-SPEC v1.0) | Complete (523 lines, 11 sections) |
-| Canonical implementation (15 API endpoints) | Deployed at emiliaprotocol.ai |
-| Scoring algorithm (6 signals, submitter weighting, time decay) | Complete, Sybil-resistant |
-| Score confidence states (5 levels) | Complete |
+| Core specification (EP-CORE-RFC v1.1) | Complete — behavioral-first, trust-profile-centric |
+| Trust profile endpoint (`GET /api/trust/profile/:entityId`) | Deployed — canonical read surface |
+| Policy evaluation (`POST /api/trust/evaluate`) | Deployed — 4 built-in + custom policies |
+| Canonical receipt pipeline (`createReceipt()`) | Deployed — unified path for all receipt ingestion |
+| Behavioral-first scoring (v2) | Deployed — behavioral 40%, consistency 20% |
+| Effective-evidence Sybil resistance | Deployed — JS + SQL, dampens toward 50 based on weighted evidence |
+| Graph weight in scoring path | Deployed — closed-loop 0.4x, cluster 0.1x + blocked |
+| Context keys on receipts | Deployed — task_type, category, geo, modality, value_band |
+| Current vs historical confidence separation | Deployed — two distinct objects in API |
+| Receipt immutability (DB triggers) | Deployed — content changes rejected, anchor metadata allowed |
+| Canonical JSON hashing (cross-language) | Deployed — sorted keys, deterministic |
+| Rate limiting (Upstash Redis + fallback) | Deployed — all API routes via middleware |
 | MCP server (6 tools) | Published on npm |
-| TypeScript SDK | Published on npm |
-| Python SDK | Published on PyPI |
-| Blockchain verification (Merkle + Base L2) | Complete |
-| Sybil resistance (4 layers) | Complete |
-| NIST ITL Concept Paper submission | Prepared (April 2 deadline) |
+| TypeScript + Python SDKs | Published on npm + PyPI |
+| Test suites (v1 + v2 scoring, policy evaluation) | Complete |
+| NIST ITL Concept Paper | Prepared (April 2 deadline) |
 
 ---
 
@@ -105,7 +106,7 @@ Under AAIF governance:
 
 - **Chair:** EMILIA Protocol (initial), rotating annually
 - **Members:** Open to any AAIF member organization
-- **Deliverables:** EP Core Spec v1.0, conformance test suite, ACP trust extension draft
+- **Deliverables:** EP Core Spec v2.0, conformance test suite, ACP trust extension draft
 - **Timeline:** Spec finalized Q3 2026, conformance tests Q4 2026
 - **Meetings:** Biweekly, open to all AAIF members
 
@@ -113,13 +114,14 @@ Under AAIF governance:
 
 ## 9. Immediate Next Steps
 
-1. Present at MCP Dev Summit NA (April 2-3, NYC) — networking, not speaking (CFP closed)
+1. Present at MCP Dev Summit NA (April 2-3, NYC)
 2. Submit NIST ITL Concept Paper (April 2 deadline)
-3. Publish EP Core Spec as standalone RFC
+3. Publish EP Core RFC v1.1 as standalone working group deliverable
 4. Solicit working group members from AAIF member organizations
 5. First working group meeting Q2 2026
 
 ---
 
 *EMILIA Protocol — A vendor-neutral trust attestation standard for agentic commerce.*
-*Compatible with ACP. Usable through MCP. Open source under Apache 2.0.*
+*Trust profiles, not scores. Policies, not thresholds. Compatible with ACP. Usable through MCP.*
+*Open source under Apache 2.0.*
