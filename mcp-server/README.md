@@ -1,16 +1,12 @@
-# EMILIA Protocol MCP Server
+# @emilia-protocol/mcp-server
 
-Trust layer tools for AI agents. Give any MCP-compatible client (Claude, etc.) the ability to check EMILIA Scores before transacting.
+Trust evaluation tools for AI agents via the Model Context Protocol.
 
-## Quick Start
+## What this does
 
-```bash
-npx @emilia-protocol/mcp-server
-```
+Gives any MCP-compatible agent (Claude, ChatGPT, Gemini, etc.) access to EP trust profiles and policy evaluation. Agents can check counterparty trust before transacting — not just a score, but a full behavioral profile evaluated against configurable policies.
 
-## Claude Desktop Config
-
-Add to `~/.claude/claude_desktop_config.json`:
+## Setup
 
 ```json
 {
@@ -27,39 +23,59 @@ Add to `~/.claude/claude_desktop_config.json`:
 }
 ```
 
-`EP_API_KEY` is only required for write operations (submit receipt, register entity). Score lookup and verification are public.
+`EP_API_KEY` is only needed for write operations (submitting receipts, registering entities).
 
-## Tools
+## Primary Tools
 
-| Tool | Auth | Description |
-|------|------|-------------|
-| `ep_score_lookup` | None | Check any entity's EMILIA Score |
-| `ep_submit_receipt` | API Key | Submit a transaction receipt |
-| `ep_verify_receipt` | None | Verify receipt against on-chain Merkle root |
-| `ep_search_entities` | None | Search entities by name/capability |
-| `ep_register_entity` | API Key | Register a new entity |
-| `ep_leaderboard` | None | Get top-scored entities |
+### `ep_trust_profile`
+Get an entity's full trust profile — the canonical way to check trust.
 
-## Example Usage (in Claude)
+Returns: behavioral rates (completion, retry, abandon, dispute), signal breakdowns (delivery, product, price, returns), consistency, anomaly alerts, current confidence, historical establishment, and a compatibility score.
 
-> "Check the EMILIA Score for rex-booking-v1 before I book with them."
-
-> "Submit a receipt for my last purchase from entity abc-merchant-v1. Delivery was on time (95), product matched the listing (88), price was honored (100)."
-
-> "Find me a booking agent with an EMILIA Score above 80."
-
-## Self-Hosted
-
-Point `EP_BASE_URL` to your own EP implementation:
-
-```json
-{
-  "env": {
-    "EP_BASE_URL": "https://your-instance.example.com"
-  }
-}
+```
+"Check the trust profile for merchant-xyz before I buy from them"
 ```
 
-## License
+### `ep_trust_evaluate`
+Evaluate an entity against a trust policy. Returns pass/fail with specific failure reasons.
 
-Apache-2.0
+Built-in policies: `strict` (high-value), `standard` (normal), `permissive` (low-risk), `discovery` (allow unscored).
+
+Accepts optional context: `{ "category": "furniture", "geo": "US-CA" }` for context-aware evaluation.
+
+```
+"Does merchant-xyz pass the strict trust policy for furniture in California?"
+```
+
+### `ep_submit_receipt`
+Submit a transaction receipt after completing a purchase or service. Requires `transaction_ref` and at least one signal or `agent_behavior`.
+
+```
+"Submit a receipt for my purchase from merchant-xyz — delivery was on time, product matched listing"
+```
+
+## Secondary Tools
+
+| Tool | Description |
+|------|-------------|
+| `ep_search_entities` | Search for entities by name, capability, or category |
+| `ep_verify_receipt` | Verify a receipt against the Merkle root |
+| `ep_register_entity` | Register a new entity (requires API key) |
+| `ep_leaderboard` | Get top entities by compatibility score |
+| `ep_score_lookup` | Legacy: compatibility score only. Use `ep_trust_profile` instead. |
+
+## What makes EP different
+
+- **Trust profiles, not scores** — behavioral rates, signal breakdowns, anomaly alerts
+- **Trust policies, not thresholds** — structured decision frameworks with pass/fail/reasons
+- **Context-aware** — evaluation can filter by category, geo, value band
+- **Sybil-resistant** — 4-layer defense, effective-evidence dampening
+- **Due process** — trust must never be more powerful than appeal
+
+## Links
+
+- [emiliaprotocol.ai](https://emiliaprotocol.ai)
+- [GitHub](https://github.com/emiliaprotocol/emilia-protocol)
+- [EP Core RFC v1.1](https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/EP-CORE-RFC.md)
+
+Apache 2.0

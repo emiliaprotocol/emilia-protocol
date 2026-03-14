@@ -100,7 +100,7 @@ export async function GET(request) {
     let query = supabase
       .from('entities')
       .select(`
-        entity_id, display_name, entity_type, description,
+        id, entity_id, display_name, entity_type, description,
         category, capabilities, emilia_score, total_receipts,
         verified, created_at
       `)
@@ -124,10 +124,35 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Search failed' }, { status: 500 });
     }
 
+    let filtered = results || [];
+
+    // Enforce min_confidence if specified
+    if (minConfidence && filtered.length > 0) {
+      const confLevels = ['pending', 'insufficient', 'provisional', 'emerging', 'confident'];
+      const minIdx = confLevels.indexOf(minConfidence);
+      if (minIdx >= 0) {
+        const withConfidence = await Promise.all(filtered.map(async (e) => {
+          let effectiveEvidence = 0;
+          try {
+            const { data: estData } = await supabase.rpc('is_entity_established', { p_entity_id: e.id || e.entity_id });
+            if (estData && estData[0]) effectiveEvidence = estData[0].effective_evidence;
+          } catch {}
+          let conf;
+          if (effectiveEvidence === 0) conf = 'pending';
+          else if (effectiveEvidence < 1.0) conf = 'insufficient';
+          else if (effectiveEvidence < 5.0) conf = 'provisional';
+          else if (effectiveEvidence < 20.0) conf = 'emerging';
+          else conf = 'confident';
+          return { ...e, confidence: conf, effective_evidence: effectiveEvidence };
+        }));
+        filtered = withConfidence.filter(e => confLevels.indexOf(e.confidence) >= minIdx);
+      }
+    }
+
     return NextResponse.json({
-      entities: results || [],
-      results: results || [],
-      total: (results || []).length,
+      entities: filtered,
+      results: filtered,
+      total: filtered.length,
       query: q,
     });
   } catch (err) {

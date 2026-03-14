@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient, generateApiKey } from '@/lib/supabase';
 import { computeReceiptComposite } from '@/lib/scoring';
-import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
 
 /**
  * POST /api/entities/register
@@ -55,15 +54,7 @@ export async function POST(request) {
       return NextResponse.json({ error: `entity_id "${body.entity_id}" is already registered` }, { status: 409 });
     }
 
-    // === SYBIL RESISTANCE: IP-based rate limiting ===
-    // Uses Upstash Redis in production, in-memory fallback in dev
-    const clientIP = getClientIP(request);
-    const regLimit = await checkRateLimit(clientIP, 'register');
-    if (!regLimit.allowed) {
-      return NextResponse.json({
-        error: `Rate limit: max registrations per hour exceeded. Retry in ${regLimit.reset}s.`,
-      }, { status: 429 });
-    }
+    // Rate limiting handled by middleware on all /api/* routes
 
     // Generate embedding from description + capabilities
     let embedding = null;

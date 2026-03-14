@@ -18,6 +18,7 @@ import crypto from 'crypto';
  *   budget_cents: 50,
  *   deadline_ms: 30000,
  *   min_emilia_score: 70,
+ *   trust_policy: "standard",    // optional: "strict", "standard", "permissive", "discovery" or custom JSON
  * }
  */
 export async function POST(request) {
@@ -78,6 +79,7 @@ export async function POST(request) {
         budget_cents: body.budget_cents || null,
         deadline_ms: body.deadline_ms || null,
         min_emilia_score: body.min_emilia_score || 0,
+        trust_policy: body.trust_policy || null,
         need_embedding: embedding,
         expires_at: body.expires_at || null, // trigger will default to 24h
       })
@@ -107,6 +109,7 @@ export async function POST(request) {
         capability_needed: need.capability_needed,
         status: need.status,
         min_emilia_score: need.min_emilia_score,
+        trust_policy: need.trust_policy || null,
         expires_at: need.expires_at,
         created_at: need.created_at,
       },
