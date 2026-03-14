@@ -29,15 +29,16 @@ async function getEntity(entityId) {
     .order('created_at', { ascending: false })
     .limit(50);
 
-  // Get unique submitter count
-  const { data: submitters } = await supabase
-    .from('receipts')
-    .select('submitted_by')
-    .eq('entity_id', entity.id);
+  // Get canonical establishment via DB function
+  let estResult = { established: false, unique_submitters: 0, effective_evidence: 0 };
+  try {
+    const { data: estData } = await supabase.rpc('is_entity_established', { p_entity_id: entity.id });
+    if (estData && estData[0]) {
+      estResult = estData[0];
+    }
+  } catch {}
 
-  const uniqueSubmitters = new Set((submitters || []).map(r => r.submitted_by)).size;
-
-  return { entity, receipts: receipts || [], uniqueSubmitters };
+  return { entity, receipts: receipts || [], establishment: estResult };
 }
 
 function ScoreBar({ label, value, color }) {
@@ -82,10 +83,12 @@ export default async function EntityProfile({ params }) {
 
   if (!result) notFound();
 
-  const { entity, receipts, uniqueSubmitters } = result;
+  const { entity, receipts, establishment } = result;
   const score = entity.emilia_score;
   const { grade, color } = gradeInfo(score);
-  const established = entity.total_receipts >= 5 && uniqueSubmitters >= 3;
+  const established = establishment.established;
+  const uniqueSubmitters = establishment.unique_submitters;
+  const effectiveEvidence = establishment.effective_evidence;
 
   // Compute confidence state
   let confidence, confidenceColor, confidenceMessage;
