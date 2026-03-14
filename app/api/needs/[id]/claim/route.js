@@ -40,16 +40,43 @@ export async function POST(request, { params }) {
 
     // === TRUST GATE ===
     // If need specifies a trust_policy, evaluate against it (primary path).
+    // Uses need.context for context-aware evaluation when available.
     // Otherwise fall back to legacy min_emilia_score threshold.
     if (need.trust_policy) {
-      const { data: receipts } = await supabase
+      // Build receipt query — context-aware if need has context
+      let receiptQuery = supabase
         .from('receipts')
         .select('*')
         .eq('entity_id', auth.entity.id)
         .order('created_at', { ascending: false })
         .limit(200);
 
-      const profile = computeTrustProfile(receipts || [], auth.entity);
+      const needContext = need.context && typeof need.context === 'object' ? need.context : null;
+      if (needContext) {
+        receiptQuery = receiptQuery.contains('context', needContext);
+      }
+
+      const { data: contextReceipts } = await receiptQuery;
+      let receipts = contextReceipts || [];
+      let contextUsed = null;
+
+      // Fall back to global if context-specific data is too sparse
+      if (needContext && receipts.length < 3) {
+        const { data: globalReceipts } = await supabase
+          .from('receipts')
+          .select('*')
+          .eq('entity_id', auth.entity.id)
+          .order('created_at', { ascending: false })
+          .limit(200);
+        receipts = globalReceipts || [];
+        contextUsed = 'global_fallback';
+      } else if (needContext) {
+        contextUsed = needContext;
+      } else {
+        contextUsed = 'global';
+      }
+
+      const profile = computeTrustProfile(receipts, auth.entity);
       // Resolve policy: string name → built-in, object → custom policy
       const rawPolicy = need.trust_policy;
       let policy;
@@ -59,7 +86,7 @@ export async function POST(request, { params }) {
           try { policy = JSON.parse(rawPolicy); } catch { policy = TRUST_POLICIES.standard; }
         }
       } else if (typeof rawPolicy === 'object' && rawPolicy !== null) {
-        policy = rawPolicy; // JSONB column returns parsed object
+        policy = rawPolicy;
       } else {
         policy = TRUST_POLICIES.standard;
       }
@@ -67,7 +94,8 @@ export async function POST(request, { params }) {
 
       if (!result.pass) {
         return NextResponse.json({
-          error: `Trust evaluation failed for policy "${need.trust_policy}".`,
+          error: `Trust evaluation failed for policy "${typeof rawPolicy === 'string' ? rawPolicy : 'custom'}".`,
+          context_used: contextUsed,
           failures: result.failures,
           warnings: result.warnings,
           _hint: 'Build trust through verified receipts from established counterparties.',

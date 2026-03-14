@@ -74,29 +74,48 @@ export async function GET(request) {
               verified: r.verified,
             }));
 
-            // Apply min_confidence filter to semantic results too
-            if (minConfidence && semanticResults.length > 0) {
-              const confLevels = ['pending', 'insufficient', 'provisional', 'emerging', 'confident'];
+            const confLevels = ['pending', 'insufficient', 'provisional', 'emerging', 'confident'];
+
+            // Always enrich with confidence and effective evidence
+            if (semanticResults.length > 0) {
+              semanticResults = await Promise.all(semanticResults.map(async (e) => {
+                let ee = 0;
+                try {
+                  const { data: d } = await supabase.rpc('is_entity_established', { p_entity_id: e.id });
+                  if (d && d[0]) ee = d[0].effective_evidence;
+                } catch {}
+                let c = ee === 0 ? 'pending' : ee < 1 ? 'insufficient' : ee < 5 ? 'provisional' : ee < 20 ? 'emerging' : 'confident';
+                return { ...e, confidence: c, effective_evidence: ee };
+              }));
+            }
+
+            // Apply min_confidence filter
+            if (minConfidence) {
               const minIdx = confLevels.indexOf(minConfidence);
               if (minIdx >= 0) {
-                const withConf = await Promise.all(semanticResults.map(async (e) => {
-                  let ee = 0;
-                  try {
-                    const { data: d } = await supabase.rpc('is_entity_established', { p_entity_id: e.id });
-                    if (d && d[0]) ee = d[0].effective_evidence;
-                  } catch {}
-                  let c = ee === 0 ? 'pending' : ee < 1 ? 'insufficient' : ee < 5 ? 'provisional' : ee < 20 ? 'emerging' : 'confident';
-                  return { ...e, confidence: c, effective_evidence: ee };
-                }));
-                semanticResults = withConf.filter(e => confLevels.indexOf(e.confidence) >= minIdx);
+                semanticResults = semanticResults.filter(e => confLevels.indexOf(e.confidence) >= minIdx);
               }
             }
+
+            // Apply rank_by (same logic as fallback search)
+            if (rankBy === 'evidence') {
+              semanticResults.sort((a, b) => b.effective_evidence - a.effective_evidence);
+            } else if (rankBy === 'confidence') {
+              semanticResults.sort((a, b) => {
+                const ca = confLevels.indexOf(a.confidence);
+                const cb = confLevels.indexOf(b.confidence);
+                if (cb !== ca) return cb - ca;
+                return b.effective_evidence - a.effective_evidence;
+              });
+            }
+            // Default 'score' keeps similarity-weighted ordering from semantic search
 
             return NextResponse.json({
               entities: semanticResults,
               results: semanticResults,
               total: semanticResults.length,
               query: q,
+              rank_by: rankBy,
             });
           }
         }

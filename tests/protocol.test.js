@@ -460,3 +460,119 @@ describe('Write throttling identity contract', () => {
     expect(key1.slice(0, 16)).not.toBe(key2.slice(0, 16));
   });
 });
+
+// ============================================================================
+// 13. Context-aware need claim flow
+// ============================================================================
+
+describe('Context-aware need claim flow', () => {
+  it('context-filtered receipts produce different profile than global', () => {
+    const electronics = Array(10).fill(null).map((_, i) => makeReceipt({
+      submitted_by: `s-${i % 4}`,
+      delivery_accuracy: 95,
+      context: { category: 'electronics' },
+    }));
+    const furniture = Array(10).fill(null).map((_, i) => makeReceipt({
+      submitted_by: `s-${i % 4}`,
+      delivery_accuracy: 55,
+      context: { category: 'furniture' },
+    }));
+
+    const elecProfile = computeTrustProfile(electronics, {});
+    const furnProfile = computeTrustProfile(furniture, {});
+    const globalProfile = computeTrustProfile([...electronics, ...furniture], {});
+
+    // Electronics-specific should be better than furniture-specific
+    expect(elecProfile.score).toBeGreaterThan(furnProfile.score);
+    // Global blends both
+    expect(globalProfile.score).toBeGreaterThan(furnProfile.score);
+    expect(globalProfile.score).toBeLessThan(elecProfile.score);
+  });
+
+  it('strict policy may pass for electronics context but fail for furniture', () => {
+    const electronics = Array(20).fill(null).map((_, i) => makeReceipt({
+      submitted_by: `s-${i % 5}`,
+      delivery_accuracy: 95,
+      product_accuracy: 92,
+      price_integrity: 100,
+      agent_behavior: 'completed',
+      context: { category: 'electronics' },
+    }));
+    const furniture = Array(20).fill(null).map((_, i) => makeReceipt({
+      submitted_by: `s-${i % 5}`,
+      delivery_accuracy: 55,
+      product_accuracy: 50,
+      price_integrity: 60,
+      agent_behavior: i < 8 ? 'disputed' : 'completed',
+      context: { category: 'furniture' },
+    }));
+
+    const elecProfile = computeTrustProfile(electronics, {});
+    const furnProfile = computeTrustProfile(furniture, {});
+
+    const elecResult = evaluateTrustPolicy(elecProfile, TRUST_POLICIES.standard);
+    const furnResult = evaluateTrustPolicy(furnProfile, TRUST_POLICIES.standard);
+
+    expect(elecResult.pass).toBe(true);
+    expect(furnResult.pass).toBe(false);
+  });
+});
+
+// ============================================================================
+// 14. Trust evaluate context fallback
+// ============================================================================
+
+describe('Trust evaluate context fallback logic', () => {
+  it('sparse context data should trigger global fallback', () => {
+    // Only 2 context-specific receipts — below the 3-receipt threshold
+    const contextReceipts = Array(2).fill(null).map((_, i) => makeReceipt({
+      submitted_by: `s-${i}`,
+      context: { category: 'rare_niche' },
+    }));
+    const globalReceipts = Array(20).fill(null).map((_, i) => makeReceipt({
+      submitted_by: `s-${i % 5}`,
+      context: null,
+    }));
+
+    // Context-specific profile (2 receipts)
+    const contextProfile = computeTrustProfile(contextReceipts, {});
+    // Global profile (20 receipts)
+    const globalProfile = computeTrustProfile(globalReceipts, {});
+
+    // Global should have much more effective evidence
+    expect(globalProfile.effectiveEvidence).toBeGreaterThan(contextProfile.effectiveEvidence);
+  });
+});
+
+// ============================================================================
+// 15. Receipt context persistence
+// ============================================================================
+
+describe('Receipt context persistence', () => {
+  it('receipts with different contexts produce different hashes', async () => {
+    const base = {
+      entity_id: 'test-entity',
+      submitted_by: 'test-submitter',
+      transaction_ref: 'txn_ctx_test',
+      transaction_type: 'purchase',
+      delivery_accuracy: 90,
+      product_accuracy: 85,
+      price_integrity: 95,
+      return_processing: 80,
+      agent_satisfaction: 88,
+      agent_behavior: 'completed',
+      claims: null,
+      evidence: null,
+      submitter_score: 85,
+      submitter_established: true,
+    };
+
+    const h1 = await computeReceiptHash({ ...base, context: { category: 'electronics' } }, null);
+    const h2 = await computeReceiptHash({ ...base, context: { category: 'furniture' } }, null);
+    const h3 = await computeReceiptHash({ ...base, context: null }, null);
+
+    expect(h1).not.toBe(h2);
+    expect(h1).not.toBe(h3);
+    expect(h2).not.toBe(h3);
+  });
+});
