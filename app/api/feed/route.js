@@ -7,15 +7,21 @@ import { getServiceClient } from '@/lib/supabase';
  * Agents connect to this to discover work opportunities in real time.
  * 
  * Query params:
- *   capability - filter by capability type
- *   min_score  - only show needs requiring at least this score
- *   limit      - max results per poll (default 20)
+ *   capability     - filter by capability type
+ *   category       - filter by context category (e.g. "electronics", "furniture")
+ *   trust_policy   - only show needs requiring this policy (strict, standard, permissive, discovery)
+ *   min_confidence - only show needs you could claim at this confidence level
+ *   min_score      - legacy: only show needs requiring at most this score (default 0)
+ *   limit          - max results per poll (default 20)
  * 
- * No auth required for reading the feed. Anyone can see open needs.
+ * No auth required for reading the feed.
  */
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const capability = searchParams.get('capability');
+  const category = searchParams.get('category');
+  const trustPolicy = searchParams.get('trust_policy');
+  const minConfidence = searchParams.get('min_confidence');
   const minScore = parseFloat(searchParams.get('min_score')) || 0;
   const limit = Math.min(parseInt(searchParams.get('limit')) || 20, 50);
 
@@ -25,7 +31,6 @@ export async function GET(request) {
     async start(controller) {
       const supabase = getServiceClient();
 
-      // Send initial batch
       const sendNeeds = async () => {
         try {
           let query = supabase
@@ -33,7 +38,7 @@ export async function GET(request) {
             .select(`
               need_id, capability_needed, context,
               budget_cents, deadline_ms, min_emilia_score,
-              status, created_at, expires_at,
+              trust_policy, status, created_at, expires_at,
               from_entity:entities!needs_from_entity_id_fkey(entity_id, display_name, emilia_score)
             `)
             .eq('status', 'open')
@@ -45,6 +50,17 @@ export async function GET(request) {
             query = query.ilike('capability_needed', `%${capability}%`);
           }
 
+          // Context-aware filtering: filter by category in need context
+          if (category) {
+            query = query.contains('context', { category });
+          }
+
+          // Policy-aware filtering: show only needs with specific trust policy
+          if (trustPolicy) {
+            query = query.eq('trust_policy', JSON.stringify(trustPolicy));
+          }
+
+          // Legacy score filter
           if (minScore > 0) {
             query = query.lte('min_emilia_score', minScore);
           }
@@ -66,10 +82,8 @@ export async function GET(request) {
         }
       };
 
-      // Send initial batch immediately
       await sendNeeds();
 
-      // Poll every 5 seconds for new needs
       const interval = setInterval(async () => {
         try {
           await sendNeeds();
@@ -80,7 +94,6 @@ export async function GET(request) {
         }
       }, 5000);
 
-      // Clean up on disconnect
       request.signal.addEventListener('abort', () => {
         clearInterval(interval);
         controller.close();

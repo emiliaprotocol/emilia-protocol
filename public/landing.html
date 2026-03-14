@@ -306,7 +306,7 @@
     <span class="nlogo-text">EMILIA</span>
   </a>
   <div class="nlinks">
-    <a href="#score">Score</a>
+    <a href="#score">Trust</a>
     <a href="#stack">Protocol Stack</a>
     <a href="#how">How It Works</a>
     <a href="#algorithm">Algorithm</a>
@@ -617,7 +617,7 @@
       <div class="st">// How It Works</div>
       <div class="sh">Receipts, Not Reviews</div>
       <div class="rnr-text">
-        Every review system has failed because the platform hosting reviews profits from the businesses being reviewed. EMILIA is different. The <strong>buying agent</strong> submits a receipt about the seller — and then uses that same score to decide where to transact next. <strong>You rate what you eat. Lie, and you eat bad food again.</strong> The scorer and the consumer of the score are the same entity. This creates natural incentive alignment that no review system has ever achieved.
+        Every review system has failed because the platform hosting reviews profits from the businesses being reviewed. EMILIA is different. The <strong>buying agent</strong> submits a receipt about the seller — and then uses that same trust profile to decide where to transact next. <strong>You rate what you eat. Lie, and you eat bad food again.</strong> The scorer and the consumer of the trust data are the same entity. This creates natural incentive alignment that no review system has ever achieved.
       </div>
     </div>
 
@@ -664,7 +664,7 @@
           <span style="font-family: var(--mono); font-size: 9px; color: var(--cyan); background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.2); padding: 3px 8px; border-radius: 100px;">IN DEV</span>
         </div>
         <h3 style="color: var(--cyan);">Evidence-Backed Truth</h3>
-        <p>Agents submit structured claims + evidence: "delivered 3 days late" with tracking ID, "price overcharged 5%" with payment ref. The engine computes the score from facts. Counter-receipts within 48hrs. Conflicting claims enter disputed state — the dispute rate itself becomes a trust signal.</p>
+        <p>Agents submit structured claims + evidence: "delivered 3 days late" with tracking ID, "price overcharged 5%" with payment ref. The engine computes the trust profile from facts. Counter-receipts within 48hrs. Conflicting claims enter disputed state — the dispute rate itself becomes a trust signal.</p>
       </div>
       <div class="problem-card reveal" style="border-color: rgba(255,215,0,0.2);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
@@ -798,7 +798,7 @@
       <div class="problem-card reveal" style="border-color: rgba(255,159,28,0.2);">
         <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--amber); margin-bottom: 12px;">ANOMALY DETECTION</div>
         <h3>Velocity Matters</h3>
-        <p>A score of 70 that was 90 last week is alarming. EP tracks score velocity — sudden drops trigger anomaly alerts. Agents can reject entities with severe anomalies even if the absolute number looks fine.</p>
+        <p>A score of 70 that was 90 last week is alarming. EP tracks trust velocity — sudden drops trigger anomaly alerts. Agents can reject entities with severe anomalies even if the absolute number looks fine.</p>
       </div>
     </div>
 
@@ -1110,12 +1110,12 @@
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
         <div class="faq-q">What's coming in Phase 2 and Phase 3?</div>
         <div class="faq-a"><strong style="color:var(--cyan);">Phase 2 — Evidence-Backed Truth (in development):</strong><br>
-          &bull; <strong>Claims + evidence receipts:</strong> Instead of rating 0-100, agents submit "delivered 3 days late" with tracking ID, "overcharged 5%" with payment ref. The engine computes the score from facts.<br>
+          &bull; <strong>Claims + evidence receipts:</strong> Instead of rating 0-100, agents submit "delivered 3 days late" with tracking ID, "overcharged 5%" with payment ref. The engine computes the trust profile from facts.<br>
           &bull; <strong>Counter-receipts:</strong> Sellers can respond within 48 hours with their own evidence.<br>
           &bull; <strong>Conflict resolution:</strong> When receipts conflict, both enter "disputed" state. 48-hour evidence window. If an oracle can verify a claim (e.g., carrier tracking confirms delivery time), it overrides. Otherwise both receipts are stored at 0.5x weight with a <code>disputed</code> flag. Entities with high dispute rates become inherently less trustworthy — the dispute rate itself is a signal.<br><br>
           <strong style="color:var(--gold);">Phase 3 — Protocol-Observed Truth (roadmap):</strong><br>
           &bull; <strong>Protocol listeners:</strong> EP observes MCP/A2A/UCP events and auto-generates receipts — no manual submission needed.<br>
-          &bull; <strong>Decentralized oracles:</strong> DeliveryOracle (carrier APIs), PaymentOracle (Stripe/AP2), ListingOracle (IPFS snapshots). Each oracle has its own EP score — bad oracle gets scored down. Trust is recursive all the way down.<br>
+          &bull; <strong>Decentralized oracles:</strong> DeliveryOracle (carrier APIs), PaymentOracle (Stripe/AP2), ListingOracle (IPFS snapshots). Each oracle has its own EP trust profile — bad oracle gets scored down. Trust is recursive all the way down.<br>
           &bull; <strong>ZK score proofs:</strong> Prove "I have a score above 80 with 50+ receipts" without revealing any transaction details. Privacy-preserving trust.<br>
           &bull; <strong>Cross-chain anchoring:</strong> Ethereum L1, Arbitrum, beyond Base L2.
         </div>
@@ -1240,7 +1240,7 @@ const facts = [
   { c: 'gr', t: 'Entity numbers are <strong>permanent and sequential</strong> — claim yours' },
   { c: 'a',  t: '<strong>Receipts, not reviews.</strong> Trust profiles, not scores. Policies, not thresholds.' },
   { c: 'g',  t: 'Compatible with <strong>UCP · A2A · MCP · ACP · AP2</strong>' },
-  { c: 'c',  t: 'No one can buy their score. <strong>The algorithm is public.</strong>' },
+  { c: 'c',  t: 'No one can buy their trust profile. <strong>The algorithm is public.</strong>' },
   { c: 'gr', t: 'EP doesn\'t handle the transaction. <strong>It scores the outcome.</strong>' },
   { c: 'a',  t: 'EMILIA Protocol — <strong>the missing layer in the agentic commerce stack</strong>' },
 ];

@@ -39,9 +39,16 @@ export async function POST(request) {
     // Generate embedding for semantic matching
     let embedding = null;
     if (process.env.OPENAI_API_KEY) {
+      // Serialize context for embedding — avoid [object Object] coercion
+      const contextText = body.context
+        ? (typeof body.context === 'object'
+          ? Object.entries(body.context).map(([k, v]) => `${k}: ${v}`).join(', ')
+          : String(body.context))
+        : null;
+
       const embeddingText = [
         body.capability_needed,
-        body.context,
+        contextText,
       ].filter(Boolean).join('. ');
 
       try {
