@@ -12,7 +12,7 @@
 <meta property="og:description" content="An open protocol for trust profiles, policy evaluation, and appeals across commerce, software, marketplaces, and AI systems. Trust profiles, not scores. Policies, not thresholds.">
 <meta property="og:image" content="https://emiliaprotocol.ai/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="EMILIA Protocol (EP) — The Trust Layer for Agentic Commerce">
+<meta name="twitter:title" content="EMILIA Protocol — Portable Trust for Machine Counterparties and Software">
 <meta name="twitter:description" content="Portable trust for machine counterparties and third-party software. Trust profiles, not scores. Policies, not thresholds. Appeals, not black boxes.">
 <meta name="twitter:image" content="https://emiliaprotocol.ai/og.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -432,18 +432,18 @@
     <div class="reveal" style="text-align: center;">
       <div class="st">// Check Any Trust Profile</div>
       <div class="sh" style="max-width: 600px; margin: 0 auto 16px;">Trust Profiles Are Public.<br>No Login Required.</div>
-      <div class="sd" style="max-width: 560px; margin: 0 auto;">Type an entity ID and see their reputation — computed from verified transaction receipts, not opinions.</div>
+      <div class="sd" style="max-width: 560px; margin: 0 auto;">Type an entity ID and see their trust profile — behavioral rates, signal breakdowns, provenance composition, and dispute history.</div>
     </div>
     <div class="sterm reveal">
       <div class="sterm-bar">
         <div class="sterm-dots"><span></span><span></span><span></span></div>
-        <div class="sterm-title">emilia-score-lookup</div>
+        <div class="sterm-title">ep-trust-profile</div>
         <div></div>
       </div>
       <div class="sterm-body">
         <div class="srow">
           <input type="text" class="sinp" id="scoreInput" placeholder="entity ID or agent name..." autocomplete="off">
-          <button class="sbtn" id="scoreBtn" onclick="lookupScore()">Check Score</button>
+          <button class="sbtn" id="scoreBtn" onclick="lookupScore()">View Trust Profile</button>
         </div>
         <div class="sres" id="scoreResult">
           <div class="sempty">
@@ -451,6 +451,8 @@
             <span style="color: var(--cyan); cursor: pointer;" onclick="document.getElementById('scoreInput').value='rex-booking-v1';lookupScore();">Try: rex-booking-v1</span>
             <span style="opacity: 0.3; margin: 0 6px;">|</span>
             <span style="color: var(--cyan); cursor: pointer;" onclick="document.getElementById('scoreInput').value='ruby-retention-v1';lookupScore();">ruby-retention-v1</span>
+            <span style="opacity: 0.3; margin: 0 6px;">|</span>
+            <span style="color: var(--cyan); cursor: pointer;" onclick="document.getElementById('scoreInput').value='mcp-server-ep-v1';lookupScore();">mcp-server-ep-v1</span>
           </div>
         </div>
       </div>
@@ -462,8 +464,8 @@
 <section id="stack">
   <div class="stack-section">
     <div class="reveal" style="text-align: center;">
-      <div class="st">// The Agentic Commerce Stack</div>
-      <div class="sh">The Missing Protocol Layer</div>
+      <div class="st">// The Machine Trust Stack</div>
+      <div class="sh">The Missing Trust Layer</div>
       <div class="sd" style="margin: 0 auto;">Every layer handles the mechanics of transacting. None of them answer the fundamental question: <strong style="color:var(--t1);">should you trust this entity?</strong></div>
     </div>
     <table class="stack-table reveal">
@@ -1172,7 +1174,7 @@
   <div class="reg">
     <div class="reveal">
       <div class="st" style="text-align: center;">// Register an Entity</div>
-      <div class="sh">Get Entity <span style="color: var(--cyan);" id="nextEntity">#3</span></div>
+      <div class="sh">Register Entity <span style="color: var(--cyan);" id="nextEntity">#4</span></div>
       <div class="sd" style="margin: 0 auto;">Entity numbers are assigned sequentially. Yours is permanent, public, and verifiable. First come, first served.</div>
       <div class="reg-form" id="regForm">
         <input type="email" class="reg-inp" id="regEmail" placeholder="your@email.com">
@@ -1256,18 +1258,18 @@ const GITHUB_REPO = 'emiliaprotocol/emilia-protocol';
 
 // TICKER
 const facts = [
-  { c: 'g',  t: 'Humans have FICO. <strong>Agents need EP.</strong>' },
-  { c: 'c',  t: 'EP is the <strong>trust layer</strong> for the MCP / A2A / UCP stack' },
-  { c: 'gr', t: 'Scoring algorithm is <strong>open source on GitHub</strong> — every weight published' },
+  { c: 'g',  t: '<strong>Receipts, not reviews.</strong> Trust profiles, not scores. Policies, not thresholds.' },
+  { c: 'c',  t: 'EP is the <strong>trust layer</strong> for commerce, software, and marketplaces' },
+  { c: 'gr', t: 'Trust engine is <strong>open source on GitHub</strong> — every weight published, every test passing' },
   { c: 'a',  t: 'Receipts anchored on <strong>Base L2 via Merkle roots</strong> — no tokens, just math' },
-  { c: 'g',  t: 'You can\'t fake a delivery receipt. <strong>That\'s the point.</strong>' },
-  { c: 'c',  t: 'Three API calls. <strong>That\'s the entire protocol.</strong>' },
-  { c: 'gr', t: 'Entity numbers are <strong>permanent and sequential</strong> — claim yours' },
-  { c: 'a',  t: '<strong>Receipts, not reviews.</strong> Trust profiles, not scores. Policies, not thresholds.' },
-  { c: 'g',  t: 'Compatible with <strong>UCP · A2A · MCP · ACP · AP2</strong>' },
+  { c: 'g',  t: 'Should I install this plugin? <strong>Run install preflight.</strong>' },
+  { c: 'c',  t: 'Trust must never be more powerful than appeal. <strong>That\'s the constitutional principle.</strong>' },
+  { c: 'gr', t: '<strong>120+ tests</strong> — scoring, trust profiles, conformance suite, cross-language hash verification' },
+  { c: 'a',  t: 'Should I buy from this merchant? <strong>Evaluate against a trust policy.</strong>' },
+  { c: 'g',  t: 'Compatible with <strong>MCP · ACP · A2A · GitHub · npm · Chrome · Shopify</strong>' },
   { c: 'c',  t: 'No one can buy their trust profile. <strong>The algorithm is public.</strong>' },
-  { c: 'gr', t: 'EP doesn\'t handle the transaction. <strong>It scores the outcome.</strong>' },
-  { c: 'a',  t: 'EMILIA Protocol — <strong>the missing layer in the agentic commerce stack</strong>' },
+  { c: 'gr', t: 'Disputes and appeals built in. <strong>Reversals are real, not cosmetic.</strong>' },
+  { c: 'a',  t: 'EMILIA Protocol — <strong>portable trust for machine counterparties and third-party software</strong>' },
 ];
 document.getElementById('ticker').innerHTML = [...facts,...facts].map(f=>`<div class="ticker-i"><span class="td ${f.c}"></span>${f.t}</div>`).join('');
 
@@ -1357,7 +1359,7 @@ async function lookupScore() {
       };
     } else if (r.status === 404) {
       res.innerHTML = `<div class="sempty" style="color:var(--amber);">Entity "${esc(inp)}" not found. <a href="#register" style="color:var(--cyan);text-decoration:underline;">Register it?</a></div>`;
-      btn.disabled=false; btn.textContent='CHECK TRUST';
+      btn.disabled=false; btn.textContent='View Trust Profile';
       return;
     } else {
       throw 0;
@@ -1460,7 +1462,7 @@ async function lookupScore() {
   </div>`;
 
   setTimeout(()=>res.querySelectorAll('.sfill').forEach(b=>{const w=b.style.width;b.style.width='0%';requestAnimationFrame(()=>b.style.width=w);}),50);
-  btn.disabled=false; btn.textContent='CHECK TRUST';
+  btn.disabled=false; btn.textContent='View Trust Profile';
 }
 
 function bar(label,val,bg) {
@@ -1502,7 +1504,7 @@ function showCard(n) {
 
 function shareEntity(p) {
   const n=window._ent||3;
-  const txt=`I just claimed Entity #${n} on the EMILIA Protocol.\n\nA vendor-neutral trust attestation standard for agentic commerce. Receipts, not reviews.\n\nClaim yours:`;
+  const txt=`I just registered Entity #${n} on the EMILIA Protocol.\n\nPortable trust for machine counterparties and third-party software. Trust profiles, not scores. Appeals built in.\n\nRegister yours:`;
   const url=`https://emiliaprotocol.ai?ref=entity-${n}`;
   if(p==='twitter') window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(txt)}&url=${encodeURIComponent(url)}`,'_blank');
   else if(p==='linkedin') window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,'_blank');
