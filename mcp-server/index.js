@@ -239,6 +239,29 @@ const TOOLS = [
       required: ['entity_id', 'report_type', 'description'],
     },
   },
+  // EP-SX: Software Trust
+  {
+    name: 'ep_install_preflight',
+    description:
+      'EP-SX: Should I install this plugin/app/package/extension? ' +
+      'Evaluates a software entity against a software-specific trust policy with context. ' +
+      'Returns allow/review/deny with specific reasons covering publisher, permissions, provenance, and trust history.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        entity_id: { type: 'string', description: 'Software entity ID (e.g. github_app:acme/code-helper)' },
+        policy: {
+          type: 'string',
+          description: 'Software policy: github_private_repo_safe_v1, npm_buildtime_safe_v1, browser_extension_safe_v1, mcp_server_safe_v1, or standard EP policies',
+        },
+        context: {
+          type: 'object',
+          description: 'Install context: { host, install_scope, permission_class, data_sensitivity, execution_mode }',
+        },
+      },
+      required: ['entity_id'],
+    },
+  },
   // LEGACY COMPAT
   {
     name: 'ep_score_lookup',
@@ -354,6 +377,29 @@ async function handleTool(name, args) {
         `Report ID: ${data.report_id}\n` +
         `${data._message}\n` +
         `${data._principle}`;
+    }
+
+    case 'ep_install_preflight': {
+      const body = { entity_id: args.entity_id, policy: args.policy || 'standard' };
+      if (args.context) body.context = args.context;
+      const data = await epFetch('/api/trust/install-preflight', { method: 'POST', body });
+      let out = `Install Preflight: ${data.display_name} (${data.entity_id})\n`;
+      out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      out += `Decision: ${data.decision === 'allow' ? '✓ ALLOW' : data.decision === 'deny' ? '✗ DENY' : '⚠ REVIEW'}\n`;
+      out += `Policy: ${data.policy_used}\n`;
+      out += `Confidence: ${data.confidence}\n`;
+      out += `Score: ${data.score}/100\n\n`;
+      if (data.reasons?.length) {
+        out += `Reasons:\n`;
+        for (const r of data.reasons) out += `  ${r}\n`;
+      }
+      if (data.software_meta) {
+        out += `\nSoftware:\n`;
+        out += `  Publisher verified: ${data.software_meta.publisher_verified}\n`;
+        out += `  Provenance verified: ${data.software_meta.provenance_verified}\n`;
+        out += `  Permission class: ${data.software_meta.permission_class || 'unknown'}\n`;
+      }
+      return out;
     }
 
     case 'ep_score_lookup': {

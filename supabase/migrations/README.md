@@ -20,6 +20,7 @@ Run in order in Supabase SQL Editor. Each migration is idempotent where possible
 | 012 | `012_needs_context_jsonb.sql` | **needs.context TEXT → JSONB** (structured context keys) |
 | 013 | `013_disputes.sql` | Disputes table, trust_reports table, dispute lifecycle, receipt dispute_status |
 | 014 | `014_bilateral_provenance.sql` | Provenance tiers on receipts, bilateral confirmation fields |
+| 015 | `015_software_entity_types.sql` | EP-SX: software entity types, software_meta JSONB, software transaction types |
 
 ## Important schema notes for new implementers
 

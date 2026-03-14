@@ -62,6 +62,7 @@ Submit a transaction receipt after completing a purchase or service. Requires `t
 | `ep_verify_receipt` | Verify a receipt against the Merkle root |
 | `ep_register_entity` | Register a new entity (requires API key) |
 | `ep_leaderboard` | Get top entities by compatibility score |
+| `ep_install_preflight` | **EP-SX**: Should I install this plugin/app/package? Allow/review/deny with reasons. |
 | `ep_score_lookup` | Legacy: compatibility score only. Use `ep_trust_profile` instead. |
 
 ## What makes EP different

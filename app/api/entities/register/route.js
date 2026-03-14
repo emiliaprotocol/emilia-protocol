@@ -39,8 +39,18 @@ export async function POST(request) {
       }
     }
 
-    if (!['agent', 'merchant', 'service_provider'].includes(body.entity_type)) {
-      return NextResponse.json({ error: 'entity_type must be: agent, merchant, or service_provider' }, { status: 400 });
+    const VALID_ENTITY_TYPES = [
+      // Commerce entities
+      'agent', 'merchant', 'service_provider',
+      // Software entities (EP-SX)
+      'github_app', 'github_action', 'mcp_server', 'npm_package',
+      'chrome_extension', 'shopify_app', 'marketplace_plugin', 'agent_tool',
+    ];
+
+    if (!VALID_ENTITY_TYPES.includes(body.entity_type)) {
+      return NextResponse.json({
+        error: `entity_type must be one of: ${VALID_ENTITY_TYPES.join(', ')}`,
+      }, { status: 400 });
     }
 
     // Check for duplicate entity_id
@@ -108,6 +118,7 @@ export async function POST(request) {
         input_schema: body.input_schema || null,
         output_schema: body.output_schema || null,
         category: body.category || null,
+        software_meta: body.software_meta || null,
         service_area: body.service_area || null,
         pricing_model: body.pricing_model || null,
         pricing_amount_cents: body.pricing_amount_cents || 0,

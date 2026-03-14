@@ -28,7 +28,13 @@ export async function POST(request) {
       return NextResponse.json({ error: 'transaction_ref is required — every receipt must reference an external transaction' }, { status: 400 });
     }
 
-    const validTypes = ['purchase', 'service', 'task_completion', 'delivery', 'return'];
+    const validTypes = [
+      // Commerce
+      'purchase', 'service', 'task_completion', 'delivery', 'return',
+      // Software lifecycle (EP-SX)
+      'install', 'uninstall', 'permission_grant', 'permission_escalation',
+      'execution', 'incident', 'listing_review', 'provenance_check',
+    ];
     if (!validTypes.includes(body.transaction_type)) {
       return NextResponse.json({ error: `transaction_type must be one of: ${validTypes.join(', ')}` }, { status: 400 });
     }

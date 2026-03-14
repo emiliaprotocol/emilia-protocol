@@ -1,0 +1,109 @@
+name: EP Protocol CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run scoring tests
+        run: npx vitest run tests/scoring.test.js
+
+      - name: Run scoring v2 tests
+        run: npx vitest run tests/scoring-v2.test.js
+
+      - name: Run protocol tests
+        run: npx vitest run tests/protocol.test.js
+
+      - name: Run integration tests
+        run: npx vitest run tests/integration.test.js
+
+      - name: Run conformance suite
+        run: npx vitest run conformance/conformance.test.js
+
+  conformance-python:
+    name: Python Conformance
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run Python hash verification
+        run: python3 conformance/verify_hashes.py
+
+  lint:
+    name: Lint Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check weight model invariant
+        run: |
+          node -e "
+            import('./lib/scoring-v2.js').then(m => {
+              const sum = Object.values(m.EP_WEIGHTS_V2).reduce((a,b) => a+b, 0);
+              if (Math.abs(sum - 1.0) > 0.001) {
+                console.error('FAIL: weights sum to', sum, 'not 1.0');
+                process.exit(1);
+              }
+              console.log('PASS: weights sum to', sum);
+
+              const policies = ['strict','standard','permissive','discovery',
+                'github_private_repo_safe_v1','npm_buildtime_safe_v1',
+                'browser_extension_safe_v1','mcp_server_safe_v1'];
+              for (const p of policies) {
+                if (!m.TRUST_POLICIES[p]) {
+                  console.error('FAIL: missing policy', p);
+                  process.exit(1);
+                }
+              }
+              console.log('PASS: all', policies.length, 'policies present');
+            });
+          "
+
+      - name: Verify conformance fixtures exist
+        run: |
+          test -f conformance/fixtures.json || (echo "FAIL: fixtures.json missing" && exit 1)
+          echo "PASS: fixtures.json exists"
+          node -e "
+            const f = JSON.parse(require('fs').readFileSync('conformance/fixtures.json'));
+            console.log('Hash fixtures:', f.hash_fixtures.length);
+            console.log('Scoring fixtures:', f.scoring_fixtures.length);
+            console.log('Policy fixtures:', f.policy_fixtures.length);
+            console.log('Confidence fixtures:', f.confidence_level_fixtures.length);
+          "
