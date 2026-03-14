@@ -90,31 +90,31 @@ export default async function EntityProfile({ params }) {
   const uniqueSubmitters = establishment.unique_submitters;
   const effectiveEvidence = establishment.effective_evidence;
 
-  // Compute confidence state
+  // Confidence driven by EFFECTIVE EVIDENCE, not raw receipt count
   let confidence, confidenceColor, confidenceMessage;
-  if (entity.total_receipts === 0) {
+  if (effectiveEvidence === 0) {
     confidence = 'PENDING';
     confidenceColor = '#4a4f6a';
-    confidenceMessage = 'No receipts yet. Score is default.';
-  } else if (score <= 55 && entity.total_receipts <= 10) {
+    confidenceMessage = 'No meaningful evidence yet.';
+  } else if (effectiveEvidence < 1.0) {
     confidence = 'LOW CONFIDENCE';
     confidenceColor = '#ff9f1c';
-    confidenceMessage = `${entity.total_receipts} receipts from unestablished submitters. Needs receipts from established entities.`;
-  } else if (!established) {
+    confidenceMessage = `Effective evidence: ${effectiveEvidence}. Receipts carry very low credibility weight.`;
+  } else if (effectiveEvidence < 5.0) {
     confidence = 'PROVISIONAL';
     confidenceColor = '#ffd700';
-    confidenceMessage = `${entity.total_receipts} receipts. Requires 5+ from 3+ unique established submitters.`;
-  } else if (entity.total_receipts < 20) {
+    confidenceMessage = `Effective evidence: ${effectiveEvidence}/5.0 needed for establishment.`;
+  } else if (effectiveEvidence < 20.0) {
     confidence = 'EMERGING';
     confidenceColor = '#00d4ff';
-    confidenceMessage = `Established with ${entity.total_receipts} receipts. Building history.`;
+    confidenceMessage = `Effective evidence: ${effectiveEvidence}. Score is meaningful.`;
   } else {
-    confidence = 'ESTABLISHED';
+    confidence = 'CONFIDENT';
     confidenceColor = '#00ff88';
-    confidenceMessage = `${entity.total_receipts} receipts from multiple submitters. High confidence.`;
+    confidenceMessage = `Effective evidence: ${effectiveEvidence} from ${uniqueSubmitters} submitters. High confidence.`;
   }
 
-  const showBreakdown = confidence === 'EMERGING' || confidence === 'ESTABLISHED';
+  const showBreakdown = confidence === 'EMERGING' || confidence === 'CONFIDENT';
   const breakdown = showBreakdown ? {
     delivery_accuracy: entity.avg_delivery_accuracy,
     product_accuracy: entity.avg_product_accuracy,
@@ -236,10 +236,10 @@ export default async function EntityProfile({ params }) {
               <div style={{ marginTop: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--mono)', fontSize: 10, color: '#4a4f6a', marginBottom: 4 }}>
                   <span>Progress to meaningful score</span>
-                  <span>{entity.total_receipts}/20 receipts from established submitters</span>
+                  <span>Effective evidence: {effectiveEvidence}/20.0</span>
                 </div>
                 <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${Math.min(100, Math.round((entity.total_receipts / 20) * 100))}%`, background: confidenceColor, borderRadius: 2 }} />
+                  <div style={{ height: '100%', width: `${Math.min(100, Math.round((effectiveEvidence / 20) * 100))}%`, background: confidenceColor, borderRadius: 2 }} />
                 </div>
               </div>
             </div>

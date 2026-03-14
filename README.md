@@ -2,46 +2,73 @@
 
 **Entity Measurement Infrastructure for Ledgered Interaction Accountability**
 
-The open-source credit score for the agent economy.  
-Reputation earned through receipts, not reviews.
+A vendor-neutral trust attestation standard for agentic commerce.
+Compatible with ACP. Usable through MCP. Apache 2.0.
 
 ---
 
-## What is EMILIA?
+## What is EP?
 
-EMILIA is an open protocol that scores every commercial entity in the agent economy — merchants, agents, and service providers — based on verified transaction outcomes.
+EP is an open protocol that computes trust profiles for commercial entities in the agent economy — merchants, agents, service providers — from verified transaction receipts.
 
-Every transaction generates a cryptographically signed receipt recording what was promised versus what was delivered. Scores are computed transparently using a published algorithm. No opinions. No fakes. No suppression.
+EP outputs **trust profiles**, not just scores. A trust profile includes behavioral rates (completion, retry, abandon, dispute), per-signal breakdowns, consistency, anomaly alerts, and confidence levels. Agents evaluate counterparties against **trust policies** — configurable decision frameworks — not raw score thresholds.
 
-**The EMILIA Score** is a 0-100 reputation score computed from:
+### Primary output: Trust Profile + Policy Evaluation
 
-| Signal | Weight | What it measures |
-|--------|--------|-----------------|
-| Delivery accuracy | 30% | Promised vs actual arrival |
-| Product accuracy | 25% | Listing matched reality? |
-| Price integrity | 15% | Quoted vs charged |
-| Return processing | 15% | Policy honored on time? |
-| Agent satisfaction | 10% | Purchasing agent's signal |
-| Consistency | 5% | Low variance over time |
+```
+POST /api/trust/evaluate
+{
+  "entity_id": "merchant-xyz",
+  "policy": "strict"
+}
+
+→ {
+    "pass": true,
+    "score": 87.3,
+    "confidence": "confident",
+    "profile": {
+      "behavioral": { "completion_rate": 94.3, "dispute_rate": 0.7 },
+      "signals": { "delivery_accuracy": 89.1, "price_integrity": 99.1 }
+    }
+  }
+```
+
+### Compatibility score (legacy)
+
+EP also exposes a 0-100 compatibility score via `GET /api/score/:entityId` for sorting, leaderboards, and backward compatibility. This is a weighted composite, **not** the primary protocol output. The trust profile is the canonical truth.
+
+### How trust is computed
+
+Receipts are weighted by three factors:
+- **Submitter credibility**: unestablished submitters = 0.1x, established = score/100
+- **Time decay**: 90-day half-life, recent receipts matter more
+- **Graph health**: thin graphs, closed loops, and clusters reduce weight
+
+Scores are dampened by **effective evidence** (sum of weighted receipts), not raw receipt count. Five perfect receipts from throwaway accounts produce a score of ~55, not 100.
+
+### Trust policies
+
+Agents don't check "score > 70." They evaluate against structured policies:
+
+| Policy | Use case | Key gates |
+|--------|----------|-----------|
+| `strict` | High-value purchases | Score ≥75, confident, dispute rate ≤3%, completion ≥85% |
+| `standard` | Normal commerce | Score ≥60, emerging, dispute rate ≤10% |
+| `permissive` | Low-risk | Score ≥40, provisional |
+| `discovery` | Browsing | Allow unscored |
+
+Custom policies supported via JSON.
+
+---
 
 ## Quick Start
 
 ```bash
-# Clone
 git clone https://github.com/emiliaprotocol/emilia-protocol.git
 cd emilia-protocol
-
-# Install
 npm install
-
-# Set up environment
 cp .env.example .env
-# Add your Supabase and OpenAI credentials
-
-# Run migrations
-npx supabase db push
-
-# Start
+# Add Supabase, OpenAI, and optionally Upstash Redis credentials
 npm run dev
 ```
 
@@ -55,12 +82,9 @@ curl -X POST https://emiliaprotocol.ai/api/entities/register \
     "entity_id": "my-shopping-agent",
     "display_name": "My Shopping Agent",
     "entity_type": "agent",
-    "description": "Finds the best deals on electronics",
-    "capabilities": ["product_search", "price_comparison"]
+    "description": "Finds the best deals on electronics"
   }'
 ```
-
-Returns an API key. Store it securely — it won't be shown again.
 
 ### Submit a receipt
 ```bash
@@ -68,174 +92,109 @@ curl -X POST https://emiliaprotocol.ai/api/receipts/submit \
   -H "Authorization: Bearer ep_live_..." \
   -H "Content-Type: application/json" \
   -d '{
-    "entity_id": "merchant-uuid",
+    "entity_id": "merchant-xyz",
+    "transaction_ref": "order_12345",
     "transaction_type": "purchase",
     "delivery_accuracy": 95,
     "product_accuracy": 88,
     "price_integrity": 100,
-    "agent_satisfaction": 90,
+    "agent_behavior": "completed",
     "evidence": {
-      "promised_delivery": "2 business days",
-      "actual_delivery": "2.5 business days"
+      "tracking_id": "FDX-789",
+      "payment_ref": "stripe_pi_abc"
     }
   }'
 ```
 
-### Check an EMILIA Score
+`transaction_ref` is **required**. Every receipt must reference an external transaction. `agent_behavior` is the strongest Phase 1 signal.
+
+### Look up a trust profile
 ```bash
-curl https://emiliaprotocol.ai/api/score/my-shopping-agent
+curl https://emiliaprotocol.ai/api/score/merchant-xyz
 ```
 
-No auth required. Scores are public.
-
-### Score history
+### Evaluate against a trust policy
 ```bash
-curl https://emiliaprotocol.ai/api/score/my-shopping-agent/history?limit=50
-```
-
-Returns how the score changed over time — every receipt that moved the needle.
-
-### Behavioral agent satisfaction
-
-Instead of subjective ratings, pass `agent_behavior` to let the protocol compute satisfaction from what the agent *did*:
-
-```bash
-curl -X POST https://emiliaprotocol.ai/api/receipts/submit \
-  -H "Authorization: Bearer ep_live_..." \
+curl -X POST https://emiliaprotocol.ai/api/trust/evaluate \
   -H "Content-Type: application/json" \
   -d '{
-    "entity_id": "merchant-uuid",
-    "transaction_type": "purchase",
-    "delivery_accuracy": 95,
-    "agent_behavior": "completed"
+    "entity_id": "merchant-xyz",
+    "policy": "standard"
   }'
 ```
 
-Behaviors: `completed` (95), `retried_same` (75), `retried_different` (40), `abandoned` (15), `disputed` (5).
-
-## Verify Any Receipt
-
-Receipts are cryptographically hashed and anchored on Base L2 (Coinbase) via Merkle trees. Verify any receipt independently:
-
-```bash
-curl https://emiliaprotocol.ai/api/verify/ep_rcpt_abc123
-```
-
-Returns the Merkle proof, on-chain transaction hash, and step-by-step instructions to verify the math yourself. No trust in EMILIA required.
-
-## MCP Server
-
-Give any MCP-compatible agent (Claude, etc.) access to EMILIA Scores:
-
+### MCP Integration
 ```json
 {
   "mcpServers": {
     "emilia": {
       "command": "npx",
-      "args": ["@emilia-protocol/mcp-server"],
-      "env": {
-        "EP_BASE_URL": "https://emiliaprotocol.ai",
-        "EP_API_KEY": "ep_live_your_key"
-      }
+      "args": ["@emilia-protocol/mcp-server"]
     }
   }
 }
 ```
 
-Tools: `ep_score_lookup`, `ep_submit_receipt`, `ep_verify_receipt`, `ep_search_entities`, `ep_register_entity`, `ep_leaderboard`.
-
-## SDKs
-
-**TypeScript:**
-```bash
-npm install @emilia-protocol/sdk
-```
-```typescript
-import { EmiliaClient } from '@emilia-protocol/sdk';
-const ep = new EmiliaClient({ apiKey: 'ep_live_...' });
-const score = await ep.getScore('rex-booking-v1');
-```
-
-**Python:**
-```bash
-pip install emilia-protocol
-```
-```python
-from emilia_protocol import EmiliaClient
-ep = EmiliaClient(api_key="ep_live_...")
-score = ep.get_score("rex-booking-v1")
-```
-
 ## Architecture
 
 ```
-emilia-protocol/
-├── app/api/
-│   ├── entities/register/        # Register agents + merchants
-│   ├── entities/search/          # Semantic search across entities
-│   ├── receipts/submit/          # Submit transaction receipts
-│   ├── score/[entityId]/         # Public score lookup
-│   ├── verify/[receiptId]/       # Merkle proof verification
-│   ├── blockchain/anchor/        # Cron: batch + anchor to Base L2
-│   ├── needs/broadcast/          # Post a need to the feed
-│   ├── needs/[id]/claim/         # Claim a need
-│   ├── feed/                     # Real-time need feed (SSE)
-│   └── leaderboard/              # Public reputation rankings
-├── lib/
-│   ├── scoring.js                # The scoring algorithm (OPEN SOURCE)
-│   ├── blockchain.js             # Merkle tree + Base L2 anchoring
-│   ├── sybil.js                  # Sybil resistance (graph analysis, rate limiting)
-│   └── supabase.js               # Database client + auth
-├── mcp-server/                   # EP MCP Server (npx @emilia-protocol/mcp-server)
-├── sdks/
-│   ├── typescript/               # @emilia-protocol/sdk (npm)
-│   └── python/                   # emilia-protocol (PyPI)
-├── EP-SPEC-v1.md                 # Formal protocol specification
-└── supabase/migrations/
-    ├── 001_emilia_core_schema.sql
-    ├── 002_entity_numbering_rls_dedup.sql
-    ├── 003_blockchain_anchoring.sql
-    └── 004_sybil_resistance.sql
+Trust Profile + Policy Evaluation    ← Primary output
+        ↑
+Scoring Engine (behavioral-first, effective-evidence dampened)
+        ↑
+Receipt Ledger (append-only, SHA-256 chained, Merkle-anchored)
+        ↑
+Fraud Detection (graph analysis, velocity, closed-loop, cluster)
+        ↑
+Entity Registration (IP rate-limited, Upstash Redis in production)
 ```
 
-## The Scoring Algorithm
+### Sybil resistance (4 layers)
+1. **Registration friction** — IP-based rate limiting (Upstash Redis)
+2. **Graph analysis** — closed-loop, thin-graph, cluster detection → reduce `graph_weight`
+3. **Submitter credibility** — unestablished entities = 0.1x receipt weight
+4. **Effective evidence dampening** — score pulled toward 50 until weighted evidence ≥ 5.0
 
-The scoring algorithm is in `lib/scoring.js`. It is **open source** and **auditable by anyone**.
+### Score confidence states
+| Level | Meaning |
+|-------|---------|
+| `pending` | No receipts |
+| `insufficient` | Low effective evidence, mostly unestablished submitters |
+| `provisional` | Building history |
+| `emerging` | Established, breakdown available |
+| `confident` | 20+ receipts, high effective evidence |
 
-This is by design. The credibility of EMILIA Scores comes from the fact that anyone can:
-1. Read the algorithm
-2. Verify the math
-3. Reproduce the score from the public receipt ledger
+### Establishment
+An entity is **established** when `is_entity_established()` returns true:
+- Effective evidence ≥ 5.0 (sum of weighted receipts, not raw count)
+- 3+ unique submitters
 
-No corporation can buy a higher score. No legal team can suppress a receipt. The algorithm is the law.
+Establishment is **historical** — computed over all receipts. Scoring is **current** — computed over a rolling 200-receipt window with time decay. An entity can be established but have a declining score.
 
-## Protocol Compatibility
+## Protocol Status
 
-EMILIA is designed to work with existing agent commerce standards:
+| Component | Status |
+|-----------|--------|
+| Trust profile + policy evaluation | ✅ Live |
+| Behavioral-first scoring (v2) | ✅ Live |
+| Compatibility score (v1) | ✅ Live |
+| Effective-evidence Sybil resistance | ✅ Live |
+| Receipt immutability (DB triggers) | ✅ Live |
+| Canonical JSON hashing | ✅ Live |
+| Graph analysis in scoring path | ✅ Live |
+| Upstash Redis rate limiting | ✅ Ready (needs env vars) |
+| Bilateral attestations | 🔲 Phase 2 |
+| Dispute lifecycle | 🔲 Phase 2 |
+| Oracle verification | 🔲 Phase 3 |
+| Relationship/contextual trust | 🔲 Phase 3 |
 
-- **MCP** (Anthropic) — agents discover EMILIA-scored entities via tools
-- **A2A** (Google) — agent-to-agent tasks reference EMILIA Scores
-- **UCP** (Google/Shopify) — merchant profiles include EMILIA Score field
-- **ACP** (OpenAI/Stripe) — checkout flows query EMILIA for trust signals
-- **AP2** (Google) — payment mandates can reference minimum EMILIA Score
+## Docs
 
-## Sybil Resistance
-
-EP defends against fake entities and synthetic transactions at three layers:
-
-1. **Registration friction** — rate-limited (max 5 entities/day per owner), with email/domain verification planned
-2. **Graph analysis** — closed-loop detection, thin-graph flagging (many receipts but < 3 unique submitters), velocity monitoring, cluster detection. All flags logged permanently.
-3. **Protocol design** — no self-scoring, rolling window of 200, new entity dampening, establishment requires 5+ receipts from 3+ unique submitters, append-only ledger means you can never clean up after a Sybil attack
-
-See `lib/sybil.js` for the implementation (open source).
+- [EP Core RFC](docs/EP-CORE-RFC.md) — the 2-page protocol spec
+- [EP Vision](docs/EP-VISION.md) — architecture and strategic design
+- [ACP Trust Extension](docs/EP-ACP-EXTENSION.md) — how EP attaches to ACP payments
+- [AAIF Proposal](docs/AAIF-PROPOSAL-v2.md) — working group proposal
 
 ## License
 
-The EMILIA Protocol is licensed under [Apache 2.0](LICENSE).  
-The protocol is open. The algorithm is public. The data is the moat.
-
----
-
-**emiliaprotocol.ai**
-
-*The first reputation system no corporation can buy.*
+Apache 2.0

@@ -67,25 +67,25 @@ export async function GET(request, { params }) {
       established = false;
     }
 
-    // Compute score confidence state
-    // This tells consumers HOW MUCH to trust this score
+    // Confidence is driven by EFFECTIVE EVIDENCE, not raw receipt count.
+    // Establishment is HISTORICAL (has this entity ever been credible?).
+    // Confidence is CURRENT (how much should you trust this score right now?).
     let confidence, confidence_message;
-    if (entity.total_receipts === 0) {
+    if (effectiveEvidence === 0) {
       confidence = 'pending';
-      confidence_message = 'No receipts yet. Score is default.';
-    } else if (entity.emilia_score <= 55 && entity.total_receipts <= 10) {
-      // Low score with few receipts = likely all from unestablished submitters
+      confidence_message = 'No meaningful evidence yet. Score is default.';
+    } else if (effectiveEvidence < 1.0) {
       confidence = 'insufficient';
-      confidence_message = `${entity.total_receipts} receipt${entity.total_receipts === 1 ? '' : 's'} from unestablished submitters. Score reflects low credibility weight. Needs receipts from established entities to build a meaningful score.`;
-    } else if (!established) {
+      confidence_message = `Effective evidence: ${effectiveEvidence}. Receipts exist but carry very low credibility weight. Needs receipts from established entities.`;
+    } else if (effectiveEvidence < 5.0) {
       confidence = 'provisional';
-      confidence_message = `${entity.total_receipts} receipt${entity.total_receipts === 1 ? '' : 's'} so far. Requires 5+ receipts from 3+ unique established submitters for full confidence.`;
-    } else if (entity.total_receipts < 20) {
+      confidence_message = `Effective evidence: ${effectiveEvidence}/5.0 needed. Building credible history.`;
+    } else if (effectiveEvidence < 20.0) {
       confidence = 'emerging';
-      confidence_message = `Established with ${entity.total_receipts} receipts. Score is meaningful but still building history.`;
+      confidence_message = `Effective evidence: ${effectiveEvidence}. Score is meaningful and building depth.`;
     } else {
       confidence = 'confident';
-      confidence_message = `${entity.total_receipts} receipts from multiple submitters. High confidence score.`;
+      confidence_message = `Effective evidence: ${effectiveEvidence} from ${uniqueSubmitters} unique submitters. High confidence.`;
     }
 
     return NextResponse.json({
@@ -96,20 +96,23 @@ export async function GET(request, { params }) {
       category: entity.category,
       capabilities: entity.capabilities,
       
-      // The score
+      // Compatibility score — use POST /api/trust/evaluate for full trust profiles
       emilia_score: entity.emilia_score,
+      _score_note: 'Compatibility score. For trust decisions, use POST /api/trust/evaluate with a policy.',
+      
+      // Trust status
       established,
+      effective_evidence: effectiveEvidence,
       confidence,
       confidence_message,
       total_receipts: entity.total_receipts,
+      unique_submitters: uniqueSubmitters,
       successful_receipts: entity.successful_receipts,
       success_rate: entity.total_receipts > 0
         ? Math.round((entity.successful_receipts / entity.total_receipts) * 1000) / 10
         : null,
       
       // Score breakdown — only shown when confidence is emerging or higher
-      // NOTE: These are historical unweighted averages for display.
-      // The actual emilia_score uses submitter-weighted, time-decayed computation.
       breakdown: (confidence === 'emerging' || confidence === 'confident') ? {
         delivery_accuracy: entity.avg_delivery_accuracy,
         product_accuracy: entity.avg_product_accuracy,
@@ -117,17 +120,12 @@ export async function GET(request, { params }) {
         return_processing: entity.avg_return_processing,
         agent_satisfaction: entity.avg_agent_satisfaction,
         consistency: entity.score_consistency,
-        _note: 'Historical averages. The emilia_score uses submitter-weighted, time-decayed computation.',
+        _note: 'Historical unweighted averages. The emilia_score uses submitter-weighted, time-decayed computation.',
       } : null,
       
-      // Verification
       verified: entity.verified,
-      
-      // Interoperability
       a2a_endpoint: entity.a2a_endpoint,
       ucp_profile_url: entity.ucp_profile_url,
-      
-      // Metadata
       member_since: entity.created_at,
     });
   } catch (err) {

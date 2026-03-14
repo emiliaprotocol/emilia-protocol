@@ -22,7 +22,7 @@ function getCategory(pathname) {
   return null;
 }
 
-export function middleware(request) {
+export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
   // Only rate-limit API routes
