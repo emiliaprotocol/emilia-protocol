@@ -1,38 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getServiceClient, authenticateRequest } from '@/lib/supabase';
-import { computeReceiptComposite, computeReceiptHash, behaviorToSatisfaction, computeScoresFromClaims } from '@/lib/scoring';
-import { runReceiptFraudChecks } from '@/lib/sybil';
-import crypto from 'crypto';
+import { authenticateRequest } from '@/lib/supabase';
+import { createReceipt } from '@/lib/create-receipt';
 
 /**
  * POST /api/receipts/submit
- * 
+ *
  * Submit a transaction receipt to the EMILIA ledger.
- * This is the core action in the protocol. Every receipt is:
- * - Append-only (cannot be modified or deleted)
- * - Cryptographically hashed (tamper-evident)
- * - Chain-linked (each receipt references the previous one)
- * - Fraud-checked (sybil resistance layer)
- * 
- * Auth: Bearer ep_live_...
- * 
- * Body: {
- *   entity_id: "uuid",                    // the entity being scored
- *   transaction_ref: "ucp_order_123",     // external reference
- *   transaction_type: "purchase",          // purchase | service | task_completion | delivery | return
- *   delivery_accuracy: 95,                // 0-100, optional
- *   product_accuracy: 88,                 // 0-100, optional
- *   price_integrity: 100,                 // 0-100, optional
- *   return_processing: null,              // 0-100, optional (null if no return)
- *   agent_satisfaction: 90,               // 0-100, optional (overridden by agent_behavior if provided)
- *   agent_behavior: "completed",          // optional: completed | retried_same | retried_different | abandoned | disputed
- *   evidence: {                           // structured evidence, not opinions
- *     promised_delivery: "2 business days",
- *     actual_delivery: "2.5 business days",
- *     price_quoted: 29999,
- *     price_charged: 29999,
- *   }
- * }
+ * Delegates ALL receipt logic to lib/create-receipt.js — ONE truth path.
  */
 export async function POST(request) {
   try {
@@ -42,9 +16,8 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const supabase = getServiceClient();
 
-    // Validate required fields
+    // === VALIDATION (input validation is route responsibility) ===
     if (!body.entity_id) {
       return NextResponse.json({ error: 'entity_id is required' }, { status: 400 });
     }
@@ -65,183 +38,46 @@ export async function POST(request) {
       return NextResponse.json({ error: `agent_behavior must be one of: ${validBehaviors.join(', ')}` }, { status: 400 });
     }
 
-    // Require at least one meaningful signal OR a claims object
     const hasSignal = [body.delivery_accuracy, body.product_accuracy, body.price_integrity,
       body.return_processing, body.agent_satisfaction].some(v => v != null && !isNaN(v));
     const hasClaims = body.claims && typeof body.claims === 'object' && Object.keys(body.claims).length > 0;
     const hasBehavior = !!body.agent_behavior;
 
     if (!hasSignal && !hasClaims && !hasBehavior) {
-      return NextResponse.json({ error: 'Receipt must include at least one signal (delivery_accuracy, product_accuracy, etc.), a claims object, or an agent_behavior' }, { status: 400 });
+      return NextResponse.json({ error: 'Receipt must include at least one signal, claims object, or agent_behavior' }, { status: 400 });
     }
 
-    // Verify the target entity exists — accept both UUID and slug
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.entity_id);
-    const { data: targetEntity } = await supabase
-      .from('entities')
-      .select('id, entity_id')
-      .eq(isUuid ? 'id' : 'entity_id', body.entity_id)
-      .single();
-
-    if (!targetEntity) {
-      return NextResponse.json({ error: 'Target entity not found' }, { status: 404 });
-    }
-
-    // Cannot score yourself
-    if (targetEntity.id === auth.entity.id) {
-      return NextResponse.json({ error: 'An entity cannot submit receipts for itself' }, { status: 403 });
-    }
-
-    // Use the resolved UUID for all downstream operations
-    const targetEntityId = targetEntity.id;
-
-    // === SYBIL RESISTANCE: Run fraud checks ===
-    const fraudCheck = await runReceiptFraudChecks(supabase, targetEntityId, auth.entity.id);
-    if (!fraudCheck.allowed) {
-      return NextResponse.json({
-        error: fraudCheck.detail,
-        flags: fraudCheck.flags,
-      }, { status: 429 });
-    }
-
-    // === BEHAVIORAL AGENT SATISFACTION ===
-    // If agent_behavior is provided, compute agent_satisfaction from behavior
-    // This replaces the subjective 0-100 rating with an observable behavioral signal
-    let agentSatisfaction = body.agent_satisfaction ?? null;
-    if (body.agent_behavior) {
-      agentSatisfaction = behaviorToSatisfaction(body.agent_behavior);
-    }
-
-    // === EVIDENCE-BASED SCORING (v2 receipts) ===
-    // If claims object is provided, compute signal scores from structured claims.
-    // Claims-computed scores override manual scores when both are present.
-    let deliveryAccuracy = body.delivery_accuracy ?? null;
-    let productAccuracy = body.product_accuracy ?? null;
-    let priceIntegrity = body.price_integrity ?? null;
-    let returnProcessing = body.return_processing ?? null;
-
-    if (body.claims) {
-      const claimScores = computeScoresFromClaims(body.claims);
-      if (claimScores.delivery_accuracy != null) deliveryAccuracy = claimScores.delivery_accuracy;
-      if (claimScores.product_accuracy != null) productAccuracy = claimScores.product_accuracy;
-      if (claimScores.price_integrity != null) priceIntegrity = claimScores.price_integrity;
-      if (claimScores.return_processing != null) returnProcessing = claimScores.return_processing;
-    }
-
-    // Capture submitter's current score and establishment status
-    // CANONICAL DEFINITION: established = 5+ receipts from 3+ unique submitters
-    const submitterScore = auth.entity.emilia_score ?? 50;
-    const submitterTotalReceipts = auth.entity.total_receipts ?? 0;
-
-    // Check unique submitters for the submitting entity
-    let submitterEstablished = false;
-    if (submitterTotalReceipts >= 5) {
-      const { data: subSubmitters } = await supabase
-        .from('receipts')
-        .select('submitted_by')
-        .eq('entity_id', auth.entity.id);
-      const uniqueSubSubmitters = new Set((subSubmitters || []).map(r => r.submitted_by)).size;
-      submitterEstablished = uniqueSubSubmitters >= 3;
-    }
-
-    // Compute composite score
-    const composite = computeReceiptComposite({
-      delivery_accuracy: deliveryAccuracy,
-      product_accuracy: productAccuracy,
-      price_integrity: priceIntegrity,
-      return_processing: returnProcessing,
-      agent_satisfaction: agentSatisfaction,
-    });
-
-    // Get previous receipt hash for chain integrity
-    const { data: prevReceipt } = await supabase
-      .from('receipts')
-      .select('receipt_hash')
-      .eq('entity_id', targetEntityId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    const previousHash = prevReceipt?.receipt_hash || null;
-
-    // Generate receipt ID
-    const receiptId = `ep_rcpt_${crypto.randomBytes(16).toString('hex')}`;
-
-    // Compute receipt hash — includes ALL truth-bearing fields
-    const receiptData = {
-      entity_id: targetEntityId,
-      submitted_by: auth.entity.id,
-      transaction_ref: body.transaction_ref,
-      transaction_type: body.transaction_type,
-      delivery_accuracy: deliveryAccuracy,
-      product_accuracy: productAccuracy,
-      price_integrity: priceIntegrity,
-      return_processing: returnProcessing,
-      agent_satisfaction: agentSatisfaction,
-      agent_behavior: body.agent_behavior || null,
+    // === DELEGATE TO SHARED RECEIPT ENGINE ===
+    const result = await createReceipt({
+      targetEntitySlug: body.entity_id,
+      submitter: auth.entity,
+      transactionRef: body.transaction_ref,
+      transactionType: body.transaction_type,
+      signals: {
+        delivery_accuracy: body.delivery_accuracy ?? null,
+        product_accuracy: body.product_accuracy ?? null,
+        price_integrity: body.price_integrity ?? null,
+        return_processing: body.return_processing ?? null,
+        agent_satisfaction: body.agent_satisfaction ?? null,
+      },
+      agentBehavior: body.agent_behavior || null,
       claims: body.claims || null,
       evidence: body.evidence || {},
-      submitter_score: submitterScore,
-      submitter_established: submitterEstablished,
-    };
+    });
 
-    const receiptHash = await computeReceiptHash(receiptData, previousHash);
-
-    // Insert receipt (triggers score recomputation + unique_submitters update via DB triggers)
-    const { data: receipt, error: insertError } = await supabase
-      .from('receipts')
-      .insert({
-        receipt_id: receiptId,
-        entity_id: targetEntityId,
-        submitted_by: auth.entity.id,
-        transaction_ref: body.transaction_ref || null,
-        transaction_type: body.transaction_type,
-        delivery_accuracy: deliveryAccuracy,
-        product_accuracy: productAccuracy,
-        price_integrity: priceIntegrity,
-        return_processing: returnProcessing,
-        agent_satisfaction: agentSatisfaction,
-        agent_behavior: body.agent_behavior || null,
-        evidence: body.evidence || {},
-        claims: body.claims || null,
-        submitter_score: submitterScore,
-        submitter_established: submitterEstablished,
-        composite_score: composite,
-        receipt_hash: receiptHash,
-        previous_hash: previousHash,
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error('Receipt insert error:', insertError);
-      return NextResponse.json({ error: 'Failed to submit receipt' }, { status: 500 });
+    if (result.error) {
+      return NextResponse.json(
+        { error: result.error, flags: result.flags },
+        { status: result.status || 500 }
+      );
     }
 
-    // Get updated score
-    const { data: updatedEntity } = await supabase
-      .from('entities')
-      .select('emilia_score, total_receipts')
-      .eq('id', targetEntityId)
-      .single();
-
     const response = {
-      receipt: {
-        receipt_id: receipt.receipt_id,
-        entity_id: receipt.entity_id,
-        composite_score: receipt.composite_score,
-        receipt_hash: receipt.receipt_hash,
-        created_at: receipt.created_at,
-      },
-      entity_score: {
-        emilia_score: updatedEntity.emilia_score,
-        total_receipts: updatedEntity.total_receipts,
-      },
+      receipt: result.receipt,
+      entity_score: result.entityScore,
     };
-
-    // Include fraud warnings (non-blocking flags like closed_loop)
-    if (fraudCheck.flags.length > 0) {
-      response.warnings = fraudCheck.flags;
+    if (result.warnings) {
+      response.warnings = result.warnings;
     }
 
     return NextResponse.json(response, { status: 201 });

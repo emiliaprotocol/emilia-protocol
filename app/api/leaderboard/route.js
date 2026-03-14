@@ -65,7 +65,8 @@ export async function GET(request) {
           ? Math.round((e.successful_receipts / e.total_receipts) * 1000) / 10
           : null,
         verified: e.verified,
-        established: e.total_receipts >= 5,
+        // established requires per-entity effective_evidence computation
+        // Use /api/score/:entityId for canonical establishment status
       })),
       total: count,
       offset,
