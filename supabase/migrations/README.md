@@ -19,6 +19,7 @@ Run in order in Supabase SQL Editor. Each migration is idempotent where possible
 | 011 | `011_policy_native_needs.sql` | trust_policy JSONB on needs |
 | 012 | `012_needs_context_jsonb.sql` | **needs.context TEXT → JSONB** (structured context keys) |
 | 013 | `013_disputes.sql` | Disputes table, trust_reports table, dispute lifecycle, receipt dispute_status |
+| 014 | `014_bilateral_provenance.sql` | Provenance tiers on receipts, bilateral confirmation fields |
 
 ## Important schema notes for new implementers
 
@@ -28,6 +29,9 @@ Run in order in Supabase SQL Editor. Each migration is idempotent where possible
 - `receipts.graph_weight` — added in 009. Used in three-factor receipt weighting.
 - `receipts.dispute_status` — added in 013. Tracks challenge lifecycle.
 - `entities.dispute_count` — added in 013. Auto-incremented by trigger.
+- `receipts.provenance_tier` — added in 014. Six tiers from self_attested to oracle_verified.
+- `receipts.bilateral_status` — added in 014. Tracks bilateral confirmation lifecycle.
+- `receipts.confirmed_by` — added in 014. UUID of confirming entity.
 
 ## For fresh installs
 

@@ -2,7 +2,7 @@
 
 **Entity Measurement Infrastructure for Ledgered Interaction Accountability**
 
-A vendor-neutral trust attestation standard for agentic commerce.
+Portable trust for machine counterparties and third-party software.
 Compatible with ACP. Usable through MCP. Apache 2.0.
 
 ---
