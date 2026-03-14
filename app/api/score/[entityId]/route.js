@@ -54,6 +54,27 @@ export async function GET(request, { params }) {
 
     const established = entity.total_receipts >= 5;
 
+    // Compute score confidence state
+    // This tells consumers HOW MUCH to trust this score
+    let confidence, confidence_message;
+    if (entity.total_receipts === 0) {
+      confidence = 'pending';
+      confidence_message = 'No receipts yet. Score is default.';
+    } else if (entity.emilia_score <= 55 && entity.total_receipts <= 10) {
+      // Low score with few receipts = likely all from unestablished submitters
+      confidence = 'insufficient';
+      confidence_message = `${entity.total_receipts} receipt${entity.total_receipts === 1 ? '' : 's'} from unestablished submitters. Score reflects low credibility weight. Needs receipts from established entities to build a meaningful score.`;
+    } else if (!established) {
+      confidence = 'provisional';
+      confidence_message = `${entity.total_receipts} receipt${entity.total_receipts === 1 ? '' : 's'} so far. Requires 5+ receipts from 3+ unique established submitters for full confidence.`;
+    } else if (entity.total_receipts < 20) {
+      confidence = 'emerging';
+      confidence_message = `Established with ${entity.total_receipts} receipts. Score is meaningful but still building history.`;
+    } else {
+      confidence = 'confident';
+      confidence_message = `${entity.total_receipts} receipts from multiple submitters. High confidence score.`;
+    }
+
     return NextResponse.json({
       entity_id: entity.entity_id,
       display_name: entity.display_name,
@@ -65,14 +86,16 @@ export async function GET(request, { params }) {
       // The score
       emilia_score: entity.emilia_score,
       established,
+      confidence,
+      confidence_message,
       total_receipts: entity.total_receipts,
       successful_receipts: entity.successful_receipts,
       success_rate: entity.total_receipts > 0
         ? Math.round((entity.successful_receipts / entity.total_receipts) * 1000) / 10
         : null,
       
-      // Score breakdown — the transparency that makes EMILIA trustworthy
-      breakdown: established ? {
+      // Score breakdown — only shown when confidence is emerging or higher
+      breakdown: (confidence === 'emerging' || confidence === 'confident') ? {
         delivery_accuracy: entity.avg_delivery_accuracy,
         product_accuracy: entity.avg_product_accuracy,
         price_integrity: entity.avg_price_integrity,

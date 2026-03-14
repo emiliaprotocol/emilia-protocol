@@ -750,10 +750,24 @@
         </p>
       </div>
     </div>
+
+    <!-- SCORE CONFIDENCE STATES -->
+    <div class="reveal" style="margin-top: 48px; max-width: 800px; margin-left: auto; margin-right: auto;">
+      <div class="problem-card" style="border-color: rgba(255,255,255,0.1); padding: 28px;">
+        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--t3); margin-bottom: 16px;">SCORE CONFIDENCE STATES</div>
+        <p style="font-size: 13px; line-height: 1.7; color: var(--t2); margin-bottom: 16px;">Not all scores are equally trustworthy. EP communicates this transparently:</p>
+        <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-family: var(--mono); font-size: 11px;">
+          <span style="color: var(--t3);">PENDING</span><span style="color: var(--t2);">0 receipts — "Score pending, no data yet"</span>
+          <span style="color: var(--amber);">LOW CONFIDENCE</span><span style="color: var(--t2);">Receipts only from unestablished submitters — barely counts</span>
+          <span style="color: var(--gold);">PROVISIONAL</span><span style="color: var(--t2);">&lt;5 receipts — building history, not yet established</span>
+          <span style="color: var(--cyan);">EMERGING</span><span style="color: var(--t2);">5+ receipts from established submitters — score + breakdown shown</span>
+          <span style="color: var(--green);">ESTABLISHED</span><span style="color: var(--t2);">20+ receipts, multiple submitters — high confidence, full trust</span>
+        </div>
+        <p style="font-size: 12px; line-height: 1.6; color: var(--t3); margin-top: 16px;">Breakdown bars only appear at Emerging or higher. The API includes <code style="font-size:10px;">confidence</code> and <code style="font-size:10px;">confidence_message</code> fields so consuming agents can automate trust decisions: "only transact with Established entities."</p>
+      </div>
+    </div>
   </div>
 </section>
-
-<!-- BLOCKCHAIN VERIFICATION -->
 <section id="verify">
   <div class="verify-section">
     <div class="reveal" style="text-align: center;">
@@ -1215,19 +1229,21 @@ async function lookupScore() {
     const r = await fetch(`/api/score/${encodeURIComponent(inp)}`);
     if (r.ok) {
       const raw = await r.json();
-      // Map API response to display format
       const bd = raw.breakdown || {};
       data = {
         name: raw.display_name || raw.entity_id || inp,
         composite: raw.emilia_score,
-        delivery: bd.delivery_accuracy ?? raw.emilia_score,
-        product: bd.product_accuracy ?? raw.emilia_score,
-        price: bd.price_integrity ?? raw.emilia_score,
-        returns: bd.return_processing ?? raw.emilia_score,
-        agent: bd.agent_satisfaction ?? raw.emilia_score,
-        consistency: bd.consistency ?? raw.emilia_score,
+        delivery: bd.delivery_accuracy ?? null,
+        product: bd.product_accuracy ?? null,
+        price: bd.price_integrity ?? null,
+        returns: bd.return_processing ?? null,
+        agent: bd.agent_satisfaction ?? null,
+        consistency: bd.consistency ?? null,
         established: raw.established,
         total_receipts: raw.total_receipts,
+        confidence: raw.confidence,
+        confidence_message: raw.confidence_message,
+        hasBreakdown: raw.breakdown != null,
       };
     } else if (r.status === 404) {
       res.innerHTML = `<div class="sempty" style="color:var(--amber);">Entity "${esc(inp)}" not found. <a href="#register" style="color:var(--cyan);text-decoration:underline;">Register it?</a></div>`;
@@ -1237,7 +1253,6 @@ async function lookupScore() {
       throw 0;
     }
   } catch {
-    // API not live yet — generate deterministic demo score
     isDemo = true;
     const s = hash(inp.toLowerCase());
     data = {
@@ -1248,32 +1263,90 @@ async function lookupScore() {
       returns: 45+(Math.abs(s*3)%50),
       agent: 50+(Math.abs(s*17)%45),
       consistency: 55+(Math.abs(s*23)%40),
+      confidence: 'demo',
+      hasBreakdown: true,
     };
     data.composite = Math.round(data.delivery*0.3+data.product*0.25+data.price*0.15+data.returns*0.15+data.agent*0.1+data.consistency*0.05);
   }
 
   const d = data;
   const composite = d.composite;
-  const grade = composite>=90?'A+':composite>=82?'A':composite>=74?'B+':composite>=66?'B':'C+';
-  const gc = composite>=82?'var(--green)':composite>=70?'var(--cyan)':'var(--gold)';
-  const demoNote = isDemo ? `<div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:16px;opacity:.7;">* Demo score — API not yet live. Live scores will be computed from verified transaction receipts.</div>` : !d.established ? `<div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:16px;opacity:.7;">Score is provisional — ${d.total_receipts||0} receipt${(d.total_receipts||0)===1?'':'s'} so far. Requires 5+ receipts from 3+ unique submitters to establish.</div>` : '';
+
+  // Confidence-based display
+  const confColors = {
+    pending: { badge: 'var(--t3)', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)' },
+    insufficient: { badge: 'var(--amber)', bg: 'rgba(255,159,28,0.06)', border: 'rgba(255,159,28,0.15)' },
+    provisional: { badge: 'var(--gold)', bg: 'rgba(255,215,0,0.06)', border: 'rgba(255,215,0,0.15)' },
+    emerging: { badge: 'var(--cyan)', bg: 'rgba(0,212,255,0.06)', border: 'rgba(0,212,255,0.15)' },
+    confident: { badge: 'var(--green)', bg: 'rgba(0,255,136,0.06)', border: 'rgba(0,255,136,0.15)' },
+    demo: { badge: 'var(--t3)', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)' },
+  };
+  const conf = d.confidence || 'provisional';
+  const cc = confColors[conf] || confColors.provisional;
+  const confLabel = { pending: 'PENDING', insufficient: 'LOW CONFIDENCE', provisional: 'PROVISIONAL', emerging: 'EMERGING', confident: 'ESTABLISHED', demo: 'DEMO' }[conf] || 'UNKNOWN';
+
+  const grade = composite>=90?'A+':composite>=82?'A':composite>=74?'B+':composite>=66?'B':composite>=58?'C+':'—';
+  const gc = composite>=82?'var(--green)':composite>=70?'var(--cyan)':composite>=58?'var(--gold)':'var(--t3)';
+
+  // Show grade only for emerging/confident, otherwise show "—"
+  const showGrade = (conf === 'emerging' || conf === 'confident' || conf === 'demo');
+  const displayGrade = showGrade ? grade : '—';
+
+  // Build bars only if breakdown data exists
+  let barsHtml = '';
+  if (d.hasBreakdown && d.delivery != null) {
+    barsHtml = `
+      ${bar('Composite',composite,'linear-gradient(90deg,var(--cyan),var(--gold))')}
+      ${bar('Delivery Accuracy',d.delivery,'var(--cyan)')}
+      ${bar('Product Accuracy',d.product,'var(--green)')}
+      ${bar('Price Integrity',d.price,'var(--gold)')}
+      ${d.returns != null ? bar('Return Processing',d.returns,'var(--amber)') : ''}
+      ${d.agent != null ? bar('Agent Satisfaction',d.agent,'var(--magenta)') : ''}
+      ${d.consistency != null ? bar('Consistency',d.consistency,'var(--t2)') : ''}
+    `;
+  }
+
+  // Progress bar for low-confidence states
+  let progressHtml = '';
+  if (conf === 'pending' || conf === 'insufficient' || conf === 'provisional') {
+    const receipts = d.total_receipts || 0;
+    const target = 20;
+    const pct = Math.min(100, Math.round((receipts / target) * 100));
+    progressHtml = `
+      <div style="margin: 16px 0 8px;">
+        <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--t3);margin-bottom:6px;">
+          <span>Progress to meaningful score</span>
+          <span>${receipts}/${target} receipts from established submitters</span>
+        </div>
+        <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:${cc.badge};border-radius:2px;transition:width 0.6s ease;"></div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Confidence message
+  const confMsg = d.confidence_message
+    ? `<div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:12px;padding:10px 12px;background:${cc.bg};border:1px solid ${cc.border};border-radius:8px;">${esc(d.confidence_message)}</div>`
+    : isDemo ? `<div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:12px;opacity:.7;">* Demo score — API not yet live.</div>` : '';
 
   res.innerHTML = `<div class="scard">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
       <div>
-        <div style="font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;">EMILIA Score${isDemo?' (DEMO)':''}</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;">EMILIA Score</span>
+          <span style="font-family:var(--mono);font-size:9px;color:${cc.badge};background:${cc.bg};border:1px solid ${cc.border};padding:2px 8px;border-radius:100px;">${confLabel}</span>
+        </div>
         <div style="font-family:var(--disp);font-weight:700;font-size:18px;margin-top:4px;">${esc(d.name||inp)}</div>
       </div>
-      <div style="font-family:var(--disp);font-weight:800;font-size:28px;color:${gc};">${grade}</div>
+      <div style="text-align:right;">
+        <div style="font-family:var(--disp);font-weight:800;font-size:28px;color:${gc};">${displayGrade}</div>
+        <div style="font-family:var(--mono);font-size:12px;color:var(--t2);">${composite}/100</div>
+      </div>
     </div>
-    ${bar('Composite',composite,'linear-gradient(90deg,var(--cyan),var(--gold))')}
-    ${bar('Delivery Accuracy',d.delivery,'var(--cyan)')}
-    ${bar('Product Accuracy',d.product,'var(--green)')}
-    ${bar('Price Integrity',d.price,'var(--gold)')}
-    ${bar('Return Processing',d.returns,'var(--amber)')}
-    ${bar('Agent Satisfaction',d.agent,'var(--magenta)')}
-    ${bar('Consistency',d.consistency,'var(--t2)')}
-    ${demoNote}
+    ${barsHtml}
+    ${progressHtml}
+    ${confMsg}
   </div>`;
 
   setTimeout(()=>res.querySelectorAll('.sfill').forEach(b=>{const w=b.style.width;b.style.width='0%';requestAnimationFrame(()=>b.style.width=w);}),50);

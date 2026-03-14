@@ -207,6 +207,30 @@ This is how FICO works too. A bankruptcy stays on your credit report for 7-10 ye
 
 ## Conflict Receipts (Phase 2)
 
+---
+
+## Score Confidence States
+
+Not all scores are equally trustworthy. EP communicates this transparently through confidence states — visible in the API response and on entity profile pages.
+
+| State | Condition | Display | Meaning |
+|---|---|---|---|
+| **Pending** | 0 receipts | "Score pending" | No data at all |
+| **Insufficient** | Score ≤55, receipts ≤10 | "Low confidence" with progress bar | All receipts from unestablished submitters — effectively no credible data |
+| **Provisional** | <5 receipts or <3 unique submitters | "Provisional" with progress bar | Building history, not yet established |
+| **Emerging** | 5+ receipts, established | Score + breakdown shown | Meaningful but still building |
+| **Confident** | 20+ receipts, multiple submitters | Full score + breakdown | High confidence, reliable signal |
+
+**Key design decisions:**
+
+- Breakdown bars (delivery accuracy, product accuracy, etc.) are only shown at Emerging or Confident. Showing detailed breakdowns for 3 receipts from unestablished submitters would be misleading.
+- A progress bar shows "X/20 receipts from established submitters needed" for low-confidence states. This turns the vulnerability into progressive disclosure — users see the path to credibility.
+- The API response includes `confidence` and `confidence_message` fields so consuming agents can make automated trust decisions: "only transact with Confident-level entities."
+
+**Why this matters:** After the Sybil resistance fix (unestablished submitters = 0.1x weight), an entity with 5 receipts from throwaway accounts scores ~54.9 — barely above default. The confidence state makes this explicit: "Low confidence — receipts from unestablished submitters." No one is misled.
+
+---
+
 When two parties submit conflicting claims about the same transaction:
 
 1. **Both receipts enter "disputed" state** — neither is immediately applied to scores
@@ -299,14 +323,15 @@ EP doesn't handle the commerce. It tells the agent: "this counterparty has a ver
 ### NOW (v1.0 — Live)
 - [x] 15 API endpoints
 - [x] 6-signal scoring engine
-- [x] Submitter-weighted scoring (receipts from trusted entities count more)
+- [x] Submitter-weighted scoring (unestablished = 0.1x, established = score/100)
 - [x] Time-decay scoring (90-day half-life — entities can recover)
-- [x] Sybil resistance (3 layers)
+- [x] Score confidence states (pending → insufficient → provisional → emerging → confident)
+- [x] Sybil resistance (4 layers including submitter credibility)
 - [x] SHA-256 receipt chaining
 - [x] Base L2 Merkle anchoring
 - [x] MCP server (6 tools)
 - [x] TypeScript + Python SDKs
-- [x] Entity profile pages
+- [x] Entity profile pages with confidence display
 - [x] Rate limiting middleware
 - [x] Protocol specification (EP-SPEC v1.0)
 
