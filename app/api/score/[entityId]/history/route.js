@@ -4,22 +4,15 @@ import { getServiceClient } from '@/lib/supabase';
 /**
  * GET /api/score/[entityId]/history
  *
- * Get the score history for an entity — how their EMILIA Score has changed over time.
- * No authentication required — score history is public.
+ * LEGACY COMPATIBILITY: Compatibility score history over time.
+ * For current trust state, use GET /api/trust/profile/:entityId.
+ * 
+ * No authentication required — trust data is public.
  *
  * Query params:
  *   limit  - max results (default 50, max 200)
  *   after  - ISO datetime, only return history after this date
  *   before - ISO datetime, only return history before this date
- *
- * Returns: {
- *   entity_id: "rex-booking-v1",
- *   history: [
- *     { score: 94.2, total_receipts: 1284, created_at: "2026-03-01T..." },
- *     { score: 93.8, total_receipts: 1280, created_at: "2026-02-28T..." },
- *     ...
- *   ]
- * }
  */
 export async function GET(request, { params }) {
   try {

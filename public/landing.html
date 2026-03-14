@@ -916,7 +916,7 @@
       FULLY OPEN SOURCE
     </div>
     <div class="sh" style="font-size: clamp(28px, 3.5vw, 44px);">Trust Can't Be<br><span style="color: var(--cyan);">Proprietary.</span></div>
-    <div class="sd" style="margin: 16px auto 32px; max-width: 520px;">A reputation layer only works if everyone can verify it. EMILIA is open source — audit the scoring, fork the protocol, contribute upstream. No black boxes.</div>
+    <div class="sd" style="margin: 16px auto 32px; max-width: 520px;">A trust layer only works if everyone can verify it. EMILIA is open source — audit the scoring, fork the protocol, contribute upstream. 3 test suites, ~65 tests covering scoring math, trust profiles, policy evaluation, hash determinism, and protocol surface contracts. No black boxes.</div>
     <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 32px;">
       <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" class="btn-p" style="font-size: 13px; padding: 14px 28px; background: var(--t1); color: var(--bg);">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 8px;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
@@ -1031,6 +1031,14 @@
       <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">
         <strong style="color: var(--t1);">Trapped by bad history?</strong><br>
         90-day half-life. Historical establishment is permanent. Current confidence reflects recent evidence. Recovery through sustained performance.
+      </div>
+      <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">
+        <strong style="color: var(--t1);">Gaming discovery?</strong><br>
+        Search and leaderboard rank by confidence or evidence depth, not just score. Filter by min_confidence. Score is a fallback sort key, not the primary trust language.
+      </div>
+      <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">
+        <strong style="color: var(--t1);">Spamming receipts?</strong><br>
+        Identity-aware write throttling — authenticated writes are rate-limited by API key + IP, not IP alone. Shared networks aren't punished. Different identities get separate quotas.
       </div>
     </div>
     <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">

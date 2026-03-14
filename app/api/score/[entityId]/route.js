@@ -5,21 +5,12 @@ import { computeTrustProfile } from '@/lib/scoring-v2';
 /**
  * GET /api/score/[entityId]
  * 
- * Look up an entity's EMILIA Score. This is the public API.
- * No authentication required — scores are public by design.
+ * LEGACY COMPATIBILITY: Returns a compatibility score for backward compat.
+ * For trust decisions, use GET /api/trust/profile/:entityId or POST /api/trust/evaluate.
  * 
- * "Check their EMILIA Score."
+ * No authentication required — trust data is public by design.
  * 
- * Returns: {
- *   entity_id: "rex-booking-v2",
- *   display_name: "Rex — Inbound AI Receptionist",
- *   emilia_score: 94.2,
- *   established: true,
- *   total_receipts: 1284,
- *   breakdown: { delivery_accuracy: 96.1, product_accuracy: 92.3, ... },
- *   verified: true,
- *   entity_type: "agent",
- * }
+ * Returns both historical establishment and current confidence as separate fields.
  */
 export async function GET(request, { params }) {
   try {

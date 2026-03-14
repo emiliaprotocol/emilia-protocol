@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient, authenticateRequest } from '@/lib/supabase';
+import { computeTrustProfile, evaluateTrustPolicy, TRUST_POLICIES } from '@/lib/scoring-v2';
 import crypto from 'crypto';
 
 /**
@@ -91,18 +92,73 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Failed to broadcast need' }, { status: 500 });
     }
 
-    // Find suggested entities (legacy: ranked by relevance × compatibility score)
-    // These are compatibility suggestions only. For trust-native routing,
-    // set trust_policy on the need and claim evaluation will use it.
+    // Find suggested entities
     let matches = [];
     if (embedding) {
       const { data: candidates } = await supabase.rpc('match_entities_to_need', {
         query_embedding: embedding,
         min_score: body.min_emilia_score || 0,
-        match_limit: 10,
+        match_limit: 20, // Fetch extra for post-filtering
         exclude_entity: auth.entity.id,
       });
       matches = candidates || [];
+    }
+
+    // If need has a trust_policy, evaluate each candidate and filter
+    const needPolicy = need.trust_policy;
+    let suggestions;
+
+    if (needPolicy && matches.length > 0) {
+      // Resolve policy
+      let policy;
+      if (typeof needPolicy === 'string') {
+        policy = TRUST_POLICIES[needPolicy];
+        if (!policy) {
+          try { policy = JSON.parse(needPolicy); } catch { policy = TRUST_POLICIES.standard; }
+        }
+      } else if (typeof needPolicy === 'object' && needPolicy !== null) {
+        policy = needPolicy;
+      } else {
+        policy = TRUST_POLICIES.standard;
+      }
+
+      // Evaluate each candidate against the policy
+      const evaluated = await Promise.all(matches.map(async (m) => {
+        const { data: receipts } = await supabase
+          .from('receipts')
+          .select('*')
+          .eq('entity_id', m.id)
+          .order('created_at', { ascending: false })
+          .limit(200);
+
+        const profile = computeTrustProfile(receipts || [], m);
+        const result = evaluateTrustPolicy(profile, policy);
+        return {
+          entity_id: m.entity_id,
+          display_name: m.display_name,
+          compat_score: m.emilia_score,
+          match_score: m.match_score,
+          trust_pass: result.pass,
+          confidence: profile.confidence,
+          effective_evidence: profile.effectiveEvidence,
+        };
+      }));
+
+      // Policy-passing entities first, then by match relevance
+      suggestions = evaluated
+        .sort((a, b) => {
+          if (a.trust_pass !== b.trust_pass) return a.trust_pass ? -1 : 1;
+          return (b.match_score || 0) - (a.match_score || 0);
+        })
+        .slice(0, 10);
+    } else {
+      // Legacy fallback: ranked by relevance × compatibility score
+      suggestions = matches.slice(0, 10).map(m => ({
+        entity_id: m.entity_id,
+        display_name: m.display_name,
+        compat_score: m.emilia_score,
+        match_score: m.match_score,
+      }));
     }
 
     return NextResponse.json({
@@ -115,13 +171,8 @@ export async function POST(request) {
         expires_at: need.expires_at,
         created_at: need.created_at,
       },
-      suggested_entities: matches.map(m => ({
-        entity_id: m.entity_id,
-        display_name: m.display_name,
-        compat_score: m.emilia_score,
-        match_score: m.match_score,
-        _note: 'Ranked by compatibility score. Use trust_policy on the need for policy-native claim evaluation.',
-      })),
+      suggested_entities: suggestions,
+      _suggestion_mode: needPolicy ? 'policy_evaluated' : 'legacy_compat',
     }, { status: 201 });
   } catch (err) {
     console.error('Need broadcast error:', err);
