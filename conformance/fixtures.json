@@ -215,5 +215,73 @@
       "returns": 0.05
     },
     "expected_sum": 1.00
+  },
+
+  "provenance_weight_fixtures": {
+    "description": "Any implementation must use these exact provenance multipliers",
+    "weights": {
+      "self_attested": 0.3,
+      "identified_signed": 0.5,
+      "bilateral": 0.8,
+      "platform_originated": 0.9,
+      "carrier_verified": 0.95,
+      "oracle_verified": 1.0
+    }
+  },
+
+  "four_factor_weight_fixtures": [
+    {
+      "name": "unestablished_self_attested",
+      "description": "Worst-case receipt weight: unestablished submitter, self_attested provenance",
+      "submitter_established": false,
+      "submitter_score": 50,
+      "age_days": 0,
+      "graph_weight": 1.0,
+      "provenance_tier": "self_attested",
+      "expected_weight_approx": 0.03,
+      "tolerance": 0.005
+    },
+    {
+      "name": "established_bilateral",
+      "description": "Strong receipt: established submitter (90), bilateral provenance",
+      "submitter_established": true,
+      "submitter_score": 90,
+      "age_days": 0,
+      "graph_weight": 1.0,
+      "provenance_tier": "bilateral",
+      "expected_weight_approx": 0.72,
+      "tolerance": 0.01
+    },
+    {
+      "name": "old_established_oracle",
+      "description": "Old but high-provenance receipt",
+      "submitter_established": true,
+      "submitter_score": 90,
+      "age_days": 180,
+      "graph_weight": 1.0,
+      "provenance_tier": "oracle_verified",
+      "expected_weight_approx": 0.225,
+      "tolerance": 0.02
+    },
+    {
+      "name": "cluster_penalized",
+      "description": "Good submitter but cluster-detected",
+      "submitter_established": true,
+      "submitter_score": 95,
+      "age_days": 0,
+      "graph_weight": 0.1,
+      "provenance_tier": "bilateral",
+      "expected_weight_approx": 0.076,
+      "tolerance": 0.005
+    }
+  ],
+
+  "protocol_version": {
+    "spec": "1.1",
+    "scoring_model": "v2",
+    "weight_model": "behavioral-first-four-factor",
+    "hash_algorithm": "SHA-256",
+    "canonical_json": "sorted-keys-no-whitespace",
+    "receipt_version": 1
   }
 }

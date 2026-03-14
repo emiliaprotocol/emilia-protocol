@@ -39,6 +39,9 @@ jobs:
       - name: Run adversarial tests
         run: npx vitest run tests/adversarial.test.js
 
+      - name: Run E2E flow tests
+        run: npx vitest run tests/e2e-flows.test.js
+
       - name: Run conformance suite
         run: npx vitest run conformance/conformance.test.js
 

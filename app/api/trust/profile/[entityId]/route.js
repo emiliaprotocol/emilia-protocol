@@ -120,6 +120,7 @@ export async function GET(request, { params }) {
       _compat_note: 'Use trust_profile for trust decisions. compat_score is for sorting/backward compatibility only.',
 
       member_since: entity.created_at,
+      _protocol_version: 'EP/1.1-v2',
     });
   } catch (err) {
     console.error('Trust profile error:', err);
