@@ -73,20 +73,25 @@ EP is a **composable layer**, not a competing protocol. It attaches to ACP, is u
 |-----------|--------|
 | Core specification (EP-CORE-RFC v1.1) | Complete — behavioral-first, trust-profile-centric |
 | Trust profile endpoint (`GET /api/trust/profile/:entityId`) | Deployed — canonical read surface |
-| Policy evaluation (`POST /api/trust/evaluate`) | Deployed — 4 built-in + custom policies |
+| Policy evaluation (`POST /api/trust/evaluate`) | Deployed — 4 built-in + custom JSONB policies, **context-aware** |
+| Context-aware trust evaluation | Deployed — filters receipts by context, falls back to global when sparse |
 | Canonical receipt pipeline (`createReceipt()`) | Deployed — unified path for all receipt ingestion |
-| Behavioral-first scoring (v2) | Deployed — behavioral 40%, consistency 20% |
+| Behavioral-first scoring (v2) | Deployed — behavioral 40%, consistency 25%, weights sum to 1.00 |
 | Effective-evidence Sybil resistance | Deployed — JS + SQL, dampens toward 50 based on weighted evidence |
 | Graph weight in scoring path | Deployed — closed-loop 0.4x, cluster 0.1x + blocked |
-| Context keys on receipts | Deployed — task_type, category, geo, modality, value_band |
-| Current vs historical confidence separation | Deployed — two distinct objects in API |
+| Context keys on receipts | Deployed — task_type, category, geo, modality, value_band, risk_class |
+| Current vs historical confidence separation | Deployed — two distinct objects in all API surfaces |
+| Policy-native needs | Deployed — needs accept JSONB trust policies, claim evaluates against them |
+| Confidence-aware search and leaderboard | Deployed — rank by score, confidence, or evidence; filter by min_confidence |
 | Receipt immutability (DB triggers) | Deployed — content changes rejected, anchor metadata allowed |
-| Canonical JSON hashing (cross-language) | Deployed — sorted keys, deterministic |
-| Rate limiting (Upstash Redis + fallback) | Deployed — all API routes via middleware |
-| MCP server (6 tools) | Published on npm |
+| Canonical JSON hashing (cross-language) | Deployed — sorted keys, deterministic, context included |
+| Identity-aware write throttling | Deployed — API key prefix + IP on writes, IP-only on reads |
+| Server-derived owner identity | Deployed — SHA-256 of client IP, not caller-supplied |
+| MCP server (8 tools, context-aware) | Published on npm — trust-profile-first, context forwarded |
 | TypeScript + Python SDKs | Published on npm + PyPI |
-| Test suites (v1 + v2 scoring, policy evaluation) | Complete |
+| Test suites (3 files, ~65 tests) | Complete — scoring, trust profiles, protocol surfaces, hash determinism |
 | NIST ITL Concept Paper | Prepared (April 2 deadline) |
+| Shopify DTC integration spec | Complete — webhook mapping, receipt mapping, MVP roadmap |
 
 ---
 
