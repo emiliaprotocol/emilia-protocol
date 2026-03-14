@@ -1,6 +1,6 @@
 # EMILIA Protocol
 
-**Entity Measurement Infrastructure for Ledgered Interaction Accountability**
+**Evidence-based Mediation & Identity Layer for Interactions and Appeals**
 
 Portable trust for machine counterparties and third-party software.
 Compatible with ACP. Usable through MCP. Apache 2.0.
