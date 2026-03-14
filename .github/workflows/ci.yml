@@ -36,6 +36,9 @@ jobs:
       - name: Run integration tests
         run: npx vitest run tests/integration.test.js
 
+      - name: Run adversarial tests
+        run: npx vitest run tests/adversarial.test.js
+
       - name: Run conformance suite
         run: npx vitest run conformance/conformance.test.js
 

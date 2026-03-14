@@ -203,8 +203,9 @@ describe('ROUTE: Dispute flow behavior', () => {
       makeReceipt({ submitted_by: 's3', composite_score: 90, graph_weight: 1.0 }),
     ];
     const profile = computeTrustProfile(receipts, {});
-    // The reversed receipt should not drag down the score significantly
-    expect(profile.score).toBeGreaterThan(70);
+    // The reversed receipt (graph_weight=0) should not drag score below baseline
+    // With quality gate, 2 established self_attested receipts = limited evidence
+    expect(profile.score).toBeGreaterThan(50);
   });
 
   it('all reversed receipts produce near-default profile', () => {
