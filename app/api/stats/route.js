@@ -11,25 +11,17 @@ export async function GET() {
   try {
     const supabase = getServiceClient();
 
-    const { data, error } = await supabase
-      .from('entities')
-      .select('id')
-      .order('id', { ascending: false })
-      .limit(1)
-      .single();
-
-    const lastId = data?.id || 2;
-    const nextId = lastId + 1;
-
     // Total active entities
     const { count } = await supabase
       .from('entities')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'active');
 
+    const total = count || 2;
+
     return NextResponse.json({
-      total_entities: count || 2,
-      next_available: nextId,
+      total_entities: total,
+      next_available: total + 1,
     });
   } catch (err) {
     return NextResponse.json({ total_entities: 2, next_available: 3 });

@@ -62,24 +62,28 @@ export async function POST(request) {
       return NextResponse.json({ error: `agent_behavior must be one of: ${validBehaviors.join(', ')}` }, { status: 400 });
     }
 
-    // Cannot score yourself
-    if (body.entity_id === auth.entity.id) {
-      return NextResponse.json({ error: 'An entity cannot submit receipts for itself' }, { status: 403 });
-    }
-
-    // Verify the target entity exists
+    // Verify the target entity exists — accept both UUID and slug
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.entity_id);
     const { data: targetEntity } = await supabase
       .from('entities')
       .select('id, entity_id')
-      .eq('id', body.entity_id)
+      .eq(isUuid ? 'id' : 'entity_id', body.entity_id)
       .single();
 
     if (!targetEntity) {
       return NextResponse.json({ error: 'Target entity not found' }, { status: 404 });
     }
 
+    // Cannot score yourself
+    if (targetEntity.id === auth.entity.id) {
+      return NextResponse.json({ error: 'An entity cannot submit receipts for itself' }, { status: 403 });
+    }
+
+    // Use the resolved UUID for all downstream operations
+    const targetEntityId = targetEntity.id;
+
     // === SYBIL RESISTANCE: Run fraud checks ===
-    const fraudCheck = await runReceiptFraudChecks(supabase, body.entity_id, auth.entity.id);
+    const fraudCheck = await runReceiptFraudChecks(supabase, targetEntityId, auth.entity.id);
     if (!fraudCheck.allowed) {
       return NextResponse.json({
         error: fraudCheck.detail,
@@ -108,7 +112,7 @@ export async function POST(request) {
     const { data: prevReceipt } = await supabase
       .from('receipts')
       .select('receipt_hash')
-      .eq('entity_id', body.entity_id)
+      .eq('entity_id', targetEntityId)
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
@@ -120,7 +124,7 @@ export async function POST(request) {
 
     // Compute receipt hash
     const receiptData = {
-      entity_id: body.entity_id,
+      entity_id: targetEntityId,
       submitted_by: auth.entity.id,
       transaction_ref: body.transaction_ref || null,
       transaction_type: body.transaction_type,
@@ -139,7 +143,7 @@ export async function POST(request) {
       .from('receipts')
       .insert({
         receipt_id: receiptId,
-        entity_id: body.entity_id,
+        entity_id: targetEntityId,
         submitted_by: auth.entity.id,
         transaction_ref: body.transaction_ref || null,
         transaction_type: body.transaction_type,
@@ -166,7 +170,7 @@ export async function POST(request) {
     const { data: updatedEntity } = await supabase
       .from('entities')
       .select('emilia_score, total_receipts')
-      .eq('id', body.entity_id)
+      .eq('id', targetEntityId)
       .single();
 
     const response = {
