@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient, generateApiKey } from '@/lib/supabase';
 import { computeReceiptComposite } from '@/lib/scoring';
-import { checkRegistrationLimits } from '@/lib/sybil';
+import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
 
 /**
  * POST /api/entities/register
@@ -55,14 +55,15 @@ export async function POST(request) {
       return NextResponse.json({ error: `entity_id "${body.entity_id}" is already registered` }, { status: 409 });
     }
 
-    // === SYBIL RESISTANCE: Rate limit registrations ===
-    // Use IP address for rate limiting, NOT caller-supplied owner_id (which is bypassable)
-    const clientIP = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-      || request.headers.get('x-real-ip')
-      || 'unknown';
-    const regCheck = await checkRegistrationLimits(supabase, clientIP);
-    if (!regCheck.allowed) {
-      return NextResponse.json({ error: regCheck.reason }, { status: 429 });
+    // === SYBIL RESISTANCE: IP-based rate limiting ===
+    // Uses lib/rate-limit.js (in-memory sliding window per IP)
+    // NOT the old owner_id-based check which was bypassable
+    const clientIP = getClientIP(request);
+    const regLimit = checkRateLimit(clientIP, 'register');
+    if (!regLimit.allowed) {
+      return NextResponse.json({
+        error: `Rate limit: max registrations per hour exceeded. Retry in ${regLimit.reset}s.`,
+      }, { status: 429 });
     }
 
     // Generate embedding from description + capabilities

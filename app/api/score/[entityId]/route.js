@@ -104,6 +104,8 @@ export async function GET(request, { params }) {
         : null,
       
       // Score breakdown — only shown when confidence is emerging or higher
+      // NOTE: These are historical unweighted averages for display.
+      // The actual emilia_score uses submitter-weighted, time-decayed computation.
       breakdown: (confidence === 'emerging' || confidence === 'confident') ? {
         delivery_accuracy: entity.avg_delivery_accuracy,
         product_accuracy: entity.avg_product_accuracy,
@@ -111,6 +113,7 @@ export async function GET(request, { params }) {
         return_processing: entity.avg_return_processing,
         agent_satisfaction: entity.avg_agent_satisfaction,
         consistency: entity.score_consistency,
+        _note: 'Historical averages. The emilia_score uses submitter-weighted, time-decayed computation.',
       } : null,
       
       // Verification
