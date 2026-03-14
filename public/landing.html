@@ -274,6 +274,10 @@
 
   /* CTA BANNER */
   .cta-banner { background: linear-gradient(135deg, rgba(255,159,28,0.12) 0%, rgba(255,215,0,0.08) 50%, rgba(255,159,28,0.12) 100%); border: 1px solid rgba(255,159,28,0.2); border-radius: 20px; padding: 56px 32px; text-align: center; margin: 0 auto; max-width: 800px; }
+
+  @media (max-width: 600px) {
+    .problem-grid { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
@@ -333,7 +337,8 @@
 
   <p class="hero-sub">
     The trust layer for agentic commerce.<br>
-    Open source. Receipts, not reviews. <strong>The missing protocol in the MCP / A2A / UCP stack.</strong>
+    Open source. Receipts, not reviews. <strong>The missing protocol in the MCP / A2A / UCP stack.</strong><br>
+    <span style="color: var(--t3); font-size: 0.85em;">Three reasons every review system fails: the scorer lies, the platform profits, the algorithm is hidden. EP eliminates all three.</span>
   </p>
 
   <div class="hero-ctas">
@@ -612,7 +617,7 @@
       <div class="st">// How It Works</div>
       <div class="sh">Receipts, Not Reviews</div>
       <div class="rnr-text">
-        Every review system has failed because the platform hosting reviews profits from the businesses being reviewed. EMILIA is different. Agents don't write opinions — they record what happened. Did the delivery arrive on time? Was the product as described? Was the price honored? These are <strong>verifiable facts</strong>. You can't fake a delivery receipt.
+        Every review system has failed because the platform hosting reviews profits from the businesses being reviewed. EMILIA is different. The <strong>buying agent</strong> submits a receipt about the seller — not the other way around. The buyer has no incentive to inflate scores. If they score a bad merchant highly, their own agent routes back and gets burned. <strong>The scorer and the consumer of the score are the same entity.</strong> This creates natural incentive alignment that no review system has ever achieved.
       </div>
     </div>
 
@@ -620,22 +625,54 @@
       <div class="step reveal">
         <div class="step-num">1</div>
         <div class="step-name">Entity Registers</div>
-        <div class="step-desc">Agents, merchants, and service providers register on the protocol with their capabilities.</div>
+        <div class="step-desc">Agents, merchants, and service providers register on the protocol. Each gets a permanent entity ID and API key.</div>
       </div>
       <div class="step reveal">
         <div class="step-num">2</div>
         <div class="step-name">Transactions Happen</div>
-        <div class="step-desc">Commerce flows through existing protocols — UCP, ACP, A2A. EMILIA doesn't handle the transaction.</div>
+        <div class="step-desc">Commerce flows through existing protocols — UCP, ACP, A2A, MCP. EMILIA doesn't handle the transaction. It scores the outcome.</div>
       </div>
       <div class="step reveal">
         <div class="step-num">3</div>
         <div class="step-name">Receipts Are Submitted</div>
-        <div class="step-desc">After each transaction, a receipt records what was promised vs delivered. Cryptographically signed. Immutable.</div>
+        <div class="step-desc">The buying agent submits a receipt recording what was promised vs delivered. Cryptographically hashed. Chain-linked. Immutable. Receipts from higher-scoring entities carry more weight.</div>
       </div>
       <div class="step reveal">
         <div class="step-num">4</div>
         <div class="step-name">Scores Update</div>
-        <div class="step-desc">The EMILIA Score recomputes from rolling receipts. The algorithm is open source. No one can buy it.</div>
+        <div class="step-desc">The EMILIA Score recomputes from rolling receipts. 6 weighted signals. Open source algorithm. No one can buy their score.</div>
+      </div>
+    </div>
+
+    <!-- THREE PHASES OF TRUTH -->
+    <div class="reveal" style="margin-top: 64px; text-align: center;">
+      <div class="st">// The Three Phases of Truth</div>
+      <div class="sh" style="font-size: clamp(24px, 3vw, 36px);">From Self-Reported to<br><span style="color: var(--cyan);">Protocol-Observed</span></div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-top: 32px;">
+      <div class="problem-card reveal" style="border-color: rgba(0,255,136,0.2);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--green);">PHASE 1</div>
+          <span style="font-family: var(--mono); font-size: 9px; color: var(--green); background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.2); padding: 3px 8px; border-radius: 100px;">LIVE</span>
+        </div>
+        <h3 style="color: var(--green);">Behavioral Truth</h3>
+        <p>Buying agents submit receipts with 6 scored signals. Agent satisfaction measured by observable behavior — did they come back, switch, or abandon? Receipts weighted by submitter's own score.</p>
+      </div>
+      <div class="problem-card reveal" style="border-color: rgba(0,212,255,0.2);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--cyan);">PHASE 2</div>
+          <span style="font-family: var(--mono); font-size: 9px; color: var(--cyan); background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.2); padding: 3px 8px; border-radius: 100px;">IN DEV</span>
+        </div>
+        <h3 style="color: var(--cyan);">Evidence-Backed Truth</h3>
+        <p>Agents submit structured claims + evidence: "delivered 3 days late" with tracking ID, "price overcharged 5%" with payment ref. The engine computes the score from facts, not opinions.</p>
+      </div>
+      <div class="problem-card reveal" style="border-color: rgba(255,215,0,0.2);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--gold);">PHASE 3</div>
+          <span style="font-family: var(--mono); font-size: 9px; color: var(--gold); background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.2); padding: 3px 8px; border-radius: 100px;">ROADMAP</span>
+        </div>
+        <h3 style="color: var(--gold);">Protocol-Observed Truth</h3>
+        <p>EP listens to MCP/A2A/UCP protocol events and auto-generates receipts. Verification oracles confirm claims against carrier APIs, payment processors, and listing snapshots. Zero-knowledge score proofs.</p>
       </div>
     </div>
   </div>
@@ -647,7 +684,7 @@
     <div class="reveal" style="text-align: center;">
       <div class="st">// The Algorithm</div>
       <div class="sh">Published. Auditable.<br>Incorruptible.</div>
-      <div class="sd" style="margin: 0 auto;">The scoring algorithm is open source on GitHub. Every weight is published. This is what makes EMILIA trustworthy.</div>
+      <div class="sd" style="margin: 0 auto; max-width: 600px;">The scoring algorithm is open source on GitHub. Every weight is published. Receipts from higher-scoring entities carry more weight — making Sybil attacks exponentially harder.</div>
     </div>
     <div class="algo-grid">
       <div class="algo-item reveal">
@@ -673,12 +710,28 @@
       <div class="algo-item reveal">
         <div class="algo-weight">10%</div>
         <div class="algo-name">Agent Satisfaction</div>
-        <div class="algo-desc">Purchasing agent signal</div>
+        <div class="algo-desc">Behavioral: completed, retried, switched, or abandoned</div>
       </div>
       <div class="algo-item reveal">
         <div class="algo-weight">5%</div>
         <div class="algo-name">Consistency</div>
         <div class="algo-desc">Low variance over time</div>
+      </div>
+    </div>
+
+    <!-- SUBMITTER WEIGHTING + WHO GETS SCORED -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 48px; max-width: 800px; margin-left: auto; margin-right: auto;">
+      <div class="problem-card reveal" style="border-color: rgba(0,212,255,0.15);">
+        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--cyan); margin-bottom: 12px;">SUBMITTER-WEIGHTED SCORING</div>
+        <p style="font-size: 13px; line-height: 1.7; color: var(--t2);">
+          Each receipt is weighted by the submitter's own EMILIA Score. A score-90 entity's receipt counts <strong style="color:var(--t1);">0.9x</strong>. A newcomer at score-50 counts <strong style="color:var(--t1);">0.5x</strong>. A bad actor at score-10 barely registers. Creating 100 fake entities to boost a score is useless — they'd all carry 0.5x weight. <strong style="color:var(--cyan);">The cost of faking exceeds the cost of being good.</strong>
+        </p>
+      </div>
+      <div class="problem-card reveal" style="border-color: rgba(255,215,0,0.15);">
+        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--gold); margin-bottom: 12px;">WHO GETS SCORED?</div>
+        <p style="font-size: 13px; line-height: 1.7; color: var(--t2);">
+          EP scores the <strong style="color:var(--t1);">direct economic counterparty</strong> — whoever took the money and made the promise. Sofa arrives broken? The seller (SofaCo-123) gets <code style="font-size:11px;">as_described: false</code>. The carrier (FedEx) gets <code style="font-size:11px;">delivered: true</code>. <strong style="color:var(--gold);">Separate signals for separate entities.</strong>
+        </p>
       </div>
     </div>
   </div>
@@ -852,14 +905,30 @@
   </div>
 </section>
 
-<!-- CTA BANNER (Kimi-inspired) -->
+<!-- CTA BANNER -->
 <section style="padding: 40px 24px 80px;">
   <div class="cta-banner reveal">
-    <div class="sh" style="font-size: clamp(28px, 3.5vw, 42px);">The Inevitable Trust Layer</div>
-    <div class="sd" style="margin: 12px auto 32px; max-width: 520px;">Not sexy. But true infrastructure never is — until everyone uses it. EMILIA is the trust layer the agent economy will need.</div>
+    <div class="sh" style="font-size: clamp(28px, 3.5vw, 42px);">Why EP Cannot<br>Be Corrupted</div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 28px auto 36px; max-width: 700px; text-align: left;">
+      <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">
+        <strong style="color: var(--t1);">Fake good reviews?</strong><br>
+        Buying agents have no incentive — their own agent routes back and gets burned.
+      </div>
+      <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">
+        <strong style="color: var(--t1);">Sybil attack?</strong><br>
+        Fake entities carry 0.5x weight. Thin-graph flagging. Cluster detection. Velocity monitoring.
+      </div>
+      <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">
+        <strong style="color: var(--t1);">Bribe the platform?</strong><br>
+        No platform. Open source. The code is the authority. Fork it if you disagree.
+      </div>
+    </div>
     <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-      <a href="#score" class="btn-p" style="font-size: 12px; padding: 14px 28px;">Check a Score</a>
-      <a href="#register" class="btn-g" style="font-size: 12px; padding: 14px 28px;">Claim Your Entity</a>
+      <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" class="btn-p" style="font-size: 13px; padding: 14px 28px; background: var(--t1); color: var(--bg); text-decoration: none;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+        &#9733; Star on GitHub
+      </a>
+      <a href="#register" class="btn-p" style="font-size: 13px; padding: 14px 28px; text-decoration: none;">Claim Your Entity</a>
     </div>
   </div>
 </section>
@@ -902,7 +971,27 @@
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
         <div class="faq-q">There are only 2 entities. Where's the traction?</div>
-        <div class="faq-a">EMILIA is a <strong>protocol</strong>, not a product. TCP/IP didn't have "users" — it had implementations. HTTPS didn't have "customers" — it had adoption.<br><br>What's live today: 14 API endpoints, published scoring algorithm (Apache 2.0), MCP server, TypeScript + Python SDKs, blockchain verification layer, and a formal protocol specification. Rex (#1) and Ruby (#2) are live AI agents that will generate real transaction data as agent commerce goes live.<br><br>The traction metric for a protocol is adoption, not MAU. The MCP server means any AI agent can check trust scores with one config line. That's the distribution channel.</div>
+        <div class="faq-a">EMILIA is a <strong>protocol</strong>, not a product. TCP/IP didn't have "users" — it had implementations. HTTPS didn't have "customers" — it had adoption.<br><br>What's live today: 15 API endpoints, published scoring algorithm (Apache 2.0), MCP server, TypeScript + Python SDKs, blockchain verification layer, and a formal protocol specification. Rex (#1) and Ruby (#2) are live AI agents that will generate real transaction data as agent commerce goes live.<br><br>The traction metric for a protocol is adoption, not MAU. The MCP server means any AI agent can check trust scores with one config line. That's the distribution channel.</div>
+      </div>
+
+      <div class="faq-item reveal" onclick="this.classList.toggle('open')">
+        <div class="faq-q">Does Amazon get scored, or the seller? Who exactly is an "entity"?</div>
+        <div class="faq-a">EP scores the <strong>direct economic counterparty</strong> — whoever took the money and made the promise.<br><br>
+          <span style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:12px 0;font-family:var(--mono);font-size:11px;">
+            <span style="color:var(--cyan);">Amazon.com (platform)</span><span style="color:var(--t2);">Aggregate only — too big, shifts blame</span>
+            <span style="color:var(--green);">Seller "SofaCo-123"</span><span style="color:var(--t2);">✅ Individual score — took the money, made the promise</span>
+            <span style="color:var(--green);">FedEx / Amazon Logistics</span><span style="color:var(--t2);">✅ Separate score — made the delivery promise</span>
+            <span style="color:var(--green);">Your buying agent "Clara"</span><span style="color:var(--t2);">✅ Yes — other agents verify if Clara is reliable</span>
+          </span>
+          Sofa arrives broken? <strong>SofaCo-123</strong> gets <code>as_described: false</code>. <strong>FedEx</strong> gets <code>delivered: true, on_time: true</code>. Separate signals for separate entities. Unlike Yelp, which gives the restaurant one star because the delivery driver was late.
+        </div>
+      </div>
+
+      <div class="faq-item reveal" onclick="this.classList.toggle('open')">
+        <div class="faq-q">What's coming in Phase 2 and Phase 3?</div>
+        <div class="faq-a"><strong style="color:var(--cyan);">Phase 2 — Evidence-Backed Truth (in development):</strong> Instead of asking agents to rate 0-100, agents submit structured claims + evidence: "delivered 3 days late" with tracking ID, "overcharged 5%" with payment ref. The engine computes the score from facts. Counter-receipts: sellers can respond within 48 hours.<br><br>
+          <strong style="color:var(--gold);">Phase 3 — Protocol-Observed Truth (roadmap):</strong> EP listens to MCP/A2A/UCP protocol events and auto-generates receipts. Verification oracles confirm claims against carrier APIs, payment processors, and listing snapshots. Zero-knowledge score proofs — prove your score without revealing transaction history.
+        </div>
       </div>
 
     </div>
