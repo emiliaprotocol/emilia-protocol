@@ -312,7 +312,10 @@
     <a href="#register">Register</a>
     <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" style="color: var(--t1);">GitHub</a>
   </div>
-  <div class="ntag"><div class="ntag-dot"></div><span>EP PROTOCOL</span></div>
+  <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" class="btn-p" style="font-size: 11px; padding: 8px 16px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+    &#9733; Star
+  </a>
 </nav>
 
 <!-- HERO -->
@@ -335,6 +338,10 @@
 
   <div class="hero-ctas">
     <a href="#register" class="btn-p">Join the Waitlist</a>
+    <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" class="btn-p" style="background: var(--t1); color: var(--bg);">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+      Star on GitHub
+    </a>
     <a href="#score" class="btn-g">Check a Score</a>
   </div>
 
@@ -472,6 +479,127 @@
         A2A = <span style="color:var(--t2);">TCP/IP</span> &nbsp;·&nbsp;
         UCP = <span style="color:var(--t2);">HTTP</span> &nbsp;·&nbsp;
         EP = <span style="color:var(--cyan); font-weight: 600;">FICO / SSL Certificates</span>
+      </div>
+    </div>
+
+    <!-- BIG ECOSYSTEM DIAGRAM -->
+    <div class="reveal" style="margin-top: 64px; padding: 40px 0;">
+      <div style="text-align: center; margin-bottom: 32px;">
+        <div class="st">// Where EP Sits</div>
+        <div class="sh" style="font-size: clamp(24px, 3vw, 36px);">The Lightweight Trust Layer<br>for the Entire Stack</div>
+      </div>
+      <div style="max-width: 840px; margin: 0 auto; position: relative;">
+        <!-- SVG ECOSYSTEM DIAGRAM -->
+        <svg viewBox="0 0 840 520" xmlns="http://www.w3.org/2000/svg" style="width: 100%; height: auto;">
+          <defs>
+            <linearGradient id="epglow" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#00d4ff" stop-opacity="0.8"/>
+              <stop offset="100%" stop-color="#ffd700" stop-opacity="0.8"/>
+            </linearGradient>
+            <filter id="glow"><feGaussianBlur stdDeviation="4" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+
+          <!-- === TOP ROW: LLM Providers === -->
+          <text x="420" y="28" text-anchor="middle" fill="#4a4f6a" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="3">LLM PROVIDERS</text>
+
+          <!-- Anthropic -->
+          <rect x="50" y="42" width="160" height="52" rx="10" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+          <text x="130" y="64" text-anchor="middle" fill="#e8eaf0" font-family="Outfit, sans-serif" font-weight="700" font-size="14">Anthropic</text>
+          <text x="130" y="82" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono, monospace" font-size="9">Claude · MCP</text>
+
+          <!-- Google -->
+          <rect x="250" y="42" width="160" height="52" rx="10" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+          <text x="330" y="64" text-anchor="middle" fill="#e8eaf0" font-family="Outfit, sans-serif" font-weight="700" font-size="14">Google</text>
+          <text x="330" y="82" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono, monospace" font-size="9">Gemini · A2A · UCP</text>
+
+          <!-- OpenAI -->
+          <rect x="450" y="42" width="160" height="52" rx="10" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+          <text x="530" y="64" text-anchor="middle" fill="#e8eaf0" font-family="Outfit, sans-serif" font-weight="700" font-size="14">OpenAI</text>
+          <text x="530" y="82" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono, monospace" font-size="9">GPT · ACP</text>
+
+          <!-- Meta -->
+          <rect x="650" y="42" width="140" height="52" rx="10" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.1)" stroke-width="1"/>
+          <text x="720" y="64" text-anchor="middle" fill="#e8eaf0" font-family="Outfit, sans-serif" font-weight="700" font-size="14">Meta</text>
+          <text x="720" y="82" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono, monospace" font-size="9">Llama</text>
+
+          <!-- Connection lines from LLMs down to protocols -->
+          <line x1="130" y1="94" x2="130" y2="140" stroke="rgba(255,255,255,0.08)" stroke-width="1" stroke-dasharray="4,4"/>
+          <line x1="330" y1="94" x2="330" y2="140" stroke="rgba(255,255,255,0.08)" stroke-width="1" stroke-dasharray="4,4"/>
+          <line x1="530" y1="94" x2="530" y2="140" stroke="rgba(255,255,255,0.08)" stroke-width="1" stroke-dasharray="4,4"/>
+          <line x1="720" y1="94" x2="720" y2="140" stroke="rgba(255,255,255,0.08)" stroke-width="1" stroke-dasharray="4,4"/>
+
+          <!-- === MIDDLE ROW: Agent Protocols === -->
+          <text x="420" y="155" text-anchor="middle" fill="#4a4f6a" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="3">AGENT PROTOCOLS</text>
+
+          <!-- MCP -->
+          <rect x="30" y="168" width="150" height="60" rx="10" fill="rgba(0,212,255,0.06)" stroke="rgba(0,212,255,0.2)" stroke-width="1"/>
+          <text x="105" y="192" text-anchor="middle" fill="#00d4ff" font-family="Outfit, sans-serif" font-weight="800" font-size="16">MCP</text>
+          <text x="105" y="216" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono, monospace" font-size="9">Tools &amp; APIs</text>
+
+          <!-- A2A -->
+          <rect x="210" y="168" width="150" height="60" rx="10" fill="rgba(0,255,136,0.06)" stroke="rgba(0,255,136,0.2)" stroke-width="1"/>
+          <text x="285" y="192" text-anchor="middle" fill="#00ff88" font-family="Outfit, sans-serif" font-weight="800" font-size="16">A2A</text>
+          <text x="285" y="216" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono, monospace" font-size="9">Agent Comms</text>
+
+          <!-- UCP -->
+          <rect x="390" y="168" width="150" height="60" rx="10" fill="rgba(255,215,0,0.06)" stroke="rgba(255,215,0,0.2)" stroke-width="1"/>
+          <text x="465" y="192" text-anchor="middle" fill="#ffd700" font-family="Outfit, sans-serif" font-weight="800" font-size="16">UCP</text>
+          <text x="465" y="216" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono, monospace" font-size="9">Commerce</text>
+
+          <!-- ACP -->
+          <rect x="570" y="168" width="150" height="60" rx="10" fill="rgba(255,159,28,0.06)" stroke="rgba(255,159,28,0.2)" stroke-width="1"/>
+          <text x="645" y="192" text-anchor="middle" fill="#ff9f1c" font-family="Outfit, sans-serif" font-weight="800" font-size="16">ACP / AP2</text>
+          <text x="645" y="216" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono, monospace" font-size="9">Payments</text>
+
+          <!-- Connection lines from protocols down to EP -->
+          <line x1="105" y1="228" x2="420" y2="290" stroke="rgba(0,212,255,0.15)" stroke-width="1"/>
+          <line x1="285" y1="228" x2="420" y2="290" stroke="rgba(0,255,136,0.15)" stroke-width="1"/>
+          <line x1="465" y1="228" x2="420" y2="290" stroke="rgba(255,215,0,0.15)" stroke-width="1"/>
+          <line x1="645" y1="228" x2="420" y2="290" stroke="rgba(255,159,28,0.15)" stroke-width="1"/>
+
+          <!-- === EP — THE TRUST LAYER (center, glowing) === -->
+          <rect x="170" y="280" width="500" height="80" rx="14" fill="rgba(0,212,255,0.08)" stroke="url(#epglow)" stroke-width="2" filter="url(#glow)"/>
+          <text x="420" y="312" text-anchor="middle" fill="#00d4ff" font-family="Outfit, sans-serif" font-weight="900" font-size="22">EMILIA PROTOCOL (EP)</text>
+          <text x="420" y="338" text-anchor="middle" fill="#e8eaf0" font-family="JetBrains Mono, monospace" font-size="11">Trust Layer — Receipts, Not Reviews — Open Source</text>
+          <text x="420" y="354" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono, monospace" font-size="9">Lightweight blockchain-anchored reputation scoring</text>
+
+          <!-- Connection lines from EP down to enterprises -->
+          <line x1="240" y1="360" x2="130" y2="410" stroke="rgba(0,212,255,0.12)" stroke-width="1" stroke-dasharray="4,4"/>
+          <line x1="350" y1="360" x2="310" y2="410" stroke="rgba(0,212,255,0.12)" stroke-width="1" stroke-dasharray="4,4"/>
+          <line x1="490" y1="360" x2="490" y2="410" stroke="rgba(0,212,255,0.12)" stroke-width="1" stroke-dasharray="4,4"/>
+          <line x1="600" y1="360" x2="670" y2="410" stroke="rgba(0,212,255,0.12)" stroke-width="1" stroke-dasharray="4,4"/>
+
+          <!-- === BOTTOM ROW: Enterprises === -->
+          <text x="420" y="405" text-anchor="middle" fill="#4a4f6a" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="3">ENTERPRISES USING AI AGENTS</text>
+
+          <!-- Enterprise boxes -->
+          <rect x="30" y="418" width="120" height="44" rx="8" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+          <text x="90" y="445" text-anchor="middle" fill="#7a809a" font-family="Outfit, sans-serif" font-weight="600" font-size="12">Walmart</text>
+
+          <rect x="170" y="418" width="120" height="44" rx="8" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+          <text x="230" y="445" text-anchor="middle" fill="#7a809a" font-family="Outfit, sans-serif" font-weight="600" font-size="12">Shopify</text>
+
+          <rect x="310" y="418" width="120" height="44" rx="8" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+          <text x="370" y="445" text-anchor="middle" fill="#7a809a" font-family="Outfit, sans-serif" font-weight="600" font-size="12">Stripe</text>
+
+          <rect x="450" y="418" width="120" height="44" rx="8" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+          <text x="510" y="445" text-anchor="middle" fill="#7a809a" font-family="Outfit, sans-serif" font-weight="600" font-size="12">Visa</text>
+
+          <rect x="590" y="418" width="120" height="44" rx="8" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+          <text x="650" y="445" text-anchor="middle" fill="#7a809a" font-family="Outfit, sans-serif" font-weight="600" font-size="12">Coinbase</text>
+
+          <rect x="730" y="418" width="80" height="44" rx="8" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+          <text x="770" y="445" text-anchor="middle" fill="#4a4f6a" font-family="Outfit, sans-serif" font-weight="600" font-size="12">+ more</text>
+
+          <!-- Base L2 anchor bar at bottom -->
+          <rect x="170" y="485" width="500" height="28" rx="6" fill="rgba(255,215,0,0.04)" stroke="rgba(255,215,0,0.15)" stroke-width="1"/>
+          <text x="420" y="504" text-anchor="middle" fill="#ffd700" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="2">BASE L2 (COINBASE) — MERKLE ROOT ANCHORING — $0.60/MO</text>
+        </svg>
+
+        <div style="text-align: center; margin-top: 20px; font-family: var(--mono); font-size: 11px; color: var(--t3); line-height: 2;">
+          Every protocol handles mechanics. <strong style="color: var(--t1);">EP answers: should you trust this entity?</strong><br>
+          No tokens. No DeFi. Just cryptographic receipts anchored on-chain.
+        </div>
       </div>
     </div>
   </div>
@@ -639,12 +767,18 @@
     </div>
     <div class="sh" style="font-size: clamp(28px, 3.5vw, 44px);">Trust Can't Be<br><span style="color: var(--cyan);">Proprietary.</span></div>
     <div class="sd" style="margin: 16px auto 32px; max-width: 520px;">A reputation layer only works if everyone can verify it. EMILIA is open source — audit the scoring, fork the protocol, contribute upstream. No black boxes.</div>
-    <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-      <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" class="btn-g" style="font-size: 12px; padding: 12px 24px;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
-        View on GitHub
+    <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 32px;">
+      <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" class="btn-p" style="font-size: 13px; padding: 14px 28px; background: var(--t1); color: var(--bg);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 8px;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+        &#9733; Star on GitHub
       </a>
-      <a href="https://github.com/emiliaprotocol/emilia-protocol#readme" target="_blank" class="btn-g" style="font-size: 12px; padding: 12px 24px;">Read the Docs</a>
+      <a href="/spec" class="btn-g" style="font-size: 13px; padding: 14px 28px;">Read the Spec</a>
+      <a href="https://github.com/emiliaprotocol/emilia-protocol#readme" target="_blank" class="btn-g" style="font-size: 13px; padding: 14px 28px;">API Docs</a>
+    </div>
+    <div style="display: flex; justify-content: center; gap: 32px; flex-wrap: wrap; font-family: var(--mono); font-size: 11px; color: var(--t3);">
+      <span>npm: <a href="https://www.npmjs.com/package/@emilia-protocol/sdk" target="_blank" style="color: var(--cyan); text-decoration: none;">@emilia-protocol/sdk</a></span>
+      <span>PyPI: <a href="https://pypi.org/project/emilia-protocol/" target="_blank" style="color: var(--cyan); text-decoration: none;">emilia-protocol</a></span>
+      <span>MCP: <a href="https://www.npmjs.com/package/@emilia-protocol/mcp-server" target="_blank" style="color: var(--cyan); text-decoration: none;">@emilia-protocol/mcp-server</a></span>
     </div>
   </div>
 </section>
