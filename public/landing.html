@@ -313,6 +313,7 @@
     <a href="#verify">Verify</a>
     <a href="#api">API</a>
     <a href="#faq">FAQ</a>
+    <a href="/appeal">Appeal</a>
     <a href="#register">Register</a>
     <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" style="color: var(--t1);">GitHub</a>
   </div>
@@ -1486,6 +1487,25 @@ function shareEntity(p) {
 
 function hash(s){let h=0;for(let i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}return h;}
 function esc(t){const d=document.createElement('div');d.textContent=t;return d.innerHTML;}
+
+// Back to top button
+(function(){
+  const btn = document.createElement('button');
+  btn.innerHTML = '&#9650;';
+  btn.setAttribute('aria-label', 'Back to top');
+  Object.assign(btn.style, {
+    position: 'fixed', bottom: '32px', right: '32px', width: '44px', height: '44px',
+    borderRadius: '50%', border: '1px solid rgba(255,255,255,0.1)',
+    background: 'rgba(10,11,20,0.9)', color: '#00d4ff', fontSize: '18px',
+    cursor: 'pointer', opacity: '0', transition: 'opacity 0.3s', zIndex: '9999',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    backdropFilter: 'blur(8px)', boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+  });
+  btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  window.addEventListener('scroll', () => { btn.style.opacity = window.scrollY > 600 ? '1' : '0'; });
+  document.body.appendChild(btn);
+})();
 </script>
+<style>html { scroll-behavior: smooth; }</style>
 </body>
 </html>
