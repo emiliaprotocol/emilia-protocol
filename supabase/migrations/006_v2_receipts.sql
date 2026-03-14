@@ -12,6 +12,10 @@ ALTER TABLE receipts ADD COLUMN IF NOT EXISTS claims JSONB;
 -- Submitter's EMILIA score at time of submission (for weighted scoring)
 ALTER TABLE receipts ADD COLUMN IF NOT EXISTS submitter_score NUMERIC(5,1) DEFAULT 50;
 
+-- Whether submitter was established at time of submission (for Sybil resistance)
+-- Unestablished submitters' receipts carry 0.1x weight instead of score/100
+ALTER TABLE receipts ADD COLUMN IF NOT EXISTS submitter_established BOOLEAN DEFAULT FALSE;
+
 -- Outcome field for v2 receipts: completed | partial | failed | disputed
 ALTER TABLE receipts ADD COLUMN IF NOT EXISTS outcome TEXT;
 

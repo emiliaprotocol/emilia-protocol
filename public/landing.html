@@ -635,7 +635,7 @@
       <div class="step reveal">
         <div class="step-num">3</div>
         <div class="step-name">Receipts Are Submitted</div>
-        <div class="step-desc">The buying agent submits a receipt recording what was promised vs delivered. Cryptographically hashed. Chain-linked. Immutable. Receipts from higher-scoring entities carry more weight.</div>
+        <div class="step-desc">The buying agent submits a receipt recording what was promised vs delivered. Cryptographically hashed. Chain-linked. Immutable. Receipts from established, high-scoring entities carry full weight — newcomers carry only 0.1x until proven.</div>
       </div>
       <div class="step reveal">
         <div class="step-num">4</div>
@@ -656,7 +656,7 @@
           <span style="font-family: var(--mono); font-size: 9px; color: var(--green); background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.2); padding: 3px 8px; border-radius: 100px;">LIVE</span>
         </div>
         <h3 style="color: var(--green);">Behavioral Truth</h3>
-        <p>Buying agents submit receipts with 6 scored signals. Agent satisfaction measured by observable behavior — did they come back, switch, or abandon? Receipts weighted by submitter's own score.</p>
+        <p>Buying agents submit receipts with 6 scored signals. Agent satisfaction measured by observable behavior — did they come back, switch, or abandon? Receipts from unestablished entities carry only 0.1x weight — you must earn credibility before your voice counts.</p>
       </div>
       <div class="problem-card reveal" style="border-color: rgba(0,212,255,0.2);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
@@ -724,7 +724,7 @@
       <div class="problem-card reveal" style="border-color: rgba(0,212,255,0.15);">
         <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--cyan); margin-bottom: 12px;">SUBMITTER-WEIGHTED SCORING</div>
         <p style="font-size: 13px; line-height: 1.7; color: var(--t2);">
-          Each receipt is weighted by the submitter's own EMILIA Score. A score-90 entity's receipt counts <strong style="color:var(--t1);">0.9x</strong>. A newcomer at score-50 counts <strong style="color:var(--t1);">0.5x</strong>. A bad actor at score-10 barely registers. <strong style="color:var(--cyan);">The cost of faking exceeds the cost of being good.</strong>
+          Each receipt is weighted by the submitter's credibility. An established score-90 entity's receipt counts <strong style="color:var(--t1);">0.9x</strong>. But an unestablished newcomer — no matter their score — counts only <strong style="color:var(--t1);">0.1x</strong>. To become established, you need 5+ receipts from 3+ unique submitters. Creating 100 throwaway entities is useless — each carries 0.1x weight. <strong style="color:var(--cyan);">The cost of faking spirals exponentially.</strong>
         </p>
       </div>
       <div class="problem-card reveal" style="border-color: rgba(0,255,136,0.15);">
@@ -932,7 +932,7 @@
       </div>
       <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">
         <strong style="color: var(--t1);">Sybil attack?</strong><br>
-        Fake entities carry 0.5x weight. Thin-graph flagging. Cluster detection. Velocity monitoring.
+        Fake entities carry only 0.1x weight until established. Thin-graph flagging. Cluster detection. Velocity monitoring.
       </div>
       <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">
         <strong style="color: var(--t1);">Bribe the platform?</strong><br>
@@ -983,10 +983,11 @@
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
         <div class="faq-q">How do you prevent fake entities from gaming the system?</div>
-        <div class="faq-a"><strong>Three layers:</strong><br><br>
+        <div class="faq-a"><strong>Four layers:</strong><br><br>
           <strong style="color:var(--cyan);">Layer 1 — Registration friction.</strong> Rate-limited registration (max 5 entities/day per owner), email verification, optional micro-deposit staking.<br><br>
           <strong style="color:var(--cyan);">Layer 2 — Graph analysis.</strong> Closed-loop detection (A scores B, B scores A), thin-graph flagging (many receipts but few unique submitters), velocity monitoring, cluster detection.<br><br>
-          <strong style="color:var(--cyan);">Layer 3 — Protocol design.</strong> No self-scoring. Rolling window of 200 receipts. New entity dampening. Bidirectional scoring means creating a fake buyer leaves a permanent, auditable trail. Every fake receipt is recorded forever — you can't clean up after a Sybil attack.
+          <strong style="color:var(--cyan);">Layer 3 — Submitter credibility.</strong> Receipts from unestablished entities carry only <strong>0.1x weight</strong>. To become established, an entity needs 5+ receipts from 3+ unique submitters. Creating 100 throwaway entities is useless — each carries 0.1x, and to get full weight, each throwaway would need its own network of established counterparties. The cost spirals exponentially.<br><br>
+          <strong style="color:var(--cyan);">Layer 4 — Protocol design.</strong> No self-scoring. Rolling window of 200 receipts. New entity dampening. Bidirectional scoring means creating a fake buyer leaves a permanent, auditable trail. Every fake receipt is recorded forever — you can't clean up after a Sybil attack.
         </div>
       </div>
 

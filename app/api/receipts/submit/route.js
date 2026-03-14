@@ -115,8 +115,12 @@ export async function POST(request) {
       if (claimScores.return_processing != null) returnProcessing = claimScores.return_processing;
     }
 
-    // Capture submitter's current score for submitter-weighted scoring
+    // Capture submitter's current score and establishment status
     const submitterScore = auth.entity.emilia_score ?? 50;
+    const submitterEstablished = (auth.entity.total_receipts ?? 0) >= 5;
+    // Note: full establishment check requires 3+ unique submitters too,
+    // but total_receipts >= 5 is a fast proxy. Submitters who have received
+    // 5+ receipts themselves have proven history.
 
     // Compute composite score
     const composite = computeReceiptComposite({
@@ -175,6 +179,7 @@ export async function POST(request) {
         evidence: body.evidence || {},
         claims: body.claims || null,
         submitter_score: submitterScore,
+        submitter_established: submitterEstablished,
         composite_score: composite,
         receipt_hash: receiptHash,
         previous_hash: previousHash,

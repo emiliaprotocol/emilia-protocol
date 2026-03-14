@@ -103,7 +103,7 @@ FICO doesn't ask borrowers to rate their lender. It watches whether they pay. EP
 receipt_weight = submitter_score / 100
 ```
 
-A score-90 entity's receipt counts 0.9x. A score-50 newcomer's counts 0.5x. This makes Sybil attacks exponentially harder — fake entities with default scores can barely move a real entity's score.
+An established score-90 entity's receipt counts 0.9x. But an **unestablished** entity — regardless of score — counts only **0.1x**. To become established, an entity needs 5+ receipts from 3+ unique submitters. This makes Sybil attacks exponentially harder — creating 100 throwaway entities is useless because each carries 0.1x weight, and to become established each would need its own network of real counterparties.
 
 ### Phase 3: Protocol-Observed Truth (ROADMAP)
 
@@ -168,7 +168,7 @@ This granularity is unique to EP. Yelp gives the restaurant one star even if the
 
 | Attack | Defense | Why It Works |
 |---|---|---|
-| Fake entities submitting good receipts | Sybil resistance: rate limiting, thin-graph detection, cluster analysis | Creating fake entities is hard; their receipts carry 0.5x weight |
+| Fake entities submitting good receipts | Sybil resistance: rate limiting, thin-graph detection, cluster analysis | Unestablished entities' receipts carry only 0.1x weight — creating throwaway entities is useless |
 | Seller inflating own score | No self-scoring + closed-loop detection | Protocol enforces separation |
 | Buyer filing false bad reviews | Buyer's own score degrades if they file many negatives | Incentive alignment: bad-faith scoring is observable |
 | Buying own products to generate good receipts | Thin-graph flagging: 5 receipts from 1 submitter = flagged | Diversity requirement: 3+ unique submitters to establish |
