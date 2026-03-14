@@ -1,0 +1,19 @@
+{
+  "protocol": "emilia-protocol",
+  "version": "1.1",
+  "trust_profile_url": "https://emiliaprotocol.ai/api/trust/profile/{entity_id}",
+  "trust_evaluate_url": "https://emiliaprotocol.ai/api/trust/evaluate",
+  "receipt_submit_url": "https://emiliaprotocol.ai/api/receipts/submit",
+  "receipt_confirm_url": "https://emiliaprotocol.ai/api/receipts/confirm",
+  "dispute_file_url": "https://emiliaprotocol.ai/api/disputes/file",
+  "dispute_report_url": "https://emiliaprotocol.ai/api/disputes/report",
+  "appeal_page_url": "https://emiliaprotocol.ai/appeal",
+  "score_url": "https://emiliaprotocol.ai/api/score/{entity_id}",
+  "spec_url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/EP-CORE-RFC.md",
+  "conformance_url": "https://github.com/emiliaprotocol/emilia-protocol/tree/main/conformance",
+  "mcp_package": "@emilia-protocol/mcp-server",
+  "supported_policies": ["strict", "standard", "permissive", "discovery"],
+  "context_keys": ["task_type", "category", "geo", "modality", "value_band", "risk_class"],
+  "provenance_tiers": ["self_attested", "identified_signed", "bilateral", "platform_originated", "carrier_verified", "oracle_verified"],
+  "constitutional_principle": "Trust must never be more powerful than appeal."
+}

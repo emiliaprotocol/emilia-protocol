@@ -34,6 +34,26 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Dispute not found' }, { status: 404 });
     }
 
+    // Redact evidence for public view — show field names but not raw values
+    // Full evidence is restricted to dispute participants and operators
+    function redactEvidence(evidence) {
+      if (!evidence || typeof evidence !== 'object') return null;
+      const redacted = {};
+      for (const key of Object.keys(evidence)) {
+        const val = evidence[key];
+        if (typeof val === 'string' && val.length > 20) {
+          redacted[key] = `[redacted — ${val.length} chars]`;
+        } else if (typeof val === 'string') {
+          redacted[key] = val; // Short values like status codes are safe
+        } else if (typeof val === 'boolean' || typeof val === 'number') {
+          redacted[key] = val;
+        } else {
+          redacted[key] = '[redacted]';
+        }
+      }
+      return redacted;
+    }
+
     return NextResponse.json({
       dispute_id: dispute.dispute_id,
       receipt_id: dispute.receipt_id,
@@ -48,15 +68,15 @@ export async function GET(request, { params }) {
       // Dispute details
       reason: dispute.reason,
       description: dispute.description,
-      evidence: dispute.evidence,
+      evidence_summary: redactEvidence(dispute.evidence),
+      _evidence_note: 'Full evidence is restricted to dispute participants and operators.',
       
       // Lifecycle
       status: dispute.status,
       response_deadline: dispute.response_deadline,
       
       // Response (if any)
-      response: dispute.response,
-      response_evidence: dispute.response_evidence,
+      has_response: !!dispute.response,
       responded_at: dispute.responded_at,
       
       // Resolution (if resolved)

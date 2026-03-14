@@ -9,7 +9,7 @@ import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/rate-limit';
  * Register:     throttled by IP only (no API key yet)
  */
 
-const WRITE_CATEGORIES = ['submit', 'anchor'];
+const WRITE_CATEGORIES = ['submit', 'anchor', 'dispute_write', 'report_write'];
 
 function getCategory(pathname) {
   if (pathname.startsWith('/api/entities/register')) return 'register';
@@ -17,6 +17,10 @@ function getCategory(pathname) {
   if (pathname.startsWith('/api/needs/') && pathname.endsWith('/rate')) return 'submit';
   if (pathname.startsWith('/api/needs/broadcast')) return 'submit';
   if (pathname.startsWith('/api/blockchain/anchor')) return 'anchor';
+  if (pathname.startsWith('/api/disputes/report')) return 'report_write';
+  if (pathname.startsWith('/api/disputes/file')) return 'dispute_write';
+  if (pathname.startsWith('/api/disputes/respond')) return 'dispute_write';
+  if (pathname.startsWith('/api/disputes/resolve')) return 'dispute_write';
   if (pathname.startsWith('/api/waitlist')) return 'waitlist';
   if (pathname.startsWith('/api/')) return 'read';
   return null;

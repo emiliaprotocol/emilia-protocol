@@ -64,6 +64,8 @@ export async function POST(request) {
       claims: body.claims || null,
       evidence: body.evidence || {},
       context: body.context || null,
+      provenanceTier: body.provenance_tier || 'self_attested',
+      requestBilateral: body.request_bilateral || false,
     });
 
     if (result.error) {

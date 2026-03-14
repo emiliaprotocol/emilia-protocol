@@ -75,21 +75,39 @@ export async function GET(request, { params }) {
       unique_submitters: profile.uniqueSubmitters,
       receipt_count: profile.receiptCount,
 
-      // Due process — dispute summary
+      // Due process — dispute summary (accurate counts + recent items)
       disputes: await (async () => {
-        const { data: disputeData } = await supabase
+        // True counts from full table
+        const { count: total } = await supabase
           .from('disputes')
-          .select('dispute_id, status, reason, created_at, resolved_at')
+          .select('id', { count: 'exact', head: true })
+          .eq('entity_id', entity.id);
+
+        const { count: activeCount } = await supabase
+          .from('disputes')
+          .select('id', { count: 'exact', head: true })
+          .eq('entity_id', entity.id)
+          .in('status', ['open', 'under_review']);
+
+        const { count: reversedCount } = await supabase
+          .from('disputes')
+          .select('id', { count: 'exact', head: true })
+          .eq('entity_id', entity.id)
+          .eq('status', 'reversed');
+
+        // Recent disputes (limited)
+        const { data: recent } = await supabase
+          .from('disputes')
+          .select('dispute_id, status, reason')
           .eq('entity_id', entity.id)
           .order('created_at', { ascending: false })
-          .limit(10);
-        const active = (disputeData || []).filter(d => ['open', 'under_review'].includes(d.status));
-        const reversed = (disputeData || []).filter(d => d.status === 'reversed');
+          .limit(5);
+
         return {
-          total: (disputeData || []).length,
-          active: active.length,
-          reversed: reversed.length,
-          recent: (disputeData || []).slice(0, 3).map(d => ({
+          total: total || 0,
+          active: activeCount || 0,
+          reversed: reversedCount || 0,
+          recent: (recent || []).map(d => ({
             dispute_id: d.dispute_id,
             status: d.status,
             reason: d.reason,

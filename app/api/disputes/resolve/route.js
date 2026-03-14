@@ -94,7 +94,6 @@ export async function POST(request) {
     // Apply resolution effects to the receipt
     if (body.resolution === 'reversed') {
       // Neutralize the receipt — set graph_weight to 0.0
-      // The receipt stays in the ledger but has zero influence on scoring
       await supabase
         .from('receipts')
         .update({
@@ -103,8 +102,21 @@ export async function POST(request) {
         })
         .eq('receipt_id', dispute.receipt_id);
 
-      // Recompute entity score (the receipt now carries 0 weight)
-      // Score recomputation happens on next score request (lazy)
+      // IMMEDIATELY recompute stored score — due process must actually undo harm
+      try {
+        const { data: newScore } = await supabase.rpc('compute_emilia_score', {
+          p_entity_id: dispute.entity_id,
+        });
+        if (newScore !== null && newScore !== undefined) {
+          await supabase
+            .from('entities')
+            .update({ emilia_score: newScore, updated_at: now })
+            .eq('id', dispute.entity_id);
+        }
+      } catch (e) {
+        console.warn('Score recomputation after reversal failed:', e.message);
+        // Non-fatal — trust profile route still computes correctly from receipts
+      }
     } else if (body.resolution === 'upheld') {
       await supabase
         .from('receipts')

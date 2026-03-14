@@ -189,7 +189,7 @@ Establishment is **historical** — computed over all receipts. Scoring is **cur
 | Graph analysis in scoring path | ✅ Live |
 | Upstash Redis rate limiting | ✅ Ready (needs env vars) |
 | Bilateral attestations | 🔲 Phase 2 |
-| Dispute lifecycle | 🔲 Phase 2 |
+| Dispute lifecycle | ✅ Live — file, respond, resolve, human appeal |
 | Oracle verification | 🔲 Phase 3 |
 | Relationship/contextual trust | 🔲 Phase 3 |
 
