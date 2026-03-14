@@ -35,18 +35,39 @@ POST /api/trust/evaluate
   }
 ```
 
+### Install Preflight (EP-SX: Software Trust)
+
+```
+POST /api/trust/install-preflight
+{
+  "entity_id": "mcp-server-ep-v1",
+  "policy": "mcp_server_safe_v1",
+  "context": { "host": "mcp", "permission_class": "bounded_external_access" }
+}
+
+→ {
+    "decision": "allow",
+    "reasons": [
+      "✓ publisher_verified",
+      "✓ provenance_verified",
+      "✓ permission_class_acceptable"
+    ]
+  }
+```
+
 ### Compatibility score (legacy)
 
 EP also exposes a 0-100 compatibility score via `GET /api/score/:entityId` for sorting, leaderboards, and backward compatibility. This is a weighted composite, **not** the primary protocol output. The trust profile is the canonical truth.
 
 ### How trust is computed
 
-Receipts are weighted by three factors:
+Receipts are weighted by four factors:
 - **Submitter credibility**: unestablished submitters = 0.1x, established = score/100
 - **Time decay**: 90-day half-life, recent receipts matter more
 - **Graph health**: thin graphs, closed loops, and clusters reduce weight
+- **Provenance**: self_attested (0.3x) → bilateral (0.8x) → oracle_verified (1.0x)
 
-Scores are dampened by **effective evidence** (sum of weighted receipts), not raw receipt count. Five perfect receipts from throwaway accounts produce a score of ~55, not 100.
+Scores are dampened by **effective evidence** (sum of weighted receipts), not raw receipt count. A Sybil quality gate caps unestablished evidence at 2.0 for dampening — pure volume from fake identities cannot overcome the trust barrier.
 
 ### Trust policies
 

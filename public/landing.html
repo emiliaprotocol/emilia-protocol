@@ -849,6 +849,27 @@
         </div>
       </div>
     </div>
+
+    <!-- INSTALL PREFLIGHT EXAMPLE — EP-SX -->
+    <div class="reveal" style="margin-top: 24px;">
+      <div class="problem-card" style="border-color: rgba(0,255,136,0.15); padding: 24px; max-width: 700px; margin: 0 auto;">
+        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--green); margin-bottom: 12px;">POST /api/trust/install-preflight</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-family: var(--mono); font-size: 11px;">
+          <div>
+            <div style="color: var(--t3); margin-bottom: 8px;">Request:</div>
+            <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; color: var(--t2); line-height: 1.6;">
+              {<br>&nbsp;&nbsp;"entity_id": "mcp-server-ep-v1",<br>&nbsp;&nbsp;"policy": "mcp_server_safe_v1",<br>&nbsp;&nbsp;"context": {<br>&nbsp;&nbsp;&nbsp;&nbsp;"host": "mcp",<br>&nbsp;&nbsp;&nbsp;&nbsp;"permission_class": "bounded_external_access"<br>&nbsp;&nbsp;}<br>}
+            </div>
+          </div>
+          <div>
+            <div style="color: var(--t3); margin-bottom: 8px;">Response:</div>
+            <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; color: var(--t2); line-height: 1.6;">
+              {<br>&nbsp;&nbsp;"decision": "<span style="color:var(--green);">allow</span>",<br>&nbsp;&nbsp;"reasons": [<br>&nbsp;&nbsp;&nbsp;&nbsp;"&#10003; publisher_verified",<br>&nbsp;&nbsp;&nbsp;&nbsp;"&#10003; provenance_verified",<br>&nbsp;&nbsp;&nbsp;&nbsp;"&#10003; permission_class_acceptable"<br>&nbsp;&nbsp;]<br>}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -903,13 +924,13 @@
   <div class="api-section">
     <div class="reveal" style="text-align: center;">
       <div class="st">// For Developers</div>
-      <div class="sh">Five API Calls.<br>That's the Protocol.</div>
+      <div class="sh">Seven API Calls.<br>That's the Protocol.</div>
     </div>
     <div class="api-list">
       <div class="api-item reveal">
         <div class="api-method get">GET</div>
         <div class="api-path">/api/trust/profile/:entityId</div>
-        <div class="api-desc">Full trust profile — behavioral rates, signal breakdowns, anomaly alerts, confidence. The canonical read surface.</div>
+        <div class="api-desc">Full trust profile — behavioral rates, signal breakdowns, provenance composition, anomaly alerts, disputes, confidence. The canonical read surface.</div>
       </div>
       <div class="api-item reveal">
         <div class="api-method post">POST</div>
@@ -918,18 +939,28 @@
       </div>
       <div class="api-item reveal">
         <div class="api-method post">POST</div>
+        <div class="api-path">/api/trust/install-preflight</div>
+        <div class="api-desc">EP-SX: Should I install this plugin/app/package? Checks publisher, permissions, provenance, disputes. Returns allow/review/deny with reasons.</div>
+      </div>
+      <div class="api-item reveal">
+        <div class="api-method post">POST</div>
         <div class="api-path">/api/entities/register</div>
-        <div class="api-desc">Register an agent, merchant, or service provider. Returns an entity ID and API key.</div>
+        <div class="api-desc">Register a merchant, agent, GitHub App, MCP server, npm package, or any principal. Returns entity ID and API key.</div>
       </div>
       <div class="api-item reveal">
         <div class="api-method post">POST</div>
         <div class="api-path">/api/receipts/submit</div>
-        <div class="api-desc">Submit a receipt with transaction_ref (required), behavioral outcome, context keys, claims, and evidence.</div>
+        <div class="api-desc">Submit a receipt with transaction_ref (required), behavioral outcome, provenance tier, context keys, claims, and evidence. Idempotent.</div>
       </div>
       <div class="api-item reveal">
-        <div class="api-method get">GET</div>
-        <div class="api-path">/api/score/:entityId</div>
-        <div class="api-desc">Compatibility score (legacy). For trust decisions, use /api/trust/profile or /api/trust/evaluate.</div>
+        <div class="api-method post">POST</div>
+        <div class="api-path">/api/disputes/file</div>
+        <div class="api-desc">File a formal dispute against a receipt. Due process: 7-day response window, operator resolution, receipt neutralization on reversal.</div>
+      </div>
+      <div class="api-item reveal">
+        <div class="api-method post">POST</div>
+        <div class="api-path">/api/disputes/report</div>
+        <div class="api-desc">Report a trust issue — no auth required. Human appeal channel. Trust must never be more powerful than appeal.</div>
       </div>
     </div>
   </div>
@@ -943,7 +974,7 @@
       FULLY OPEN SOURCE
     </div>
     <div class="sh" style="font-size: clamp(28px, 3.5vw, 44px);">Trust Can't Be<br><span style="color: var(--cyan);">Proprietary.</span></div>
-    <div class="sd" style="margin: 16px auto 32px; max-width: 520px;">A trust layer only works if everyone can verify it. EMILIA is open source — audit the scoring, fork the protocol, contribute upstream. 3 test suites, ~65 tests covering scoring math, trust profiles, policy evaluation, hash determinism, and protocol surface contracts. No black boxes.</div>
+    <div class="sd" style="margin: 16px auto 32px; max-width: 520px;">A trust layer only works if everyone can verify it. EMILIA is open source — audit the scoring, fork the protocol, contribute upstream. 7 test suites, 142 tests covering scoring math, trust profiles, policy evaluation, hash determinism, adversarial resistance, E2E flows, and cross-language conformance. No black boxes.</div>
     <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 32px;">
       <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" class="btn-p" style="font-size: 13px; padding: 14px 28px; background: var(--t1); color: var(--bg);">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 8px;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
