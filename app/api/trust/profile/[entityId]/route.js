@@ -75,6 +75,28 @@ export async function GET(request, { params }) {
       unique_submitters: profile.uniqueSubmitters,
       receipt_count: profile.receiptCount,
 
+      // Due process — dispute summary
+      disputes: await (async () => {
+        const { data: disputeData } = await supabase
+          .from('disputes')
+          .select('dispute_id, status, reason, created_at, resolved_at')
+          .eq('entity_id', entity.id)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        const active = (disputeData || []).filter(d => ['open', 'under_review'].includes(d.status));
+        const reversed = (disputeData || []).filter(d => d.status === 'reversed');
+        return {
+          total: (disputeData || []).length,
+          active: active.length,
+          reversed: reversed.length,
+          recent: (disputeData || []).slice(0, 3).map(d => ({
+            dispute_id: d.dispute_id,
+            status: d.status,
+            reason: d.reason,
+          })),
+        };
+      })(),
+
       // Compatibility score (NOT the canonical truth — use trust_profile)
       compat_score: profile.score,
       _compat_note: 'Use trust_profile for trust decisions. compat_score is for sorting/backward compatibility only.',

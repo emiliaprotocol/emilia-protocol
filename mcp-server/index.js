@@ -190,6 +190,55 @@ const TOOLS = [
       },
     },
   },
+  // DUE PROCESS
+  {
+    name: 'ep_dispute_file',
+    description:
+      'File a dispute against a receipt. Any affected party can challenge. ' +
+      'Reasons: fraudulent_receipt, inaccurate_signals, identity_dispute, context_mismatch, duplicate_transaction, coerced_receipt, other. ' +
+      'The receipt submitter has 7 days to respond.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        receipt_id: { type: 'string', description: 'Receipt ID to dispute (ep_rcpt_...)' },
+        reason: { type: 'string', description: 'Reason for dispute' },
+        description: { type: 'string', description: 'Explanation of the dispute' },
+        evidence: { type: 'object', description: 'Supporting evidence' },
+      },
+      required: ['receipt_id', 'reason'],
+    },
+  },
+  {
+    name: 'ep_dispute_status',
+    description: 'Check the status of a dispute. Public — transparency is a protocol value.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        dispute_id: { type: 'string', description: 'Dispute ID (ep_disp_...)' },
+      },
+      required: ['dispute_id'],
+    },
+  },
+  {
+    name: 'ep_report_trust_issue',
+    description:
+      'Report a trust issue as a human. No authentication required. ' +
+      'For when someone is wrongly downgraded, harmed by a trusted entity, or sees fraud. ' +
+      'EP must never make trust more powerful than appeal.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        entity_id: { type: 'string', description: 'Entity the report is about' },
+        report_type: {
+          type: 'string',
+          enum: ['wrongly_downgraded', 'harmed_by_trusted_entity', 'fraudulent_entity', 'inaccurate_profile', 'other'],
+        },
+        description: { type: 'string', description: 'What happened' },
+        contact_email: { type: 'string', description: 'Email for follow-up (optional)' },
+      },
+      required: ['entity_id', 'report_type', 'description'],
+    },
+  },
   // LEGACY COMPAT
   {
     name: 'ep_score_lookup',
@@ -262,6 +311,49 @@ async function handleTool(name, args) {
       const lb = data.leaderboard || [];
       if (!lb.length) return 'No entities in leaderboard yet.';
       return lb.map(e => `#${e.rank} ${e.display_name} — ${e.emilia_score}/100 (${e.total_receipts} receipts)`).join('\n');
+    }
+
+    case 'ep_dispute_file': {
+      if (!API_KEY) return 'Error: EP_API_KEY required to file disputes.';
+      const body = {
+        receipt_id: args.receipt_id,
+        reason: args.reason,
+        description: args.description || null,
+        evidence: args.evidence || null,
+      };
+      const data = await epFetch('/api/disputes/file', { method: 'POST', auth: true, body });
+      return `Dispute filed.\n` +
+        `Dispute ID: ${data.dispute_id}\n` +
+        `Receipt: ${data.receipt_id}\n` +
+        `Status: ${data.status}\n` +
+        `Response deadline: ${data.response_deadline}\n` +
+        `${data._message}`;
+    }
+
+    case 'ep_dispute_status': {
+      const data = await epFetch(`/api/disputes/${encodeURIComponent(args.dispute_id)}`);
+      let out = `Dispute: ${data.dispute_id}\n`;
+      out += `Status: ${data.status}\n`;
+      out += `Reason: ${data.reason}\n`;
+      out += `Entity: ${data.entity?.display_name} (${data.entity?.entity_id})\n`;
+      out += `Filed by: ${data.filed_by?.display_name} (${data.filed_by_type})\n`;
+      if (data.response) out += `Response: ${data.response}\n`;
+      if (data.resolution) out += `Resolution: ${data.resolution}\nRationale: ${data.resolution_rationale}\n`;
+      return out;
+    }
+
+    case 'ep_report_trust_issue': {
+      const body = {
+        entity_id: args.entity_id,
+        report_type: args.report_type,
+        description: args.description,
+        contact_email: args.contact_email || null,
+      };
+      const data = await epFetch('/api/disputes/report', { method: 'POST', body });
+      return `Report filed.\n` +
+        `Report ID: ${data.report_id}\n` +
+        `${data._message}\n` +
+        `${data._principle}`;
     }
 
     case 'ep_score_lookup': {
