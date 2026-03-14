@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient, authenticateRequest } from '@/lib/supabase';
-import { computeReceiptComposite, computeReceiptHash, behaviorToSatisfaction } from '@/lib/scoring';
+import { computeReceiptComposite, computeReceiptHash, behaviorToSatisfaction, computeScoresFromClaims } from '@/lib/scoring';
 import { runReceiptFraudChecks } from '@/lib/sybil';
 import crypto from 'crypto';
 
@@ -99,12 +99,31 @@ export async function POST(request) {
       agentSatisfaction = behaviorToSatisfaction(body.agent_behavior);
     }
 
+    // === EVIDENCE-BASED SCORING (v2 receipts) ===
+    // If claims object is provided, compute signal scores from structured claims.
+    // Claims-computed scores override manual scores when both are present.
+    let deliveryAccuracy = body.delivery_accuracy ?? null;
+    let productAccuracy = body.product_accuracy ?? null;
+    let priceIntegrity = body.price_integrity ?? null;
+    let returnProcessing = body.return_processing ?? null;
+
+    if (body.claims) {
+      const claimScores = computeScoresFromClaims(body.claims);
+      if (claimScores.delivery_accuracy != null) deliveryAccuracy = claimScores.delivery_accuracy;
+      if (claimScores.product_accuracy != null) productAccuracy = claimScores.product_accuracy;
+      if (claimScores.price_integrity != null) priceIntegrity = claimScores.price_integrity;
+      if (claimScores.return_processing != null) returnProcessing = claimScores.return_processing;
+    }
+
+    // Capture submitter's current score for submitter-weighted scoring
+    const submitterScore = auth.entity.emilia_score ?? 50;
+
     // Compute composite score
     const composite = computeReceiptComposite({
-      delivery_accuracy: body.delivery_accuracy,
-      product_accuracy: body.product_accuracy,
-      price_integrity: body.price_integrity,
-      return_processing: body.return_processing,
+      delivery_accuracy: deliveryAccuracy,
+      product_accuracy: productAccuracy,
+      price_integrity: priceIntegrity,
+      return_processing: returnProcessing,
       agent_satisfaction: agentSatisfaction,
     });
 
@@ -128,10 +147,10 @@ export async function POST(request) {
       submitted_by: auth.entity.id,
       transaction_ref: body.transaction_ref || null,
       transaction_type: body.transaction_type,
-      delivery_accuracy: body.delivery_accuracy ?? null,
-      product_accuracy: body.product_accuracy ?? null,
-      price_integrity: body.price_integrity ?? null,
-      return_processing: body.return_processing ?? null,
+      delivery_accuracy: deliveryAccuracy,
+      product_accuracy: productAccuracy,
+      price_integrity: priceIntegrity,
+      return_processing: returnProcessing,
       agent_satisfaction: agentSatisfaction,
       evidence: body.evidence || {},
     };
@@ -147,13 +166,15 @@ export async function POST(request) {
         submitted_by: auth.entity.id,
         transaction_ref: body.transaction_ref || null,
         transaction_type: body.transaction_type,
-        delivery_accuracy: body.delivery_accuracy ?? null,
-        product_accuracy: body.product_accuracy ?? null,
-        price_integrity: body.price_integrity ?? null,
-        return_processing: body.return_processing ?? null,
+        delivery_accuracy: deliveryAccuracy,
+        product_accuracy: productAccuracy,
+        price_integrity: priceIntegrity,
+        return_processing: returnProcessing,
         agent_satisfaction: agentSatisfaction,
         agent_behavior: body.agent_behavior || null,
         evidence: body.evidence || {},
+        claims: body.claims || null,
+        submitter_score: submitterScore,
         composite_score: composite,
         receipt_hash: receiptHash,
         previous_hash: previousHash,
