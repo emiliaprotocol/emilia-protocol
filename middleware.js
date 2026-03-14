@@ -4,33 +4,51 @@ import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/rate-limit';
 /**
  * EMILIA Protocol — API Rate Limiting Middleware
  *
- * Applies per-IP rate limits to all /api/* routes.
- * Categories:
- *   - register:  /api/entities/register
- *   - submit:    /api/receipts/submit
- *   - anchor:    /api/blockchain/anchor
- *   - waitlist:  /api/waitlist
- *   - read:      everything else under /api/
+ * Write routes: throttled by API key prefix + IP (identity-aware)
+ * Read routes:  throttled by IP only
+ * Register:     throttled by IP only (no API key yet)
  */
+
+const WRITE_CATEGORIES = ['submit', 'anchor'];
 
 function getCategory(pathname) {
   if (pathname.startsWith('/api/entities/register')) return 'register';
   if (pathname.startsWith('/api/receipts/submit')) return 'submit';
+  if (pathname.startsWith('/api/needs/') && pathname.endsWith('/rate')) return 'submit';
+  if (pathname.startsWith('/api/needs/broadcast')) return 'submit';
   if (pathname.startsWith('/api/blockchain/anchor')) return 'anchor';
   if (pathname.startsWith('/api/waitlist')) return 'waitlist';
   if (pathname.startsWith('/api/')) return 'read';
   return null;
 }
 
+function getApiKeyPrefix(request) {
+  const auth = request.headers.get('authorization') || '';
+  const token = auth.replace(/^Bearer\s+/i, '');
+  // API keys are like ep_live_abc123... — use first 16 chars as identity
+  return token ? token.slice(0, 16) : null;
+}
+
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
-  // Only rate-limit API routes
   const category = getCategory(pathname);
   if (!category) return NextResponse.next();
 
   const ip = getClientIP(request);
-  const result = await checkRateLimit(ip, category);
+
+  // For write routes with auth, use API key prefix + IP as rate limit key
+  // This prevents shared NATs from being over-punished while still
+  // throttling per-identity on authenticated writes
+  let rateLimitKey = ip;
+  if (WRITE_CATEGORIES.includes(category)) {
+    const keyPrefix = getApiKeyPrefix(request);
+    if (keyPrefix) {
+      rateLimitKey = `${keyPrefix}:${ip}`;
+    }
+  }
+
+  const result = await checkRateLimit(rateLimitKey, category);
 
   if (!result.allowed) {
     const config = RATE_LIMITS[category];

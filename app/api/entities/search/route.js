@@ -5,7 +5,6 @@ import { getServiceClient } from '@/lib/supabase';
  * GET /api/entities/search
  * 
  * Search entities by capability, category, type, or semantic query.
- * Results ranked by match relevance.
  * 
  * No auth required — entity directory is public.
  * 
@@ -14,11 +13,10 @@ import { getServiceClient } from '@/lib/supabase';
  *   type           - filter by entity_type: agent, merchant, service_provider
  *   category       - filter by category
  *   capability     - filter by capability keyword
- *   min_score      - minimum compatibility score (default 0, legacy)
- *   min_confidence - minimum confidence level: pending, insufficient, provisional, emerging, confident
+ *   min_score      - minimum compatibility score (default 0, legacy fallback)
+ *   min_confidence - minimum confidence: pending, insufficient, provisional, emerging, confident
+ *   rank_by        - "score" (legacy default), "confidence", or "evidence"
  *   limit          - max results (default 20, max 50)
- * 
- * For trust-aware routing, use POST /api/trust/evaluate with a policy instead.
  */
 export async function GET(request) {
   try {
@@ -29,6 +27,7 @@ export async function GET(request) {
     const capability = searchParams.get('capability');
     const minScore = parseFloat(searchParams.get('min_score')) || 0;
     const minConfidence = searchParams.get('min_confidence') || null;
+    const rankBy = searchParams.get('rank_by') || 'score';
     const limit = Math.min(parseInt(searchParams.get('limit')) || 20, 50);
 
     const supabase = getServiceClient();
@@ -135,35 +134,53 @@ export async function GET(request) {
     }
 
     let filtered = results || [];
+    const confLevels = ['pending', 'insufficient', 'provisional', 'emerging', 'confident'];
 
-    // Enforce min_confidence if specified
-    if (minConfidence && filtered.length > 0) {
-      const confLevels = ['pending', 'insufficient', 'provisional', 'emerging', 'confident'];
+    // Always enrich with confidence and effective evidence
+    if (filtered.length > 0) {
+      filtered = await Promise.all(filtered.map(async (e) => {
+        let effectiveEvidence = 0;
+        try {
+          const { data: estData } = await supabase.rpc('is_entity_established', { p_entity_id: e.id });
+          if (estData && estData[0]) effectiveEvidence = estData[0].effective_evidence;
+        } catch {}
+        let conf;
+        if (effectiveEvidence === 0) conf = 'pending';
+        else if (effectiveEvidence < 1.0) conf = 'insufficient';
+        else if (effectiveEvidence < 5.0) conf = 'provisional';
+        else if (effectiveEvidence < 20.0) conf = 'emerging';
+        else conf = 'confident';
+        return { ...e, confidence: conf, effective_evidence: effectiveEvidence };
+      }));
+    }
+
+    // Filter by min_confidence
+    if (minConfidence) {
       const minIdx = confLevels.indexOf(minConfidence);
       if (minIdx >= 0) {
-        const withConfidence = await Promise.all(filtered.map(async (e) => {
-          let effectiveEvidence = 0;
-          try {
-            const { data: estData } = await supabase.rpc('is_entity_established', { p_entity_id: e.id || e.entity_id });
-            if (estData && estData[0]) effectiveEvidence = estData[0].effective_evidence;
-          } catch {}
-          let conf;
-          if (effectiveEvidence === 0) conf = 'pending';
-          else if (effectiveEvidence < 1.0) conf = 'insufficient';
-          else if (effectiveEvidence < 5.0) conf = 'provisional';
-          else if (effectiveEvidence < 20.0) conf = 'emerging';
-          else conf = 'confident';
-          return { ...e, confidence: conf, effective_evidence: effectiveEvidence };
-        }));
-        filtered = withConfidence.filter(e => confLevels.indexOf(e.confidence) >= minIdx);
+        filtered = filtered.filter(e => confLevels.indexOf(e.confidence) >= minIdx);
       }
     }
+
+    // Re-rank by selected criterion
+    if (rankBy === 'evidence') {
+      filtered.sort((a, b) => b.effective_evidence - a.effective_evidence);
+    } else if (rankBy === 'confidence') {
+      filtered.sort((a, b) => {
+        const ca = confLevels.indexOf(a.confidence);
+        const cb = confLevels.indexOf(b.confidence);
+        if (cb !== ca) return cb - ca;
+        return b.effective_evidence - a.effective_evidence;
+      });
+    }
+    // Default 'score' keeps DB ordering
 
     return NextResponse.json({
       entities: filtered,
       results: filtered,
       total: filtered.length,
       query: q,
+      rank_by: rankBy,
     });
   } catch (err) {
     console.error('Entity search error:', err);
