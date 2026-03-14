@@ -1,0 +1,219 @@
+{
+  "_meta": {
+    "protocol": "EMILIA Protocol",
+    "spec_version": "1.1",
+    "suite_version": "1.0.0",
+    "generated": "2026-03-14",
+    "description": "Canonical test fixtures for EP conformance testing. Any implementation claiming EP compatibility must produce identical outputs for these inputs.",
+    "hash_algorithm": "SHA-256 over canonical JSON (sorted keys, no whitespace)",
+    "receipt_version": 1
+  },
+
+  "hash_fixtures": [
+    {
+      "name": "minimal_receipt",
+      "description": "Minimal valid receipt with no context, no claims, no evidence, no chain link",
+      "receipt": {
+        "entity_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "submitted_by": "11111111-2222-3333-4444-555555555555",
+        "transaction_ref": "txn_fixture_001",
+        "transaction_type": "purchase",
+        "context": null,
+        "delivery_accuracy": 90,
+        "product_accuracy": 85,
+        "price_integrity": 95,
+        "return_processing": 80,
+        "agent_satisfaction": 88,
+        "agent_behavior": "completed",
+        "claims": null,
+        "evidence": null,
+        "submitter_score": 85,
+        "submitter_established": true
+      },
+      "previous_hash": null,
+      "expected_hash": "6517effc41c37fdd606c617da29e20b14ddd960a8432ba0b8a94d3d54033d7b2"
+    },
+    {
+      "name": "with_context",
+      "description": "Receipt with context keys, claims, and evidence — context must be included in hash",
+      "receipt": {
+        "entity_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "submitted_by": "11111111-2222-3333-4444-555555555555",
+        "transaction_ref": "txn_fixture_002",
+        "transaction_type": "purchase",
+        "context": { "category": "electronics", "geo": "US-CA" },
+        "delivery_accuracy": 92,
+        "product_accuracy": 88,
+        "price_integrity": 100,
+        "return_processing": 75,
+        "agent_satisfaction": 90,
+        "agent_behavior": "completed",
+        "claims": { "delivered": true, "on_time": true },
+        "evidence": { "carrier": "UPS", "tracking_id": "1Z999" },
+        "submitter_score": 92,
+        "submitter_established": true
+      },
+      "previous_hash": null,
+      "expected_hash": "fb5ae829c0bef33951a05e869d5b0df25aa8c36226956922e51eb1d7fa14b8f3"
+    },
+    {
+      "name": "chained_receipt",
+      "description": "Receipt chain-linked to a previous hash — chain linking must change the output",
+      "receipt": {
+        "entity_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "submitted_by": "11111111-2222-3333-4444-555555555555",
+        "transaction_ref": "txn_fixture_003",
+        "transaction_type": "service",
+        "context": { "task_type": "booking", "category": "med_spa" },
+        "delivery_accuracy": 85,
+        "product_accuracy": 80,
+        "price_integrity": 100,
+        "return_processing": null,
+        "agent_satisfaction": 70,
+        "agent_behavior": "retried_same",
+        "claims": null,
+        "evidence": null,
+        "submitter_score": 60,
+        "submitter_established": false
+      },
+      "previous_hash": "abc123def456abc123def456abc123def456abc123def456abc123def456abcd",
+      "expected_hash": "b1ed06502b731290498c1503dc84428c24a39d2ffefae4a31b5c41a9375875eb"
+    },
+    {
+      "name": "disputed_receipt",
+      "description": "Disputed transaction with low signals — behavioral outcome is 'disputed'",
+      "receipt": {
+        "entity_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "submitted_by": "11111111-2222-3333-4444-555555555555",
+        "transaction_ref": "txn_fixture_004",
+        "transaction_type": "purchase",
+        "context": null,
+        "delivery_accuracy": 30,
+        "product_accuracy": 20,
+        "price_integrity": 50,
+        "return_processing": 10,
+        "agent_satisfaction": 15,
+        "agent_behavior": "disputed",
+        "claims": { "as_described": false },
+        "evidence": { "dispute_ref": "DSP-001" },
+        "submitter_score": 85,
+        "submitter_established": true
+      },
+      "previous_hash": null,
+      "expected_hash": "1c755a5bb9fdca07e523c5a29787102ea338ac79f3d41db0a25c8a413fad718c"
+    }
+  ],
+
+  "scoring_fixtures": [
+    {
+      "name": "sybil_attack_5_fake_entities",
+      "description": "5 perfect receipts from unestablished throwaway accounts should NOT produce a high score",
+      "receipts": [
+        { "submitted_by": "fake-0", "submitter_established": false, "submitter_score": 50, "graph_weight": 1.0, "agent_behavior": "completed", "composite_score": 100 },
+        { "submitted_by": "fake-1", "submitter_established": false, "submitter_score": 50, "graph_weight": 1.0, "agent_behavior": "completed", "composite_score": 100 },
+        { "submitted_by": "fake-2", "submitter_established": false, "submitter_score": 50, "graph_weight": 1.0, "agent_behavior": "completed", "composite_score": 100 },
+        { "submitted_by": "fake-3", "submitter_established": false, "submitter_score": 50, "graph_weight": 1.0, "agent_behavior": "completed", "composite_score": 100 },
+        { "submitted_by": "fake-4", "submitter_established": false, "submitter_score": 50, "graph_weight": 1.0, "agent_behavior": "completed", "composite_score": 100 }
+      ],
+      "expected": {
+        "score_max": 60,
+        "effective_evidence_max": 1.0,
+        "confidence": "insufficient"
+      }
+    },
+    {
+      "name": "closed_loop_cluster",
+      "description": "Receipts from a closed-loop cluster (graph_weight 0.1) should produce minimal effective evidence",
+      "receipts": [
+        { "submitted_by": "cluster-0", "submitter_established": true, "submitter_score": 90, "graph_weight": 0.1, "agent_behavior": "completed", "composite_score": 95 },
+        { "submitted_by": "cluster-1", "submitter_established": true, "submitter_score": 90, "graph_weight": 0.1, "agent_behavior": "completed", "composite_score": 95 },
+        { "submitted_by": "cluster-2", "submitter_established": true, "submitter_score": 90, "graph_weight": 0.1, "agent_behavior": "completed", "composite_score": 95 }
+      ],
+      "expected": {
+        "effective_evidence_max": 1.0,
+        "score_max": 65
+      }
+    }
+  ],
+
+  "policy_fixtures": [
+    {
+      "name": "strict_no_data",
+      "description": "Strict policy with no receipts must fail",
+      "receipts": [],
+      "policy": "strict",
+      "expected_pass": false,
+      "expected_failure_contains": "no_data"
+    },
+    {
+      "name": "discovery_minimal",
+      "description": "Discovery policy allows entities with minimal data",
+      "receipts": [
+        { "submitted_by": "s1", "submitter_established": true, "submitter_score": 80, "graph_weight": 1.0, "agent_behavior": "completed", "composite_score": 85 }
+      ],
+      "policy": "discovery",
+      "expected_pass": true
+    },
+    {
+      "name": "standard_good_data",
+      "description": "Standard policy with 20 good receipts from 5 submitters should pass",
+      "receipt_template": {
+        "submitter_established": true,
+        "submitter_score": 90,
+        "graph_weight": 1.0,
+        "agent_behavior": "completed",
+        "delivery_accuracy": 92,
+        "product_accuracy": 90,
+        "price_integrity": 99,
+        "composite_score": 93
+      },
+      "receipt_count": 20,
+      "submitter_count": 5,
+      "policy": "standard",
+      "expected_pass": true
+    }
+  ],
+
+  "establishment_fixtures": [
+    {
+      "name": "not_established_low_evidence",
+      "description": "5 receipts from unestablished submitters = effective evidence < 5.0 = NOT established",
+      "receipt_count": 5,
+      "submitters": ["fake-0", "fake-1", "fake-2", "fake-3", "fake-4"],
+      "submitter_established": false,
+      "expected_established": false
+    },
+    {
+      "name": "established_credible_submitters",
+      "description": "10 receipts from 4 established submitters with good scores = established",
+      "receipt_count": 10,
+      "submitters": ["real-0", "real-1", "real-2", "real-3"],
+      "submitter_established": true,
+      "submitter_score": 90,
+      "expected_established": true
+    }
+  ],
+
+  "confidence_level_fixtures": [
+    { "effective_evidence": 0, "expected_confidence": "pending" },
+    { "effective_evidence": 0.3, "expected_confidence": "insufficient" },
+    { "effective_evidence": 1.0, "expected_confidence": "provisional" },
+    { "effective_evidence": 4.9, "expected_confidence": "provisional" },
+    { "effective_evidence": 5.0, "expected_confidence": "emerging" },
+    { "effective_evidence": 19.9, "expected_confidence": "emerging" },
+    { "effective_evidence": 20.0, "expected_confidence": "confident" },
+    { "effective_evidence": 100.0, "expected_confidence": "confident" }
+  ],
+
+  "weight_fixtures": {
+    "v2_weights": {
+      "behavioral": 0.40,
+      "consistency": 0.25,
+      "delivery": 0.12,
+      "product": 0.10,
+      "price": 0.08,
+      "returns": 0.05
+    },
+    "expected_sum": 1.00
+  }
+}
