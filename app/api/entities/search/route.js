@@ -61,32 +61,42 @@ export async function GET(request) {
           });
 
           if (!error && results) {
+            let semanticResults = results.map(r => ({
+              id: r.id,
+              entity_id: r.entity_id,
+              display_name: r.display_name,
+              entity_type: r.entity_type,
+              description: r.description,
+              category: r.category,
+              capabilities: r.capabilities,
+              emilia_score: r.emilia_score,
+              total_receipts: r.total_receipts,
+              similarity: r.similarity,
+              verified: r.verified,
+            }));
+
+            // Apply min_confidence filter to semantic results too
+            if (minConfidence && semanticResults.length > 0) {
+              const confLevels = ['pending', 'insufficient', 'provisional', 'emerging', 'confident'];
+              const minIdx = confLevels.indexOf(minConfidence);
+              if (minIdx >= 0) {
+                const withConf = await Promise.all(semanticResults.map(async (e) => {
+                  let ee = 0;
+                  try {
+                    const { data: d } = await supabase.rpc('is_entity_established', { p_entity_id: e.id });
+                    if (d && d[0]) ee = d[0].effective_evidence;
+                  } catch {}
+                  let c = ee === 0 ? 'pending' : ee < 1 ? 'insufficient' : ee < 5 ? 'provisional' : ee < 20 ? 'emerging' : 'confident';
+                  return { ...e, confidence: c, effective_evidence: ee };
+                }));
+                semanticResults = withConf.filter(e => confLevels.indexOf(e.confidence) >= minIdx);
+              }
+            }
+
             return NextResponse.json({
-              entities: results.map(r => ({
-                entity_id: r.entity_id,
-                display_name: r.display_name,
-                entity_type: r.entity_type,
-                description: r.description,
-                category: r.category,
-                capabilities: r.capabilities,
-                emilia_score: r.emilia_score,
-                total_receipts: r.total_receipts,
-                similarity: r.similarity,
-                verified: r.verified,
-              })),
-              results: results.map(r => ({
-                entity_id: r.entity_id,
-                display_name: r.display_name,
-                entity_type: r.entity_type,
-                description: r.description,
-                category: r.category,
-                capabilities: r.capabilities,
-                emilia_score: r.emilia_score,
-                total_receipts: r.total_receipts,
-                similarity: r.similarity,
-                verified: r.verified,
-              })),
-              total: results.length,
+              entities: semanticResults,
+              results: semanticResults,
+              total: semanticResults.length,
               query: q,
             });
           }

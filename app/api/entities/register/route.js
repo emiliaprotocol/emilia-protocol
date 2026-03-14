@@ -87,12 +87,19 @@ export async function POST(request) {
     // Generate API key
     const { key: apiKey, hash: apiKeyHash, prefix } = generateApiKey();
 
+    // Derive owner_id from client IP hash (not caller-supplied — prevents spoofing)
+    const clientIP = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+      || request.headers.get('x-real-ip') || 'unknown';
+    const ownerHash = Array.from(
+      new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(clientIP)))
+    ).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+
     // Insert entity
     const { data: entity, error: insertError } = await supabase
       .from('entities')
       .insert({
         entity_id: body.entity_id,
-        owner_id: body.owner_id || body.entity_id,
+        owner_id: `ip_${ownerHash}`,
         display_name: body.display_name,
         entity_type: body.entity_type,
         description: body.description,

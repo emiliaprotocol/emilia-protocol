@@ -91,7 +91,9 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Failed to broadcast need' }, { status: 500 });
     }
 
-    // Find matching entities (top 10 by relevance * reputation)
+    // Find suggested entities (legacy: ranked by relevance × compatibility score)
+    // These are compatibility suggestions only. For trust-native routing,
+    // set trust_policy on the need and claim evaluation will use it.
     let matches = [];
     if (embedding) {
       const { data: candidates } = await supabase.rpc('match_entities_to_need', {
@@ -113,11 +115,12 @@ export async function POST(request) {
         expires_at: need.expires_at,
         created_at: need.created_at,
       },
-      matching_entities: matches.map(m => ({
+      suggested_entities: matches.map(m => ({
         entity_id: m.entity_id,
         display_name: m.display_name,
-        emilia_score: m.emilia_score,
+        compat_score: m.emilia_score,
         match_score: m.match_score,
+        _note: 'Ranked by compatibility score. Use trust_policy on the need for policy-native claim evaluation.',
       })),
     }, { status: 201 });
   } catch (err) {

@@ -83,7 +83,7 @@ const TOOLS = [
     description:
       'Evaluate an entity against a trust policy. Returns pass/fail with specific failure reasons. ' +
       'Built-in policies: "strict" (high-value), "standard" (normal), "permissive" (low-risk), "discovery" (allow unscored). ' +
-      'Use this to make routing and payment decisions.',
+      'Accepts optional context for context-aware evaluation. Use this to make routing and payment decisions.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -93,7 +93,11 @@ const TOOLS = [
         },
         policy: {
           type: 'string',
-          description: 'Policy name: "strict", "standard", "permissive", "discovery", or a custom policy object',
+          description: 'Policy name: "strict", "standard", "permissive", "discovery"',
+        },
+        context: {
+          type: 'object',
+          description: 'Context key for context-aware evaluation: { task_type, category, geo, modality, value_band }',
         },
       },
       required: ['entity_id'],
@@ -213,6 +217,7 @@ async function handleTool(name, args) {
 
     case 'ep_trust_evaluate': {
       const body = { entity_id: args.entity_id, policy: args.policy || 'standard' };
+      if (args.context) body.context = args.context;
       const data = await epFetch('/api/trust/evaluate', { method: 'POST', body });
       return formatEvaluation(data);
     }

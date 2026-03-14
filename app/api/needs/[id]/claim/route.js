@@ -50,7 +50,19 @@ export async function POST(request, { params }) {
         .limit(200);
 
       const profile = computeTrustProfile(receipts || [], auth.entity);
-      const policy = TRUST_POLICIES[need.trust_policy] || need.trust_policy;
+      // Resolve policy: string name → built-in, object → custom policy
+      const rawPolicy = need.trust_policy;
+      let policy;
+      if (typeof rawPolicy === 'string') {
+        policy = TRUST_POLICIES[rawPolicy];
+        if (!policy) {
+          try { policy = JSON.parse(rawPolicy); } catch { policy = TRUST_POLICIES.standard; }
+        }
+      } else if (typeof rawPolicy === 'object' && rawPolicy !== null) {
+        policy = rawPolicy; // JSONB column returns parsed object
+      } else {
+        policy = TRUST_POLICIES.standard;
+      }
       const result = evaluateTrustPolicy(profile, policy);
 
       if (!result.pass) {
