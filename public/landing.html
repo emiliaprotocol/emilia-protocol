@@ -336,9 +336,9 @@
   <div class="hero-acro">Entity Measurement Infrastructure for Ledgered Interaction Accountability</div>
 
   <p class="hero-sub">
-    The trust layer for agentic commerce.<br>
-    Open source. Receipts, not reviews. <strong>The missing protocol in the MCP / A2A / UCP stack.</strong><br>
-    <span style="color: var(--t3); font-size: 0.85em;">Three reasons every review system fails: the scorer lies, the platform profits, the algorithm is hidden. EP eliminates all three.</span>
+    The trust layer for agentic commerce. <strong>The first reputation system where lying hurts the liar.</strong><br>
+    Open source. Receipts, not reviews. The missing protocol in the MCP / A2A / UCP stack.<br>
+    <span style="color: var(--t3); font-size: 0.85em;">Every review system fails because the scorer doesn't consume the score. EP fixes this.</span>
   </p>
 
   <div class="hero-ctas">
@@ -724,13 +724,28 @@
       <div class="problem-card reveal" style="border-color: rgba(0,212,255,0.15);">
         <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--cyan); margin-bottom: 12px;">SUBMITTER-WEIGHTED SCORING</div>
         <p style="font-size: 13px; line-height: 1.7; color: var(--t2);">
-          Each receipt is weighted by the submitter's own EMILIA Score. A score-90 entity's receipt counts <strong style="color:var(--t1);">0.9x</strong>. A newcomer at score-50 counts <strong style="color:var(--t1);">0.5x</strong>. A bad actor at score-10 barely registers. Creating 100 fake entities to boost a score is useless — they'd all carry 0.5x weight. <strong style="color:var(--cyan);">The cost of faking exceeds the cost of being good.</strong>
+          Each receipt is weighted by the submitter's own EMILIA Score. A score-90 entity's receipt counts <strong style="color:var(--t1);">0.9x</strong>. A newcomer at score-50 counts <strong style="color:var(--t1);">0.5x</strong>. A bad actor at score-10 barely registers. <strong style="color:var(--cyan);">The cost of faking exceeds the cost of being good.</strong>
         </p>
       </div>
+      <div class="problem-card reveal" style="border-color: rgba(0,255,136,0.15);">
+        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--green); margin-bottom: 12px;">TIME-DECAY — RECOVERY IS POSSIBLE</div>
+        <p style="font-size: 13px; line-height: 1.7; color: var(--t2);">
+          Recent receipts carry more weight than old ones. Half-life: <strong style="color:var(--t1);">90 days</strong>. A merchant who was terrible 6 months ago but perfect since will see their score recover as old receipts decay. <strong style="color:var(--green);">Bad history fades. Improvement is rewarded.</strong>
+        </p>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 16px; max-width: 800px; margin-left: auto; margin-right: auto;">
       <div class="problem-card reveal" style="border-color: rgba(255,215,0,0.15);">
         <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--gold); margin-bottom: 12px;">WHO GETS SCORED?</div>
         <p style="font-size: 13px; line-height: 1.7; color: var(--t2);">
-          EP scores the <strong style="color:var(--t1);">direct economic counterparty</strong> — whoever took the money and made the promise. Sofa arrives broken? The seller (SofaCo-123) gets <code style="font-size:11px;">as_described: false</code>. The carrier (FedEx) gets <code style="font-size:11px;">delivered: true</code>. <strong style="color:var(--gold);">Separate signals for separate entities.</strong>
+          EP scores the <strong style="color:var(--t1);">direct economic counterparty</strong> — whoever took the money and made the promise. Sofa arrives broken? The seller gets <code style="font-size:11px;">as_described: false</code>. The carrier gets <code style="font-size:11px;">delivered: true</code>. <strong style="color:var(--gold);">Separate signals for separate entities.</strong>
+        </p>
+      </div>
+      <div class="problem-card reveal" style="border-color: rgba(255,45,120,0.15);">
+        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--magenta); margin-bottom: 12px;">WHY LYING HURTS THE LIAR</div>
+        <p style="font-size: 13px; line-height: 1.7; color: var(--t2);">
+          The buying agent submits receipts AND consumes them for routing. If Clara scores a bad seller highly, <strong style="color:var(--t1);">Clara's own agent routes back to that seller and gets burned</strong>. The scorer and the consumer of the score are the same entity. <strong style="color:var(--magenta);">Self-enforcing honesty.</strong>
         </p>
       </div>
     </div>
@@ -922,6 +937,10 @@
         <strong style="color: var(--t1);">Bribe the platform?</strong><br>
         No platform. Open source. The code is the authority. Fork it if you disagree.
       </div>
+      <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">
+        <strong style="color: var(--t1);">Trapped by bad history?</strong><br>
+        90-day half-life. Recovery through sustained improvement. Bad history fades. Good performance compounds.
+      </div>
     </div>
     <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
       <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" class="btn-p" style="font-size: 13px; padding: 14px 28px; background: var(--t1); color: var(--bg); text-decoration: none;">
@@ -989,9 +1008,26 @@
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
         <div class="faq-q">What's coming in Phase 2 and Phase 3?</div>
-        <div class="faq-a"><strong style="color:var(--cyan);">Phase 2 — Evidence-Backed Truth (in development):</strong> Instead of asking agents to rate 0-100, agents submit structured claims + evidence: "delivered 3 days late" with tracking ID, "overcharged 5%" with payment ref. The engine computes the score from facts. Counter-receipts: sellers can respond within 48 hours.<br><br>
-          <strong style="color:var(--gold);">Phase 3 — Protocol-Observed Truth (roadmap):</strong> EP listens to MCP/A2A/UCP protocol events and auto-generates receipts. Verification oracles confirm claims against carrier APIs, payment processors, and listing snapshots. Zero-knowledge score proofs — prove your score without revealing transaction history.
+        <div class="faq-a"><strong style="color:var(--cyan);">Phase 2 — Evidence-Backed Truth (in development):</strong> Instead of asking agents to rate 0-100, agents submit structured claims + evidence: "delivered 3 days late" with tracking ID, "overcharged 5%" with payment ref. The engine computes the score from facts. Counter-receipts: sellers can respond within 48 hours. Conflicting receipts enter a "disputed" state with an evidence window — transparency over arbitration.<br><br>
+          <strong style="color:var(--gold);">Phase 3 — Protocol-Observed Truth (roadmap):</strong> EP listens to MCP/A2A/UCP protocol events and auto-generates receipts. Decentralized verification oracles (with their own EP scores) confirm claims against carrier APIs, payment processors, and listing snapshots. Zero-knowledge score proofs — prove your score without revealing transaction history. Cross-chain anchoring beyond Base L2.
         </div>
+      </div>
+
+      <div class="faq-item reveal" onclick="this.classList.toggle('open')">
+        <div class="faq-q">What if Amazon or Shopify builds their own reputation system?</div>
+        <div class="faq-a">They will — and that's fine. Amazon's score will only work on Amazon. Shopify's score will only work on Shopify. <strong>EP works across all of them.</strong><br><br>The agent economy is fundamentally cross-platform. A Shopify seller's Claude agent buying from an Amazon seller's Gemini agent — that transaction crosses three ecosystems. No single platform's reputation system covers it. Only an open, protocol-level trust layer does.<br><br>
+          <span style="display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:12px 0;font-family:var(--mono);font-size:11px;">
+            <span style="color:var(--amber);">Amazon internal score</span><span style="color:var(--t2);">Works on Amazon only</span>
+            <span style="color:var(--amber);">Shopify internal score</span><span style="color:var(--t2);">Works on Shopify only</span>
+            <span style="color:var(--cyan);">EMILIA Protocol</span><span style="color:var(--t2);">Works everywhere — protocol-level, chain-agnostic, open source</span>
+          </span>
+          Closed systems lose to open protocols. That's the bet.
+        </div>
+      </div>
+
+      <div class="faq-item reveal" onclick="this.classList.toggle('open')">
+        <div class="faq-q">Can an entity recover from a bad score?</div>
+        <div class="faq-a"><strong>Yes. Recovery is built into the protocol.</strong><br><br>EP uses time-decay weighting: recent receipts carry more weight than old ones. Half-life is 90 days — a receipt from 90 days ago carries 0.5x weight, 180 days carries 0.25x, a year carries ~0.06x.<br><br>A merchant who was terrible 6 months ago but has been perfect since will see their score improve as old receipts naturally decay. Bad history fades. Improvement is rewarded. Combined with the 200-receipt rolling window, this means no entity is permanently condemned — but recovery requires sustained good performance, not a single PR stunt.</div>
       </div>
 
     </div>

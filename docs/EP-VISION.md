@@ -175,10 +175,75 @@ This granularity is unique to EP. Yelp gives the restaurant one star even if the
 | Bribing the platform | No platform. Open source. Fork it if you disagree. | Architectural impossibility |
 | Changing the algorithm secretly | Algorithm is on GitHub. Changes are public commits. | Transparency by design |
 | Deleting bad history | Append-only ledger + blockchain anchoring | Receipts are permanent |
+| Permanent bad score trapping good entities | Time-decay: 90-day half-life on receipt weight | Recovery through sustained improvement |
 
 **The economic argument:** To meaningfully inflate a score, an attacker must create multiple fake entities (rate-limited), register API keys for each, submit 5+ receipts per entity from 3+ unique submitters to escape dampening, maintain consistent scoring across 200+ receipts, avoid triggering velocity monitoring, and do all of this while leaving a permanent, auditable, on-chain-anchored trail.
 
 The cost of faking exceeds the cost of being good.
+
+---
+
+## Time-Decay: Recovery Is Possible
+
+Permanent black marks are unjust. EP uses exponential time-decay so entities can recover from bad periods through sustained improvement.
+
+**Half-life: 90 days.**
+
+| Receipt Age | Weight | Meaning |
+|---|---|---|
+| Today | 1.0x | Full weight |
+| 90 days | 0.5x | Half weight |
+| 180 days | 0.25x | Quarter weight |
+| 1 year | ~0.06x | Nearly gone |
+| 2 years | ~0.004x | Effectively zero |
+
+**Floor: 0.05x.** Very old receipts never fully disappear — catastrophic fraud leaves a permanent trace, just a faint one.
+
+Combined with the 200-receipt rolling window, this means: no entity is permanently condemned, but recovery requires sustained good performance across many transactions. You can't recover with a single PR stunt — you recover by being good for months.
+
+This is how FICO works too. A bankruptcy stays on your credit report for 7-10 years, but its impact fades as you build new positive history.
+
+---
+
+## Conflict Receipts (Phase 2)
+
+When two parties submit conflicting claims about the same transaction:
+
+1. **Both receipts enter "disputed" state** — neither is immediately applied to scores
+2. **48-hour evidence window** — both parties can submit supporting evidence (tracking IDs, photos, payment confirmations, communication logs)
+3. **Evidence comparison** — if an oracle can verify a claim (e.g., FedEx API confirms delivery time), the oracle's verification overrides the disputed claim
+4. **Resolution** — if no oracle resolution, both receipts are stored with a `disputed` flag. Both contribute to scores but at 0.5x weight. Transparency over arbitration.
+5. **Dispute rate tracking** — entities that frequently trigger disputes accumulate a `dispute_rate` signal. High dispute rates are a trust signal in themselves.
+
+The principle: **don't try to determine truth between conflicting parties.** Instead, record both versions, flag the conflict, and let the dispute rate become its own signal. An entity that is constantly in disputes is inherently less trustworthy, regardless of who's "right."
+
+---
+
+## The Competitive Moat
+
+### Who could build this?
+
+| Threat | Likelihood | EP's Defense |
+|---|---|---|
+| Amazon builds internal reputation | High | Only works on Amazon. EP is cross-platform. |
+| Shopify builds internal reputation | High | Only works on Shopify. EP is cross-platform. |
+| UCP adds native reputation layer | Medium | EP is protocol-neutral — UCP may prefer a neutral third party |
+| A2A builds scoring | Medium | Same — neutral layer preferred over self-scoring |
+| FICO builds "FICO for agents" | High | FICO is closed-source, proprietary. EP wins on openness. |
+| New startup with $50M funding | High | EP is open source with first-mover advantage. You can't buy a protocol moat with money — you earn it with adoption. |
+
+### Why closed systems lose
+
+The agent economy is fundamentally cross-platform. A Shopify seller's Claude agent buying from an Amazon seller's Gemini agent — that transaction crosses three ecosystems. No single platform's reputation system covers it.
+
+| System | Scope | Limitation |
+|---|---|---|
+| Amazon internal score | Amazon only | Doesn't travel to Shopify, Stripe, or independent agents |
+| Shopify internal score | Shopify only | Doesn't cover Amazon, eBay, or direct sales |
+| FICO | US credit only | No international, no agent-to-agent |
+| **EP** | **Cross-platform** | **Works everywhere: UCP, A2A, MCP, ACP, AP2** |
+
+**The bet:** The agent economy is more cross-platform than the human economy. If true, EP wins. If false, EP becomes a niche tool. The evidence so far: MCP (Anthropic), A2A (Google), UCP (Google+Shopify), ACP (OpenAI+Stripe) — four competing companies all building open agent protocols. Cross-platform is the direction.
 
 ---
 
@@ -234,6 +299,8 @@ EP doesn't handle the commerce. It tells the agent: "this counterparty has a ver
 ### NOW (v1.0 — Live)
 - [x] 15 API endpoints
 - [x] 6-signal scoring engine
+- [x] Submitter-weighted scoring (receipts from trusted entities count more)
+- [x] Time-decay scoring (90-day half-life — entities can recover)
 - [x] Sybil resistance (3 layers)
 - [x] SHA-256 receipt chaining
 - [x] Base L2 Merkle anchoring
@@ -246,17 +313,18 @@ EP doesn't handle the commerce. It tells the agent: "this counterparty has a ver
 ### Q2 2026 (v1.5 — Evidence-Backed)
 - [ ] Claims + evidence receipt format (v2 receipts)
 - [ ] Score computation from binary claims
-- [ ] Submitter-weighted scoring
 - [ ] Counter-receipts (48hr window)
+- [ ] Conflict receipts (disputed state + evidence window)
 - [ ] Entity taxonomy documentation
 - [ ] RexRuby.ai integration (first live receipts)
 - [ ] NIST ITL concept paper submission
 
 ### Q3 2026 (v2.0 — Verified)
-- [ ] Verification oracle framework
+- [ ] Decentralized verification oracle framework (oracles have their own EP scores)
 - [ ] DeliveryOracle (carrier API integration)
 - [ ] PaymentOracle (Stripe/AP2 settlement)
 - [ ] Evidence validation engine (JSON Schema per transaction_type)
+- [ ] Oracle-resolved disputes (conflicting claims checked against external data)
 - [ ] Webhook notifications (score change alerts)
 - [ ] Admin dashboard (entity management, fraud review)
 - [ ] UCP extension proposal
@@ -273,13 +341,13 @@ EP doesn't handle the commerce. It tells the agent: "this counterparty has a ver
 
 ## The Tagline
 
-**Receipts, not reviews.**
+**Receipts, not reviews. The first reputation system where lying hurts the liar.**
 
-Not "trust through verification." Not "blockchain reputation." Not "decentralized reviews."
+Every review system fails because the scorer doesn't consume the score. Yelp reviewers don't eat at the restaurant every day. Amazon reviewers don't rebuy the product. The person writing the review bears no cost for being wrong.
 
-Receipts, not reviews. Three words. The entire protocol in one phrase.
+EP fixes this. The buying agent submits receipts — and if they lie about a bad seller, their own agent routes back to that seller and gets burned. The scorer and the consumer of the score are the same entity. This is evolutionary game theory applied to reputation. Self-enforcing honesty.
 
-Every review is an opinion. Every receipt is a fact. EP turns facts into scores. That's it.
+No other trust system has achieved this structural alignment.
 
 ---
 
