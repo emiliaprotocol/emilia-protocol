@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient, authenticateRequest } from '@/lib/supabase';
+import { computeTrustProfile, evaluateTrustPolicy, TRUST_POLICIES } from '@/lib/scoring-v2';
 
 /**
  * POST /api/needs/[id]/claim
  * 
- * Claim an open need. Only agents with sufficient EMILIA Score can claim.
- * First valid claim wins — no double-claiming.
+ * Claim an open need. Trust is evaluated by policy if the need specifies one,
+ * or by compatibility score threshold as legacy fallback.
  * 
  * Auth: Bearer ep_live_...
  */
@@ -19,7 +20,6 @@ export async function POST(request, { params }) {
     const { id } = await params;
     const supabase = getServiceClient();
 
-    // Fetch the need
     const { data: need, error: fetchError } = await supabase
       .from('needs')
       .select('*')
@@ -34,15 +34,37 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: `Need is ${need.status}, not open` }, { status: 409 });
     }
 
-    // Can't claim your own need
     if (need.from_entity_id === auth.entity.id) {
       return NextResponse.json({ error: 'Cannot claim your own need' }, { status: 403 });
     }
 
-    // Check trust threshold (compatibility score gate — needs may specify minimum)
-    if (auth.entity.emilia_score < need.min_emilia_score) {
+    // === TRUST GATE ===
+    // If need specifies a trust_policy, evaluate against it (primary path).
+    // Otherwise fall back to legacy min_emilia_score threshold.
+    if (need.trust_policy) {
+      const { data: receipts } = await supabase
+        .from('receipts')
+        .select('*')
+        .eq('entity_id', auth.entity.id)
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      const profile = computeTrustProfile(receipts || [], auth.entity);
+      const policy = TRUST_POLICIES[need.trust_policy] || need.trust_policy;
+      const result = evaluateTrustPolicy(profile, policy);
+
+      if (!result.pass) {
+        return NextResponse.json({
+          error: `Trust evaluation failed for policy "${need.trust_policy}".`,
+          failures: result.failures,
+          warnings: result.warnings,
+          _hint: 'Build trust through verified receipts from established counterparties.',
+        }, { status: 403 });
+      }
+    } else if (auth.entity.emilia_score < (need.min_emilia_score || 0)) {
+      // Legacy fallback: compatibility score threshold
       return NextResponse.json({
-        error: `Your trust score (${auth.entity.emilia_score}) is below the minimum required (${need.min_emilia_score}). Build trust through verified receipts.`,
+        error: `Compatibility score (${auth.entity.emilia_score}) below minimum (${need.min_emilia_score}). Build trust through verified receipts.`,
         _hint: 'For richer trust evaluation, use POST /api/trust/evaluate with a policy.',
       }, { status: 403 });
     }

@@ -5,17 +5,20 @@ import { getServiceClient } from '@/lib/supabase';
  * GET /api/entities/search
  * 
  * Search entities by capability, category, type, or semantic query.
- * Results ranked by match relevance * EMILIA Score.
+ * Results ranked by match relevance.
  * 
  * No auth required — entity directory is public.
  * 
  * Query params:
- *   q          - semantic search query (uses embeddings)
- *   type       - filter by entity_type: agent, merchant, service_provider
- *   category   - filter by category: salon, legal, etc.
- *   capability - filter by capability keyword
- *   min_score  - minimum EMILIA Score (default 0)
- *   limit      - max results (default 20, max 50)
+ *   q              - semantic search query (uses embeddings)
+ *   type           - filter by entity_type: agent, merchant, service_provider
+ *   category       - filter by category
+ *   capability     - filter by capability keyword
+ *   min_score      - minimum compatibility score (default 0, legacy)
+ *   min_confidence - minimum confidence level: pending, insufficient, provisional, emerging, confident
+ *   limit          - max results (default 20, max 50)
+ * 
+ * For trust-aware routing, use POST /api/trust/evaluate with a policy instead.
  */
 export async function GET(request) {
   try {
@@ -25,6 +28,7 @@ export async function GET(request) {
     const category = searchParams.get('category');
     const capability = searchParams.get('capability');
     const minScore = parseFloat(searchParams.get('min_score')) || 0;
+    const minConfidence = searchParams.get('min_confidence') || null;
     const limit = Math.min(parseInt(searchParams.get('limit')) || 20, 50);
 
     const supabase = getServiceClient();
@@ -58,6 +62,18 @@ export async function GET(request) {
 
           if (!error && results) {
             return NextResponse.json({
+              entities: results.map(r => ({
+                entity_id: r.entity_id,
+                display_name: r.display_name,
+                entity_type: r.entity_type,
+                description: r.description,
+                category: r.category,
+                capabilities: r.capabilities,
+                emilia_score: r.emilia_score,
+                total_receipts: r.total_receipts,
+                similarity: r.similarity,
+                verified: r.verified,
+              })),
               results: results.map(r => ({
                 entity_id: r.entity_id,
                 display_name: r.display_name,
@@ -109,6 +125,7 @@ export async function GET(request) {
     }
 
     return NextResponse.json({
+      entities: results || [],
       results: results || [],
       total: (results || []).length,
       query: q,

@@ -40,16 +40,45 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Entity not found' }, { status: 404 });
     }
 
-    // Get receipts
-    const { data: receipts } = await supabase
+    // Get receipts — optionally filtered by context
+    let receiptQuery = supabase
       .from('receipts')
       .select('*')
       .eq('entity_id', entity.id)
       .order('created_at', { ascending: false })
       .limit(200);
 
+    // If context provided, filter receipts to matching context
+    // This makes trust evaluation context-specific rather than global
+    const requestContext = body.context || null;
+    if (requestContext) {
+      // Filter by matching context fields using JSONB containment
+      receiptQuery = receiptQuery.contains('context', requestContext);
+    }
+
+    const { data: contextReceipts } = await receiptQuery;
+
+    // If context filtering produced too few receipts, fall back to global
+    let receipts = contextReceipts || [];
+    let contextUsed = null;
+    if (requestContext && receipts.length < 3) {
+      // Not enough context-specific data — fall back to global receipts
+      const { data: globalReceipts } = await supabase
+        .from('receipts')
+        .select('*')
+        .eq('entity_id', entity.id)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      receipts = globalReceipts || [];
+      contextUsed = 'global_fallback';
+    } else if (requestContext) {
+      contextUsed = requestContext;
+    } else {
+      contextUsed = 'global';
+    }
+
     // Compute trust profile
-    const profile = computeTrustProfile(receipts || [], entity);
+    const profile = computeTrustProfile(receipts, entity);
 
     // Resolve policy
     let policy;
@@ -74,6 +103,8 @@ export async function POST(request) {
       display_name: entity.display_name,
       pass: result.pass,
       policy_used: typeof body.policy === 'string' ? body.policy : 'custom',
+      context_used: contextUsed,
+      receipts_evaluated: receipts.length,
       score: profile.score,
       confidence: profile.confidence,
       effective_evidence: profile.effectiveEvidence,

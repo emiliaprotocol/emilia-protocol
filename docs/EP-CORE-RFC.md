@@ -46,7 +46,7 @@ A Trust Receipt is a cryptographic record of a transaction outcome, submitted by
 | `return_processing` | 15% | 5% | Return policy honored |
 | `agent_satisfaction` | 10% | — | Replaced by behavioral in v2 |
 | `behavioral` | — | 40% | Observable agent action (v2 primary) |
-| `consistency` | 5% | 20% | Low variance over time |
+| `consistency` | 5% | 25% | Low variance over time |
 
 v2 behavioral-first weights are the canonical runtime model. v1 weights are used by the legacy `compute_emilia_score()` SQL function for the compatibility score.
 
