@@ -129,18 +129,64 @@ An EP Score Proof is a portable attestation that can be attached to ACP payments
     "confidence": "confident",
     "total_receipts": 142,
     "established": true,
+    "profile": {
+      "behavioral": {
+        "score": 91.2,
+        "completion_rate": 94.3,
+        "retry_rate": 3.2,
+        "abandon_rate": 1.1,
+        "dispute_rate": 0.7
+      },
+      "signals": {
+        "delivery_accuracy": 89.1,
+        "product_accuracy": 92.4,
+        "price_integrity": 99.1,
+        "return_processing": 84.2
+      },
+      "consistency": 93.4
+    },
+    "anomaly": null,
     "proof_timestamp": "ISO-8601",
     "merkle_root": "sha256:abc...",
-    "anchor_tx": "0x...",
     "verify_url": "https://emiliaprotocol.ai/api/score/merchant-xyz"
   }
 }
 ```
 
-Any party can independently verify by:
-1. Querying the score API
-2. Checking the Merkle root against the on-chain anchor
-3. Recomputing the score from raw receipts (algorithm is open source)
+The trust profile is multi-dimensional. A single 0-100 score is provided for backward compatibility, but the profile contains the real signal: behavioral rates, per-signal breakdowns, consistency, and anomaly alerts.
+
+## 5. Trust Policies
+
+Agents evaluate counterparties against trust policies — structured decision frameworks, not raw score comparisons.
+
+```json
+{
+  "ep_trust_policy": {
+    "min_score": 75,
+    "min_confidence": "confident",
+    "min_receipts": 20,
+    "max_dispute_rate": 0.03,
+    "min_completion_rate": 0.85,
+    "reject_anomaly": true,
+    "signal_minimums": {
+      "delivery_accuracy": 80,
+      "price_integrity": 90
+    }
+  }
+}
+```
+
+Predefined policies: `strict` (high-value), `standard` (normal commerce), `permissive` (low-risk), `discovery` (allow unscored).
+
+Evaluation endpoint: `POST /api/trust/evaluate` — pass entity_id + policy, get pass/fail with specific failure reasons.
+
+### Why policies matter
+
+"Score > 70, proceed" is naive. Consider:
+- Score 60, 1000 receipts, 95% completion rate, 0 disputes → probably trustworthy
+- Score 90, 5 receipts, all from same submitter → probably fake
+
+A policy evaluates the PROFILE, not just the headline number. This is what makes EP a decision framework, not just a scoring system.
 
 ---
 
@@ -164,11 +210,12 @@ Four layers:
 
 ---
 
-## 7. Interoperability
+## 8. Interoperability
 
-### MCP Tool
+### MCP Tools
 ```json
 { "tool": "ep_score_lookup", "input": { "entity_id": "merchant-xyz" } }
+{ "tool": "ep_trust_evaluate", "input": { "entity_id": "merchant-xyz", "policy": "strict" } }
 ```
 
 ### ACP Trust Extension
@@ -177,8 +224,8 @@ Four layers:
   "acp_payment": { ... },
   "ep_trust_check": {
     "entity_id": "merchant-xyz",
-    "min_score": 70,
-    "min_confidence": "emerging"
+    "policy": "standard",
+    "result": { "pass": true, "score": 87.3, "confidence": "confident" }
   }
 }
 ```
@@ -187,7 +234,11 @@ Four layers:
 ```json
 {
   "name": "Shopping Agent",
-  "ep": { "entity_id": "agent-123", "min_counterparty_score": 70 }
+  "ep": {
+    "entity_id": "agent-123",
+    "trust_policy": "strict",
+    "min_counterparty_score": 70
+  }
 }
 ```
 

@@ -768,6 +768,57 @@
     </div>
   </div>
 </section>
+
+<!-- WHAT MAKES EP DIFFERENT — trust profiles, policies, anomaly detection -->
+<section style="padding: 80px 24px;">
+  <div style="max-width: 900px; margin: 0 auto;">
+    <div class="reveal" style="text-align: center;">
+      <div class="st">// What No Other Trust System Does</div>
+      <div class="sh">Profiles, Not Scores.<br><span style="color: var(--cyan);">Policies, Not Thresholds.</span></div>
+      <div class="sd" style="margin: 0 auto; max-width: 600px;">FICO gives you one number. EP gives you a multi-dimensional trust profile that agents evaluate against configurable policies. Because "score > 70" is naive.</div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 48px;">
+      <div class="problem-card reveal" style="border-color: rgba(0,212,255,0.2);">
+        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--cyan); margin-bottom: 12px;">TRUST PROFILES</div>
+        <h3>Multi-Dimensional Trust</h3>
+        <p>A single 0-100 number destroys information. A merchant with perfect delivery but terrible returns is trustworthy for some purchases, not others. EP outputs behavioral rates (completion, retry, abandon, dispute), per-signal breakdowns, consistency scores, and anomaly alerts. Agents use the <em>profile</em>, not just the headline.</p>
+      </div>
+      <div class="problem-card reveal" style="border-color: rgba(0,255,136,0.2);">
+        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--green); margin-bottom: 12px;">TRUST POLICIES</div>
+        <h3>Configurable Decision Frameworks</h3>
+        <p>"Score > 70, proceed" misses the point. EP agents evaluate against <strong>policies</strong>: "min score 75, min confidence 'confident', max dispute rate 3%, min completion rate 85%, reject if anomaly detected." Four built-in policies: <code style="font-size:10px;">strict</code>, <code style="font-size:10px;">standard</code>, <code style="font-size:10px;">permissive</code>, <code style="font-size:10px;">discovery</code>. Or define your own.</p>
+      </div>
+      <div class="problem-card reveal" style="border-color: rgba(255,159,28,0.2);">
+        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--amber); margin-bottom: 12px;">ANOMALY DETECTION</div>
+        <h3>Score Velocity Matters</h3>
+        <p>A score of 70 that was 90 last week is more alarming than a score that's always been 70. EP tracks score velocity — sudden drops trigger anomaly alerts. Agents can reject entities with severe anomalies even if their absolute score looks fine. Trust changes over time. EP watches the change.</p>
+      </div>
+    </div>
+
+    <!-- LIVE API EXAMPLE -->
+    <div class="reveal" style="margin-top: 40px;">
+      <div class="problem-card" style="border-color: rgba(255,255,255,0.08); padding: 24px; max-width: 700px; margin: 0 auto;">
+        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--t3); margin-bottom: 12px;">POST /api/trust/evaluate</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-family: var(--mono); font-size: 11px;">
+          <div>
+            <div style="color: var(--t3); margin-bottom: 8px;">Request:</div>
+            <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; color: var(--t2); line-height: 1.6;">
+              {<br>&nbsp;&nbsp;"entity_id": "merchant-xyz",<br>&nbsp;&nbsp;"policy": "strict"<br>}
+            </div>
+          </div>
+          <div>
+            <div style="color: var(--t3); margin-bottom: 8px;">Response:</div>
+            <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; color: var(--t2); line-height: 1.6;">
+              {<br>&nbsp;&nbsp;"pass": <span style="color:var(--green);">true</span>,<br>&nbsp;&nbsp;"score": 87.3,<br>&nbsp;&nbsp;"confidence": "confident",<br>&nbsp;&nbsp;"completion_rate": 94.3%,<br>&nbsp;&nbsp;"dispute_rate": 0.7%<br>}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section id="verify">
   <div class="verify-section">
     <div class="reveal" style="text-align: center;">
@@ -819,7 +870,7 @@
   <div class="api-section">
     <div class="reveal" style="text-align: center;">
       <div class="st">// For Developers</div>
-      <div class="sh">Three API Calls.<br>That's the Protocol.</div>
+      <div class="sh">Four API Calls.<br>That's the Protocol.</div>
     </div>
     <div class="api-list">
       <div class="api-item reveal">
@@ -835,7 +886,12 @@
       <div class="api-item reveal">
         <div class="api-method get">GET</div>
         <div class="api-path">/api/score/:entityId</div>
-        <div class="api-desc">Look up any EMILIA Score. Public. No auth required.</div>
+        <div class="api-desc">Look up any EMILIA Score + trust profile. Public. No auth required.</div>
+      </div>
+      <div class="api-item reveal">
+        <div class="api-method post">POST</div>
+        <div class="api-path">/api/trust/evaluate</div>
+        <div class="api-desc">Evaluate an entity against a trust policy. Returns pass/fail with failure reasons. The decision framework.</div>
       </div>
     </div>
   </div>
