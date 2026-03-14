@@ -13,6 +13,8 @@ The current AAIF stack covers tool connectivity (MCP), agent execution (goose), 
 
 EMILIA Protocol (EP) is an open-source trust attestation standard that answers this through cryptographically verified transaction receipts. Unlike traditional review systems, EP outputs multi-dimensional trust profiles evaluated against configurable policies — not scalar scores.
 
+EP operates under one constitutional principle: **trust must never be more powerful than appeal.** Every negative trust effect must be explainable, challengeable, and reversible. The v4 roadmap includes provenance tiers, due-process lifecycle (challenged → under review → resolved/reversed → superseded), relationship trust, and context-aware evaluation.
+
 We're not asking AAIF to adopt our product. We're proposing a neutral working group to develop the trust attestation standard together, using EP as the initial reference implementation.
 
 What's deployed today:
@@ -20,12 +22,13 @@ What's deployed today:
 - Policy evaluation (POST /api/trust/evaluate) — structured decision frameworks with 4 built-in + custom policies
 - Behavioral-first scoring — completion/retry/abandon/dispute as primary signals (40% weight)
 - 4-layer Sybil resistance — effective-evidence dampening, graph analysis in scoring, submitter credibility, Upstash Redis rate limiting
-- Context keys on receipts — task_type, category, geo, modality for future contextual trust
+- Context keys on receipts — task_type, category, geo, modality for contextual trust
+- Three-factor receipt weighting: submitter credibility × time decay × graph health
+- Current vs historical confidence as separate protocol objects
 - Canonical JSON hashing for cross-language verification
 - Receipt immutability via DB triggers
-- Unified receipt pipeline with canonical establishment stamped via SQL function
-- Compatible with ACP payment flows, usable through MCP tools
-- MCP server, TypeScript + Python SDKs published
+- MCP server (trust-profile-first), TypeScript + Python SDKs published
+- Shopify DTC integration spec prepared (webhook → event ledger → EP receipts)
 - Two test suites (v1 scoring + v2 trust profiles/policies)
 
 Full proposal attached. I'll be at MCP Dev Summit NYC April 2-3 and would welcome the opportunity to discuss in person.
@@ -136,36 +139,79 @@ Best,
 
 ---
 
-## 5. Design Partner Outreach — Commerce API (Stripe/Square/Bolt)
+## 5. Design Partner Outreach — DTC Merchant on Shopify
 
-**To:** [Commerce platform developer relations]
-**Subject:** Trust attestation layer for agentic payments — partnership inquiry
+**To:** [DTC brand founder / head of ecommerce]
+**Subject:** Make your store machine-trustable before AI agents become a sales channel
 
 Hi [name],
 
-As AI agents begin handling autonomous purchases, there's a missing layer in the commerce stack: how does a paying agent decide whether a merchant is trustworthy?
+AI shopping agents are coming. When they do, they'll need to decide which merchants to trust — before checkout, without a human reading reviews.
 
-EMILIA Protocol is building the trust attestation standard for agentic commerce. We've drafted an ACP Trust Extension that adds optional trust evaluation to payment flows:
+EMILIA Protocol lets your Shopify store generate a machine-readable trust profile from your own operational data. No surveys, no badges, no reviews. Just your actual delivery performance, pricing accuracy, and return handling — computed from Shopify webhooks into a verifiable trust profile.
+
+How it works:
+1. Shopify app subscribes to orders/paid, fulfillments, refunds, returns
+2. Events are normalized into a merchant transaction ledger
+3. Canonical EP receipts are generated with structured claims and evidence
+4. Your store gets a public trust profile any AI agent can evaluate
+
+What agents see:
+```
+GET /api/trust/profile/yourstore.com
+→ { completion_rate: 93.8%, delivery_accuracy: 91.6%, 
+    dispute_rate: 0.4%, confidence: "confident" }
+```
+
+What agents do:
+```
+POST /api/trust/evaluate
+{ "entity_id": "yourstore.com", "policy": "strict" }
+→ { "pass": true }
+```
+
+Your store becomes agent-readable. Competitors without EP trust profiles become invisible to routing agents.
+
+We're building the Shopify integration now and looking for 3 founding DTC merchants. You'd get a permanent Founding Entity number, early input on the spec, and a trust profile that compounds with every order you fulfill well.
+
+The pitch is simple: **make your store machine-trustable before AI agents become a major sales channel.**
+
+15-minute call this week?
+
+Best,
+[Your name]
+
+---
+
+## 6. Design Partner Outreach — Commerce Platform (Stripe/Square/Bolt)
+
+**To:** [Commerce platform developer relations]
+**Subject:** Trust evaluation layer for agentic payments — partnership inquiry
+
+Hi [name],
+
+As AI agents begin handling autonomous purchases, there's a missing layer: how does a paying agent decide whether a merchant is trustworthy?
+
+EMILIA Protocol adds optional trust evaluation to payment flows. Before completing a payment, the agent evaluates the merchant against a configurable trust policy:
 
 ```
-Before completing payment:
 POST /api/trust/evaluate
 { "entity_id": "merchant-xyz", "policy": "standard" }
 → { "pass": true, "completion_rate": 94.3%, "dispute_rate": 0.7% }
 ```
 
-The agent sees a multi-dimensional trust profile — not just a number. It evaluates against a configurable policy. If the merchant doesn't pass, the agent can decline or warn before money moves.
-
 Key properties:
-- No changes to your payment API required — purely additive
-- Open source (Apache 2.0), vendor-neutral
-- Behavioral-first scoring — completion/retry/abandon/dispute as primary signals
-- Context-aware — receipts carry task_type, category, geo, value_band
-- Sybil-resistant — 4-layer defense, effective-evidence dampening
+- No changes to your payment API — purely additive
+- Open source (Apache 2.0), vendor-neutral, submitting to AAIF
+- Behavioral-first: completion/retry/abandon/dispute as primary signals
+- Context-aware: receipts carry task_type, category, geo, value_band
+- Sybil-resistant: 4-layer defense including effective-evidence dampening
+- Constitutional principle: trust must never be more powerful than appeal
 
-We're submitting this to AAIF as a working group proposal. Would your developer relations or standards team be interested in reviewing the draft spec?
+We have a Shopify DTC integration spec ready and are looking for commerce platform partners to validate the ACP trust extension.
 
-ACP Extension draft: https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/EP-ACP-EXTENSION.md
+ACP Extension: https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/EP-ACP-EXTENSION.md
+Shopify Spec: available on request
 
 Best,
 [Your name]

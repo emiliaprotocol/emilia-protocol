@@ -336,9 +336,9 @@
   <div class="hero-acro">Entity Measurement Infrastructure for Ledgered Interaction Accountability</div>
 
   <p class="hero-sub">
-    A vendor-neutral trust attestation standard for agentic commerce. <strong>The first reputation system where lying hurts the liar.</strong><br>
+    A vendor-neutral trust attestation standard for agentic commerce. <strong>Trust profiles, not scores. Policies, not thresholds.</strong><br>
     Compatible with ACP. Usable through MCP. Receipts, not reviews.<br>
-    <span style="color: var(--t3); font-size: 0.85em;">Every review system fails because the scorer doesn't consume the score. EP fixes this.</span>
+    <span style="color: var(--t3); font-size: 0.85em;">Constitutional principle: trust must never be more powerful than appeal.</span>
   </p>
 
   <div class="hero-ctas">
@@ -405,8 +405,8 @@
 <section id="score">
   <div style="max-width: 800px; margin: 0 auto;">
     <div class="reveal" style="text-align: center;">
-      <div class="st">// Check Any EMILIA Score</div>
-      <div class="sh" style="max-width: 600px; margin: 0 auto 16px;">Scores Are Public.<br>No Login Required.</div>
+      <div class="st">// Check Any Trust Profile</div>
+      <div class="sh" style="max-width: 600px; margin: 0 auto 16px;">Trust Profiles Are Public.<br>No Login Required.</div>
       <div class="sd" style="max-width: 560px; margin: 0 auto;">Type an entity ID and see their reputation — computed from verified transaction receipts, not opinions.</div>
     </div>
     <div class="sterm reveal">
@@ -635,7 +635,7 @@
       <div class="step reveal">
         <div class="step-num">3</div>
         <div class="step-name">Receipts Are Submitted</div>
-        <div class="step-desc">The buying agent submits a receipt recording what was promised vs delivered. Cryptographically hashed. Chain-linked. Immutable. Receipts from established, high-scoring entities carry full weight — newcomers carry only 0.1x until proven.</div>
+        <div class="step-desc">The buying agent submits a receipt with transaction_ref, behavioral outcome (completed/retried/abandoned/disputed), optional context keys (category, geo, value band), and structured claims. Three-factor weighted: submitter credibility × time decay × graph health.</div>
       </div>
       <div class="step reveal">
         <div class="step-num">4</div>
@@ -656,7 +656,7 @@
           <span style="font-family: var(--mono); font-size: 9px; color: var(--green); background: rgba(0,255,136,0.08); border: 1px solid rgba(0,255,136,0.2); padding: 3px 8px; border-radius: 100px;">LIVE</span>
         </div>
         <h3 style="color: var(--green);">Behavioral Truth</h3>
-        <p>Buying agents submit receipts with 6 scored signals. Agent satisfaction measured by observable behavior — did they come back, switch, or abandon? Receipts from unestablished entities carry only 0.1x weight — you must earn credibility before your voice counts.</p>
+        <p>Buying agents submit receipts with behavioral outcomes as primary signal (40% weight). Did they come back? Switch? Abandon? Receipts from unestablished entities carry only 0.1x weight. Three-factor weighting: submitter credibility × time decay × graph health.</p>
       </div>
       <div class="problem-card reveal" style="border-color: rgba(0,212,255,0.2);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
@@ -682,88 +682,89 @@
 <section id="algorithm">
   <div class="algo-section">
     <div class="reveal" style="text-align: center;">
-      <div class="st">// The Algorithm</div>
-      <div class="sh">Published. Auditable.<br>Incorruptible.</div>
-      <div class="sd" style="margin: 0 auto; max-width: 600px;">The scoring algorithm is open source on GitHub. Every weight is published. Receipts from higher-scoring entities carry more weight — making Sybil attacks exponentially harder.</div>
+      <div class="st">// The Trust Engine</div>
+      <div class="sh">Behavioral-First.<br>Evidence-Weighted.</div>
+      <div class="sd" style="margin: 0 auto; max-width: 640px;">EP doesn't ask "how did you feel?" It asks "what did you do next?" Behavioral signals — did the agent come back, switch, or abandon? — are the strongest Phase 1 truth because they're harder to fake and directly aligned with routing outcomes. Self-reported numbers are the weakest.</div>
     </div>
     <div class="algo-grid">
       <div class="algo-item reveal">
-        <div class="algo-weight">30%</div>
+        <div class="algo-weight">40%</div>
+        <div class="algo-name">Behavioral Outcome</div>
+        <div class="algo-desc">Completed, retried, switched, abandoned, or disputed — observable action, not opinion</div>
+      </div>
+      <div class="algo-item reveal">
+        <div class="algo-weight">20%</div>
+        <div class="algo-name">Consistency</div>
+        <div class="algo-desc">Low variance over time — mathematical, not self-reported</div>
+      </div>
+      <div class="algo-item reveal">
+        <div class="algo-weight">12%</div>
         <div class="algo-name">Delivery Accuracy</div>
         <div class="algo-desc">Promised vs actual arrival</div>
       </div>
       <div class="algo-item reveal">
-        <div class="algo-weight">25%</div>
+        <div class="algo-weight">10%</div>
         <div class="algo-name">Product Accuracy</div>
         <div class="algo-desc">Listing matched reality</div>
       </div>
       <div class="algo-item reveal">
-        <div class="algo-weight">15%</div>
+        <div class="algo-weight">8%</div>
         <div class="algo-name">Price Integrity</div>
         <div class="algo-desc">Quoted vs charged</div>
       </div>
       <div class="algo-item reveal">
-        <div class="algo-weight">15%</div>
+        <div class="algo-weight">5%</div>
         <div class="algo-name">Return Processing</div>
         <div class="algo-desc">Policy honored on time</div>
       </div>
-      <div class="algo-item reveal">
-        <div class="algo-weight">10%</div>
-        <div class="algo-name">Agent Satisfaction</div>
-        <div class="algo-desc">Behavioral: completed, retried, switched, or abandoned</div>
-      </div>
-      <div class="algo-item reveal">
-        <div class="algo-weight">5%</div>
-        <div class="algo-name">Consistency</div>
-        <div class="algo-desc">Low variance over time</div>
+    </div>
+
+    <!-- THREE-FACTOR RECEIPT WEIGHTING -->
+    <div class="reveal" style="margin-top: 48px; max-width: 800px; margin-left: auto; margin-right: auto;">
+      <div class="problem-card" style="border-color: rgba(0,212,255,0.15); padding: 28px;">
+        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--cyan); margin-bottom: 16px;">THREE-FACTOR RECEIPT WEIGHTING</div>
+        <p style="font-size: 13px; line-height: 1.7; color: var(--t2); margin-bottom: 16px;">Every receipt carries a weight computed from three factors:</p>
+        <div style="font-family: var(--mono); font-size: 12px; color: var(--t1); background: rgba(0,0,0,0.3); padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+          receipt_weight = submitter_credibility × time_decay × graph_health
+        </div>
+        <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-family: var(--mono); font-size: 11px;">
+          <span style="color: var(--cyan);">Submitter</span><span style="color: var(--t2);">Established entity at score 90 = 0.9x. Unestablished entity = 0.1x regardless of score.</span>
+          <span style="color: var(--green);">Time decay</span><span style="color: var(--t2);">90-day half-life. Recent receipts matter more. Bad history fades. Recovery is rewarded.</span>
+          <span style="color: var(--amber);">Graph health</span><span style="color: var(--t2);">Closed loops = 0.4x. Thin graphs = 0.5x. Clusters = 0.1x and blocked.</span>
+        </div>
       </div>
     </div>
 
-    <!-- SUBMITTER WEIGHTING + WHO GETS SCORED -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 48px; max-width: 800px; margin-left: auto; margin-right: auto;">
-      <div class="problem-card reveal" style="border-color: rgba(0,212,255,0.15);">
-        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--cyan); margin-bottom: 12px;">SUBMITTER-WEIGHTED SCORING</div>
-        <p style="font-size: 13px; line-height: 1.7; color: var(--t2);">
-          Each receipt is weighted by the submitter's credibility. An established score-90 entity's receipt counts <strong style="color:var(--t1);">0.9x</strong>. But an unestablished newcomer — no matter their score — counts only <strong style="color:var(--t1);">0.1x</strong>. To become established, you need 5+ receipts from 3+ unique submitters. Creating 100 throwaway entities is useless — each carries 0.1x weight. <strong style="color:var(--cyan);">The cost of faking spirals exponentially.</strong>
-        </p>
-      </div>
-      <div class="problem-card reveal" style="border-color: rgba(0,255,136,0.15);">
-        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--green); margin-bottom: 12px;">TIME-DECAY — RECOVERY IS POSSIBLE</div>
-        <p style="font-size: 13px; line-height: 1.7; color: var(--t2);">
-          Recent receipts carry more weight than old ones. Half-life: <strong style="color:var(--t1);">90 days</strong>. A merchant who was terrible 6 months ago but perfect since will see their score recover as old receipts decay. <strong style="color:var(--green);">Bad history fades. Improvement is rewarded.</strong>
-        </p>
-      </div>
-    </div>
-
+    <!-- EFFECTIVE EVIDENCE + SYBIL RESISTANCE -->
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 16px; max-width: 800px; margin-left: auto; margin-right: auto;">
-      <div class="problem-card reveal" style="border-color: rgba(255,215,0,0.15);">
-        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--gold); margin-bottom: 12px;">WHO GETS SCORED?</div>
+      <div class="problem-card reveal" style="border-color: rgba(255,45,120,0.15);">
+        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--magenta); margin-bottom: 12px;">EFFECTIVE EVIDENCE DAMPENING</div>
         <p style="font-size: 13px; line-height: 1.7; color: var(--t2);">
-          EP scores the <strong style="color:var(--t1);">direct economic counterparty</strong> — whoever took the money and made the promise. Sofa arrives broken? The seller gets <code style="font-size:11px;">as_described: false</code>. The carrier gets <code style="font-size:11px;">delivered: true</code>. <strong style="color:var(--gold);">Separate signals for separate entities.</strong>
+          Scores are dampened based on <strong style="color:var(--t1);">effective evidence</strong> (sum of weighted receipts), not raw receipt count. 5 perfect receipts from throwaway accounts = 0.5 effective evidence → score barely moves above 50. <strong style="color:var(--magenta);">The Sybil attack produces a score of ~55, not 100.</strong>
         </p>
       </div>
-      <div class="problem-card reveal" style="border-color: rgba(255,45,120,0.15);">
-        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--magenta); margin-bottom: 12px;">WHY LYING HURTS THE LIAR</div>
+      <div class="problem-card reveal" style="border-color: rgba(255,215,0,0.15);">
+        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--gold); margin-bottom: 12px;">WHY LYING HURTS THE LIAR</div>
         <p style="font-size: 13px; line-height: 1.7; color: var(--t2);">
           <strong style="color:var(--t1);">You rate what you eat. Lie, and you eat bad food again.</strong><br><br>
-          The buying agent submits receipts AND uses those same scores to decide where to transact next. If Clara scores a bad seller highly, Clara's own routing sends her back to that seller. <strong style="color:var(--magenta);">Structurally aligned honesty.</strong> Harder to fake than any review system — but not yet unfakeable. That comes with bilateral attestations in Phase 2.
+          The buying agent submits receipts AND uses those same profiles to route. Fake a good review? Your own routing sends you back to that bad merchant. <strong style="color:var(--gold);">Structurally aligned.</strong> Bilateral attestations in Phase 2 make it even harder to game.
         </p>
       </div>
     </div>
 
-    <!-- SCORE CONFIDENCE STATES -->
-    <div class="reveal" style="margin-top: 48px; max-width: 800px; margin-left: auto; margin-right: auto;">
+    <!-- CONFIDENCE — HISTORICAL VS CURRENT -->
+    <div class="reveal" style="margin-top: 16px; max-width: 800px; margin-left: auto; margin-right: auto;">
       <div class="problem-card" style="border-color: rgba(255,255,255,0.1); padding: 28px;">
-        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--t3); margin-bottom: 16px;">SCORE CONFIDENCE STATES</div>
-        <p style="font-size: 13px; line-height: 1.7; color: var(--t2); margin-bottom: 16px;">Not all scores are equally trustworthy. EP communicates this transparently:</p>
+        <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--t3); margin-bottom: 16px;">CONFIDENCE — TWO DISTINCT CONCEPTS</div>
+        <p style="font-size: 13px; line-height: 1.7; color: var(--t2); margin-bottom: 16px;"><strong style="color:var(--t1);">Historical establishment</strong> — has this entity ever built enough credible history? Permanent once achieved.<br><strong style="color:var(--t1);">Current confidence</strong> — how much should you trust this profile right now? Computed from rolling-window effective evidence.</p>
         <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-family: var(--mono); font-size: 11px;">
-          <span style="color: var(--t3);">PENDING</span><span style="color: var(--t2);">0 receipts — "Score pending, no data yet"</span>
-          <span style="color: var(--amber);">LOW CONFIDENCE</span><span style="color: var(--t2);">Receipts only from unestablished submitters — barely counts</span>
-          <span style="color: var(--gold);">PROVISIONAL</span><span style="color: var(--t2);">&lt;5 receipts — building history, not yet established</span>
-          <span style="color: var(--cyan);">EMERGING</span><span style="color: var(--t2);">5+ receipts from established submitters — score + breakdown shown</span>
-          <span style="color: var(--green);">ESTABLISHED</span><span style="color: var(--t2);">20+ receipts, multiple submitters — high confidence, full trust</span>
+          <span style="color: var(--t3);">PENDING</span><span style="color: var(--t2);">Effective evidence = 0</span>
+          <span style="color: var(--amber);">INSUFFICIENT</span><span style="color: var(--t2);">Effective evidence &lt; 1.0 — receipts exist but carry very low weight</span>
+          <span style="color: var(--gold);">PROVISIONAL</span><span style="color: var(--t2);">Effective evidence 1.0–4.9 — building credible history</span>
+          <span style="color: var(--cyan);">EMERGING</span><span style="color: var(--t2);">Effective evidence 5.0–19.9 — profile is meaningful</span>
+          <span style="color: var(--green);">CONFIDENT</span><span style="color: var(--t2);">Effective evidence ≥ 20.0 — high confidence, broad evidence</span>
         </div>
-        <p style="font-size: 12px; line-height: 1.6; color: var(--t3); margin-top: 16px;">Breakdown bars only appear at Emerging or higher. The API includes <code style="font-size:10px;">confidence</code> and <code style="font-size:10px;">confidence_message</code> fields so consuming agents can automate trust decisions: "only transact with Established entities."</p>
+        <p style="font-size: 12px; line-height: 1.6; color: var(--t3); margin-top: 16px;">An entity can be historically established but have declining current confidence. The API exposes both as separate objects.</p>
       </div>
     </div>
   </div>
@@ -870,9 +871,19 @@
   <div class="api-section">
     <div class="reveal" style="text-align: center;">
       <div class="st">// For Developers</div>
-      <div class="sh">Four API Calls.<br>That's the Protocol.</div>
+      <div class="sh">Five API Calls.<br>That's the Protocol.</div>
     </div>
     <div class="api-list">
+      <div class="api-item reveal">
+        <div class="api-method get">GET</div>
+        <div class="api-path">/api/trust/profile/:entityId</div>
+        <div class="api-desc">Full trust profile — behavioral rates, signal breakdowns, anomaly alerts, confidence. The canonical read surface.</div>
+      </div>
+      <div class="api-item reveal">
+        <div class="api-method post">POST</div>
+        <div class="api-path">/api/trust/evaluate</div>
+        <div class="api-desc">Evaluate an entity against a trust policy. Returns pass/fail with failure reasons. The decision framework.</div>
+      </div>
       <div class="api-item reveal">
         <div class="api-method post">POST</div>
         <div class="api-path">/api/entities/register</div>
@@ -881,17 +892,12 @@
       <div class="api-item reveal">
         <div class="api-method post">POST</div>
         <div class="api-path">/api/receipts/submit</div>
-        <div class="api-desc">Submit a transaction receipt. Cryptographically hashed. Append-only. Triggers score recomputation.</div>
+        <div class="api-desc">Submit a receipt with transaction_ref (required), behavioral outcome, context keys, claims, and evidence.</div>
       </div>
       <div class="api-item reveal">
         <div class="api-method get">GET</div>
         <div class="api-path">/api/score/:entityId</div>
-        <div class="api-desc">Compatibility score + trust status. Public. No auth. For full profiles use /api/trust/profile/:entityId.</div>
-      </div>
-      <div class="api-item reveal">
-        <div class="api-method post">POST</div>
-        <div class="api-path">/api/trust/evaluate</div>
-        <div class="api-desc">Evaluate an entity against a trust policy. Returns pass/fail with failure reasons. The decision framework.</div>
+        <div class="api-desc">Compatibility score (legacy). For trust decisions, use /api/trust/profile or /api/trust/evaluate.</div>
       </div>
     </div>
   </div>
@@ -991,26 +997,27 @@
   </div>
 </section>
 
-<!-- CTA BANNER -->
+<!-- CONSTITUTIONAL PRINCIPLE + CORRUPTION DEFENSE -->
 <section style="padding: 40px 24px 80px;">
   <div class="cta-banner reveal">
-    <div class="sh" style="font-size: clamp(28px, 3.5vw, 42px);">Why EP Cannot<br>Be Corrupted</div>
+    <div class="sh" style="font-size: clamp(28px, 3.5vw, 42px);">EP Must Never Make Trust<br>More Powerful Than Appeal.</div>
+    <div class="sd" style="margin: 0 auto 28px; max-width: 600px;">This is the constitutional principle. If EP can influence routing, access, and conversion, then every negative trust effect must be explainable, challengeable, and reversible. Power without due process is dangerous.</div>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 28px auto 36px; max-width: 700px; text-align: left;">
       <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">
         <strong style="color: var(--t1);">Fake good reviews?</strong><br>
-        Buying agents have no incentive — their own agent routes back and gets burned.
+        Three-factor weighting: submitter credibility × time decay × graph health. Unestablished = 0.1x. Effective evidence dampening kills Sybil attacks.
       </div>
       <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">
         <strong style="color: var(--t1);">Sybil attack?</strong><br>
-        Fake entities carry only 0.1x weight until established. Thin-graph flagging. Cluster detection. Velocity monitoring.
+        5 perfect receipts from throwaway accounts → score ~55. Graph analysis detects closed loops (0.4x), thin graphs (0.5x), clusters (0.1x + blocked).
       </div>
       <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">
-        <strong style="color: var(--t1);">Bribe the platform?</strong><br>
-        No platform. Open source. The code is the authority. Fork it if you disagree.
+        <strong style="color: var(--t1);">Unfair downgrade?</strong><br>
+        Phase 2 adds due process: challenged → under review → resolved or reversed. Every attestation is append-only. Corrections supersede, never erase.
       </div>
       <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">
         <strong style="color: var(--t1);">Trapped by bad history?</strong><br>
-        90-day half-life. Recovery through sustained improvement. Bad history fades. Good performance compounds.
+        90-day half-life. Historical establishment is permanent. Current confidence reflects recent evidence. Recovery through sustained performance.
       </div>
     </div>
     <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
@@ -1304,7 +1311,7 @@ async function lookupScore() {
       };
     } else if (r.status === 404) {
       res.innerHTML = `<div class="sempty" style="color:var(--amber);">Entity "${esc(inp)}" not found. <a href="#register" style="color:var(--cyan);text-decoration:underline;">Register it?</a></div>`;
-      btn.disabled=false; btn.textContent='CHECK SCORE';
+      btn.disabled=false; btn.textContent='CHECK TRUST';
       return;
     } else {
       throw 0;
@@ -1391,7 +1398,7 @@ async function lookupScore() {
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
       <div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;">EMILIA Score</span>
+          <span style="font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;">Trust Profile</span>
           <span style="font-family:var(--mono);font-size:9px;color:${cc.badge};background:${cc.bg};border:1px solid ${cc.border};padding:2px 8px;border-radius:100px;">${confLabel}</span>
         </div>
         <div style="font-family:var(--disp);font-weight:700;font-size:18px;margin-top:4px;">${esc(d.name||inp)}</div>
@@ -1407,7 +1414,7 @@ async function lookupScore() {
   </div>`;
 
   setTimeout(()=>res.querySelectorAll('.sfill').forEach(b=>{const w=b.style.width;b.style.width='0%';requestAnimationFrame(()=>b.style.width=w);}),50);
-  btn.disabled=false; btn.textContent='CHECK SCORE';
+  btn.disabled=false; btn.textContent='CHECK TRUST';
 }
 
 function bar(label,val,bg) {

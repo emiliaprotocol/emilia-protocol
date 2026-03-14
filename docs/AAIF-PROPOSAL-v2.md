@@ -102,26 +102,56 @@ Under AAIF governance:
 
 ---
 
-## 8. Proposed Working Group Structure
+## 8. Constitutional Principle
+
+EP operates under one governing doctrine:
+
+**EP must never make trust more powerful than appeal.**
+
+If EP can influence routing, access, or conversion, then every negative trust effect must be explainable, challengeable, and reversible. The v4 architecture roadmap includes:
+
+- **Provenance tiers** — classifying attestations from self-attested (0.05x) through bilateral (0.45x) to oracle-verified (1.0x), so evidence quality shapes trust more than any formula
+- **Due-process lifecycle** — submitted → challenged → under review → resolved/reversed → superseded. Corrections are append-only. Nothing is erased.
+- **Context keys** — trust scoped to task type, category, geography, modality, and value band. Global trust is a fallback prior, not the primary representation.
+- **Relationship trust** — pairwise trust with hierarchical backoff: A's experience with B in context C, falling back through broader contexts to global priors.
+
+These are not hypothetical. Context keys are already deployed in the receipt schema. The constitutional document (EP Constitution v4) is available for working group review.
+
+---
+
+## 9. Initial Wedge: DTC Commerce on Shopify
+
+EP's first production vertical targets DTC merchants on Shopify — a category where delivery accuracy, product-as-described, price integrity, and return processing are high-value, measurable trust signals.
+
+The integration architecture: Shopify webhooks (orders/paid, fulfillments, refunds, returns) → normalized merchant event ledger → canonical EP receipts with structured claims and evidence references.
+
+This produces machine-readable trust profiles that AI shopping agents can evaluate before checkout — turning a DTC store into an agent-trustable merchant before AI agents become a major sales channel.
+
+A complete Shopify integration spec (webhook mapping, receipt mapping, public trust surfaces, MVP roadmap) is prepared and available for working group review.
+
+---
+
+## 10. Proposed Working Group Structure
 
 - **Chair:** EMILIA Protocol (initial), rotating annually
 - **Members:** Open to any AAIF member organization
-- **Deliverables:** EP Core Spec v2.0, conformance test suite, ACP trust extension draft
+- **Deliverables:** EP Core Spec v2.0, conformance test suite, ACP trust extension, Shopify reference integration
 - **Timeline:** Spec finalized Q3 2026, conformance tests Q4 2026
 - **Meetings:** Biweekly, open to all AAIF members
 
 ---
 
-## 9. Immediate Next Steps
+## 11. Immediate Next Steps
 
 1. Present at MCP Dev Summit NA (April 2-3, NYC)
 2. Submit NIST ITL Concept Paper (April 2 deadline)
 3. Publish EP Core RFC v1.1 as standalone working group deliverable
-4. Solicit working group members from AAIF member organizations
-5. First working group meeting Q2 2026
+4. Launch Shopify DTC reference integration (first external receipt source)
+5. Solicit working group members from AAIF member organizations
+6. First working group meeting Q2 2026
 
 ---
 
 *EMILIA Protocol — A vendor-neutral trust attestation standard for agentic commerce.*
-*Trust profiles, not scores. Policies, not thresholds. Compatible with ACP. Usable through MCP.*
-*Open source under Apache 2.0.*
+*Trust profiles, not scores. Policies, not thresholds. Due process, not silent mutation.*
+*Compatible with ACP. Usable through MCP. Open source under Apache 2.0.*
