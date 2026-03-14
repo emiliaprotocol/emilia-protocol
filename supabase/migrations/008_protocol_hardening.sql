@@ -85,6 +85,7 @@ BEGIN
       ELSE 0.1
     END
     * GREATEST(0.05, POWER(0.5, EXTRACT(EPOCH FROM (NOW() - created_at)) / 86400.0 / 90.0))
+    * COALESCE(graph_weight, 1.0)
   ), 0)
   INTO v_effective
   FROM receipts WHERE entity_id = p_entity_id;

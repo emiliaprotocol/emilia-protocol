@@ -1,10 +1,14 @@
 -- ============================================================================
--- EMILIA Protocol — Updated Scoring Function (matches JS engine exactly)
+-- EMILIA Protocol — Migration 009: Scoring with Effective Evidence + Graph Weight
 -- Run AFTER migration 008
 -- ============================================================================
--- Key fix: dampening uses effective_count (sum of weights), not raw count.
--- Also uses canonical is_entity_established() for establishment check.
+-- Key fixes:
+--   1. Dampening uses effective_count (sum of weights), not raw count
+--   2. graph_weight column stored per receipt, used in scoring
 -- ============================================================================
+
+-- Add graph_weight column (fraud graph analysis result per receipt)
+ALTER TABLE receipts ADD COLUMN IF NOT EXISTS graph_weight FLOAT DEFAULT 1.0;
 
 CREATE OR REPLACE FUNCTION compute_emilia_score(p_entity_id uuid)
 RETURNS float AS
@@ -48,7 +52,7 @@ BEGIN
   FOR r IN
     SELECT delivery_accuracy, product_accuracy, price_integrity,
            return_processing, agent_satisfaction, composite_score,
-           submitter_score, submitter_established, created_at
+           submitter_score, submitter_established, graph_weight, created_at
     FROM receipts
     WHERE entity_id = p_entity_id
     ORDER BY created_at DESC
@@ -65,7 +69,8 @@ BEGIN
     v_age_days := GREATEST(0, EXTRACT(EPOCH FROM (NOW() - r.created_at)) / 86400.0);
     v_time_weight := GREATEST(0.05, POWER(0.5, v_age_days / 90.0));
 
-    v_receipt_weight := v_submitter_weight * v_time_weight;
+    -- Three-factor weight: submitter credibility × time decay × graph health
+    v_receipt_weight := v_submitter_weight * v_time_weight * COALESCE(r.graph_weight, 1.0);
     v_effective_count := v_effective_count + v_receipt_weight;
 
     IF r.delivery_accuracy IS NOT NULL THEN

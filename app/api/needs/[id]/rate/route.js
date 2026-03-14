@@ -1,26 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient, authenticateRequest } from '@/lib/supabase';
-import { computeReceiptComposite, computeReceiptHash } from '@/lib/scoring';
-import crypto from 'crypto';
+import { createReceipt } from '@/lib/create-receipt';
 
 /**
  * POST /api/needs/[id]/rate
- * 
- * Rate the entity that fulfilled a need. This creates a receipt
- * on the EMILIA ledger — the same receipt that updates their score.
- * 
- * Only the entity that broadcast the need can rate it.
- * Only completed needs can be rated.
- * 
- * Auth: Bearer ep_live_...
- * 
- * Body: {
- *   delivery_accuracy: 95,    // was it on time?
- *   product_accuracy: 88,     // was the output correct?
- *   price_integrity: 100,     // was the price honored?
- *   agent_satisfaction: 90,   // overall satisfaction
- *   evidence: { ... }
- * }
+ *
+ * Rate the entity that fulfilled a need.
+ * Delegates to createReceipt() — same trust path as /api/receipts/submit.
  */
 export async function POST(request, { params }) {
   try {
@@ -48,12 +34,11 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: `Need is ${need.status}, can only rate completed needs` }, { status: 409 });
     }
 
-    // Only the requesting entity can rate
     if (need.from_entity_id !== auth.entity.id) {
       return NextResponse.json({ error: 'Only the requesting entity can rate this need' }, { status: 403 });
     }
 
-    // Check if already rated (prevent double-rating)
+    // Check if already rated
     const { data: existingReceipt } = await supabase
       .from('receipts')
       .select('id')
@@ -64,87 +49,50 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'This need has already been rated' }, { status: 409 });
     }
 
-    // Create a receipt scoring the fulfilling entity
-    const composite = computeReceiptComposite({
-      delivery_accuracy: body.delivery_accuracy,
-      product_accuracy: body.product_accuracy,
-      price_integrity: body.price_integrity,
-      return_processing: body.return_processing,
-      agent_satisfaction: body.agent_satisfaction,
-    });
+    // Require at least one signal or behavior
+    const hasSignal = [body.delivery_accuracy, body.product_accuracy, body.price_integrity,
+      body.return_processing, body.agent_satisfaction].some(v => v != null && !isNaN(v));
+    const hasBehavior = !!body.agent_behavior;
 
-    // Get previous hash for chain integrity
-    const { data: prevReceipt } = await supabase
-      .from('receipts')
-      .select('receipt_hash')
-      .eq('entity_id', need.claimed_by)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
+    if (!hasSignal && !hasBehavior) {
+      return NextResponse.json({ error: 'Must include at least one signal or agent_behavior' }, { status: 400 });
+    }
 
-    const previousHash = prevReceipt?.receipt_hash || null;
-    const receiptId = `ep_rcpt_${crypto.randomBytes(16).toString('hex')}`;
-
-    const receiptData = {
-      entity_id: need.claimed_by,
-      submitted_by: auth.entity.id,
-      transaction_ref: `need:${need.need_id}`,
-      transaction_type: 'task_completion',
-      delivery_accuracy: body.delivery_accuracy ?? null,
-      product_accuracy: body.product_accuracy ?? null,
-      price_integrity: body.price_integrity ?? null,
-      return_processing: body.return_processing ?? null,
-      agent_satisfaction: body.agent_satisfaction ?? null,
-      evidence: body.evidence || {},
-    };
-
-    const receiptHash = await computeReceiptHash(receiptData, previousHash);
-
-    const { data: receipt, error: receiptError } = await supabase
-      .from('receipts')
-      .insert({
-        receipt_id: receiptId,
-        entity_id: need.claimed_by,
-        submitted_by: auth.entity.id,
-        transaction_ref: `need:${need.need_id}`,
-        transaction_type: 'task_completion',
+    // Use the SAME receipt engine as /api/receipts/submit
+    const result = await createReceipt({
+      targetEntitySlug: need.claimed_by,
+      submitter: auth.entity,
+      transactionRef: `need:${need.need_id}`,
+      transactionType: 'task_completion',
+      signals: {
         delivery_accuracy: body.delivery_accuracy ?? null,
         product_accuracy: body.product_accuracy ?? null,
         price_integrity: body.price_integrity ?? null,
         return_processing: body.return_processing ?? null,
         agent_satisfaction: body.agent_satisfaction ?? null,
-        evidence: body.evidence || {},
-        composite_score: composite,
-        receipt_hash: receiptHash,
-        previous_hash: previousHash,
-      })
-      .select()
-      .single();
+      },
+      agentBehavior: body.agent_behavior || null,
+      claims: body.claims || null,
+      evidence: body.evidence || {},
+    });
 
-    if (receiptError) {
-      console.error('Receipt creation error:', receiptError);
-      return NextResponse.json({ error: 'Failed to create receipt' }, { status: 500 });
+    if (result.error) {
+      return NextResponse.json(
+        { error: result.error, flags: result.flags },
+        { status: result.status || 500 }
+      );
     }
 
-    // Get updated score
-    const { data: updatedEntity } = await supabase
-      .from('entities')
-      .select('emilia_score, total_receipts')
-      .eq('id', need.claimed_by)
-      .single();
-
-    return NextResponse.json({
-      receipt: {
-        receipt_id: receipt.receipt_id,
-        composite_score: receipt.composite_score,
-        receipt_hash: receipt.receipt_hash,
-      },
-      entity_score: {
-        emilia_score: updatedEntity?.emilia_score,
-        total_receipts: updatedEntity?.total_receipts,
-      },
+    const response = {
+      receipt: result.receipt,
+      entity_score: result.entityScore,
       message: 'Need rated. Receipt added to the EMILIA ledger.',
-    }, { status: 201 });
+    };
+    if (result.warnings) {
+      response.warnings = result.warnings;
+    }
+
+    return NextResponse.json(response, { status: 201 });
   } catch (err) {
     console.error('Need rate error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

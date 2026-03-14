@@ -30,7 +30,7 @@ export async function GET(request) {
     let query = supabase
       .from('entities')
       .select(`
-        entity_id, display_name, entity_type, description,
+        id, entity_id, display_name, entity_type, description,
         category, capabilities,
         emilia_score, total_receipts, successful_receipts,
         verified, created_at
@@ -52,8 +52,18 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Failed to fetch leaderboard' }, { status: 500 });
     }
 
-    return NextResponse.json({
-      leaderboard: (entities || []).map((e, i) => ({
+    // Compute establishment status for each entity using canonical DB function
+    const leaderboard = await Promise.all((entities || []).map(async (e, i) => {
+      let established = false;
+      let effectiveEvidence = 0;
+      if (e.total_receipts >= 5) {
+        const { data: estData } = await supabase.rpc('is_entity_established', { p_entity_id: e.id });
+        if (estData && estData[0]) {
+          established = estData[0].established;
+          effectiveEvidence = estData[0].effective_evidence;
+        }
+      }
+      return {
         rank: offset + i + 1,
         entity_id: e.entity_id,
         display_name: e.display_name,
@@ -61,13 +71,17 @@ export async function GET(request) {
         category: e.category,
         emilia_score: e.emilia_score,
         total_receipts: e.total_receipts,
+        effective_evidence: effectiveEvidence,
         success_rate: e.total_receipts > 0
           ? Math.round((e.successful_receipts / e.total_receipts) * 1000) / 10
           : null,
         verified: e.verified,
-        // established requires per-entity effective_evidence computation
-        // Use /api/score/:entityId for canonical establishment status
-      })),
+        established,
+      };
+    }));
+
+    return NextResponse.json({
+      leaderboard,
       total: count,
       offset,
       limit,
