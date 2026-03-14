@@ -149,7 +149,7 @@
 - [ ] Relationship trust endpoint
 
 ### Advanced Due Process
-- [ ] Community adjudication (reputation-weighted reviewers)
+- [ ] Community adjudication (trust-weighted reviewers)
 - [ ] Automated escalation rules
 - [ ] Dispute SLA monitoring
 - [ ] Appeal lifecycle (dispute → appeal → final resolution)

@@ -1,33 +1,28 @@
 {
   "name": "@emilia-protocol/sdk",
   "version": "0.1.0",
-  "description": "TypeScript SDK for EMILIA Protocol (EP) — the trust layer for agentic commerce.",
-  "license": "Apache-2.0",
-  "type": "module",
+  "description": "TypeScript SDK for trust profiles, policy evaluation, install preflight, disputes, and appeals across counterparties, software, and machine actors.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
-  },
-  "files": ["dist", "README.md"],
-  "scripts": {
-    "build": "tsc",
-    "prepublishOnly": "npm run build"
-  },
-  "devDependencies": {
-    "typescript": "^5.5.0"
-  },
+  "type": "module",
   "keywords": [
-    "emilia", "trust", "reputation", "ai-agents", "agentic-commerce",
-    "mcp", "a2a", "ucp", "receipts"
+    "trust",
+    "trust-profile",
+    "policy-evaluation",
+    "install-preflight",
+    "appeals",
+    "disputes",
+    "software-trust",
+    "marketplace-trust",
+    "counterparties",
+    "machine-actors",
+    "mcp",
+    "emilia-protocol"
   ],
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/emiliaprotocol/emilia-protocol",
-    "directory": "sdks/typescript"
+    "url": "https://github.com/emiliaprotocol/emilia-protocol"
   },
   "homepage": "https://emiliaprotocol.ai"
 }

@@ -300,7 +300,7 @@ Extended for EP-SX:
 ## 11. Mission Statement Update
 
 From:
-> Trust layer for agentic commerce
+> Trust layer for agentic commerce (original wedge)
 
 To:
 > Portable trust for machine counterparties and third-party software

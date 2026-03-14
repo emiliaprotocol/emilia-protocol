@@ -171,7 +171,7 @@ This closes the loop: ACP handles the payment, EP evaluates trust and records th
 | For Agents | For Merchants | For Platforms |
 |-----------|--------------|--------------|
 | Evaluate trust before paying | High trust profiles = more transactions | Reduced fraud/chargebacks |
-| Policy-based decisions, not guesswork | Portable reputation across platforms | Lower dispute costs |
+| Policy-based decisions, not guesswork | Portable trust profiles across platforms | Lower dispute costs |
 | Context-aware (category, geo, value) | Behavioral track record compounds | Trust without gatekeeping |
 
 ---
