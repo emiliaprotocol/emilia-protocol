@@ -107,6 +107,13 @@
 
 **Success condition:** One external entity submits a real receipt. EP stops being internally excellent and becomes externally real.
 
+### Proof Track (parallel)
+- [ ] Publish conformance status on README (live vs spec vs planned)
+- [ ] Expand adversarial tests to cover EP-IX continuity scenarios
+- [ ] Add e2e dispute → appeal → reversal proof test
+- [ ] Add continuity test vectors to conformance fixtures
+- [ ] Document public implementation status at every phase gate
+
 ---
 
 ## Phase 2: EP-IX Runtime (Weeks 3-6)

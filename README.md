@@ -213,15 +213,23 @@ Establishment is **historical** — computed over all receipts. Scoring is **cur
 | Behavioral-first scoring (v2) | ✅ Live |
 | Install preflight (EP-SX) | ✅ Live |
 | Canonical evaluator (one trust brain) | ✅ Live — 10 surfaces |
+| Canonical writer (one write brain) | ✅ Live |
+| Trust profile materialization | ✅ Live |
 | Effective-evidence Sybil resistance | ✅ Live |
 | Bilateral attestations + provenance tiers | ✅ Live |
 | Dispute lifecycle + human appeal | ✅ Live |
 | Receipt immutability (DB triggers) | ✅ Live |
-| Canonical JSON hashing | ✅ Live |
-| Graph analysis in scoring path | ✅ Live |
-| Upstash Redis rate limiting | ✅ Live |
-| Oracle verification | 🔲 Phase 3 |
-| Relationship/contextual trust | 🔲 Phase 3 |
+| Deadline enforcement (cron) | ✅ Live — bilateral 48h, disputes 7d, continuity 30d |
+| Health endpoint | ✅ Live |
+| MCP server (14 tools) | ✅ Live |
+| Policy registry | ✅ Live |
+| Human trust console | ✅ Live — profile + preflight + report |
+| EP-IX identity continuity | 📋 Spec complete, runtime skeleton shipped, tables deployed |
+| GitHub host adapter | 📋 Source complete, awaiting pilot integration |
+| Operator role model | 🔲 Phase 3 |
+| Evidence visibility tiers | 🔲 Phase 3 |
+| Oracle verification | 🔲 Phase 4 |
+| Trust analytics | 🔲 Phase 7 |
 
 ## Conformance & Testing
 
