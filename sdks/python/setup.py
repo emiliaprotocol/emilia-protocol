@@ -1,35 +1,3 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
-setup(
-    name="emilia-protocol",
-    version="0.1.0",
-    description="Python SDK for trust profiles, policy evaluation, install preflight, disputes, and appeals across counterparties, software, and machine actors.",
-    long_description=open("README.md").read(),
-    long_description_content_type="text/markdown",
-    author="EMILIA Protocol",
-    author_email="hello@emiliaprotocol.ai",
-    url="https://github.com/emiliaprotocol/emilia-protocol",
-    packages=find_packages(),
-    python_requires=">=3.8",
-    install_requires=["requests>=2.28.0"],
-    keywords=[
-        "trust",
-        "trust profile",
-        "policy evaluation",
-        "install preflight",
-        "appeals",
-        "disputes",
-        "software trust",
-        "marketplace trust",
-        "machine actors",
-        "counterparties",
-        "mcp",
-        "emilia protocol",
-    ],
-    classifiers=[
-        "Development Status :: 3 - Alpha",
-        "License :: OSI Approved :: Apache Software License",
-        "Programming Language :: Python :: 3",
-    ],
-    license="Apache-2.0",
-)
+setup()

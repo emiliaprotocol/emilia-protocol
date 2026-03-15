@@ -1,6 +1,6 @@
 # EMILIA Protocol — AAIF Working Group Proposal
 
-**Proposed Working Group:** Trust Attestation for Agentic Commerce
+**Proposed Working Group:** Trust Evaluation and Appeals for Machine Counterparties and Software
 **Submitted to:** Agentic AI Foundation (AAIF) / Linux Foundation
 **Date:** March 2026
 **Contact:** team@emiliaprotocol.ai

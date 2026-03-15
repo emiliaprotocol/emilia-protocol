@@ -61,6 +61,58 @@ jobs:
       - name: Run Python hash verification
         run: python3 conformance/verify_hashes.py
 
+  typescript-sdk:
+    name: TypeScript SDK Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup npm registry auth placeholder
+        run: echo "SDK build job only; no publish in CI"
+
+      - name: Install SDK dependencies
+        working-directory: sdks/typescript
+        run: npm install
+
+      - name: Build TypeScript SDK
+        working-directory: sdks/typescript
+        run: npm run build
+
+      - name: Pack TypeScript SDK
+        working-directory: sdks/typescript
+        run: npm pack --dry-run
+
+  python-sdk:
+    name: Python SDK Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tooling
+        run: python -m pip install --upgrade pip build twine
+
+      - name: Build Python SDK
+        working-directory: sdks/python
+        run: python -m build
+
+      - name: Check Python SDK metadata
+        working-directory: sdks/python
+        run: python -m twine check dist/*
+
   lint:
     name: Lint Check
     runs-on: ubuntu-latest

@@ -297,15 +297,11 @@ Extended for EP-SX:
 
 ---
 
-## 11. Mission Statement Update
+## 11. Mission
 
-From:
-> Trust layer for agentic commerce (original wedge)
+> Portable trust evaluation and appeals for counterparties, software, and machine actors.
 
-To:
-> Portable trust for machine counterparties and third-party software
-
-Commerce stays the first wedge. But EP-SX makes the protocol relevant to every ecosystem where humans and agents install, authorize, or rely on third-party software.
+EP-SX extends this mission to every ecosystem where humans and agents install, authorize, or rely on third-party software. Commerce is the first vertical. Software trust is the broader application.
 
 ---
 
