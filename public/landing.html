@@ -328,8 +328,6 @@
   <div class="hero-orb hero-orb1"></div>
   <div class="hero-orb hero-orb2"></div>
 
-  <div class="htag">EP — THE TRUST LAYER <span class="dim">v1.0</span></div>
-
   <h1>
     <span class="gr">EMILIA</span>
   </h1>
@@ -338,36 +336,16 @@
 
   <p class="hero-sub">
     Portable trust for machine counterparties and third-party software.<br>
-    <strong>Trust profiles, not scores. Policies, not thresholds. Appeals, not black boxes.</strong><br>
-    <span style="color: var(--t3); font-size: 0.85em;">Constitutional principle: trust must never be more powerful than appeal.</span>
+    <strong>Trust profiles, not scores. Policies, not thresholds. Appeals, not black boxes.</strong>
   </p>
 
   <div class="hero-ctas">
-    <a href="#api" class="btn-p">Read the API</a>
+    <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/EP-CORE-RFC.md" target="_blank" class="btn-p">Read the Spec</a>
     <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" class="btn-p" style="background: var(--t1); color: var(--bg);">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
       Star on GitHub
     </a>
-    <a href="#score" class="btn-g">Look Up Trust</a>
-  </div>
-
-  <div class="hstats">
-    <div class="hstat">
-      <div class="hstat-v" style="color: var(--cyan);">7</div>
-      <div class="hstat-l">API Endpoints</div>
-    </div>
-    <div class="hstat">
-      <div class="hstat-v" style="color: var(--gold);">142</div>
-      <div class="hstat-l">Tests Passing</div>
-    </div>
-    <div class="hstat">
-      <div class="hstat-v"><span id="stat-stars">--</span></div>
-      <div class="hstat-l">GitHub Stars</div>
-    </div>
-    <div class="hstat">
-      <div class="hstat-v">8</div>
-      <div class="hstat-l">Trust Policies</div>
-    </div>
+    <a href="#score" class="btn-g">View Trust Profile</a>
   </div>
 </section>
 
@@ -391,6 +369,33 @@
       <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--gold); margin-bottom: 12px;">MARKETPLACES</div>
       <h3 style="font-size: 16px; margin-bottom: 8px;">Should I trust this seller or app?</h3>
       <p style="font-size: 13px; color: var(--t2); line-height: 1.6;">Portable trust across Shopify, GitHub Marketplace, MCP registries, and agent tool directories. Disputes and human appeal built in.</p>
+    </div>
+  </div>
+</section>
+
+<!-- PROOF SIGNALS + CONSTITUTIONAL PRINCIPLE -->
+<section style="padding: 40px 24px 20px;">
+  <div style="max-width: 900px; margin: 0 auto;">
+    <div class="hstats reveal">
+      <div class="hstat">
+        <div class="hstat-v" style="color: var(--cyan);">7</div>
+        <div class="hstat-l">API Endpoints</div>
+      </div>
+      <div class="hstat">
+        <div class="hstat-v" style="color: var(--gold);">142</div>
+        <div class="hstat-l">Tests Passing</div>
+      </div>
+      <div class="hstat">
+        <div class="hstat-v"><span id="stat-stars">--</span></div>
+        <div class="hstat-l">GitHub Stars</div>
+      </div>
+      <div class="hstat">
+        <div class="hstat-v" style="color: var(--green);">8</div>
+        <div class="hstat-l">Trust Policies</div>
+      </div>
+    </div>
+    <div class="reveal" style="text-align: center; margin-top: 24px;">
+      <div style="font-family: var(--mono); font-size: 11px; color: var(--t3); letter-spacing: 1px;">Constitutional principle: <span style="color: var(--cyan);">trust must never be more powerful than appeal.</span></div>
     </div>
   </div>
 </section>
@@ -657,7 +662,7 @@
       <div class="step reveal">
         <div class="step-num">2</div>
         <div class="step-name">Transactions Happen</div>
-        <div class="step-desc">Commerce flows through existing protocols — UCP, ACP, A2A, MCP. EMILIA doesn't handle the transaction. It evaluates trust from the outcome.</div>
+        <div class="step-desc">Commerce flows through existing protocols — UCP, ACP, A2A, MCP. EP doesn't mediate the transaction. It evaluates whether the counterparty or software should be trusted next time.</div>
       </div>
       <div class="step reveal">
         <div class="step-num">3</div>
