@@ -70,7 +70,7 @@ EMILIA Protocol (EP) proposes a complementary approach to AI agent identity and 
 
 **1. Agent Identity Is Necessary But Not Sufficient**
 
-An AI agent can be properly authenticated and authorized but still be unreliable, dishonest, or low-quality. Identity tells you who is transacting. Trust attestation tells you whether to proceed.
+An AI agent can be properly authenticated and authorized but still be unreliable, dishonest, or low-quality. Identity tells you who is transacting. Trust evaluation tells you whether to proceed.
 
 EP provides the trust layer: multi-dimensional trust profiles computed from verified transaction receipts, evaluated against configurable policies. Combined with identity standards, this gives organizations a complete picture: identity (who) + trust (should I?).
 

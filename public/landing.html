@@ -1129,16 +1129,16 @@
       </div>
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
-        <div class="faq-q">Isn't "agent satisfaction" (10%) subjective? Doesn't that reintroduce the review problem?</div>
-        <div class="faq-a">Fair concern. That's why <code>agent_satisfaction</code> is measured by <strong>what the agent did</strong>, not what it felt. The submitting agent reports its own next action — this is self-reported but self-enforcing, because the agent's behavior is also observable by its own user.<br><br>
+        <div class="faq-q">Isn't the behavioral signal subjective? Doesn't that reintroduce the review problem?</div>
+        <div class="faq-a">No. Behavior in EP is not a star rating. It is a recorded outcome: <strong>completed</strong>, <strong>retried</strong>, <strong>switched</strong>, <strong>abandoned</strong>, or <strong>disputed</strong>. These are observable actions, not opinions.<br><br>
           <span style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:12px 0;font-family:var(--mono);font-size:11px;">
-            <span style="color:var(--green);">completed → 95</span><span style="color:var(--t2);">Transaction finished, no retry needed</span>
-            <span style="color:var(--cyan);">retried_same → 75</span><span style="color:var(--t2);">Same agent, same counterparty, new attempt (minor issue resolved)</span>
-            <span style="color:var(--amber);">retried_different → 40</span><span style="color:var(--t2);">Same task, switched to a different counterparty</span>
-            <span style="color:var(--red);">abandoned → 15</span><span style="color:var(--t2);">Agent stopped pursuing this task category entirely</span>
-            <span style="color:var(--magenta);">disputed → 5</span><span style="color:var(--t2);">Agent filed a formal dispute against the counterparty</span>
+            <span style="color:var(--green);">completed</span><span style="color:var(--t2);">Transaction finished, no retry needed</span>
+            <span style="color:var(--cyan);">retried_same</span><span style="color:var(--t2);">Same agent, same counterparty, new attempt (minor issue resolved)</span>
+            <span style="color:var(--amber);">retried_different</span><span style="color:var(--t2);">Same task, switched to a different counterparty</span>
+            <span style="color:var(--red);">abandoned</span><span style="color:var(--t2);">Agent stopped pursuing this task category entirely</span>
+            <span style="color:var(--magenta);">disputed</span><span style="color:var(--t2);">Agent filed a formal dispute against the counterparty</span>
           </span>
-          FICO doesn't ask borrowers to rate their lender. It watches whether they pay. EP doesn't ask agents to rate merchants. It watches whether they come back.<br><br>Behavioral signals are the largest weight in EP's trust model because they are the hardest to fake. Did the agent come back? Did the transaction complete? Was there a dispute? These signals are computed from verifiable outcomes, not self-reported ratings. Trust in EP is never determined by one signal alone — it is computed from behavior, evidence, provenance, context, and policy.
+          Behavioral signals carry the strongest weight in EP's trust model because they are the hardest to fake credibly. Did the agent come back? Did the transaction complete? Was there a dispute? These are verifiable outcomes, not self-reported ratings.<br><br>Trust in EP is never determined by one signal alone — it is computed from behavior, evidence, provenance, context, and policy.
         </div>
       </div>
 

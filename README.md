@@ -247,7 +247,7 @@ Run: `npx vitest run` (142 tests) + `python3 conformance/verify_hashes.py` (4 cr
 
 - [EP Core RFC](docs/EP-CORE-RFC.md) — the canonical protocol specification
 - [EP-SX Software Trust](docs/EP-SX-SOFTWARE-TRUST.md) — install preflight for plugins, packages, MCP servers
-- [EP Vision](docs/EP-VISION.md) — architecture and strategic design
+- [The Erosion of Trust](docs/THE-EROSION-OF-TRUST.md) — manifesto: why humanity needs a trust protocol
 - [AAIF Proposal](docs/AAIF-PROPOSAL-v2.md) — working group proposal
 - [NIST Engagement](docs/NIST-ENGAGEMENT-PLAN.md) — trust-profile-first engagement plan
 - [Security](SECURITY.md) — threat model, mitigations, cryptographic specs
