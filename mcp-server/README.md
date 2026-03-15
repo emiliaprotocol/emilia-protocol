@@ -39,7 +39,7 @@ Returns: behavioral rates (completion, retry, abandon, dispute), signal breakdow
 ### `ep_trust_evaluate`
 Evaluate an entity against a trust policy. Returns pass/fail with specific failure reasons.
 
-Built-in policies: `strict` (high-value), `standard` (normal), `permissive` (low-risk), `discovery` (allow unscored).
+Built-in policies: `strict` (high-value), `standard` (normal), `permissive` (low-risk), `discovery` (allow unevaluated).
 
 Accepts optional context: `{ "category": "furniture", "geo": "US-CA" }` for context-aware evaluation.
 

@@ -106,7 +106,7 @@ EP implements four layers of defense against fake entities and synthetic transac
 - Identity-aware rate limiting (API key prefix + IP on writes, Upstash Redis)
 - Receipt graph analysis (closed-loop 0.4x, thin-graph 0.5x, cluster 0.1x + blocked)
 - Submitter credibility (unestablished entities carry 0.1x weight regardless of claim content)
-- Effective-evidence dampening (scores pulled toward 50 until weighted evidence exceeds threshold)
+- Effective-evidence dampening (trust dampened toward baseline until weighted evidence exceeds threshold)
 
 This addresses NIST's concern about "confidence in the reliability of AI agents" with concrete, auditable, mathematically testable mechanisms.
 

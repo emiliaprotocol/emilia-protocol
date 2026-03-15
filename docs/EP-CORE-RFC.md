@@ -26,7 +26,7 @@ A Trust Receipt is a cryptographic record of a transaction outcome, submitted by
 ```json
 {
   "receipt_id": "ep_rcpt_{hex}",
-  "entity_id": "scored-entity-slug",
+  "entity_id": "target-entity-slug",
   "submitted_by": "submitter-uuid",
   "transaction_ref": "external-txn-id",
   "transaction_type": "purchase | service | task_completion | delivery | return",
@@ -118,7 +118,7 @@ if effective_evidence < 5.0:
   score = 50 + (raw_score - 50) × (effective_evidence / 5.0)
 ```
 
-Example: 5 receipts from unestablished submitters (0.1x each) = 0.5 effective evidence → score dampened to ~55 regardless of signal values.
+Example: 5 receipts from unestablished submitters (0.1x each) = 0.5 effective evidence → trust dampened to ~55 regardless of signal values.
 
 ---
 
@@ -184,7 +184,7 @@ The **primary protocol output**. Replaces the single 0-100 score.
 
 ## 7. Trust Policies
 
-Agents evaluate counterparties against structured policies, not raw score thresholds.
+Agents evaluate counterparties against structured policies, not arbitrary numeric thresholds.
 
 ```json
 {
@@ -205,7 +205,7 @@ Evaluation returns pass/fail with specific failure reasons.
 
 ## 8. Anomaly Detection
 
-Score velocity matters more than absolute score. EP computes 7-day vs 30-day average delta:
+Trust velocity matters more than absolute values. EP computes 7-day vs 30-day average delta:
 
 | Alert Level | Delta | Meaning |
 |-------------|-------|---------|
@@ -219,7 +219,7 @@ Score velocity matters more than absolute score. EP computes 7-day vs 30-day ave
 1. **Registration friction** — IP-based rate limiting (Upstash Redis in production, in-memory fallback)
 2. **Graph analysis** — closed-loop detection, thin-graph flagging, cluster detection → `graph_weight` penalty
 3. **Submitter credibility** — unestablished submitters = 0.1x receipt weight
-4. **Effective evidence dampening** — score pulled toward 50 until weighted evidence ≥ 5.0
+4. **Effective evidence dampening** — trust dampened toward baseline until weighted evidence ≥ 5.0
 
 ---
 

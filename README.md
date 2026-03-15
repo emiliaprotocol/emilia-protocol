@@ -77,14 +77,14 @@ Scores are dampened by **effective evidence** (sum of weighted receipts), not ra
 
 ### Trust policies
 
-Agents don't check "score > 70." They evaluate against structured policies:
+Agents don't check raw numbers. They evaluate against structured policies:
 
 | Policy | Use case | Key gates |
 |--------|----------|-----------|
 | `strict` | High-value purchases | Score ≥75, confident, dispute rate ≤3%, completion ≥85% |
 | `standard` | Normal commerce | Score ≥60, emerging, dispute rate ≤10% |
 | `permissive` | Low-risk | Score ≥40, provisional |
-| `discovery` | Browsing | Allow unscored |
+| `discovery` | Browsing | Allow unevaluated |
 
 Custom policies supported via JSON.
 
@@ -187,7 +187,7 @@ Entity Registration (IP rate-limited, Upstash Redis in production)
 1. **Registration friction** — IP-based rate limiting (Upstash Redis)
 2. **Graph analysis** — closed-loop, thin-graph, cluster detection → reduce `graph_weight`
 3. **Submitter credibility** — unestablished entities = 0.1x receipt weight
-4. **Effective evidence dampening** — score pulled toward 50 until weighted evidence ≥ 5.0
+4. **Effective evidence dampening** — trust dampened toward baseline until weighted evidence ≥ 5.0
 
 ### Score confidence states
 | Level | Meaning |
@@ -203,7 +203,7 @@ An entity is **established** when `is_entity_established()` returns true:
 - Effective evidence ≥ 5.0 (sum of weighted receipts, not raw count)
 - 3+ unique submitters
 
-Establishment is **historical** — computed over all receipts. Scoring is **current** — computed over a rolling 200-receipt window with time decay. An entity can be established but have a declining score.
+Establishment is **historical** — computed over all receipts. Scoring is **current** — computed over a rolling 200-receipt window with time decay. An entity can be established but have a declining trust.
 
 ## Protocol Status
 

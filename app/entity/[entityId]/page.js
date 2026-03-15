@@ -305,7 +305,7 @@ export default async function EntityProfile({ params }) {
               <span style={{ color: '#00ff88' }}>GET</span> /api/score/{entity.entity_id}
             </div>
             <div style={{ color: '#7a809a', marginTop: 4 }}>
-              <span style={{ color: '#ffd700' }}>MCP</span> ep_score_lookup entity_id="{entity.entity_id}"
+              <span style={{ color: '#ffd700' }}>MCP</span> ep_trust_profile entity_id="{entity.entity_id}"
             </div>
           </div>
 

@@ -306,7 +306,7 @@
     <span class="nlogo-text">EMILIA</span>
   </a>
   <div class="nlinks">
-    <a href="#score">Trust</a>
+    <a href="#trust">Trust</a>
     <a href="#stack">Protocol Stack</a>
     <a href="#how">How It Works</a>
     <a href="#algorithm">Algorithm</a>
@@ -345,7 +345,7 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 6px;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
       Star on GitHub
     </a>
-    <a href="#score" class="btn-g">View Trust Profile</a>
+    <a href="#trust" class="btn-g">View Trust Profile</a>
   </div>
 </section>
 
@@ -432,7 +432,7 @@
 </section>
 
 <!-- TRUST LOOKUP -->
-<section id="score">
+<section id="trust">
   <div style="max-width: 800px; margin: 0 auto;">
     <div class="reveal" style="text-align: center;">
       <div class="st">// Check Any Trust Profile</div>
@@ -649,7 +649,7 @@
       <div class="st">// How It Works</div>
       <div class="sh">Receipts, Not Reviews</div>
       <div class="rnr-text">
-        Every review system has failed because the platform hosting reviews profits from the businesses being reviewed. EMILIA is different. The <strong>buying agent</strong> submits a receipt about the seller — and then uses that same trust profile to decide where to transact next. <strong>You rate what you eat. Lie, and you eat bad food again.</strong> The scorer and the consumer of the trust data are the same entity. This creates natural incentive alignment that no review system has ever achieved.
+        Every review system has failed because the platform hosting reviews profits from the businesses being reviewed. EMILIA is different. The <strong>buying agent</strong> submits a receipt about the seller — and then uses that same trust profile to decide where to transact next. <strong>You rate what you eat. Lie, and you eat bad food again.</strong> The submitter and the consumer of the trust data are the same entity. This creates natural incentive alignment that no review system has ever achieved.
       </div>
     </div>
 
@@ -808,7 +808,7 @@
     <div class="reveal" style="text-align: center;">
       <div class="st">// What No Other Trust System Does</div>
       <div class="sh">Profiles, Not Scores.<br><span style="color: var(--cyan);">Policies, Not Thresholds.</span></div>
-      <div class="sd" style="margin: 0 auto; max-width: 600px;">FICO gives you one number. EP gives you a multi-dimensional trust profile evaluated against configurable policies in context. Because "score > 70" is naive — and trust is not generic.</div>
+      <div class="sd" style="margin: 0 auto; max-width: 600px;">FICO gives you one number. EP gives you a multi-dimensional trust profile evaluated against configurable policies in context. Because a single number is naive — and trust is not generic.</div>
     </div>
 
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-top: 48px;">
@@ -830,7 +830,7 @@
       <div class="problem-card reveal" style="border-color: rgba(255,159,28,0.2);">
         <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--amber); margin-bottom: 12px;">ANOMALY DETECTION</div>
         <h3>Velocity Matters</h3>
-        <p>A score of 70 that was 90 last week is alarming. EP tracks trust velocity — sudden drops trigger anomaly alerts. Agents can reject entities with severe anomalies even if the absolute number looks fine.</p>
+        <p>A trust profile at 70 that was 90 last week is alarming. EP tracks trust velocity — sudden drops trigger anomaly alerts. Agents can reject entities with severe anomalies even if the absolute number looks fine.</p>
       </div>
     </div>
 
@@ -1085,7 +1085,7 @@
       </div>
       <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">
         <strong style="color: var(--t1);">Sybil attack?</strong><br>
-        5 perfect receipts from throwaway accounts → score ~55. Graph analysis detects closed loops (0.4x), thin graphs (0.5x), clusters (0.1x + blocked).
+        5 perfect receipts from throwaway accounts → trust dampened to ~55. Graph analysis detects closed loops (0.4x), thin graphs (0.5x), clusters (0.1x + blocked).
       </div>
       <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">
         <strong style="color: var(--t1);">Unfair downgrade?</strong><br>
@@ -1097,7 +1097,7 @@
       </div>
       <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">
         <strong style="color: var(--t1);">Gaming discovery?</strong><br>
-        Search and leaderboard rank by confidence or evidence depth, not just score. Filter by min_confidence. Score is a fallback sort key, not the primary trust language.
+        Search and leaderboard rank by confidence or evidence depth, not just score. Filter by min_confidence. Compat score is a fallback sort key, not the primary trust language.
       </div>
       <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">
         <strong style="color: var(--t1);">Spamming receipts?</strong><br>
@@ -1158,8 +1158,8 @@
       </div>
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
-        <div class="faq-q">Does Amazon get scored, or the seller? Who exactly is an "entity"?</div>
-        <div class="faq-a">EP scores the <strong>direct economic counterparty</strong> — whoever took the money and made the promise.<br><br>
+        <div class="faq-q">Does Amazon get evaluated, or the seller? Who exactly is an "entity"?</div>
+        <div class="faq-a">EP evaluates the <strong>direct economic counterparty</strong> — whoever took the money and made the promise.<br><br>
           <span style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:12px 0;font-family:var(--mono);font-size:11px;">
             <span style="color:var(--cyan);">Amazon.com (platform)</span><span style="color:var(--t2);">Aggregate only — too big, shifts blame</span>
             <span style="color:var(--green);">Seller "SofaCo-123"</span><span style="color:var(--t2);">✅ Individual score — took the money, made the promise</span>
@@ -1178,7 +1178,7 @@
           &bull; <strong>Conflict resolution:</strong> When receipts conflict, both enter "disputed" state. 48-hour evidence window. If an oracle can verify a claim (e.g., carrier tracking confirms delivery time), it overrides. Otherwise both receipts are stored at 0.5x weight with a <code>disputed</code> flag. Entities with high dispute rates become inherently less trustworthy — the dispute rate itself is a signal.<br><br>
           <strong style="color:var(--gold);">Phase 3 — Protocol-Observed Truth (roadmap):</strong><br>
           &bull; <strong>Protocol listeners:</strong> EP observes MCP/A2A/UCP events and auto-generates receipts — no manual submission needed.<br>
-          &bull; <strong>Decentralized oracles:</strong> DeliveryOracle (carrier APIs), PaymentOracle (Stripe/AP2), ListingOracle (IPFS snapshots). Each oracle has its own EP trust profile — bad oracle gets scored down. Trust is recursive all the way down.<br>
+          &bull; <strong>Decentralized oracles:</strong> DeliveryOracle (carrier APIs), PaymentOracle (Stripe/AP2), ListingOracle (IPFS snapshots). Each oracle has its own EP trust profile — bad oracle gets trust-downgraded. Trust is recursive all the way down.<br>
           &bull; <strong>ZK trust proofs:</strong> Prove "I meet this trust policy with sufficient evidence" without revealing any transaction details. Privacy-preserving trust.<br>
           &bull; <strong>Cross-chain anchoring:</strong> Ethereum L1, Arbitrum, beyond Base L2.
         </div>
@@ -1197,7 +1197,7 @@
       </div>
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
-        <div class="faq-q">Can an entity recover from a bad score?</div>
+        <div class="faq-q">Can an entity rebuild degraded trust?</div>
         <div class="faq-a"><strong>Yes. Recovery is built into the protocol.</strong><br><br>EP uses time-decay weighting: recent receipts carry more weight than old ones. Half-life is 90 days — a receipt from 90 days ago carries 0.5x weight, 180 days carries 0.25x, a year carries ~0.06x.<br><br>A merchant who was terrible 6 months ago but has been perfect since will see their trust profile improve as old receipts naturally decay. Bad history fades. Improvement is rewarded. Combined with the 200-receipt rolling window, this means no entity is permanently condemned — but recovery requires sustained good performance, not a single PR stunt.</div>
       </div>
 

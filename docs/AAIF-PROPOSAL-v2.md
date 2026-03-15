@@ -53,7 +53,7 @@ EMILIA Protocol (EP) is offered as the **initial reference implementation and dr
 
 1. **Trust Receipt Schema** — Append-only, cryptographically hashed transaction records with mandatory `transaction_ref`, optional context keys (`task_type`, `category`, `geo`, `modality`, `value_band`, `risk_class`)
 2. **Trust Profile** — The primary protocol output. Multi-dimensional: behavioral rates (completion, retry, abandon, dispute), per-signal breakdowns, consistency, anomaly alerts, confidence levels
-3. **Trust Policies** — Portable decision frameworks. Agents evaluate counterparties against structured policies, not raw score thresholds. Built-in: `strict`, `standard`, `permissive`, `discovery`
+3. **Trust Policies** — Portable decision frameworks. Agents evaluate counterparties against structured policies, not arbitrary numeric thresholds. Built-in: `strict`, `standard`, `permissive`, `discovery`
 4. **Receipt Weighting** — Three-factor: submitter credibility × time decay × graph health. Effective-evidence dampening prevents Sybil attacks
 5. **Establishment & Confidence** — Historical establishment (permanent, all receipts) separated from current confidence (rolling window). Two distinct protocol objects
 6. **Sybil Resistance** — 4 layers: IP-based rate limiting, graph analysis (closed-loop/cluster/thin-graph penalties), submitter credibility (unestablished = 0.1x), effective-evidence dampening
@@ -89,7 +89,7 @@ EP is a **composable layer**, not a competing protocol. It attaches to ACP, is u
 | Context keys on receipts | Deployed — task_type, category, geo, modality, value_band, risk_class |
 | Current vs historical confidence separation | Deployed — two distinct objects in all API surfaces |
 | Policy-native needs | Deployed — needs accept JSONB trust policies, claim evaluates against them |
-| Confidence-aware search and leaderboard | Deployed — rank by score, confidence, or evidence; filter by min_confidence |
+| Confidence-aware search and leaderboard | Deployed — rank by confidence, evidence, or evidence; filter by min_confidence |
 | Receipt immutability (DB triggers) | Deployed — content changes rejected, anchor metadata allowed |
 | Canonical JSON hashing (cross-language) | Deployed — sorted keys, deterministic, context included |
 | Identity-aware write throttling | Deployed — API key prefix + IP on writes, IP-only on reads |
@@ -104,7 +104,7 @@ EP is a **composable layer**, not a competing protocol. It attaches to ACP, is u
 
 ## 7. Why Neutral Governance Matters
 
-A trust layer controlled by any single platform would be inherently conflicted — they are merchants themselves. Amazon can't score Amazon sellers neutrally. Google can't score UCP merchants neutrally. OpenAI can't score ACP participants neutrally.
+A trust layer controlled by any single platform would be inherently conflicted — they are merchants themselves. Amazon can't evaluate Amazon sellers neutrally. Google can't evaluate UCP merchants neutrally. OpenAI can't evaluate ACP participants neutrally.
 
 Under AAIF governance:
 - No single company can manipulate scoring to favor their products
