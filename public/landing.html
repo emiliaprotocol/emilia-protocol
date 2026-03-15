@@ -699,7 +699,7 @@
           <span style="font-family: var(--mono); font-size: 9px; color: var(--gold); background: rgba(255,215,0,0.08); border: 1px solid rgba(255,215,0,0.2); padding: 3px 8px; border-radius: 100px;">ROADMAP</span>
         </div>
         <h3 style="color: var(--gold);">Protocol-Observed Truth</h3>
-        <p>EP listens to MCP/A2A/UCP protocol events and auto-generates receipts. Decentralized verification oracles (with their own EP scores — bad oracle gets scored down) confirm claims against carrier APIs and payment processors. Zero-knowledge score proofs for privacy.</p>
+        <p>EP listens to MCP/A2A/UCP protocol events and auto-generates receipts. Decentralized verification oracles (with their own EP trust profiles — bad oracle gets downgraded) confirm claims against carrier APIs and payment processors. Zero-knowledge score proofs for privacy.</p>
       </div>
     </div>
   </div>
@@ -1120,7 +1120,7 @@
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
         <div class="faq-q">Who submits receipts? Can't merchants just submit good ones?</div>
-        <div class="faq-a">They don't. In EP, the <strong>purchasing agent</strong> submits the receipt about the merchant — not the other way around. Both parties can score each other (bidirectional), but the entity being scored never controls their own receipts.<br><br>The purchaser has no incentive to inflate scores — if they score a bad merchant highly, their own agent will route back and get burned. This creates natural incentive alignment that review systems lack: the scorer is also the buyer, and the buyer wants accurate data for their own future decisions.</div>
+        <div class="faq-a">They don't. In EP, the <strong>purchasing agent</strong> submits the receipt about the merchant — not the other way around. Both parties can submit receipts about each other (bidirectional), but the entity being scored never controls their own receipts.<br><br>The purchaser has no incentive to inflate trust — if they vouch for a bad merchant, their own agent will route back and get burned. This creates natural incentive alignment that review systems lack: the submitter is also the buyer, and the buyer wants accurate data for their own future decisions.</div>
       </div>
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
@@ -1361,32 +1361,45 @@ async function lookupScore() {
   const res = document.getElementById('scoreResult');
   const btn = document.getElementById('scoreBtn');
   if (!inp) return;
-  btn.disabled=true; btn.textContent='CHECKING...';
-  res.innerHTML = `<div class="sempty" style="color:var(--cyan);">Querying EMILIA Protocol for "${esc(inp)}"...</div>`;
+  btn.disabled=true; btn.textContent='LOADING...';
+  res.innerHTML = `<div class="sempty" style="color:var(--cyan);">Querying trust profile for "${esc(inp)}"...</div>`;
 
   let data = null;
-  let isDemo = false;
 
-  // Try real API first
   try {
-    const r = await fetch(`/api/score/${encodeURIComponent(inp)}`);
+    const r = await fetch(`/api/trust/profile/${encodeURIComponent(inp)}`);
     if (r.ok) {
       const raw = await r.json();
-      const bd = raw.breakdown || {};
+      const tp = raw.trust_profile || {};
+      const bh = tp.behavioral || {};
+      const sg = tp.signals || {};
+      const prov = tp.provenance || {};
       data = {
         name: raw.display_name || raw.entity_id || inp,
-        composite: raw.emilia_score,
-        delivery: bd.delivery_accuracy ?? null,
-        product: bd.product_accuracy ?? null,
-        price: bd.price_integrity ?? null,
-        returns: bd.return_processing ?? null,
-        agent: bd.agent_satisfaction ?? null,
-        consistency: bd.consistency ?? null,
-        established: raw.established,
-        total_receipts: raw.total_receipts,
-        confidence: raw.confidence,
-        confidence_message: raw.confidence_message,
-        hasBreakdown: raw.breakdown != null,
+        entityType: raw.entity_type || 'unknown',
+        confidence: raw.current_confidence || 'pending',
+        compatScore: raw.compat_score,
+        effectiveEvidence: raw.effective_evidence_current || 0,
+        receiptCount: raw.receipt_count || 0,
+        uniqueSubmitters: raw.unique_submitters || 0,
+        established: raw.historical_establishment || false,
+        // Behavioral
+        completionRate: bh.completion_rate,
+        disputeRate: bh.dispute_rate,
+        retryRate: bh.retry_rate,
+        abandonRate: bh.abandon_rate,
+        behavioralScore: bh.score,
+        // Signals
+        delivery: sg.delivery_accuracy,
+        product: sg.product_accuracy,
+        price: sg.price_integrity,
+        returns: sg.return_processing,
+        // Consistency + provenance
+        consistency: tp.consistency,
+        provenanceBreakdown: prov.breakdown || {},
+        bilateralRate: prov.bilateral_rate,
+        // Disputes
+        disputes: raw.disputes || { total: 0, active: 0, reversed: 0 },
       };
     } else if (r.status === 404) {
       res.innerHTML = `<div class="sempty" style="color:var(--amber);">Entity "${esc(inp)}" not found. <a href="#register" style="color:var(--cyan);text-decoration:underline;">Register it?</a></div>`;
@@ -1396,100 +1409,105 @@ async function lookupScore() {
       throw 0;
     }
   } catch {
-    isDemo = true;
-    const s = hash(inp.toLowerCase());
-    data = {
-      name: inp,
-      delivery: 55+(Math.abs(s)%40),
-      product: 50+(Math.abs(s*7)%45),
-      price: 60+(Math.abs(s*13)%35),
-      returns: 45+(Math.abs(s*3)%50),
-      agent: 50+(Math.abs(s*17)%45),
-      consistency: 55+(Math.abs(s*23)%40),
-      confidence: 'demo',
-      hasBreakdown: true,
-    };
-    data.composite = Math.round(data.delivery*0.3+data.product*0.25+data.price*0.15+data.returns*0.15+data.agent*0.1+data.consistency*0.05);
+    res.innerHTML = `<div class="sempty" style="color:var(--amber);">Could not reach the EP trust API. Try again.</div>`;
+    btn.disabled=false; btn.textContent='View Trust Profile';
+    return;
   }
 
   const d = data;
-  const composite = d.composite;
-
-  // Confidence-based display
   const confColors = {
     pending: { badge: 'var(--t3)', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)' },
     insufficient: { badge: 'var(--amber)', bg: 'rgba(255,159,28,0.06)', border: 'rgba(255,159,28,0.15)' },
     provisional: { badge: 'var(--gold)', bg: 'rgba(255,215,0,0.06)', border: 'rgba(255,215,0,0.15)' },
     emerging: { badge: 'var(--cyan)', bg: 'rgba(0,212,255,0.06)', border: 'rgba(0,212,255,0.15)' },
     confident: { badge: 'var(--green)', bg: 'rgba(0,255,136,0.06)', border: 'rgba(0,255,136,0.15)' },
-    demo: { badge: 'var(--t3)', bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)' },
   };
-  const conf = d.confidence || 'provisional';
-  const cc = confColors[conf] || confColors.provisional;
-  const confLabel = { pending: 'PENDING', insufficient: 'LOW CONFIDENCE', provisional: 'PROVISIONAL', emerging: 'EMERGING', confident: 'ESTABLISHED', demo: 'DEMO' }[conf] || 'UNKNOWN';
+  const cc = confColors[d.confidence] || confColors.pending;
+  const confLabel = { pending:'PENDING', insufficient:'LOW EVIDENCE', provisional:'PROVISIONAL', emerging:'EMERGING', confident:'ESTABLISHED' }[d.confidence] || 'UNKNOWN';
 
-  const grade = composite>=90?'A+':composite>=82?'A':composite>=74?'B+':composite>=66?'B':composite>=58?'C+':'—';
-  const gc = composite>=82?'var(--green)':composite>=70?'var(--cyan)':composite>=58?'var(--gold)':'var(--t3)';
-
-  // Show grade only for emerging/confident, otherwise show "—"
-  const showGrade = (conf === 'emerging' || conf === 'confident' || conf === 'demo');
-  const displayGrade = showGrade ? grade : '—';
-
-  // Build bars only if breakdown data exists
-  let barsHtml = '';
-  if (d.hasBreakdown && d.delivery != null) {
-    barsHtml = `
-      ${bar('Composite',composite,'linear-gradient(90deg,var(--cyan),var(--gold))')}
-      ${bar('Delivery Accuracy',d.delivery,'var(--cyan)')}
-      ${bar('Product Accuracy',d.product,'var(--green)')}
-      ${bar('Price Integrity',d.price,'var(--gold)')}
-      ${d.returns != null ? bar('Return Processing',d.returns,'var(--amber)') : ''}
-      ${d.agent != null ? bar('Agent Satisfaction',d.agent,'var(--magenta)') : ''}
-      ${d.consistency != null ? bar('Consistency',d.consistency,'var(--t2)') : ''}
+  // Behavioral bars
+  let behavioralHtml = '';
+  if (d.completionRate != null) {
+    behavioralHtml = `
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);margin:16px 0 8px;">BEHAVIORAL</div>
+      ${rateBar('Completion', d.completionRate, 'var(--green)')}
+      ${d.disputeRate != null ? rateBar('Dispute', d.disputeRate, 'var(--amber)', true) : ''}
+      ${d.retryRate != null ? rateBar('Retry', d.retryRate, 'var(--gold)', true) : ''}
     `;
   }
 
-  // Progress bar for low-confidence states
+  // Signal bars
+  let signalHtml = '';
+  if (d.delivery != null || d.product != null || d.price != null) {
+    signalHtml = `
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);margin:16px 0 8px;">SIGNALS</div>
+      ${d.delivery != null ? bar('Delivery',d.delivery,'var(--cyan)') : ''}
+      ${d.product != null ? bar('Product',d.product,'var(--green)') : ''}
+      ${d.price != null ? bar('Price',d.price,'var(--gold)') : ''}
+      ${d.returns != null ? bar('Returns',d.returns,'var(--amber)') : ''}
+    `;
+  }
+
+  // Provenance
+  let provHtml = '';
+  const provKeys = Object.keys(d.provenanceBreakdown);
+  if (provKeys.length > 0) {
+    provHtml = `<div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);margin:16px 0 8px;">PROVENANCE</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${provKeys.map(k => `<span style="font-family:var(--mono);font-size:10px;color:var(--t2);background:rgba(255,255,255,0.04);padding:3px 8px;border-radius:4px;">${k}: ${d.provenanceBreakdown[k]}</span>`).join('')}
+        ${d.bilateralRate != null ? `<span style="font-family:var(--mono);font-size:10px;color:var(--cyan);background:rgba(0,212,255,0.06);padding:3px 8px;border-radius:4px;">bilateral: ${d.bilateralRate}%</span>` : ''}
+      </div>`;
+  }
+
+  // Disputes
+  let disputeHtml = '';
+  if (d.disputes.total > 0) {
+    disputeHtml = `<div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);margin:16px 0 8px;">DISPUTES</div>
+      <div style="display:flex;gap:16px;font-family:var(--mono);font-size:11px;">
+        <span style="color:var(--t2);">Total: ${d.disputes.total}</span>
+        <span style="color:${d.disputes.active > 0 ? 'var(--amber)' : 'var(--t3)'};">Active: ${d.disputes.active}</span>
+        <span style="color:var(--t3);">Reversed: ${d.disputes.reversed}</span>
+      </div>`;
+  }
+
+  // Progress bar for low evidence
   let progressHtml = '';
-  if (conf === 'pending' || conf === 'insufficient' || conf === 'provisional') {
-    const receipts = d.total_receipts || 0;
-    const target = 20;
-    const pct = Math.min(100, Math.round((receipts / target) * 100));
+  if (d.confidence === 'pending' || d.confidence === 'insufficient' || d.confidence === 'provisional') {
+    const ee = d.effectiveEvidence;
+    const target = 5;
+    const pct = Math.min(100, Math.round((ee / target) * 100));
     progressHtml = `
-      <div style="margin: 16px 0 8px;">
+      <div style="margin:16px 0 8px;">
         <div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--t3);margin-bottom:6px;">
-          <span>Progress to meaningful score</span>
-          <span>${receipts}/${target} receipts from established submitters</span>
+          <span>Progress to establishment</span>
+          <span>evidence: ${ee.toFixed(2)} / ${target}.0</span>
         </div>
         <div style="height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;">
           <div style="height:100%;width:${pct}%;background:${cc.badge};border-radius:2px;transition:width 0.6s ease;"></div>
         </div>
-      </div>
-    `;
+      </div>`;
   }
 
-  // Confidence message
-  const confMsg = d.confidence_message
-    ? `<div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:12px;padding:10px 12px;background:${cc.bg};border:1px solid ${cc.border};border-radius:8px;">${esc(d.confidence_message)}</div>`
-    : isDemo ? `<div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:12px;opacity:.7;">* Demo score — API not yet live.</div>` : '';
-
   res.innerHTML = `<div class="scard">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;">Trust Profile</span>
           <span style="font-family:var(--mono);font-size:9px;color:${cc.badge};background:${cc.bg};border:1px solid ${cc.border};padding:2px 8px;border-radius:100px;">${confLabel}</span>
         </div>
-        <div style="font-family:var(--disp);font-weight:700;font-size:18px;margin-top:4px;">${esc(d.name||inp)}</div>
+        <div style="font-family:var(--disp);font-weight:700;font-size:18px;margin-top:4px;">${esc(d.name)}</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:2px;">${d.entityType} · ${d.receiptCount} receipts · ${d.uniqueSubmitters} submitters</div>
       </div>
       <div style="text-align:right;">
-        <div style="font-family:var(--disp);font-weight:800;font-size:28px;color:${gc};">${displayGrade}</div>
-        <div style="font-family:var(--mono);font-size:12px;color:var(--t2);">${composite}/100</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--t3);">compat</div>
+        <div style="font-family:var(--disp);font-weight:700;font-size:22px;color:var(--t2);">${d.compatScore}</div>
       </div>
     </div>
-    ${barsHtml}
+    ${behavioralHtml}
+    ${signalHtml}
+    ${provHtml}
+    ${disputeHtml}
     ${progressHtml}
-    ${confMsg}
   </div>`;
 
   setTimeout(()=>res.querySelectorAll('.sfill').forEach(b=>{const w=b.style.width;b.style.width='0%';requestAnimationFrame(()=>b.style.width=w);}),50);
@@ -1498,6 +1516,11 @@ async function lookupScore() {
 
 function bar(label,val,bg) {
   return `<div class="sbwrap"><div class="sbhead"><span>${label}</span><span style="color:var(--t1);">${val}/100</span></div><div class="sbar"><div class="sfill" style="width:${val}%;background:${bg};"></div></div></div>`;
+}
+
+function rateBar(label,val,bg,invert) {
+  const w = invert ? Math.min(100, val * 10) : val;
+  return `<div class="sbwrap"><div class="sbhead"><span>${label}</span><span style="color:var(--t1);">${val}%</span></div><div class="sbar"><div class="sfill" style="width:${w}%;background:${bg};"></div></div></div>`;
 }
 
 document.getElementById('scoreInput').addEventListener('keydown',e=>{if(e.key==='Enter')lookupScore();});

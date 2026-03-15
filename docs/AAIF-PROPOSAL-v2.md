@@ -23,7 +23,7 @@ Neither outcome serves the AAIF's mission of transparent, collaborative agentic 
 
 ## 2. Proposal
 
-We propose a **Trust Attestation Working Group** within AAIF to develop a vendor-neutral standard for portable, cross-platform counterparty trust in agentic commerce.
+We propose a **Trust Attestation Working Group** within AAIF to develop a vendor-neutral standard for portable trust evaluation and appeals for counterparties, software, and machine actors.
 
 EMILIA Protocol (EP) is offered as the **initial reference implementation and draft specification** — not as a finished standard, but as a working starting point with a deployed canonical implementation.
 
@@ -157,6 +157,6 @@ A complete Shopify integration spec (webhook mapping, receipt mapping, public tr
 
 ---
 
-*EMILIA Protocol — A vendor-neutral trust attestation standard for agentic commerce.*
+*EMILIA Protocol — Portable trust evaluation and appeals for counterparties, software, and machine actors.*
 *Trust profiles, not scores. Policies, not thresholds. Due process, not silent mutation.*
 *Compatible with ACP. Usable through MCP. Open source under Apache 2.0.*

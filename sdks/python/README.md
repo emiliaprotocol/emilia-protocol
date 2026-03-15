@@ -1,8 +1,10 @@
 # EMILIA Protocol Python SDK
 
+> **Status: Source-only / not yet published to PyPI.** This SDK is the reference client implementation. It will be published when the protocol reaches external pilot stage. For now, copy `emilia_protocol/client.py` into your project or use the REST API directly.
+
 The EMILIA Protocol Python SDK provides portable trust evaluation and appeals for counterparties, software, and machine actors.
 
-## Install
+## Install (when published)
 
 ```bash
 pip install emilia-protocol

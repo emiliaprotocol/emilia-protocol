@@ -1,8 +1,10 @@
 # EMILIA Protocol TypeScript SDK
 
+> **Status: Source-only / not yet published to npm.** This SDK is the reference client implementation. It will be published when the protocol reaches external pilot stage. For now, copy `src/index.ts` into your project or use the REST API directly.
+
 The EMILIA Protocol TypeScript SDK provides trust profiles, policy evaluation, install preflight, disputes, and appeals for counterparties, software, and machine actors.
 
-## Install
+## Install (when published)
 
 ```bash
 npm install @emilia-protocol/sdk

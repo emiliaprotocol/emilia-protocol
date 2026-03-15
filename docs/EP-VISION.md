@@ -11,7 +11,7 @@ Every trust system in history has been corrupted for exactly one of three reason
 EMILIA Protocol eliminates all three failure modes simultaneously:
 
 1. **The scorer IS the buyer.** Lying hurts them — their own agent will route back to a bad merchant and get burned. Incentive alignment is structural, not enforced.
-2. **EP has no platform.** It's an open-source protocol. There is no company selling "premium reputation" or suppressing bad scores. The code is the authority.
+2. **EP has no platform.** It's an open-source protocol. There is no company selling "premium trust" or suppressing bad profiles. The code is the authority.
 3. **The algorithm is published.** Every weight, every threshold, every line of scoring logic is open source under Apache 2.0. Anyone can verify. Anyone can fork.
 
 This is not incrementally better than existing trust systems. It is architecturally different.
@@ -115,7 +115,7 @@ A2A task delegation      →  EP observes completion →  Receipt auto-generated
 UCP checkout             →  EP observes delivery   →  Receipt auto-generated
 ```
 
-**Verification Oracles:** Specialized high-reputation entities that verify specific claims:
+**Verification Oracles:** Specialized high-trust entities that verify specific claims:
 
 | Oracle | Verifies | Data Source |
 |---|---|---|
@@ -266,16 +266,16 @@ The principle: **don't try to determine truth between conflicting parties.** Ins
 
 | Threat | Likelihood | EP's Defense |
 |---|---|---|
-| Amazon builds internal reputation | High | Only works on Amazon. EP is cross-platform. |
-| Shopify builds internal reputation | High | Only works on Shopify. EP is cross-platform. |
-| UCP adds native reputation layer | Medium | EP is protocol-neutral — UCP may prefer a neutral third party |
+| Amazon builds internal trust | High | Only works on Amazon. EP is cross-platform. |
+| Shopify builds internal trust | High | Only works on Shopify. EP is cross-platform. |
+| UCP adds native trust layer | Medium | EP is protocol-neutral — UCP may prefer a neutral third party |
 | A2A builds scoring | Medium | Same — neutral layer preferred over self-scoring |
 | FICO builds "FICO for agents" | High | FICO is closed-source, proprietary. EP wins on openness. |
 | New startup with $50M funding | High | EP is open source with first-mover advantage. You can't buy a protocol moat with money — you earn it with adoption. |
 
 ### Why closed systems lose
 
-The agent economy is fundamentally cross-platform. A Shopify seller's Claude agent buying from an Amazon seller's Gemini agent — that transaction crosses three ecosystems. No single platform's reputation system covers it.
+The agent economy is fundamentally cross-platform. A Shopify seller's Claude agent buying from an Amazon seller's Gemini agent — that transaction crosses three ecosystems. No single platform's trust system covers it.
 
 | System | Scope | Limitation |
 |---|---|---|
@@ -383,11 +383,11 @@ EP doesn't handle the commerce. It tells the agent: "this counterparty has a ver
 
 ## The Tagline
 
-**Receipts, not reviews. The first reputation system where lying hurts the liar.**
+**Receipts, not reviews. The first trust system where lying hurts the liar.**
 
 Every review system fails because the scorer doesn't consume the score. Yelp reviewers don't eat at the restaurant every day. Amazon reviewers don't rebuy the product. The person writing the review bears no cost for being wrong.
 
-EP fixes this. The buying agent submits receipts — and if they lie about a bad seller, their own agent routes back to that seller and gets burned. The scorer and the consumer of the score are the same entity. This is evolutionary game theory applied to reputation. Self-enforcing honesty.
+EP fixes this. The buying agent submits receipts — and if they lie about a bad seller, their own agent routes back to that seller and gets burned. The scorer and the consumer of the score are the same entity. This is evolutionary game theory applied to trust. Self-enforcing honesty.
 
 No other trust system has achieved this structural alignment.
 

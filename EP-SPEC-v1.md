@@ -10,7 +10,7 @@
 
 ## Abstract
 
-EP is a formal protocol specification for reputation scoring in the agent economy. It defines the receipt schema, scoring algorithm interface, score lookup API, and cryptographic verification flow. EP sits alongside MCP (tools), A2A (communication), UCP (commerce), and ACP (payments) as the trust layer in the agentic commerce stack.
+EP is a formal protocol specification for trust evaluation in machine-mediated systems. It defines the receipt schema, trust profile interface, policy evaluation API, and cryptographic verification flow. EP sits alongside MCP (tools), A2A (communication), UCP (commerce), and ACP (payments) as the trust layer in the protocol stack.
 
 Any entity that transacts — agents, merchants, service providers — can be scored through EP. Scores are computed from verified transaction receipts, not opinions. The algorithm is open source. The receipts are immutable.
 
