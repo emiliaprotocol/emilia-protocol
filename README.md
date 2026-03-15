@@ -206,23 +206,47 @@ Establishment is **historical** — computed over all receipts. Scoring is **cur
 |-----------|--------|
 | Trust profile + policy evaluation | ✅ Live |
 | Behavioral-first scoring (v2) | ✅ Live |
-| Compatibility score (v1) | ✅ Live |
+| Install preflight (EP-SX) | ✅ Live |
+| Canonical evaluator (one trust brain) | ✅ Live — 10 surfaces |
 | Effective-evidence Sybil resistance | ✅ Live |
+| Bilateral attestations + provenance tiers | ✅ Live |
+| Dispute lifecycle + human appeal | ✅ Live |
 | Receipt immutability (DB triggers) | ✅ Live |
 | Canonical JSON hashing | ✅ Live |
 | Graph analysis in scoring path | ✅ Live |
-| Upstash Redis rate limiting | ✅ Ready (needs env vars) |
-| Bilateral attestations | 🔲 Phase 2 |
-| Dispute lifecycle | ✅ Live — file, respond, resolve, human appeal |
+| Upstash Redis rate limiting | ✅ Live |
 | Oracle verification | 🔲 Phase 3 |
 | Relationship/contextual trust | 🔲 Phase 3 |
 
+## Conformance & Testing
+
+EP is verifiable, not just claimed.
+
+| Suite | Tests | What it proves |
+|-------|-------|---------------|
+| `tests/scoring.test.js` | 21 | v1 scoring, effective evidence, Sybil resistance |
+| `tests/scoring-v2.test.js` | 14 | v2 trust profiles, policy evaluation, anomaly detection |
+| `tests/protocol.test.js` | 36 | Hash determinism, confidence semantics, context fallback, flow tests |
+| `tests/integration.test.js` | 19 | Route-level: provenance, context, disputes, software policies |
+| `tests/adversarial.test.js` | 14 | Sybil farms, reciprocal loops, cluster collusion, trust farming, damage ceilings |
+| `tests/e2e-flows.test.js` | 15 | Full lifecycle: register → receipts → profile → policy → dispute → reversal |
+| `conformance/conformance.test.js` | 23 | Canonical hash vectors, scoring fixtures, policy replay, cross-impl verification |
+
+**Cross-language:** `conformance/verify_hashes.py` produces identical SHA-256 outputs to the JavaScript reference — proving the protocol is language-independent.
+
+**Conformance fixtures:** `conformance/fixtures.json` contains canonical test vectors for hashes, provenance weights, four-factor weighting, confidence levels, and policy evaluation. Any implementation claiming EP compatibility must produce identical outputs.
+
+Run: `npx vitest run` (142 tests) + `python3 conformance/verify_hashes.py` (4 cross-language checks)
+
 ## Docs
 
-- [EP Core RFC](docs/EP-CORE-RFC.md) — the 2-page protocol spec
+- [EP Core RFC](docs/EP-CORE-RFC.md) — the canonical protocol specification
+- [EP-SX Software Trust](docs/EP-SX-SOFTWARE-TRUST.md) — install preflight for plugins, packages, MCP servers
 - [EP Vision](docs/EP-VISION.md) — architecture and strategic design
-- [ACP Trust Extension](docs/EP-ACP-EXTENSION.md) — how EP attaches to ACP payments
 - [AAIF Proposal](docs/AAIF-PROPOSAL-v2.md) — working group proposal
+- [NIST Engagement](docs/NIST-ENGAGEMENT-PLAN.md) — trust-profile-first engagement plan
+- [Security](SECURITY.md) — threat model, mitigations, cryptographic specs
+- [Conformance Fixtures](conformance/fixtures.json) — canonical test vectors
 
 ## License
 

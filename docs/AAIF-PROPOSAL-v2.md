@@ -11,24 +11,30 @@
 
 ## 1. Problem
 
-The AAIF governs foundational projects that address how agents connect (MCP), execute (goose), and are guided (AGENTS.md). No current AAIF project addresses the question: **should you trust this counterparty?**
+The AAIF governs foundational projects that address how agents connect (MCP), execute (goose), and are guided (AGENTS.md). No current AAIF project addresses the question: **should you trust this counterparty, plugin, or machine actor?**
 
-As AI agents autonomously handle commerce, the trust gap creates two failure modes:
-- **Without trust signals:** Fraud at machine speed, no routing intelligence
-- **With platform-controlled trust:** Centralized gatekeepers recreating the review system's conflicts of interest
+As AI agents autonomously handle commerce, install software, and interact with third-party services, the trust gap creates two failure modes:
+- **Without trust signals:** Fraud at machine speed, unsafe installs, no routing intelligence
+- **With platform-controlled trust:** Centralized gatekeepers recreating conflicts of interest — the platform hosting trust data profits from the entities being evaluated
 
-Neither outcome serves the AAIF's mission of transparent, collaborative agentic AI infrastructure.
+Neither outcome serves the AAIF's mission of transparent, collaborative agentic AI infrastructure. The missing layer is portable, evidence-based trust evaluation with built-in due process.
 
 ---
 
 ## 2. Proposal
 
-We propose a **Trust Attestation Working Group** within AAIF to develop a vendor-neutral standard for portable trust evaluation and appeals for counterparties, software, and machine actors.
+We propose a **Trust Evaluation and Appeals Working Group** within AAIF to develop a vendor-neutral standard for portable trust across counterparties, software, and machine actors.
 
-EMILIA Protocol (EP) is offered as the **initial reference implementation and draft specification** — not as a finished standard, but as a working starting point with a deployed canonical implementation.
+EMILIA Protocol (EP) is offered as the **initial reference implementation and draft specification** — not as a finished standard, but as a working starting point with:
+- A deployed canonical implementation (emiliaprotocol.ai)
+- 142 passing tests across 7 test suites including adversarial and E2E flows
+- Cross-language conformance verification (JavaScript + Python)
+- An MCP server with 12 trust evaluation tools
+- Install preflight for software entities (GitHub Apps, MCP servers, npm packages)
+- A dispute and human appeal system with constitutional due process guarantees
 
 **What we're NOT asking:** "AAIF, adopt our product."
-**What we ARE asking:** "Let's build a neutral trust attestation standard together, starting from a working reference."
+**What we ARE asking:** "Let's build a neutral trust evaluation standard together, starting from a working reference."
 
 ---
 

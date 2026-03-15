@@ -310,9 +310,11 @@ async function handleTool(name, args) {
       const data = await epFetch(`/api/entities/search?${params}`);
       const entities = data.entities || data.results || [];
       if (!entities.length) return 'No entities found.';
-      return entities.map(e =>
-        `${e.display_name} (${e.entity_id}) — compat score: ${e.emilia_score}, receipts: ${e.total_receipts}`
-      ).join('\n');
+      return entities.map(e => {
+        const conf = e.confidence || 'pending';
+        const ee = e.effective_evidence != null ? ` · evidence: ${e.effective_evidence.toFixed(2)}` : '';
+        return `${e.display_name} (${e.entity_id})\n  confidence: ${conf}${ee} · trust profile available\n  legacy compat score: ${e.emilia_score}`;
+      }).join('\n\n');
     }
 
     case 'ep_verify_receipt': {
@@ -333,7 +335,10 @@ async function handleTool(name, args) {
       const data = await epFetch(`/api/leaderboard?${params}`);
       const lb = data.leaderboard || [];
       if (!lb.length) return 'No entities in leaderboard yet.';
-      return lb.map(e => `#${e.rank} ${e.display_name} — ${e.emilia_score}/100 (${e.total_receipts} receipts)`).join('\n');
+      return lb.map(e => {
+        const conf = e.confidence || 'pending';
+        return `#${e.rank} ${e.display_name} (${e.entity_id})\n  confidence: ${conf} · trust profile available\n  legacy compat score: ${e.emilia_score}`;
+      }).join('\n\n');
     }
 
     case 'ep_dispute_file': {
