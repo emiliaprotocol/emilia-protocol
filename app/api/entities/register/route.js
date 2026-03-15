@@ -149,12 +149,14 @@ export async function POST(request) {
         entity_id: entity.entity_id,
         display_name: entity.display_name,
         entity_type: entity.entity_type,
-        emilia_score: entity.emilia_score,
+        compat_score: entity.emilia_score,
+        confidence: 'pending',
         status: entity.status,
         created_at: entity.created_at,
       },
       api_key: apiKey,
       message: 'Store this API key securely. It will not be shown again.',
+      _note: 'Query /api/trust/profile/:entityId for full trust profile. compat_score is for sorting only.',
     }, { status: 201 });
   } catch (err) {
     console.error('Registration error:', err);

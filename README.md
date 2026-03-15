@@ -1,5 +1,10 @@
 # EMILIA Protocol
 
+[![CI](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-145%20passing-brightgreen)]()
+[![Conformance](https://img.shields.io/badge/conformance-JS%20%2B%20Python-blue)]()
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+
 **Evidence-based Mediation & Integrity Layer for Interactions and Appeals**
 
 EMILIA Protocol is emerging as a portable trust evaluation and appeals layer for counterparties, software, and machine actors.

@@ -114,7 +114,7 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        entity_id: { type: 'string', description: 'Entity being scored' },
+        entity_id: { type: 'string', description: 'Entity to evaluate' },
         transaction_ref: { type: 'string', description: 'External transaction reference (required)' },
         transaction_type: {
           type: 'string',
@@ -181,7 +181,7 @@ const TOOLS = [
   },
   {
     name: 'ep_leaderboard',
-    description: 'Get top entities ranked by compatibility score.',
+    description: 'Get top entities ranked by trust confidence.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -301,7 +301,7 @@ async function handleTool(name, args) {
       return `Receipt submitted.\n` +
         `ID: ${data.receipt.receipt_id}\n` +
         `Hash: ${data.receipt.receipt_hash}\n` +
-        `Updated trust state: ${data.entity_score.emilia_score} (${data.entity_score.total_receipts} receipts)`;
+        `Entity trust profile updated. Query with ep_trust_profile for current state.`;
     }
 
     case 'ep_search_entities': {
@@ -393,7 +393,7 @@ async function handleTool(name, args) {
       out += `Decision: ${data.decision === 'allow' ? '✓ ALLOW' : data.decision === 'deny' ? '✗ DENY' : '⚠ REVIEW'}\n`;
       out += `Policy: ${data.policy_used}\n`;
       out += `Confidence: ${data.confidence}\n`;
-      out += `Trust Score: ${data.score}/100\n\n`;
+      out += `Compat score (legacy): ${data.score}/100\n\n`;
       if (data.reasons?.length) {
         out += `Reasons:\n`;
         for (const r of data.reasons) out += `  ${r}\n`;
@@ -409,7 +409,7 @@ async function handleTool(name, args) {
 
     case 'ep_score_lookup': {
       const data = await epFetch(`/api/score/${encodeURIComponent(args.entity_id)}`);
-      return `${data.display_name}: ${data.emilia_score}/100 (${data.confidence})\n` +
+      return `${data.display_name} — confidence: ${data.confidence} (legacy compat: ${data.emilia_score})\n` +
         `Note: Use ep_trust_profile for full trust data.`;
     }
 
@@ -427,8 +427,8 @@ function formatTrustProfile(data) {
   out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
   out += `Confidence: ${data.current_confidence}\n`;
   out += `Established: ${data.historical_establishment ? 'Yes' : 'No'}\n`;
-  out += `Effective Evidence: ${data.effective_evidence_current} (current) / ${data.effective_evidence_historical} (historical)\n`;
-  out += `Legacy Compatibility Score: ${data.compat_score}/100\n`;
+  out += `Evidence: ${data.effective_evidence_current} (current) / ${data.effective_evidence_historical} (historical)\n`;
+  out += `Receipts: ${data.receipt_count ?? 'N/A'} from ${data.unique_submitters ?? 'N/A'} submitters\n`;
 
   const p = data.trust_profile;
   if (p) {
@@ -447,12 +447,23 @@ function formatTrustProfile(data) {
       out += `  Returns:   ${p.signals.return_processing ?? 'N/A'}\n`;
     }
     out += `  Consistency: ${p.consistency ?? 'N/A'}\n`;
+    if (p.provenance) {
+      const bd = p.provenance.breakdown || {};
+      const tiers = Object.entries(bd).map(([k,v]) => `${k}: ${v}`).join(', ');
+      out += `\nProvenance: ${tiers}\n`;
+      if (p.provenance.bilateral_rate != null) out += `  Bilateral rate: ${p.provenance.bilateral_rate}%\n`;
+    }
+  }
+
+  if (data.disputes && data.disputes.total > 0) {
+    out += `\nDisputes: ${data.disputes.total} total, ${data.disputes.active} active, ${data.disputes.reversed} reversed\n`;
   }
 
   if (data.anomaly) {
     out += `\n⚠️ ANOMALY: ${data.anomaly.type} (${data.anomaly.delta} points, ${data.anomaly.alert})\n`;
   }
 
+  out += `\n(Legacy compat score: ${data.compat_score}/100 — use trust profile for decisions)\n`;
   return out;
 }
 
@@ -461,8 +472,8 @@ function formatEvaluation(data) {
   out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
   out += `Policy: ${data.policy_used}\n`;
   out += `Decision: ${data.pass ? '✓ PASS' : '✗ FAIL'}\n`;
-  out += `Trust Score: ${data.score}/100\n`;
   out += `Confidence: ${data.confidence}\n`;
+  out += `Context: ${JSON.stringify(data.context_used) || 'global'}\n`;
 
   if (data.failures?.length > 0) {
     out += `\nFailures:\n`;
