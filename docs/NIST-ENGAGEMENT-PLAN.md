@@ -14,7 +14,7 @@ NIST launched the AI Agent Standards Initiative on February 17, 2026 through CAI
 2. Fostering community-led open source protocol development
 3. Advancing research in AI agent security and identity
 
-EP directly addresses all three pillars — it is an industry-led, open-source protocol that provides portable, policy-evaluable trust attestation for AI agents.
+EP directly addresses all three pillars — it is an industry-led, open-source protocol that provides portable, policy-evaluable trust evaluation and appeals for AI agents, software, and machine actors.
 
 ---
 
@@ -31,7 +31,7 @@ Action: Prepare the response content anyway for future submissions and use it in
 
 Action items:
 - [ ] Draft response to concept paper (see Section 3 below)
-- [ ] Reference EP as a complementary trust attestation layer
+- [ ] Reference EP as a complementary trust evaluation layer
 - [ ] Include EP Core RFC v1.1 as supporting documentation
 - [ ] Submit by April 1
 
@@ -64,7 +64,7 @@ Action items:
 
 ### Opening
 
-EMILIA Protocol (EP) proposes a complementary approach to AI agent identity and authorization through trust attestation. While traditional identity frameworks answer "who is this agent?", EP answers "should you trust this agent?" — a question that identity alone cannot resolve.
+EMILIA Protocol (EP) proposes a complementary approach to AI agent identity and authorization through trust evaluation and appeals. While traditional identity frameworks answer "who is this agent?", EP answers "should you trust this agent?" — a question that identity alone cannot resolve.
 
 ### Key Points to Make
 
@@ -112,7 +112,7 @@ This addresses NIST's concern about "confidence in the reliability of AI agents"
 
 ### Closing
 
-EP is positioned as the trust attestation layer for the emerging agent identity stack. Its constitutional principle — trust must never be more powerful than appeal — ensures that as EP influences routing decisions, every negative effect remains explainable, challengeable, and reversible.
+EP is positioned as the trust evaluation and appeals layer for the emerging agent identity stack. Its constitutional principle — trust must never be more powerful than appeal — ensures that as EP influences routing decisions, every negative effect remains explainable, challengeable, and reversible.
 
 We welcome NIST's guidance on how EP can align with the AI Agent Standards Initiative's goals and participate in future convenings and working groups.
 

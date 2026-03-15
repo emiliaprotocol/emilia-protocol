@@ -97,7 +97,7 @@
   .sh { font-family: var(--disp); font-weight: 800; font-size: clamp(32px,4vw,52px); letter-spacing: -1px; line-height: 1.1; margin-bottom: 20px; }
   .sd { font-size: 16px; color: var(--t2); max-width: 600px; line-height: 1.7; }
 
-  /* SCORE LOOKUP */
+  /* TRUST LOOKUP */
   .sterm { margin-top: 48px; background: var(--bg-card); border: 1px solid var(--brd); border-radius: 16px; overflow: hidden; }
   .sterm-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--brd); }
   .sterm-dots { display: flex; gap: 6px; }
@@ -431,7 +431,7 @@
   </div>
 </section>
 
-<!-- SCORE LOOKUP -->
+<!-- TRUST LOOKUP -->
 <section id="score">
   <div style="max-width: 800px; margin: 0 auto;">
     <div class="reveal" style="text-align: center;">
@@ -597,8 +597,8 @@
           <!-- === EP — THE TRUST LAYER (center, glowing) === -->
           <rect x="170" y="280" width="500" height="80" rx="14" fill="rgba(0,212,255,0.08)" stroke="url(#epglow)" stroke-width="2" filter="url(#glow)"/>
           <text x="420" y="312" text-anchor="middle" fill="#00d4ff" font-family="Outfit, sans-serif" font-weight="900" font-size="22">EMILIA PROTOCOL (EP)</text>
-          <text x="420" y="338" text-anchor="middle" fill="#e8eaf0" font-family="JetBrains Mono, monospace" font-size="11">Trust Layer — Receipts, Not Reviews — Open Source</text>
-          <text x="420" y="354" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono, monospace" font-size="9">Lightweight blockchain-anchored trust verification</text>
+          <text x="420" y="338" text-anchor="middle" fill="#e8eaf0" font-family="JetBrains Mono, monospace" font-size="11">Trust Evaluation · Policy · Appeals · Install Preflight — Open Source</text>
+          <text x="420" y="354" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono, monospace" font-size="9">Portable trust for counterparties, software, and machine actors</text>
 
           <!-- Connection lines from EP down to enterprises -->
           <line x1="240" y1="360" x2="130" y2="410" stroke="rgba(0,212,255,0.12)" stroke-width="1" stroke-dasharray="4,4"/>
@@ -1254,7 +1254,7 @@
   <div class="finner" style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 32px; max-width: 900px; margin: 0 auto; text-align: left;">
     <div>
       <div style="font-family: var(--disp); font-weight: 700; font-size: 16px; margin-bottom: 8px;">EMILIA</div>
-      <div style="font-family: var(--mono); font-size: 11px; color: var(--t3); line-height: 1.7;">A vendor-neutral trust attestation standard.<br>Compatible with ACP. Usable through MCP. Apache 2.0.</div>
+      <div style="font-family: var(--mono); font-size: 11px; color: var(--t3); line-height: 1.7;">Portable trust evaluation and appeals for counterparties, software, and machine actors.<br>Compatible with ACP. Usable through MCP. Apache 2.0.</div>
     </div>
     <div>
       <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--t3); margin-bottom: 12px;">PROTOCOL</div>
@@ -1360,7 +1360,7 @@ function anim(id, target, dur=1500) {
 
 new IntersectionObserver(es => { if (es[0].isIntersecting) { fetchGH(); fetchNext(); } }, { threshold: 0.3 }).observe(document.querySelector('.hstats'));
 
-// SCORE LOOKUP — tries real API first, falls back to demo scores
+// TRUST LOOKUP — queries canonical trust profile endpoint
 async function lookupTrust() {
   const inp = document.getElementById('trustInput').value.trim();
   const res = document.getElementById('trustResult');

@@ -1,4 +1,4 @@
-# EP Trust Attestation — Core Specification
+# EP Core Specification — Trust Evaluation and Appeals
 
 **Version:** 1.1
 **Status:** Working Draft
@@ -9,9 +9,9 @@
 
 ## 1. Purpose
 
-EP defines a portable, vendor-neutral format for trust attestations between transacting entities in agent-to-agent commerce. It is consumable through MCP tool calls, attachable to ACP payment flows, and embeddable in A2A Agent Cards.
+EP defines a portable, vendor-neutral protocol for trust evaluation and appeals across counterparties, software, and machine actors. It is consumable through MCP tool calls, attachable to ACP payment flows, and embeddable in A2A Agent Cards.
 
-EP answers one question: **should you trust this counterparty?**
+EP answers one question: **should you trust this counterparty, plugin, or machine actor?**
 
 The primary protocol output is a **trust profile**, not a score. A compatibility score is provided for sorting and backward compatibility but is not the canonical truth object.
 
@@ -277,5 +277,5 @@ Score velocity matters more than absolute score. EP computes 7-day vs 30-day ave
 
 ---
 
-*EP Trust Attestation Core Specification v1.1*
+*EP Core Specification — Trust Evaluation and Appeals v1.1*
 *Apache-2.0 · Compatible with ACP, MCP, A2A*

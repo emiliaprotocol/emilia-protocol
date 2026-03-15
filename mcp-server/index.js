@@ -81,7 +81,7 @@ const TOOLS = [
     name: 'ep_trust_evaluate',
     description:
       'Evaluate an entity against a trust policy. Returns pass/fail with specific failure reasons. ' +
-      'Built-in policies: "strict" (high-value), "standard" (normal), "permissive" (low-risk), "discovery" (allow unscored). ' +
+      'Built-in policies: "strict" (high-value), "standard" (normal), "permissive" (low-risk), "discovery" (allow unevaluated). ' +
       'Accepts optional context for context-aware evaluation. Use this to make routing and payment decisions.',
     inputSchema: {
       type: 'object',
@@ -379,8 +379,7 @@ async function handleTool(name, args) {
       out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
       out += `Decision: ${data.decision === 'allow' ? '✓ ALLOW' : data.decision === 'deny' ? '✗ DENY' : '⚠ REVIEW'}\n`;
       out += `Policy: ${data.policy_used}\n`;
-      out += `Confidence: ${data.confidence}\n`;
-      out += `Compat score (legacy): ${data.score}/100\n\n`;
+      out += `Confidence: ${data.confidence}\n\n`;
       if (data.reasons?.length) {
         out += `Reasons:\n`;
         for (const r of data.reasons) out += `  ${r}\n`;
@@ -391,6 +390,7 @@ async function handleTool(name, args) {
         out += `  Provenance verified: ${data.software_meta.provenance_verified}\n`;
         out += `  Permission class: ${data.software_meta.permission_class || 'unknown'}\n`;
       }
+      out += `\n(Legacy compat score: ${data.score}/100)\n`;
       return out;
     }
 

@@ -77,7 +77,7 @@ Response:
 
 ---
 
-## 4. ACP Payment with Trust Attestation
+## 4. ACP Payment with Trust Evaluation
 
 The ACP payment object includes an optional `ep_trust` field:
 
