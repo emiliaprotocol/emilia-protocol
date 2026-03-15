@@ -447,17 +447,17 @@
       </div>
       <div class="sterm-body">
         <div class="srow">
-          <input type="text" class="sinp" id="scoreInput" placeholder="entity ID or agent name..." autocomplete="off">
-          <button class="sbtn" id="scoreBtn" onclick="lookupScore()">View Trust Profile</button>
+          <input type="text" class="sinp" id="trustInput" placeholder="entity ID or agent name..." autocomplete="off">
+          <button class="sbtn" id="trustBtn" onclick="lookupTrust()">View Trust Profile</button>
         </div>
-        <div class="sres" id="scoreResult">
+        <div class="sres" id="trustResult">
           <div class="sempty">
             Enter an entity ID to query their trust profile<br>
-            <span style="color: var(--cyan); cursor: pointer;" onclick="document.getElementById('scoreInput').value='rex-booking-v1';lookupScore();">Try: rex-booking-v1</span>
+            <span style="color: var(--cyan); cursor: pointer;" onclick="document.getElementById('trustInput').value='rex-booking-v1';lookupTrust();">Try: rex-booking-v1</span>
             <span style="opacity: 0.3; margin: 0 6px;">|</span>
-            <span style="color: var(--cyan); cursor: pointer;" onclick="document.getElementById('scoreInput').value='ruby-retention-v1';lookupScore();">ruby-retention-v1</span>
+            <span style="color: var(--cyan); cursor: pointer;" onclick="document.getElementById('trustInput').value='ruby-retention-v1';lookupTrust();">ruby-retention-v1</span>
             <span style="opacity: 0.3; margin: 0 6px;">|</span>
-            <span style="color: var(--cyan); cursor: pointer;" onclick="document.getElementById('scoreInput').value='mcp-server-ep-v1';lookupScore();">mcp-server-ep-v1</span>
+            <span style="color: var(--cyan); cursor: pointer;" onclick="document.getElementById('trustInput').value='mcp-server-ep-v1';lookupTrust();">mcp-server-ep-v1</span>
           </div>
         </div>
       </div>
@@ -1138,7 +1138,7 @@
             <span style="color:var(--red);">abandoned → 15</span><span style="color:var(--t2);">Agent stopped pursuing this task category entirely</span>
             <span style="color:var(--magenta);">disputed → 5</span><span style="color:var(--t2);">Agent filed a formal dispute against the counterparty</span>
           </span>
-          FICO doesn't ask borrowers to rate their lender. It watches whether they pay. EP doesn't ask agents to rate merchants. It watches whether they come back.<br><br>Why only 10%? Because the other 90% is computed from verifiable transaction data — delivery timing, price accuracy, product match. The behavioral signal is a tiebreaker, not the foundation. Even a fully gamed 10% signal barely moves the overall trust outcome.
+          FICO doesn't ask borrowers to rate their lender. It watches whether they pay. EP doesn't ask agents to rate merchants. It watches whether they come back.<br><br>Behavioral signals are the largest weight in EP's trust model because they are the hardest to fake. Did the agent come back? Did the transaction complete? Was there a dispute? These signals are computed from verifiable outcomes, not self-reported ratings. Trust in EP is never determined by one signal alone — it is computed from behavior, evidence, provenance, context, and policy.
         </div>
       </div>
 
@@ -1361,10 +1361,10 @@ function anim(id, target, dur=1500) {
 new IntersectionObserver(es => { if (es[0].isIntersecting) { fetchGH(); fetchNext(); } }, { threshold: 0.3 }).observe(document.querySelector('.hstats'));
 
 // SCORE LOOKUP — tries real API first, falls back to demo scores
-async function lookupScore() {
-  const inp = document.getElementById('scoreInput').value.trim();
-  const res = document.getElementById('scoreResult');
-  const btn = document.getElementById('scoreBtn');
+async function lookupTrust() {
+  const inp = document.getElementById('trustInput').value.trim();
+  const res = document.getElementById('trustResult');
+  const btn = document.getElementById('trustBtn');
   if (!inp) return;
   btn.disabled=true; btn.textContent='LOADING...';
   res.innerHTML = `<div class="sempty" style="color:var(--cyan);">Querying trust profile for "${esc(inp)}"...</div>`;
@@ -1504,8 +1504,8 @@ async function lookupScore() {
         <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:2px;">${d.entityType} · ${d.receiptCount} receipts · ${d.uniqueSubmitters} submitters</div>
       </div>
       <div style="text-align:right;">
-        <div style="font-family:var(--mono);font-size:10px;color:var(--t3);">compat</div>
-        <div style="font-family:var(--disp);font-weight:700;font-size:22px;color:var(--t2);">${d.compatScore}</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);opacity:0.5;">legacy compat</div>
+        <div style="font-family:var(--mono);font-weight:400;font-size:14px;color:var(--t3);opacity:0.5;">${d.compatScore}</div>
       </div>
     </div>
     ${behavioralHtml}
@@ -1528,7 +1528,7 @@ function rateBar(label,val,bg,invert) {
   return `<div class="sbwrap"><div class="sbhead"><span>${label}</span><span style="color:var(--t1);">${val}%</span></div><div class="sbar"><div class="sfill" style="width:${w}%;background:${bg};"></div></div></div>`;
 }
 
-document.getElementById('scoreInput').addEventListener('keydown',e=>{if(e.key==='Enter')lookupScore();});
+document.getElementById('trustInput').addEventListener('keydown',e=>{if(e.key==='Enter')lookupTrust();});
 
 // REGISTER — uses server-side API (no exposed keys)
 async function registerAgent() {

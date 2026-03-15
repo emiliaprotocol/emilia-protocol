@@ -9,25 +9,26 @@
 
 ---
 
-## 1. Problem
+## 1. The Missing Layer
 
-The AAIF governs foundational projects that address how agents connect (MCP), execute (goose), and are guided (AGENTS.md). No current AAIF project addresses the question: **should you trust this counterparty, plugin, or machine actor?**
+MCP defines how agents connect to tools. A2A defines how agents communicate. UCP and ACP define how agents transact. No standard defines how any of these principals should decide whether to trust each other.
 
-As AI agents autonomously handle commerce, install software, and interact with third-party services, the trust gap creates two failure modes:
-- **Without trust signals:** Fraud at machine speed, unsafe installs, no routing intelligence
-- **With platform-controlled trust:** Centralized gatekeepers recreating conflicts of interest — the platform hosting trust data profits from the entities being evaluated
+This is not a gap. It is the gap. Without portable trust evaluation:
+- Agents cannot make safe autonomous decisions about counterparties, plugins, or services
+- Platforms become trust gatekeepers by default — recreating the conflicts of interest that corrupted every previous trust system
+- There is no due process when trust is wrong — no appeal, no explanation, no recourse
 
-Neither outcome serves the AAIF's mission of transparent, collaborative agentic AI infrastructure. The missing layer is portable, evidence-based trust evaluation with built-in due process.
+The AAIF's mission is transparent, collaborative agentic AI infrastructure. Trust evaluation with built-in due process is a precondition for that mission, not a feature.
 
 ---
 
 ## 2. Proposal
 
-We propose a **Trust Evaluation and Appeals Working Group** within AAIF to develop a vendor-neutral standard for portable trust across counterparties, software, and machine actors.
+We propose a **Trust Evaluation and Appeals Working Group** within AAIF to develop the vendor-neutral standard for portable trust across counterparties, software, and machine actors.
 
-EMILIA Protocol (EP) is offered as the **initial reference implementation and draft specification** — not as a finished standard, but as a working starting point with:
+EMILIA Protocol (EP) is offered as the **initial reference implementation and draft specification** — not as a finished standard, but as the most complete working starting point available:
 - A deployed canonical implementation (emiliaprotocol.ai)
-- 142 passing tests across 7 test suites including adversarial and E2E flows
+- 145 passing tests across 7 test suites including adversarial and E2E flows
 - Cross-language conformance verification (JavaScript + Python)
 - An MCP server with 12 trust evaluation tools
 - Install preflight for software entities (GitHub Apps, MCP servers, npm packages)
