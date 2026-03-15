@@ -30,7 +30,7 @@ Gives any MCP-compatible agent (Claude, ChatGPT, Gemini, etc.) access to EP trus
 ### `ep_trust_profile`
 Get an entity's full trust profile — the canonical way to check trust.
 
-Returns: behavioral rates (completion, retry, abandon, dispute), signal breakdowns (delivery, product, price, returns), consistency, anomaly alerts, current confidence, historical establishment, and a compatibility score.
+Returns: behavioral rates (completion, retry, abandon, dispute), signal breakdowns (delivery, product, price, returns), provenance composition, consistency, anomaly alerts, current confidence, historical establishment, and dispute summary.
 
 ```
 "Check the trust profile for merchant-xyz before I buy from them"
@@ -66,7 +66,6 @@ Submit a transaction receipt after completing a purchase or service. Requires `t
 | `ep_dispute_file` | File a formal dispute against a receipt |
 | `ep_dispute_status` | Check the status of a dispute |
 | `ep_report_trust_issue` | Report a trust issue — no auth required (human appeal) |
-| `ep_score_lookup` | Legacy: compatibility score only. Use `ep_trust_profile` instead. |
 
 ## What makes EP different
 

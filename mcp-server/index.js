@@ -17,7 +17,6 @@
  *   ep_verify_receipt  — Verify receipt against Merkle root
  *   ep_register_entity — Register a new entity
  *   ep_leaderboard     — Get top entities
- *   ep_score_lookup    — Legacy compatibility score (use ep_trust_profile instead)
  *
  * Setup:
  *   EP_BASE_URL=https://emiliaprotocol.ai
@@ -63,8 +62,8 @@ const TOOLS = [
     description:
       'Get an entity\'s full trust profile. This is the CANONICAL way to check trust in EP. ' +
       'Returns behavioral rates (completion, retry, abandon, dispute), signal breakdowns, ' +
-      'consistency, anomaly alerts, current confidence, historical establishment, and a ' +
-      'compatibility score. Use this before transacting with any counterparty.',
+      'provenance composition, consistency, anomaly alerts, current confidence, historical establishment, ' +
+      'and dispute summary. Use this before transacting with any counterparty or installing any software.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -262,18 +261,6 @@ const TOOLS = [
       required: ['entity_id'],
     },
   },
-  // LEGACY COMPAT
-  {
-    name: 'ep_score_lookup',
-    description: 'LEGACY: Look up compatibility score. Use ep_trust_profile instead for full trust data.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        entity_id: { type: 'string', description: 'Entity ID or UUID' },
-      },
-      required: ['entity_id'],
-    },
-  },
 ];
 
 // =============================================================================
@@ -313,7 +300,7 @@ async function handleTool(name, args) {
       return entities.map(e => {
         const conf = e.confidence || 'pending';
         const ee = e.effective_evidence != null ? ` · evidence: ${e.effective_evidence.toFixed(2)}` : '';
-        return `${e.display_name} (${e.entity_id})\n  confidence: ${conf}${ee} · trust profile available\n  legacy compat score: ${e.emilia_score}`;
+        return `${e.display_name} (${e.entity_id})\n  confidence: ${conf}${ee} · trust profile available`;
       }).join('\n\n');
     }
 
@@ -337,7 +324,7 @@ async function handleTool(name, args) {
       if (!lb.length) return 'No entities in leaderboard yet.';
       return lb.map(e => {
         const conf = e.confidence || 'pending';
-        return `#${e.rank} ${e.display_name} (${e.entity_id})\n  confidence: ${conf} · trust profile available\n  legacy compat score: ${e.emilia_score}`;
+        return `#${e.rank} ${e.display_name} (${e.entity_id})\n  confidence: ${conf} · trust profile available`;
       }).join('\n\n');
     }
 
@@ -405,12 +392,6 @@ async function handleTool(name, args) {
         out += `  Permission class: ${data.software_meta.permission_class || 'unknown'}\n`;
       }
       return out;
-    }
-
-    case 'ep_score_lookup': {
-      const data = await epFetch(`/api/score/${encodeURIComponent(args.entity_id)}`);
-      return `${data.display_name} — confidence: ${data.confidence} (legacy compat: ${data.emilia_score})\n` +
-        `Note: Use ep_trust_profile for full trust data.`;
     }
 
     default:
