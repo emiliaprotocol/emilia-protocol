@@ -261,6 +261,34 @@ const TOOLS = [
       required: ['entity_id'],
     },
   },
+  // EP-IX Identity Continuity
+  {
+    name: 'ep_principal_lookup',
+    description: 'Look up a principal — the enduring actor behind entities. Returns bindings, controlled entities, and continuity history.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        principal_id: { type: 'string', description: 'Principal ID (e.g. ep_principal_abc)' },
+      },
+      required: ['principal_id'],
+    },
+  },
+  {
+    name: 'ep_lineage',
+    description: 'View entity lineage — predecessors, successors, continuity decisions, and whitewashing flags. Use to check if an entity has suspicious continuity gaps.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        entity_id: { type: 'string', description: 'Entity ID to check lineage for' },
+      },
+      required: ['entity_id'],
+    },
+  },
+  {
+    name: 'ep_list_policies',
+    description: 'List all available trust policies with their requirements and families. Use to discover which policy to evaluate against.',
+    inputSchema: { type: 'object', properties: {} },
+  },
 ];
 
 // =============================================================================
@@ -391,6 +419,58 @@ async function handleTool(name, args) {
         out += `  Permission class: ${data.software_meta.permission_class || 'unknown'}\n`;
       }
       out += `\n(Legacy compat score: ${data.score}/100)\n`;
+      return out;
+    }
+
+    case 'ep_principal_lookup': {
+      const data = await epFetch(`/api/identity/principal/${encodeURIComponent(args.principal_id)}`);
+      if (data.error) return `Principal not found: ${args.principal_id}`;
+      const p = data.principal;
+      let out = `Principal: ${p.display_name} (${p.principal_id})\n`;
+      out += `Type: ${p.principal_type} · Status: ${p.status}\n`;
+      if (p.bootstrap_verified) out += `Bootstrap verified: yes\n`;
+      if (data.entities?.length) {
+        out += `\nControlled entities (${data.entities.length}):\n`;
+        for (const e of data.entities) out += `  ${e.display_name} (${e.entity_id}) — ${e.entity_type}\n`;
+      }
+      if (data.bindings?.length) {
+        out += `\nIdentity bindings (${data.bindings.length}):\n`;
+        for (const b of data.bindings) out += `  ${b.binding_type}: ${b.binding_target} [${b.status}] provenance: ${b.provenance}\n`;
+      }
+      if (data.continuity_claims?.length) {
+        out += `\nContinuity history (${data.continuity_claims.length}):\n`;
+        for (const c of data.continuity_claims) out += `  ${c.old_entity_id} → ${c.new_entity_id} (${c.reason}) [${c.status}]\n`;
+      }
+      return out;
+    }
+
+    case 'ep_lineage': {
+      const data = await epFetch(`/api/identity/lineage/${encodeURIComponent(args.entity_id)}`);
+      let out = `Lineage: ${data.entity_id}\n`;
+      if (data.predecessors?.length) {
+        out += `\nPredecessors:\n`;
+        for (const p of data.predecessors) out += `  ← ${p.from} (${p.reason}) [${p.status}] transfer: ${p.transfer_policy || 'pending'}\n`;
+      } else {
+        out += `\nNo predecessors — this is an original entity.\n`;
+      }
+      if (data.successors?.length) {
+        out += `\nSuccessors:\n`;
+        for (const s of data.successors) out += `  → ${s.to} (${s.reason}) [${s.status}] transfer: ${s.transfer_policy || 'pending'}\n`;
+      } else {
+        out += `No successors.\n`;
+      }
+      return out;
+    }
+
+    case 'ep_list_policies': {
+      const data = await epFetch('/api/policies');
+      let out = `Available Trust Policies (${data.policies.length})\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      for (const p of data.policies) {
+        out += `\n${p.name} [${p.family}]\n`;
+        out += `  ${p.description}\n`;
+        if (p.min_confidence) out += `  min confidence: ${p.min_confidence}\n`;
+      }
+      out += `\nUse ep_trust_evaluate with a policy name to evaluate an entity.`;
       return out;
     }
 

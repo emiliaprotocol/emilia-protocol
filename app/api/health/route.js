@@ -76,6 +76,12 @@ export async function GET() {
       dispute_file: '/api/disputes/file',
       dispute_report: '/api/disputes/report',
       appeal_page: '/appeal',
+      policies: '/api/policies',
+      identity_principal: '/api/identity/principal/:principalId',
+      identity_lineage: '/api/identity/lineage/:entityId',
+      identity_bind: '/api/identity/bind',
+      identity_continuity: '/api/identity/continuity',
+      health: '/api/health',
     },
   });
 }

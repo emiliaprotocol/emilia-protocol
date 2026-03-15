@@ -30,7 +30,7 @@ export async function GET(request) {
 
   const supabase = getServiceClient();
   const now = new Date().toISOString();
-  const results = { bilateral_expired: 0, disputes_escalated: 0, errors: [] };
+  const results = { bilateral_expired: 0, disputes_escalated: 0, continuity_expired: 0, errors: [] };
 
   // 1. Expire stale bilateral confirmations (48h window)
   try {
@@ -71,6 +71,29 @@ export async function GET(request) {
     }
   } catch (err) {
     results.errors.push({ step: 'dispute_escalate', error: err.message });
+  }
+
+  // 3. Expire stale continuity claims (30-day window)
+  try {
+    const { data: staleIx } = await supabase
+      .from('continuity_claims')
+      .select('continuity_id')
+      .in('status', ['pending', 'under_challenge'])
+      .lt('expires_at', now);
+
+    if (staleIx && staleIx.length > 0) {
+      const ids = staleIx.map(c => c.continuity_id);
+      await supabase
+        .from('continuity_claims')
+        .update({ status: 'expired', updated_at: now })
+        .in('continuity_id', ids);
+      results.continuity_expired = ids.length;
+    }
+  } catch (err) {
+    // Table may not exist yet — that's fine
+    if (!err.message?.includes('does not exist')) {
+      results.errors.push({ step: 'continuity_expire', error: err.message });
+    }
   }
 
   return NextResponse.json({

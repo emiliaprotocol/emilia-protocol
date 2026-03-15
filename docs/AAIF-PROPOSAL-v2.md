@@ -30,7 +30,7 @@ EMILIA Protocol (EP) is offered as the **initial reference implementation and dr
 - A deployed canonical implementation (emiliaprotocol.ai)
 - 145 passing tests across 7 test suites including adversarial and E2E flows
 - Cross-language conformance verification (JavaScript + Python)
-- An MCP server with 11 trust evaluation tools
+- An MCP server with 14 trust evaluation tools
 - Install preflight for software entities (GitHub Apps, MCP servers, npm packages)
 - A dispute and human appeal system with constitutional due process guarantees
 

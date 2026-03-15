@@ -66,6 +66,9 @@ Submit a transaction receipt after completing a purchase or service. Requires `t
 | `ep_dispute_file` | File a formal dispute against a receipt |
 | `ep_dispute_status` | Check the status of a dispute |
 | `ep_report_trust_issue` | Report a trust issue — no auth required (human appeal) |
+| `ep_principal_lookup` | **EP-IX**: Look up a principal — entities, bindings, continuity history |
+| `ep_lineage` | **EP-IX**: View entity lineage — predecessors, successors, whitewashing flags |
+| `ep_list_policies` | List all available trust policies with requirements and families |
 
 ## What makes EP different
 

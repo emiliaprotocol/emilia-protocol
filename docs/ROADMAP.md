@@ -56,7 +56,7 @@
 - [x] Well-known discovery (/.well-known/ep-trust.json)
 
 ### Distribution
-- [x] MCP server (11 tools, trust-native, context-aware)
+- [x] MCP server (14 tools, trust-native, context-aware)
 - [x] Reference SDKs (TypeScript + Python, source-only)
 - [x] SDK publish workflows (npm + PyPI)
 

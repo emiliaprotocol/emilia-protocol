@@ -12,6 +12,9 @@
 | `docs/EP-SX-SOFTWARE-TRUST.md` | Software trust extension spec | Implementers |
 | `docs/EP-IX-IDENTITY-CONTINUITY.md` | Identity continuity extension (working draft) | Implementers, architects |
 | `docs/EP-IX-V02-RUNTIME-PLAN.md` | EP-IX runtime implementation plan (reference) | Implementers |
+| `docs/MCP-SUMMIT-DEMO.md` | MCP Dev Summit 5-minute demo script | Internal |
+| `docs/EP-BEYOND-AGENTS.md` | "EP Beyond Agents" one-pager | Partners, press |
+| `docs/CEO-ROLE-SPEC.md` | CEO role specification | Hiring |
 | `docs/EP-ACP-EXTENSION.md` | ACP payment integration | Implementers |
 | `docs/ROADMAP.md` | Development roadmap | Contributors |
 | `docs/STYLE-GUIDE.md` | Vocabulary and terminology | Contributors |
