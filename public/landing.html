@@ -435,11 +435,20 @@
 <section id="trust">
   <div style="max-width: 800px; margin: 0 auto;">
     <div class="reveal" style="text-align: center;">
-      <div class="st">// Check Any Trust Profile</div>
-      <div class="sh" style="max-width: 600px; margin: 0 auto 16px;">Trust Profiles Are Public.<br>No Login Required.</div>
-      <div class="sd" style="max-width: 560px; margin: 0 auto;">Type an entity ID and see their trust profile — behavioral rates, signal breakdowns, provenance composition, and dispute history.</div>
+      <div class="st">// Human Trust Console</div>
+      <div class="sh" style="max-width: 600px; margin: 0 auto 8px;">Evaluate Trust. No Agent Required.</div>
+      <div class="sd" style="max-width: 600px; margin: 0 auto;">Search trust profiles, run install preflight on software, or report a trust issue — no login, no agent, no code.</div>
     </div>
-    <div class="sterm reveal">
+
+    <!-- CONSOLE TABS -->
+    <div class="reveal" style="display: flex; gap: 4px; justify-content: center; margin: 24px 0 0;">
+      <button class="console-tab active" onclick="switchTab('profile')" id="tab-profile" style="font-family: var(--mono); font-size: 11px; letter-spacing: 1px; padding: 10px 20px; border: 1px solid rgba(0,212,255,0.2); background: rgba(0,212,255,0.08); color: var(--cyan); border-radius: 8px 8px 0 0; cursor: pointer; transition: all 0.2s;">TRUST PROFILE</button>
+      <button class="console-tab" onclick="switchTab('preflight')" id="tab-preflight" style="font-family: var(--mono); font-size: 11px; letter-spacing: 1px; padding: 10px 20px; border: 1px solid rgba(255,255,255,0.06); background: transparent; color: var(--t3); border-radius: 8px 8px 0 0; cursor: pointer; transition: all 0.2s;">INSTALL PREFLIGHT</button>
+      <button class="console-tab" onclick="switchTab('report')" id="tab-report" style="font-family: var(--mono); font-size: 11px; letter-spacing: 1px; padding: 10px 20px; border: 1px solid rgba(255,255,255,0.06); background: transparent; color: var(--t3); border-radius: 8px 8px 0 0; cursor: pointer; transition: all 0.2s;">FILE REPORT</button>
+    </div>
+
+    <!-- TAB: TRUST PROFILE -->
+    <div class="sterm reveal" id="panel-profile">
       <div class="sterm-bar">
         <div class="sterm-dots"><span></span><span></span><span></span></div>
         <div class="sterm-title">ep-trust-profile</div>
@@ -462,6 +471,58 @@
         </div>
       </div>
     </div>
+
+    <!-- TAB: INSTALL PREFLIGHT -->
+    <div class="sterm" id="panel-preflight" style="display: none;">
+      <div class="sterm-bar">
+        <div class="sterm-dots"><span></span><span></span><span></span></div>
+        <div class="sterm-title">ep-install-preflight</div>
+        <div></div>
+      </div>
+      <div class="sterm-body">
+        <div style="font-family: var(--mono); font-size: 11px; color: var(--t3); margin-bottom: 16px;">Should you install this software? Enter an entity ID for a GitHub App, MCP server, npm package, or Chrome extension.</div>
+        <div class="srow">
+          <input type="text" class="sinp" id="preflightInput" placeholder="entity ID (e.g., mcp-server-ep-v1)" autocomplete="off">
+          <button class="sbtn" onclick="runPreflight()">Run Preflight</button>
+        </div>
+        <div class="sres" id="preflightResult">
+          <div class="sempty">
+            Enter a software entity to evaluate install safety<br>
+            <span style="color: var(--cyan); cursor: pointer;" onclick="document.getElementById('preflightInput').value='mcp-server-ep-v1';runPreflight();">Try: mcp-server-ep-v1</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: FILE REPORT -->
+    <div class="sterm" id="panel-report" style="display: none;">
+      <div class="sterm-bar">
+        <div class="sterm-dots"><span></span><span></span><span></span></div>
+        <div class="sterm-title">ep-trust-report</div>
+        <div></div>
+      </div>
+      <div class="sterm-body">
+        <div style="font-family: var(--mono); font-size: 11px; color: var(--t3); margin-bottom: 16px;">Report a trust issue. No login required. Humans may trigger review — trust must never be more powerful than appeal.</div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <input type="text" class="sinp" id="reportEntity" placeholder="entity ID you're reporting..." autocomplete="off">
+          <select id="reportReason" style="font-family: var(--mono); font-size: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: var(--t1); padding: 12px 16px; border-radius: 8px; appearance: none; cursor: pointer;">
+            <option value="">Select reason...</option>
+            <option value="fraudulent_entity">Fraudulent entity</option>
+            <option value="fake_receipts">Fake receipts / trust farming</option>
+            <option value="unsafe_software">Unsafe software</option>
+            <option value="misleading_identity">Misleading identity</option>
+            <option value="terms_violation">Terms violation</option>
+            <option value="other">Other</option>
+          </select>
+          <textarea id="reportDetails" placeholder="Describe the issue..." rows="3" style="font-family: var(--mono); font-size: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: var(--t1); padding: 12px 16px; border-radius: 8px; resize: vertical;"></textarea>
+          <button class="sbtn" onclick="submitReport()">Submit Report</button>
+        </div>
+        <div class="sres" id="reportResult">
+          <div class="sempty">Reports create review objects. They do not directly change trust profiles.<br>For formal disputes against specific receipts, use <a href="/appeal" style="color:var(--cyan);text-decoration:underline;">the appeal page</a>.</div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </section>
 
@@ -1556,7 +1617,110 @@ function rateBar(label,val,bg,invert) {
   return `<div class="sbwrap"><div class="sbhead"><span>${label}</span><span style="color:var(--t1);">${val}%</span></div><div class="sbar"><div class="sfill" style="width:${w}%;background:${bg};"></div></div></div>`;
 }
 
+// CONSOLE TAB SWITCHING
+function switchTab(tab) {
+  ['profile','preflight','report'].forEach(t => {
+    document.getElementById('panel-'+t).style.display = t === tab ? '' : 'none';
+    const btn = document.getElementById('tab-'+t);
+    if (t === tab) {
+      btn.style.background = 'rgba(0,212,255,0.08)';
+      btn.style.borderColor = 'rgba(0,212,255,0.2)';
+      btn.style.color = 'var(--cyan)';
+    } else {
+      btn.style.background = 'transparent';
+      btn.style.borderColor = 'rgba(255,255,255,0.06)';
+      btn.style.color = 'var(--t3)';
+    }
+  });
+}
+
+// INSTALL PREFLIGHT
+async function runPreflight() {
+  const inp = document.getElementById('preflightInput').value.trim();
+  const res = document.getElementById('preflightResult');
+  if (!inp) return;
+  res.innerHTML = `<div class="sempty" style="color:var(--cyan);">Running install preflight for "${esc(inp)}"...</div>`;
+  try {
+    const r = await fetch('/api/trust/install-preflight', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entity_id: inp, policy: 'standard' })
+    });
+    if (r.status === 404) {
+      res.innerHTML = `<div class="sempty" style="color:var(--amber);">Entity "${esc(inp)}" not found. Only registered software entities can be evaluated.</div>`;
+      return;
+    }
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const dc = d.decision === 'allow' ? 'var(--green)' : d.decision === 'deny' ? 'var(--red)' : 'var(--amber)';
+    const icon = d.decision === 'allow' ? '✓' : d.decision === 'deny' ? '✗' : '⚠';
+    let reasonsHtml = '';
+    if (d.reasons && d.reasons.length) {
+      reasonsHtml = `<div style="margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--t2);">${d.reasons.map(r=>`<div style="margin:4px 0;">· ${esc(r)}</div>`).join('')}</div>`;
+    }
+    res.innerHTML = `<div class="scard">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+        <div style="font-size:28px;color:${dc};">${icon}</div>
+        <div>
+          <div style="font-family:var(--disp);font-weight:700;font-size:18px;color:${dc};">${d.decision.toUpperCase()}</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--t3);">${esc(d.display_name || inp)} · policy: ${esc(d.policy_used || 'standard')}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;font-family:var(--mono);font-size:11px;">
+        <span style="color:var(--t2);">Confidence: <span style="color:var(--t1);">${d.confidence || 'pending'}</span></span>
+        <span style="color:var(--t2);">Entity type: <span style="color:var(--t1);">${d.entity_type || 'unknown'}</span></span>
+      </div>
+      ${reasonsHtml}
+    </div>`;
+  } catch {
+    res.innerHTML = `<div class="sempty" style="color:var(--amber);">Could not reach install preflight API. Try again.</div>`;
+  }
+}
+
+// FILE REPORT
+async function submitReport() {
+  const entity = document.getElementById('reportEntity').value.trim();
+  const reason = document.getElementById('reportReason').value;
+  const details = document.getElementById('reportDetails').value.trim();
+  const res = document.getElementById('reportResult');
+  if (!entity) { res.innerHTML = `<div class="sempty" style="color:var(--amber);">Enter the entity ID you're reporting.</div>`; return; }
+  if (!reason) { res.innerHTML = `<div class="sempty" style="color:var(--amber);">Select a reason for the report.</div>`; return; }
+  res.innerHTML = `<div class="sempty" style="color:var(--cyan);">Submitting report...</div>`;
+  try {
+    const r = await fetch('/api/disputes/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ entity_id: entity, reason, details: details || undefined })
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(()=>({}));
+      res.innerHTML = `<div class="sempty" style="color:var(--amber);">${esc(err.error || 'Report failed. Try again.')}</div>`;
+      return;
+    }
+    const d = await r.json();
+    res.innerHTML = `<div class="scard">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <div style="font-size:24px;color:var(--green);">✓</div>
+        <div>
+          <div style="font-family:var(--disp);font-weight:700;font-size:16px;">Report Filed</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--t3);">ID: ${esc(d.report_id || d.dispute_id || 'submitted')}</div>
+        </div>
+      </div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--t2);line-height:1.6;">
+        Your report has been recorded. Reports create review objects — they do not directly change trust profiles.<br>
+        Trust must never be more powerful than appeal.
+      </div>
+    </div>`;
+    document.getElementById('reportEntity').value = '';
+    document.getElementById('reportReason').value = '';
+    document.getElementById('reportDetails').value = '';
+  } catch {
+    res.innerHTML = `<div class="sempty" style="color:var(--amber);">Could not reach the report API. Try again.</div>`;
+  }
+}
+
 document.getElementById('trustInput').addEventListener('keydown',e=>{if(e.key==='Enter')lookupTrust();});
+document.getElementById('preflightInput').addEventListener('keydown',e=>{if(e.key==='Enter')runPreflight();});
 
 // REGISTER — uses server-side API (no exposed keys)
 async function registerAgent() {
