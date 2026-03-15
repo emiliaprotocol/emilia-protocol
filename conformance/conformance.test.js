@@ -177,3 +177,71 @@ describe('CONFORMANCE: Establishment rules', () => {
     });
   }
 });
+
+// --- 7. Trust profile determinism -------------------------------------------
+// Any implementation must produce matching trust profiles from canonical inputs.
+
+describe('CONFORMANCE: Trust profile determinism', () => {
+  const profileFixtures = fixtures.trust_profile_fixtures || [];
+
+  for (const fixture of profileFixtures) {
+    it(`profile fixture: ${fixture.name}`, () => {
+      const profile = computeTrustProfile(fixture.receipts, {});
+      const tol = fixture.tolerance || {};
+      const expected = fixture.expected_profile;
+
+      // Score within tolerance
+      expect(Math.abs(profile.score - expected.score)).toBeLessThanOrEqual(tol.score || 0.5);
+
+      // Confidence must match exactly
+      expect(profile.confidence).toBe(expected.confidence);
+
+      // Effective evidence within tolerance
+      expect(Math.abs(profile.effectiveEvidence - expected.effective_evidence)).toBeLessThanOrEqual(tol.effective_evidence || 0.1);
+
+      // Unique submitters exact
+      expect(profile.uniqueSubmitters).toBe(expected.unique_submitters);
+
+      // Behavioral
+      expect(profile.profile.behavioral.score).toBe(expected.behavioral.score);
+      expect(profile.profile.behavioral.completion_rate).toBe(expected.behavioral.completion_rate);
+      expect(profile.profile.behavioral.dispute_rate).toBe(expected.behavioral.dispute_rate);
+
+      // Signals within tolerance
+      const sigTol = tol.signals || 0.5;
+      if (expected.signals.delivery_accuracy != null) {
+        expect(Math.abs(profile.profile.signals.delivery_accuracy - expected.signals.delivery_accuracy)).toBeLessThanOrEqual(sigTol);
+      }
+      if (expected.signals.product_accuracy != null) {
+        expect(Math.abs(profile.profile.signals.product_accuracy - expected.signals.product_accuracy)).toBeLessThanOrEqual(sigTol);
+      }
+      if (expected.signals.price_integrity != null) {
+        expect(Math.abs(profile.profile.signals.price_integrity - expected.signals.price_integrity)).toBeLessThanOrEqual(sigTol);
+      }
+      if (expected.signals.return_processing != null) {
+        expect(Math.abs(profile.profile.signals.return_processing - expected.signals.return_processing)).toBeLessThanOrEqual(sigTol);
+      }
+
+      // Consistency within tolerance
+      expect(Math.abs(profile.profile.consistency - expected.consistency)).toBeLessThanOrEqual(tol.consistency || 1.0);
+
+      // Provenance breakdown exact
+      for (const [tier, count] of Object.entries(expected.provenance_breakdown)) {
+        expect(profile.profile.provenance.breakdown[tier]).toBe(count);
+      }
+      expect(profile.profile.provenance.bilateral_rate).toBe(expected.bilateral_rate);
+    });
+
+    it(`policy fixture: ${fixture.name} — strict`, () => {
+      const profile = computeTrustProfile(fixture.receipts, {});
+      const result = evaluateTrustPolicy(profile, TRUST_POLICIES.strict);
+      expect(result.pass).toBe(fixture.expected_policy_results.strict.pass);
+    });
+
+    it(`policy fixture: ${fixture.name} — standard`, () => {
+      const profile = computeTrustProfile(fixture.receipts, {});
+      const result = evaluateTrustPolicy(profile, TRUST_POLICIES.standard);
+      expect(result.pass).toBe(fixture.expected_policy_results.standard.pass);
+    });
+  }
+});

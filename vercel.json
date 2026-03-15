@@ -3,6 +3,10 @@
     {
       "path": "/api/blockchain/anchor",
       "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/expire",
+      "schedule": "0 * * * *"
     }
   ]
 }

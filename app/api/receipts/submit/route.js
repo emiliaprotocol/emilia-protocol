@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
-import { createReceipt } from '@/lib/create-receipt';
+import { canonicalSubmitReceipt } from '@/lib/canonical-writer';
+import { EP_ERRORS } from '@/lib/errors';
 
 /**
  * POST /api/receipts/submit
@@ -53,26 +54,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Receipt must include at least one signal, claims object, or agent_behavior' }, { status: 400 });
     }
 
-    // === DELEGATE TO SHARED RECEIPT ENGINE ===
-    const result = await createReceipt({
-      targetEntitySlug: body.entity_id,
-      submitter: auth.entity,
-      transactionRef: body.transaction_ref,
-      transactionType: body.transaction_type,
-      signals: {
-        delivery_accuracy: body.delivery_accuracy ?? null,
-        product_accuracy: body.product_accuracy ?? null,
-        price_integrity: body.price_integrity ?? null,
-        return_processing: body.return_processing ?? null,
-        agent_satisfaction: body.agent_satisfaction ?? null,
-      },
-      agentBehavior: body.agent_behavior || null,
-      claims: body.claims || null,
-      evidence: body.evidence || {},
-      context: body.context || null,
-      provenanceTier: body.provenance_tier || 'self_attested',
-      requestBilateral: body.request_bilateral || false,
-    });
+    // === DELEGATE TO CANONICAL WRITE ENGINE ===
+    const result = await canonicalSubmitReceipt(body, auth.entity);
 
     if (result.error) {
       return NextResponse.json(

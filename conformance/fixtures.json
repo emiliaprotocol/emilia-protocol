@@ -276,6 +276,54 @@
     }
   ],
 
+  "trust_profile_fixtures": [
+    {
+      "name": "canonical_5_receipt_profile",
+      "description": "Canonical trust profile from 5 receipts with mixed provenance. Any EP implementation must produce these exact outputs from these inputs.",
+      "receipts": [
+        { "delivery_accuracy": 90, "product_accuracy": 85, "price_integrity": 95, "return_processing": 80, "agent_satisfaction": 88, "composite_score": 88, "submitted_by": "submitter-A", "submitter_score": 90, "submitter_established": true, "graph_weight": 1.0, "agent_behavior": "completed", "created_at": "2026-03-14T12:00:00Z", "context": null, "provenance_tier": "bilateral", "bilateral_status": "confirmed" },
+        { "delivery_accuracy": 85, "product_accuracy": 80, "price_integrity": 90, "return_processing": 75, "agent_satisfaction": 82, "composite_score": 83, "submitted_by": "submitter-B", "submitter_score": 85, "submitter_established": true, "graph_weight": 1.0, "agent_behavior": "completed", "created_at": "2026-03-14T12:00:00Z", "context": null, "provenance_tier": "bilateral", "bilateral_status": "confirmed" },
+        { "delivery_accuracy": 92, "product_accuracy": 88, "price_integrity": 98, "return_processing": 82, "agent_satisfaction": 90, "composite_score": 91, "submitted_by": "submitter-C", "submitter_score": 92, "submitter_established": true, "graph_weight": 1.0, "agent_behavior": "completed", "created_at": "2026-03-14T12:00:00Z", "context": null, "provenance_tier": "bilateral", "bilateral_status": "confirmed" },
+        { "delivery_accuracy": 88, "product_accuracy": 84, "price_integrity": 93, "return_processing": 78, "agent_satisfaction": 86, "composite_score": 86, "submitted_by": "submitter-D", "submitter_score": 88, "submitter_established": true, "graph_weight": 1.0, "agent_behavior": "completed", "created_at": "2026-03-14T12:00:00Z", "context": null, "provenance_tier": "identified_signed", "bilateral_status": null },
+        { "delivery_accuracy": 70, "product_accuracy": 65, "price_integrity": 80, "return_processing": 60, "agent_satisfaction": 72, "composite_score": 70, "submitted_by": "submitter-E", "submitter_score": 75, "submitter_established": true, "graph_weight": 1.0, "agent_behavior": "completed", "created_at": "2026-03-14T12:00:00Z", "context": null, "provenance_tier": "self_attested", "bilateral_status": null }
+      ],
+      "expected_profile": {
+        "score": 87.7,
+        "confidence": "emerging",
+        "effective_evidence": 5.57,
+        "unique_submitters": 5,
+        "behavioral": {
+          "score": 95,
+          "completion_rate": 100,
+          "dispute_rate": 0
+        },
+        "signals": {
+          "delivery_accuracy": 87.4,
+          "product_accuracy": 82.8,
+          "price_integrity": 93.1,
+          "return_processing": 77.4
+        },
+        "consistency": 85.4,
+        "provenance_breakdown": {
+          "bilateral": 3,
+          "identified_signed": 1,
+          "self_attested": 1
+        },
+        "bilateral_rate": 60
+      },
+      "expected_policy_results": {
+        "strict": { "pass": false, "failures": ["confidence", "receipts"] },
+        "standard": { "pass": true, "failures": [] }
+      },
+      "tolerance": {
+        "score": 0.5,
+        "effective_evidence": 0.1,
+        "signals": 0.5,
+        "consistency": 1.0
+      }
+    }
+  ],
+
   "protocol_version": {
     "spec": "1.1",
     "scoring_model": "v2",
