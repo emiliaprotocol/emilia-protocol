@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient, authenticateRequest } from '@/lib/supabase';
-import { computeTrustProfile, evaluateTrustPolicy, TRUST_POLICIES } from '@/lib/scoring-v2';
+import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 
 /**
  * POST /api/needs/[id]/claim
@@ -43,61 +43,25 @@ export async function POST(request, { params }) {
     // Uses need.context for context-aware evaluation when available.
     // Otherwise fall back to legacy min_emilia_score threshold.
     if (need.trust_policy) {
-      // Build receipt query — context-aware if need has context
-      let receiptQuery = supabase
-        .from('receipts')
-        .select('*')
-        .eq('entity_id', auth.entity.id)
-        .order('created_at', { ascending: false })
-        .limit(200);
-
       const needContext = need.context && typeof need.context === 'object' ? need.context : null;
-      if (needContext) {
-        receiptQuery = receiptQuery.contains('context', needContext);
+      const evaluation = await canonicalEvaluate(auth.entity.id, {
+        context: needContext,
+        policy: need.trust_policy,
+        includeDisputes: false,
+        includeEstablishment: true,
+      });
+
+      if (evaluation.error) {
+        return NextResponse.json({ error: evaluation.error }, { status: evaluation.status || 404 });
       }
 
-      const { data: contextReceipts } = await receiptQuery;
-      let receipts = contextReceipts || [];
-      let contextUsed = null;
-
-      // Fall back to global if context-specific data is too sparse
-      if (needContext && receipts.length < 3) {
-        const { data: globalReceipts } = await supabase
-          .from('receipts')
-          .select('*')
-          .eq('entity_id', auth.entity.id)
-          .order('created_at', { ascending: false })
-          .limit(200);
-        receipts = globalReceipts || [];
-        contextUsed = 'global_fallback';
-      } else if (needContext) {
-        contextUsed = needContext;
-      } else {
-        contextUsed = 'global';
-      }
-
-      const profile = computeTrustProfile(receipts, auth.entity);
-      // Resolve policy: string name → built-in, object → custom policy
-      const rawPolicy = need.trust_policy;
-      let policy;
-      if (typeof rawPolicy === 'string') {
-        policy = TRUST_POLICIES[rawPolicy];
-        if (!policy) {
-          try { policy = JSON.parse(rawPolicy); } catch { policy = TRUST_POLICIES.standard; }
-        }
-      } else if (typeof rawPolicy === 'object' && rawPolicy !== null) {
-        policy = rawPolicy;
-      } else {
-        policy = TRUST_POLICIES.standard;
-      }
-      const result = evaluateTrustPolicy(profile, policy);
-
-      if (!result.pass) {
+      const result = evaluation.policyResult;
+      if (!result?.pass) {
         return NextResponse.json({
-          error: `Trust evaluation failed for policy "${typeof rawPolicy === 'string' ? rawPolicy : 'custom'}".`,
-          context_used: contextUsed,
-          failures: result.failures,
-          warnings: result.warnings,
+          error: `Trust evaluation failed for policy "${result?.policyName || 'custom'}".`,
+          context_used: evaluation.contextUsed,
+          failures: result?.failures || [],
+          warnings: result?.warnings || [],
           _hint: 'Build trust through verified receipts from established counterparties.',
         }, { status: 403 });
       }

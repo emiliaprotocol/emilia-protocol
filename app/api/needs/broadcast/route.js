@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient, authenticateRequest } from '@/lib/supabase';
-import { computeTrustProfile, evaluateTrustPolicy, TRUST_POLICIES } from '@/lib/scoring-v2';
+import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import crypto from 'crypto';
 
 /**
@@ -134,61 +134,26 @@ export async function POST(request) {
     let suggestions;
 
     if (needPolicy && matches.length > 0) {
-      // Resolve policy
-      let policy;
-      if (typeof needPolicy === 'string') {
-        policy = TRUST_POLICIES[needPolicy];
-        if (!policy) {
-          try { policy = JSON.parse(needPolicy); } catch { policy = TRUST_POLICIES.standard; }
-        }
-      } else if (typeof needPolicy === 'object' && needPolicy !== null) {
-        policy = needPolicy;
-      } else {
-        policy = TRUST_POLICIES.standard;
-      }
-
-      // Evaluate each candidate against the policy — context-aware
+      // Evaluate each candidate against the canonical trust evaluator — same trust brain as trust/profile and needs/claim
       const evaluated = await Promise.all(matches.map(async (m) => {
-        // Build context-aware receipt query (same logic as claim and evaluate routes)
-        let receiptQuery = supabase
-          .from('receipts')
-          .select('*')
-          .eq('entity_id', m.id)
-          .order('created_at', { ascending: false })
-          .limit(200);
+        const evaluation = await canonicalEvaluate(m.entity_id, {
+          context: needContext,
+          policy: needPolicy,
+          includeDisputes: false,
+          includeEstablishment: true,
+        });
 
-        if (needContext) {
-          receiptQuery = receiptQuery.contains('context', needContext);
-        }
-
-        const { data: contextReceipts } = await receiptQuery;
-        let receipts = contextReceipts || [];
-        let contextUsed = needContext ? needContext : 'global';
-
-        // Fall back to global if context-specific data is too sparse
-        if (needContext && receipts.length < 3) {
-          const { data: globalReceipts } = await supabase
-            .from('receipts')
-            .select('*')
-            .eq('entity_id', m.id)
-            .order('created_at', { ascending: false })
-            .limit(200);
-          receipts = globalReceipts || [];
-          contextUsed = 'global_fallback';
-        }
-
-        const profile = computeTrustProfile(receipts, m);
-        const result = evaluateTrustPolicy(profile, policy);
         return {
           entity_id: m.entity_id,
           display_name: m.display_name,
-          compat_score: m.emilia_score,
+          compat_score: evaluation.score ?? m.emilia_score,
           match_score: m.match_score,
-          trust_pass: result.pass,
-          confidence: profile.confidence,
-          effective_evidence: profile.effectiveEvidence,
-          context_used: contextUsed,
-          effective_evidence: profile.effectiveEvidence,
+          trust_pass: evaluation.policyResult?.pass ?? false,
+          confidence: evaluation.confidence || 'pending',
+          effective_evidence: evaluation.effectiveEvidence || 0,
+          context_used: evaluation.contextUsed || (needContext ? needContext : 'global'),
+          failures: evaluation.policyResult?.failures || [],
+          warnings: evaluation.policyResult?.warnings || [],
         };
       }));
 

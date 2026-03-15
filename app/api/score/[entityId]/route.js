@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
-import { computeTrustProfile } from '@/lib/scoring-v2';
+import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 
 /**
  * GET /api/score/[entityId]
@@ -59,19 +59,14 @@ export async function GET(request, { params }) {
       historicalEstablished = false;
     }
 
-    // CURRENT CONFIDENCE from rolling window (via computeTrustProfile)
-    const { data: receipts } = await supabase
-      .from('receipts')
-      .select('*')
-      .eq('entity_id', entity.id)
-      .order('created_at', { ascending: false })
-      .limit(200);
+    // CURRENT CONFIDENCE from the canonical evaluator (same trust brain as profile/evaluate/install-preflight)
+    const canonical = await canonicalEvaluate(entity.id, {
+      includeDisputes: false,
+      includeEstablishment: false,
+    });
 
-    const profile = computeTrustProfile(receipts || [], entity);
-
-    // Current confidence from the windowed trust profile
-    const confidence = profile.confidence;
-    const currentEvidence = profile.effectiveEvidence;
+    const confidence = canonical.confidence;
+    const currentEvidence = canonical.effectiveEvidence;
     let confidence_message;
     if (currentEvidence === 0) {
       confidence_message = 'No meaningful evidence in current window.';
@@ -82,7 +77,7 @@ export async function GET(request, { params }) {
     } else if (currentEvidence < 20.0) {
       confidence_message = `Current effective evidence: ${currentEvidence}. Score is meaningful.`;
     } else {
-      confidence_message = `Current effective evidence: ${currentEvidence} from ${profile.uniqueSubmitters} submitters. High confidence.`;
+      confidence_message = `Current effective evidence: ${currentEvidence} from ${canonical.uniqueSubmitters} submitters. High confidence.`;
     }
 
     return NextResponse.json({

@@ -365,7 +365,7 @@
       <div class="hstat-l">GitHub Stars</div>
     </div>
     <div class="hstat">
-      <div class="hstat-v" style="color: var(--green);">8</div>
+      <div class="hstat-v">8</div>
       <div class="hstat-l">Trust Policies</div>
     </div>
   </div>
@@ -657,7 +657,7 @@
       <div class="step reveal">
         <div class="step-num">2</div>
         <div class="step-name">Transactions Happen</div>
-        <div class="step-desc">Commerce flows through existing protocols — UCP, ACP, A2A, MCP. EMILIA doesn't handle the transaction. It scores the outcome.</div>
+        <div class="step-desc">Commerce flows through existing protocols — UCP, ACP, A2A, MCP. EMILIA doesn't handle the transaction. It evaluates trust from the outcome.</div>
       </div>
       <div class="step reveal">
         <div class="step-num">3</div>
@@ -666,8 +666,8 @@
       </div>
       <div class="step reveal">
         <div class="step-num">4</div>
-        <div class="step-name">Scores Update</div>
-        <div class="step-desc">The trust profile recomputes from rolling receipts. Behavioral-first scoring with effective-evidence dampening. Open source algorithm. No one can buy their trust.</div>
+        <div class="step-name">Trust Recomputes</div>
+        <div class="step-desc">The trust profile recomputes from rolling receipts. Behavioral-first trust evaluation with effective-evidence dampening. Open, auditable protocol logic. No one can buy their trust.</div>
       </div>
     </div>
 
@@ -974,7 +974,7 @@
       FULLY OPEN SOURCE
     </div>
     <div class="sh" style="font-size: clamp(28px, 3.5vw, 44px);">Trust Can't Be<br><span style="color: var(--cyan);">Proprietary.</span></div>
-    <div class="sd" style="margin: 16px auto 32px; max-width: 520px;">A trust layer only works if everyone can verify it. EMILIA is open source — audit the scoring, fork the protocol, contribute upstream. 7 test suites, 142 tests covering scoring math, trust profiles, policy evaluation, hash determinism, adversarial resistance, E2E flows, and cross-language conformance. No black boxes.</div>
+    <div class="sd" style="margin: 16px auto 32px; max-width: 520px;">A trust layer only works if everyone can verify it. EMILIA is open source — audit the trust evaluation logic, fork the protocol, contribute upstream. 7 test suites, 142 tests covering scoring math, trust profiles, policy evaluation, hash determinism, adversarial resistance, E2E flows, and cross-language conformance. No black boxes.</div>
     <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 32px;">
       <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" class="btn-p" style="font-size: 13px; padding: 14px 28px; background: var(--t1); color: var(--bg);">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 8px;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
@@ -1133,7 +1133,7 @@
             <span style="color:var(--red);">abandoned → 15</span><span style="color:var(--t2);">Agent stopped pursuing this task category entirely</span>
             <span style="color:var(--magenta);">disputed → 5</span><span style="color:var(--t2);">Agent filed a formal dispute against the counterparty</span>
           </span>
-          FICO doesn't ask borrowers to rate their lender. It watches whether they pay. EP doesn't ask agents to rate merchants. It watches whether they come back.<br><br>Why only 10%? Because the other 90% is computed from verifiable transaction data — delivery timing, price accuracy, product match. The behavioral signal is a tiebreaker, not the foundation. Even a fully gamed 10% signal barely moves the overall score.
+          FICO doesn't ask borrowers to rate their lender. It watches whether they pay. EP doesn't ask agents to rate merchants. It watches whether they come back.<br><br>Why only 10%? Because the other 90% is computed from verifiable transaction data — delivery timing, price accuracy, product match. The behavioral signal is a tiebreaker, not the foundation. Even a fully gamed 10% signal barely moves the overall trust outcome.
         </div>
       </div>
 
@@ -1193,7 +1193,7 @@
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
         <div class="faq-q">Can an entity recover from a bad score?</div>
-        <div class="faq-a"><strong>Yes. Recovery is built into the protocol.</strong><br><br>EP uses time-decay weighting: recent receipts carry more weight than old ones. Half-life is 90 days — a receipt from 90 days ago carries 0.5x weight, 180 days carries 0.25x, a year carries ~0.06x.<br><br>A merchant who was terrible 6 months ago but has been perfect since will see their score improve as old receipts naturally decay. Bad history fades. Improvement is rewarded. Combined with the 200-receipt rolling window, this means no entity is permanently condemned — but recovery requires sustained good performance, not a single PR stunt.</div>
+        <div class="faq-a"><strong>Yes. Recovery is built into the protocol.</strong><br><br>EP uses time-decay weighting: recent receipts carry more weight than old ones. Half-life is 90 days — a receipt from 90 days ago carries 0.5x weight, 180 days carries 0.25x, a year carries ~0.06x.<br><br>A merchant who was terrible 6 months ago but has been perfect since will see their trust profile improve as old receipts naturally decay. Bad history fades. Improvement is rewarded. Combined with the 200-receipt rolling window, this means no entity is permanently condemned — but recovery requires sustained good performance, not a single PR stunt.</div>
       </div>
 
     </div>

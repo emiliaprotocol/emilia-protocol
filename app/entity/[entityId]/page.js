@@ -1,12 +1,12 @@
 import { getServiceClient } from '@/lib/supabase';
-import { computeTrustProfile } from '@/lib/scoring-v2';
+import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { notFound } from 'next/navigation';
 
 export async function generateMetadata({ params }) {
   const { entityId } = await params;
   return {
     title: `${entityId} — EMILIA Protocol`,
-    description: `Trust profile and receipt history for ${entityId}`,
+    description: `Trust profile, policy posture, and receipt history for ${entityId}`,
   };
 }
 
@@ -30,25 +30,21 @@ async function getEntity(entityId) {
     .order('created_at', { ascending: false })
     .limit(50);
 
-  // Get full receipts for trust profile computation (needs all fields)
-  const { data: fullReceipts } = await supabase
-    .from('receipts')
-    .select('*')
-    .eq('entity_id', entity.id)
-    .order('created_at', { ascending: false })
-    .limit(200);
+  // Canonical trust evaluation for current profile + historical establishment
+  const canonical = await canonicalEvaluate(entity.id, {
+    includeDisputes: false,
+    includeEstablishment: true,
+  });
 
-  // Get canonical establishment via DB function (historical)
-  let estResult = { established: false, unique_submitters: 0, effective_evidence: 0 };
-  try {
-    const { data: estData } = await supabase.rpc('is_entity_established', { p_entity_id: entity.id });
-    if (estData && estData[0]) {
-      estResult = estData[0];
-    }
-  } catch {}
-
-  // Compute current trust profile from rolling window
-  const trustProfile = computeTrustProfile(fullReceipts || [], entity);
+  const estResult = canonical.establishment || { established: false, unique_submitters: 0, effective_evidence: 0 };
+  const trustProfile = {
+    profile: canonical.profile,
+    score: canonical.score,
+    confidence: canonical.confidence,
+    effectiveEvidence: canonical.effectiveEvidence,
+    uniqueSubmitters: canonical.uniqueSubmitters,
+    anomaly: canonical.anomaly,
+  };
 
   return { entity, receipts: receipts || [], establishment: estResult, trustProfile };
 }
@@ -179,7 +175,7 @@ export default async function EntityProfile({ params }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 48, fontFamily: 'var(--mono)', fontSize: 12, letterSpacing: 1 }}>
             <a href="/" style={{ color: '#e8eaf0', fontWeight: 600, letterSpacing: 2, fontSize: 14 }}>EMILIA</a>
             <div style={{ display: 'flex', gap: 24 }}>
-              <a href="/#score" style={{ color: '#7a809a' }}>SCORE LOOKUP</a>
+              <a href="/#score" style={{ color: '#7a809a' }}>TRUST LOOKUP</a>
               <a href="https://github.com/emiliaprotocol/emilia-protocol" style={{ color: '#7a809a' }}>GITHUB</a>
             </div>
           </div>
