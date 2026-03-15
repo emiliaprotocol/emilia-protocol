@@ -143,6 +143,18 @@
 
 ## Phase 4: Institutional Maturity (Months 4-8)
 
+### EP-IX Identity Continuity (Phase 1)
+- [ ] Principal model (separate principal from entity)
+- [ ] Identity binding table (domain control, key control)
+- [ ] Continuity claim objects (append-only, with proofs)
+- [ ] Challenge window for continuity claims (7 days)
+- [ ] Dispute freeze on continuity (no migration during active disputes)
+- [ ] Trust transfer rules (full, partial, denied, laundering-flagged)
+- [ ] Public lineage view (`GET /api/identity/lineage/:entityId`)
+- [ ] Continuity expiration (30-day deadline, enforced by cron)
+- [ ] Whitewashing detection flags
+- [ ] Conformance vectors for identity continuity
+
 ### Relationship Trust
 - [ ] Pairwise trust (A→B in context C)
 - [ ] Hierarchical fallback (exact context → nearby → global)

@@ -95,7 +95,7 @@ EP as it exists today is a foundation. A complete civilizational trust layer req
 
 **6. Trust dividends.** Honest participation needs compound incentives, not just penalties. Entities that consistently submit accurate receipts should accumulate submitter credibility that makes dishonesty economically irrational.
 
-**7. Identity continuity.** Trust accumulation requires identity continuity. EP needs a portable identity binding interface — not a specific identity system, but a specification for cryptographic continuity across key rotations, platform migrations, and ownership transfers.
+**7. Identity continuity.** Trust accumulation requires identity continuity. EP needs a portable identity binding interface — not a specific identity system, but a specification for cryptographic continuity across key rotations, platform migrations, and ownership transfers. The [EP-IX Identity Continuity Extension](EP-IX-IDENTITY-CONTINUITY.md) is the working draft for this layer.
 
 All seven require real users and real failures first — not premature engineering.
 

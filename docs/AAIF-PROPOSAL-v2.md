@@ -155,7 +155,7 @@ A complete Shopify integration spec (webhook mapping, receipt mapping, public tr
 
 - **Chair:** EMILIA Protocol (initial), rotating annually
 - **Members:** Open to any AAIF member organization
-- **Deliverables:** EP Core Spec v2.0, conformance test suite, ACP trust extension, Shopify reference integration
+- **Deliverables:** EP Core Spec v2.0, EP-IX Identity Continuity Extension, conformance test suite, ACP trust extension, Shopify reference integration
 - **Timeline:** Spec finalized Q3 2026, conformance tests Q4 2026
 - **Meetings:** Biweekly, open to all AAIF members
 

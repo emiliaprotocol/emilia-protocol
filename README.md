@@ -241,12 +241,15 @@ EP is verifiable, not just claimed.
 
 **Conformance fixtures:** `conformance/fixtures.json` contains canonical test vectors for hashes, provenance weights, four-factor weighting, confidence levels, and policy evaluation. Any implementation claiming EP compatibility must produce identical outputs.
 
+**Falsifiable by design:** anyone can run the conformance suite to prove the evaluator is lying. Trust that cannot be independently verified is not trust — it is faith.
+
 Run: `npx vitest run` (142 tests) + `python3 conformance/verify_hashes.py` (4 cross-language checks)
 
 ## Docs
 
 - [EP Core RFC](docs/EP-CORE-RFC.md) — the canonical protocol specification
 - [EP-SX Software Trust](docs/EP-SX-SOFTWARE-TRUST.md) — install preflight for plugins, packages, MCP servers
+- [EP-IX Identity Continuity](docs/EP-IX-IDENTITY-CONTINUITY.md) — principal binding, trust transfer, whitewashing resistance (working draft)
 - [The Erosion of Trust](docs/THE-EROSION-OF-TRUST.md) — manifesto: why humanity needs a trust protocol
 - [AAIF Proposal](docs/AAIF-PROPOSAL-v2.md) — working group proposal
 - [NIST Engagement](docs/NIST-ENGAGEMENT-PLAN.md) — trust-profile-first engagement plan

@@ -10,6 +10,7 @@
 | `docs/AAIF-PROPOSAL-v2.md` | Standards working group proposal | AAIF / Linux Foundation |
 | `docs/NIST-ENGAGEMENT-PLAN.md` | Government/standards engagement | NIST AI Safety Institute |
 | `docs/EP-SX-SOFTWARE-TRUST.md` | Software trust extension spec | Implementers |
+| `docs/EP-IX-IDENTITY-CONTINUITY.md` | Identity continuity extension (working draft) | Implementers, architects |
 | `docs/EP-ACP-EXTENSION.md` | ACP payment integration | Implementers |
 | `docs/ROADMAP.md` | Development roadmap | Contributors |
 | `docs/STYLE-GUIDE.md` | Vocabulary and terminology | Contributors |

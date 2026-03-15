@@ -19,6 +19,8 @@ EP is designed to complement the rest of the stack:
 - ACP/UCP/AP2 for commerce and payment flows
 - EP for trust evaluation and appeals
 
+The protocol is falsifiable by design — anyone can run the conformance suite to independently verify that the evaluator is producing correct results. Trust that cannot be independently verified is not trust.
+
 I've attached the current proposal and supporting specification materials. I'd welcome the chance to discuss whether this belongs as an AAIF working group or related standards effort.
 
 Best regards,
@@ -43,6 +45,8 @@ EMILIA Protocol (EP) is an open protocol for trust evaluation and appeals across
 The current EP work includes trust profiles, context-aware policy evaluation, install preflight for software and plugins, disputes, appeals, and human escalation paths.
 
 We believe this is relevant because AI systems will increasingly need to evaluate not only other agents, but also third-party software, marketplaces, sellers, and machine counterparties in a way that is explainable, challengeable, and correctable.
+
+Critically, EP is falsifiable by design: the conformance suite and canonical test vectors allow any party to independently verify that the trust evaluator is producing correct outputs. This aligns with NIST's emphasis on transparency and auditability in AI systems.
 
 I've attached a short proposal and supporting materials and would welcome any guidance on whether this work is relevant to CAISI or related standards discussions.
 
