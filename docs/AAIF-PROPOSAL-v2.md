@@ -14,7 +14,7 @@
 MCP defines how agents connect to tools. A2A defines how agents communicate. UCP and ACP define how agents transact. No standard defines how any of these principals should decide whether to trust each other.
 
 This is not a gap. It is the gap. Without portable trust evaluation:
-- Agents cannot make safe autonomous decisions about counterparties, plugins, or services
+- Agents and systems cannot make safe autonomous or semi-autonomous decisions about counterparties, plugins, software, or services without a portable trust layer
 - Platforms become trust gatekeepers by default — recreating the conflicts of interest that corrupted every previous trust system
 - There is no due process when trust is wrong — no appeal, no explanation, no recourse
 
@@ -53,7 +53,7 @@ EMILIA Protocol (EP) is offered as the **initial reference implementation and dr
 
 1. **Trust Receipt Schema** — Append-only, cryptographically hashed transaction records with mandatory `transaction_ref`, optional context keys (`task_type`, `category`, `geo`, `modality`, `value_band`, `risk_class`)
 2. **Trust Profile** — The primary protocol output. Multi-dimensional: behavioral rates (completion, retry, abandon, dispute), per-signal breakdowns, consistency, anomaly alerts, confidence levels
-3. **Trust Policies** — Portable decision frameworks. Agents evaluate counterparties against structured policies, not arbitrary numeric thresholds. Built-in: `strict`, `standard`, `permissive`, `discovery`
+3. **Trust Policies** — Portable decision frameworks. Agents and systems evaluate counterparties, software, and machine actors against structured policies, not arbitrary numeric thresholds. Built-in: `strict`, `standard`, `permissive`, `discovery`
 4. **Receipt Weighting** — Three-factor: submitter credibility × time decay × graph health. Effective-evidence dampening prevents Sybil attacks
 5. **Establishment & Confidence** — Historical establishment (permanent, all receipts) separated from current confidence (rolling window). Two distinct protocol objects
 6. **Sybil Resistance** — 4 layers: IP-based rate limiting, graph analysis (closed-loop/cluster/thin-graph penalties), submitter credibility (unestablished = 0.1x), effective-evidence dampening

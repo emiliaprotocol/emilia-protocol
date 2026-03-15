@@ -822,7 +822,7 @@
       <div class="problem-card reveal" style="border-color: rgba(255,45,120,0.15);">
         <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--magenta); margin-bottom: 12px;">EFFECTIVE EVIDENCE DAMPENING</div>
         <p style="font-size: 13px; line-height: 1.7; color: var(--t2);">
-          Scores are dampened based on <strong style="color:var(--t1);">effective evidence</strong> (sum of weighted receipts), not raw receipt count. 5 perfect receipts from throwaway accounts = 0.5 effective evidence → trust barely moves above baseline. <strong style="color:var(--magenta);">Fake volume does not create real confidence.</strong>
+          Trust outputs are dampened based on <strong style="color:var(--t1);">effective evidence</strong> (sum of weighted receipts), not raw receipt count. 5 perfect receipts from throwaway accounts = 0.5 effective evidence → trust barely moves above baseline. <strong style="color:var(--magenta);">Fake volume does not create real confidence.</strong>
         </p>
       </div>
       <div class="problem-card reveal" style="border-color: rgba(255,215,0,0.15);">
@@ -1197,14 +1197,14 @@
         <div class="faq-a"><strong>Four layers:</strong><br><br>
           <strong style="color:var(--cyan);">Layer 1 — Registration friction.</strong> Rate-limited registration (max 5 entities/day per owner), email verification, optional micro-deposit staking.<br><br>
           <strong style="color:var(--cyan);">Layer 2 — Graph analysis.</strong> Closed-loop detection (A scores B, B scores A), thin-graph flagging (many receipts but few unique submitters), velocity monitoring, cluster detection.<br><br>
-          <strong style="color:var(--cyan);">Layer 3 — Submitter credibility.</strong> Receipts from unestablished entities carry only <strong>0.1x weight</strong>. To become established, an entity needs 5+ receipts from 3+ unique submitters. Creating 100 throwaway entities is useless — each carries 0.1x, and to get full weight, each throwaway would need its own network of established counterparties. The cost spirals exponentially.<br><br>
+          <strong style="color:var(--cyan);">Layer 3 — Submitter credibility.</strong> Receipts from unestablished entities carry only <strong>0.1x weight</strong>. To become established, an entity needs 5+ receipts from 3+ unique submitters. Creating 100 throwaway entities is useless — each carries 0.1x, and to get full weight, each throwaway would need its own network of established counterparties. The cost compounds quickly.<br><br>
           <strong style="color:var(--cyan);">Layer 4 — Protocol design.</strong> No self-scoring. Rolling window of 200 receipts. New entity dampening. Bidirectional scoring means creating a fake buyer leaves a permanent, auditable trail. Every fake receipt is recorded forever — you can't clean up after a Sybil attack.
         </div>
       </div>
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
         <div class="faq-q">There are only 2 entities. Where's the traction?</div>
-        <div class="faq-a">EMILIA is a <strong>protocol</strong>, not a product. TCP/IP didn't have "users" — it had implementations. HTTPS didn't have "customers" — it had adoption.<br><br>What's live today: trust profiles, policy evaluation, context-aware receipts, install preflight for software, dispute lifecycle, human appeal, bilateral attestations, provenance tiers, conformance suite (JS + Python), 145+ tests across 7 suites, CI pipeline, MCP server with 14 tools, identity continuity spec (EP-IX), and blockchain verification. Registered entities already include software and MCP trust surfaces.<br><br>The traction metric for a protocol is adoption, not MAU. The MCP server means any AI agent can evaluate trust profiles, run install preflight, and file disputes with one config line. That's the distribution channel.</div>
+        <div class="faq-a">EMILIA is a <strong>protocol</strong>, not a product. TCP/IP didn't have "users" — it had implementations. HTTPS didn't have "customers" — it had adoption.<br><br>What's live today: trust profiles, policy evaluation, context-aware receipts, install preflight for software, dispute lifecycle, human appeal, bilateral attestations, provenance tiers, conformance suite (JS + Python), 145+ tests across 7 suites, CI pipeline, MCP server with 14 tools, identity continuity spec (EP-IX), and blockchain verification. Registered entities already include software and MCP trust surfaces.<br><br>The traction metric for a protocol is adoption, not MAU. The MCP server means any AI agent or system can evaluate trust profiles, run install preflight, and file disputes with one config line. That's the distribution channel.</div>
       </div>
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
@@ -1595,7 +1595,7 @@ async function lookupTrust() {
         <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:2px;">${d.entityType} · ${d.receiptCount} receipts · ${d.uniqueSubmitters} submitters</div>
       </div>
       <div style="text-align:right;">
-        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);opacity:0.5;">legacy compat</div>
+        <div style="font-family:var(--mono);font-size:9px;color:var(--t3);opacity:0.5;">legacy compatibility</div>
         <div style="font-family:var(--mono);font-weight:400;font-size:14px;color:var(--t3);opacity:0.5;">${d.compatScore}</div>
       </div>
     </div>
