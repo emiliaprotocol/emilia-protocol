@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
+import { EP_ERRORS } from '@/lib/errors';
 
 /**
  * GET /api/trust/profile/:entityId
@@ -20,7 +21,7 @@ export async function GET(request, { params }) {
     });
 
     if (result.error) {
-      return NextResponse.json({ error: result.error }, { status: result.status || 404 });
+      return EP_ERRORS.NOT_FOUND('Entity');
     }
 
     return NextResponse.json({
@@ -52,6 +53,6 @@ export async function GET(request, { params }) {
     });
   } catch (err) {
     console.error('Trust profile error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return EP_ERRORS.INTERNAL();
   }
 }

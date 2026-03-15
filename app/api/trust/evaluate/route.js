@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
+import { EP_ERRORS } from '@/lib/errors';
 
 /**
  * POST /api/trust/evaluate
@@ -14,7 +15,7 @@ export async function POST(request) {
     const body = await request.json();
 
     if (!body.entity_id) {
-      return NextResponse.json({ error: 'entity_id is required' }, { status: 400 });
+      return EP_ERRORS.BAD_REQUEST('entity_id is required');
     }
 
     const result = await canonicalEvaluate(body.entity_id, {
@@ -25,7 +26,7 @@ export async function POST(request) {
     });
 
     if (result.error) {
-      return NextResponse.json({ error: result.error }, { status: result.status || 404 });
+      return EP_ERRORS.NOT_FOUND('Entity');
     }
 
     const pr = result.policyResult;
@@ -53,6 +54,6 @@ export async function POST(request) {
     });
   } catch (err) {
     console.error('Trust evaluate error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return EP_ERRORS.INTERNAL();
   }
 }
