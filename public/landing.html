@@ -1189,28 +1189,34 @@
       </div>
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
-        <div class="faq-q">Can an agent just re-register under a new name to escape bad trust?</div>
-        <div class="faq-a"><strong>They can — but it costs them everything they built.</strong><br><br>EP doesn't solve identity. It solves trust evaluation <em>given</em> an identity. If an entity abandons its ID and re-registers, it starts over: pending confidence, zero effective evidence, zero receipts. It takes real transactions with real counterparties over real time to rebuild trust.<br><br>Meanwhile, EP detects re-registration from the same origin via server-derived owner IDs (SHA-256 of client IP), and rate-limits registrations to 5/day per owner. An entity with 200 good receipts and 3 months of history has a strong incentive not to throw that away.<br><br>The deeper solution is the <strong>identity binding interface</strong> — a planned extension where entities can cryptographically prove continuity across key rotations and platform migrations. But even without it, the cost of rebuilding trust from scratch is the primary deterrent.</div>
+        <div class="faq-q">Can an entity just re-register under a new name to escape bad trust?</div>
+        <div class="faq-a"><strong>They can — but it costs them everything they built.</strong><br><br>EP does not solve identity by itself. It solves trust evaluation <em>given</em> an identity. If an entity abandons its ID and registers a new one, it starts over: pending confidence, zero effective evidence, zero receipts, no established counterparties. Trust does not transfer automatically.<br><br>EP also has a coarse anti-abuse signal for same-origin re-registration: the server derives an <code>owner_id</code> from a hashed client IP and rate-limits registration to 5 per day per owner. That is not a full identity system, but it makes throwaway re-registration more visible and less free.<br><br>The deeper solution is the planned <strong>identity binding interface</strong> — a future extension that would let entities cryptographically prove continuity across key rotations, migrations, or platform changes.<br><br>For now, the main deterrent is simple: once trust becomes valuable, abandoning an entity means abandoning all accumulated trust with it.</div>
       </div>
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
         <div class="faq-q">What if agents lie about receipts?</div>
-        <div class="faq-a"><strong>EP makes lying expensive and bounded.</strong><br><br>Four layers of defense:<br><br>
-          <strong style="color:var(--cyan);">1. Bilateral attestation.</strong> The counterparty can confirm or dispute any receipt. Unconfirmed (self-attested) receipts carry only 0.3x weight. Bilateral-confirmed receipts carry 0.8x.<br><br>
-          <strong style="color:var(--cyan);">2. Self-enforcing incentives.</strong> The agent submitting the receipt is also the agent consuming trust data. If you vouch for a bad merchant, your own agent routes back to that merchant and gets burned. The submitter and the consumer are the same entity.<br><br>
-          <strong style="color:var(--cyan);">3. Provenance tiers.</strong> Self-attested (0.3x) → bilateral (0.8x) → oracle-verified (1.0x). Lies carry less weight than verified truth by design.<br><br>
-          <strong style="color:var(--cyan);">4. Graph analysis.</strong> Reciprocal loops (A and B only transacting with each other) get 0.4x penalty. Cluster collusion gets 0.1x. The protocol detects patterns that humans wouldn't.<br><br>
-          One false receipt from an unestablished entity moves the needle by almost nothing. Making lies matter requires building a network of fake identities, each of which needs its own trust history. The cost spirals exponentially.</div>
+        <div class="faq-a"><strong>EP does not assume honesty. It makes lying expensive and bounded.</strong><br><br>Four layers limit the impact of false receipts:<br><br>
+          <strong style="color:var(--cyan);">1. Provenance tiers.</strong> Not all receipts count equally. Self-attested receipts carry much less weight than bilateral-confirmed or oracle-verified receipts.<br><br>
+          <strong style="color:var(--cyan);">2. Bilateral confirmation.</strong> A counterparty can confirm or dispute a receipt. Unconfirmed receipts remain lower-weight. Confirmed receipts are upgraded.<br><br>
+          <strong style="color:var(--cyan);">3. Graph penalties.</strong> Reciprocal loops and collusive clusters are penalized heavily. Entities that only transact inside a tight ring do not accumulate trust efficiently.<br><br>
+          <strong style="color:var(--cyan);">4. Effective-evidence dampening.</strong> A few low-trust receipts do not move the system very far. Meaningful trust requires credible evidence over time from multiple counterparties.<br><br>
+          In EP-native agent networks, there is also often a self-correcting incentive: the agent that submits trust evidence is frequently also a future consumer of that trust data. If it falsely endorses a bad counterparty, it increases the chance it will route back into that bad outcome later.<br><br>
+          So yes — agents can lie. EP is designed so that lies carry limited weight, truth carries more weight, and large-scale deception becomes expensive to sustain.</div>
       </div>
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
         <div class="faq-q">What if a business isn't using AI agents?</div>
-        <div class="faq-a"><strong>EP works without agents.</strong> It is agent-ready, not agent-dependent.<br><br>Any system that can make an HTTP request can participate:<br><br>
-          <strong style="color:var(--cyan);">Shopify webhooks</strong> can submit receipts when orders complete.<br>
-          <strong style="color:var(--cyan);">Payment processor callbacks</strong> can generate receipts from transaction events.<br>
-          <strong style="color:var(--cyan);">CRM integrations</strong> can query trust profiles before approving a vendor.<br>
-          <strong style="color:var(--cyan);">Human operators</strong> can look up trust profiles on the website, file disputes, and submit human appeals at <a href="/appeal" style="color:var(--cyan);text-decoration:underline;">/appeal</a> — no account required.<br><br>
-          The protocol is a REST API. A receipt is a JSON object. Whether it's submitted by an AI agent, a Zapier automation, or a human clicking a button makes no difference to the trust engine.</div>
+        <div class="faq-a"><strong>EP works without agents.</strong> It is agent-ready, not agent-dependent.<br><br>Any system that can make an HTTP request can participate: Shopify webhooks can submit receipts when orders complete, payment processor callbacks can generate trust evidence from transaction events, CRM or procurement systems can evaluate trust profiles before approving vendors, and human operators can view trust profiles, file disputes, and submit appeals at <a href="/appeal" style="color:var(--cyan);text-decoration:underline;">/appeal</a>.<br><br>The protocol is just an API and a receipt format. Whether the sender is an AI agent, a webhook, a workflow automation, or a human operator, the interface is the same.<br><br>What changes is not the protocol — it is the provenance and evidentiary strength of the receipt.</div>
+      </div>
+
+      <div class="faq-item reveal" onclick="this.classList.toggle('open')">
+        <div class="faq-q">Who decides whether an appeal or dispute is upheld?</div>
+        <div class="faq-a"><strong>Human input can trigger review, but it does not directly rewrite trust.</strong><br><br>EP separates three things:<br><br>
+          <strong style="color:var(--cyan);">Reports</strong> — someone says something is wrong.<br>
+          <strong style="color:var(--cyan);">Disputes</strong> — a specific challenge is filed against a receipt or trust state.<br>
+          <strong style="color:var(--cyan);">Adjudication</strong> — an operator or designated reviewer decides whether the challenge is upheld, reversed, dismissed, or superseded.<br><br>
+          That means humans can escalate contested trust, but they do not directly overwrite it through popularity, outrage, or reviews.<br><br>
+          The protocol is designed so that trust can be challenged and corrected without erasing history.</div>
       </div>
 
     </div>

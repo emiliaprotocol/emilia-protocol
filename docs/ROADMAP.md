@@ -160,6 +160,7 @@
 - [ ] Spec v2.0 (formal object model: Attestation vs Evidence vs Trust State vs Policy Result)
 - [ ] Conformance certification program
 - [ ] Independent security audit
+- [ ] **Standards track:** Initiate W3C/IETF draft submission for Agent Trust standard (requires adoption evidence from Phase 3 pilots)
 
 ### Advanced Scoring
 - [ ] Oracle adapters (DeliveryOracle, PaymentOracle)

@@ -14,6 +14,7 @@
 | `docs/ROADMAP.md` | Development roadmap | Contributors |
 | `docs/STYLE-GUIDE.md` | Vocabulary and terminology | Contributors |
 | `SECURITY.md` | Threat model and reporting | Security researchers |
+| `docs/OUTREACH-EMAILS.md` | AAIF and NIST cover emails | Internal — send when ready |
 | `GOVERNANCE.md` | Project governance | Contributors |
 | `CONTRIBUTING.md` | Contribution guide | Contributors |
 | `public/landing.html` | Marketing website | Everyone |

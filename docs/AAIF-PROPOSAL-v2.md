@@ -30,7 +30,7 @@ EMILIA Protocol (EP) is offered as the **initial reference implementation and dr
 - A deployed canonical implementation (emiliaprotocol.ai)
 - 145 passing tests across 7 test suites including adversarial and E2E flows
 - Cross-language conformance verification (JavaScript + Python)
-- An MCP server with 12 trust evaluation tools
+- An MCP server with 11 trust evaluation tools
 - Install preflight for software entities (GitHub Apps, MCP servers, npm packages)
 - A dispute and human appeal system with constitutional due process guarantees
 
@@ -104,10 +104,18 @@ EP is a **composable layer**, not a competing protocol. It attaches to ACP, is u
 
 ## 7. Why Neutral Governance Matters
 
+**Tool access is not trust.** MCP standardizes how systems connect to tools; it does not decide whether those tools should be trusted.
+
+**Commerce flow is not trust.** ACP/UCP/AP2 can structure transactions and payments; they do not provide a portable basis for judging counterparties or software.
+
+**Identity is not trust.** Knowing who an actor is and what it is allowed to do does not answer whether it should be trusted in a given context.
+
+**Trust without appeal is dangerous.** If trust can influence installation, routing, or conversion, then it needs challenge, response, adjudication, and reversal.
+
 A trust layer controlled by any single platform would be inherently conflicted — they are merchants themselves. Amazon can't evaluate Amazon sellers neutrally. Google can't evaluate UCP merchants neutrally. OpenAI can't evaluate ACP participants neutrally.
 
 Under AAIF governance:
-- No single company can manipulate scoring to favor their products
+- No single company can manipulate trust to favor their products
 - The algorithm remains open source and auditable
 - Multiple independent implementations can emerge
 - Conformance testing ensures interoperability
