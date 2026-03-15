@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EP Interactive Demo — Trust Evaluation in 5 Steps</title>
+<meta name="description" content="See EMILIA Protocol in action: trust profiles, install preflight, disputes, and policy evaluation — live.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #05060a; --bg2: #0a0e1a; --bg3: #0e1120;
+    --cyan: #00d4ff; --gold: #ffd700; --green: #00ff88; --amber: #ff9f1c; --red: #ff4757;
+    --t1: #e8eaf0; --t2: #9ca3b8; --t3: #4a4f6a;
+    --mono: 'JetBrains Mono', monospace; --disp: 'Outfit', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--t1); font-family: var(--disp); -webkit-font-smoothing: antialiased; min-height: 100vh; }
+  body::before { content: ''; position: fixed; inset: 0; background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E"); pointer-events: none; z-index: 9999; }
+
+  .page { max-width: 860px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  /* Header */
+  .demo-header { text-align: center; margin-bottom: 60px; animation: fadeUp 0.6s ease; }
+  .demo-header .tag { font-family: var(--mono); font-size: 10px; letter-spacing: 4px; color: var(--cyan); text-transform: uppercase; margin-bottom: 16px; }
+  .demo-header h1 { font-weight: 900; font-size: clamp(28px, 5vw, 44px); line-height: 1.1; margin-bottom: 16px; }
+  .demo-header h1 span { background: linear-gradient(135deg, var(--cyan), var(--gold)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .demo-header p { font-size: 15px; color: var(--t2); max-width: 520px; margin: 0 auto; line-height: 1.7; }
+  .demo-header .back { font-family: var(--mono); font-size: 11px; color: var(--t3); text-decoration: none; display: inline-block; margin-bottom: 24px; transition: color 0.2s; }
+  .demo-header .back:hover { color: var(--cyan); }
+
+  /* Steps */
+  .step { margin-bottom: 48px; opacity: 0; transform: translateY(20px); animation: fadeUp 0.5s ease forwards; }
+  .step:nth-child(1) { animation-delay: 0.1s; }
+  .step:nth-child(2) { animation-delay: 0.2s; }
+  .step:nth-child(3) { animation-delay: 0.3s; }
+  .step:nth-child(4) { animation-delay: 0.4s; }
+  .step:nth-child(5) { animation-delay: 0.5s; }
+
+  .step-header { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+  .step-num { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-weight: 700; font-size: 14px; flex-shrink: 0; }
+  .step-title { font-weight: 700; font-size: 18px; }
+  .step-desc { font-size: 14px; color: var(--t2); line-height: 1.7; margin-bottom: 16px; padding-left: 52px; }
+
+  /* Terminal */
+  .term { background: var(--bg2); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; overflow: hidden; }
+  .term-bar { display: flex; align-items: center; padding: 10px 16px; background: rgba(255,255,255,0.02); border-bottom: 1px solid rgba(255,255,255,0.04); }
+  .term-dots { display: flex; gap: 6px; }
+  .term-dots span { width: 8px; height: 8px; border-radius: 50%; }
+  .term-dots span:nth-child(1) { background: #ff5f57; }
+  .term-dots span:nth-child(2) { background: #ffbd2e; }
+  .term-dots span:nth-child(3) { background: #28ca41; }
+  .term-label { font-family: var(--mono); font-size: 10px; color: var(--t3); margin-left: auto; letter-spacing: 1px; }
+  .term-body { padding: 20px 24px; }
+
+  /* Code block */
+  .code-block { font-family: var(--mono); font-size: 12px; line-height: 1.8; color: var(--t2); white-space: pre-wrap; word-break: break-all; }
+  .code-block .key { color: var(--cyan); }
+  .code-block .str { color: var(--gold); }
+  .code-block .comment { color: var(--t3); font-style: italic; }
+
+  /* Run button */
+  .run-row { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+  .run-btn { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; padding: 10px 24px; border: 1px solid rgba(0,212,255,0.3); background: rgba(0,212,255,0.06); color: var(--cyan); border-radius: 8px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
+  .run-btn:hover { background: rgba(0,212,255,0.12); border-color: rgba(0,212,255,0.5); }
+  .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .run-hint { font-family: var(--mono); font-size: 10px; color: var(--t3); }
+
+  /* Result */
+  .result { margin-top: 16px; min-height: 40px; }
+  .result-card { background: var(--bg3); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; padding: 20px; font-family: var(--mono); font-size: 12px; line-height: 1.8; color: var(--t2); animation: fadeUp 0.3s ease; }
+  .result-card .label { color: var(--t3); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
+  .result-card .val { color: var(--t1); }
+  .result-card .pass { color: var(--green); }
+  .result-card .fail { color: var(--red); }
+  .result-card .warn { color: var(--amber); }
+  .result-empty { font-family: var(--mono); font-size: 11px; color: var(--t3); padding: 12px 0; }
+
+  /* Divider */
+  .divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(0,212,255,0.15), transparent); margin: 48px 0; }
+
+  /* Callout */
+  .callout { background: rgba(0,212,255,0.04); border: 1px solid rgba(0,212,255,0.12); border-radius: 10px; padding: 20px 24px; margin: 24px 0; font-size: 14px; color: var(--t2); line-height: 1.7; }
+  .callout strong { color: var(--cyan); }
+
+  /* Footer */
+  .demo-footer { text-align: center; margin-top: 60px; padding-top: 40px; border-top: 1px solid rgba(255,255,255,0.04); }
+  .demo-footer a { color: var(--cyan); text-decoration: none; font-family: var(--mono); font-size: 12px; }
+  .demo-footer p { font-family: var(--mono); font-size: 10px; color: var(--t3); margin-top: 12px; letter-spacing: 1px; }
+
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  @media (max-width: 600px) { .step-desc { padding-left: 0; } .code-block { font-size: 10px; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="demo-header">
+    <a href="/" class="back">&larr; emiliaprotocol.ai</a>
+    <div class="tag">Interactive Demo</div>
+    <h1><span>Trust Evaluation</span> in 5 Steps</h1>
+    <p>See EMILIA Protocol working live. Every button calls the real API. No mocks. No simulations. This is the protocol running in production.</p>
+  </div>
+
+  <!-- STEP 1: TRUST PROFILE -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num" style="background:rgba(0,212,255,0.1);color:var(--cyan);border:1px solid rgba(0,212,255,0.2);">1</div>
+      <div class="step-title">Query a Trust Profile</div>
+    </div>
+    <div class="step-desc">
+      The canonical output of EP is a <strong>trust profile</strong> — not a number. It includes behavioral rates, signal breakdowns, provenance composition, confidence level, and dispute history.
+    </div>
+    <div class="term">
+      <div class="term-bar">
+        <div class="term-dots"><span></span><span></span><span></span></div>
+        <div class="term-label">GET /api/trust/profile/:entityId</div>
+      </div>
+      <div class="term-body">
+        <div class="code-block"><span class="comment">// Try a registered entity</span>
+<span class="key">GET</span> <span class="str">/api/trust/profile/mcp-server-ep-v1</span></div>
+        <div class="run-row">
+          <button class="run-btn" onclick="runStep1(this)">Run Live</button>
+          <span class="run-hint">Calls the real EP API</span>
+        </div>
+        <div class="result" id="result1"></div>
+      </div>
+    </div>
+    <div class="callout">
+      <strong>Why this matters:</strong> Agents and systems don't check "score > 70." They evaluate trust profiles against policies. A trust profile tells you <em>why</em> an entity is trusted, not just <em>how much</em>.
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- STEP 2: POLICY EVALUATION -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num" style="background:rgba(0,255,136,0.1);color:var(--green);border:1px solid rgba(0,255,136,0.2);">2</div>
+      <div class="step-title">Evaluate Against a Policy</div>
+    </div>
+    <div class="step-desc">
+      EP doesn't use arbitrary thresholds. Agents evaluate counterparties against <strong>structured policies</strong>: strict for high-value, standard for normal, permissive for low-risk, discovery for exploring.
+    </div>
+    <div class="term">
+      <div class="term-bar">
+        <div class="term-dots"><span></span><span></span><span></span></div>
+        <div class="term-label">POST /api/trust/evaluate</div>
+      </div>
+      <div class="term-body">
+        <div class="code-block"><span class="comment">// Evaluate against "strict" policy</span>
+{
+  <span class="key">"entity_id"</span>: <span class="str">"mcp-server-ep-v1"</span>,
+  <span class="key">"policy"</span>: <span class="str">"strict"</span>
+}</div>
+        <div class="run-row">
+          <button class="run-btn" onclick="runStep2(this)">Run Live</button>
+          <span class="run-hint">Evaluates against the strict trust policy</span>
+        </div>
+        <div class="result" id="result2"></div>
+      </div>
+    </div>
+    <div class="callout">
+      <strong>Why this matters:</strong> Different contexts need different trust thresholds. A plugin accessing read-only data needs less trust than one accessing private repos. Policies make this explicit.
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- STEP 3: INSTALL PREFLIGHT -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num" style="background:rgba(255,215,0,0.1);color:var(--gold);border:1px solid rgba(255,215,0,0.2);">3</div>
+      <div class="step-title">Run Install Preflight</div>
+    </div>
+    <div class="step-desc">
+      MCP tells you what a server can do. <strong>EP tells you whether it should be trusted enough to connect.</strong> Install preflight evaluates software entities against context-specific safety policies.
+    </div>
+    <div class="term">
+      <div class="term-bar">
+        <div class="term-dots"><span></span><span></span><span></span></div>
+        <div class="term-label">POST /api/trust/install-preflight</div>
+      </div>
+      <div class="term-body">
+        <div class="code-block"><span class="comment">// Should I install this MCP server in a private workspace?</span>
+{
+  <span class="key">"entity_id"</span>: <span class="str">"mcp-server-ep-v1"</span>,
+  <span class="key">"policy"</span>: <span class="str">"mcp_server_safe_v1"</span>,
+  <span class="key">"context"</span>: {
+    <span class="key">"host"</span>: <span class="str">"mcp"</span>,
+    <span class="key">"data_sensitivity"</span>: <span class="str">"private_workspace"</span>,
+    <span class="key">"tool_scope"</span>: <span class="str">"repo_read"</span>
+  }
+}</div>
+        <div class="run-row">
+          <button class="run-btn" onclick="runStep3(this)">Run Live</button>
+          <span class="run-hint">Real install safety evaluation</span>
+        </div>
+        <div class="result" id="result3"></div>
+      </div>
+    </div>
+    <div class="callout">
+      <strong>Why this matters:</strong> The future trust question for software isn't "is this popular?" — it's "is this safe enough for this policy and scope?"
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- STEP 4: FILE A DISPUTE -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num" style="background:rgba(255,159,28,0.1);color:var(--amber);border:1px solid rgba(255,159,28,0.2);">4</div>
+      <div class="step-title">File a Trust Report</div>
+    </div>
+    <div class="step-desc">
+      A real trust layer can't only compute trust — it has to handle <strong>contested trust</strong>. Every negative trust effect must be explainable, challengeable, and reversible. No login required.
+    </div>
+    <div class="term">
+      <div class="term-bar">
+        <div class="term-dots"><span></span><span></span><span></span></div>
+        <div class="term-label">POST /api/disputes/report</div>
+      </div>
+      <div class="term-body">
+        <div class="code-block"><span class="comment">// Report a trust issue — no auth required</span>
+{
+  <span class="key">"entity_id"</span>: <span class="str">"mcp-server-ep-v1"</span>,
+  <span class="key">"reason"</span>: <span class="str">"demo_challenge"</span>,
+  <span class="key">"details"</span>: <span class="str">"Interactive demo — testing dispute lifecycle"</span>
+}</div>
+        <div class="run-row">
+          <button class="run-btn" onclick="runStep4(this)">Run Live</button>
+          <span class="run-hint">Files a real report (rate-limited)</span>
+        </div>
+        <div class="result" id="result4"></div>
+      </div>
+    </div>
+    <div class="callout">
+      <strong>Constitutional principle:</strong> Trust must never be more powerful than appeal. Reports create review objects — they don't directly change trust profiles. That's due process.
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- STEP 5: LIST POLICIES -->
+  <div class="step">
+    <div class="step-header">
+      <div class="step-num" style="background:rgba(0,212,255,0.1);color:var(--cyan);border:1px solid rgba(0,212,255,0.2);">5</div>
+      <div class="step-title">Explore Trust Policies</div>
+    </div>
+    <div class="step-desc">
+      EP ships with 8 trust policies across commerce and software. Custom policies are accepted as JSONB. Policies are the decision layer — they define what "trusted enough" means for each context.
+    </div>
+    <div class="term">
+      <div class="term-bar">
+        <div class="term-dots"><span></span><span></span><span></span></div>
+        <div class="term-label">GET /api/policies</div>
+      </div>
+      <div class="term-body">
+        <div class="code-block"><span class="comment">// List all available trust policies</span>
+<span class="key">GET</span> <span class="str">/api/policies</span></div>
+        <div class="run-row">
+          <button class="run-btn" onclick="runStep5(this)">Run Live</button>
+          <span class="run-hint">Returns all policy definitions</span>
+        </div>
+        <div class="result" id="result5"></div>
+      </div>
+    </div>
+    <div class="callout">
+      <strong>The shift:</strong> Agents don't check raw numbers. They evaluate against structured policies. That's how trust becomes context-aware, portable, and machine-actionable.
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- CTA -->
+  <div style="text-align: center; margin-top: 40px; animation: fadeUp 0.6s 0.6s ease both;">
+    <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 3px; color: var(--t3); text-transform: uppercase; margin-bottom: 16px;">What's Next</div>
+    <div style="font-size: 22px; font-weight: 700; margin-bottom: 20px;">Integrate EP into your stack</div>
+    <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+      <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/EP-CORE-RFC.md" target="_blank" class="run-btn" style="text-decoration:none;">Read the Spec</a>
+      <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" class="run-btn" style="text-decoration:none;background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.1);color:var(--t1);">GitHub</a>
+      <a href="/" class="run-btn" style="text-decoration:none;background:rgba(255,215,0,0.06);border-color:rgba(255,215,0,0.2);color:var(--gold);">Back to Site</a>
+    </div>
+  </div>
+
+  <div class="demo-footer">
+    <a href="/">emiliaprotocol.ai</a>
+    <p>Portable trust evaluation and appeals for counterparties, software, and machine actors. Apache 2.0.</p>
+  </div>
+
+</div>
+
+<script>
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+async function runStep1(btn) {
+  btn.disabled = true; btn.textContent = 'QUERYING...';
+  const res = document.getElementById('result1');
+  try {
+    const r = await fetch('/api/trust/profile/mcp-server-ep-v1');
+    const d = await r.json();
+    if (!r.ok) throw d.error || 'Not found';
+    const tp = d.trust_profile || {};
+    const bh = tp.behavioral || {};
+    const sg = tp.signals || {};
+    const prov = tp.provenance || {};
+    res.innerHTML = `<div class="result-card">
+      <div class="label">Trust Profile</div>
+      <div><span class="val" style="font-size:16px;font-weight:700;">${esc(d.display_name || d.entity_id)}</span></div>
+      <div style="margin-top:8px;">Confidence: <span class="val">${d.current_confidence || 'pending'}</span></div>
+      <div>Evidence: <span class="val">${d.effective_evidence_current || 0}</span> (current) / <span class="val">${d.effective_evidence_historical || 0}</span> (historical)</div>
+      <div>Receipts: <span class="val">${d.receipt_count || 0}</span> from <span class="val">${d.unique_submitters || 0}</span> submitters</div>
+      ${bh.completion_rate != null ? `<div style="margin-top:8px;"><span class="label">Behavioral</span></div>
+      <div>Completion: <span class="val">${bh.completion_rate}%</span> · Dispute: <span class="val">${bh.dispute_rate || 0}%</span></div>` : ''}
+      ${sg.delivery_accuracy != null ? `<div style="margin-top:8px;"><span class="label">Signals</span></div>
+      <div>Delivery: <span class="val">${sg.delivery_accuracy}</span> · Product: <span class="val">${sg.product_accuracy}</span> · Price: <span class="val">${sg.price_integrity}</span></div>` : ''}
+      ${prov.breakdown ? `<div style="margin-top:8px;"><span class="label">Provenance</span></div>
+      <div>${Object.entries(prov.breakdown).map(([k,v]) => `${k}: <span class="val">${v}</span>`).join(' · ')}</div>` : ''}
+      <div style="margin-top:12px;color:var(--t3);font-size:10px;">Legacy compat: ${d.compat_score || 'N/A'}</div>
+    </div>`;
+  } catch(e) {
+    res.innerHTML = `<div class="result-card"><span class="warn">${esc(String(e))}</span></div>`;
+  }
+  btn.disabled = false; btn.textContent = 'RUN LIVE';
+}
+
+async function runStep2(btn) {
+  btn.disabled = true; btn.textContent = 'EVALUATING...';
+  const res = document.getElementById('result2');
+  try {
+    const r = await fetch('/api/trust/evaluate', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ entity_id: 'mcp-server-ep-v1', policy: 'strict' })
+    });
+    const d = await r.json();
+    if (!r.ok) throw d.error || 'Evaluation failed';
+    const icon = d.pass ? '✓ PASS' : '✗ FAIL';
+    const cls = d.pass ? 'pass' : 'fail';
+    res.innerHTML = `<div class="result-card">
+      <div class="label">Policy Evaluation — ${esc(d.policy_used || 'strict')}</div>
+      <div style="font-size:18px;font-weight:700;" class="${cls}">${icon}</div>
+      <div style="margin-top:8px;">Confidence: <span class="val">${d.confidence || 'pending'}</span></div>
+      ${d.failures?.length ? `<div style="margin-top:8px;"><span class="label">Failures</span></div>${d.failures.map(f => `<div class="fail">✗ ${esc(f)}</div>`).join('')}` : ''}
+      ${d.warnings?.length ? `<div style="margin-top:8px;"><span class="label">Warnings</span></div>${d.warnings.map(w => `<div class="warn">⚠ ${esc(w)}</div>`).join('')}` : ''}
+    </div>`;
+  } catch(e) {
+    res.innerHTML = `<div class="result-card"><span class="warn">${esc(String(e))}</span></div>`;
+  }
+  btn.disabled = false; btn.textContent = 'RUN LIVE';
+}
+
+async function runStep3(btn) {
+  btn.disabled = true; btn.textContent = 'EVALUATING...';
+  const res = document.getElementById('result3');
+  try {
+    const r = await fetch('/api/trust/install-preflight', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        entity_id: 'mcp-server-ep-v1',
+        policy: 'mcp_server_safe_v1',
+        context: { host: 'mcp', data_sensitivity: 'private_workspace', tool_scope: 'repo_read' }
+      })
+    });
+    const d = await r.json();
+    if (!r.ok) throw d.error || 'Preflight failed';
+    const dc = d.decision === 'allow' ? 'pass' : d.decision === 'deny' ? 'fail' : 'warn';
+    const icon = d.decision === 'allow' ? '✓ ALLOW' : d.decision === 'deny' ? '✗ DENY' : '⚠ REVIEW';
+    res.innerHTML = `<div class="result-card">
+      <div class="label">Install Preflight — ${esc(d.policy_used || 'mcp_server_safe_v1')}</div>
+      <div style="font-size:18px;font-weight:700;" class="${dc}">${icon}</div>
+      <div style="margin-top:8px;">Confidence: <span class="val">${d.confidence || 'pending'}</span></div>
+      <div>Entity type: <span class="val">${d.entity_type || 'unknown'}</span></div>
+      ${d.reasons?.length ? `<div style="margin-top:8px;"><span class="label">Reasons</span></div>${d.reasons.map(r => `<div style="color:var(--t2);">· ${esc(r)}</div>`).join('')}` : ''}
+    </div>`;
+  } catch(e) {
+    res.innerHTML = `<div class="result-card"><span class="warn">${esc(String(e))}</span></div>`;
+  }
+  btn.disabled = false; btn.textContent = 'RUN LIVE';
+}
+
+async function runStep4(btn) {
+  btn.disabled = true; btn.textContent = 'FILING...';
+  const res = document.getElementById('result4');
+  try {
+    const r = await fetch('/api/disputes/report', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        entity_id: 'mcp-server-ep-v1',
+        reason: 'demo_challenge',
+        details: 'Interactive demo — testing dispute lifecycle'
+      })
+    });
+    const d = await r.json();
+    if (!r.ok) throw d.error || 'Report failed';
+    res.innerHTML = `<div class="result-card">
+      <div class="label">Report Filed</div>
+      <div class="pass" style="font-size:16px;font-weight:700;">✓ Report Recorded</div>
+      <div style="margin-top:8px;">ID: <span class="val">${esc(d.report_id || d.dispute_id || 'filed')}</span></div>
+      <div style="margin-top:8px;color:var(--t3);font-size:11px;">Reports create review objects. They do not directly change trust profiles.<br>Trust must never be more powerful than appeal.</div>
+    </div>`;
+  } catch(e) {
+    res.innerHTML = `<div class="result-card"><span class="warn">${esc(String(e))}</span></div>`;
+  }
+  btn.disabled = false; btn.textContent = 'RUN LIVE';
+}
+
+async function runStep5(btn) {
+  btn.disabled = true; btn.textContent = 'LOADING...';
+  const res = document.getElementById('result5');
+  try {
+    const r = await fetch('/api/policies');
+    const d = await r.json();
+    if (!r.ok) throw 'Failed';
+    const policies = d.policies || [];
+    res.innerHTML = `<div class="result-card">
+      <div class="label">${policies.length} Trust Policies Available</div>
+      ${policies.map(p => `<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.04);">
+        <div><span class="val" style="font-weight:600;">${esc(p.name)}</span> <span style="color:var(--t3);font-size:10px;">[${esc(p.family)}]</span></div>
+        <div style="margin-top:4px;color:var(--t2);font-size:11px;">${esc(p.description)}</div>
+        ${p.min_confidence ? `<div style="margin-top:2px;color:var(--t3);font-size:10px;">min confidence: ${esc(p.min_confidence)}</div>` : ''}
+      </div>`).join('')}
+    </div>`;
+  } catch(e) {
+    res.innerHTML = `<div class="result-card"><span class="warn">${esc(String(e))}</span></div>`;
+  }
+  btn.disabled = false; btn.textContent = 'RUN LIVE';
+}
+</script>
+</body>
+</html>
