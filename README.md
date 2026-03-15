@@ -68,7 +68,7 @@ EP also exposes a 0-100 compatibility score via `GET /api/score/:entityId` for s
 ### How trust is computed
 
 Receipts are weighted by four factors:
-- **Submitter credibility**: unestablished submitters = 0.1x, established = score/100
+- **Submitter credibility**: unestablished submitters = 0.1x, established = compatibility_score/100
 - **Time decay**: 90-day half-life, recent receipts matter more
 - **Graph health**: thin graphs, closed loops, and clusters reduce weight
 - **Provenance**: self_attested (0.3x) → bilateral (0.8x) → oracle_verified (1.0x)
@@ -225,9 +225,14 @@ Establishment is **historical** — computed over all receipts. Scoring is **cur
 | Policy registry | ✅ Live |
 | Human trust console | ✅ Live — profile + preflight + report |
 | EP-IX identity continuity | 📋 Spec complete, runtime skeleton shipped, tables deployed |
+| EP-IX continuity-aware evaluator | ✅ Live — lineage, inherited disputes, whitewashing flags |
 | GitHub host adapter | 📋 Source complete, awaiting pilot integration |
-| Operator role model | 🔲 Phase 3 |
-| Evidence visibility tiers | 🔲 Phase 3 |
+| Operator role model | ✅ Live — 7 roles with explicit permissions |
+| Evidence visibility tiers | ✅ Live — public/redacted/restricted/operator-only |
+| Formal state machines | ✅ Live — disputes (9 states) + continuity (7 states) |
+| Abuse detection | ✅ Live — repeated reports, brigading, retaliatory filing, flooding |
+| Operator audit trail | ✅ Live — append-only, before/after state, queryable API |
+| Policy registry | ✅ Live — GET /api/policies |
 | Oracle verification | 🔲 Phase 4 |
 | Trust analytics | 🔲 Phase 7 |
 

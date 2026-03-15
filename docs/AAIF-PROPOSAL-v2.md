@@ -130,7 +130,7 @@ EP operates under one governing doctrine:
 
 If EP can influence routing, access, or conversion, then every negative trust effect must be explainable, challengeable, and reversible. The v4 architecture roadmap includes:
 
-- **Provenance tiers** — classifying attestations from self-attested (0.05x) through bilateral (0.45x) to oracle-verified (1.0x), so evidence quality shapes trust more than any formula
+- **Provenance tiers** — classifying receipts, evidence, and verified trust events from self-attested (0.05x) through bilateral (0.45x) to oracle-verified (1.0x), so evidence quality shapes trust more than any formula
 - **Due-process lifecycle** — submitted → challenged → under review → resolved/reversed → superseded. Corrections are append-only. Nothing is erased.
 - **Context keys** — trust scoped to task type, category, geography, modality, and value band. Global trust is a fallback prior, not the primary representation.
 - **Relationship trust** — pairwise trust with hierarchical backoff: A's experience with B in context C, falling back through broader contexts to global priors.

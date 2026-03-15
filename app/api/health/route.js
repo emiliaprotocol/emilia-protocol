@@ -81,6 +81,7 @@ export async function GET() {
       identity_lineage: '/api/identity/lineage/:entityId',
       identity_bind: '/api/identity/bind',
       identity_continuity: '/api/identity/continuity',
+      audit: '/api/audit',
       health: '/api/health',
     },
   });
