@@ -2,7 +2,8 @@
 
 **Evidence-based Mediation & Integrity Layer for Interactions and Appeals**
 
-Portable trust for machine counterparties and third-party software.
+EMILIA Protocol is emerging as a portable trust evaluation and appeals layer for counterparties, software, and machine actors.
+
 Compatible with ACP. Usable through MCP. Apache 2.0.
 
 ---
