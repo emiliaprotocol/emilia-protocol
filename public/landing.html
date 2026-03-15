@@ -1219,6 +1219,16 @@
           The protocol is designed so that trust can be challenged and corrected without erasing history.</div>
       </div>
 
+      <div class="faq-item reveal" onclick="this.classList.toggle('open')">
+        <div class="faq-q">What if someone falsely claims succession to a trusted entity?</div>
+        <div class="faq-a"><strong>Continuity claims are challengeable. They do not become trust-bearing immediately.</strong><br><br>When a continuity claim is filed, it enters a <strong>7-day challenge window</strong>. During this window, the old entity controller, active dispute counterparties, bound hosts, and operators can all challenge the claim.<br><br>If unchallenged, the claim proceeds to decision. If challenged, it requires operator review. Immediate approval is only permitted for tightly-scoped automated rotations with dual-signature proof and no active disputes.<br><br>This prevents hostile succession — where an attacker temporarily compromises a domain or account and tries to inherit a high-trust entity's profile before anyone notices. See <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/EP-IX-IDENTITY-CONTINUITY.md" style="color:var(--cyan);text-decoration:underline;">EP-IX</a> for the full continuity governance design.</div>
+      </div>
+
+      <div class="faq-item reveal" onclick="this.classList.toggle('open')">
+        <div class="faq-q">What happens if a company splits or merges?</div>
+        <div class="faq-a"><strong>Fission does not multiply trust.</strong><br><br>When a principal splits into multiple successors, EP-IX enforces conservation rules: one primary successor inherits the main trust lineage, secondary successors receive dampened partial continuity, and the total transferred trust cannot exceed the original.<br><br>All successors inherit the dispute burden — unresolved disputes, sanctions, and warnings follow every branch. A principal cannot shed bad history by splitting.<br><br>Merger support (A + B → C) follows the same principle: disputes aggregate, sanctions carry forward, and conflicting trust signals are resolved by evidence weight.</div>
+      </div>
+
     </div>
   </div>
 </section>

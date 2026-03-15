@@ -438,27 +438,48 @@ EP-IX should explicitly defend against:
 
 These six constraints address production-scale gaps in the base design.
 
-### Constraint 1: Bootstrap mode
+### Constraint 1: Bootstrap governance
 
-The first principals in any EP-IX deployment cannot be verified by the trust graph because the graph doesn't exist yet. EP-IX must define an explicit bootstrap mode where the first N principals are operator-verified. Once the graph reaches a critical mass (e.g., 10+ established principals with cross-verified bindings), the system transitions to graph-native verification.
+The first principals in any EP-IX deployment cannot be verified by the trust graph because the graph doesn't exist yet. EP-IX must define an explicit bootstrap governance phase — not just "first N principals."
 
-Without this, the first continuity claims have no anchor — they are self-referential.
+Configuration:
+- `bootstrap_mode`: `true | false`
+- `bootstrap_exit_policy`: configurable conditions for transition
+- `bootstrap_operator_quorum`: required approvals during bootstrap
+
+A deployment remains in bootstrap mode until an exit policy is satisfied:
+- minimum number of established principals
+- minimum graph density (bilateral receipts across distinct principals)
+- optional operator approval
+
+Bootstrap authority exists only to seed a graph that can later govern itself. Once the exit policy is met, the system transitions to graph-native verification and bootstrap mode cannot be re-entered.
 
 ### Constraint 2: Continuity challenge window
 
-Continuity claims must have a **challenge window** (recommended: 7 days) during which:
-- the old entity can dispute the claim
-- affected counterparties can challenge
-- the old entity's active dispute holders can object
+Continuity claims must have a **challenge window** (default: 7 days) with an explicit state machine:
 
-If unchallenged after the window, the claim proceeds to decision. If challenged, it requires operator review.
+- `pending` → claim filed, challenge window open
+- `under_challenge` → challenge received, requires review
+- `approved_full` → continuity accepted, full trust transfer
+- `approved_partial` → continuity accepted, dampened transfer
+- `rejected` → continuity denied
+- `frozen_pending_dispute` → blocked by active disputes
+- `expired` → 30-day deadline passed without resolution
 
-This prevents hostile succession — where an attacker compromises a domain and claims continuity with a high-trust entity before anyone notices.
+**Who can challenge** (rights must be explicit):
+- old entity controller
+- existing principal owner
+- currently bound hosts
+- active dispute counterparties
+- operator/reviewer
+- affected enterprise admin
+
+Immediate approval is permitted only for tightly-scoped automated rotations with dual-signature proof and no active disputes. All other claims require the full challenge window.
 
 ```json
 {
   "continuity_id": "ep_ix_001",
-  "status": "challenge_window",
+  "status": "pending",
   "challenge_deadline": "2026-03-22T00:00:00Z",
   "challenges": []
 }
@@ -466,51 +487,95 @@ This prevents hostile succession — where an attacker compromises a domain and 
 
 ### Constraint 3: Dispute freeze on continuity
 
-If an entity has **active disputes** (status: `open` or `under_review`), continuity claims from that entity must be **frozen** until all disputes resolve.
+If an entity has **active disputes** (status: `open` or `under_review`), continuity claims from that entity enter `frozen_pending_dispute` state until all disputes resolve.
 
-Rationale: continuity during active disputes creates a race condition — the principal can abandon the disputed entity and let disputes expire on the orphan. Freezing continuity forces the principal to resolve disputes before migrating trust.
+Continuity should freeze when:
+- active disputes exceed policy threshold
+- active appeals exist
+- severe unresolved sanctions exist
 
-Exception: `recovery_after_compromise` reason may bypass the freeze with operator approval, because a compromised entity may have fraudulent disputes filed against it.
+Rationale: continuity during active disputes creates a race condition — the principal can abandon the disputed entity and let disputes expire on the orphan. Freezing forces the principal to face its challenges before migrating trust.
 
-### Constraint 4: Fission rules
+**Exception:** `recovery_after_compromise` reason may bypass the freeze with operator approval when:
+- old entity is cryptographically compromised or provably unavailable
+- the dispute burden is explicitly preserved on the successor
+- operator approval is recorded in the continuity decision
 
-When a principal splits (merger dissolution, team split, product separation), both successors cannot inherit full trust. EP-IX must support **fission continuity** with explicit rules:
+**Identity continuity may preserve trust, but it may not erase accountability.**
 
-- **Primary successor:** inherits trust profile + dispute burden (designated by the principal or operator)
+### Constraint 4: Fission and merger rules
+
+**Fission (A → B + C):** When a principal splits, both successors cannot inherit full trust. EP-IX supports fission continuity with conservation rules:
+
+- **Primary successor:** inherits trust profile + full dispute burden
 - **Secondary successor(s):** start with `partial` transfer — historical establishment preserved, current confidence dampened, all inherited disputes attached
-- **No successor claims full trust independently** — the sum of transferred trust cannot exceed the original
+- **Conservation rule:** the sum of transferred trust weight across successors must never exceed the original
 
+Implementation model:
 ```json
 {
-  "continuity_type": "fission",
+  "continuity_mode": "fission",
+  "transfer_budget": 1.0,
   "primary_successor": "entity-new-commerce",
-  "secondary_successors": ["entity-new-software"],
+  "primary_allocation": 0.7,
+  "secondary_successors": [
+    {"entity_id": "entity-new-software", "allocation": 0.3}
+  ],
   "original_entity": "entity-original"
 }
 ```
 
-### Constraint 5: Provenance alignment
+Bad history must also be conserved: unresolved disputes, sanctions, warnings, and reversals remain visible in the lineage of all successors.
 
-EP-IX identity provenance tiers (0-4) must map to EP receipt provenance tiers to avoid parallel systems:
+**Merger (A + B → C):** When entities merge, the new entity inherits the combined trust lineage. This requires rules for:
+- trust aggregation (weighted by receipt count and evidence strength)
+- dispute aggregation (all active disputes from all predecessors carry forward)
+- conflict resolution (when predecessors have contradictory trust signals)
+- sanction carry-forward (worst-case sanctions from any predecessor apply)
 
-| EP-IX Identity Tier | EP Receipt Provenance | Meaning |
-|---|---|---|
-| Tier 0 — self-asserted | `self_attested` | Claim only, no verification |
-| Tier 1 — signed | `identified_signed` | Cryptographic proof from claimant |
-| Tier 2 — bilateral | `bilateral` | Host + claimant both confirm |
-| Tier 3 — host-verified | `oracle_verified` | External system confirms independently |
-| Tier 4 — adjudicated | (new: `adjudicated`) | Operator-upheld after challenge |
+Merger is Phase 2 — the data model is specified here, the implementation follows after linear and fission cases are proven.
 
-Implementers should use the EP receipt provenance vocabulary when possible.
+```json
+{
+  "continuity_mode": "merger",
+  "predecessor_entities": ["entity-a", "entity-b"],
+  "successor_entity": "entity-c",
+  "aggregation_rule": "weighted_evidence"
+}
+```
+
+### Constraint 5: Provenance alignment — single vocabulary
+
+EP-IX identity provenance must use the same vocabulary as EP receipt provenance. Parallel tier systems fracture implementability.
+
+**One shared vocabulary:**
+
+| Provenance | EP receipts | EP-IX identity | Meaning |
+|---|---|---|---|
+| `self_attested` | Submitter claim only | Identity claim only | No verification |
+| `identified_signed` | Signed receipt | Signed challenge | Cryptographic proof from claimant |
+| `bilateral_confirmed` | Counterparty confirmed | Host + claimant both confirm | Two-party verification |
+| `host_verified` | Oracle verified | External host confirms independently | Third-party verification |
+| `adjudicated_verified` | (new) | Operator-upheld after challenge | Reviewed and approved |
+
+If numeric tiers (0-4) remain useful internally, they are aliases only — not the public vocabulary. Implementers learn one provenance language, not two.
+
+**Identity continuity uses the same provenance vocabulary as trust receipts. Only the evidence classes differ.**
 
 ### Constraint 6: Continuity claim expiration
 
-Pending continuity claims must expire after **30 days** if not resolved. This mirrors EP's existing deadline enforcement:
+Pending continuity claims must resolve or expire. Trust lineage cannot live in permanent ambiguity.
+
+Deadlines:
+- **Warning** at 21 days
+- **Auto-expire** at 30 days unless challenged or resolved
+- If challenged, expiry pauses and shifts to dispute/continuity review SLA
+- Expired claims are recorded as `expired` — not deleted. The principal may file a new claim.
+
+This mirrors EP's existing deadline enforcement:
 - Bilateral confirmations: 48 hours
 - Dispute responses: 7 days
 - Continuity claims: 30 days
-
-Expired continuity claims are recorded as `expired` — not deleted. The principal may file a new claim.
 
 The `/api/cron/expire` endpoint should enforce continuity expiration alongside bilateral and dispute deadlines.
 
@@ -554,14 +619,19 @@ This is what turns EP-IX from “good idea” into protocol.
 
 ## 17. Constitutional statements
 
-Use these as anchors:
+These are non-negotiable governance anchors:
 
-- **EP evaluates trust given an identity. EP-IX governs how identity continuity is proven.**
-- **Continuity must not become trust laundering.**
-- **A principal may change keys or infrastructure without losing itself. It may not shed its history selectively.**
-- **Trust must never be more powerful than appeal. Identity continuity must never be more powerful than review.**
-- **Continuity during active disputes is frozen. A principal must face its challenges before migrating its trust.**
-- **Fission does not multiply trust. The sum of successor trust cannot exceed the original.**
+1. **Trust must never be more powerful than appeal.**
+2. **EP evaluates trust given an identity. EP-IX governs how identity continuity is proven.**
+3. **Continuity must not become trust laundering.**
+4. **A principal may change keys or infrastructure without losing itself. It may not shed its history selectively.**
+5. **Identity continuity must never be more powerful than review.**
+6. **Continuity during active disputes is frozen.**
+7. **Identity continuity may preserve trust, but it may not erase accountability.**
+8. **Fission does not multiply trust.**
+9. **Bootstrap authority exists only to seed a graph that can later govern itself.**
+10. **Pending continuity cannot live forever. Trust lineage must resolve or expire.**
+11. **Continuity may be claimed quickly, but it must be challengeable before it becomes trust-bearing.**
 
 ## 18. The strategic significance
 
