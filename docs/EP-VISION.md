@@ -24,7 +24,7 @@ This is not incrementally better than existing trust systems. It is architectura
 
 **How it works:** The buying agent submits a receipt after each transaction. The receipt contains what happened — not an opinion.
 
-**Why it works even with self-reporting:** The key insight is that the BUYING agent has no incentive to inflate the SELLER's score. If a buyer's agent scores a bad merchant highly, the buyer's agent will route back to that merchant and get burned. The scorer and the consumer of the score are the same entity. This creates natural incentive alignment that no review system has ever achieved.
+**Why it works even with self-reporting:** The key insight is that the BUYING agent has no incentive to inflate the SELLER's score. If a buyer's agent scores a bad merchant highly, the buyer's agent will route back to that merchant and get burned. The scorer and the consumer of the score are the same entity. This creates natural incentive alignment that platform-controlled trust systems cannot achieve.
 
 **The behavioral signal is the breakthrough:** Agent satisfaction isn't a rating. It's an observable action:
 
@@ -150,7 +150,7 @@ The broken sofa question: Does Amazon get scored, or the seller?
 - **FedEx** gets: `delivered: true, on_time: true` (they delivered on time, damage may be handling)
 - **Clara** (buying agent) submits both receipts — her score reflects her diligence as a buyer
 
-This granularity is unique to EP. Yelp gives the restaurant one star even if the food was great but the delivery driver was late. EP separates the signals.
+This granularity is unique to EP. Traditional trust systems collapse all signals into one number even when individual dimensions differ. EP separates the signals.
 
 ---
 
@@ -385,7 +385,7 @@ EP doesn't handle the commerce. It tells the agent: "this counterparty has a ver
 
 **Receipts, not reviews. The first trust system where lying hurts the liar.**
 
-Every review system fails because the scorer doesn't consume the score. Yelp reviewers don't eat at the restaurant every day. Amazon reviewers don't rebuy the product. The person writing the review bears no cost for being wrong.
+Traditional trust systems fail because the scorer doesn't consume the trust data. The person writing the evaluation bears no cost for being wrong. The person writing the review bears no cost for being wrong.
 
 EP fixes this. The buying agent submits receipts — and if they lie about a bad seller, their own agent routes back to that seller and gets burned. The scorer and the consumer of the score are the same entity. This is evolutionary game theory applied to trust. Self-enforcing honesty.
 

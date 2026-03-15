@@ -65,13 +65,15 @@ function ScoreBar({ label, value, color }) {
   `;
 }
 
-function gradeInfo(score) {
-  if (score >= 90) return { grade: 'A+', color: '#00ff88' };
-  if (score >= 82) return { grade: 'A', color: '#00ff88' };
-  if (score >= 74) return { grade: 'B+', color: '#00d4ff' };
-  if (score >= 66) return { grade: 'B', color: '#00d4ff' };
-  if (score >= 58) return { grade: 'C+', color: '#ffd700' };
-  return { grade: 'C', color: '#ff9f1c' };
+function confidenceDisplay(conf) {
+  const map = {
+    PENDING: { label: 'PENDING', color: '#7a809a' },
+    'LOW EVIDENCE': { label: 'LOW EVIDENCE', color: '#ff9f1c' },
+    PROVISIONAL: { label: 'PROVISIONAL', color: '#ffd700' },
+    EMERGING: { label: 'EMERGING', color: '#00d4ff' },
+    ESTABLISHED: { label: 'ESTABLISHED', color: '#00ff88' },
+  };
+  return map[conf] || { label: conf, color: '#7a809a' };
 }
 
 function behaviorLabel(b) {
@@ -93,7 +95,7 @@ export default async function EntityProfile({ params }) {
 
   const { entity, receipts, establishment, trustProfile } = result;
   const score = entity.emilia_score;
-  const { grade, color } = gradeInfo(score);
+  const confDisplay = confidenceDisplay(confidence);
   const established = establishment.established;
   const uniqueSubmitters = establishment.unique_submitters;
 
@@ -194,14 +196,11 @@ export default async function EntityProfile({ params }) {
               </div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontFamily: 'var(--disp)', fontWeight: 900, fontSize: 48, color, lineHeight: 1 }}>
-                {grade}
-              </div>
-              <div style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 24, color: '#e8eaf0', marginTop: 4 }}>
-                {score}
-              </div>
-              <div style={{ fontFamily: 'var(--mono)', fontSize: 9, color: confidenceColor, letterSpacing: 1, marginTop: 4 }}>
+              <div style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 11, color: confDisplay.color, letterSpacing: 2, marginBottom: 4 }}>
                 {confidence}
+              </div>
+              <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: '#7a809a', marginTop: 4 }}>
+                compat: {score}
               </div>
             </div>
           </div>
