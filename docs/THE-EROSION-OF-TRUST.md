@@ -14,7 +14,7 @@ For most of human history, trust was local, embodied, and difficult to counterfe
 
 ## The internet created trust at scale — and then captured it
 
-Digital platforms solved the first-order problem of distance by creating reviews, ratings, and reputation systems. For a brief period, those systems worked well enough to help people make decisions about counterparties they would never meet.
+Digital platforms solved the first-order problem of distance by creating reviews, ratings, and platform trust systems. For a brief period, those systems worked well enough to help people make decisions about counterparties they would never meet.
 
 Then the platforms hosting trust realized that trust itself was the control point.
 
@@ -67,7 +67,7 @@ It is a protocol layer: a way to represent trust state, evaluate it for a declar
 
 Commerce is the first wedge because it is measurable and economically consequential. But the protocol's natural scope is larger: merchants, sellers, plugins, packages, marketplaces, MCP servers, agent tools, organizations, and machine actors generally.
 
-The future is not a single reputation score. The future is portable, contextual, evidence-based, challengeable trust decisions across all meaningful principals in machine-mediated systems.
+The future is not a single platform-controlled score. The future is portable, contextual, evidence-based, challengeable trust decisions across all meaningful principals in machine-mediated systems.
 
 ---
 

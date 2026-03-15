@@ -1,131 +1,128 @@
 # MCP Dev Summit — 5-Minute Live Demo Script
 
-**Title:** EP: Trust Evaluation and Appeals for MCP Servers, Software, and Machine Counterparties
+**Title:** EP: Trust Evaluation and Appeals for MCP Servers and Software
 
-**Goal:** In 5 minutes, show EP is a live trust layer with entity registration, receipt submission, trust profile query, install preflight, and dispute filing — working through MCP tools in Claude.
+**Goal:** Show EP working through MCP tools in Claude. Minimize terminal. Maximize the MCP-native experience.
 
 ---
 
 ## Setup (before you walk on stage)
 
-- Local or hosted EP instance running at emiliaprotocol.ai
+- EP instance running at emiliaprotocol.ai
 - Claude Desktop connected to EP MCP server
-- Entity `mcp-server-ep-v1` already registered
-- Two agent entities ready: `rex-booking-v1`, `ruby-retention-v1`
-- At least one API key ready for fallback
-- Terminal + Claude side by side
+- Entity `mcp-server-ep-v1` registered with at least 2 receipts pre-seeded
+- One API key ready for terminal fallback only
+- Claude window fills the screen. Terminal minimized as backup.
 - Backup screenshots of each step in case Wi-Fi dies
 
 ---
 
 ## 0:00–0:30 — Opening
 
-> MCP gives agents access to tools.
-> EP gives agents and humans a way to decide whether those tools, servers, and counterparties should be trusted.
-> In five minutes, I'm going to register an entity, submit trust evidence, query a trust profile, run install preflight on an MCP server, and challenge trust through a dispute — all live.
+> MCP gives systems access to tools.
+> EP gives them a way to evaluate whether a server or software component should be trusted enough to connect in this context.
+> In five minutes, I'll query a trust profile, run install preflight, and file a dispute — all through MCP tools in Claude.
 
 ---
 
-## 0:30–1:10 — Register an entity
-
-Terminal:
-```bash
-curl -X POST https://emiliaprotocol.ai/api/entities/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "entity_id": "demo-mcp-server",
-    "display_name": "Demo MCP Server",
-    "entity_type": "mcp_server",
-    "description": "Live demo entity",
-    "category": "agent_tool"
-  }'
-```
-
-> That gives us a trust surface. Not a review page — a machine-readable principal in the trust graph.
-
----
-
-## 1:10–2:00 — Submit receipts
-
-```bash
-curl -X POST https://emiliaprotocol.ai/api/receipts/submit \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "entity_id": "mcp-server-ep-v1",
-    "transaction_ref": "demo-receipt-001",
-    "transaction_type": "tool_use",
-    "agent_behavior": "completed",
-    "context": {
-      "host": "mcp",
-      "tool_scope": "repo_read",
-      "data_sensitivity": "private_workspace"
-    }
-  }'
-```
-
-> EP weights trust by behavior, provenance, context, and policy. Two clean receipts improve the profile — but don't create fake certainty.
-
----
-
-## 2:00–3:00 — Query trust profile in Claude
+## 0:30–1:30 — Query trust profile in Claude
 
 **Prompt Claude:**
 > Show me the trust profile for mcp-server-ep-v1.
 
 **While Claude runs, say:**
-> This is the canonical object in EP — not a score, but a trust profile: confidence, behavioral outcomes, provenance, disputes, and legacy compatibility only as a fallback.
+> This is the canonical output in EP. Not a number — a trust profile: confidence level, behavioral outcomes, provenance composition, dispute history. The compatibility score exists for sorting, but agents make decisions against policies, not scores.
 
-**Highlight:** confidence, behavioral completion, provenance, disputes = 0
+**Highlight in the output:**
+- Confidence: emerging/established
+- Behavioral: completion rate, dispute rate
+- Provenance: bilateral vs self-attested
+- Disputes: 0
 
-> This is the key shift: trust profiles, not scores.
+> This is the key shift. Trust profiles, not scores.
 
 ---
 
-## 3:00–4:00 — Install preflight
+## 1:30–3:00 — Install preflight (the sharpest wedge)
+
+> MCP tells you what a server can do. EP helps answer whether it should be trusted enough to connect in this environment.
 
 **Prompt Claude:**
-> Run install preflight for mcp-server-ep-v1 with policy mcp_server_safe_v1 in a private_workspace context.
+> Run install preflight for mcp-server-ep-v1 with policy mcp_server_safe_v1 in this context: host is mcp, data_sensitivity is private_workspace, tool_scope is repo_read.
 
-> This is one of EP's most important use cases: not just "what is this?" but "is it safe enough to install in this specific context?"
+**While Claude runs, say:**
+> This is one of EP's most important use cases. Not "what is this server?" but "is it safe enough for this specific context and policy?"
 
-**Highlight:** pass/review/fail, reasons, confidence, context awareness
+**Highlight in the output:**
+- Decision: allow / review / deny
+- Policy used
+- Reasons (publisher verification, permissions, provenance)
+- Confidence level
 
 > That's the future trust question for software: not "is this popular?" but "is this safe enough for this policy and scope?"
 
 ---
 
-## 4:00–4:40 — File a dispute
+## 3:00–4:00 — File a dispute
 
 **Prompt Claude:**
-> File a dispute against the latest receipt for mcp-server-ep-v1 with the reason: demo challenge.
+> File a dispute against the latest receipt for mcp-server-ep-v1 with the reason: demo challenge — testing dispute lifecycle.
 
-> A real trust layer cannot only compute trust. It has to handle contested trust.
+**While Claude runs, say:**
+> A real trust layer can't only compute trust. It has to handle contested trust. Every negative trust effect in EP must be explainable, challengeable, and reversible. That's the constitutional principle.
 
-**Highlight:** dispute created, status open, trust auditable, correction doesn't delete history
+**Highlight in the output:**
+- Dispute created
+- Status: open
+- Receipt ID linked
+- Trust remains auditable — nothing deleted
 
 > EP is built so trust can be challenged and corrected without erasing what happened.
 
 ---
 
-## 4:40–5:00 — Closing
+## 4:00–4:30 — List available policies
+
+**Prompt Claude:**
+> List all available trust policies.
+
+> Agents don't check raw numbers. They evaluate against structured policies. Strict for high-value. Standard for normal. Discovery for exploring new tools. Software-specific policies for GitHub Apps, npm packages, MCP servers, browser extensions.
+
+---
+
+## 4:30–5:00 — Closing
 
 > MCP provides tool access.
-> EP provides trust evaluation and appeals for counterparties, software, and machine actors.
-> That means not just better routing — but safer installs, safer automation, and trust that can be challenged when it's wrong.
+> EP provides trust evaluation and appeals.
+> Together, agents can make safer install decisions, route to trustworthy counterparties, and challenge trust when it's wrong.
+> All of this is open source, Apache 2.0, and designed to be a neutral standard — not a platform.
 
 ---
 
 ## Prepared Claude prompts (copy these)
 
 1. `Show me the trust profile for mcp-server-ep-v1.`
-2. `Run install preflight for mcp-server-ep-v1 with policy mcp_server_safe_v1 in a private_workspace context.`
-3. `File a dispute against the latest receipt for mcp-server-ep-v1 with the reason: demo challenge.`
+2. `Run install preflight for mcp-server-ep-v1 with policy mcp_server_safe_v1 in this context: host is mcp, data_sensitivity is private_workspace, tool_scope is repo_read.`
+3. `File a dispute against the latest receipt for mcp-server-ep-v1 with the reason: demo challenge — testing dispute lifecycle.`
+4. `List all available trust policies.`
 
-## Demo tips
+## If something fails
 
-- Do NOT over-explain blockchain
-- Do NOT spend time on legacy compatibility score
-- Keep saying "trust profile," "policy," and "install preflight"
-- If slow, narrate the meaning, not the latency
-- If something fails, say: "That's exactly why appeals and operational trust matter."
+Say: "That's exactly why appeals and operational trust matter — even the trust layer needs to handle failure gracefully."
+
+## Do NOT say
+
+- Blockchain, Merkle trees, anchoring costs
+- Compatibility score
+- "Future of trust" grandiosity
+- Old review-corruption framing
+- Anything about funding or company
+
+## DO say
+
+- Trust profiles, not scores
+- Install preflight
+- Policy evaluation
+- Disputes and appeals
+- Context-aware decisions
+- Constitutional principle: trust must never be more powerful than appeal

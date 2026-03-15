@@ -15,6 +15,8 @@
 | `docs/MCP-SUMMIT-DEMO.md` | MCP Dev Summit 5-minute demo script | Internal |
 | `docs/EP-BEYOND-AGENTS.md` | "EP Beyond Agents" one-pager | Partners, press |
 | `docs/CEO-ROLE-SPEC.md` | CEO role specification | Hiring |
+| `docs/INVESTOR-NARRATIVE.md` | 1-page investor narrative | Fundraising |
+| `docs/PILOT-OUTREACH-EMAILS.md` | Cold outreach for Shopify, MCP, GitHub pilots | Internal |
 | `docs/EP-ACP-EXTENSION.md` | ACP payment integration | Implementers |
 | `docs/ROADMAP.md` | Development roadmap | Contributors |
 | `docs/STYLE-GUIDE.md` | Vocabulary and terminology | Contributors |

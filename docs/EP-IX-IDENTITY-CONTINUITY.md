@@ -13,7 +13,7 @@ EP-IX adds the missing layer between identity and trust:
 - who controls this entity
 - whether this new entity is the successor of an old one
 - whether trust should transfer, partially transfer, or not transfer at all
-- whether a bad actor is trying to whitewash a reputation by starting over
+- whether a bad actor is trying to whitewash trust history by starting over
 
 EP-IX does **not** try to become a universal identity provider.  
 It defines how identity evidence, control proofs, and continuity proofs are represented inside EP so trust can follow real principals without being easily laundered.

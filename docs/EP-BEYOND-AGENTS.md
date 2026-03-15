@@ -19,7 +19,7 @@ As more systems automate decisions, that becomes dangerous.
 - **Install preflight** for software, plugins, and MCP servers
 - **Disputes and appeals** for contested trust
 - **Append-only correction** instead of silent rewriting
-- **Context-aware trust** rather than generic reputation
+- **Context-aware trust** rather than generic, context-free trust
 
 ## Agents are optional
 
