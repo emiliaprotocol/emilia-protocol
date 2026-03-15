@@ -44,7 +44,7 @@ FICO doesn't ask borrowers to rate their lender. It watches whether they pay. EP
 - 6-signal scoring engine (open source)
 - Sybil resistance (3 layers)
 - Merkle root anchoring on Base L2
-- MCP server, TypeScript SDK, Python SDK
+- MCP server and conformance-backed protocol surfaces
 
 ### Phase 2: Evidence-Backed Truth (IN DEVELOPMENT)
 
@@ -347,7 +347,7 @@ EP doesn't handle the commerce. It tells the agent: "this counterparty has a ver
 - [x] SHA-256 receipt chaining
 - [x] Base L2 Merkle anchoring
 - [x] MCP server (6 tools)
-- [x] TypeScript + Python SDKs
+- [ ] SDKs (future optional packaging layer)
 - [x] Entity profile pages with confidence display
 - [x] Rate limiting middleware
 - [x] Protocol specification (EP-SPEC v1.0)

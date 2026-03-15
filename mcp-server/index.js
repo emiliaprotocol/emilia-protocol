@@ -301,7 +301,7 @@ async function handleTool(name, args) {
       return `Receipt submitted.\n` +
         `ID: ${data.receipt.receipt_id}\n` +
         `Hash: ${data.receipt.receipt_hash}\n` +
-        `Updated score: ${data.entity_score.emilia_score} (${data.entity_score.total_receipts} receipts)`;
+        `Updated trust state: ${data.entity_score.emilia_score} (${data.entity_score.total_receipts} receipts)`;
     }
 
     case 'ep_search_entities': {
@@ -311,7 +311,7 @@ async function handleTool(name, args) {
       const entities = data.entities || data.results || [];
       if (!entities.length) return 'No entities found.';
       return entities.map(e =>
-        `${e.display_name} (${e.entity_id}) — score: ${e.emilia_score}, receipts: ${e.total_receipts}`
+        `${e.display_name} (${e.entity_id}) — compat score: ${e.emilia_score}, receipts: ${e.total_receipts}`
       ).join('\n');
     }
 
@@ -388,7 +388,7 @@ async function handleTool(name, args) {
       out += `Decision: ${data.decision === 'allow' ? '✓ ALLOW' : data.decision === 'deny' ? '✗ DENY' : '⚠ REVIEW'}\n`;
       out += `Policy: ${data.policy_used}\n`;
       out += `Confidence: ${data.confidence}\n`;
-      out += `Score: ${data.score}/100\n\n`;
+      out += `Trust Score: ${data.score}/100\n\n`;
       if (data.reasons?.length) {
         out += `Reasons:\n`;
         for (const r of data.reasons) out += `  ${r}\n`;
@@ -423,7 +423,7 @@ function formatTrustProfile(data) {
   out += `Confidence: ${data.current_confidence}\n`;
   out += `Established: ${data.historical_establishment ? 'Yes' : 'No'}\n`;
   out += `Effective Evidence: ${data.effective_evidence_current} (current) / ${data.effective_evidence_historical} (historical)\n`;
-  out += `Compatibility Score: ${data.compat_score}/100\n`;
+  out += `Legacy Compatibility Score: ${data.compat_score}/100\n`;
 
   const p = data.trust_profile;
   if (p) {
@@ -456,7 +456,7 @@ function formatEvaluation(data) {
   out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
   out += `Policy: ${data.policy_used}\n`;
   out += `Decision: ${data.pass ? '✓ PASS' : '✗ FAIL'}\n`;
-  out += `Score: ${data.score}/100\n`;
+  out += `Trust Score: ${data.score}/100\n`;
   out += `Confidence: ${data.confidence}\n`;
 
   if (data.failures?.length > 0) {

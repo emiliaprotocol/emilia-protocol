@@ -56,7 +56,7 @@
 
 ### Distribution
 - [x] MCP server (11 tools, context-aware, dispute tools)
-- [x] TypeScript + Python SDKs
+- [ ] SDKs (future optional packaging layer)
 - [x] Conformance suite (JS + Python, canonical fixtures)
 - [x] ~100 tests across 4 files
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
+import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 
 /**
  * GET /api/entities/search
@@ -31,6 +32,42 @@ export async function GET(request) {
     const limit = Math.min(parseInt(searchParams.get('limit')) || 20, 50);
 
     const supabase = getServiceClient();
+    const confLevels = ['pending', 'insufficient', 'provisional', 'emerging', 'confident'];
+
+    async function enrichWithCanonicalTrust(results) {
+      let enriched = await Promise.all((results || []).map(async (e) => {
+        const trust = await canonicalEvaluate(e.id, {
+          includeDisputes: false,
+          includeEstablishment: true,
+        });
+        return {
+          ...e,
+          confidence: trust.confidence || 'pending',
+          effective_evidence: trust.effectiveEvidence || 0,
+          established: trust.establishment?.established || false,
+        };
+      }));
+
+      if (minConfidence) {
+        const minIdx = confLevels.indexOf(minConfidence);
+        if (minIdx >= 0) {
+          enriched = enriched.filter(e => confLevels.indexOf(e.confidence) >= minIdx);
+        }
+      }
+
+      if (rankBy === 'evidence') {
+        enriched.sort((a, b) => b.effective_evidence - a.effective_evidence);
+      } else if (rankBy === 'confidence') {
+        enriched.sort((a, b) => {
+          const ca = confLevels.indexOf(a.confidence);
+          const cb = confLevels.indexOf(b.confidence);
+          if (cb !== ca) return cb - ca;
+          return b.effective_evidence - a.effective_evidence;
+        });
+      }
+
+      return enriched;
+    }
 
     // If semantic query provided and OpenAI key available, do vector search
     if (q && process.env.OPENAI_API_KEY) {
@@ -74,41 +111,7 @@ export async function GET(request) {
               verified: r.verified,
             }));
 
-            const confLevels = ['pending', 'insufficient', 'provisional', 'emerging', 'confident'];
-
-            // Always enrich with confidence and effective evidence
-            if (semanticResults.length > 0) {
-              semanticResults = await Promise.all(semanticResults.map(async (e) => {
-                let ee = 0;
-                try {
-                  const { data: d } = await supabase.rpc('is_entity_established', { p_entity_id: e.id });
-                  if (d && d[0]) ee = d[0].effective_evidence;
-                } catch {}
-                let c = ee === 0 ? 'pending' : ee < 1 ? 'insufficient' : ee < 5 ? 'provisional' : ee < 20 ? 'emerging' : 'confident';
-                return { ...e, confidence: c, effective_evidence: ee };
-              }));
-            }
-
-            // Apply min_confidence filter
-            if (minConfidence) {
-              const minIdx = confLevels.indexOf(minConfidence);
-              if (minIdx >= 0) {
-                semanticResults = semanticResults.filter(e => confLevels.indexOf(e.confidence) >= minIdx);
-              }
-            }
-
-            // Apply rank_by (same logic as fallback search)
-            if (rankBy === 'evidence') {
-              semanticResults.sort((a, b) => b.effective_evidence - a.effective_evidence);
-            } else if (rankBy === 'confidence') {
-              semanticResults.sort((a, b) => {
-                const ca = confLevels.indexOf(a.confidence);
-                const cb = confLevels.indexOf(b.confidence);
-                if (cb !== ca) return cb - ca;
-                return b.effective_evidence - a.effective_evidence;
-              });
-            }
-            // Default 'score' keeps similarity-weighted ordering from semantic search
+            semanticResults = await enrichWithCanonicalTrust(semanticResults);
 
             return NextResponse.json({
               entities: semanticResults,
@@ -141,7 +144,6 @@ export async function GET(request) {
     if (category) query = query.eq('category', category);
     if (capability) query = query.contains('capabilities', [capability]);
     if (q) {
-      // Text search fallback
       query = query.or(`display_name.ilike.%${q}%,description.ilike.%${q}%,entity_id.ilike.%${q}%`);
     }
 
@@ -152,47 +154,7 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Search failed' }, { status: 500 });
     }
 
-    let filtered = results || [];
-    const confLevels = ['pending', 'insufficient', 'provisional', 'emerging', 'confident'];
-
-    // Always enrich with confidence and effective evidence
-    if (filtered.length > 0) {
-      filtered = await Promise.all(filtered.map(async (e) => {
-        let effectiveEvidence = 0;
-        try {
-          const { data: estData } = await supabase.rpc('is_entity_established', { p_entity_id: e.id });
-          if (estData && estData[0]) effectiveEvidence = estData[0].effective_evidence;
-        } catch {}
-        let conf;
-        if (effectiveEvidence === 0) conf = 'pending';
-        else if (effectiveEvidence < 1.0) conf = 'insufficient';
-        else if (effectiveEvidence < 5.0) conf = 'provisional';
-        else if (effectiveEvidence < 20.0) conf = 'emerging';
-        else conf = 'confident';
-        return { ...e, confidence: conf, effective_evidence: effectiveEvidence };
-      }));
-    }
-
-    // Filter by min_confidence
-    if (minConfidence) {
-      const minIdx = confLevels.indexOf(minConfidence);
-      if (minIdx >= 0) {
-        filtered = filtered.filter(e => confLevels.indexOf(e.confidence) >= minIdx);
-      }
-    }
-
-    // Re-rank by selected criterion
-    if (rankBy === 'evidence') {
-      filtered.sort((a, b) => b.effective_evidence - a.effective_evidence);
-    } else if (rankBy === 'confidence') {
-      filtered.sort((a, b) => {
-        const ca = confLevels.indexOf(a.confidence);
-        const cb = confLevels.indexOf(b.confidence);
-        if (cb !== ca) return cb - ca;
-        return b.effective_evidence - a.effective_evidence;
-      });
-    }
-    // Default 'score' keeps DB ordering
+    const filtered = await enrichWithCanonicalTrust(results || []);
 
     return NextResponse.json({
       entities: filtered,

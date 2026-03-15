@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
+import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 
 /**
  * GET /api/leaderboard
@@ -40,14 +41,11 @@ export async function GET(request) {
       .order('emilia_score', { ascending: false })
       .range(offset, offset + limit + 49 - 1);
 
-    if (!includeNew) {
-      query = query.gte('total_receipts', 5);
-    }
+    if (!includeNew) query = query.gte('total_receipts', 5);
     if (type) query = query.eq('entity_type', type);
     if (category) query = query.eq('category', category);
 
     const { data: entities, error, count } = await query;
-
     if (error) {
       console.error('Leaderboard error:', error);
       return NextResponse.json({ error: 'Failed to fetch leaderboard' }, { status: 500 });
@@ -56,54 +54,30 @@ export async function GET(request) {
     const confLevels = ['pending', 'insufficient', 'provisional', 'emerging', 'confident'];
 
     let leaderboard = await Promise.all((entities || []).map(async (e) => {
-      let established = false;
-      let effectiveEvidence = 0;
-      let uniqueSubmitters = 0;
-      if (e.total_receipts >= 1) {
-        try {
-          const { data: estData } = await supabase.rpc('is_entity_established', { p_entity_id: e.id });
-          if (estData && estData[0]) {
-            established = estData[0].established;
-            effectiveEvidence = estData[0].effective_evidence;
-            uniqueSubmitters = estData[0].unique_submitters;
-          }
-        } catch {}
-      }
-
-      let confidence;
-      if (effectiveEvidence === 0) confidence = 'pending';
-      else if (effectiveEvidence < 1.0) confidence = 'insufficient';
-      else if (effectiveEvidence < 5.0) confidence = 'provisional';
-      else if (effectiveEvidence < 20.0) confidence = 'emerging';
-      else confidence = 'confident';
-
+      const trust = await canonicalEvaluate(e.id, {
+        includeDisputes: false,
+        includeEstablishment: true,
+      });
       return {
         entity_id: e.entity_id,
         display_name: e.display_name,
         entity_type: e.entity_type,
         category: e.category,
         compat_score: e.emilia_score,
-        confidence,
-        effective_evidence: effectiveEvidence,
-        unique_submitters: uniqueSubmitters,
+        confidence: trust.confidence || 'pending',
+        effective_evidence: trust.establishment?.effective_evidence || trust.effectiveEvidence || 0,
+        unique_submitters: trust.establishment?.unique_submitters || trust.uniqueSubmitters || 0,
         total_receipts: e.total_receipts,
-        success_rate: e.total_receipts > 0
-          ? Math.round((e.successful_receipts / e.total_receipts) * 1000) / 10
-          : null,
+        success_rate: e.total_receipts > 0 ? Math.round((e.successful_receipts / e.total_receipts) * 1000) / 10 : null,
         verified: e.verified,
-        established,
+        established: trust.establishment?.established || false,
       };
     }));
 
-    if (!includeNew) {
-      leaderboard = leaderboard.filter(e => e.established);
-    }
-
+    if (!includeNew) leaderboard = leaderboard.filter(e => e.established);
     if (minConfidence) {
       const minIdx = confLevels.indexOf(minConfidence);
-      if (minIdx >= 0) {
-        leaderboard = leaderboard.filter(e => confLevels.indexOf(e.confidence) >= minIdx);
-      }
+      if (minIdx >= 0) leaderboard = leaderboard.filter(e => confLevels.indexOf(e.confidence) >= minIdx);
     }
 
     if (rankBy === 'evidence') {
@@ -121,13 +95,7 @@ export async function GET(request) {
 
     leaderboard = leaderboard.slice(0, limit).map((e, i) => ({ ...e, rank: offset + i + 1 }));
 
-    return NextResponse.json({
-      leaderboard,
-      rank_by: rankBy,
-      total: count,
-      offset,
-      limit,
-    });
+    return NextResponse.json({ leaderboard, rank_by: rankBy, total: count, offset, limit });
   } catch (err) {
     console.error('Leaderboard error:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

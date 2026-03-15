@@ -1,4 +1,5 @@
 import { getServiceClient } from '@/lib/supabase';
+import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 
 /**
  * GET /api/feed
@@ -47,63 +48,48 @@ export async function GET(request) {
             .order('created_at', { ascending: false })
             .limit(limit);
 
-          if (capability) {
-            query = query.ilike('capability_needed', `%${capability}%`);
-          }
-
-          // Context-aware filtering: filter by category in need context
-          if (category) {
-            query = query.contains('context', { category });
-          }
-
-          // Policy-aware filtering: show only needs with specific trust policy
-          if (trustPolicy) {
-            query = query.eq('trust_policy', JSON.stringify(trustPolicy));
-          }
-
-          // Legacy score filter
-          if (minScore > 0) {
-            query = query.lte('min_emilia_score', minScore);
-          }
+          if (capability) query = query.ilike('capability_needed', `%${capability}%`);
+          if (category) query = query.contains('context', { category });
+          if (trustPolicy) query = query.eq('trust_policy', JSON.stringify(trustPolicy));
+          if (minScore > 0) query = query.lte('min_emilia_score', minScore);
 
           const { data: needs, error } = await query;
 
           if (error) {
-            controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: error.message })}\n\n`));
+            controller.enqueue(encoder.encode(`event: error
+data: ${JSON.stringify({ error: error.message })}
+
+`));
             return;
           }
 
           let filtered = needs || [];
 
-          // Enforce min_confidence — filter needs whose broadcasting entity meets the threshold
           if (minConfidence && filtered.length > 0) {
             const confLevels = ['pending', 'insufficient', 'provisional', 'emerging', 'confident'];
             const minIdx = confLevels.indexOf(minConfidence);
             if (minIdx >= 0) {
               const enriched = await Promise.all(filtered.map(async (n) => {
-                const fromId = n.from_entity?.entity_id;
-                if (!fromId) return { ...n, _broadcaster_confidence: 'pending' };
-                let ee = 0;
-                try {
-                  const { data: estData } = await supabase.rpc('is_entity_established', {
-                    p_entity_id: n.from_entity_id || n.from_entity?.id,
-                  });
-                  if (estData && estData[0]) ee = estData[0].effective_evidence;
-                } catch {}
-                const conf = ee === 0 ? 'pending' : ee < 1 ? 'insufficient' : ee < 5 ? 'provisional' : ee < 20 ? 'emerging' : 'confident';
-                return { ...n, _broadcaster_confidence: conf };
+                const trust = n.from_entity_id
+                  ? await canonicalEvaluate(n.from_entity_id, { includeDisputes: false, includeEstablishment: true })
+                  : { confidence: 'pending' };
+                return { ...n, _broadcaster_confidence: trust.confidence || 'pending' };
               }));
               filtered = enriched.filter(n => confLevels.indexOf(n._broadcaster_confidence) >= minIdx);
             }
           }
 
           for (const need of filtered) {
-            controller.enqueue(
-              encoder.encode(`event: need\ndata: ${JSON.stringify(need)}\n\n`)
-            );
+            controller.enqueue(encoder.encode(`event: need
+data: ${JSON.stringify(need)}
+
+`));
           }
         } catch (e) {
-          controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: e.message })}\n\n`));
+          controller.enqueue(encoder.encode(`event: error
+data: ${JSON.stringify({ error: e.message })}
+
+`));
         }
       };
 
@@ -112,7 +98,9 @@ export async function GET(request) {
       const interval = setInterval(async () => {
         try {
           await sendNeeds();
-          controller.enqueue(encoder.encode(`:heartbeat\n\n`));
+          controller.enqueue(encoder.encode(`:heartbeat
+
+`));
         } catch {
           clearInterval(interval);
           controller.close();

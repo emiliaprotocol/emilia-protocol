@@ -37,7 +37,7 @@ EMILIA Protocol (EP) is offered as the **initial reference implementation and dr
 | Layer | What It Is | Governance |
 |-------|-----------|-----------|
 | **EP Core Spec** | Receipt schema, trust profile format, policy evaluation interface, context keys | AAIF working group deliverable |
-| **EP Reference Implementation** | Canonical API, MCP server, SDKs | Open source, community-maintained |
+| **EP Reference Implementation** | Canonical API, MCP server, conformance suite | Open source, community-maintained |
 | **EP Product Surfaces** | Leaderboard, explorer, entity profiles, landing page | Separate from the spec — not AAIF scope |
 
 ---
@@ -88,7 +88,7 @@ EP is a **composable layer**, not a competing protocol. It attaches to ACP, is u
 | Identity-aware write throttling | Deployed — API key prefix + IP on writes, IP-only on reads |
 | Server-derived owner identity | Deployed — SHA-256 of client IP, not caller-supplied |
 | MCP server (8 tools, context-aware) | Published on npm — trust-profile-first, context forwarded |
-| TypeScript + Python SDKs | Published on npm + PyPI |
+| SDKs | Planned / optional future implementations |
 | Test suites (3 files, ~65 tests) | Complete — scoring, trust profiles, protocol surfaces, hash determinism |
 | NIST ITL Concept Paper | Prepared (April 2 deadline) |
 | Shopify DTC integration spec | Complete — webhook mapping, receipt mapping, MVP roadmap |

@@ -359,7 +359,7 @@ EP receipts map to UCP transaction outcomes:
 | `payment.completed` | `price_integrity` |
 | `product.received` | `product_accuracy` |
 
-### 8.4 SDK Usage
+### 8.4 SDK Usage (historical / deprecated)
 
 **TypeScript:**
 ```typescript
