@@ -418,7 +418,7 @@ async function handleTool(name, args) {
         out += `  Provenance verified: ${data.software_meta.provenance_verified}\n`;
         out += `  Permission class: ${data.software_meta.permission_class || 'unknown'}\n`;
       }
-      out += `\n(Legacy compat score: ${data.score}/100)\n`;
+      out += `\n(Legacy compatibility score (fallback only): ${data.score}/100)\n`;
       return out;
     }
 
@@ -524,7 +524,7 @@ function formatTrustProfile(data) {
     out += `\n⚠️ ANOMALY: ${data.anomaly.type} (${data.anomaly.delta} points, ${data.anomaly.alert})\n`;
   }
 
-  out += `\n(Legacy compat score: ${data.compat_score}/100 — use trust profile for decisions)\n`;
+  out += `\n(Legacy compatibility score (fallback only): ${data.compat_score}/100 — use trust profile for decisions)\n`;
   return out;
 }
 

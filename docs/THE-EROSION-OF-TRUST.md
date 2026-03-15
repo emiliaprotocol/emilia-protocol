@@ -36,7 +36,7 @@ Machine-mediated systems need a portable way to decide whether another principal
 
 A durable trust layer cannot be a popularity contest, a black-box score, or a host-specific heuristic. It must be:
 
-- **Evidence-based** — computed from verifiable receipts and attestations, not opinions
+- **Evidence-based** — computed from verifiable receipts and evidence, not opinions
 - **Contextual** — trusted for electronics does not mean trusted for pharmaceuticals
 - **Policy-driven** — evaluated against structured decision frameworks, not magic numbers
 - **Challengeable** — every negative trust effect must be explainable and disputable
@@ -51,7 +51,7 @@ And once trust can influence access, routing, or conversion, it must provide due
 
 **EMILIA Protocol (EP)** is a portable trust evaluation and appeals layer for counterparties, software, and machine actors.
 
-EP computes trust from receipts and attestations rather than reviews. It produces trust profiles rather than a single number. It evaluates against policies rather than arbitrary thresholds. And it includes disputes, appeals, and append-only correction rather than silent mutation.
+EP computes trust from receipts and evidence rather than reviews. It produces trust profiles rather than a single number. It evaluates against policies rather than arbitrary thresholds. And it includes disputes, appeals, and append-only correction rather than silent mutation.
 
 ---
 

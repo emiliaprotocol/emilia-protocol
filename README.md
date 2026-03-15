@@ -7,7 +7,7 @@
 
 **Evidence-based Mediation & Integrity Layer for Interactions and Appeals**
 
-EMILIA Protocol is emerging as a portable trust evaluation and appeals layer for counterparties, software, and machine actors.
+EMILIA Protocol is a portable trust evaluation and appeals layer for counterparties, software, and machine actors.
 
 Compatible with ACP. Usable through MCP. Apache 2.0.
 
@@ -174,7 +174,7 @@ curl -X POST https://emiliaprotocol.ai/api/trust/evaluate \
 ```
 Trust Profile + Policy Evaluation    ← Primary output
         ↑
-Scoring Engine (behavioral-first, effective-evidence dampened)
+Trust Engine (behavioral-first, effective-evidence dampened)
         ↑
 Receipt Ledger (append-only, SHA-256 chained, Merkle-anchored)
         ↑
@@ -189,7 +189,7 @@ Entity Registration (IP rate-limited, Upstash Redis in production)
 3. **Submitter credibility** — unestablished entities = 0.1x receipt weight
 4. **Effective evidence dampening** — trust dampened toward baseline until weighted evidence ≥ 5.0
 
-### Score confidence states
+### Trust confidence states
 | Level | Meaning |
 |-------|---------|
 | `pending` | No receipts |

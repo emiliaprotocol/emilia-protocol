@@ -810,7 +810,7 @@
           receipt_weight = submitter_credibility × time_decay × graph_health
         </div>
         <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-family: var(--mono); font-size: 11px;">
-          <span style="color: var(--cyan);">Submitter</span><span style="color: var(--t2);">Established entity at score 90 = 0.9x. Unestablished entity = 0.1x regardless of score.</span>
+          <span style="color: var(--cyan);">Submitter</span><span style="color: var(--t2);">Established entity with high trust credibility carries close to full weight. Unestablished entity = 0.1x regardless of self-asserted quality.</span>
           <span style="color: var(--green);">Time decay</span><span style="color: var(--t2);">90-day half-life. Recent receipts matter more. Bad history fades. Recovery is rewarded.</span>
           <span style="color: var(--amber);">Graph health</span><span style="color: var(--t2);">Closed loops = 0.4x. Thin graphs = 0.5x. Clusters = 0.1x and blocked.</span>
         </div>
@@ -822,7 +822,7 @@
       <div class="problem-card reveal" style="border-color: rgba(255,45,120,0.15);">
         <div style="font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--magenta); margin-bottom: 12px;">EFFECTIVE EVIDENCE DAMPENING</div>
         <p style="font-size: 13px; line-height: 1.7; color: var(--t2);">
-          Scores are dampened based on <strong style="color:var(--t1);">effective evidence</strong> (sum of weighted receipts), not raw receipt count. 5 perfect receipts from throwaway accounts = 0.5 effective evidence → score barely moves above 50. <strong style="color:var(--magenta);">The Sybil attack produces a score of ~55, not 100.</strong>
+          Scores are dampened based on <strong style="color:var(--t1);">effective evidence</strong> (sum of weighted receipts), not raw receipt count. 5 perfect receipts from throwaway accounts = 0.5 effective evidence → trust barely moves above baseline. <strong style="color:var(--magenta);">Fake volume does not create real confidence.</strong>
         </p>
       </div>
       <div class="problem-card reveal" style="border-color: rgba(255,215,0,0.15);">
@@ -1135,7 +1135,7 @@
       </div>
       <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">
         <strong style="color: var(--t1);">Sybil attack?</strong><br>
-        5 perfect receipts from throwaway accounts → trust dampened to ~55. Graph analysis detects closed loops (0.4x), thin graphs (0.5x), clusters (0.1x + blocked).
+        5 perfect receipts from throwaway accounts → trust barely moves above baseline. Graph analysis detects closed loops (0.4x), thin graphs (0.5x), clusters (0.1x + blocked).
       </div>
       <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">
         <strong style="color: var(--t1);">Unfair downgrade?</strong><br>
@@ -1204,7 +1204,7 @@
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
         <div class="faq-q">There are only 2 entities. Where's the traction?</div>
-        <div class="faq-a">EMILIA is a <strong>protocol</strong>, not a product. TCP/IP didn't have "users" — it had implementations. HTTPS didn't have "customers" — it had adoption.<br><br>What's live today: trust profiles, policy evaluation, context-aware receipts, install preflight for software, dispute lifecycle, human appeal, bilateral attestations, provenance tiers, conformance suite (JS + Python), 120+ tests, CI pipeline, MCP server with 12 tools, conformance vectors, and blockchain verification. Three registered entities including an MCP server with a live software trust profile.<br><br>The traction metric for a protocol is adoption, not MAU. The MCP server means any AI agent can evaluate trust profiles, run install preflight, and file disputes with one config line. That's the distribution channel.</div>
+        <div class="faq-a">EMILIA is a <strong>protocol</strong>, not a product. TCP/IP didn't have "users" — it had implementations. HTTPS didn't have "customers" — it had adoption.<br><br>What's live today: trust profiles, policy evaluation, context-aware receipts, install preflight for software, dispute lifecycle, human appeal, bilateral attestations, provenance tiers, conformance suite (JS + Python), 145+ tests across 7 suites, CI pipeline, MCP server with 14 tools, identity continuity spec (EP-IX), and blockchain verification. Registered entities already include software and MCP trust surfaces.<br><br>The traction metric for a protocol is adoption, not MAU. The MCP server means any AI agent can evaluate trust profiles, run install preflight, and file disputes with one config line. That's the distribution channel.</div>
       </div>
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
@@ -1212,8 +1212,8 @@
         <div class="faq-a">EP evaluates the <strong>direct economic counterparty</strong> — whoever took the money and made the promise.<br><br>
           <span style="display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:12px 0;font-family:var(--mono);font-size:11px;">
             <span style="color:var(--cyan);">Amazon.com (platform)</span><span style="color:var(--t2);">Aggregate only — too big, shifts blame</span>
-            <span style="color:var(--green);">Seller "SofaCo-123"</span><span style="color:var(--t2);">✅ Individual score — took the money, made the promise</span>
-            <span style="color:var(--green);">FedEx / Amazon Logistics</span><span style="color:var(--t2);">✅ Separate score — made the delivery promise</span>
+            <span style="color:var(--green);">Seller "SofaCo-123"</span><span style="color:var(--t2);">✅ Individual trust profile — took the money, made the promise</span>
+            <span style="color:var(--green);">FedEx / Amazon Logistics</span><span style="color:var(--t2);">✅ Separate trust surface — made the delivery promise</span>
             <span style="color:var(--green);">Your buying agent "Clara"</span><span style="color:var(--t2);">✅ Yes — other agents verify if Clara is reliable</span>
           </span>
           Sofa arrives broken? <strong>SofaCo-123</strong> gets <code>as_described: false</code>. <strong>FedEx</strong> gets <code>delivered: true, on_time: true</code>. Separate signals for separate entities. Unlike Yelp, which gives the restaurant one star because the delivery driver was late.

@@ -95,7 +95,7 @@ receipt_weight = submitter_weight × time_weight × graph_weight
 
 | Factor | Formula | Purpose |
 |--------|---------|---------|
-| Submitter weight | Established: `score/100`. Unestablished: `0.1` | Sybil resistance |
+| Submitter weight | Established: `compat_score/100`. Unestablished: `0.1` | Sybil resistance |
 | Time weight | `max(0.05, 0.5^(age_days/90))` | Recent receipts matter more |
 | Graph weight | `0.1` to `1.0` from fraud graph analysis | Penalize suspicious patterns |
 
