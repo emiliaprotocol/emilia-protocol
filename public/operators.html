@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Operators — EMILIA Protocol</title>
+<meta name="description" content="Operators are the humans who make EP's appeals system real. See who reviews disputes, their accountability metrics, and how to become one.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='28'>⚖</text></svg>" integrity="">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0b;
+    --surface: #111113;
+    --border: #1e1e24;
+    --border-light: #2a2a33;
+    --text: #e8e8ed;
+    --muted: #8888a0;
+    --accent: #6366f1;
+    --accent-light: #818cf8;
+    --accent-dim: rgba(99,102,241,0.12);
+    --green: #22c55e;
+    --green-dim: rgba(34,197,94,0.1);
+    --yellow: #eab308;
+    --yellow-dim: rgba(234,179,8,0.1);
+    --red: #ef4444;
+    --red-dim: rgba(239,68,68,0.1);
+    --font: 'Inter', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* NAV */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10,10,11,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 60px;
+  }
+  .nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .nav-logo { width: 28px; height: 28px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .nav-name { font-weight: 700; font-size: 15px; color: var(--text); }
+  .nav-tag { font-size: 11px; color: var(--muted); border: 1px solid var(--border); padding: 2px 8px; border-radius: 20px; }
+  .nav-links { display: flex; align-items: center; gap: 24px; }
+  .nav-links a { color: var(--muted); text-decoration: none; font-size: 14px; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--text); }
+  .nav-links a.active { color: var(--accent-light); }
+  .nav-cta { background: var(--accent); color: white; padding: 8px 18px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 600; }
+
+  /* LAYOUT */
+  .container { max-width: 1100px; margin: 0 auto; padding: 0 2rem; }
+  section { padding: 80px 0; }
+  section + section { border-top: 1px solid var(--border); }
+
+  /* HERO */
+  .hero { padding: 100px 0 80px; text-align: center; }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--accent-dim); border: 1px solid rgba(99,102,241,0.3);
+    border-radius: 20px; padding: 6px 16px; font-size: 12px; font-weight: 600;
+    color: var(--accent-light); letter-spacing: 0.05em; text-transform: uppercase;
+    margin-bottom: 32px;
+  }
+  .hero h1 { font-size: clamp(2.4rem, 5vw, 3.8rem); font-weight: 900; line-height: 1.1; margin-bottom: 20px; }
+  .hero h1 span { color: var(--accent-light); }
+  .hero p { font-size: 1.2rem; color: var(--muted); max-width: 640px; margin: 0 auto 48px; line-height: 1.7; }
+  .hero-actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  .btn-primary { background: var(--accent); color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; }
+  .btn-secondary { background: transparent; color: var(--text); padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 15px; border: 1px solid var(--border-light); display: inline-flex; align-items: center; gap: 8px; }
+
+  /* METRICS BAR */
+  .metrics-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 32px;
+    text-align: center;
+    margin-top: 60px;
+  }
+  .metric-item .number { font-size: 2.4rem; font-weight: 900; color: var(--accent-light); line-height: 1; }
+  .metric-item .label { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .metric-item .sublabel { font-size: 11px; color: var(--border-light); margin-top: 2px; font-family: var(--mono); }
+
+  /* SECTION HEADER */
+  .section-header { text-align: center; margin-bottom: 60px; }
+  .section-label { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent-light); margin-bottom: 12px; }
+  .section-header h2 { font-size: clamp(1.8rem, 3vw, 2.8rem); font-weight: 800; line-height: 1.2; margin-bottom: 16px; }
+  .section-header p { font-size: 1.1rem; color: var(--muted); max-width: 580px; margin: 0 auto; }
+
+  /* WHAT IS AN OPERATOR */
+  .role-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+  .role-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+  }
+  .role-card.featured { border-color: var(--accent); background: linear-gradient(135deg, rgba(99,102,241,0.08), var(--surface)); }
+  .role-icon { font-size: 2rem; margin-bottom: 16px; }
+  .role-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
+  .role-card p { font-size: 14px; color: var(--muted); line-height: 1.6; margin-bottom: 16px; }
+  .role-perms { display: flex; flex-direction: column; gap: 6px; }
+  .perm { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .perm .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .dot-green { background: var(--green); }
+  .dot-yellow { background: var(--yellow); }
+  .dot-red { background: var(--red); }
+
+  /* OPERATOR TABLE */
+  .operator-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 16px; }
+  .operator-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .operator-table thead { background: var(--surface); }
+  .operator-table th { padding: 16px 20px; text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); border-bottom: 1px solid var(--border); }
+  .operator-table td { padding: 18px 20px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .operator-table tr:last-child td { border-bottom: none; }
+  .operator-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .op-name { font-weight: 600; color: var(--text); }
+  .op-id { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .badge-green { background: var(--green-dim); color: var(--green); }
+  .badge-yellow { background: var(--yellow-dim); color: var(--yellow); }
+  .badge-red { background: var(--red-dim); color: var(--red); }
+  .badge-blue { background: var(--accent-dim); color: var(--accent-light); }
+  .stat-good { color: var(--green); font-weight: 600; }
+  .stat-warn { color: var(--yellow); font-weight: 600; }
+  .stat-bad { color: var(--red); font-weight: 600; }
+  .stat-neutral { color: var(--muted); }
+
+  /* ACCOUNTABILITY MECHANICS */
+  .mechanic-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+  .mechanic-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+  }
+  .mechanic-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .mechanic-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .mechanic-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .mechanic-icon.green { background: var(--green-dim); }
+  .mechanic-icon.yellow { background: var(--yellow-dim); }
+  .mechanic-icon.red { background: var(--red-dim); }
+  .mechanic-icon.blue { background: var(--accent-dim); }
+
+  /* DECISION FLOW */
+  .flow { display: flex; flex-direction: column; gap: 0; position: relative; }
+  .flow-step {
+    display: flex;
+    gap: 24px;
+    padding: 28px 0;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .flow-step:last-child { border-bottom: none; }
+  .flow-num {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--accent-dim); border: 1px solid rgba(99,102,241,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: var(--accent-light);
+    flex-shrink: 0; margin-top: 2px;
+  }
+  .flow-content h3 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+  .flow-content p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+  .flow-content .sla { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; color: var(--accent-light); background: var(--accent-dim); padding: 2px 8px; border-radius: 4px; margin-top: 8px; }
+  .flow-content .outcome-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+  /* BECOME AN OPERATOR */
+  .apply-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
+  @media (max-width: 768px) { .apply-grid { grid-template-columns: 1fr; } }
+  .apply-requirements { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; }
+  .apply-requirements h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 20px; }
+  .req-list { display: flex; flex-direction: column; gap: 12px; }
+  .req-item { display: flex; align-items: flex-start; gap: 12px; font-size: 14px; color: var(--muted); line-height: 1.5; }
+  .req-check { color: var(--green); font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .apply-form { display: flex; flex-direction: column; gap: 16px; }
+  .apply-form h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+  .form-field { display: flex; flex-direction: column; gap: 6px; }
+  .form-field label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .form-field input, .form-field select, .form-field textarea {
+    background: var(--surface); border: 1px solid var(--border-light); border-radius: 8px;
+    color: var(--text); font-family: var(--font); font-size: 14px; padding: 10px 14px;
+    outline: none; transition: border-color 0.2s;
+    width: 100%;
+  }
+  .form-field input:focus, .form-field select:focus, .form-field textarea:focus { border-color: var(--accent); }
+  .form-field textarea { resize: vertical; min-height: 80px; }
+  .form-field select option { background: var(--surface); }
+  .form-submit { background: var(--accent); color: white; border: none; padding: 14px 24px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; font-family: var(--font); transition: opacity 0.2s; }
+  .form-submit:hover { opacity: 0.85; }
+  .form-note { font-size: 12px; color: var(--muted); text-align: center; }
+
+  /* API REFERENCE */
+  .api-list { display: flex; flex-direction: column; gap: 12px; }
+  .api-item {
+    display: flex; align-items: flex-start; gap: 16px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px;
+  }
+  .method { font-family: var(--mono); font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; flex-shrink: 0; margin-top: 2px; }
+  .method-get { background: var(--green-dim); color: var(--green); }
+  .method-post { background: var(--accent-dim); color: var(--accent-light); }
+  .method-patch { background: var(--yellow-dim); color: var(--yellow); }
+  .api-info { flex: 1; }
+  .api-path { font-family: var(--mono); font-size: 14px; color: var(--text); margin-bottom: 4px; }
+  .api-desc { font-size: 13px; color: var(--muted); }
+  .api-auth { font-size: 11px; color: var(--yellow); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+
+  /* CODE */
+  pre {
+    background: #0d0d10; border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px; overflow-x: auto;
+    font-family: var(--mono); font-size: 13px; line-height: 1.7;
+    color: #cdd6f4; margin-top: 16px;
+  }
+  .code-key { color: #89b4fa; }
+  .code-str { color: #a6e3a1; }
+  .code-num { color: #fab387; }
+  .code-kw { color: #cba6f7; }
+  .code-comment { color: #6c7086; }
+
+  /* FOOTER */
+  footer {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 48px 0;
+    text-align: center;
+  }
+  .footer-links { display: flex; justify-content: center; gap: 32px; flex-wrap: wrap; margin-bottom: 20px; }
+  .footer-links a { color: var(--muted); text-decoration: none; font-size: 14px; }
+  .footer-links a:hover { color: var(--text); }
+  .footer-copy { font-size: 13px; color: var(--muted); }
+
+  @media (max-width: 768px) {
+    .nav-links { display: none; }
+    section { padding: 60px 0; }
+    .container { padding: 0 1.25rem; }
+    .metrics-bar { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="/">
+    <div class="nav-logo">⚖</div>
+    <span class="nav-name">EMILIA Protocol</span>
+    <span class="nav-tag">v1.1</span>
+  </a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/quickstart.html">Quickstart</a>
+    <a href="/spec" target="_blank">Spec</a>
+    <a href="/operators.html" class="active">Operators</a>
+    <a href="/appeal">Appeal</a>
+    <a href="https://github.com/emiliaprotocol/ep" target="_blank">GitHub</a>
+  </div>
+  <a href="/apply" class="nav-cta">Apply to Review</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge">
+      <span>⚖</span>
+      <span>Human Accountability Layer</span>
+    </div>
+    <h1>Trust requires <span>human judgment</span><br>at the boundary</h1>
+    <p>Operators are the people who close the loop. When an appeal is filed, an operator reviews it. Their decisions are recorded, public, and auditable — not because we trust them, but because EP makes trust measurable.</p>
+    <div class="hero-actions">
+      <a href="#apply" class="btn-primary">Apply to Become an Operator →</a>
+      <a href="#how-it-works" class="btn-secondary">How decisions are made</a>
+    </div>
+
+    <div class="metrics-bar">
+      <div class="metric-item">
+        <div class="number">72h</div>
+        <div class="label">Max review SLA</div>
+        <div class="sublabel">enforced by cron</div>
+      </div>
+      <div class="metric-item">
+        <div class="number">100%</div>
+        <div class="label">Decisions public</div>
+        <div class="sublabel">audit trail on every action</div>
+      </div>
+      <div class="metric-item">
+        <div class="number">3</div>
+        <div class="label">Outcomes</div>
+        <div class="sublabel">upheld · reversed · dismissed</div>
+      </div>
+      <div class="metric-item">
+        <div class="number">&lt;1%</div>
+        <div class="label">Override rate</div>
+        <div class="sublabel">algorithmic first, human last</div>
+      </div>
+      <div class="metric-item">
+        <div class="number">0</div>
+        <div class="label">Closed reviews</div>
+        <div class="sublabel">no private decisions</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ROLES -->
+<section id="roles">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label">Roles</div>
+      <h2>Everyone in the system<br>has a defined role</h2>
+      <p>EP is not a black box. Every participant has a name, defined permissions, and public performance history.</p>
+    </div>
+
+    <div class="role-grid">
+      <div class="role-card">
+        <div class="role-icon">🙋</div>
+        <h3>Reporter</h3>
+        <p>Any person or agent can file a report. No authentication required — EP is open by design. Reports are rate-limited (3/hr) to prevent abuse.</p>
+        <div class="role-perms">
+          <div class="perm"><span class="dot dot-green"></span>File dispute reports</div>
+          <div class="perm"><span class="dot dot-green"></span>File appeals on closed disputes</div>
+          <div class="perm"><span class="dot dot-red"></span>Cannot see other parties' evidence</div>
+          <div class="perm"><span class="dot dot-red"></span>Cannot modify existing reports</div>
+        </div>
+      </div>
+
+      <div class="role-card featured">
+        <div class="role-icon">⚖</div>
+        <h3>Operator <span style="font-size:11px;color:var(--accent-light);font-weight:400;">← This page</span></h3>
+        <p>Operators are humans who review appeals and make binding trust decisions. Their performance is measured, public, and compared against protocol baselines.</p>
+        <div class="role-perms">
+          <div class="perm"><span class="dot dot-green"></span>Review and decide open appeals</div>
+          <div class="perm"><span class="dot dot-green"></span>Request additional evidence</div>
+          <div class="perm"><span class="dot dot-green"></span>Mark receipts as disputed</div>
+          <div class="perm"><span class="dot dot-yellow"></span>Override trust propagation (logged)</div>
+          <div class="perm"><span class="dot dot-red"></span>Cannot delete evidence</div>
+          <div class="perm"><span class="dot dot-red"></span>Cannot act on own-entity appeals</div>
+        </div>
+      </div>
+
+      <div class="role-card">
+        <div class="role-icon">🏢</div>
+        <h3>Host Verifier</h3>
+        <p>Ecosystem partners (GitHub, npm, MCP registry, etc.) who provide verified metadata about entities. Their attestations receive the highest provenance tier (1.0×).</p>
+        <div class="role-perms">
+          <div class="perm"><span class="dot dot-green"></span>Submit host-verified receipts (Tier 1)</div>
+          <div class="perm"><span class="dot dot-green"></span>Bind entity identity claims</div>
+          <div class="perm"><span class="dot dot-yellow"></span>Revoke entity listings</div>
+          <div class="perm"><span class="dot dot-red"></span>Cannot override operator decisions</div>
+        </div>
+      </div>
+
+      <div class="role-card">
+        <div class="role-icon">🤖</div>
+        <h3>Principal</h3>
+        <p>Any agent, service, merchant, or developer registered in EP. They can respond to disputes, submit evidence, and view their own trust profiles. They are judged, not judges.</p>
+        <div class="role-perms">
+          <div class="perm"><span class="dot dot-green"></span>Submit bilateral attestations</div>
+          <div class="perm"><span class="dot dot-green"></span>View own trust profile</div>
+          <div class="perm"><span class="dot dot-yellow"></span>Respond to open disputes</div>
+          <div class="perm"><span class="dot dot-red"></span>Cannot review their own appeals</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ACTIVE OPERATORS -->
+<section id="operators">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label">Registry</div>
+      <h2>Active operators</h2>
+      <p>All operators are public. Performance data is computed from decision history. There is no private operator track.</p>
+    </div>
+
+    <div class="operator-table-wrap">
+      <table class="operator-table">
+        <thead>
+          <tr>
+            <th>Operator</th>
+            <th>Status</th>
+            <th>Specialization</th>
+            <th>Reviewed</th>
+            <th>Reversal rate</th>
+            <th>Median SLA</th>
+            <th>Agreement</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="op-name">Protocol Core</div>
+              <div class="op-id">op_core_0001</div>
+            </td>
+            <td><span class="badge badge-green">● Active</span></td>
+            <td>All categories</td>
+            <td class="stat-neutral">—</td>
+            <td class="stat-neutral">—</td>
+            <td class="stat-neutral">—</td>
+            <td class="stat-neutral">Baseline</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="op-name" style="font-style:italic;color:var(--muted)">Open position</div>
+              <div class="op-id">—</div>
+            </td>
+            <td><span class="badge badge-yellow">● Recruiting</span></td>
+            <td>Software trust</td>
+            <td class="stat-neutral">—</td>
+            <td class="stat-neutral">—</td>
+            <td class="stat-neutral">—</td>
+            <td><a href="#apply" style="color:var(--accent-light);font-size:13px;">Apply →</a></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="op-name" style="font-style:italic;color:var(--muted)">Open position</div>
+              <div class="op-id">—</div>
+            </td>
+            <td><span class="badge badge-yellow">● Recruiting</span></td>
+            <td>Commerce disputes</td>
+            <td class="stat-neutral">—</td>
+            <td class="stat-neutral">—</td>
+            <td class="stat-neutral">—</td>
+            <td><a href="#apply" style="color:var(--accent-light);font-size:13px;">Apply →</a></td>
+          </tr>
+          <tr>
+            <td>
+              <div class="op-name" style="font-style:italic;color:var(--muted)">Open position</div>
+              <div class="op-id">—</div>
+            </td>
+            <td><span class="badge badge-yellow">● Recruiting</span></td>
+            <td>Identity continuity</td>
+            <td class="stat-neutral">—</td>
+            <td class="stat-neutral">—</td>
+            <td class="stat-neutral">—</td>
+            <td><a href="#apply" style="color:var(--accent-light);font-size:13px;">Apply →</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:13px;color:var(--muted);text-align:center;margin-top:20px;">
+      Performance data populates as operators process real appeals. The protocol is early — operators joining now shape the baseline.
+    </p>
+  </div>
+</section>
+
+<!-- HOW DECISIONS WORK -->
+<section id="how-it-works">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label">Decision Process</div>
+      <h2>From appeal to outcome</h2>
+      <p>Every appeal follows the same structured process. No discretion over procedure — only over judgment.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start;">
+      <div class="flow">
+        <div class="flow-step">
+          <div class="flow-num">1</div>
+          <div class="flow-content">
+            <h3>Report filed</h3>
+            <p>Anyone files a report via <code style="font-family:var(--mono);font-size:12px;color:var(--accent-light)">POST /api/disputes/report</code> or the <a href="/appeal" style="color:var(--accent-light)">appeal page</a>. No auth required. Report is logged with submitter fingerprint.</p>
+            <div class="sla">⏱ Immediate</div>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-num">2</div>
+          <div class="flow-content">
+            <h3>Automated intake</h3>
+            <p>EP classifies the report type (false_claim, manipulation, policy_violation, sybil_network, etc.), validates the target entity exists, and assigns to the operator queue. Rate limiting checks run.</p>
+            <div class="sla">⏱ &lt;30 seconds</div>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-num">3</div>
+          <div class="flow-content">
+            <h3>Operator assignment</h3>
+            <p>An available operator with relevant specialization is notified. Conflict-of-interest check: operators cannot review appeals involving entities they've submitted receipts for.</p>
+            <div class="sla">⏱ &lt;4 hours</div>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-num">4</div>
+          <div class="flow-content">
+            <h3>Evidence review</h3>
+            <p>Operator reviews the trust profile, receipt chain, dispute history, and any submitted evidence. They may request additional evidence with a 48h window. All evidence requests are logged.</p>
+            <div class="sla">⏱ &lt;72h total SLA</div>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-num">5</div>
+          <div class="flow-content">
+            <h3>Decision</h3>
+            <p>Operator selects one of three outcomes, writes a reasoning statement (required, minimum 50 chars), and submits.</p>
+            <div class="outcome-tags">
+              <span class="badge badge-green">upheld</span>
+              <span class="badge badge-red">reversed</span>
+              <span class="badge badge-blue">dismissed</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-num">6</div>
+          <div class="flow-content">
+            <h3>Trust propagation</h3>
+            <p>If reversed: graph_weight set to 0 for implicated receipts, trust scores recomputed for all affected entities. The reversal cascades through the receipt graph. If upheld or dismissed: no trust change, decision logged.</p>
+            <div class="sla">⏱ &lt;60 seconds</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;">
+          <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px;">Operator decision payload</h3>
+          <pre>{
+  <span class="code-key">"dispute_id"</span>: <span class="code-str">"disp_abc123"</span>,
+  <span class="code-key">"decision"</span>: <span class="code-str">"reversed"</span>,
+  <span class="code-key">"reasoning"</span>: <span class="code-str">"Receipt chain shows identical
+    timestamps across 4 entities
+    suggesting coordinated submission.
+    Graph analysis confirms closed-loop
+    with 0.4x weight already applied.
+    Reversing to remove any residual
+    trust benefit."</span>,
+  <span class="code-key">"evidence_reviewed"</span>: [
+    <span class="code-str">"rcpt_xxx"</span>, <span class="code-str">"rcpt_yyy"</span>
+  ],
+  <span class="code-key">"operator_id"</span>: <span class="code-str">"op_core_0001"</span>,
+  <span class="code-key">"decided_at"</span>: <span class="code-str">"2026-03-15T14:22:00Z"</span>
+}</pre>
+        </div>
+
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;margin-top:20px;">
+          <h3 style="font-size:1rem;font-weight:700;margin-bottom:16px;">What operators cannot do</h3>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div class="perm"><span class="dot dot-red"></span><span style="font-size:13px;color:var(--muted)">Delete or modify submitted receipts or evidence</span></div>
+            <div class="perm"><span class="dot dot-red"></span><span style="font-size:13px;color:var(--muted)">Act on appeals involving their own receipts</span></div>
+            <div class="perm"><span class="dot dot-red"></span><span style="font-size:13px;color:var(--muted)">Issue decisions without written reasoning</span></div>
+            <div class="perm"><span class="dot dot-red"></span><span style="font-size:13px;color:var(--muted)">Exceed the 72h SLA without escalation flag</span></div>
+            <div class="perm"><span class="dot dot-red"></span><span style="font-size:13px;color:var(--muted)">Access private data outside the appeal record</span></div>
+            <div class="perm"><span class="dot dot-red"></span><span style="font-size:13px;color:var(--muted)">Coordinate with other operators on the same case</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ACCOUNTABILITY MECHANICS -->
+<section>
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label">Accountability</div>
+      <h2>How operators are held accountable</h2>
+      <p>EP doesn't trust operators. It measures them. Every decision feeds a public performance record that anyone can query.</p>
+    </div>
+
+    <div class="mechanic-grid">
+      <div class="mechanic-card">
+        <h3>
+          <div class="mechanic-icon green">📊</div>
+          Public performance scores
+        </h3>
+        <p>Every operator's decision history is queryable via <code style="font-family:var(--mono);font-size:12px;color:var(--accent-light)">GET /api/operators/:id</code>. Reversal rate, median SLA, agreement with protocol baseline, and appeal volume are all public.</p>
+      </div>
+
+      <div class="mechanic-card">
+        <h3>
+          <div class="mechanic-icon blue">🔗</div>
+          Immutable audit trail
+        </h3>
+        <p>Every operator action is appended to the audit log with before/after state capture. Decisions cannot be edited retroactively. The SHA-256 chain links each action to the previous.</p>
+      </div>
+
+      <div class="mechanic-card">
+        <h3>
+          <div class="mechanic-icon yellow">⏰</div>
+          SLA enforcement
+        </h3>
+        <p>The <code style="font-family:var(--mono);font-size:12px;color:var(--accent-light)">cron/expire</code> job escalates overdue appeals at 72h. Escalated appeals show in the public queue and count against the assigned operator's SLA score.</p>
+      </div>
+
+      <div class="mechanic-card">
+        <h3>
+          <div class="mechanic-icon red">🚨</div>
+          Conflict of interest checks
+        </h3>
+        <p>Assignment logic checks receipt submission history. If an operator has ever submitted a receipt for the disputed entity, they are excluded from that appeal automatically — not by honor system.</p>
+      </div>
+
+      <div class="mechanic-card">
+        <h3>
+          <div class="mechanic-icon green">⚖</div>
+          Baseline comparison
+        </h3>
+        <p>EP computes what the algorithmic evaluator would have decided. Operators who consistently diverge from the baseline in ways that benefit specific entity types are flagged for review.</p>
+      </div>
+
+      <div class="mechanic-card">
+        <h3>
+          <div class="mechanic-icon blue">🗳</div>
+          Operator appeals
+        </h3>
+        <p>Operators can be removed by governance vote if their public record shows systematic bias. The process is defined in GOVERNANCE.md. No single party controls removal.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- REPORT TYPES -->
+<section>
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label">Taxonomy</div>
+      <h2>What operators decide on</h2>
+      <p>EP defines nine report types. Operators must classify their decision against the specific violation type — not a general "bad actor" determination.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--accent-light);margin-bottom:8px;">false_claim</div>
+        <p style="font-size:13px;color:var(--muted);">Entity submitted receipts for interactions that did not occur, or materially misrepresented what occurred.</p>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--accent-light);margin-bottom:8px;">manipulation</div>
+        <p style="font-size:13px;color:var(--muted);">Entity coordinated with other entities to inflate trust scores through reciprocal attestations or cluster submission.</p>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--accent-light);margin-bottom:8px;">policy_violation</div>
+        <p style="font-size:13px;color:var(--muted);">Entity failed a policy evaluation but continued operating or misrepresented their policy status to counterparties.</p>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--accent-light);margin-bottom:8px;">sybil_network</div>
+        <p style="font-size:13px;color:var(--muted);">Multiple entity IDs appear to be controlled by the same principal for the purpose of laundering trust history.</p>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--accent-light);margin-bottom:8px;">impersonation</div>
+        <p style="font-size:13px;color:var(--muted);">Entity registered with identifiers that mislead counterparties into confusing it with a different, established entity.</p>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--accent-light);margin-bottom:8px;">trust_farming</div>
+        <p style="font-size:13px;color:var(--muted);">Entity submitted high volumes of low-value receipts to artificially increase receipt count without corresponding behavioral evidence.</p>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--accent-light);margin-bottom:8px;">evidence_tampering</div>
+        <p style="font-size:13px;color:var(--muted);">Entity submitted modified or fabricated evidence during a dispute proceeding, including altered timestamps or signatures.</p>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--accent-light);margin-bottom:8px;">abuse_of_process</div>
+        <p style="font-size:13px;color:var(--muted);">Reporter filed frivolous or retaliatory reports with intent to damage a competitor's trust profile rather than raise a legitimate concern.</p>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--accent-light);margin-bottom:8px;">other</div>
+        <p style="font-size:13px;color:var(--muted);">Report does not fit an existing category. Operator must provide an extended reasoning statement and request a taxonomy addition if warranted.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- OPERATOR API -->
+<section>
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label">API Reference</div>
+      <h2>Operator API endpoints</h2>
+      <p>All operator actions are API-first. The dashboard is a thin wrapper over these endpoints.</p>
+    </div>
+
+    <div class="api-list">
+      <div class="api-item">
+        <span class="method method-get">GET</span>
+        <div class="api-info">
+          <div class="api-path">/api/operators</div>
+          <div class="api-desc">List all registered operators with public performance metrics</div>
+        </div>
+      </div>
+      <div class="api-item">
+        <span class="method method-get">GET</span>
+        <div class="api-info">
+          <div class="api-path">/api/operators/:operatorId</div>
+          <div class="api-desc">Single operator profile: decision history, SLA performance, specializations, agreement rate</div>
+        </div>
+      </div>
+      <div class="api-item">
+        <span class="method method-get">GET</span>
+        <div class="api-info">
+          <div class="api-path">/api/disputes?status=under_review</div>
+          <div class="api-desc">Open appeal queue. Filter by status, type, entity, or assigned operator</div>
+        </div>
+      </div>
+      <div class="api-item">
+        <span class="method method-post">POST</span>
+        <div class="api-info">
+          <div class="api-path">/api/disputes/:disputeId/decide</div>
+          <div class="api-desc">Submit an operator decision with outcome and reasoning. Triggers trust propagation if reversed.</div>
+          <div class="api-auth">🔑 Requires operator API key (EP-Operator-Key header)</div>
+        </div>
+      </div>
+      <div class="api-item">
+        <span class="method method-post">POST</span>
+        <div class="api-info">
+          <div class="api-path">/api/disputes/:disputeId/request-evidence</div>
+          <div class="api-desc">Request additional evidence from a party. Opens a 48h evidence window and pauses SLA clock.</div>
+          <div class="api-auth">🔑 Requires operator API key</div>
+        </div>
+      </div>
+      <div class="api-item">
+        <span class="method method-get">GET</span>
+        <div class="api-info">
+          <div class="api-path">/api/audit?operator=:operatorId</div>
+          <div class="api-desc">Full audit log for an operator. Every action with before/after state, timestamp, and linked object IDs.</div>
+        </div>
+      </div>
+      <div class="api-item">
+        <span class="method method-post">POST</span>
+        <div class="api-info">
+          <div class="api-path">/api/operators/apply</div>
+          <div class="api-desc">Submit an operator application. Returns application ID for status tracking.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BECOME AN OPERATOR -->
+<section id="apply">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label">Applications</div>
+      <h2>Become an operator</h2>
+      <p>EP is recruiting its founding operator set. These are the people who will shape how trust disputes are resolved for the AI economy.</p>
+    </div>
+
+    <div class="apply-grid">
+      <div>
+        <div class="apply-requirements">
+          <h3>What we're looking for</h3>
+          <div class="req-list">
+            <div class="req-item">
+              <span class="req-check">✓</span>
+              <span>Domain expertise in at least one area: software supply chain, commerce disputes, AI agent behavior, or identity systems</span>
+            </div>
+            <div class="req-item">
+              <span class="req-check">✓</span>
+              <span>Availability to respond to assigned appeals within 72 hours</span>
+            </div>
+            <div class="req-item">
+              <span class="req-check">✓</span>
+              <span>Comfort working with structured data: receipt chains, trust profiles, graph analysis output</span>
+            </div>
+            <div class="req-item">
+              <span class="req-check">✓</span>
+              <span>No financial relationship with entities likely to appear in your assigned category</span>
+            </div>
+            <div class="req-item">
+              <span class="req-check">✓</span>
+              <span>Willingness to have your decision record permanently public</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;margin-top:20px;">
+          <h3 style="font-size:1rem;font-weight:700;margin-bottom:12px;">What operators receive</h3>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div class="perm"><span class="dot dot-green"></span><span style="font-size:13px;color:var(--muted);">Operator API key with review permissions</span></div>
+            <div class="perm"><span class="dot dot-green"></span><span style="font-size:13px;color:var(--muted);">Listed on this page with performance metrics</span></div>
+            <div class="perm"><span class="dot dot-green"></span><span style="font-size:13px;color:var(--muted);">Early access to EP-IX continuity review tools</span></div>
+            <div class="perm"><span class="dot dot-green"></span><span style="font-size:13px;color:var(--muted);">Input on dispute taxonomy and process design</span></div>
+            <div class="perm"><span class="dot dot-green"></span><span style="font-size:13px;color:var(--muted);">Recognition as a founding institutional reviewer</span></div>
+          </div>
+          <p style="font-size:12px;color:var(--muted);margin-top:16px;">Operators are not currently compensated financially. This may change as EP scales.</p>
+        </div>
+      </div>
+
+      <div>
+        <div class="apply-form">
+          <h3>Apply to review disputes</h3>
+          <p style="font-size:14px;color:var(--muted);margin-bottom:8px;">Applications are reviewed within 7 days. We'll respond to every application.</p>
+
+          <div class="form-field">
+            <label>Your name or handle</label>
+            <input type="text" placeholder="Name or pseudonym you'll appear as publicly" />
+          </div>
+
+          <div class="form-field">
+            <label>Email or contact</label>
+            <input type="email" placeholder="We'll use this only to confirm your application" />
+          </div>
+
+          <div class="form-field">
+            <label>Specialization area</label>
+            <select>
+              <option value="">Select your primary domain</option>
+              <option value="software">Software supply chain / MCP servers</option>
+              <option value="commerce">Commerce disputes / merchant fraud</option>
+              <option value="identity">Identity continuity / impersonation</option>
+              <option value="sybil">Sybil networks / trust manipulation</option>
+              <option value="ai">AI agent behavior / autonomous systems</option>
+              <option value="general">General — no specific domain</option>
+            </select>
+          </div>
+
+          <div class="form-field">
+            <label>Background (public)</label>
+            <textarea placeholder="Brief description of your relevant experience. This will appear on your public operator profile." rows="3"></textarea>
+          </div>
+
+          <div class="form-field">
+            <label>Conflict declarations</label>
+            <textarea placeholder="List any entities, ecosystems, or companies where you have a financial or employment relationship that could conflict with impartial review." rows="2"></textarea>
+          </div>
+
+          <div class="form-field">
+            <label>GitHub or public profile (optional)</label>
+            <input type="url" placeholder="https://" />
+          </div>
+
+          <button class="form-submit" onclick="submitApplication(event)">Submit Application →</button>
+          <p class="form-note">By applying, you agree that your decision record will be permanently public if approved. Applications are handled via <code style="font-family:var(--mono);font-size:11px;">POST /api/operators/apply</code>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section>
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label">Questions</div>
+      <h2>Operator FAQ</h2>
+    </div>
+    <div style="max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:0;">
+      <details style="border-bottom:1px solid var(--border);padding:24px 0;" open>
+        <summary style="font-weight:600;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;">
+          Can I be anonymous as an operator?
+          <span style="color:var(--muted);font-size:20px;">+</span>
+        </summary>
+        <p style="font-size:14px;color:var(--muted);margin-top:12px;line-height:1.7;">You may use a pseudonym. Your decision record is public under whatever name you register. However, EP staff know your real identity for conflict-of-interest verification. Pseudonymous operators receive the same rights and accountability as identified ones.</p>
+      </details>
+
+      <details style="border-bottom:1px solid var(--border);padding:24px 0;">
+        <summary style="font-weight:600;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;">
+          What happens if I make a bad decision?
+          <span style="color:var(--muted);font-size:20px;">+</span>
+        </summary>
+        <p style="font-size:14px;color:var(--muted);margin-top:12px;line-height:1.7;">It is recorded publicly and counted in your agreement rate metric. Decisions can be reopened by a second operator if new evidence emerges — but the original decision remains in the audit log. Systematic bad decisions trigger a governance review. One-off errors are expected and handled gracefully.</p>
+      </details>
+
+      <details style="border-bottom:1px solid var(--border);padding:24px 0;">
+        <summary style="font-weight:600;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;">
+          How many appeals should I expect?
+          <span style="color:var(--muted);font-size:20px;">+</span>
+        </summary>
+        <p style="font-size:14px;color:var(--muted);margin-top:12px;line-height:1.7;">EP is in early deployment. Expect zero to a few per month initially. The protocol is designed to handle most trust evaluation algorithmically — operator review is reserved for contested cases where algorithmic output is appealed. Volume will grow with adoption.</p>
+      </details>
+
+      <details style="border-bottom:1px solid var(--border);padding:24px 0;">
+        <summary style="font-weight:600;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;">
+          Can I recuse myself from a case?
+          <span style="color:var(--muted);font-size:20px;">+</span>
+        </summary>
+        <p style="font-size:14px;color:var(--muted);margin-top:12px;line-height:1.7;">Yes. If you identify a conflict the system didn't catch, you should recuse. Use <code style="font-family:var(--mono);font-size:12px;color:var(--accent-light)">POST /api/disputes/:id/recuse</code> with your reason. Recusals are logged and visible. Unexplained recusals on high-profile cases are noted in your record.</p>
+      </details>
+
+      <details style="border-bottom:1px solid var(--border);padding:24px 0;">
+        <summary style="font-weight:600;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;">
+          Is this compensation or volunteer work?
+          <span style="color:var(--muted);font-size:20px;">+</span>
+        </summary>
+        <p style="font-size:14px;color:var(--muted);margin-top:12px;line-height:1.7;">Currently volunteer. Founding operators are recognized in the protocol history and shape how the appeal system works in practice. If EP develops a revenue model, operator compensation will be the first funded activity. We will not add paid tiers that advantage paid operators over volunteer ones.</p>
+      </details>
+
+      <details style="border-bottom:1px solid var(--border);padding:24px 0;">
+        <summary style="font-weight:600;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;">
+          Can an operator be removed?
+          <span style="color:var(--muted);font-size:20px;">+</span>
+        </summary>
+        <p style="font-size:14px;color:var(--muted);margin-top:12px;line-height:1.7;">Yes, via the governance process in GOVERNANCE.md. Removal requires evidence of systematic bias, conflict-of-interest violations, or SLA abandonment. No single party can remove an operator — removal requires a majority of active operators and EP protocol maintainers to concur. The removed operator's decision record remains public.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="footer-links">
+      <a href="/">Home</a>
+      <a href="/quickstart.html">Quickstart</a>
+      <a href="/spec" target="_blank">Spec RFC</a>
+      <a href="/operators.html">Operators</a>
+      <a href="/appeal">File an Appeal</a>
+      <a href="https://github.com/emiliaprotocol/ep" target="_blank">GitHub</a>
+      <a href="/.well-known/ep-trust.json" target="_blank">Discovery</a>
+    </div>
+    <div class="footer-copy">
+      EMILIA Protocol · Apache 2.0 · The trust layer for the AI economy
+    </div>
+  </div>
+</footer>
+
+<script>
+  // FAQ accordion
+  document.querySelectorAll('details').forEach(detail => {
+    detail.addEventListener('toggle', () => {
+      const plus = detail.querySelector('summary span:last-child');
+      if (plus) plus.textContent = detail.open ? '−' : '+';
+    });
+  });
+
+  // Application form
+  async function submitApplication(e) {
+    e.preventDefault();
+    const btn = e.target;
+    btn.textContent = 'Submitting…';
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/operators/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: document.querySelector('input[type=text]').value,
+          contact: document.querySelector('input[type=email]').value,
+          specialization: document.querySelector('select').value,
+          background: document.querySelectorAll('textarea')[0].value,
+          conflicts: document.querySelectorAll('textarea')[1].value,
+          profile_url: document.querySelector('input[type=url]').value,
+        })
+      });
+
+      if (res.ok) {
+        btn.textContent = '✓ Application submitted';
+        btn.style.background = 'var(--green)';
+        document.querySelector('.form-note').textContent = 'We\'ll respond within 7 days. Thank you for your interest in making trust accountable.';
+      } else {
+        const err = await res.json().catch(() => ({}));
+        btn.textContent = 'Submit Application →';
+        btn.disabled = false;
+        alert(err.error || 'Submission failed. Email operators@emiliaprotocol.ai to apply directly.');
+      }
+    } catch {
+      btn.textContent = 'Submit Application →';
+      btn.disabled = false;
+      alert('Unable to reach EP. Email operators@emiliaprotocol.ai to apply directly.');
+    }
+  }
+</script>
+</body>
+</html>

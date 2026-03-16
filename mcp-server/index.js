@@ -240,23 +240,22 @@ const TOOLS = [
   },
   // EP-SX: Software Trust
   {
-
-    {
-      name: 'ep_appeal_dispute',
-      description:
-        'Appeal a dispute resolution. Only dispute participants can appeal. ' +
-        'Requires the dispute to be in upheld, reversed, or dismissed state. ' +
-        '"Trust must never be more powerful than appeal."',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          dispute_id: { type: 'string', description: 'The dispute ID to appeal' },
-          reason: { type: 'string', description: 'Why the resolution should be reconsidered (min 10 chars)' },
-          evidence: { type: 'object', description: 'Optional supporting evidence for the appeal' },
-        },
-        required: ['dispute_id', 'reason'],
+    name: 'ep_appeal_dispute',
+    description:
+      'Appeal a dispute resolution. Only dispute participants can appeal. ' +
+      'Requires the dispute to be in upheld, reversed, or dismissed state. ' +
+      '"Trust must never be more powerful than appeal."',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        dispute_id: { type: 'string', description: 'The dispute ID to appeal' },
+        reason: { type: 'string', description: 'Why the resolution should be reconsidered (min 10 chars)' },
+        evidence: { type: 'object', description: 'Optional supporting evidence for the appeal' },
       },
+      required: ['dispute_id', 'reason'],
     },
+  },
+  {
     name: 'ep_install_preflight',
     description:
       'EP-SX: Should I install this plugin/app/package/extension? ' +
@@ -414,6 +413,20 @@ async function handleTool(name, args) {
         `Report ID: ${data.report_id}\n` +
         `${data._message}\n` +
         `${data._principle}`;
+    }
+
+    case 'ep_appeal_dispute': {
+      if (!API_KEY) return 'Error: EP_API_KEY required to file appeals.';
+      const body = {
+        dispute_id: args.dispute_id,
+        reason: args.reason,
+        evidence: args.evidence || null,
+      };
+      const data = await epFetch('/api/disputes/appeal', { method: 'POST', auth: true, body });
+      return `Appeal filed.\n` +
+        `Appeal ID: ${data.appeal_id || data.dispute_id}\n` +
+        `Status: ${data.status}\n` +
+        `${data._message || 'Your appeal has been submitted for review.'}`;
     }
 
     case 'ep_install_preflight': {

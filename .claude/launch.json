@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Next.js dev server",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "Next.js production",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "build"],
+      "port": 3000
+    },
+    {
+      "name": "Vitest test runner",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "test"],
+      "port": 51204
+    },
+    {
+      "name": "MCP server (stdio)",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["mcp-server/index.js"],
+      "port": 0
+    }
+  ]
+}
