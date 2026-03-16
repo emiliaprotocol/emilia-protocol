@@ -174,6 +174,18 @@ export default async function EntityProfile({ params }) {
         `}} />
       </head>
       <body>
+        <nav style="position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:60px;background:rgba(0,0,0,0.85);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.06);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase">
+          <a href="/" style="font-weight:700;font-size:14px;letter-spacing:3px;color:#e8eaf0;text-decoration:none">EMILIA</a>
+          <div style="display:flex;align-items:center;gap:24px">
+            <a href="/" style="color:#4a4f6a;text-decoration:none">Home</a>
+            <a href="/quickstart.html" style="color:#4a4f6a;text-decoration:none">Quickstart</a>
+            <a href="/demo.html" style="color:#4a4f6a;text-decoration:none">Demo</a>
+            <a href="/spec" style="color:#4a4f6a;text-decoration:none">Spec</a>
+            <a href="/operators.html" style="color:#4a4f6a;text-decoration:none">Operators</a>
+            <a href="/appeal" style="color:#4a4f6a;text-decoration:none">Appeal</a>
+            <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" style="color:#4a4f6a;text-decoration:none">GitHub</a>
+          </div>
+        </nav>
         <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px 80px' }}>
           {/* Nav */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 48, fontFamily: 'var(--mono)', fontSize: 12, letterSpacing: 1 }}>

@@ -241,8 +241,12 @@ export default function SpecPage() {
           <a href="/" style={{ fontWeight: 600, letterSpacing: 2, fontSize: 14, color: '#e8eaf0' }}>EMILIA</a>
           <div style={{ display: 'flex', gap: 24 }}>
             <a href="/">HOME</a>
-            <a href="https://github.com/emiliaprotocol/emilia-protocol">GITHUB</a>
-            <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/EP-CORE-RFC.md">RAW</a>
+            <a href="/quickstart.html">QUICKSTART</a>
+            <a href="/demo.html">DEMO</a>
+            <a href="/spec" style={{ color: '#00d4ff' }}>SPEC</a>
+            <a href="/operators.html">OPERATORS</a>
+            <a href="/appeal">APPEAL</a>
+            <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank">GITHUB</a>
           </div>
         </div>
         <div className="spec-content">

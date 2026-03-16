@@ -143,9 +143,28 @@ export default function AppealPage() {
   const canWithdraw = (status) => status === 'open';
 
   return (
-    <div style={s.page}>
-      <div style={s.container}>
-        <div style={s.principle}>EP MUST NEVER MAKE TRUST MORE POWERFUL THAN APPEAL</div>
+    <nav style={{
+          position: 'sticky', top: 0, zIndex: 100,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0 40px', height: 60,
+          background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          fontFamily: 'monospace', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase',
+        }}>
+          <a href="/" style={{ fontWeight: 700, fontSize: 14, letterSpacing: 3, color: '#e8e6e3', textDecoration: 'none' }}>EMILIA</a>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+            <a href="/" style={{ color: '#4a4f6a', textDecoration: 'none' }}>Home</a>
+            <a href="/quickstart.html" style={{ color: '#4a4f6a', textDecoration: 'none' }}>Quickstart</a>
+            <a href="/demo.html" style={{ color: '#4a4f6a', textDecoration: 'none' }}>Demo</a>
+            <a href="/spec" style={{ color: '#4a4f6a', textDecoration: 'none' }}>Spec</a>
+            <a href="/operators.html" style={{ color: '#4a4f6a', textDecoration: 'none' }}>Operators</a>
+            <a href="/appeal" style={{ color: '#00d4ff', textDecoration: 'none' }}>Appeal</a>
+            <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" style={{ color: '#4a4f6a', textDecoration: 'none' }}>GitHub</a>
+          </div>
+        </nav>
+    <div style={{...s.page, paddingTop: 24}}>
+      <div style={{...s.container}}>
+        <div style={{...s.principle}}>EP MUST NEVER MAKE TRUST MORE POWERFUL THAN APPEAL</div>
         <h1 style={s.h1}>Trust & Appeal</h1>
         <p style={s.sub}>
           Look up any entity's trust profile, report a trust issue, check a dispute, or appeal a resolution.
@@ -326,5 +345,6 @@ export default function AppealPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
