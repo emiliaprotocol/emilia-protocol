@@ -11,7 +11,7 @@ import { canonicalEvaluate } from '@/lib/canonical-evaluator';
  * 
  * Query params:
  *   q              - semantic search query (uses embeddings)
- *   type           - filter by entity_type: agent, merchant, service_provider
+ *   type           - filter by entity_type (see canonical types in register route / OpenAPI)
  *   category       - filter by category
  *   capability     - filter by capability keyword
  *   min_score      - minimum compatibility score (default 0, legacy fallback)

@@ -8,7 +8,7 @@ import { canonicalEvaluate } from '@/lib/canonical-evaluator';
  * Public trust rankings.
  * 
  * Query params:
- *   type           - filter: agent, merchant, service_provider
+ *   type           - filter by entity_type (see canonical types in register route / OpenAPI)
  *   category       - filter by category
  *   include_new    - include unestablished entities (default false)
  *   rank_by        - "score" (default, legacy), "confidence", or "evidence"
