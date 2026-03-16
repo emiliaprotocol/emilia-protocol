@@ -954,7 +954,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         </div>
         <div style="padding:20px 24px">
           <div style="font-size:13px;color:var(--t2);margin-bottom:8px">How trust is consumed. MCP server (15 tools) for agents, REST API for services, SDK for direct integration. All consumption surfaces return the same trust profile schema.</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-family:var(--mono);font-size:10px;color:var(--cyan);background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);padding:3px 8px;border-radius:4px">MCP (15 tools)</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">REST API</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">TypeScript SDK</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Python SDK</span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-family:var(--mono);font-size:10px;color:var(--cyan);background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);padding:3px 8px;border-radius:4px">MCP (15 tools)</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">REST API</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">TypeScript SDK (source)</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Python SDK (source)</span></div>
         </div>
       </div>
 
@@ -1008,7 +1008,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
           <div style="font-weight:700;font-size:14px;color:var(--t1)">Anchor</div>
         </div>
         <div style="padding:20px 24px">
-          <div style="font-size:13px;color:var(--t2);margin-bottom:8px">Daily Merkle root computation over all receipts, Base L2 anchoring for tamper-evidence. The anchor job produces a publicly verifiable proof that trust records have not been modified retroactively.</div>
+          <div style="font-size:13px;color:var(--t2);margin-bottom:8px">Every-6-hour Merkle root computation over all receipts, Base L2 anchoring for tamper-evidence. The anchor job (Vercel cron, `0 */6 * * *`) produces a publicly verifiable proof that trust records have not been modified retroactively.</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-family:var(--mono);font-size:10px;color:var(--cyan);background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);padding:3px 8px;border-radius:4px">Base L2</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">SHA-256 chain</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Merkle anchoring</span></div>
         </div>
       </div>
@@ -1070,7 +1070,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         <div class="eco-icon" style="background:rgba(129,140,248,.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
         <div>
           <h4>REST API &amp; SDKs</h4>
-          <p>Full REST API with TypeScript and Python SDKs. Any system that can make an HTTP request can submit receipts and query trust profiles — no agent required.</p>
+          <p>Full REST API with TypeScript and Python SDKs (source-distributed in the repo, npm/PyPI publish pending pilot stage). Any system that can make an HTTP request can submit receipts and query trust profiles — no agent required.</p>
           <span class="eco-status live">Live — Apache 2.0</span>
         </div>
       </div>
