@@ -1,7 +1,7 @@
 # EMILIA Protocol
 
 [![CI](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-147%20checks-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-152%20checks-brightgreen)]()
 [![Conformance](https://img.shields.io/badge/conformance-JS%20%2B%20Python-blue)]()
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
@@ -255,7 +255,7 @@ EP is verifiable, not just claimed.
 
 **Falsifiable by design:** anyone can run the conformance suite to prove the evaluator is lying. Trust that cannot be independently verified is not trust — it is faith.
 
-Run: `npx vitest run` (147 automated checks) + `python3 conformance/verify_hashes.py` (4 cross-language hash checks)
+Run: `npx vitest run` (see `generated/proof-metrics.json` for exact count) + `python3 conformance/verify_hashes.py` (4 cross-language hash checks)
 
 ## Docs
 

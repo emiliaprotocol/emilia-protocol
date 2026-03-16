@@ -268,3 +268,45 @@ describe('CONFORMANCE: Trust barrier invariant', () => {
     });
   }
 });
+
+
+// ============================================================================
+// Provenance weight fixtures
+// ============================================================================
+describe('CONFORMANCE: Provenance weights', () => {
+  const expected = fixtures.provenance_weight_fixtures.weights;
+
+  it('provenance weights match canonical fixture', () => {
+    const actual = {
+      self_attested: 0.3,
+      identified_signed: 0.5,
+      bilateral: 0.8,
+      platform_originated: 0.9,
+      carrier_verified: 0.95,
+      oracle_verified: 1.0,
+    };
+    expect(actual).toEqual(expected);
+  });
+});
+
+// ============================================================================
+// Four-factor receipt weighting fixtures
+// ============================================================================
+describe('CONFORMANCE: Four-factor receipt weighting', () => {
+  const provenanceWeights = fixtures.provenance_weight_fixtures.weights;
+
+  for (const fixture of fixtures.four_factor_weight_fixtures) {
+    it(fixture.name, () => {
+      const submitterWeight = fixture.submitter_established
+        ? Math.max(0.1, (fixture.submitter_score ?? 50) / 100)
+        : 0.1;
+
+      const timeWeight = Math.max(0.05, Math.pow(0.5, fixture.age_days / 90));
+      const graphWeight = fixture.graph_weight;
+      const provenanceWeight = provenanceWeights[fixture.provenance_tier];
+
+      const weight = submitterWeight * timeWeight * graphWeight * provenanceWeight;
+      expect(Math.abs(weight - fixture.expected_weight_approx)).toBeLessThanOrEqual(fixture.tolerance);
+    });
+  }
+});

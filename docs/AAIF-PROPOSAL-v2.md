@@ -28,7 +28,7 @@ We propose a **Trust Evaluation and Appeals Working Group** within AAIF to devel
 
 EMILIA Protocol (EP) is offered as the **initial reference implementation and draft specification** — not as a finished standard, but as the most complete working starting point available:
 - A deployed canonical implementation (emiliaprotocol.ai)
-- 147 automated checks across 7 suites including adversarial, end-to-end, and conformance replay
+- CI-backed automated checks across 7 suites (JS + Python conformance) including adversarial, end-to-end, and conformance replay
 - Cross-language conformance verification (JavaScript + Python)
 - An MCP server with 14 trust evaluation tools
 - Install preflight for software entities (GitHub Apps, MCP servers, npm packages)
@@ -96,7 +96,7 @@ EP is a **composable layer**, not a competing protocol. It attaches to ACP, is u
 | Server-derived owner identity | Deployed — SHA-256 of client IP, not caller-supplied |
 | MCP server (15 tools, context-aware) | Published on npm — trust-profile-first, context forwarded |
 | SDKs | Planned / optional future implementations |
-| Test suites (7 suites, 147 automated checks) | Complete — scoring, trust profiles, protocol surfaces, adversarial resistance, end-to-end flows, conformance |
+| Test suites (7 suites, CI-backed automated checks) | Complete — scoring, trust profiles, protocol surfaces, adversarial resistance, end-to-end flows, conformance |
 | NIST ITL Concept Paper | Prepared (April 2 deadline) |
 | Shopify DTC integration spec | Complete — webhook mapping, receipt mapping, MVP roadmap |
 

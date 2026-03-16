@@ -12,16 +12,66 @@
   "spec_url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/EP-CORE-RFC.md",
   "conformance_url": "https://github.com/emiliaprotocol/emilia-protocol/tree/main/conformance",
   "mcp_package": "@emilia-protocol/mcp-server",
-  "supported_policies": ["strict", "standard", "permissive", "discovery"],
-  "context_keys": ["task_type", "category", "geo", "modality", "value_band", "risk_class"],
-  "provenance_tiers": ["self_attested", "identified_signed", "bilateral", "platform_originated", "carrier_verified", "oracle_verified"],
+  "supported_policies": [
+    "strict",
+    "standard",
+    "permissive",
+    "discovery",
+    "github_private_repo_safe_v1",
+    "npm_buildtime_safe_v1",
+    "browser_extension_safe_v1",
+    "mcp_server_safe_v1"
+  ],
+  "context_keys": [
+    "task_type",
+    "category",
+    "geo",
+    "modality",
+    "value_band",
+    "risk_class"
+  ],
+  "provenance_tiers": [
+    "self_attested",
+    "identified_signed",
+    "bilateral",
+    "platform_originated",
+    "carrier_verified",
+    "oracle_verified"
+  ],
   "extensions": {
     "software_trust": {
       "version": "0.1-draft",
-      "supported_hosts": ["github", "npm", "chrome", "mcp", "shopify"],
-      "entity_types": ["github_app", "github_action", "mcp_server", "npm_package", "chrome_extension", "shopify_app", "marketplace_plugin", "agent_tool"],
+      "supported_hosts": [
+        "github",
+        "npm",
+        "chrome",
+        "mcp",
+        "shopify"
+      ],
+      "entity_types": [
+        "github_app",
+        "github_action",
+        "mcp_server",
+        "npm_package",
+        "chrome_extension",
+        "shopify_app",
+        "marketplace_plugin",
+        "agent_tool"
+      ],
       "spec_url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/EP-SX-SOFTWARE-TRUST.md"
     }
   },
-  "constitutional_principle": "Trust must never be more powerful than appeal."
+  "constitutional_principle": "Trust must never be more powerful than appeal.",
+  "core_policies": [
+    "strict",
+    "standard",
+    "permissive",
+    "discovery"
+  ],
+  "software_policies": [
+    "github_private_repo_safe_v1",
+    "npm_buildtime_safe_v1",
+    "browser_extension_safe_v1",
+    "mcp_server_safe_v1"
+  ]
 }

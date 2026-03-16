@@ -28,7 +28,7 @@ export async function GET() {
       total_entities: total,
       next_available: total + 1,
       trust_surfaces: 10,
-      automated_checks: 147,
+      automated_checks: 152,
       trust_policies: policyCount,
       mcp_tools: 15,
     });
@@ -37,7 +37,7 @@ export async function GET() {
       total_entities: 2,
       next_available: 3,
       trust_surfaces: 10,
-      automated_checks: 147,
+      automated_checks: 152,
       trust_policies: 8,
       mcp_tools: 15,
     });
