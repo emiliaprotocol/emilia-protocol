@@ -106,7 +106,7 @@ export default function AppealPage() {
   };
 
   const s = {
-    page: { minHeight: '100vh', background: '#0a0b14', color: '#e8e6e3', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', padding: '60px 24px' },
+    page: { minHeight: '100vh', background: '#0a0b14', color: '#e8e6e3', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', padding: '24px 24px 60px' },
     container: { maxWidth: 640, margin: '0 auto' },
     h1: { fontSize: 32, fontWeight: 700, marginBottom: 8 },
     sub: { fontSize: 14, color: '#8b8fa3', lineHeight: 1.6, marginBottom: 40 },
