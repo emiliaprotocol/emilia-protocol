@@ -798,6 +798,225 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
   </div>
 </section>
 
+<!-- WHAT MAKES EP DIFFERENT -->
+<section id="different">
+  <div class="container-md">
+    <div class="tc reveal">
+      <div class="st">// Protocol Depth</div>
+      <div class="sh">What makes EP different</div>
+      <div class="sd" style="margin:0 auto">EP is not a review widget. It is a trust evaluation engine with four independent evaluation axes — each producing a separate signal that agents can query independently or combine.</div>
+    </div>
+    <div class="reveal" style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:40px">
+
+      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;overflow:hidden">
+        <div style="padding:20px 24px;border-bottom:1px solid var(--brd)">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;margin-bottom:8px">Trust Profiles</div>
+          <div style="font-weight:700;font-size:15px;color:var(--t1)">Behavioral trust across 10 surfaces</div>
+          <div style="font-size:13px;color:var(--t2);margin-top:6px">Not a rating — a multi-dimensional behavioral profile updated in real time from receipts. Separate scores per category, geo, and value range.</div>
+        </div>
+        <div style="padding:16px 24px;background:var(--bg-code);font-family:var(--mono);font-size:11px;line-height:1.9">
+          <div style="color:var(--t3)">POST /api/trust/evaluate</div>
+          <div style="color:var(--t3)">{ "entity_id": "ent_abc", "context": { "category": "electronics", "value_usd": 4800 } }</div>
+          <div style="margin-top:8px;color:var(--green)">→ confidence: "EMERGING", behavioral_score: 0.84</div>
+          <div style="color:var(--t3)">   category_score: 0.91, value_tier: "high", geo: "US"</div>
+          <div style="color:var(--t3)">   anomaly_flags: [], effective_evidence: 14.2</div>
+        </div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;overflow:hidden">
+        <div style="padding:20px 24px;border-bottom:1px solid var(--brd)">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--amber);text-transform:uppercase;margin-bottom:8px">Install Preflight</div>
+          <div style="font-weight:700;font-size:15px;color:var(--t1)">Safe-to-install decision before execution</div>
+          <div style="font-size:13px;color:var(--t2);margin-top:6px">Query trust before installing any MCP server, GitHub App, npm package, or Chrome extension. Publisher identity, permission class, and behavioral history in one call.</div>
+        </div>
+        <div style="padding:16px 24px;background:var(--bg-code);font-family:var(--mono);font-size:11px;line-height:1.9">
+          <div style="color:var(--t3)">POST /api/trust/install-preflight</div>
+          <div style="color:var(--t3)">{ "target_type": "mcp_server", "identifier": "github:acme/payments-mcp" }</div>
+          <div style="margin-top:8px;color:var(--green)">→ decision: "allow", risk_level: "low"</div>
+          <div style="color:var(--t3)">   publisher_verified: true, permission_class: "read_only"</div>
+          <div style="color:var(--amber)">   warnings: ["new_publisher_30d"]</div>
+        </div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;overflow:hidden">
+        <div style="padding:20px 24px;border-bottom:1px solid var(--brd)">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:8px">Policy Evaluation</div>
+          <div style="font-weight:700;font-size:15px;color:var(--t1)">Custom trust thresholds per context</div>
+          <div style="font-size:13px;color:var(--t2);margin-top:6px">Define policies that encode your risk tolerance. EP evaluates trust against the policy and returns allow/deny/review — the agent doesn't need to understand trust math.</div>
+        </div>
+        <div style="padding:16px 24px;background:var(--bg-code);font-family:var(--mono);font-size:11px;line-height:1.9">
+          <div style="color:var(--t3)">POST /api/policies/evaluate</div>
+          <div style="color:var(--t3)">{ "policy_id": "pol_highval_electronics", "entity_id": "ent_abc",</div>
+          <div style="color:var(--t3)">  "context": { "value_usd": 4800, "category": "electronics" } }</div>
+          <div style="margin-top:8px;color:var(--green)">→ decision: "allow"</div>
+          <div style="color:var(--t3)">   matched_rule: "high_confidence_high_value_ok"</div>
+          <div style="color:var(--t3)">   evaluated_at: "2026-03-15T14:22:00Z"</div>
+        </div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;overflow:hidden">
+        <div style="padding:20px 24px;border-bottom:1px solid var(--brd)">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin-bottom:8px">Anomaly Detection</div>
+          <div style="font-weight:700;font-size:15px;color:var(--t1)">Behavioral change signals in real time</div>
+          <div style="font-size:13px;color:var(--t2);margin-top:6px">EP tracks behavioral patterns over time. When an entity suddenly changes return rate, category mix, or dispute frequency, an anomaly flag is raised — even if raw score looks fine.</div>
+        </div>
+        <div style="padding:16px 24px;background:var(--bg-code);font-family:var(--mono);font-size:11px;line-height:1.9">
+          <div style="color:var(--t3)">GET /api/entities/ent_abc/anomalies</div>
+          <div style="margin-top:8px;color:var(--red)">→ flags: ["return_rate_spike_7d", "new_category_high_value"]</div>
+          <div style="color:var(--t3)">   baseline_return_rate: 0.04</div>
+          <div style="color:var(--t3)">   current_return_rate: 0.31</div>
+          <div style="color:var(--amber)">   recommendation: "hold_pending_review"</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- VERIFY / BLOCKCHAIN -->
+<section id="verify" style="padding-top:0">
+  <div class="container-md">
+    <div class="tc reveal">
+      <div class="st">// Auditability</div>
+      <div class="sh">Verify any trust record, independently</div>
+      <div class="sd" style="margin:0 auto">Every receipt is part of an immutable SHA-256 chain, Merkle-anchored to Base L2. No trust required — any skeptic can verify the chain independently with just the anchor hash.</div>
+    </div>
+    <div class="reveal" style="margin-top:40px">
+      <div style="display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap">
+
+        <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:12px;padding:20px 24px;text-align:center;min-width:160px">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;margin-bottom:8px">Receipt</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--cyan)">rcpt_a1b2c3</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:6px">SHA-256 hash of<br>all receipt fields</div>
+        </div>
+
+        <div style="padding:0 8px;font-family:var(--mono);font-size:18px;color:var(--t3)">→</div>
+
+        <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:12px;padding:20px 24px;text-align:center;min-width:160px">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;margin-bottom:8px">Linked Chain</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--cyan)">prev_hash + record</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:6px">Each entry references<br>the previous hash</div>
+        </div>
+
+        <div style="padding:0 8px;font-family:var(--mono);font-size:18px;color:var(--t3)">→</div>
+
+        <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:12px;padding:20px 24px;text-align:center;min-width:160px">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;margin-bottom:8px">Merkle Root</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--amber)">0x4f2a...e91c</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:6px">Daily batch of<br>all receipts</div>
+        </div>
+
+        <div style="padding:0 8px;font-family:var(--mono);font-size:18px;color:var(--t3)">→</div>
+
+        <div style="background:var(--bg-card);border:1px solid rgba(96,165,250,0.3);border-radius:12px;padding:20px 24px;text-align:center;min-width:160px">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;margin-bottom:8px">Base L2</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--cyan)">On-chain anchor</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:6px">Immutable. Publicly<br>verifiable. No tokens.</div>
+        </div>
+
+      </div>
+
+      <div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+        <div style="padding:16px 20px;background:var(--bg-card);border:1px solid var(--brd);border-radius:10px">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;margin-bottom:8px">Verify a receipt</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--t2)">GET /api/audit/verify<br>?receipt_id=rcpt_abc</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:8px">Returns the chain proof — anyone can verify without querying EP's servers.</div>
+        </div>
+        <div style="padding:16px 20px;background:var(--bg-card);border:1px solid var(--brd);border-radius:10px">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;margin-bottom:8px">No tokens needed</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--t2)">Base L2 read-only<br>wallet not required</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:8px">Anchoring uses Base purely for immutability. No DeFi, no gas fees for API users.</div>
+        </div>
+        <div style="padding:16px 20px;background:var(--bg-card);border:1px solid var(--brd);border-radius:10px">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;margin-bottom:8px">Tamper-evident</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--t2)">Any modification<br>breaks the chain</div>
+          <div style="font-size:12px;color:var(--t3);margin-top:8px">The anchor hash is the ground truth. EP's database is checked against it on every audit request.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section id="architecture" style="padding-top:0">
+  <div class="container-md">
+    <div class="tc reveal">
+      <div class="st">// System Design</div>
+      <div class="sh">Six-layer architecture</div>
+      <div class="sd" style="margin:0 auto">EP is not a monolith. Each layer has a single responsibility and can be replaced independently. The protocol is the interface — the implementation is open source.</div>
+    </div>
+    <div class="reveal" style="margin-top:40px;display:flex;flex-direction:column;gap:0;border:1px solid var(--brd);border-radius:14px;overflow:hidden">
+
+      <div style="display:grid;grid-template-columns:160px 1fr;border-bottom:1px solid var(--brd)">
+        <div style="padding:20px 24px;background:rgba(96,165,250,0.06);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;margin-bottom:4px">Layer 1</div>
+          <div style="font-weight:700;font-size:14px;color:var(--t1)">Consumption</div>
+        </div>
+        <div style="padding:20px 24px">
+          <div style="font-size:13px;color:var(--t2);margin-bottom:8px">How trust is consumed. MCP server (15 tools) for agents, REST API for services, SDK for direct integration. All consumption surfaces return the same trust profile schema.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-family:var(--mono);font-size:10px;color:var(--cyan);background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);padding:3px 8px;border-radius:4px">MCP (15 tools)</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">REST API</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">TypeScript SDK</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Python SDK</span></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:160px 1fr;border-bottom:1px solid var(--brd)">
+        <div style="padding:20px 24px;background:rgba(167,139,250,0.06);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:4px">Layer 2</div>
+          <div style="font-weight:700;font-size:14px;color:var(--t1)">Trust Engine</div>
+        </div>
+        <div style="padding:20px 24px">
+          <div style="font-size:13px;color:var(--t2);margin-bottom:8px">Policy evaluation, context resolution, and trust profile assembly. Takes a query (entity + context) and returns a fully evaluated trust decision against registered policies.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-family:var(--mono);font-size:10px;color:var(--purple);background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);padding:3px 8px;border-radius:4px">Policy Evaluation</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Context Resolution</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Install Preflight</span></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:160px 1fr;border-bottom:1px solid var(--brd)">
+        <div style="padding:20px 24px;background:rgba(245,158,11,0.06);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--amber);text-transform:uppercase;margin-bottom:4px">Layer 3</div>
+          <div style="font-weight:700;font-size:14px;color:var(--t1)">Scoring</div>
+        </div>
+        <div style="padding:20px 24px">
+          <div style="font-size:13px;color:var(--t2);margin-bottom:8px">Weighted receipt aggregation, behavioral scoring across 10 dimensions, effective evidence calculation, confidence level assignment. Runs on every new receipt and every dispute resolution.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-family:var(--mono);font-size:10px;color:var(--amber);background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);padding:3px 8px;border-radius:4px">4-Factor Weighting</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">10 Dimensions</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Effective Evidence</span></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:160px 1fr;border-bottom:1px solid var(--brd)">
+        <div style="padding:20px 24px;background:rgba(248,113,113,0.06);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin-bottom:4px">Layer 4</div>
+          <div style="font-weight:700;font-size:14px;color:var(--t1)">Fraud</div>
+        </div>
+        <div style="padding:20px 24px">
+          <div style="font-size:13px;color:var(--t2);margin-bottom:8px">Sybil detection, graph analysis, cluster collusion identification, anomaly flagging. Runs asynchronously on the receipt graph and surfaces flags to the trust engine in real time.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-family:var(--mono);font-size:10px;color:var(--red);background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);padding:3px 8px;border-radius:4px">Sybil Detection</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Graph Analysis</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Anomaly Detection</span></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:160px 1fr;border-bottom:1px solid var(--brd)">
+        <div style="padding:20px 24px;background:rgba(52,211,153,0.06);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--green);text-transform:uppercase;margin-bottom:4px">Layer 5</div>
+          <div style="font-weight:700;font-size:14px;color:var(--t1)">Data</div>
+        </div>
+        <div style="padding:20px 24px">
+          <div style="font-size:13px;color:var(--t2);margin-bottom:8px">Receipt storage, entity registry, dispute lifecycle, operator queue, audit log. Supabase (PostgreSQL) with versioned SQL migrations. The schema is public — any party can verify data structure.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-family:var(--mono);font-size:10px;color:var(--green);background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2);padding:3px 8px;border-radius:4px">Supabase / PostgreSQL</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">020 migrations</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Versioned schema</span></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:160px 1fr">
+        <div style="padding:20px 24px;background:rgba(96,165,250,0.04);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;margin-bottom:4px">Layer 6</div>
+          <div style="font-weight:700;font-size:14px;color:var(--t1)">Anchor</div>
+        </div>
+        <div style="padding:20px 24px">
+          <div style="font-size:13px;color:var(--t2);margin-bottom:8px">Daily Merkle root computation over all receipts, Base L2 anchoring for tamper-evidence. The anchor job produces a publicly verifiable proof that trust records have not been modified retroactively.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-family:var(--mono);font-size:10px;color:var(--cyan);background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);padding:3px 8px;border-radius:4px">Base L2</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">SHA-256 chain</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Merkle anchoring</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
 <!-- ECOSYSTEM -->
 <section id="ecosystem" style="padding-top:0">
   <div class="container">
