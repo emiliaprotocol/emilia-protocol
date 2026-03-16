@@ -162,9 +162,9 @@ export default function AppealPage() {
             <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" style={{ color: '#4a4f6a', textDecoration: 'none' }}>GitHub</a>
           </div>
         </nav>
-    <div style={{...s.page, paddingTop: 24}}>
-      <div style={{...s.container}}>
-        <div style={{...s.principle}}>EP MUST NEVER MAKE TRUST MORE POWERFUL THAN APPEAL</div>
+    <div style={s.page}>
+      <div style={s.container}>
+        <div style={s.principle}>EP MUST NEVER MAKE TRUST MORE POWERFUL THAN APPEAL</div>
         <h1 style={s.h1}>Trust & Appeal</h1>
         <p style={s.sub}>
           Look up any entity's trust profile, report a trust issue, check a dispute, or appeal a resolution.
