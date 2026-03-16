@@ -199,7 +199,7 @@ paths:
                   type: string
                 entity_type:
                   type: string
-                  enum: [agent, merchant, service_provider, marketplace, software, mcp_server]
+                  enum: [agent, merchant, service_provider, github_app, github_action, mcp_server, npm_package, chrome_extension, shopify_app, marketplace_plugin, agent_tool]
                 description:
                   type: string
       responses:

@@ -158,7 +158,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
 
     <div class="callout info">
       <strong>Base URL:</strong> <code>https://emiliaprotocol.ai</code> &nbsp;·&nbsp;
-      <strong>Auth:</strong> <code>Authorization: Bearer ep_live_...</code> (write operations only) &nbsp;·&nbsp;
+      <strong>Auth:</strong> Most write endpoints require <code>Authorization: Bearer ep_live_...</code>. <strong>Entity registration is public</strong> and returns your first API key &nbsp;·&nbsp;
       <strong>Read endpoints are public</strong> — no API key needed.
     </div>
     <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:16px 20px;margin:16px 0;font-size:13px;color:var(--t2)">
@@ -183,7 +183,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
       <span class="prop">"command"</span>: <span class="str">"npx"</span>,
       <span class="prop">"args"</span>: [<span class="str">"-y"</span>, <span class="str">"@emilia-protocol/mcp-server"</span>],
       <span class="prop">"env"</span>: {
-        <span class="prop">"EP_API_KEY"</span>: <span class="str">"ep_live_..."</span>  <span class="cm">// from /api/entities/register</span>
+        <span class="prop">"EP_API_KEY"</span>: <span class="str">"ep_live_..."</span>  <span class="cm">// returned when you register your entity</span>
       }
     }
   }
@@ -245,7 +245,8 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
 console.<span class="fn">log</span>(profile.current_confidence); <span class="cm">// 'confident' | 'emerging' | 'provisional' | 'insufficient' | 'pending'</span>
 
 <span class="cm">// Evaluate against a policy</span>
-<span class="kw">const</span> result = <span class="kw">await</span> ep.<span class="fn">evaluateTrust</span>({ entityId: <span class="str">'rex-booking-v1'</span>, {
+<span class="kw">const</span> result = <span class="kw">await</span> ep.<span class="fn">evaluateTrust</span>({
+  entityId: <span class="str">'rex-booking-v1'</span>,
   policy: <span class="str">'standard'</span>,
   context: { category: <span class="str">'electronics'</span>, value_band: <span class="str">'high'</span> },
 });
@@ -294,7 +295,7 @@ print(preflight[<span class="str">"decision"</span>])  <span class="cm"># allow 
     <div class="code-block">
       <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">Shell</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
       <div class="code-body"><pre><span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-flag">-X POST</span> https://emiliaprotocol.ai/api/entities/register \
-  <span class="bash-flag">-H</span> <span class="bash-str">"Authorization: Bearer ep_live_YOUR_KEY"</span> \
+
   <span class="bash-flag">-H</span> <span class="bash-str">"Content-Type: application/json"</span> \
   <span class="bash-flag">-d</span> <span class="bash-str">'{
     "entity_id": "acme-merchant-v1",
@@ -497,7 +498,7 @@ profile.<span class="prop">anomaly</span>               <span class="cm">// pres
 
     <!-- API REFERENCE -->
     <h2 id="api-reference">API Reference</h2>
-    <p>All endpoints are at <code>https://emiliaprotocol.ai</code>. GET endpoints are public. POST write endpoints require <code>Authorization: Bearer ep_live_...</code>.</p>
+    <p>All endpoints are at <code>https://emiliaprotocol.ai</code>. GET endpoints are public. POST write endpoints require <code>Authorization: Bearer ep_live_...</code>. Exception: <code>/api/entities/register</code> is public and returns the API key.</p>
 
     <h3>Trust</h3>
     <div class="api-row"><span class="api-method get">GET</span><div><div class="api-path">/api/trust/profile/:entityId</div><div class="api-desc">Full trust profile with behavioral rates, signals, provenance, disputes, and anomaly state</div></div></div>

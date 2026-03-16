@@ -22,6 +22,8 @@ try {
 }
 
 export async function GET() {
+  const policyCount = Object.keys(TRUST_POLICIES).length;
+
   try {
     const supabase = getServiceClient();
 
@@ -31,7 +33,6 @@ export async function GET() {
       .eq('status', 'active');
 
     const total = count || 2;
-    const policyCount = Object.keys(TRUST_POLICIES).length;
 
     return NextResponse.json({
       total_entities: total,
@@ -48,7 +49,7 @@ export async function GET() {
       next_available: 3,
       trust_surfaces: proofMetrics?.trust_surfaces ?? null,
       automated_checks: proofMetrics?.automated_checks ?? null,
-      trust_policies: 8,
+      trust_policies: policyCount,
       mcp_tools: proofMetrics?.mcp_tools ?? null,
       proof_metrics_status: proofMetrics ? 'ok' : 'missing',
     });

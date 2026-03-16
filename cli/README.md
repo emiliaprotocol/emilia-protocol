@@ -25,7 +25,8 @@ export EP_API_KEY=ep_live_your_key_here         # for write operations
 ## Commands
 
 ```bash
-# Read operations (no API key needed)
+# Public operations (no API key needed)
+ep register my-agent --name "My Shopping Agent" --type agent
 ep profile merchant-xyz
 ep evaluate merchant-xyz --policy strict
 ep preflight mcp-server-abc --policy mcp_server_safe_v1
@@ -34,8 +35,7 @@ ep dispute ep_disp_abc123
 ep policies
 ep health
 
-# Write operations (EP_API_KEY required)
-ep register my-agent --name "My Shopping Agent" --type agent
+# Authenticated write operations (EP_API_KEY required)
 ep submit merchant-xyz --ref order_123 --behavior completed
 ```
 
