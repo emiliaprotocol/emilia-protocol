@@ -147,7 +147,7 @@ const TOOLS = [
       type: 'object',
       properties: {
         query: { type: 'string', description: 'Search query' },
-        entity_type: { type: 'string', enum: ['agent', 'merchant', 'service_provider'] },
+        entity_type: { type: 'string', enum: ['agent','merchant','service_provider','github_app','github_action','mcp_server','npm_package','chrome_extension','shopify_app','marketplace_plugin','agent_tool'] },
       },
       required: ['query'],
     },
@@ -171,7 +171,7 @@ const TOOLS = [
       properties: {
         entity_id: { type: 'string', description: 'Slug (lowercase, hyphens)' },
         display_name: { type: 'string' },
-        entity_type: { type: 'string', enum: ['agent', 'merchant', 'service_provider'] },
+        entity_type: { type: 'string', enum: ['agent','merchant','service_provider','github_app','github_action','mcp_server','npm_package','chrome_extension','shopify_app','marketplace_plugin','agent_tool'] },
         description: { type: 'string' },
         capabilities: { type: 'array', items: { type: 'string' } },
       },
@@ -185,7 +185,7 @@ const TOOLS = [
       type: 'object',
       properties: {
         limit: { type: 'number', description: 'Max entities (default 10, max 50)' },
-        entity_type: { type: 'string', enum: ['agent', 'merchant', 'service_provider'] },
+        entity_type: { type: 'string', enum: ['agent','merchant','service_provider','github_app','github_action','mcp_server','npm_package','chrome_extension','shopify_app','marketplace_plugin','agent_tool'] },
       },
     },
   },
