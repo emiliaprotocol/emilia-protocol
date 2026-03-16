@@ -22,8 +22,12 @@ export async function GET() {
     return NextResponse.json({
       total_entities: total,
       next_available: total + 1,
+      trust_surfaces: 10,
+      automated_checks: 145,
+      trust_policies: 8,
+      mcp_tools: 14,
     });
   } catch (err) {
-    return NextResponse.json({ total_entities: 2, next_available: 3 });
+    return NextResponse.json({ total_entities: 2, next_available: 3, trust_surfaces: 10, automated_checks: 145, trust_policies: 8, mcp_tools: 14 });
   }
 }

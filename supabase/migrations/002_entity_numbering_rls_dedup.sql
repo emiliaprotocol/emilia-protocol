@@ -237,7 +237,7 @@ begin
 end;
 $$ language plpgsql stable;
 
--- Match entities to a need (relevance * reputation)
+-- Match entities to a need (relevance * compatibility score)
 create or replace function match_entities_to_need(
   query_embedding extensions.vector(1536),
   min_score float default 0,
@@ -256,7 +256,7 @@ begin
     e.entity_id,
     e.display_name,
     e.emilia_score,
-    -- 60% relevance + 40% reputation
+    -- 60% relevance + 40% compatibility score
     round(((1 - (e.capability_embedding <=> query_embedding)) * 0.6
       + (e.emilia_score / 100.0) * 0.4)::numeric, 3)::float as match_score
   from entities e

@@ -7,7 +7,7 @@
 create extension if not exists vector with schema extensions;
 
 -- =============================================================================
--- ENTITIES — every commercial actor in the agent economy
+-- ENTITIES — every commercial actor in machine-mediated systems
 -- Merchants, agents, service providers, anything that transacts
 -- =============================================================================
 create table entities (

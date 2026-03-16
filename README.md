@@ -1,7 +1,7 @@
 # EMILIA Protocol
 
 [![CI](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-131%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-145%20checks-brightgreen)]()
 [![Conformance](https://img.shields.io/badge/conformance-JS%20%2B%20Python-blue)]()
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
@@ -222,14 +222,13 @@ Establishment is **historical** — computed over all receipts. Scoring is **cur
 | Deadline enforcement (cron) | ✅ Live — bilateral 48h, disputes 7d, continuity 30d |
 | Health endpoint | ✅ Live |
 | MCP server (14 tools) | ✅ Live |
-| Policy registry | ✅ Live |
 | Human trust console | ✅ Live — profile + preflight + report |
 | EP-IX identity continuity | 📋 Spec complete, runtime skeleton shipped, tables deployed |
 | EP-IX continuity-aware evaluator | ✅ Live — lineage, inherited disputes, whitewashing flags |
 | GitHub host adapter | 📋 Source complete, awaiting pilot integration |
 | Operator role model | ✅ Live — 7 roles with explicit permissions |
 | Evidence visibility tiers | ✅ Live — public/redacted/restricted/operator-only |
-| Formal state machines | ✅ Live — disputes (9 states) + continuity (7 states) |
+| Formal state machines | ✅ Live — disputes (10 states) + continuity (7 states) |
 | Abuse detection | ✅ Live — repeated reports, brigading, retaliatory filing, flooding |
 | Operator audit trail | ✅ Live — append-only, before/after state, queryable API |
 | Policy registry | ✅ Live — GET /api/policies |
@@ -248,7 +247,7 @@ EP is verifiable, not just claimed.
 | `tests/integration.test.js` | 19 | Route-level: provenance, context, disputes, software policies |
 | `tests/adversarial.test.js` | 14 | Sybil farms, reciprocal loops, cluster collusion, trust farming, damage ceilings |
 | `tests/e2e-flows.test.js` | 15 | Full lifecycle: register → receipts → profile → policy → dispute → reversal |
-| `conformance/conformance.test.js` | 23 | Canonical hash vectors, scoring fixtures, policy replay, cross-impl verification |
+| `conformance/conformance.test.js` | 26 | Canonical hash vectors, scoring fixtures, policy replay, establishment rules, trust-profile determinism |
 
 **Cross-language:** `conformance/verify_hashes.py` produces identical SHA-256 outputs to the JavaScript reference — proving the protocol is language-independent.
 
@@ -256,7 +255,7 @@ EP is verifiable, not just claimed.
 
 **Falsifiable by design:** anyone can run the conformance suite to prove the evaluator is lying. Trust that cannot be independently verified is not trust — it is faith.
 
-Run: `npx vitest run` (131 tests) + `python3 conformance/verify_hashes.py` (4 cross-language checks)
+Run: `npx vitest run` (145 automated checks) + `python3 conformance/verify_hashes.py` (4 cross-language hash checks)
 
 ## Docs
 

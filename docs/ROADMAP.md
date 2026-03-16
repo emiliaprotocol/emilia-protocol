@@ -61,7 +61,7 @@
 - [x] SDK publish workflows (npm + PyPI)
 
 ### Conformance
-- [x] 131 tests across 7 test suites
+- [x] 145 automated checks across 7 test suites
 - [x] 14 adversarial tests (Sybil, reciprocal loops, cluster collusion, trust farming)
 - [x] Trust profile determinism fixtures
 - [x] Cross-language hash verification (JavaScript + Python)

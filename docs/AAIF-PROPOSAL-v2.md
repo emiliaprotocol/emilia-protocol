@@ -28,7 +28,7 @@ We propose a **Trust Evaluation and Appeals Working Group** within AAIF to devel
 
 EMILIA Protocol (EP) is offered as the **initial reference implementation and draft specification** — not as a finished standard, but as the most complete working starting point available:
 - A deployed canonical implementation (emiliaprotocol.ai)
-- 131 passing tests across 7 test suites including adversarial and E2E flows
+- 145 automated checks across 7 suites including adversarial, end-to-end, and conformance replay
 - Cross-language conformance verification (JavaScript + Python)
 - An MCP server with 14 trust evaluation tools
 - Install preflight for software entities (GitHub Apps, MCP servers, npm packages)
@@ -89,14 +89,14 @@ EP is a **composable layer**, not a competing protocol. It attaches to ACP, is u
 | Context keys on receipts | Deployed — task_type, category, geo, modality, value_band, risk_class |
 | Current vs historical confidence separation | Deployed — two distinct objects in all API surfaces |
 | Policy-native needs | Deployed — needs accept JSONB trust policies, claim evaluates against them |
-| Confidence-aware search and leaderboard | Deployed — rank by confidence, evidence, or evidence; filter by min_confidence |
+| Confidence-aware search and leaderboard | Deployed — rank by confidence or effective evidence; filter by min_confidence |
 | Receipt immutability (DB triggers) | Deployed — content changes rejected, anchor metadata allowed |
 | Canonical JSON hashing (cross-language) | Deployed — sorted keys, deterministic, context included |
 | Identity-aware write throttling | Deployed — API key prefix + IP on writes, IP-only on reads |
 | Server-derived owner identity | Deployed — SHA-256 of client IP, not caller-supplied |
-| MCP server (8 tools, context-aware) | Published on npm — trust-profile-first, context forwarded |
+| MCP server (14 tools, context-aware) | Published on npm — trust-profile-first, context forwarded |
 | SDKs | Planned / optional future implementations |
-| Test suites (3 files, ~65 tests) | Complete — scoring, trust profiles, protocol surfaces, hash determinism |
+| Test suites (7 suites, 145 automated checks) | Complete — scoring, trust profiles, protocol surfaces, adversarial resistance, end-to-end flows, conformance |
 | NIST ITL Concept Paper | Prepared (April 2 deadline) |
 | Shopify DTC integration spec | Complete — webhook mapping, receipt mapping, MVP roadmap |
 

@@ -51,36 +51,49 @@ npx vitest run conformance/  # Run conformance suite only
 
 ```
 lib/
-  scoring.js          — v1 compatibility scoring + receipt hashing
-  scoring-v2.js       — v2 behavioral-first trust profiles + policy evaluation
-  create-receipt.js   — canonical receipt pipeline
-  sybil.js            — fraud detection + graph analysis
-  rate-limit.js       — Upstash Redis + in-memory fallback
+  canonical-evaluator.js  — ONE read brain (all trust queries route here)
+  canonical-writer.js     — ONE write brain (all trust-changing writes route here)
+  scoring-v2.js           — behavioral-first trust profiles + policy evaluation
+  scoring.js              — v1 compatibility scoring + receipt hashing
+  procedural-justice.js   — roles, state machines, abuse detection, audit trail
+  ep-ix.js                — identity continuity operations
+  create-receipt.js       — canonical receipt pipeline
+  blockchain.js           — Merkle root anchoring (Base L2)
+  sybil.js                — fraud detection + graph analysis
+  rate-limit.js           — Upstash Redis + in-memory fallback
+  adapters/               — host adapters (GitHub, npm, MCP, Chrome)
 
 app/api/
-  trust/profile/      — GET canonical trust profile (primary read surface)
-  trust/evaluate/     — POST policy evaluation (primary decision surface)
-  score/              — GET compatibility score (legacy)
-  receipts/submit/    — POST receipt submission
-  entities/           — register, search
-  needs/              — broadcast, claim, rate
-  leaderboard/        — GET ranked entities
+  trust/profile/          — GET canonical trust profile (primary read surface)
+  trust/evaluate/         — POST policy evaluation (primary decision surface)
+  trust/install-preflight/ — POST software install preflight (EP-SX)
+  score/                  — GET compatibility score (legacy)
+  receipts/submit/        — POST receipt submission
+  disputes/               — file, status, report
+  entities/               — register, search
+  policies/               — GET policy registry
+  leaderboard/            — GET ranked entities
+  cron/expire/            — deadline enforcement
 
 conformance/
-  fixtures.json       — canonical test inputs + expected outputs
-  conformance.test.js — conformance test runner
-  README.md           — how to use the conformance suite
+  fixtures.json           — canonical test vectors
+  conformance.test.js     — conformance test runner
+  verify_hashes.py        — cross-language hash verification
+  README.md               — how to use the conformance suite
 
 tests/
-  scoring.test.js     — v1 scoring tests
-  scoring-v2.test.js  — v2 trust profile + policy tests
-  protocol.test.js    — protocol surface + hash determinism tests
+  scoring.test.js         — v1 scoring tests
+  scoring-v2.test.js      — v2 trust profile + policy tests
+  protocol.test.js        — protocol surface + hash determinism tests
+  integration.test.js     — route-level integration tests
+  adversarial.test.js     — Sybil, reciprocal, cluster, trust farming tests
+  e2e-flows.test.js       — full lifecycle end-to-end tests
 
 docs/
-  EP-CORE-RFC.md      — canonical specification (v1.1)
-  EP-VISION.md        — strategic architecture
-  EP-ACP-EXTENSION.md — ACP trust extension
-  AAIF-PROPOSAL-v2.md — AAIF working group proposal
+  EP-CORE-RFC.md          — canonical specification (v1.1)
+  EP-SX-SOFTWARE-TRUST.md — software trust extension
+  EP-IX-IDENTITY-CONTINUITY.md — identity continuity spec
+  AAIF-PROPOSAL-v2.md     — AAIF working group proposal
 ```
 
 ## Style
@@ -92,9 +105,9 @@ docs/
 
 ## What NOT to contribute (yet)
 
-- **v3/v4 features** (bilateral attestations, dispute lifecycle, relationship trust) — these are on the roadmap but the spec isn't stable enough yet
-- **UI/UX redesigns** — the landing page and entity explorer are product surfaces, not protocol surfaces
 - **Alternative scoring algorithms** — the weight model is published and versioned; changes go through the spec process
+- **UI/UX redesigns** — the landing page and entity explorer are product surfaces, not protocol surfaces
+- **Breaking schema changes** — receipt schema and trust profile format changes require a formal spec proposal
 
 ## License
 
