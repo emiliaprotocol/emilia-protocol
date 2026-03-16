@@ -87,10 +87,10 @@ Claims must produce at least one recognized derived signal. Junk claims with unk
 
 ## 3. Receipt Weighting
 
-Each receipt carries a three-factor weight:
+Each receipt carries a four-factor weight:
 
 ```
-receipt_weight = submitter_weight × time_weight × graph_weight
+receipt_weight = submitter_weight × time_weight × graph_weight × provenance_weight
 ```
 
 | Factor | Formula | Purpose |
@@ -98,6 +98,7 @@ receipt_weight = submitter_weight × time_weight × graph_weight
 | Submitter weight | Established: `compat_score/100`. Unestablished: `0.1` | Sybil resistance |
 | Time weight | `max(0.05, 0.5^(age_days/90))` | Recent receipts matter more |
 | Graph weight | `0.1` to `1.0` from fraud graph analysis | Penalize suspicious patterns |
+| Provenance weight | `0.3` to `1.0` across 6 tiers | Higher-fidelity evidence sources carry more weight |
 
 Graph weight penalties:
 - Closed-loop (A↔B mutual scoring): `0.4x`

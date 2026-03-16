@@ -2,8 +2,8 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 export const metadata = {
-  title: 'EP-SPEC-v1.0 — EMILIA Protocol Specification',
-  description: 'EMILIA Protocol specification — trust profiles, policy evaluation, and appeals for machine counterparties and software.',
+  title: 'EP Core RFC v1.1 — EMILIA Protocol Specification',
+  description: 'EMILIA Protocol specification — trust profiles, policy evaluation, and appeals for counterparties, software, and machine actors.',
 };
 
 /**
@@ -136,7 +136,7 @@ function inlineFormat(text) {
 }
 
 export default function SpecPage() {
-  const mdPath = join(process.cwd(), 'EP-SPEC-v1.md');
+  const mdPath = join(process.cwd(), 'docs', 'EP-CORE-RFC.md');
   const md = readFileSync(mdPath, 'utf8');
   const html = mdToHtml(md);
 
@@ -242,14 +242,14 @@ export default function SpecPage() {
           <div style={{ display: 'flex', gap: 24 }}>
             <a href="/">HOME</a>
             <a href="https://github.com/emiliaprotocol/emilia-protocol">GITHUB</a>
-            <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/EP-SPEC-v1.md">RAW</a>
+            <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/EP-CORE-RFC.md">RAW</a>
           </div>
         </div>
         <div className="spec-content">
-          <div className="spec-badge">EP-SPEC v1.0 · APACHE 2.0</div>
+          <div className="spec-badge">EP CORE RFC v1.1 · APACHE 2.0</div>
           <div dangerouslySetInnerHTML={{ __html: html }} />
           <div className="spec-footer">
-            EMILIA Protocol Specification v1.0 — Apache 2.0 License
+            EMILIA Protocol — EP Core RFC v1.1 — Apache 2.0 License
           </div>
         </div>
       </body>

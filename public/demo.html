@@ -99,7 +99,7 @@
     <a href="/" class="back">&larr; emiliaprotocol.ai</a>
     <div class="tag">Interactive Demo</div>
     <h1><span>Trust Evaluation</span> in 5 Steps</h1>
-    <p>See EMILIA Protocol working live. Every button calls the real API. No mocks. No simulations. This is the protocol running in production.</p>
+    <p>See EMILIA Protocol working live. Every button calls the real API. No mocks — this is the protocol running against real infrastructure.</p>
   </div>
 
   <!-- STEP 1: TRUST PROFILE -->
@@ -114,7 +114,7 @@
     <div class="term">
       <div class="term-bar">
         <div class="term-dots"><span></span><span></span><span></span></div>
-        <div class="term-label">GET /api/trust/profile/:entityId · MCP: ep_trust_profile</div>
+        <div class="term-label">GET /api/trust/profile/:entityId</div>
       </div>
       <div class="term-body">
         <div class="code-block"><span class="comment">// Try a registered entity</span>
@@ -145,7 +145,7 @@
     <div class="term">
       <div class="term-bar">
         <div class="term-dots"><span></span><span></span><span></span></div>
-        <div class="term-label">POST /api/trust/evaluate · MCP: ep_trust_evaluate</div>
+        <div class="term-label">POST /api/trust/evaluate</div>
       </div>
       <div class="term-body">
         <div class="code-block"><span class="comment">// Evaluate against "strict" policy</span>
@@ -179,7 +179,7 @@
     <div class="term">
       <div class="term-bar">
         <div class="term-dots"><span></span><span></span><span></span></div>
-        <div class="term-label">POST /api/trust/install-preflight · MCP: ep_install_preflight</div>
+        <div class="term-label">POST /api/trust/install-preflight</div>
       </div>
       <div class="term-body">
         <div class="code-block"><span class="comment">// Should I install this MCP server in a private workspace?</span>
@@ -218,7 +218,7 @@
     <div class="term">
       <div class="term-bar">
         <div class="term-dots"><span></span><span></span><span></span></div>
-        <div class="term-label">POST /api/disputes/report · MCP: ep_report_trust_issue</div>
+        <div class="term-label">POST /api/disputes/report</div>
       </div>
       <div class="term-body">
         <div class="code-block"><span class="comment">// Report a trust issue — no auth required</span>
@@ -253,7 +253,7 @@
     <div class="term">
       <div class="term-bar">
         <div class="term-dots"><span></span><span></span><span></span></div>
-        <div class="term-label">GET /api/policies · MCP: ep_list_policies</div>
+        <div class="term-label">GET /api/policies</div>
       </div>
       <div class="term-body">
         <div class="code-block"><span class="comment">// List all available trust policies</span>
@@ -316,7 +316,7 @@ async function runStep1(btn) {
       <div>Delivery: <span class="val">${sg.delivery_accuracy}</span> · Product: <span class="val">${sg.product_accuracy}</span> · Price: <span class="val">${sg.price_integrity}</span></div>` : ''}
       ${prov.breakdown ? `<div style="margin-top:8px;"><span class="label">Provenance</span></div>
       <div>${Object.entries(prov.breakdown).map(([k,v]) => `${k}: <span class="val">${v}</span>`).join(' · ')}</div>` : ''}
-      <div style="margin-top:12px;color:var(--t3);font-size:10px;">Legacy compatibility score (fallback only): ${d.compat_score || 'N/A'}</div>
+      <div style="margin-top:12px;color:var(--t3);font-size:10px;">Legacy compat: ${d.compat_score || 'N/A'}</div>
     </div>`;
   } catch(e) {
     res.innerHTML = `<div class="result-card"><span class="warn">${esc(String(e))}</span></div>`;

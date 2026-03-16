@@ -9,7 +9,7 @@ Hello AAIF team,
 
 I'm reaching out to share a proposal for a working group focused on trust evaluation and appeals for machine counterparties and software.
 
-The standards stack is getting stronger around tool access, communication, and commerce. What remains unstandardized is the trust layer: how a system evaluates whether a counterparty, plugin, MCP server, marketplace app, seller, merchant, or software component is trustworthy enough for a given context and policy.
+The standards stack is getting stronger around tool access, communication, and commerce. What still appears underdefined is the trust layer: how a system evaluates whether a counterparty, plugin, MCP server, marketplace app, seller, merchant, or software component is trustworthy enough for a given context and policy.
 
 We've been developing EMILIA Protocol (EP) as an open protocol for trust profiles, policy evaluation, install preflight, disputes, and appeals. The goal is not to ask AAIF to adopt a product, but to offer a draft protocol and working reference implementation that could help shape a neutral standard in the open.
 
@@ -38,7 +38,7 @@ emiliaprotocol.ai
 
 Hello CAISI team,
 
-I'm writing to share a protocol effort that is directly relevant to current standards work around AI agents, software trust, and machine-mediated decision systems.
+I'm writing to share a protocol effort that may be relevant to NIST's work on AI agents, software trust, identity, and machine-mediated decision systems.
 
 EMILIA Protocol (EP) is an open protocol for trust evaluation and appeals across counterparties, software, and machine actors. It is meant to complement identity and authorization standards by addressing a distinct question: not only who an actor is or what it is allowed to do, but whether it should be trusted for a given context and policy.
 

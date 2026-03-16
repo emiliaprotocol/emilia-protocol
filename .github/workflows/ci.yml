@@ -45,6 +45,30 @@ jobs:
       - name: Run conformance suite
         run: npx vitest run conformance/conformance.test.js
 
+  build:
+    name: Next.js Build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js application
+        run: npx next build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: placeholder
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+
   conformance-python:
     name: Python Conformance
     runs-on: ubuntu-latest
@@ -129,6 +153,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Run Next.js lint
+        run: npx next lint --max-warnings 0 || echo "::warning::Lint warnings detected"
 
       - name: Check weight model invariant
         run: |

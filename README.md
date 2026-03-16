@@ -1,7 +1,7 @@
 # EMILIA Protocol
 
 [![CI](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-145%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-131%20passing-brightgreen)]()
 [![Conformance](https://img.shields.io/badge/conformance-JS%20%2B%20Python-blue)]()
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
@@ -40,8 +40,6 @@ POST /api/trust/evaluate
     }
   }
 ```
-
-> `score` is a legacy-compatible headline field. The canonical output is the **trust profile** (behavioral rates, signal breakdowns, provenance composition) plus the **policy result** (pass/fail with reasons).
 
 ### Install Preflight (EP-SX: Software Trust)
 
@@ -258,7 +256,7 @@ EP is verifiable, not just claimed.
 
 **Falsifiable by design:** anyone can run the conformance suite to prove the evaluator is lying. Trust that cannot be independently verified is not trust — it is faith.
 
-Run: `npx vitest run` (142 tests) + `python3 conformance/verify_hashes.py` (4 cross-language checks)
+Run: `npx vitest run` (131 tests) + `python3 conformance/verify_hashes.py` (4 cross-language checks)
 
 ## Docs
 

@@ -14,7 +14,7 @@
 MCP defines how agents connect to tools. A2A defines how agents communicate. UCP and ACP define how agents transact. No standard defines how any of these principals should decide whether to trust each other.
 
 This is not a gap. It is the gap. Without portable trust evaluation:
-- Agents, systems, and human operators cannot make safe trust decisions about counterparties, software, or services without a portable trust layer
+- Agents and systems cannot make safe autonomous or semi-autonomous decisions about counterparties, plugins, software, or services without a portable trust layer
 - Platforms become trust gatekeepers by default — recreating the conflicts of interest that corrupted every previous trust system
 - There is no due process when trust is wrong — no appeal, no explanation, no recourse
 
@@ -28,7 +28,7 @@ We propose a **Trust Evaluation and Appeals Working Group** within AAIF to devel
 
 EMILIA Protocol (EP) is offered as the **initial reference implementation and draft specification** — not as a finished standard, but as the most complete working starting point available:
 - A deployed canonical implementation (emiliaprotocol.ai)
-- 145 passing tests across 7 test suites including adversarial and E2E flows
+- 131 passing tests across 7 test suites including adversarial and E2E flows
 - Cross-language conformance verification (JavaScript + Python)
 - An MCP server with 14 trust evaluation tools
 - Install preflight for software entities (GitHub Apps, MCP servers, npm packages)
@@ -54,7 +54,7 @@ EMILIA Protocol (EP) is offered as the **initial reference implementation and dr
 1. **Trust Receipt Schema** — Append-only, cryptographically hashed transaction records with mandatory `transaction_ref`, optional context keys (`task_type`, `category`, `geo`, `modality`, `value_band`, `risk_class`)
 2. **Trust Profile** — The primary protocol output. Multi-dimensional: behavioral rates (completion, retry, abandon, dispute), per-signal breakdowns, consistency, anomaly alerts, confidence levels
 3. **Trust Policies** — Portable decision frameworks. Agents and systems evaluate counterparties, software, and machine actors against structured policies, not arbitrary numeric thresholds. Built-in: `strict`, `standard`, `permissive`, `discovery`
-4. **Receipt Weighting** — Three-factor: submitter credibility × time decay × graph health. Effective-evidence dampening prevents Sybil attacks
+4. **Receipt Weighting** — Four-factor: submitter credibility × time decay × graph health × provenance tier. Effective-evidence dampening prevents Sybil attacks
 5. **Establishment & Confidence** — Historical establishment (permanent, all receipts) separated from current confidence (rolling window). Two distinct protocol objects
 6. **Sybil Resistance** — 4 layers: IP-based rate limiting, graph analysis (closed-loop/cluster/thin-graph penalties), submitter credibility (unestablished = 0.1x), effective-evidence dampening
 7. **Cryptographic Integrity** — Canonical JSON with sorted keys, SHA-256 receipt chains, Merkle anchoring, DB immutability triggers

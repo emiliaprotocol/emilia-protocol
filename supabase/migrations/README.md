@@ -27,7 +27,7 @@ Run in order in Supabase SQL Editor. Each migration is idempotent where possible
 - `needs.context` — defined as TEXT in 001, upgraded to JSONB in 012. Final type is **JSONB**.
 - `needs.trust_policy` — added as JSONB in 011. Accepts string policy names or full JSON policy objects.
 - `receipts.context` — added as JSONB in 010. Included in canonical hash.
-- `receipts.graph_weight` — added in 009. Used in three-factor receipt weighting.
+- `receipts.graph_weight` — added in 009. Used in four-factor receipt weighting.
 - `receipts.dispute_status` — added in 013. Tracks challenge lifecycle.
 - `entities.dispute_count` — added in 013. Auto-incremented by trigger.
 - `receipts.provenance_tier` — added in 014. Six tiers from self_attested to oracle_verified.
