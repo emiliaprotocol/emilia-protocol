@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Quickstart — EMILIA Protocol</title>
 <meta name="description" content="Get EP integrated in 5 minutes. Add the MCP server to your agent, call the REST API, or submit your first receipt.">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 34 34' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='7' y='5' width='2.5' height='24' rx='1.25' fill='%2300d4ff'/%3E%3Crect x='9.5' y='5' width='16' height='2.5' rx='1.25' fill='%2300d4ff'/%3E%3Crect x='9.5' y='15.5' width='12' height='2.5' rx='1.25' fill='%23ffd700'/%3E%3Crect x='9.5' y='26.5' width='14' height='2.5' rx='1.25' fill='%2300d4ff'/%3E%3C/svg%3E" integrity="">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 34 34' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='7' y='5' width='2.5' height='24' rx='1.25' fill='%2360a5fa'/%3E%3Crect x='9.5' y='5' width='16' height='2.5' rx='1.25' fill='%2360a5fa'/%3E%3Crect x='9.5' y='15.5' width='12' height='2.5' rx='1.25' fill='%23f59e0b'/%3E%3Crect x='9.5' y='26.5' width='14' height='2.5' rx='1.25' fill='%2360a5fa'/%3E%3C/svg%3E" integrity="">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
-:root{--bg:#05060a;--bg-card:#0e1120;--brd:rgba(255,255,255,0.06);--brd-a:rgba(120,200,255,0.15);--t1:#e8eaf0;--t2:#7a809a;--t3:#4a4f6a;--cyan:#00d4ff;--cyan-d:rgba(0,212,255,0.08);--gold:#ffd700;--green:#00ff88;--amber:#ff9f1c;--red:#ff3b3b;--mono:'JetBrains Mono',monospace;--disp:'Outfit',sans-serif;--body:'Space Grotesk',sans-serif}
+:root{--bg:#000000;--bg-card:#0f0f0f;--brd:rgba(255,255,255,0.08);--brd-a:rgba(96,165,250,0.25);--t1:#f0f4ff;--t2:#94a3b8;--t3:#475569;--cyan:#60a5fa;--cyan-d:rgba(96,165,250,0.1);--gold:#f59e0b;--green:#34d399;--amber:#f59e0b;--red:#f87171;--mono:'JetBrains Mono',monospace;--disp:'Outfit',sans-serif;--body:'Space Grotesk',sans-serif}
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--t1);font-family:var(--body);-webkit-font-smoothing:antialiased;line-height:1.6}
@@ -29,7 +29,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:14px 40px;display:fl
 .sidebar ul{list-style:none;margin-bottom:28px}
 .sidebar ul li a{display:block;font-family:var(--mono);font-size:12px;color:var(--t2);padding:6px 12px;border-radius:6px;text-decoration:none;transition:all .2s;border-left:2px solid transparent}
 .sidebar ul li a:hover{color:var(--t1);background:rgba(255,255,255,.03)}
-.sidebar ul li a.active{color:var(--cyan);border-left-color:var(--cyan);background:rgba(0,212,255,.04)}
+.sidebar ul li a.active{color:var(--cyan);border-left-color:var(--cyan);background:rgba(96,165,250,.04)}
 
 .content{padding:56px 64px;max-width:860px}
 h1{font-family:var(--disp);font-weight:900;font-size:clamp(32px,4vw,52px);letter-spacing:-2px;line-height:1;margin-bottom:16px}
@@ -55,13 +55,13 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
 .code-dots span:nth-child(1){background:#ff5f57}.code-dots span:nth-child(2){background:#febc2e}.code-dots span:nth-child(3){background:#28c840}
 .code-lang{font-size:10px;letter-spacing:1px;color:var(--t3);text-transform:uppercase}
 .code-copy{font-size:10px;color:var(--t3);cursor:pointer;border:1px solid var(--brd);border-radius:4px;padding:3px 8px;transition:all .2s;background:transparent}
-.code-copy:hover{color:var(--cyan);border-color:rgba(0,212,255,.3)}
+.code-copy:hover{color:var(--cyan);border-color:rgba(96,165,250,.3)}
 .code-body{padding:20px;overflow-x:auto}
 .code-body pre{margin:0}
 .kw{color:#c792ea}.str{color:#c3e88d}.prop{color:#82aaff}.num{color:#f78c6c}.fn{color:#89ddff}.cm{color:#4a4f6a}.tp{color:var(--gold)}.url{color:var(--cyan)}.bash-${color:var(--t3);user-select:none}.bash-cmd{color:var(--green)}.bash-flag{color:var(--amber)}.bash-str{color:#c3e88d}
 
 .callout{padding:16px 20px;border-radius:10px;margin:16px 0 24px;font-size:14px;line-height:1.7}
-.callout.info{background:var(--cyan-d);border:1px solid rgba(0,212,255,.15);color:var(--t2)}
+.callout.info{background:var(--cyan-d);border:1px solid rgba(96,165,250,.15);color:var(--t2)}
 .callout.info strong{color:var(--cyan)}
 .callout.warn{background:rgba(255,159,28,.06);border:1px solid rgba(255,159,28,.2);color:var(--t2)}
 .callout.warn strong{color:var(--amber)}
@@ -70,12 +70,12 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
 
 .tab-row{display:flex;gap:4px;margin-bottom:-1px}
 .qtab{font-family:var(--mono);font-size:11px;padding:8px 16px;border:1px solid rgba(255,255,255,.08);background:transparent;color:var(--t3);border-radius:6px 6px 0 0;cursor:pointer;transition:all .2s}
-.qtab.active{border-color:rgba(0,212,255,.25);background:rgba(0,212,255,.06);color:var(--cyan);border-bottom-color:#070911}
+.qtab.active{border-color:rgba(96,165,250,.25);background:rgba(96,165,250,.06);color:var(--cyan);border-bottom-color:#070911}
 
 .api-row{display:grid;grid-template-columns:60px 1fr auto;gap:12px;align-items:start;padding:14px 18px;background:var(--bg-card);border:1px solid var(--brd);border-radius:10px;margin-bottom:8px}
 .api-method{font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;text-align:center}
 .api-method.get{background:rgba(0,255,136,.1);color:var(--green)}
-.api-method.post{background:rgba(0,212,255,.1);color:var(--cyan)}
+.api-method.post{background:rgba(96,165,250,.1);color:var(--cyan)}
 .api-path{font-family:var(--mono);font-size:12px;color:var(--t1)}
 .api-desc{font-size:12px;color:var(--t2);grid-column:2/-1}
 .api-auth{font-family:var(--mono);font-size:10px;color:var(--amber);background:rgba(255,159,28,.08);border:1px solid rgba(255,159,28,.2);padding:2px 8px;border-radius:100px}
@@ -85,7 +85,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
 .policy-name{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--cyan);margin-bottom:6px}
 .policy-desc{font-size:12px;color:var(--t2);line-height:1.6}
 
-.cta-box{background:linear-gradient(135deg,rgba(0,212,255,.06),rgba(255,215,0,.06));border:1px solid rgba(0,212,255,.15);border-radius:16px;padding:32px;text-align:center;margin-top:48px}
+.cta-box{background:linear-gradient(135deg,rgba(96,165,250,.06),rgba(255,215,0,.06));border:1px solid rgba(96,165,250,.15);border-radius:16px;padding:32px;text-align:center;margin-top:48px}
 .cta-box h3{font-family:var(--disp);font-weight:800;font-size:24px;margin-bottom:8px}
 .cta-box p{font-size:14px;color:var(--t2);margin-bottom:20px}
 .btn-p{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--bg);background:var(--cyan);border:none;padding:13px 28px;border-radius:8px;cursor:pointer;transition:all .25s;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
@@ -106,7 +106,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
 <body>
 <nav>
   <a href="/" class="nlogo">
-    <svg width="28" height="28" viewBox="0 0 34 34" fill="none"><rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#ng)"/><rect x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#00d4ff"/><rect x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#ffd700"/><rect x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#00d4ff"/><defs><linearGradient id="ng" x1="8" y1="5" x2="8" y2="29"><stop offset="0%" stop-color="#00d4ff"/><stop offset="100%" stop-color="#ffd700"/></linearGradient></defs></svg>
+    <svg width="28" height="28" viewBox="0 0 34 34" fill="none"><rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#ng)"/><rect x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#60a5fa"/><rect x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#f59e0b"/><rect x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#60a5fa"/><defs><linearGradient id="ng" x1="8" y1="5" x2="8" y2="29"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient></defs></svg>
     <span class="nlogo-text">EMILIA</span>
   </a>
   <div class="nlinks">

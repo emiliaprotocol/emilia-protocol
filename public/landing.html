@@ -12,7 +12,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
-:root{--bg:#05060a;--bg-card:#0e1120;--bg-card-h:#141830;--bg-code:#070911;--brd:rgba(255,255,255,0.06);--brd-a:rgba(120,200,255,0.15);--t1:#e8eaf0;--t2:#7a809a;--t3:#4a4f6a;--cyan:#00d4ff;--cyan-d:rgba(0,212,255,0.08);--gold:#ffd700;--green:#00ff88;--amber:#ff9f1c;--red:#ff3b3b;--magenta:#ff2d78;--purple:#a855f7;--glow-c:0 0 40px rgba(0,212,255,0.2);--mono:'JetBrains Mono',monospace;--disp:'Outfit',sans-serif;--body:'Space Grotesk',sans-serif}
+:root{--bg:#000000;--bg-card:#0f0f0f;--bg-card-h:#141414;--bg-code:#0a0a0a;--brd:rgba(255,255,255,0.08);--brd-a:rgba(96,165,250,0.25);--t1:#f0f4ff;--t2:#94a3b8;--t3:#475569;--cyan:#60a5fa;--cyan-d:rgba(96,165,250,0.1);--gold:#f59e0b;--green:#34d399;--amber:#f59e0b;--red:#f87171;--magenta:#818cf8;--purple:#a78bfa;--glow-c:0 0 50px rgba(96,165,250,0.12);--mono:'JetBrains Mono',monospace;--disp:'Outfit',sans-serif;--body:'Space Grotesk',sans-serif}
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--t1);font-family:var(--body);overflow-x:hidden;-webkit-font-smoothing:antialiased}
@@ -29,16 +29,16 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:14px 40px;display:fl
 .nlinks a.ncta:hover{background:#fff}
 .ntag{font-family:var(--mono);font-size:10px;color:var(--green);letter-spacing:1px;display:flex;align-items:center;gap:6px}
 .ntag-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pdot 2s infinite}
-@keyframes pdot{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,255,136,0.4)}50%{opacity:.7;box-shadow:0 0 0 6px rgba(0,255,136,0)}}
+@keyframes pdot{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(52,211,153,0.4)}50%{opacity:.7;box-shadow:0 0 0 6px rgba(52,211,153,0)}}
 
 /* HERO */
 .hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:140px 40px 80px;text-align:center;z-index:1;overflow:hidden}
 .orb{position:absolute;border-radius:50%;filter:blur(130px);opacity:.22;animation:odrift 14s ease-in-out infinite;pointer-events:none}
-.orb1{width:600px;height:600px;background:radial-gradient(circle,#00d4ff,transparent 70%);top:5%;left:15%}
-.orb2{width:500px;height:500px;background:radial-gradient(circle,#ffd700,transparent 70%);bottom:15%;right:10%;animation-delay:-7s}
-.orb3{width:300px;height:300px;background:radial-gradient(circle,#a855f7,transparent 70%);top:40%;left:58%;animation-delay:-3s;opacity:.14}
+.orb1{width:600px;height:600px;background:radial-gradient(circle,#60a5fa,transparent 70%);top:5%;left:15%}
+.orb2{width:500px;height:500px;background:radial-gradient(circle,#f59e0b,transparent 70%);bottom:15%;right:10%;animation-delay:-7s}
+.orb3{width:300px;height:300px;background:radial-gradient(circle,#a78bfa,transparent 70%);top:40%;left:58%;animation-delay:-3s;opacity:.14}
 @keyframes odrift{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(25px,-15px) scale(1.04)}66%{transform:translate(-15px,20px) scale(.96)}}
-.htag{font-family:var(--mono);font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--cyan);background:var(--cyan-d);border:1px solid rgba(0,212,255,0.2);padding:8px 20px;border-radius:100px;margin-bottom:28px;display:inline-flex;align-items:center;gap:10px;animation:fup .8s ease both}
+.htag{font-family:var(--mono);font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--cyan);background:var(--cyan-d);border:1px solid rgba(96,165,250,0.2);padding:8px 20px;border-radius:100px;margin-bottom:28px;display:inline-flex;align-items:center;gap:10px;animation:fup .8s ease both}
 .hero h1{font-family:var(--disp);font-weight:900;font-size:clamp(52px,7.5vw,108px);line-height:.92;letter-spacing:-4px;margin-bottom:10px;animation:fup .8s .08s ease both}
 .hero h1 .gr{background:linear-gradient(135deg,var(--cyan) 0%,#60a5fa 40%,var(--gold) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .hero-hook{font-family:var(--disp);font-weight:700;font-size:clamp(18px,2.5vw,26px);color:var(--t2);letter-spacing:-.5px;margin-bottom:18px;animation:fup .8s .12s ease both}
@@ -47,17 +47,17 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:14px 40px;display:fl
 .hero-sub strong{color:var(--t1);font-weight:600}
 .hero-badges{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;margin-bottom:36px;animation:fup .8s .22s ease both}
 .hbadge{font-family:var(--mono);font-size:10px;letter-spacing:1px;padding:6px 14px;border-radius:100px;border:1px solid;display:inline-flex;align-items:center;gap:6px}
-.hbadge.c{color:var(--cyan);border-color:rgba(0,212,255,.25);background:rgba(0,212,255,.06)}
-.hbadge.g{color:var(--gold);border-color:rgba(255,215,0,.25);background:rgba(255,215,0,.06)}
-.hbadge.gr{color:var(--green);border-color:rgba(0,255,136,.25);background:rgba(0,255,136,.06)}
-.hbadge.p{color:var(--purple);border-color:rgba(168,85,247,.25);background:rgba(168,85,247,.06)}
+.hbadge.c{color:var(--cyan);border-color:rgba(96,165,250,.25);background:rgba(96,165,250,.06)}
+.hbadge.g{color:var(--gold);border-color:rgba(245,158,11,.25);background:rgba(245,158,11,.06)}
+.hbadge.gr{color:var(--green);border-color:rgba(52,211,153,.25);background:rgba(52,211,153,.06)}
+.hbadge.p{color:var(--purple);border-color:rgba(167,139,250,.25);background:rgba(167,139,250,.06)}
 .hero-ctas{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:56px;animation:fup .8s .28s ease both}
 .btn-p{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--bg);background:var(--cyan);border:none;padding:15px 30px;border-radius:8px;cursor:pointer;transition:all .25s;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
 .btn-p:hover{background:#fff;box-shadow:var(--glow-c);transform:translateY(-2px)}
 .btn-g{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:var(--t2);background:transparent;border:1px solid var(--brd);padding:15px 30px;border-radius:8px;cursor:pointer;transition:all .25s;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
 .btn-g:hover{color:var(--t1);border-color:var(--brd-a);background:rgba(255,255,255,.03)}
-.btn-gold{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gold);background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.25);padding:15px 30px;border-radius:8px;cursor:pointer;transition:all .25s;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
-.btn-gold:hover{background:rgba(255,215,0,.15);transform:translateY(-2px)}
+.btn-gold{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gold);background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);padding:15px 30px;border-radius:8px;cursor:pointer;transition:all .25s;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
+.btn-gold:hover{background:rgba(245,158,11,.15);transform:translateY(-2px)}
 .hstats{display:flex;gap:52px;justify-content:center;animation:fup .8s .35s ease both;flex-wrap:wrap}
 .hstat{text-align:center}
 .hstat-v{font-family:var(--disp);font-weight:800;font-size:36px;color:var(--t1)}
@@ -81,13 +81,13 @@ section{position:relative;z-index:1;padding:100px 40px}
 
 /* MCP COMPARE BANNER */
 .mcp-banner{position:relative;z-index:1;padding:0 40px 80px}
-.mcp-inner{max-width:900px;margin:0 auto;background:linear-gradient(135deg,rgba(0,212,255,.05),rgba(168,85,247,.05));border:1px solid rgba(0,212,255,.12);border-radius:20px;padding:48px 40px;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}
+.mcp-inner{max-width:900px;margin:0 auto;background:linear-gradient(135deg,rgba(96,165,250,.05),rgba(167,139,250,.05));border:1px solid rgba(96,165,250,.12);border-radius:20px;padding:48px 40px;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}
 .mcp-left .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--purple);margin-bottom:16px}
 .mcp-left h2{font-family:var(--disp);font-weight:800;font-size:clamp(22px,2.8vw,32px);letter-spacing:-1px;line-height:1.2;margin-bottom:14px}
 .mcp-left p{font-size:14px;color:var(--t2);line-height:1.7}
 .mcp-rows{display:flex;flex-direction:column;gap:10px}
 .mcp-row{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.03);border:1px solid var(--brd);border-radius:10px;padding:13px 16px}
-.mcp-row.ep{border-color:rgba(0,212,255,.25);background:rgba(0,212,255,.04)}
+.mcp-row.ep{border-color:rgba(96,165,250,.25);background:rgba(96,165,250,.04)}
 .mcp-row .proto{font-family:var(--mono);font-size:12px;font-weight:700;width:70px;flex-shrink:0}
 .mcp-row .arr{font-family:var(--mono);font-size:11px;color:var(--t3);flex-shrink:0}
 .mcp-row .desc{font-size:13px;color:var(--t2)}
@@ -97,14 +97,14 @@ section{position:relative;z-index:1;padding:100px 40px}
 .persona-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:48px}
 .persona-card{background:var(--bg-card);border:1px solid var(--brd);border-radius:16px;padding:32px;transition:all .3s;position:relative;overflow:hidden}
 .persona-card::after{content:'';position:absolute;inset:0;opacity:0;transition:opacity .3s;border-radius:16px}
-.persona-card.pa::after{background:radial-gradient(circle at top right,rgba(0,212,255,.07),transparent 70%)}
-.persona-card.pp::after{background:radial-gradient(circle at top right,rgba(0,255,136,.07),transparent 70%)}
-.persona-card.ph::after{background:radial-gradient(circle at top right,rgba(255,215,0,.07),transparent 70%)}
+.persona-card.pa::after{background:radial-gradient(circle at top right,rgba(96,165,250,.07),transparent 70%)}
+.persona-card.pp::after{background:radial-gradient(circle at top right,rgba(52,211,153,.07),transparent 70%)}
+.persona-card.ph::after{background:radial-gradient(circle at top right,rgba(245,158,11,.07),transparent 70%)}
 .persona-card:hover::after{opacity:1}
 .persona-card:hover{transform:translateY(-4px)}
-.persona-card.pa:hover{border-color:rgba(0,212,255,.25)}
-.persona-card.pp:hover{border-color:rgba(0,255,136,.25)}
-.persona-card.ph:hover{border-color:rgba(255,215,0,.25)}
+.persona-card.pa:hover{border-color:rgba(96,165,250,.25)}
+.persona-card.pp:hover{border-color:rgba(52,211,153,.25)}
+.persona-card.ph:hover{border-color:rgba(245,158,11,.25)}
 .p-icon{font-size:30px;margin-bottom:18px}
 .p-label{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
 .pa .p-label{color:var(--cyan)}.pp .p-label{color:var(--green)}.ph .p-label{color:var(--gold)}
@@ -124,12 +124,12 @@ section{position:relative;z-index:1;padding:100px 40px}
 .prob-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;font-size:20px}
 .prob-card h3{font-family:var(--disp);font-weight:700;font-size:18px;margin-bottom:8px}
 .prob-card p{color:var(--t2);font-size:13px;line-height:1.7}
-.prob-cost{font-family:var(--mono);font-size:11px;margin-top:16px;padding:10px 14px;border-radius:8px;color:var(--red);background:rgba(255,59,59,.06);border:1px solid rgba(255,59,59,.15);line-height:1.5}
+.prob-cost{font-family:var(--mono);font-size:11px;margin-top:16px;padding:10px 14px;border-radius:8px;color:var(--red);background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.15);line-height:1.5}
 
 /* TRUST CONSOLE */
 .console-tabs{display:flex;gap:4px;margin-bottom:-1px}
 .ctab{font-family:var(--mono);font-size:11px;letter-spacing:1px;padding:10px 20px;border:1px solid rgba(255,255,255,.07);background:transparent;color:var(--t3);border-radius:8px 8px 0 0;cursor:pointer;transition:all .2s}
-.ctab.active{border-color:rgba(0,212,255,.25);background:rgba(0,212,255,.06);color:var(--cyan);border-bottom-color:var(--bg-card)}
+.ctab.active{border-color:rgba(96,165,250,.25);background:rgba(96,165,250,.06);color:var(--cyan);border-bottom-color:var(--bg-card)}
 .sterm{background:var(--bg-card);border:1px solid var(--brd);border-radius:0 12px 12px 12px;overflow:hidden}
 .sterm-bar{display:flex;align-items:center;justify-content:space-between;padding:11px 18px;background:rgba(255,255,255,.02);border-bottom:1px solid var(--brd)}
 .sterm-dots{display:flex;gap:5px}
@@ -152,9 +152,9 @@ section{position:relative;z-index:1;padding:100px 40px}
 .scard-name{font-family:var(--disp);font-weight:700;font-size:18px}
 .scard-id{font-family:var(--mono);font-size:11px;color:var(--t3);margin-top:3px}
 .sconf{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1px;padding:5px 12px;border-radius:100px}
-.sconf.confident{background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.25)}
-.sconf.established{background:rgba(0,212,255,.1);color:var(--cyan);border:1px solid rgba(0,212,255,.25)}
-.sconf.limited{background:rgba(255,159,28,.1);color:var(--amber);border:1px solid rgba(255,159,28,.25)}
+.sconf.confident{background:rgba(52,211,153,.1);color:var(--green);border:1px solid rgba(52,211,153,.25)}
+.sconf.established{background:rgba(96,165,250,.1);color:var(--cyan);border:1px solid rgba(96,165,250,.25)}
+.sconf.limited{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.25)}
 .sconf.pending{background:rgba(255,255,255,.05);color:var(--t3);border:1px solid var(--brd)}
 .sbwrap{margin-bottom:10px}
 .sbhead{font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;display:flex;justify-content:space-between}
@@ -172,7 +172,7 @@ section{position:relative;z-index:1;padding:100px 40px}
 .code-dots span:nth-child(1){background:#ff5f57}.code-dots span:nth-child(2){background:#febc2e}.code-dots span:nth-child(3){background:#28c840}
 .code-lang{font-size:10px;letter-spacing:1px;color:var(--t3);text-transform:uppercase}
 .code-copy{font-size:10px;letter-spacing:1px;color:var(--t3);cursor:pointer;border:1px solid var(--brd);border-radius:4px;padding:3px 8px;transition:all .2s;background:transparent}
-.code-copy:hover{color:var(--cyan);border-color:rgba(0,212,255,.3)}
+.code-copy:hover{color:var(--cyan);border-color:rgba(96,165,250,.3)}
 .code-body{padding:20px;overflow-x:auto}
 .code-body pre{margin:0}
 .kw{color:#c792ea}.str{color:#c3e88d}.prop{color:#82aaff}.num{color:#f78c6c}.fn{color:#89ddff}.cm{color:#4a4f6a}.tp{color:var(--gold)}.url{color:var(--cyan)}.op{color:var(--t3)}.bash-${color:var(--t3);user-select:none}.bash-cmd{color:var(--green)}.bash-flag{color:var(--amber)}.bash-str{color:#c3e88d}
@@ -188,7 +188,7 @@ section{position:relative;z-index:1;padding:100px 40px}
 .pb-a2a{background:rgba(59,130,246,.15);color:#60a5fa}
 .pb-ucp{background:rgba(34,197,94,.15);color:#4ade80}
 .pb-pay{background:rgba(251,146,60,.15);color:#fb923c}
-.pb-ep{background:rgba(0,212,255,.2);color:var(--cyan)}
+.pb-ep{background:rgba(96,165,250,.2);color:var(--cyan)}
 
 /* STEPS */
 .steps{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:40px}
@@ -214,9 +214,9 @@ section{position:relative;z-index:1;padding:100px 40px}
 .eco-card h4{font-family:var(--disp);font-weight:700;font-size:15px;margin-bottom:4px}
 .eco-card p{font-size:12px;color:var(--t2);line-height:1.6}
 .eco-status{font-family:var(--mono);font-size:10px;margin-top:10px;padding:4px 10px;border-radius:100px;display:inline-block}
-.eco-status.live{color:var(--green);background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2)}
-.eco-status.beta{color:var(--cyan);background:var(--cyan-d);border:1px solid rgba(0,212,255,.2)}
-.eco-status.soon{color:var(--amber);background:rgba(255,159,28,.08);border:1px solid rgba(255,159,28,.2)}
+.eco-status.live{color:var(--green);background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2)}
+.eco-status.beta{color:var(--cyan);background:var(--cyan-d);border:1px solid rgba(96,165,250,.2)}
+.eco-status.soon{color:var(--amber);background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2)}
 .eco-status.plan{color:var(--t3);background:rgba(255,255,255,.03);border:1px solid var(--brd)}
 
 /* FAQ */
@@ -231,7 +231,7 @@ section{position:relative;z-index:1;padding:100px 40px}
 .faq-item.open .faq-a{max-height:800px;padding:0 24px 24px}
 
 /* CTA BANNER */
-.cta-banner{background:linear-gradient(135deg,rgba(0,212,255,.07),rgba(168,85,247,.07) 50%,rgba(255,215,0,.07));border:1px solid rgba(0,212,255,.15);border-radius:24px;padding:64px 48px;text-align:center}
+.cta-banner{background:linear-gradient(135deg,rgba(96,165,250,.07),rgba(167,139,250,.07) 50%,rgba(245,158,11,.07));border:1px solid rgba(96,165,250,.15);border-radius:24px;padding:64px 48px;text-align:center}
 .cta-banner h2{font-family:var(--disp);font-weight:900;font-size:clamp(28px,4vw,44px);letter-spacing:-1.5px;margin-bottom:14px}
 .cta-banner p{font-size:16px;color:var(--t2);max-width:480px;margin:0 auto 32px;line-height:1.7}
 .reg-form{display:flex;gap:10px;max-width:440px;margin:0 auto 14px}
@@ -239,12 +239,12 @@ section{position:relative;z-index:1;padding:100px 40px}
 .reg-inp::placeholder{color:var(--t3)}
 .reg-inp:focus{border-color:var(--cyan)}
 .reg-go{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--bg);background:linear-gradient(135deg,var(--cyan),var(--gold));border:none;padding:14px 26px;border-radius:10px;cursor:pointer;transition:all .25s;white-space:nowrap}
-.reg-go:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,212,255,.2)}
+.reg-go:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(96,165,250,.2)}
 .reg-note{font-family:var(--mono);font-size:10px;color:var(--t3)}
 .reg-ok{display:none;margin-top:24px}
 
 /* CONSTITUTIONAL PRINCIPLE */
-.principle-box{text-align:center;padding:28px 32px;background:rgba(0,212,255,.03);border:1px solid rgba(0,212,255,.08);border-radius:12px;margin-top:32px}
+.principle-box{text-align:center;padding:28px 32px;background:rgba(96,165,250,.03);border:1px solid rgba(96,165,250,.08);border-radius:12px;margin-top:32px}
 .principle-box p{font-family:var(--disp);font-weight:700;font-size:clamp(15px,2vw,21px);color:var(--t2)}
 .principle-box em{color:var(--cyan);font-style:normal}
 
@@ -267,9 +267,9 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
 .reveal.visible{opacity:1;transform:translateY(0)}
 .tc{text-align:center}
 .phase-pill{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:1px;padding:3px 8px;border-radius:100px}
-.phase-live{color:var(--green);background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2)}
-.phase-dev{color:var(--cyan);background:var(--cyan-d);border:1px solid rgba(0,212,255,.2)}
-.phase-road{color:var(--gold);background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.2)}
+.phase-live{color:var(--green);background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2)}
+.phase-dev{color:var(--cyan);background:var(--cyan-d);border:1px solid rgba(96,165,250,.2)}
+.phase-road{color:var(--gold);background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2)}
 
 @media(max-width:960px){
   nav{padding:12px 20px}.nlinks{display:none}
@@ -297,10 +297,10 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
       <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
         <style>@keyframes b1{0%,100%{width:16px}50%{width:11px}}@keyframes b2{0%,100%{width:12px}50%{width:17px}}@keyframes b3{0%,100%{width:14px}50%{width:9px}}.e1{animation:b1 3s ease-in-out infinite}.e2{animation:b2 3s ease-in-out infinite .4s}.e3{animation:b3 3s ease-in-out infinite .8s}</style>
         <rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#eg)"/>
-        <rect class="e1" x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#00d4ff"/>
-        <rect class="e2" x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#ffd700"/>
-        <rect class="e3" x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#00d4ff"/>
-        <defs><linearGradient id="eg" x1="8" y1="5" x2="8" y2="29"><stop offset="0%" stop-color="#00d4ff"/><stop offset="100%" stop-color="#ffd700"/></linearGradient></defs>
+        <rect class="e1" x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#60a5fa"/>
+        <rect class="e2" x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#f59e0b"/>
+        <rect class="e3" x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#60a5fa"/>
+        <defs><linearGradient id="eg" x1="8" y1="5" x2="8" y2="29"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient></defs>
       </svg>
     </div>
     <span class="nlogo-text">EMILIA</span>
@@ -403,7 +403,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
     <div class="persona-grid reveal">
 
       <div class="persona-card pa">
-        <div class="p-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="20" height="13" rx="2"/><path d="M12 4v4M9.5 4h5"/><circle cx="9" cy="14" r="1.5" fill="#00d4ff" stroke="none"/><circle cx="15" cy="14" r="1.5" fill="#00d4ff" stroke="none"/><line x1="9" y1="18" x2="15" y2="18"/></svg></div>
+        <div class="p-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="20" height="13" rx="2"/><path d="M12 4v4M9.5 4h5"/><circle cx="9" cy="14" r="1.5" fill="#60a5fa" stroke="none"/><circle cx="15" cy="14" r="1.5" fill="#60a5fa" stroke="none"/><line x1="9" y1="18" x2="15" y2="18"/></svg></div>
         <div class="p-label">AI Agents &amp; Builders</div>
         <h3>Autonomous trust decisions, built in</h3>
         <p>Your agent transacts with merchants, connects to MCP servers, and installs plugins — all without a human in the loop. EP gives it a trust layer to do that safely and correctly.</p>
@@ -417,7 +417,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
       </div>
 
       <div class="persona-card pp">
-        <div class="p-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+        <div class="p-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
         <div class="p-label">Platforms &amp; Marketplaces</div>
         <h3>Portable trust that survives migration</h3>
         <p>Merchant trust locked to one platform is fragile. EP makes trust profiles portable — built from behavioral receipts, cross-platform, owned by the entity not the host.</p>
@@ -431,7 +431,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
       </div>
 
       <div class="persona-card ph">
-        <div class="p-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffd700" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><polyline points="17 21 12 21 7 21"/><path d="M5.5 6l-2 6h4l-2-6z"/><path d="M18.5 6l-2 6h4l-2-6z"/><line x1="5.5" y1="6" x2="18.5" y2="6"/></svg></div>
+        <div class="p-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><polyline points="17 21 12 21 7 21"/><path d="M5.5 6l-2 6h4l-2-6z"/><path d="M18.5 6l-2 6h4l-2-6z"/><line x1="5.5" y1="6" x2="18.5" y2="6"/></svg></div>
         <div class="p-label">Humans &amp; Due Process</div>
         <h3>Appeal any trust decision. No account needed.</h3>
         <p>When trust goes wrong — wrongful downgrade, fraudulent entity, inaccurate profile — you have the right to challenge it. EP's appeal system requires no login, no lawyer, no platform approval.</p>
@@ -458,19 +458,19 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
     </div>
     <div class="problem-grid reveal">
       <div class="prob-card">
-        <div class="prob-icon" style="background:rgba(255,59,59,.08)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff3b3b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg></div>
+        <div class="prob-icon" style="background:rgba(248,113,113,.08)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg></div>
         <h3>No Portable Trust</h3>
         <p>A merchant's reputation on Amazon means nothing on Shopify. A plugin rated safe on npm isn't recognized on the MCP registry. Every ecosystem reinvents the wheel and every user starts from zero.</p>
         <div class="prob-cost">Real cost: Sellers lose years of earned reputation on migration. Agents accept dangerous defaults because no portable signal exists.</div>
       </div>
       <div class="prob-card">
-        <div class="prob-icon" style="background:rgba(255,159,28,.08)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff9f1c" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="#ff9f1c" stroke="none"/></svg></div>
+        <div class="prob-icon" style="background:rgba(245,158,11,.08)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="#f59e0b" stroke="none"/></svg></div>
         <h3>No Context</h3>
         <p>A generic 4.2-star score doesn't tell you if a seller is safe for a $5,000 electronics purchase. A plugin safe for read-only access is dangerous with code execution. Generic trust is dangerous trust.</p>
         <div class="prob-cost">Real cost: Agents over-trust in high-risk contexts. Platforms set thresholds that make no sense for their specific use case.</div>
       </div>
       <div class="prob-card">
-        <div class="prob-icon" style="background:rgba(255,45,120,.08)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ff2d78" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><polyline points="17 21 12 21 7 21"/><path d="M5.5 6l-2 6h4l-2-6z"/><path d="M18.5 6l-2 6h4l-2-6z"/><line x1="5.5" y1="6" x2="18.5" y2="6"/></svg></div>
+        <div class="prob-icon" style="background:rgba(129,140,248,.08)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><polyline points="17 21 12 21 7 21"/><path d="M5.5 6l-2 6h4l-2-6z"/><path d="M18.5 6l-2 6h4l-2-6z"/><line x1="5.5" y1="6" x2="18.5" y2="6"/></svg></div>
         <h3>No Due Process</h3>
         <p>Platform trust scores change silently. Appeals go unanswered. Merchants lose income without explanation. Developers watch packages flagged with no recourse. If trust can hurt you, it must be challengeable.</p>
         <div class="prob-cost">Real cost: Trust becomes a weapon. Competitors file false reports. Platforms abuse the power of silence.</div>
@@ -674,23 +674,23 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
     <div class="reveal" style="margin-top:48px">
       <div style="max-width:700px;margin:0 auto">
         <svg viewBox="0 0 700 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
-          <rect x="0" y="18" width="120" height="58" rx="10" fill="rgba(0,212,255,0.06)" stroke="rgba(0,212,255,0.15)" stroke-width="1"/>
-          <text x="60" y="42" text-anchor="middle" fill="#00d4ff" font-family="Outfit,sans-serif" font-weight="700" font-size="12">Receipts</text>
+          <rect x="0" y="18" width="120" height="58" rx="10" fill="rgba(96,165,250,0.06)" stroke="rgba(96,165,250,0.15)" stroke-width="1"/>
+          <text x="60" y="42" text-anchor="middle" fill="#60a5fa" font-family="Outfit,sans-serif" font-weight="700" font-size="12">Receipts</text>
           <text x="60" y="62" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono,monospace" font-size="8">Evidence in</text>
           <text x="137" y="52" text-anchor="middle" fill="#4a4f6a" font-family="JetBrains Mono,monospace" font-size="18">→</text>
-          <rect x="153" y="18" width="120" height="58" rx="10" fill="rgba(0,255,136,0.06)" stroke="rgba(0,255,136,0.15)" stroke-width="1"/>
-          <text x="213" y="42" text-anchor="middle" fill="#00ff88" font-family="Outfit,sans-serif" font-weight="700" font-size="12">Trust Engine</text>
+          <rect x="153" y="18" width="120" height="58" rx="10" fill="rgba(52,211,153,0.06)" stroke="rgba(52,211,153,0.15)" stroke-width="1"/>
+          <text x="213" y="42" text-anchor="middle" fill="#34d399" font-family="Outfit,sans-serif" font-weight="700" font-size="12">Trust Engine</text>
           <text x="213" y="62" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono,monospace" font-size="8">Weigh + evaluate</text>
           <text x="290" y="52" text-anchor="middle" fill="#4a4f6a" font-family="JetBrains Mono,monospace" font-size="18">→</text>
-          <rect x="306" y="18" width="120" height="58" rx="10" fill="rgba(255,215,0,0.06)" stroke="rgba(255,215,0,0.15)" stroke-width="1"/>
-          <text x="366" y="42" text-anchor="middle" fill="#ffd700" font-family="Outfit,sans-serif" font-weight="700" font-size="12">Profile + Policy</text>
+          <rect x="306" y="18" width="120" height="58" rx="10" fill="rgba(245,158,11,0.06)" stroke="rgba(245,158,11,0.15)" stroke-width="1"/>
+          <text x="366" y="42" text-anchor="middle" fill="#f59e0b" font-family="Outfit,sans-serif" font-weight="700" font-size="12">Profile + Policy</text>
           <text x="366" y="62" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono,monospace" font-size="8">Decision out</text>
           <text x="443" y="52" text-anchor="middle" fill="#4a4f6a" font-family="JetBrains Mono,monospace" font-size="18">→</text>
-          <rect x="459" y="18" width="120" height="58" rx="10" fill="rgba(255,159,28,0.06)" stroke="rgba(255,159,28,0.15)" stroke-width="1"/>
-          <text x="519" y="42" text-anchor="middle" fill="#ff9f1c" font-family="Outfit,sans-serif" font-weight="700" font-size="12">Appeals</text>
+          <rect x="459" y="18" width="120" height="58" rx="10" fill="rgba(245,158,11,0.06)" stroke="rgba(245,158,11,0.15)" stroke-width="1"/>
+          <text x="519" y="42" text-anchor="middle" fill="#f59e0b" font-family="Outfit,sans-serif" font-weight="700" font-size="12">Appeals</text>
           <text x="519" y="62" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono,monospace" font-size="8">Challenge + correct</text>
           <text x="596" y="52" text-anchor="middle" fill="#4a4f6a" font-family="JetBrains Mono,monospace" font-size="18">→</text>
-          <rect x="612" y="18" width="85" height="58" rx="10" fill="rgba(255,215,0,0.04)" stroke="rgba(255,215,0,0.1)" stroke-width="1"/>
+          <rect x="612" y="18" width="85" height="58" rx="10" fill="rgba(245,158,11,0.04)" stroke="rgba(245,158,11,0.1)" stroke-width="1"/>
           <text x="654" y="42" text-anchor="middle" fill="#7a809a" font-family="Outfit,sans-serif" font-weight="700" font-size="12">Anchor</text>
           <text x="654" y="62" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono,monospace" font-size="8">On-chain proof</text>
         </svg>
@@ -738,7 +738,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
       <div class="sh" style="font-size:clamp(22px,3vw,34px)">From Self-Reported to <span style="color:var(--cyan)">Protocol-Observed</span></div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:28px">
-      <div class="prob-card reveal" style="border-color:rgba(0,255,136,.2)">
+      <div class="prob-card reveal" style="border-color:rgba(52,211,153,.2)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
           <span style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--green)">PHASE 1</span>
           <span class="phase-pill phase-live">LIVE</span>
@@ -746,7 +746,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         <h3 style="color:var(--green)">Behavioral Truth</h3>
         <p style="font-size:13px">Agents submit receipts with behavioral outcomes as the primary signal (40% weight). Did they come back? Switch? Abandon? Four-factor receipt weighting resists Sybil attacks from day one.</p>
       </div>
-      <div class="prob-card reveal" style="border-color:rgba(0,212,255,.2)">
+      <div class="prob-card reveal" style="border-color:rgba(96,165,250,.2)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
           <span style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan)">PHASE 2</span>
           <span class="phase-pill phase-dev">IN DEV</span>
@@ -754,7 +754,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         <h3 style="color:var(--cyan)">Evidence-Backed Truth</h3>
         <p style="font-size:13px">Agents submit structured claims with evidence. "Delivered 3 days late" + tracking ID. "Price overcharged 5%" + payment ref. Conflicting claims enter disputed state — dispute rate becomes a signal.</p>
       </div>
-      <div class="prob-card reveal" style="border-color:rgba(255,215,0,.2)">
+      <div class="prob-card reveal" style="border-color:rgba(245,158,11,.2)">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
           <span style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--gold)">PHASE 3</span>
           <span class="phase-pill phase-road">ROADMAP</span>
@@ -784,7 +784,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
     </div>
 
     <div class="reveal" style="margin-top:32px;max-width:780px;margin-left:auto;margin-right:auto">
-      <div class="prob-card" style="border-color:rgba(0,212,255,.15)">
+      <div class="prob-card" style="border-color:rgba(96,165,250,.15)">
         <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);margin-bottom:14px">FOUR-FACTOR RECEIPT WEIGHTING</div>
         <div style="font-family:var(--mono);font-size:12px;color:var(--t1);background:rgba(0,0,0,.4);padding:14px 16px;border-radius:8px;margin-bottom:14px">receipt_weight = submitter_credibility × time_decay × graph_health × provenance_tier</div>
         <div style="display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-family:var(--mono);font-size:11px">
@@ -808,7 +808,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
     </div>
     <div class="eco-grid reveal">
       <div class="eco-card">
-        <div class="eco-icon" style="background:rgba(168,85,247,.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+        <div class="eco-icon" style="background:rgba(167,139,250,.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
         <div>
           <h4>MCP Registry</h4>
           <p>Evaluate any MCP server before adding it to your agent. Install preflight with publisher verification, permission class analysis, and behavioral history.</p>
@@ -816,7 +816,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         </div>
       </div>
       <div class="eco-card">
-        <div class="eco-icon" style="background:rgba(0,255,136,.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg></div>
+        <div class="eco-icon" style="background:rgba(52,211,153,.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg></div>
         <div>
           <h4>GitHub Apps</h4>
           <p>Trust profiles for GitHub Apps before install. Publisher identity binding, permission analysis, and revocation signal handling. Adapter source complete.</p>
@@ -824,7 +824,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         </div>
       </div>
       <div class="eco-card">
-        <div class="eco-icon" style="background:rgba(255,215,0,.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ffd700" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></div>
+        <div class="eco-icon" style="background:rgba(245,158,11,.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></div>
         <div>
           <h4>Shopify / Commerce</h4>
           <p>Automatic receipt generation from Shopify order lifecycle webhooks. Merchant trust profiles updated in real time from every order completion, return, and dispute.</p>
@@ -832,7 +832,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         </div>
       </div>
       <div class="eco-card">
-        <div class="eco-icon" style="background:rgba(255,159,28,.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff9f1c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
+        <div class="eco-icon" style="background:rgba(245,158,11,.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
         <div>
           <h4>npm Packages</h4>
           <p>Install preflight for npm packages. Publisher identity binding via npm trusted publishing. Package incident events and revocation signals feeding trust profiles.</p>
@@ -840,7 +840,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         </div>
       </div>
       <div class="eco-card">
-        <div class="eco-icon" style="background:rgba(0,212,255,.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></div>
+        <div class="eco-icon" style="background:rgba(96,165,250,.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></div>
         <div>
           <h4>Chrome Extensions</h4>
           <p>Trust evaluation for browser extensions before install. Declared permissions, store review state, warning classes, and uninstall signals feeding behavioral trust.</p>
@@ -848,7 +848,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         </div>
       </div>
       <div class="eco-card">
-        <div class="eco-icon" style="background:rgba(255,45,120,.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff2d78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
+        <div class="eco-icon" style="background:rgba(129,140,248,.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
         <div>
           <h4>REST API &amp; SDKs</h4>
           <p>Full REST API with TypeScript and Python SDKs. Any system that can make an HTTP request can submit receipts and query trust profiles — no agent required.</p>
@@ -926,7 +926,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
       </div>
       <div class="reg-note">Open protocol · Apache 2.0 · No approval required</div>
       <div class="reg-ok" id="regOk">
-        <div style="font-family:var(--mono);font-size:13px;color:var(--green);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> You're on the list. We'll reach out with your API key.</div>
+        <div style="font-family:var(--mono);font-size:13px;color:var(--green);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> You're on the list. We'll reach out with your API key.</div>
       </div>
 
       <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:32px">
@@ -942,12 +942,173 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
   </div>
 </section>
 
+<!-- CORRUPTION DEFENSE -->
+<section id="corruption-defense">
+  <div class="container-md">
+    <div class="tc reveal">
+      <div class="st">// Adversarial Resilience</div>
+      <div class="sh">What happens when a bad actor tries to game the system?</div>
+      <div class="sd" style="margin:0 auto">EP was designed assuming adversarial conditions from day one. Here is how the protocol responds to the most common manipulation attempts.</div>
+    </div>
+    <div class="reveal" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:40px">
+
+      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;padding:24px">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--red);margin-bottom:10px;text-transform:uppercase">Attack</div>
+        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Flood receipts with fake positive reviews</div>
+        <div style="font-size:13px;color:var(--t2);margin-bottom:12px">A Sybil network submits hundreds of receipts attesting high quality for a malicious entity.</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.15);border-radius:8px;padding:12px">
+          <div style="color:var(--t3);margin-bottom:4px">// Protocol response</div>
+          Submitter credibility weight applied (0.1× for new submitters). Graph health detects closed-loop patterns. Effective evidence dampening ensures fake volume does not create real confidence. Cluster collusion detection flags coordinated networks.
+        </div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;padding:24px">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--red);margin-bottom:10px;text-transform:uppercase">Attack</div>
+        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">File false reports to damage a competitor</div>
+        <div style="font-size:13px;color:var(--t2);margin-bottom:12px">A bad actor floods the report queue with malicious dispute filings against a legitimate entity.</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.15);border-radius:8px;padding:12px">
+          <div style="color:var(--t3);margin-bottom:4px">// Protocol response</div>
+          Rate limiting (3/hr per submitter fingerprint). Report credibility weighted by submitter history. Operator review required before any trust change. Dismissed reports lower the submitter's own credibility score.
+        </div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;padding:24px">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--red);margin-bottom:10px;text-transform:uppercase">Attack</div>
+        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Whitewash identity after reputation damage</div>
+        <div style="font-size:13px;color:var(--t2);margin-bottom:12px">An entity with a damaged trust profile re-registers under a new name or entity ID.</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.15);border-radius:8px;padding:12px">
+          <div style="color:var(--t3);margin-bottom:4px">// Protocol response</div>
+          EP-IX identity lineage tracking links successor entities to predecessors. Host verifier attestations bind canonical identities. Prior receipt graph follows the principal, not just the name.
+        </div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;padding:24px">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--red);margin-bottom:10px;text-transform:uppercase">Attack</div>
+        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Bribe or coerce an operator decision</div>
+        <div style="font-size:13px;color:var(--t2);margin-bottom:12px">A well-resourced attacker attempts to influence an operator to reverse a legitimate uphold.</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.15);border-radius:8px;padding:12px">
+          <div style="color:var(--t3);margin-bottom:4px">// Protocol response</div>
+          All operator reasoning is public and permanent. Baseline comparison flags divergence. Governance removal process is peer-triggered, not platform-controlled. No single operator can be the only reviewer.
+        </div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;padding:24px">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--red);margin-bottom:10px;text-transform:uppercase">Attack</div>
+        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Submit receipts for transactions that never happened</div>
+        <div style="font-size:13px;color:var(--t2);margin-bottom:12px">An entity submits self-generated receipts to bootstrap a fake trust profile with no real interactions.</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.15);border-radius:8px;padding:12px">
+          <div style="color:var(--t3);margin-bottom:4px">// Protocol response</div>
+          Bilateral receipts require both parties to submit. Provenance tiers weight host-verified receipts (1.0×) over self-asserted (0.4×). Unilateral volume never reaches PROVISIONAL confidence without corroboration.
+        </div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;padding:24px">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--red);margin-bottom:10px;text-transform:uppercase">Attack</div>
+        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Silently alter trust records after anchor</div>
+        <div style="font-size:13px;color:var(--t2);margin-bottom:12px">An attacker gains database access and modifies historical receipts to erase negative history.</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.15);border-radius:8px;padding:12px">
+          <div style="color:var(--t3);margin-bottom:4px">// Protocol response</div>
+          SHA-256 chain links every record to its predecessor. Merkle roots anchored to Base L2 are immutable. Any modification is detectable by anyone with the anchor hash — no trust required.
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- CONFIDENCE LEVELS -->
+<section id="confidence">
+  <div class="container-md">
+    <div class="tc reveal">
+      <div class="st">// Evidence Requirements</div>
+      <div class="sh">From zero to confident</div>
+      <div class="sd" style="margin:0 auto">Trust isn't binary. EP tracks five confidence levels based on effective evidence — not raw receipt counts. Fake volume cannot advance an entity past INSUFFICIENT.</div>
+    </div>
+    <div class="reveal" style="margin-top:40px;display:flex;flex-direction:column;gap:0">
+
+      <div style="display:grid;grid-template-columns:140px 1fr 200px;gap:0;border:1px solid var(--brd);border-radius:14px;overflow:hidden">
+        <div style="background:rgba(71,85,105,0.15);padding:14px 20px;border-bottom:1px solid var(--brd);display:flex;align-items:center"><span style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);text-transform:uppercase">Level</span></div>
+        <div style="background:rgba(71,85,105,0.15);padding:14px 20px;border-bottom:1px solid var(--brd);border-left:1px solid var(--brd)"><span style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);text-transform:uppercase">Requirements &amp; Meaning</span></div>
+        <div style="background:rgba(71,85,105,0.15);padding:14px 20px;border-bottom:1px solid var(--brd);border-left:1px solid var(--brd)"><span style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);text-transform:uppercase">Agent Behavior</span></div>
+
+        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);display:flex;align-items:center"><span style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--t3)">PENDING</span></div>
+        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);border-left:1px solid var(--brd);font-size:13px;color:var(--t2)">Entity registered but no receipts submitted. Effective evidence = 0.</div>
+        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);border-left:1px solid var(--brd);font-size:12px;color:var(--t3)">Reject or require manual override</div>
+
+        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);display:flex;align-items:center"><span style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--red)">INSUFFICIENT</span></div>
+        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);border-left:1px solid var(--brd);font-size:13px;color:var(--t2)">Receipts exist but effective evidence &lt; 3.0. Volume may be high but submitter credibility and graph health are low.</div>
+        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);border-left:1px solid var(--brd);font-size:12px;color:var(--red)">High-risk: apply conservative policy</div>
+
+        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);display:flex;align-items:center"><span style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--amber)">PROVISIONAL</span></div>
+        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);border-left:1px solid var(--brd);font-size:13px;color:var(--t2)">Effective evidence ≥ 3.0. Some credible receipts exist from independent submitters. Trust is emerging but not yet stable.</div>
+        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);border-left:1px solid var(--brd);font-size:12px;color:var(--amber)">Proceed with value caps or geo limits</div>
+
+        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);display:flex;align-items:center"><span style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--cyan)">EMERGING</span></div>
+        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);border-left:1px solid var(--brd);font-size:13px;color:var(--t2)">Effective evidence ≥ 10.0. Multiple independent submitters, good graph health, consistent behavioral history across receipt types.</div>
+        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);border-left:1px solid var(--brd);font-size:12px;color:var(--cyan)">Proceed with standard policy thresholds</div>
+
+        <div style="padding:16px 20px;display:flex;align-items:center"><span style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--green)">CONFIDENT</span></div>
+        <div style="padding:16px 20px;border-left:1px solid var(--brd);font-size:13px;color:var(--t2)">Effective evidence ≥ 25.0. Deep receipt history, high submitter diversity, strong graph health, no unresolved disputes. Trust is robust across categories.</div>
+        <div style="padding:16px 20px;border-left:1px solid var(--brd);font-size:12px;color:var(--green)">Proceed. Eligible for elevated permissions</div>
+      </div>
+
+      <div style="margin-top:16px;padding:16px 20px;background:var(--bg-card);border:1px solid var(--brd);border-radius:10px;font-family:var(--mono);font-size:12px;color:var(--t3)">
+        <span style="color:var(--amber)">Key insight: </span>effective evidence = Σ(receipt_weight) where receipt_weight = submitter_credibility × time_decay × graph_health × provenance_tier. A single host-verified receipt from a credible submitter counts more than 100 self-asserted receipts from new accounts.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- EFFECTIVE EVIDENCE -->
+<section id="effective-evidence">
+  <div class="container-md">
+    <div class="tc reveal">
+      <div class="st">// Sybil Resistance</div>
+      <div class="sh">Why lying hurts the liar</div>
+    </div>
+    <div class="reveal" style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:40px">
+
+      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;padding:28px">
+        <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:16px;color:var(--t1)">How effective evidence works</h3>
+        <p style="font-size:14px;color:var(--t2);line-height:1.7;margin-bottom:16px">Raw receipt count is not trust. Each receipt is multiplied by four factors before contributing to confidence:</p>
+        <div style="font-family:var(--mono);font-size:12px;background:var(--bg-code);border:1px solid var(--brd);border-radius:8px;padding:16px;line-height:2">
+          <div><span style="color:var(--cyan)">receipt_weight</span> = </div>
+          <div style="padding-left:16px"><span style="color:var(--t2)">submitter_credibility</span> <span style="color:var(--t3)">// 0.0 – 1.0</span></div>
+          <div style="padding-left:16px">× <span style="color:var(--t2)">time_decay</span> <span style="color:var(--t3)">// recent = higher</span></div>
+          <div style="padding-left:16px">× <span style="color:var(--t2)">graph_health</span> <span style="color:var(--t3)">// closed loops = lower</span></div>
+          <div style="padding-left:16px">× <span style="color:var(--t2)">provenance_tier</span> <span style="color:var(--t3)">// host-verified = 1.0×</span></div>
+        </div>
+        <p style="font-size:13px;color:var(--t2);line-height:1.7;margin-top:16px">A new, unverified submitter with no history starts at 0.1×. Even 1,000 receipts from such submitters only contributes 100 effective evidence units — equivalent to just 4 host-verified receipts.</p>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;padding:28px">
+        <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:16px;color:var(--t1)">What happens when you attack</h3>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="padding:14px;background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.15);border-radius:8px">
+            <div style="font-family:var(--mono);font-size:11px;color:var(--red);margin-bottom:6px">SUBMITTING FAKE RECEIPTS</div>
+            <div style="font-size:13px;color:var(--t2)">Each fake receipt from a low-credibility account contributes ~0.04 effective evidence. The attacker spends real infrastructure cost for near-zero trust gain. Graph analysis also flags the pattern, reducing graph_health for the entire cluster.</div>
+          </div>
+          <div style="padding:14px;background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.15);border-radius:8px">
+            <div style="font-family:var(--mono);font-size:11px;color:var(--red);margin-bottom:6px">FILING FALSE REPORTS</div>
+            <div style="font-size:13px;color:var(--t2)">Dismissed reports lower your submitter_credibility. After multiple dismissed reports, your legitimate receipts are down-weighted too — making your own trust profile harder to build.</div>
+          </div>
+          <div style="padding:14px;background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.15);border-radius:8px">
+            <div style="font-family:var(--mono);font-size:11px;color:var(--green);margin-bottom:6px">THE ASYMMETRY</div>
+            <div style="font-size:13px;color:var(--t2)">Legitimate actors accumulate credibility over time. Attackers burn credibility faster than they can create fake accounts. The cost of a successful attack grows exponentially with each attempt.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
 <!-- FOOTER -->
 <footer>
   <div class="fgrid">
     <div class="fcol-brand">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
-        <svg width="28" height="28" viewBox="0 0 34 34" fill="none"><rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#fg)"/><rect x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#00d4ff"/><rect x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#ffd700"/><rect x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#00d4ff"/><defs><linearGradient id="fg" x1="8" y1="5" x2="8" y2="29"><stop offset="0%" stop-color="#00d4ff"/><stop offset="100%" stop-color="#ffd700"/></linearGradient></defs></svg>
+        <svg width="28" height="28" viewBox="0 0 34 34" fill="none"><rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#fg)"/><rect x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#60a5fa"/><rect x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#f59e0b"/><rect x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#60a5fa"/><defs><linearGradient id="fg" x1="8" y1="5" x2="8" y2="29"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient></defs></svg>
         <span style="font-family:var(--mono);font-weight:700;font-size:14px;letter-spacing:3px">EMILIA</span>
       </div>
       <p>The open trust protocol for AI agents, marketplaces, and software. Portable, evidence-based, always appealable.</p>
@@ -1064,10 +1225,10 @@ function renderProfile(d) {
   const b = p.behavioral || {};
   const s = p.signals || {};
   const bars = [
-    {label:'Completion Rate', val:b.completion_rate, color:'#00ff88'},
-    {label:'Delivery Accuracy', val:s.delivery_accuracy, color:'#00d4ff'},
-    {label:'Price Integrity', val:s.price_integrity, color:'#ffd700'},
-    {label:'Consistency', val:typeof p.consistency === 'number' ? p.consistency*100 : null, color:'#a855f7'},
+    {label:'Completion Rate', val:b.completion_rate, color:'#34d399'},
+    {label:'Delivery Accuracy', val:s.delivery_accuracy, color:'#60a5fa'},
+    {label:'Price Integrity', val:s.price_integrity, color:'#f59e0b'},
+    {label:'Consistency', val:typeof p.consistency === 'number' ? p.consistency*100 : null, color:'#a78bfa'},
   ].filter(b => b.val != null);
   return `<div class="scard">
     <div class="scard-head">

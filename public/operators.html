@@ -12,21 +12,21 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg: #05060a;
-    --surface: #0e1120;
-    --border: rgba(255,255,255,0.06);
-    --border-light: rgba(255,255,255,0.1);
-    --text: #e8eaf0;
-    --muted: #7a809a;
-    --accent: #00d4ff;
-    --accent-light: #80eaff;
-    --accent-dim: rgba(0,212,255,0.08);
-    --green: #00ff88;
-    --green-dim: rgba(0,255,136,0.08);
-    --yellow: #ffd700;
-    --yellow-dim: rgba(255,215,0,0.08);
-    --red: #ff3b3b;
-    --red-dim: rgba(255,59,59,0.08);
+    --bg: #000000;
+    --surface: #0f0f0f;
+    --border: rgba(255,255,255,0.08);
+    --border-light: rgba(255,255,255,0.12);
+    --text: #f0f4ff;
+    --muted: #94a3b8;
+    --accent: #60a5fa;
+    --accent-light: #93c5fd;
+    --accent-dim: rgba(96,165,250,0.1);
+    --green: #34d399;
+    --green-dim: rgba(52,211,153,0.1);
+    --yellow: #f59e0b;
+    --yellow-dim: rgba(245,158,11,0.1);
+    --red: #f87171;
+    --red-dim: rgba(248,113,113,0.1);
     --font: 'Inter', system-ui, sans-serif;
     --mono: 'JetBrains Mono', 'Fira Code', monospace;
   }
@@ -262,10 +262,10 @@
       <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
         <style>@keyframes b1{0%,100%{width:16px}50%{width:11px}}@keyframes b2{0%,100%{width:12px}50%{width:17px}}@keyframes b3{0%,100%{width:14px}50%{width:9px}}.e1{animation:b1 3s ease-in-out infinite}.e2{animation:b2 3s ease-in-out infinite .4s}.e3{animation:b3 3s ease-in-out infinite .8s}</style>
         <rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#eg2)"/>
-        <rect class="e1" x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#00d4ff"/>
-        <rect class="e2" x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#ffd700"/>
-        <rect class="e3" x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#00d4ff"/>
-        <defs><linearGradient id="eg2" x1="8" y1="5" x2="8" y2="29"><stop offset="0%" stop-color="#00d4ff"/><stop offset="100%" stop-color="#ffd700"/></linearGradient></defs>
+        <rect class="e1" x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#60a5fa"/>
+        <rect class="e2" x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#f59e0b"/>
+        <rect class="e3" x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#60a5fa"/>
+        <defs><linearGradient id="eg2" x1="8" y1="5" x2="8" y2="29"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient></defs>
       </svg>
     </div>
     <span class="nav-name">EMILIA</span>
@@ -285,7 +285,7 @@
 <section class="hero">
   <div class="container">
     <div class="hero-badge">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffd700" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><polyline points="17 21 12 21 7 21"/><path d="M5.5 6l-2 6h4l-2-6z"/><path d="M18.5 6l-2 6h4l-2-6z"/><line x1="5.5" y1="6" x2="18.5" y2="6"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><polyline points="17 21 12 21 7 21"/><path d="M5.5 6l-2 6h4l-2-6z"/><path d="M18.5 6l-2 6h4l-2-6z"/><line x1="5.5" y1="6" x2="18.5" y2="6"/></svg>
       <span>Human Accountability Layer</span>
     </div>
     <h1>Trust requires <span>human judgment</span><br>at the boundary</h1>
@@ -336,7 +336,7 @@
 
     <div class="role-grid">
       <div class="role-card">
-        <div class="role-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+        <div class="role-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
         <h3>Reporter</h3>
         <p>Any person or agent can file a report. No authentication required — EP is open by design. Reports are rate-limited (3/hr) to prevent abuse.</p>
         <div class="role-perms">
@@ -348,7 +348,7 @@
       </div>
 
       <div class="role-card featured">
-        <div class="role-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffd700" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><polyline points="17 21 12 21 7 21"/><path d="M5.5 6l-2 6h4l-2-6z"/><path d="M18.5 6l-2 6h4l-2-6z"/><line x1="5.5" y1="6" x2="18.5" y2="6"/></svg></div>
+        <div class="role-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><polyline points="17 21 12 21 7 21"/><path d="M5.5 6l-2 6h4l-2-6z"/><path d="M18.5 6l-2 6h4l-2-6z"/><line x1="5.5" y1="6" x2="18.5" y2="6"/></svg></div>
         <h3>Operator <span style="font-size:11px;color:var(--accent-light);font-weight:400;">← This page</span></h3>
         <p>Operators are humans who review appeals and make binding trust decisions. Their performance is measured, public, and compared against protocol baselines.</p>
         <div class="role-perms">
@@ -362,7 +362,7 @@
       </div>
 
       <div class="role-card">
-        <div class="role-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2"/><path d="M8 7V5a2 2 0 00-4 0v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9" y1="14.5" x2="15" y2="14.5"/></svg></div>
+        <div class="role-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2"/><path d="M8 7V5a2 2 0 00-4 0v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9" y1="14.5" x2="15" y2="14.5"/></svg></div>
         <h3>Host Verifier</h3>
         <p>Ecosystem partners (GitHub, npm, MCP registry, etc.) who provide verified metadata about entities. Their attestations receive the highest provenance tier (1.0×).</p>
         <div class="role-perms">
@@ -374,7 +374,7 @@
       </div>
 
       <div class="role-card">
-        <div class="role-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="20" height="13" rx="2"/><path d="M12 4v4M9.5 4h5"/><circle cx="9" cy="14" r="1.5" fill="#a855f7" stroke="none"/><circle cx="15" cy="14" r="1.5" fill="#a855f7" stroke="none"/><line x1="9" y1="18" x2="15" y2="18"/></svg></div>
+        <div class="role-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="20" height="13" rx="2"/><path d="M12 4v4M9.5 4h5"/><circle cx="9" cy="14" r="1.5" fill="#a78bfa" stroke="none"/><circle cx="15" cy="14" r="1.5" fill="#a78bfa" stroke="none"/><line x1="9" y1="18" x2="15" y2="18"/></svg></div>
         <h3>Principal</h3>
         <p>Any agent, service, merchant, or developer registered in EP. They can respond to disputes, submit evidence, and view their own trust profiles. They are judged, not judges.</p>
         <div class="role-perms">
@@ -587,7 +587,7 @@
     <div class="mechanic-grid">
       <div class="mechanic-card">
         <h3>
-          <div class="mechanic-icon green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+          <div class="mechanic-icon green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
           Public performance scores
         </h3>
         <p>Every operator's decision history is queryable via <code style="font-family:var(--mono);font-size:12px;color:var(--accent-light)">GET /api/operators/:id</code>. Reversal rate, median SLA, agreement with protocol baseline, and appeal volume are all public.</p>
@@ -595,7 +595,7 @@
 
       <div class="mechanic-card">
         <h3>
-          <div class="mechanic-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg></div>
+          <div class="mechanic-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg></div>
           Immutable audit trail
         </h3>
         <p>Every operator action is appended to the audit log with before/after state capture. Decisions cannot be edited retroactively. The SHA-256 chain links each action to the previous.</p>
@@ -603,7 +603,7 @@
 
       <div class="mechanic-card">
         <h3>
-          <div class="mechanic-icon yellow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffd700" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+          <div class="mechanic-icon yellow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
           SLA enforcement
         </h3>
         <p>The <code style="font-family:var(--mono);font-size:12px;color:var(--accent-light)">cron/expire</code> job escalates overdue appeals at 72h. Escalated appeals show in the public queue and count against the assigned operator's SLA score.</p>
@@ -611,7 +611,7 @@
 
       <div class="mechanic-card">
         <h3>
-          <div class="mechanic-icon red"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff3b3b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+          <div class="mechanic-icon red"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
           Conflict of interest checks
         </h3>
         <p>Assignment logic checks receipt submission history. If an operator has ever submitted a receipt for the disputed entity, they are excluded from that appeal automatically — not by honor system.</p>
@@ -619,7 +619,7 @@
 
       <div class="mechanic-card">
         <h3>
-          <div class="mechanic-icon green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><polyline points="17 21 12 21 7 21"/><path d="M5.5 6l-2 6h4l-2-6z"/><path d="M18.5 6l-2 6h4l-2-6z"/><line x1="5.5" y1="6" x2="18.5" y2="6"/></svg></div>
+          <div class="mechanic-icon green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><polyline points="17 21 12 21 7 21"/><path d="M5.5 6l-2 6h4l-2-6z"/><path d="M18.5 6l-2 6h4l-2-6z"/><line x1="5.5" y1="6" x2="18.5" y2="6"/></svg></div>
           Baseline comparison
         </h3>
         <p>EP computes what the algorithmic evaluator would have decided. Operators who consistently diverge from the baseline in ways that benefit specific entity types are flagged for review.</p>
@@ -627,7 +627,7 @@
 
       <div class="mechanic-card">
         <h3>
-          <div class="mechanic-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
+          <div class="mechanic-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
           Operator appeals
         </h3>
         <p>Operators can be removed by governance vote if their public record shows systematic bias. The process is defined in GOVERNANCE.md. No single party controls removal.</p>
@@ -766,23 +766,23 @@
           <h3>What we're looking for</h3>
           <div class="req-list">
             <div class="req-item">
-              <span class="req-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+              <span class="req-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
               <span>Domain expertise in at least one area: software supply chain, commerce disputes, AI agent behavior, or identity systems</span>
             </div>
             <div class="req-item">
-              <span class="req-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+              <span class="req-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
               <span>Availability to respond to assigned appeals within 72 hours</span>
             </div>
             <div class="req-item">
-              <span class="req-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+              <span class="req-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
               <span>Comfort working with structured data: receipt chains, trust profiles, graph analysis output</span>
             </div>
             <div class="req-item">
-              <span class="req-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+              <span class="req-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
               <span>No financial relationship with entities likely to appear in your assigned category</span>
             </div>
             <div class="req-item">
-              <span class="req-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+              <span class="req-check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
               <span>Willingness to have your decision record permanently public</span>
             </div>
           </div>
