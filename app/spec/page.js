@@ -239,7 +239,7 @@ export default function SpecPage() {
       <body>
         <div className="spec-nav">
           <a href="/" style={{ fontWeight: 600, letterSpacing: 2, fontSize: 14, color: '#e8eaf0' }}>EMILIA</a>
-          <div style={{ display: 'flex', gap: 24 }}>
+          <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
             <a href="/">HOME</a>
             <a href="/quickstart.html">QUICKSTART</a>
             <a href="/demo.html">DEMO</a>
@@ -247,6 +247,7 @@ export default function SpecPage() {
             <a href="/operators.html">OPERATORS</a>
             <a href="/appeal">APPEAL</a>
             <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank">GITHUB</a>
+            <a href="/apply" style={{ background: '#00d4ff', color: '#05060a', padding: '6px 14px', borderRadius: 6, fontWeight: 700, fontSize: 10 }}>APPLY</a>
           </div>
         </div>
         <div className="spec-content">
