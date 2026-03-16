@@ -12,21 +12,21 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg: #0a0a0b;
-    --surface: #111113;
-    --border: #1e1e24;
-    --border-light: #2a2a33;
-    --text: #e8e8ed;
-    --muted: #8888a0;
-    --accent: #6366f1;
-    --accent-light: #818cf8;
-    --accent-dim: rgba(99,102,241,0.12);
-    --green: #22c55e;
-    --green-dim: rgba(34,197,94,0.1);
-    --yellow: #eab308;
-    --yellow-dim: rgba(234,179,8,0.1);
-    --red: #ef4444;
-    --red-dim: rgba(239,68,68,0.1);
+    --bg: #05060a;
+    --surface: #0e1120;
+    --border: rgba(255,255,255,0.06);
+    --border-light: rgba(255,255,255,0.1);
+    --text: #e8eaf0;
+    --muted: #7a809a;
+    --accent: #00d4ff;
+    --accent-light: #80eaff;
+    --accent-dim: rgba(0,212,255,0.08);
+    --green: #00ff88;
+    --green-dim: rgba(0,255,136,0.08);
+    --yellow: #ffd700;
+    --yellow-dim: rgba(255,215,0,0.08);
+    --red: #ff3b3b;
+    --red-dim: rgba(255,59,59,0.08);
     --font: 'Inter', system-ui, sans-serif;
     --mono: 'JetBrains Mono', 'Fira Code', monospace;
   }
@@ -51,14 +51,14 @@
     height: 60px;
   }
   .nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-  .nav-logo { width: 28px; height: 28px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
-  .nav-name { font-weight: 700; font-size: 15px; color: var(--text); }
+  .nav-logo { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .nav-name { font-family: var(--mono); font-weight: 700; font-size: 14px; letter-spacing: 3px; color: var(--text); text-transform: uppercase; }
   .nav-tag { font-size: 11px; color: var(--muted); border: 1px solid var(--border); padding: 2px 8px; border-radius: 20px; }
   .nav-links { display: flex; align-items: center; gap: 24px; }
-  .nav-links a { color: var(--muted); text-decoration: none; font-size: 14px; transition: color 0.2s; }
-  .nav-links a:hover { color: var(--text); }
-  .nav-links a.active { color: var(--accent-light); }
-  .nav-cta { background: var(--accent); color: white; padding: 8px 18px; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 600; }
+  .nav-links a { font-family: var(--mono); color: var(--muted); text-decoration: none; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--accent); }
+  .nav-links a.active { color: var(--accent); }
+  .nav-cta { background: var(--accent); color: #05060a; padding: 8px 18px; border-radius: 8px; text-decoration: none; font-size: 12px; font-family: var(--mono); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
 
   /* LAYOUT */
   .container { max-width: 1100px; margin: 0 auto; padding: 0 2rem; }
@@ -258,9 +258,17 @@
 
 <nav>
   <a class="nav-brand" href="/">
-    <div class="nav-logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffd700" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><polyline points="17 21 12 21 7 21"/><path d="M5.5 6l-2 6h4l-2-6z"/><path d="M18.5 6l-2 6h4l-2-6z"/><line x1="5.5" y1="6" x2="18.5" y2="6"/></svg></div>
-    <span class="nav-name">EMILIA Protocol</span>
-    <span class="nav-tag">v1.1</span>
+    <div class="nav-logo">
+      <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+        <style>@keyframes b1{0%,100%{width:16px}50%{width:11px}}@keyframes b2{0%,100%{width:12px}50%{width:17px}}@keyframes b3{0%,100%{width:14px}50%{width:9px}}.e1{animation:b1 3s ease-in-out infinite}.e2{animation:b2 3s ease-in-out infinite .4s}.e3{animation:b3 3s ease-in-out infinite .8s}</style>
+        <rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#eg2)"/>
+        <rect class="e1" x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#00d4ff"/>
+        <rect class="e2" x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#ffd700"/>
+        <rect class="e3" x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#00d4ff"/>
+        <defs><linearGradient id="eg2" x1="8" y1="5" x2="8" y2="29"><stop offset="0%" stop-color="#00d4ff"/><stop offset="100%" stop-color="#ffd700"/></linearGradient></defs>
+      </svg>
+    </div>
+    <span class="nav-name">EMILIA</span>
   </a>
   <div class="nav-links">
     <a href="/">Home</a>
@@ -268,7 +276,7 @@
     <a href="/spec" target="_blank">Spec</a>
     <a href="/operators.html" class="active">Operators</a>
     <a href="/appeal">Appeal</a>
-    <a href="https://github.com/emiliaprotocol/ep" target="_blank">GitHub</a>
+    <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank">GitHub</a>
   </div>
   <a href="/apply" class="nav-cta">Apply to Review</a>
 </nav>
@@ -911,7 +919,7 @@
       <a href="/spec" target="_blank">Spec RFC</a>
       <a href="/operators.html">Operators</a>
       <a href="/appeal">File an Appeal</a>
-      <a href="https://github.com/emiliaprotocol/ep" target="_blank">GitHub</a>
+      <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank">GitHub</a>
       <a href="/.well-known/ep-trust.json" target="_blank">Discovery</a>
     </div>
     <div class="footer-copy">
