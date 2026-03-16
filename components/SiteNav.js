@@ -2,10 +2,7 @@
 
 /**
  * SiteNav — canonical navigation bar for all EMILIA Protocol pages.
- * Used by: /spec, /appeal, /entity/[entityId]
- * 
- * Static HTML pages (landing, demo, quickstart, operators, apply) use
- * the same visual design via CSS classes but render their own HTML.
+ * Three flex children: logo | links | CTA (matches static page nav structure)
  */
 
 const NAV_LINKS = [
@@ -24,11 +21,13 @@ export default function SiteNav({ activePage }) {
       position: 'sticky', top: 0, zIndex: 100,
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 40px', height: 60,
+      left: 0, right: 0, width: '100%', boxSizing: 'border-box',
       background: 'rgba(0,0,0,0.85)',
       backdropFilter: 'blur(12px)',
       borderBottom: '1px solid rgba(255,255,255,0.06)',
     }}>
-      <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+      {/* 1. Logo */}
+      <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}>
         <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
           <rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#sng)"/>
           <rect x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#60a5fa"/>
@@ -43,6 +42,7 @@ export default function SiteNav({ activePage }) {
         }}>EMILIA</span>
       </a>
 
+      {/* 2. Links (centered) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
         {NAV_LINKS.map(([href, label]) => (
           <a key={label} href={href}
@@ -59,14 +59,17 @@ export default function SiteNav({ activePage }) {
             onMouseLeave={e => { if (label !== activePage) e.target.style.color = '#4a4f6a'; }}
           >{label}</a>
         ))}
-        <a href="/apply" style={{
-          background: '#00d4ff', color: '#05060a',
-          padding: '8px 18px', borderRadius: 8,
-          textDecoration: 'none', fontSize: 12,
-          fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-          fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase',
-        }}>Apply to Review</a>
       </div>
+
+      {/* 3. CTA (right) */}
+      <a href="/apply" style={{
+        background: '#00d4ff', color: '#05060a',
+        padding: '8px 18px', borderRadius: 8,
+        textDecoration: 'none', fontSize: 12,
+        fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+        fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase',
+        flexShrink: 0,
+      }}>Apply to Review</a>
     </nav>
   );
 }
