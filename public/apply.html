@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apply to Become an Operator — EMILIA Protocol</title>
+<meta name="description" content="Operators are the humans who make EP's appeals system real. Apply to review disputes, build a public accountability record, and become part of the trust infrastructure.">
+<meta property="og:title" content="Apply to Become an Operator — EMILIA Protocol">
+<meta property="og:description" content="Help close the loop on trust. Operators review appeals, and their decisions are public and auditable.">
+<meta name="twitter:card" content="summary">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@400;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#000000;--surface:#0f0f0f;--surface-h:#141414;
+  --brd:rgba(255,255,255,0.07);--brd-a:rgba(96,165,250,0.3);
+  --t1:#f0f4ff;--t2:#94a3b8;--t3:#475569;
+  --cyan:#60a5fa;--cyan-d:rgba(96,165,250,0.08);
+  --gold:#f59e0b;--gold-d:rgba(245,158,11,0.08);
+  --green:#34d399;--green-d:rgba(52,211,153,0.08);
+  --red:#f87171;
+  --mono:'JetBrains Mono',monospace;
+  --disp:'Outfit',sans-serif;
+  --body:'Space Grotesk',sans-serif;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--t1);font-family:var(--body);-webkit-font-smoothing:antialiased;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");pointer-events:none;z-index:9999}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:60px;background:rgba(0,0,0,0.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--brd)}
+.nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.nav-logo{width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.nav-name{font-family:var(--mono);font-weight:700;font-size:14px;letter-spacing:3px;color:var(--t1);text-transform:uppercase}
+.nav-links{display:flex;align-items:center;gap:24px}
+.nav-links a{font-family:var(--mono);color:var(--t3);text-decoration:none;font-size:11px;letter-spacing:1px;text-transform:uppercase;transition:color .2s}
+.nav-links a:hover{color:var(--cyan)}
+.nav-links a.active{color:var(--cyan)}
+.nav-cta{background:var(--cyan);color:#000;padding:8px 18px;border-radius:8px;text-decoration:none;font-size:12px;font-family:var(--mono);font-weight:700;letter-spacing:1px;text-transform:uppercase}
+@keyframes b1{0%,100%{width:16px}50%{width:11px}}
+@keyframes b2{0%,100%{width:12px}50%{width:17px}}
+@keyframes b3{0%,100%{width:14px}50%{width:9px}}
+.e1{animation:b1 3s ease-in-out infinite}
+.e2{animation:b2 3s ease-in-out infinite .4s}
+.e3{animation:b3 3s ease-in-out infinite .8s}
+@media(max-width:640px){nav{padding:0 20px}.nav-links a:not(.nav-cta){display:none}}
+
+/* LAYOUT */
+.container{max-width:800px;margin:0 auto;padding:0 2rem}
+
+/* HERO */
+.hero{padding:80px 40px 60px;text-align:center}
+.badge{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);background:var(--gold-d);border:1px solid rgba(245,158,11,0.2);padding:6px 16px;border-radius:40px;margin-bottom:32px}
+.hero h1{font-family:var(--disp);font-size:clamp(36px,6vw,60px);font-weight:900;line-height:1.05;margin-bottom:20px}
+.hero h1 span{color:var(--cyan)}
+.hero p{font-size:17px;color:var(--t2);max-width:560px;margin:0 auto;line-height:1.7}
+
+/* WHAT SECTION */
+.what{padding:0 40px 72px}
+.what .container{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+@media(max-width:720px){.what .container{grid-template-columns:1fr}}
+.what-card{background:var(--surface);border:1px solid var(--brd);border-radius:14px;padding:28px 24px;transition:border-color .25s}
+.what-card:hover{border-color:rgba(255,255,255,0.12)}
+.what-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.what-card h3{font-size:16px;font-weight:700;margin-bottom:8px}
+.what-card p{font-size:13px;color:var(--t2);line-height:1.6}
+
+/* REQUIREMENTS */
+.req{padding:0 40px 72px}
+.req-inner{background:var(--surface);border:1px solid var(--brd);border-radius:16px;padding:40px}
+.req h2{font-family:var(--disp);font-size:26px;font-weight:700;margin-bottom:8px}
+.req-sub{font-size:14px;color:var(--t2);margin-bottom:28px}
+.req-list{display:grid;gap:14px}
+.req-item{display:flex;align-items:flex-start;gap:14px;padding:16px;background:var(--bg);border:1px solid var(--brd);border-radius:10px}
+.req-check{width:22px;height:22px;border-radius:50%;background:var(--green-d);border:1px solid rgba(52,211,153,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.req-item h4{font-size:14px;font-weight:600;margin-bottom:3px}
+.req-item p{font-size:13px;color:var(--t2);line-height:1.5}
+
+/* FORM */
+.form-section{padding:0 40px 80px}
+.form-inner{background:var(--surface);border:1px solid var(--brd);border-radius:16px;padding:40px}
+.form-inner h2{font-family:var(--disp);font-size:26px;font-weight:700;margin-bottom:8px}
+.form-sub{font-size:14px;color:var(--t2);margin-bottom:32px;line-height:1.6}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:600px){.form-grid{grid-template-columns:1fr}}
+.fgroup{display:flex;flex-direction:column;gap:8px}
+.fgroup.full{grid-column:1/-1}
+.fgroup label{font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--t3)}
+.fgroup input,.fgroup textarea,.fgroup select{
+  background:var(--bg);border:1px solid var(--brd);color:var(--t1);
+  font-family:var(--body);font-size:14px;padding:12px 16px;border-radius:10px;
+  outline:none;transition:border-color .25s;width:100%;resize:vertical
+}
+.fgroup input:focus,.fgroup textarea:focus{border-color:var(--brd-a)}
+.fgroup input::placeholder,.fgroup textarea::placeholder{color:var(--t3)}
+.pledge{display:flex;align-items:flex-start;gap:12px;padding:16px;background:var(--cyan-d);border:1px solid rgba(96,165,250,0.15);border-radius:10px;margin-top:8px;cursor:pointer}
+.pledge input[type=checkbox]{width:18px;height:18px;flex-shrink:0;margin-top:2px;accent-color:var(--cyan)}
+.pledge span{font-size:13px;color:var(--t2);line-height:1.6}
+.pledge strong{color:var(--t1)}
+.submit-btn{width:100%;margin-top:24px;padding:16px;background:var(--cyan);color:#000;border:none;border-radius:10px;font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:opacity .2s}
+.submit-btn:hover{opacity:.9}
+.submit-btn:disabled{opacity:.45;cursor:not-allowed}
+.form-note{font-family:var(--mono);font-size:10px;color:var(--t3);text-align:center;margin-top:14px;letter-spacing:.5px}
+
+/* SUCCESS */
+.success-state{display:none;text-align:center;padding:48px 24px}
+.success-icon{width:56px;height:56px;border-radius:50%;background:var(--green-d);border:1px solid rgba(52,211,153,0.3);display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
+.success-state h3{font-size:22px;font-weight:700;margin-bottom:10px}
+.success-state p{font-size:14px;color:var(--t2);line-height:1.7;margin-bottom:24px}
+.success-state a{font-family:var(--mono);font-size:11px;color:var(--cyan);text-decoration:none;letter-spacing:1px;text-transform:uppercase}
+
+/* ERROR */
+.form-error{background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:8px;padding:12px 16px;font-size:13px;color:var(--red);margin-top:12px;display:none}
+
+/* FOOTER */
+footer{position:relative;z-index:1;padding:48px 40px 36px;border-top:1px solid var(--brd);text-align:center}
+footer a{font-family:var(--mono);font-size:11px;color:var(--t3);text-decoration:none;margin:0 12px;transition:color .2s}
+footer a:hover{color:var(--cyan)}
+.footer-copy{font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:16px;letter-spacing:1px}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.reveal{opacity:0;animation:fadeUp .6s ease forwards}
+.reveal.d1{animation-delay:.1s}.reveal.d2{animation-delay:.2s}.reveal.d3{animation-delay:.3s}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="/">
+    <div class="nav-logo">
+      <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+        <style>@keyframes b1{0%,100%{width:16px}50%{width:11px}}@keyframes b2{0%,100%{width:12px}50%{width:17px}}@keyframes b3{0%,100%{width:14px}50%{width:9px}}.e1{animation:b1 3s ease-in-out infinite}.e2{animation:b2 3s ease-in-out infinite .4s}.e3{animation:b3 3s ease-in-out infinite .8s}</style>
+        <rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#apg)"/>
+        <rect class="e1" x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#60a5fa"/>
+        <rect class="e2" x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#f59e0b"/>
+        <rect class="e3" x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#60a5fa"/>
+        <defs><linearGradient id="apg" x1="8" y1="5" x2="8" y2="29"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient></defs>
+      </svg>
+    </div>
+    <span class="nav-name">EMILIA</span>
+  </a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/quickstart.html">Quickstart</a>
+    <a href="/spec">Spec</a>
+    <a href="/operators.html">Operators</a>
+    <a href="/appeal">Appeal</a>
+    <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank">GitHub</a>
+  </div>
+  <a href="/apply" class="nav-cta active">Apply to Review</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="badge">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/><circle cx="12" cy="12" r="5"/></svg>
+    Operator Application
+  </div>
+  <h1 class="reveal d1">Close the loop on <span>trust</span></h1>
+  <p class="reveal d2">Operators are the humans who make EP's constitutional guarantee real. When an appeal is filed, an operator reviews it — publicly, accountably, on the record.</p>
+</section>
+
+<!-- WHAT YOU'LL DO -->
+<section class="what">
+  <div class="container reveal d1">
+    <div class="what-card">
+      <div class="what-icon" style="background:var(--cyan-d);border:1px solid rgba(96,165,250,0.2)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      </div>
+      <h3>Review appeals</h3>
+      <p>When entities contest trust decisions, you evaluate the evidence and issue a ruling within 72 hours. Your decision is public and forms part of your own operator trust record.</p>
+    </div>
+    <div class="what-card">
+      <div class="what-icon" style="background:var(--gold-d);border:1px solid rgba(245,158,11,0.2)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <h3>Build reputation</h3>
+      <p>Every ruling you make is scored. Response time, appeal outcomes, overturn rate, and consistency are tracked and published. Your operator record is itself a trust signal.</p>
+    </div>
+    <div class="what-card">
+      <div class="what-icon" style="background:var(--green-d);border:1px solid rgba(52,211,153,0.2)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <h3>Govern the protocol</h3>
+      <p>Operators are part of EP's governance layer. You help define what fair review looks like, propose policy changes, and participate in the ongoing development of the standard.</p>
+    </div>
+  </div>
+</section>
+
+<!-- REQUIREMENTS -->
+<section class="req">
+  <div class="container">
+    <div class="req-inner reveal d1">
+      <h2>Requirements</h2>
+      <p class="req-sub">EP operators must meet these baseline criteria before approval.</p>
+      <div class="req-list">
+        <div class="req-item">
+          <div class="req-check">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div>
+            <h4>Real identity, public accountability</h4>
+            <p>Operators are not anonymous. Your name and operator ID are public. Your decisions are auditable. This is the source of your authority — accountability, not anonymity.</p>
+          </div>
+        </div>
+        <div class="req-item">
+          <div class="req-check">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div>
+            <h4>Familiarity with the EP protocol</h4>
+            <p>Read the <a href="/spec" style="color:var(--cyan);text-decoration:none">Core Spec RFC</a> and understand how trust profiles, receipts, and confidence levels work. You don't need to write code — you need to understand the evidence model.</p>
+          </div>
+        </div>
+        <div class="req-item">
+          <div class="req-check">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div>
+            <h4>72-hour response commitment</h4>
+            <p>Appeals expire after 72 hours if unreviewed. You must commit to reviewing assigned appeals within that window. Volume is low at launch — expect 0–5 appeals per week.</p>
+          </div>
+        </div>
+        <div class="req-item">
+          <div class="req-check">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div>
+            <h4>No conflict of interest</h4>
+            <p>You cannot review appeals from entities with which you have a financial or personal relationship. Conflicts must be declared and the appeal reassigned. Concealed conflicts are grounds for operator removal.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- APPLICATION FORM -->
+<section class="form-section" id="apply">
+  <div class="container">
+    <div class="form-inner reveal d1">
+      <div id="form-state">
+        <h2>Apply now</h2>
+        <p class="form-sub">Applications are reviewed manually. We'll respond within 5 business days. Early operators help shape the process — your input on the review workflow is part of the role.</p>
+        <form id="applyForm" onsubmit="submitApply(event)">
+          <div class="form-grid">
+            <div class="fgroup">
+              <label for="applyName">Full Name</label>
+              <input type="text" id="applyName" name="name" placeholder="Your name" required autocomplete="name">
+            </div>
+            <div class="fgroup">
+              <label for="applyEmail">Email</label>
+              <input type="email" id="applyEmail" name="email" placeholder="your@email.com" required autocomplete="email">
+            </div>
+            <div class="fgroup full">
+              <label for="applyBackground">Professional Background</label>
+              <textarea id="applyBackground" name="background" rows="3" placeholder="What do you do? Relevant roles, expertise, or organisations..."></textarea>
+            </div>
+            <div class="fgroup full">
+              <label for="applyMotivation">Why do you want to be an EP Operator?</label>
+              <textarea id="applyMotivation" name="motivation" rows="4" placeholder="What draws you to this role? How do you think about trust and fair dispute resolution?"></textarea>
+            </div>
+          </div>
+          <label class="pledge" style="display:flex">
+            <input type="checkbox" id="applyPledge" required>
+            <span>I understand that as an operator my rulings are <strong>public and permanent</strong>, my identity is non-anonymous, and I commit to <strong>72-hour review windows</strong> and <strong>conflict-of-interest disclosure</strong>.</span>
+          </label>
+          <div class="form-error" id="applyError"></div>
+          <button type="submit" class="submit-btn" id="applyBtn">Submit Application</button>
+          <p class="form-note">Your application is stored securely. We don't share your information with third parties.</p>
+        </form>
+      </div>
+      <div class="success-state" id="success-state">
+        <div class="success-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h3>Application received</h3>
+        <p>We'll review your application and respond within 5 business days. In the meantime, explore the <a href="/spec" style="color:var(--cyan);text-decoration:none">protocol spec</a> and get familiar with how EP evaluates trust evidence.</p>
+        <a href="/operators.html">Learn more about operators →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div>
+    <a href="/">Home</a>
+    <a href="/spec">Spec</a>
+    <a href="/operators.html">Operators</a>
+    <a href="/appeal">File an Appeal</a>
+    <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank">GitHub</a>
+    <a href="https://github.com/emiliaprotocol/emilia-protocol/discussions" target="_blank">Discussions</a>
+  </div>
+  <div class="footer-copy">EMILIA Protocol · Apache 2.0 · The trust layer for the AI economy</div>
+</footer>
+
+<script>
+async function submitApply(e) {
+  e.preventDefault();
+  const btn = document.getElementById('applyBtn');
+  const errEl = document.getElementById('applyError');
+  errEl.style.display = 'none';
+  btn.disabled = true;
+  btn.textContent = 'SUBMITTING...';
+
+  const name = document.getElementById('applyName').value.trim();
+  const email = document.getElementById('applyEmail').value.trim();
+  const background = document.getElementById('applyBackground').value.trim();
+  const motivation = document.getElementById('applyMotivation').value.trim();
+
+  try {
+    const res = await fetch('/api/operators/apply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, background, motivation }),
+    });
+    const data = await res.json();
+    if (!res.ok && !data.fallback) {
+      throw new Error(data.error || 'Submission failed');
+    }
+    if (data.already_applied) {
+      errEl.textContent = 'We already have an application from this email address. Check your inbox for our response.';
+      errEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'SUBMIT APPLICATION';
+      return;
+    }
+    document.getElementById('form-state').style.display = 'none';
+    document.getElementById('success-state').style.display = 'block';
+  } catch (err) {
+    errEl.textContent = err.message || 'Something went wrong. Please try again.';
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'SUBMIT APPLICATION';
+  }
+}
+</script>
+</body>
+</html>

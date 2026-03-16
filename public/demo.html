@@ -6,12 +6,12 @@
 <title>EP Interactive Demo — Trust Evaluation in 5 Steps</title>
 <meta name="description" content="See EMILIA Protocol in action: trust profiles, install preflight, disputes, and policy evaluation — live.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #05060a; --bg2: #0a0e1a; --bg3: #0e1120;
-    --cyan: #00d4ff; --gold: #ffd700; --green: #00ff88; --amber: #ff9f1c; --red: #ff4757;
-    --t1: #e8eaf0; --t2: #9ca3b8; --t3: #4a4f6a;
+    --bg: #000000; --bg2: #0f0f0f; --bg3: #141414;
+    --cyan: #60a5fa; --gold: #f59e0b; --green: #34d399; --amber: #f59e0b; --red: #f87171;
+    --t1: #f0f4ff; --t2: #94a3b8; --t3: #475569;
     --mono: 'JetBrains Mono', monospace; --disp: 'Outfit', sans-serif;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -61,8 +61,8 @@
 
   /* Run button */
   .run-row { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
-  .run-btn { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; padding: 10px 24px; border: 1px solid rgba(0,212,255,0.3); background: rgba(0,212,255,0.06); color: var(--cyan); border-radius: 8px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
-  .run-btn:hover { background: rgba(0,212,255,0.12); border-color: rgba(0,212,255,0.5); }
+  .run-btn { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; padding: 10px 24px; border: 1px solid rgba(96,165,250,0.3); background: rgba(96,165,250,0.06); color: var(--cyan); border-radius: 8px; cursor: pointer; transition: all 0.2s; text-transform: uppercase; }
+  .run-btn:hover { background: rgba(96,165,250,0.12); border-color: rgba(0,212,255,0.5); }
   .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .run-hint { font-family: var(--mono); font-size: 10px; color: var(--t3); }
 
@@ -77,10 +77,10 @@
   .result-empty { font-family: var(--mono); font-size: 11px; color: var(--t3); padding: 12px 0; }
 
   /* Divider */
-  .divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(0,212,255,0.15), transparent); margin: 48px 0; }
+  .divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(96,165,250,0.15), transparent); margin: 48px 0; }
 
   /* Callout */
-  .callout { background: rgba(0,212,255,0.04); border: 1px solid rgba(0,212,255,0.12); border-radius: 10px; padding: 20px 24px; margin: 24px 0; font-size: 14px; color: var(--t2); line-height: 1.7; }
+  .callout { background: rgba(96,165,250,0.04); border: 1px solid rgba(96,165,250,0.12); border-radius: 10px; padding: 20px 24px; margin: 24px 0; font-size: 14px; color: var(--t2); line-height: 1.7; }
   .callout strong { color: var(--cyan); }
 
   /* Footer */
@@ -90,13 +90,55 @@
 
   @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
   @media (max-width: 600px) { .step-desc { padding-left: 0; } .code-block { font-size: 10px; } }
+
+  /* Nav */
+  nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:60px;background:rgba(0,0,0,0.85);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.06)}
+  .nav-brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+  .nav-logo{width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .nav-name{font-family:var(--mono);font-weight:700;font-size:14px;letter-spacing:3px;color:var(--t1);text-transform:uppercase}
+  .nav-links{display:flex;align-items:center;gap:24px}
+  .nav-links a{font-family:var(--mono);color:var(--t3);text-decoration:none;font-size:11px;letter-spacing:1px;text-transform:uppercase;transition:color .2s}
+  .nav-links a:hover{color:var(--cyan)}
+  .nav-links a.active{color:var(--cyan)}
+  .nav-cta{background:var(--cyan);color:#000;padding:8px 18px;border-radius:8px;text-decoration:none;font-size:12px;font-family:var(--mono);font-weight:700;letter-spacing:1px;text-transform:uppercase}
+  @keyframes b1{0%,100%{width:16px}50%{width:11px}}
+  @keyframes b2{0%,100%{width:12px}50%{width:17px}}
+  @keyframes b3{0%,100%{width:14px}50%{width:9px}}
+  .e1{animation:b1 3s ease-in-out infinite}
+  .e2{animation:b2 3s ease-in-out infinite .4s}
+  .e3{animation:b3 3s ease-in-out infinite .8s}
+  @media(max-width:640px){nav{padding:0 20px}.nav-links{gap:14px}.nav-links a:not(.nav-cta){display:none}}
 </style>
 </head>
 <body>
+<nav>
+  <a class="nav-brand" href="/">
+    <div class="nav-logo">
+      <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
+        <style>.e1{animation:b1 3s ease-in-out infinite}.e2{animation:b2 3s ease-in-out infinite .4s}.e3{animation:b3 3s ease-in-out infinite .8s}</style>
+        <rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#edg)"/>
+        <rect class="e1" x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#60a5fa"/>
+        <rect class="e2" x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#f59e0b"/>
+        <rect class="e3" x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#60a5fa"/>
+        <defs><linearGradient id="edg" x1="8" y1="5" x2="8" y2="29"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient></defs>
+      </svg>
+    </div>
+    <span class="nav-name">EMILIA</span>
+  </a>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/quickstart.html">Quickstart</a>
+    <a href="/demo.html" class="active">Demo</a>
+    <a href="/spec">Spec</a>
+    <a href="/operators.html">Operators</a>
+    <a href="/appeal">Appeal</a>
+    <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank">GitHub</a>
+  </div>
+  <a href="/apply" class="nav-cta">Apply to Review</a>
+</nav>
 <div class="page">
 
   <div class="demo-header">
-    <a href="/" class="back">&larr; emiliaprotocol.ai</a>
     <div class="tag">Interactive Demo</div>
     <h1><span>Trust Evaluation</span> in 5 Steps</h1>
     <p>See EMILIA Protocol against live API surfaces. This demo hits the current reference endpoints for trust profiles, policy evaluation, receipts, disputes, and verification. For the full dispute and appeal lifecycle, visit <a href="/appeal" style="color:var(--cyan);text-decoration:underline;">the appeal page</a>.</p>
@@ -105,7 +147,7 @@
   <!-- STEP 1: TRUST PROFILE -->
   <div class="step">
     <div class="step-header">
-      <div class="step-num" style="background:rgba(0,212,255,0.1);color:var(--cyan);border:1px solid rgba(0,212,255,0.2);">1</div>
+      <div class="step-num" style="background:rgba(96,165,250,0.1);color:var(--cyan);border:1px solid rgba(0,212,255,0.2);">1</div>
       <div class="step-title">Query a Trust Profile</div>
     </div>
     <div class="step-desc">
@@ -136,7 +178,7 @@
   <!-- STEP 2: POLICY EVALUATION -->
   <div class="step">
     <div class="step-header">
-      <div class="step-num" style="background:rgba(0,255,136,0.1);color:var(--green);border:1px solid rgba(0,255,136,0.2);">2</div>
+      <div class="step-num" style="background:rgba(52,211,153,0.1);color:var(--green);border:1px solid rgba(52,211,153,0.2);">2</div>
       <div class="step-title">Evaluate Against a Policy</div>
     </div>
     <div class="step-desc">
@@ -170,7 +212,7 @@
   <!-- STEP 3: INSTALL PREFLIGHT -->
   <div class="step">
     <div class="step-header">
-      <div class="step-num" style="background:rgba(255,215,0,0.1);color:var(--gold);border:1px solid rgba(255,215,0,0.2);">3</div>
+      <div class="step-num" style="background:rgba(245,158,11,0.1);color:var(--gold);border:1px solid rgba(245,158,11,0.2);">3</div>
       <div class="step-title">Run Install Preflight</div>
     </div>
     <div class="step-desc">
@@ -209,7 +251,7 @@
   <!-- STEP 4: FILE A DISPUTE -->
   <div class="step">
     <div class="step-header">
-      <div class="step-num" style="background:rgba(255,159,28,0.1);color:var(--amber);border:1px solid rgba(255,159,28,0.2);">4</div>
+      <div class="step-num" style="background:rgba(245,158,11,0.1);color:var(--amber);border:1px solid rgba(245,158,11,0.2);">4</div>
       <div class="step-title">File a Trust Report</div>
     </div>
     <div class="step-desc">
@@ -244,7 +286,7 @@
   <!-- STEP 5: LIST POLICIES -->
   <div class="step">
     <div class="step-header">
-      <div class="step-num" style="background:rgba(0,212,255,0.1);color:var(--cyan);border:1px solid rgba(0,212,255,0.2);">5</div>
+      <div class="step-num" style="background:rgba(96,165,250,0.1);color:var(--cyan);border:1px solid rgba(0,212,255,0.2);">5</div>
       <div class="step-title">Explore Trust Policies</div>
     </div>
     <div class="step-desc">
@@ -279,7 +321,7 @@
     <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
       <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/EP-CORE-RFC.md" target="_blank" class="run-btn" style="text-decoration:none;">Read the Spec</a>
       <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" class="run-btn" style="text-decoration:none;background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.1);color:var(--t1);">GitHub</a>
-      <a href="/" class="run-btn" style="text-decoration:none;background:rgba(255,215,0,0.06);border-color:rgba(255,215,0,0.2);color:var(--gold);">Back to Site</a>
+      <a href="/" class="run-btn" style="text-decoration:none;background:rgba(245,158,11,0.06);border-color:rgba(245,158,11,0.2);color:var(--gold);">Back to Site</a>
     </div>
   </div>
 
