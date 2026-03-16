@@ -43,11 +43,15 @@ describe('ROUTE: /api/trust/evaluate — context fallback', () => {
       submitted_by: `s-${i % 5}`,
       delivery_accuracy: 96,
       context: { category: 'electronics' },
+      provenance_tier: 'bilateral',
+      bilateral_status: 'confirmed',
     }));
     const furniture = Array(15).fill(null).map((_, i) => makeReceipt({
       submitted_by: `s-${i % 5}`,
       delivery_accuracy: 55,
       context: { category: 'furniture' },
+      provenance_tier: 'bilateral',
+      bilateral_status: 'confirmed',
     }));
 
     const elecProfile = computeTrustProfile(electronics, {});

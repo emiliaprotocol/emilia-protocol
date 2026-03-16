@@ -161,16 +161,17 @@ describe('CONFORMANCE: Establishment rules', () => {
         price_integrity: 95,
         return_processing: 80,
         agent_satisfaction: 88,
+        provenance_tier: fixture.provenance_tier || 'self_attested',
         created_at: new Date().toISOString(),
       }));
       const profile = computeTrustProfile(receipts, {});
 
       if (fixture.expected_established) {
-        expect(profile.effectiveEvidence).toBeGreaterThanOrEqual(5.0);
+        expect(profile.qualityGatedEvidence).toBeGreaterThanOrEqual(5.0);
         expect(profile.uniqueSubmitters).toBeGreaterThanOrEqual(3);
       } else {
-        // Either evidence or submitter count is below threshold
-        const meetsEvidence = profile.effectiveEvidence >= 5.0;
+        // Either quality-gated evidence or submitter count is below threshold
+        const meetsEvidence = profile.qualityGatedEvidence >= 5.0;
         const meetsSubmitters = profile.uniqueSubmitters >= 3;
         expect(meetsEvidence && meetsSubmitters).toBe(false);
       }
@@ -242,6 +243,28 @@ describe('CONFORMANCE: Trust profile determinism', () => {
       const profile = computeTrustProfile(fixture.receipts, {});
       const result = evaluateTrustPolicy(profile, TRUST_POLICIES.standard);
       expect(result.pass).toBe(fixture.expected_policy_results.standard.pass);
+    });
+  }
+});
+
+
+// ============================================================================
+// Trust barrier invariant: unestablished volume cannot establish
+// ============================================================================
+describe('CONFORMANCE: Trust barrier invariant', () => {
+  const barrierFixture = fixtures.scoring_fixtures.find(f => f.name === 'unestablished_volume_cannot_establish');
+  
+  if (barrierFixture) {
+    it('pure unestablished volume cannot cross establishment barrier', () => {
+      const receipts = barrierFixture.receipts.map(r => ({
+        ...r,
+        created_at: new Date().toISOString(),
+      }));
+      const profile = computeTrustProfile(receipts, {});
+      expect(profile.score).toBeLessThanOrEqual(barrierFixture.expected.score_max);
+      expect(profile.established).toBe(barrierFixture.expected.established);
+      expect(profile.confidence).toBe(barrierFixture.expected.confidence);
+      expect(profile.qualityGatedEvidence).toBeLessThan(barrierFixture.expected.quality_gated_evidence_max);
     });
   }
 });

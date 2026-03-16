@@ -74,8 +74,11 @@ describe('computeTrustProfile', () => {
       submitted_by: `real-${i % 4}`,
       submitter_established: true,
       submitter_score: 90,
+      provenance_tier: 'bilateral',
+      bilateral_status: 'confirmed',
     }));
     const result = computeTrustProfile(receipts, {});
+    // 10 × (0.9 submitter × 1.0 time × 1.0 graph × 0.8 bilateral) = 7.2
     expect(result.effectiveEvidence).toBeGreaterThan(5);
     expect(result.score).toBeGreaterThan(70);
   });

@@ -155,7 +155,7 @@ jobs:
         run: npm ci
 
       - name: Run Next.js lint
-        run: npx next lint --max-warnings 0 || echo "::warning::Lint warnings detected"
+        run: npx next lint --max-warnings 0
 
       - name: Check weight model invariant
         run: |

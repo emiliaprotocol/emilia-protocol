@@ -109,11 +109,13 @@ describe('Receipt hash determinism', () => {
 
 describe('Current vs historical confidence', () => {
   it('historical establishment requires effective_evidence >= 5 and 3+ submitters', () => {
-    // 10 receipts from 4 established submitters → established
+    // 10 bilateral receipts from 4 established submitters → established
     const receipts = Array(10).fill(null).map((_, i) => makeReceipt({
       submitted_by: `real-${i % 4}`,
       submitter_established: true,
       submitter_score: 90,
+      provenance_tier: 'bilateral',
+      bilateral_status: 'confirmed',
     }));
     const profile = computeTrustProfile(receipts, {});
     expect(profile.effectiveEvidence).toBeGreaterThan(5);

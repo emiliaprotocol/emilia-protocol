@@ -38,10 +38,12 @@ describe('ADVERSARIAL: Sybil farm — many fake entities', () => {
       price_integrity: 100,
     }));
     const profile = computeTrustProfile(receipts, {});
-    // Quality gate: unestablished evidence is capped at 2.0 for dampening
-    // Maximum Sybil score from unestablished submitters is bounded ~70
+    // Quality gate: unestablished evidence capped at 2.0 → cannot establish
     expect(profile.score).toBeLessThan(70);
+    expect(profile.established).toBe(false);
     expect(profile.confidence).not.toBe('confident');
+    expect(profile.confidence).not.toBe('emerging');
+    expect(profile.qualityGatedEvidence).toBeLessThan(5);
   });
 
   it('50 perfect receipts from 5 fake submitters = still low', () => {
@@ -194,9 +196,12 @@ describe('ADVERSARIAL: Volume of low-quality self-attested receipts', () => {
       composite_score: 90,
     }));
     const profile = computeTrustProfile(receipts, {});
-    // 200 × 0.1 submitter × 0.3 provenance = ~6 effective evidence
-    // Score dampened significantly
+    // 200 × 0.1 submitter × 0.3 provenance = ~6 raw effective evidence
+    // But qualityGatedEvidence caps unestablished at 2.0 → cannot establish
     expect(profile.score).toBeLessThan(70);
+    expect(profile.established).toBe(false);
+    expect(profile.confidence).toBe('provisional');
+    expect(profile.qualityGatedEvidence).toBeLessThan(5);
   });
 
   it('same count with bilateral + established = much higher trust', () => {
@@ -294,6 +299,11 @@ describe('ADVERSARIAL: Damage ceiling — worst case attack outcomes', () => {
     const profile = computeTrustProfile(receipts, {});
     // Even with 200 perfect receipts, unestablished + self_attested should cap damage
     expect(profile.score).toBeLessThan(75);
+    expect(profile.established).toBe(false);
     expect(profile.confidence).not.toBe('confident');
+    expect(profile.confidence).not.toBe('emerging');
+    // Raw effective evidence is high, but quality-gated is capped
+    expect(profile.effectiveEvidence).toBeGreaterThan(5);
+    expect(profile.qualityGatedEvidence).toBeLessThan(5);
   });
 });

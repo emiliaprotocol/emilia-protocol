@@ -75,7 +75,7 @@ describe('E2E: Complete trust lifecycle', () => {
   });
 
   it('step 5: strict policy evaluation on healthy entity', () => {
-    const receipts = Array(25).fill(null).map((_, i) => makeReceipt({
+    const receipts = Array(30).fill(null).map((_, i) => makeReceipt({
       submitted_by: `est-${i % 5}`,
       submitter_established: true, submitter_score: 90,
       provenance_tier: 'bilateral', bilateral_status: 'confirmed',

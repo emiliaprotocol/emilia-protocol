@@ -268,6 +268,17 @@ Run: `npx vitest run` (145 automated checks) + `python3 conformance/verify_hashe
 - [Security](SECURITY.md) — threat model, mitigations, cryptographic specs
 - [Conformance Fixtures](conformance/fixtures.json) — canonical test vectors
 
+## Versioning
+
+| Component | Version | Maturity |
+|-----------|---------|----------|
+| Protocol spec + reference repo | 1.0.0 | Stable |
+| MCP server | 0.2.x | Early but usable |
+| TypeScript SDK | 0.1.x | Alpha |
+| Python SDK | 0.1.x | Alpha |
+
+SDKs and MCP server version independently from the protocol. The spec and reference implementation share the root version.
+
 ## License
 
 Apache 2.0

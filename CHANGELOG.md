@@ -2,6 +2,8 @@
 
 All notable changes to EMILIA Protocol are documented here.
 
+Versioning model: Protocol spec and reference repo share the root version (1.0.x). SDKs (0.1.x) and MCP server (0.2.x) version independently.
+
 ## [1.0.0] — 2026-03-15
 
 ### Core

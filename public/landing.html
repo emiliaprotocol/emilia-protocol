@@ -380,11 +380,11 @@
   <div style="max-width: 900px; margin: 0 auto;">
     <div class="hstats reveal">
       <div class="hstat">
-        <div class="hstat-v" style="color: var(--cyan);">10</div>
+        <div class="hstat-v" style="color: var(--cyan);" id="stat-surfaces">10</div>
         <div class="hstat-l">Trust Surfaces</div>
       </div>
       <div class="hstat">
-        <div class="hstat-v" style="color: var(--gold);">145</div>
+        <div class="hstat-v" style="color: var(--gold);" id="stat-checks">145</div>
         <div class="hstat-l">Automated Checks</div>
       </div>
       <div class="hstat">
@@ -392,7 +392,7 @@
         <div class="hstat-l">GitHub Stars</div>
       </div>
       <div class="hstat">
-        <div class="hstat-v" style="color: var(--green);">8</div>
+        <div class="hstat-v" style="color: var(--green);" id="stat-policies">8</div>
         <div class="hstat-l">Trust Policies</div>
       </div>
     </div>
@@ -1427,6 +1427,9 @@ async function fetchNext() {
     const d = await r.json();
     const next = d.next_available || 3;
     anim('stat-entities', d.total_entities || 2);
+    if (d.trust_surfaces) anim('stat-surfaces', d.trust_surfaces);
+    if (d.automated_checks) anim('stat-checks', d.automated_checks);
+    if (d.trust_policies) anim('stat-policies', d.trust_policies);
     document.getElementById('stat-next').textContent = next;
     document.getElementById('nextEntity').textContent = `#${next}`;
     document.getElementById('claimNum').textContent = next;
