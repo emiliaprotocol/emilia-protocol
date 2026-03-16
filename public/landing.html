@@ -362,10 +362,10 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
   </div>
 
   <div class="hstats">
-    <div class="hstat"><div class="hstat-v" style="color:var(--cyan)">10</div><div class="hstat-l">Trust Surfaces</div></div>
-    <div class="hstat"><div class="hstat-v" style="color:var(--gold)">147</div><div class="hstat-l">Automated Tests</div></div>
-    <div class="hstat"><div class="hstat-v" style="color:var(--purple)">15</div><div class="hstat-l">MCP Tools</div></div>
-    <div class="hstat"><div class="hstat-v" style="color:var(--green)">8</div><div class="hstat-l">Trust Policies</div></div>
+    <div class="hstat"><div class="hstat-v" style="color:var(--cyan)" id="stat-surfaces">10</div><div class="hstat-l">Trust Surfaces</div></div>
+    <div class="hstat"><div class="hstat-v" style="color:var(--gold)" id="stat-checks">147</div><div class="hstat-l">Automated Checks</div></div>
+    <div class="hstat"><div class="hstat-v" style="color:var(--purple)" id="stat-tools">15</div><div class="hstat-l">MCP Tools</div></div>
+    <div class="hstat"><div class="hstat-v" style="color:var(--green)" id="stat-policies">8</div><div class="hstat-l">Trust Policies</div></div>
     <div class="hstat"><div class="hstat-v"><span id="stat-stars">–</span></div><div class="hstat-l">GitHub Stars</div></div>
   </div>
 </section>
@@ -460,8 +460,8 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
       <div class="prob-card">
         <div class="prob-icon" style="background:rgba(248,113,113,.08)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg></div>
         <h3>No Portable Trust</h3>
-        <p>A merchant's reputation on Amazon means nothing on Shopify. A plugin rated safe on npm isn't recognized on the MCP registry. Every ecosystem reinvents the wheel and every user starts from zero.</p>
-        <div class="prob-cost">Real cost: Sellers lose years of earned reputation on migration. Agents accept dangerous defaults because no portable signal exists.</div>
+        <p>A merchant's trust history on Amazon means nothing on Shopify. A plugin rated safe on npm isn't recognized on the MCP registry. Every ecosystem reinvents the wheel and every user starts from zero.</p>
+        <div class="prob-cost">Real cost: Sellers lose years of earned trust on migration. Agents accept dangerous defaults because no portable signal exists.</div>
       </div>
       <div class="prob-card">
         <div class="prob-icon" style="background:rgba(245,158,11,.08)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="#f59e0b" stroke="none"/></svg></div>
@@ -1125,7 +1125,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
       </div>
       <div class="faq-item" onclick="toggleFaq(this)">
         <div class="faq-q">How does EP relate to NIST, AAIF, and AI standards?</div>
-        <div class="faq-a">EP has submitted engagement materials to <strong>NIST ITL</strong> (National Institute of Standards and Technology Information Technology Laboratory) and is proposing an <strong>AAIF</strong> (Agent-to-Agent Interoperability Forum) working group for a formal agent trust standard. EP is designed to be the reference implementation for what a W3C/IETF "Agent Trust Standard" could look like. The spec is fully published and has a conformance suite with 147 automated tests — anyone can implement EP and verify conformance.</div>
+        <div class="faq-a">EP is designed to align with emerging AI trust standardization efforts including <strong>NIST</strong> AI safety frameworks and the <strong>AAIF</strong> (Agentic AI Foundation) interoperability agenda. The spec is fully published, Apache 2.0 licensed, and backed by a conformance suite with 147 automated checks — anyone can implement EP and independently verify conformance.</div>
       </div>
 
     </div>
@@ -1193,7 +1193,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
 
       <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;padding:24px">
         <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--red);margin-bottom:10px;text-transform:uppercase">Attack</div>
-        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Whitewash identity after reputation damage</div>
+        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Whitewash identity after trust damage</div>
         <div style="font-size:13px;color:var(--t2);margin-bottom:12px">An entity with a damaged trust profile re-registers under a new name or entity ID.</div>
         <div style="font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.15);border-radius:8px;padding:12px">
           <div style="color:var(--t3);margin-bottom:4px">// Protocol response</div>
@@ -1383,7 +1383,7 @@ const TICKER_ITEMS = [
   {dot:'c', text:'<strong>Apache 2.0</strong> — owned by no one'},
   {dot:'a', text:'<strong>Constitutional principle</strong> — trust must never be more powerful than appeal'},
   {dot:'p', text:'<strong>15 MCP tools</strong> — plug into any agent in 60 seconds'},
-  {dot:'gr', text:'<strong>147 conformance tests</strong> — every claim is verifiable'},
+  {dot:'gr', text:'<strong>147 automated checks</strong> — every claim is verifiable'},
   {dot:'g', text:'<strong>EP-IX</strong> — identity continuity prevents trust whitewashing'},
   {dot:'c', text:'<strong>Install preflight</strong> — know before you install'},
   {dot:'a', text:'<strong>Effective-evidence dampening</strong> — unestablished entities = 0.1× weight'},
@@ -1408,6 +1408,27 @@ async function loadStars() {
   } catch(e) {}
 }
 loadStars();
+
+// ===== DYNAMIC PROOF STATS =====
+async function fetchStats() {
+  try {
+    const r = await fetch('/api/stats');
+    if (!r.ok) return;
+    const d = await r.json();
+    const anim = (id, val) => {
+      const el = document.getElementById(id);
+      if (!el || !val) return;
+      let cur = 0; const step = Math.max(1, Math.floor(val / 30));
+      const iv = setInterval(() => { cur = Math.min(cur + step, val); el.textContent = cur; if (cur >= val) clearInterval(iv); }, 20);
+    };
+    if (d.trust_surfaces) anim('stat-surfaces', d.trust_surfaces);
+    if (d.automated_checks) anim('stat-checks', d.automated_checks);
+    if (d.trust_policies) anim('stat-policies', d.trust_policies);
+    if (d.mcp_tools) anim('stat-tools', d.mcp_tools);
+  } catch {}
+}
+fetchStats();
+
 
 // ===== TAB SWITCHER =====
 function switchTab(tab) {
