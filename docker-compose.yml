@@ -1,7 +1,7 @@
-# EMILIA Protocol — Local Development Helpers
-# Starts supporting services. The app expects a Supabase-compatible HTTP API.
-# Provide NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY via .env
-# or point them at a real Supabase project.
+# EMILIA Protocol — Docker Helper
+# Starts the Next.js app container only.
+# EP requires a Supabase-compatible HTTP API (hosted or self-hosted).
+# Provide NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY via .env or environment.
 
 services:
   emilia-api:
@@ -11,36 +11,8 @@ services:
     environment:
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
       - CRON_SECRET=${CRON_SECRET:-dev-cron-secret}
       - EP_WALLET_PRIVATE_KEY=${EP_WALLET_PRIVATE_KEY:-}
       - BASE_RPC_URL=${BASE_RPC_URL:-https://mainnet.base.org}
-    depends_on:
-      supabase-db:
-        condition: service_healthy
     restart: unless-stopped
-
-  supabase-db:
-    image: supabase/postgres:15.1.1.78
-    ports:
-      - "54321:5432"
-    environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: postgres
-    volumes:
-      - supabase-data:/var/lib/postgresql/data
-      - ./supabase/migrations:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    restart: unless-stopped
-
-volumes:
-  supabase-data:

@@ -36,19 +36,21 @@ export async function GET() {
     return NextResponse.json({
       total_entities: total,
       next_available: total + 1,
-      trust_surfaces: proofMetrics?.trust_surfaces ?? 10,
-      automated_checks: proofMetrics?.automated_checks ?? 152,
+      trust_surfaces: proofMetrics?.trust_surfaces ?? null,
+      automated_checks: proofMetrics?.automated_checks ?? null,
       trust_policies: policyCount,
-      mcp_tools: proofMetrics?.mcp_tools ?? 15,
+      mcp_tools: proofMetrics?.mcp_tools ?? null,
+      proof_metrics_status: proofMetrics ? 'ok' : 'missing',
     });
   } catch (err) {
     return NextResponse.json({
       total_entities: 2,
       next_available: 3,
-      trust_surfaces: proofMetrics?.trust_surfaces ?? 10,
-      automated_checks: proofMetrics?.automated_checks ?? 152,
+      trust_surfaces: proofMetrics?.trust_surfaces ?? null,
+      automated_checks: proofMetrics?.automated_checks ?? null,
       trust_policies: 8,
-      mcp_tools: proofMetrics?.mcp_tools ?? 15,
+      mcp_tools: proofMetrics?.mcp_tools ?? null,
+      proof_metrics_status: proofMetrics ? 'ok' : 'missing',
     });
   }
 }

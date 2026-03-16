@@ -305,14 +305,18 @@ When reviewing or implementing EP, these are the authoritative sources:
 
 ## Docker
 
-The repo includes Docker files. The app expects a Supabase-compatible HTTP API.
-Provide these environment variables before running:
+The repo includes a Dockerfile for the Next.js app. EP requires a Supabase-compatible HTTP API — a raw Postgres container is not sufficient.
+
+**Current status:** the Docker stack runs the app container only. You must provide a real Supabase project (hosted or self-hosted with PostgREST).
 
 ```bash
 export NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 export SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 docker compose up --build
+# API at http://localhost:3000
 ```
+
+Full self-hosted Supabase/PostgREST local stack is a future roadmap item.
 
 ## CLI
 

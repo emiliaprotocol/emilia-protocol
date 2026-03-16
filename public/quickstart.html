@@ -149,7 +149,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
   </nav>
 
   <!-- CONTENT -->
-  <main class="content">
+  <main class="content" id="overview">
 
     <div style="font-family:var(--mono);font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--t3);margin-bottom:12px">Documentation</div>
     <h1>Quickstart</h1>
@@ -161,6 +161,11 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
       <strong>Auth:</strong> <code>Authorization: Bearer ep_live_...</code> (write operations only) &nbsp;·&nbsp;
       <strong>Read endpoints are public</strong> — no API key needed.
     </div>
+    <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:16px 20px;margin:16px 0;font-size:13px;color:var(--t2)">
+      <strong style="color:var(--amber)">Local development:</strong> Use <code>http://localhost:3000</code> as your base URL.
+      The Docker stack runs the app container — you must provide <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>SUPABASE_SERVICE_ROLE_KEY</code> pointing at a real Supabase project.
+    </div>
+
 
     <!-- STEP 1 -->
     <h2 id="step1">Step 1 — Add the MCP Server</h2>
