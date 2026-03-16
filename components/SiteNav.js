@@ -5,19 +5,21 @@ const NAV_LINKS = [
   ['/demo.html', 'Demo'],
   ['/quickstart.html', 'Quickstart'],
   ['/spec', 'Docs'],
+  ['/appeal', 'Appeal'],
   ['/partners', 'Partners'],
+  ['https://github.com/emiliaprotocol/emilia-protocol', 'GitHub'],
 ];
 
 const FOOTER_LINKS = [
   ['/governance', 'Governance'],
   ['/partners', 'Partners'],
+  ['/operators.html', 'Operators'],
   ['mailto:team@emiliaprotocol.ai', 'Contact'],
   ['/investors', 'Investor Inquiries'],
 ];
 
-export default function SiteNav({ activePage, showFooter = false }) {
+export default function SiteNav({ activePage }) {
   return (
-    <>
     <nav style={{
       position: 'sticky', top: 0, zIndex: 100,
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -42,9 +44,11 @@ export default function SiteNav({ activePage, showFooter = false }) {
         }}>EMILIA</span>
       </a>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
         {NAV_LINKS.map(([href, label]) => (
           <a key={label} href={href}
+            target={href.startsWith('http') ? '_blank' : undefined}
+            rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
             style={{
               fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
               fontSize: 11, letterSpacing: 1, textTransform: 'uppercase',
@@ -66,28 +70,6 @@ export default function SiteNav({ activePage, showFooter = false }) {
         flexShrink: 0,
       }}>Partner with Us</a>
     </nav>
-
-    {showFooter && (
-      <footer style={{
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-        padding: '40px 40px 32px', marginTop: 80,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-      }}>
-        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#4a4f6a', letterSpacing: 1 }}>
-          EMILIA PROTOCOL · APACHE 2.0
-        </div>
-        <div style={{ display: 'flex', gap: 24 }}>
-          {FOOTER_LINKS.map(([href, label]) => (
-            <a key={label} href={href} style={{
-              fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
-              color: '#4a4f6a', textDecoration: 'none', letterSpacing: 1,
-              textTransform: 'uppercase',
-            }}>{label}</a>
-          ))}
-        </div>
-      </footer>
-    )}
-    </>
   );
 }
 
