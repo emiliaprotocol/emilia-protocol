@@ -228,7 +228,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
     <div id="qtab-ts" style="display:none">
       <div class="code-block" style="border-radius:0 12px 12px 12px">
         <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">TypeScript</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
-        <div class="code-body"><pre><span class="kw">import</span> <span class="tp">EmiliaClient</span> <span class="kw">from</span> <span class="str">'@emilia-protocol/sdk'</span>;
+        <div class="code-body"><pre><span class="kw">import</span> { <span class="tp">EmiliaClient</span> } <span class="kw">from</span> <span class="str">'@emilia-protocol/sdk'</span>;
 
 <span class="kw">const</span> ep = <span class="kw">new</span> <span class="tp">EmiliaClient</span>({
   apiKey: process.env.<span class="tp">EP_API_KEY</span>,               <span class="cm">// optional for reads</span>
@@ -236,11 +236,11 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
 });
 
 <span class="cm">// Get a trust profile</span>
-<span class="kw">const</span> profile = <span class="kw">await</span> ep.<span class="fn">trustProfile</span>(<span class="str">'rex-booking-v1'</span>);
-console.<span class="fn">log</span>(profile.current_confidence); <span class="cm">// 'confident' | 'established' | 'limited' | 'pending'</span>
+<span class="kw">const</span> profile = <span class="kw">await</span> ep.<span class="fn">getTrustProfile</span>(<span class="str">'rex-booking-v1'</span>);
+console.<span class="fn">log</span>(profile.current_confidence); <span class="cm">// 'confident' | 'emerging' | 'provisional' | 'insufficient' | 'pending'</span>
 
 <span class="cm">// Evaluate against a policy</span>
-<span class="kw">const</span> result = <span class="kw">await</span> ep.<span class="fn">evaluate</span>(<span class="str">'rex-booking-v1'</span>, {
+<span class="kw">const</span> result = <span class="kw">await</span> ep.<span class="fn">evaluateTrust</span>({ entityId: <span class="str">'rex-booking-v1'</span>, {
   policy: <span class="str">'standard'</span>,
   context: { category: <span class="str">'electronics'</span>, value_band: <span class="str">'high'</span> },
 });
@@ -263,11 +263,11 @@ ep = <span class="tp">EmiliaClient</span>(
 )
 
 <span class="cm"># Get a trust profile</span>
-profile = ep.<span class="fn">trust_profile</span>(<span class="str">"rex-booking-v1"</span>)
-print(profile[<span class="str">"current_confidence"</span>])  <span class="cm"># confident | established | limited | pending</span>
+profile = ep.<span class="fn">get_trust_profile</span>(<span class="str">"rex-booking-v1"</span>)
+print(profile[<span class="str">"current_confidence"</span>])  <span class="cm"># confident | emerging | provisional | insufficient | pending</span>
 
 <span class="cm"># Evaluate against a policy</span>
-result = ep.<span class="fn">evaluate</span>(<span class="str">"rex-booking-v1"</span>, policy=<span class="str">"standard"</span>,
+result = ep.<span class="fn">evaluate_trust</span>(<span class="str">"rex-booking-v1"</span>, policy=<span class="str">"standard"</span>,
                      context={<span class="str">"category"</span>: <span class="str">"electronics"</span>})
 <span class="kw">if not</span> result[<span class="str">"pass"</span>]:
     print(<span class="str">"Failures:"</span>, result[<span class="str">"failures"</span>])
@@ -363,7 +363,7 @@ console.<span class="fn">log</span>(receipt.receipt_hash);  <span class="cm">// 
 <span class="kw">const</span> profile = <span class="kw">await</span> r.<span class="fn">json</span>();
 
 <span class="cm">// Key fields</span>
-profile.<span class="prop">current_confidence</span>   <span class="cm">// 'confident' | 'established' | 'limited' | 'pending'</span>
+profile.<span class="prop">current_confidence</span>   <span class="cm">// 'pending' | 'insufficient' | 'provisional' | 'emerging' | 'confident'</span>
 profile.<span class="prop">effective_evidence_current</span>  <span class="cm">// credibility-weighted evidence score</span>
 profile.<span class="prop">trust_profile</span>.<span class="prop">behavioral</span>.<span class="prop">completion_rate</span>  <span class="cm">// 0-100</span>
 profile.<span class="prop">trust_profile</span>.<span class="prop">behavioral</span>.<span class="prop">dispute_rate</span>     <span class="cm">// 0-100</span>
@@ -402,8 +402,8 @@ profile.<span class="prop">anomaly</span>               <span class="cm">// pres
 
     <div class="policy-grid">
       <div class="policy-card"><div class="policy-name">strict</div><div class="policy-desc">High-value transactions. Requires confident confidence + very low dispute rate.</div></div>
-      <div class="policy-card"><div class="policy-name">standard</div><div class="policy-desc">Normal transactions. Requires established confidence + reasonable behavioral rates.</div></div>
-      <div class="policy-card"><div class="policy-name">permissive</div><div class="policy-desc">Low-risk interactions. Allows limited confidence. Excludes only clear bad actors.</div></div>
+      <div class="policy-card"><div class="policy-name">standard</div><div class="policy-desc">Normal transactions. Requires emerging confidence + reasonable behavioral rates.</div></div>
+      <div class="policy-card"><div class="policy-name">permissive</div><div class="policy-desc">Low-risk interactions. Allows provisional confidence. Excludes only clear bad actors.</div></div>
       <div class="policy-card"><div class="policy-name">discovery</div><div class="policy-desc">First-time interactions. Allows unevaluated entities. Use for new counterparties.</div></div>
     </div>
 
@@ -526,8 +526,8 @@ profile.<span class="prop">anomaly</span>               <span class="cm">// pres
 
     <div class="policy-grid">
       <div class="policy-card"><div class="policy-name">strict</div><div class="policy-desc">High-value transactions. Requires <code>confident</code> confidence level.</div></div>
-      <div class="policy-card"><div class="policy-name">standard</div><div class="policy-desc">Normal use. Requires <code>established</code> or better.</div></div>
-      <div class="policy-card"><div class="policy-name">permissive</div><div class="policy-desc">Low-risk. Allows <code>limited</code> confidence. Excludes clear bad actors.</div></div>
+      <div class="policy-card"><div class="policy-name">standard</div><div class="policy-desc">Normal use. Requires <code>emerging</code> or better.</div></div>
+      <div class="policy-card"><div class="policy-name">permissive</div><div class="policy-desc">Low-risk. Allows <code>provisional</code> confidence. Excludes clear bad actors.</div></div>
       <div class="policy-card"><div class="policy-name">discovery</div><div class="policy-desc">First-time interactions. Allows unevaluated entities.</div></div>
       <div class="policy-card"><div class="policy-name">mcp_server_safe_v1</div><div class="policy-desc">MCP servers. Publisher verified + no dangerous permissions.</div></div>
       <div class="policy-card"><div class="policy-name">github_private_repo_safe_v1</div><div class="policy-desc">GitHub Apps with private repo access. Strict publisher checks.</div></div>

@@ -153,8 +153,9 @@ section{position:relative;z-index:1;padding:100px 40px}
 .scard-id{font-family:var(--mono);font-size:11px;color:var(--t3);margin-top:3px}
 .sconf{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1px;padding:5px 12px;border-radius:100px}
 .sconf.confident{background:rgba(52,211,153,.1);color:var(--green);border:1px solid rgba(52,211,153,.25)}
-.sconf.established{background:rgba(96,165,250,.1);color:var(--cyan);border:1px solid rgba(96,165,250,.25)}
-.sconf.limited{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.25)}
+.sconf.emerging{background:rgba(96,165,250,.1);color:var(--cyan);border:1px solid rgba(96,165,250,.25)}
+.sconf.provisional{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.25)}
+.sconf.insufficient{background:rgba(248,113,113,.1);color:var(--red);border:1px solid rgba(248,113,113,.25)}
 .sconf.pending{background:rgba(255,255,255,.05);color:var(--t3);border:1px solid var(--brd)}
 .sbwrap{margin-bottom:10px}
 .sbhead{font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;display:flex;justify-content:space-between}
@@ -1158,7 +1159,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
       </div>
       <div class="faq-item" onclick="toggleFaq(this)">
         <div class="faq-q">What are trust policies? How are they different from scores?</div>
-        <div class="faq-a">A trust score is a number (4.2 stars). A trust policy is a decision framework: <em>"pass if confidence is established AND completion rate &gt; 85% AND dispute rate &lt; 5% in the electronics category"</em>. EP ships four built-in policies (<code>strict</code>, <code>standard</code>, <code>permissive</code>, <code>discovery</code>) plus four software policies. You can also pass custom policy logic as JSONB. Policies are context-aware — electronics and apparel can have different requirements. They return pass/fail with specific failure reasons, not just a number.</div>
+        <div class="faq-a">A trust score is a number (4.2 stars). A trust policy is a decision framework: <em>"pass if confidence is emerging AND completion rate &gt; 85% AND dispute rate &lt; 5% in the electronics category"</em>. EP ships four built-in policies (<code>strict</code>, <code>standard</code>, <code>permissive</code>, <code>discovery</code>) plus four software policies. You can also pass custom policy logic as JSONB. Policies are context-aware — electronics and apparel can have different requirements. They return pass/fail with specific failure reasons, not just a number.</div>
       </div>
       <div class="faq-item" onclick="toggleFaq(this)">
         <div class="faq-q">How does EP handle identity continuity? What if a merchant re-registers?</div>
@@ -1166,7 +1167,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
       </div>
       <div class="faq-item" onclick="toggleFaq(this)">
         <div class="faq-q">Can I run my own EP instance? How do I become an operator?</div>
-        <div class="faq-a">Yes — EP is fully self-hostable under Apache 2.0. Run <code>npm install &amp;&amp; npm run dev</code> to start locally. For production, deploy to Vercel or any Node.js host with a Supabase/PostgreSQL database. To become a dispute resolution <strong>operator</strong> — the humans who review and resolve appeals — see the <a href="/operators.html" style="color:var(--cyan)">Operators page</a>. Operators are accountable entities with their own EP trust profiles. Their performance (response time, appeal outcomes, error rate) is publicly tracked.</div>
+        <div class="faq-a">Yes — EP is fully self-hostable under Apache 2.0. Run <code>npm install &amp;&amp; npm run dev</code> to start locally. For production, deploy to Vercel or any Node.js host with a Supabase project or compatible PostgREST gateway. To become a dispute resolution <strong>operator</strong> — the humans who review and resolve appeals — see the <a href="/operators.html" style="color:var(--cyan)">Operators page</a>. Operators are accountable entities with their own EP trust profiles. Their performance (response time, appeal outcomes, error rate) is publicly tracked.</div>
       </div>
 
       <div class="faq-item" onclick="toggleFaq(this)">
@@ -1511,7 +1512,8 @@ async function lookupTrust() {
 
 function renderProfile(d) {
   const conf = d.current_confidence || 'pending';
-  const confClass = conf === 'confident' ? 'confident' : conf === 'established' ? 'established' : conf === 'limited' ? 'limited' : 'pending';
+  const VALID_CONF = ['pending','insufficient','provisional','emerging','confident'];
+  const confClass = VALID_CONF.includes(conf) ? conf : 'pending';
   const p = d.trust_profile || {};
   const b = p.behavioral || {};
   const s = p.signals || {};

@@ -181,6 +181,13 @@ jobs:
             });
           "
 
+
+      - name: Regenerate proof metrics
+        run: node scripts/generate-proof-metrics.mjs
+
+      - name: Fail if proof metrics are stale
+        run: git diff --exit-code generated/proof-metrics.json || (echo "FAIL: proof-metrics.json is stale. Run 'node scripts/generate-proof-metrics.mjs' and commit." && exit 1)
+
       - name: Verify conformance fixtures exist
         run: |
           test -f conformance/fixtures.json || (echo "FAIL: fixtures.json missing" && exit 1)

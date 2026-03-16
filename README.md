@@ -300,14 +300,18 @@ When reviewing or implementing EP, these are the authoritative sources:
 | Policy definitions | `lib/scoring-v2.js` → `TRUST_POLICIES` |
 | Style guide | `docs/STYLE-GUIDE.md` |
 | Docker setup | `docker-compose.yml` |
-| CLI tool | `cli/bin/ep.js` |
+| CLI tool | `cli/bin/ep.mjs` |
 | OpenAPI spec | `openapi.yaml` |
 
 ## Docker
 
+The repo includes Docker files. The app expects a Supabase-compatible HTTP API.
+Provide these environment variables before running:
+
 ```bash
-docker compose up
-# API at http://localhost:3000
+export NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+export SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+docker compose up --build
 ```
 
 ## CLI

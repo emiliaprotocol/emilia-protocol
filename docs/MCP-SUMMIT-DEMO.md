@@ -34,7 +34,7 @@
 > This is the canonical output in EP. Not a number — a trust profile: confidence level, behavioral outcomes, provenance composition, dispute history. The compatibility score exists for sorting, but agents make decisions against policies, not scores.
 
 **Highlight in the output:**
-- Confidence: emerging/established
+- Confidence: provisional / emerging / confident (depending on evidence)
 - Behavioral: completion rate, dispute rate
 - Provenance: bilateral vs self-attested
 - Disputes: 0
