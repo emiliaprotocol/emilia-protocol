@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import SiteNav from '@/components/SiteNav';
 
 export const metadata = {
   title: 'EP Core RFC v1.1 — EMILIA Protocol Specification',
@@ -159,16 +160,7 @@ export default function SpecPage() {
           a { color: var(--cyan); text-decoration: none; }
           a:hover { text-decoration: underline; }
 
-          .spec-nav {
-            position: sticky; top: 0; z-index: 100;
-            background: rgba(5,6,10,0.9); backdrop-filter: blur(20px);
-            border-bottom: 1px solid var(--brd);
-            padding: 12px 24px;
-            display: flex; justify-content: space-between; align-items: center;
-            font-family: var(--mono); font-size: 12px;
-          }
-          .spec-nav a { color: var(--t2); letter-spacing: 1px; }
-          .spec-nav a:hover { color: var(--cyan); text-decoration: none; }
+          /* Nav styles handled by SiteNav component */
 
           .spec-content {
             max-width: 800px; margin: 0 auto; padding: 48px 24px 120px;
@@ -237,19 +229,7 @@ export default function SpecPage() {
         `}} />
       </head>
       <body>
-        <div className="spec-nav">
-          <a href="/" style={{ fontWeight: 600, letterSpacing: 2, fontSize: 14, color: '#e8eaf0' }}>EMILIA</a>
-          <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
-            <a href="/">HOME</a>
-            <a href="/quickstart.html">QUICKSTART</a>
-            <a href="/demo.html">DEMO</a>
-            <a href="/spec" style={{ color: '#00d4ff' }}>SPEC</a>
-            <a href="/operators.html">OPERATORS</a>
-            <a href="/appeal">APPEAL</a>
-            <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank">GITHUB</a>
-            <a href="/apply" style={{ background: '#00d4ff', color: '#05060a', padding: '6px 14px', borderRadius: 6, fontWeight: 700, fontSize: 10 }}>APPLY</a>
-          </div>
-        </div>
+        <SiteNav activePage="Spec" />
         <div className="spec-content">
           <div className="spec-badge">EP CORE RFC v1.1 · APACHE 2.0</div>
           <div dangerouslySetInnerHTML={{ __html: html }} />

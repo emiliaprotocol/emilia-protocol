@@ -176,7 +176,7 @@ export default async function EntityProfile({ params }) {
       <body>
         <nav style="position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:60px;background:rgba(0,0,0,0.85);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.06);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase">
           <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none">
-            <svg width="28" height="28" viewBox="0 0 34 34" fill="none"><rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#ng3)"/><rect x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#60a5fa"/><rect x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#f59e0b"/><rect x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#60a5fa"/><defs><linearGradient id="ng3" x1="8" y1="5" x2="8" y2="29"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient></defs></svg>
+            <svg width="34" height="34" viewBox="0 0 34 34" fill="none"><rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#ng3)"/><rect x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#60a5fa"/><rect x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#f59e0b"/><rect x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#60a5fa"/><defs><linearGradient id="ng3" x1="8" y1="5" x2="8" y2="29"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient></defs></svg>
             <span style="font-weight:700;font-size:14px;letter-spacing:3px;color:#e8eaf0">EMILIA</span>
           </a>
           <div style="display:flex;align-items:center;gap:24px">
@@ -187,7 +187,7 @@ export default async function EntityProfile({ params }) {
             <a href="/operators.html" style="color:#4a4f6a;text-decoration:none">Operators</a>
             <a href="/appeal" style="color:#4a4f6a;text-decoration:none">Appeal</a>
             <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" style="color:#4a4f6a;text-decoration:none">GitHub</a>
-            <a href="/apply" style="background:#00d4ff;color:#0a0b14;padding:8px 18px;border-radius:8px;text-decoration:none;font-weight:700;letter-spacing:1px">Apply</a>
+            <a href="/apply" style="background:#00d4ff;color:#05060a;padding:8px 18px;border-radius:8px;text-decoration:none;font-weight:700;letter-spacing:1px;font-size:12px">Apply to Review</a>
           </div>
         </nav>
         <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px 80px' }}>
