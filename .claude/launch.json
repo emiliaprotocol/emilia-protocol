@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "Next.js dev server",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "dev"],
       "port": 3000
     },
     {
