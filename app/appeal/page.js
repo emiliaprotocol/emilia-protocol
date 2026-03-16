@@ -143,6 +143,7 @@ export default function AppealPage() {
   const canWithdraw = (status) => status === 'open';
 
   return (
+    <>
     <nav style={{
           position: 'sticky', top: 0, zIndex: 100,
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
