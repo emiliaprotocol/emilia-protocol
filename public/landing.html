@@ -279,6 +279,16 @@
     .problem-grid { grid-template-columns: 1fr; }
     #architecture > div > div:last-child { grid-template-columns: 1fr !important; }
   }
+
+  /* Diagram lightbox */
+  .diagram-card { cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+  .diagram-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,212,255,0.08); }
+  .lightbox { display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(5,6,10,0.92); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 24px; cursor: zoom-out; }
+  .lightbox.open { display: flex; animation: lbIn 0.25s ease; }
+  .lightbox img { max-width: 95vw; max-height: 90vh; border-radius: 12px; background: var(--bg-card); padding: 32px; border: 1px solid rgba(255,255,255,0.08); }
+  .lightbox-close { position: absolute; top: 20px; right: 28px; font-family: var(--mono); font-size: 14px; color: var(--t3); cursor: pointer; padding: 8px 14px; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; background: rgba(255,255,255,0.04); transition: color 0.2s; }
+  .lightbox-close:hover { color: var(--t1); }
+  @keyframes lbIn { from { opacity: 0; } to { opacity: 1; } }
 </style>
 </head>
 <body>
@@ -703,30 +713,37 @@
       <div class="sd" style="margin: 0 auto;">Four views of the protocol: evaluation flow, evidence model, identity continuity, and the layered trust system.</div>
     </div>
     <div class="reveal" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-      <div style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; overflow: hidden;">
+      <div class="diagram-card" style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; overflow: hidden;" onclick="openDiagram(this)">
         <img src="/assets/trust-evaluation-process.svg" alt="Trust evaluation process" style="width: 100%; height: auto;">
       </div>
-      <div style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; overflow: hidden;">
+      <div class="diagram-card" style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; overflow: hidden;" onclick="openDiagram(this)">
         <img src="/assets/receipts-and-evidence.svg" alt="Receipts and evidence" style="width: 100%; height: auto;">
       </div>
-      <div style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; overflow: hidden;">
+      <div class="diagram-card" style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; overflow: hidden;" onclick="openDiagram(this)">
         <img src="/assets/identity-continuity.svg" alt="Identity continuity (EP-IX)" style="width: 100%; height: auto;">
       </div>
-      <div style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; overflow: hidden;">
+      <div class="diagram-card" style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; overflow: hidden;" onclick="openDiagram(this)">
         <img src="/assets/layered-trust-system.svg" alt="Layered trust system" style="width: 100%; height: auto;">
       </div>
     </div>
+    <div style="text-align: center; margin-top: 12px; font-family: var(--mono); font-size: 10px; color: var(--t3); letter-spacing: 1px;">Click any diagram to enlarge</div>
   </div>
 </section>
+
+<!-- Lightbox overlay -->
+<div class="lightbox" id="diagramLightbox" onclick="closeDiagram()">
+  <div class="lightbox-close" onclick="closeDiagram()">ESC</div>
+  <img id="lightboxImg" src="" alt="">
+</div>
 
 <!-- RECEIPTS NOT REVIEWS -->
 <section id="how">
   <div class="rnr-section">
     <div class="reveal">
       <div class="st">// How It Works</div>
-      <div class="sh">Receipts, Not Reviews</div>
+      <div class="sh">Trust Without Platform Capture</div>
       <div class="rnr-text">
-        Every legacy platform-controlled trust system has failed because the host profits from the outcome. EMILIA is different. The <strong>buying agent or system</strong> submits a receipt about the counterparty — and then uses that same trust profile to decide where to transact next. <strong>You rate what you eat. Lie, and you eat bad food again.</strong> The submitter and the consumer of the trust data are the same entity. This creates natural incentive alignment that no platform-controlled trust system has ever achieved.
+        Legacy platform-controlled trust systems fail because the host profits from the outcome. EP is different: trust is computed from receipts, evidence, context, and appeals — and remains challengeable when it is wrong. The <strong>buying agent or system</strong> submits a receipt about the counterparty — and then uses that same trust profile to decide where to transact next. <strong>You rate what you eat. Lie, and you eat bad food again.</strong> The submitter and the consumer of the trust data are the same entity. This creates natural incentive alignment that no platform-controlled trust system has ever achieved.
       </div>
     </div>
 
@@ -1230,8 +1247,8 @@
       </div>
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
-        <div class="faq-q">There are only 2 entities. Where's the traction?</div>
-        <div class="faq-a">EMILIA is a <strong>protocol</strong>, not a product. TCP/IP didn't have "users" — it had implementations. HTTPS didn't have "customers" — it had adoption.<br><br>What's live today: trust profiles, policy evaluation, context-aware receipts, install preflight for software, dispute lifecycle, human appeal, bilateral attestations, provenance tiers, conformance suite (JS + Python), 145+ tests across 7 suites, CI pipeline, MCP server with 14 tools, identity continuity spec (EP-IX), and blockchain verification. Registered entities already include software and MCP trust surfaces.<br><br>The traction metric for a protocol is adoption, not MAU. The MCP server means any AI agent or system can evaluate trust profiles, run install preflight, and file disputes with one config line. That's the distribution channel.</div>
+        <div class="faq-q">What does traction look like for a protocol?</div>
+        <div class="faq-a">EMILIA is a <strong>protocol</strong>, not a product. TCP/IP didn't have "users" — it had implementations. HTTPS didn't have "customers" — it had adoption.<br><br>What's live today: trust profiles, policy evaluation, context-aware receipts, install preflight for software, dispute lifecycle, human appeal, bilateral attestations, provenance tiers, conformance suite (JS + Python), 145+ tests across 7 suites, CI pipeline, MCP server with 14 tools, identity continuity spec (EP-IX), and blockchain verification.<br><br>The traction metric for a protocol is conformance, integrations, and pilots — not MAU. The MCP server means any AI agent or system can evaluate trust profiles, run install preflight, and file disputes with one config line. That's the distribution channel.</div>
       </div>
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
@@ -1750,6 +1767,21 @@ async function submitReport() {
 
 document.getElementById('trustInput').addEventListener('keydown',e=>{if(e.key==='Enter')lookupTrust();});
 document.getElementById('preflightInput').addEventListener('keydown',e=>{if(e.key==='Enter')runPreflight();});
+
+// DIAGRAM LIGHTBOX
+function openDiagram(card) {
+  const img = card.querySelector('img');
+  if (!img) return;
+  document.getElementById('lightboxImg').src = img.src;
+  document.getElementById('lightboxImg').alt = img.alt;
+  document.getElementById('diagramLightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeDiagram() {
+  document.getElementById('diagramLightbox').classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDiagram(); });
 
 // REGISTER — uses server-side API (no exposed keys)
 async function registerAgent() {

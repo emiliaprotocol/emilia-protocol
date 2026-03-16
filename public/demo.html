@@ -316,7 +316,7 @@ async function runStep1(btn) {
       <div>Delivery: <span class="val">${sg.delivery_accuracy}</span> · Product: <span class="val">${sg.product_accuracy}</span> · Price: <span class="val">${sg.price_integrity}</span></div>` : ''}
       ${prov.breakdown ? `<div style="margin-top:8px;"><span class="label">Provenance</span></div>
       <div>${Object.entries(prov.breakdown).map(([k,v]) => `${k}: <span class="val">${v}</span>`).join(' · ')}</div>` : ''}
-      <div style="margin-top:12px;color:var(--t3);font-size:10px;">Legacy compatibility score: ${d.compat_score || 'N/A'}</div>
+      <div style="margin-top:12px;color:var(--t3);font-size:10px;">Legacy compatibility score (fallback only): ${d.compat_score || 'N/A'}</div>
     </div>`;
   } catch(e) {
     res.innerHTML = `<div class="result-card"><span class="warn">${esc(String(e))}</span></div>`;
