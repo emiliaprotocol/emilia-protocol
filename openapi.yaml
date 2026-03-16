@@ -1,0 +1,533 @@
+openapi: 3.0.3
+info:
+  title: EMILIA Protocol API
+  description: |
+    Trust profiles, policy evaluation, install preflight, disputes, and appeals
+    for counterparties, software, and machine actors.
+    
+    EMILIA = Evidence-based Mediation & Integrity Layer for Interactions and Appeals.
+    
+    Constitutional principle: trust must never be more powerful than appeal.
+  version: 1.1.0
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+  contact:
+    email: team@emiliaprotocol.ai
+    url: https://emiliaprotocol.ai
+
+servers:
+  - url: https://emiliaprotocol.ai
+    description: Production
+  - url: http://localhost:3000
+    description: Local development
+
+tags:
+  - name: Trust
+    description: Trust profiles and policy evaluation — the primary read surfaces
+  - name: Software Trust
+    description: Install preflight for plugins, packages, MCP servers, extensions
+  - name: Receipts
+    description: Transaction receipt submission and verification
+  - name: Entities
+    description: Entity registration and search
+  - name: Disputes
+    description: Dispute lifecycle — file, respond, resolve, appeal, withdraw
+  - name: Policies
+    description: Trust policy registry
+  - name: System
+    description: Health, stats, and operational endpoints
+
+paths:
+  /api/trust/profile/{entityId}:
+    get:
+      tags: [Trust]
+      summary: Get trust profile
+      description: |
+        The PRIMARY canonical read surface for EP trust data. Returns the full
+        trust profile including behavioral rates, signal breakdowns, confidence,
+        establishment status, quality-gated evidence, anomaly detection, and disputes.
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Entity ID or slug
+      responses:
+        '200':
+          description: Trust profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustProfileResponse'
+        '404':
+          description: Entity not found
+
+  /api/trust/evaluate:
+    post:
+      tags: [Trust]
+      summary: Evaluate entity against a trust policy
+      description: |
+        The PRIMARY canonical decision surface. Evaluates an entity against a
+        structured trust policy and returns pass/fail with detailed reasoning.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entity_id, policy]
+              properties:
+                entity_id:
+                  type: string
+                policy:
+                  type: string
+                  enum: [strict, standard, permissive, discovery, github_private_repo_safe_v1, npm_buildtime_safe_v1, browser_extension_safe_v1, mcp_server_safe_v1]
+                context:
+                  type: object
+                  description: Optional context keys (category, geo, value_band, etc.)
+      responses:
+        '200':
+          description: Policy evaluation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyEvaluationResponse'
+
+  /api/trust/install-preflight:
+    post:
+      tags: [Software Trust]
+      summary: Software install preflight
+      description: |
+        EP-SX: Should I install this plugin/app/package/extension? Evaluates
+        publisher verification, permission risk, provenance, and incident history
+        against host-specific policies.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entity_id]
+              properties:
+                entity_id:
+                  type: string
+                policy:
+                  type: string
+                  default: mcp_server_safe_v1
+                context:
+                  type: object
+      responses:
+        '200':
+          description: Preflight decision (allow/review/deny)
+
+  /api/receipts/submit:
+    post:
+      tags: [Receipts]
+      summary: Submit a transaction receipt
+      description: |
+        Submit a receipt for a transaction with an entity. Requires authentication.
+        transaction_ref is required — every receipt must reference an external transaction.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceiptSubmission'
+      responses:
+        '201':
+          description: Receipt created
+        '401':
+          description: Authentication required
+
+  /api/receipts/confirm:
+    post:
+      tags: [Receipts]
+      summary: Bilateral confirmation
+      description: Counterparty confirms or disputes a receipt (48-hour window).
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [receipt_id, confirm]
+              properties:
+                receipt_id:
+                  type: string
+                confirm:
+                  type: boolean
+      responses:
+        '200':
+          description: Confirmation recorded
+
+  /api/verify/{receiptId}:
+    get:
+      tags: [Receipts]
+      summary: Verify a receipt
+      description: Verify receipt hash integrity and Merkle root anchoring.
+      parameters:
+        - name: receiptId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Verification result
+
+  /api/entities/register:
+    post:
+      tags: [Entities]
+      summary: Register a new entity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entity_id, display_name, entity_type]
+              properties:
+                entity_id:
+                  type: string
+                display_name:
+                  type: string
+                entity_type:
+                  type: string
+                  enum: [agent, merchant, service_provider, marketplace, software, mcp_server]
+                description:
+                  type: string
+      responses:
+        '201':
+          description: Entity registered
+
+  /api/entities/search:
+    get:
+      tags: [Entities]
+      summary: Search entities
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: min_confidence
+          in: query
+          schema:
+            type: string
+            enum: [pending, insufficient, provisional, emerging, confident]
+      responses:
+        '200':
+          description: Search results
+
+  /api/score/{entityId}:
+    get:
+      tags: [Trust]
+      summary: Get compatibility score (legacy)
+      description: |
+        Returns the 0-100 compatibility score. This is a legacy endpoint for
+        backward compatibility. Use /api/trust/profile for trust decisions.
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Compatibility score
+
+  /api/disputes/file:
+    post:
+      tags: [Disputes]
+      summary: File a dispute against a receipt
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [receipt_id, reason]
+              properties:
+                receipt_id:
+                  type: string
+                reason:
+                  type: string
+                  enum: [fraudulent_receipt, inaccurate_signals, identity_dispute, context_mismatch, duplicate_transaction, coerced_receipt, other]
+                description:
+                  type: string
+      responses:
+        '201':
+          description: Dispute filed
+
+  /api/disputes/report:
+    post:
+      tags: [Disputes]
+      summary: File a human trust report (no auth required)
+      description: |
+        Human appeal endpoint. No authentication required.
+        "EP must never make trust more powerful than appeal."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entity_id, report_type]
+              properties:
+                entity_id:
+                  type: string
+                report_type:
+                  type: string
+                  enum: [wrongly_downgraded, harmed_by_trusted_entity, fraudulent_entity, inaccurate_profile, fake_receipts, unsafe_software, misleading_identity, terms_violation, demo_challenge, other]
+                description:
+                  type: string
+                contact_email:
+                  type: string
+      responses:
+        '201':
+          description: Report received
+
+  /api/disputes/{disputeId}:
+    get:
+      tags: [Disputes]
+      summary: View dispute status
+      parameters:
+        - name: disputeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Dispute details including appeal status
+
+  /api/disputes/respond:
+    post:
+      tags: [Disputes]
+      summary: Respond to a dispute
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dispute_id, response]
+              properties:
+                dispute_id:
+                  type: string
+                response:
+                  type: string
+                evidence:
+                  type: object
+      responses:
+        '200':
+          description: Response recorded
+
+  /api/disputes/appeal:
+    post:
+      tags: [Disputes]
+      summary: Appeal a dispute resolution
+      description: |
+        Only dispute participants can appeal. The dispute must be in
+        upheld, reversed, or dismissed state. Appeals are reviewed by
+        a senior operator. The appeal decision is final.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dispute_id, reason]
+              properties:
+                dispute_id:
+                  type: string
+                reason:
+                  type: string
+                  minLength: 10
+                evidence:
+                  type: object
+      responses:
+        '201':
+          description: Appeal filed
+
+  /api/disputes/withdraw:
+    post:
+      tags: [Disputes]
+      summary: Withdraw an open dispute
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dispute_id]
+              properties:
+                dispute_id:
+                  type: string
+      responses:
+        '200':
+          description: Dispute withdrawn
+
+  /api/policies:
+    get:
+      tags: [Policies]
+      summary: List all trust policies
+      description: Returns all 8 trust policies (4 core + 4 software-specific).
+      responses:
+        '200':
+          description: Policy registry
+
+  /api/health:
+    get:
+      tags: [System]
+      summary: Health check
+      responses:
+        '200':
+          description: System health with subsystem status
+
+  /api/stats:
+    get:
+      tags: [System]
+      summary: Public proof metrics
+      description: Returns entity count, test count, tool count, and policy count.
+      responses:
+        '200':
+          description: Public stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsResponse'
+
+  /api/leaderboard:
+    get:
+      tags: [Trust]
+      summary: Entity leaderboard
+      parameters:
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [score, confidence, evidence]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Ranked entities
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: EP API key (ep_live_...)
+
+  schemas:
+    TrustProfileResponse:
+      type: object
+      properties:
+        entity_id:
+          type: string
+        display_name:
+          type: string
+        trust_profile:
+          type: object
+          properties:
+            behavioral:
+              type: object
+              properties:
+                score:
+                  type: number
+                completion_rate:
+                  type: number
+                dispute_rate:
+                  type: number
+            signals:
+              type: object
+            consistency:
+              type: number
+            provenance:
+              type: object
+        current_confidence:
+          type: string
+          enum: [pending, insufficient, provisional, emerging, confident]
+        effective_evidence_current:
+          type: number
+        quality_gated_evidence_current:
+          type: number
+        historical_establishment:
+          type: boolean
+        compat_score:
+          type: number
+          description: Legacy 0-100 compatibility score
+
+    PolicyEvaluationResponse:
+      type: object
+      properties:
+        pass:
+          type: boolean
+        score:
+          type: number
+        confidence:
+          type: string
+        failures:
+          type: array
+          items:
+            type: string
+        policy_used:
+          type: string
+
+    ReceiptSubmission:
+      type: object
+      required: [entity_id, transaction_ref]
+      properties:
+        entity_id:
+          type: string
+        transaction_ref:
+          type: string
+        transaction_type:
+          type: string
+        agent_behavior:
+          type: string
+          enum: [completed, retried, abandoned, disputed]
+        delivery_accuracy:
+          type: number
+        product_accuracy:
+          type: number
+        price_integrity:
+          type: number
+        evidence:
+          type: object
+
+    StatsResponse:
+      type: object
+      properties:
+        total_entities:
+          type: integer
+        trust_surfaces:
+          type: integer
+        automated_checks:
+          type: integer
+        trust_policies:
+          type: integer
+        mcp_tools:
+          type: integer

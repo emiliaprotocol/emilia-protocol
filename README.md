@@ -299,3 +299,33 @@ When reviewing or implementing EP, these are the authoritative sources:
 | Conformance fixtures | `conformance/fixtures.json` |
 | Policy definitions | `lib/scoring-v2.js` → `TRUST_POLICIES` |
 | Style guide | `docs/STYLE-GUIDE.md` |
+| Docker setup | `docker-compose.yml` |
+| CLI tool | `cli/bin/ep.js` |
+| OpenAPI spec | `openapi.yaml` |
+
+## Docker
+
+```bash
+docker compose up
+# API at http://localhost:3000
+```
+
+## CLI
+
+```bash
+npx @emilia-protocol/cli profile merchant-xyz
+npx @emilia-protocol/cli evaluate merchant-xyz --policy strict
+npx @emilia-protocol/cli preflight mcp-server-xyz --policy mcp_server_safe_v1
+npx @emilia-protocol/cli register my-agent --name "My Agent"
+npx @emilia-protocol/cli submit merchant-xyz --ref order_123 --behavior completed
+npx @emilia-protocol/cli dispute receipt_abc --reason fraudulent_receipt
+npx @emilia-protocol/cli appeal disp_xyz --reason "Resolution was incorrect because..."
+npx @emilia-protocol/cli policies
+npx @emilia-protocol/cli health
+```
+
+Set `EP_BASE_URL` and `EP_API_KEY` for non-default endpoints and write operations.
+
+## OpenAPI
+
+The full API specification is at [`openapi.yaml`](openapi.yaml). Import into Postman, Swagger UI, or any OpenAPI-compatible tool.

@@ -1,0 +1,46 @@
+# EMILIA Protocol — Local Development Stack
+# Usage: docker compose up
+# API available at http://localhost:3000
+# Supabase Studio at http://localhost:54323
+
+services:
+  emilia-api:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_SUPABASE_URL=http://supabase-db:54321
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-your-service-role-key}
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+      - CRON_SECRET=${CRON_SECRET:-dev-cron-secret}
+      - EP_WALLET_PRIVATE_KEY=${EP_WALLET_PRIVATE_KEY:-}
+      - BASE_RPC_URL=${BASE_RPC_URL:-https://mainnet.base.org}
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  supabase-db:
+    image: supabase/postgres:15.1.1.78
+    ports:
+      - "54321:5432"
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: postgres
+    volumes:
+      - supabase-data:/var/lib/postgresql/data
+      - ./supabase/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+volumes:
+  supabase-data:

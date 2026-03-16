@@ -1,0 +1,17 @@
+{
+  "name": "@emilia-protocol/cli",
+  "version": "0.1.0",
+  "description": "EMILIA Protocol CLI — register entities, submit receipts, query trust profiles, evaluate policies",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "ep": "./bin/ep.mjs"
+  },
+  "files": ["bin/", "lib/", "README.md"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol",
+    "directory": "cli"
+  },
+  "keywords": ["emilia", "trust", "protocol", "mcp", "cli"]
+}
