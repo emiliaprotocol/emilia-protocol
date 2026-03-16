@@ -20,7 +20,7 @@
  *
  * Setup:
  *   EP_BASE_URL=https://emiliaprotocol.ai
- *   EP_API_KEY=ep_live_...  (for write operations)
+ *   EP_API_KEY=ep_live_...  (for authenticated writes; registration is public)
  *
  * @license Apache-2.0
  */
@@ -165,7 +165,7 @@ const TOOLS = [
   },
   {
     name: 'ep_register_entity',
-    description: 'Register a new entity. Requires an API key.',
+    description: 'Register a new entity. Public — returns the first API key.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -354,8 +354,7 @@ async function handleTool(name, args) {
     }
 
     case 'ep_register_entity': {
-      if (!API_KEY) return 'Error: EP_API_KEY required.';
-      const data = await epFetch('/api/entities/register', { method: 'POST', auth: true, body: args });
+      const data = await epFetch('/api/entities/register', { method: 'POST', body: args });
       return `Registered: ${data.entity.entity_id}\nAPI Key: ${data.api_key}\n⚠️ Save this key — it won't be shown again.`;
     }
 

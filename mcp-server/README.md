@@ -16,14 +16,14 @@ Gives any MCP-compatible agent (Claude, ChatGPT, Gemini, etc.) access to EP trus
       "args": ["@emilia-protocol/mcp-server"],
       "env": {
         "EP_BASE_URL": "https://emiliaprotocol.ai",
-        "EP_API_KEY": "ep_live_your_key_here"
+        "EP_API_KEY": "ep_live_your_key_here  (optional — only needed for receipt submission)"
       }
     }
   }
 }
 ```
 
-`EP_API_KEY` is only needed for write operations (submitting receipts, registering entities).
+`EP_API_KEY` is optional. It is only needed for authenticated write operations such as submitting receipts and dispute actions. Entity registration is public and returns the first API key.
 
 ## Primary Tools
 
@@ -60,7 +60,7 @@ Submit a transaction receipt after completing a purchase or service. Requires `t
 |------|-------------|
 | `ep_search_entities` | Search for entities by name, capability, or category |
 | `ep_verify_receipt` | Verify a receipt against the Merkle root |
-| `ep_register_entity` | Register a new entity (requires API key) |
+| `ep_register_entity` | Register a new entity and receive the first API key (public) |
 | `ep_leaderboard` | Get top entities by trust confidence |
 | `ep_install_preflight` | **EP-SX**: Should I install this plugin/app/package? Allow/review/deny with reasons. |
 | `ep_dispute_file` | File a formal dispute against a receipt |
