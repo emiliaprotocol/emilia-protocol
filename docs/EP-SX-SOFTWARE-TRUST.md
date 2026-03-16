@@ -37,7 +37,7 @@ EP-SX adds software-specific entity types:
 | `marketplace_plugin` | `marketplace_plugin:vendor/widget` |
 | `agent_tool` | `agent_tool:acme/search-tool` |
 
-All existing EP entity types (agent, merchant, service_provider) continue to work.
+All existing EP entity types (agent, merchant, service_provider, github_app, github_action, mcp_server, npm_package, chrome_extension, shopify_app, marketplace_plugin, agent_tool) continue to work.
 
 ---
 
