@@ -384,7 +384,7 @@
         <div class="hstat-l">Trust Surfaces</div>
       </div>
       <div class="hstat">
-        <div class="hstat-v" style="color: var(--gold);" id="stat-checks">145</div>
+        <div class="hstat-v" style="color: var(--gold);" id="stat-checks">147</div>
         <div class="hstat-l">Automated Checks</div>
       </div>
       <div class="hstat">
@@ -509,10 +509,13 @@
           <input type="text" class="sinp" id="reportEntity" placeholder="entity ID you're reporting..." autocomplete="off">
           <select id="reportReason" style="font-family: var(--mono); font-size: 12px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); color: var(--t1); padding: 12px 16px; border-radius: 8px; appearance: none; cursor: pointer;">
             <option value="">Select reason...</option>
+            <option value="wrongly_downgraded">I was wrongly downgraded</option>
+            <option value="harmed_by_trusted_entity">Harmed by a trusted entity</option>
             <option value="fraudulent_entity">Fraudulent entity</option>
             <option value="fake_receipts">Fake receipts / trust farming</option>
             <option value="unsafe_software">Unsafe software</option>
             <option value="misleading_identity">Misleading identity</option>
+            <option value="inaccurate_profile">Inaccurate trust profile</option>
             <option value="terms_violation">Terms violation</option>
             <option value="other">Other</option>
           </select>
@@ -1030,7 +1033,7 @@
       FULLY OPEN SOURCE
     </div>
     <div class="sh" style="font-size: clamp(28px, 3.5vw, 44px);">Trust Can't Be<br><span style="color: var(--cyan);">Proprietary.</span></div>
-    <div class="sd" style="margin: 16px auto 32px; max-width: 520px;">A trust layer only works if everyone can verify it. EMILIA is open source — audit the trust evaluation logic, fork the protocol, contribute upstream. 7 suites and 145 automated checks cover scoring math, trust profiles, policy evaluation, hash determinism, adversarial resistance, end-to-end flows, and fixture-backed conformance. No black boxes.</div>
+    <div class="sd" style="margin: 16px auto 32px; max-width: 520px;">A trust layer only works if everyone can verify it. EMILIA is open source — audit the trust evaluation logic, fork the protocol, contribute upstream. 7 suites and 147 automated checks cover scoring math, trust profiles, policy evaluation, hash determinism, adversarial resistance, end-to-end flows, and fixture-backed conformance. No black boxes.</div>
     <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 32px;">
       <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" class="btn-p" style="font-size: 13px; padding: 14px 28px; background: var(--t1); color: var(--bg);">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -3px; margin-right: 8px;"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
@@ -1058,7 +1061,7 @@
     <div class="arch-stack reveal">
       <div class="arch-layer l-app">
         <div class="arch-icon">&#9881;</div>
-        <div><strong style="color: var(--amber);">Consumption Layer</strong><span class="arch-desc">MCP Server (14 tools) &middot; Trust Profile Lookup &middot; Install Preflight &middot; Conformance Vectors</span></div>
+        <div><strong style="color: var(--amber);">Consumption Layer</strong><span class="arch-desc">MCP Server (15 tools) &middot; Trust Profile Lookup &middot; Install Preflight &middot; Conformance Vectors</span></div>
       </div>
       <div class="arch-layer l-proto">
         <div class="arch-icon">&#9878;</div>
@@ -1205,7 +1208,7 @@
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
         <div class="faq-q">There are only 2 entities. Where's the traction?</div>
-        <div class="faq-a">EMILIA is a <strong>protocol</strong>, not a product. TCP/IP didn't have "users" — it had implementations. HTTPS didn't have "customers" — it had adoption.<br><br>What's live today: trust profiles, policy evaluation, context-aware receipts, install preflight for software, dispute lifecycle, human appeal, bilateral attestations, provenance tiers, conformance suite (JS + Python), 145 automated checks across 7 suites, CI pipeline, MCP server with 14 tools, identity continuity spec (EP-IX), and blockchain verification. Registered entities already include software and MCP trust surfaces.<br><br>The traction metric for a protocol is adoption, not MAU. The MCP server means any AI agent or system can evaluate trust profiles, run install preflight, and file disputes with one config line. That's the distribution channel.</div>
+        <div class="faq-a">EMILIA is a <strong>protocol</strong>, not a product. TCP/IP didn't have "users" — it had implementations. HTTPS didn't have "customers" — it had adoption.<br><br>What's live today: trust profiles, policy evaluation, context-aware receipts, install preflight for software, dispute lifecycle, human appeal, bilateral attestations, provenance tiers, conformance suite (JS + Python), 147 automated checks across 7 suites, CI pipeline, MCP server with 15 tools, identity continuity spec (EP-IX), and blockchain verification. Registered entities already include software and MCP trust surfaces.<br><br>The traction metric for a protocol is adoption, not MAU. The MCP server means any AI agent or system can evaluate trust profiles, run install preflight, and file disputes with one config line. That's the distribution channel.</div>
       </div>
 
       <div class="faq-item reveal" onclick="this.classList.toggle('open')">
@@ -1392,7 +1395,7 @@ const facts = [
   { c: 'a',  t: 'Receipts anchored on <strong>Base L2 via Merkle roots</strong> — no tokens, just math' },
   { c: 'g',  t: 'Should I install this plugin? <strong>Run install preflight.</strong>' },
   { c: 'c',  t: 'Trust must never be more powerful than appeal. <strong>That\'s the constitutional principle.</strong>' },
-  { c: 'gr', t: '<strong>145 automated checks</strong> — scoring, trust profiles, conformance fixture replay, cross-language hash verification' },
+  { c: 'gr', t: '<strong>147 automated checks</strong> — scoring, trust profiles, conformance fixture replay, cross-language hash verification' },
   { c: 'a',  t: 'Should I buy from this merchant? <strong>Evaluate against a trust policy.</strong>' },
   { c: 'g',  t: 'Compatible with <strong>MCP · ACP · A2A · GitHub · npm · Chrome · Shopify</strong>' },
   { c: 'c',  t: 'No one can buy their trust profile. <strong>The algorithm is public.</strong>' },

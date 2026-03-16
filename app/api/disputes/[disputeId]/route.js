@@ -23,6 +23,8 @@ export async function GET(request, { params }) {
         status, filed_by_type,
         response, response_evidence, responded_at,
         resolution, resolution_rationale, resolved_by, resolved_at,
+        appeal_reason, appeal_evidence, appealed_at, appealed_by,
+        appeal_resolution, appeal_rationale, appeal_resolved_by, appeal_resolved_at,
         response_deadline, created_at, updated_at,
         entity:entities!disputes_entity_id_fkey(entity_id, display_name),
         filer:entities!disputes_filed_by_fkey(entity_id, display_name)
@@ -85,6 +87,14 @@ export async function GET(request, { params }) {
       resolved_by: dispute.resolved_by,
       resolved_at: dispute.resolved_at,
       
+      // Appeal details (if applicable)
+      appeal_reason: dispute.appeal_reason,
+      appealed_at: dispute.appealed_at,
+      appeal_resolution: dispute.appeal_resolution,
+      appeal_rationale: dispute.appeal_rationale,
+      appeal_resolved_by: dispute.appeal_resolved_by,
+      appeal_resolved_at: dispute.appeal_resolved_at,
+
       created_at: dispute.created_at,
       updated_at: dispute.updated_at,
     });

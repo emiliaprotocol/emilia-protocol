@@ -42,6 +42,7 @@ async function getEntity(entityId) {
     score: canonical.score,
     confidence: canonical.confidence,
     effectiveEvidence: canonical.effectiveEvidence,
+    qualityGatedEvidence: canonical.qualityGatedEvidence,
     uniqueSubmitters: canonical.uniqueSubmitters,
     anomaly: canonical.anomaly,
   };
@@ -101,6 +102,7 @@ export default async function EntityProfile({ params }) {
 
   // CURRENT confidence from rolling-window trust profile (not historical)
   const currentEvidence = trustProfile.effectiveEvidence;
+  const qualityGated = trustProfile.qualityGatedEvidence;
 
   let confidence, confidenceColor, confidenceMessage;
   if (currentEvidence === 0) {
@@ -244,7 +246,7 @@ export default async function EntityProfile({ params }) {
               <div style={{ marginTop: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--mono)', fontSize: 10, color: '#4a4f6a', marginBottom: 4 }}>
                   <span>Progress to meaningful score</span>
-                  <span>Current effective evidence: {currentEvidence}/20.0</span>
+                  <span>Quality-gated evidence: {qualityGated ?? currentEvidence}/20.0 (raw: {currentEvidence})</span>
                 </div>
                 <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${Math.min(100, Math.round((currentEvidence / 20) * 100))}%`, background: confidenceColor, borderRadius: 2 }} />

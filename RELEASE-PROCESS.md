@@ -41,7 +41,7 @@
 ### MCP server releases
 
 1. Bump version in `mcp-server/package.json` and `mcp-server/index.js`
-2. Verify all 14 tools function
+2. Verify all 15 tools function
 3. Tag: `mcp-vX.Y.Z`
 
 ## Breaking changes

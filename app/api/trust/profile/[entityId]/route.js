@@ -37,6 +37,7 @@ export async function GET(request, { params }) {
 
       current_confidence: result.confidence,
       effective_evidence_current: result.effectiveEvidence,
+      quality_gated_evidence_current: result.qualityGatedEvidence,
 
       historical_establishment: result.establishment?.established || false,
       effective_evidence_historical: result.establishment?.effective_evidence || 0,

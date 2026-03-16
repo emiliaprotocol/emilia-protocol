@@ -44,7 +44,7 @@ Do not open public GitHub issues for security vulnerabilities.
 **Mitigations:**
 - 90-day half-life time decay: old receipts lose weight naturally
 - Anomaly detection: tracks score velocity and flags sudden changes
-- Establishment requires effective_evidence ≥ 5.0 AND unique_submitters ≥ 3
+- Establishment requires quality_gated_evidence ≥ 5.0 AND unique_submitters ≥ 3 (pure unestablished volume capped at 2.0 contribution)
 
 **Status:** Implemented. Adversarial tests verify old receipts decay below threshold.
 

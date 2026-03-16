@@ -23,11 +23,11 @@ export async function GET() {
       total_entities: total,
       next_available: total + 1,
       trust_surfaces: 10,
-      automated_checks: 145,
+      automated_checks: 147,
       trust_policies: 8,
-      mcp_tools: 14,
+      mcp_tools: 15,
     });
   } catch (err) {
-    return NextResponse.json({ total_entities: 2, next_available: 3, trust_surfaces: 10, automated_checks: 145, trust_policies: 8, mcp_tools: 14 });
+    return NextResponse.json({ total_entities: 2, next_available: 3, trust_surfaces: 10, automated_checks: 147, trust_policies: 8, mcp_tools: 15 });
   }
 }

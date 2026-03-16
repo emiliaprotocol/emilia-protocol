@@ -56,12 +56,12 @@
 - [x] Well-known discovery (/.well-known/ep-trust.json)
 
 ### Distribution
-- [x] MCP server (14 tools, trust-native, context-aware)
+- [x] MCP server (15 tools, trust-native, context-aware)
 - [x] Reference SDKs (TypeScript + Python, source-only)
 - [x] SDK publish workflows (npm + PyPI)
 
 ### Conformance
-- [x] 145 automated checks across 7 test suites
+- [x] 147 automated checks across 7 test suites
 - [x] 14 adversarial tests (Sybil, reciprocal loops, cluster collusion, trust farming)
 - [x] Trust profile determinism fixtures
 - [x] Cross-language hash verification (JavaScript + Python)

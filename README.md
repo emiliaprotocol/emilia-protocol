@@ -1,7 +1,7 @@
 # EMILIA Protocol
 
 [![CI](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-145%20checks-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-147%20checks-brightgreen)]()
 [![Conformance](https://img.shields.io/badge/conformance-JS%20%2B%20Python-blue)]()
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
@@ -193,14 +193,14 @@ Entity Registration (IP rate-limited, Upstash Redis in production)
 | Level | Meaning |
 |-------|---------|
 | `pending` | No receipts |
-| `insufficient` | Low effective evidence, mostly unestablished submitters |
+| `insufficient` | Low quality-gated evidence, mostly unestablished submitters |
 | `provisional` | Building history |
-| `emerging` | Established, breakdown available |
-| `confident` | 20+ receipts, high effective evidence |
+| `emerging` | Established, quality-gated evidence ≥ 5.0 |
+| `confident` | Quality-gated evidence ≥ 20.0, broad evidence base |
 
 ### Establishment
 An entity is **established** when `is_entity_established()` returns true:
-- Effective evidence ≥ 5.0 (sum of weighted receipts, not raw count)
+- Quality-gated evidence ≥ 5.0 (caps unestablished contribution at 2.0)
 - 3+ unique submitters
 
 Establishment is **historical** — computed over all receipts. Scoring is **current** — computed over a rolling 200-receipt window with time decay. An entity can be established but have a declining trust.
@@ -221,7 +221,7 @@ Establishment is **historical** — computed over all receipts. Scoring is **cur
 | Receipt immutability (DB triggers) | ✅ Live |
 | Deadline enforcement (cron) | ✅ Live — bilateral 48h, disputes 7d, continuity 30d |
 | Health endpoint | ✅ Live |
-| MCP server (14 tools) | ✅ Live |
+| MCP server (15 tools) | ✅ Live |
 | Human trust console | ✅ Live — profile + preflight + report |
 | EP-IX identity continuity | 📋 Spec complete, runtime skeleton shipped, tables deployed |
 | EP-IX continuity-aware evaluator | ✅ Live — lineage, inherited disputes, whitewashing flags |
@@ -255,7 +255,7 @@ EP is verifiable, not just claimed.
 
 **Falsifiable by design:** anyone can run the conformance suite to prove the evaluator is lying. Trust that cannot be independently verified is not trust — it is faith.
 
-Run: `npx vitest run` (145 automated checks) + `python3 conformance/verify_hashes.py` (4 cross-language hash checks)
+Run: `npx vitest run` (147 automated checks) + `python3 conformance/verify_hashes.py` (4 cross-language hash checks)
 
 ## Docs
 

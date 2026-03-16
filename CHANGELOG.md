@@ -46,7 +46,7 @@ Versioning model: Protocol spec and reference repo share the root version (1.0.x
 ### Distribution
 - MCP server: 14 tools
 - Reference SDKs: TypeScript + Python (published on npm and PyPI)
-- Conformance suite: 145 automated checks across 7 suites
+- Conformance suite: 147 automated checks across 7 suites
 - Cross-language hash verification (JS + Python)
 - CI pipeline: tests, build, lint, SDK builds, conformance
 

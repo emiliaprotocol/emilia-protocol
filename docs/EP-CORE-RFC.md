@@ -112,14 +112,23 @@ Graph weight penalties:
 
 **Effective evidence** = sum of all receipt weights in the scoring window.
 
-All dampening, establishment, and confidence use effective evidence, **not** raw receipt count.
+All dampening, establishment, and confidence use **quality-gated evidence**, not raw effective evidence or receipt count.
+
+Quality-gated evidence caps the contribution of unestablished submitters:
 
 ```
-if effective_evidence < 5.0:
-  score = 50 + (raw_score - 50) × (effective_evidence / 5.0)
+quality_gated_evidence = min(
+  effective_evidence,
+  established_evidence + min(max(0, effective_evidence - established_evidence), 2.0)
+)
+
+if quality_gated_evidence < 5.0:
+  score = 50 + (raw_score - 50) × (quality_gated_evidence / 5.0)
 ```
 
-Example: 5 receipts from unestablished submitters (0.1x each) = 0.5 effective evidence → trust dampened to ~55 regardless of signal values.
+This means pure volume from unestablished submitters can contribute at most 2.0 to the quality gate — regardless of how many receipts are submitted. 200 fake identities producing 6.0 raw effective evidence still only produce ~2.0 quality-gated evidence.
+
+Example: 5 receipts from unestablished submitters (0.1x each) = 0.5 effective evidence = 0.5 quality-gated → trust dampened to ~55 regardless of signal values.
 
 ---
 
@@ -128,21 +137,23 @@ Example: 5 receipts from unestablished submitters (0.1x each) = 0.5 effective ev
 ### 5.1 Historical Establishment
 
 Computed by `is_entity_established()` over **all** receipts:
-- Effective evidence ≥ 5.0
+- Quality-gated evidence ≥ 5.0
 - 3+ unique submitters
+
+Quality-gated evidence ensures establishment requires real credibility, not just volume. Pure unestablished volume cannot cross this threshold.
 
 Establishment is permanent once achieved. It answers: "Has this entity ever built enough credible history?"
 
 ### 5.2 Current Confidence
 
-Computed from effective evidence in the current scoring window:
+Computed from quality-gated evidence in the current scoring window:
 
-| Level | Effective Evidence | Meaning |
-|-------|-------------------|---------|
+| Level | Quality-Gated Evidence | Meaning |
+|-------|----------------------|---------|
 | `pending` | 0 | No data |
 | `insufficient` | < 1.0 | Receipts exist but carry very low weight |
 | `provisional` | 1.0 – 4.9 | Building credible history |
-| `emerging` | 5.0 – 19.9 | Score is meaningful |
+| `emerging` | 5.0 – 19.9 | Established, score is meaningful |
 | `confident` | ≥ 20.0 | High confidence, broad evidence |
 
 An entity can be historically established but have low current confidence (declining recent performance).
