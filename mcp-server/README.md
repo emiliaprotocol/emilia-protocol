@@ -16,7 +16,7 @@ Gives any MCP-compatible agent (Claude, ChatGPT, Gemini, etc.) access to EP trus
       "args": ["@emilia-protocol/mcp-server"],
       "env": {
         "EP_BASE_URL": "https://emiliaprotocol.ai",
-        "EP_API_KEY": "ep_live_your_key_here  (optional — only needed for receipt submission)"
+        "EP_API_KEY": "ep_live_your_key_here  (optional — needed for authenticated write actions)"
       }
     }
   }
