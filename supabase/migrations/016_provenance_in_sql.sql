@@ -1,3 +1,9 @@
+-- ⚠️ SUPERSEDED: The is_entity_established() function in this file has been
+-- replaced by the quality-gated version in 020_quality_gated_establishment.sql.
+-- This migration is preserved for historical reference and for the
+-- compute_emilia_score() function which is also updated in migration 020.
+-- Canonical establishment logic: supabase/migrations/020_quality_gated_establishment.sql
+--
 -- ============================================================================
 -- EMILIA Protocol — Migration 016: Provenance Weight in SQL
 -- ============================================================================

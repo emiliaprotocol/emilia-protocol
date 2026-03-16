@@ -282,3 +282,20 @@ SDKs and MCP server version independently from the protocol. The spec and refere
 ## License
 
 Apache 2.0
+
+## Canonical Paths
+
+When reviewing or implementing EP, these are the authoritative sources:
+
+| What | Where |
+|------|-------|
+| Scoring engine | `lib/scoring-v2.js` |
+| Trust barrier (quality-gated evidence) | `lib/scoring-v2.js` lines 214–228 |
+| Canonical evaluator (one read brain) | `lib/canonical-evaluator.js` |
+| Canonical writer (one write brain) | `lib/canonical-writer.js` |
+| Protocol specification | `docs/EP-CORE-RFC.md` |
+| SQL trust barrier | `supabase/migrations/020_quality_gated_establishment.sql` |
+| Dispute state machine | `lib/procedural-justice.js` |
+| Conformance fixtures | `conformance/fixtures.json` |
+| Policy definitions | `lib/scoring-v2.js` → `TRUST_POLICIES` |
+| Style guide | `docs/STYLE-GUIDE.md` |
