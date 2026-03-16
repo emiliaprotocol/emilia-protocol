@@ -14,7 +14,7 @@
 MCP defines how agents connect to tools. A2A defines how agents communicate. UCP and ACP define how agents transact. No standard defines how any of these principals should decide whether to trust each other.
 
 This is not a gap. It is the gap. Without portable trust evaluation:
-- Agents and systems cannot make safe autonomous or semi-autonomous decisions about counterparties, plugins, software, or services without a portable trust layer
+- Agents, systems, and human operators cannot make safe trust decisions about counterparties, software, or services without a portable trust layer
 - Platforms become trust gatekeepers by default — recreating the conflicts of interest that corrupted every previous trust system
 - There is no due process when trust is wrong — no appeal, no explanation, no recourse
 

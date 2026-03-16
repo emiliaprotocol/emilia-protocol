@@ -64,7 +64,7 @@ Action items:
 
 ### Opening
 
-EMILIA Protocol (EP) proposes a complementary approach to identity and authorization through trust evaluation and appeals. While traditional identity frameworks answer "who is this principal?" and authorization frameworks answer "what is it allowed to do?", EP answers "should it be trusted for this context and policy?" — a question that identity and authorization alone cannot resolve.
+EMILIA Protocol (EP) proposes a complementary approach to identity and authorization through trust evaluation and appeals. While traditional identity frameworks answer "who is this principal?" and authorization frameworks answer "what is it allowed to do?", EP answers whether a principal, software component, or machine actor should be trusted for this context and policy — a question that identity and authorization alone cannot resolve.
 
 ### Key Points to Make
 

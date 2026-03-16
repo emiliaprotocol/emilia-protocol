@@ -277,6 +277,7 @@
 
   @media (max-width: 600px) {
     .problem-grid { grid-template-columns: 1fr; }
+    #architecture > div > div:last-child { grid-template-columns: 1fr !important; }
   }
 </style>
 </head>
@@ -308,6 +309,7 @@
   <div class="nlinks">
     <a href="#trust">Trust</a>
     <a href="#stack">Protocol Stack</a>
+    <a href="#architecture">Architecture</a>
     <a href="#how">How It Works</a>
     <a href="#algorithm">Algorithm</a>
     <a href="#verify">Verify</a>
@@ -692,6 +694,31 @@
   </div>
 </section>
 
+<!-- ARCHITECTURE DIAGRAMS -->
+<section id="architecture" style="padding: 80px 24px;">
+  <div style="max-width: 900px; margin: 0 auto;">
+    <div class="reveal" style="text-align: center; margin-bottom: 40px;">
+      <div class="st">// Architecture</div>
+      <div class="sh">How EP Works</div>
+      <div class="sd" style="margin: 0 auto;">Four views of the protocol: evaluation flow, evidence model, identity continuity, and the layered trust system.</div>
+    </div>
+    <div class="reveal" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; overflow: hidden;">
+        <img src="/assets/trust-evaluation-process.svg" alt="Trust evaluation process" style="width: 100%; height: auto;">
+      </div>
+      <div style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; overflow: hidden;">
+        <img src="/assets/receipts-and-evidence.svg" alt="Receipts and evidence" style="width: 100%; height: auto;">
+      </div>
+      <div style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; overflow: hidden;">
+        <img src="/assets/identity-continuity.svg" alt="Identity continuity (EP-IX)" style="width: 100%; height: auto;">
+      </div>
+      <div style="background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 20px; overflow: hidden;">
+        <img src="/assets/layered-trust-system.svg" alt="Layered trust system" style="width: 100%; height: auto;">
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- RECEIPTS NOT REVIEWS -->
 <section id="how">
   <div class="rnr-section">
@@ -699,7 +726,7 @@
       <div class="st">// How It Works</div>
       <div class="sh">Receipts, Not Reviews</div>
       <div class="rnr-text">
-        Every review system has failed because the platform hosting reviews profits from the businesses being reviewed. EMILIA is different. The <strong>buying agent</strong> submits a receipt about the seller — and then uses that same trust profile to decide where to transact next. <strong>You rate what you eat. Lie, and you eat bad food again.</strong> The submitter and the consumer of the trust data are the same entity. This creates natural incentive alignment that no review system has ever achieved.
+        Every legacy platform-controlled trust system has failed because the host profits from the outcome. EMILIA is different. The <strong>buying agent or system</strong> submits a receipt about the counterparty — and then uses that same trust profile to decide where to transact next. <strong>You rate what you eat. Lie, and you eat bad food again.</strong> The submitter and the consumer of the trust data are the same entity. This creates natural incentive alignment that no platform-controlled trust system has ever achieved.
       </div>
     </div>
 
@@ -1130,7 +1157,7 @@
     <div class="sd" style="margin: 0 auto 28px; max-width: 600px;">This is the constitutional principle. If EP can influence routing, access, and conversion, then every negative trust effect must be explainable, challengeable, and reversible. Power without due process is dangerous.</div>
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin: 28px auto 36px; max-width: 700px; text-align: left;">
       <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">
-        <strong style="color: var(--t1);">Fake good reviews?</strong><br>
+        <strong style="color: var(--t1);">Falsely endorse a bad counterparty?</strong><br>
         Three-factor weighting: submitter credibility × time decay × graph health. Unestablished = 0.1x. Effective evidence dampening kills Sybil attacks.
       </div>
       <div style="font-size: 13px; color: var(--t2); line-height: 1.6;">

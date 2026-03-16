@@ -41,6 +41,8 @@ POST /api/trust/evaluate
   }
 ```
 
+> `score` is a legacy-compatible headline field. The canonical output is the **trust profile** (behavioral rates, signal breakdowns, provenance composition) plus the **policy result** (pass/fail with reasons).
+
 ### Install Preflight (EP-SX: Software Trust)
 
 ```
