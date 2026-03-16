@@ -1,0 +1,64 @@
+<svg width="100%" viewBox="0 0 680 420" xmlns="http://www.w3.org/2000/svg">
+<style>
+  .th { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; font-weight: 500; fill: #2C2C2A; }
+  .ts { font-family: system-ui, -apple-system, sans-serif; font-size: 12px; fill: #5F5E5A; }
+  .arr { stroke: #888780; stroke-width: 1.5; }
+  .leader { stroke: #B4B2A9; stroke-width: 0.5; stroke-dasharray: 3 3; }
+  @media (prefers-color-scheme: dark) {
+    .th { fill: #D3D1C7; } .ts { fill: #888780; } .arr { stroke: #5F5E5A; } .leader { stroke: #5F5E5A; }
+    .bg-teal rect { fill: #085041; stroke: #5DCAA5; }
+    .bg-purple rect { fill: #3C3489; stroke: #AFA9EC; }
+    .bg-amber rect { fill: #633806; stroke: #FAC775; }
+    .bg-green rect { fill: #27500A; stroke: #97C459; }
+    .bg-teal .th { fill: #9FE1CB; } .bg-teal .ts { fill: #5DCAA5; }
+    .bg-purple .th { fill: #CECBF6; } .bg-purple .ts { fill: #AFA9EC; }
+    .bg-amber .th { fill: #FAC775; } .bg-amber .ts { fill: #EF9F27; }
+    .bg-green .th { fill: #C0DD97; }
+  }
+  .bg-teal rect { fill: #E1F5EE; stroke: #1D9E75; }
+  .bg-purple rect { fill: #EEEDFE; stroke: #7F77DD; }
+  .bg-amber rect { fill: #FAEEDA; stroke: #BA7517; }
+  .bg-green rect { fill: #EAF3DE; stroke: #639922; }
+  .bg-teal .th { fill: #085041; } .bg-teal .ts { fill: #0F6E56; }
+  .bg-purple .th { fill: #3C3489; } .bg-purple .ts { fill: #534AB7; }
+  .bg-amber .th { fill: #633806; } .bg-amber .ts { fill: #854F0B; }
+  .bg-green .th { fill: #27500A; }
+</style>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+
+<text class="th" x="340" y="30" text-anchor="middle">Layered trust system</text>
+<text class="ts" x="340" y="48" text-anchor="middle">Three layers: data plane, evaluation engine, trust institution</text>
+
+<g class="bg-teal"><rect x="140" y="70" width="400" height="56" rx="10" stroke-width="0.5"/>
+<text class="th" x="340" y="90" text-anchor="middle" dominant-baseline="central">Trust data plane</text>
+<text class="ts" x="340" y="108" text-anchor="middle" dominant-baseline="central">Receipts, evidence, provenance, disputes, appeals</text></g>
+
+<line x1="340" y1="126" x2="340" y2="148" class="arr" marker-end="url(#arrow)"/>
+
+<g class="bg-purple"><rect x="140" y="150" width="400" height="56" rx="10" stroke-width="0.5"/>
+<text class="th" x="340" y="170" text-anchor="middle" dominant-baseline="central">Trust evaluation engine</text>
+<text class="ts" x="340" y="188" text-anchor="middle" dominant-baseline="central">Profiles, policies, preflight, confidence, context</text></g>
+
+<line x1="340" y1="206" x2="340" y2="228" class="arr" marker-end="url(#arrow)"/>
+
+<g class="bg-amber"><rect x="140" y="230" width="400" height="56" rx="10" stroke-width="0.5"/>
+<text class="th" x="340" y="250" text-anchor="middle" dominant-baseline="central">Trust institution</text>
+<text class="ts" x="340" y="268" text-anchor="middle" dominant-baseline="central">Adjudication, operator roles, due process, audit</text></g>
+
+<line x1="340" y1="286" x2="340" y2="308" class="arr" marker-end="url(#arrow)"/>
+
+<g class="bg-green"><rect x="220" y="310" width="240" height="44" rx="10" stroke-width="0.5"/>
+<text class="th" x="340" y="332" text-anchor="middle" dominant-baseline="central">Trusted outcome</text></g>
+
+<text class="ts" x="60" y="98" text-anchor="middle">What happened?</text>
+<line class="leader" x1="100" y1="98" x2="138" y2="98"/>
+
+<text class="ts" x="60" y="178" text-anchor="middle">What to conclude?</text>
+<line class="leader" x1="110" y1="178" x2="138" y2="178"/>
+
+<text class="ts" x="60" y="258" text-anchor="middle">Who governs?</text>
+<line class="leader" x1="96" y1="258" x2="138" y2="258"/>
+
+<text class="ts" x="340" y="390" text-anchor="middle">Constitutional principle: trust must never be more powerful than appeal.</text>
+<text class="ts" x="340" y="408" text-anchor="middle">The operating system for contested trust in machine-mediated systems.</text>
+</svg>
