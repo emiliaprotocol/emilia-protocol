@@ -11,6 +11,7 @@
 - EP instance running at emiliaprotocol.ai
 - Claude Desktop connected to EP MCP server
 - Entity `mcp-server-ep-v1` registered with at least 2 receipts pre-seeded
+- Auto-receipt enabled for the demo entity (run ep_configure_auto_receipt beforehand)
 - One API key ready for terminal fallback only
 - Claude window fills the screen. Terminal minimized as backup.
 - Backup screenshots of each step in case Wi-Fi dies
@@ -21,7 +22,7 @@
 
 > MCP gives systems access to tools.
 > EP gives them a way to evaluate whether a server or software component should be trusted enough to connect in this context.
-> In five minutes, I'll query a trust profile, run install preflight, and file a dispute — all through MCP tools in Claude.
+> In five minutes, I'll query a trust profile, run install preflight, generate a zero-knowledge trust proof, and verify it — all through MCP tools in Claude.
 
 ---
 
@@ -63,21 +64,37 @@
 
 ---
 
-## 3:00–4:00 — File a dispute
+## 3:00–4:00 — Auto-Receipt + ZK Proof (the closing argument)
+
+> Every MCP tool call we've run so far generated a behavioral receipt automatically — no developer instrumentation, no manual submission. That's the auto-receipt layer. Trust data accumulates passively as agents work.
 
 **Prompt Claude:**
-> File a dispute against the latest receipt for mcp-server-ep-v1 with the reason: demo challenge — testing dispute lifecycle.
+> Enable auto-receipt generation for mcp-server-ep-v1 in privacy mode.
 
 **While Claude runs, say:**
-> A real trust layer can't only compute trust. It has to handle contested trust. Every negative trust effect in EP must be explainable, challengeable, and reversible. That's the constitutional principle.
+> Opt-in, per entity. In privacy mode, counterparty identities are hashed — never stored in plaintext. The trust graph grows without exposing who is interacting with whom.
+
+**Prompt Claude:**
+> Generate a zero-knowledge proof that mcp-server-ep-v1 has a trust score above 0.80 in the financial domain.
+
+**While Claude runs, say:**
+> This is a commitment-based ZK proof — HMAC-SHA256 plus a Merkle tree over the entity's receipts. It proves the score threshold is met without revealing a single receipt, counterparty, or transaction detail.
 
 **Highlight in the output:**
-- Dispute created
-- Status: open
-- Receipt ID linked
-- Trust remains auditable — nothing deleted
+- proof_id
+- domain: financial
+- threshold: 0.80
+- result: threshold met / not met
 
-> EP is built so trust can be challenged and corrected without erasing what happened.
+**Prompt Claude:**
+> Verify that proof. Use only the proof_id.
+
+**Highlight in the output:**
+- Verification: valid
+- No receipts, no counterparties, no history disclosed
+
+> Healthcare, legal, and financial sector participants can now join the trust graph as full citizens — without revealing a single transaction.
+> The proof_id is all you share. The graph does the rest.
 
 ---
 
@@ -92,9 +109,16 @@
 
 ## 4:30–5:00 — Closing
 
-> MCP provides tool access.
-> EP provides trust evaluation and appeals.
-> Together, agents can make safer install decisions, route to trustworthy counterparties, and challenge trust when it's wrong.
+> Here is what EP is now.
+
+> The trust graph is an immune system. When a receipt is disputed, the graph's own high-confidence vouchers vote on it. The accused cannot dominate their own adjudication. Upheld disputes collapse to zero weight. Dismissed disputes are fully restored. The graph corrects itself — without operators, without platform intervention.
+
+> Humans have trust scores. For the first time, there is a verifiable record of how well a human delegates to AI agents — a delegation judgment grade derived from the Principal→Agent→Tool attribution chain embedded in every receipt. Excellent, good, fair, or poor. Auditable. Portable. Yours.
+
+> And for regulated industries — healthcare, legal, finance — the ZK privacy guarantee means the trust layer is no longer opt-out because of confidentiality concerns. You prove what you need to prove. You reveal nothing else.
+
+> MCP provides tool access. EP provides trust evaluation and appeals.
+> Together, agents can make safer install decisions, route to trustworthy counterparties, and challenge trust when it's wrong — in private, when it needs to be.
 > All of this is open source, Apache 2.0, and designed to be a neutral standard — not a platform.
 
 ---
@@ -103,8 +127,10 @@
 
 1. `Show me the trust profile for mcp-server-ep-v1.`
 2. `Run install preflight for mcp-server-ep-v1 with policy mcp_server_safe_v1 in this context: host is mcp, data_sensitivity is private_workspace, tool_scope is repo_read.`
-3. `File a dispute against the latest receipt for mcp-server-ep-v1 with the reason: demo challenge — testing dispute lifecycle.`
-4. `List all available trust policies.`
+3. `Enable auto-receipt generation for mcp-server-ep-v1 in privacy mode.`
+4. `Generate a zero-knowledge proof that mcp-server-ep-v1 has a trust score above 0.80 in the financial domain.`
+5. `Verify that proof. Use only the proof_id.`
+6. `List all available trust policies.`
 
 ## If something fails
 
@@ -112,11 +138,12 @@ Say: "That's exactly why appeals and operational trust matter — even the trust
 
 ## Do NOT say
 
-- Blockchain, Merkle trees, anchoring costs
+- Blockchain, anchoring costs
 - Compatibility score
 - "Future of trust" grandiosity
 - Old review-corruption framing
 - Anything about funding or company
+- "Merkle trees" (unless a technical audience asks directly)
 
 ## DO say
 
@@ -126,3 +153,7 @@ Say: "That's exactly why appeals and operational trust matter — even the trust
 - Disputes and appeals
 - Context-aware decisions
 - Constitutional principle: trust must never be more powerful than appeal
+- Auto-receipt: trust data accumulates passively
+- Zero-knowledge proof: prove the threshold, reveal nothing
+- Delegation judgment: humans have trust scores now
+- The graph is an immune system

@@ -1,14 +1,16 @@
 {
   "name": "@emilia-protocol/sdk",
-  "version": "0.1.0",
-  "description": "Reference TypeScript SDK for trust profiles, policy evaluation, install preflight, disputes, and appeals across counterparties, software, and machine actors.",
+  "version": "1.0.0",
+  "description": "TypeScript SDK for the EMILIA Protocol — portable trust for machine counterparties.",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
     }
   },
   "files": [
@@ -20,13 +22,20 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "clean": "rm -rf dist",
-    "prepare": "npm run clean && npm run build"
+    "prepare": "npm run clean && npm run build",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "engines": {
     "node": ">=18"
   },
   "keywords": [
     "trust",
+    "ai-agents",
+    "emilia-protocol",
+    "machine-trust",
+    "behavioral-receipt",
+    "mcp",
     "trust-profile",
     "policy-evaluation",
     "install-preflight",
@@ -35,20 +44,20 @@
     "software-trust",
     "marketplace-trust",
     "counterparties",
-    "machine-actors",
-    "mcp",
-    "emilia-protocol"
+    "machine-actors"
   ],
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/emiliaprotocol/emilia-protocol"
+    "url": "https://github.com/emiliaprotocol/emilia-protocol",
+    "directory": "sdks/typescript"
   },
   "homepage": "https://emiliaprotocol.ai",
   "bugs": {
     "url": "https://github.com/emiliaprotocol/emilia-protocol/issues"
   },
   "devDependencies": {
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^2.0.0"
   }
 }

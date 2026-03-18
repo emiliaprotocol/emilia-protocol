@@ -187,6 +187,45 @@ export default function InvestorsPage() {
         ))}
       </section>
 
+      {/* New in v1.0 */}
+      <section style={s.section}>
+        <div style={s.eyebrow}>New in v1.0</div>
+        <h2 style={s.h2}>Four new primitives that expand the moat</h2>
+        <p style={s.body}>
+          EMILIA v1.0 ships four capabilities that move the protocol from a trust layer into regulated-industry infrastructure, passive data accumulation, and adversarially resistant adjudication.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+          <div style={{ ...s.card, borderColor: 'rgba(0,212,255,0.2)' }}>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#00d4ff', marginBottom: 8, textTransform: 'uppercase' }}>Zero-Knowledge Proofs</div>
+            <div style={s.cardTitle}>Unlocks regulated industries</div>
+            <div style={s.cardBody}>
+              Counterparties can prove their trust score exceeds a policy threshold without revealing the underlying receipts. A financial institution can verify an agent meets compliance requirements; the agent never discloses its transaction history. ZK proofs are a hard moat — they require cryptographic depth most trust products cannot replicate.
+            </div>
+          </div>
+          <div style={{ ...s.card, borderColor: 'rgba(255,215,0,0.2)' }}>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#ffd700', marginBottom: 8, textTransform: 'uppercase' }}>Auto-Receipt Generation</div>
+            <div style={s.cardTitle}>Passive data accumulation</div>
+            <div style={s.cardBody}>
+              Every MCP tool call now optionally generates a behavioral receipt automatically. Operators opt in once; the trust graph grows with every agent action thereafter. The data moat deepens without any additional integration work — compounding evidence accumulates across every connected workflow.
+            </div>
+          </div>
+          <div style={{ ...s.card, borderColor: 'rgba(0,255,136,0.2)' }}>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#00ff88', marginBottom: 8, textTransform: 'uppercase' }}>Delegation Judgment Score</div>
+            <div style={s.cardTitle}>First system to score human AI-delegation quality</div>
+            <div style={s.cardBody}>
+              EMILIA now scores the humans who delegate to AI agents, not just the agents themselves. The Delegation Judgment Score surfaces which principals make high-quality, low-risk delegation decisions. This is a new asset class of behavioral data — no other trust system tracks this dimension.
+            </div>
+          </div>
+          <div style={{ ...s.card, borderColor: 'rgba(255,45,120,0.2)' }}>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#ff2d78', marginBottom: 8, textTransform: 'uppercase' }}>Trust-Graph Adjudication</div>
+            <div style={s.cardTitle}>Adversarially resistant trust</div>
+            <div style={s.cardBody}>
+              Disputes are no longer resolved by operator judgment alone. High-confidence vouchers in the trust graph vote on contested receipts. The system is Sybil-resistant by design — voting weight is earned through accumulated evidence, not purchased. This makes the trust signal structurally harder to manipulate at scale.
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA strip */}
       <section style={{ ...s.sectionAlt, textAlign: 'center' }}>
         <div style={{ ...s.section, maxWidth: 540 }}>

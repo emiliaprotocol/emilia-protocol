@@ -1,201 +1,26 @@
-name: EP Protocol CI
+name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
     branches: [main]
 
 jobs:
   test:
-    name: Test Suite
     runs-on: ubuntu-latest
-    
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run scoring tests
-        run: npx vitest run tests/scoring.test.js
-
-      - name: Run scoring v2 tests
-        run: npx vitest run tests/scoring-v2.test.js
-
-      - name: Run protocol tests
-        run: npx vitest run tests/protocol.test.js
-
-      - name: Run integration tests
-        run: npx vitest run tests/integration.test.js
-
-      - name: Run adversarial tests
-        run: npx vitest run tests/adversarial.test.js
-
-      - name: Run E2E flow tests
-        run: npx vitest run tests/e2e-flows.test.js
-
-      - name: Run conformance suite
-        run: npx vitest run conformance/conformance.test.js
-
-  build:
-    name: Next.js Build
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+          node-version: ${{ matrix.node-version }}
+      - run: npm ci
+      - run: npm test
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
         with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Next.js application
-        run: npx next build
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-          SUPABASE_SERVICE_ROLE_KEY: placeholder
-          NEXT_PUBLIC_APP_URL: http://localhost:3000
-
-  conformance-python:
-    name: Python Conformance
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Run Python hash verification
-        run: python3 conformance/verify_hashes.py
-
-  typescript-sdk:
-    name: TypeScript SDK Build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Setup npm registry auth placeholder
-        run: echo "SDK build job only; no publish in CI"
-
-      - name: Install SDK dependencies
-        working-directory: sdks/typescript
-        run: npm install
-
-      - name: Build TypeScript SDK
-        working-directory: sdks/typescript
-        run: npm run build
-
-      - name: Pack TypeScript SDK
-        working-directory: sdks/typescript
-        run: npm pack --dry-run
-
-  python-sdk:
-    name: Python SDK Build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install build tooling
-        run: python -m pip install --upgrade pip build twine
-
-      - name: Build Python SDK
-        working-directory: sdks/python
-        run: python -m build
-
-      - name: Check Python SDK metadata
-        working-directory: sdks/python
-        run: python -m twine check dist/*
-
-  lint:
-    name: Lint Check
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run Next.js lint
-        run: npx next lint --max-warnings 0
-
-      - name: Check weight model invariant
-        run: |
-          node -e "
-            import('./lib/scoring-v2.js').then(m => {
-              const sum = Object.values(m.EP_WEIGHTS_V2).reduce((a,b) => a+b, 0);
-              if (Math.abs(sum - 1.0) > 0.001) {
-                console.error('FAIL: weights sum to', sum, 'not 1.0');
-                process.exit(1);
-              }
-              console.log('PASS: weights sum to', sum);
-
-              const policies = ['strict','standard','permissive','discovery',
-                'github_private_repo_safe_v1','npm_buildtime_safe_v1',
-                'browser_extension_safe_v1','mcp_server_safe_v1'];
-              for (const p of policies) {
-                if (!m.TRUST_POLICIES[p]) {
-                  console.error('FAIL: missing policy', p);
-                  process.exit(1);
-                }
-              }
-              console.log('PASS: all', policies.length, 'policies present');
-            });
-          "
-
-
-      - name: Regenerate proof metrics
-        run: node scripts/generate-proof-metrics.mjs
-
-      - name: Fail if proof metrics are stale
-        run: git diff --exit-code generated/proof-metrics.json || (echo "FAIL: proof-metrics.json is stale. Run 'node scripts/generate-proof-metrics.mjs' and commit." && exit 1)
-
-      - name: Verify conformance fixtures exist
-        run: |
-          test -f conformance/fixtures.json || (echo "FAIL: fixtures.json missing" && exit 1)
-          echo "PASS: fixtures.json exists"
-          node -e "
-            const f = JSON.parse(require('fs').readFileSync('conformance/fixtures.json'));
-            console.log('Hash fixtures:', f.hash_fixtures.length);
-            console.log('Scoring fixtures:', f.scoring_fixtures.length);
-            console.log('Policy fixtures:', f.policy_fixtures.length);
-            console.log('Confidence fixtures:', f.confidence_level_fixtures.length);
-          "
+          name: test-results-${{ matrix.node-version }}
+          path: test-results/

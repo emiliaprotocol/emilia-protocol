@@ -1449,6 +1449,17 @@ function buildTicker() {
 }
 buildTicker();
 
+// Basic HTML escaping for untrusted values inserted into template strings.
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ===== GITHUB STARS =====
 async function loadStars() {
   try {
@@ -1507,7 +1518,7 @@ async function lookupTrust() {
     if (!r.ok) throw new Error(d.error || 'Not found');
     res.innerHTML = renderProfile(d);
   } catch(e) {
-    res.innerHTML = `<div class="sempty"><span style="color:var(--red)">${e.message}</span></div>`;
+    res.innerHTML = `<div class="sempty"><span style="color:var(--red)">${escapeHtml(e.message)}</span></div>`;
   } finally { btn.disabled = false; btn.textContent = 'View Profile'; }
 }
 
@@ -1526,7 +1537,7 @@ function renderProfile(d) {
   ].filter(b => b.val != null);
   return `<div class="scard">
     <div class="scard-head">
-      <div><div class="scard-name">${d.display_name || d.entity_id}</div><div class="scard-id">${d.entity_id} · ${d.entity_type || 'entity'}</div></div>
+      <div><div class="scard-name">${escapeHtml(d.display_name || d.entity_id)}</div><div class="scard-id">${escapeHtml(d.entity_id)} · ${escapeHtml(d.entity_type || 'entity')}</div></div>
       <span class="sconf ${confClass}">${conf.toUpperCase()}</span>
     </div>
     ${bars.map(b => `<div class="sbwrap"><div class="sbhead"><span>${b.label}</span><span style="color:${b.color}">${Math.round(b.val)}%</span></div><div class="sbar"><div class="sfill" style="width:${Math.min(b.val,100)}%;background:${b.color}"></div></div></div>`).join('')}
@@ -1536,7 +1547,7 @@ function renderProfile(d) {
       <div class="smeta-i">Evidence: <strong>${d.effective_evidence_current != null ? d.effective_evidence_current.toFixed(2) : '–'}</strong></div>
       ${d.disputes?.total ? `<div class="smeta-i" style="color:var(--amber)">Disputes: <strong>${d.disputes.total}</strong></div>` : ''}
     </div>
-    <div style="margin-top:12px"><a href="/entity/${d.entity_id}" style="font-family:var(--mono);font-size:11px;color:var(--cyan);text-decoration:none">View full profile →</a></div>
+    <div style="margin-top:12px"><a href="/entity/${encodeURIComponent(d.entity_id)}" style="font-family:var(--mono);font-size:11px;color:var(--cyan);text-decoration:none">View full profile →</a></div>
   </div>`;
 }
 
@@ -1559,14 +1570,14 @@ async function runPreflight() {
     const di = d.decision === 'allow' ? '✓ ALLOW' : d.decision === 'deny' ? '✗ DENY' : '⚠ REVIEW';
     res.innerHTML = `<div class="scard">
       <div class="scard-head">
-        <div><div class="scard-name">${d.display_name || id}</div><div class="scard-id">${id}</div></div>
+        <div><div class="scard-name">${escapeHtml(d.display_name || id)}</div><div class="scard-id">${escapeHtml(id)}</div></div>
         <span class="sconf" style="background:${dc}20;color:${dc};border-color:${dc}40">${di}</span>
       </div>
-      <div style="font-family:var(--mono);font-size:11px;color:var(--t2);margin-bottom:12px">Policy: ${d.policy_used} · Confidence: ${d.confidence}</div>
-      ${d.reasons?.length ? `<div>${d.reasons.map(r => `<div style="font-family:var(--mono);font-size:11px;color:var(--t3);margin-bottom:6px">· ${r}</div>`).join('')}</div>` : ''}
+      <div style="font-family:var(--mono);font-size:11px;color:var(--t2);margin-bottom:12px">Policy: ${escapeHtml(d.policy_used)} · Confidence: ${escapeHtml(d.confidence)}</div>
+      ${d.reasons?.length ? `<div>${d.reasons.map(r => `<div style="font-family:var(--mono);font-size:11px;color:var(--t3);margin-bottom:6px">· ${escapeHtml(r)}</div>`).join('')}</div>` : ''}
     </div>`;
   } catch(e) {
-    res.innerHTML = `<div class="sempty"><span style="color:var(--red)">${e.message}</span></div>`;
+    res.innerHTML = `<div class="sempty"><span style="color:var(--red)">${escapeHtml(e.message)}</span></div>`;
   }
 }
 document.getElementById('preflightInput').addEventListener('keydown', e => { if (e.key === 'Enter') runPreflight(); });
@@ -1588,9 +1599,9 @@ async function submitReport() {
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Error');
-    res.innerHTML = `<div class="scard"><div style="font-family:var(--mono);font-size:12px;color:var(--green)">✓ Report filed: ${d.report_id || d.dispute_id}</div><div style="font-family:var(--mono);font-size:11px;color:var(--t3);margin-top:8px">${d._message || 'Your report has been received and will be reviewed.'}</div></div>`;
+    res.innerHTML = `<div class="scard"><div style="font-family:var(--mono);font-size:12px;color:var(--green)">✓ Report filed: ${escapeHtml(d.report_id || d.dispute_id)}</div><div style="font-family:var(--mono);font-size:11px;color:var(--t3);margin-top:8px">${escapeHtml(d._message || 'Your report has been received and will be reviewed.')}</div></div>`;
   } catch(e) {
-    res.innerHTML = `<div class="sempty"><span style="color:var(--red)">${e.message}</span></div>`;
+    res.innerHTML = `<div class="sempty"><span style="color:var(--red)">${escapeHtml(e.message)}</span></div>`;
   }
 }
 

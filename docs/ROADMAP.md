@@ -21,6 +21,10 @@
 - [x] Provenance tiers (6 levels, 0.3x–1.0x weight)
 - [x] Bilateral attestations (confirm/dispute, 48h window)
 - [x] Trust profile materialization (snapshot on write, freshness on read)
+- [x] Domain scoring (lib/domain-scoring.js, domain score API)
+- [x] Trust gate (app/api/trust/gate/route.js)
+- [x] Delegation API routes + lib/delegation.js (migration 023)
+- [x] Delegation judgment scoring — getDelegationJudgmentScore(), /api/identity/principal/[id]/delegation-judgment, grades: excellent/good/fair/poor
 
 ### Receipt System
 - [x] Canonical receipt pipeline (createReceipt → canonicalSubmitReceipt)
@@ -29,6 +33,11 @@
 - [x] DB immutability triggers
 - [x] Provenance tier on every receipt
 - [x] Bilateral confirmation endpoint
+- [x] Auto-receipt generation — mcp-server/auto-receipt.js wraps every MCP tool call, fire-and-forget, opt-in per entity (ep_configure_auto_receipt MCP tool)
+- [x] Auto-receipt batch submission — app/api/receipts/auto-submit/route.js (up to 100 receipts per batch)
+- [x] Privacy layer — lib/auto-receipt-config.js, anonymous mode hashes counterparty identity (migration 024)
+- [x] Attribution chain — lib/attribution.js, Principal→Agent→Tool in every receipt, weak principal signal (0.15x weight), requires delegation_id + principal_id (migration 026)
+- [x] Receipt weight dampening — disputed receipts 0.3x, upheld 0.0x, dismissed 1.0x (live in scoring-v2.js)
 
 ### Sybil Resistance
 - [x] Graph analysis (closed-loop 0.4x, thin-graph 0.5x, cluster 0.1x)
@@ -43,6 +52,14 @@
 - [x] Human appeal page (/appeal)
 - [x] Reversal propagation (graph_weight → 0, score recomputed)
 - [x] Dispute rate limiting (5/hr disputes, 3/hr reports)
+- [x] Trust-graph dispute adjudication — lib/dispute-adjudication.js, high-confidence vouchers vote on disputes, 48h procedural window before graph consulted, accused receipts weighted 0.4x to prevent self-domination (migration 025)
+
+### Zero-Knowledge Proofs
+- [x] lib/zk-proofs.js — commitment-based (HMAC-SHA256 + Merkle tree)
+- [x] Prove score > threshold in a given domain without revealing receipts or counterparties
+- [x] ep_generate_zk_proof MCP tool
+- [x] ep_verify_zk_proof MCP tool
+- [x] Migration 027
 
 ### Software Trust (EP-SX)
 - [x] Install preflight (POST /api/trust/install-preflight)
@@ -56,12 +73,14 @@
 - [x] Well-known discovery (/.well-known/ep-trust.json)
 
 ### Distribution
-- [x] MCP server (15 tools, trust-native, context-aware)
-- [x] Reference SDKs (TypeScript + Python, source-only)
+- [x] MCP server (23 tools, trust-native, context-aware, ep_configure_auto_receipt + ep_generate_zk_proof + ep_verify_zk_proof included)
+- [x] TypeScript SDK (EPClient, 25 methods, 35+ types)
+- [x] Python SDK (async EPClient, 21 methods)
 - [x] SDK publish workflows (npm + PyPI)
+- [x] CI/CD — GitHub Actions matrix (Node 18/20/22), auto-publish to npm on mcp-v* tag
 
 ### Conformance
-- [x] CI-backed test suites (7 suites + JS/Python conformance)
+- [x] 670 tests passing across 28 test files
 - [x] 14 adversarial tests (Sybil, reciprocal loops, cluster collusion, trust farming)
 - [x] Trust profile determinism fixtures
 - [x] Cross-language hash verification (JavaScript + Python)
@@ -78,6 +97,66 @@
 - [x] STYLE-GUIDE.md — canonical vocabulary
 - [x] CANONICAL-DOCS.md — document map
 - [x] GOVERNANCE.md, CONTRIBUTING.md
+- [x] PROTOCOL-STANDARD.md — v1 with 17 sections (incl. ZK Proofs §13, Dispute Adjudication Standard §14, Attribution Chain §15, Auto-Receipt §16, Conformance §17)
+- [x] docs/LAUNCH.md — manifesto document
+
+---
+
+## Sprint Wave 2 — Shipped
+
+All items below were built and merged in the second sprint wave. They are live, tested, and reflected in PROTOCOL-STANDARD.md v1 (17 sections).
+
+### Auto-Receipt Generation
+- Opt-in, privacy-preserving, fire-and-forget behavioral receipt creation on every MCP tool call
+- Per-entity opt-in via ep_configure_auto_receipt MCP tool
+- Anonymous mode: counterparty identity is hashed, never stored in plaintext
+- Batch submission endpoint: app/api/receipts/auto-submit/route.js (up to 100 receipts per call)
+- Migration 024
+
+### Trust-Graph Dispute Adjudication
+- lib/dispute-adjudication.js
+- High-confidence vouchers in the trust graph vote on disputed receipts
+- 48-hour procedural window before graph is consulted (human process first)
+- Accused entity's own receipts weighted at 0.4x — cannot dominate their own adjudication
+- Migration 025
+
+### Receipt Weight Dampening
+- Active dispute: 0.3x weight
+- Upheld dispute: 0.0x weight (receipt excluded from scoring)
+- Dismissed dispute: 1.0x weight restored
+- Live in scoring-v2.js
+
+### Attribution Chain
+- lib/attribution.js
+- Full Principal→Agent→Tool chain embedded in every receipt
+- Weak principal signal: 0.15x weight (agent actions don't fully inherit human authority)
+- Both delegation_id and principal_id required to establish chain
+- Migration 026
+
+### Delegation Judgment Scoring
+- First system to produce a trust score for humans based on how well they delegate to AI agents
+- getDelegationJudgmentScore() function
+- API endpoint: /api/identity/principal/[id]/delegation-judgment
+- Four grades: excellent / good / fair / poor
+
+### Zero-Knowledge Proofs
+- lib/zk-proofs.js
+- Commitment-based: HMAC-SHA256 + Merkle tree construction
+- Entities prove score > threshold in a specified domain without revealing receipts or counterparties
+- ep_generate_zk_proof MCP tool — generates proof and returns proof_id
+- ep_verify_zk_proof MCP tool — verifies proof publicly from proof_id alone
+- Migration 027
+- Enables healthcare, legal, and financial sector participation under confidentiality constraints
+
+### Protocol Standard
+- PROTOCOL-STANDARD.md updated to 17 sections
+- New sections: §13 ZK Proofs, §14 Dispute Adjudication Standard, §15 Attribution Chain, §16 Auto-Receipt, §17 Conformance
+- NIST-ready
+
+### CI/CD
+- GitHub Actions matrix build: Node 18, 20, 22
+- Auto-publish to npm triggered on mcp-v* tag
+- 670 tests passing across 28 test files
 
 ---
 
@@ -103,7 +182,7 @@
 
 ### Build
 - [x] Human trust console (search + profile + preflight UI on landing page)
-- [ ] Summit demo script (ChatGPT to draft)
+- [x] Summit demo script
 
 **Success condition:** One external entity submits a real receipt. EP stops being internally excellent and becomes externally real.
 

@@ -1,41 +1,34 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "emilia-protocol"
-version = "0.1.0"
-description = "Reference Python SDK for trust profiles, policy evaluation, install preflight, disputes, and appeals across counterparties, software, and machine actors."
+version = "1.0.0"
+description = "Python SDK for the EMILIA Protocol — portable trust for machine counterparties."
 readme = "README.md"
-requires-python = ">=3.8"
-license = { text = "Apache-2.0" }
-authors = [
-  { name = "EMILIA Protocol", email = "hello@emiliaprotocol.ai" }
-]
-keywords = [
-  "trust",
-  "trust profile",
-  "policy evaluation",
-  "install preflight",
-  "appeals",
-  "disputes",
-  "software trust",
-  "marketplace trust",
-  "machine actors",
-  "counterparties",
-  "mcp",
-  "emilia protocol"
-]
+license = {text = "Apache-2.0"}
+requires-python = ">=3.9"
 dependencies = [
-  "requests>=2.28.0"
+    "httpx>=0.27.0",
 ]
+keywords = ["trust", "ai-agents", "emilia-protocol", "machine-trust", "behavioral-receipt"]
 classifiers = [
-  "Development Status :: 3 - Alpha",
-  "License :: OSI Approved :: Apache Software License",
-  "Programming Language :: Python :: 3"
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
 ]
 
 [project.urls]
 Homepage = "https://emiliaprotocol.ai"
 Repository = "https://github.com/emiliaprotocol/emilia-protocol"
-Issues = "https://github.com/emiliaprotocol/emilia-protocol/issues"
+Documentation = "https://emiliaprotocol.ai/docs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/emilia_protocol"]

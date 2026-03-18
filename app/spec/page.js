@@ -3,7 +3,7 @@ import { join } from 'path';
 import SiteNav from '@/components/SiteNav';
 
 export const metadata = {
-  title: 'EP Core RFC v1.1 — EMILIA Protocol Specification',
+  title: 'EP Core RFC v1.0 — EMILIA Protocol Specification',
   description: 'EMILIA Protocol specification — trust profiles, policy evaluation, and appeals for counterparties, software, and machine actors.',
 };
 
@@ -111,10 +111,10 @@ export default function SpecPage() {
       <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@700;800;900&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
       <SiteNav activePage="Spec" />
       <div className="spec-content">
-        <div className="spec-badge">EP CORE RFC v1.1 · APACHE 2.0</div>
+        <div className="spec-badge">EP CORE RFC v1.0 · APACHE 2.0</div>
         <div dangerouslySetInnerHTML={{ __html: html }} />
         <div className="spec-footer">
-          EMILIA Protocol — EP Core RFC v1.1 — Apache 2.0 License
+          EMILIA Protocol — EP Core RFC v1.0 — Apache 2.0 License
         </div>
       </div>
     </>

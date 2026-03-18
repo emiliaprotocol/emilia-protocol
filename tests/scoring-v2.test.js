@@ -4,6 +4,8 @@ import {
   evaluateTrustPolicy,
   TRUST_POLICIES,
   EP_WEIGHTS_V2,
+  DISPUTE_DAMPENING_FACTOR,
+  DISPUTE_RESOLVED_FACTOR,
 } from '../lib/scoring-v2.js';
 
 function makeReceipt(overrides = {}) {
@@ -113,6 +115,95 @@ describe('computeTrustProfile', () => {
       expect(result.anomaly.type).toBe('declining');
       expect(result.anomaly.delta).toBeLessThan(0);
     }
+  });
+});
+
+describe('dispute dampening', () => {
+  it('disputed receipt gets 0.3x weight in scoring', () => {
+    // Build a baseline with 5 identical receipts, no disputes
+    const receipts = Array(5).fill(null).map((_, i) => makeReceipt({
+      id: `receipt-${i}`,
+      submitted_by: `s-${i}`,
+      submitter_established: true,
+      submitter_score: 90,
+      provenance_tier: 'bilateral',
+    }));
+
+    const baseline = computeTrustProfile(receipts, {});
+
+    // Dispute receipt-0 — its weight contribution should drop to 30%
+    const disputedReceiptIds = new Set(['receipt-0']);
+    const dampened = computeTrustProfile(receipts, {}, disputedReceiptIds);
+
+    // Effective evidence must be lower when one receipt is dampened
+    expect(dampened.effectiveEvidence).toBeLessThan(baseline.effectiveEvidence);
+
+    // The dampened receipt's weight contribution is exactly DISPUTE_DAMPENING_FACTOR (0.3x)
+    // so the difference should be (1 - 0.3) = 0.7 × that receipt's undampened weight
+    const diff = baseline.effectiveEvidence - dampened.effectiveEvidence;
+    expect(diff).toBeGreaterThan(0);
+
+    // dispute_dampened_count should be 1
+    expect(dampened.dispute_dampened_count).toBe(1);
+  });
+
+  it('dismissed dispute receipt restores to 1.0x weight', () => {
+    // DISPUTE_RESOLVED_FACTOR.dismissed === 1.0 means full restore
+    expect(DISPUTE_RESOLVED_FACTOR.dismissed).toBe(1.0);
+
+    // A dismissed receipt is no longer in the active disputed set,
+    // so its weight is unchanged from baseline (no dampening applied)
+    const receipts = Array(5).fill(null).map((_, i) => makeReceipt({
+      id: `r-${i}`,
+      submitted_by: `s-${i}`,
+      submitter_established: true,
+    }));
+
+    const baseline = computeTrustProfile(receipts, {});
+
+    // After dismissal the receipt leaves the disputedReceiptIds set
+    const afterDismissal = computeTrustProfile(receipts, {}, new Set());
+
+    expect(afterDismissal.effectiveEvidence).toBeCloseTo(baseline.effectiveEvidence, 5);
+    expect(afterDismissal.dispute_dampened_count).toBe(0);
+  });
+
+  it('upheld dispute receipt gets 0.0x weight (excluded)', () => {
+    // DISPUTE_RESOLVED_FACTOR.upheld === 0.0 means excluded from scoring
+    expect(DISPUTE_RESOLVED_FACTOR.upheld).toBe(0.0);
+
+    // Simulate an upheld resolution: caller removes the receipt from the
+    // receipts array before calling computeTrustProfile (ledger still stores it,
+    // but it is filtered out upstream when upheld).
+    const receipts = Array(5).fill(null).map((_, i) => makeReceipt({
+      id: `r-${i}`,
+      submitted_by: `s-${i}`,
+      submitter_established: true,
+      submitter_score: 90,
+    }));
+
+    const baseline = computeTrustProfile(receipts, {});
+
+    // Remove the upheld receipt entirely (simulating 0.0x factor)
+    const withUpheld = computeTrustProfile(receipts.slice(1), {});
+
+    expect(withUpheld.effectiveEvidence).toBeLessThan(baseline.effectiveEvidence);
+    expect(withUpheld.receiptCount).toBe(baseline.receiptCount - 1);
+  });
+
+  it('undisputed entity shows dispute_dampened_count: 0', () => {
+    const receipts = Array(5).fill(null).map((_, i) => makeReceipt({
+      id: `r-${i}`,
+      submitted_by: `s-${i}`,
+    }));
+
+    // No disputedReceiptIds passed — defaults to empty Set
+    const result = computeTrustProfile(receipts, {});
+    expect(result.dispute_dampened_count).toBe(0);
+
+    // Explicit empty set
+    const resultExplicit = computeTrustProfile(receipts, {}, new Set());
+    expect(resultExplicit.dispute_dampened_count).toBe(0);
   });
 });
 

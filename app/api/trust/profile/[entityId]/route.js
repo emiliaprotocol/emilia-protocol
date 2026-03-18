@@ -45,6 +45,7 @@ export async function GET(request, { params }) {
       receipt_count: result.receiptCount,
 
       disputes: result.disputes,
+      disputesDampened: result.dispute_dampened_count,
 
       compat_score: result.score,
       _compat_note: 'Use trust_profile for trust decisions. compat_score is for sorting/backward compatibility only.',

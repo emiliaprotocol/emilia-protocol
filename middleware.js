@@ -14,6 +14,7 @@ const WRITE_CATEGORIES = ['submit', 'anchor', 'dispute_write', 'report_write'];
 function getCategory(pathname) {
   if (pathname.startsWith('/api/entities/register')) return 'register';
   if (pathname.startsWith('/api/receipts/submit')) return 'submit';
+  if (pathname.startsWith('/api/receipts/confirm')) return 'dispute_write'; // bilateral confirm: sensitive write
   if (pathname.startsWith('/api/needs/') && pathname.endsWith('/rate')) return 'submit';
   if (pathname.startsWith('/api/needs/broadcast')) return 'submit';
   if (pathname.startsWith('/api/blockchain/anchor')) return 'anchor';
@@ -55,6 +56,14 @@ export async function middleware(request) {
   const result = await checkRateLimit(rateLimitKey, category);
 
   if (!result.allowed) {
+    // Distinguish between rate-limited and rate-limiter-unavailable (fail-closed)
+    if (result.error === 'rate_limit_unavailable') {
+      return NextResponse.json(
+        { error: 'Service temporarily unavailable — rate limiting backend offline', retry_after: 60 },
+        { status: 503 }
+      );
+    }
+
     const config = RATE_LIMITS[category];
     const res = NextResponse.json(
       {

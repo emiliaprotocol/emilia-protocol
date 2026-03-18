@@ -4,6 +4,7 @@ import {
   evaluateTrustPolicy,
   TRUST_POLICIES,
 } from '../lib/scoring-v2.js';
+import { computeReceiptComposite } from '../lib/scoring.js';
 
 function makeReceipt(overrides = {}) {
   return {
@@ -305,5 +306,165 @@ describe('ADVERSARIAL: Damage ceiling — worst case attack outcomes', () => {
     // Raw effective evidence is high, but quality-gated is capped
     expect(profile.effectiveEvidence).toBeGreaterThan(5);
     expect(profile.qualityGatedEvidence).toBeLessThan(5);
+  });
+});
+
+// ============================================================================
+// ADVERSARIAL: Signal manipulation — Infinity / NaN injection
+// ============================================================================
+
+describe('ADVERSARIAL: Signal manipulation — Infinity / NaN injection into computeReceiptComposite', () => {
+  it('Infinity in delivery_accuracy is treated as missing (clamped away)', () => {
+    const score = computeReceiptComposite({ delivery_accuracy: Infinity, product_accuracy: 80 });
+    expect(Number.isFinite(score)).toBe(true);
+    expect(score).toBeGreaterThanOrEqual(0);
+    expect(score).toBeLessThanOrEqual(100);
+  });
+
+  it('-Infinity in delivery_accuracy is treated as missing', () => {
+    const score = computeReceiptComposite({ delivery_accuracy: -Infinity, product_accuracy: 80 });
+    expect(Number.isFinite(score)).toBe(true);
+  });
+
+  it('NaN in delivery_accuracy is treated as missing', () => {
+    const score = computeReceiptComposite({ delivery_accuracy: NaN, product_accuracy: 80 });
+    expect(Number.isFinite(score)).toBe(true);
+  });
+
+  it('all signals are Infinity → falls back to DEFAULT_SCORE (50)', () => {
+    const score = computeReceiptComposite({
+      delivery_accuracy: Infinity,
+      product_accuracy: Infinity,
+      price_integrity: Infinity,
+      return_processing: Infinity,
+      agent_satisfaction: Infinity,
+    });
+    expect(score).toBe(50); // DEFAULT_SCORE
+  });
+
+  it('all signals are NaN → falls back to DEFAULT_SCORE (50)', () => {
+    const score = computeReceiptComposite({
+      delivery_accuracy: NaN,
+      product_accuracy: NaN,
+      price_integrity: NaN,
+    });
+    expect(score).toBe(50);
+  });
+
+  it('values > 100 are clamped to 100, not inflating score', () => {
+    const overflowScore = computeReceiptComposite({ delivery_accuracy: 9999, product_accuracy: 9999 });
+    const normalScore = computeReceiptComposite({ delivery_accuracy: 100, product_accuracy: 100 });
+    expect(overflowScore).toBeCloseTo(normalScore, 5);
+  });
+
+  it('values < 0 are clamped to 0', () => {
+    const underflowScore = computeReceiptComposite({ delivery_accuracy: -500, product_accuracy: -999 });
+    const zeroScore = computeReceiptComposite({ delivery_accuracy: 0, product_accuracy: 0 });
+    expect(underflowScore).toBeCloseTo(zeroScore, 5);
+  });
+});
+
+describe('ADVERSARIAL: Signal manipulation — Infinity / NaN in computeTrustProfile', () => {
+  it('receipt with Infinity composite_score does not corrupt trust profile', () => {
+    const receipts = [
+      makeReceipt({ submitted_by: 's1', submitter_established: true, submitter_score: 90, composite_score: Infinity }),
+      makeReceipt({ submitted_by: 's2', submitter_established: true, submitter_score: 90, composite_score: 85 }),
+    ];
+    const profile = computeTrustProfile(receipts, {});
+    expect(Number.isFinite(profile.score)).toBe(true);
+    expect(profile.score).toBeGreaterThanOrEqual(0);
+    expect(profile.score).toBeLessThanOrEqual(100);
+  });
+
+  it('receipt with NaN composite_score does not corrupt trust profile', () => {
+    const receipts = [
+      makeReceipt({ submitted_by: 's1', submitter_established: true, submitter_score: 90, composite_score: NaN }),
+      makeReceipt({ submitted_by: 's2', submitter_established: true, submitter_score: 90, composite_score: 80 }),
+    ];
+    const profile = computeTrustProfile(receipts, {});
+    expect(Number.isFinite(profile.score)).toBe(true);
+  });
+
+  it('receipt with Infinity in individual signal fields does not corrupt score', () => {
+    const receipts = [
+      makeReceipt({
+        submitted_by: 's1', submitter_established: true, submitter_score: 90,
+        delivery_accuracy: Infinity, product_accuracy: NaN, composite_score: 85,
+      }),
+    ];
+    const profile = computeTrustProfile(receipts, {});
+    expect(Number.isFinite(profile.score)).toBe(true);
+    expect(profile.score).toBeGreaterThanOrEqual(0);
+    expect(profile.score).toBeLessThanOrEqual(100);
+  });
+
+  it('100 receipts with Infinity scores = finite trust score', () => {
+    const receipts = Array(100).fill(null).map((_, i) => makeReceipt({
+      submitted_by: `s-${i % 10}`,
+      submitter_established: true,
+      submitter_score: 90,
+      composite_score: Infinity,
+      delivery_accuracy: Infinity,
+      product_accuracy: Infinity,
+    }));
+    const profile = computeTrustProfile(receipts, {});
+    expect(Number.isFinite(profile.score)).toBe(true);
+    expect(profile.score).toBeLessThanOrEqual(100);
+    expect(profile.score).toBeGreaterThanOrEqual(0);
+  });
+});
+
+// ============================================================================
+// ADVERSARIAL: Strict policy — last_receipt staleness check
+// ============================================================================
+
+describe('ADVERSARIAL: Strict policy — staleness (max_days_since_last_receipt)', () => {
+  it('strict policy fails entity whose last receipt is 200 days ago', () => {
+    const staleDate = new Date(Date.now() - 200 * 86400000).toISOString();
+    const receipts = Array(15).fill(null).map((_, i) => makeReceipt({
+      submitted_by: `s-${i % 5}`,
+      submitter_established: true,
+      submitter_score: 90,
+      provenance_tier: 'bilateral',
+      bilateral_status: 'confirmed',
+      composite_score: 92,
+      created_at: staleDate,
+    }));
+    const profile = computeTrustProfile(receipts, {});
+    const result = evaluateTrustPolicy(profile, TRUST_POLICIES.strict);
+    expect(result.pass).toBe(false);
+    expect(result.failures.some(f => f.includes('last_receipt') || f.includes('day'))).toBe(true);
+  });
+
+  it('standard policy allows entity whose last receipt is 200 days ago', () => {
+    const staleDate = new Date(Date.now() - 200 * 86400000).toISOString();
+    const receipts = Array(10).fill(null).map((_, i) => makeReceipt({
+      submitted_by: `s-${i % 5}`,
+      submitter_established: true,
+      submitter_score: 90,
+      composite_score: 88,
+      created_at: staleDate,
+    }));
+    const profile = computeTrustProfile(receipts, {});
+    // standard policy has no max_days_since_last_receipt → should not fail on staleness
+    const result = evaluateTrustPolicy(profile, TRUST_POLICIES.standard);
+    expect(result.failures.some(f => f.includes('last_receipt'))).toBe(false);
+  });
+
+  it('entity active within 180 days passes strict staleness check', () => {
+    const recentDate = new Date(Date.now() - 30 * 86400000).toISOString();
+    const receipts = Array(20).fill(null).map((_, i) => makeReceipt({
+      submitted_by: `s-${i % 5}`,
+      submitter_established: true,
+      submitter_score: 95,
+      provenance_tier: 'bilateral',
+      bilateral_status: 'confirmed',
+      composite_score: 95,
+      created_at: recentDate,
+    }));
+    const profile = computeTrustProfile(receipts, {});
+    const result = evaluateTrustPolicy(profile, TRUST_POLICIES.strict);
+    // Should not fail on staleness (may fail on other strict criteria)
+    expect(result.failures.some(f => f.includes('last_receipt'))).toBe(false);
   });
 });

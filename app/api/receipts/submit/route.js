@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { canonicalSubmitReceipt } from '@/lib/canonical-writer';
 import { EP_ERRORS } from '@/lib/errors';
+import { buildAttributionChain, applyAttributionChain } from '@/lib/attribution';
 
 /**
  * POST /api/receipts/submit
@@ -45,8 +46,23 @@ export async function POST(request) {
       return NextResponse.json({ error: `agent_behavior must be one of: ${validBehaviors.join(', ')}` }, { status: 400 });
     }
 
-    const hasSignal = [body.delivery_accuracy, body.product_accuracy, body.price_integrity,
-      body.return_processing, body.agent_satisfaction].some(v => v != null && !isNaN(v));
+    // Validate and clamp numeric signal fields to [0, 100]
+    const numericSignals = ['delivery_accuracy', 'product_accuracy', 'price_integrity', 'return_processing', 'agent_satisfaction'];
+    for (const field of numericSignals) {
+      if (body[field] != null) {
+        const val = Number(body[field]);
+        if (!Number.isFinite(val) || val < 0 || val > 100) {
+          return NextResponse.json({ error: `${field} must be a number between 0 and 100` }, { status: 400 });
+        }
+        body[field] = val;
+      }
+    }
+
+    if (typeof body.transaction_ref === 'string' && body.transaction_ref.length > 500) {
+      return NextResponse.json({ error: 'transaction_ref must not exceed 500 characters' }, { status: 400 });
+    }
+
+    const hasSignal = numericSignals.some(f => body[f] != null);
     const hasClaims = body.claims && typeof body.claims === 'object' && Object.keys(body.claims).length > 0;
     const hasBehavior = !!body.agent_behavior;
 
@@ -70,6 +86,28 @@ export async function POST(request) {
     };
     if (result.warnings) {
       response.warnings = result.warnings;
+    }
+
+    // === ATTRIBUTION CHAIN (fire-and-forget) ===
+    // If the receipt carries a delegation_id, propagate the outcome up the
+    // chain to the authorizing principal as a weak delegation judgment signal.
+    // This runs entirely async — it must never delay or fail the submit response.
+    if (body.delegation_id && result.receipt && !result.deduplicated) {
+      const receiptForAttribution = {
+        ...result.receipt,
+        entity_id: body.entity_id,
+        agent_behavior: body.agent_behavior || null,
+        delegation_id: body.delegation_id,
+        context: body.context || null,
+      };
+      const chain = buildAttributionChain(receiptForAttribution);
+      // Only run if the chain actually includes a principal (i.e., context.principal_id
+      // was provided alongside the delegation_id).
+      if (chain.length > 1) {
+        applyAttributionChain(receiptForAttribution, chain).catch((err) => {
+          console.error('[EP Attribution] Background attribution failed:', err.message);
+        });
+      }
     }
 
     return NextResponse.json(response, { status: 201 });

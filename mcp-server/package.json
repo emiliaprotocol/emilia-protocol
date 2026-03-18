@@ -1,17 +1,26 @@
 {
   "name": "@emilia-protocol/mcp-server",
-  "version": "0.2.0",
-  "description": "Trust profiles, policy evaluation, install preflight, disputes, and appeals for machine counterparties and software via MCP.",
+  "version": "1.0.0",
+  "description": "EMILIA Protocol MCP Server — behavioral trust infrastructure for AI agents",
   "main": "index.js",
   "type": "module",
   "bin": {
-    "emilia-mcp": "index.js"
+    "emilia-mcp": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "auto-receipt.js",
+    "README.md"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
   },
   "keywords": [
     "mcp",
     "model-context-protocol",
     "trust",
     "trust-profile",
+    "trust-score",
     "policy-evaluation",
     "install-preflight",
     "appeals",
@@ -19,12 +28,26 @@
     "software-trust",
     "marketplace-trust",
     "machine-actors",
-    "counterparties"
+    "counterparties",
+    "ai-agents",
+    "behavioral-receipts",
+    "emilia-protocol",
+    "agent-safety",
+    "delegation"
   ],
   "license": "Apache-2.0",
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/emiliaprotocol/emilia-protocol"
   },
-  "homepage": "https://emiliaprotocol.ai"
+  "homepage": "https://emiliaprotocol.ai",
+  "bugs": {
+    "url": "https://github.com/emiliaprotocol/emilia-protocol/issues"
+  }
 }

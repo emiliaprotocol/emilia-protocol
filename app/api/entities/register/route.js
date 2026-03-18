@@ -53,6 +53,10 @@ export async function POST(request) {
       }, { status: 400 });
     }
 
+    if (typeof body.display_name === 'string' && body.display_name.length > 200) {
+      return NextResponse.json({ error: 'display_name must not exceed 200 characters' }, { status: 400 });
+    }
+
     // Check for duplicate entity_id
     const { data: existing } = await supabase
       .from('entities')
