@@ -4,7 +4,7 @@
 
 The official TypeScript SDK for the [EMILIA Protocol](https://emiliaprotocol.ai) — the trust infrastructure for the age of AI agents, autonomous software, and machine-to-machine commerce.
 
-EMILIA = **E**vidence-based **M**ediation & **I**ntegrity **L**ayer for **I**nteractions and **A**ppeals.
+EMILIA maps to six design pillars: **E**vidence, **M**ediation, **I**dentity, **L**ineage, **I**nvocation, **A**ppeals.
 
 > Constitutional principle: **trust must never be more powerful than appeal.**
 
