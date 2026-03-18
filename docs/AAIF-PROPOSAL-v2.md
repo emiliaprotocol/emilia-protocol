@@ -28,11 +28,16 @@ We propose a **Trust Evaluation and Appeals Working Group** within AAIF to devel
 
 EMILIA Protocol (EP) is offered as the **initial reference implementation and draft specification** — not as a finished standard, but as the most complete working starting point available:
 - A deployed canonical implementation (emiliaprotocol.ai)
-- CI-backed automated checks across 7 suites (JS + Python conformance) including adversarial, end-to-end, and conformance replay
+- CI-backed automated checks across 28 test files, 670 automated checks (JS + Python conformance) including adversarial, end-to-end, and conformance replay
 - Cross-language conformance verification (JavaScript + Python)
-- An MCP server with 14 trust evaluation tools
+- An MCP server with 23 MCP tools
 - Install preflight for software entities (GitHub Apps, MCP servers, npm packages)
 - A dispute and human appeal system with constitutional due process guarantees
+- Zero-knowledge proofs for privacy-preserving trust attestation — entities prove score thresholds without revealing counterparties (critical for healthcare, legal, finance participation)
+- Trust-graph dispute adjudication — disputes resolved by voucher network, not operators (adversarially resistant)
+- Attribution chain standard — Principal→Agent→Tool chain with verified human accountability
+- Delegation judgment scoring — first standard to score human delegation quality to AI agents
+- Auto-receipt generation — passive behavioral data accumulation from MCP tool calls (opt-in)
 
 **What we're NOT asking:** "AAIF, adopt our product."
 **What we ARE asking:** "Let's build a neutral trust evaluation standard together, starting from a working reference."
@@ -49,7 +54,7 @@ EMILIA Protocol (EP) is offered as the **initial reference implementation and dr
 
 ---
 
-## 4. What the Spec Defines (EP Core RFC v1.1)
+## 4. What the Spec Defines (EP Core RFC v1.0 — 17 sections)
 
 1. **Trust Receipt Schema** — Append-only, cryptographically hashed transaction records with mandatory `transaction_ref`, optional context keys (`task_type`, `category`, `geo`, `modality`, `value_band`, `risk_class`)
 2. **Trust Profile** — The primary protocol output. Multi-dimensional: behavioral rates (completion, retry, abandon, dispute), per-signal breakdowns, consistency, anomaly alerts, confidence levels
@@ -58,6 +63,10 @@ EMILIA Protocol (EP) is offered as the **initial reference implementation and dr
 5. **Establishment & Confidence** — Historical establishment (permanent, all receipts) separated from current confidence (rolling window). Two distinct protocol objects
 6. **Sybil Resistance** — 4 layers: IP-based rate limiting, graph analysis (closed-loop/cluster/thin-graph penalties), submitter credibility (unestablished = 0.1x), effective-evidence dampening
 7. **Cryptographic Integrity** — Canonical JSON with sorted keys, SHA-256 receipt chains, Merkle anchoring, DB immutability triggers
+8. **Zero-Knowledge Trust Proofs** — HMAC-SHA256 commitment-based proofs allowing entities to prove trust threshold claims without revealing counterparty identities or transaction contents. Enables participation by privacy-constrained industries.
+9. **Attribution Chain** — Verifiable Principal→Agent→Tool attribution records. Weak principal signal (0.15x) for delegation judgment. Requires both `delegation_id` and `principal_id` for attribution to prevent unverifiable claims.
+10. **Trust-Graph Adjudication** — Dispute resolution by high-confidence network vouchers. 48-hour procedural window before graph consulted. Accused entity receipts weighted 0.4x in own adjudication to prevent self-serving outcomes.
+11. **Auto-Receipt Generation** — Opt-in behavioral data capture from MCP tool calls. Privacy-by-default: sensitive fields redacted, provenance marked unilateral, no raw output stored.
 
 ---
 
@@ -78,7 +87,7 @@ EP is a **composable layer**, not a competing protocol. It attaches to ACP, is u
 
 | Component | Status |
 |-----------|--------|
-| Core specification (EP-CORE-RFC v1.1) | Complete — behavioral-first, trust-profile-centric |
+| Core specification (EP-CORE-RFC v1.0, 17 sections) | Complete — behavioral-first, trust-profile-centric |
 | Trust profile endpoint (`GET /api/trust/profile/:entityId`) | Deployed — canonical read surface |
 | Policy evaluation (`POST /api/trust/evaluate`) | Deployed — 4 built-in + custom JSONB policies, **context-aware** |
 | Context-aware trust evaluation | Deployed — filters receipts by context, falls back to global when sparse |
@@ -94,9 +103,9 @@ EP is a **composable layer**, not a competing protocol. It attaches to ACP, is u
 | Canonical JSON hashing (cross-language) | Deployed — sorted keys, deterministic, context included |
 | Identity-aware write throttling | Deployed — API key prefix + IP on writes, IP-only on reads |
 | Server-derived owner identity | Deployed — SHA-256 of client IP, not caller-supplied |
-| MCP server (15 tools, context-aware) | Published on npm — trust-profile-first, context forwarded |
+| MCP server (23 tools, context-aware) | Published on npm — trust-profile-first, context forwarded |
 | SDKs | Planned / optional future implementations |
-| Test suites (7 suites, CI-backed automated checks) | Complete — scoring, trust profiles, protocol surfaces, adversarial resistance, end-to-end flows, conformance |
+| Test suites (28 test files, 670 automated checks, CI-backed) | Complete — scoring, trust profiles, protocol surfaces, adversarial resistance, end-to-end flows, conformance |
 | NIST ITL Concept Paper | Prepared (April 2 deadline) |
 | Shopify DTC integration spec | Complete — webhook mapping, receipt mapping, MVP roadmap |
 
@@ -164,8 +173,8 @@ A complete Shopify integration spec (webhook mapping, receipt mapping, public tr
 ## 11. Immediate Next Steps
 
 1. Present at MCP Dev Summit NA (April 2-3, NYC)
-2. Submit NIST ITL Concept Paper (April 2 deadline)
-3. Publish EP Core RFC v1.1 as standalone working group deliverable
+2. Submit NIST ITL Concept Paper (April 2 deadline) — include EP Core RFC v1.0
+3. Publish EP Core RFC v1.0 (17 sections) as standalone working group deliverable
 4. Launch Shopify DTC reference integration (first external receipt source)
 5. Solicit working group members from AAIF member organizations
 6. First working group meeting Q2 2026

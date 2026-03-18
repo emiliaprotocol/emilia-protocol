@@ -4,6 +4,7 @@
 
 | Document | Purpose | Audience |
 |---|---|---|
+| `docs/POSITIONING.md` | **Canonical positioning reference — source of truth for all language** | Internal — all contributors |
 | `README.md` | Public project overview | Developers, evaluators |
 | `docs/EP-CORE-RFC.md` | Technical specification | Implementers |
 | `docs/THE-EROSION-OF-TRUST.md` | Manifesto — why trust needs a protocol | Everyone |

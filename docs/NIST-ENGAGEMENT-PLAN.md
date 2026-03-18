@@ -32,7 +32,7 @@ Action: Prepare the response content anyway for future submissions and use it in
 Action items:
 - [ ] Draft response to concept paper (see Section 3 below)
 - [ ] Reference EP as a complementary trust evaluation layer
-- [ ] Include EP Core RFC v1.1 as supporting documentation
+- [ ] Include EP Core RFC v1.0 (17 sections) as supporting documentation
 - [ ] Submit by April 1
 
 ### April 2-3, 2026
@@ -40,7 +40,7 @@ Action items:
 
 Action items:
 - [ ] Attend and network with NIST/CAISI representatives
-- [ ] Distribute EP Core RFC v1.1 to NIST attendees
+- [ ] Distribute EP Core RFC v1.0 to NIST attendees
 
 ### April 2026 (dates TBD)
 **CAISI Listening Sessions** — Sector-specific barriers to AI adoption (healthcare, finance, education).
@@ -49,6 +49,28 @@ Action items:
 - [ ] Register for healthcare and finance listening sessions
 - [ ] Prepare talking points on how EP addresses trust barriers in agent-mediated healthcare and financial transactions
 - [ ] Emphasize: EP receipts contain no PHI/PII — trust profiles are computed from transaction metadata only
+- [ ] Emphasize: EP zero-knowledge trust proofs allow healthcare and financial entities to prove trust thresholds (e.g., "confidence > 0.85 in financial domain, based on 50+ receipts") without revealing counterparty identities or transaction contents. This directly addresses the privacy barrier to AI agent participation in HIPAA-covered and financially regulated workflows.
+- [ ] Emphasize: No PHI/PII in receipts. No counterparty disclosure required for trust verification. Compatible with HIPAA, SOC 2, and financial privacy requirements.
+
+---
+
+## EP v1.0 New Capabilities Relevant to NIST Scope
+
+The following capabilities were introduced in EP v1.0 and are directly relevant to the NIST AI Agent Standards Initiative's areas of focus. Each addresses a gap in existing identity and authorization frameworks that NIST has identified as in-scope for the initiative.
+
+**Zero-Knowledge Trust Proofs**
+HMAC-SHA256 commitment-based proofs enabling entities to prove trust threshold claims (e.g., "confidence > 0.85 in healthcare domain") without revealing counterparty identities or transaction contents. Directly addresses the privacy barrier to AI agent participation in HIPAA-covered and financially regulated workflows. Relevant to NIST AI RMF Govern and Measure functions for privacy-preserving accountability.
+
+**Attribution Chain**
+Verifiable Principal→Agent→Tool attribution records establishing human accountability for agent actions. Weak principal signal (0.15x weighting) provides a delegation judgment input without overstating unverified claims. Requires both `delegation_id` and `principal_id` to prevent unverifiable attribution. Directly relevant to NIST AI RMF accountability requirements and CAISI's focus on agent identity.
+
+**Trust-Graph Adjudication**
+Dispute resolution governed by high-confidence network vouchers rather than operator discretion. A 48-hour procedural window precedes graph consultation. Accused entity receipts are weighted 0.4x in their own adjudication proceedings to prevent self-serving outcomes. Provides adversarially resistant due process — relevant to NIST's concern with reliable and accountable agent behavior.
+
+**Delegation Judgment Scoring**
+First protocol standard to produce an auditable score of human delegation quality to AI agents. Allows organizations to track and review the quality of human oversight decisions over time. Directly relevant to NIST AI RMF Govern function and human-in-the-loop accountability requirements.
+
+---
 
 ### Ongoing
 **NIST convenings and working groups** — CAISI will host additional workshops and technical convenings.
@@ -76,8 +98,8 @@ EP provides the trust layer: multi-dimensional trust profiles computed from veri
 
 **2. EP Addresses NIST's Three Pillars**
 
-- **Standards**: EP Core RFC v1.1 is a formal protocol specification — receipt schema with context keys, behavioral-first scoring, trust profile format, policy evaluation interface, canonical establishment rules. Apache-2.0 licensed.
-- **Open source protocols**: The canonical implementation is fully open source. MCP server (15 tools, context-aware) and a conformance-backed reference implementation are published. 7 test suites and a canonical conformance suite cover core protocol behavior, with cross-language verification in Python.
+- **Standards**: EP Core RFC v1.0 (17 sections) is a formal protocol specification — receipt schema with context keys, behavioral-first scoring, trust profile format, policy evaluation interface, canonical establishment rules. Apache-2.0 licensed.
+- **Open source protocols**: The canonical implementation is fully open source. MCP server (23 tools, context-aware) and a conformance-backed reference implementation are published. 28 test files comprising 670 automated checks cover core protocol behavior, with cross-language verification in Python.
 - **Security**: EP includes 4-layer Sybil resistance (effective-evidence dampening, graph analysis, submitter credibility, identity-aware rate limiting), blockchain verification (Merkle proofs on Base L2), and append-only receipt ledgers with DB immutability triggers.
 
 **3. EP Complements Existing Identity Models**
@@ -128,7 +150,7 @@ We welcome NIST's guidance on how EP can align with the AI Agent Standards Initi
 
 ## 5. Supporting Materials to Prepare
 
-- [ ] EP Core RFC v1.1 (formatted as PDF for submission)
+- [ ] EP Core RFC v1.0 (17 sections, formatted as PDF for submission)
 - [ ] One-page EP overview for government audience (no startup language)
 - [ ] Technical brief: EP and AI Agent Identity (2-3 pages, maps EP to NIST pillars)
 - [ ] Demo video: trust profile lookup + policy evaluation + context-aware receipts + Merkle verification

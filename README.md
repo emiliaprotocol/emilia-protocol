@@ -1,29 +1,59 @@
 # EMILIA Protocol
 
 [![CI](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-152%20checks-brightgreen)]()
-[![Conformance](https://img.shields.io/badge/conformance-JS%20%2B%20Python-blue)]()
+[![Tests](https://img.shields.io/badge/tests-670%20passing-brightgreen)]()
+[![MCP Tools](https://img.shields.io/badge/MCP%20tools-23-blue)]()
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-**Evidence-based Mediation & Integrity Layer for Interactions and Appeals**
-
-EMILIA Protocol is a portable trust evaluation and appeals layer for counterparties, software, and machine actors.
-
-Compatible with ACP. Usable through MCP. Apache 2.0.
+**MCP tells agents how to use tools. EP tells them whether they should.**
 
 ---
 
 ## What is EP?
 
-EP is an open protocol that computes trust profiles for principals in machine-mediated systems — merchants, agents, service providers, GitHub Apps, MCP servers, npm packages, Chrome extensions, marketplace plugins, and agent tools — from verified transaction and interaction receipts.
+EMILIA Protocol is a portable, open behavioral trust layer for machine actors. It computes probabilistic, policy-shaped, contextual, and contestable trust profiles from cryptographically anchored receipts — not binary scores from a single source. Any agent, operator, or host can evaluate a counterparty against a structured trust policy, file a dispute, appeal a decision, and verify the result independently.
 
-EP outputs **trust profiles**, not just scores. A trust profile includes behavioral rates (completion, retry, abandon, dispute), per-signal breakdowns, provenance composition, consistency, anomaly alerts, and confidence levels. Agents and systems evaluate counterparties against **trust policies** — configurable decision frameworks — not raw score thresholds.
+EP is not a product. It is a protocol. Apache 2.0.
 
-For software entities, EP provides **install preflight** — "should I install this plugin?" — evaluating publisher verification, permission risk, provenance, and incident history against host-specific policies.
+---
 
-### Primary output: Trust Profile + Policy Evaluation
+## Beachhead: Three winning wedges [Live]
 
+EP does not launch as "universal trust." It launches as the safest way to install and route to machine tools, with a credible appeals system. These are the three concrete problems it solves today:
+
+**1. MCP server trust** — Before a host installs an MCP server, EP runs install preflight: publisher verification, permission class evaluation, provenance tier, and incident history against a host-specific policy. The answer is `allow`, `warn`, or `deny` — with reasons.
+
+**2. Software install preflight** — Same evaluation for npm packages, GitHub Apps, Chrome extensions, and marketplace plugins. Agents making autonomous install decisions need a non-self-reported signal.
+
+**3. Appeals** — Trust systems that can harm a party without recourse are control systems. EP ships a constitutional dispute lifecycle: file → evidence → adjudication → appeal → reversal. Voucher voting, 48-hour procedural window, receipt weight dampening on active disputes.
+
+---
+
+## Quick Install
+
+```bash
+# MCP server — add to your agent's mcp config
+npx @emilia-protocol/mcp-server
 ```
+
+```json
+{
+  "mcpServers": {
+    "emilia": {
+      "command": "npx",
+      "args": ["@emilia-protocol/mcp-server"]
+    }
+  }
+}
+```
+
+---
+
+## Primary API Examples
+
+### Trust evaluate — should I transact with this counterparty?
+
+```bash
 POST /api/trust/evaluate
 {
   "entity_id": "merchant-xyz",
@@ -41,9 +71,9 @@ POST /api/trust/evaluate
   }
 ```
 
-### Install Preflight (EP-SX: Software Trust)
+### Install preflight — should I install this MCP server?
 
-```
+```bash
 POST /api/trust/install-preflight
 {
   "entity_id": "mcp-server-ep-v1",
@@ -54,286 +84,324 @@ POST /api/trust/install-preflight
 → {
     "decision": "allow",
     "reasons": [
-      "✓ publisher_verified",
-      "✓ provenance_verified",
-      "✓ permission_class_acceptable"
+      "publisher_verified",
+      "provenance_verified",
+      "permission_class_acceptable"
     ]
   }
 ```
 
-### Compatibility score (legacy)
+### Zero-knowledge proof — prove a score threshold without revealing counterparties
 
-EP also exposes a 0-100 compatibility score via `GET /api/score/:entityId` for sorting, leaderboards, and backward compatibility. This is a weighted composite, **not** the primary protocol output. The trust profile is the canonical truth.
+```bash
+POST /api/trust/zk-proof/generate
+{
+  "entity_id": "merchant-xyz",
+  "claim": { "field": "score", "operator": "gte", "threshold": 75 }
+}
 
-### How trust is computed
+→ { "proof": "...", "public_inputs": { "claim_satisfied": true } }
 
-Receipts are weighted by four factors:
-- **Submitter credibility**: unestablished submitters = 0.1x, established = compatibility_score/100
-- **Time decay**: 90-day half-life, recent receipts matter more
-- **Graph health**: thin graphs, closed loops, and clusters reduce weight
-- **Provenance**: self_attested (0.3x) → bilateral (0.8x) → oracle_verified (1.0x)
+POST /api/trust/zk-proof/verify
+{ "proof": "...", "public_inputs": { "claim_satisfied": true } }
 
-Scores are dampened by **effective evidence** (sum of weighted receipts), not raw receipt count. A Sybil quality gate caps unestablished evidence at 2.0 for dampening — pure volume from fake identities cannot overcome the trust barrier.
+→ { "valid": true }
+```
 
-### Trust policies
+### Trust gate — pre-action canonical check
 
-Agents don't check raw numbers. They evaluate against structured policies:
+```bash
+POST /api/trust/gate
+{
+  "entity_id": "agent-abc",
+  "action": "process_payment",
+  "value_usd": 500,
+  "policy": "strict"
+}
 
-| Policy | Use case | Key gates |
-|--------|----------|-----------|
-| `strict` | High-value purchases | Score ≥75, confident, dispute rate ≤3%, completion ≥85% |
-| `standard` | Normal commerce | Score ≥60, emerging, dispute rate ≤10% |
-| `permissive` | Low-risk | Score ≥40, provisional |
-| `discovery` | Browsing | Allow unevaluated |
-
-Custom policies supported via JSON.
+→ { "gate": "pass", "score": 81.2, "policy_result": { "pass": true } }
+```
 
 ---
 
-## Quick Start
+## How trust accumulates from day one
+
+EP's bootstrap problem is real. Here is how trust signals accumulate before a counterparty has history:
+
+| Signal source | Weight | Notes |
+|---|---|---|
+| Auto-receipt (opt-in) | ~0.1–0.3x until established | Every tool call generates a behavioral receipt. Opt-in, privacy-preserving. |
+| Bilateral confirmations | 0.8x provenance | Both parties confirm the transaction. Stronger than self-attested. |
+| Install preflight pass | Context signal | Publisher verification and permission class feed the profile. |
+| Principal signal | 0.15x | The human behind the entity carries partial attribution. |
+
+An entity reaches `emerging` confidence once quality-gated effective evidence ≥ 5.0 (3+ unique submitters, unestablished capped at 2.0). Volume alone from synthetic identities cannot cross this barrier — that is by design.
+
+Receipt weight is dampened further by dispute state: 0.3x while a dispute is active, 0.0x if upheld, 1.0x if dismissed.
+
+---
+
+## What's Live, Pilot, and Roadmap
+
+| Component | Status |
+|---|---|
+| Trust profile + policy evaluation (strict / standard / permissive / discovery) | [Live] |
+| Install preflight: MCP servers, GitHub Apps, npm, Chrome extensions | [Live] |
+| Dispute + appeals lifecycle (10-state machine, constitutional due process) | [Live] |
+| Auto-receipt generation (opt-in, privacy-preserving) | [Live] |
+| Trust-graph dispute adjudication (voucher voting, 48h window) | [Live] |
+| Receipt weight dampening (0.3x active, 0.0x upheld, 1.0x dismissed) | [Live] |
+| Attribution chain (Principal → Agent → Tool, 0.15x principal signal) | [Live] |
+| Delegation judgment scoring (excellent / good / fair / poor) | [Live] |
+| Zero-knowledge proofs (prove score > threshold, no counterparty reveal) | [Live] |
+| Domain-specific scoring (financial, code_execution, communication, +4) | [Live] |
+| Trust gate (pre-action canonical check) | [Live] |
+| Identity continuity — EP-IX (principals, lineage, whitewashing resistance) | [Live] |
+| Blockchain anchoring (Merkle roots → Base L2) | [Live] |
+| TypeScript SDK (EPClient, 25 methods, 35+ types) | [Live] |
+| Python SDK (async EPClient, 21 methods) | [Live] |
+| MCP server (23 tools, 4 resources, 3 prompts) | [Live] |
+| 670 tests passing, 28 test files | [Live] |
+| Operator applications and registry | [Pilot] |
+| Managed adjudication workflows | [Pilot] |
+| Oracle verification (Phase 3 provenance) | [Roadmap] |
+| GraphQL API | [Roadmap] |
+| Mobile SDK | [Roadmap] |
+| Webhook streaming | [Roadmap] |
+
+---
+
+## MCP Tools (23)
+
+Add `npx @emilia-protocol/mcp-server` to any MCP-compatible host. The server exposes 23 tools, 4 resources, and 3 prompts.
+
+**Trust evaluation**
+| Tool | What it does |
+|---|---|
+| `ep_trust_profile` | Full trust profile for any entity |
+| `ep_trust_evaluate` | Evaluate entity against a named policy |
+| `ep_trust_gate` | Pre-action gate: pass/warn/deny with reasons |
+| `ep_domain_score` | Score in a specific domain (financial, code_execution, etc.) |
+| `ep_list_policies` | List all available trust policies |
+
+**Install preflight**
+| Tool | What it does |
+|---|---|
+| `ep_install_preflight` | Preflight check for MCP servers, npm packages, GitHub Apps, Chrome extensions |
+
+**Receipts**
+| Tool | What it does |
+|---|---|
+| `ep_submit_receipt` | Submit a trust receipt for a transaction |
+| `ep_batch_submit` | Submit multiple receipts in one call |
+| `ep_verify_receipt` | Verify a receipt's cryptographic integrity |
+| `ep_configure_auto_receipt` | Enable/disable auto-receipt generation per session |
+
+**Disputes and appeals**
+| Tool | What it does |
+|---|---|
+| `ep_dispute_file` | File a dispute against a receipt |
+| `ep_dispute_status` | Check dispute status and procedural state |
+| `ep_appeal_dispute` | File an appeal on a closed dispute |
+| `ep_report_trust_issue` | Report a trust concern (no auth required) |
+
+**Identity and delegation**
+| Tool | What it does |
+|---|---|
+| `ep_register_entity` | Register a new entity |
+| `ep_principal_lookup` | Look up a principal and their entities |
+| `ep_lineage` | Get entity lineage and continuity chain |
+| `ep_create_delegation` | Create a delegation from principal to agent |
+| `ep_verify_delegation` | Verify a delegation record |
+| `ep_delegation_judgment` | Score a principal's delegation history |
+
+**Zero-knowledge proofs**
+| Tool | What it does |
+|---|---|
+| `ep_generate_zk_proof` | Generate a ZK proof for a score claim |
+| `ep_verify_zk_proof` | Verify a ZK proof |
+
+**Discovery**
+| Tool | What it does |
+|---|---|
+| `ep_search_entities` | Search entities by type, name, or score range |
+| `ep_leaderboard` | Top entities by trust score within a type |
+
+**Resources:** Entity Trust Profile, Entity Trust Score, Receipt, Delegation Record
+
+**Prompts:** `trust_decision`, `receipt_quality_check`, `install_decision`
+
+---
+
+## Protocol Standard
+
+EP is specified as an implementation-independent standard. 17 sections covering the full protocol. Any conformant implementation must produce identical outputs to the reference conformance fixtures.
+
+[PROTOCOL-STANDARD.md](docs/PROTOCOL-STANDARD.md) — 17 sections:
+
+1. Introduction (motivation, design principles, terminology)
+2. Entity Identity
+3. Receipt Format
+4. Trust Scoring
+5. Sybil Resistance
+6. Policy Evaluation
+7. Delegation Chain
+8. Dispute Lifecycle
+9. Security Properties
+10. Implementation Requirements
+11. Versioning
+12. Governance
+13. Privacy and Zero-Knowledge Proofs
+14. Dispute Adjudication Standard
+15. Attribution Chain Standard
+16. Auto-Receipt Generation
+17. Conformance Requirements
+
+**Falsifiable by design:** anyone can run `npx vitest run` and `python3 conformance/verify_hashes.py` to verify the evaluator produces canonical outputs. Trust that cannot be independently verified is not trust.
+
+---
+
+## Conformance and Testing
+
+| Suite | Tests | What it covers |
+|---|---|---|
+| `tests/scoring.test.js` | 21 | v1 scoring, effective evidence, Sybil resistance |
+| `tests/scoring-v2.test.js` | 14 | v2 trust profiles, policy evaluation, anomaly detection |
+| `tests/protocol.test.js` | 36 | Hash determinism, confidence semantics, context fallback |
+| `tests/integration.test.js` | 19 | Route-level: provenance, context, disputes, software policies |
+| `tests/adversarial.test.js` | 14 | Sybil farms, reciprocal loops, cluster collusion, trust farming |
+| `tests/e2e-flows.test.js` | 15 | Full lifecycle: register → receipts → profile → policy → dispute → reversal |
+| `tests/attribution.test.js` | — | Attribution chain: Principal→Agent→Tool signal weighting |
+| `tests/auto-receipt.test.js` | — | Auto-receipt generation and opt-in mechanics |
+| `tests/blockchain.test.js` | — | Merkle anchoring to Base L2 |
+| `tests/delegation-judgment.test.js` | — | Delegation scoring, grade thresholds, graceful degradation |
+| `tests/dispute-adjudication.test.js` | — | Voucher voting, weight dampening, procedural states |
+| `tests/signatures.test.js` | — | Cryptographic receipt signatures |
+| `tests/zk-proofs.test.js` | — | ZK proof generation and verification |
+| `conformance/conformance.test.js` | 26 | Canonical hash vectors, scoring fixtures, policy replay |
+
+**Cross-language:** `conformance/verify_hashes.py` produces identical SHA-256 outputs to the JavaScript reference — the protocol is language-independent.
+
+```bash
+npm test
+# or
+npx vitest run
+python3 conformance/verify_hashes.py
+```
+
+670 tests passing across 28 test files.
+
+---
+
+## SDKs
+
+### TypeScript
+
+```bash
+npm install @emilia-protocol/sdk
+```
+
+```typescript
+import { EPClient } from '@emilia-protocol/sdk';
+
+const ep = new EPClient({ baseUrl: 'https://emiliaprotocol.ai', apiKey: 'ep_live_...' });
+
+const profile = await ep.getTrustProfile('merchant-xyz');
+const result  = await ep.evaluate('merchant-xyz', 'strict');
+const check   = await ep.installPreflight('mcp-server-ep-v1', 'mcp_server_safe_v1');
+const proof   = await ep.generateZkProof('merchant-xyz', { field: 'score', operator: 'gte', threshold: 75 });
+```
+
+25 methods, 35+ types. See [sdks/typescript/README.md](sdks/typescript/README.md).
+
+### Python
+
+```bash
+pip install emilia-protocol
+```
+
+```python
+from emilia_protocol import EPClient
+
+ep = EPClient(base_url="https://emiliaprotocol.ai", api_key="ep_live_...")
+
+profile = await ep.get_trust_profile("merchant-xyz")
+result  = await ep.evaluate("merchant-xyz", "strict")
+check   = await ep.install_preflight("mcp-server-ep-v1", "mcp_server_safe_v1")
+```
+
+21 methods, fully async. See [sdks/python/README.md](sdks/python/README.md).
+
+---
+
+## Running Locally
 
 ```bash
 git clone https://github.com/emiliaprotocol/emilia-protocol.git
 cd emilia-protocol
 npm install
 cp .env.example .env
-# Add Supabase, OpenAI, and optionally Upstash Redis credentials
+# Add Supabase and optionally Upstash Redis credentials
 npm run dev
 ```
 
-## API
-
-### Register an entity
-```bash
-curl -X POST https://emiliaprotocol.ai/api/entities/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "entity_id": "my-shopping-agent",
-    "display_name": "My Shopping Agent",
-    "entity_type": "agent",
-    "description": "Finds the best deals on electronics"
-  }'
-```
-
-### Submit a receipt
-```bash
-curl -X POST https://emiliaprotocol.ai/api/receipts/submit \
-  -H "Authorization: Bearer ep_live_..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "entity_id": "merchant-xyz",
-    "transaction_ref": "order_12345",
-    "transaction_type": "purchase",
-    "delivery_accuracy": 95,
-    "product_accuracy": 88,
-    "price_integrity": 100,
-    "agent_behavior": "completed",
-    "evidence": {
-      "tracking_id": "FDX-789",
-      "payment_ref": "stripe_pi_abc"
-    }
-  }'
-```
-
-`transaction_ref` is **required**. Every receipt must reference an external transaction. `agent_behavior` is the strongest Phase 1 signal.
-
-### Look up a trust profile
-```bash
-curl https://emiliaprotocol.ai/api/trust/profile/merchant-xyz
-```
-
-### Look up compatibility score (legacy)
-```bash
-curl https://emiliaprotocol.ai/api/score/merchant-xyz
-```
-
-### Evaluate against a trust policy
-```bash
-curl -X POST https://emiliaprotocol.ai/api/trust/evaluate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "entity_id": "merchant-xyz",
-    "policy": "standard"
-  }'
-```
-
-### MCP Integration
-```json
-{
-  "mcpServers": {
-    "emilia": {
-      "command": "npx",
-      "args": ["@emilia-protocol/mcp-server"]
-    }
-  }
-}
-```
-
-## Architecture
-
-```
-Trust Profile + Policy Evaluation    ← Primary output
-        ↑
-Trust Engine (behavioral-first, effective-evidence dampened)
-        ↑
-Receipt Ledger (append-only, SHA-256 chained, Merkle-anchored)
-        ↑
-Fraud Detection (graph analysis, velocity, closed-loop, cluster)
-        ↑
-Entity Registration (IP rate-limited, Upstash Redis in production)
-```
-
-### Sybil resistance (4 layers)
-1. **Registration friction** — IP-based rate limiting (Upstash Redis)
-2. **Graph analysis** — closed-loop, thin-graph, cluster detection → reduce `graph_weight`
-3. **Submitter credibility** — unestablished entities = 0.1x receipt weight
-4. **Effective evidence dampening** — trust dampened toward baseline until weighted evidence ≥ 5.0
-
-### Trust confidence states
-| Level | Meaning |
-|-------|---------|
-| `pending` | No receipts |
-| `insufficient` | Low quality-gated evidence, mostly unestablished submitters |
-| `provisional` | Building history |
-| `emerging` | Established, quality-gated evidence ≥ 5.0 |
-| `confident` | Quality-gated evidence ≥ 20.0, broad evidence base |
-
-### Establishment
-An entity is **established** when `is_entity_established()` returns true:
-- Quality-gated evidence ≥ 5.0 (caps unestablished contribution at 2.0)
-- 3+ unique submitters
-
-Establishment is **historical** — computed over all receipts. Scoring is **current** — computed over a rolling 200-receipt window with time decay. An entity can be established but have a declining trust.
-
-## Protocol Status
-
-| Component | Status |
-|-----------|--------|
-| Trust profile + policy evaluation | ✅ Live |
-| Behavioral-first scoring (v2) | ✅ Live |
-| Install preflight (EP-SX) | ✅ Live |
-| Canonical evaluator (one trust brain) | ✅ Live — 10 surfaces |
-| Canonical writer (one write brain) | ✅ Live |
-| Trust profile materialization | ✅ Live |
-| Effective-evidence Sybil resistance | ✅ Live |
-| Bilateral attestations + provenance tiers | ✅ Live |
-| Dispute lifecycle + human appeal | ✅ Live |
-| Receipt immutability (DB triggers) | ✅ Live |
-| Deadline enforcement (cron) | ✅ Live — bilateral 48h, disputes 7d, continuity 30d |
-| Health endpoint | ✅ Live |
-| MCP server (15 tools) | ✅ Live |
-| Human trust console | ✅ Live — profile + preflight + report |
-| EP-IX identity continuity | 📋 Spec complete, runtime skeleton shipped, tables deployed |
-| EP-IX continuity-aware evaluator | ✅ Live — lineage, inherited disputes, whitewashing flags |
-| GitHub host adapter | 📋 Source complete, awaiting pilot integration |
-| Operator role model | ✅ Live — 7 roles with explicit permissions |
-| Evidence visibility tiers | ✅ Live — public/redacted/restricted/operator-only |
-| Formal state machines | ✅ Live — disputes (10 states) + continuity (7 states) |
-| Abuse detection | ✅ Live — repeated reports, brigading, retaliatory filing, flooding |
-| Operator audit trail | ✅ Live — append-only, before/after state, queryable API |
-| Policy registry | ✅ Live — GET /api/policies |
-| Oracle verification | 🔲 Phase 4 |
-| Trust analytics | 🔲 Phase 7 |
-
-## Conformance & Testing
-
-EP is verifiable, not just claimed.
-
-| Suite | Tests | What it proves |
-|-------|-------|---------------|
-| `tests/scoring.test.js` | 21 | v1 scoring, effective evidence, Sybil resistance |
-| `tests/scoring-v2.test.js` | 14 | v2 trust profiles, policy evaluation, anomaly detection |
-| `tests/protocol.test.js` | 36 | Hash determinism, confidence semantics, context fallback, flow tests |
-| `tests/integration.test.js` | 19 | Route-level: provenance, context, disputes, software policies |
-| `tests/adversarial.test.js` | 14 | Sybil farms, reciprocal loops, cluster collusion, trust farming, damage ceilings |
-| `tests/e2e-flows.test.js` | 15 | Full lifecycle: register → receipts → profile → policy → dispute → reversal |
-| `conformance/conformance.test.js` | 26 | Canonical hash vectors, scoring fixtures, policy replay, establishment rules, trust-profile determinism |
-
-**Cross-language:** `conformance/verify_hashes.py` produces identical SHA-256 outputs to the JavaScript reference — proving the protocol is language-independent.
-
-**Conformance fixtures:** `conformance/fixtures.json` contains canonical test vectors for hashes, provenance weights, four-factor weighting, confidence levels, and policy evaluation. Any implementation claiming EP compatibility must produce identical outputs.
-
-**Falsifiable by design:** anyone can run the conformance suite to prove the evaluator is lying. Trust that cannot be independently verified is not trust — it is faith.
-
-Run: `npx vitest run` (see `generated/proof-metrics.json` for exact count) + `python3 conformance/verify_hashes.py` (4 cross-language hash checks)
-
-## Docs
-
-- [EP Core RFC](docs/EP-CORE-RFC.md) — the canonical protocol specification
-- [EP-SX Software Trust](docs/EP-SX-SOFTWARE-TRUST.md) — install preflight for plugins, packages, MCP servers
-- [EP-IX Identity Continuity](docs/EP-IX-IDENTITY-CONTINUITY.md) — principal binding, trust transfer, whitewashing resistance (working draft)
-- [The Erosion of Trust](docs/THE-EROSION-OF-TRUST.md) — manifesto: why humanity needs a trust protocol
-- [AAIF Proposal](docs/AAIF-PROPOSAL-v2.md) — working group proposal
-- [NIST Engagement](docs/NIST-ENGAGEMENT-PLAN.md) — trust-profile-first engagement plan
-- [Security](SECURITY.md) — threat model, mitigations, cryptographic specs
-- [Conformance Fixtures](conformance/fixtures.json) — canonical test vectors
-
-## Versioning
-
-| Component | Version | Maturity |
-|-----------|---------|----------|
-| Protocol spec + reference repo | 1.0.0 | Stable |
-| MCP server | 0.2.x | Early but usable |
-| TypeScript SDK | 0.1.x | Alpha |
-| Python SDK | 0.1.x | Alpha |
-
-SDKs and MCP server version independently from the protocol. The spec and reference implementation share the root version.
-
-## License
-
-Apache 2.0
-
-## Canonical Paths
-
-When reviewing or implementing EP, these are the authoritative sources:
-
-| What | Where |
-|------|-------|
-| Scoring engine | `lib/scoring-v2.js` |
-| Trust barrier (quality-gated evidence) | `lib/scoring-v2.js` lines 214–228 |
-| Canonical evaluator (one read brain) | `lib/canonical-evaluator.js` |
-| Canonical writer (one write brain) | `lib/canonical-writer.js` |
-| Protocol specification | `docs/EP-CORE-RFC.md` |
-| SQL trust barrier | `supabase/migrations/020_quality_gated_establishment.sql` |
-| Dispute state machine | `lib/procedural-justice.js` |
-| Conformance fixtures | `conformance/fixtures.json` |
-| Policy definitions | `lib/scoring-v2.js` → `TRUST_POLICIES` |
-| Style guide | `docs/STYLE-GUIDE.md` |
-| Docker setup | `docker-compose.yml` |
-| CLI tool | `cli/bin/ep.mjs` |
-| OpenAPI spec | `openapi.yaml` |
-
-## Docker
-
-The repo includes a Dockerfile for the Next.js app. EP requires a Supabase-compatible HTTP API — a raw Postgres container is not sufficient.
-
-**Current status:** the Docker stack runs the app container only. You must provide a real Supabase project (hosted or self-hosted with PostgREST).
+Requires a Supabase-compatible HTTP API (hosted or self-hosted with PostgREST). A raw Postgres container is not sufficient.
 
 ```bash
+# Docker
 export NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 export SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 docker compose up --build
-# API at http://localhost:3000
 ```
 
-Full self-hosted Supabase/PostgREST local stack is a future roadmap item.
-
-## CLI
+### CLI
 
 ```bash
 npx @emilia-protocol/cli profile merchant-xyz
 npx @emilia-protocol/cli evaluate merchant-xyz --policy strict
 npx @emilia-protocol/cli preflight mcp-server-xyz --policy mcp_server_safe_v1
-npx @emilia-protocol/cli register my-agent --name "My Agent"
-npx @emilia-protocol/cli submit merchant-xyz --ref order_123 --behavior completed
 npx @emilia-protocol/cli dispute receipt_abc --reason fraudulent_receipt
 npx @emilia-protocol/cli appeal disp_xyz --reason "Resolution was incorrect because..."
-npx @emilia-protocol/cli policies
-npx @emilia-protocol/cli health
 ```
 
-Set `EP_BASE_URL` and `EP_API_KEY` for non-default endpoints and write operations.
+Set `EP_BASE_URL` and `EP_API_KEY` for non-default endpoints.
 
-## OpenAPI
+---
 
-The full API specification is at [`openapi.yaml`](openapi.yaml). Import into Postman, Swagger UI, or any OpenAPI-compatible tool.
+## Canonical Paths
+
+| What | Where |
+|---|---|
+| Scoring engine | `lib/scoring-v2.js` |
+| Canonical evaluator | `lib/canonical-evaluator.js` |
+| Canonical writer | `lib/canonical-writer.js` |
+| Dispute state machine | `lib/procedural-justice.js` |
+| Protocol specification | `docs/PROTOCOL-STANDARD.md` |
+| Conformance fixtures | `conformance/fixtures.json` |
+| Policy definitions | `lib/scoring-v2.js` → `TRUST_POLICIES` |
+| OpenAPI spec | `openapi.yaml` |
+| MCP server | `mcp-server/index.js` |
+| CLI | `cli/bin/ep.mjs` |
+
+---
+
+## Docs
+
+- [Protocol Standard](docs/PROTOCOL-STANDARD.md) — implementation-independent specification
+- [EP Core RFC](docs/EP-CORE-RFC.md) — original protocol RFC
+- [EP-SX Software Trust](docs/EP-SX-SOFTWARE-TRUST.md) — install preflight specification
+- [EP-IX Identity Continuity](docs/EP-IX-IDENTITY-CONTINUITY.md) — principal binding, whitewashing resistance
+- [Security](SECURITY.md) — threat model, mitigations, cryptographic specs
+- [Contributing](CONTRIBUTING.md)
+- [Governance](GOVERNANCE.md)
+- [Conformance Fixtures](conformance/fixtures.json) — canonical test vectors
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Protocol changes require a spec update to [PROTOCOL-STANDARD.md](docs/PROTOCOL-STANDARD.md) alongside any implementation change.
+
+## License
+
+Apache 2.0
