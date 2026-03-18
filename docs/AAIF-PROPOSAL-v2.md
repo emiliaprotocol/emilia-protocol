@@ -30,7 +30,7 @@ EMILIA Protocol (EP) is offered as the **initial reference implementation and dr
 - A deployed canonical implementation (emiliaprotocol.ai)
 - CI-backed automated checks across 28 test files, 670 automated checks (JS + Python conformance) including adversarial, end-to-end, and conformance replay
 - Cross-language conformance verification (JavaScript + Python)
-- An MCP server with 23 MCP tools
+- An MCP server with 24 MCP tools
 - Install preflight for software entities (GitHub Apps, MCP servers, npm packages)
 - A dispute and human appeal system with constitutional due process guarantees
 - Zero-knowledge proofs for privacy-preserving trust attestation — entities prove score thresholds without revealing counterparties (critical for healthcare, legal, finance participation)
@@ -103,7 +103,7 @@ EP is a **composable layer**, not a competing protocol. It attaches to ACP, is u
 | Canonical JSON hashing (cross-language) | Deployed — sorted keys, deterministic, context included |
 | Identity-aware write throttling | Deployed — API key prefix + IP on writes, IP-only on reads |
 | Server-derived owner identity | Deployed — SHA-256 of client IP, not caller-supplied |
-| MCP server (23 tools, context-aware) | Published on npm — trust-profile-first, context forwarded |
+| MCP server (24 tools, context-aware) | Published on npm — trust-profile-first, context forwarded |
 | SDKs | Planned / optional future implementations |
 | Test suites (28 test files, 670 automated checks, CI-backed) | Complete — scoring, trust profiles, protocol surfaces, adversarial resistance, end-to-end flows, conformance |
 | NIST ITL Concept Paper | Prepared (April 2 deadline) |

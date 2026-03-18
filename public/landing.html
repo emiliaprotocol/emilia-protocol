@@ -348,7 +348,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
 
   <div class="hero-badges">
     <span class="hbadge c">Trust Profiles</span>
-    <span class="hbadge p">MCP Server (23 tools)</span>
+    <span class="hbadge p">MCP Server (24 tools)</span>
     <span class="hbadge gr">Install Preflight</span>
     <span class="hbadge g">Human Appeals</span>
     <span class="hbadge c">Policy Evaluation</span>
@@ -422,7 +422,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--green);text-transform:uppercase;margin-bottom:10px">Wedge 2 · Delegation Assurance</div>
         <h3 style="font-family:var(--disp);font-weight:700;font-size:18px;margin-bottom:10px;line-height:1.3">Is this agent authorized to act for this principal?</h3>
         <p style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:16px">When an agent claims to represent a human or organization, EP verifies the delegation scope, checks the principal's authorization, and scores the agent's historical delegation faithfulness. No more impersonation risk.</p>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.2);border-radius:8px;padding:10px 14px">ep_delegation_score("agent-42", principal="acme-ceo") → authorized, score: 0.91</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.2);border-radius:8px;padding:10px 14px">ep_delegation_judgment(principal_id="acme-ceo") → score: 0.91, agents_authorized: 3</div>
       </div>
 
       <div style="background:var(--bg-card);border:1px solid rgba(167,139,250,0.25);border-radius:16px;padding:32px;position:relative;overflow:hidden">
@@ -431,7 +431,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:10px">Wedge 3 · Zero-Knowledge Attestation</div>
         <h3 style="font-family:var(--disp);font-weight:700;font-size:18px;margin-bottom:10px;line-height:1.3">Prove trust to regulated counterparties without disclosure</h3>
         <p style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:16px">For finance, healthcare, and government — prove your agent or entity meets a trust threshold without revealing your counterparty list or transaction history. Compliance without data exposure.</p>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--purple);background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.2);border-radius:8px;padding:10px 14px">ep_zk_prove_trust(threshold="EMERGING") → proof verified, counterparties: hidden</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--purple);background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.2);border-radius:8px;padding:10px 14px">ep_generate_zk_proof(entity_id="my-entity", claim_type="min_confidence", threshold="EMERGING") → proof_id: zk_abc123</div>
       </div>
 
     </div>
@@ -635,7 +635,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
   }
 }</pre></div>
         </div>
-        <p style="font-family:var(--mono);font-size:11px;color:var(--t3);margin-top:10px">23 trust tools instantly available: <code style="color:var(--cyan);background:var(--cyan-d);padding:2px 6px;border-radius:4px">ep_trust_profile</code>, <code style="color:var(--cyan);background:var(--cyan-d);padding:2px 6px;border-radius:4px">ep_trust_evaluate</code>, <code style="color:var(--cyan);background:var(--cyan-d);padding:2px 6px;border-radius:4px">ep_install_preflight</code>, <code style="color:var(--cyan);background:var(--cyan-d);padding:2px 6px;border-radius:4px">ep_zk_prove_trust</code>, <code style="color:var(--cyan);background:var(--cyan-d);padding:2px 6px;border-radius:4px">ep_delegation_score</code> and more.</p>
+        <p style="font-family:var(--mono);font-size:11px;color:var(--t3);margin-top:10px">24 trust tools instantly available: <code style="color:var(--cyan);background:var(--cyan-d);padding:2px 6px;border-radius:4px">ep_trust_profile</code>, <code style="color:var(--cyan);background:var(--cyan-d);padding:2px 6px;border-radius:4px">ep_trust_evaluate</code>, <code style="color:var(--cyan);background:var(--cyan-d);padding:2px 6px;border-radius:4px">ep_install_preflight</code>, <code style="color:var(--cyan);background:var(--cyan-d);padding:2px 6px;border-radius:4px">ep_generate_zk_proof</code>, <code style="color:var(--cyan);background:var(--cyan-d);padding:2px 6px;border-radius:4px">ep_delegation_judgment</code> and more.</p>
       </div>
 
       <!-- REST API -->
@@ -936,7 +936,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         </div>
         <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Prove trust threshold without revealing counterparties</div>
         <div style="font-size:13px;color:var(--t2);line-height:1.7">An entity can prove it meets a regulated trust threshold — without disclosing who vouched for it or what transactions built its profile. Critical for regulated counterparties in finance, healthcare, and government.</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--green);margin-top:12px">ep_zk_prove_trust · ep_zk_verify_proof</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--green);margin-top:12px">ep_generate_zk_proof · ep_verify_zk_proof</div>
       </div>
 
       <div style="background:var(--bg-card);border:1px solid rgba(52,211,153,0.2);border-radius:14px;padding:24px">
@@ -946,7 +946,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         </div>
         <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Passive behavioral data from every MCP tool call</div>
         <div style="font-size:13px;color:var(--t2);line-height:1.7">EP intercepts MCP tool call events and auto-generates behavioral receipts without agent-side code. Every tool invocation becomes evidence — no explicit submission required from the developer.</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--green);margin-top:12px">ep_auto_receipt · ep_receipt_stream</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--green);margin-top:12px">ep_configure_auto_receipt</div>
       </div>
 
       <div style="background:var(--bg-card);border:1px solid rgba(52,211,153,0.2);border-radius:14px;padding:24px">
@@ -956,7 +956,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         </div>
         <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Disputes resolved by voucher network, not platform operators</div>
         <div style="font-size:13px;color:var(--t2);line-height:1.7">When two parties dispute a receipt, the resolution is weighted by the trust-graph positions of their vouchers — not by a single centralized operator. Adversarial-resistant by design.</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--green);margin-top:12px">ep_dispute_adjudicate · ep_graph_resolve</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--green);margin-top:12px">ep_dispute_file · ep_appeal_dispute</div>
       </div>
 
       <div style="background:var(--bg-card);border:1px solid rgba(52,211,153,0.2);border-radius:14px;padding:24px">
@@ -966,7 +966,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         </div>
         <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Human trust scores for AI delegation quality</div>
         <div style="font-size:13px;color:var(--t2);line-height:1.7">When a human delegates to an agent, the agent's subsequent behavior is scored for delegation faithfulness — did it stay in scope, honor constraints, and return clean attribution? Humans can see how well agents represent them.</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--green);margin-top:12px">ep_delegation_score · ep_delegation_audit</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--green);margin-top:12px">ep_delegation_judgment · ep_verify_delegation</div>
       </div>
 
       <div style="background:var(--bg-card);border:1px solid rgba(52,211,153,0.2);border-radius:14px;padding:24px;grid-column:1/-1">
@@ -976,7 +976,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         </div>
         <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Principal → Agent → Tool — verifiable accountability at every hop</div>
         <div style="font-size:13px;color:var(--t2);line-height:1.7;max-width:700px">Every action an agent takes is cryptographically attributed back to the principal who delegated it. When something goes wrong, EP can answer: who authorized this? At what scope? Which tool was invoked? The full chain is auditable without requiring trust in any single party.</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--green);margin-top:12px">ep_attribution_chain · ep_principal_trace · ep_tool_attribution</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--green);margin-top:12px">ep_lineage · ep_principal_lookup · ep_verify_delegation</div>
       </div>
 
     </div>
@@ -1063,8 +1063,8 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
           <div style="font-weight:700;font-size:14px;color:var(--t1)">Consumption</div>
         </div>
         <div style="padding:20px 24px">
-          <div style="font-size:13px;color:var(--t2);margin-bottom:8px">How trust is consumed. MCP server (23 tools) for agents, REST API for services, SDK for direct integration. All consumption surfaces return the same trust profile schema.</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-family:var(--mono);font-size:10px;color:var(--cyan);background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);padding:3px 8px;border-radius:4px">MCP (23 tools)</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">REST API</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">TypeScript SDK (source)</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Python SDK (source)</span></div>
+          <div style="font-size:13px;color:var(--t2);margin-bottom:8px">How trust is consumed. MCP server (24 tools) for agents, REST API for services, SDK for direct integration. All consumption surfaces return the same trust profile schema.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-family:var(--mono);font-size:10px;color:var(--cyan);background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);padding:3px 8px;border-radius:4px">MCP (24 tools)</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">REST API</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">TypeScript SDK (source)</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Python SDK (source)</span></div>
         </div>
       </div>
 
@@ -1108,7 +1108,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         </div>
         <div style="padding:20px 24px">
           <div style="font-size:13px;color:var(--t2);margin-bottom:8px">Receipt storage, entity registry, dispute lifecycle, operator queue, audit log. Supabase (PostgreSQL) with versioned SQL migrations. The schema is public — any party can verify data structure.</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-family:var(--mono);font-size:10px;color:var(--green);background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2);padding:3px 8px;border-radius:4px">Supabase / PostgreSQL</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">020 migrations</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Versioned schema</span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-family:var(--mono);font-size:10px;color:var(--green);background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2);padding:3px 8px;border-radius:4px">Supabase / PostgreSQL</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">027 migrations</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Versioned schema</span></div>
         </div>
       </div>
 
@@ -1184,7 +1184,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         <div>
           <h4>MCP Registry</h4>
           <p>Evaluate any MCP server before adding it to your agent. Install preflight with publisher verification, permission class analysis, and behavioral history.</p>
-          <span class="eco-status live">Live — 23 MCP tools</span>
+          <span class="eco-status live">Live — 24 MCP tools</span>
         </div>
       </div>
       <div class="eco-card">
@@ -1540,7 +1540,7 @@ const TICKER_ITEMS = [
   {dot:'gr', text:'<strong>Portable</strong> — works across every platform'},
   {dot:'c', text:'<strong>Apache 2.0</strong> — open standard, neutral-governance target'},
   {dot:'a', text:'<strong>Constitutional principle</strong> — trust must never be more powerful than appeal'},
-  {dot:'p', text:'<strong>23 MCP tools</strong> — plug into any agent in 60 seconds'},
+  {dot:'p', text:'<strong>24 MCP tools</strong> — plug into any agent in 60 seconds'},
   {dot:'gr', text:'<strong>670 tests / 28 test files</strong> — every claim is verifiable'},
   {dot:'g', text:'<strong>EP-IX</strong> — identity continuity prevents trust whitewashing'},
   {dot:'c', text:'<strong>Install preflight</strong> — know before you install'},

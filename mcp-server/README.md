@@ -10,7 +10,7 @@
 
 ## What This Is
 
-EMILIA Protocol is the behavioral trust infrastructure for the AI age. When an AI agent acts in the world — booking, buying, building, deploying — its actions should create a verifiable behavioral record that any other agent can query before deciding to transact. This MCP server gives any Claude conversation or agent pipeline direct access to EP's trust graph: 20 tools covering trust profiles, policy evaluation, software install preflight, dispute filing, appeals, delegation chains, and identity lineage. Add it to Claude Desktop in 60 seconds. No backend required.
+EMILIA Protocol is the behavioral trust infrastructure for the AI age. When an AI agent acts in the world — booking, buying, building, deploying — its actions should create a verifiable behavioral record that any other agent can query before deciding to transact. This MCP server gives any Claude conversation or agent pipeline direct access to EP's trust graph: 24 tools covering trust profiles, policy evaluation, software install preflight, dispute filing, appeals, delegation chains, and identity lineage. Add it to Claude Desktop in 60 seconds. No backend required.
 
 ---
 
@@ -273,6 +273,9 @@ The submitter has 7 days to respond. Trust is suspended pending resolution.
 | `ep_principal_lookup` | Look up the enduring principal behind entities | No |
 | `ep_lineage` | Entity lineage, predecessors, continuity, whitewashing flags | No |
 | `ep_delegation_judgment` | Score a principal's track record of choosing and overseeing agents | No |
+| `ep_configure_auto_receipt` | Configure automatic receipt generation from MCP tool call events (opt-in) | Yes |
+| `ep_generate_zk_proof` | Generate a ZK proof for a score claim | No |
+| `ep_verify_zk_proof` | Verify a ZK proof | No |
 | `ep_list_policies` | List all available trust policies | No |
 
 ---

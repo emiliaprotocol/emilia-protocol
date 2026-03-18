@@ -99,7 +99,7 @@ EP provides the trust layer: multi-dimensional trust profiles computed from veri
 **2. EP Addresses NIST's Three Pillars**
 
 - **Standards**: EP Core RFC v1.0 (17 sections) is a formal protocol specification — receipt schema with context keys, behavioral-first scoring, trust profile format, policy evaluation interface, canonical establishment rules. Apache-2.0 licensed.
-- **Open source protocols**: The canonical implementation is fully open source. MCP server (23 tools, context-aware) and a conformance-backed reference implementation are published. 28 test files comprising 670 automated checks cover core protocol behavior, with cross-language verification in Python.
+- **Open source protocols**: The canonical implementation is fully open source. MCP server (24 tools, context-aware) and a conformance-backed reference implementation are published. 28 test files comprising 670 automated checks cover core protocol behavior, with cross-language verification in Python.
 - **Security**: EP includes 4-layer Sybil resistance (effective-evidence dampening, graph analysis, submitter credibility, identity-aware rate limiting), blockchain verification (Merkle proofs on Base L2), and append-only receipt ledgers with DB immutability triggers.
 
 **3. EP Complements Existing Identity Models**

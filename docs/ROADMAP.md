@@ -73,7 +73,7 @@
 - [x] Well-known discovery (/.well-known/ep-trust.json)
 
 ### Distribution
-- [x] MCP server (23 tools, trust-native, context-aware, ep_configure_auto_receipt + ep_generate_zk_proof + ep_verify_zk_proof included)
+- [x] MCP server (24 tools, trust-native, context-aware, ep_configure_auto_receipt + ep_generate_zk_proof + ep_verify_zk_proof included)
 - [x] TypeScript SDK (EPClient, 25 methods, 35+ types)
 - [x] Python SDK (async EPClient, 21 methods)
 - [x] SDK publish workflows (npm + PyPI)

@@ -1,6 +1,6 @@
 # EMILIA Protocol MCP Server
 
-Behavioral trust infrastructure for AI agents — 21 tools covering trust profiles, policy evaluation, software install preflight, dispute filing, appeals, delegation chains, and identity lineage.
+Behavioral trust infrastructure for AI agents — 24 tools covering trust profiles, policy evaluation, software install preflight, dispute filing, appeals, delegation chains, and identity lineage.
 
 ## Install in Claude Desktop
 
@@ -52,7 +52,7 @@ With an API key:
 EP_API_KEY=ep_live_your_key_here npx @emilia-protocol/mcp-server
 ```
 
-## Available Tools (21 total)
+## Available Tools (24 total)
 
 | Tool | Description | Auth Required |
 |------|-------------|:---:|
@@ -77,6 +77,9 @@ EP_API_KEY=ep_live_your_key_here npx @emilia-protocol/mcp-server
 | `ep_lineage` | Entity lineage, predecessors, continuity, whitewashing flags | No |
 | `ep_list_policies` | List all available trust policies | No |
 | `ep_configure_auto_receipt` | Enable automatic behavioral receipt generation for this session | No |
+| `ep_generate_zk_proof` | Generate a zero-knowledge proof for a score claim | No |
+| `ep_verify_zk_proof` | Verify a zero-knowledge proof | No |
+| `ep_delegation_judgment` | Score a principal's delegation history (excellent / good / fair / poor) | No |
 
 ## Environment Variables
 

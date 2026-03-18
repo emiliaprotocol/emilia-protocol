@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-670%20passing-brightgreen)]()
-[![MCP Tools](https://img.shields.io/badge/MCP%20tools-23-blue)]()
+[![MCP Tools](https://img.shields.io/badge/MCP%20tools-24-blue)]()
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
 **MCP tells agents how to use tools. EP tells them whether they should.**
@@ -160,7 +160,7 @@ Receipt weight is dampened further by dispute state: 0.3x while a dispute is act
 | Blockchain anchoring (Merkle roots → Base L2) | [Live] |
 | TypeScript SDK (EPClient, 25 methods, 35+ types) | [Live] |
 | Python SDK (async EPClient, 21 methods) | [Live] |
-| MCP server (23 tools, 4 resources, 3 prompts) | [Live] |
+| MCP server (24 tools, 4 resources, 3 prompts) | [Live] |
 | 670 tests passing, 28 test files | [Live] |
 | Operator applications and registry | [Pilot] |
 | Managed adjudication workflows | [Pilot] |
@@ -171,9 +171,9 @@ Receipt weight is dampened further by dispute state: 0.3x while a dispute is act
 
 ---
 
-## MCP Tools (23)
+## MCP Tools (24)
 
-Add `npx @emilia-protocol/mcp-server` to any MCP-compatible host. The server exposes 23 tools, 4 resources, and 3 prompts.
+Add `npx @emilia-protocol/mcp-server` to any MCP-compatible host. The server exposes 24 tools, 4 resources, and 3 prompts.
 
 **Trust evaluation**
 | Tool | What it does |

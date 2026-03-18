@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest"
+    "test": "vitest",
+    "test:run": "vitest run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

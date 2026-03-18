@@ -16,8 +16,8 @@ Thank you for your interest in contributing to EP. This document explains how to
 1. Fork the repository
 2. Create a feature branch: `git checkout -b fix/description`
 3. Make your changes
-4. Run tests: `npx vitest run`
-5. Run conformance suite: `npx vitest run conformance/`
+4. Run tests: `npm run test:run`
+5. Run conformance suite: `npm run test:run -- conformance/`
 6. Submit a pull request
 
 ### Spec changes
@@ -39,13 +39,41 @@ Spec changes follow the governance process in `GOVERNANCE.md`:
 
 ## Development setup
 
+### Prerequisites
+- Node.js >= 18
+- npm >= 9
+
 ```bash
 git clone https://github.com/emiliaprotocol/emilia-protocol.git
 cd emilia-protocol
 npm install
-npx vitest run           # Run all tests
-npx vitest run conformance/  # Run conformance suite only
+npm run test:run             # Run all tests (single pass, CI mode)
+npm test                     # Run all tests in watch mode
+npm run test:run conformance/  # Run conformance suite only
 ```
+
+Expected output: 670 tests passing across 28 test files.
+
+### MCP Server (standalone)
+```bash
+cd mcp-server
+npm install
+node index.js
+```
+
+Or via npx (no install required):
+```bash
+npx @emilia-protocol/mcp-server
+```
+
+### Environment Variables
+Copy `.env.example` to `.env.local` and fill in:
+- `SUPABASE_URL` — your Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY` — service role key (server-only)
+- `SUPABASE_ANON_KEY` — anon key (public)
+- `EP_API_URL` — EP API base (default: https://emiliaprotocol.ai)
+
+Tests run without any environment variables — all external services are mocked.
 
 ## Project structure
 

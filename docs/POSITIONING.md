@@ -125,7 +125,7 @@ Use these labels everywhere — in READMEs, documentation, demo scripts, and inv
 
 ### What Is Live
 
-- 23 MCP tools, 4 resources, 3 prompts
+- 24 MCP tools, 4 resources, 3 prompts
 - Trust profiles with 4 policy types: `strict`, `standard`, `permissive`, `discovery`
 - Install preflight for MCP servers, GitHub Apps, npm packages, and Chrome extensions
 - Disputes and appeals with constitutional due process (48-hour window, voucher voting)
