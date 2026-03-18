@@ -17,6 +17,33 @@ EP is not a product. It is a protocol. Apache 2.0.
 
 ---
 
+## Four Canonical Trust Decisions
+
+EP is decision infrastructure. Every trust evaluation reduces to one of four verbs:
+
+| Decision | Question |
+|----------|----------|
+| **Install** | Should I install this MCP server? |
+| **Connect** | Should I connect this tool? |
+| **Delegate** | Should this agent act for this principal? |
+| **Transact** | Should I transact with this counterparty? |
+
+---
+
+## Three Core Objects
+
+EP standardizes three interoperable objects:
+
+| Object | What it is | One-line |
+|--------|-----------|---------|
+| **Trust Receipt** | A portable record of an observed event relevant to trust | What happened |
+| **Trust Profile** | A standardized summary of observable trust state | What is known |
+| **Trust Decision** | A policy-evaluated result with reasons and appeal path | What to do now |
+
+If a third party can implement these three objects and interoperate, EP has a real standard.
+
+---
+
 ## Beachhead: Three winning wedges [Live]
 
 EP does not launch as "universal trust." It launches as the safest way to install and route to machine tools, with a credible appeals system. These are the three concrete problems it solves today:
@@ -141,7 +168,7 @@ Receipt weight is dampened further by dispute state: 0.3x while a dispute is act
 
 ---
 
-## What's Live, Pilot, and Roadmap
+## What's Live, Extensions, and Roadmap
 
 | Component | Status |
 |---|---|
@@ -168,6 +195,17 @@ Receipt weight is dampened further by dispute state: 0.3x while a dispute is act
 | GraphQL API | [Roadmap] |
 | Mobile SDK | [Roadmap] |
 | Webhook streaming | [Roadmap] |
+
+---
+
+## What EP Does Not Do
+
+- Decide morality
+- Infer intent beyond presented evidence
+- Force one global score interpretation
+- Replace identity or authorization standards
+- Replace marketplace rules or legal adjudication
+- Require full public disclosure of counterparties or transaction details
 
 ---
 

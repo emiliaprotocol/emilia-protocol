@@ -166,6 +166,31 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
       The Docker stack runs the app container — you must provide <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>SUPABASE_SERVICE_ROLE_KEY</code> pointing at a real Supabase project.
     </div>
 
+    <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:12px;padding:24px 28px;margin:24px 0 32px">
+      <h3 style="font-family:var(--disp);font-weight:800;font-size:18px;margin:0 0 16px;color:var(--t1)">The EP Mental Model</h3>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+        <div style="text-align:center;padding:16px 8px;border:1px solid var(--brd);border-radius:10px;background:rgba(96,165,250,0.04)">
+          <div style="font-family:var(--disp);font-weight:900;font-size:24px;color:var(--cyan);margin-bottom:4px">1</div>
+          <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Observe</div>
+          <div style="font-size:12px;color:var(--t2)">receipts</div>
+        </div>
+        <div style="text-align:center;padding:16px 8px;border:1px solid var(--brd);border-radius:10px;background:rgba(96,165,250,0.04)">
+          <div style="font-family:var(--disp);font-weight:900;font-size:24px;color:var(--cyan);margin-bottom:4px">2</div>
+          <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Summarize</div>
+          <div style="font-size:12px;color:var(--t2)">profile</div>
+        </div>
+        <div style="text-align:center;padding:16px 8px;border:1px solid var(--brd);border-radius:10px;background:rgba(96,165,250,0.04)">
+          <div style="font-family:var(--disp);font-weight:900;font-size:24px;color:var(--cyan);margin-bottom:4px">3</div>
+          <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Decide</div>
+          <div style="font-size:12px;color:var(--t2)">decision</div>
+        </div>
+        <div style="text-align:center;padding:16px 8px;border:1px solid var(--brd);border-radius:10px;background:rgba(96,165,250,0.04)">
+          <div style="font-family:var(--disp);font-weight:900;font-size:24px;color:var(--cyan);margin-bottom:4px">4</div>
+          <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Challenge</div>
+          <div style="font-size:12px;color:var(--t2)">appeal</div>
+        </div>
+      </div>
+    </div>
 
     <!-- STEP 1 -->
     <h2 id="step1">Step 1 — Add the MCP Server</h2>
@@ -173,7 +198,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
       <div class="step-num">1</div>
       <div><div class="step-title">Plug EP into any MCP client</div><div class="step-time">~60 seconds</div></div>
     </div>
-    <p>Add this to your <code>claude_desktop_config.json</code> (or any MCP-compatible client config). EP gives your agent 23 trust tools instantly.</p>
+    <p>Add this to your <code>claude_desktop_config.json</code> (or any MCP-compatible client config). EP gives your agent 24 trust tools instantly.</p>
 
     <div class="code-block">
       <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">JSON — claude_desktop_config.json</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
@@ -193,7 +218,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
     <p>Without <code>EP_API_KEY</code>, read-only tools still work: <code>ep_trust_profile</code>, <code>ep_trust_evaluate</code>, <code>ep_install_preflight</code>, <code>ep_search_entities</code>, <code>ep_leaderboard</code>.</p>
 
     <div class="callout tip">
-      <strong>23 MCP tools available:</strong> ep_trust_profile, ep_trust_evaluate, ep_submit_receipt, ep_install_preflight, ep_search_entities, ep_verify_receipt, ep_register_entity, ep_leaderboard, ep_dispute_file, ep_dispute_status, ep_report_trust_issue, ep_appeal_dispute, ep_principal_lookup, ep_lineage, ep_list_policies, ep_configure_auto_receipt, ep_generate_zk_proof, ep_verify_zk_proof, ep_adjudicate_dispute, ep_delegation_judgment, ep_attribution_chain, ep_batch_receipts, ep_principal_score
+      <strong>24 MCP tools available:</strong> ep_trust_profile, ep_trust_evaluate, ep_submit_receipt, ep_search_entities, ep_verify_receipt, ep_register_entity, ep_leaderboard, ep_dispute_file, ep_dispute_status, ep_report_trust_issue, ep_appeal_dispute, ep_install_preflight, ep_principal_lookup, ep_lineage, ep_list_policies, ep_create_delegation, ep_verify_delegation, ep_trust_gate, ep_batch_submit, ep_configure_auto_receipt, ep_domain_score, ep_generate_zk_proof, ep_verify_zk_proof, ep_delegation_judgment
     </div>
 
     <!-- STEP 2 -->
@@ -212,18 +237,18 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
     <div id="qtab-shell">
       <div class="code-block" style="border-radius:0 12px 12px 12px">
         <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">Shell</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
-        <div class="code-body"><pre><span class="cm"># Get a trust profile (public, no auth)</span>
+        <div class="code-body"><pre><span class="cm"># Install preflight for an MCP server (public, no auth)</span>
+<span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-flag">-X POST</span> https://emiliaprotocol.ai/api/trust/install-preflight \
+  <span class="bash-flag">-H</span> <span class="bash-str">"Content-Type: application/json"</span> \
+  <span class="bash-flag">-d</span> <span class="bash-str">'{"entity_id":"mcp-server-ep-v1","policy":"mcp_server_safe_v1"}'</span>
+
+<span class="cm"># Get a trust profile</span>
 <span class="bash-$">$ </span><span class="bash-cmd">curl</span> https://emiliaprotocol.ai/api/trust/profile/rex-booking-v1
 
 <span class="cm"># Evaluate against a policy</span>
 <span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-flag">-X POST</span> https://emiliaprotocol.ai/api/trust/evaluate \
   <span class="bash-flag">-H</span> <span class="bash-str">"Content-Type: application/json"</span> \
   <span class="bash-flag">-d</span> <span class="bash-str">'{"entity_id":"rex-booking-v1","policy":"standard"}'</span>
-
-<span class="cm"># Install preflight for an MCP server</span>
-<span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-flag">-X POST</span> https://emiliaprotocol.ai/api/trust/install-preflight \
-  <span class="bash-flag">-H</span> <span class="bash-str">"Content-Type: application/json"</span> \
-  <span class="bash-flag">-d</span> <span class="bash-str">'{"entity_id":"mcp-server-ep-v1","policy":"mcp_server_safe_v1"}'</span>
 
 <span class="cm"># Search entities</span>
 <span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-str">"https://emiliaprotocol.ai/api/entities/search?q=booking&amp;type=merchant"</span></pre></div>
@@ -233,12 +258,16 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
     <div id="qtab-ts" style="display:none">
       <div class="code-block" style="border-radius:0 12px 12px 12px">
         <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">TypeScript</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
-        <div class="code-body"><pre><span class="kw">import</span> { <span class="tp">EmiliaClient</span> } <span class="kw">from</span> <span class="str">'@emilia-protocol/sdk'</span>;
+        <div class="code-body"><pre><span class="kw">import</span> { <span class="tp">EPClient</span> } <span class="kw">from</span> <span class="str">'@emilia-protocol/sdk'</span>;
 
-<span class="kw">const</span> ep = <span class="kw">new</span> <span class="tp">EmiliaClient</span>({
+<span class="kw">const</span> ep = <span class="kw">new</span> <span class="tp">EPClient</span>({
   apiKey: process.env.<span class="tp">EP_API_KEY</span>,               <span class="cm">// optional for reads</span>
   baseUrl: <span class="str">'https://emiliaprotocol.ai'</span>,
 });
+
+<span class="cm">// Install preflight — check before installing any MCP server</span>
+<span class="kw">const</span> preflight = <span class="kw">await</span> ep.<span class="fn">installPreflight</span>(<span class="str">'mcp-server-ep-v1'</span>);
+console.<span class="fn">log</span>(preflight.decision); <span class="cm">// 'allow' | 'review' | 'deny'</span>
 
 <span class="cm">// Get a trust profile</span>
 <span class="kw">const</span> profile = <span class="kw">await</span> ep.<span class="fn">getTrustProfile</span>(<span class="str">'rex-booking-v1'</span>);
@@ -250,23 +279,23 @@ console.<span class="fn">log</span>(profile.current_confidence); <span class="cm
   policy: <span class="str">'standard'</span>,
   context: { category: <span class="str">'electronics'</span>, value_band: <span class="str">'high'</span> },
 });
-<span class="kw">if</span> (!result.pass) console.<span class="fn">log</span>(<span class="str">'Failures:'</span>, result.failures);
-
-<span class="cm">// Install preflight</span>
-<span class="kw">const</span> preflight = <span class="kw">await</span> ep.<span class="fn">installPreflight</span>(<span class="str">'mcp-server-ep-v1'</span>);
-console.<span class="fn">log</span>(preflight.decision); <span class="cm">// 'allow' | 'review' | 'deny'</span></pre></div>
+<span class="kw">if</span> (!result.pass) console.<span class="fn">log</span>(<span class="str">'Failures:'</span>, result.failures);</pre></div>
       </div>
     </div>
 
     <div id="qtab-python" style="display:none">
       <div class="code-block" style="border-radius:0 12px 12px 12px">
         <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">Python</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
-        <div class="code-body"><pre><span class="kw">from</span> emilia_protocol <span class="kw">import</span> <span class="tp">EmiliaClient</span>
+        <div class="code-body"><pre><span class="kw">from</span> emilia_protocol <span class="kw">import</span> <span class="tp">EPClient</span>
 
-ep = <span class="tp">EmiliaClient</span>(
+ep = <span class="tp">EPClient</span>(
     api_key=<span class="str">"ep_live_..."</span>,           <span class="cm"># optional for reads</span>
     base_url=<span class="str">"https://emiliaprotocol.ai"</span>
 )
+
+<span class="cm"># Install preflight — check before installing any MCP server</span>
+preflight = ep.<span class="fn">install_preflight</span>(<span class="str">"mcp-server-ep-v1"</span>)
+print(preflight[<span class="str">"decision"</span>])  <span class="cm"># allow | review | deny</span>
 
 <span class="cm"># Get a trust profile</span>
 profile = ep.<span class="fn">get_trust_profile</span>(<span class="str">"rex-booking-v1"</span>)
@@ -276,11 +305,7 @@ print(profile[<span class="str">"current_confidence"</span>])  <span class="cm">
 result = ep.<span class="fn">evaluate_trust</span>(<span class="str">"rex-booking-v1"</span>, policy=<span class="str">"standard"</span>,
                      context={<span class="str">"category"</span>: <span class="str">"electronics"</span>})
 <span class="kw">if not</span> result[<span class="str">"pass"</span>]:
-    print(<span class="str">"Failures:"</span>, result[<span class="str">"failures"</span>])
-
-<span class="cm"># Install preflight</span>
-preflight = ep.<span class="fn">install_preflight</span>(<span class="str">"mcp-server-ep-v1"</span>)
-print(preflight[<span class="str">"decision"</span>])  <span class="cm"># allow | review | deny</span></pre></div>
+    print(<span class="str">"Failures:"</span>, result[<span class="str">"failures"</span>])</pre></div>
       </div>
     </div>
 
