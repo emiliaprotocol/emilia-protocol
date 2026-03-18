@@ -282,6 +282,9 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
   .fbot{flex-direction:column;gap:16px;text-align:center}
   .reg-form{flex-direction:column}.cta-banner{padding:40px 24px}
   .mcp-banner{padding:0 20px 60px}
+  #the-problem [style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr !important}
+  #trust-decision [style*="grid-template-columns: repeat(3"]{grid-template-columns:1fr !important}
+  section [style*="grid-template-columns: repeat(3,1fr)"]{grid-template-columns:1fr !important}
 }
 @media(max-width:600px){
   .fgrid{grid-template-columns:1fr}.hero h1{letter-spacing:-2px}
@@ -335,24 +338,21 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
 
   <div class="htag">Open Protocol &nbsp;·&nbsp; Apache 2.0 &nbsp;·&nbsp; EP Core RFC v1.1</div>
 
-  <h1>The Trust Layer<br><span class="gr">for Machine Counterparties and Software</span></h1>
-  <p class="hero-hook"><strong>MCP tells agents how to use tools. EP tells them whether they should.</strong></p>
+  <h1>The Trust Layer<br><span class="gr">for Agent Systems</span></h1>
 
-  <p class="hero-sub">
-    Start with the hardest problem: should your agent install this MCP server? Should it route to this API?
-    EP answers that — with evidence-based trust profiles, policy evaluation, and human appeals.
-    <strong>Portable across every platform. Appealable by anyone. Designed for neutral stewardship.</strong>
+  <p class="hero-sub" style="max-width:680px;font-size:clamp(15px,1.6vw,18px);margin-bottom:20px">
+    EMILIA Protocol is an open trust layer for agent systems. Before an agent installs software, routes work, accepts delegated authority, or transacts with a counterparty, EP returns a <strong>structured trust decision</strong> — with reasons and an appeal path.
   </p>
+
+  <p class="hero-hook"><strong>MCP tells agents how to use tools. EP tells them whether they should.</strong></p>
 
   <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-bottom:28px;letter-spacing:1px;animation:fup .8s .22s ease both">EMILIA = Evidence-based Mediation &amp; Integrity Layer for Interactions and Appeals</div>
 
   <div class="hero-badges">
-    <span class="hbadge c">Trust Profiles</span>
-    <span class="hbadge p">MCP Server (24 tools)</span>
+    <span class="hbadge c">Trust Decisions</span>
     <span class="hbadge gr">Install Preflight</span>
-    <span class="hbadge g">Human Appeals</span>
+    <span class="hbadge g">Appeals &amp; Due Process</span>
     <span class="hbadge c">Policy Evaluation</span>
-    <span class="hbadge g">Sybil Resistant</span>
     <span class="hbadge p">Apache 2.0</span>
   </div>
 
@@ -361,7 +361,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
       <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
       Run Interactive Demo
     </a>
-    <a href="#trust" class="btn-g">See Trust in Action</a>
+    <a href="#the-problem" class="btn-g">Why This Matters</a>
     <a href="/spec" class="btn-gold">Read EP Core RFC</a>
   </div>
 
@@ -376,6 +376,192 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
 
 <!-- TICKER -->
 <div class="ticker"><div class="ticker-in" id="ticker"></div></div>
+
+<!-- THE PROBLEM (new narrative section) -->
+<section id="the-problem">
+  <div class="container-md">
+    <div class="tc reveal">
+      <div class="st">// The Problem</div>
+      <div class="sh">Agents act. Nobody checks.</div>
+      <div class="sd" style="margin:0 auto">Agent systems now install software, route work, transact, and delegate — but every platform uses private trust heuristics. There is no neutral, portable way to answer the most basic operational question.</div>
+    </div>
+    <div class="reveal" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:40px">
+
+      <div style="background:var(--bg-card);border:1px solid rgba(248,113,113,0.2);border-radius:14px;padding:28px">
+        <div style="font-size:24px;margin-bottom:14px">&#9888;&#65039;</div>
+        <div style="font-weight:700;font-size:16px;color:var(--t1);margin-bottom:8px">Agents install untrusted software</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.7">MCP servers, plugins, packages — agents connect to tools with no portable way to verify the publisher, check permission scope, or consult behavioral history.</div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid rgba(248,113,113,0.2);border-radius:14px;padding:28px">
+        <div style="font-size:24px;margin-bottom:14px">&#128256;</div>
+        <div style="font-weight:700;font-size:16px;color:var(--t1);margin-bottom:8px">Agents route to unknown tools</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.7">When an agent picks which API or service to call, there is no shared trust signal. Each platform rebuilds routing logic with private allowlists and ad hoc blocklists.</div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid rgba(248,113,113,0.2);border-radius:14px;padding:28px">
+        <div style="font-size:24px;margin-bottom:14px">&#128101;</div>
+        <div style="font-weight:700;font-size:16px;color:var(--t1);margin-bottom:8px">Agents accept delegation without verification</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.7">When an agent claims to represent a human or organization, there is no standard way to verify scope, authorization, or historical delegation faithfulness.</div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid rgba(248,113,113,0.2);border-radius:14px;padding:28px">
+        <div style="font-size:24px;margin-bottom:14px">&#128176;</div>
+        <div style="font-weight:700;font-size:16px;color:var(--t1);margin-bottom:8px">Agents transact with unvetted counterparties</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.7">Autonomous agents make purchases, place orders, and commit resources — but counterparty trust is either siloed to one platform or nonexistent.</div>
+      </div>
+
+    </div>
+    <div class="reveal" style="text-align:center;margin-top:32px">
+      <div style="font-family:var(--mono);font-size:12px;color:var(--t3);line-height:1.8;max-width:600px;margin:0 auto">The result: duplication, inconsistency, weak portability, and <strong style="color:var(--t1)">no shared due process when trust decisions are wrong</strong>.</div>
+    </div>
+  </div>
+</section>
+
+<!-- WHAT EP RETURNS: THE TRUST DECISION -->
+<section id="trust-decision" style="padding-top:0">
+  <div class="container-md">
+    <div class="tc reveal">
+      <div class="st">// What EP Returns</div>
+      <div class="sh">A Decision, Not a Score</div>
+      <div class="sd" style="margin:0 auto">EP does not return a number for you to interpret. It returns a structured trust decision — with reasons, confidence, the policy used, and a path to challenge it if it is wrong.</div>
+    </div>
+    <div class="reveal" style="margin-top:36px;max-width:640px;margin-left:auto;margin-right:auto">
+      <div class="code-block">
+        <div class="code-hdr">
+          <div class="code-dots"><span></span><span></span><span></span></div>
+          <span class="code-lang">JSON — Trust Decision Object</span>
+          <button class="code-copy" onclick="copyCode(this)">Copy</button>
+        </div>
+        <div class="code-body"><pre>{
+  <span class="prop">"decision"</span>: <span class="str">"allow"</span>,
+  <span class="prop">"reasons"</span>: [
+    <span class="str">"publisher_verified"</span>,
+    <span class="str">"provenance_bilateral"</span>,
+    <span class="str">"no_active_disputes"</span>
+  ],
+  <span class="prop">"confidence"</span>: <span class="str">"confident"</span>,
+  <span class="prop">"policy"</span>: <span class="str">"mcp_server_safe_v1"</span>,
+  <span class="prop">"appeal_path"</span>: <span class="str">"/api/disputes/report"</span>
+}</pre></div>
+      </div>
+    </div>
+    <div class="reveal" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:32px">
+      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:12px;padding:24px;text-align:center">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;margin-bottom:10px">Decision</div>
+        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:6px">Allow / Review / Deny</div>
+        <div style="font-size:12px;color:var(--t2);line-height:1.6">Not a score to interpret. A clear, actionable decision your agent can use directly.</div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:12px;padding:24px;text-align:center">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--green);text-transform:uppercase;margin-bottom:10px">Reasons</div>
+        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:6px">Explainable by design</div>
+        <div style="font-size:12px;color:var(--t2);line-height:1.6">Every decision comes with specific reasons. No black box. No mystery downgrade.</div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:12px;padding:24px;text-align:center">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:10px">Recourse</div>
+        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:6px">Appeal path included</div>
+        <div style="font-size:12px;color:var(--t2);line-height:1.6">Every adverse decision includes a direct appeal path. Challenge it, review it, reverse it.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONSTITUTIONAL GUARANTEE -->
+<section style="padding-top:0">
+  <div class="container-sm">
+    <div class="reveal" style="text-align:center;padding:48px 40px;background:linear-gradient(135deg,rgba(96,165,250,0.04),rgba(245,158,11,0.04));border:1px solid rgba(96,165,250,0.12);border-radius:20px">
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--t3);margin-bottom:20px">Constitutional Guarantee</div>
+      <div style="font-family:var(--disp);font-weight:800;font-size:clamp(20px,2.8vw,30px);letter-spacing:-0.5px;line-height:1.3;color:var(--t1);margin-bottom:20px">Trust must never be more powerful than appeal.</div>
+      <div style="font-size:14px;color:var(--t2);line-height:1.8;max-width:520px;margin:0 auto">Any adverse trust decision in EP is <strong style="color:var(--t1)">explainable</strong>, <strong style="color:var(--t1)">challengeable</strong>, <strong style="color:var(--t1)">reviewable</strong>, and <strong style="color:var(--t1)">reversible</strong> when wrong. This is not a feature. It is a protocol requirement.</div>
+      <div style="margin-top:24px">
+        <a href="/appeal" style="font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--cyan);text-decoration:none">File an appeal now &rarr;</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BEACHHEAD: INSTALL PREFLIGHT -->
+<section style="padding-top:0">
+  <div class="container-md">
+    <div class="tc reveal">
+      <div class="st">// The First Use Case</div>
+      <div class="sh">Software Install Preflight</div>
+      <div class="sd" style="margin:0 auto">The first wedge is the most obvious: before an agent installs or invokes a server, package, plugin, or app — how should trust be evaluated? This is easy to understand, immediately necessary, high consequence, and measurable.</div>
+    </div>
+    <div class="reveal" style="margin-top:36px;max-width:700px;margin-left:auto;margin-right:auto">
+      <div style="background:var(--bg-card);border:1px solid rgba(96,165,250,0.25);border-radius:16px;padding:32px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;right:0;width:100px;height:100px;background:radial-gradient(circle at top right,rgba(96,165,250,0.1),transparent 70%);border-radius:0 16px 0 0"></div>
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;margin-bottom:14px">One API call. Clear decision.</div>
+        <div style="font-weight:700;font-size:18px;color:var(--t1);margin-bottom:10px;line-height:1.3">Should my agent connect to this MCP server?</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:20px">EP evaluates publisher identity, permission class (read-only vs. code execution vs. network access), and behavioral trust history. Returns allow / review / deny with reasons and recourse.</div>
+        <div class="code-block" style="margin-bottom:0">
+          <div class="code-hdr">
+            <div class="code-dots"><span></span><span></span><span></span></div>
+            <span class="code-lang">Shell</span>
+          </div>
+          <div class="code-body"><pre><span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-flag">-X POST</span> <span class="bash-str">https://emiliaprotocol.ai/api/trust/install-preflight</span> \
+  <span class="bash-flag">-d</span> <span class="bash-str">'{"entity_id":"github:acme/payments-mcp"}'</span>
+
+<span class="cm"># Response:</span>
+<span class="cm"># { "decision": "allow", "reasons": ["publisher_verified", "read_only_permissions"],</span>
+<span class="cm">#   "confidence": "confident", "policy": "mcp_server_safe_v1" }</span></pre></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3-LAYER ARCHITECTURE -->
+<section style="padding-top:0">
+  <div class="container-md">
+    <div class="tc reveal">
+      <div class="st">// Architecture</div>
+      <div class="sh">Small Core. Modular Extensions.</div>
+      <div class="sd" style="margin:0 auto">EP is a 3-layer system. The core is deliberately small — three objects that any host can implement. Everything else is an optional extension or a product surface.</div>
+    </div>
+    <div class="reveal" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:40px">
+
+      <div style="background:var(--bg-card);border:1px solid rgba(96,165,250,0.25);border-radius:16px;padding:28px">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;margin-bottom:12px">EP Core</div>
+        <div style="font-weight:700;font-size:17px;color:var(--t1);margin-bottom:10px">The Standard</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:16px">Three required objects. If a third party can implement these and interoperate, EP has a real standard.</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--cyan);background:var(--cyan-d);border:1px solid rgba(96,165,250,0.2);border-radius:8px;padding:8px 12px">Trust Receipt</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--cyan);background:var(--cyan-d);border:1px solid rgba(96,165,250,0.2);border-radius:8px;padding:8px 12px">Trust Profile</div>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--cyan);background:var(--cyan-d);border:1px solid rgba(96,165,250,0.2);border-radius:8px;padding:8px 12px">Trust Decision</div>
+        </div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid rgba(245,158,11,0.2);border-radius:16px;padding:28px">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:12px">EP Extensions</div>
+        <div style="font-weight:700;font-size:17px;color:var(--t1);margin-bottom:10px">Important, but Optional</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:16px">Advanced capabilities that build on the core. Adopt what you need.</div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-family:var(--mono);font-size:11px;color:var(--t3)">
+          <div>Disputes &amp; appeals</div>
+          <div>Delegation &amp; attribution</div>
+          <div>ZK proofs</div>
+          <div>Auto-receipt generation</div>
+          <div>Domain scoring</div>
+          <div>Install preflight adapters</div>
+        </div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid rgba(167,139,250,0.2);border-radius:16px;padding:28px">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:12px">EP Product Surfaces</div>
+        <div style="font-weight:700;font-size:17px;color:var(--t1);margin-bottom:10px">Not Part of the Standard</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:16px">Reference implementations and operator tools. Useful, not required.</div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-family:var(--mono);font-size:11px;color:var(--t3)">
+          <div>Explorer</div>
+          <div>Leaderboards</div>
+          <div>Operator dashboards</div>
+          <div>Registry views</div>
+          <div>Managed adjudication</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
 
 <!-- MCP COMPARE -->
 <div class="mcp-banner">

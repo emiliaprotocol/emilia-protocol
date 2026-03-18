@@ -1,90 +1,130 @@
 # EMILIA Protocol — Investor Narrative
 
-## Trust infrastructure, not another SaaS tool.
+## The problem
 
-The internet solved distribution, identity, and payments before it solved trust. As digital systems scaled, trust was outsourced to reviews, ratings, stars, heuristics, and opaque platform-controlled systems. Those systems worked just well enough to become indispensable — and then were captured. Platforms discovered that trust is a control point. Whoever hosts trust can rank participants, influence conversion, sell visibility, and decide who gets believed.
+AI agents now install software, route work to external tools, accept delegated authority from humans, and transact with machine counterparties. Every one of these actions requires a trust decision. Today, every platform makes that decision using private heuristics, closed allowlists, or ad hoc blocklists — silently, inconsistently, and with no recourse when the decision is wrong. There is no portable, neutral infrastructure for evaluating whether a counterparty should be trusted for a given task in a given context.
 
-That model does not survive the next computing era.
+## What EP does
 
-As AI agents, software systems, marketplaces, and automations begin making decisions at machine speed, the world needs a portable way to answer a harder question:
+EMILIA Protocol is an open trust layer for agent systems. Before an agent installs software, routes work, accepts delegated authority, or transacts with a counterparty, EP returns a structured trust decision — with reasons and an appeal path.
 
-**Should this counterparty, plugin, server, seller, or machine actor be trusted enough for this context and policy?**
+MCP tells agents how to use tools. EP tells them whether they should.
 
-EMILIA Protocol exists to answer that question.
+## Why now
 
-## What EP provides
+MCP has crossed 10,000 public servers. It has been adopted by ChatGPT, Cursor, Gemini, and VS Code, and donated to the Linux Foundation. Every host running MCP servers needs trust evaluation before connecting agents to tools. NIST is actively scoping accountability and explainability requirements for agentic AI systems. The infrastructure gap is operational and immediate — and EP is the only open implementation addressing it.
 
-- **Trust profiles**, not simplistic scores
-- **Policy evaluation**, not arbitrary thresholds
-- **Install preflight** for software, plugins, and MCP servers
-- **Disputes and appeals**, so trust can be challenged and corrected
-- **Append-only, auditable trust state**, rather than silent mutation
-- **Zero-knowledge proofs** — entities prove they meet trust thresholds in a given domain without revealing counterparties, receipt history, or transaction details. Healthcare, legal, and financial sector participation becomes possible without exposing confidential operational data.
-- **Auto-receipt generation** — every MCP tool call automatically generates a behavioral receipt. Trust data accumulates passively, without developer instrumentation or manual submission workflows. The graph grows with every agent interaction.
-- **Delegation judgment scoring** — the first system to score humans on how well they delegate to AI agents. The Principal→Agent→Tool attribution chain creates a verified accountability record for every automated action, with a grade (excellent / good / fair / poor) computed from delegation outcomes.
-- **Trust-graph dispute adjudication** — disputes are resolved by the trust graph itself, not by operators. High-confidence vouchers vote. The accused cannot dominate their own adjudication. Receipts under active dispute are dampened to 0.3x weight; upheld disputes collapse to 0.0x; dismissed disputes restore to 1.0x. The system is adversarially resistant by construction.
+## The 3-layer architecture
 
-## Where EP sits
+EP is designed in three layers. This matters because it keeps the adoptable core small while allowing the ecosystem and business to grow independently.
 
-- MCP gives systems access to tools
-- A2A coordinates agent interaction
-- ACP/UCP/AP2 structure commerce and payments
-- **EP provides trust evaluation and appeals**
+### Core (the standard)
 
-EP is not a niche "agent commerce add-on." It is a missing infrastructure layer across commerce, software installation, marketplaces, machine-to-machine routing, plugin ecosystems, and procurement workflows.
+Three objects. That is the entire required surface:
 
-## The business opportunity
+- **Trust Receipt** — a portable record of an observed event relevant to trust (subject, outcome, provenance, cryptographic integrity)
+- **Trust Profile** — a standardized summary of an entity's observed trust state (confidence, evidence level, behavioral rates, dispute history)
+- **Trust Decision** — a policy-evaluated result for a specific action and context (allow / review / deny, with reasons, evidence sufficiency, and appeal path)
 
-The business opportunity is not in selling the spec. It is in becoming the operating company around the standard:
+If a third party can implement these three objects and interoperate, EP has a real standard.
+
+### Extensions (important, but optional)
+
+Each extension adds operational value without inflating the core:
+
+- Disputes and appeals lifecycle
+- Delegation and attribution chains
+- Domain-specific scoring
+- Zero-knowledge trust proofs
+- Auto-receipt generation from tool calls
+- Software install preflight adapters
+- Identity continuity and anti-whitewashing
+
+### Product surfaces (not part of the standard)
 
 - Hosted trust APIs
-- Install preflight services
-- Merchant/plugin/marketplace integrations
-- Trust operations dashboards
-- Appeals and adjudication tooling
-- Provenance and evidence connectors
+- Explorer and registry views
+- Operator dashboards
+- Managed adjudication workflows
+- Enterprise policy management consoles
 - Analytics and monitoring
-- Enterprise trust policy management
 
-## Category logic
+This maps directly to the adoption path: **standard adoption drives ecosystem growth, ecosystem growth drives monetization.**
 
-This is the same category logic that made foundational internet layers valuable:
+## First three wedges
 
-- **HTTPS** became the trust baseline for web transport
-- **FICO** became the trust baseline for credit allocation
-- **EP** can become the trust baseline for machine-mediated systems — but with portability, openness, and appealability rather than institutional capture
+### 1. Install preflight
 
-## What makes EP defensible
+The most immediate use case. Before an agent connects to an MCP server, installs a package, or activates a plugin, EP evaluates the entity and returns a trust decision. Every serious agent host needs this. The question is whether each rebuilds it privately or adopts a shared standard.
 
-Not just the algorithm. The combination of:
+### 2. Delegation assurance
 
-- A portable trust object model
-- Policy-based decisioning
-- Context-aware trust
-- Due process (constitutional principle: trust must never be more powerful than appeal)
-- Identity continuity and anti-whitewashing (EP-IX)
-- Host adapters across real ecosystems (GitHub, MCP, npm, Shopify)
+When a human delegates authority to an agent, and that agent acts on their behalf — routing work, approving actions, invoking tools — there must be a verifiable record of who authorized what. EP's attribution chain (Principal to Agent to Tool) produces that record, with a delegation judgment computed from outcomes. This is not optional for enterprises deploying agents at scale.
 
-Commerce is the first wedge because it is measurable. Software and machine counterparties are the bigger market.
+### 3. ZK attestation for regulated counterparties
 
-## Why EP is defensible now that systems like this exist
+Healthcare providers, legal firms, and financial institutions cannot expose transaction histories or counterparty relationships to verify trustworthiness. EP's zero-knowledge proof system lets regulated entities prove they meet trust thresholds in a given domain without revealing the evidence behind them. The moment EP becomes the proof layer for sensitive industries, it becomes required infrastructure for those sectors.
 
-The moat is the ledger.
+## The compounding moat
 
-Every receipt that flows through EP — whether submitted manually, generated automatically via auto-receipt, or anchored through a host adapter — makes the trust graph more accurate. The graph is not a snapshot. It is a continuously compounding behavioral record. Every entity that participates makes every other entity's profile more meaningful, because trust is evaluated relative to the graph's voucher network, not in isolation.
+The defensible asset is the ledger.
 
-Every ZK proof makes EP the only trust layer that sensitive industries will accept. Healthcare providers, legal firms, and financial institutions cannot expose transaction histories or counterparty relationships to verify trustworthiness. EP's commitment-based ZK proof system lets them participate in the trust graph as full citizens — proving compliance with thresholds without revealing the evidence behind them. No other agent trust system has this. The moment EP becomes the proof layer for regulated industries, it becomes required infrastructure.
+Every receipt that flows through EP — whether submitted manually, generated automatically from tool calls, or anchored through a host adapter — makes the trust graph more accurate. The graph is not a snapshot. It is a continuously compounding behavioral record. Every entity that participates makes every other entity's trust profile more meaningful, because trust is evaluated relative to the graph's voucher network, not in isolation.
 
-Every delegation creates a verified human-AI accountability chain. As agentic systems proliferate, the question of who is responsible for an agent's actions becomes legally and operationally critical. EP's attribution chain — Principal→Agent→Tool, with delegation judgment scoring and a grade on every principal — is the first system that produces auditable evidence for that question. Enterprises deploying agents will need this record. Regulators will eventually require it. EP is already building it.
-
-These three systems — the ledger, the ZK privacy layer, and the attribution chain — compound together. An entity that builds trust in EP becomes harder to substitute. An industry that relies on EP's ZK proofs cannot easily migrate to a system that lacks them. A human principal whose delegation history lives in EP has an incentive to continue using EP rather than starting over elsewhere.
+Every ZK proof issued makes EP harder to replace in regulated environments. Every delegation record creates institutional dependency on EP's attribution chain. Every dispute resolved through the adjudication system deepens the operational commitment.
 
 The network effect is not social. It is structural. The trust graph gets harder to replicate the longer it runs.
 
+## Category logic
+
+This follows the same pattern that made foundational infrastructure layers valuable:
+
+- **HTTPS** became the trust baseline for web transport
+- **FICO** became the trust baseline for credit allocation
+- **EP** targets the trust baseline for machine-mediated systems — but with portability, openness, and appealability rather than institutional capture
+
+The category does not yet exist. The company that defines it operates the standard.
+
+## Business model
+
+The business is not in selling the spec. It is in becoming the operating company around the standard:
+
+- **Hosted trust APIs** — managed evaluation, receipt submission, and decision endpoints for teams that do not want to run their own infrastructure
+- **Operator services** — onboarding, adapter configuration, policy authoring, and integration support for platforms adopting EP
+- **Enterprise policy management** — custom trust policies, compliance mapping, audit tooling, and role-based access for organizations with regulatory requirements
+- **Adjudication tooling** — managed dispute resolution workflows, evidence review interfaces, and escalation paths for high-stakes trust decisions
+
+All of these are built on top of the open standard. The standard drives adoption. The services capture value.
+
+## What makes EP defensible
+
+Three things, operating together:
+
+**Open standard.** EP is Apache 2.0. The core spec is deliberately small. This is not generosity — it is strategy. An open standard attracts adoption that a proprietary system cannot. The operating company benefits from every adopter because the graph compounds.
+
+**Constitutional guarantee.** EP enforces a structural principle: trust must never be more powerful than appeal. Any adverse trust effect must be explainable, challengeable, reviewable, and reversible when wrong. This is not philosophy. It is the governance constraint that prevents EP from becoming another captured platform trust system — and it is what makes neutrality credible to adopters who have been burned by platform lock-in before.
+
+**Network effects from the ledger.** Every receipt, every proof, every delegation record, every resolved dispute deepens the trust graph. The graph cannot be forked without losing its history. Competitors can copy the spec. They cannot copy the accumulated behavioral record.
+
+## Current state
+
+Sober accounting of where EP stands:
+
+- 24 MCP tools implemented across trust evaluation, receipt management, disputes, delegation, ZK proofs, and install preflight
+- 670 tests passing across the conformance suite
+- Reference implementation live and open-source
+- REST API and MCP server surfaces operational
+- Host adapters demonstrated for MCP servers and software install preflight
+- Core spec, extension boundaries, and product surfaces clearly separated
+
+EP is early. The protocol works. The standard is defined. The ecosystem does not yet exist at scale — that is the opportunity.
+
 ## The ask
 
-EMILIA Protocol is an infrastructure company in the making: a trust layer for counterparties, software, and machine actors in the era of AI and automation.
+EMILIA Protocol is an infrastructure company in the making. The trust layer for agents, software, and machine counterparties is a missing piece of the agentic stack, and the window to define it is open now.
+
+We are raising to fund standard adoption, ecosystem development, and the first hosted operator services — to become the operating company behind the trust layer that agent systems require.
 
 ---
 
-*emiliaprotocol.ai · github.com/emiliaprotocol/emilia-protocol · Apache 2.0*
+*emiliaprotocol.ai | github.com/emiliaprotocol/emilia-protocol | Apache 2.0*
