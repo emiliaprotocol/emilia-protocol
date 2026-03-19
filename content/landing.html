@@ -338,15 +338,17 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
 
   <div class="htag">Open Protocol &nbsp;·&nbsp; Apache 2.0 &nbsp;·&nbsp; EP Core RFC v1.1</div>
 
-  <h1>The Trust Layer<br><span class="gr">for Agent Systems</span></h1>
+  <h1>Trust decisions<br><span class="gr">for agents, software,<br>and machine counterparties.</span></h1>
 
   <p class="hero-sub" style="max-width:680px;font-size:clamp(15px,1.6vw,18px);margin-bottom:20px">
-    EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties. Before an agent installs software, connects to a tool, accepts delegated authority, or transacts with a counterparty, EP returns a <strong>structured trust decision</strong> — with reasons and an appeal path.
+    EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties.
+  </p>
+
+  <p class="hero-sub" style="max-width:680px;font-size:clamp(14px,1.4vw,16px);margin-bottom:20px">
+    Before an agent installs software, connects to tools, accepts delegated authority, or transacts with a counterparty, EP returns a <strong>structured trust decision</strong> with reasons, confidence, and an appeal path.
   </p>
 
   <p class="hero-hook"><strong>MCP tells agents how to use tools. EP tells them whether they should.</strong></p>
-
-  <div style="font-family:var(--mono);font-size:10px;color:var(--t3);margin-bottom:28px;letter-spacing:1px;animation:fup .8s .22s ease both">Open trust decisions for agents, software, and machine counterparties.</div>
 
   <div class="hero-badges">
     <span class="hbadge c">Trust Decisions</span>
@@ -357,12 +359,11 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
   </div>
 
   <div class="hero-ctas">
-    <a href="/demo.html" class="btn-p">
+    <a href="/spec" class="btn-p">
       <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
-      Run Interactive Demo
+      Read the Protocol
     </a>
-    <a href="#the-problem" class="btn-g">Why This Matters</a>
-    <a href="/spec" class="btn-gold">Read EP Core RFC</a>
+    <a href="/explorer" class="btn-g">Explore Public Profiles</a>
   </div>
 
   <div class="hstats">
@@ -436,15 +437,17 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         <div class="code-body"><pre>{
   <span class="prop">"decision"</span>: <span class="str">"allow"</span>,
   <span class="prop">"reasons"</span>: [
-    <span class="str">"publisher_verified"</span>,
-    <span class="str">"provenance_bilateral"</span>,
-    <span class="str">"no_active_disputes"</span>
+    <span class="str">"verified_provenance"</span>,
+    <span class="str">"low_dispute_rate"</span>,
+    <span class="str">"successful_history_in_domain"</span>
   ],
   <span class="prop">"confidence"</span>: <span class="str">"confident"</span>,
-  <span class="prop">"policy"</span>: <span class="str">"mcp_server_safe_v1"</span>,
+  <span class="prop">"policy"</span>: <span class="str">"standard"</span>,
+  <span class="prop">"context_used"</span>: { <span class="prop">"action"</span>: <span class="str">"install"</span>, <span class="prop">"category"</span>: <span class="str">"mcp_server"</span> },
   <span class="prop">"appeal_path"</span>: <span class="str">"/api/disputes/report"</span>
 }</pre></div>
       </div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--t3);text-align:center;margin-top:12px;line-height:1.6">A Trust Decision, not just a score. EP returns a structured decision object that another system can enforce, audit, challenge, and verify.</div>
     </div>
     <div class="reveal" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:32px">
       <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:12px;padding:24px;text-align:center">
@@ -476,6 +479,18 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
       <div style="margin-top:24px">
         <a href="/appeal" style="font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--cyan);text-decoration:none">File an appeal now &rarr;</a>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- EP COMMIT -->
+<section style="padding-top:0">
+  <div class="container-md">
+    <div class="reveal" style="max-width:700px;margin:0 auto;background:linear-gradient(135deg,rgba(245,158,11,0.05),rgba(96,165,250,0.05));border:1px solid rgba(245,158,11,0.2);border-radius:20px;padding:40px 36px">
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:16px">EP Commit</div>
+      <div style="font-family:var(--disp);font-weight:800;font-size:clamp(20px,2.5vw,28px);letter-spacing:-0.5px;line-height:1.3;color:var(--t1);margin-bottom:16px">A signed authorization token for high-stakes machine actions.</div>
+      <p style="font-size:14px;color:var(--t2);line-height:1.8;margin-bottom:16px">Before an agent installs, connects, delegates, or transacts, a relying system can require an <strong style="color:var(--t1)">EP Commit</strong> proving the action was evaluated under policy, tied to identity and delegation, and issued with an appeal path.</p>
+      <p style="font-size:14px;color:var(--gold);line-height:1.8;font-weight:600">No high-stakes machine action should proceed without a signed EP Commit.</p>
     </div>
   </div>
 </section>
@@ -671,7 +686,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
           <div class="p-out">File a report against any entity, no auth required</div>
           <div class="p-out">Dispute specific receipts with supporting evidence</div>
           <div class="p-out">Appeal dispute resolutions to a second reviewer</div>
-          <div class="p-out">All decisions are public — transparency is a protocol value</div>
+          <div class="p-out">EP supports public verification and transparent appeal by design. Visibility can be policy-controlled by implementation</div>
         </div>
         <div class="p-cta"><a href="/appeal">Go to the Appeal page →</a></div>
       </div>
@@ -685,8 +700,8 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
   <div style="max-width:1000px;margin:0 auto">
     <div class="tc reveal">
       <div class="st">// Why It Matters</div>
-      <div class="sh">Trust broke. Machines inherited the wreckage.</div>
-      <div class="sd" style="margin:0 auto">Stars, reviews, and download counts don't scale into a world where AI agents make decisions at machine speed. The trust systems we have were built for humans — and they were already failing.</div>
+      <div class="sh">Traditional trust doesn't scale to machines.</div>
+      <div class="sd" style="margin:0 auto">Stars, reviews, and download counts don't scale into a world where AI agents make decisions at machine speed. Traditional review systems are easy to game, hard to port, and rarely challengeable.</div>
     </div>
     <div class="problem-grid reveal">
       <div class="prob-card">
@@ -938,7 +953,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
       <div class="st">// How It Works</div>
       <div class="sh">Receipts, Not Reviews</div>
       <div style="font-size:16px;color:var(--t2);line-height:1.8;margin-top:6px;max-width:700px">
-        Every legacy trust system failed because the platform hosting the data profits from the businesses being evaluated. EMILIA is different. The <strong style="color:var(--t1)">buying agent</strong> submits a receipt about the seller — and then uses that same trust profile to decide where to transact next. <strong style="color:var(--t1)">You rate what you eat. Lie, and you eat bad food again.</strong> The submitter and the consumer of trust data are the same entity. This creates natural incentive alignment that no legacy trust system has achieved.
+        Traditional review systems are easy to game, hard to port, and rarely challengeable. EMILIA is different. The <strong style="color:var(--t1)">buying agent</strong> submits a receipt about the seller — and then uses that same trust profile to decide where to transact next. <strong style="color:var(--t1)">You rate what you eat. Lie, and you eat bad food again.</strong> The submitter and the consumer of trust data are the same entity. This creates natural incentive alignment that traditional review systems lack.
       </div>
     </div>
     <div class="steps">
@@ -1411,6 +1426,45 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
           <h4>REST API &amp; SDKs</h4>
           <p>Full REST API with TypeScript and Python SDKs (source-distributed in the repo, npm/PyPI publish pending pilot stage). Any system that can make an HTTP request can submit receipts and query trust profiles — no agent required.</p>
           <span class="eco-status live">Live — Apache 2.0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- OPEN VS COMMERCIAL -->
+<section id="open-vs-commercial">
+  <div class="container-md">
+    <div class="tc reveal">
+      <div class="st">// Business Model</div>
+      <div class="sh">Open protocol. Paid control plane.</div>
+      <div class="sd" style="margin:0 auto">The protocol is free and open forever. The hosted infrastructure is where commercial value lives.</div>
+    </div>
+    <div class="reveal" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:40px">
+      <div style="background:var(--bg-card);border:1px solid rgba(52,211,153,0.25);border-radius:16px;padding:32px">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--green);text-transform:uppercase;margin-bottom:14px">Free &amp; Open (Apache 2.0)</div>
+        <div style="font-weight:700;font-size:18px;color:var(--t1);margin-bottom:12px">The Protocol</div>
+        <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--t2);line-height:1.7">
+          <div>EP Core spec, Trust Decision schema, Trust Receipt schema</div>
+          <div>All scoring algorithms and policy evaluation logic</div>
+          <div>MCP server source (29 tools)</div>
+          <div>TypeScript and Python SDKs</div>
+          <div>Self-hosted deployment (your infra, your data)</div>
+          <div>Appeal and dispute protocol</div>
+          <div>Conformance test suite (670 tests)</div>
+        </div>
+      </div>
+      <div style="background:var(--bg-card);border:1px solid rgba(245,158,11,0.25);border-radius:16px;padding:32px">
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:14px">Paid Control Plane</div>
+        <div style="font-weight:700;font-size:18px;color:var(--t1);margin-bottom:12px">The Hosted Service</div>
+        <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--t2);line-height:1.7">
+          <div>Managed API at emiliaprotocol.ai (free during beta)</div>
+          <div>Enterprise SLAs and uptime guarantees</div>
+          <div>Operator dashboards and adjudication queue</div>
+          <div>Custom policy management and configuration</div>
+          <div>Platform integration adapters (Shopify, GitHub, npm)</div>
+          <div>Advanced analytics and trust reporting</div>
+          <div>Dedicated support and onboarding</div>
         </div>
       </div>
     </div>
