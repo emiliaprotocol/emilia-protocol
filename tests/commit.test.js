@@ -97,7 +97,7 @@ function buildMockDb(commitRecord = null, { insertError = null, updateError = nu
   return { from: fromFn };
 }
 
-/** Default mock evaluation result (score = 0.8 => allow) */
+/** Default mock evaluation result — no policyResult => review (safe default) */
 function mockEvaluation(overrides = {}) {
   return {
     score: 0.8,
@@ -118,8 +118,10 @@ describe('issueCommit', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     _resetForTesting();
-    // Default: evaluation succeeds with score 0.8 => allow
-    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation());
+    // Default: evaluation succeeds with policy pass => allow
+    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({
+      policyResult: { pass: true, failures: [], warnings: [] },
+    }));
     // Default: Supabase returns a mock client
     mockGetServiceClient.mockReturnValue(buildMockDb());
   });
@@ -134,19 +136,19 @@ describe('issueCommit', () => {
     expect(commit.commit_id.length).toBeGreaterThan(4);
   });
 
-  it('decision is derived from evaluation score (allow when >= 0.6)', async () => {
-    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({ score: 0.8 }));
+  it('decision is review when no policyResult exists (regardless of high score)', async () => {
+    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({ score: 0.8, policyResult: null }));
 
     const commit = await issueCommit({
       entity_id: 'entity-123',
       action_type: 'install',
     });
 
-    expect(commit.decision).toBe('allow');
+    expect(commit.decision).toBe('review');
   });
 
-  it('decision is review when score is between 0.3 and 0.6', async () => {
-    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({ score: 0.45 }));
+  it('decision is review when no policyResult exists (mid-range score)', async () => {
+    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({ score: 0.45, policyResult: null }));
 
     const commit = await issueCommit({
       entity_id: 'entity-123',
@@ -156,15 +158,43 @@ describe('issueCommit', () => {
     expect(commit.decision).toBe('review');
   });
 
-  it('decision is deny when score is below 0.3', async () => {
-    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({ score: 0.1 }));
+  it('decision is review when no policyResult exists (low score)', async () => {
+    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({ score: 0.1, policyResult: null }));
 
     const commit = await issueCommit({
       entity_id: 'entity-123',
       action_type: 'transact',
     });
 
-    expect(commit.decision).toBe('deny');
+    expect(commit.decision).toBe('review');
+  });
+
+  it('REGRESSION: score 50 (0-100 scale) without policyResult does NOT become allow', async () => {
+    // computeTrustProfile returns score: 50 on 0-100 scale for no-receipt entities.
+    // Previously, 50 >= 0.6 was true, so this would incorrectly allow.
+    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({ score: 50, policyResult: null }));
+
+    const commit = await issueCommit({
+      entity_id: 'entity-no-receipts',
+      action_type: 'install',
+    });
+
+    expect(commit.decision).toBe('review');
+    expect(commit.decision).not.toBe('allow');
+  });
+
+  it('INVARIANT: commit without policy always returns review', async () => {
+    // No matter what score is returned, absence of policyResult must yield review
+    for (const score of [0, 0.1, 0.3, 0.5, 0.6, 0.8, 1.0, 50, 100]) {
+      mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({ score, policyResult: null }));
+
+      const commit = await issueCommit({
+        entity_id: 'entity-invariant',
+        action_type: 'install',
+      });
+
+      expect(commit.decision).toBe('review');
+    }
   });
 
   it('commit contains all required fields from the runtime schema', async () => {
@@ -417,7 +447,9 @@ describe('verifyCommit', () => {
 
   it('valid active commit returns { valid: true }', async () => {
     // Issue a real commit first so signature is valid
-    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation());
+    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({
+      policyResult: { pass: true, failures: [], warnings: [] },
+    }));
     // For issueCommit — no DB
     mockGetServiceClient.mockReturnValue(null);
     const commit = await issueCommit({

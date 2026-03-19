@@ -101,6 +101,9 @@ export async function GET(request, { params }) {
         .in('entity_id', agentEntityIds);
 
       if (agentEntities && agentEntities.length > 0) {
+        // LEGACY: uses emilia_score (compat_score) as a proxy for agent confidence.
+        // This is a display/summary heuristic, NOT a trust-critical decision gate.
+        // Trust-critical delegation decisions should use policy evaluation. See §20.
         const scoreSum = agentEntities.reduce((sum, e) => sum + (e.emilia_score ?? 50), 0);
         // Normalize emilia_score (0-100) to 0.0-1.0
         avgAgentConfidence = Math.round((scoreSum / agentEntities.length / 100) * 1000) / 1000;

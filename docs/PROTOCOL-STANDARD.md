@@ -37,15 +37,20 @@ This standard is organized into **EP Core** sections and **EP Extension** sectio
 - Section 11: Versioning
 - Section 12: Governance
 - Section 17: Conformance Requirements
+- Section 20: Score Discipline
 
 **EP Extensions** (optional, adopt as needed):
 - Section 7: Delegation Chain
 - Section 8: Dispute Lifecycle
-- Section 13: Privacy and Zero-Knowledge Proofs
+- Section 13: Privacy and Commitment Proofs
 - Section 14: Dispute Adjudication Standard
 - Section 15: Attribution Chain Standard
 - Section 16: Auto-Receipt Generation
 - Section 18: EP Commit — Signed Pre-Action Authorization
+- Section 22: Dual-Control for Trust-Sensitive Operator Actions
+
+**EP Meta** (protocol self-description):
+- Section 21: Machine-Readable Protocol Constitution (`/.well-known/ep-protocol.json`)
 
 **EP Product Surfaces** (not part of this standard): Explorer, leaderboards, operator dashboards, registry views, managed adjudication workflows, and hosted APIs are implementation choices, not protocol requirements.
 
@@ -740,27 +745,27 @@ EP is designed to be self-governing through the same behavioral accountability m
 
 ---
 
-## 13. Privacy and Zero-Knowledge Proofs
+## 13. Privacy and Commitment Proofs
 
 ### 13.1 The Privacy-Trust Tradeoff
 
 Trust systems create a structural tension. The more evidence a system accumulates about an entity's behavior, the better it can assess that entity's trustworthiness. But the more evidence it accumulates and exposes, the greater the privacy cost to every entity in the ledger. A trust protocol that requires parties to expose transaction history as the price of admission to machine-mediated commerce will fail — either because privacy-conscious participants refuse to join, or because the data it accumulates becomes a target and a liability.
 
-EP resolves this tension through a ZK-lite proof system that allows an entity to demonstrate that its Trust Profile satisfies a consuming agent's policy without disclosing the underlying receipt history, counterparty identities, or transaction values.
+EP resolves this tension through a commitment-based proof system that allows an entity to demonstrate that its Trust Profile satisfies a consuming agent's policy without disclosing the underlying receipt history, counterparty identities, or transaction values.
 
 The proof is not a substitute for the underlying record. The underlying record is maintained in the EP ledger, subject to the normal append-only guarantees and dispute rights. The proof is a privacy-preserving representation of a policy-evaluation result — a commitment that allows a verifier to confirm "this entity passed the `strict` policy as of this date" without learning what receipts produced that result.
 
 ### 13.2 ZK-Lite Proof System (Commitment-Based)
 
-EP's ZK-lite system does not require a full zero-knowledge proof circuit in the cryptographic sense. It is a commitment-based approach: the EP registry evaluates the policy on behalf of the entity, computes a structured result, and signs that result. The signature serves as a proof of origin. The entity presents the signed structure to verifiers without the verifier needing access to the underlying ledger.
+EP's commitment proof system does not require a full zero-knowledge proof circuit in the cryptographic sense. It is a commitment-based approach: the EP registry evaluates the policy on behalf of the entity, computes a structured result, and signs that result. The signature serves as a proof of origin. The entity presents the signed structure to verifiers without the verifier needing access to the underlying ledger.
 
-This is explicitly not a full ZK-SNARK or ZK-STARK proof system. The "ZK" in ZK-lite refers to the knowledge revealed to the verifier: zero knowledge of the underlying receipt contents beyond what is explicitly declared in the proof structure itself.
+This is explicitly not a full ZK-SNARK or ZK-STARK proof system. The implementation uses HMAC-SHA256 commitments and Merkle trees to ensure the verifier learns nothing about the underlying receipt contents beyond what is explicitly declared in the proof structure itself.
 
-Implementations MAY choose to implement a full zero-knowledge proof circuit in the future. This section specifies the minimum viable ZK-lite interface that v1.0 implementations MUST support if they expose a proof endpoint.
+Implementations MAY choose to implement a full zero-knowledge proof circuit in the future. This section specifies the minimum viable commitment proof interface that v1.0 implementations MUST support if they expose a proof endpoint.
 
 ### 13.3 Proof Structure Specification
 
-A valid EP ZK-lite proof MUST contain the following fields:
+A valid EP commitment proof MUST contain the following fields:
 
 ```json
 {
@@ -1130,6 +1135,7 @@ Every EP Commit record MUST contain the following fields:
 | `context` | object or null | Contextual data supplied for trust evaluation |
 | `policy_snapshot` | object or null | Snapshot of the policy result at evaluation time |
 | `nonce` | string | 32-byte cryptographic nonce (64 hex characters) for replay protection |
+| `kid` | string | Key identifier for the signing key that produced `signature` (e.g., `ep-signing-key-1`). Used for key discovery and rotation. |
 | `signature` | string | Ed25519 signature over the canonical JSON serialization of the signed field set (see Section 18.6) |
 | `public_key` | string | Base64-encoded 32-byte Ed25519 public key used to produce `signature` |
 | `expires_at` | ISO 8601 | Timestamp of expiry |
@@ -1192,6 +1198,7 @@ EP Commit integrates with the Model Context Protocol (MCP) as a pre-action autho
 |---|
 | `commit_id` |
 | `entity_id` |
+| `kid` |
 | `principal_id` |
 | `counterparty_entity_id` |
 | `delegation_id` |
@@ -1206,6 +1213,8 @@ EP Commit integrates with the Model Context Protocol (MCP) as a pre-action autho
 
 Fields NOT covered by the signature: `policy_snapshot`, `evaluation_result`, `public_key`, `signature`, `status`. These are metadata fields that may change post-issuance (e.g., `status`) or are intrinsically non-signable (e.g., `signature` itself).
 
+Note: `kid` IS included in the signed field set. This binds the signature to a specific key identity, preventing an attacker from re-signing a commit with a different key and claiming it was issued by the original authority.
+
 **Canonical JSON.** The serialization used for signing MUST be deterministic. Keys MUST be sorted lexicographically. Undefined values MUST be omitted. No optional whitespace is permitted. This ensures that independently constructed signatures over the same logical commit are identical.
 
 **Nonce replay protection.** Each commit MUST contain a cryptographically random 32-byte nonce (encoded as 64 hexadecimal characters). Nonce uniqueness is enforced at issuance time via an in-memory set and a database UNIQUE constraint. The runtime does NOT re-check nonce uniqueness during verification — since the runtime generates all nonces internally, replay is structurally prevented at issuance.
@@ -1218,9 +1227,55 @@ EP Commit follows the protocol's minimum disclosure principle:
 
 - Verification responses MUST NOT expose full commit payloads.
 - Reasons for decisions SHOULD be expressed as reference identifiers (e.g., `reason_ref: "policy_001"`), not as free-text explanations that could leak evaluation internals.
-- Implementations MAY support zero-knowledge-backed claims in the commit scope (e.g., proving an entity's score exceeds a threshold without revealing the exact score), consistent with the ZK-lite framework defined in Section 13.
+- Implementations MAY support commitment-proof-backed claims in the commit scope (e.g., proving an entity's score exceeds a threshold without revealing the exact score), consistent with the commitment proof framework defined in Section 13.
 
-### 18.8 Receipt Binding
+### 18.8 Key Discovery and Rotation
+
+**Trust root gap.** Embedding the `public_key` on each commit record proves self-consistency (the signature matches the embedded key), but it does NOT prove that the commit was signed by a trusted authority. An attacker who generates their own Ed25519 keypair can produce commits that pass self-consistency checks. To close this gap, implementations MUST publish their signing keys via a discoverable endpoint.
+
+**Discovery mechanism.** Implementations MUST expose a public, unauthenticated endpoint at `/api/commit/keys` that returns the current signing key set in a JWKS-style format:
+
+```json
+{
+  "keys": [
+    {
+      "kid": "ep-signing-key-1",
+      "algorithm": "Ed25519",
+      "public_key_base64": "<base64-encoded 32-byte public key>",
+      "status": "active",
+      "created_at": "2025-01-01T00:00:00Z"
+    }
+  ],
+  "rotation_policy": {
+    "rotation_interval_days": 90,
+    "overlap_period_days": 14,
+    "revocation_mechanism": "Key removed from active set; old signatures remain verifiable via archived keys"
+  }
+}
+```
+
+The `.well-known/ep-trust.json` file MUST include a `signing_keys` object with a `discovery_endpoint` field pointing to this endpoint.
+
+**Key identification.** Each commit MUST include a `kid` (key identifier) field that identifies which signing key produced the signature. The `kid` is included in the signed field set (Section 18.6) to bind the signature to a specific key identity.
+
+**Verification against discovered keys.** Relying parties SHOULD verify commit signatures against the key set obtained from the discovery endpoint rather than the `public_key` embedded in the commit record. The verification flow is:
+
+1. Extract the `kid` from the commit.
+2. Fetch the key set from `/api/commit/keys` (with appropriate caching).
+3. Look up the key matching the `kid`.
+4. Verify the signature against the discovered public key.
+5. If the `kid` is not found in the active key set, the commit SHOULD be treated as unverifiable.
+
+**Key rotation.** Implementations SHOULD rotate signing keys periodically (recommended: every 90 days). During rotation:
+
+- The new key is added to the active set before the old key is removed.
+- An overlap period (recommended: 14 days) allows in-flight commits signed with the old key to remain verifiable.
+- After the overlap period, the old key is removed from the active set. Commits signed with the old key remain verifiable via archived key sets but new commits MUST use the current key.
+- Revoked keys MUST NOT be used to sign new commits.
+
+**Caching.** Consumers SHOULD cache the key set response and re-fetch periodically (e.g., every hour) or on signature verification failure against a previously cached key.
+
+### 18.9 Receipt Binding
 
 A commit MAY be bound to a Trust Receipt via `bindReceiptToCommit`. This creates an auditable link between the pre-action authorization and the post-action outcome record.
 
@@ -1228,6 +1283,139 @@ A commit MAY be bound to a Trust Receipt via `bindReceiptToCommit`. This creates
 - A commit MUST be in `active` or `fulfilled` status to accept a receipt binding.
 - A commit in `revoked` or `expired` status MUST NOT accept receipt bindings.
 - Binding is a metadata operation; it does not alter the commit's state machine transitions.
+
+---
+
+## 19. Reserved
+
+*(Reserved for future use.)*
+
+---
+
+## 20. Score Discipline
+
+### 20.1 compat_score Is a Legacy Sort Key
+
+The `compat_score` (also stored as `emilia_score` in the database) is a legacy compatibility field on a 0-100 scale. It exists solely for:
+
+- **Sort ordering** — ranking entities in search results, leaderboards, and feed listings.
+- **Backward compatibility** — supporting clients that predate the trust profile architecture.
+
+`compat_score` is NOT a trust decision. It is a single-dimensional reduction of a multi-dimensional trust profile and MUST NOT be treated as authoritative for trust-critical logic.
+
+### 20.2 New Trust-Critical Features MUST NOT Depend on Raw Score
+
+Any new feature, endpoint, or decision path that makes a trust-critical determination (allow/deny access, grant permissions, authorize actions, gate capabilities) MUST NOT use `compat_score`, `emilia_score`, or any raw numeric score as the decision input.
+
+**Prohibited patterns:**
+```
+// BAD: raw score threshold as trust gate
+if (entity.emilia_score >= 70) { allow(); }
+
+// BAD: score comparison for trust decision
+if (score > MIN_TRUST_SCORE) { grant_access(); }
+```
+
+### 20.3 Approved Decision Inputs
+
+Trust-critical decision paths MUST use one or more of the following:
+
+1. **Policy evaluation** — `evaluateTrustPolicy(profile, policy)` returning `{ pass, failures, warnings }`. This is the canonical decision mechanism.
+2. **Confidence state** — `pending | insufficient | provisional | emerging | confident`. Derived from quality-gated evidence, not raw score.
+3. **Trust profile dimensions** — behavioral signals (completion rate, dispute rate), signal scores (delivery, product, price), consistency, provenance composition.
+4. **Trust decisions** — the canonical output is `allow | review | deny`, derived from policy evaluation against the full trust profile.
+
+### 20.4 Canonical Trust Decision
+
+The canonical trust decision is a three-valued enum:
+
+| Decision | Meaning |
+|---|---|
+| `allow` | Policy evaluation passed. Action may proceed. |
+| `review` | Evaluation is ambiguous or confidence is insufficient. Human or elevated review required. |
+| `deny` | Policy evaluation failed. Action is blocked with explainable reasons. |
+
+This decision is derived from policy evaluation against the trust profile — never from a score threshold alone.
+
+### 20.5 Legacy Score in Existing Code
+
+Existing code that uses `emilia_score` for sort ordering, display, or backward-compatible API responses is permitted but MUST be annotated with a `// LEGACY` comment referencing this section. New code MUST NOT introduce additional dependencies on raw score for trust-critical paths.
+
+---
+
+## 21. Machine-Readable Protocol Constitution
+
+### 21.1 Discovery
+
+A conformant EP implementation MUST serve a machine-readable protocol constitution at:
+
+```
+/.well-known/ep-protocol.json
+```
+
+This file contains the canonical enum values, state machines, event types, signing parameters, conformance levels, and API surface that define the protocol. Any conforming implementation can validate its own configuration against this document.
+
+### 21.2 Purpose
+
+The protocol constitution serves three purposes:
+
+1. **Validation** — implementations can programmatically verify that they use the correct enum values, respect state machine transitions, and expose the required API surface for their declared conformance level.
+2. **Interoperability** — independent implementations can discover each other's capabilities and verify protocol compatibility without human coordination.
+3. **Auditability** — the constitution is a versioned, append-only artifact. Changes to canonical enums or state machines are visible in version control and can be diffed.
+
+### 21.3 Normative Content
+
+The following fields in `ep-protocol.json` are normative (MUST be respected by conforming implementations):
+
+- `canonical_enums` — the complete set of valid values for each enumerated type
+- `dispute_state_machine` — the only valid state transitions for disputes
+- `commit_state_machine` — the only valid state transitions for EP Commits
+- `conformance_levels` — what each conformance level requires
+- `core_objects` — the three objects that define EP Core
+- `signing.algorithm` — the required signing algorithm (Ed25519)
+
+### 21.4 Informative Content
+
+The following fields are informative (describe this implementation but are not required for conformance):
+
+- `api_surface` — the specific API routes of this implementation
+- `scoring` — the scoring weights and parameters of this implementation
+- `event_types` — the internal event taxonomy
+
+### 21.5 Relationship to ep-trust.json
+
+The existing `/.well-known/ep-trust.json` is a discovery document for clients that need to locate trust endpoints. The protocol constitution at `/.well-known/ep-protocol.json` is a specification document for implementations that need to validate conformance. Both SHOULD be served by a conformant implementation.
+
+---
+
+## 22. Dual-Control for Trust-Sensitive Operator Actions
+
+### 22.1 Motivation
+
+Certain operator actions carry outsized risk — suspending an entity, overriding a dispute resolution, or redacting evidence can irreversibly damage trust relationships. A single compromised or malicious operator should not be able to execute these actions unilaterally.
+
+### 22.2 Dual-Control Requirement
+
+The following actions MUST require confirmation from **two distinct operators** before execution:
+
+| Action | Description |
+|---|---|
+| `entity.suspend` | Suspend an entity from the trust graph |
+| `entity.unsuspend` | Restore a suspended entity |
+| `dispute.override` | Override a dispute resolution outside normal appeal flow |
+| `evidence.redact` | Redact evidence from the record |
+| `redaction.manage` | Manage redaction policies |
+
+### 22.3 Rules
+
+1. Both operators MUST hold a role that grants permission for the action being authorized.
+2. The two operators MUST be different individuals — the same operator cannot serve as both the first and second confirmer.
+3. Both operator IDs MUST be recorded in the audit trail so that the dual-authorization chain is fully traceable.
+4. For actions **not** in the dual-control set, a single authorized operator is sufficient.
+
+### 22.4 Implementation
+
+Implementations MUST expose a `requireDualControl(action, firstOperatorId, secondOperatorId, firstOperatorRole, secondOperatorRole)` check (or equivalent) that enforces rules 1–3 above before the action is executed.
 
 ---
 

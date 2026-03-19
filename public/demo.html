@@ -256,7 +256,7 @@
       <div class="step-title">File a Trust Report</div>
     </div>
     <div class="step-desc">
-      A real trust layer can't only compute trust — it has to handle <strong>contested trust</strong>. Every negative trust effect must be explainable, challengeable, and reversible. No login required.
+      A real trust protocol can't only compute trust — it has to handle <strong>contested trust</strong>. Every negative trust effect must be explainable, challengeable, and reversible. No login required.
     </div>
     <div class="term">
       <div class="term-bar">
@@ -267,7 +267,7 @@
         <div class="code-block"><span class="comment">// Report a trust issue — no auth required</span>
 {
   <span class="key">"entity_id"</span>: <span class="str">"mcp-server-ep-v1"</span>,
-  <span class="key">"reason"</span>: <span class="str">"demo_challenge"</span>,
+  <span class="key">"reason"</span>: <span class="str">"other"</span>,
   <span class="key">"details"</span>: <span class="str">"Interactive demo — testing dispute lifecycle"</span>
 }</div>
         <div class="run-row">
@@ -429,7 +429,7 @@ async function runStep4(btn) {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
         entity_id: 'mcp-server-ep-v1',
-        reason: 'demo_challenge',
+        reason: 'other',
         details: 'Interactive demo — testing dispute lifecycle'
       })
     });

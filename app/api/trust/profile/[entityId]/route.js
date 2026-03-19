@@ -48,7 +48,8 @@ export async function GET(request, { params }) {
       disputesDampened: result.dispute_dampened_count,
 
       compat_score: result.score,
-      _compat_note: 'Use trust_profile for trust decisions. compat_score is for sorting/backward compatibility only.',
+      _compat_score_legacy: true,
+      _compat_note: 'DEPRECATED: compat_score is a legacy sort key on 0-100 scale. New trust-critical features MUST use trust_profile, policy evaluation, or confidence state — never raw score. See PROTOCOL-STANDARD.md §20.',
 
       member_since: result._entity.created_at,
       _protocol_version: 'EP/1.1-v2',

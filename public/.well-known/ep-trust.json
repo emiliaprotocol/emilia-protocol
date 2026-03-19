@@ -8,7 +8,8 @@
   "dispute_file_url": "https://emiliaprotocol.ai/api/disputes/file",
   "dispute_report_url": "https://emiliaprotocol.ai/api/disputes/report",
   "appeal_page_url": "https://emiliaprotocol.ai/appeal",
-  "score_url": "https://emiliaprotocol.ai/api/score/{entity_id}",
+  "trust_profile_url_legacy": "https://emiliaprotocol.ai/api/score/{entity_id}",
+  "_trust_profile_url_legacy_note": "DEPRECATED: Returns legacy compat_score on 0-100 scale. Use trust_profile_url for trust decisions. See PROTOCOL-STANDARD.md §20.",
   "spec_url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/EP-CORE-RFC.md",
   "conformance_url": "https://github.com/emiliaprotocol/emilia-protocol/tree/main/conformance",
   "mcp_package": "@emilia-protocol/mcp-server",
@@ -73,5 +74,21 @@
     "npm_buildtime_safe_v1",
     "browser_extension_safe_v1",
     "mcp_server_safe_v1"
-  ]
+  ],
+  "signing_keys": {
+    "current": {
+      "kid": "ep-signing-key-1",
+      "algorithm": "Ed25519",
+      "public_key_base64": "RUNTIME_GENERATED",
+      "status": "active",
+      "created_at": "2025-01-01T00:00:00Z",
+      "note": "In production, this key is derived from EP_COMMIT_SIGNING_KEY env var. The public key shown here is a placeholder — use the /api/commit/keys endpoint for the live key set."
+    },
+    "rotation_policy": {
+      "rotation_interval_days": 90,
+      "overlap_period_days": 14,
+      "revocation_mechanism": "Key removed from active set; old signatures remain verifiable via archived keys"
+    },
+    "discovery_endpoint": "/api/commit/keys"
+  }
 }

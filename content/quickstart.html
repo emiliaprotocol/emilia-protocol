@@ -133,6 +133,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
       <li><a href="#step4">4 — Submit Receipt</a></li>
       <li><a href="#step5">5 — Query Trust</a></li>
       <li><a href="#step6">6 — Evaluate Policy</a></li>
+      <li><a href="#step7">7 — Issue EP Commit</a></li>
     </ul>
     <h5>Use Cases</h5>
     <ul>
@@ -438,6 +439,43 @@ profile.<span class="prop">anomaly</span>               <span class="cm">// pres
       <div class="policy-card"><div class="policy-name">discovery</div><div class="policy-desc">First-time interactions. Allows unevaluated entities. Use for new counterparties.</div></div>
     </div>
 
+    <!-- STEP 7 -->
+    <h2 id="step7">Step 7 — Issue &amp; Verify an EP Commit</h2>
+    <div class="step-header">
+      <div class="step-num">7</div>
+      <div><div class="step-title">Get a trust-backed commitment before transacting</div><div class="step-time">~1 API call</div></div>
+    </div>
+    <p>An EP Commit is a trust-backed promise: one party commits to an action, and the counterparty gets a verifiable decision before proceeding. Issue a commit to lock in a trust decision and hold both sides accountable.</p>
+
+    <div class="code-block">
+      <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">Shell — Issue an EP Commit</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+      <div class="code-body"><pre><span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-flag">-X POST</span> https://emiliaprotocol.ai/api/commit/issue \
+  <span class="bash-flag">-H</span> <span class="bash-str">"Authorization: Bearer $EP_API_KEY"</span> \
+  <span class="bash-flag">-H</span> <span class="bash-str">"Content-Type: application/json"</span> \
+  <span class="bash-flag">-d</span> <span class="bash-str">'{
+    "entity_id": "ep_ent_merchant_123",
+    "action_type": "transact",
+    "counterparty_entity_id": "ep_ent_buyer_456",
+    "policy": "transaction_standard_v1",
+    "scope": { "amount_usd": 2400, "currency": "USD" }
+  }'</span>
+
+<span class="cm"># Response</span>
+{
+  <span class="prop">"decision"</span>: <span class="str">"allow"</span>,
+  <span class="prop">"commit"</span>: {
+    <span class="prop">"commit_id"</span>: <span class="str">"epc_..."</span>,
+    <span class="prop">"status"</span>: <span class="str">"active"</span>,
+    <span class="prop">"expires_at"</span>: <span class="str">"..."</span>,
+    <span class="prop">"appeal_path"</span>: <span class="str">"/api/disputes/report"</span>
+  }
+}</pre></div>
+    </div>
+
+    <div class="callout info">
+      <strong>EP Commit lifecycle:</strong> After issuing a commit, use <code>ep_verify_commit</code> to validate it, <code>ep_get_commit_status</code> to check its state, <code>ep_revoke_commit</code> to cancel, or <code>ep_bind_receipt_to_commit</code> to link a receipt to the commitment after the transaction completes.
+    </div>
+
     <!-- AGENTS USE CASE -->
     <h2 id="agents">AI Agents — Integration Pattern</h2>
     <p>The canonical pattern for agents: check trust profile before routing, submit receipt after every transaction, use install preflight before installing any software.</p>
@@ -539,6 +577,13 @@ profile.<span class="prop">anomaly</span>               <span class="cm">// pres
     <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/entities/register</div><div class="api-desc">Register a new entity. Returns entity_id and API key (shown once).</div></div><span class="api-auth" style="background:rgba(52,211,153,0.1);color:#34d399;border-color:rgba(52,211,153,0.2)">Public</span></div>
     <div class="api-row"><span class="api-method get">GET</span><div><div class="api-path">/api/entities/search?q=&type=</div><div class="api-desc">Search entities by name, capability, or category</div></div></div>
     <div class="api-row"><span class="api-method get">GET</span><div><div class="api-path">/api/leaderboard</div><div class="api-desc">Top entities ranked by trust confidence</div></div></div>
+
+    <h3>EP Commits</h3>
+    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/commit/issue</div><div class="api-desc">Issue a trust-backed commit. Returns a decision (allow/review/deny) and a commit object with expiry and appeal path.</div></div><span class="api-auth">Auth</span></div>
+    <div class="api-row"><span class="api-method get">GET</span><div><div class="api-path">/api/commit/:commitId</div><div class="api-desc">Get commit status: active, fulfilled, revoked, or expired.</div></div></div>
+    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/commit/verify</div><div class="api-desc">Verify a commit is valid and active.</div></div></div>
+    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/commit/revoke</div><div class="api-desc">Revoke an active commit before expiry.</div></div><span class="api-auth">Auth</span></div>
+    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/commit/bind-receipt</div><div class="api-desc">Bind a receipt to a commit, linking the outcome to the original commitment.</div></div><span class="api-auth">Auth</span></div>
 
     <h3>Disputes &amp; Appeals</h3>
     <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/disputes/file</div><div class="api-desc">File a dispute against a receipt. Receipt submitter has 7 days to respond.</div></div><span class="api-auth">Auth</span></div>

@@ -35,7 +35,7 @@ These three objects are what EP proposes as its contribution to agent identity a
 - Disputes and appeals lifecycle
 - Delegation and attribution chain
 - Domain-specific scoring
-- Zero-knowledge trust proofs
+- Privacy-preserving commitment proofs
 - Auto-receipt generation
 - Software install preflight adapters
 - Voucher-based adjudication
@@ -65,7 +65,7 @@ EP requires that any adverse trust effect include a dispute path. Disputes follo
 When a dispute is resolved in favor of the subject, affected Trust Decisions can be re-evaluated with corrected evidence. The original record is preserved — history is not erased, but downstream effects of errors can be corrected.
 
 ### 5. Privacy-preserving verification — entities can prove threshold satisfaction without broad disclosure of underlying history
-EP's zero-knowledge trust proof extension enables entities to demonstrate trust thresholds (e.g., "confidence above a given level in a specific domain, based on sufficient evidence") without revealing counterparty identities, interaction history, or transaction contents. This supports participation in privacy-sensitive environments where trust verification is needed but counterparty disclosure is not permitted.
+EP's privacy-preserving commitment proof extension enables entities to demonstrate trust thresholds (e.g., "confidence above a given level in a specific domain, based on sufficient evidence") without revealing counterparty identities, interaction history, or transaction contents. This supports participation in privacy-sensitive environments where trust verification is needed but counterparty disclosure is not permitted.
 
 ---
 
@@ -125,9 +125,9 @@ Action items:
 Action items:
 - [ ] Register for healthcare and finance listening sessions
 - [ ] Lead talking points with: "Agent systems handling sensitive workflows need trust evaluation that does not require disclosing interaction history"
-- [ ] Healthcare talking point: EP's zero-knowledge trust proof extension enables entities to demonstrate trust thresholds (e.g., "confidence > 0.85 in healthcare domain, based on 50+ receipts") without revealing counterparty identities or transaction contents. This can support participation in HIPAA-sensitive workflows by enabling trust verification without counterparty disclosure.
-- [ ] Finance talking point: The same ZK proof mechanism enables trust verification in financially regulated environments without exposing transaction-level detail. This can support privacy-sensitive agent participation when implemented with appropriate controls.
-- [ ] Frame ZK proofs as "enabling participation in privacy-sensitive environments" — not as solving compliance
+- [ ] Healthcare talking point: EP's privacy-preserving commitment proof extension enables entities to demonstrate trust thresholds (e.g., "confidence > 0.85 in healthcare domain, based on 50+ receipts") without revealing counterparty identities or transaction contents. This can support participation in HIPAA-sensitive workflows by enabling trust verification without counterparty disclosure.
+- [ ] Finance talking point: The same commitment proof mechanism enables trust verification in financially regulated environments without exposing transaction-level detail. This can support privacy-sensitive agent participation when implemented with appropriate controls.
+- [ ] Frame commitment proofs as "enabling participation in privacy-sensitive environments" — not as solving compliance
 
 ### Ongoing
 **NIST convenings and working groups** — CAISI will host additional workshops and technical convenings.
@@ -179,7 +179,7 @@ EP layers on top of existing identity and authorization infrastructure. It does 
 EP can support privacy-sensitive environments when implemented with appropriate controls:
 
 - Trust Receipts record behavioral metadata (delivery timing, accuracy, dispute outcomes) — not transaction contents or personally identifiable information
-- The zero-knowledge trust proof extension enables entities to demonstrate trust thresholds without revealing counterparty identities or interaction history
+- The privacy-preserving commitment proof extension enables entities to demonstrate trust thresholds without revealing counterparty identities or interaction history
 - This can enable agent participation in workflows where trust verification is needed but counterparty disclosure is not permitted
 
 **5. Adverse Decision Review**

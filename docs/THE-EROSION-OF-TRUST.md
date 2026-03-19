@@ -22,7 +22,7 @@ When the same entity hosts trust, ranks trust, profits from transactions, and ar
 
 ---
 
-## Machines inherit the broken trust layer
+## Machines inherit the broken trust protocol
 
 Now the next wave of decisions will not be made slowly by humans; they will be made automatically by software and AI agents. Agents will decide what to buy, what to install, which MCP server to connect to, which plugin to authorize, which seller to trust, and which machine actor to route work to.
 
@@ -34,7 +34,7 @@ Machine-mediated systems need a portable way to decide whether another principal
 
 ## What a trust protocol must do
 
-A durable trust layer cannot be a popularity contest, a black-box score, or a host-specific heuristic. It must be:
+A durable trust protocol cannot be a popularity contest, a black-box score, or a host-specific heuristic. It must be:
 
 - **Evidence-based** — computed from verifiable receipts and evidence, not opinions
 - **Contextual** — trusted for electronics does not mean trusted for pharmaceuticals
@@ -81,9 +81,9 @@ If trust can influence installation, access, routing, or conversion, then every 
 
 ## Seven extensions toward civilizational trust
 
-EP as it exists today is a foundation. A complete civilizational trust layer requires seven extensions — each building on the last:
+EP as it exists today is a foundation. A complete civilizational trust protocol requires seven extensions — each building on the last:
 
-**1. Trust degradation.** What happens when the trust layer is down? Agents need specifications for graceful degradation: cached trust snapshots, staleness rules, risk-appropriate fallbacks. No infrastructure can be a single point of failure.
+**1. Trust degradation.** What happens when the trust protocol is down? Agents need specifications for graceful degradation: cached trust snapshots, staleness rules, risk-appropriate fallbacks. No infrastructure can be a single point of failure.
 
 **2. Chain evaluation.** Real trust decisions are compositional. "Should I let this agent use this MCP server to access my data?" requires evaluating every link in the chain, not just each node independently.
 

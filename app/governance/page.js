@@ -31,7 +31,7 @@ export default function GovernancePage() {
         <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#00d4ff', marginBottom: 16 }}>Governance</div>
         <h1 style={s.h1}>Governance at EMILIA</h1>
         <p style={{ ...s.body, maxWidth: 560 }}>
-          EMILIA is being developed as open trust infrastructure. The protocol layer should become stronger through inspectability, conformance, ecosystem participation, and broader governance over time.
+          EMILIA is being developed as an open protocol for trust decisions and appeals. The protocol layer should become stronger through inspectability, conformance, ecosystem participation, and broader governance over time.
         </p>
       </section>
 
@@ -41,6 +41,9 @@ export default function GovernancePage() {
           <h2 style={s.h2}>Open protocol, clear execution</h2>
           <p style={s.body}>
             We believe the protocol layer and the commercial layer should be clearly legible. The protocol can remain open and portable while companies build products, services, and implementation support on top.
+          </p>
+          <p style={s.body}>
+            The protocol should remain inspectable, interoperable, and challengeable even as commercial products are built on top of it.
           </p>
         </div>
       </section>
@@ -107,7 +110,7 @@ export default function GovernancePage() {
 
       {/* CTA */}
       <section style={{ ...s.section, textAlign: 'center', paddingBottom: 100 }}>
-        <h2 style={{ ...s.h2, fontSize: 28 }}>Want to help shape the trust layer?</h2>
+        <h2 style={{ ...s.h2, fontSize: 28 }}>Want to help shape the trust protocol?</h2>
         <a href="mailto:team@emiliaprotocol.ai" style={s.cta}>Contact the Team</a>
       </section>
 

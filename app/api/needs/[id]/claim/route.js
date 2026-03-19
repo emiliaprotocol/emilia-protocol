@@ -67,9 +67,12 @@ export async function POST(request, { params }) {
         });
       }
     } else if (auth.entity.emilia_score < (need.min_emilia_score || 0)) {
-      // Legacy fallback: compatibility score threshold
+      // LEGACY: raw score threshold fallback. This path exists only for backward
+      // compatibility with needs that predate trust_policy adoption. New needs SHOULD
+      // always specify a trust_policy. See PROTOCOL-STANDARD.md §20.
       return epProblem(403, 'score_too_low', `Compatibility score (${auth.entity.emilia_score}) below minimum (${need.min_emilia_score}). Build trust through verified receipts.`, {
         _hint: 'For richer trust evaluation, use POST /api/trust/evaluate with a policy.',
+        _legacy: true,
       });
     }
 

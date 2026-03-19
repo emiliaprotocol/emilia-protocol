@@ -35,7 +35,7 @@ Each extension adds operational value without inflating the core:
 - Disputes and appeals lifecycle
 - Delegation and attribution chains
 - Domain-specific scoring
-- Zero-knowledge trust proofs
+- Privacy-preserving commitment proofs
 - Auto-receipt generation from tool calls
 - Software install preflight adapters
 - Identity continuity and anti-whitewashing
@@ -61,9 +61,9 @@ The most immediate use case. Before an agent connects to an MCP server, installs
 
 When a human delegates authority to an agent, and that agent acts on their behalf — routing work, approving actions, invoking tools — there must be a verifiable record of who authorized what. EP's attribution chain (Principal to Agent to Tool) produces that record, with a delegation judgment computed from outcomes. This is not optional for enterprises deploying agents at scale.
 
-### 3. ZK attestation for regulated counterparties
+### 3. Privacy-preserving attestation for regulated counterparties
 
-Healthcare providers, legal firms, and financial institutions cannot expose transaction histories or counterparty relationships to verify trustworthiness. EP's zero-knowledge proof system lets regulated entities prove they meet trust thresholds in a given domain without revealing the evidence behind them. The moment EP becomes the proof layer for sensitive industries, it becomes required infrastructure for those sectors.
+Healthcare providers, legal firms, and financial institutions cannot expose transaction histories or counterparty relationships to verify trustworthiness. EP's commitment proof system lets regulated entities prove they meet trust thresholds in a given domain without revealing the evidence behind them. The moment EP becomes the proof layer for sensitive industries, it becomes required infrastructure for those sectors.
 
 ## The compounding moat
 
@@ -71,7 +71,7 @@ The defensible asset is the ledger.
 
 Every receipt that flows through EP — whether submitted manually, generated automatically from tool calls, or anchored through a host adapter — makes the trust graph more accurate. The graph is not a snapshot. It is a continuously compounding behavioral record. Every entity that participates makes every other entity's trust profile more meaningful, because trust is evaluated relative to the graph's voucher network, not in isolation.
 
-Every ZK proof issued makes EP harder to replace in regulated environments. Every delegation record creates institutional dependency on EP's attribution chain. Every dispute resolved through the adjudication system deepens the operational commitment.
+Every commitment proof issued makes EP harder to replace in regulated environments. Every delegation record creates institutional dependency on EP's attribution chain. Every dispute resolved through the adjudication system deepens the operational commitment.
 
 The network effect is not social. It is structural. The trust graph gets harder to replicate the longer it runs.
 
@@ -127,7 +127,7 @@ Three things, operating together:
 
 Sober accounting of where EP stands:
 
-- 29 MCP tools implemented across trust evaluation, receipt management, disputes, delegation, ZK proofs, install preflight, and EP Commit
+- 29 MCP tools implemented across trust evaluation, receipt management, disputes, delegation, commitment proofs, install preflight, and EP Commit
 - 670 tests passing across the conformance suite
 - Reference implementation live and open-source
 - REST API and MCP server surfaces operational

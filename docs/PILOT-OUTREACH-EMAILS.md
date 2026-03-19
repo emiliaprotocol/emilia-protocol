@@ -68,7 +68,7 @@ emiliaprotocol.ai
 
 ## C) GitHub App Developer
 
-**Subject:** A trust layer for GitHub App install decisions
+**Subject:** A better trust surface for GitHub App install decisions
 
 Hi [Name],
 

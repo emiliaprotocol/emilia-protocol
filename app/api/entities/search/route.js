@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
-import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { epProblem } from '@/lib/errors';
 import { generateEmbedding } from '@/lib/providers/embeddings';
 
@@ -16,7 +15,7 @@ import { generateEmbedding } from '@/lib/providers/embeddings';
  *   type           - filter by entity_type (see canonical types in register route / OpenAPI)
  *   category       - filter by category
  *   capability     - filter by capability keyword
- *   min_score      - minimum compatibility score (default 0, legacy fallback)
+ *   min_score      - LEGACY: minimum compatibility score sort key (default 0). Use min_confidence instead.
  *   min_confidence - minimum confidence: pending, insufficient, provisional, emerging, confident
  *   rank_by        - "score" (legacy default), "confidence", or "evidence"
  *   limit          - max results (default 20, max 50)
@@ -28,6 +27,8 @@ export async function GET(request) {
     const type = searchParams.get('type');
     const category = searchParams.get('category');
     const capability = searchParams.get('capability');
+    // LEGACY: min_score filters by compat_score sort key, not trust decision.
+    // New consumers should use min_confidence or rank_by=confidence instead.
     const minScore = parseFloat(searchParams.get('min_score')) || 0;
     const minConfidence = searchParams.get('min_confidence') || null;
     const rankBy = searchParams.get('rank_by') || 'score';
@@ -36,19 +37,17 @@ export async function GET(request) {
     const supabase = getServiceClient();
     const confLevels = ['pending', 'insufficient', 'provisional', 'emerging', 'confident'];
 
-    async function enrichWithCanonicalTrust(results) {
-      let enriched = await Promise.all((results || []).map(async (e) => {
-        const trust = await canonicalEvaluate(e.id, {
-          includeDisputes: false,
-          includeEstablishment: true,
-        });
+    // Uses materialized trust data for performance. Live re-evaluation happens on profile/evaluate endpoints.
+    function enrichWithMaterializedTrust(results) {
+      let enriched = (results || []).map((e) => {
+        const snap = e.trust_snapshot || {};
         return {
           ...e,
-          confidence: trust.confidence || 'pending',
-          effective_evidence: trust.effectiveEvidence || 0,
-          established: trust.establishment?.established || false,
+          confidence: snap.confidence || 'pending',
+          effective_evidence: snap.effectiveEvidence || 0,
+          established: (snap.effectiveEvidence || 0) >= 5 && (snap.uniqueSubmitters || 0) >= 2,
         };
-      }));
+      });
 
       if (minConfidence) {
         const minIdx = confLevels.indexOf(minConfidence);
@@ -100,7 +99,7 @@ export async function GET(request) {
               verified: r.verified,
             }));
 
-            semanticResults = await enrichWithCanonicalTrust(semanticResults);
+            semanticResults = enrichWithMaterializedTrust(semanticResults);
 
             return NextResponse.json({
               entities: semanticResults,
@@ -122,7 +121,7 @@ export async function GET(request) {
       .select(`
         id, entity_id, display_name, entity_type, description,
         category, capabilities, emilia_score, total_receipts,
-        verified, created_at
+        verified, created_at, trust_snapshot
       `)
       .eq('status', 'active')
       .gte('emilia_score', minScore)
@@ -143,7 +142,7 @@ export async function GET(request) {
       return epProblem(500, 'search_failed', 'Search failed');
     }
 
-    const filtered = await enrichWithCanonicalTrust(results || []);
+    const filtered = enrichWithMaterializedTrust(results || []);
 
     return NextResponse.json({
       entities: filtered,

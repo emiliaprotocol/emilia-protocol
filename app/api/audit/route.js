@@ -1,18 +1,35 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest, getServiceClient } from '@/lib/supabase';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
-import { filterByVisibility } from '@/lib/procedural-justice';
+import { filterByVisibility, OPERATOR_ROLES } from '@/lib/procedural-justice';
 
 /**
  * GET /api/audit?target_id=...&target_type=...&limit=50
- * 
+ *
  * Query the append-only audit trail. Operator-level access only.
  * Every trust-changing action is recorded with before/after state.
+ *
+ * Dual-control actions (entity.suspend, entity.unsuspend, dispute.override,
+ * evidence.redact, redaction.manage) are logged with both operator IDs in
+ * the audit record's after_state — first_operator_id and second_operator_id —
+ * so that the two-person authorization chain is fully auditable.
  */
 export async function GET(request) {
   try {
     const auth = await authenticateRequest(request);
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();
+
+    // Enforce operator-level authorization: caller must have audit.view permission.
+    // Check permissions from the API key record first, then fall back to role header.
+    const permissions = auth.permissions || [];
+    const roleHeader = request.headers.get('x-ep-role');
+    const hasAuditPermission =
+      permissions.includes('audit.view') ||
+      (roleHeader && OPERATOR_ROLES[roleHeader]?.permissions?.includes('audit.view'));
+
+    if (!hasAuditPermission) {
+      return epProblem(403, 'insufficient_permissions', 'Audit access requires operator role with audit.view permission');
+    }
 
     const url = new URL(request.url);
     const targetId = url.searchParams.get('target_id');

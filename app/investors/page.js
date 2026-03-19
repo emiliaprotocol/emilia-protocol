@@ -65,7 +65,7 @@ export default function InvestorsPage() {
         <div style={s.eyebrow}>Investor Overview</div>
         <h1 style={s.h1}>Invest in the next layer of trust infrastructure</h1>
         <p style={{ ...s.body, maxWidth: 600 }}>
-          EMILIA is an open trust protocol for machine counterparties and software. We believe the future needs a portable trust layer that helps organizations know what to trust before connection, installation, or delegation.
+          EMILIA is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties. We believe serious software ecosystems will require a portable way to evaluate whether high-stakes machine actions should proceed under policy.
         </p>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <a href="#inquiry" style={{ ...s.cta, background: '#ffd700', color: '#05060a' }}>Request Investor Materials</a>
@@ -97,10 +97,10 @@ export default function InvestorsPage() {
       <section style={s.section}>
         <h2 style={s.h2}>Why now</h2>
         <p style={s.body}>
-          The shift toward AI agents, machine-to-machine workflows, plugin ecosystems, and delegated software actions creates a new trust problem. The internet has standards for connection, discovery, and identity. It does not yet have a broadly portable trust layer for machine counterparties and software.
+          The shift toward AI agents, machine-to-machine workflows, plugin ecosystems, and delegated software actions creates a new trust problem. The internet has standards for connection, discovery, and identity. It does not yet have a broadly portable trust protocol for machine counterparties and software.
         </p>
         <p style={s.body}>
-          The winning trust layer is more likely to emerge while these ecosystems are still forming than after habits are already locked in. This is the moment to define trust preflight, policy-aware evaluation, continuity, receipts, disputes, and appeals for modern software ecosystems.
+          The winning trust protocol is more likely to emerge while these ecosystems are still forming than after habits are already locked in. This is the moment to define trust preflight, policy-aware evaluation, continuity, receipts, disputes, and appeals for modern software ecosystems.
         </p>
       </section>
 
@@ -158,7 +158,7 @@ export default function InvestorsPage() {
           We believe trust infrastructure becomes stronger when the protocol layer is open and the commercial layer is clearly separated. The company can build the reference experience, hosted services, enterprise tooling, and implementation support. Over time, broader participation in governance, conformance expectations, and ecosystem input should strengthen legitimacy and adoption.
         </p>
         <p style={s.body}>
-          EMILIA is not being built as a closed scoring product masquerading as infrastructure. It is being built as a trust layer with real implementation discipline and a credible path toward broader legitimacy.
+          EMILIA is not being built as a closed scoring product masquerading as infrastructure. It is being built as an open trust protocol with real implementation discipline and a credible path toward broader legitimacy.
         </p>
       </section>
 
@@ -192,14 +192,14 @@ export default function InvestorsPage() {
         <div style={s.eyebrow}>New in v1.0</div>
         <h2 style={s.h2}>Four new primitives that expand the moat</h2>
         <p style={s.body}>
-          EMILIA v1.0 ships four capabilities that move the protocol from a trust layer into regulated-industry infrastructure, passive data accumulation, and adversarially resistant adjudication.
+          EMILIA v1.0 ships four capabilities that move the protocol from trust decisions into regulated-industry infrastructure, passive data accumulation, and adversarially resistant adjudication.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
           <div style={{ ...s.card, borderColor: 'rgba(0,212,255,0.2)' }}>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#00d4ff', marginBottom: 8, textTransform: 'uppercase' }}>Zero-Knowledge Proofs</div>
+            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#00d4ff', marginBottom: 8, textTransform: 'uppercase' }}>Commitment Proofs</div>
             <div style={s.cardTitle}>Unlocks regulated industries</div>
             <div style={s.cardBody}>
-              Counterparties can prove their trust score exceeds a policy threshold without revealing the underlying receipts. A financial institution can verify an agent meets compliance requirements; the agent never discloses its transaction history. ZK proofs are a hard moat — they require cryptographic depth most trust products cannot replicate.
+              Counterparties can prove their trust score exceeds a policy threshold without revealing the underlying receipts. A financial institution can verify an agent meets compliance requirements; the agent never discloses its transaction history. Commitment proofs are a hard moat — the HMAC-SHA256 commitment layer and Merkle tree construction require cryptographic depth most trust products cannot replicate.
             </div>
           </div>
           <div style={{ ...s.card, borderColor: 'rgba(255,215,0,0.2)' }}>
@@ -229,7 +229,7 @@ export default function InvestorsPage() {
       {/* CTA strip */}
       <section style={{ ...s.sectionAlt, textAlign: 'center' }}>
         <div style={{ ...s.section, maxWidth: 540 }}>
-          <h2 style={{ ...s.h2, fontSize: 28 }}>Interested in backing the trust layer before it becomes obvious?</h2>
+          <h2 style={{ ...s.h2, fontSize: 28 }}>Interested in backing the control plane for trust decisions before it becomes obvious?</h2>
           <p style={s.body}>
             We are selectively speaking with aligned investors, strategic partners, and operators who can help EMILIA become both credible infrastructure and a durable company.
           </p>

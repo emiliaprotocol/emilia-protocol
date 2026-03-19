@@ -91,11 +91,6 @@ export type ReportType =
   | 'harmed_by_trusted_entity'
   | 'fraudulent_entity'
   | 'inaccurate_profile'
-  | 'fake_receipts'
-  | 'unsafe_software'
-  | 'misleading_identity'
-  | 'terms_violation'
-  | 'demo_challenge'
   | 'other';
 
 /** Confidence tiers in order of increasing evidence strength. */
@@ -385,8 +380,8 @@ export interface DelegationRecord {
   principal_id: string;
   /** The EP entity ID of the authorized agent */
   agent_entity_id: string;
-  /** Action scopes authorized, e.g. ["purchase", "data_access"] */
-  scope: string[];
+  /** Action scope details (structured object, not array) */
+  scope: Record<string, unknown>;
   /** Maximum permitted transaction value in USD */
   max_value_usd?: number;
   /** ISO 8601 expiry timestamp */

@@ -491,6 +491,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
       <div style="font-family:var(--disp);font-weight:800;font-size:clamp(20px,2.5vw,28px);letter-spacing:-0.5px;line-height:1.3;color:var(--t1);margin-bottom:16px">A signed authorization token for high-stakes machine actions.</div>
       <p style="font-size:14px;color:var(--t2);line-height:1.8;margin-bottom:16px">Before an agent installs, connects, delegates, or transacts, a relying system can require an <strong style="color:var(--t1)">EP Commit</strong> proving the action was evaluated under policy, tied to identity and delegation, and issued with an appeal path.</p>
       <p style="font-size:14px;color:var(--gold);line-height:1.8;font-weight:600">No high-stakes machine action should proceed without a signed EP Commit.</p>
+      <p style="font-size:13px;color:var(--t3);line-height:1.8;margin-top:12px">EP Commit does not move money or settle value. It proves the action was evaluated before proceeding.</p>
     </div>
   </div>
 </section>
@@ -554,7 +555,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         <div style="display:flex;flex-direction:column;gap:6px;font-family:var(--mono);font-size:11px;color:var(--t3)">
           <div>Disputes &amp; appeals</div>
           <div>Delegation &amp; attribution</div>
-          <div>ZK proofs</div>
+          <div>Commitment proofs</div>
           <div>Auto-receipt generation</div>
           <div>Domain scoring</div>
           <div>Install preflight adapters</div>
@@ -586,7 +587,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
       <h2>MCP gives agents <span style="color:#a78bfa">tools.</span><br>EP gives agents <span style="color:var(--cyan)">trust.</span></h2>
       <p style="margin-bottom:14px;font-style:italic;color:var(--t1);border-left:2px solid var(--cyan);padding-left:12px">MCP tells agents how to use tools. EP tells them whether they should.</p>
       <p style="margin-bottom:14px">Every AI agent stack has a tool layer, a communication layer, and a payment layer. None of them answer the most important question: <strong style="color:var(--t1)">should I trust this counterparty?</strong></p>
-      <p>EP is the missing trust layer — portable, evidence-based, always challengeable. Like MCP became the standard for agent tools, EP is the standard for agent trust.</p>
+      <p>EP provides a portable, evidence-based, challengeable trust-decision protocol for machine-mediated systems. It is designed to complement tool, identity, and transaction standards — not replace them.</p>
     </div>
     <div class="mcp-rows">
       <div class="mcp-row"><span class="proto" style="color:#a78bfa">MCP</span><span class="arr">→</span><span class="desc">Agent tools &amp; API access</span></div>
@@ -629,7 +630,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
       <div style="background:var(--bg-card);border:1px solid rgba(167,139,250,0.25);border-radius:16px;padding:32px;position:relative;overflow:hidden">
         <div style="position:absolute;top:0;right:0;width:80px;height:80px;background:radial-gradient(circle at top right,rgba(167,139,250,0.12),transparent 70%);border-radius:0 16px 0 0"></div>
         <div style="font-size:28px;margin-bottom:16px">🔒</div>
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:10px">Wedge 3 · Zero-Knowledge Attestation</div>
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:10px">Wedge 3 · Privacy-Preserving Commitment Proofs</div>
         <h3 style="font-family:var(--disp);font-weight:700;font-size:18px;margin-bottom:10px;line-height:1.3">Prove trust to regulated counterparties without disclosure</h3>
         <p style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:16px">For finance, healthcare, and government — prove your agent or entity meets a trust threshold without revealing your counterparty list or transaction history. Compliance without data exposure.</p>
         <div style="font-family:var(--mono);font-size:11px;color:var(--purple);background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.2);border-radius:8px;padding:10px 14px">ep_generate_zk_proof(entity_id="my-entity", claim_type="min_confidence", threshold="EMERGING") → proof_id: zk_abc123</div>
@@ -653,7 +654,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
         <div class="p-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="20" height="13" rx="2"/><path d="M12 4v4M9.5 4h5"/><circle cx="9" cy="14" r="1.5" fill="#60a5fa" stroke="none"/><circle cx="15" cy="14" r="1.5" fill="#60a5fa" stroke="none"/><line x1="9" y1="18" x2="15" y2="18"/></svg></div>
         <div class="p-label">AI Agents &amp; Builders</div>
         <h3>Autonomous trust decisions, built in</h3>
-        <p>Your agent transacts with merchants, connects to MCP servers, and installs plugins — all without a human in the loop. EP gives it a trust layer to do that safely and correctly.</p>
+        <p>Your agent transacts with merchants, connects to MCP servers, and installs plugins — often without a human in the loop. EP gives the relying system a way to evaluate whether those actions should proceed under policy, with reasons and recourse.</p>
         <div class="p-outcomes">
           <div class="p-out">Query trust profiles before routing or transacting</div>
           <div class="p-out">Run install preflight on any plugin or MCP server</div>
@@ -719,7 +720,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
       <div class="prob-card">
         <div class="prob-icon" style="background:rgba(129,140,248,.08)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><polyline points="17 21 12 21 7 21"/><path d="M5.5 6l-2 6h4l-2-6z"/><path d="M18.5 6l-2 6h4l-2-6z"/><line x1="5.5" y1="6" x2="18.5" y2="6"/></svg></div>
         <h3>No Due Process</h3>
-        <p>Platform trust scores change silently. Appeals go unanswered. Merchants lose income without explanation. Developers watch packages flagged with no recourse. If trust can hurt you, it must be challengeable.</p>
+        <p>Platform trust decisions change silently. Appeals go unanswered. Merchants lose income without explanation. Developers watch packages flagged with no recourse. If trust can hurt you, it must be challengeable.</p>
         <div class="prob-cost">Real cost: Trust becomes a weapon. Competitors file false reports. Platforms abuse the power of silence.</div>
       </div>
     </div>
@@ -785,11 +786,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
             <option value="wrongly_downgraded">I was wrongly downgraded</option>
             <option value="harmed_by_trusted_entity">Harmed by a trusted entity</option>
             <option value="fraudulent_entity">Fraudulent entity</option>
-            <option value="fake_receipts">Fake receipts / trust farming</option>
-            <option value="unsafe_software">Unsafe software</option>
-            <option value="misleading_identity">Misleading identity</option>
             <option value="inaccurate_profile">Inaccurate trust profile</option>
-            <option value="terms_violation">Terms violation</option>
             <option value="other">Other</option>
           </select>
           <textarea id="reportDetails" placeholder="Describe what happened..." rows="3" style="font-family:var(--mono);font-size:12px;background:var(--bg);border:1px solid var(--brd);color:var(--t1);padding:12px 16px;border-radius:10px;resize:vertical;outline:none;transition:border-color .25s" onfocus="this.style.borderColor='var(--cyan)'" onblur="this.style.borderColor='rgba(255,255,255,0.06)'"></textarea>
@@ -915,7 +912,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
     </table>
     <div class="reveal tc" style="margin-top:24px">
       <div style="font-family:var(--mono);font-size:11px;color:var(--t3);line-height:2.2">
-        MCP = <span style="color:var(--t2)">USB-C for AI tools</span> &nbsp;·&nbsp; A2A = <span style="color:var(--t2)">TCP/IP for agents</span> &nbsp;·&nbsp; EP = <span style="color:var(--cyan);font-weight:700">The Trust Layer</span>
+        MCP = <span style="color:var(--t2)">USB-C for AI tools</span> &nbsp;·&nbsp; A2A = <span style="color:var(--t2)">TCP/IP for agents</span> &nbsp;·&nbsp; EP = <span style="color:var(--cyan);font-weight:700">The Trust Protocol</span>
       </div>
     </div>
     <div class="reveal" style="margin-top:48px">
@@ -1007,7 +1004,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
           <span class="phase-pill phase-road">ROADMAP</span>
         </div>
         <h3 style="color:var(--gold)">Protocol-Observed Truth</h3>
-        <p style="font-size:13px">EP listens to MCP/A2A/UCP protocol events and auto-generates receipts. Decentralized verification oracles (with their own EP trust profiles) confirm claims against carrier APIs. Zero-knowledge proofs for privacy.</p>
+        <p style="font-size:13px">EP listens to MCP/A2A/UCP protocol events and auto-generates receipts. Decentralized verification oracles (with their own EP trust profiles) confirm claims against carrier APIs. Commitment proofs for privacy.</p>
       </div>
     </div>
   </div>
@@ -1132,7 +1129,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
 
       <div style="background:var(--bg-card);border:1px solid rgba(52,211,153,0.2);border-radius:14px;padding:24px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--green);text-transform:uppercase">Zero-Knowledge Proofs</div>
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--green);text-transform:uppercase">Commitment Proofs</div>
           <span class="phase-pill phase-live">Live</span>
         </div>
         <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Prove trust threshold without revealing counterparties</div>

@@ -22,7 +22,7 @@
 
 > MCP gives systems access to tools.
 > EP gives them a way to evaluate whether a server or software component should be trusted enough to connect in this context.
-> In five minutes, I'll query a trust profile, run install preflight, generate a zero-knowledge trust proof, and verify it — all through MCP tools in Claude.
+> In five minutes, I'll query a trust profile, run install preflight, generate a privacy-preserving commitment proof, and verify it — all through MCP tools in Claude.
 
 ---
 
@@ -64,7 +64,7 @@
 
 ---
 
-## 3:00–4:00 — Auto-Receipt + ZK Proof (the closing argument)
+## 3:00–4:00 — Auto-Receipt + Commitment Proof (the closing argument)
 
 > Every MCP tool call we've run so far generated a behavioral receipt automatically — no developer instrumentation, no manual submission. That's the auto-receipt layer. Trust data accumulates passively as agents work.
 
@@ -75,10 +75,10 @@
 > Opt-in, per entity. In privacy mode, counterparty identities are hashed — never stored in plaintext. The trust graph grows without exposing who is interacting with whom.
 
 **Prompt Claude:**
-> Generate a zero-knowledge proof that mcp-server-ep-v1 has a trust score above 0.80 in the financial domain.
+> Generate a commitment proof that mcp-server-ep-v1 has a trust score above 0.80 in the financial domain.
 
 **While Claude runs, say:**
-> This is a commitment-based ZK proof — HMAC-SHA256 plus a Merkle tree over the entity's receipts. It proves the score threshold is met without revealing a single receipt, counterparty, or transaction detail.
+> This is a commitment proof — HMAC-SHA256 plus a Merkle tree over the entity's receipts. It proves the score threshold is met without revealing a single receipt, counterparty, or transaction detail.
 
 **Highlight in the output:**
 - proof_id
@@ -115,7 +115,7 @@
 
 > Humans have trust scores. For the first time, there is a verifiable record of how well a human delegates to AI agents — a delegation judgment grade derived from the Principal→Agent→Tool attribution chain embedded in every receipt. Excellent, good, fair, or poor. Auditable. Portable. Yours.
 
-> And for regulated industries — healthcare, legal, finance — the ZK privacy guarantee means the trust layer is no longer opt-out because of confidentiality concerns. You prove what you need to prove. You reveal nothing else.
+> And for regulated industries — healthcare, legal, finance — the commitment proof privacy guarantee means the trust protocol is no longer opt-out because of confidentiality concerns. You prove what you need to prove. You reveal nothing else.
 
 > MCP provides tool access. EP provides trust evaluation and appeals.
 > Together, agents can make safer install decisions, route to trustworthy counterparties, and challenge trust when it's wrong — in private, when it needs to be.
@@ -128,13 +128,13 @@
 1. `Show me the trust profile for mcp-server-ep-v1.`
 2. `Run install preflight for mcp-server-ep-v1 with policy mcp_server_safe_v1 in this context: host is mcp, data_sensitivity is private_workspace, tool_scope is repo_read.`
 3. `Enable auto-receipt generation for mcp-server-ep-v1 in privacy mode.`
-4. `Generate a zero-knowledge proof that mcp-server-ep-v1 has a trust score above 0.80 in the financial domain.`
+4. `Generate a commitment proof that mcp-server-ep-v1 has a trust score above 0.80 in the financial domain.`
 5. `Verify that proof. Use only the proof_id.`
 6. `List all available trust policies.`
 
 ## If something fails
 
-Say: "That's exactly why appeals and operational trust matter — even the trust layer needs to handle failure gracefully."
+Say: "That's exactly why appeals and operational trust matter — even the trust protocol needs to handle failure gracefully."
 
 ## Do NOT say
 
@@ -154,6 +154,6 @@ Say: "That's exactly why appeals and operational trust matter — even the trust
 - Context-aware decisions
 - Constitutional principle: trust must never be more powerful than appeal
 - Auto-receipt: trust data accumulates passively
-- Zero-knowledge proof: prove the threshold, reveal nothing
+- Commitment proof: prove the threshold, reveal nothing
 - Delegation judgment: humans have trust scores now
 - The graph is an immune system

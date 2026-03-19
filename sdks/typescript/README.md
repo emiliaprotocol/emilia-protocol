@@ -536,7 +536,7 @@ console.log(report.report_id);  // "ep_report_..."
 console.log(report._principle); // "Trust must never be more powerful than appeal."
 ```
 
-Valid `reportType` values: `wrongly_downgraded` | `harmed_by_trusted_entity` | `fraudulent_entity` | `inaccurate_profile` | `fake_receipts` | `unsafe_software` | `misleading_identity` | `terms_violation` | `demo_challenge` | `other`
+Valid `reportType` values: `wrongly_downgraded` | `harmed_by_trusted_entity` | `fraudulent_entity` | `inaccurate_profile` | `other`
 
 ---
 

@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { canonicalFileReport } from '@/lib/canonical-writer';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
@@ -28,20 +29,19 @@ export async function POST(request) {
     const validTypes = [
       'wrongly_downgraded', 'harmed_by_trusted_entity',
       'fraudulent_entity', 'inaccurate_profile', 'other',
-      'fake_receipts', 'unsafe_software', 'misleading_identity',
-      'terms_violation', 'demo_challenge',
     ];
     if (!validTypes.includes(reportType)) {
       return EP_ERRORS.BAD_REQUEST(`Invalid report_type. Must be one of: ${validTypes.join(', ')}`);
     }
 
-    // Abuse detection
+    // Abuse detection — hash IP for privacy before passing to abuse checks and storage
     const reporterIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const reporterIpHash = crypto.createHash('sha256').update(reporterIp).digest('hex').slice(0, 16);
     const supabase = getServiceClient();
     const abuseCheck = await checkAbuse(supabase, 'report', {
       entity_id: entityId,
-      reason: reportType,
-      reporter_ip: reporterIp,
+      report_type: reportType,
+      reporter_ip_hash: reporterIpHash,
     });
 
     if (!abuseCheck.allowed) {
@@ -54,6 +54,7 @@ export async function POST(request) {
       entity_id: entityId,
       report_type: reportType,
       description: description || '',
+      reporter_ip_hash: reporterIpHash,
     });
 
     if (result.error) {

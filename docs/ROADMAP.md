@@ -54,7 +54,7 @@
 - [x] Dispute rate limiting (5/hr disputes, 3/hr reports)
 - [x] Trust-graph dispute adjudication — lib/dispute-adjudication.js, high-confidence vouchers vote on disputes, 48h procedural window before graph consulted, accused receipts weighted 0.4x to prevent self-domination (migration 025)
 
-### Zero-Knowledge Proofs
+### Commitment Proofs
 - [x] lib/zk-proofs.js — commitment-based (HMAC-SHA256 + Merkle tree)
 - [x] Prove score > threshold in a given domain without revealing receipts or counterparties
 - [x] ep_generate_zk_proof MCP tool
@@ -97,7 +97,7 @@
 - [x] STYLE-GUIDE.md — canonical vocabulary
 - [x] CANONICAL-DOCS.md — document map
 - [x] GOVERNANCE.md, CONTRIBUTING.md
-- [x] PROTOCOL-STANDARD.md — v1 with 17 sections (incl. ZK Proofs §13, Dispute Adjudication Standard §14, Attribution Chain §15, Auto-Receipt §16, Conformance §17)
+- [x] PROTOCOL-STANDARD.md — v1 with 17 sections (incl. Commitment Proofs §13, Dispute Adjudication Standard §14, Attribution Chain §15, Auto-Receipt §16, Conformance §17)
 - [x] docs/LAUNCH.md — manifesto document
 
 ---
@@ -139,7 +139,7 @@ All items below were built and merged in the second sprint wave. They are live, 
 - API endpoint: /api/identity/principal/[id]/delegation-judgment
 - Four grades: excellent / good / fair / poor
 
-### Zero-Knowledge Proofs
+### Commitment Proofs
 - lib/zk-proofs.js
 - Commitment-based: HMAC-SHA256 + Merkle tree construction
 - Entities prove score > threshold in a specified domain without revealing receipts or counterparties
@@ -156,7 +156,7 @@ All items below were built and merged in the second sprint wave. They are live, 
 
 ### Protocol Standard
 - PROTOCOL-STANDARD.md updated to 17 sections
-- New sections: §13 ZK Proofs, §14 Dispute Adjudication Standard, §15 Attribution Chain, §16 Auto-Receipt, §17 Conformance
+- New sections: §13 Commitment Proofs, §14 Dispute Adjudication Standard, §15 Attribution Chain, §16 Auto-Receipt, §17 Conformance
 - NIST-ready
 
 ### CI/CD

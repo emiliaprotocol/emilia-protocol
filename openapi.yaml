@@ -184,9 +184,9 @@ paths:
   /api/trust/zk-proof:
     post:
       tags: [Trust]
-      summary: Generate a ZK trust proof
+      summary: Generate a commitment trust proof
       description: |
-        Generate a zero-knowledge trust proof for an entity. The proof allows
+        Generate a privacy-preserving commitment proof for an entity. The proof allows
         the entity to prove a trust claim (e.g. "score above 0.8") without
         revealing receipt contents, counterparty identities, or transaction details.
         Entity can only generate proofs for themselves.
@@ -217,7 +217,7 @@ paths:
                       description: Required when type is domain_score_above
       responses:
         '201':
-          description: ZK proof generated
+          description: Commitment proof generated
           content:
             application/json:
               schema:
@@ -230,9 +230,9 @@ paths:
           description: Claim is not provable — trust data does not meet threshold
     get:
       tags: [Trust]
-      summary: Verify a ZK trust proof
+      summary: Verify a commitment trust proof
       description: |
-        Verify a ZK trust proof by proof_id. Public endpoint — no auth required.
+        Verify a commitment trust proof by proof_id. Public endpoint — no auth required.
         Returns only the claim verdict and public metadata. Commitment root and
         salt are deliberately omitted so the verifier learns nothing about the
         underlying receipt set.
@@ -242,7 +242,7 @@ paths:
           required: true
           schema:
             type: string
-          description: ZK proof ID (starts with ep_zkp_)
+          description: Commitment proof ID (starts with ep_zkp_)
       responses:
         '200':
           description: Verification result
@@ -664,7 +664,7 @@ paths:
                   type: string
                 report_type:
                   type: string
-                  enum: [wrongly_downgraded, harmed_by_trusted_entity, fraudulent_entity, inaccurate_profile, fake_receipts, unsafe_software, misleading_identity, terms_violation, demo_challenge, other]
+                  enum: [wrongly_downgraded, harmed_by_trusted_entity, fraudulent_entity, inaccurate_profile, other]
                 description:
                   type: string
                 contact_email:
@@ -1637,6 +1637,26 @@ paths:
         '409':
           description: Commit has no bound receipt
 
+  /api/commit/keys:
+    get:
+      tags: [Commits]
+      summary: Public signing key discovery
+      description: |
+        Returns the current Ed25519 public key(s) used to sign EP Commits.
+        No authentication required — this is a trust root discovery endpoint
+        (JWKS-style). Consumers SHOULD cache this response and re-fetch
+        periodically (e.g., every hour or on signature verification failure)
+        to pick up key rotations.
+      responses:
+        '200':
+          description: Current signing key set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommitKeySet'
+        '500':
+          description: Failed to retrieve signing keys
+
   # ===========================================================================
   # Policies
   # ===========================================================================
@@ -2463,6 +2483,9 @@ components:
           description: Unique commit identifier (starts with epc_)
         entity_id:
           type: string
+        kid:
+          type: string
+          description: Key ID identifying which signing key produced the signature (e.g., ep-signing-key-1)
         principal_id:
           type: string
         counterparty_entity_id:
@@ -2525,3 +2548,39 @@ components:
           items:
             type: string
           description: Human-readable reasons (empty array when valid)
+
+    CommitKeySet:
+      type: object
+      description: |
+        JWKS-style signing key set for EP Commit signature verification.
+        Returned by GET /api/commit/keys.
+      properties:
+        keys:
+          type: array
+          items:
+            type: object
+            properties:
+              kid:
+                type: string
+                description: Key identifier (e.g., ep-signing-key-1)
+              algorithm:
+                type: string
+                enum: [Ed25519]
+              public_key_base64:
+                type: string
+                description: Base64-encoded 32-byte Ed25519 public key
+              status:
+                type: string
+                enum: [active, rotated, revoked]
+              created_at:
+                type: string
+                format: date-time
+        rotation_policy:
+          type: object
+          properties:
+            rotation_interval_days:
+              type: integer
+            overlap_period_days:
+              type: integer
+            revocation_mechanism:
+              type: string

@@ -1,6 +1,6 @@
-# EMILIA Protocol — AAIF Working Group Proposal
+# AAIF Working Group Proposal: Trust Decisions, Appeals, and Pre-Action Authorization for Agent Systems
 
-**Working Title:** Trust Evaluation and Appeals for Agents, Software, and Machine Counterparties
+**Working Title:** Trust Decisions, Appeals, and Pre-Action Authorization for Agent Systems
 **Submitted to:** Agentic AI Foundation (AAIF) / Linux Foundation
 **Date:** March 2026
 **Contact:** team@emiliaprotocol.ai
@@ -17,15 +17,15 @@ Before an agent installs software, connects to a tool, accepts delegated authori
 
 MCP tells agents how to use tools. EP tells them whether they should.
 
-This proposal asks AAIF to consider standardizing **EP Core** as a minimal interoperable trust-evaluation layer for agent systems. EP Core is deliberately small: **Trust Receipt**, **Trust Profile**, and **Trust Decision**. These three objects are sufficient to let independent implementations exchange trust-relevant evidence, summarize trust state, and make explainable, challengeable trust decisions without requiring any single vendor's private heuristics.
+This proposal asks AAIF to consider standardizing **EP Core** as a minimal interoperable trust-decision interface for agent systems. EP Core is deliberately small: **Trust Receipt**, **Trust Profile**, and **Trust Decision**. These three objects are sufficient to let independent implementations exchange trust-relevant evidence, summarize trust state, and make explainable, challengeable trust decisions without requiring any single vendor's private heuristics.
 
-Disputes and appeals, delegation and attribution, zero-knowledge proofs, domain scoring, and install-preflight adapters are important EP extensions, but they should be advanced as optional extension tracks rather than prerequisites for Core adoption.
+Disputes and appeals, delegation and attribution, commitment proofs, domain scoring, and install-preflight adapters are important EP extensions, but they should be advanced as optional extension tracks rather than prerequisites for Core adoption.
 
 ---
 
 ## 2. The Problem
 
-Agent systems now have emerging standards for connectivity, communication, identity, and transaction flow. They still lack a portable way to answer a basic operational question:
+Standards are emerging for connectivity, tool invocation, messaging, identity, and transaction flow. What remains underdefined is the trust-evaluation step that should occur before a high-stakes action proceeds.
 
 **Should this agent, tool, package, plugin, server, or machine counterparty be trusted for this task in this context?**
 
@@ -114,13 +114,13 @@ The need is not abstract reputation. It is operational safety in systems where a
 
 **Install preflight.** An agent is asked to install an MCP server or npm package. Should it? Based on what? Today there is no portable trust signal to consult — only the platform's own allowlist or the user's intuition.
 
-**Tool routing.** An agent must choose between multiple available tools or services for a task. On what basis? Without a shared trust layer, the routing decision is opaque, non-portable, and unaccountable.
+**Tool routing.** An agent must choose between multiple available tools or services for a task. On what basis? Without a shared trust-decision protocol, the routing decision is opaque, non-portable, and unaccountable.
 
 **Counterparty evaluation.** An agent is about to transact with a merchant, service, or other agent. Is the counterparty trustworthy for this type of transaction, in this context, at this value? No standard exists to answer this question portably.
 
 **Delegation assurance.** An agent acts under delegated authority from a human principal. How should the quality of that delegation — and the agent's track record under delegation — factor into downstream trust? Today it does not factor at all.
 
-Each of these scenarios is already occurring. Each will become more frequent and more consequential as agent autonomy increases. The trust layer that supports them should be standardized before the space fragments into incompatible private implementations.
+Each of these scenarios is already occurring. Each will become more frequent and more consequential as agent autonomy increases. The trust-decision interface that supports them should be standardized before the space fragments into incompatible private implementations.
 
 ---
 
@@ -165,7 +165,7 @@ The following capabilities are valuable but should be standardized as optional e
 | **Disputes and appeals** | Full dispute lifecycle, trust-graph adjudication, voucher-based resolution |
 | **Delegation and attribution chain** | Principal-Agent-Tool attribution records, delegation judgment scoring |
 | **Domain-specific scoring** | Vertical-specific behavioral weights and context keys |
-| **Zero-knowledge proofs** | Privacy-preserving trust attestation for regulated industries |
+| **Commitment proofs** | Privacy-preserving trust verification for regulated industries |
 | **Auto-receipt generation** | Passive behavioral data capture from MCP tool calls |
 | **Software install preflight adapters** | Platform-specific adapters for GitHub Apps, npm packages, MCP servers |
 | **EP Commit** | Signed pre-action authorization tokens proving policy evaluation before proceeding |
@@ -185,7 +185,7 @@ The reference implementation includes:
 - A conformance suite (JavaScript and Python)
 - Example adapters for MCP server and software install preflight
 - A dispute and appeal lifecycle implementation
-- Privacy-preserving trust proofs (zero-knowledge commitment scheme)
+- Privacy-preserving trust proofs (HMAC-SHA256 commitment scheme)
 - Attribution chain and delegation judgment scoring
 
 The reference implementation deliberately includes capabilities beyond the v1 core scope. This is intentional: it demonstrates that the core is extensible without requiring extensions for basic interoperability.
@@ -210,7 +210,7 @@ Tool access is not trust. Commerce flow is not trust. Identity is not trust. Com
 
 ## 11. Governance Principle
 
-The trust layer must not be owned by any single marketplace, model vendor, or platform operator.
+The trust protocol must not be owned by any single marketplace, model vendor, or platform operator.
 
 **Trust evaluation creates both operational and governance concerns when the same platform both participates in and adjudicates trust-sensitive transactions. A neutral standard reduces real and perceived conflicts of interest by allowing trust decisions to be made through portable, inspectable, challengeable interfaces rather than platform-specific heuristics.**
 
@@ -241,7 +241,7 @@ EP is not the only possible starting point. It is one that already works, is alr
 
 ## 13. The Ask
 
-We propose that AAIF form or support a neutral working group to define the minimal trust evaluation layer for agent systems.
+We propose that AAIF form or support a neutral working group to define a minimal, interoperable trust-decision interface for agent systems.
 
 **Starting from:** a live open reference implementation.
 **Scoped to:** a small interoperable core (receipt, profile, decision).
@@ -289,7 +289,7 @@ The following reflects the state of the EP reference implementation as of March 
 
 | Component | Status |
 |-----------|--------|
-| Zero-knowledge trust proofs (HMAC-SHA256 commitment scheme) | Deployed |
+| Privacy-preserving commitment proofs (HMAC-SHA256 commitment scheme) | Deployed |
 | Attribution chain (Principal-Agent-Tool with verified accountability) | Deployed |
 | Delegation judgment scoring | Deployed |
 | Auto-receipt generation from MCP tool calls (opt-in, privacy-by-default) | Deployed |
@@ -313,6 +313,8 @@ The following reflects the state of the EP reference implementation as of March 
 
 ---
 
-*EMILIA Protocol — Portable trust evaluation and appeals for agents, software, and machine counterparties.*
+The goal of this proposal is not to standardize a product. It is to help standardize a minimal, interoperable trust-decision interface before the space hardens around closed implementations.
+
+*EMILIA Protocol — Portable trust decisions, appeals, and pre-action authorization for agents, software, and machine counterparties.*
 *Decisions, not scores. Reasons, not thresholds. Due process, not silent gatekeeping.*
 *Compatible with ACP. Usable through MCP. Open source under Apache 2.0.*

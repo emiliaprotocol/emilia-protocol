@@ -10,7 +10,7 @@
 
 ## What This Is
 
-EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties. This MCP server gives any Claude conversation or agent pipeline direct access to EP's trust evaluation layer: 29 tools covering trust profiles, policy evaluation, software install preflight, dispute filing, appeals, delegation chains, identity lineage, and pre-action commits. Add it to Claude Desktop in 60 seconds. No self-hosted EP backend required.
+EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties. This MCP server gives any Claude conversation or agent pipeline direct access to EP's trust-decision surfaces: 29 tools covering trust profiles, policy evaluation, software install preflight, dispute filing, appeals, delegation chains, identity lineage, and pre-action commits. Add it to Claude Desktop in 60 seconds. No self-hosted EP backend required.
 
 ---
 
@@ -61,6 +61,8 @@ Config file: `.cursor/mcp.json`
 ```bash
 EP_API_KEY=ep_live_your_key_here npx @emilia-protocol/mcp-server
 ```
+
+Use EP Commit when a relying system wants proof that a high-stakes action was evaluated before it proceeded.
 
 ---
 
@@ -274,8 +276,8 @@ The submitter has 7 days to respond. Trust is suspended pending resolution.
 | `ep_lineage` | Entity lineage, predecessors, continuity, whitewashing flags | No |
 | `ep_delegation_judgment` | Score a principal's track record of choosing and overseeing agents | No |
 | `ep_configure_auto_receipt` | Configure automatic receipt generation from MCP tool call events (opt-in) | Yes |
-| `ep_generate_zk_proof` | Generate a ZK proof for a score claim | No |
-| `ep_verify_zk_proof` | Verify a ZK proof | No |
+| `ep_generate_zk_proof` | Generate a commitment proof for a score claim | No |
+| `ep_verify_zk_proof` | Verify a commitment proof | No |
 | `ep_list_policies` | List all available trust policies | No |
 | `ep_issue_commit` | Issue a signed EP Commit before a high-stakes action | Yes |
 | `ep_verify_commit` | Verify a commit's signature, status, and validity | No |

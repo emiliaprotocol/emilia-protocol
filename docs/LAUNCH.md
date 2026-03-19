@@ -14,7 +14,7 @@ EP Core remains deliberately small: Trust Receipt, Trust Profile, and Trust Deci
 
 ---
 
-# The Trust Layer the Internet Forgot
+# The Trust Protocol the Internet Forgot
 
 **EMILIA Protocol — EP-001**
 **Published:** 2026-03-18
@@ -36,7 +36,7 @@ AI agents do not operate at human pace. An agent can execute thousands of transa
 
 The consequence is compounding: trust errors in machine-mediated systems compound faster than human systems can correct them. And the systems being built today — agent frameworks, MCP tool ecosystems, agentic commerce platforms — are being built on exactly the same absent trust foundation that the 1990s web was built on, with the sole difference that the velocity of transactions is orders of magnitude higher.
 
-We are building those systems without the infrastructure to answer that question. EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties — the trust-evaluation layer those systems require.
+We are building those systems without the infrastructure to answer that question. EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties — the trust-decision protocol those systems require.
 
 ---
 
@@ -60,7 +60,7 @@ It is the infrastructure the internet forgot to build in 1993, arriving thirty y
 
 ## The Five Primitives
 
-EP is built from five primitives. Each is independently useful. Together, they constitute a complete trust-evaluation layer.
+EP is built from five primitives. Each is independently useful. Together, they constitute a complete trust-decision protocol.
 
 ### 1. Behavioral Receipt — the unit of trust
 
@@ -86,7 +86,7 @@ Trust is multi-dimensional. The protocol is too.
 
 ### 3. Dispute Resolution — the immune system
 
-The immune system of a trust layer is its ability to correct errors without destroying what came before. EP's dispute mechanism is the protocol's immune system.
+The immune system of a trust protocol is its ability to correct errors without destroying what came before. EP's dispute mechanism is the protocol's immune system.
 
 Any affected party may file a formal dispute against any receipt. The dispute follows a defined lifecycle: evidence period, response window, adjudication, resolution, appeal. The submitter has seven days to respond. Disputed receipts are weight-dampened during adjudication — they cannot be the sole basis for a passing policy evaluation while a dispute is active. Resolved disputes are permanent: a dismissed dispute fully restores the receipt's weight; an upheld dispute permanently zeros it.
 
@@ -106,11 +106,11 @@ Attribution chains document the full path: Principal → Agent → Tool. If an a
 
 Accountability in machine-mediated systems is not binary — "the human did it" or "the machine did it." It is a chain. EP makes that chain legible.
 
-### 5. Zero-Knowledge Proof — the privacy guarantee
+### 5. Commitment Proof — the privacy guarantee
 
 Trust requires evidence. Evidence creates records. Records create privacy exposure. This is the structural tension that has prevented most serious behavioral trust proposals from getting off the ground: a system that requires parties to expose their transaction history as the price of admission will be rejected by any party with legitimate privacy concerns, which is most parties.
 
-EP resolves this through its ZK-lite proof system. When an entity needs to demonstrate that it satisfies a consuming agent's Trust Policy, it requests an evaluation proof from the EP registry. The registry evaluates the policy against the full Trust Profile, computes a signed result, and returns a structured proof object. The entity presents the proof to verifiers. Verifiers confirm the registry signature, check the proof against the EP revocation registry, confirm that the policy evaluated matches the policy they require, and accept or reject.
+EP resolves this through its commitment-based proof system. When an entity needs to demonstrate that it satisfies a consuming agent's Trust Policy, it requests an evaluation proof from the EP registry. The registry evaluates the policy against the full Trust Profile, computes a signed result, and returns a structured proof object. The entity presents the proof to verifiers. Verifiers confirm the registry signature, check the proof against the EP revocation registry, confirm that the policy evaluated matches the policy they require, and accept or reject.
 
 The verifier learns: this entity passed this policy as of this date. The verifier learns nothing about what receipts produced that result, who submitted them, what values were transacted, or which criteria were closest to threshold. Zero knowledge of the underlying contents. The proof is valid for 30 days. It cannot be extended. It can be revoked if the underlying history is subsequently determined to be fraudulent.
 
@@ -138,7 +138,7 @@ This means the protocol governance model is open. Protocol changes are proposed 
 
 ## The One-Line Truth
 
-EP is the SSL/TLS of AI agent behavior — the trust layer the internet forgot to build in 1993, arriving just in time for the agents.
+EP is the SSL/TLS of AI agent behavior — the trust protocol the internet forgot to build in 1993, arriving just in time for the agents.
 
 ---
 
@@ -154,7 +154,7 @@ EP launches as infrastructure with a specific deployment posture:
 
 **Protocol governance, within a year.** The first external implementation passes the conformance suite. A working group is established with AAIF or equivalent. EP-001 begins its track toward W3C or IETF consideration. The governance model transitions from a single-organization proposal to a multi-stakeholder standard.
 
-The trajectory ends with EP invisible. The trust layer that runs beneath every meaningful agentic transaction, the way TLS runs beneath every HTTPS request. Agents will not configure it. They will not think about it. Somewhere in the infrastructure, a behavioral history is being evaluated against a policy, and the result — structured, auditable, disputable — is informing whether to proceed.
+The trajectory ends with EP invisible. The trust protocol that runs beneath every meaningful agentic transaction, the way TLS runs beneath every HTTPS request. Agents will not configure it. They will not think about it. Somewhere in the infrastructure, a behavioral history is being evaluated against a policy, and the result — structured, auditable, disputable — is informing whether to proceed.
 
 That is the internet the agents deserve. That is what we built.
 

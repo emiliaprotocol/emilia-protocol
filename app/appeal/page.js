@@ -210,11 +210,7 @@ export default function AppealPage() {
               <option value="wrongly_downgraded">I was wrongly downgraded</option>
               <option value="harmed_by_trusted_entity">I was harmed by a trusted entity</option>
               <option value="fraudulent_entity">This entity is fraudulent</option>
-              <option value="fake_receipts">Fake receipts / trust farming</option>
-              <option value="unsafe_software">Unsafe software</option>
-              <option value="misleading_identity">Misleading identity</option>
               <option value="inaccurate_profile">This trust profile is inaccurate</option>
-              <option value="terms_violation">Terms violation</option>
               <option value="other">Other</option>
             </select>
             <textarea style={s.textarea} placeholder="Describe what happened. Be specific — what was wrong, when it happened, what evidence you have." value={description} onChange={e => setDescription(e.target.value)} />

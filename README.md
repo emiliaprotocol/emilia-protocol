@@ -13,6 +13,10 @@
 
 EP is not a product. It is a protocol. Apache 2.0.
 
+**EP Commit** is the sharpest optional extension: a signed authorization token proving a high-stakes machine action was evaluated before proceeding.
+
+The protocol is open. Managed policy, issuance, verification, monitoring, and workflow tooling are commercial surfaces.
+
 ---
 
 ## Conformance Status
@@ -20,9 +24,9 @@ EP is not a product. It is a protocol. Apache 2.0.
 | Metric | Value |
 |---|---|
 | Spec version | v0.9.x |
-| Route parity (API <-> OpenAPI) | 50/50 |
-| MCP tools | 13 |
-| Test suite | [X] tests passing |
+| Route parity (API <-> OpenAPI) | 57/57 |
+| MCP tools | [see CI] |
+| Test suite | [see CI] |
 | CodeQL | Active |
 | SBOM/Provenance | Active |
 
@@ -37,7 +41,7 @@ EP is a 3-layer system. The core is deliberately small. Everything else is an op
 - **EP Extensions** — Important but optional capabilities that build on the core. Adopt what you need:
   - Disputes and appeals (full lifecycle, voucher-based adjudication)
   - Delegation and attribution chain (Principal → Agent → Tool)
-  - Zero-knowledge proofs (privacy-preserving trust attestation)
+  - Commitment proofs (privacy-preserving trust verification without revealing receipt details)
   - Auto-receipt generation (passive behavioral data from MCP tool calls)
   - Domain-specific scoring (financial, code_execution, communication, +4)
   - Install preflight adapters (MCP servers, npm, GitHub Apps, Chrome extensions)
@@ -158,7 +162,7 @@ POST /api/trust/install-preflight
   }
 ```
 
-### Zero-knowledge proof — prove a score threshold without revealing counterparties
+### Commitment proof — prove a trust threshold without revealing counterparties
 
 ```bash
 POST /api/trust/zk-proof/generate
@@ -229,15 +233,15 @@ Receipt weight is dampened further by dispute state: 0.3x while a dispute is act
 | Receipt weight dampening (0.3x active, 0.0x upheld, 1.0x dismissed) | [Live] |
 | Attribution chain (Principal → Agent → Tool, 0.15x principal signal) | [Live] |
 | Delegation judgment scoring (excellent / good / fair / poor) | [Live] |
-| Zero-knowledge proofs (prove score > threshold, no counterparty reveal) | [Live] |
+| Commitment proofs (prove trust threshold met, no counterparty reveal) | [Live] |
 | Domain-specific scoring (financial, code_execution, communication, +4) | [Live] |
 | Trust gate (pre-action canonical check) | [Live] |
 | Identity continuity — EP-IX (principals, lineage, whitewashing resistance) | [Live] |
 | Blockchain anchoring (Merkle roots → Base L2) | [Live] |
 | TypeScript SDK (EPClient, 25 methods, 35+ types) | [Live] |
 | Python SDK (async EPClient, 21 methods) | [Live] |
-| MCP server (29 tools, 4 resources, 3 prompts) | [Live] |
-| 670 tests passing, 28 test files | [Live] |
+| MCP server (tools, resources, prompts — see MCP section below) | [Live] |
+| Full test suite passing (see CI badge) | [Live] |
 | Operator applications and registry | [Pilot] |
 | Managed adjudication workflows | [Pilot] |
 | Oracle verification (Phase 3 provenance) | [Roadmap] |
@@ -258,9 +262,9 @@ Receipt weight is dampened further by dispute state: 0.3x while a dispute is act
 
 ---
 
-## MCP Tools (29)
+## MCP Tools
 
-Add `npx @emilia-protocol/mcp-server` to any MCP-compatible host. The server exposes 29 tools, 4 resources, and 3 prompts.
+Add `npx @emilia-protocol/mcp-server` to any MCP-compatible host. The server exposes tools, resources, and prompts — run `ep_trust_profile` to verify.
 
 **Trust evaluation**
 | Tool | What it does |
@@ -302,11 +306,11 @@ Add `npx @emilia-protocol/mcp-server` to any MCP-compatible host. The server exp
 | `ep_verify_delegation` | Verify a delegation record |
 | `ep_delegation_judgment` | Score a principal's delegation history |
 
-**Zero-knowledge proofs**
+**Commitment proofs**
 | Tool | What it does |
 |---|---|
-| `ep_generate_zk_proof` | Generate a ZK proof for a score claim |
-| `ep_verify_zk_proof` | Verify a ZK proof |
+| `ep_generate_zk_proof` | Generate a commitment proof for a score claim |
+| `ep_verify_zk_proof` | Verify a commitment proof |
 
 **Commit**
 | Tool | What it does |
@@ -321,9 +325,9 @@ Add `npx @emilia-protocol/mcp-server` to any MCP-compatible host. The server exp
 | Tool | What it does |
 |---|---|
 | `ep_search_entities` | Search entities by type, name, or score range |
-| `ep_leaderboard` | Top entities by trust score within a type |
+| `ep_leaderboard` | Top entities by trust profile within a type |
 
-**Resources:** Entity Trust Profile, Entity Trust Score, Receipt, Delegation Record
+**Resources:** Entity Trust Profile, Entity Trust Profile (domain), Receipt, Delegation Record
 
 **Prompts:** `trust_decision`, `receipt_quality_check`, `install_decision`
 
@@ -355,7 +359,7 @@ EP is specified as an implementation-independent standard. 17 sections covering 
 10. Implementation Requirements
 11. Versioning
 12. Governance
-13. Privacy and Zero-Knowledge Proofs
+13. Privacy and Commitment Proofs
 14. Dispute Adjudication Standard
 15. Attribution Chain Standard
 16. Auto-Receipt Generation
@@ -381,7 +385,7 @@ EP is specified as an implementation-independent standard. 17 sections covering 
 | `tests/delegation-judgment.test.js` | — | Delegation scoring, grade thresholds, graceful degradation |
 | `tests/dispute-adjudication.test.js` | — | Voucher voting, weight dampening, procedural states |
 | `tests/signatures.test.js` | — | Cryptographic receipt signatures |
-| `tests/zk-proofs.test.js` | — | ZK proof generation and verification |
+| `tests/zk-proofs.test.js` | — | Commitment proof generation and verification |
 | `conformance/conformance.test.js` | 26 | Canonical hash vectors, scoring fixtures, policy replay |
 
 **Cross-language:** `conformance/verify_hashes.py` produces identical SHA-256 outputs to the JavaScript reference — the protocol is language-independent.
@@ -393,7 +397,7 @@ npx vitest run
 python3 conformance/verify_hashes.py
 ```
 
-670 tests passing across 28 test files.
+All tests passing — see CI badge for current count.
 
 ---
 

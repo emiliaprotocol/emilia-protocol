@@ -1,0 +1,267 @@
+{
+  "protocol": "emilia-protocol",
+  "version": "1.0.0",
+  "spec_date": "2026-03-18",
+  "license": "Apache-2.0",
+  "constitutional_principle": "Trust must never be more powerful than appeal.",
+  "canonical_enums": {
+    "trust_decisions": ["allow", "review", "deny"],
+    "action_types": ["install", "connect", "delegate", "transact"],
+    "confidence_tiers": ["pending", "insufficient", "provisional", "emerging", "confident"],
+    "commit_statuses": ["active", "fulfilled", "revoked", "expired"],
+    "entity_types": [
+      "agent",
+      "merchant",
+      "service_provider",
+      "github_app",
+      "github_action",
+      "mcp_server",
+      "npm_package",
+      "chrome_extension",
+      "shopify_app",
+      "marketplace_plugin",
+      "agent_tool"
+    ],
+    "agent_behaviors": ["completed", "retried_same", "retried_different", "abandoned", "disputed"],
+    "transaction_types": [
+      "purchase",
+      "service",
+      "task_completion",
+      "delivery",
+      "return",
+      "install",
+      "uninstall",
+      "permission_grant",
+      "permission_escalation",
+      "execution",
+      "incident",
+      "listing_review",
+      "provenance_check"
+    ],
+    "dispute_reasons": [
+      "fraudulent_receipt",
+      "inaccurate_signals",
+      "identity_dispute",
+      "context_mismatch",
+      "duplicate_transaction",
+      "coerced_receipt",
+      "other"
+    ],
+    "dispute_statuses": [
+      "open",
+      "under_review",
+      "upheld",
+      "reversed",
+      "dismissed",
+      "superseded",
+      "appealed",
+      "appeal_upheld",
+      "appeal_reversed",
+      "appeal_dismissed",
+      "withdrawn"
+    ],
+    "dispute_filer_types": ["affected_entity", "receipt_subject", "third_party", "human_operator"],
+    "report_types": [
+      "wrongly_downgraded",
+      "harmed_by_trusted_entity",
+      "fraudulent_entity",
+      "inaccurate_profile",
+      "other"
+    ],
+    "report_statuses": ["received", "reviewing", "actioned", "dismissed"],
+    "trust_policies": [
+      "strict",
+      "standard",
+      "permissive",
+      "discovery",
+      "github_private_repo_safe_v1",
+      "npm_buildtime_safe_v1",
+      "browser_extension_safe_v1",
+      "mcp_server_safe_v1"
+    ],
+    "provenance_tiers": [
+      "self_attested",
+      "identified_signed",
+      "bilateral",
+      "platform_originated",
+      "carrier_verified",
+      "oracle_verified"
+    ],
+    "bilateral_statuses": ["pending_confirmation", "confirmed", "disputed", "expired"],
+    "entity_statuses": ["active", "inactive", "suspended"],
+    "delegation_statuses": ["active", "expired", "revoked"]
+  },
+  "event_types": {
+    "RECEIPT_SUBMITTED": "receipt.submitted",
+    "RECEIPT_DEDUPLICATED": "receipt.deduplicated",
+    "RECEIPT_BILATERAL_CONFIRMED": "receipt.bilateral.confirmed",
+    "RECEIPT_BILATERAL_DISPUTED": "receipt.bilateral.disputed",
+    "RECEIPT_BILATERAL_EXPIRED": "receipt.bilateral.expired",
+    "DISPUTE_FILED": "dispute.filed",
+    "DISPUTE_RESPONDED": "dispute.responded",
+    "DISPUTE_RESOLVED": "dispute.resolved",
+    "DISPUTE_APPEALED": "dispute.appealed",
+    "DISPUTE_APPEAL_RESOLVED": "dispute.appeal.resolved",
+    "REPORT_FILED": "report.filed",
+    "ENTITY_REGISTERED": "entity.registered",
+    "TRUST_RECOMPUTED": "trust.recomputed"
+  },
+  "signing": {
+    "algorithm": "Ed25519",
+    "key_discovery": "/api/commit/keys",
+    "canonical_payload": "JSON with sorted keys",
+    "nonce": "32 bytes hex, globally unique",
+    "rotation_policy": {
+      "rotation_interval_days": 90,
+      "overlap_period_days": 14,
+      "revocation_mechanism": "Key removed from active set; old signatures remain verifiable via archived keys"
+    }
+  },
+  "dispute_state_machine": {
+    "open": ["under_review", "withdrawn"],
+    "under_review": ["upheld", "reversed", "dismissed"],
+    "upheld": ["appealed"],
+    "reversed": ["appealed"],
+    "dismissed": ["appealed"],
+    "appealed": ["appeal_upheld", "appeal_reversed", "appeal_dismissed"],
+    "appeal_upheld": [],
+    "appeal_reversed": [],
+    "appeal_dismissed": [],
+    "withdrawn": [],
+    "superseded": []
+  },
+  "commit_state_machine": {
+    "active": ["fulfilled", "revoked", "expired"],
+    "fulfilled": [],
+    "revoked": [],
+    "expired": []
+  },
+  "conformance_levels": {
+    "minimal": "Trust Receipt + Trust Profile + Trust Decision (read-only)",
+    "standard": "Minimal + receipt submission + policy evaluation",
+    "full": "Standard + disputes + appeals + delegation + commitment proofs + EP Commit"
+  },
+  "core_objects": ["Trust Receipt", "Trust Profile", "Trust Decision"],
+  "scoring": {
+    "range": [0, 100],
+    "default_score": 50.0,
+    "rolling_window": 200,
+    "dampening_threshold": 5,
+    "signal_weights": {
+      "delivery_accuracy": 0.30,
+      "product_accuracy": 0.25,
+      "price_integrity": 0.15,
+      "return_processing": 0.15,
+      "agent_satisfaction": 0.10,
+      "consistency_bonus": 0.05
+    }
+  },
+  "api_surface": {
+    "trust": {
+      "GET /api/trust/profile/{entityId}": "Trust profile for an entity",
+      "POST /api/trust/evaluate": "Policy-based trust evaluation",
+      "POST /api/trust/gate": "Trust gate check",
+      "POST /api/trust/install-preflight": "Pre-install trust check for software entities",
+      "GET /api/trust/domain-score/{entityId}": "Domain-specific trust score",
+      "POST /api/trust/zk-proof": "Privacy-preserving commitment proof"
+    },
+    "receipts": {
+      "POST /api/receipts/submit": "Submit a trust receipt",
+      "POST /api/receipts/confirm": "Bilateral confirmation of a receipt",
+      "POST /api/receipts/auto-submit": "Auto-receipt generation"
+    },
+    "disputes": {
+      "POST /api/disputes/file": "File a dispute",
+      "POST /api/disputes/respond": "Respond to a dispute",
+      "POST /api/disputes/resolve": "Resolve a dispute (operator)",
+      "POST /api/disputes/withdraw": "Withdraw a dispute",
+      "POST /api/disputes/appeal": "Appeal a dispute resolution",
+      "POST /api/disputes/appeal/resolve": "Resolve an appeal (operator)",
+      "POST /api/disputes/report": "File a human trust report",
+      "GET /api/disputes/{disputeId}": "Get dispute details",
+      "POST /api/disputes/{disputeId}/adjudicate": "Adjudicate a dispute"
+    },
+    "commit": {
+      "POST /api/commit/issue": "Issue a signed EP Commit",
+      "POST /api/commit/verify": "Verify a commit signature",
+      "GET /api/commit/keys": "Public key discovery",
+      "GET /api/commit/{commitId}": "Get commit details",
+      "POST /api/commit/{commitId}/revoke": "Revoke a commit",
+      "POST /api/commit/{commitId}/receipt": "Attach receipt to commit",
+      "POST /api/commit/{commitId}/dispute": "Dispute a commit"
+    },
+    "entities": {
+      "POST /api/entities/register": "Register a new entity",
+      "GET /api/entities/search": "Search entities"
+    },
+    "delegations": {
+      "POST /api/delegations/create": "Create a delegation",
+      "GET /api/delegations/{delegationId}/verify": "Verify a delegation"
+    },
+    "identity": {
+      "POST /api/identity/bind": "Bind identity to entity",
+      "POST /api/identity/verify": "Verify identity binding",
+      "POST /api/identity/continuity": "Identity continuity operations",
+      "POST /api/identity/continuity/challenge": "Challenge identity continuity",
+      "POST /api/identity/continuity/resolve": "Resolve identity continuity challenge",
+      "GET /api/identity/lineage/{entityId}": "Entity identity lineage",
+      "GET /api/identity/principal/{principalId}": "Principal identity details",
+      "GET /api/identity/principal/{principalId}/agents": "Agents under a principal",
+      "POST /api/identity/principal/{principalId}/delegation-judgment": "Principal delegation judgment"
+    },
+    "score_legacy": {
+      "GET /api/score/{entityId}": "Legacy compatibility score (DEPRECATED, see Section 20)",
+      "GET /api/score/{entityId}/history": "Score history"
+    },
+    "other": {
+      "GET /api/health": "Health check",
+      "GET /api/audit": "Audit log",
+      "GET /api/policies": "List available trust policies",
+      "GET /api/stats": "Protocol statistics",
+      "GET /api/leaderboard": "Entity leaderboard",
+      "POST /api/verify/{receiptId}": "Verify a receipt",
+      "POST /api/blockchain/anchor": "Blockchain anchoring",
+      "POST /api/operators/apply": "Apply as an operator"
+    }
+  },
+  "discovery": "/.well-known/ep-trust.json",
+  "context_keys": [
+    "task_type",
+    "category",
+    "geo",
+    "modality",
+    "value_band",
+    "risk_class"
+  ],
+  "design_principles": [
+    "Append-only ledger",
+    "No self-scoring",
+    "Due process above all",
+    "Sybil resistance by design",
+    "Behavioral primacy",
+    "Open standard, not a product"
+  ],
+  "core_sections": [
+    "Section 1: Introduction",
+    "Section 2: Entity Identity",
+    "Section 3: Receipt Format",
+    "Section 4: Trust Scoring",
+    "Section 5: Sybil Resistance",
+    "Section 6: Policy Evaluation",
+    "Section 9: Security Properties",
+    "Section 10: Implementation Requirements",
+    "Section 11: Versioning",
+    "Section 12: Governance",
+    "Section 17: Conformance Requirements",
+    "Section 20: Score Discipline"
+  ],
+  "extension_sections": [
+    "Section 7: Delegation Chain",
+    "Section 8: Dispute Lifecycle",
+    "Section 13: Privacy and Commitment Proofs",
+    "Section 14: Dispute Adjudication Standard",
+    "Section 15: Attribution Chain Standard",
+    "Section 16: Auto-Receipt Generation",
+    "Section 18: EP Commit — Signed Pre-Action Authorization"
+  ]
+}

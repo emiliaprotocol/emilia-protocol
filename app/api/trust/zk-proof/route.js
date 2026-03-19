@@ -1,14 +1,14 @@
 /**
- * EP Zero-Knowledge Proof API
+ * EP Privacy-Preserving Commitment Proof API
  *
  * POST /api/trust/zk-proof
- *   Generate a ZK trust proof for an entity.
+ *   Generate a commitment trust proof for an entity.
  *   Auth: Bearer ep_live_... for the entity making the claim.
  *   Body: { entity_id, claim: { type, threshold, domain? } }
  *   Returns: proof object — safe to share publicly (no PII, no receipt details).
  *
  * GET /api/trust/zk-proof?proof_id=ep_zkp_...
- *   Verify a ZK trust proof by proof_id. Public endpoint — no auth required.
+ *   Verify a commitment trust proof by proof_id. Public endpoint — no auth required.
  *   Returns: { valid, claim, entity_id, verified_at, receipt_count }
  *   Does NOT return commitment details, salt, or anything that could help
  *   reconstruct the underlying receipt set.
@@ -34,7 +34,7 @@ const VALID_DOMAINS = [
 ];
 
 // =============================================================================
-// POST — generate a ZK proof
+// POST — generate a commitment proof
 // =============================================================================
 
 export async function POST(request) {
@@ -82,7 +82,7 @@ export async function POST(request) {
     //    This prevents entity A from generating proofs on behalf of entity B.
     if (auth.entity.entity_id !== entity_id) {
       return EP_ERRORS.FORBIDDEN(
-        'You can only generate ZK proofs for your own entity. ' +
+        'You can only generate commitment proofs for your own entity. ' +
         `Key belongs to: ${auth.entity.entity_id}`
       );
     }
@@ -135,7 +135,7 @@ export async function POST(request) {
 }
 
 // =============================================================================
-// GET — verify a ZK proof (public)
+// GET — verify a commitment proof (public)
 // =============================================================================
 
 export async function GET(request) {
@@ -155,7 +155,7 @@ export async function GET(request) {
     const result = await verifyZKProof(proofId, supabase);
 
     if (result.reason === 'proof_not_found') {
-      return EP_ERRORS.NOT_FOUND('ZK proof');
+      return EP_ERRORS.NOT_FOUND('Commitment proof');
     }
 
     // Return only the verification verdict — deliberately omit commitment_root

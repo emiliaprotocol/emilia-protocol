@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
-import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { epProblem } from '@/lib/errors';
 
 /**
@@ -30,17 +29,18 @@ export async function GET(request) {
 
     const supabase = getServiceClient();
 
+    // Uses materialized trust data for performance. Live re-evaluation happens on profile/evaluate endpoints.
     let query = supabase
       .from('entities')
       .select(`
         id, entity_id, display_name, entity_type, description,
         category, capabilities,
         emilia_score, total_receipts, successful_receipts,
-        verified, created_at
+        verified, created_at, trust_snapshot
       `, { count: 'exact' })
       .eq('status', 'active')
       .order('emilia_score', { ascending: false })
-      .range(offset, offset + limit + 49 - 1);
+      .range(offset, offset + limit - 1);
 
     if (!includeNew) query = query.gte('total_receipts', 5);
     if (type) query = query.eq('entity_type', type);
@@ -54,26 +54,25 @@ export async function GET(request) {
 
     const confLevels = ['pending', 'insufficient', 'provisional', 'emerging', 'confident'];
 
-    let leaderboard = await Promise.all((entities || []).map(async (e) => {
-      const trust = await canonicalEvaluate(e.id, {
-        includeDisputes: false,
-        includeEstablishment: true,
-      });
+    let leaderboard = (entities || []).map((e) => {
+      const snap = e.trust_snapshot || {};
+      const effectiveEvidence = snap.effectiveEvidence || 0;
+      const uniqueSubmitters = snap.uniqueSubmitters || 0;
       return {
         entity_id: e.entity_id,
         display_name: e.display_name,
         entity_type: e.entity_type,
         category: e.category,
         compat_score: e.emilia_score,
-        confidence: trust.confidence || 'pending',
-        effective_evidence: trust.establishment?.effective_evidence || trust.effectiveEvidence || 0,
-        unique_submitters: trust.establishment?.unique_submitters || trust.uniqueSubmitters || 0,
+        confidence: snap.confidence || 'pending',
+        effective_evidence: effectiveEvidence,
+        unique_submitters: uniqueSubmitters,
         total_receipts: e.total_receipts,
         success_rate: e.total_receipts > 0 ? Math.round((e.successful_receipts / e.total_receipts) * 1000) / 10 : null,
         verified: e.verified,
-        established: trust.establishment?.established || false,
+        established: effectiveEvidence >= 5 && uniqueSubmitters >= 2,
       };
-    }));
+    });
 
     if (!includeNew) leaderboard = leaderboard.filter(e => e.established);
     if (minConfidence) {
@@ -94,7 +93,7 @@ export async function GET(request) {
       leaderboard.sort((a, b) => b.compat_score - a.compat_score);
     }
 
-    leaderboard = leaderboard.slice(0, limit).map((e, i) => ({ ...e, rank: offset + i + 1 }));
+    leaderboard = leaderboard.map((e, i) => ({ ...e, rank: offset + i + 1 }));
 
     return NextResponse.json({ leaderboard, rank_by: rankBy, total: count, offset, limit });
   } catch (err) {

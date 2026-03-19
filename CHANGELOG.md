@@ -15,11 +15,11 @@ Versioning model: Protocol spec and reference repo share the root version (1.0.x
 - **6-job CI pipeline**: tests, build, lint, SDK builds, conformance, integration
 - **TypeScript SDK** (25 methods) + **Python SDK** (21 methods) — published on npm / PyPI
 - **EP Commit** — signed pre-action authorization tokens proving policy evaluation before proceeding (5 new tools: ep_issue_commit, ep_verify_commit, ep_get_commit_status, ep_revoke_commit, ep_bind_receipt_to_commit)
-- **ZK proofs**, auto-receipts, delegation chains, attribution tracking, domain scoring
+- **Commitment proofs**, auto-receipts, delegation chains, attribution tracking, domain scoring
 - **Protocol Standard v1.0** — 17 sections, complete specification
 
 ### MCP Server (v1.0.0)
-- 29 tools: trust evaluation, receipt submission, entity lookup, dispute lifecycle, policy management, identity continuity, software trust, ZK proofs, delegation, attribution, domain scoring, EP Commit, and more
+- 29 tools: trust evaluation, receipt submission, entity lookup, dispute lifecycle, policy management, identity continuity, software trust, commitment proofs, delegation, attribution, domain scoring, EP Commit, and more
 - 4 resources: trust-profile, entity-history, policy-config, system-health
 - 3 prompts: evaluate-trust, submit-receipt, investigate-entity
 - RFC 7807 error responses on all tool failures

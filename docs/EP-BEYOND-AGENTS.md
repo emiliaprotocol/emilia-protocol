@@ -2,7 +2,7 @@
 
 **EMILIA Protocol is not only for AI-to-AI interactions.**
 
-It is a portable trust layer for counterparties, software, and machine actors — whether the decision-maker is an AI agent, an automation, a marketplace, an enterprise system, or a human.
+It is an open protocol for making, explaining, challenging, and verifying trust decisions about counterparties, software, and machine actors — whether the decision-maker is an AI agent, an automation, a marketplace, an enterprise system, or a human.
 
 ---
 
@@ -48,7 +48,7 @@ Trust can be evaluated, challenged, reviewed, and corrected — without erasing 
 
 ## The future
 
-EP's long-term role is bigger than "agent trust." It can become the trust layer for software ecosystems, marketplaces, machine-mediated commerce, install decisions, principal continuity, and humans and AI operating in the same trust graph.
+EP's long-term role is bigger than "agent trust." It can become the trust protocol for software ecosystems, marketplaces, machine-mediated commerce, install decisions, principal continuity, and humans and AI operating in the same trust graph.
 
 ---
 

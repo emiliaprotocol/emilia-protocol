@@ -24,7 +24,7 @@ Do not modify it. Do not replace "whether they should" with "whether to trust th
 
 **Use this for standards bodies, enterprise architects, and security-literate audiences:**
 
-> "EP is the SSL/TLS of AI agent behavior — the trust layer the internet forgot to build in 1993, arriving just in time for the agents."
+> "EP is the SSL/TLS of AI agent behavior — the trust protocol the internet forgot to build in 1993, arriving just in time for the agents."
 
 **Always pair it with this qualifier when speaking to technical audiences:**
 
@@ -49,7 +49,7 @@ EP is a 3-layer system. The core is deliberately small — three objects that an
 - **EP Extensions** — Important but optional capabilities that build on the core:
   - Disputes and appeals (full lifecycle, trust-graph adjudication, voucher-based resolution)
   - Delegation and attribution chain (Principal → Agent → Tool accountability)
-  - Zero-knowledge proofs (privacy-preserving trust attestation for regulated industries)
+  - Commitment proofs (privacy-preserving trust verification for regulated industries)
   - Auto-receipt generation (passive behavioral data capture from MCP tool calls)
   - Domain-specific scoring (vertical-specific behavioral weights)
   - Install preflight adapters (platform-specific adapters for MCP servers, npm, GitHub Apps)
@@ -68,9 +68,11 @@ EP is a 3-layer system. The core is deliberately small — three objects that an
 
 ## What EP Is
 
+EP is an open protocol for trust decisions, not a universal reputation score.
+
 Three bullets. Use these three and only these three when asked to describe EP briefly.
 
-- **A trust evaluation layer** — EP answers whether a counterparty, software component, or machine actor should be trusted enough for a given context and policy. Not a number. A structured profile with confidence levels, behavioral rates, provenance composition, dispute history, and domain-specific scores.
+- **A trust protocol** — EP answers whether a counterparty, software component, or machine actor should be trusted enough for a given context and policy. Not a number. A structured profile with confidence levels, behavioral rates, provenance composition, dispute history, and domain-specific scores.
 
 - **A due-process system** — Every trust decision is contestable. Disputes trigger a 48-hour adjudication window, resolved by the trust graph's voucher network — not by operators. Constitutional principle: trust must never be more powerful than appeal.
 
@@ -88,7 +90,7 @@ State these proactively. Do not wait to be asked.
 
 **EP is not controlled by a single operator.** The protocol is open-source (Apache 2.0). The constitutional principle — trust must never be more powerful than appeal — is baked into the spec, not enforced by company policy. No operator, including the team that built EP, can override a legitimate appeal through administrative action alone.
 
-**EP is not surveillance.** Zero-knowledge proofs allow entities to prove they meet trust thresholds in a given domain without revealing counterparties, receipt history, or transaction details. Auto-receipt generation requires explicit opt-in. EP receipts contain no PHI, no PII — trust profiles are computed from transaction metadata only.
+**EP is not surveillance.** Commitment proofs allow entities to prove they meet trust thresholds in a given domain without revealing counterparties, receipt history, or transaction details. Auto-receipt generation requires explicit opt-in. EP receipts contain no PHI, no PII — trust profiles are computed from transaction metadata only.
 
 **EP is not the next MCP.** This framing will come up. Reject it explicitly. EP does not define how agents connect to tools, communicate with each other, or execute transactions. Those are MCP, A2A, and ACP problems. EP is the layer those systems need to answer the question none of them answer: should this connection happen?
 
@@ -96,11 +98,11 @@ State these proactively. Do not wait to be asked.
 
 ## The Winning Frame
 
-**The frame is not "be the next MCP." It is "be the trust layer that every serious MCP deployment eventually needs."**
+**The frame is not "be the next MCP." It is "be the trust protocol that every serious MCP deployment eventually needs."**
 
-MCP is infrastructure. EP complements it. As MCP deployments grow in scope — more tools, more servers, more sensitive contexts — the question of whether any given MCP server should be trusted in any given environment becomes unavoidable. Enterprises deploying MCP in production will need preflight. Regulated industries will need ZK attestation. Any system with automated agents taking consequential actions will need attribution chains and appeals.
+MCP is infrastructure. EP complements it. As MCP deployments grow in scope — more tools, more servers, more sensitive contexts — the question of whether any given MCP server should be trusted in any given environment becomes unavoidable. Enterprises deploying MCP in production will need preflight. Regulated industries will need privacy-preserving proof attestation. Any system with automated agents taking consequential actions will need attribution chains and appeals.
 
-EP does not compete with MCP for adoption. It rides MCP's growth curve and captures the trust layer that MCP was not designed to provide.
+EP does not compete with MCP for adoption. It rides MCP's growth curve and captures the trust protocol role that MCP was not designed to provide.
 
 Position EP to MCP builders as: "You've built a great server. Here's how enterprises will trust it enough to actually deploy it."
 
@@ -120,9 +122,9 @@ Every MCP server installation is a trust decision. EP provides a policy-evaluabl
 
 As agents take autonomous actions — making purchases, modifying repositories, sending communications — the question of authorization becomes critical. EP's attribution chain (Principal→Agent→Tool) creates a verified accountability record for every delegated action. Delegation judgment scoring produces a graded human accountability record (excellent / good / fair / poor). Enterprises deploying agents will need this. Regulators will eventually require it.
 
-**Wedge 3 — Zero-knowledge attestation for regulated industries**
+**Wedge 3 — Privacy-preserving commitment proofs for regulated industries**
 
-Healthcare, legal, and financial institutions cannot participate in trust systems that require exposing transaction histories or counterparty relationships. EP's ZK proof layer (HMAC-SHA256 + Merkle commitment, with full zk-SNARK on roadmap) allows regulated entities to prove they meet trust thresholds in a given domain without revealing the evidence behind them. This is the wedge that makes EP required infrastructure for the sectors that handle the most sensitive agentic workflows.
+Healthcare, legal, and financial institutions cannot participate in trust systems that require exposing transaction histories or counterparty relationships. EP's commitment proof layer (HMAC-SHA256 + Merkle commitment, with full zk-SNARK on roadmap) allows regulated entities to prove they meet trust thresholds in a given domain without revealing the evidence behind them. This is the wedge that makes EP required infrastructure for the sectors that handle the most sensitive agentic workflows.
 
 **Later wedges** (do not lead with these):
 - Agentic commerce receipts
@@ -165,7 +167,7 @@ Use these labels everywhere — in READMEs, documentation, demo scripts, and inv
 - Trust-graph dispute adjudication (receipt weight: 0.3x active dispute, 0.0x upheld, 1.0x dismissed)
 - Attribution chain: Principal→Agent→Tool (migration 026)
 - Delegation judgment scoring: 4 grades (excellent / good / fair / poor)
-- Zero-knowledge proofs: HMAC-SHA256 + Merkle commitment (ZK-lite; full zk-SNARK on roadmap)
+- Commitment proofs: HMAC-SHA256 + Merkle commitment (commitment-based; full zk-SNARK on roadmap)
 - Domain-specific scoring: 7 domains
 - Trust gate: pre-action canonical check
 - Identity continuity: EP-IX (anti-whitewashing)
@@ -205,9 +207,9 @@ Use these labels everywhere — in READMEs, documentation, demo scripts, and inv
 
 ### For Enterprise and Regulated Industries
 
-**Lead with:** Attribution chains, delegation judgment scoring, and ZK attestation.
+**Lead with:** Attribution chains, delegation judgment scoring, and privacy-preserving commitment proofs.
 
-**Core message:** Your agents are making consequential decisions. When something goes wrong — a purchase, a repository modification, a communication sent — you need a verifiable record of who authorized what. EP's Principal→Agent→Tool attribution chain produces that record. EP's ZK proofs let you participate in trust networks without exposing confidential operational data.
+**Core message:** Your agents are making consequential decisions. When something goes wrong — a purchase, a repository modification, a communication sent — you need a verifiable record of who authorized what. EP's Principal→Agent→Tool attribution chain produces that record. EP's commitment proofs let you participate in trust networks without exposing confidential operational data.
 
 **What resonates:** The accountability question. "When your agent does something wrong, can you prove what you authorized it to do?" Most enterprise teams do not have a good answer. EP provides one.
 
@@ -223,7 +225,7 @@ Use these labels everywhere — in READMEs, documentation, demo scripts, and inv
 
 **Core message:** EP is a vendor-neutral, open-source (Apache 2.0) protocol for trust evaluation and appeals across AI agents, software, and machine actors. It directly addresses all three CAISI pillars: industry-led standard development, open-source protocol implementation, and AI agent security and identity. EP is the proposed reference implementation for a Trust Evaluation and Appeals Working Group, not a finished standard imposed for adoption.
 
-**Technical credibility markers to surface:** 670 automated checks, Protocol Standard v1.0 with 17 sections, cross-language conformance verification (JS + Python), ZK proof layer for regulated sector participation, constitutional due process guarantees, adversarial resistance in dispute adjudication.
+**Technical credibility markers to surface:** 670 automated checks, Protocol Standard v1.0 with 17 sections, cross-language conformance verification (JS + Python), commitment proof layer for regulated sector participation, constitutional due process guarantees, adversarial resistance in dispute adjudication.
 
 **Unlike TLS qualifier:** Always pair the SSL/TLS analogy with the probabilistic/contextual/contestable qualifier. Standards audiences will probe the analogy. Volunteering the limitation before they raise it signals technical seriousness.
 
@@ -239,12 +241,12 @@ Use these labels everywhere — in READMEs, documentation, demo scripts, and inv
 
 **Three compounding moats:**
 1. The ledger — every receipt makes every profile more accurate; network effect is structural, not social
-2. The ZK privacy layer — regulated industries that rely on EP's ZK proofs cannot migrate to systems that lack them
+2. The privacy-preserving proof layer — regulated industries that rely on EP's commitment proofs cannot migrate to systems that lack them
 3. The attribution chain — human principals whose delegation history lives in EP have incentive to continue using EP rather than starting over
 
 **Business model:** Not selling the spec. Operating company around the standard: hosted trust APIs, install preflight services, enterprise policy management, appeals and adjudication tooling, provenance connectors, analytics.
 
-**The number to know:** 35–45% assessed probability of becoming the default trust layer for agent systems. That is a real number, not a vanity projection.
+**The number to know:** 35–45% assessed probability of becoming the default trust protocol for agent systems. That is a real number, not a vanity projection.
 
 **What not to lead with:** The technical architecture. Investors want category logic and moat structure first. Architecture is supporting evidence, not the thesis.
 
@@ -270,7 +272,7 @@ Use these labels everywhere — in READMEs, documentation, demo scripts, and inv
 |---|---|---|
 | "Trust attestation" | "Trust evaluation and appeals" | Attestation implies one-way assertion; EP is bidirectional and contestable |
 | "Reputation system" | "Trust protocol," "trust system" | Reputation implies social judgment; EP is behavioral and policy-based |
-| "Score layer" | "Trust layer" | Score implies numeric simplification; EP produces structured profiles |
+| "Score layer" | "Trust protocol" | Score implies numeric simplification; EP produces structured profiles |
 | "Check score" | "View trust profile," "evaluate trust," "run install preflight" | Same reason |
 | "Bad score / recover from a bad score" | "Degraded trust," "rebuild trust" | Score language feels punitive and opaque |
 | "The next MCP" | Do not use this frame at all | It positions EP as a competitor rather than a complement |
@@ -297,7 +299,7 @@ EP operates in a space with no direct equivalent — which is both the opportuni
 
 **Ad-hoc agent safety systems** — Early-stage, context-specific, non-portable. The gap EP fills is exactly what these systems cannot provide: a portable, policy-evaluable, contestable trust object that travels with the entity across contexts and systems.
 
-**The honest answer to "why will EP win":** First mover with a working reference implementation, constitutional due process, ZK attestation for regulated industries, and a compounding behavioral ledger. The trust graph gets harder to replicate the longer it runs. The moat is structural.
+**The honest answer to "why will EP win":** First mover with a working reference implementation, constitutional due process, privacy-preserving commitment proofs for regulated industries, and a compounding behavioral ledger. The trust graph gets harder to replicate the longer it runs. The moat is structural.
 
 ---
 

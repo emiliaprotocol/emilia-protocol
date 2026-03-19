@@ -77,8 +77,8 @@ EP_API_KEY=ep_live_your_key_here npx @emilia-protocol/mcp-server
 | `ep_lineage` | Entity lineage, predecessors, continuity, whitewashing flags | No |
 | `ep_list_policies` | List all available trust policies | No |
 | `ep_configure_auto_receipt` | Enable automatic behavioral receipt generation for this session | No |
-| `ep_generate_zk_proof` | Generate a zero-knowledge proof for a score claim | No |
-| `ep_verify_zk_proof` | Verify a zero-knowledge proof | No |
+| `ep_generate_zk_proof` | Generate a commitment proof for a score claim | No |
+| `ep_verify_zk_proof` | Verify a commitment proof | No |
 | `ep_delegation_judgment` | Score a principal's delegation history (excellent / good / fair / poor) | No |
 | `ep_issue_commit` | Issue a signed EP Commit before a high-stakes action | Yes |
 | `ep_verify_commit` | Verify a commit's signature, status, and validity | No |

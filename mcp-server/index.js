@@ -28,9 +28,9 @@
  * SPRINT 4A: Attribution Chain
  *   ep_delegation_judgment  — Principal delegation judgment score (how well they choose agents)
  *
- * SPRINT 5A: Zero-Knowledge Proof layer
+ * SPRINT 5A: Privacy-Preserving Commitment Proof layer
  *   ep_generate_zk_proof    — Prove trust threshold without revealing receipt contents or counterparties
- *   ep_verify_zk_proof      — Verify a ZK trust proof by proof_id (public, no transaction history revealed)
+ *   ep_verify_zk_proof      — Verify a commitment trust proof by proof_id (public, no transaction history revealed)
  *
  * EP COMMIT (signed authorization token for high-stakes machine actions):
  *   ep_issue_commit          — Issue a signed EP Commit before a high-stakes action
@@ -488,13 +488,13 @@ const TOOLS = [
     },
   },
 
-  // Sprint 5A: Zero-Knowledge Proof layer
+  // Sprint 5A: Privacy-Preserving Commitment Proof layer
   {
     name: 'ep_generate_zk_proof',
     description:
-      'Generate a zero-knowledge trust proof. Proves a trust claim (e.g., score > 0.85 in the ' +
+      'Generate a privacy-preserving commitment proof. Proves a trust claim (e.g., score > 0.85 in the ' +
       'financial domain, or > 50 verified receipts) WITHOUT revealing receipt contents, counterparty ' +
-      'identities, or transaction details. ' +
+      'identities, or transaction details. Uses HMAC-SHA256 commitments + Merkle trees. ' +
       'Returns a proof_id you can share publicly — verifiers call ep_verify_zk_proof with only the ' +
       'proof_id and learn nothing about your transaction history. ' +
       'Essential for privacy-sensitive contexts: healthcare (HIPAA), legal (privilege), ' +
@@ -536,7 +536,7 @@ const TOOLS = [
   {
     name: 'ep_verify_zk_proof',
     description:
-      'Verify a zero-knowledge trust proof by proof_id. ' +
+      'Verify a privacy-preserving commitment proof by proof_id. ' +
       'Returns whether the claim is currently valid — without revealing anything about the ' +
       'entity\'s transaction history, counterparties, or receipt contents. ' +
       'The proof holder shares only the proof_id. You verify without learning who they transacted with. ' +
@@ -862,7 +862,7 @@ async function handleTool(name, args) {
         `ID: ${data.delegation_id}\n` +
         `Principal: ${data.principal_id}\n` +
         `Agent: ${data.agent_entity_id}\n` +
-        `Scope: ${data.scope.join(', ')}\n` +
+        `Scope: ${typeof data.scope === 'object' ? JSON.stringify(data.scope) : String(data.scope)}\n` +
         `Expires: ${data.expires_at}\n` +
         `Status: ${data.status}`;
     }
@@ -875,7 +875,7 @@ async function handleTool(name, args) {
       out += `Status: ${data.valid ? '✓ VALID' : '✗ ' + (data.status || 'INVALID')}\n`;
       if (data.principal_id) out += `Principal: ${data.principal_id}\n`;
       if (data.agent_entity_id) out += `Agent: ${data.agent_entity_id}\n`;
-      if (data.scope) out += `Scope: ${data.scope.join(', ')}\n`;
+      if (data.scope) out += `Scope: ${typeof data.scope === 'object' ? JSON.stringify(data.scope) : String(data.scope)}\n`;
       if (data.expires_at) out += `Expires: ${data.expires_at}\n`;
       if (data.action_type && data.action_permitted != null) {
         out += `Action "${data.action_type}": ${data.action_permitted ? '✓ Permitted' : '✗ Not in scope'}\n`;
@@ -993,7 +993,7 @@ async function handleTool(name, args) {
     }
 
     case 'ep_generate_zk_proof': {
-      if (!API_KEY) return 'Error: EP_API_KEY required to generate ZK proofs.';
+      if (!API_KEY) return 'Error: EP_API_KEY required to generate commitment proofs.';
       const body = {
         entity_id: args.entity_id,
         claim: {
@@ -1008,7 +1008,7 @@ async function handleTool(name, args) {
       } catch (err) {
         if (err.message?.includes('CLAIM_NOT_PROVABLE') || err.message?.includes('claim_not_provable')) {
           return (
-            `ZK Proof: Claim Not Provable\n` +
+            `Commitment Proof: Claim Not Provable\n` +
             `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
             `Your current trust data does not meet the specified threshold.\n` +
             `Claim: ${args.claim_type} > ${args.threshold}` +
@@ -1018,7 +1018,7 @@ async function handleTool(name, args) {
         }
         throw err;
       }
-      let out = `ZK Proof Generated\n`;
+      let out = `Commitment Proof Generated\n`;
       out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
       out += `Proof ID:       ${data.proof_id}\n`;
       out += `Entity:         ${data.entity_id}\n`;
@@ -1037,7 +1037,7 @@ async function handleTool(name, args) {
     case 'ep_verify_zk_proof': {
       const params = new URLSearchParams({ proof_id: args.proof_id });
       const data = await epFetch(`/api/trust/zk-proof?${params}`);
-      let out = `ZK Proof Verification\n`;
+      let out = `Commitment Proof Verification\n`;
       out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
       out += `Proof ID:    ${data.proof_id}\n`;
       out += `Entity:      ${data.entity_id}\n`;
