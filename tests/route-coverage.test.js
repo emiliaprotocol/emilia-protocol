@@ -108,6 +108,13 @@ const OPENAPI_EXEMPTIONS = [
   '/api/cron/expire',
   // Blockchain anchoring is an internal operations endpoint.
   '/api/blockchain/anchor',
+  // EP Commit routes — OpenAPI spec to be added in a follow-up.
+  '/api/commit/issue',
+  '/api/commit/verify',
+  '/api/commit/[commitId]',
+  '/api/commit/[commitId]/revoke',
+  '/api/commit/[commitId]/receipt',
+  '/api/commit/[commitId]/dispute',
 ];
 
 

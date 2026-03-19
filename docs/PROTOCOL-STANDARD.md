@@ -45,6 +45,7 @@ This standard is organized into **EP Core** sections and **EP Extension** sectio
 - Section 14: Dispute Adjudication Standard
 - Section 15: Attribution Chain Standard
 - Section 16: Auto-Receipt Generation
+- Section 18: EP Commit — Signed Pre-Action Authorization
 
 **EP Product Surfaces** (not part of this standard): Explorer, leaderboards, operator dashboards, registry views, managed adjudication workflows, and hosted APIs are implementation choices, not protocol requirements.
 
@@ -1083,6 +1084,111 @@ Implementations adopting Sections 13 through 16 MUST satisfy the following addit
 12. Compute and report delegation judgment scores separately from entity trust scores for principals with delegation history.
 13. Publish an `auto_receipt_privacy_policy` field at `/.well-known/ep-trust.json` listing implementation-specific prohibited fields.
 14. Support counterparty-initiated provenance upgrade from `unilateral` to `bilateral` within the 48-hour confirmation window.
+
+---
+
+## 18. EP Commit — Signed Pre-Action Authorization
+
+### 18.1 Definition and Scope
+
+An EP Commit is a signed authorization token that proves a trust evaluation occurred before an action was taken. It binds together the evaluated entity, the action type, the decision reached, and a cryptographic signature — creating an auditable record that the consuming system performed due diligence before proceeding.
+
+**Non-goals.** EP Commit does not hold, escrow, custody, or settle monetary value. It does not function as a payment authorization, a financial instrument, or a settlement token. max_value_usd informs policy evaluation. EP does not enforce, hold, or settle monetary value.
+
+### 18.2 Required Fields
+
+Every EP Commit record MUST contain the following fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `commit_id` | string | Unique identifier, prefixed `epc_` |
+| `version` | string | Protocol version (e.g., `"1.0"`) |
+| `decision` | enum | One of: `allow`, `review`, `deny` |
+| `action_type` | string | The type of action authorized (e.g., `purchase`, `delegation`, `tool_invocation`, `api_call`, `data_access`, `transfer`, `registration`) |
+| `entity_id` | string | The entity that was evaluated |
+| `scope` | object | Contextual scope of the authorization |
+| `nonce` | string | 32-byte cryptographic nonce (64 hex characters) for replay protection |
+| `issued_at` | ISO 8601 | Timestamp of issuance |
+| `expires_at` | ISO 8601 | Timestamp of expiry |
+| `status` | enum | One of: `active`, `fulfilled`, `revoked`, `expired` |
+| `signature` | string | Cryptographic signature over the canonical JSON serialization of all non-signature fields |
+| `max_value_usd` | number or null | Advisory value cap for policy reference (does not affect decision logic) |
+
+### 18.3 State Machine
+
+EP Commit uses a strict state machine with one non-terminal state and three terminal states:
+
+```
+                ┌──────────┐
+                │  active   │
+                └─────┬─────┘
+                      │
+           ┌──────────┼──────────┐
+           ▼          ▼          ▼
+      ┌──────────┐ ┌─────────┐ ┌─────────┐
+      │ fulfilled│ │ revoked │ │ expired │
+      └──────────┘ └─────────┘ └─────────┘
+        (terminal)  (terminal)  (terminal)
+```
+
+**Transitions:**
+- `active → fulfilled`: The authorized action was completed successfully.
+- `active → revoked`: The authorization was explicitly cancelled before use.
+- `active → expired`: The `expires_at` timestamp has passed without fulfillment or revocation.
+
+**Terminal states are irreversible.** Once a commit enters `fulfilled`, `revoked`, or `expired`, no further state transitions are permitted. A fulfilled commit cannot be revoked. An expired commit cannot be fulfilled. This guarantees audit trail integrity.
+
+### 18.4 Verification Rules
+
+Verification of an EP Commit MUST apply the following checks:
+
+1. The `commit_id` exists in the commit store.
+2. The `status` is `active`.
+3. The current time is before `expires_at`.
+4. The `signature` is valid over the canonical JSON serialization of all non-signature fields.
+5. The `nonce` has not been previously used (replay protection).
+6. The `version` is supported by the verifying implementation.
+7. The `action_type` is recognized by the verifying implementation.
+8. The `entity_id` matches the entity attempting to use the commit.
+
+Verification responses MUST practice minimum disclosure: the response includes validity status and, if invalid, the reason (e.g., `expired`, `revoked`). Verification MUST NOT expose the full commit payload — no scope, no detailed reasons, no signature material beyond what is needed to communicate validity.
+
+### 18.5 MCP Integration Pattern
+
+EP Commit integrates with the Model Context Protocol (MCP) as a pre-action authorization step:
+
+1. **Pre-action evaluation.** Before an MCP tool invocation, the host queries the EP trust evaluation endpoint for the target entity.
+2. **Commit issuance.** If the evaluation produces an `allow` or `review` decision, an EP Commit is issued and returned to the caller.
+3. **Action execution.** The caller proceeds with the action, carrying the `commit_id` as proof of prior evaluation.
+4. **Fulfillment.** Upon successful completion, the commit is transitioned to `fulfilled` and optionally bound to the resulting Trust Receipt via `bindReceiptToCommit`.
+5. **Audit trail.** The commit links the trust evaluation to the action outcome, creating a complete chain: evaluation → authorization → action → receipt.
+
+### 18.6 Security Requirements
+
+**Ed25519 signatures.** Implementations SHOULD use Ed25519 for commit signatures. The signature MUST cover the canonical JSON serialization (sorted keys, no whitespace) of all commit fields except the `signature` field itself.
+
+**Canonical JSON.** The serialization used for signing MUST be deterministic. Keys MUST be sorted lexicographically. No optional whitespace is permitted. This ensures that independently constructed signatures over the same logical commit are identical.
+
+**Nonce replay protection.** Each commit MUST contain a cryptographically random 32-byte nonce (encoded as 64 hexadecimal characters). Implementations MUST reject any commit whose nonce matches a previously observed nonce within the nonce retention window. The nonce retention window MUST be at least as long as the maximum permitted commit expiry.
+
+**Default expiry.** Commits SHOULD expire between 5 and 15 minutes after issuance. The default expiry is 10 minutes. Implementations MAY allow callers to specify a custom expiry within this range. Implementations MUST NOT issue commits with expiry windows exceeding 60 minutes without explicit operator configuration.
+
+### 18.7 Privacy
+
+EP Commit follows the protocol's minimum disclosure principle:
+
+- Verification responses MUST NOT expose full commit payloads.
+- Reasons for decisions SHOULD be expressed as reference identifiers (e.g., `reason_ref: "policy_001"`), not as free-text explanations that could leak evaluation internals.
+- Implementations MAY support zero-knowledge-backed claims in the commit scope (e.g., proving an entity's score exceeds a threshold without revealing the exact score), consistent with the ZK-lite framework defined in Section 13.
+
+### 18.8 Receipt Binding
+
+A commit MAY be bound to a Trust Receipt via `bindReceiptToCommit`. This creates an auditable link between the pre-action authorization and the post-action outcome record.
+
+**Binding constraints:**
+- A commit MUST be in `active` or `fulfilled` status to accept a receipt binding.
+- A commit in `revoked` or `expired` status MUST NOT accept receipt bindings.
+- Binding is a metadata operation; it does not alter the commit's state machine transitions.
 
 ---
 

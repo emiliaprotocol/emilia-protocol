@@ -10,7 +10,7 @@
 
 ## What This Is
 
-EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties. This MCP server gives any Claude conversation or agent pipeline direct access to EP's trust evaluation layer: 24 tools covering trust profiles, policy evaluation, software install preflight, dispute filing, appeals, delegation chains, and identity lineage. Add it to Claude Desktop in 60 seconds. No self-hosted EP backend required.
+EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties. This MCP server gives any Claude conversation or agent pipeline direct access to EP's trust evaluation layer: 29 tools covering trust profiles, policy evaluation, software install preflight, dispute filing, appeals, delegation chains, identity lineage, and pre-action commits. Add it to Claude Desktop in 60 seconds. No self-hosted EP backend required.
 
 ---
 
@@ -277,6 +277,11 @@ The submitter has 7 days to respond. Trust is suspended pending resolution.
 | `ep_generate_zk_proof` | Generate a ZK proof for a score claim | No |
 | `ep_verify_zk_proof` | Verify a ZK proof | No |
 | `ep_list_policies` | List all available trust policies | No |
+| `ep_issue_commit` | Issue a signed EP Commit before a high-stakes action | Yes |
+| `ep_verify_commit` | Verify a commit's signature, status, and validity | No |
+| `ep_get_commit_status` | Get current state of a commit | No |
+| `ep_revoke_commit` | Revoke an active commit | Yes |
+| `ep_bind_receipt_to_commit` | Bind a post-action receipt to a commit | Yes |
 
 ---
 

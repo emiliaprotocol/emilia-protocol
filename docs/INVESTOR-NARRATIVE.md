@@ -121,11 +121,13 @@ Three things, operating together:
 
 **Network effects from the ledger.** Every receipt, every proof, every delegation record, every resolved dispute deepens the trust graph. The graph cannot be forked without losing its history. Competitors can copy the spec. They cannot copy the accumulated behavioral record.
 
+**EP Commit — mandatory pre-action authorization.** EP Commit turns advisory trust into mandatory pre-action authorization. A signed authorization token proves that a machine action was evaluated under policy before proceeding. Relying systems can require an EP Commit before allowing install, connect, delegate, or transact actions. This is the single strongest monetization primitive: every consequential agent action that requires a commit token is a billable trust decision. Advisory scores are optional. Signed authorization is enforceable.
+
 ## Current state
 
 Sober accounting of where EP stands:
 
-- 24 MCP tools implemented across trust evaluation, receipt management, disputes, delegation, ZK proofs, and install preflight
+- 29 MCP tools implemented across trust evaluation, receipt management, disputes, delegation, ZK proofs, install preflight, and EP Commit
 - 670 tests passing across the conformance suite
 - Reference implementation live and open-source
 - REST API and MCP server surfaces operational

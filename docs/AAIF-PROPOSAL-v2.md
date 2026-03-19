@@ -168,6 +168,7 @@ The following capabilities are valuable but should be standardized as optional e
 | **Zero-knowledge proofs** | Privacy-preserving trust attestation for regulated industries |
 | **Auto-receipt generation** | Passive behavioral data capture from MCP tool calls |
 | **Software install preflight adapters** | Platform-specific adapters for GitHub Apps, npm packages, MCP servers |
+| **EP Commit** | Signed pre-action authorization tokens proving policy evaluation before proceeding |
 
 Product and operator surfaces — explorer, leaderboards, registry views, hosted dashboards, managed adjudication workflows — are implementation choices, not part of the standard at any layer.
 
@@ -298,7 +299,7 @@ The following reflects the state of the EP reference implementation as of March 
 
 | Component | Status |
 |-----------|--------|
-| MCP server (24 tools, context-aware) | Published on npm |
+| MCP server (29 tools, context-aware) | Published on npm |
 | Conformance suite (28 test files, 670+ automated checks, CI-backed) | Complete |
 | Cross-language verification (JavaScript + Python) | Complete |
 | Install preflight for MCP servers, GitHub Apps, npm packages | Deployed |

@@ -64,4 +64,11 @@ export type {
   ConfirmReceiptResult,
   TrustPolicyDefinition,
   EPStats,
+
+  // EP Commit types
+  CommitStatus,
+  ActionType,
+  EPCommit,
+  EPCommitRequest,
+  EPCommitVerification,
 } from './types.js';

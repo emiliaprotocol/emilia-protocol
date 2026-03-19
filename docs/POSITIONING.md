@@ -53,6 +53,7 @@ EP is a 3-layer system. The core is deliberately small — three objects that an
   - Auto-receipt generation (passive behavioral data capture from MCP tool calls)
   - Domain-specific scoring (vertical-specific behavioral weights)
   - Install preflight adapters (platform-specific adapters for MCP servers, npm, GitHub Apps)
+  - EP Commit (signed pre-action authorization tokens — scores are optional, signed authorization is enforceable)
 
 - **EP Product Surfaces** — Reference implementations and operator tools. Not part of the standard:
   - Explorer, leaderboards, registry views
@@ -156,7 +157,7 @@ Use these labels everywhere — in READMEs, documentation, demo scripts, and inv
 
 ### What Is Live
 
-- 24 MCP tools, 4 resources, 3 prompts
+- 29 MCP tools, 4 resources, 3 prompts
 - Trust profiles with 4 policy types: `strict`, `standard`, `permissive`, `discovery`
 - Install preflight for MCP servers, GitHub Apps, npm packages, and Chrome extensions
 - Disputes and appeals with constitutional due process (48-hour window, voucher voting)

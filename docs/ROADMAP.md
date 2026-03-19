@@ -73,7 +73,7 @@
 - [x] Well-known discovery (/.well-known/ep-trust.json)
 
 ### Distribution
-- [x] MCP server (24 tools, trust-native, context-aware, ep_configure_auto_receipt + ep_generate_zk_proof + ep_verify_zk_proof included)
+- [x] MCP server (29 tools, trust-native, context-aware, ep_configure_auto_receipt + ep_generate_zk_proof + ep_verify_zk_proof + EP Commit included)
 - [x] TypeScript SDK (EPClient, 25 methods, 35+ types)
 - [x] Python SDK (async EPClient, 21 methods)
 - [x] SDK publish workflows (npm + PyPI)
@@ -147,6 +147,12 @@ All items below were built and merged in the second sprint wave. They are live, 
 - ep_verify_zk_proof MCP tool — verifies proof publicly from proof_id alone
 - Migration 027
 - Enables healthcare, legal, and financial sector participation under confidentiality constraints
+
+### EP Commit
+- Signed pre-action authorization tokens evaluated under policy before proceeding
+- 5 MCP tools: ep_commit_request, ep_commit_verify, ep_commit_revoke, ep_commit_status, ep_commit_list
+- Relying systems can require an EP Commit before allowing install, connect, delegate, or transact actions
+- Turns advisory trust decisions into enforceable pre-action authorization
 
 ### Protocol Standard
 - PROTOCOL-STANDARD.md updated to 17 sections

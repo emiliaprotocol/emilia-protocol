@@ -42,6 +42,10 @@ TrustPolicy = Literal["strict", "standard", "permissive", "discovery"]
 
 TrustDecision = Literal["allow", "review", "deny"]
 
+CommitStatus = Literal["active", "revoked", "expired", "fulfilled"]
+
+ActionType = Literal["install", "connect", "delegate", "transact"]
+
 DisputeReason = Literal[
     "fraudulent_receipt",
     "inaccurate_signals",
@@ -285,3 +289,31 @@ class EntityTrustProfile:
             disputes=disp,
             anomaly=anom,
         )
+
+
+# ---------------------------------------------------------------------------
+# EP Commit
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class EPCommit:
+    """A signed EP Commit — the pre-action commitment record."""
+
+    commit_id: str
+    action_type: str
+    entity_id: str
+    decision: str
+    status: str
+    expires_at: str
+    created_at: str
+    principal_id: Optional[str] = None
+    counterparty_entity_id: Optional[str] = None
+    delegation_id: Optional[str] = None
+    scope: Optional[list[str]] = None
+    max_value_usd: Optional[float] = None
+    context: Optional[dict[str, Any]] = None
+    policy: Optional[str] = None
+    receipt_id: Optional[str] = None
+    appeal_path: Optional[str] = None
+    signature: Optional[str] = None

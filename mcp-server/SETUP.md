@@ -1,6 +1,6 @@
 # EMILIA Protocol MCP Server
 
-Behavioral trust infrastructure for AI agents — 24 tools covering trust profiles, policy evaluation, software install preflight, dispute filing, appeals, delegation chains, and identity lineage.
+Behavioral trust infrastructure for AI agents — 29 tools covering trust profiles, policy evaluation, software install preflight, dispute filing, appeals, delegation chains, identity lineage, and pre-action commits.
 
 ## Install in Claude Desktop
 
@@ -52,7 +52,7 @@ With an API key:
 EP_API_KEY=ep_live_your_key_here npx @emilia-protocol/mcp-server
 ```
 
-## Available Tools (24 total)
+## Available Tools (29 total)
 
 | Tool | Description | Auth Required |
 |------|-------------|:---:|
@@ -80,6 +80,11 @@ EP_API_KEY=ep_live_your_key_here npx @emilia-protocol/mcp-server
 | `ep_generate_zk_proof` | Generate a zero-knowledge proof for a score claim | No |
 | `ep_verify_zk_proof` | Verify a zero-knowledge proof | No |
 | `ep_delegation_judgment` | Score a principal's delegation history (excellent / good / fair / poor) | No |
+| `ep_issue_commit` | Issue a signed EP Commit before a high-stakes action | Yes |
+| `ep_verify_commit` | Verify a commit's signature, status, and validity | No |
+| `ep_get_commit_status` | Get current state of a commit | No |
+| `ep_revoke_commit` | Revoke an active commit | Yes |
+| `ep_bind_receipt_to_commit` | Bind a post-action receipt to a commit | Yes |
 
 ## Environment Variables
 

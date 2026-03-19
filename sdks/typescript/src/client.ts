@@ -29,6 +29,9 @@ import type {
   TrustPolicyDefinition,
   EPStats,
   EPClientOptions,
+  EPCommit,
+  EPCommitRequest,
+  EPCommitVerification,
 } from './types.js';
 
 import { EPError } from './types.js';
@@ -803,6 +806,97 @@ export class EPClient {
    */
   async health(): Promise<{ status: string; [key: string]: unknown }> {
     return this.request('/api/health');
+  }
+
+  // --------------------------------------------------------------------------
+  // EP Commit
+  // --------------------------------------------------------------------------
+
+  /**
+   * Issue a signed EP Commit before a high-stakes action.
+   *
+   * The commit binds the agent to a specific action type, entity, and policy
+   * before execution. Returns decision (allow/deny/review), commit_id, expiry,
+   * scope, and appeal path.
+   *
+   * @example
+   * ```typescript
+   * const commit = await ep.issueCommit({
+   *   action_type: 'transact',
+   *   entity_id: 'payment-agent-v2',
+   *   max_value_usd: 500,
+   *   policy: 'strict',
+   * });
+   * if (commit.decision !== 'allow') throw new Error('Commit denied');
+   * ```
+   */
+  async issueCommit(params: EPCommitRequest): Promise<EPCommit> {
+    return this.request<EPCommit>('/api/commit/issue', {
+      method: 'POST',
+      auth: true,
+      body: params,
+    });
+  }
+
+  /**
+   * Verify a commit's signature, status, and validity.
+   *
+   * @example
+   * ```typescript
+   * const result = await ep.verifyCommit('ep_commit_abc123');
+   * if (!result.valid) console.error('Commit invalid');
+   * ```
+   */
+  async verifyCommit(commitId: string): Promise<EPCommitVerification> {
+    return this.request<EPCommitVerification>('/api/commit/verify', {
+      method: 'POST',
+      body: { commit_id: commitId },
+    });
+  }
+
+  /**
+   * Get the current state of a commit.
+   *
+   * @example
+   * ```typescript
+   * const commit = await ep.getCommitStatus('ep_commit_abc123');
+   * console.log(commit.status); // "active" | "revoked" | "expired" | "fulfilled"
+   * ```
+   */
+  async getCommitStatus(commitId: string): Promise<EPCommit> {
+    return this.request<EPCommit>(`/api/commit/${encodeURIComponent(commitId)}`);
+  }
+
+  /**
+   * Revoke an active commit before it is fulfilled or expires.
+   *
+   * @example
+   * ```typescript
+   * await ep.revokeCommit('ep_commit_abc123', 'Action no longer needed');
+   * ```
+   */
+  async revokeCommit(commitId: string, reason: string): Promise<EPCommit> {
+    return this.request<EPCommit>(`/api/commit/${encodeURIComponent(commitId)}/revoke`, {
+      method: 'POST',
+      auth: true,
+      body: { reason },
+    });
+  }
+
+  /**
+   * Bind a post-action receipt to a commit, completing the commit-execute-receipt cycle.
+   *
+   * @example
+   * ```typescript
+   * await ep.bindReceiptToCommit('ep_commit_abc123', 'ep_rcpt_xyz789');
+   * ```
+   */
+  async bindReceiptToCommit(commitId: string, receiptId: string): Promise<EPCommit> {
+    return this.request<EPCommit>(`/api/commit/${encodeURIComponent(commitId)}/receipt`, {
+      method: 'POST',
+      auth: true,
+      body: { receipt_id: receiptId },
+    });
   }
 
   /**

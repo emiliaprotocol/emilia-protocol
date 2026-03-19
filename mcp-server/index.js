@@ -32,6 +32,13 @@
  *   ep_generate_zk_proof    — Prove trust threshold without revealing receipt contents or counterparties
  *   ep_verify_zk_proof      — Verify a ZK trust proof by proof_id (public, no transaction history revealed)
  *
+ * EP COMMIT (pre-action commitment protocol):
+ *   ep_issue_commit          — Issue a signed EP Commit before a high-stakes action
+ *   ep_verify_commit         — Verify a commit's signature, status, and validity
+ *   ep_get_commit_status     — Get current state of a commit
+ *   ep_revoke_commit         — Revoke an active commit
+ *   ep_bind_receipt_to_commit — Bind a post-action receipt to a commit
+ *
  * Setup:
  *   EP_BASE_URL=https://emiliaprotocol.ai
  *   EP_API_KEY=ep_live_...  (for authenticated writes; registration is public)
@@ -568,6 +575,80 @@ const TOOLS = [
       required: ['principal_id'],
     },
   },
+
+  // EP Commit — pre-action commitment protocol
+  {
+    name: 'ep_issue_commit',
+    description:
+      'Issue a signed EP Commit before a high-stakes action. ' +
+      'Returns a commit_id, decision (allow/deny/review), expiry, scope, and appeal path. ' +
+      'The commit binds the agent to a specific action type, entity, and policy before execution.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        action_type: { type: 'string', description: 'Action type: install, connect, delegate, transact' },
+        entity_id: { type: 'string', description: 'Entity requesting the commit' },
+        principal_id: { type: 'string', description: 'Principal authorizing the action (optional)' },
+        counterparty_entity_id: { type: 'string', description: 'Counterparty entity ID (optional)' },
+        delegation_id: { type: 'string', description: 'Delegation ID if acting under delegation (optional)' },
+        scope: { type: 'array', items: { type: 'string' }, description: 'Action scope list (optional)' },
+        max_value_usd: { type: 'number', description: 'Maximum value in USD (optional)' },
+        context: { type: 'object', description: 'Additional context metadata (optional)' },
+        policy: { type: 'string', description: 'Trust policy to enforce (default: standard)' },
+      },
+      required: ['action_type', 'entity_id'],
+    },
+  },
+  {
+    name: 'ep_verify_commit',
+    description:
+      'Verify a commit\'s signature, status, and validity. ' +
+      'Returns valid/invalid, current status, decision, and expiry.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        commit_id: { type: 'string', description: 'Commit ID (ep_commit_...)' },
+      },
+      required: ['commit_id'],
+    },
+  },
+  {
+    name: 'ep_get_commit_status',
+    description: 'Get the current state of a commit (active, revoked, expired, fulfilled).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        commit_id: { type: 'string', description: 'Commit ID (ep_commit_...)' },
+      },
+      required: ['commit_id'],
+    },
+  },
+  {
+    name: 'ep_revoke_commit',
+    description: 'Revoke an active commit before it is fulfilled or expires.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        commit_id: { type: 'string', description: 'Commit ID to revoke (ep_commit_...)' },
+        reason: { type: 'string', description: 'Reason for revocation' },
+      },
+      required: ['commit_id', 'reason'],
+    },
+  },
+  {
+    name: 'ep_bind_receipt_to_commit',
+    description:
+      'Bind a post-action receipt to a commit, completing the commit-execute-receipt cycle. ' +
+      'Links the behavioral outcome back to the pre-action commitment.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        commit_id: { type: 'string', description: 'Commit ID to bind to (ep_commit_...)' },
+        receipt_id: { type: 'string', description: 'Receipt ID to bind (ep_rcpt_...)' },
+      },
+      required: ['commit_id', 'receipt_id'],
+    },
+  },
 ];
 
 // =============================================================================
@@ -979,6 +1060,76 @@ async function handleTool(name, args) {
         out += `\n${data._note || 'Proof could not be verified.'}`;
       }
       return out;
+    }
+
+    case 'ep_issue_commit': {
+      if (!API_KEY) return 'Error: EP_API_KEY required to issue commits.';
+      const body = {
+        action_type: args.action_type,
+        entity_id: args.entity_id,
+        principal_id: args.principal_id || null,
+        counterparty_entity_id: args.counterparty_entity_id || null,
+        delegation_id: args.delegation_id || null,
+        scope: args.scope || null,
+        max_value_usd: args.max_value_usd || null,
+        context: args.context || null,
+        policy: args.policy || 'standard',
+      };
+      const data = await epFetch('/api/commit/issue', { method: 'POST', auth: true, body });
+      let out = `EP Commit Issued\n`;
+      out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      out += `Commit ID:  ${data.commit_id}\n`;
+      out += `Decision:   ${data.decision === 'allow' ? '✓ ALLOW' : data.decision === 'deny' ? '✗ DENY' : '⚠ REVIEW'}\n`;
+      out += `Expires:    ${data.expires_at}\n`;
+      if (data.scope?.length) out += `Scope:      ${data.scope.join(', ')}\n`;
+      if (data.appeal_path) out += `Appeal:     ${data.appeal_path}\n`;
+      return out;
+    }
+
+    case 'ep_verify_commit': {
+      const data = await epFetch('/api/commit/verify', { method: 'POST', body: { commit_id: args.commit_id } });
+      let out = `Commit Verification\n`;
+      out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      out += `Commit ID:  ${data.commit_id}\n`;
+      out += `Valid:      ${data.valid ? '✓ YES' : '✗ NO'}\n`;
+      out += `Status:     ${data.status}\n`;
+      out += `Decision:   ${data.decision}\n`;
+      if (data.expires_at) out += `Expires:    ${data.expires_at}\n`;
+      return out;
+    }
+
+    case 'ep_get_commit_status': {
+      const data = await epFetch(`/api/commit/${encodeURIComponent(args.commit_id)}`);
+      let out = `Commit: ${data.commit_id}\n`;
+      out += `Status:      ${data.status}\n`;
+      out += `Action type: ${data.action_type}\n`;
+      out += `Entity:      ${data.entity_id}\n`;
+      if (data.decision) out += `Decision:    ${data.decision}\n`;
+      if (data.expires_at) out += `Expires:     ${data.expires_at}\n`;
+      if (data.receipt_id) out += `Receipt:     ${data.receipt_id}\n`;
+      return out;
+    }
+
+    case 'ep_revoke_commit': {
+      if (!API_KEY) return 'Error: EP_API_KEY required to revoke commits.';
+      const data = await epFetch(`/api/commit/${encodeURIComponent(args.commit_id)}/revoke`, {
+        method: 'POST', auth: true, body: { reason: args.reason },
+      });
+      return `Commit revoked.\n` +
+        `Commit ID: ${data.commit_id}\n` +
+        `Status: ${data.status}\n` +
+        `Reason: ${args.reason}`;
+    }
+
+    case 'ep_bind_receipt_to_commit': {
+      if (!API_KEY) return 'Error: EP_API_KEY required to bind receipts.';
+      const data = await epFetch(`/api/commit/${encodeURIComponent(args.commit_id)}/receipt`, {
+        method: 'POST', auth: true, body: { receipt_id: args.receipt_id },
+      });
+      return `Receipt bound to commit.\n` +
+        `Commit ID: ${data.commit_id}\n` +
+        `Receipt ID: ${data.receipt_id}\n` +
+        `Status: ${data.status}`;
     }
 
     default:

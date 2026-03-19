@@ -50,6 +50,12 @@ export type TrustPolicy =
 /** The action output of a trust gate evaluation. */
 export type TrustDecision = 'allow' | 'block' | 'review' | 'deny';
 
+/** Lifecycle states of an EP Commit. */
+export type CommitStatus = 'active' | 'revoked' | 'expired' | 'fulfilled';
+
+/** Action types for EP Commit. */
+export type ActionType = 'install' | 'connect' | 'delegate' | 'transact';
+
 /** Recognized grounds for filing a dispute. */
 export type DisputeReason =
   | 'fraudulent_receipt'
@@ -494,6 +500,53 @@ export interface EPStats {
   automated_checks: number;
   trust_policies: number;
   mcp_tools: number;
+}
+
+// ----------------------------------------------------------------------------
+// EP Commit types
+// ----------------------------------------------------------------------------
+
+/** Request shape for issuing an EP Commit. */
+export interface EPCommitRequest {
+  action_type: ActionType;
+  entity_id: string;
+  principal_id?: string;
+  counterparty_entity_id?: string;
+  delegation_id?: string;
+  scope?: string[];
+  max_value_usd?: number;
+  context?: Record<string, unknown>;
+  policy?: string;
+}
+
+/** A signed EP Commit — the pre-action commitment record. */
+export interface EPCommit {
+  commit_id: string;
+  action_type: ActionType;
+  entity_id: string;
+  principal_id?: string;
+  counterparty_entity_id?: string;
+  delegation_id?: string;
+  scope?: string[];
+  max_value_usd?: number;
+  context?: Record<string, unknown>;
+  policy?: string;
+  decision: TrustDecision;
+  status: CommitStatus;
+  expires_at: string;
+  created_at: string;
+  receipt_id?: string;
+  appeal_path?: string;
+  signature?: string;
+}
+
+/** Result of verifying an EP Commit. */
+export interface EPCommitVerification {
+  commit_id: string;
+  valid: boolean;
+  status: CommitStatus;
+  decision: TrustDecision;
+  expires_at?: string;
 }
 
 // ----------------------------------------------------------------------------

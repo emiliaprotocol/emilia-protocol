@@ -28,6 +28,7 @@ EP is a 3-layer system. The core is deliberately small. Everything else is an op
   - Auto-receipt generation (passive behavioral data from MCP tool calls)
   - Domain-specific scoring (financial, code_execution, communication, +4)
   - Install preflight adapters (MCP servers, npm, GitHub Apps, Chrome extensions)
+  - EP Commit (signed pre-action authorization tokens)
 
 - **EP Product Surfaces** — Reference implementations and operator tools. Useful, not required, not part of the standard:
   - Explorer, leaderboards, registry views
@@ -222,7 +223,7 @@ Receipt weight is dampened further by dispute state: 0.3x while a dispute is act
 | Blockchain anchoring (Merkle roots → Base L2) | [Live] |
 | TypeScript SDK (EPClient, 25 methods, 35+ types) | [Live] |
 | Python SDK (async EPClient, 21 methods) | [Live] |
-| MCP server (24 tools, 4 resources, 3 prompts) | [Live] |
+| MCP server (29 tools, 4 resources, 3 prompts) | [Live] |
 | 670 tests passing, 28 test files | [Live] |
 | Operator applications and registry | [Pilot] |
 | Managed adjudication workflows | [Pilot] |
@@ -244,9 +245,9 @@ Receipt weight is dampened further by dispute state: 0.3x while a dispute is act
 
 ---
 
-## MCP Tools (24)
+## MCP Tools (29)
 
-Add `npx @emilia-protocol/mcp-server` to any MCP-compatible host. The server exposes 24 tools, 4 resources, and 3 prompts.
+Add `npx @emilia-protocol/mcp-server` to any MCP-compatible host. The server exposes 29 tools, 4 resources, and 3 prompts.
 
 **Trust evaluation**
 | Tool | What it does |
@@ -294,6 +295,15 @@ Add `npx @emilia-protocol/mcp-server` to any MCP-compatible host. The server exp
 | `ep_generate_zk_proof` | Generate a ZK proof for a score claim |
 | `ep_verify_zk_proof` | Verify a ZK proof |
 
+**Commit**
+| Tool | What it does |
+|---|---|
+| `ep_commit_request` | Request an EP Commit token for a proposed action |
+| `ep_commit_verify` | Verify an EP Commit token's signature and policy evaluation |
+| `ep_commit_revoke` | Revoke a previously issued EP Commit token |
+| `ep_commit_status` | Check the current status of an EP Commit token |
+| `ep_commit_list` | List EP Commit tokens for an entity |
+
 **Discovery**
 | Tool | What it does |
 |---|---|
@@ -303,6 +313,14 @@ Add `npx @emilia-protocol/mcp-server` to any MCP-compatible host. The server exp
 **Resources:** Entity Trust Profile, Entity Trust Score, Receipt, Delegation Record
 
 **Prompts:** `trust_decision`, `receipt_quality_check`, `install_decision`
+
+---
+
+## EP Commit
+
+A signed authorization token proving a machine action was evaluated under policy before proceeding. Relying systems can require an EP Commit before allowing install, connect, delegate, or transact actions.
+
+EP Commit turns advisory trust decisions into enforceable pre-action authorization. An agent requests a commit token for a proposed action, EP evaluates the action against the relevant policy, and — if approved — returns a signed, time-limited token. The relying system verifies the token before allowing the action to proceed. Commits are revocable and auditable.
 
 ---
 

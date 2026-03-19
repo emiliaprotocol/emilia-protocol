@@ -65,6 +65,14 @@ const ROUTE_POLICIES = {
   'POST /api/needs/*/complete':       { rateCategory: 'dispute_write', useAuth: true },
   'POST /api/needs/*/rate':           { rateCategory: 'submit', useAuth: true },
 
+  // Commits (pre-action authorization)
+  'POST /api/commit/issue':           { rateCategory: 'dispute_write', useAuth: true },
+  'POST /api/commit/verify':          { rateCategory: 'read', useAuth: false },
+  'GET /api/commit/*':                { rateCategory: 'read', useAuth: true },
+  'POST /api/commit/*/revoke':        { rateCategory: 'dispute_write', useAuth: true },
+  'POST /api/commit/*/receipt':       { rateCategory: 'dispute_write', useAuth: true },
+  'POST /api/commit/*/dispute':       { rateCategory: 'dispute_write', useAuth: true },
+
   // Operations / Cron
   'POST /api/blockchain/anchor':      { rateCategory: 'anchor', useAuth: false },
   'POST /api/cron/expire':            { rateCategory: 'anchor', useAuth: false },

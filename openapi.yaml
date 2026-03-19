@@ -39,6 +39,8 @@ tags:
     description: EP-IX identity bindings, continuity claims, and principal management
   - name: Needs
     description: Agent-to-agent need broadcasting and fulfillment marketplace
+  - name: Commits
+    description: EP Commit — signed pre-action authorization tokens proving trust evaluation happened before action
   - name: Policies
     description: Trust policy registry
   - name: Operations
@@ -1378,6 +1380,262 @@ paths:
           description: Need not completed or already rated
 
   # ===========================================================================
+  # Commits (Pre-Action Authorization)
+  # ===========================================================================
+
+  /api/commit/issue:
+    post:
+      tags: [Commits]
+      summary: Issue a new EP Commit
+      description: |
+        Issue a signed pre-action authorization. Evaluates the entity against
+        trust policy and returns a commit object recording the decision.
+        The commit is always returned (even on deny) for audit purposes.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action_type, entity_id]
+              properties:
+                action_type:
+                  type: string
+                  enum: [install, connect, delegate, transact]
+                entity_id:
+                  type: string
+                principal_id:
+                  type: string
+                counterparty_entity_id:
+                  type: string
+                delegation_id:
+                  type: string
+                scope:
+                  type: object
+                  description: What the commit authorizes
+                max_value_usd:
+                  type: number
+                  description: Advisory only — informs policy evaluation. EP does not enforce monetary value.
+                context:
+                  type: object
+                policy:
+                  type: string
+      responses:
+        '201':
+          description: Commit issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  decision:
+                    type: string
+                    enum: [allow, review, deny]
+                  commit:
+                    $ref: '#/components/schemas/CommitObject'
+        '400':
+          description: Validation error
+        '401':
+          description: Authentication required
+
+  /api/commit/verify:
+    post:
+      tags: [Commits]
+      summary: Verify a commit
+      description: |
+        Public endpoint — any relying system can verify whether a commit is
+        still valid before acting on it. Returns a verdict (valid/invalid +
+        status), NOT the full commit payload.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                commit_id:
+                  type: string
+                token:
+                  type: string
+                  description: The full signed commit JSON string
+      responses:
+        '200':
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommitVerifyResponse'
+        '400':
+          description: Missing commit_id or token
+
+  /api/commit/{commitId}:
+    get:
+      tags: [Commits]
+      summary: Get commit status
+      description: |
+        Retrieve full commit status and metadata. Auth required.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: commitId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Commit ID (starts with epc_)
+      responses:
+        '200':
+          description: Commit details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  commit:
+                    $ref: '#/components/schemas/CommitObject'
+        '401':
+          description: Authentication required
+        '404':
+          description: Commit not found
+
+  /api/commit/{commitId}/revoke:
+    post:
+      tags: [Commits]
+      summary: Revoke a commit
+      description: |
+        Revoke an active commit before fulfillment. Only the issuing entity
+        or the principal may revoke. Terminal states are immutable.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: commitId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Commit revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  commit_id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [revoked]
+                  revoked_at:
+                    type: string
+                    format: date-time
+        '401':
+          description: Authentication required
+        '404':
+          description: Commit not found
+        '409':
+          description: Commit is in a terminal state
+
+  /api/commit/{commitId}/receipt:
+    post:
+      tags: [Commits]
+      summary: Bind receipt to commit
+      description: |
+        Bind a receipt to a commit and mark it as fulfilled. This closes the
+        commit lifecycle — the pre-authorization has been acted upon.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: commitId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [receipt_id]
+              properties:
+                receipt_id:
+                  type: string
+      responses:
+        '200':
+          description: Receipt bound and commit fulfilled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  commit_id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [fulfilled]
+                  receipt_id:
+                    type: string
+        '401':
+          description: Authentication required
+        '404':
+          description: Commit or receipt not found
+        '409':
+          description: Commit is not in active state
+
+  /api/commit/{commitId}/dispute:
+    post:
+      tags: [Commits]
+      summary: Dispute a commit
+      description: |
+        Shortcut to open a dispute from a commit. Looks up the commit, finds
+        the bound receipt_id, and delegates to the existing dispute filing
+        logic. The commit must have a bound receipt.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: commitId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  default: context_mismatch
+                description:
+                  type: string
+                evidence:
+                  type: object
+      responses:
+        '201':
+          description: Dispute filed
+        '401':
+          description: Authentication required
+        '404':
+          description: Commit not found
+        '409':
+          description: Commit has no bound receipt
+
+  # ===========================================================================
   # Policies
   # ===========================================================================
 
@@ -2175,3 +2433,77 @@ components:
                 type: array
                 items:
                   type: string
+
+    CommitObject:
+      type: object
+      description: |
+        EP Commit — a signed pre-action authorization token. Proves that a
+        machine action was evaluated under policy before the action proceeded.
+      properties:
+        commit_id:
+          type: string
+          description: Unique commit identifier (starts with epc_)
+        entity_id:
+          type: string
+        principal_id:
+          type: string
+        counterparty_entity_id:
+          type: string
+        delegation_id:
+          type: string
+        action_type:
+          type: string
+          enum: [install, connect, delegate, transact]
+        decision:
+          type: string
+          enum: [allow, review, deny]
+        scope:
+          type: object
+        max_value_usd:
+          type: number
+        context:
+          type: object
+        policy_snapshot:
+          type: object
+          description: Snapshot of the policy evaluation at time of issuance
+        nonce:
+          type: string
+        signature:
+          type: string
+          description: Ed25519 signature over the canonical payload
+        public_key:
+          type: string
+          description: Base64-encoded Ed25519 public key
+        status:
+          type: string
+          enum: [active, fulfilled, revoked, expired]
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    CommitVerifyResponse:
+      type: object
+      description: |
+        Commit verification verdict. Returns validity and status without
+        exposing the full commit payload.
+      properties:
+        valid:
+          type: boolean
+        status:
+          type: string
+          enum: [active, fulfilled, revoked, expired, not_found]
+        decision:
+          type: string
+          enum: [allow, review, deny]
+        expires_at:
+          type: string
+          format: date-time
+        entity_id:
+          type: string
+        action_type:
+          type: string
+        scope:
+          type: object

@@ -887,3 +887,123 @@ class EPClient:
                 print(p["name"], p["family"])
         """
         return await self._request("GET", "/api/policies")
+
+    # ==================================================================
+    # EP Commit
+    # ==================================================================
+
+    async def issue_commit(self, params: dict[str, Any]) -> dict[str, Any]:
+        """Issue a signed EP Commit before a high-stakes action.
+
+        The commit binds the agent to a specific action type, entity, and policy
+        before execution. Returns decision, commit_id, expiry, scope, and appeal path.
+
+        Parameters
+        ----------
+        params:
+            Dict with ``action_type`` (required), ``entity_id`` (required), and
+            optional keys: ``principal_id``, ``counterparty_entity_id``,
+            ``delegation_id``, ``scope``, ``max_value_usd``, ``context``, ``policy``.
+
+        Example
+        -------
+        .. code-block:: python
+
+            commit = await ep.issue_commit({
+                "action_type": "transact",
+                "entity_id": "payment-agent-v2",
+                "max_value_usd": 500,
+                "policy": "strict",
+            })
+            if commit["decision"] != "allow":
+                raise RuntimeError("Commit denied")
+        """
+        return await self._request(
+            "POST", "/api/commit/issue", auth=True, body=params
+        )
+
+    async def verify_commit(self, commit_id: str) -> dict[str, Any]:
+        """Verify a commit's signature, status, and validity.
+
+        Parameters
+        ----------
+        commit_id:
+            Commit ID (``ep_commit_...``).
+
+        Example
+        -------
+        .. code-block:: python
+
+            result = await ep.verify_commit("ep_commit_abc123")
+            assert result["valid"]
+        """
+        return await self._request(
+            "POST", "/api/commit/verify", body={"commit_id": commit_id}
+        )
+
+    async def get_commit_status(self, commit_id: str) -> dict[str, Any]:
+        """Get the current state of a commit.
+
+        Parameters
+        ----------
+        commit_id:
+            Commit ID (``ep_commit_...``).
+
+        Example
+        -------
+        .. code-block:: python
+
+            commit = await ep.get_commit_status("ep_commit_abc123")
+            print(commit["status"])  # "active", "revoked", "expired", "fulfilled"
+        """
+        return await self._request("GET", f"/api/commit/{commit_id}")
+
+    async def revoke_commit(
+        self, commit_id: str, reason: str
+    ) -> dict[str, Any]:
+        """Revoke an active commit before it is fulfilled or expires.
+
+        Parameters
+        ----------
+        commit_id:
+            Commit ID to revoke (``ep_commit_...``).
+        reason:
+            Reason for revocation.
+
+        Example
+        -------
+        .. code-block:: python
+
+            await ep.revoke_commit("ep_commit_abc123", "Action no longer needed")
+        """
+        return await self._request(
+            "POST",
+            f"/api/commit/{commit_id}/revoke",
+            auth=True,
+            body={"reason": reason},
+        )
+
+    async def bind_receipt_to_commit(
+        self, commit_id: str, receipt_id: str
+    ) -> dict[str, Any]:
+        """Bind a post-action receipt to a commit, completing the commit-execute-receipt cycle.
+
+        Parameters
+        ----------
+        commit_id:
+            Commit ID to bind to (``ep_commit_...``).
+        receipt_id:
+            Receipt ID to bind (``ep_rcpt_...``).
+
+        Example
+        -------
+        .. code-block:: python
+
+            await ep.bind_receipt_to_commit("ep_commit_abc123", "ep_rcpt_xyz789")
+        """
+        return await self._request(
+            "POST",
+            f"/api/commit/{commit_id}/receipt",
+            auth=True,
+            body={"receipt_id": receipt_id},
+        )

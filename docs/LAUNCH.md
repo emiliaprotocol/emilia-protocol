@@ -2,10 +2,11 @@
 
 EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties.
 
-Today, EP launches with three live wedges:
+Today, EP launches with four live wedges:
 1. install preflight for MCP servers and software packages
 2. explainable trust decisions with appeal paths
 3. delegation and attribution support for agent actions
+4. EP Commit — signed pre-action authorization proving policy evaluation before proceeding
 
 EP does not replace MCP, A2A, or ACP. It complements them by answering a different operational question: should this action proceed in this context?
 
@@ -145,7 +146,7 @@ EP is the SSL/TLS of AI agent behavior — the trust layer the internet forgot t
 
 EP launches as infrastructure with a specific deployment posture:
 
-**MCP server, now.** EP ships 24 MCP tools, 4 resources, and 3 prompts that any MCP-compatible host can invoke directly. The MCP server is the first distribution channel because it inserts trust evaluation at the exact point where agents choose whether to install software, connect to tools, act under delegation, or proceed with counterparties.
+**MCP server, now.** EP ships 29 MCP tools, 4 resources, and 3 prompts that any MCP-compatible host can invoke directly. The MCP server is the first distribution channel because it inserts trust evaluation at the exact point where agents choose whether to install software, connect to tools, act under delegation, or proceed with counterparties.
 
 **SDK adoption, weeks.** TypeScript and Python SDKs are published to npm and PyPI. The SDKs implement the full conformance suite — not a simplified wrapper, but a complete EP node that any developer can embed in an application. External implementations that pass the conformance test suite can register as conformant. The goal is multiple independent implementations within the first six months.
 
