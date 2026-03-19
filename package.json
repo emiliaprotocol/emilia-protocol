@@ -16,7 +16,7 @@
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "viem": "^2.21.0"
+    "viem": "^2.47.5"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
