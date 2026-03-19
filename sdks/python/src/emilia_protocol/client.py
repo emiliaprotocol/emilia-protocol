@@ -188,7 +188,7 @@ class EPClient:
     ) -> dict[str, Any]:
         """Evaluate an entity against a named trust policy.
 
-        Returns a pass/fail decision with specific failure reasons. Use this
+        Returns a Trust Decision (allow/review/deny) with specific failure reasons. Use this
         to make routing and payment decisions.
 
         Parameters

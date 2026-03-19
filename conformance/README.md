@@ -10,7 +10,7 @@ Any implementation claiming EP compatibility **must** produce identical outputs 
 |----------|-----------------|
 | **Hash determinism** | Same receipt → same SHA-256 hash, regardless of key order, across languages |
 | **Sybil resistance** | Fake receipts from unestablished entities produce low effective evidence and dampened scores |
-| **Policy evaluation** | Built-in policies (strict/standard/permissive/discovery) produce correct pass/fail for canonical inputs |
+| **Policy evaluation** | Built-in policies (strict/standard/permissive/discovery) produce correct Trust Decisions (allow/review/deny) for canonical inputs |
 | **Confidence levels** | Effective evidence thresholds map to correct confidence labels |
 | **Weight model** | v2 weights match published values and sum to 1.00 |
 | **Establishment rules** | Effective evidence ≥ 5.0 AND ≥ 3 unique submitters = established |

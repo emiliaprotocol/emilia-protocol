@@ -1,6 +1,6 @@
 -- =============================================================================
 -- EMILIA Protocol — Migration 001: Core Schema
--- Entity Measurement Infrastructure for Ledgered Interaction Accountability
+-- Evaluation, Measurement, and Intelligence Layer for Interaction Accountability
 -- =============================================================================
 
 -- Enable pgvector for semantic matching

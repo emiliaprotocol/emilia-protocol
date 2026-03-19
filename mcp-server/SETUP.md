@@ -57,7 +57,7 @@ EP_API_KEY=ep_live_your_key_here npx @emilia-protocol/mcp-server
 | Tool | Description | Auth Required |
 |------|-------------|:---:|
 | `ep_trust_profile` | Full trust profile — the canonical read surface | No |
-| `ep_trust_evaluate` | Policy evaluation with pass/fail and failure reasons | No |
+| `ep_trust_evaluate` | Policy evaluation with Trust Decision (allow/review/deny) and failure reasons | No |
 | `ep_trust_gate` | Pre-action trust check — call before irreversible actions | No |
 | `ep_submit_receipt` | Record a behavioral outcome to the EP ledger | Yes |
 | `ep_batch_submit` | Submit up to 50 receipts atomically | Yes |

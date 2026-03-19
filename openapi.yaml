@@ -2073,7 +2073,7 @@ components:
       description: |
         DEPRECATED — Use TrustDecision instead. This legacy schema is retained
         for backward compatibility only. It wraps the canonical TrustDecision
-        and adds derived pass/fail fields for legacy consumers.
+        and adds derived decision fields for legacy consumers.
       allOf:
         - $ref: '#/components/schemas/TrustDecision'
         - type: object

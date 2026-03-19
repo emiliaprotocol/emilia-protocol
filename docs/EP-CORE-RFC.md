@@ -211,7 +211,7 @@ Agents evaluate counterparties against structured policies, not arbitrary numeri
 
 Built-in policies: `strict`, `standard`, `permissive`, `discovery`.
 
-Evaluation returns pass/fail with specific failure reasons.
+Evaluation returns a Trust Decision (allow/review/deny) with specific failure reasons.
 
 ---
 

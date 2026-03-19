@@ -254,7 +254,7 @@ The submitter has 7 days to respond. Trust is suspended pending resolution.
 | Tool | Description | Auth Required |
 |------|-------------|:---:|
 | `ep_trust_profile` | Full trust profile — the canonical read surface | No |
-| `ep_trust_evaluate` | Policy evaluation with pass/fail and failure reasons | No |
+| `ep_trust_evaluate` | Policy evaluation with Trust Decision (allow/review/deny) and failure reasons | No |
 | `ep_trust_gate` | Pre-action trust check — call before irreversible actions | No |
 | `ep_submit_receipt` | Record a behavioral outcome to the EP ledger | Yes |
 | `ep_batch_submit` | Submit up to 50 receipts atomically | Yes |
@@ -306,7 +306,7 @@ ep_trust_profile(entity_id="stripe-payments")
 
 ### ep_trust_evaluate
 
-Evaluate an entity against a named trust policy. Returns a structured pass/fail with specific failure reasons — designed to be consumed programmatically by routing logic.
+Evaluate an entity against a named trust policy. Returns a Trust Decision (allow/review/deny) with specific failure reasons — designed to be consumed programmatically by routing logic.
 
 **Parameters:**
 
@@ -330,11 +330,11 @@ ep_trust_evaluate(
 Trust Evaluation: Acme Logistics (acme-logistics)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Policy: strict
-Decision: ✗ FAIL
+Decision: ✗ DENY
 Confidence: provisional
 Context: {"value_band": "high", "category": "freight"}
 
-Failures:
+Reasons:
   ✗ Insufficient evidence for strict policy (need: high, have: moderate)
   ✗ Dispute rate 1.2% exceeds strict ceiling of 0.5%
 ```
@@ -899,7 +899,7 @@ Three structured prompts orchestrate multi-step trust workflows. Invoke them fro
 
 ### `trust_decision`
 
-Orchestrates a full trust evaluation workflow. Instructs the model to call `ep_trust_gate`, retrieve the full trust profile, and synthesize a clear ALLOW or BLOCK recommendation with the key behavioral signals that drove the decision — plus what the entity would need to do to qualify if blocked.
+Orchestrates a full trust evaluation workflow. Instructs the model to call `ep_trust_gate`, retrieve the full trust profile, and synthesize a clear ALLOW, REVIEW, or DENY recommendation with the key behavioral signals that drove the decision — plus what the entity would need to do to qualify if denied.
 
 **Arguments:** `entity_id` (required), `action` (required), `value_usd` (optional)
 

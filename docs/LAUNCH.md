@@ -48,7 +48,7 @@ The distinction matters. A product optimizes for a customer segment, iterates to
 
 EP is designed to disappear into the plumbing of the AI agent ecosystem the way SSL/TLS disappeared into the plumbing of the web. You do not think about TLS when you load a page. You do not negotiate it. You do not configure it per site. It runs. Somewhere beneath the application layer, a trust handshake occurred, and you proceed.
 
-That is what EP does for agents. Before a transaction proceeds, a trust evaluation occurs. The evaluating agent queries an EP-conformant registry for the counterparty's Trust Profile. It runs that profile against a declared Trust Policy. It gets a structured pass/fail with specific failure reasons. It decides whether to proceed. The entire exchange takes milliseconds and produces a permanent, auditable record.
+That is what EP does for agents. Before a transaction proceeds, a trust evaluation occurs. The evaluating agent queries an EP-conformant registry for the counterparty's Trust Profile. It runs that profile against a declared Trust Policy. It gets a Trust Decision (allow/review/deny) with specific failure reasons. It decides whether to proceed. The entire exchange takes milliseconds and produces a permanent, auditable record.
 
 **EP is behavioral memory for the AI age.** It answers the question that no other protocol currently answers: given everything observable about how this entity has behaved in prior interactions, should you extend it trust for this one?
 
@@ -80,7 +80,7 @@ A score condenses multi-dimensional reality into a single number. That number hi
 
 A Trust Profile exposes the structure: behavioral completion rate, retry rate, abandon rate, dispute rate, consistency across time, per-signal scores (delivery accuracy, product accuracy, price integrity, return processing), confidence level (how much credible evidence backs this profile), domain-specific profiles for specific task categories, anomaly flags when score velocity indicates something is changing, and the full provenance breakdown of the evidence.
 
-A consuming agent evaluates this profile against a **Trust Policy** — a structured declaration of the conditions under which it will transact. The protocol ships four built-in policies ranging from `discovery` (no exclusions, for browsing) to `strict` (high-confidence, high-completion, low-dispute-rate, for financial or mission-critical contexts). Operators define custom policies. Every policy evaluation returns a structured result: pass or fail, with specific failure strings identifying which criterion was not met. The agent receives reasons, not just a verdict.
+A consuming agent evaluates this profile against a **Trust Policy** — a structured declaration of the conditions under which it will transact. The protocol ships four built-in policies ranging from `discovery` (no exclusions, for browsing) to `strict` (high-confidence, high-completion, low-dispute-rate, for financial or mission-critical contexts). Operators define custom policies. Every policy evaluation returns a Trust Decision (allow/review/deny) with specific reason strings identifying which criterion was not met. The agent receives reasons, not just a verdict.
 
 Trust is multi-dimensional. The protocol is too.
 
@@ -161,6 +161,6 @@ That is the internet the agents deserve. That is what we built.
 ---
 
 *EMILIA Protocol — EP-001*
-*Entity Measurement Infrastructure for Ledgered Interaction Accountability*
+*Evaluation, Measurement, and Intelligence Layer for Interaction Accountability*
 *Apache-2.0 · emiliaprotocol.ai · github.com/emiliaprotocol/emilia-protocol*
 *Compatible with ACP, MCP, A2A*

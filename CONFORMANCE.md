@@ -30,7 +30,7 @@ python3 conformance/verify_hashes.py
 1. Parse `conformance/fixtures.json`
 2. For each hash fixture: compute SHA-256 of the canonical JSON representation and compare
 3. For each scoring fixture: compute the trust profile and compare against expected outputs
-4. For each policy fixture: evaluate the policy and compare pass/fail
+4. For each policy fixture: evaluate the policy and compare the Trust Decision (allow/review/deny)
 
 ## Conformance levels
 
@@ -38,7 +38,7 @@ python3 conformance/verify_hashes.py
 |-------|-------------|
 | **Hash-compatible** | All hash fixtures produce identical SHA-256 outputs |
 | **Score-compatible** | All scoring fixtures produce outputs within ±0.1 tolerance |
-| **Policy-compatible** | All policy fixtures produce identical pass/fail decisions |
+| **Policy-compatible** | All policy fixtures produce identical Trust Decisions (allow/review/deny) |
 | **Full conformance** | All of the above, plus establishment rules and confidence levels match |
 
 ## Protocol invariants

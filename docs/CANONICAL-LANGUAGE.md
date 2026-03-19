@@ -11,7 +11,7 @@ This document defines the authoritative vocabulary for all EMILIA Protocol docum
 
 ## Canonical Object Model
 
-The primary evaluation result is a **Trust Decision**, not a pass/fail boolean.
+The primary evaluation result is a **Trust Decision** (allow/review/deny), not a boolean.
 
 ### Trust Decision Object
 | Field | Type | Description |

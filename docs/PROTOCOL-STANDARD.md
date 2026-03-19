@@ -782,7 +782,7 @@ A valid EP ZK-lite proof MUST contain the following fields:
 
 **`policy_evaluated`** MUST match an enumerated or registered policy name. Proofs against custom policies MUST include the custom policy definition hash in the `policy_metadata` field.
 
-**`evaluation_result`** is binary. A proof MUST NOT reveal the margin of pass or fail, the composite score, or the distance from threshold. The result is pass or fail, nothing more.
+**`evaluation_result`** is binary. A proof MUST NOT reveal the margin of allow or deny, the composite score, or the distance from threshold. The result is allow or deny, nothing more.
 
 **`confidence_band`** MUST be included. It reveals the general quality of evidence without disclosing receipt count or submitter identities.
 
@@ -800,7 +800,7 @@ A valid EP ZK-lite proof MUST contain the following fields:
 
 - The entity ID of the proved entity
 - The policy against which the evaluation was performed
-- The binary evaluation result (pass or fail)
+- The binary evaluation result (allow or deny)
 - The confidence band
 - The proof validity window
 - The issuing registry's identity (via `registry_public_key_id`)

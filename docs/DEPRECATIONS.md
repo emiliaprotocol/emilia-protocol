@@ -2,7 +2,7 @@
 
 ## Active Deprecations
 
-### Pass/Fail Boolean Evaluation (deprecated since v0.9)
+### Boolean Evaluation (deprecated since v0.9)
 **Old:** `{ pass: boolean, failures: string[], warnings: string[] }`
 **New:** `TrustDecision { decision: 'allow' | 'review' | 'deny', reasons: Reason[], ... }`
 **Migration:** Replace `pass === true` checks with `decision === 'allow'`

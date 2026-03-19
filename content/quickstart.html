@@ -406,9 +406,9 @@ profile.<span class="prop">anomaly</span>               <span class="cm">// pres
     <h2 id="step6">Step 6 — Evaluate Against a Policy</h2>
     <div class="step-header">
       <div class="step-num">6</div>
-      <div><div class="step-title">Get a pass/fail decision with reasons</div><div class="step-time">~1 API call</div></div>
+      <div><div class="step-title">Get a Trust Decision (allow/review/deny) with reasons</div><div class="step-time">~1 API call</div></div>
     </div>
-    <p>Instead of reading raw numbers and writing your own logic, pass a policy name and get back <code>pass: true/false</code> with specific failure reasons.</p>
+    <p>Instead of reading raw numbers and writing your own logic, pass a policy name and get back a Trust Decision (<code>allow</code>, <code>review</code>, or <code>deny</code>) with specific reasons.</p>
 
     <div class="code-block">
       <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">JavaScript</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
@@ -527,7 +527,7 @@ profile.<span class="prop">anomaly</span>               <span class="cm">// pres
 
     <h3>Trust</h3>
     <div class="api-row"><span class="api-method get">GET</span><div><div class="api-path">/api/trust/profile/:entityId</div><div class="api-desc">Full trust profile with behavioral rates, signals, provenance, disputes, and anomaly state</div></div></div>
-    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/trust/evaluate</div><div class="api-desc">Evaluate entity against a policy. Returns pass/fail with specific failure reasons</div></div></div>
+    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/trust/evaluate</div><div class="api-desc">Evaluate entity against a policy. Returns a Trust Decision (allow/review/deny) with specific failure reasons</div></div></div>
     <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/trust/install-preflight</div><div class="api-desc">Software install safety check. Returns allow/review/deny with reasons</div></div></div>
 
     <h3>Receipts</h3>
@@ -553,7 +553,7 @@ profile.<span class="prop">anomaly</span>               <span class="cm">// pres
 
     <!-- POLICIES -->
     <h2 id="policies">Trust Policies</h2>
-    <p>Pass a policy name to <code>ep_trust_evaluate</code> or <code>/api/trust/evaluate</code> to get a pass/fail decision. Four built-in policies plus four software-specific policies.</p>
+    <p>Pass a policy name to <code>ep_trust_evaluate</code> or <code>/api/trust/evaluate</code> to get a Trust Decision (allow/review/deny). Four built-in policies plus four software-specific policies.</p>
 
     <div class="policy-grid">
       <div class="policy-card"><div class="policy-name">strict</div><div class="policy-desc">High-value transactions. Requires <code>confident</code> confidence level.</div></div>

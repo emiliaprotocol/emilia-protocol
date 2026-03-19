@@ -28,7 +28,7 @@ Do not modify it. Do not replace "whether they should" with "whether to trust th
 
 **Always pair it with this qualifier when speaking to technical audiences:**
 
-> "Unlike TLS, EP is probabilistic, policy-shaped, contextual, contestable, and governance-sensitive. It is not a binary pass/fail. It is a structured evaluation with built-in appeal."
+> "Unlike TLS, EP is probabilistic, policy-shaped, contextual, contestable, and governance-sensitive. It is not a binary verdict. It is a structured Trust Decision (allow/review/deny) with built-in appeal."
 
 The SSL/TLS analogy works because it conveys infrastructure-layer necessity without requiring explanation. But it will be challenged by engineers who know that TLS is deterministic and cryptographic. Anticipate that challenge by volunteering the qualifier before they raise it. The qualifier is not a concession — it is a feature list.
 
@@ -84,7 +84,7 @@ State these proactively. Do not wait to be asked.
 
 **EP is not a reputation or social-credit system.** Trust profiles are computed from behavioral receipts — append-only, hash-chained transaction records. There is no holistic social judgment, no platform-controlled ranking, no subjective quality assessment. The protocol evaluates behavior against explicit policy criteria, not social standing.
 
-**EP is not binary.** Pass/fail trust systems fail at the edges — they are gamed at the boundary and useless in novel contexts. EP is probabilistic and policy-shaped. A trust profile produces confidence levels (provisional, emerging, confident, established), not a green or red light.
+**EP is not binary.** Binary trust systems fail at the edges — they are gamed at the boundary and useless in novel contexts. EP is probabilistic and policy-shaped. A trust profile produces confidence levels (provisional, emerging, confident, established), not a green or red light.
 
 **EP is not controlled by a single operator.** The protocol is open-source (Apache 2.0). The constitutional principle — trust must never be more powerful than appeal — is baked into the spec, not enforced by company policy. No operator, including the team that built EP, can override a legitimate appeal through administrative action alone.
 

@@ -1452,7 +1452,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
       </div>
       <div class="faq-item" onclick="toggleFaq(this)">
         <div class="faq-q">What are trust policies? How are they different from scores?</div>
-        <div class="faq-a">A trust score is a number (4.2 stars). A trust policy is a decision framework: <em>"pass if confidence is emerging AND completion rate &gt; 85% AND dispute rate &lt; 5% in the electronics category"</em>. EP ships four built-in policies (<code>strict</code>, <code>standard</code>, <code>permissive</code>, <code>discovery</code>) plus four software policies. You can also pass custom policy logic as JSONB. Policies are context-aware — electronics and apparel can have different requirements. They return pass/fail with specific failure reasons, not just a number.</div>
+        <div class="faq-a">A trust score is a number (4.2 stars). A trust policy is a decision framework: <em>"allow if confidence is emerging AND completion rate &gt; 85% AND dispute rate &lt; 5% in the electronics category"</em>. EP ships four built-in policies (<code>strict</code>, <code>standard</code>, <code>permissive</code>, <code>discovery</code>) plus four software policies. You can also pass custom policy logic as JSONB. Policies are context-aware — electronics and apparel can have different requirements. They return a Trust Decision (allow/review/deny) with specific reasons, not just a number.</div>
       </div>
       <div class="faq-item" onclick="toggleFaq(this)">
         <div class="faq-q">How does EP handle identity continuity? What if a merchant re-registers?</div>

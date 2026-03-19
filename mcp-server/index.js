@@ -124,7 +124,7 @@ const TOOLS = [
   {
     name: 'ep_trust_evaluate',
     description:
-      'Evaluate an entity against a trust policy. Returns pass/fail with specific failure reasons. ' +
+      'Evaluate an entity against a trust policy. Returns a Trust Decision (allow/review/deny) with specific failure reasons. ' +
       'Built-in policies: "strict" (high-value), "standard" (normal), "permissive" (low-risk), "discovery" (allow unevaluated). ' +
       'Accepts optional context for context-aware evaluation. Use this to make routing and payment decisions.',
     inputSchema: {
@@ -896,7 +896,7 @@ async function handleTool(name, args) {
       let out = `Trust Gate: ${args.action}\n`;
       out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
       out += `Entity: ${data.entity_id}\n`;
-      out += `Decision: ${data.decision === 'allow' ? '✓ ALLOW' : '✗ BLOCK'}\n`;
+      out += `Decision: ${data.decision === 'allow' ? '✓ ALLOW' : data.decision === 'review' ? '⚠ REVIEW' : '✗ DENY'}\n`;
       out += `Policy: ${data.policy_used}\n`;
       out += `Confidence: ${data.confidence}\n`;
       if (data.delegation_verified != null) out += `Delegation: ${data.delegation_verified ? '✓ Verified' : '✗ Not verified'}\n`;
@@ -1358,8 +1358,8 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             `Please:\n` +
             `1. Call ep_trust_gate with entity_id="${entity_id}", action="${action}"${args?.value_usd ? `, value_usd=${args.value_usd}` : ''}\n` +
             `2. If the gate passes, call ep_trust_profile to get the full profile\n` +
-            `3. Summarize: ALLOW or BLOCK, with the key trust signals that drove the decision\n` +
-            `4. If BLOCK, explain what the entity would need to do to qualify`,
+            `3. Summarize: ALLOW, REVIEW, or DENY, with the key trust signals that drove the decision\n` +
+            `4. If DENY, explain what the entity would need to do to qualify`,
         },
       }],
     };

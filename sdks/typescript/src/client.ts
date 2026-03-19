@@ -223,7 +223,7 @@ export class EPClient {
    * Pre-action trust gate — call before any high-stakes autonomous action.
    *
    * Combines trust evaluation with delegation verification in a single call.
-   * The gate returns allow/block/review/deny with appeal paths for non-allow decisions.
+   * The gate returns allow/review/deny with appeal paths for non-allow decisions.
    *
    * @example
    * ```typescript

@@ -158,7 +158,7 @@ if profile.anomaly:
 
 #### `trust_evaluate(entity_id, policy, context)`
 
-Policy-gated evaluation. Returns a pass/fail with specific failure reasons.
+Policy-gated evaluation. Returns a Trust Decision (allow/review/deny) with specific failure reasons.
 
 ```python
 result = await client.trust_evaluate(
