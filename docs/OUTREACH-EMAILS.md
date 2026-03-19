@@ -9,7 +9,7 @@ Hello AAIF team,
 
 I'm reaching out to share a proposal for a working group focused on trust evaluation and appeals for machine counterparties and software.
 
-The standards stack is getting stronger around tool access, communication, and commerce. What still appears underdefined is the trust-evaluation layer: how a system evaluates whether a counterparty, plugin, MCP server, marketplace app, seller, merchant, or software component is trustworthy enough for a given context and policy.
+The standards stack is getting stronger around tool access, communication, and commerce. What still appears underdefined is the trust-decision protocol: how a system evaluates whether a counterparty, plugin, MCP server, marketplace app, seller, merchant, or software component is trustworthy enough for a given context and policy.
 
 EMILIA Protocol (EP) is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties. The current implementation covers trust profiles, policy evaluation, install preflight, disputes, and appeals. The goal is not to ask AAIF to adopt a product, but to offer a draft protocol and working reference implementation that could help shape a neutral standard in the open.
 

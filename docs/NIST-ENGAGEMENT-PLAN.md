@@ -14,7 +14,7 @@ Identity frameworks answer **who is this agent?** Authorization frameworks answe
 
 **Given this agent's observed evidence and this action context, should it be trusted to proceed?**
 
-EP is offered to NIST as a candidate contribution to the emerging trust-evaluation layer adjacent to identity, authorization, auditability, and adverse-decision review in agent systems.
+EP is offered to NIST as a candidate contribution to the emerging trust-decision protocol adjacent to identity, authorization, auditability, and adverse-decision review in agent systems.
 
 ---
 

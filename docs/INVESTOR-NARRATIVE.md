@@ -138,9 +138,9 @@ EP is early. The protocol works. The standard is defined. The ecosystem does not
 
 ## The ask
 
-EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties. That trust-evaluation layer is a missing piece of the agentic stack, and the window to define it is open now.
+EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties. That trust-decision protocol is a missing piece of the agentic stack, and the window to define it is open now.
 
-We are raising to fund standard adoption, ecosystem development, and the first hosted operator services — to become the operating company behind the trust-evaluation layer that agent systems require.
+We are raising to fund standard adoption, ecosystem development, and the first hosted operator services — to become the operating company behind the trust-decision protocol that agent systems require.
 
 ---
 
