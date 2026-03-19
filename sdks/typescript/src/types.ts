@@ -253,15 +253,24 @@ export interface TrustEvaluation {
   display_name: string;
   /** The policy that was applied */
   policy_used: string;
-  /** Whether the entity passed the policy */
+  /** Canonical trust decision — the primary evaluation field */
+  decision: 'allow' | 'review' | 'deny';
+  /**
+   * @deprecated Derived compatibility field — use `decision` instead.
+   * Equivalent to `decision === 'allow'`.
+   */
   pass: boolean;
   confidence: ConfidenceTier;
   /** Context key used for context-aware evaluation */
   context_used?: TrustContext;
-  /** Specific failure reasons (non-empty when pass === false) */
+  /** Human-readable reasons for the decision */
+  reasons: string[];
+  /** Specific failure reasons (non-empty when decision !== 'allow') */
   failures?: string[];
   /** Non-blocking warnings */
   warnings?: string[];
+  /** URL path for disputes/appeals */
+  appeal_path: string;
 }
 
 /** A single receipt record. */

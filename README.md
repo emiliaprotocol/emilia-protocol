@@ -15,6 +15,19 @@ EP is not a product. It is a protocol. Apache 2.0.
 
 ---
 
+## Conformance Status
+
+| Metric | Value |
+|---|---|
+| Spec version | v0.9.x |
+| Route parity (API <-> OpenAPI) | 50/50 |
+| MCP tools | 13 |
+| Test suite | [X] tests passing |
+| CodeQL | Active |
+| SBOM/Provenance | Active |
+
+---
+
 ## EP Core / EP Extensions / EP Product Surfaces
 
 EP is a 3-layer system. The core is deliberately small. Everything else is an optional extension or a product surface built on top.

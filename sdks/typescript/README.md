@@ -58,7 +58,7 @@ console.log(profile.current_confidence);           // "confident"
 console.log(profile.trust_profile?.behavioral?.completion_rate); // 97.2
 
 const evaluation = await ep.trustEvaluate('merchant-xyz', 'strict');
-if (!evaluation.pass) throw new Error(`Trust check failed: ${evaluation.failures?.join(', ')}`);
+if (evaluation.decision !== 'allow') throw new Error(`Trust check failed: ${evaluation.reasons?.join(', ')}`);
 ```
 
 ---
@@ -199,9 +199,9 @@ console.log(profile.compat_score); // 91
 Evaluate an entity against a named trust policy.
 
 ```typescript
-// Basic evaluation
+// Basic evaluation — returns a canonical TrustDecision
 const result = await ep.trustEvaluate('merchant-xyz', 'standard');
-console.log(result.pass);       // true
+console.log(result.decision);   // "allow"
 console.log(result.confidence); // "confident"
 
 // With context for context-aware evaluation
@@ -211,8 +211,8 @@ const strict = await ep.trustEvaluate('merchant-xyz', 'strict', {
   value_band: 'high',
 });
 
-if (!strict.pass) {
-  console.error('Failures:', strict.failures);
+if (strict.decision !== 'allow') {
+  console.error('Reasons:', strict.reasons);
   // e.g. ["insufficient_evidence_current", "dispute_rate_too_high"]
   console.warn('Warnings:', strict.warnings);
 }

@@ -1190,7 +1190,7 @@ function formatEvaluation(data) {
   let out = `Trust Evaluation: ${data.display_name} (${data.entity_id})\n`;
   out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
   out += `Policy: ${data.policy_used}\n`;
-  out += `Decision: ${data.pass ? '✓ PASS' : '✗ FAIL'}\n`;
+  out += `Decision: ${data.decision === 'allow' ? '✓ ALLOW' : data.decision === 'review' ? '⚠ REVIEW' : '✗ DENY'}\n`;
   out += `Confidence: ${data.confidence}\n`;
   out += `Context: ${JSON.stringify(data.context_used) || 'global'}\n`;
 

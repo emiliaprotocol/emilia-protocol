@@ -120,24 +120,27 @@ export async function POST(request) {
           includeEstablishment: true,
         });
 
+        const decision = evaluation.policyResult?.pass ? 'allow' : 'deny';
         return {
           entity_id: m.entity_id,
           display_name: m.display_name,
           compat_score: evaluation.score ?? m.emilia_score,
           match_score: m.match_score,
-          trust_pass: evaluation.policyResult?.pass ?? false,
+          decision,
+          trust_pass: decision === 'allow', // DEPRECATED: derived from decision for backward compat
           confidence: evaluation.confidence || 'pending',
           effective_evidence: evaluation.effectiveEvidence || 0,
           context_used: evaluation.contextUsed || (needContext ? needContext : 'global'),
+          reasons: evaluation.policyResult?.failures || [],
           failures: evaluation.policyResult?.failures || [],
           warnings: evaluation.policyResult?.warnings || [],
         };
       }));
 
-      // Policy-passing entities first, then by match relevance
+      // Decision-allowed entities first, then by match relevance
       suggestions = evaluated
         .sort((a, b) => {
-          if (a.trust_pass !== b.trust_pass) return a.trust_pass ? -1 : 1;
+          if (a.decision !== b.decision) return a.decision === 'allow' ? -1 : 1;
           return (b.match_score || 0) - (a.match_score || 0);
         })
         .slice(0, 10);

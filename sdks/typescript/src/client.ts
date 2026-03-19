@@ -187,7 +187,7 @@ export class EPClient {
   /**
    * Evaluate an entity against a named trust policy.
    *
-   * Returns a pass/fail decision with detailed failure reasons and warnings.
+   * Returns a canonical TrustDecision with detailed reasoning.
    * Supply `context` for context-aware evaluation (geo, category, value_band, etc.).
    *
    * @example
@@ -197,7 +197,7 @@ export class EPClient {
    *   geo: 'US-CA',
    *   value_band: 'high',
    * });
-   * if (!result.pass) console.warn('Failures:', result.failures);
+   * if (result.decision !== 'allow') console.warn('Reasons:', result.reasons);
    * ```
    */
   async trustEvaluate(

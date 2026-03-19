@@ -88,7 +88,7 @@ paths:
       summary: Evaluate entity against a trust policy
       description: |
         The PRIMARY canonical decision surface. Evaluates an entity against a
-        structured trust policy and returns pass/fail with detailed reasoning.
+        structured trust policy and returns a trust decision with detailed reasoning.
       requestBody:
         required: true
         content:
@@ -107,11 +107,11 @@ paths:
                   description: Optional context keys (category, geo, value_band, etc.)
       responses:
         '200':
-          description: Policy evaluation result
+          description: Trust decision with detailed reasoning
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PolicyEvaluationResponse'
+                $ref: '#/components/schemas/TrustDecision'
 
   /api/trust/install-preflight:
     post:
@@ -2067,19 +2067,29 @@ components:
 
     PolicyEvaluationResponse:
       type: object
-      properties:
-        pass:
-          type: boolean
-        score:
-          type: number
-        confidence:
-          type: string
-        failures:
-          type: array
-          items:
-            type: string
-        policy_used:
-          type: string
+      deprecated: true
+      description: |
+        DEPRECATED — Use TrustDecision instead. This legacy schema is retained
+        for backward compatibility only. It wraps the canonical TrustDecision
+        and adds derived pass/fail fields for legacy consumers.
+      allOf:
+        - $ref: '#/components/schemas/TrustDecision'
+        - type: object
+          properties:
+            pass:
+              type: boolean
+              deprecated: true
+              description: "DEPRECATED — Derived from TrustDecision.decision (decision === 'allow'). Use decision field instead."
+            score:
+              type: number
+              deprecated: true
+              description: "DEPRECATED — Legacy numeric score. Use TrustDecision.confidence and reasons for evaluation."
+            failures:
+              type: array
+              deprecated: true
+              description: "DEPRECATED — Use TrustDecision.reasons instead."
+              items:
+                type: string
 
     ReceiptSubmission:
       type: object
@@ -2419,8 +2429,14 @@ components:
                 type: number
               match_score:
                 type: number
+              decision:
+                type: string
+                enum: [allow, review, deny]
+                description: "Canonical trust decision. Replaces legacy trust_pass."
               trust_pass:
                 type: boolean
+                deprecated: true
+                description: "DEPRECATED — Derived compatibility field (decision === 'allow'). Use decision instead."
               confidence:
                 type: string
               effective_evidence:

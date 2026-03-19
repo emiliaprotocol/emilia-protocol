@@ -66,7 +66,8 @@ export async function POST(request) {
       extensions: {
         entity_type: result.entity_type,
         display_name: result.display_name,
-        trust_pass: pr?.trustPass ?? false,
+        decision: pr?.trustPass ? 'allow' : 'deny',
+        trust_pass: pr?.trustPass ?? false, // DEPRECATED: derived from decision for backward compat
         score: result.score,
         effective_evidence: result.effectiveEvidence,
         trust_failures: pr?.failures || [],

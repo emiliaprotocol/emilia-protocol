@@ -475,7 +475,24 @@ EP defines four standard policies. Conformant implementations MUST support all f
 - `signal_minimums`: `{ delivery_accuracy: 80, price_integrity: 90 }`
 - `max_days_since_last_receipt`: 180
 
-Policy evaluation returns a structured result: `{ pass: boolean, failures: string[], warnings: string[] }`. Failures are specific, human-readable strings identifying which criterion was not met. Consuming agents MUST receive the failure list, not merely a boolean.
+Policy evaluation returns a canonical **TrustDecision** object:
+
+```json
+{
+  "decision": "allow | review | deny",
+  "reasons": ["human-readable strings identifying which criteria were or were not met"],
+  "warnings": ["non-blocking advisory notes"],
+  "appeal_path": "/api/disputes",
+  "policy_used": "standard",
+  "confidence": "confident | emerging | provisional | insufficient | pending | unknown",
+  "entity_id": "...",
+  "context_used": null
+}
+```
+
+`decision` is the primary field: `allow` means the entity met all policy thresholds, `review` means manual inspection is recommended, and `deny` means the entity failed one or more hard requirements. `reasons` provides specific, human-readable strings for every criterion evaluated. Consuming agents MUST use `decision` and `reasons` for trust logic, not a legacy boolean.
+
+> **Legacy note:** Earlier versions returned `{ pass: boolean, failures: string[], warnings: string[] }`. The `pass` field is deprecated. Implementations MAY derive it as `pass = (decision === 'allow')` for backward compatibility, but MUST NOT use it as the primary evaluation surface.
 
 ### 6.2 Software Trust Policies
 

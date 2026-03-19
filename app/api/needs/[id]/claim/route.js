@@ -57,6 +57,7 @@ export async function POST(request, { params }) {
       }
 
       const result = evaluation.policyResult;
+      // Internal engine still uses .pass; public API exposes this as decision via buildTrustDecision
       if (!result?.pass) {
         return epProblem(403, 'trust_policy_failed', `Trust evaluation failed for policy "${result?.policyName || 'custom'}".`, {
           context_used: evaluation.contextUsed,

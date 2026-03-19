@@ -47,7 +47,7 @@ export async function POST(request) {
         dispute_rate: result.profile?.behavioral?.dispute_rate ?? 0,
       },
       extensions: {
-        // Backward compatibility
+        // DEPRECATED: legacy pass field — derived from decision for backward compat
         pass,
         display_name: result.display_name,
         entity_type: result.entity_type,
