@@ -143,7 +143,7 @@ paths:
       tags: [Trust]
       summary: Pre-action trust gate
       description: |
-        Trust gate: pre-action check. Returns allow/block before executing a
+        Trust gate: pre-action check. Returns allow/review/deny before executing a
         high-stakes action. Evaluates effective evidence, dispute rate, and
         establishment status against the specified policy. Optionally verifies
         a delegation. High-value transactions (>$10k) are auto-escalated to

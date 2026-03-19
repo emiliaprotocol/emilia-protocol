@@ -38,7 +38,7 @@ A skeptical reader should be able to answer in 30 seconds: Core = the minimum in
 
 ---
 
-## Four Canonical Trust Decisions
+## Four Canonical Decision Contexts
 
 EP is decision infrastructure. Every trust evaluation reduces to one of four verbs:
 
@@ -69,7 +69,7 @@ If a third party can implement these three objects and interoperate, EP has a re
 
 EP does not launch as "universal trust." It launches as the safest way to install and route to machine tools, with a credible appeals system. These are the three concrete problems it solves today:
 
-**1. MCP server trust** — Before a host installs an MCP server, EP runs install preflight: publisher verification, permission class evaluation, provenance tier, and incident history against a host-specific policy. The answer is `allow`, `warn`, or `deny` — with reasons.
+**1. MCP server trust** — Before a host installs an MCP server, EP runs install preflight: publisher verification, permission class evaluation, provenance tier, and incident history against a host-specific policy. The answer is `allow`, `review`, or `deny` — with reasons.
 
 **2. Software install preflight** — Same evaluation for npm packages, GitHub Apps, Chrome extensions, and marketplace plugins. Agents making autonomous install decisions need a non-self-reported signal.
 
@@ -253,7 +253,7 @@ Add `npx @emilia-protocol/mcp-server` to any MCP-compatible host. The server exp
 |---|---|
 | `ep_trust_profile` | Full trust profile for any entity |
 | `ep_trust_evaluate` | Evaluate entity against a named policy |
-| `ep_trust_gate` | Pre-action gate: pass/warn/deny with reasons |
+| `ep_trust_gate` | Pre-action gate: allow/review/deny with reasons |
 | `ep_domain_score` | Score in a specific domain (financial, code_execution, etc.) |
 | `ep_list_policies` | List all available trust policies |
 

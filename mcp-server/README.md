@@ -10,7 +10,7 @@
 
 ## What This Is
 
-EMILIA Protocol is the behavioral trust infrastructure for the AI age. When an AI agent acts in the world — booking, buying, building, deploying — its actions should create a verifiable behavioral record that any other agent can query before deciding to transact. This MCP server gives any Claude conversation or agent pipeline direct access to EP's trust graph: 24 tools covering trust profiles, policy evaluation, software install preflight, dispute filing, appeals, delegation chains, and identity lineage. Add it to Claude Desktop in 60 seconds. No self-hosted EP backend required.
+EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties. This MCP server gives any Claude conversation or agent pipeline direct access to EP's trust evaluation layer: 24 tools covering trust profiles, policy evaluation, software install preflight, dispute filing, appeals, delegation chains, and identity lineage. Add it to Claude Desktop in 60 seconds. No self-hosted EP backend required.
 
 ---
 

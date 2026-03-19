@@ -1,0 +1,45 @@
+name: Release Provenance
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  provenance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - name: Generate SBOM
+        run: npx @cyclonedx/cyclonedx-npm --output-file sbom.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+          retention-days: 90
+
+      - name: Generate MCP server SBOM
+        working-directory: mcp-server
+        run: |
+          npm ci
+          npx @cyclonedx/cyclonedx-npm --output-file sbom.json
+
+      - name: Upload MCP SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-server-sbom
+          path: mcp-server/sbom.json
+          retention-days: 90
