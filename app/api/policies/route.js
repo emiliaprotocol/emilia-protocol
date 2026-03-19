@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { TRUST_POLICIES } from '@/lib/scoring-v2';
+import { epProblem } from '@/lib/errors';
 
 /**
  * GET /api/policies — list all available trust policies
@@ -9,23 +10,27 @@ import { TRUST_POLICIES } from '@/lib/scoring-v2';
  * counterparties against structured policies, not raw numbers.
  */
 export async function GET() {
-  const policies = Object.entries(TRUST_POLICIES).map(([name, policy]) => ({
-    name,
-    description: getPolicyDescription(name),
-    min_score: policy.min_score,
-    min_confidence: policy.min_confidence,
-    min_receipts: policy.min_receipts,
-    max_dispute_rate: policy.max_dispute_rate,
-    software_requirements: policy.software_requirements || null,
-    family: getPolicyFamily(name),
-  }));
+  try {
+    const policies = Object.entries(TRUST_POLICIES).map(([name, policy]) => ({
+      name,
+      description: getPolicyDescription(name),
+      min_score: policy.min_score,
+      min_confidence: policy.min_confidence,
+      min_receipts: policy.min_receipts,
+      max_dispute_rate: policy.max_dispute_rate,
+      software_requirements: policy.software_requirements || null,
+      family: getPolicyFamily(name),
+    }));
 
-  return NextResponse.json({
-    protocol_version: 'EP/1.1',
-    policies,
-    families: ['commerce', 'software', 'marketplace', 'custom'],
-    _note: 'Evaluate entities against policies with POST /api/trust/evaluate. Custom policies accepted as JSONB.',
-  });
+    return NextResponse.json({
+      protocol_version: 'EP/1.1',
+      policies,
+      families: ['commerce', 'software', 'marketplace', 'custom'],
+      _note: 'Evaluate entities against policies with POST /api/trust/evaluate. Custom policies accepted as JSONB.',
+    });
+  } catch (e) {
+    return epProblem(500, 'policy_list_failed', 'Failed to retrieve trust policies');
+  }
 }
 
 function getPolicyDescription(name) {

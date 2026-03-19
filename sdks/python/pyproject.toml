@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "emilia-protocol"
-version = "1.0.0"
+version = "1.1.0"
 description = "Python SDK for the EMILIA Protocol — portable trust for machine counterparties."
 readme = "README.md"
 license = {text = "Apache-2.0"}

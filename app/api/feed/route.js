@@ -1,5 +1,6 @@
 import { getServiceClient } from '@/lib/supabase';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
+import { epProblem } from '@/lib/errors';
 
 /**
  * GET /api/feed
@@ -28,10 +29,15 @@ export async function GET(request) {
 
   const encoder = new TextEncoder();
 
+  let supabase;
+  try {
+    supabase = getServiceClient();
+  } catch (e) {
+    return epProblem(500, 'feed_unavailable', 'Feed service initialization failed');
+  }
+
   const stream = new ReadableStream({
     async start(controller) {
-      const supabase = getServiceClient();
-
       const sendNeeds = async () => {
         try {
           let query = supabase

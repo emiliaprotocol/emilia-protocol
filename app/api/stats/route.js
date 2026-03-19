@@ -3,6 +3,7 @@ import { getServiceClient } from '@/lib/supabase';
 import { TRUST_POLICIES } from '@/lib/scoring-v2';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { epProblem } from '@/lib/errors';
 
 /**
  * GET /api/stats
@@ -44,14 +45,6 @@ export async function GET() {
       proof_metrics_status: proofMetrics ? 'ok' : 'missing',
     });
   } catch (err) {
-    return NextResponse.json({
-      total_entities: 2,
-      next_available: 3,
-      trust_surfaces: proofMetrics?.trust_surfaces ?? null,
-      automated_checks: proofMetrics?.automated_checks ?? null,
-      trust_policies: policyCount,
-      mcp_tools: proofMetrics?.mcp_tools ?? null,
-      proof_metrics_status: proofMetrics ? 'ok' : 'missing',
-    });
+    return epProblem(500, 'stats_unavailable', 'Failed to retrieve system statistics');
   }
 }

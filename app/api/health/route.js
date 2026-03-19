@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 import { EP_VERSION_STRING } from '@/lib/protocol-version';
+import { epProblem } from '@/lib/errors';
 
 /**
  * GET /api/health
@@ -62,27 +63,31 @@ export async function GET() {
     checks.anchoring = { status: 'unknown' };
   }
 
-  return NextResponse.json({
-    status: healthy ? 'healthy' : 'degraded',
-    protocol_version: EP_VERSION_STRING,
-    timestamp: new Date().toISOString(),
-    uptime_check_ms: Date.now() - start,
-    checks,
-    surfaces: {
-      trust_profile: '/api/trust/profile/:entityId',
-      trust_evaluate: '/api/trust/evaluate',
-      install_preflight: '/api/trust/install-preflight',
-      receipt_submit: '/api/receipts/submit',
-      dispute_file: '/api/disputes/file',
-      dispute_report: '/api/disputes/report',
-      appeal_page: '/appeal',
-      policies: '/api/policies',
-      identity_principal: '/api/identity/principal/:principalId',
-      identity_lineage: '/api/identity/lineage/:entityId',
-      identity_bind: '/api/identity/bind',
-      identity_continuity: '/api/identity/continuity',
-      audit: '/api/audit',
-      health: '/api/health',
-    },
-  });
+  try {
+    return NextResponse.json({
+      status: healthy ? 'healthy' : 'degraded',
+      protocol_version: EP_VERSION_STRING,
+      timestamp: new Date().toISOString(),
+      uptime_check_ms: Date.now() - start,
+      checks,
+      surfaces: {
+        trust_profile: '/api/trust/profile/:entityId',
+        trust_evaluate: '/api/trust/evaluate',
+        install_preflight: '/api/trust/install-preflight',
+        receipt_submit: '/api/receipts/submit',
+        dispute_file: '/api/disputes/file',
+        dispute_report: '/api/disputes/report',
+        appeal_page: '/appeal',
+        policies: '/api/policies',
+        identity_principal: '/api/identity/principal/:principalId',
+        identity_lineage: '/api/identity/lineage/:entityId',
+        identity_bind: '/api/identity/bind',
+        identity_continuity: '/api/identity/continuity',
+        audit: '/api/audit',
+        health: '/api/health',
+      },
+    });
+  } catch (e) {
+    return epProblem(500, 'health_check_failed', 'Health check response assembly failed');
+  }
 }

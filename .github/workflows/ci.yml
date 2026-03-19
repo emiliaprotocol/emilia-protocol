@@ -87,7 +87,7 @@ jobs:
         working-directory: sdks/python
         run: pip install -e .
       - name: Verify import
-        run: python -c "from emilia_protocol import EmiliaClient; print('Python SDK import OK')"
+        run: python -c "from emilia_protocol import EPClient; print('Python SDK import OK')"
 
   # ── Job 6: OpenAPI spec linting ─────────────────────────────────────
   openapi-lint:

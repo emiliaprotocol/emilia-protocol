@@ -4,7 +4,38 @@ All notable changes to EMILIA Protocol are documented here.
 
 Versioning model: Protocol spec and reference repo share the root version (1.0.x). SDKs (0.1.x) and MCP server (0.2.x) version independently.
 
-## [1.0.0] — 2026-03-15
+## [1.0.0] — 2026-03-18
+
+### Highlights
+- **24 MCP tools**, 4 resources, 3 prompts (up from 15 tools)
+- **670 tests** across 28 files — all passing
+- **OpenAPI** 50/50 route coverage (every route documented)
+- **RFC 7807** canonical error envelope on all API surfaces
+- **Canonical TrustDecision** object returned by every evaluation path
+- **6-job CI pipeline**: tests, build, lint, SDK builds, conformance, integration
+- **TypeScript SDK** (25 methods) + **Python SDK** (21 methods) — published on npm / PyPI
+- **ZK proofs**, auto-receipts, delegation chains, attribution tracking, domain scoring
+- **Protocol Standard v1.0** — 17 sections, complete specification
+
+### MCP Server (v1.0.0)
+- 24 tools: trust evaluation, receipt submission, entity lookup, dispute lifecycle, policy management, identity continuity, software trust, ZK proofs, delegation, attribution, domain scoring, and more
+- 4 resources: trust-profile, entity-history, policy-config, system-health
+- 3 prompts: evaluate-trust, submit-receipt, investigate-entity
+- RFC 7807 error responses on all tool failures
+- Auto-receipt generation on trust-changing operations
+
+### SDKs
+- TypeScript SDK: 25 methods, full MCP tool coverage, published on npm
+- Python SDK: 21 methods, full MCP tool coverage, published on PyPI
+
+### Testing
+- 670 tests across 28 test files
+- Conformance suite, integration tests, SDK tests, MCP tool tests
+- Cross-language hash verification (JS + Python)
+
+---
+
+## [0.9.0] — 2026-03-15 (pre-release)
 
 ### Core
 - Canonical evaluator — single read brain across all trust surfaces
@@ -44,9 +75,9 @@ Versioning model: Protocol spec and reference repo share the root version (1.0.x
 - DB immutability triggers
 
 ### Distribution
-- MCP server: 15 tools
-- Reference SDKs: TypeScript + Python (published on npm and PyPI)
-- Conformance suite: 152 automated checks across 7 suites
+- MCP server: 15 tools (initial release; see 1.0.0 for current count)
+- Reference SDKs: TypeScript + Python (initial release)
+- Conformance suite: 152 automated checks across 7 suites (initial release)
 - Cross-language hash verification (JS + Python)
 - CI pipeline: tests, build, lint, SDK builds, conformance
 

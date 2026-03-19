@@ -3,3 +3,10 @@ node_modules
 .claude
 .next
 *.DS_Store
+.env*
+.gitignore
+README.md
+LICENSE
+Dockerfile
+docker-compose*.yml
+.dockerignore
