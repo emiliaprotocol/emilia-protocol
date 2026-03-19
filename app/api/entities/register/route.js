@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { getServiceClient, generateApiKey } from '@/lib/supabase';
 import { computeReceiptComposite } from '@/lib/scoring';
