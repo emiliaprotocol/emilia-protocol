@@ -173,8 +173,11 @@ describe('POST /api/commit/verify — response shape', () => {
     expect(data).toHaveProperty('status', 'active');
     expect(data).toHaveProperty('decision', 'allow');
     expect(data).toHaveProperty('expires_at');
-    expect(data).toHaveProperty('entity_id');
-    expect(data).toHaveProperty('action_type');
+    expect(data).toHaveProperty('reasons');
+    // Minimum disclosure: verify MUST NOT expose entity_id, action_type, or scope
+    expect(data).not.toHaveProperty('entity_id');
+    expect(data).not.toHaveProperty('action_type');
+    expect(data).not.toHaveProperty('scope');
 
     // The verify route does NOT return commit_id in the response body
     // MCP handler should use args.commit_id instead

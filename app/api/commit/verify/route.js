@@ -25,14 +25,15 @@ export async function POST(request) {
 
     const result = await verifyCommit(body.commit_id);
 
+    // Minimum disclosure per PROTOCOL-STANDARD.md Section 18.4:
+    // Verification MUST NOT expose the full commit payload — no scope,
+    // no entity_id, no action_type, no context beyond validity.
     return NextResponse.json({
       valid: result.valid,
       status: result.status,
       decision: result.decision,
       expires_at: result.expires_at,
-      entity_id: result.entity_id,
-      action_type: result.action_type,
-      scope: result.scope,
+      reasons: result.reasons || [],
     });
   } catch (err) {
     console.error('Commit verify error:', err);

@@ -549,15 +549,13 @@ export interface EPCommit {
   signature?: string;
 }
 
-/** Result of verifying an EP Commit. */
+/** Result of verifying an EP Commit. Minimum disclosure — no scope, entity_id, or action_type. */
 export interface EPCommitVerification {
   valid: boolean;
   status: CommitStatus;
   decision: TrustDecision;
   expires_at?: string;
-  entity_id?: string;
-  action_type?: ActionType;
-  scope?: Record<string, unknown>;
+  reasons: string[];
 }
 
 /** Response from issuing an EP Commit. */

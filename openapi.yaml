@@ -2505,8 +2505,9 @@ components:
     CommitVerifyResponse:
       type: object
       description: |
-        Commit verification verdict. Returns validity and status without
-        exposing the full commit payload.
+        Commit verification verdict. Minimum disclosure: returns validity
+        and status only. MUST NOT expose scope, entity_id, action_type,
+        or other commit details per PROTOCOL-STANDARD Section 18.4.
       properties:
         valid:
           type: boolean
@@ -2519,9 +2520,8 @@ components:
         expires_at:
           type: string
           format: date-time
-        entity_id:
-          type: string
-        action_type:
-          type: string
-        scope:
-          type: object
+        reasons:
+          type: array
+          items:
+            type: string
+          description: Human-readable reasons (empty array when valid)
