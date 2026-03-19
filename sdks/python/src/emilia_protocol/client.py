@@ -211,7 +211,7 @@ class EPClient:
                 policy="strict",
                 context={"category": "electronics", "value_band": "high"},
             )
-            if result["pass"]:
+            if result["decision"] == "allow":
                 proceed()
         """
         body: dict[str, Any] = {"entity_id": entity_id, "policy": policy}

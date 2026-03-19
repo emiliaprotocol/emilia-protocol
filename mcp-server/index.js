@@ -387,7 +387,7 @@ const TOOLS = [
     description:
       'Trust gate: check if an entity meets the required trust threshold BEFORE executing a high-stakes action. ' +
       'This is the canonical pre-action check. Always call this before: payments, sending messages on behalf of users, ' +
-      'installing software, or any irreversible action. Returns allow/block with reason.',
+      'installing software, or any irreversible action. Returns allow/review/deny with reason.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -823,7 +823,7 @@ async function handleTool(name, args) {
         out += `\nReasons:\n`;
         for (const r of data.reasons) out += `  ${data.decision === 'allow' ? '✓' : '✗'} ${r}\n`;
       }
-      if (data.decision === 'block' && data.appeal_path) {
+      if (data.decision === 'deny' && data.appeal_path) {
         out += `\nAppeal path: ${data.appeal_path}\n`;
         out += `Trust must never be more powerful than appeal.\n`;
       }

@@ -200,30 +200,30 @@ All items below were built and merged in the second sprint wave. They are live, 
 **Goal:** Trust can no longer be cheaply reset by re-registration.
 
 ### Data Model
-- [ ] `principals` table (principal_id, type, status, bootstrap_verified)
-- [ ] `identity_bindings` table (binding_type, target, proof_type, provenance, status)
-- [ ] `continuity_claims` table (old/new entity, reason, mode, status, challenge_deadline, expires_at)
-- [ ] `continuity_challenges` table
-- [ ] `continuity_decisions` table (decision, transfer_policy, allocation_rule, reasoning)
-- [ ] `continuity_events` table (audit trail)
+- [x] `principals` table (principal_id, type, status, bootstrap_verified)
+- [x] `identity_bindings` table (binding_type, target, proof_type, provenance, status)
+- [x] `continuity_claims` table (old/new entity, reason, mode, status, challenge_deadline, expires_at)
+- [x] `continuity_challenges` table
+- [x] `continuity_decisions` table (decision, transfer_policy, allocation_rule, reasoning)
+- [x] `audit_events` table (audit trail) — migration 019
 
 ### API Surface
-- [ ] POST /api/identity/bind
-- [ ] POST /api/identity/verify
-- [ ] POST /api/identity/continuity
-- [ ] POST /api/identity/continuity/challenge
-- [ ] POST /api/identity/continuity/resolve
-- [ ] GET /api/identity/principal/:principalId
-- [ ] GET /api/identity/lineage/:entityId
+- [x] POST /api/identity/bind
+- [x] POST /api/identity/verify
+- [x] POST /api/identity/continuity
+- [x] POST /api/identity/continuity/challenge
+- [x] POST /api/identity/continuity/resolve
+- [x] GET /api/identity/principal/:principalId
+- [x] GET /api/identity/lineage/:entityId
 
 ### Evaluator Integration
-- [ ] Continuity-aware trust profile output (lineage, inherited disputes, whitewashing flag)
+- [x] Continuity-aware trust profile output (lineage, inherited disputes, whitewashing flag)
 - [ ] Install preflight: fail on suspicious continuity gaps
 
 ### Deadline Enforcement
-- [ ] Challenge window expiry (7 days) in cron
-- [ ] Continuity claim expiry (30 days) in cron
-- [ ] Dispute freeze rules on continuity
+- [x] Challenge window expiry (7 days) in cron
+- [x] Continuity claim expiry (30 days) in cron
+- [x] Dispute freeze rules on continuity
 
 **Success condition:** A principal can rotate keys without losing trust. A bad actor cannot cheaply re-register to escape history.
 

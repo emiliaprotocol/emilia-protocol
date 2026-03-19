@@ -274,7 +274,7 @@ Trust velocity matters more than absolute values. EP computes 7-day vs 30-day av
   "ep_trust_check": {
     "entity_id": "merchant-xyz",
     "policy": "standard",
-    "result": { "pass": true, "confidence": "confident" }
+    "result": { "decision": "allow", "confidence": "confident" }
   }
 }
 ```

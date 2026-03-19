@@ -237,7 +237,6 @@ POST /api/trust/evaluate
 
 Response:
 {
-  "pass": true,
   "decision": "allow",
   "reasons": [
     "publisher verified",

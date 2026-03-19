@@ -99,7 +99,7 @@ Do not open public GitHub issues for security vulnerabilities.
 | Chain linking | SHA-256 | Each receipt includes previous_hash |
 | Batch anchoring | Merkle tree → Base L2 | Root published on-chain |
 | API key derivation | crypto.randomBytes(32) | Stored as SHA-256 hash |
-| Owner ID | SHA-256(client_ip) | First 32 hex chars |
+| Owner ID | crypto.randomUUID() | ep_owner_<uuid> (portable, not IP-derived) |
 
 ## Conformance
 

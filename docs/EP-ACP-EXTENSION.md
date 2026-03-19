@@ -42,21 +42,18 @@ POST /api/trust/evaluate
 
 Response:
 {
-  "pass": true,
-  "score": 87.3,
+  "decision": "allow",
+  "entity_id": "merchant-xyz",
+  "policy_used": "strict",
   "confidence": "confident",
-  "profile": {
-    "behavioral": {
-      "completion_rate": 94.3,
-      "dispute_rate": 0.7
-    },
-    "signals": {
-      "delivery_accuracy": 89.1,
-      "price_integrity": 99.1
-    }
-  },
-  "failures": [],
-  "warnings": []
+  "reasons": [],
+  "warnings": [],
+  "appeal_path": "https://emiliaprotocol.ai/appeal",
+  "profile_summary": {
+    "confidence": "confident",
+    "evidence_level": 87.3,
+    "dispute_rate": 0.7
+  }
 }
 ```
 
@@ -92,7 +89,7 @@ The ACP payment object includes an optional `ep_trust` field:
   "ep_trust": {
     "entity_id": "merchant-xyz",
     "policy_used": "strict",
-    "result": "pass",
+    "decision": "allow",
     "confidence": "confident",
     "completion_rate": 94.3,
     "dispute_rate": 0.7,

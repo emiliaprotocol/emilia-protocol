@@ -304,8 +304,8 @@ print(profile[<span class="str">"current_confidence"</span>])  <span class="cm">
 <span class="cm"># Evaluate against a policy</span>
 result = ep.<span class="fn">evaluate_trust</span>(<span class="str">"rex-booking-v1"</span>, policy=<span class="str">"standard"</span>,
                      context={<span class="str">"category"</span>: <span class="str">"electronics"</span>})
-<span class="kw">if not</span> result[<span class="str">"pass"</span>]:
-    print(<span class="str">"Failures:"</span>, result[<span class="str">"failures"</span>])</pre></div>
+<span class="kw">if</span> result[<span class="str">"decision"</span>] != <span class="str">"allow"</span>:
+    print(<span class="str">"Reasons:"</span>, result[<span class="str">"reasons"</span>])</pre></div>
       </div>
     </div>
 

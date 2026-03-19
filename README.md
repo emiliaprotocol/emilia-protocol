@@ -109,12 +109,17 @@ POST /api/trust/evaluate
 }
 
 → {
-    "pass": true,
-    "score": 87.3,
+    "decision": "allow",
+    "entity_id": "merchant-xyz",
+    "policy_used": "strict",
     "confidence": "confident",
-    "profile": {
-      "behavioral": { "completion_rate": 94.3, "dispute_rate": 0.7 },
-      "signals": { "delivery_accuracy": 89.1, "price_integrity": 99.1 }
+    "reasons": [],
+    "warnings": [],
+    "appeal_path": "https://emiliaprotocol.ai/appeal",
+    "profile_summary": {
+      "confidence": "confident",
+      "evidence_level": 87.3,
+      "dispute_rate": 0.7
     }
   }
 ```
@@ -167,7 +172,16 @@ POST /api/trust/gate
   "policy": "strict"
 }
 
-→ { "gate": "pass", "score": 81.2, "policy_result": { "pass": true } }
+→ {
+    "decision": "allow",
+    "entity_id": "agent-abc",
+    "policy_used": "strict",
+    "confidence": "confident",
+    "reasons": [],
+    "warnings": [],
+    "appeal_path": "https://emiliaprotocol.ai/appeal",
+    "action": "process_payment"
+  }
 ```
 
 ---

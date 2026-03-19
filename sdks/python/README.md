@@ -41,7 +41,7 @@ async def main():
             policy="strict",
             context={"category": "electronics", "value_band": "high"},
         )
-        if result["pass"]:
+        if result["decision"] == "allow":
             print("Good to go.")
 
 asyncio.run(main())
@@ -167,9 +167,9 @@ result = await client.trust_evaluate(
     context={"category": "furniture", "geo": "US-CA"},
 )
 
-print(result["pass"])           # True / False
+print(result["decision"])       # "allow" | "review" | "deny"
 print(result["confidence"])     # "established"
-print(result["failures"])       # ["insufficient_evidence", …]
+print(result["reasons"])        # ["insufficient_evidence", …]
 print(result["warnings"])       # ["anomaly_detected", …]
 ```
 
@@ -475,7 +475,7 @@ for policy in data["policies"]:
 | `AgentBehavior` | `"completed"` `"retried_same"` `"retried_different"` `"abandoned"` `"disputed"` |
 | `TransactionType` | `"purchase"` `"service"` `"task_completion"` `"delivery"` `"return"` |
 | `TrustPolicy` | `"strict"` `"standard"` `"permissive"` `"discovery"` |
-| `TrustDecision` | `"allow"` `"block"` `"review"` `"deny"` |
+| `TrustDecision` | `"allow"` `"review"` `"deny"` |
 | `DisputeReason` | `"fraudulent_receipt"` `"inaccurate_signals"` `"identity_dispute"` `"context_mismatch"` `"duplicate_transaction"` `"coerced_receipt"` `"other"` |
 | `ReportType` | `"wrongly_downgraded"` `"harmed_by_trusted_entity"` `"fraudulent_entity"` `"inaccurate_profile"` `"other"` |
 | `TrustDomain` | `"financial"` `"code_execution"` `"communication"` `"delegation"` `"infrastructure"` `"content_creation"` `"data_access"` |

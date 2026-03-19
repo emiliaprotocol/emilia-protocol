@@ -237,11 +237,11 @@ const gate = await ep.trustGate({
   valueUsd: 750,
 });
 
-// gate.decision: "allow" | "block" | "review" | "deny"
+// gate.decision: "allow" | "review" | "deny"
 if (gate.decision === 'allow') {
   // Proceed with action
 } else {
-  console.error('Gate blocked:', gate.reasons);
+  console.error('Gate denied:', gate.reasons);
   console.log('Appeal path:', gate.appeal_path);
 }
 

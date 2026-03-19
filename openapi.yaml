@@ -177,7 +177,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TrustGateResponse'
+                $ref: '#/components/schemas/TrustDecision'
 
   /api/trust/zk-proof:
     post:
@@ -1859,32 +1859,62 @@ components:
         mcp_tools:
           type: integer
 
-    TrustGateResponse:
+    TrustDecision:
       type: object
+      description: Canonical Trust Decision — EP's primary output object. Every decision surface returns this shape.
+      required: [decision, entity_id, policy_used, confidence, reasons, appeal_path]
       properties:
-        entity_id:
-          type: string
-        display_name:
-          type: string
-        action:
-          type: string
         decision:
           type: string
-          enum: [allow, block]
+          enum: [allow, review, deny]
+        entity_id:
+          type: string
         policy_used:
           type: string
         confidence:
           type: string
+          enum: [confident, emerging, provisional, insufficient, pending, unknown]
         reasons:
           type: array
           items:
             type: string
-        delegation_verified:
-          type: boolean
-          description: Present only when delegation_id was provided
+        warnings:
+          type: array
+          items:
+            type: string
         appeal_path:
           type: string
-          description: Present only when decision is block
+          description: URL path for disputes/appeals
+        context_used:
+          type: object
+          nullable: true
+        profile_summary:
+          type: object
+          nullable: true
+          properties:
+            confidence:
+              type: string
+            evidence_level:
+              type: number
+            dispute_rate:
+              type: number
+        display_name:
+          type: string
+          description: Extension field — present on gate responses
+        action:
+          type: string
+          description: Extension field — present on gate responses
+        delegation_verified:
+          type: boolean
+          description: Extension field — present only when delegation_id was provided
+        value_threshold:
+          type: object
+          description: Extension field — present when value_usd was provided
+          properties:
+            value_usd:
+              type: number
+            escalated_to_strict:
+              type: boolean
 
     ZKProofResponse:
       type: object

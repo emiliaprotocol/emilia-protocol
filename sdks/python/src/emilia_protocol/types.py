@@ -40,7 +40,7 @@ TransactionType = Literal[
 
 TrustPolicy = Literal["strict", "standard", "permissive", "discovery"]
 
-TrustDecision = Literal["allow", "block", "review", "deny"]
+TrustDecision = Literal["allow", "review", "deny"]
 
 DisputeReason = Literal[
     "fraudulent_receipt",

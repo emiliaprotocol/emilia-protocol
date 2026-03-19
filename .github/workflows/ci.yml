@@ -28,7 +28,19 @@ jobs:
           path: test-results/
           retention-days: 14
 
-  # ── Job 2: Verify Next.js production build ──────────────────────────
+  # ── Job 2: Lint ────────────────────────────────────────────────────
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Run Next.js lint
+        run: npx next lint
+
+  # ── Job 3: Verify Next.js production build ──────────────────────────
   build:
     runs-on: ubuntu-latest
     steps:

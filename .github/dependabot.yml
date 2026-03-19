@@ -1,0 +1,36 @@
+version: 2
+updates:
+  # Root npm dependencies
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+
+  # MCP server npm dependencies
+  - package-ecosystem: npm
+    directory: /mcp-server
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+
+  # TypeScript SDK npm dependencies
+  - package-ecosystem: npm
+    directory: /sdks/typescript
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+
+  # Python SDK pip dependencies
+  - package-ecosystem: pip
+    directory: /sdks/python
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+
+  # GitHub Actions versions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10

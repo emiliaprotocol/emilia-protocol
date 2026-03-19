@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // EMILIA Protocol — POST /api/trust/gate
-// Trust gate: pre-action check. Returns allow/block before executing a high-stakes action.
+// Trust gate: pre-action check. Returns allow/review/deny before executing a high-stakes action.
 
 import { NextResponse } from 'next/server';
 import { verifyDelegation } from '@/lib/delegation';
@@ -31,7 +31,7 @@ export async function POST(request) {
 
     if (result.error) {
       return NextResponse.json(buildTrustDecision({
-        decision: 'block',
+        decision: 'deny',
         entityId: entity_id,
         policyUsed: policy,
         confidence: 'unknown',
@@ -86,7 +86,7 @@ export async function POST(request) {
       }
     }
 
-    const decision = reasons.length === 0 ? 'allow' : 'block';
+    const decision = reasons.length === 0 ? 'allow' : 'deny';
 
     const extensions = {
       action,
@@ -100,7 +100,7 @@ export async function POST(request) {
       escalated_to_strict: value_usd > 10000 && policy !== 'strict',
     };
 
-    if (decision === 'block') {
+    if (decision === 'deny') {
       extensions._note = 'Trust must never be more powerful than appeal.';
     }
 
