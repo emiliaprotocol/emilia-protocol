@@ -279,7 +279,7 @@ The submitter has 7 days to respond. Trust is suspended pending resolution.
 | `ep_list_policies` | List all available trust policies | No |
 | `ep_issue_commit` | Issue a signed EP Commit before a high-stakes action | Yes |
 | `ep_verify_commit` | Verify a commit's signature, status, and validity | No |
-| `ep_get_commit_status` | Get current state of a commit | No |
+| `ep_get_commit_status` | Get current state of a commit | Yes |
 | `ep_revoke_commit` | Revoke an active commit | Yes |
 | `ep_bind_receipt_to_commit` | Bind a post-action receipt to a commit | Yes |
 

@@ -1,6 +1,6 @@
 # EMILIA Protocol MCP Server
 
-Behavioral trust infrastructure for AI agents — 29 tools covering trust profiles, policy evaluation, software install preflight, dispute filing, appeals, delegation chains, identity lineage, and pre-action commits.
+Trust decisions for AI agents — 29 tools covering trust profiles, policy evaluation, software install preflight, dispute filing, appeals, delegation chains, identity lineage, and pre-action commits.
 
 ## Install in Claude Desktop
 
@@ -13,7 +13,7 @@ Config file: `~/Library/Application Support/Claude/claude_desktop_config.json`
       "command": "npx",
       "args": ["-y", "@emilia-protocol/mcp-server"],
       "env": {
-        "EP_API_URL": "https://api.emiliaprotocol.com",
+        "EP_BASE_URL": "https://emiliaprotocol.ai",
         "EP_API_KEY": "your_api_key_here"
       }
     }
@@ -32,7 +32,7 @@ Config file: `~/.cursor/mcp.json` (same format as above)
       "command": "npx",
       "args": ["-y", "@emilia-protocol/mcp-server"],
       "env": {
-        "EP_API_URL": "https://api.emiliaprotocol.com",
+        "EP_BASE_URL": "https://emiliaprotocol.ai",
         "EP_API_KEY": "your_api_key_here"
       }
     }
@@ -82,7 +82,7 @@ EP_API_KEY=ep_live_your_key_here npx @emilia-protocol/mcp-server
 | `ep_delegation_judgment` | Score a principal's delegation history (excellent / good / fair / poor) | No |
 | `ep_issue_commit` | Issue a signed EP Commit before a high-stakes action | Yes |
 | `ep_verify_commit` | Verify a commit's signature, status, and validity | No |
-| `ep_get_commit_status` | Get current state of a commit | No |
+| `ep_get_commit_status` | Get current state of a commit | Yes |
 | `ep_revoke_commit` | Revoke an active commit | Yes |
 | `ep_bind_receipt_to_commit` | Bind a post-action receipt to a commit | Yes |
 
@@ -90,7 +90,7 @@ EP_API_KEY=ep_live_your_key_here npx @emilia-protocol/mcp-server
 
 | Variable | Description | Required |
 |----------|-------------|:--------:|
-| `EP_API_URL` | EP API base URL (default: `https://api.emiliaprotocol.com`) | No |
+| `EP_BASE_URL` | EP API base URL (default: `https://emiliaprotocol.ai`) | No |
 | `EP_API_KEY` | API key for authenticated operations — required for submitting receipts, filing disputes, creating delegations, filing appeals | For writes |
 | `EP_AUTO_RECEIPT_OPT_IN` | Set to `"true"` to enable automatic receipt generation at startup | No |
 | `EP_AUTO_RECEIPT_ENTITY_ID` | Entity ID to attribute auto-generated receipts to | No |
