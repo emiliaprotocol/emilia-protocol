@@ -1,3 +1,18 @@
+# EP Launch Brief
+
+EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties.
+
+Today, EP launches with three live wedges:
+1. install preflight for MCP servers and software packages
+2. explainable trust decisions with appeal paths
+3. delegation and attribution support for agent actions
+
+EP does not replace MCP, A2A, or ACP. It complements them by answering a different operational question: should this action proceed in this context?
+
+EP Core remains deliberately small: Trust Receipt, Trust Profile, and Trust Decision.
+
+---
+
 # The Trust Layer the Internet Forgot
 
 **EMILIA Protocol — EP-001**

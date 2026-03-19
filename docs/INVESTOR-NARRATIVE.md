@@ -12,7 +12,7 @@ MCP tells agents how to use tools. EP tells them whether they should.
 
 ## Why now
 
-MCP has crossed 10,000 public servers. It has been adopted by ChatGPT, Cursor, Gemini, and VS Code, and donated to the Linux Foundation. Every host running MCP servers needs trust evaluation before connecting agents to tools. NIST is actively scoping accountability and explainability requirements for agentic AI systems. The infrastructure gap is operational and immediate — and EP is the only open implementation addressing it.
+MCP has crossed 10,000 public servers. It has been adopted by ChatGPT, Cursor, Gemini, and VS Code, and donated to the Linux Foundation. Every host running MCP servers needs trust evaluation before connecting agents to tools. NIST is actively scoping accountability and explainability requirements for agentic AI systems. The infrastructure gap is operational and immediate — and EP is among the first open implementations focused explicitly on trust decisions, recourse, and portable evaluation for agent systems.
 
 ## The 3-layer architecture
 
@@ -85,7 +85,14 @@ This follows the same pattern that made foundational infrastructure layers valua
 
 The category does not yet exist. The company that defines it operates the standard.
 
-## Business model
+## Business Model
+
+The protocol is free. The control plane is paid.
+
+- **Free:** EP Core specification, reference implementation, conformance fixtures, self-hosted deployment path
+- **Paid:** Hosted trust decision API, enterprise policy management, private receipt storage and trust graphs, managed adjudication workflows, compliance logging/analytics/audit exports, identity binding/delegation governance/proof issuance at scale, SLAs/support/private deployment
+
+**Why it works:** Open standards expand adoption. Managed control planes capture operational spend.
 
 The business is not in selling the spec. It is in becoming the operating company around the standard:
 
@@ -95,6 +102,14 @@ The business is not in selling the spec. It is in becoming the operating company
 - **Adjudication tooling** — managed dispute resolution workflows, evidence review interfaces, and escalation paths for high-stakes trust decisions
 
 All of these are built on top of the open standard. The standard drives adoption. The services capture value.
+
+## The First Revenue Wedge
+
+The first product is not "universal trust." It is install and connect preflight for agent tooling. Every serious enterprise agent deployment must answer: Should this MCP server be allowed? Should this package be installed? Should this delegated action be allowed?
+
+## Why EP Can Win Economically
+
+Moat = portable decision interfaces + durable dispute/appeal history + attribution records + privacy-preserving verification + policy integrations into production workflows.
 
 ## What makes EP defensible
 

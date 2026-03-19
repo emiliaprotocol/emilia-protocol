@@ -13,46 +13,25 @@
 
 EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties.
 
-Before an agent installs software, routes work, accepts delegated authority, or transacts with a counterparty, EP returns a structured trust decision — with reasons and an appeal path.
+Before an agent installs software, connects to a tool, accepts delegated authority, or transacts with a counterparty, EP returns a structured trust decision — with reasons and an appeal path.
 
 MCP tells agents how to use tools. EP tells them whether they should.
 
----
+This proposal asks AAIF to consider standardizing **EP Core** as a minimal interoperable trust-evaluation layer for agent systems. EP Core is deliberately small: **Trust Receipt**, **Trust Profile**, and **Trust Decision**. These three objects are sufficient to let independent implementations exchange trust-relevant evidence, summarize trust state, and make explainable, challengeable trust decisions without requiring any single vendor's private heuristics.
 
-## 1b. Three-Layer Architecture: EP Core / EP Extensions / EP Product Surfaces
-
-EP is a 3-layer system. This framing governs what is standardized, what is optional, and what is left to implementors.
-
-- **EP Core** — The minimum interoperable standard. Three required objects: Trust Receipt, Trust Profile, Trust Decision. Also includes entity identity, scoring, Sybil resistance, policy evaluation, and conformance requirements. If a third party can implement Core and interoperate, EP has a real standard.
-
-- **EP Extensions** — Important but optional capabilities that build on the core. Each extension is independently adoptable:
-  - Disputes and appeals (full lifecycle, trust-graph adjudication)
-  - Delegation and attribution chain (Principal → Agent → Tool)
-  - Zero-knowledge proofs (privacy-preserving attestation)
-  - Auto-receipt generation (passive behavioral data capture)
-  - Domain-specific scoring
-  - Install preflight adapters (MCP servers, npm, GitHub Apps)
-
-- **EP Product Surfaces** — Reference implementations and operator tools. Not part of the standard at any layer: explorer, leaderboards, registry views, hosted dashboards, managed adjudication workflows.
-
-This separation is what makes EP a viable standard rather than a monolithic product. The working group's first deliverable (Core Spec v1.0) covers only the Core layer. Extensions are sequenced as separate deliverables.
+Disputes and appeals, delegation and attribution, zero-knowledge proofs, domain scoring, and install-preflight adapters are important EP extensions, but they should be advanced as optional extension tracks rather than prerequisites for Core adoption.
 
 ---
 
 ## 2. The Problem
 
-Open agent systems now have standards for connectivity (MCP), communication (A2A), identity, and transaction flow (ACP/UCP). They still lack a neutral, portable way to answer a basic operational question:
+Agent systems now have emerging standards for connectivity, communication, identity, and transaction flow. They still lack a portable way to answer a basic operational question:
 
-**Should this agent, server, package, plugin, or machine counterparty be trusted for this task in this context?**
+**Should this agent, tool, package, plugin, server, or machine counterparty be trusted for this task in this context?**
 
-Today that decision is made through closed allowlists, ad hoc blocklists, platform-specific heuristics, or private internal memory. Every host rebuilds this logic independently. The results are:
+Today that decision is usually made through private heuristics, internal allowlists, opaque marketplace controls, or host-specific memory. These approaches do not transfer across systems, are difficult to audit externally, and often provide little recourse when a trust-sensitive decision is wrong.
 
-- **Duplication.** Each platform invents its own trust signals, none of which transfer.
-- **Inconsistency.** The same entity can be trusted on one platform and blocked on another for no portable reason.
-- **No recourse.** When a trust decision is wrong, there is no standard mechanism to challenge, review, or reverse it.
-- **Conflicted gatekeepers.** Platforms that control trust can distort routing, ranking, access, and conversion in their own favor. Amazon cannot evaluate Amazon sellers neutrally. Google cannot evaluate UCP merchants neutrally. OpenAI cannot evaluate ACP participants neutrally.
-
-This is not a theoretical concern. Agents are already beginning to install software, route work to external tools, transact with machine counterparties, and act under delegated authority. The trust layer they rely on to do this safely does not exist as a portable standard.
+As agents begin installing software, routing work, acting under delegation, and transacting with counterparties, this gap becomes operational rather than theoretical. EP addresses that gap by standardizing a minimal interface for trust-relevant evidence, trust state, and trust decisions.
 
 ---
 
@@ -109,7 +88,7 @@ A policy-evaluated result for a specific action in a specific context.
 | `evidence_sufficiency` | Whether the underlying evidence was adequate to decide |
 | `appeal_path` | If adverse, the mechanism available to challenge the decision |
 
-A Trust Decision is the protocol's product. It is not a score. It is an operational result with reasons and recourse.
+A Trust Decision is the protocol's primary operational output. It is not a score. It is an operational result with reasons and recourse.
 
 **If a third party can implement these three objects and interoperate with other implementations, EP has a real standard core.**
 
@@ -232,7 +211,7 @@ Tool access is not trust. Commerce flow is not trust. Identity is not trust. Com
 
 The trust layer must not be owned by any single marketplace, model vendor, or platform operator.
 
-This is not idealism. It is structural necessity. The party that controls trust can distort routing, ranking, access, and conversion. A trust standard governed by a market participant is inherently conflicted.
+**Trust evaluation creates both operational and governance concerns when the same platform both participates in and adjudicates trust-sensitive transactions. A neutral standard reduces real and perceived conflicts of interest by allowing trust decisions to be made through portable, inspectable, challengeable interfaces rather than platform-specific heuristics.**
 
 Under neutral governance:
 

@@ -8,13 +8,13 @@
 
 ## 1. Context
 
-NIST launched the AI Agent Standards Initiative on February 17, 2026 through CAISI. The initiative focuses on three pillars:
+EMILIA Protocol (EP) is an open protocol for trust evaluation, trust decisions, and adverse decision review in agent systems.
 
-1. Facilitating industry-led development of agent standards
-2. Fostering community-led open source protocol development
-3. Advancing research in AI agent security and identity
+Identity frameworks answer **who is this agent?** Authorization frameworks answer **what is it allowed to do?** EP addresses a different question that becomes critical once agents operate with autonomy:
 
-EMILIA Protocol (EP) contributes to this conversation as an open-source protocol specification for trust evaluation, trust decisions, and adverse decision review in agent systems. EP demonstrates one approach to the trust evaluation gap that exists between identity/authorization frameworks and operational deployment of AI agents.
+**Given this agent's observed evidence and this action context, should it be trusted to proceed?**
+
+EP is offered to NIST as a candidate contribution to the emerging trust-evaluation layer adjacent to identity, authorization, auditability, and adverse-decision review in agent systems.
 
 ---
 
@@ -48,24 +48,24 @@ These three objects are what EP proposes as its contribution to agent identity a
 
 ---
 
-## 3. Mapping EP to Concrete NIST Concerns
+## 3. Control Objectives — Mapping EP to NIST Concerns
 
-EP can support five areas the AI Agent Standards Initiative has identified as in-scope:
+EP's contribution is organized around five control objectives that address gaps the AI Agent Standards Initiative has identified:
 
-### Identity: How agents identify themselves and their authorization chain
-EP's Trust Profile provides a behavioral identity complement to cryptographic identity. Where OAuth, SAML, or DID answer "who is this agent?", a Trust Profile answers "what is the observed trust state of this agent for a given context?" The profile includes provenance composition, evidence depth, and anomaly detection — enabling receiving parties to evaluate counterparties beyond credential verification.
+### 1. Auditability — a portable record of trust-relevant events with integrity protection
+Trust Receipts form an append-only record of trust-relevant events. Each receipt carries provenance classification and cryptographic integrity protection. The record is portable across systems and resistant to retroactive modification, supporting the audit trail requirements NIST has identified for accountable agent systems.
 
-### Authorization: Delegation chains with verifiable principal accountability
-EP's attribution chain extension records Principal-to-Agent-to-Tool delegation with verifiable accountability. Weak principal signals receive dampened weighting (0.15x) to avoid overstating unverified delegation claims. Both `delegation_id` and `principal_id` are required to prevent unverifiable attribution. This enables audit of human oversight quality in delegated agent actions.
+### 2. Explainability — trust decisions return reasons, policy references, and evidence sufficiency state
+Trust Decisions are not opaque scores. Each decision returns the specific reasons for its outcome, the policy that was applied, and the evidence sufficiency state at evaluation time. This enables receiving parties and oversight bodies to understand why a trust outcome was reached.
 
-### Auditability: Append-only receipt ledger with cryptographic integrity
-Trust Receipts form an append-only behavioral record with HMAC-SHA256 integrity, provenance tier classification, and optional blockchain anchoring (Merkle proofs on Base L2). Database immutability triggers prevent retroactive modification. This can support the audit trail requirements that NIST has identified for accountable agent systems.
+### 3. Challengeability — adverse trust effects can be formally disputed and reviewed
+EP requires that any adverse trust effect include a dispute path. Disputes follow a structured lifecycle with evidence submission, response windows, and resolution. This addresses the due process gap in current agent trust systems.
 
-### Evidence: Multi-factor trust profiles based on observed behavior
-Trust Profiles are computed from behavioral evidence — delivery rates, accuracy, dispute outcomes, response timing — not from reputation signals or self-reported claims. Effective-evidence dampening ensures that trust remains conservative until sufficient weighted evidence accumulates. Sybil resistance layers (graph analysis, submitter credibility weighting, rate limiting) protect evidence integrity.
+### 4. Reversibility — corrected evidence can propagate to later decisions without erasing history
+When a dispute is resolved in favor of the subject, affected Trust Decisions can be re-evaluated with corrected evidence. The original record is preserved — history is not erased, but downstream effects of errors can be corrected.
 
-### Adverse decision review: Explainability, challengeability, reversibility
-EP's constitutional requirement states that any adverse trust effect must be explainable, challengeable, reviewable, and reversible when wrong. Trust Decisions include specific failure reasons, the policy applied, the evidence state at evaluation time, and a dispute/appeal path. This demonstrates one approach to the due process gap in current agent trust systems.
+### 5. Privacy-preserving verification — entities can prove threshold satisfaction without broad disclosure of underlying history
+EP's zero-knowledge trust proof extension enables entities to demonstrate trust thresholds (e.g., "confidence above a given level in a specific domain, based on sufficient evidence") without revealing counterparty identities, interaction history, or transaction contents. This supports participation in privacy-sensitive environments where trust verification is needed but counterparty disclosure is not permitted.
 
 ---
 
@@ -81,15 +81,15 @@ EP's constitutional requirement states that any adverse trust effect must be exp
 - The same entity can receive different Trust Decisions for different contexts, reflecting that trust is not a fixed property but a context-dependent evaluation
 
 ### Measure
-- Behavioral rates: delivery, accuracy, dispute, return, and other domain-relevant rates computed from receipt evidence
-- Provenance composition: receipts are classified by provenance tier (direct observation, verified integration, self-reported) with differential weighting
-- Effective evidence: dampening toward baseline until weighted evidence exceeds configurable thresholds
+- Behavioral rates: delivery, accuracy, dispute, and other domain-relevant rates computed from receipt evidence
+- Provenance composition: receipts are classified by provenance tier with differential weighting
+- Evidence sufficiency: trust remains conservative until sufficient weighted evidence accumulates (the reference implementation demonstrates one approach using configurable dampening thresholds)
 - Anomaly detection: flags for unusual patterns in receipt submission, timing, or behavioral distribution
 
 ### Manage
 - Disputes: structured dispute lifecycle with evidence submission, response windows, and resolution
 - Appeals: adverse decisions can be formally challenged with additional evidence
-- Weight dampening: anomalous or low-provenance evidence is dampened rather than excluded, preserving auditability
+- Evidence weighting: anomalous or low-provenance evidence is dampened rather than excluded, preserving auditability
 - Reversal propagation: when a dispute is resolved in favor of the subject, affected Trust Decisions can be re-evaluated
 
 ---
@@ -143,9 +143,9 @@ Action items:
 
 ### Opening
 
-EMILIA Protocol (EP) offers a trust evaluation contribution to the agent identity and authorization conversation. Identity frameworks answer "who is this agent?" and authorization frameworks answer "what is it allowed to do?" EP demonstrates one approach to a question that identity and authorization alone do not resolve: "given this agent's observed behavioral history, should it be trusted for this task in this context?"
+EMILIA Protocol (EP) offers a trust evaluation contribution to the agent identity and authorization conversation. Identity frameworks answer "who is this agent?" and authorization frameworks answer "what is it allowed to do?" EP addresses a question that identity and authorization alone do not resolve: "given this agent's observed evidence and this action context, should it be trusted to proceed?"
 
-EP proposes three interoperable objects — Trust Receipt, Trust Profile, and Trust Decision — as a minimal trust evaluation layer that can complement identity and authorization standards in agent systems.
+EP proposes three interoperable objects — Trust Receipt, Trust Profile, and Trust Decision — as a minimal trust evaluation layer adjacent to identity and authorization in agent systems. The core ask: **treat trust evaluation as a missing layer adjacent to identity and authorization.**
 
 ### Key Points
 
@@ -167,8 +167,8 @@ EP's three core objects address this gap:
 **2. EP Core Supports NIST's Three Initiative Pillars**
 
 - **Standards**: EP Core RFC v1.0 is a formal protocol specification defining receipt schema, trust profile format, trust decision interface, provenance tiers, and policy evaluation rules. Apache-2.0 licensed.
-- **Open source protocols**: A reference implementation is published with REST API, MCP server, and conformance test suite. The reference implementation is a working starting point, not the standard itself.
-- **Security and identity**: EP includes Sybil resistance mechanisms (effective-evidence dampening, graph analysis, submitter credibility, rate limiting) and append-only receipt integrity. These can support the security requirements NIST has identified for agent systems.
+- **Open source protocols**: A reference implementation demonstrates one approach with REST API, MCP server, and conformance test suite. The reference implementation is a working starting point, not the standard itself.
+- **Security and identity**: EP includes Sybil resistance mechanisms and append-only receipt integrity. These can support the security requirements NIST has identified for agent systems. The reference implementation demonstrates one approach to evidence dampening, graph analysis, submitter credibility weighting, and rate limiting.
 
 **3. EP Complements — Does Not Replace — Identity and Authorization Standards**
 
@@ -192,7 +192,7 @@ EP's constitutional requirement ensures that trust evaluation does not become un
 
 ### Closing
 
-EP is one contribution to the standards conversation around trust evaluation for AI agents. Its three core objects — Trust Receipt, Trust Profile, and Trust Decision — demonstrate a minimal interoperable approach to the trust evaluation gap between identity/authorization and operational deployment.
+The core ask: **Treat trust evaluation as a missing layer adjacent to identity and authorization.** EP's three core objects — Trust Receipt, Trust Profile, and Trust Decision — demonstrate a minimal interoperable approach to this layer.
 
 We welcome NIST's guidance on how EP can participate in the AI Agent Standards Initiative's future convenings, working groups, and standards development processes.
 

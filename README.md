@@ -1,17 +1,15 @@
 # EMILIA Protocol
 
 [![CI](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-670%20passing-brightgreen)]()
-[![MCP Tools](https://img.shields.io/badge/MCP%20tools-24-blue)]()
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
-
-**MCP tells agents how to use tools. EP tells them whether they should.**
-
----
 
 ## What is EP?
 
-EMILIA Protocol is a portable, open behavioral trust layer for machine actors. It computes probabilistic, policy-shaped, contextual, and contestable trust profiles from cryptographically anchored receipts — not binary scores from a single source. Any agent, operator, or host can evaluate a counterparty against a structured trust policy, file a dispute, appeal a decision, and verify the result independently.
+**EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties.**
+
+**Before an agent installs software, connects to a tool, accepts delegated authority, or transacts with a counterparty, EP returns a structured trust decision — with reasons and an appeal path.**
+
+**MCP tells agents how to use tools. EP tells them whether they should.**
 
 EP is not a product. It is a protocol. Apache 2.0.
 

@@ -10,11 +10,14 @@
 
 ## Abstract
 
-The proliferation of AI agents as economic actors — executing purchases, brokering services, routing tasks, and operating autonomously across organizational boundaries — has outpaced the infrastructure necessary to assess their behavioral integrity. No shared layer exists for establishing whether an agent, merchant, or software component has earned trust through observable conduct. Systems that need to answer "should I transact with this counterparty?" must either rely on platform-specific reputation systems that do not transfer, accept opaque vendor assertions, or operate without any behavioral signal at all. This absence creates compounding risk: as agents are granted increasing autonomy and economic authority, the cost of misplaced trust grows faster than any organization's ability to audit it manually.
+The EMILIA Protocol defines an open, implementation-independent interface for trust-relevant evidence, trust state, and trust decisions in machine-mediated systems. It is designed for contexts in which an agent, host, marketplace, or operator must decide whether to install, connect, delegate, or transact.
 
-The EMILIA Protocol defines a portable, vendor-neutral behavioral trust layer for machine-mediated systems. Its core primitive is the Trust Receipt — a cryptographically anchored record of a transaction outcome, submitted by the transacting party after the fact. Receipts accumulate into an append-only ledger. From this ledger, a multi-dimensional Trust Profile is derived through graph-analyzed, evidence-weighted scoring that is resistant to Sybil attacks, closed-loop manipulation, and synthetic volume. Agents consuming the protocol evaluate counterparties not against a single score but against structured Trust Policies that express their own risk tolerance across behavioral dimensions.
+EP Core consists of three interoperable objects:
+- Trust Receipt
+- Trust Profile
+- Trust Decision
 
-The goal of this document is to specify EMILIA Protocol v1.0 as an implementation-independent standard. Any system — an agent framework, a marketplace, an orchestration platform, a developer tool — MUST be able to implement a conformant EP node using only this document. No implementation is authoritative over this specification. Where implementation code and this document conflict, this document wins.
+The protocol's purpose is not to create a universal ranking of entities. Its purpose is to let independent systems exchange trust-relevant evidence, summarize trust state, and make explainable, challengeable, and privacy-aware trust decisions.
 
 ---
 
@@ -1084,6 +1087,6 @@ Implementations adopting Sections 13 through 16 MUST satisfy the following addit
 ---
 
 *EMILIA Protocol Standard v1.0*
-*Entity Measurement Infrastructure for Ledgered Interaction Accountability*
+*EMILIA Protocol — EP-001*
 *Apache-2.0 · Compatible with ACP, MCP, A2A*
 *Specification Date: 2026-03-18*

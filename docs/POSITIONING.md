@@ -300,4 +300,15 @@ EP operates in a space with no direct equivalent — which is both the opportuni
 
 ---
 
+## Usage Discipline
+
+Different audiences require different language. Match the register to the reader:
+
+- **Standards audiences:** interoperable trust evaluation, adverse-decision review, portability, auditability, privacy-preserving verification
+- **Enterprise buyers:** install preflight, delegated action assurance, audit trail, accountability, policy enforcement
+- **Investors:** open standard, paid control plane, wedge, moat, adoption tailwind
+- **Media/keynotes:** can use the stronger metaphorical language
+
+---
+
 *EMILIA Protocol · emiliaprotocol.ai · github.com/emiliaprotocol/emilia-protocol · Apache 2.0*
