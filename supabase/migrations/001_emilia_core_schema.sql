@@ -13,7 +13,7 @@ create extension if not exists vector with schema extensions;
 create table entities (
   id              uuid primary key default gen_random_uuid(),
   entity_id       text unique not null,                -- human-readable slug: "rex-booking-v2"
-  owner_id        text not null,                       -- who owns this entity (API key holder)
+  owner_id        text not null,                       -- portable registration handle (ep_owner_<uuid>); see migration 028
   
   -- Identity
   display_name    text not null,
@@ -58,7 +58,7 @@ create table entities (
   
   -- Metadata
   status          text not null default 'active' check (status in ('active', 'inactive', 'suspended')),
-  api_key_hash    text not null,                        -- hashed API key for auth
+  api_key_hash    text,                                  -- DEPRECATED: dropped in migration 028; auth via api_keys table
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );
@@ -70,7 +70,7 @@ create index idx_entities_active on entities (status) where status = 'active';
 create index idx_entities_score on entities (emilia_score desc) where status = 'active';
 create index idx_entities_type on entities (entity_type, emilia_score desc);
 create index idx_entities_category on entities (category, emilia_score desc);
-create index idx_entities_api_key on entities (api_key_hash);
+create index idx_entities_api_key on entities (api_key_hash); -- DEPRECATED: dropped in migration 028
 
 -- =============================================================================
 -- RECEIPTS — the immutable ledger

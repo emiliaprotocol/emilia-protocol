@@ -303,7 +303,7 @@ The following reflects the state of the EP reference implementation as of March 
 | Effective-evidence Sybil resistance (dampening toward 50 based on weighted evidence) | Deployed |
 | Graph weight penalties (closed-loop 0.4x, cluster 0.1x + blocked) | Deployed |
 | Identity-aware write throttling (API key prefix + IP on writes, IP-only on reads) | Deployed |
-| Server-derived owner identity (SHA-256 of client IP) | Deployed |
+| Portable owner identity (`ep_owner_<uuid>`) with principal binding via `/api/identity/bind` | Deployed |
 
 ### Extensions (implemented, proposed as optional standard extensions)
 

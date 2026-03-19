@@ -25,7 +25,7 @@ Do not open public GitHub issues for security vulnerabilities.
 - Unestablished submitters carry 0.1x weight
 - Sybil quality gate caps unestablished evidence at 2.0 for dampening — pure volume cannot overcome the trust barrier
 - Registration rate limiting (10/hour per IP)
-- Server-derived owner_id (SHA-256 of client IP) prevents identity spoofing
+- Portable random owner_id (`ep_owner_<uuid>`) assigned at registration; durable identity established through explicit principal binding via `/api/identity/bind`
 - Graph analysis: thin-graph (0.5x), closed-loop (0.4x), cluster (0.1x) penalties
 
 **Status:** Implemented. 14 adversarial tests verify damage ceilings.
