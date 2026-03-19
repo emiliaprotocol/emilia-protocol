@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { epProblem } from '@/lib/errors';
+import { generateEmbedding } from '@/lib/providers/embeddings';
 
 /**
  * GET /api/entities/search
@@ -70,25 +71,12 @@ export async function GET(request) {
       return enriched;
     }
 
-    // If semantic query provided and OpenAI key available, do vector search
-    if (q && process.env.OPENAI_API_KEY) {
+    // If semantic query provided, attempt vector search via embedding provider
+    if (q) {
       try {
-        const embRes = await fetch('https://api.openai.com/v1/embeddings', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'text-embedding-3-small',
-            input: q,
-          }),
-        });
+        const embedding = await generateEmbedding(q);
 
-        if (embRes.ok) {
-          const embData = await embRes.json();
-          const embedding = embData.data[0].embedding;
-
+        if (embedding) {
           const { data: results, error } = await supabase.rpc('search_entities', {
             query_embedding: embedding,
             min_score: minScore,

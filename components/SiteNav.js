@@ -3,7 +3,7 @@
 const NAV_LINKS = [
   ['/', 'Overview'],
   ['/demo.html', 'Demo'],
-  ['/quickstart.html', 'Quickstart'],
+  ['/quickstart', 'Quickstart'],
   ['/spec', 'Docs'],
   ['/appeal', 'Appeal'],
   ['/partners', 'Partners'],
@@ -13,7 +13,7 @@ const NAV_LINKS = [
 const FOOTER_LINKS = [
   ['/governance', 'Governance'],
   ['/partners', 'Partners'],
-  ['/operators.html', 'Operators'],
+  ['/operators', 'Operators'],
   ['mailto:team@emiliaprotocol.ai', 'Contact'],
   ['/investors', 'Investor Inquiries'],
 ];

@@ -2,12 +2,16 @@
 // POST /api/inquiries — stores partner and investor inquiries
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getServiceClient } from '@/lib/supabase';
 import { epProblem } from '@/lib/errors';
 
-const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
-  ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
-  : null;
+function getSupabase() {
+  try {
+    return getServiceClient();
+  } catch {
+    return null;
+  }
+}
 
 export async function POST(request) {
   try {
@@ -45,6 +49,7 @@ export async function POST(request) {
     };
 
     // Store in Supabase if available
+    const supabase = getSupabase();
     if (supabase) {
       const table = type === 'partner' ? 'partner_inquiries' : 'investor_inquiries';
       const { error: dbError } = await supabase.from(table).insert(record);

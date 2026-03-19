@@ -3,6 +3,7 @@ import { getServiceClient, authenticateRequest } from '@/lib/supabase';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import crypto from 'crypto';
 import { epProblem } from '@/lib/errors';
+import { generateEmbedding } from '@/lib/providers/embeddings';
 
 /**
  * POST /api/needs/broadcast
@@ -37,43 +38,20 @@ export async function POST(request) {
       return epProblem(400, 'missing_capability', 'capability_needed is required');
     }
 
-    // Generate embedding for semantic matching
-    let embedding = null;
-    if (process.env.OPENAI_API_KEY) {
-      // Serialize context for embedding — avoid [object Object] coercion
-      const contextText = body.context
-        ? (typeof body.context === 'object'
-          ? Object.entries(body.context).map(([k, v]) => `${k}: ${v}`).join(', ')
-          : String(body.context))
-        : null;
+    // Generate embedding for semantic matching (optional — skipped if no provider configured)
+    // Serialize context for embedding — avoid [object Object] coercion
+    const contextText = body.context
+      ? (typeof body.context === 'object'
+        ? Object.entries(body.context).map(([k, v]) => `${k}: ${v}`).join(', ')
+        : String(body.context))
+      : null;
 
-      const embeddingText = [
-        body.capability_needed,
-        contextText,
-      ].filter(Boolean).join('. ');
+    const embeddingText = [
+      body.capability_needed,
+      contextText,
+    ].filter(Boolean).join('. ');
 
-      try {
-        const embRes = await fetch('https://api.openai.com/v1/embeddings', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'text-embedding-3-small',
-            input: embeddingText,
-          }),
-        });
-
-        if (embRes.ok) {
-          const embData = await embRes.json();
-          embedding = embData.data[0].embedding;
-        }
-      } catch (e) {
-        // Embedding generation failed — continue without it
-        console.warn('Embedding generation failed:', e.message);
-      }
-    }
+    const embedding = await generateEmbedding(embeddingText);
 
     // Validate context — must be a structured object, not a freeform string
     let needContext = null;

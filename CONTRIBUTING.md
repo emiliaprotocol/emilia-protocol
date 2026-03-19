@@ -68,7 +68,7 @@ npx @emilia-protocol/mcp-server
 
 ### Environment Variables
 Copy `.env.example` to `.env.local` and fill in:
-- `SUPABASE_URL` — your Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_URL` — your Supabase project URL
 - `SUPABASE_SERVICE_ROLE_KEY` — service role key (server-only)
 - `SUPABASE_ANON_KEY` — anon key (public)
 - `EP_API_URL` — EP API base (default: https://emiliaprotocol.ai)

@@ -181,10 +181,10 @@ export default async function EntityProfile({ params }) {
           </a>
           <div style="display:flex;align-items:center;gap:24px">
             <a href="/" style="color:#4a4f6a;text-decoration:none">Home</a>
-            <a href="/quickstart.html" style="color:#4a4f6a;text-decoration:none">Quickstart</a>
+            <a href="/quickstart" style="color:#4a4f6a;text-decoration:none">Quickstart</a>
             <a href="/demo.html" style="color:#4a4f6a;text-decoration:none">Demo</a>
             <a href="/spec" style="color:#4a4f6a;text-decoration:none">Spec</a>
-            <a href="/operators.html" style="color:#4a4f6a;text-decoration:none">Operators</a>
+            <a href="/operators" style="color:#4a4f6a;text-decoration:none">Operators</a>
             <a href="/appeal" style="color:#4a4f6a;text-decoration:none">Appeal</a>
             <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" style="color:#4a4f6a;text-decoration:none">GitHub</a>
             <a href="/apply" style="background:#00d4ff;color:#05060a;padding:8px 18px;border-radius:8px;text-decoration:none;font-weight:700;letter-spacing:1px;font-size:12px">Apply to Review</a>

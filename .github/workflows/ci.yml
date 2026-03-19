@@ -7,6 +7,7 @@ on:
     branches: [main]
 
 jobs:
+  # ── Job 1: Test matrix across Node 18, 20, 22 ──────────────────────
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -19,8 +20,82 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - run: npm ci
       - run: npm test
-      - name: Upload coverage
+      - name: Upload test results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-${{ matrix.node-version }}
+          name: test-results-node-${{ matrix.node-version }}
           path: test-results/
+          retention-days: 14
+
+  # ── Job 2: Verify Next.js production build ──────────────────────────
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npx next build
+
+  # ── Job 3: MCP server packaging smoke test ──────────────────────────
+  mcp-server-pack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        working-directory: mcp-server
+        run: npm install
+      - name: Verify npm pack succeeds
+        working-directory: mcp-server
+        run: npm pack
+      - name: Smoke test — verify entry point loads
+        working-directory: mcp-server
+        run: node -e "import('./index.js').then(() => console.log('MCP server entry OK'))"
+
+  # ── Job 4: TypeScript SDK ───────────────────────────────────────────
+  sdk-typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        working-directory: sdks/typescript
+        run: npm install
+      - name: Build SDK
+        working-directory: sdks/typescript
+        run: npm run build
+      - name: Type-check
+        working-directory: sdks/typescript
+        run: npx tsc --noEmit
+
+  # ── Job 5: Python SDK ──────────────────────────────────────────────
+  sdk-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install SDK
+        working-directory: sdks/python
+        run: pip install -e .
+      - name: Verify import
+        run: python -c "from emilia_protocol import EmiliaClient; print('Python SDK import OK')"
+
+  # ── Job 6: OpenAPI spec linting ─────────────────────────────────────
+  openapi-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Lint OpenAPI spec
+        run: npx @redocly/cli lint openapi.yaml

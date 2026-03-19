@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { getServiceClient, generateApiKey } from '@/lib/supabase';
 import { computeReceiptComposite } from '@/lib/scoring';
 import { epProblem } from '@/lib/errors';
+import { generateEmbedding } from '@/lib/providers/embeddings';
 
 /**
  * POST /api/entities/register
  *
  * Register a new entity on the EMILIA Protocol.
- * Returns an API key that the entity uses for all future interactions.
+ * Returns an API key and an owner_id that the entity uses for all future interactions.
  *
  * Body: {
  *   entity_id: "rex-booking-v2",
@@ -24,8 +25,11 @@ import { epProblem } from '@/lib/errors';
  *   output_schema: { ... },              // optional JSON Schema
  * }
  *
- * Returns: { entity, api_key }
+ * Returns: { entity, api_key, owner_id }
  *   api_key is returned ONCE at registration. Store it securely.
+ *   owner_id is the registrant's portable identity handle. Store it securely.
+ *   Use POST /api/identity/bind to establish durable principal binding
+ *   (e.g. linking to a GitHub account or org) for long-lived ownership.
  */
 export async function POST(request) {
   try {
@@ -69,50 +73,32 @@ export async function POST(request) {
 
     // Rate limiting handled by middleware on all /api/* routes
 
-    // Generate embedding from description + capabilities
-    let embedding = null;
-    if (process.env.OPENAI_API_KEY) {
-      const embeddingText = [
-        body.display_name,
-        body.description,
-        ...(body.capabilities || []),
-        body.category,
-      ].filter(Boolean).join('. ');
+    // Generate embedding from description + capabilities (optional — skipped if no provider configured)
+    const embeddingText = [
+      body.display_name,
+      body.description,
+      ...(body.capabilities || []),
+      body.category,
+    ].filter(Boolean).join('. ');
 
-      const embRes = await fetch('https://api.openai.com/v1/embeddings', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'text-embedding-3-small',
-          input: embeddingText,
-        }),
-      });
-
-      if (embRes.ok) {
-        const embData = await embRes.json();
-        embedding = embData.data[0].embedding;
-      }
-    }
+    const embedding = await generateEmbedding(embeddingText);
 
     // Generate API key
     const { key: apiKey, hash: apiKeyHash, prefix } = generateApiKey();
 
-    // Derive owner_id from client IP hash (not caller-supplied — prevents spoofing)
-    const clientIP = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-      || request.headers.get('x-real-ip') || 'unknown';
-    const ownerHash = Array.from(
-      new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(clientIP)))
-    ).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+    // Generate a random, portable owner_id for this registrant.
+    // Previous implementation derived owner_id from a hashed client IP, which
+    // was not durable (IP changes), not portable (different networks), and
+    // misleading under NAT / shared infrastructure.
+    // Durable ownership should be established via POST /api/identity/bind.
+    const ownerId = `ep_owner_${crypto.randomUUID()}`;
 
     // Insert entity
     const { data: entity, error: insertError } = await supabase
       .from('entities')
       .insert({
         entity_id: body.entity_id,
-        owner_id: `ip_${ownerHash}`,
+        owner_id: ownerId,
         display_name: body.display_name,
         entity_type: body.entity_type,
         description: body.description,
@@ -128,6 +114,9 @@ export async function POST(request) {
         capability_embedding: embedding,
         a2a_endpoint: body.a2a_endpoint || null,
         ucp_profile_url: body.ucp_profile_url || null,
+        // DEPRECATED: api_key_hash on the entities table is redundant.
+        // The api_keys table is the source of truth for auth (see lib/supabase.js).
+        // Retained for backward-compat reads; will be removed in a future migration.
         api_key_hash: apiKeyHash,
       })
       .select()
@@ -158,7 +147,8 @@ export async function POST(request) {
         created_at: entity.created_at,
       },
       api_key: apiKey,
-      message: 'Store this API key securely. It will not be shown again.',
+      owner_id: ownerId,
+      message: 'Store this API key and owner_id securely. They will not be shown again. Use POST /api/identity/bind to establish durable principal binding.',
       _note: 'Query /api/trust/profile/:entityId for full trust profile. compat_score is for sorting only.',
     }, { status: 201 });
   } catch (err) {

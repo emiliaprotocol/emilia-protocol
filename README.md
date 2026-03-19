@@ -173,7 +173,7 @@ Receipt weight is dampened further by dispute state: 0.3x while a dispute is act
 | Component | Status |
 |---|---|
 | Trust profile + policy evaluation (strict / standard / permissive / discovery) | [Live] |
-| Install preflight: MCP servers, GitHub Apps, npm, Chrome extensions | [Live] |
+| Install preflight: MCP servers, GitHub Apps, npm, Chrome extensions [Experimental] | [Live] |
 | Dispute + appeals lifecycle (10-state machine, constitutional due process) | [Live] |
 | Auto-receipt generation (opt-in, privacy-preserving) | [Live] |
 | Trust-graph dispute adjudication (voucher voting, 48h window) | [Live] |
