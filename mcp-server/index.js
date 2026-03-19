@@ -607,7 +607,7 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        commit_id: { type: 'string', description: 'Commit ID (ep_commit_...)' },
+        commit_id: { type: 'string', description: 'Commit ID (epc_...)' },
       },
       required: ['commit_id'],
     },
@@ -618,7 +618,7 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        commit_id: { type: 'string', description: 'Commit ID (ep_commit_...)' },
+        commit_id: { type: 'string', description: 'Commit ID (epc_...)' },
       },
       required: ['commit_id'],
     },
@@ -629,7 +629,7 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        commit_id: { type: 'string', description: 'Commit ID to revoke (ep_commit_...)' },
+        commit_id: { type: 'string', description: 'Commit ID to revoke (epc_...)' },
         reason: { type: 'string', description: 'Reason for revocation' },
       },
       required: ['commit_id', 'reason'],
@@ -643,7 +643,7 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        commit_id: { type: 'string', description: 'Commit ID to bind to (ep_commit_...)' },
+        commit_id: { type: 'string', description: 'Commit ID to bind to (epc_...)' },
         receipt_id: { type: 'string', description: 'Receipt ID to bind (ep_rcpt_...)' },
       },
       required: ['commit_id', 'receipt_id'],

@@ -14,7 +14,7 @@ Versioning model: Protocol spec and reference repo share the root version (1.0.x
 - **Canonical TrustDecision** object returned by every evaluation path
 - **6-job CI pipeline**: tests, build, lint, SDK builds, conformance, integration
 - **TypeScript SDK** (25 methods) + **Python SDK** (21 methods) — published on npm / PyPI
-- **EP Commit** — signed pre-action authorization tokens proving policy evaluation before proceeding (5 new tools: ep_commit_request, ep_commit_verify, ep_commit_revoke, ep_commit_status, ep_commit_list)
+- **EP Commit** — signed pre-action authorization tokens proving policy evaluation before proceeding (5 new tools: ep_issue_commit, ep_verify_commit, ep_get_commit_status, ep_revoke_commit, ep_bind_receipt_to_commit)
 - **ZK proofs**, auto-receipts, delegation chains, attribution tracking, domain scoring
 - **Protocol Standard v1.0** — 17 sections, complete specification
 

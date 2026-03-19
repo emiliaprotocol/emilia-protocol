@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
-import { bindReceiptToCommit, fulfillCommit, CommitError } from '@/lib/commit';
+import { bindReceiptToCommit, fulfillCommit, getCommitStatus, CommitError } from '@/lib/commit';
 import { epProblem } from '@/lib/errors';
 
 /**
@@ -19,6 +19,16 @@ export async function POST(request, { params }) {
 
     const { commitId } = await params;
     const body = await request.json();
+
+    // === AUTHORIZATION: only the issuing entity can bind a receipt ===
+    const commit = await getCommitStatus(commitId);
+    if (!commit) {
+      return epProblem(404, 'commit_not_found', 'Commit not found');
+    }
+
+    if (commit.entity_id !== auth.entity.entity_id) {
+      return epProblem(403, 'not_authorized', 'Only the issuing entity can bind a receipt to this commit');
+    }
 
     if (!body.receipt_id) {
       return epProblem(400, 'missing_receipt_id', 'receipt_id is required');

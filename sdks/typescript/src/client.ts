@@ -843,7 +843,7 @@ export class EPClient {
    *
    * @example
    * ```typescript
-   * const result = await ep.verifyCommit('ep_commit_abc123');
+   * const result = await ep.verifyCommit('epc_abc123');
    * if (!result.valid) console.error('Commit invalid');
    * ```
    */
@@ -859,7 +859,7 @@ export class EPClient {
    *
    * @example
    * ```typescript
-   * const commit = await ep.getCommitStatus('ep_commit_abc123');
+   * const commit = await ep.getCommitStatus('epc_abc123');
    * console.log(commit.status); // "active" | "revoked" | "expired" | "fulfilled"
    * ```
    */
@@ -872,7 +872,7 @@ export class EPClient {
    *
    * @example
    * ```typescript
-   * await ep.revokeCommit('ep_commit_abc123', 'Action no longer needed');
+   * await ep.revokeCommit('epc_abc123', 'Action no longer needed');
    * ```
    */
   async revokeCommit(commitId: string, reason: string): Promise<EPCommit> {
@@ -888,7 +888,7 @@ export class EPClient {
    *
    * @example
    * ```typescript
-   * await ep.bindReceiptToCommit('ep_commit_abc123', 'ep_rcpt_xyz789');
+   * await ep.bindReceiptToCommit('epc_abc123', 'ep_rcpt_xyz789');
    * ```
    */
   async bindReceiptToCommit(commitId: string, receiptId: string): Promise<EPCommit> {

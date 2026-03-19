@@ -1446,20 +1446,22 @@ paths:
       summary: Verify a commit
       description: |
         Public endpoint — any relying system can verify whether a commit is
-        still valid before acting on it. Returns a verdict (valid/invalid +
-        status), NOT the full commit payload.
+        still valid before acting on it. Verification is by commit_id against
+        the authoritative DB record (signature, status, expiry, nonce replay).
+        Token-level verification (offline) is planned for v2.
+
+        Returns a verdict (valid/invalid + status), NOT the full commit payload.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - commit_id
               properties:
                 commit_id:
                   type: string
-                token:
-                  type: string
-                  description: The full signed commit JSON string
       responses:
         '200':
           description: Verification result
@@ -1468,7 +1470,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/CommitVerifyResponse'
         '400':
-          description: Missing commit_id or token
+          description: Missing commit_id
 
   /api/commit/{commitId}:
     get:

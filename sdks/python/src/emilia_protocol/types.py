@@ -310,7 +310,7 @@ class EPCommit:
     principal_id: Optional[str] = None
     counterparty_entity_id: Optional[str] = None
     delegation_id: Optional[str] = None
-    scope: Optional[list[str]] = None
+    scope: Optional[dict[str, Any]] = None
     max_value_usd: Optional[float] = None
     context: Optional[dict[str, Any]] = None
     policy: Optional[str] = None

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { getCommitStatus, CommitError } from '@/lib/commit';
+import { authorizeCommitAccess } from '@/lib/commit-auth';
 import { epProblem } from '@/lib/errors';
 
 /**
@@ -21,6 +22,12 @@ export async function GET(request, { params }) {
 
     if (!commit) {
       return epProblem(404, 'commit_not_found', 'Commit not found');
+    }
+
+    // === AUTHORIZATION: only issuing entity or principal may view ===
+    const authz = authorizeCommitAccess(auth, commit, 'view');
+    if (!authz.authorized) {
+      return epProblem(403, 'not_authorized', authz.reason);
     }
 
     return NextResponse.json({ commit });

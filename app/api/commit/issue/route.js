@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { issueCommit, CommitError } from '@/lib/commit';
+import { authorizeCommitIssuance } from '@/lib/commit-auth';
 import { epProblem } from '@/lib/errors';
 
 /**
@@ -33,6 +34,12 @@ export async function POST(request) {
 
     if (!body.entity_id) {
       return epProblem(400, 'missing_entity_id', 'entity_id is required');
+    }
+
+    // === AUTHORIZATION: caller must own entity_id or hold a verified delegation ===
+    const authz = await authorizeCommitIssuance(auth, body.entity_id, body.delegation_id, body.action_type);
+    if (!authz.authorized) {
+      return epProblem(403, 'not_authorized', authz.reason);
     }
 
     // === ISSUE COMMIT ===

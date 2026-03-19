@@ -124,7 +124,7 @@ Policies define trust thresholds. EP ships 8 named policies:
 
 ### Trust Gate
 
-The trust gate is a pre-action decision surface that combines trust evaluation with delegation verification. Call it before any high-stakes autonomous action. It returns `allow | block | review | deny` with appeal paths for non-allow decisions.
+The trust gate is a pre-action decision surface that combines trust evaluation with delegation verification. Call it before any high-stakes autonomous action. It returns `allow | review | deny` with appeal paths for non-allow decisions.
 
 ### Due Process
 

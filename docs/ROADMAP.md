@@ -150,7 +150,7 @@ All items below were built and merged in the second sprint wave. They are live, 
 
 ### EP Commit
 - Signed pre-action authorization tokens evaluated under policy before proceeding
-- 5 MCP tools: ep_commit_request, ep_commit_verify, ep_commit_revoke, ep_commit_status, ep_commit_list
+- 5 MCP tools: ep_issue_commit, ep_verify_commit, ep_get_commit_status, ep_revoke_commit, ep_bind_receipt_to_commit
 - Relying systems can require an EP Commit before allowing install, connect, delegate, or transact actions
 - Turns advisory trust decisions into enforceable pre-action authorization
 

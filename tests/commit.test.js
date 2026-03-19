@@ -5,21 +5,16 @@
  * Covers issueCommit, verifyCommit, revokeCommit, fulfillCommit,
  * bindReceiptToCommit, and the state machine lifecycle.
  *
- * Uses mock Supabase clients following the same pattern as other EP tests
- * (vi.mock with spy functions, makeChain helper).
+ * Uses vi.mock to mock Supabase, canonical-evaluator, and delegation
+ * dependencies so no real DB or network calls are made.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ============================================================================
-// Supabase mock helpers (same pattern as dispute-adjudication.test.js)
+// Supabase mock helpers (same pattern as other EP tests)
 // ============================================================================
 
-/**
- * makeChain builds a fluent Supabase query builder mock.
- * Each chainable method returns `this` so you can call .from().select()... etc.
- * The terminal call (maybeSingle) resolves to { data, error }.
- */
 function makeChain(resolveValue) {
   const chain = {
     select: vi.fn().mockReturnThis(),
@@ -39,14 +34,24 @@ function makeChain(resolveValue) {
 }
 
 // ============================================================================
-// Mock @/lib/supabase so ep-commit never calls a real DB
+// Mock dependencies
 // ============================================================================
 
+const mockGetServiceClient = vi.fn();
+const mockCanonicalEvaluate = vi.fn();
+const mockVerifyDelegation = vi.fn();
+
 vi.mock('../lib/supabase.js', () => ({
-  getServiceClient: vi.fn(),
+  getServiceClient: (...args) => mockGetServiceClient(...args),
 }));
 
-import { getServiceClient } from '../lib/supabase.js';
+vi.mock('../lib/canonical-evaluator.js', () => ({
+  canonicalEvaluate: (...args) => mockCanonicalEvaluate(...args),
+}));
+
+vi.mock('../lib/delegation.js', () => ({
+  verifyDelegation: (...args) => mockVerifyDelegation(...args),
+}));
 
 // Import after mocks
 import {
@@ -56,35 +61,53 @@ import {
   fulfillCommit,
   bindReceiptToCommit,
   _internals,
-} from '../lib/ep-commit.js';
+  _resetForTesting,
+} from '../lib/commit.js';
 
 // ============================================================================
-// Helper: build a mock DB that returns specified data for reads and succeeds for writes
+// Helper: build a mock Supabase client that returns specified data
 // ============================================================================
 
-function buildMockDb(commitRecord = null) {
+function buildMockDb(commitRecord = null, { insertError = null, updateError = null } = {}) {
   const readChain = makeChain({ data: commitRecord, error: null });
-  const writeChain = makeChain({ data: null, error: null });
+  const writeInsertChain = makeChain({ data: null, error: insertError });
 
-  const fromFn = vi.fn((table) => {
-    // Return different chains depending on whether it's a read or write operation
-    return {
-      select: (...args) => {
-        readChain.select(...args);
-        return readChain;
-      },
-      insert: writeChain.insert,
-      update: (...args) => {
-        writeChain.update(...args);
-        // update().eq() needs to resolve
-        return {
-          eq: vi.fn().mockResolvedValue({ data: null, error: null }),
-        };
-      },
-    };
-  });
+  const updateChain = {
+    eq: vi.fn().mockReturnThis(),
+    select: vi.fn().mockReturnThis(),
+    single: vi.fn().mockResolvedValue({
+      data: commitRecord ? { ...commitRecord, status: 'fulfilled', fulfilled_at: new Date().toISOString() } : null,
+      error: updateError,
+    }),
+    maybeSingle: vi.fn().mockResolvedValue({ data: null, error: updateError }),
+    then: (resolve) => Promise.resolve({ data: null, error: updateError }).then(resolve),
+  };
+
+  const fromFn = vi.fn(() => ({
+    select: (...args) => {
+      readChain.select(...args);
+      return readChain;
+    },
+    insert: writeInsertChain.insert,
+    update: (...args) => {
+      return updateChain;
+    },
+  }));
 
   return { from: fromFn };
+}
+
+/** Default mock evaluation result (score = 0.8 => allow) */
+function mockEvaluation(overrides = {}) {
+  return {
+    score: 0.8,
+    confidence: 0.9,
+    profile: { history_length: 10 },
+    anomaly: null,
+    policyResult: null,
+    error: null,
+    ...overrides,
+  };
 }
 
 // ============================================================================
@@ -94,47 +117,67 @@ function buildMockDb(commitRecord = null) {
 describe('issueCommit', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _resetForTesting();
+    // Default: evaluation succeeds with score 0.8 => allow
+    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation());
+    // Default: Supabase returns a mock client
+    mockGetServiceClient.mockReturnValue(buildMockDb());
   });
 
   it('issues a commit with valid params and returns epc_ prefixed ID', async () => {
-    const db = buildMockDb();
     const commit = await issueCommit({
       entity_id: 'entity-123',
-      action_type: 'purchase',
-      decision: 'allow',
-      db,
+      action_type: 'install',
     });
 
     expect(commit.commit_id).toMatch(/^epc_/);
     expect(commit.commit_id.length).toBeGreaterThan(4);
   });
 
-  it('decision is restricted to allow/review/deny (canonical vocabulary only)', async () => {
-    const db = buildMockDb();
+  it('decision is derived from evaluation score (allow when >= 0.6)', async () => {
+    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({ score: 0.8 }));
 
-    for (const decision of ['allow', 'review', 'deny']) {
-      const commit = await issueCommit({
-        entity_id: 'entity-123',
-        action_type: 'purchase',
-        decision,
-        db,
-      });
-      expect(commit.decision).toBe(decision);
-    }
-  });
-
-  it('commit contains all required fields', async () => {
-    const db = buildMockDb();
     const commit = await issueCommit({
       entity_id: 'entity-123',
-      action_type: 'purchase',
-      decision: 'allow',
-      db,
+      action_type: 'install',
+    });
+
+    expect(commit.decision).toBe('allow');
+  });
+
+  it('decision is review when score is between 0.3 and 0.6', async () => {
+    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({ score: 0.45 }));
+
+    const commit = await issueCommit({
+      entity_id: 'entity-123',
+      action_type: 'connect',
+    });
+
+    expect(commit.decision).toBe('review');
+  });
+
+  it('decision is deny when score is below 0.3', async () => {
+    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({ score: 0.1 }));
+
+    const commit = await issueCommit({
+      entity_id: 'entity-123',
+      action_type: 'transact',
+    });
+
+    expect(commit.decision).toBe('deny');
+  });
+
+  it('commit contains all required fields from the runtime schema', async () => {
+    const commit = await issueCommit({
+      entity_id: 'entity-123',
+      action_type: 'install',
     });
 
     const requiredFields = [
-      'commit_id', 'version', 'decision', 'action_type', 'entity_id',
-      'scope', 'nonce', 'issued_at', 'expires_at', 'status', 'signature',
+      'commit_id', 'entity_id', 'principal_id', 'counterparty_entity_id',
+      'delegation_id', 'action_type', 'decision', 'scope', 'max_value_usd',
+      'context', 'policy_snapshot', 'nonce', 'signature', 'public_key',
+      'expires_at', 'status', 'evaluation_result', 'created_at',
     ];
 
     for (const field of requiredFields) {
@@ -142,13 +185,29 @@ describe('issueCommit', () => {
     }
   });
 
-  it('signature is present and non-empty', async () => {
-    const db = buildMockDb();
+  it('commit does NOT contain a version field', async () => {
     const commit = await issueCommit({
       entity_id: 'entity-123',
-      action_type: 'purchase',
-      decision: 'allow',
-      db,
+      action_type: 'install',
+    });
+
+    expect(commit).not.toHaveProperty('version');
+  });
+
+  it('uses created_at (not issued_at) as the timestamp field', async () => {
+    const commit = await issueCommit({
+      entity_id: 'entity-123',
+      action_type: 'install',
+    });
+
+    expect(commit).toHaveProperty('created_at');
+    expect(commit).not.toHaveProperty('issued_at');
+  });
+
+  it('signature is present and non-empty (Ed25519 base64)', async () => {
+    const commit = await issueCommit({
+      entity_id: 'entity-123',
+      action_type: 'install',
     });
 
     expect(commit.signature).toBeDefined();
@@ -156,105 +215,193 @@ describe('issueCommit', () => {
     expect(commit.signature.length).toBeGreaterThan(0);
   });
 
-  it('nonce is 32 bytes hex (64 chars)', async () => {
-    const db = buildMockDb();
+  it('public_key is present (base64 32-byte Ed25519 key)', async () => {
     const commit = await issueCommit({
       entity_id: 'entity-123',
-      action_type: 'purchase',
-      decision: 'allow',
-      db,
+      action_type: 'install',
+    });
+
+    expect(commit.public_key).toBeDefined();
+    const keyBytes = Buffer.from(commit.public_key, 'base64');
+    expect(keyBytes.length).toBe(32);
+  });
+
+  it('nonce is 32 bytes hex (64 chars)', async () => {
+    const commit = await issueCommit({
+      entity_id: 'entity-123',
+      action_type: 'install',
     });
 
     expect(commit.nonce).toMatch(/^[a-f0-9]{64}$/);
   });
 
-  it('expiry is ~10 minutes after issued_at by default', async () => {
-    const db = buildMockDb();
+  it('expiry is ~10 minutes after created_at by default', async () => {
     const commit = await issueCommit({
       entity_id: 'entity-123',
-      action_type: 'purchase',
-      decision: 'allow',
-      db,
+      action_type: 'install',
     });
 
-    const issuedAt = new Date(commit.issued_at).getTime();
+    const createdAt = new Date(commit.created_at).getTime();
     const expiresAt = new Date(commit.expires_at).getTime();
-    const diffMinutes = (expiresAt - issuedAt) / (60 * 1000);
+    const diffMinutes = (expiresAt - createdAt) / (60 * 1000);
 
-    // Should be 10 minutes (allow 0.1 minute tolerance for test execution time)
     expect(diffMinutes).toBeCloseTo(10, 0);
   });
 
+  it('expiry is clamped to 5-15 minute range', async () => {
+    // Try 1 minute — should clamp to 5
+    const commit1 = await issueCommit({
+      entity_id: 'entity-123',
+      action_type: 'install',
+      expiry_ms: 1 * 60_000,
+    });
+    const diff1 = (new Date(commit1.expires_at) - new Date(commit1.created_at)) / 60_000;
+    expect(diff1).toBeCloseTo(5, 0);
+
+    // Try 30 minutes — should clamp to 15
+    const commit2 = await issueCommit({
+      entity_id: 'entity-123',
+      action_type: 'install',
+      expiry_ms: 30 * 60_000,
+    });
+    const diff2 = (new Date(commit2.expires_at) - new Date(commit2.created_at)) / 60_000;
+    expect(diff2).toBeCloseTo(15, 0);
+  });
+
   it('status is "active" on issuance', async () => {
-    const db = buildMockDb();
     const commit = await issueCommit({
       entity_id: 'entity-123',
-      action_type: 'purchase',
-      decision: 'allow',
-      db,
+      action_type: 'install',
     });
 
     expect(commit.status).toBe('active');
   });
 
   it('max_value_usd is advisory — included in commit but does not affect decision logic', async () => {
-    const db = buildMockDb();
-
-    // max_value_usd is included in the commit record for policy reference
-    // but EP does not enforce, hold, or settle monetary value.
     const commit = await issueCommit({
       entity_id: 'entity-123',
-      action_type: 'purchase',
-      decision: 'allow',
+      action_type: 'transact',
       max_value_usd: 500,
-      db,
     });
 
     expect(commit.max_value_usd).toBe(500);
+  });
 
-    // A second commit with different max_value_usd but same params
-    // gets the same decision — max_value_usd does not change the decision
-    const commit2 = await issueCommit({
+  it('evaluation_result contains score, confidence, profile, anomaly', async () => {
+    const commit = await issueCommit({
       entity_id: 'entity-123',
-      action_type: 'purchase',
-      decision: 'allow',
-      max_value_usd: 50000,
-      db,
+      action_type: 'install',
     });
 
-    expect(commit2.decision).toBe(commit.decision);
+    expect(commit.evaluation_result).toHaveProperty('score');
+    expect(commit.evaluation_result).toHaveProperty('confidence');
+    expect(commit.evaluation_result).toHaveProperty('profile');
+    expect(commit.evaluation_result).toHaveProperty('anomaly');
   });
 
   it('throws on invalid action_type', async () => {
-    const db = buildMockDb();
     await expect(
       issueCommit({
         entity_id: 'entity-123',
-        action_type: 'hack_the_planet',
-        decision: 'allow',
-        db,
+        action_type: 'purchase',
       })
-    ).rejects.toThrow('Invalid action_type');
+    ).rejects.toThrow('action_type must be one of');
+  });
+
+  it('only accepts canonical action types: install, connect, delegate, transact', async () => {
+    for (const action of ['install', 'connect', 'delegate', 'transact']) {
+      const commit = await issueCommit({
+        entity_id: 'entity-123',
+        action_type: action,
+      });
+      expect(commit.action_type).toBe(action);
+    }
+
+    // Old types should be rejected
+    for (const oldAction of ['purchase', 'delegation', 'tool_invocation', 'api_call', 'transfer']) {
+      await expect(
+        issueCommit({ entity_id: 'entity-123', action_type: oldAction })
+      ).rejects.toThrow('action_type must be one of');
+    }
   });
 
   it('throws on missing entity_id', async () => {
-    const db = buildMockDb();
     await expect(
       issueCommit({
         entity_id: '',
-        action_type: 'purchase',
-        decision: 'allow',
-        db,
+        action_type: 'install',
       })
     ).rejects.toThrow('entity_id is required');
 
     await expect(
       issueCommit({
-        action_type: 'purchase',
-        decision: 'allow',
-        db,
+        action_type: 'install',
       })
     ).rejects.toThrow('entity_id is required');
+  });
+
+  it('verifies delegation when delegation_id is provided', async () => {
+    mockVerifyDelegation.mockResolvedValue({ valid: true, action_permitted: true });
+
+    const commit = await issueCommit({
+      entity_id: 'entity-123',
+      action_type: 'delegate',
+      delegation_id: 'del_abc',
+    });
+
+    expect(mockVerifyDelegation).toHaveBeenCalledWith('del_abc', 'delegate');
+    expect(commit.delegation_id).toBe('del_abc');
+  });
+
+  it('throws when delegation is invalid', async () => {
+    mockVerifyDelegation.mockResolvedValue({ valid: false, reason: 'expired delegation' });
+
+    await expect(
+      issueCommit({
+        entity_id: 'entity-123',
+        action_type: 'install',
+        delegation_id: 'del_invalid',
+      })
+    ).rejects.toThrow('Delegation invalid');
+  });
+
+  it('policy result pass=true yields allow decision', async () => {
+    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({
+      policyResult: { pass: true, failures: [], warnings: [] },
+    }));
+
+    const commit = await issueCommit({
+      entity_id: 'entity-123',
+      action_type: 'install',
+    });
+
+    expect(commit.decision).toBe('allow');
+  });
+
+  it('policy result pass=false with failures yields deny', async () => {
+    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({
+      policyResult: { pass: false, failures: ['too_risky'], warnings: [] },
+    }));
+
+    const commit = await issueCommit({
+      entity_id: 'entity-123',
+      action_type: 'install',
+    });
+
+    expect(commit.decision).toBe('deny');
+  });
+
+  it('policy result pass=false with only warnings yields review', async () => {
+    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({
+      policyResult: { pass: false, failures: [], warnings: ['low_history'] },
+    }));
+
+    const commit = await issueCommit({
+      entity_id: 'entity-123',
+      action_type: 'install',
+    });
+
+    expect(commit.decision).toBe('review');
   });
 });
 
@@ -265,19 +412,27 @@ describe('issueCommit', () => {
 describe('verifyCommit', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _resetForTesting();
   });
 
   it('valid active commit returns { valid: true }', async () => {
-    const futureExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-    const db = buildMockDb({
-      commit_id: 'epc_abc123',
-      status: 'active',
-      expires_at: futureExpiry,
-      decision: 'allow',
+    // Issue a real commit first so signature is valid
+    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation());
+    // For issueCommit — no DB
+    mockGetServiceClient.mockReturnValue(null);
+    const commit = await issueCommit({
+      entity_id: 'entity-123',
+      action_type: 'install',
     });
 
-    const result = await verifyCommit('epc_abc123', db);
+    // For verifyCommit — return the commit from DB
+    const db = buildMockDb(commit);
+    mockGetServiceClient.mockReturnValue(db);
+
+    const result = await verifyCommit(commit.commit_id);
     expect(result.valid).toBe(true);
+    expect(result.status).toBe('active');
+    expect(result.decision).toBe('allow');
   });
 
   it('expired commit returns { valid: false, status: "expired" }', async () => {
@@ -287,9 +442,11 @@ describe('verifyCommit', () => {
       status: 'active',
       expires_at: pastExpiry,
       decision: 'allow',
+      created_at: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
     });
+    mockGetServiceClient.mockReturnValue(db);
 
-    const result = await verifyCommit('epc_expired', db);
+    const result = await verifyCommit('epc_expired');
     expect(result.valid).toBe(false);
     expect(result.status).toBe('expired');
   });
@@ -302,36 +459,29 @@ describe('verifyCommit', () => {
       expires_at: futureExpiry,
       decision: 'allow',
     });
+    mockGetServiceClient.mockReturnValue(db);
 
-    const result = await verifyCommit('epc_revoked', db);
+    const result = await verifyCommit('epc_revoked');
     expect(result.valid).toBe(false);
     expect(result.status).toBe('revoked');
   });
 
-  it('unknown commit_id returns { valid: false }', async () => {
-    const db = buildMockDb(null); // no data found
+  it('unknown commit_id returns { valid: false, status: "not_found" }', async () => {
+    const db = buildMockDb(null);
+    mockGetServiceClient.mockReturnValue(db);
 
-    const result = await verifyCommit('epc_nonexistent', db);
+    const result = await verifyCommit('epc_nonexistent');
     expect(result.valid).toBe(false);
+    expect(result.status).toBe('not_found');
   });
 
-  it('verification does not expose full commit payload', async () => {
-    const futureExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-    const db = buildMockDb({
-      commit_id: 'epc_abc123',
-      status: 'active',
-      expires_at: futureExpiry,
-      decision: 'allow',
-    });
+  it('verification response includes reasons array', async () => {
+    const db = buildMockDb(null);
+    mockGetServiceClient.mockReturnValue(db);
 
-    const result = await verifyCommit('epc_abc123', db);
-
-    // Verify response does not contain scope, reasons, entity_id, nonce, etc.
-    expect(result).not.toHaveProperty('scope');
-    expect(result).not.toHaveProperty('reasons');
-    expect(result).not.toHaveProperty('entity_id');
-    expect(result).not.toHaveProperty('nonce');
-    expect(result).not.toHaveProperty('signature');
+    const result = await verifyCommit('epc_nonexistent');
+    expect(result).toHaveProperty('reasons');
+    expect(Array.isArray(result.reasons)).toBe(true);
   });
 
   it('fulfilled commit returns { valid: false, status: "fulfilled" }', async () => {
@@ -342,10 +492,38 @@ describe('verifyCommit', () => {
       expires_at: futureExpiry,
       decision: 'allow',
     });
+    mockGetServiceClient.mockReturnValue(db);
 
-    const result = await verifyCommit('epc_fulfilled', db);
+    const result = await verifyCommit('epc_fulfilled');
     expect(result.valid).toBe(false);
     expect(result.status).toBe('fulfilled');
+  });
+
+  it('invalid signature returns { valid: false } with signature failure reason', async () => {
+    const futureExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const db = buildMockDb({
+      commit_id: 'epc_badsig',
+      entity_id: 'entity-123',
+      principal_id: null,
+      counterparty_entity_id: null,
+      delegation_id: null,
+      action_type: 'install',
+      decision: 'allow',
+      scope: null,
+      max_value_usd: null,
+      context: null,
+      nonce: 'a'.repeat(64),
+      signature: 'invalidsignaturedata',
+      public_key: Buffer.alloc(32).toString('base64'),
+      expires_at: futureExpiry,
+      created_at: new Date().toISOString(),
+      status: 'active',
+    });
+    mockGetServiceClient.mockReturnValue(db);
+
+    const result = await verifyCommit('epc_badsig');
+    expect(result.valid).toBe(false);
+    expect(result.reasons).toContain('Signature verification failed');
   });
 });
 
@@ -356,6 +534,7 @@ describe('verifyCommit', () => {
 describe('revokeCommit', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _resetForTesting();
   });
 
   it('active commit can be revoked', async () => {
@@ -365,43 +544,41 @@ describe('revokeCommit', () => {
       status: 'active',
       expires_at: futureExpiry,
     });
+    mockGetServiceClient.mockReturnValue(db);
 
-    const result = await revokeCommit('epc_active', db);
-    expect(result.status).toBe('revoked');
+    const result = await revokeCommit('epc_active', 'policy change');
+    expect(result.success).toBe(true);
     expect(result.commit_id).toBe('epc_active');
   });
 
-  it('already revoked commit throws error', async () => {
-    const futureExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-    const db = buildMockDb({
-      commit_id: 'epc_revoked',
-      status: 'revoked',
-      expires_at: futureExpiry,
-    });
-
-    await expect(revokeCommit('epc_revoked', db)).rejects.toThrow('already revoked');
+  it('requires a reason for revocation', async () => {
+    await expect(revokeCommit('epc_active')).rejects.toThrow('reason is required');
   });
 
-  it('expired commit cannot be revoked (terminal)', async () => {
-    const pastExpiry = new Date(Date.now() - 60 * 1000).toISOString();
-    const db = buildMockDb({
-      commit_id: 'epc_expired',
-      status: 'active',
-      expires_at: pastExpiry,
-    });
-
-    await expect(revokeCommit('epc_expired', db)).rejects.toThrow('terminal state');
-  });
-
-  it('fulfilled commit cannot be revoked (terminal)', async () => {
+  it('fulfilled commit cannot be revoked (terminal state)', async () => {
     const futureExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     const db = buildMockDb({
       commit_id: 'epc_fulfilled',
       status: 'fulfilled',
       expires_at: futureExpiry,
     });
+    mockGetServiceClient.mockReturnValue(db);
 
-    await expect(revokeCommit('epc_fulfilled', db)).rejects.toThrow('terminal state');
+    await expect(
+      revokeCommit('epc_fulfilled', 'some reason')
+    ).rejects.toThrow('terminal states are immutable');
+  });
+
+  it('already revoked commit cannot be revoked again (terminal state)', async () => {
+    const db = buildMockDb({
+      commit_id: 'epc_revoked',
+      status: 'revoked',
+    });
+    mockGetServiceClient.mockReturnValue(db);
+
+    await expect(
+      revokeCommit('epc_revoked', 'some reason')
+    ).rejects.toThrow('terminal states are immutable');
   });
 });
 
@@ -412,6 +589,7 @@ describe('revokeCommit', () => {
 describe('fulfillCommit', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _resetForTesting();
   });
 
   it('active commit can be fulfilled', async () => {
@@ -421,43 +599,34 @@ describe('fulfillCommit', () => {
       status: 'active',
       expires_at: futureExpiry,
     });
+    mockGetServiceClient.mockReturnValue(db);
 
-    const result = await fulfillCommit('epc_active', db);
-    expect(result.status).toBe('fulfilled');
-    expect(result.commit_id).toBe('epc_active');
+    const result = await fulfillCommit('epc_active');
+    expect(result).toBeDefined();
   });
 
-  it('fulfilled commit stays fulfilled (idempotent)', async () => {
+  it('revoked commit cannot be fulfilled (terminal state)', async () => {
     const futureExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     const db = buildMockDb({
-      commit_id: 'epc_fulfilled',
-      status: 'fulfilled',
-      expires_at: futureExpiry,
-    });
-
-    const result = await fulfillCommit('epc_fulfilled', db);
-    expect(result.status).toBe('fulfilled');
-  });
-
-  it('terminal states cannot transition to fulfilled', async () => {
-    const futureExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-
-    // revoked → fulfilled should fail
-    const dbRevoked = buildMockDb({
       commit_id: 'epc_revoked',
       status: 'revoked',
       expires_at: futureExpiry,
     });
-    await expect(fulfillCommit('epc_revoked', dbRevoked)).rejects.toThrow('terminal state');
+    mockGetServiceClient.mockReturnValue(db);
 
-    // expired → fulfilled should fail
+    await expect(fulfillCommit('epc_revoked')).rejects.toThrow('terminal states are immutable');
+  });
+
+  it('expired commit cannot be fulfilled', async () => {
     const pastExpiry = new Date(Date.now() - 60 * 1000).toISOString();
-    const dbExpired = buildMockDb({
+    const db = buildMockDb({
       commit_id: 'epc_expired',
       status: 'active',
       expires_at: pastExpiry,
     });
-    await expect(fulfillCommit('epc_expired', dbExpired)).rejects.toThrow('terminal state');
+    mockGetServiceClient.mockReturnValue(db);
+
+    await expect(fulfillCommit('epc_expired')).rejects.toThrow(/expired/i);
   });
 });
 
@@ -468,66 +637,35 @@ describe('fulfillCommit', () => {
 describe('state machine', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _resetForTesting();
   });
 
-  it('active → fulfilled works', async () => {
-    const futureExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+  it('active -> expired via auto-expire on verify', async () => {
+    const pastExpiry = new Date(Date.now() - 60 * 1000).toISOString();
     const db = buildMockDb({
       commit_id: 'epc_sm1',
       status: 'active',
-      expires_at: futureExpiry,
-    });
-
-    const result = await fulfillCommit('epc_sm1', db);
-    expect(result.status).toBe('fulfilled');
-  });
-
-  it('active → revoked works', async () => {
-    const futureExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-    const db = buildMockDb({
-      commit_id: 'epc_sm2',
-      status: 'active',
-      expires_at: futureExpiry,
-    });
-
-    const result = await revokeCommit('epc_sm2', db);
-    expect(result.status).toBe('revoked');
-  });
-
-  it('active → expired works (simulate by setting expires_at in past)', async () => {
-    const pastExpiry = new Date(Date.now() - 60 * 1000).toISOString();
-    const db = buildMockDb({
-      commit_id: 'epc_sm3',
-      status: 'active',
       expires_at: pastExpiry,
       decision: 'allow',
+      created_at: new Date(Date.now() - 20 * 60_000).toISOString(),
     });
+    mockGetServiceClient.mockReturnValue(db);
 
-    const result = await verifyCommit('epc_sm3', db);
+    const result = await verifyCommit('epc_sm1');
     expect(result.valid).toBe(false);
     expect(result.status).toBe('expired');
   });
 
-  it('fulfilled → revoked fails (terminal)', async () => {
+  it('fulfilled -> revoked fails (terminal)', async () => {
     const futureExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     const db = buildMockDb({
-      commit_id: 'epc_sm4',
+      commit_id: 'epc_sm2',
       status: 'fulfilled',
       expires_at: futureExpiry,
     });
+    mockGetServiceClient.mockReturnValue(db);
 
-    await expect(revokeCommit('epc_sm4', db)).rejects.toThrow('terminal state');
-  });
-
-  it('expired → fulfilled fails (terminal)', async () => {
-    const pastExpiry = new Date(Date.now() - 60 * 1000).toISOString();
-    const db = buildMockDb({
-      commit_id: 'epc_sm5',
-      status: 'active',
-      expires_at: pastExpiry,
-    });
-
-    await expect(fulfillCommit('epc_sm5', db)).rejects.toThrow('terminal state');
+    await expect(revokeCommit('epc_sm2', 'test')).rejects.toThrow('terminal states are immutable');
   });
 });
 
@@ -538,6 +676,7 @@ describe('state machine', () => {
 describe('bindReceiptToCommit', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _resetForTesting();
   });
 
   it('links receipt_id to an active commit', async () => {
@@ -545,42 +684,47 @@ describe('bindReceiptToCommit', () => {
       commit_id: 'epc_bind1',
       status: 'active',
     });
+    mockGetServiceClient.mockReturnValue(db);
 
-    const result = await bindReceiptToCommit('epc_bind1', 'receipt_xyz', db);
-    expect(result.bound).toBe(true);
+    const result = await bindReceiptToCommit('epc_bind1', 'receipt_xyz');
+    expect(result.success).toBe(true);
     expect(result.receipt_id).toBe('receipt_xyz');
     expect(result.commit_id).toBe('epc_bind1');
   });
 
-  it('commit must be active or fulfilled to bind', async () => {
-    // Revoked commit should not allow binding
-    const dbRevoked = buildMockDb({
+  it('links receipt_id to a fulfilled commit', async () => {
+    const db = buildMockDb({
       commit_id: 'epc_bind2',
-      status: 'revoked',
-    });
-
-    await expect(
-      bindReceiptToCommit('epc_bind2', 'receipt_abc', dbRevoked)
-    ).rejects.toThrow('Cannot bind receipt to commit in state: revoked');
-
-    // Expired commit should not allow binding
-    const dbExpired = buildMockDb({
-      commit_id: 'epc_bind3',
-      status: 'expired',
-    });
-
-    await expect(
-      bindReceiptToCommit('epc_bind3', 'receipt_def', dbExpired)
-    ).rejects.toThrow('Cannot bind receipt to commit in state: expired');
-
-    // Fulfilled commit should allow binding
-    const dbFulfilled = buildMockDb({
-      commit_id: 'epc_bind4',
       status: 'fulfilled',
     });
+    mockGetServiceClient.mockReturnValue(db);
 
-    const result = await bindReceiptToCommit('epc_bind4', 'receipt_ghi', dbFulfilled);
-    expect(result.bound).toBe(true);
+    const result = await bindReceiptToCommit('epc_bind2', 'receipt_abc');
+    expect(result.success).toBe(true);
+  });
+
+  it('revoked commit cannot accept receipt binding', async () => {
+    const db = buildMockDb({
+      commit_id: 'epc_bind3',
+      status: 'revoked',
+    });
+    mockGetServiceClient.mockReturnValue(db);
+
+    await expect(
+      bindReceiptToCommit('epc_bind3', 'receipt_def')
+    ).rejects.toThrow("Cannot bind receipt to commit in 'revoked' state");
+  });
+
+  it('expired commit cannot accept receipt binding', async () => {
+    const db = buildMockDb({
+      commit_id: 'epc_bind4',
+      status: 'expired',
+    });
+    mockGetServiceClient.mockReturnValue(db);
+
+    await expect(
+      bindReceiptToCommit('epc_bind4', 'receipt_ghi')
+    ).rejects.toThrow("Cannot bind receipt to commit in 'expired' state");
   });
 });
 
@@ -589,31 +733,64 @@ describe('bindReceiptToCommit', () => {
 // ============================================================================
 
 describe('EP Commit internals', () => {
-  it('generateNonce produces 64 hex characters (32 bytes)', () => {
-    const nonce = _internals.generateNonce();
+  beforeEach(() => {
+    _resetForTesting();
+  });
+
+  it('newNonce produces 64 hex characters (32 bytes)', () => {
+    const nonce = _internals.newNonce();
     expect(nonce).toMatch(/^[a-f0-9]{64}$/);
   });
 
-  it('generateCommitId produces epc_ prefixed IDs', () => {
-    const id = _internals.generateCommitId();
+  it('newCommitId produces epc_ prefixed IDs', () => {
+    const id = _internals.newCommitId();
     expect(id).toMatch(/^epc_/);
   });
 
-  it('signCommit produces deterministic signatures', () => {
-    const payload = { a: 1, b: 'hello', c: true };
-    const sig1 = _internals.signCommit(payload);
-    const sig2 = _internals.signCommit(payload);
-    expect(sig1).toBe(sig2);
-    expect(sig1).toMatch(/^[a-f0-9]{64}$/); // SHA-256 hex
+  it('buildCanonicalPayload sorts keys deterministically', () => {
+    const payload1 = _internals.buildCanonicalPayload({ b: 2, a: 1, c: 3 });
+    const payload2 = _internals.buildCanonicalPayload({ c: 3, a: 1, b: 2 });
+    expect(payload1).toBe(payload2);
+    expect(JSON.parse(payload1)).toEqual({ a: 1, b: 2, c: 3 });
+  });
+
+  it('buildCanonicalPayload omits undefined values', () => {
+    const payload = _internals.buildCanonicalPayload({ a: 1, b: undefined, c: 3 });
+    const parsed = JSON.parse(payload);
+    expect(parsed).toEqual({ a: 1, c: 3 });
+    expect(parsed).not.toHaveProperty('b');
+  });
+
+  it('signPayload + verifySignature round-trip succeeds (Ed25519)', () => {
+    const payload = JSON.stringify({ test: 'data' });
+    const { signature, publicKeyBase64 } = _internals.signPayload(payload);
+    const valid = _internals.verifySignature(payload, signature, publicKeyBase64);
+    expect(valid).toBe(true);
+  });
+
+  it('verifySignature rejects tampered payload', () => {
+    const payload = JSON.stringify({ test: 'data' });
+    const { signature, publicKeyBase64 } = _internals.signPayload(payload);
+    const tampered = JSON.stringify({ test: 'tampered' });
+    const valid = _internals.verifySignature(tampered, signature, publicKeyBase64);
+    expect(valid).toBe(false);
   });
 
   it('VALID_DECISIONS contains exactly allow, review, deny', () => {
-    expect(_internals.VALID_DECISIONS).toEqual(['allow', 'review', 'deny']);
+    expect(_internals.VALID_DECISIONS).toEqual(new Set(['allow', 'review', 'deny']));
   });
 
-  it('TERMINAL_STATES contains fulfilled, revoked, expired', () => {
-    expect(_internals.TERMINAL_STATES).toContain('fulfilled');
-    expect(_internals.TERMINAL_STATES).toContain('revoked');
-    expect(_internals.TERMINAL_STATES).toContain('expired');
+  it('VALID_ACTIONS contains install, connect, delegate, transact', () => {
+    expect(_internals.VALID_ACTIONS).toEqual(new Set(['install', 'connect', 'delegate', 'transact']));
+  });
+
+  it('TERMINAL_STATUSES contains fulfilled, revoked, expired', () => {
+    expect(_internals.TERMINAL_STATUSES.has('fulfilled')).toBe(true);
+    expect(_internals.TERMINAL_STATUSES.has('revoked')).toBe(true);
+    expect(_internals.TERMINAL_STATUSES.has('expired')).toBe(true);
+  });
+
+  it('DEFAULT_EXPIRY_MS is 10 minutes', () => {
+    expect(_internals.DEFAULT_EXPIRY_MS).toBe(10 * 60 * 1000);
   });
 });

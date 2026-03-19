@@ -928,13 +928,13 @@ class EPClient:
         Parameters
         ----------
         commit_id:
-            Commit ID (``ep_commit_...``).
+            Commit ID (``epc_...``).
 
         Example
         -------
         .. code-block:: python
 
-            result = await ep.verify_commit("ep_commit_abc123")
+            result = await ep.verify_commit("epc_abc123")
             assert result["valid"]
         """
         return await self._request(
@@ -947,13 +947,13 @@ class EPClient:
         Parameters
         ----------
         commit_id:
-            Commit ID (``ep_commit_...``).
+            Commit ID (``epc_...``).
 
         Example
         -------
         .. code-block:: python
 
-            commit = await ep.get_commit_status("ep_commit_abc123")
+            commit = await ep.get_commit_status("epc_abc123")
             print(commit["status"])  # "active", "revoked", "expired", "fulfilled"
         """
         return await self._request("GET", f"/api/commit/{commit_id}")
@@ -966,7 +966,7 @@ class EPClient:
         Parameters
         ----------
         commit_id:
-            Commit ID to revoke (``ep_commit_...``).
+            Commit ID to revoke (``epc_...``).
         reason:
             Reason for revocation.
 
@@ -974,7 +974,7 @@ class EPClient:
         -------
         .. code-block:: python
 
-            await ep.revoke_commit("ep_commit_abc123", "Action no longer needed")
+            await ep.revoke_commit("epc_abc123", "Action no longer needed")
         """
         return await self._request(
             "POST",
@@ -991,7 +991,7 @@ class EPClient:
         Parameters
         ----------
         commit_id:
-            Commit ID to bind to (``ep_commit_...``).
+            Commit ID to bind to (``epc_...``).
         receipt_id:
             Receipt ID to bind (``ep_rcpt_...``).
 
@@ -999,7 +999,7 @@ class EPClient:
         -------
         .. code-block:: python
 
-            await ep.bind_receipt_to_commit("ep_commit_abc123", "ep_rcpt_xyz789")
+            await ep.bind_receipt_to_commit("epc_abc123", "ep_rcpt_xyz789")
         """
         return await self._request(
             "POST",

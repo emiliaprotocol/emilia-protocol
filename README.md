@@ -311,11 +311,11 @@ Add `npx @emilia-protocol/mcp-server` to any MCP-compatible host. The server exp
 **Commit**
 | Tool | What it does |
 |---|---|
-| `ep_commit_request` | Request an EP Commit token for a proposed action |
-| `ep_commit_verify` | Verify an EP Commit token's signature and policy evaluation |
-| `ep_commit_revoke` | Revoke a previously issued EP Commit token |
-| `ep_commit_status` | Check the current status of an EP Commit token |
-| `ep_commit_list` | List EP Commit tokens for an entity |
+| `ep_issue_commit` | Issue a signed EP Commit before a high-stakes action |
+| `ep_verify_commit` | Verify a commit's signature, status, and validity |
+| `ep_get_commit_status` | Get current state of a commit |
+| `ep_revoke_commit` | Revoke an active commit |
+| `ep_bind_receipt_to_commit` | Bind a post-action receipt to a commit |
 
 **Discovery**
 | Tool | What it does |

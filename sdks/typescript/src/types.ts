@@ -48,7 +48,7 @@ export type TrustPolicy =
   | 'mcp_server_safe_v1';
 
 /** The action output of a trust gate evaluation. */
-export type TrustDecision = 'allow' | 'block' | 'review' | 'deny';
+export type TrustDecision = 'allow' | 'review' | 'deny';
 
 /** Lifecycle states of an EP Commit. */
 export type CommitStatus = 'active' | 'revoked' | 'expired' | 'fulfilled';
@@ -522,7 +522,7 @@ export interface EPCommitRequest {
   principal_id?: string;
   counterparty_entity_id?: string;
   delegation_id?: string;
-  scope?: string[];
+  scope?: Record<string, unknown>;
   max_value_usd?: number;
   context?: Record<string, unknown>;
   policy?: string;
@@ -536,7 +536,7 @@ export interface EPCommit {
   principal_id?: string;
   counterparty_entity_id?: string;
   delegation_id?: string;
-  scope?: string[];
+  scope?: Record<string, unknown>;
   max_value_usd?: number;
   context?: Record<string, unknown>;
   policy?: string;

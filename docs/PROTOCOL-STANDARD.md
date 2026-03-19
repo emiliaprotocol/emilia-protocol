@@ -1119,17 +1119,23 @@ Every EP Commit record MUST contain the following fields:
 | Field | Type | Description |
 |---|---|---|
 | `commit_id` | string | Unique identifier, prefixed `epc_` |
-| `version` | string | Protocol version (e.g., `"1.0"`) |
-| `decision` | enum | One of: `allow`, `review`, `deny` |
-| `action_type` | string | The type of action authorized (e.g., `purchase`, `delegation`, `tool_invocation`, `api_call`, `data_access`, `transfer`, `registration`) |
 | `entity_id` | string | The entity that was evaluated |
-| `scope` | object | Contextual scope of the authorization |
+| `principal_id` | string or null | Human or organization principal associated with the entity |
+| `counterparty_entity_id` | string or null | The other party in the interaction |
+| `delegation_id` | string or null | Delegation under which the entity is acting (see Section 7) |
+| `action_type` | enum | One of: `install`, `connect`, `delegate`, `transact` |
+| `decision` | enum | One of: `allow`, `review`, `deny` |
+| `scope` | object or null | Contextual scope of the authorization (JSON object, not a string array) |
+| `max_value_usd` | number or null | Advisory value cap for policy reference. EP does not enforce, hold, or settle monetary value. |
+| `context` | object or null | Contextual data supplied for trust evaluation |
+| `policy_snapshot` | object or null | Snapshot of the policy result at evaluation time |
 | `nonce` | string | 32-byte cryptographic nonce (64 hex characters) for replay protection |
-| `issued_at` | ISO 8601 | Timestamp of issuance |
+| `signature` | string | Ed25519 signature over the canonical JSON serialization of the signed field set (see Section 18.6) |
+| `public_key` | string | Base64-encoded 32-byte Ed25519 public key used to produce `signature` |
 | `expires_at` | ISO 8601 | Timestamp of expiry |
 | `status` | enum | One of: `active`, `fulfilled`, `revoked`, `expired` |
-| `signature` | string | Cryptographic signature over the canonical JSON serialization of all non-signature fields |
-| `max_value_usd` | number or null | Advisory value cap for policy reference (does not affect decision logic) |
+| `evaluation_result` | object | Summary of the trust evaluation: `{ score, confidence, profile, anomaly }` |
+| `created_at` | ISO 8601 | Timestamp of issuance |
 
 ### 18.3 State Machine
 
@@ -1157,18 +1163,14 @@ EP Commit uses a strict state machine with one non-terminal state and three term
 
 ### 18.4 Verification Rules
 
-Verification of an EP Commit MUST apply the following checks:
+Verification of an EP Commit MUST apply the following checks in order:
 
-1. The `commit_id` exists in the commit store.
-2. The `status` is `active`.
-3. The current time is before `expires_at`.
-4. The `signature` is valid over the canonical JSON serialization of all non-signature fields.
-5. The `nonce` has not been previously used (replay protection).
-6. The `version` is supported by the verifying implementation.
-7. The `action_type` is recognized by the verifying implementation.
-8. The `entity_id` matches the entity attempting to use the commit.
+1. The `commit_id` exists in the commit store. If not found, return `{ valid: false, status: "not_found" }`.
+2. If the commit's `status` is `active` and the current time is past `expires_at`, the implementation MUST auto-transition the commit to `expired` before proceeding.
+3. The `status` is `active`. If the commit is in a terminal state (`fulfilled`, `revoked`, `expired`), return `{ valid: false, status: <terminal_status> }`.
+4. The `signature` is valid over the canonical JSON serialization of the signed field set (see Section 18.6). If invalid, return `{ valid: false }` with reason `"Signature verification failed"`.
 
-Verification responses MUST practice minimum disclosure: the response includes validity status and, if invalid, the reason (e.g., `expired`, `revoked`). Verification MUST NOT expose the full commit payload — no scope, no detailed reasons, no signature material beyond what is needed to communicate validity.
+Verification responses MUST return `{ valid, status, decision, expires_at, reasons }`. The `reasons` array contains human-readable strings explaining why the commit is invalid (empty array when valid). Verification MUST NOT expose the full commit payload — no scope, no detailed evaluation data, no context beyond what is needed to communicate validity.
 
 ### 18.5 MCP Integration Pattern
 
@@ -1182,13 +1184,33 @@ EP Commit integrates with the Model Context Protocol (MCP) as a pre-action autho
 
 ### 18.6 Security Requirements
 
-**Ed25519 signatures.** Implementations SHOULD use Ed25519 for commit signatures. The signature MUST cover the canonical JSON serialization (sorted keys, no whitespace) of all commit fields except the `signature` field itself.
+**Ed25519 signatures.** Implementations MUST use Ed25519 for commit signatures. The signing key is derived from the `EP_COMMIT_SIGNING_KEY` environment variable (base64-encoded 32-byte seed) or an ephemeral keypair for dev/test. The `public_key` field stores the base64-encoded 32-byte public key used to produce the signature.
 
-**Canonical JSON.** The serialization used for signing MUST be deterministic. Keys MUST be sorted lexicographically. No optional whitespace is permitted. This ensures that independently constructed signatures over the same logical commit are identical.
+**Signed field set.** The signature covers a specific subset of commit fields, NOT all fields. The signed field set is:
 
-**Nonce replay protection.** Each commit MUST contain a cryptographically random 32-byte nonce (encoded as 64 hexadecimal characters). Implementations MUST reject any commit whose nonce matches a previously observed nonce within the nonce retention window. The nonce retention window MUST be at least as long as the maximum permitted commit expiry.
+| Signed field |
+|---|
+| `commit_id` |
+| `entity_id` |
+| `principal_id` |
+| `counterparty_entity_id` |
+| `delegation_id` |
+| `action_type` |
+| `decision` |
+| `scope` |
+| `max_value_usd` |
+| `context` |
+| `nonce` |
+| `expires_at` |
+| `created_at` |
 
-**Default expiry.** Commits SHOULD expire between 5 and 15 minutes after issuance. The default expiry is 10 minutes. Implementations MAY allow callers to specify a custom expiry within this range. Implementations MUST NOT issue commits with expiry windows exceeding 60 minutes without explicit operator configuration.
+Fields NOT covered by the signature: `policy_snapshot`, `evaluation_result`, `public_key`, `signature`, `status`. These are metadata fields that may change post-issuance (e.g., `status`) or are intrinsically non-signable (e.g., `signature` itself).
+
+**Canonical JSON.** The serialization used for signing MUST be deterministic. Keys MUST be sorted lexicographically. Undefined values MUST be omitted. No optional whitespace is permitted. This ensures that independently constructed signatures over the same logical commit are identical.
+
+**Nonce replay protection.** Each commit MUST contain a cryptographically random 32-byte nonce (encoded as 64 hexadecimal characters). Nonce uniqueness is enforced at issuance time via an in-memory set and a database UNIQUE constraint. The runtime does NOT re-check nonce uniqueness during verification — since the runtime generates all nonces internally, replay is structurally prevented at issuance.
+
+**Default expiry.** The default expiry is 10 minutes. Custom expiry values are clamped to the range 5-15 minutes (values below 5 minutes are raised to 5; values above 15 minutes are lowered to 15). There is no operator override for longer windows.
 
 ### 18.7 Privacy
 
