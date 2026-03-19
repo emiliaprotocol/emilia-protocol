@@ -43,7 +43,7 @@
 - [x] Graph analysis (closed-loop 0.4x, thin-graph 0.5x, cluster 0.1x)
 - [x] Submitter credibility (unestablished = 0.1x)
 - [x] Effective-evidence dampening
-- [x] Server-derived owner_id (SHA-256 of client IP)
+- [x] Random portable owner_id (`ep_owner_<uuid>`) with durable principal binding via `/api/identity/bind`
 - [x] Identity-aware rate limiting
 
 ### Due Process

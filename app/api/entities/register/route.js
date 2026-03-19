@@ -114,10 +114,6 @@ export async function POST(request) {
         capability_embedding: embedding,
         a2a_endpoint: body.a2a_endpoint || null,
         ucp_profile_url: body.ucp_profile_url || null,
-        // DEPRECATED: api_key_hash on the entities table is redundant.
-        // The api_keys table is the source of truth for auth (see lib/supabase.js).
-        // Retained for backward-compat reads; will be removed in a future migration.
-        api_key_hash: apiKeyHash,
       })
       .select()
       .single();

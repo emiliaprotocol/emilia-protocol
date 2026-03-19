@@ -110,20 +110,6 @@ const OPENAPI_EXEMPTIONS = [
   '/api/blockchain/anchor',
 ];
 
-/**
- * ROUTE_POLICIES entries that don't have an exact-matching route file but are
- * kept intentionally. These typically cover dynamic-segment routes where the
- * policy key omits the wildcard (e.g. "GET /api/trust/profile" covers
- * /api/trust/profile/[entityId]). The middleware compiles them with a `$`
- * anchor so they won't actually match requests with a trailing segment —
- * consider fixing them in middleware.js to use a wildcard.
- */
-const ORPHAN_POLICY_EXEMPTIONS = [
-  // These policies cover dynamic child routes but omit the /* wildcard.
-  // TODO: consider changing to "GET /api/trust/profile/*" in middleware.js
-  'GET /api/trust/profile',
-  'GET /api/trust/domain-score',
-];
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -223,7 +209,7 @@ describe('no orphaned ROUTE_POLICIES entries', () => {
 
   for (const { method, pathPattern } of policies) {
     const policyKey = `${method} ${pathPattern}`;
-    if (ORPHAN_POLICY_EXEMPTIONS.includes(policyKey)) continue;
+
 
     it(`${policyKey} maps to an actual route file`, () => {
       // The policy pathPattern may use * for dynamic segments.

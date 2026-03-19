@@ -5,7 +5,7 @@ info:
     Trust profiles, policy evaluation, install preflight, disputes, and appeals
     for counterparties, software, and machine actors.
 
-    EMILIA = Evidence-based Mediation & Integrity Layer for Interactions and Appeals.
+    Open trust decisions for agents, software, and machine counterparties. MCP tells agents how to use tools. EP tells them whether they should.
 
     Constitutional principle: trust must never be more powerful than appeal.
   version: 1.1.0

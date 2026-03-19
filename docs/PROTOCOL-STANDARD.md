@@ -138,7 +138,7 @@ The Entity ID is immutable after registration. Changes in underlying software or
 
 ### 2.3 Principal Binding
 
-A Principal is identified by an `owner_id` — the credential identifier of the API key holder at registration time. Multiple entities may share a principal. This binding serves two purposes:
+A Principal is identified by an `owner_id` — a random, portable identifier (`ep_owner_<uuid>`) assigned at registration time. Multiple entities may share a principal. Durable principal binding to a real-world identity is established later via `/api/identity/bind`. This binding serves two purposes:
 
 1. It enables rate limiting on entity registration to constrain Sybil attacks (Section 5.1).
 2. It creates an audit trail linking agent behavior back to the accountable human or organization.
@@ -403,7 +403,7 @@ To constrain synthetic entity creation, implementations MUST enforce:
 - Maximum 5 entities registered per `owner_id` per 24-hour period
 - Maximum 50 entities registered per `owner_id` in total
 
-These limits are assessed against the `owner_id` derived from the authenticated credential at registration time. Implementations SHOULD use a distributed counter (e.g., Redis INCR with TTL) for the daily limit to ensure correctness across multiple application instances. A database count fallback is acceptable; implementations MUST NOT fail open on both paths simultaneously.
+These limits are assessed against the `owner_id` assigned at registration time. Implementations SHOULD use a distributed counter (e.g., Redis INCR with TTL) for the daily limit to ensure correctness across multiple application instances. A database count fallback is acceptable; implementations MUST NOT fail open on both paths simultaneously.
 
 Implementations MAY provide an exception process for operators who require higher limits for legitimate use cases. Such exceptions MUST be documented and auditable.
 

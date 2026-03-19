@@ -20,11 +20,11 @@ import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/rate-limit';
 
 const ROUTE_POLICIES = {
   // Trust evaluation (reads)
-  'GET /api/trust/profile':           { rateCategory: 'read', useAuth: false },
+  'GET /api/trust/profile/*':          { rateCategory: 'read', useAuth: false },
   'POST /api/trust/evaluate':         { rateCategory: 'read', useAuth: false },   // evaluation is a read
   'POST /api/trust/install-preflight': { rateCategory: 'read', useAuth: false },
   'POST /api/trust/gate':             { rateCategory: 'read', useAuth: false },
-  'GET /api/trust/domain-score':      { rateCategory: 'read', useAuth: false },
+  'GET /api/trust/domain-score/*':     { rateCategory: 'read', useAuth: false },
   'POST /api/trust/zk-proof':         { rateCategory: 'dispute_write', useAuth: true },  // generates proof
   'GET /api/trust/zk-proof':          { rateCategory: 'read', useAuth: false },           // verify proof
 
