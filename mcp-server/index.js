@@ -1082,7 +1082,7 @@ async function handleTool(name, args) {
       out += `Commit ID:  ${commit.commit_id}\n`;
       out += `Decision:   ${data.decision === 'allow' ? '✓ ALLOW' : data.decision === 'deny' ? '✗ DENY' : '⚠ REVIEW'}\n`;
       out += `Expires:    ${commit.expires_at}\n`;
-      if (commit.scope?.length) out += `Scope:      ${commit.scope.join(', ')}\n`;
+      if (commit.scope) out += `Scope:      ${typeof commit.scope === 'object' ? JSON.stringify(commit.scope) : commit.scope}\n`;
       if (commit.appeal_path) out += `Appeal:     ${commit.appeal_path}\n`;
       return out;
     }

@@ -374,7 +374,7 @@ export interface TrustGateResult {
   delegation_verified?: boolean;
   /** Reasons for the decision (especially useful for non-allow decisions) */
   reasons?: string[];
-  /** Path to appeal a deny/block decision */
+  /** Path to appeal a deny decision */
   appeal_path?: string;
 }
 

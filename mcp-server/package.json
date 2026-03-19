@@ -1,7 +1,7 @@
 {
   "name": "@emilia-protocol/mcp-server",
   "version": "1.0.0",
-  "description": "EMILIA Protocol MCP Server — behavioral trust infrastructure for AI agents",
+  "description": "EMILIA Protocol MCP Server — trust decisions for AI agents via MCP",
   "main": "index.js",
   "type": "module",
   "bin": {
