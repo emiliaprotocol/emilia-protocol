@@ -551,11 +551,38 @@ export interface EPCommit {
 
 /** Result of verifying an EP Commit. */
 export interface EPCommitVerification {
-  commit_id: string;
   valid: boolean;
   status: CommitStatus;
   decision: TrustDecision;
   expires_at?: string;
+  entity_id?: string;
+  action_type?: ActionType;
+  scope?: Record<string, unknown>;
+}
+
+/** Response from issuing an EP Commit. */
+export interface EPCommitIssueResult {
+  decision: TrustDecision;
+  commit: EPCommit;
+}
+
+/** Response from getting an EP Commit's status. */
+export interface EPCommitStatusResult {
+  commit: EPCommit;
+}
+
+/** Response from revoking an EP Commit. */
+export interface EPCommitRevokeResult {
+  commit_id: string;
+  status: 'revoked';
+  revoked_at: string;
+}
+
+/** Response from binding a receipt to an EP Commit. */
+export interface EPCommitReceiptResult {
+  commit_id: string;
+  status: 'fulfilled';
+  receipt_id: string;
 }
 
 // ----------------------------------------------------------------------------

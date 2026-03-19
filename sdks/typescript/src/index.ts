@@ -71,4 +71,8 @@ export type {
   EPCommit,
   EPCommitRequest,
   EPCommitVerification,
+  EPCommitIssueResult,
+  EPCommitStatusResult,
+  EPCommitRevokeResult,
+  EPCommitReceiptResult,
 } from './types.js';

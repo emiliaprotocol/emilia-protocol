@@ -1076,13 +1076,14 @@ async function handleTool(name, args) {
         policy: args.policy || 'standard',
       };
       const data = await epFetch('/api/commit/issue', { method: 'POST', auth: true, body });
+      const commit = data.commit;
       let out = `EP Commit Issued\n`;
       out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-      out += `Commit ID:  ${data.commit_id}\n`;
+      out += `Commit ID:  ${commit.commit_id}\n`;
       out += `Decision:   ${data.decision === 'allow' ? '✓ ALLOW' : data.decision === 'deny' ? '✗ DENY' : '⚠ REVIEW'}\n`;
-      out += `Expires:    ${data.expires_at}\n`;
-      if (data.scope?.length) out += `Scope:      ${data.scope.join(', ')}\n`;
-      if (data.appeal_path) out += `Appeal:     ${data.appeal_path}\n`;
+      out += `Expires:    ${commit.expires_at}\n`;
+      if (commit.scope?.length) out += `Scope:      ${commit.scope.join(', ')}\n`;
+      if (commit.appeal_path) out += `Appeal:     ${commit.appeal_path}\n`;
       return out;
     }
 
@@ -1090,7 +1091,7 @@ async function handleTool(name, args) {
       const data = await epFetch('/api/commit/verify', { method: 'POST', body: { commit_id: args.commit_id } });
       let out = `Commit Verification\n`;
       out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-      out += `Commit ID:  ${data.commit_id}\n`;
+      out += `Commit ID:  ${args.commit_id}\n`;
       out += `Valid:      ${data.valid ? '✓ YES' : '✗ NO'}\n`;
       out += `Status:     ${data.status}\n`;
       out += `Decision:   ${data.decision}\n`;
@@ -1099,14 +1100,16 @@ async function handleTool(name, args) {
     }
 
     case 'ep_get_commit_status': {
-      const data = await epFetch(`/api/commit/${encodeURIComponent(args.commit_id)}`);
-      let out = `Commit: ${data.commit_id}\n`;
-      out += `Status:      ${data.status}\n`;
-      out += `Action type: ${data.action_type}\n`;
-      out += `Entity:      ${data.entity_id}\n`;
-      if (data.decision) out += `Decision:    ${data.decision}\n`;
-      if (data.expires_at) out += `Expires:     ${data.expires_at}\n`;
-      if (data.receipt_id) out += `Receipt:     ${data.receipt_id}\n`;
+      if (!API_KEY) return 'Error: EP_API_KEY required to get commit status.';
+      const data = await epFetch(`/api/commit/${encodeURIComponent(args.commit_id)}`, { auth: true });
+      const commit = data.commit;
+      let out = `Commit: ${commit.commit_id}\n`;
+      out += `Status:      ${commit.status}\n`;
+      out += `Action type: ${commit.action_type}\n`;
+      out += `Entity:      ${commit.entity_id}\n`;
+      if (commit.decision) out += `Decision:    ${commit.decision}\n`;
+      if (commit.expires_at) out += `Expires:     ${commit.expires_at}\n`;
+      if (commit.receipt_id) out += `Receipt:     ${commit.receipt_id}\n`;
       return out;
     }
 

@@ -32,6 +32,10 @@ import type {
   EPCommit,
   EPCommitRequest,
   EPCommitVerification,
+  EPCommitIssueResult,
+  EPCommitStatusResult,
+  EPCommitRevokeResult,
+  EPCommitReceiptResult,
 } from './types.js';
 
 import { EPError } from './types.js';
@@ -821,17 +825,18 @@ export class EPClient {
    *
    * @example
    * ```typescript
-   * const commit = await ep.issueCommit({
+   * const { decision, commit } = await ep.issueCommit({
    *   action_type: 'transact',
    *   entity_id: 'payment-agent-v2',
    *   max_value_usd: 500,
    *   policy: 'strict',
    * });
-   * if (commit.decision !== 'allow') throw new Error('Commit denied');
+   * if (decision !== 'allow') throw new Error('Commit denied');
+   * console.log(commit.commit_id);
    * ```
    */
-  async issueCommit(params: EPCommitRequest): Promise<EPCommit> {
-    return this.request<EPCommit>('/api/commit/issue', {
+  async issueCommit(params: EPCommitRequest): Promise<EPCommitIssueResult> {
+    return this.request<EPCommitIssueResult>('/api/commit/issue', {
       method: 'POST',
       auth: true,
       body: params,
@@ -859,12 +864,14 @@ export class EPClient {
    *
    * @example
    * ```typescript
-   * const commit = await ep.getCommitStatus('epc_abc123');
+   * const { commit } = await ep.getCommitStatus('epc_abc123');
    * console.log(commit.status); // "active" | "revoked" | "expired" | "fulfilled"
    * ```
    */
-  async getCommitStatus(commitId: string): Promise<EPCommit> {
-    return this.request<EPCommit>(`/api/commit/${encodeURIComponent(commitId)}`);
+  async getCommitStatus(commitId: string): Promise<EPCommitStatusResult> {
+    return this.request<EPCommitStatusResult>(`/api/commit/${encodeURIComponent(commitId)}`, {
+      auth: true,
+    });
   }
 
   /**
@@ -875,8 +882,8 @@ export class EPClient {
    * await ep.revokeCommit('epc_abc123', 'Action no longer needed');
    * ```
    */
-  async revokeCommit(commitId: string, reason: string): Promise<EPCommit> {
-    return this.request<EPCommit>(`/api/commit/${encodeURIComponent(commitId)}/revoke`, {
+  async revokeCommit(commitId: string, reason: string): Promise<EPCommitRevokeResult> {
+    return this.request<EPCommitRevokeResult>(`/api/commit/${encodeURIComponent(commitId)}/revoke`, {
       method: 'POST',
       auth: true,
       body: { reason },
@@ -891,8 +898,8 @@ export class EPClient {
    * await ep.bindReceiptToCommit('epc_abc123', 'ep_rcpt_xyz789');
    * ```
    */
-  async bindReceiptToCommit(commitId: string, receiptId: string): Promise<EPCommit> {
-    return this.request<EPCommit>(`/api/commit/${encodeURIComponent(commitId)}/receipt`, {
+  async bindReceiptToCommit(commitId: string, receiptId: string): Promise<EPCommitReceiptResult> {
+    return this.request<EPCommitReceiptResult>(`/api/commit/${encodeURIComponent(commitId)}/receipt`, {
       method: 'POST',
       auth: true,
       body: { receipt_id: receiptId },

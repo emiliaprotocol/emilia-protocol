@@ -896,7 +896,7 @@ class EPClient:
         """Issue a signed EP Commit before a high-stakes action.
 
         The commit binds the agent to a specific action type, entity, and policy
-        before execution. Returns decision, commit_id, expiry, scope, and appeal path.
+        before execution. Returns ``{ "decision": ..., "commit": { ... } }``.
 
         Parameters
         ----------
@@ -909,14 +909,15 @@ class EPClient:
         -------
         .. code-block:: python
 
-            commit = await ep.issue_commit({
+            result = await ep.issue_commit({
                 "action_type": "transact",
                 "entity_id": "payment-agent-v2",
                 "max_value_usd": 500,
                 "policy": "strict",
             })
-            if commit["decision"] != "allow":
+            if result["decision"] != "allow":
                 raise RuntimeError("Commit denied")
+            commit_id = result["commit"]["commit_id"]
         """
         return await self._request(
             "POST", "/api/commit/issue", auth=True, body=params
@@ -942,7 +943,10 @@ class EPClient:
         )
 
     async def get_commit_status(self, commit_id: str) -> dict[str, Any]:
-        """Get the current state of a commit.
+        """Get the current state of a commit. Requires an API key.
+
+        Returns ``{ "commit": { ... } }`` where the nested commit object
+        contains ``commit_id``, ``status``, ``action_type``, etc.
 
         Parameters
         ----------
@@ -953,10 +957,10 @@ class EPClient:
         -------
         .. code-block:: python
 
-            commit = await ep.get_commit_status("epc_abc123")
-            print(commit["status"])  # "active", "revoked", "expired", "fulfilled"
+            result = await ep.get_commit_status("epc_abc123")
+            print(result["commit"]["status"])  # "active", "revoked", "expired", "fulfilled"
         """
-        return await self._request("GET", f"/api/commit/{commit_id}")
+        return await self._request("GET", f"/api/commit/{commit_id}", auth=True)
 
     async def revoke_commit(
         self, commit_id: str, reason: str
