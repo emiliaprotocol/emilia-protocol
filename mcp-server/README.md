@@ -4,7 +4,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![MCP](https://img.shields.io/badge/protocol-MCP-5a5aff)](https://modelcontextprotocol.io)
 
-**The trust layer for AI agents — behavioral receipts, trust profiles, and due process via MCP.**
+**Trust decisions for AI agents — signed authorization, evaluation, and appeal via MCP.**
 
 ---
 

@@ -36,7 +36,7 @@ AI agents do not operate at human pace. An agent can execute thousands of transa
 
 The consequence is compounding: trust errors in machine-mediated systems compound faster than human systems can correct them. And the systems being built today — agent frameworks, MCP tool ecosystems, agentic commerce platforms — are being built on exactly the same absent trust foundation that the 1990s web was built on, with the sole difference that the velocity of transactions is orders of magnitude higher.
 
-We are building those systems without a trust layer. EMILIA Protocol is that layer.
+We are building those systems without the infrastructure to answer that question. EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties — the trust-evaluation layer those systems require.
 
 ---
 
@@ -60,7 +60,7 @@ It is the infrastructure the internet forgot to build in 1993, arriving thirty y
 
 ## The Five Primitives
 
-EP is built from five primitives. Each is independently useful. Together, they constitute a complete trust layer.
+EP is built from five primitives. Each is independently useful. Together, they constitute a complete trust-evaluation layer.
 
 ### 1. Behavioral Receipt — the unit of trust
 

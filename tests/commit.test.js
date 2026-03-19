@@ -523,7 +523,7 @@ describe('verifyCommit', () => {
 
     const result = await verifyCommit('epc_badsig');
     expect(result.valid).toBe(false);
-    expect(result.reasons).toContain('Signature verification failed');
+    expect(result.reasons).toContain('invalid_signature');
   });
 });
 

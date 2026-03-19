@@ -208,7 +208,7 @@ EP's bootstrap problem is real. Here is how trust signals accumulate before a co
 |---|---|---|
 | Auto-receipt (opt-in) | ~0.1–0.3x until established | Every tool call generates a behavioral receipt. Opt-in, privacy-preserving. |
 | Bilateral confirmations | 0.8x provenance | Both parties confirm the transaction. Stronger than self-attested. |
-| Install preflight pass | Context signal | Publisher verification and permission class feed the profile. |
+| Install preflight (allow/review/deny) | Context signal | Publisher verification and permission class feed the profile. |
 | Principal signal | 0.15x | The human behind the entity carries partial attribution. |
 
 An entity reaches `emerging` confidence once quality-gated effective evidence ≥ 5.0 (3+ unique submitters, unestablished capped at 2.0). Volume alone from synthetic identities cannot cross this barrier — that is by design.

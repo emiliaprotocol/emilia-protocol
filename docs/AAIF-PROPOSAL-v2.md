@@ -37,7 +37,7 @@ As agents begin installing software, routing work, acting under delegation, and 
 
 ## 3. The Proposal
 
-Standardize a minimal trust layer that any host, marketplace, agent framework, or operator can implement.
+Standardize a minimal trust-evaluation protocol that any host, marketplace, agent framework, or operator can implement.
 
 That minimal layer has three required objects:
 

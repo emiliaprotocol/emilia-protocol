@@ -32,7 +32,7 @@
  *   ep_generate_zk_proof    — Prove trust threshold without revealing receipt contents or counterparties
  *   ep_verify_zk_proof      — Verify a ZK trust proof by proof_id (public, no transaction history revealed)
  *
- * EP COMMIT (pre-action commitment protocol):
+ * EP COMMIT (signed authorization token for high-stakes machine actions):
  *   ep_issue_commit          — Issue a signed EP Commit before a high-stakes action
  *   ep_verify_commit         — Verify a commit's signature, status, and validity
  *   ep_get_commit_status     — Get current state of a commit
@@ -576,7 +576,7 @@ const TOOLS = [
     },
   },
 
-  // EP Commit — pre-action commitment protocol
+  // EP Commit — signed authorization token for high-stakes machine actions
   {
     name: 'ep_issue_commit',
     description:
@@ -639,7 +639,7 @@ const TOOLS = [
     name: 'ep_bind_receipt_to_commit',
     description:
       'Bind a post-action receipt to a commit, completing the commit-execute-receipt cycle. ' +
-      'Links the behavioral outcome back to the pre-action commitment.',
+      'Links the behavioral outcome back to the signed authorization token.',
     inputSchema: {
       type: 'object',
       properties: {
