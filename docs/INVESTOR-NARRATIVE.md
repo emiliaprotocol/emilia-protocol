@@ -6,7 +6,7 @@ AI agents now install software, route work to external tools, accept delegated a
 
 ## What EP does
 
-EMILIA Protocol is an open trust layer for agent systems. Before an agent installs software, routes work, accepts delegated authority, or transacts with a counterparty, EP returns a structured trust decision — with reasons and an appeal path.
+EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties. Before an agent installs software, connects to a tool, accepts delegated authority, or transacts with a counterparty, EP returns a structured trust decision — with reasons and an appeal path.
 
 MCP tells agents how to use tools. EP tells them whether they should.
 

@@ -71,7 +71,7 @@ Copy `.env.example` to `.env.local` and fill in:
 - `NEXT_PUBLIC_SUPABASE_URL` — your Supabase project URL
 - `SUPABASE_SERVICE_ROLE_KEY` — service role key (server-only)
 - `SUPABASE_ANON_KEY` — anon key (public)
-- `EP_API_URL` — EP API base (default: https://emiliaprotocol.ai)
+- `EP_BASE_URL` — EP API base (default: https://emiliaprotocol.ai)
 
 Tests run without any environment variables — all external services are mocked.
 
