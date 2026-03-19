@@ -3,10 +3,14 @@ import { canonicalResolveAppeal } from '@/lib/canonical-writer';
 import { validateTransition, DISPUTE_STATES, recordOperatorAction } from '@/lib/procedural-justice';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { getServiceClient } from '@/lib/supabase';
+import { getCronSecret } from '@/lib/env';
 
 /**
  * POST /api/disputes/appeal/resolve
- * 
+ *
+ * @operator
+ * @access operator — requires CRON_SECRET. Not part of the public API.
+ *
  * Operator resolves an appeal. Requires CRON_SECRET auth.
  * appeal_upheld = original resolution stands
  * appeal_reversed = original resolution overturned, trust recomputed
@@ -15,7 +19,7 @@ import { getServiceClient } from '@/lib/supabase';
 export async function POST(request) {
   try {
     const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
+    const cronSecret = getCronSecret();
     if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
       return EP_ERRORS.UNAUTHORIZED();
     }

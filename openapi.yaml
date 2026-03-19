@@ -46,7 +46,9 @@ tags:
   - name: System
     description: Health, stats, feed, audit, and operational endpoints
   - name: Internal
-    description: Cron jobs and internal infrastructure endpoints
+    description: |
+      Cron jobs, operator-only actions, and internal infrastructure endpoints.
+      These routes are not part of the public API and require privileged authentication.
 
 paths:
   # ===========================================================================
@@ -709,7 +711,7 @@ paths:
 
   /api/disputes/resolve:
     post:
-      tags: [Disputes]
+      tags: [Disputes, Internal]
       summary: Resolve a dispute (operator only)
       description: |
         Operator resolves a dispute. Routes through canonical writer.
@@ -717,6 +719,7 @@ paths:
         Records operator action in audit trail. Reversal triggers score
         recomputation and trust materialization.
       x-internal: true
+      x-access: operator
       security:
         - CronAuth: []
       requestBody:
@@ -815,7 +818,7 @@ paths:
 
   /api/disputes/appeal/resolve:
     post:
-      tags: [Disputes]
+      tags: [Disputes, Internal]
       summary: Resolve an appeal (operator only)
       description: |
         Operator resolves an appeal. Requires CRON_SECRET auth.
@@ -823,6 +826,7 @@ paths:
         appeal_reversed = original resolution overturned, trust recomputed.
         appeal_dismissed = appeal dismissed.
       x-internal: true
+      x-access: operator
       security:
         - CronAuth: []
       requestBody:
@@ -1686,6 +1690,7 @@ paths:
       tags: [Internal]
       summary: Expire stale records (cron)
       x-internal: true
+      x-access: cron
       description: |
         Scheduled job that enforces time-based protocol rules:
         1. Bilateral confirmations: expire after 48 hours
@@ -1727,6 +1732,7 @@ paths:
       tags: [Internal]
       summary: Anchor receipts to blockchain (cron)
       x-internal: true
+      x-access: cron
       description: |
         Cron endpoint: collects unanchored receipts, builds Merkle tree,
         and anchors root to Base L2. Called every 6 hours via Vercel Cron.
@@ -1741,6 +1747,7 @@ paths:
       tags: [Internal]
       summary: Anchor receipts to blockchain (cron, GET alias)
       x-internal: true
+      x-access: cron
       description: GET alias for Vercel Cron (which sends GET by default).
       security:
         - CronAuth: []

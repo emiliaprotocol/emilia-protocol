@@ -33,6 +33,7 @@ import { NextResponse } from 'next/server';
 import { getServiceClient, authenticateRequest } from '@/lib/supabase';
 import { adjudicateDispute } from '@/lib/dispute-adjudication';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { getCronSecret } from '@/lib/env';
 
 // Minimum age before a filer can trigger adjudication themselves.
 // 48 hours: gives the accused entity a fair response window.
@@ -54,7 +55,7 @@ export async function POST(request, { params }) {
     // Authorization: CRON_SECRET or authenticated filer
     // -------------------------------------------------------------------
     const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
+    const cronSecret = getCronSecret();
     const isCron = cronSecret && authHeader === `Bearer ${cronSecret}`;
 
     let callerEntity = null;

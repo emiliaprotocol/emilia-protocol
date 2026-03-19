@@ -34,6 +34,37 @@ The SSL/TLS analogy works because it conveys infrastructure-layer necessity with
 
 ---
 
+## The Three-Layer Architecture (Core / Extensions / Product Surfaces)
+
+**This is the first structural concept. Lead with it in every architecture discussion, every standards submission, and every technical overview.**
+
+EP is a 3-layer system. The core is deliberately small — three objects that any host can implement. Everything else is an optional extension or a product surface.
+
+- **EP Core** — The interoperable standard. Three required objects:
+  - **Trust Receipt** — a portable record of an observed event relevant to trust (what happened)
+  - **Trust Profile** — a standardized summary of observable trust state (what is known)
+  - **Trust Decision** — a policy-evaluated result with reasons and appeal path (what to do now)
+  - Also includes: scoring model, policy evaluation, entity identity, Sybil resistance, conformance requirements
+
+- **EP Extensions** — Important but optional capabilities that build on the core:
+  - Disputes and appeals (full lifecycle, trust-graph adjudication, voucher-based resolution)
+  - Delegation and attribution chain (Principal → Agent → Tool accountability)
+  - Zero-knowledge proofs (privacy-preserving trust attestation for regulated industries)
+  - Auto-receipt generation (passive behavioral data capture from MCP tool calls)
+  - Domain-specific scoring (vertical-specific behavioral weights)
+  - Install preflight adapters (platform-specific adapters for MCP servers, npm, GitHub Apps)
+
+- **EP Product Surfaces** — Reference implementations and operator tools. Not part of the standard:
+  - Explorer, leaderboards, registry views
+  - Operator dashboards and managed adjudication workflows
+  - Hosted trust APIs, analytics, enterprise policy management
+
+**The test:** a skeptical reader should be able to answer in 30 seconds what is Core vs Extension vs Product. Core = the minimum interoperable standard. Extensions = advanced features you opt into. Product Surfaces = tools and UIs built on top, not governed by the spec.
+
+**Why this matters for positioning:** When critics say "EP is too big," point to the core — three objects, one conformance suite. When adopters say "EP doesn't cover X," point to extensions. When competitors say "EP is just a product," point to the spec/extension/product separation.
+
+---
+
 ## What EP Is
 
 Three bullets. Use these three and only these three when asked to describe EP briefly.

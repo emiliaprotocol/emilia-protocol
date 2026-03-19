@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 import { epProblem } from '@/lib/errors';
+import { getCronSecret } from '@/lib/env';
 
 /**
  * GET /api/cron/expire
+ *
+ * @internal
+ * @access cron — requires CRON_SECRET. Not part of the public API.
  *
  * Scheduled job that enforces time-based protocol rules:
  *
@@ -23,7 +27,7 @@ import { epProblem } from '@/lib/errors';
 export async function GET(request) {
   // Authenticate cron
   const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
+  const cronSecret = getCronSecret();
 
   if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return epProblem(401, 'unauthorized', 'Unauthorized');

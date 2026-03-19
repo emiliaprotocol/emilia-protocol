@@ -3,10 +3,14 @@ import { canonicalResolveDispute } from '@/lib/canonical-writer';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { validateTransition, DISPUTE_STATES, recordOperatorAction } from '@/lib/procedural-justice';
 import { getServiceClient } from '@/lib/supabase';
+import { getCronSecret } from '@/lib/env';
 
 /**
  * POST /api/disputes/resolve
- * 
+ *
+ * @operator
+ * @access operator — requires CRON_SECRET. Not part of the public API.
+ *
  * Operator resolves a dispute. Routes through canonical writer.
  * Validates state transition against formal dispute state machine.
  * Records operator action in audit trail.
@@ -16,7 +20,7 @@ export async function POST(request) {
   try {
     // Operator auth via CRON_SECRET
     const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
+    const cronSecret = getCronSecret();
     if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
       return EP_ERRORS.UNAUTHORIZED();
     }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 import { EP_VERSION_STRING } from '@/lib/protocol-version';
 import { epProblem } from '@/lib/errors';
+import { getUpstashConfig, getBlockchainConfig } from '@/lib/env';
 
 /**
  * GET /api/health
@@ -43,7 +44,7 @@ export async function GET() {
 
   // Redis / rate limiter
   try {
-    const hasRedis = !!(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+    const hasRedis = !!getUpstashConfig();
     checks.rate_limiter = {
       status: hasRedis ? 'ok' : 'fallback',
       backend: hasRedis ? 'upstash_redis' : 'in_memory',
@@ -54,7 +55,7 @@ export async function GET() {
 
   // Blockchain anchoring
   try {
-    const hasWallet = !!process.env.EP_WALLET_PRIVATE_KEY;
+    const hasWallet = !!getBlockchainConfig()?.walletPrivateKey;
     checks.anchoring = {
       status: hasWallet ? 'configured' : 'not_configured',
       chain: 'base_l2',

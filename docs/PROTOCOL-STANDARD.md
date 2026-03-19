@@ -18,6 +18,35 @@ The goal of this document is to specify EMILIA Protocol v1.0 as an implementatio
 
 ---
 
+## Core vs Extension: Section Classification
+
+This standard is organized into **EP Core** sections and **EP Extension** sections. A conformant minimal implementation MUST implement all Core sections. Extension sections are optional — they build on the core but are not required for basic interoperability.
+
+**EP Core** (required for interoperability):
+- Section 1: Introduction (motivation, design principles, terminology)
+- Section 2: Entity Identity
+- Section 3: Receipt Format
+- Section 4: Trust Scoring
+- Section 5: Sybil Resistance
+- Section 6: Policy Evaluation
+- Section 9: Security Properties
+- Section 10: Implementation Requirements
+- Section 11: Versioning
+- Section 12: Governance
+- Section 17: Conformance Requirements
+
+**EP Extensions** (optional, adopt as needed):
+- Section 7: Delegation Chain
+- Section 8: Dispute Lifecycle
+- Section 13: Privacy and Zero-Knowledge Proofs
+- Section 14: Dispute Adjudication Standard
+- Section 15: Attribution Chain Standard
+- Section 16: Auto-Receipt Generation
+
+**EP Product Surfaces** (not part of this standard): Explorer, leaderboards, operator dashboards, registry views, managed adjudication workflows, and hosted APIs are implementation choices, not protocol requirements.
+
+---
+
 ## 1. Introduction
 
 ### 1.1 Motivation

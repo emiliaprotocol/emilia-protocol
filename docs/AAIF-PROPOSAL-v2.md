@@ -19,6 +19,26 @@ MCP tells agents how to use tools. EP tells them whether they should.
 
 ---
 
+## 1b. Three-Layer Architecture: EP Core / EP Extensions / EP Product Surfaces
+
+EP is a 3-layer system. This framing governs what is standardized, what is optional, and what is left to implementors.
+
+- **EP Core** — The minimum interoperable standard. Three required objects: Trust Receipt, Trust Profile, Trust Decision. Also includes entity identity, scoring, Sybil resistance, policy evaluation, and conformance requirements. If a third party can implement Core and interoperate, EP has a real standard.
+
+- **EP Extensions** — Important but optional capabilities that build on the core. Each extension is independently adoptable:
+  - Disputes and appeals (full lifecycle, trust-graph adjudication)
+  - Delegation and attribution chain (Principal → Agent → Tool)
+  - Zero-knowledge proofs (privacy-preserving attestation)
+  - Auto-receipt generation (passive behavioral data capture)
+  - Domain-specific scoring
+  - Install preflight adapters (MCP servers, npm, GitHub Apps)
+
+- **EP Product Surfaces** — Reference implementations and operator tools. Not part of the standard at any layer: explorer, leaderboards, registry views, hosted dashboards, managed adjudication workflows.
+
+This separation is what makes EP a viable standard rather than a monolithic product. The working group's first deliverable (Core Spec v1.0) covers only the Core layer. Extensions are sequenced as separate deliverables.
+
+---
+
 ## 2. The Problem
 
 Open agent systems now have standards for connectivity (MCP), communication (A2A), identity, and transaction flow (ACP/UCP). They still lack a neutral, portable way to answer a basic operational question:

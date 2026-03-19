@@ -99,3 +99,84 @@ jobs:
           node-version: 20
       - name: Lint OpenAPI spec
         run: npx @redocly/cli lint openapi.yaml
+
+  # ── Job 7: Docs consistency grep job ──────────────────────────────
+  docs-consistency:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No stale tool counts outside CHANGELOG
+        run: |
+          hits=$(grep -rn '"15 tools"\|"20 tools"\|"22 tools"\|"23 tools"\|15 tools\|20 tools\|22 tools\|23 tools' --include='*.md' --include='*.yml' --include='*.yaml' --include='*.js' --include='*.ts' --include='*.json' . | grep -v CHANGELOG | grep -v node_modules || true)
+          if [ -n "$hits" ]; then
+            echo "::error::Stale tool counts found outside CHANGELOG:"
+            echo "$hits"
+            exit 1
+          fi
+          echo "OK — no stale tool counts found."
+
+      - name: No stale test counts outside CHANGELOG
+        run: |
+          hits=$(grep -rn '"152 tests"\|"152 passing"\|152 tests\|152 passing' --include='*.md' --include='*.yml' --include='*.yaml' --include='*.js' --include='*.ts' --include='*.json' . | grep -v CHANGELOG | grep -v node_modules || true)
+          if [ -n "$hits" ]; then
+            echo "::error::Stale test counts found outside CHANGELOG:"
+            echo "$hits"
+            exit 1
+          fi
+          echo "OK — no stale test counts found."
+
+      - name: No old SDK name EmiliaClient outside CHANGELOG
+        run: |
+          hits=$(grep -rn 'EmiliaClient' --include='*.md' --include='*.yml' --include='*.yaml' --include='*.js' --include='*.ts' --include='*.json' . | grep -v CHANGELOG | grep -v node_modules || true)
+          if [ -n "$hits" ]; then
+            echo "::error::Old SDK name 'EmiliaClient' found outside CHANGELOG:"
+            echo "$hits"
+            exit 1
+          fi
+          echo "OK — no old SDK name found."
+
+      - name: No references to v0.2.0
+        run: |
+          hits=$(grep -rn 'v0\.2\.0' --include='*.md' --include='*.yml' --include='*.yaml' --include='*.js' --include='*.ts' --include='*.json' . | grep -v node_modules || true)
+          if [ -n "$hits" ]; then
+            echo "::error::Stale version 'v0.2.0' references found:"
+            echo "$hits"
+            exit 1
+          fi
+          echo "OK — no v0.2.0 references found."
+
+      - name: Tool count in mcp-server/index.js matches README badge
+        run: |
+          tool_count=$(grep -c 'ep_' mcp-server/index.js || echo 0)
+          echo "Found $tool_count ep_ tool entries in mcp-server/index.js"
+          badge_count=$(grep -oP '\d+(?=\+? tools)' README.md | head -1 || echo "NOT_FOUND")
+          echo "README badge claims: $badge_count tools"
+          if [ "$badge_count" = "NOT_FOUND" ]; then
+            echo "::warning::Could not parse tool count from README badge — skipping match check."
+          elif [ "$tool_count" != "$badge_count" ]; then
+            echo "::error::Mismatch: mcp-server/index.js has $tool_count ep_ entries but README badge says $badge_count"
+            exit 1
+          else
+            echo "OK — tool count matches ($tool_count)."
+          fi
+
+      - name: OpenAPI path count matches API route files
+        run: |
+          spec_paths=$(grep -c '^\s\+/api/' openapi.yaml || echo 0)
+          route_files=$(find app/api -name route.js 2>/dev/null | wc -l | tr -d ' ')
+          echo "openapi.yaml paths: $spec_paths"
+          echo "app/api route.js files: $route_files"
+          if [ "$spec_paths" != "$route_files" ]; then
+            echo "::error::Mismatch: openapi.yaml has $spec_paths paths but found $route_files route.js files"
+            exit 1
+          fi
+          echo "OK — path counts match ($spec_paths)."
+
+  # ── Job 8: Docker build smoke test ────────────────────────────────
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t ep-test .

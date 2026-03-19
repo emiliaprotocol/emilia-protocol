@@ -17,6 +17,29 @@ EP is not a product. It is a protocol. Apache 2.0.
 
 ---
 
+## EP Core / EP Extensions / EP Product Surfaces
+
+EP is a 3-layer system. The core is deliberately small. Everything else is an optional extension or a product surface built on top.
+
+- **EP Core** — The interoperable standard. Three required objects: **Trust Receipt**, **Trust Profile**, **Trust Decision**. If a third party can implement these three objects and interoperate, EP has a real standard. Core also covers the scoring model, policy evaluation, entity identity, and Sybil resistance (Sections 1–6, 9–12, 17 of the Protocol Standard).
+
+- **EP Extensions** — Important but optional capabilities that build on the core. Adopt what you need:
+  - Disputes and appeals (full lifecycle, voucher-based adjudication)
+  - Delegation and attribution chain (Principal → Agent → Tool)
+  - Zero-knowledge proofs (privacy-preserving trust attestation)
+  - Auto-receipt generation (passive behavioral data from MCP tool calls)
+  - Domain-specific scoring (financial, code_execution, communication, +4)
+  - Install preflight adapters (MCP servers, npm, GitHub Apps, Chrome extensions)
+
+- **EP Product Surfaces** — Reference implementations and operator tools. Useful, not required, not part of the standard:
+  - Explorer, leaderboards, registry views
+  - Operator dashboards and managed adjudication
+  - Hosted trust APIs, analytics, and enterprise policy management
+
+A skeptical reader should be able to answer in 30 seconds: Core = the minimum interoperable standard (Receipt, Profile, Decision). Extensions = advanced features you opt into. Product Surfaces = tools built on top, not governed by the spec.
+
+---
+
 ## Four Canonical Trust Decisions
 
 EP is decision infrastructure. Every trust evaluation reduces to one of four verbs:
@@ -420,6 +443,17 @@ Set `EP_BASE_URL` and `EP_API_KEY` for non-default endpoints.
 | OpenAPI spec | `openapi.yaml` |
 | MCP server | `mcp-server/index.js` |
 | CLI | `cli/bin/ep.mjs` |
+
+### Internal Routes (not part of the public API)
+
+These routes require privileged authentication (`CRON_SECRET`) and are excluded from the public API surface. They are tagged `x-internal: true` in `openapi.yaml`.
+
+| Route | Access | Purpose |
+|---|---|---|
+| `GET /api/cron/expire` | cron | Expire stale bilateral confirmations, escalate overdue disputes |
+| `POST /api/blockchain/anchor` | cron | Anchor unanchored receipts to Base L2 via Merkle tree |
+| `POST /api/disputes/resolve` | operator | Operator resolves a dispute |
+| `POST /api/disputes/appeal/resolve` | operator | Operator resolves an appeal |
 
 ---
 
