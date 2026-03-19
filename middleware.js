@@ -9,23 +9,118 @@ import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/rate-limit';
  * Register:     throttled by IP only (no API key yet)
  */
 
-const WRITE_CATEGORIES = ['submit', 'anchor', 'dispute_write', 'report_write'];
+// =============================================================================
+// Route Policy Table — single source of truth for route classification.
+// Every mutating endpoint MUST be listed here.
+// Unlisted routes default to 'read'.
+//
+// `rateCategory` maps to a key in RATE_LIMITS (lib/rate-limit.js).
+// `useAuth` means the rate-limit key includes the API key prefix + IP.
+// =============================================================================
 
-function getCategory(pathname) {
-  if (pathname.startsWith('/api/entities/register')) return 'register';
-  if (pathname.startsWith('/api/receipts/submit')) return 'submit';
-  if (pathname.startsWith('/api/receipts/confirm')) return 'dispute_write'; // bilateral confirm: sensitive write
-  if (pathname.startsWith('/api/needs/') && pathname.endsWith('/rate')) return 'submit';
-  if (pathname.startsWith('/api/needs/broadcast')) return 'submit';
-  if (pathname.startsWith('/api/blockchain/anchor')) return 'anchor';
-  if (pathname.startsWith('/api/disputes/report')) return 'report_write';
-  if (pathname.startsWith('/api/disputes/file')) return 'dispute_write';
-  if (pathname.startsWith('/api/disputes/respond')) return 'dispute_write';
-  if (pathname.startsWith('/api/disputes/resolve')) return 'dispute_write';
-  if (pathname.startsWith('/api/waitlist')) return 'waitlist';
-  if (pathname.startsWith('/api/')) return 'read';
-  return null;
+const ROUTE_POLICIES = {
+  // Trust evaluation (reads)
+  'GET /api/trust/profile':           { rateCategory: 'read', useAuth: false },
+  'POST /api/trust/evaluate':         { rateCategory: 'read', useAuth: false },   // evaluation is a read
+  'POST /api/trust/install-preflight': { rateCategory: 'read', useAuth: false },
+  'POST /api/trust/gate':             { rateCategory: 'read', useAuth: false },
+  'GET /api/trust/domain-score':      { rateCategory: 'read', useAuth: false },
+  'POST /api/trust/zk-proof':         { rateCategory: 'dispute_write', useAuth: true },  // generates proof
+  'GET /api/trust/zk-proof':          { rateCategory: 'read', useAuth: false },           // verify proof
+
+  // Receipts (writes)
+  'POST /api/receipts/submit':        { rateCategory: 'submit', useAuth: true },
+  'POST /api/receipts/confirm':       { rateCategory: 'dispute_write', useAuth: true },   // bilateral confirm: sensitive write
+  'POST /api/receipts/auto-submit':   { rateCategory: 'submit', useAuth: true },           // HIGH VOLUME
+
+  // Entities
+  'POST /api/entities/register':      { rateCategory: 'register', useAuth: false },        // no API key yet
+  'GET /api/entities/search':         { rateCategory: 'read', useAuth: false },
+  'POST /api/entities/*/auto-receipt': { rateCategory: 'dispute_write', useAuth: true },
+
+  // Disputes (writes)
+  'POST /api/disputes/file':          { rateCategory: 'dispute_write', useAuth: true },
+  'POST /api/disputes/respond':       { rateCategory: 'dispute_write', useAuth: true },
+  'POST /api/disputes/resolve':       { rateCategory: 'dispute_write', useAuth: true },
+  'POST /api/disputes/report':        { rateCategory: 'report_write', useAuth: true },
+  'POST /api/disputes/appeal':        { rateCategory: 'dispute_write', useAuth: true },
+  'POST /api/disputes/appeal/resolve': { rateCategory: 'dispute_write', useAuth: true },
+  'POST /api/disputes/withdraw':      { rateCategory: 'dispute_write', useAuth: true },
+  'POST /api/disputes/*/adjudicate':  { rateCategory: 'dispute_write', useAuth: true },
+
+  // Delegations (writes)
+  'POST /api/delegations/create':     { rateCategory: 'dispute_write', useAuth: true },
+  'GET /api/delegations/*/verify':    { rateCategory: 'read', useAuth: false },
+
+  // Identity (writes)
+  'POST /api/identity/bind':          { rateCategory: 'dispute_write', useAuth: true },
+  'POST /api/identity/continuity':    { rateCategory: 'dispute_write', useAuth: true },
+  'POST /api/identity/continuity/challenge': { rateCategory: 'dispute_write', useAuth: true },
+  'POST /api/identity/continuity/resolve':   { rateCategory: 'dispute_write', useAuth: true },
+  'POST /api/identity/verify':        { rateCategory: 'dispute_write', useAuth: true },
+
+  // Needs (writes)
+  'POST /api/needs/broadcast':        { rateCategory: 'submit', useAuth: true },
+  'POST /api/needs/*/claim':          { rateCategory: 'dispute_write', useAuth: true },
+  'POST /api/needs/*/complete':       { rateCategory: 'dispute_write', useAuth: true },
+  'POST /api/needs/*/rate':           { rateCategory: 'submit', useAuth: true },
+
+  // Operations / Cron
+  'POST /api/blockchain/anchor':      { rateCategory: 'anchor', useAuth: false },
+  'POST /api/cron/expire':            { rateCategory: 'anchor', useAuth: false },
+
+  // Public forms
+  'POST /api/operators/apply':        { rateCategory: 'submit', useAuth: true },
+  'POST /api/inquiries':              { rateCategory: 'submit', useAuth: true },
+  'POST /api/waitlist':               { rateCategory: 'waitlist', useAuth: false },
+};
+
+// =============================================================================
+// Route classifier — matches METHOD + pathname against the policy table.
+// Supports '*' wildcards for dynamic path segments.
+// =============================================================================
+
+// Pre-compile patterns into regexes for fast matching
+const _compiledPolicies = Object.entries(ROUTE_POLICIES).map(([pattern, policy]) => {
+  const spaceIdx = pattern.indexOf(' ');
+  const method = pattern.slice(0, spaceIdx);
+  const pathPattern = pattern.slice(spaceIdx + 1);
+
+  // Convert '/api/entities/*/auto-receipt' -> /^\/api\/entities\/[^/]+\/auto-receipt$/
+  const regexStr = '^' + pathPattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '[^/]+') + '$';
+  return { method, regex: new RegExp(regexStr), policy };
+});
+
+/**
+ * Classify a route by method + pathname against the policy table.
+ *
+ * @param {string} method - HTTP method (GET, POST, etc.)
+ * @param {string} pathname - URL pathname (e.g. /api/receipts/submit)
+ * @returns {{ rateCategory: string, useAuth: boolean }}
+ */
+function classifyRoute(method, pathname) {
+  const upperMethod = method.toUpperCase();
+  for (const { method: m, regex, policy } of _compiledPolicies) {
+    if (m === upperMethod && regex.test(pathname)) {
+      return policy;
+    }
+  }
+
+  // Default: unmatched routes get 'read'
+  // Warn on unmatched mutating methods — potential missing classification
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(upperMethod)) {
+    console.warn(
+      `[rate-limit] Unclassified write route: ${upperMethod} ${pathname} — defaulting to 'read'. ` +
+      `Add this route to ROUTE_POLICIES in middleware.js.`
+    );
+  }
+
+  return { rateCategory: 'read', useAuth: false };
 }
+
+// =============================================================================
+// Auth helper
+// =============================================================================
 
 function getApiKeyPrefix(request) {
   const auth = request.headers.get('authorization') || '';
@@ -34,26 +129,31 @@ function getApiKeyPrefix(request) {
   return token ? token.slice(0, 16) : null;
 }
 
+// =============================================================================
+// Middleware
+// =============================================================================
+
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
-  const category = getCategory(pathname);
-  if (!category) return NextResponse.next();
+  if (!pathname.startsWith('/api/')) return NextResponse.next();
+
+  const { rateCategory, useAuth } = classifyRoute(request.method, pathname);
 
   const ip = getClientIP(request);
 
-  // For write routes with auth, use API key prefix + IP as rate limit key
+  // For authenticated write routes, use API key prefix + IP as rate limit key.
   // This prevents shared NATs from being over-punished while still
-  // throttling per-identity on authenticated writes
+  // throttling per-identity on authenticated writes.
   let rateLimitKey = ip;
-  if (WRITE_CATEGORIES.includes(category)) {
+  if (useAuth) {
     const keyPrefix = getApiKeyPrefix(request);
     if (keyPrefix) {
       rateLimitKey = `${keyPrefix}:${ip}`;
     }
   }
 
-  const result = await checkRateLimit(rateLimitKey, category);
+  const result = await checkRateLimit(rateLimitKey, rateCategory);
 
   if (!result.allowed) {
     // Distinguish between rate-limited and rate-limiter-unavailable (fail-closed)
@@ -64,7 +164,7 @@ export async function middleware(request) {
       );
     }
 
-    const config = RATE_LIMITS[category];
+    const config = RATE_LIMITS[rateCategory];
     const res = NextResponse.json(
       {
         error: 'Rate limit exceeded',
@@ -82,7 +182,7 @@ export async function middleware(request) {
   }
 
   const response = NextResponse.next();
-  response.headers.set('X-RateLimit-Limit', String(RATE_LIMITS[category].max));
+  response.headers.set('X-RateLimit-Limit', String(RATE_LIMITS[rateCategory].max));
   response.headers.set('X-RateLimit-Remaining', String(result.remaining));
   response.headers.set('X-RateLimit-Reset', String(result.reset));
   return response;

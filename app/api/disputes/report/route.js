@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { canonicalFileReport } from '@/lib/canonical-writer';
-import { EP_ERRORS } from '@/lib/errors';
+import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { checkAbuse } from '@/lib/procedural-justice';
 import { getServiceClient } from '@/lib/supabase';
 
@@ -45,10 +45,9 @@ export async function POST(request) {
     });
 
     if (!abuseCheck.allowed) {
-      return NextResponse.json({
-        error: `Report throttled: ${abuseCheck.pattern}. Try again later.`,
+      return epProblem(429, 'report_throttled', `Report throttled: ${abuseCheck.pattern}. Try again later.`, {
         pattern: abuseCheck.pattern,
-      }, { status: 429 });
+      });
     }
 
     const result = await canonicalFileReport({
@@ -58,7 +57,7 @@ export async function POST(request) {
     });
 
     if (result.error) {
-      return NextResponse.json({ error: result.error }, { status: result.status || 500 });
+      return epProblem(result.status || 500, 'report_failed', result.error);
     }
 
     return NextResponse.json({

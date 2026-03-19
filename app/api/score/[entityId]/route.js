@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
+import { epProblem } from '@/lib/errors';
 
 /**
  * GET /api/score/[entityId]
- * 
+ *
  * LEGACY COMPATIBILITY: Returns a compatibility score for backward compat.
  * For trust decisions, use GET /api/trust/profile/:entityId or POST /api/trust/evaluate.
- * 
+ *
  * No authentication required — trust data is public by design.
- * 
+ *
  * Returns both historical establishment and current confidence as separate fields.
  */
 export async function GET(request, { params }) {
@@ -37,11 +38,11 @@ export async function GET(request, { params }) {
       .single();
 
     if (error || !entity) {
-      return NextResponse.json({ error: 'Entity not found' }, { status: 404 });
+      return epProblem(404, 'entity_not_found', 'No entity exists with the given ID.');
     }
 
     if (entity.status !== 'active') {
-      return NextResponse.json({ error: 'Entity is not active' }, { status: 404 });
+      return epProblem(404, 'entity_not_active', 'Entity is not active.');
     }
 
     // HISTORICAL ESTABLISHMENT via DB function (all receipts, permanent)
@@ -87,11 +88,11 @@ export async function GET(request, { params }) {
       description: entity.description,
       category: entity.category,
       capabilities: entity.capabilities,
-      
+
       // Compatibility score — use POST /api/trust/evaluate for full trust profiles
       emilia_score: entity.emilia_score,
       _score_note: 'Compatibility score. For trust decisions, use GET /api/trust/profile/:entityId or POST /api/trust/evaluate.',
-      
+
       // Historical establishment (permanent, all receipts)
       established: historicalEstablished,
       effective_evidence_historical: historicalEvidence,
@@ -107,7 +108,7 @@ export async function GET(request, { params }) {
       success_rate: entity.total_receipts > 0
         ? Math.round((entity.successful_receipts / entity.total_receipts) * 1000) / 10
         : null,
-      
+
       // Score breakdown — only shown when confidence is emerging or higher
       breakdown: (confidence === 'emerging' || confidence === 'confident') ? {
         delivery_accuracy: entity.avg_delivery_accuracy,
@@ -118,7 +119,7 @@ export async function GET(request, { params }) {
         consistency: entity.score_consistency,
         _note: 'Historical unweighted averages. The emilia_score uses submitter-weighted, time-decayed computation.',
       } : null,
-      
+
       verified: entity.verified,
       a2a_endpoint: entity.a2a_endpoint,
       ucp_profile_url: entity.ucp_profile_url,
@@ -126,6 +127,6 @@ export async function GET(request, { params }) {
     });
   } catch (err) {
     console.error('Score lookup error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

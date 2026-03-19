@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { canonicalResolveDispute } from '@/lib/canonical-writer';
-import { EP_ERRORS } from '@/lib/errors';
+import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { validateTransition, DISPUTE_STATES, recordOperatorAction } from '@/lib/procedural-justice';
 import { getServiceClient } from '@/lib/supabase';
 
@@ -52,7 +52,7 @@ export async function POST(request) {
     );
 
     if (result.error) {
-      return NextResponse.json({ error: result.error }, { status: result.status || 500 });
+      return epProblem(result.status || 500, 'resolution_failed', result.error);
     }
 
     // Record in audit trail

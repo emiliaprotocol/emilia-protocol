@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest, getServiceClient } from '@/lib/supabase';
-import { EP_ERRORS } from '@/lib/errors';
+import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { filterByVisibility } from '@/lib/procedural-justice';
 
 /**
@@ -36,7 +36,7 @@ export async function GET(request) {
 
     const { data, error } = await query;
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return epProblem(500, 'audit_query_failed', error.message);
 
     return NextResponse.json({
       events: data || [],

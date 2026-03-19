@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
+import { epProblem } from '@/lib/errors';
 
 /**
  * POST /api/operators/apply
@@ -16,10 +17,10 @@ export async function POST(request) {
     const { name, email, background, motivation } = body;
 
     if (!email || !email.includes('@')) {
-      return NextResponse.json({ error: 'Valid email required' }, { status: 400 });
+      return epProblem(400, 'invalid_email', 'Valid email required');
     }
     if (!name?.trim()) {
-      return NextResponse.json({ error: 'Name required' }, { status: 400 });
+      return epProblem(400, 'missing_name', 'Name required');
     }
 
     const supabase = getServiceClient();
@@ -54,7 +55,7 @@ export async function POST(request) {
         return NextResponse.json({ id: null, email, fallback: true }, { status: 201 });
       }
       console.error('Operator application insert error:', error);
-      return NextResponse.json({ error: 'Application failed' }, { status: 500 });
+      return epProblem(500, 'application_failed', 'Application failed');
     }
 
     return NextResponse.json({
@@ -64,6 +65,6 @@ export async function POST(request) {
     }, { status: 201 });
   } catch (err) {
     console.error('Operator apply error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

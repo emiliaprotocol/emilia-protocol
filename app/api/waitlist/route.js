@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
+import { epProblem } from '@/lib/errors';
 
 /**
  * POST /api/waitlist
@@ -16,7 +17,7 @@ export async function POST(request) {
     const email = body.email?.trim();
 
     if (!email || !email.includes('@')) {
-      return NextResponse.json({ error: 'Valid email required' }, { status: 400 });
+      return epProblem(400, 'invalid_email', 'Valid email required');
     }
 
     const supabase = getServiceClient();
@@ -64,7 +65,7 @@ export async function POST(request) {
         return NextResponse.json({ id: lastEntityId + 1, email, fallback: true });
       }
       console.error('Waitlist insert error:', error);
-      return NextResponse.json({ error: 'Registration failed' }, { status: 500 });
+      return epProblem(500, 'registration_failed', 'Registration failed');
     }
 
     return NextResponse.json({
@@ -74,6 +75,6 @@ export async function POST(request) {
     }, { status: 201 });
   } catch (err) {
     console.error('Waitlist error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

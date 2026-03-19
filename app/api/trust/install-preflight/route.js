@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { EP_ERRORS } from '@/lib/errors';
+import { buildTrustDecision } from '@/lib/trust-decision';
 
 /**
  * POST /api/trust/install-preflight
@@ -43,41 +44,47 @@ export async function POST(request) {
       decision = 'review';
     }
 
-    return NextResponse.json({
-      entity_id: result.entity_id,
-      entity_type: result.entity_type,
-      display_name: result.display_name,
+    const reasons = [
+      ...(swChecks.passed || []).map(r => `\u2713 ${r}`),
+      ...(swChecks.failed || []).map(r => `\u2717 ${r}`),
+      ...(pr?.pass ? ['\u2713 trust_policy_passed'] : (pr?.failures || []).map(f => `\u2717 ${f}`)),
+    ];
+
+    return NextResponse.json(buildTrustDecision({
       decision,
-      policy_used: pr?.policyName || 'standard',
-      context_used: result.contextUsed,
-
-      trust_pass: pr?.trustPass ?? false,
-      score: result.score,
+      entityId: result.entity_id,
+      policyUsed: pr?.policyName || 'standard',
       confidence: result.confidence,
-      effective_evidence: result.effectiveEvidence,
-      trust_failures: pr?.failures || [],
-      trust_warnings: pr?.warnings || [],
-
-      software_checks: {
-        passed: swChecks.passed || [],
-        failed: swChecks.failed || [],
+      reasons,
+      warnings: pr?.warnings || [],
+      contextUsed: result.contextUsed,
+      profileSummary: {
+        confidence: result.confidence,
+        evidence_level: result.effectiveEvidence,
+        dispute_rate: result.profile?.behavioral?.dispute_rate ?? 0,
       },
-      software_meta: {
-        publisher_verified: result.softwareMeta?.publisher_verified || false,
-        provenance_verified: result.softwareMeta?.provenance_verified || false,
-        permission_class: result.softwareMeta?.permission_class || null,
-        install_scope: result.softwareMeta?.install_scope || null,
-        registry_listed: result.softwareMeta?.registry_listed || false,
+      extensions: {
+        entity_type: result.entity_type,
+        display_name: result.display_name,
+        trust_pass: pr?.trustPass ?? false,
+        score: result.score,
+        effective_evidence: result.effectiveEvidence,
+        trust_failures: pr?.failures || [],
+        trust_warnings: pr?.warnings || [],
+        software_checks: {
+          passed: swChecks.passed || [],
+          failed: swChecks.failed || [],
+        },
+        software_meta: {
+          publisher_verified: result.softwareMeta?.publisher_verified || false,
+          provenance_verified: result.softwareMeta?.provenance_verified || false,
+          permission_class: result.softwareMeta?.permission_class || null,
+          install_scope: result.softwareMeta?.install_scope || null,
+          registry_listed: result.softwareMeta?.registry_listed || false,
+        },
+        _protocol_version: 'EP/1.1-v2',
       },
-
-      reasons: [
-        ...(swChecks.passed || []).map(r => `✓ ${r}`),
-        ...(swChecks.failed || []).map(r => `✗ ${r}`),
-        ...(pr?.pass ? ['✓ trust_policy_passed'] : (pr?.failures || []).map(f => `✗ ${f}`)),
-      ],
-
-      _protocol_version: 'EP/1.1-v2',
-    });
+    }));
   } catch (err) {
     console.error('Install preflight error:', err);
     return EP_ERRORS.INTERNAL();

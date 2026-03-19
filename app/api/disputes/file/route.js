@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { canonicalFileDispute } from '@/lib/canonical-writer';
-import { EP_ERRORS } from '@/lib/errors';
+import { EP_ERRORS, epProblem } from '@/lib/errors';
 
 /**
  * POST /api/disputes/file
@@ -30,8 +30,9 @@ export async function POST(request) {
     const result = await canonicalFileDispute(body, auth.entity);
 
     if (result.error) {
-      const status = result.status || 500;
-      return NextResponse.json({ error: result.error, existing_dispute: result.existing_dispute }, { status });
+      return epProblem(result.status || 500, 'dispute_filing_failed', result.error, {
+        existing_dispute: result.existing_dispute,
+      });
     }
 
     return NextResponse.json({

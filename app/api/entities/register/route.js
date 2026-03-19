@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient, generateApiKey } from '@/lib/supabase';
 import { computeReceiptComposite } from '@/lib/scoring';
+import { epProblem } from '@/lib/errors';
 
 /**
  * POST /api/entities/register
- * 
+ *
  * Register a new entity on the EMILIA Protocol.
  * Returns an API key that the entity uses for all future interactions.
- * 
+ *
  * Body: {
  *   entity_id: "rex-booking-v2",
  *   display_name: "Rex — Inbound AI Receptionist",
@@ -22,7 +23,7 @@ import { computeReceiptComposite } from '@/lib/scoring';
  *   input_schema: { ... },               // optional JSON Schema
  *   output_schema: { ... },              // optional JSON Schema
  * }
- * 
+ *
  * Returns: { entity, api_key }
  *   api_key is returned ONCE at registration. Store it securely.
  */
@@ -35,7 +36,7 @@ export async function POST(request) {
     const required = ['entity_id', 'display_name', 'entity_type', 'description'];
     for (const field of required) {
       if (!body[field]) {
-        return NextResponse.json({ error: `Missing required field: ${field}` }, { status: 400 });
+        return epProblem(400, 'missing_field', `Missing required field: ${field}`);
       }
     }
 
@@ -48,13 +49,11 @@ export async function POST(request) {
     ];
 
     if (!VALID_ENTITY_TYPES.includes(body.entity_type)) {
-      return NextResponse.json({
-        error: `entity_type must be one of: ${VALID_ENTITY_TYPES.join(', ')}`,
-      }, { status: 400 });
+      return epProblem(400, 'invalid_entity_type', `entity_type must be one of: ${VALID_ENTITY_TYPES.join(', ')}`);
     }
 
     if (typeof body.display_name === 'string' && body.display_name.length > 200) {
-      return NextResponse.json({ error: 'display_name must not exceed 200 characters' }, { status: 400 });
+      return epProblem(400, 'display_name_too_long', 'display_name must not exceed 200 characters');
     }
 
     // Check for duplicate entity_id
@@ -65,7 +64,7 @@ export async function POST(request) {
       .single();
 
     if (existing) {
-      return NextResponse.json({ error: `entity_id "${body.entity_id}" is already registered` }, { status: 409 });
+      return epProblem(409, 'entity_id_taken', `entity_id "${body.entity_id}" is already registered`);
     }
 
     // Rate limiting handled by middleware on all /api/* routes
@@ -136,7 +135,7 @@ export async function POST(request) {
 
     if (insertError) {
       console.error('Entity insert error:', insertError);
-      return NextResponse.json({ error: 'Failed to register entity' }, { status: 500 });
+      return epProblem(500, 'registration_failed', 'Failed to register entity');
     }
 
     // Create API key record
@@ -164,6 +163,6 @@ export async function POST(request) {
     }, { status: 201 });
   } catch (err) {
     console.error('Registration error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

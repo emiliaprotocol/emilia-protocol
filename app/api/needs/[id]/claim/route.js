@@ -1,20 +1,21 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient, authenticateRequest } from '@/lib/supabase';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
+import { epProblem } from '@/lib/errors';
 
 /**
  * POST /api/needs/[id]/claim
- * 
+ *
  * Claim an open need. Trust is evaluated by policy if the need specifies one,
  * or by compatibility score threshold as legacy fallback.
- * 
+ *
  * Auth: Bearer ep_live_...
  */
 export async function POST(request, { params }) {
   try {
     const auth = await authenticateRequest(request);
     if (auth.error) {
-      return NextResponse.json({ error: auth.error }, { status: 401 });
+      return epProblem(401, 'unauthorized', auth.error);
     }
 
     const { id } = await params;
@@ -27,15 +28,15 @@ export async function POST(request, { params }) {
       .single();
 
     if (fetchError || !need) {
-      return NextResponse.json({ error: 'Need not found' }, { status: 404 });
+      return epProblem(404, 'need_not_found', 'Need not found');
     }
 
     if (need.status !== 'open') {
-      return NextResponse.json({ error: `Need is ${need.status}, not open` }, { status: 409 });
+      return epProblem(409, 'need_not_open', `Need is ${need.status}, not open`);
     }
 
     if (need.from_entity_id === auth.entity.id) {
-      return NextResponse.json({ error: 'Cannot claim your own need' }, { status: 403 });
+      return epProblem(403, 'self_claim', 'Cannot claim your own need');
     }
 
     // === TRUST GATE ===
@@ -52,25 +53,23 @@ export async function POST(request, { params }) {
       });
 
       if (evaluation.error) {
-        return NextResponse.json({ error: evaluation.error }, { status: evaluation.status || 404 });
+        return epProblem(evaluation.status || 404, 'trust_evaluation_failed', evaluation.error);
       }
 
       const result = evaluation.policyResult;
       if (!result?.pass) {
-        return NextResponse.json({
-          error: `Trust evaluation failed for policy "${result?.policyName || 'custom'}".`,
+        return epProblem(403, 'trust_policy_failed', `Trust evaluation failed for policy "${result?.policyName || 'custom'}".`, {
           context_used: evaluation.contextUsed,
           failures: result?.failures || [],
           warnings: result?.warnings || [],
           _hint: 'Build trust through verified receipts from established counterparties.',
-        }, { status: 403 });
+        });
       }
     } else if (auth.entity.emilia_score < (need.min_emilia_score || 0)) {
       // Legacy fallback: compatibility score threshold
-      return NextResponse.json({
-        error: `Compatibility score (${auth.entity.emilia_score}) below minimum (${need.min_emilia_score}). Build trust through verified receipts.`,
+      return epProblem(403, 'score_too_low', `Compatibility score (${auth.entity.emilia_score}) below minimum (${need.min_emilia_score}). Build trust through verified receipts.`, {
         _hint: 'For richer trust evaluation, use POST /api/trust/evaluate with a policy.',
-      }, { status: 403 });
+      });
     }
 
     // Check expiry
@@ -79,7 +78,7 @@ export async function POST(request, { params }) {
         .from('needs')
         .update({ status: 'expired' })
         .eq('id', need.id);
-      return NextResponse.json({ error: 'Need has expired' }, { status: 410 });
+      return epProblem(410, 'need_expired', 'Need has expired');
     }
 
     // Atomic claim — only succeeds if status is still 'open'
@@ -96,7 +95,7 @@ export async function POST(request, { params }) {
       .single();
 
     if (claimError || !claimed) {
-      return NextResponse.json({ error: 'Need was already claimed by another entity' }, { status: 409 });
+      return epProblem(409, 'need_already_claimed', 'Need was already claimed by another entity');
     }
 
     return NextResponse.json({
@@ -114,6 +113,6 @@ export async function POST(request, { params }) {
     });
   } catch (err) {
     console.error('Need claim error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

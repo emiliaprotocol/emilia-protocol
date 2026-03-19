@@ -4,9 +4,9 @@ info:
   description: |
     Trust profiles, policy evaluation, install preflight, disputes, and appeals
     for counterparties, software, and machine actors.
-    
+
     EMILIA = Evidence-based Mediation & Integrity Layer for Interactions and Appeals.
-    
+
     Constitutional principle: trust must never be more powerful than appeal.
   version: 1.1.0
   license:
@@ -33,12 +33,26 @@ tags:
     description: Entity registration and search
   - name: Disputes
     description: Dispute lifecycle — file, respond, resolve, appeal, withdraw
+  - name: Delegations
+    description: Principal-agent delegation management and verification
+  - name: Identity
+    description: EP-IX identity bindings, continuity claims, and principal management
+  - name: Needs
+    description: Agent-to-agent need broadcasting and fulfillment marketplace
   - name: Policies
     description: Trust policy registry
+  - name: Operations
+    description: Operator applications and business inquiries
   - name: System
-    description: Health, stats, and operational endpoints
+    description: Health, stats, feed, audit, and operational endpoints
+  - name: Internal
+    description: Cron jobs and internal infrastructure endpoints
 
 paths:
+  # ===========================================================================
+  # Trust
+  # ===========================================================================
+
   /api/trust/profile/{entityId}:
     get:
       tags: [Trust]
@@ -122,6 +136,158 @@ paths:
         '200':
           description: Preflight decision (allow/review/deny)
 
+  /api/trust/gate:
+    post:
+      tags: [Trust]
+      summary: Pre-action trust gate
+      description: |
+        Trust gate: pre-action check. Returns allow/block before executing a
+        high-stakes action. Evaluates effective evidence, dispute rate, and
+        establishment status against the specified policy. Optionally verifies
+        a delegation. High-value transactions (>$10k) are auto-escalated to
+        strict policy thresholds.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entity_id, action]
+              properties:
+                entity_id:
+                  type: string
+                action:
+                  type: string
+                  description: The action being gated (e.g. "purchase", "deploy")
+                policy:
+                  type: string
+                  enum: [strict, standard, permissive]
+                  default: standard
+                value_usd:
+                  type: number
+                  description: Transaction value in USD (triggers strict escalation above $10k)
+                delegation_id:
+                  type: string
+                  description: Optional delegation ID to verify alongside the gate check
+      responses:
+        '200':
+          description: Gate decision
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustGateResponse'
+
+  /api/trust/zk-proof:
+    post:
+      tags: [Trust]
+      summary: Generate a ZK trust proof
+      description: |
+        Generate a zero-knowledge trust proof for an entity. The proof allows
+        the entity to prove a trust claim (e.g. "score above 0.8") without
+        revealing receipt contents, counterparty identities, or transaction details.
+        Entity can only generate proofs for themselves.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entity_id, claim]
+              properties:
+                entity_id:
+                  type: string
+                claim:
+                  type: object
+                  required: [type, threshold]
+                  properties:
+                    type:
+                      type: string
+                      enum: [score_above, receipt_count_above, domain_score_above]
+                    threshold:
+                      type: number
+                    domain:
+                      type: string
+                      enum: [financial, code_execution, communication, delegation, infrastructure, content_creation, data_access]
+                      description: Required when type is domain_score_above
+      responses:
+        '201':
+          description: ZK proof generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ZKProofResponse'
+        '401':
+          description: Authentication required
+        '403':
+          description: Can only generate proofs for your own entity
+        '422':
+          description: Claim is not provable — trust data does not meet threshold
+    get:
+      tags: [Trust]
+      summary: Verify a ZK trust proof
+      description: |
+        Verify a ZK trust proof by proof_id. Public endpoint — no auth required.
+        Returns only the claim verdict and public metadata. Commitment root and
+        salt are deliberately omitted so the verifier learns nothing about the
+        underlying receipt set.
+      parameters:
+        - name: proof_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: ZK proof ID (starts with ep_zkp_)
+      responses:
+        '200':
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ZKProofVerification'
+        '404':
+          description: Proof not found
+
+  /api/trust/domain-score/{entityId}:
+    get:
+      tags: [Trust]
+      summary: Get domain-specific trust scores
+      description: |
+        Returns trust scores broken down by domain (financial, code_execution,
+        communication, etc.) for the specified entity.
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Entity ID or slug
+        - name: domains
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated list of domains to filter (e.g. "financial,code_execution")
+      responses:
+        '200':
+          description: Domain scores
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entity_id:
+                    type: string
+                  domain_scores:
+                    type: object
+                    additionalProperties:
+                      type: number
+
+  # ===========================================================================
+  # Receipts
+  # ===========================================================================
+
   /api/receipts/submit:
     post:
       tags: [Receipts]
@@ -166,6 +332,65 @@ paths:
         '200':
           description: Confirmation recorded
 
+  /api/receipts/auto-submit:
+    post:
+      tags: [Receipts]
+      summary: Batch auto-submit behavioral receipts
+      description: |
+        Lightweight, high-throughput endpoint for ingesting auto-generated behavioral
+        receipts from the EMILIA Protocol MCP server's AutoReceiptMiddleware.
+
+        No bearer-token authentication. Entity identity comes from the receipt body.
+        Rate-limiting is enforced per entity_id via the X-EP-Auto-Key header.
+
+        All auto-generated receipts are forced to provenance='unilateral'. They cannot
+        claim bilateral status without counterparty confirmation.
+
+        Accepts up to 100 receipts per batch. Invalid receipts never block the batch.
+      parameters:
+        - name: X-EP-Auto-Key
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Auto-receipt attribution key for rate limiting
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [receipts]
+              properties:
+                receipts:
+                  type: array
+                  maxItems: 100
+                  items:
+                    type: object
+                    required: [entity_id, transaction_ref]
+                    properties:
+                      entity_id:
+                        type: string
+                        maxLength: 200
+                      transaction_ref:
+                        type: string
+                        maxLength: 500
+                      context:
+                        type: object
+                        description: Structured metadata from the MCP tool call
+                      outcome:
+                        type: object
+                        description: Observable signals from the tool invocation
+      responses:
+        '207':
+          description: Multi-status — some receipts accepted, some rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutoSubmitResponse'
+        '422':
+          description: All receipts rejected
+
   /api/verify/{receiptId}:
     get:
       tags: [Receipts]
@@ -180,6 +405,10 @@ paths:
       responses:
         '200':
           description: Verification result
+
+  # ===========================================================================
+  # Entities
+  # ===========================================================================
 
   /api/entities/register:
     post:
@@ -228,6 +457,82 @@ paths:
         '200':
           description: Search results
 
+  /api/entities/{entityId}/auto-receipt:
+    get:
+      tags: [Entities]
+      summary: Get auto-receipt configuration
+      description: |
+        Returns the auto-receipt configuration for the specified entity.
+        The caller must authenticate as that entity (API key entity_id must
+        match the path parameter). Entity-scoped access only.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Auto-receipt config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutoReceiptConfig'
+        '401':
+          description: Authentication required
+        '403':
+          description: Can only read your own configuration
+    post:
+      tags: [Entities]
+      summary: Update auto-receipt configuration
+      description: |
+        Updates the auto-receipt configuration for the specified entity.
+        Entity-scoped access — callers may only update their own config.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled:
+                  type: boolean
+                redact_fields:
+                  type: array
+                  items:
+                    type: string
+                  description: Fields to redact from auto-generated receipts
+                privacy_mode:
+                  type: string
+                  enum: [standard, anonymous]
+                  default: standard
+      responses:
+        '200':
+          description: Config updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AutoReceiptConfig'
+        '401':
+          description: Authentication required
+        '403':
+          description: Can only update your own configuration
+
+  # ===========================================================================
+  # Score (legacy)
+  # ===========================================================================
+
   /api/score/{entityId}:
     get:
       tags: [Trust]
@@ -244,6 +549,72 @@ paths:
       responses:
         '200':
           description: Compatibility score
+
+  /api/score/{entityId}/history:
+    get:
+      tags: [Trust]
+      summary: Get score history (legacy)
+      description: |
+        Returns compatibility score history over time. Legacy endpoint —
+        for current trust state, use GET /api/trust/profile/{entityId}.
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+        - name: after
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Only return history after this date
+        - name: before
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Only return history before this date
+      responses:
+        '200':
+          description: Score history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entity_id:
+                    type: string
+                  display_name:
+                    type: string
+                  current_score:
+                    type: number
+                  current_receipts:
+                    type: integer
+                  history:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        score:
+                          type: number
+                        total_receipts:
+                          type: integer
+                        created_at:
+                          type: string
+                          format: date-time
+        '404':
+          description: Entity not found
+
+  # ===========================================================================
+  # Disputes
+  # ===========================================================================
 
   /api/disputes/file:
     post:
@@ -336,6 +707,83 @@ paths:
         '200':
           description: Response recorded
 
+  /api/disputes/resolve:
+    post:
+      tags: [Disputes]
+      summary: Resolve a dispute (operator only)
+      description: |
+        Operator resolves a dispute. Routes through canonical writer.
+        Validates state transition against formal dispute state machine.
+        Records operator action in audit trail. Reversal triggers score
+        recomputation and trust materialization.
+      x-internal: true
+      security:
+        - CronAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dispute_id, resolution]
+              properties:
+                dispute_id:
+                  type: string
+                resolution:
+                  type: string
+                  enum: [upheld, reversed, dismissed, superseded]
+                rationale:
+                  type: string
+      responses:
+        '200':
+          description: Dispute resolved, trust state updated
+        '400':
+          description: Invalid state transition
+        '401':
+          description: Operator authentication required
+        '404':
+          description: Dispute not found
+
+  /api/disputes/{disputeId}/adjudicate:
+    post:
+      tags: [Disputes]
+      summary: Trigger trust-graph adjudication
+      description: |
+        Triggers trust-graph adjudication for a dispute. The trust graph's
+        high-confidence counterparties vote on whether to uphold or dismiss.
+
+        Authorization: CRON_SECRET (automated) or the dispute filer (after 48h
+        response window). The 48h window gives the accused entity time to respond
+        before the trust graph is consulted — a procedural justice requirement.
+
+        The result is advisory — operators retain final resolution authority.
+      security:
+        - BearerAuth: []
+        - CronAuth: []
+      parameters:
+        - name: disputeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Adjudication complete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdjudicationResponse'
+        '202':
+          description: Advisory — dispute is less than 48h old, response window still open
+        '401':
+          description: Not authorized
+        '403':
+          description: Dispute too fresh for filer-triggered adjudication
+        '404':
+          description: Dispute not found
+        '409':
+          description: Dispute already in terminal state
+
   /api/disputes/appeal:
     post:
       tags: [Disputes]
@@ -365,6 +813,41 @@ paths:
         '201':
           description: Appeal filed
 
+  /api/disputes/appeal/resolve:
+    post:
+      tags: [Disputes]
+      summary: Resolve an appeal (operator only)
+      description: |
+        Operator resolves an appeal. Requires CRON_SECRET auth.
+        appeal_upheld = original resolution stands.
+        appeal_reversed = original resolution overturned, trust recomputed.
+        appeal_dismissed = appeal dismissed.
+      x-internal: true
+      security:
+        - CronAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dispute_id, resolution]
+              properties:
+                dispute_id:
+                  type: string
+                resolution:
+                  type: string
+                  enum: [appeal_upheld, appeal_reversed, appeal_dismissed]
+                rationale:
+                  type: string
+      responses:
+        '200':
+          description: Appeal resolved
+        '401':
+          description: Operator authentication required
+        '404':
+          description: Dispute not found
+
   /api/disputes/withdraw:
     post:
       tags: [Disputes]
@@ -385,6 +868,515 @@ paths:
         '200':
           description: Dispute withdrawn
 
+  # ===========================================================================
+  # Delegations
+  # ===========================================================================
+
+  /api/delegations/create:
+    post:
+      tags: [Delegations]
+      summary: Create a delegation
+      description: |
+        Creates a principal-agent delegation. The principal authorizes an agent
+        entity to act on their behalf within a defined scope, with optional
+        value limits and expiry.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [principal_id, agent_entity_id, scope]
+              properties:
+                principal_id:
+                  type: string
+                agent_entity_id:
+                  type: string
+                scope:
+                  type: array
+                  items:
+                    type: string
+                  description: List of permitted action types
+                max_value_usd:
+                  type: number
+                  description: Optional value cap in USD
+                expires_at:
+                  type: string
+                  format: date-time
+                constraints:
+                  type: object
+                  description: Additional constraints on the delegation
+      responses:
+        '201':
+          description: Delegation created
+        '401':
+          description: Authentication required
+
+  /api/delegations/{delegationId}/verify:
+    get:
+      tags: [Delegations]
+      summary: Verify a delegation
+      description: |
+        Verifies whether a delegation is valid and optionally whether a
+        specific action type is permitted under its scope.
+      parameters:
+        - name: delegationId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: action_type
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optional action type to verify against delegation scope
+      responses:
+        '200':
+          description: Delegation verification result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  delegation_id:
+                    type: string
+                  action_permitted:
+                    type: boolean
+                  reason:
+                    type: string
+
+  # ===========================================================================
+  # Identity (EP-IX)
+  # ===========================================================================
+
+  /api/identity/principal/{principalId}:
+    get:
+      tags: [Identity]
+      summary: Look up a principal
+      description: Returns the principal record by ID. Public endpoint.
+      parameters:
+        - name: principalId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Principal record
+        '404':
+          description: Principal not found
+
+  /api/identity/principal/{principalId}/delegation-judgment:
+    get:
+      tags: [Identity]
+      summary: Get principal delegation judgment score
+      description: |
+        Returns a principal's delegation judgment score — a measure of how well
+        this human chooses and oversees the agents they authorize. Scores humans,
+        not just machines: "can I trust the human who authorized this agent?"
+
+        Includes grade (excellent/good/fair/poor), outcome rates, average agent
+        confidence, and recent delegation signals. Public endpoint.
+      parameters:
+        - name: principalId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Delegation judgment score
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DelegationJudgmentResponse'
+        '404':
+          description: Principal not found
+
+  /api/identity/principal/{principalId}/agents:
+    get:
+      tags: [Identity]
+      summary: List agents authorized by a principal
+      description: |
+        Lists all agents this principal has ever authorized, with their trust
+        profiles and per-agent outcome summaries derived from delegation signals.
+        Public endpoint.
+      parameters:
+        - name: principalId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of authorized agents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  principalId:
+                    type: string
+                  agents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuthorizedAgent'
+        '404':
+          description: Principal not found
+
+  /api/identity/lineage/{entityId}:
+    get:
+      tags: [Identity]
+      summary: Get entity lineage
+      description: |
+        Returns the identity lineage for an entity — the chain of continuity
+        claims and identity transitions over time.
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Entity lineage
+
+  /api/identity/bind:
+    post:
+      tags: [Identity]
+      summary: Create an identity binding
+      description: |
+        Binds a principal to an external identity (e.g. GitHub account,
+        email address, domain). Requires authentication.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [principal_id, binding_type, binding_target]
+              properties:
+                principal_id:
+                  type: string
+                binding_type:
+                  type: string
+                  description: Type of binding (e.g. "github", "email", "domain")
+                binding_target:
+                  type: string
+                  description: The external identity to bind to
+      responses:
+        '201':
+          description: Binding created
+        '401':
+          description: Authentication required
+
+  /api/identity/continuity:
+    post:
+      tags: [Identity]
+      summary: File a continuity claim
+      description: |
+        Files a claim that an old entity ID should be linked to a new entity ID
+        (e.g. platform migration, rebrand). Trust history can be carried forward
+        upon approval. Entities with active disputes are frozen from continuity claims.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [principal_id, old_entity_id, new_entity_id, reason]
+              properties:
+                principal_id:
+                  type: string
+                old_entity_id:
+                  type: string
+                new_entity_id:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '201':
+          description: Continuity claim filed
+        '401':
+          description: Authentication required
+
+  /api/identity/continuity/challenge:
+    post:
+      tags: [Identity]
+      summary: Challenge a continuity claim
+      description: |
+        Challenge a pending continuity claim. No authentication required —
+        anyone can challenge to prevent trust laundering.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [continuity_id, challenger_type, reason]
+              properties:
+                continuity_id:
+                  type: string
+                challenger_type:
+                  type: string
+                  description: Type of challenger (e.g. "counterparty", "operator", "public")
+                reason:
+                  type: string
+      responses:
+        '201':
+          description: Challenge filed
+
+  /api/identity/continuity/resolve:
+    post:
+      tags: [Identity]
+      summary: Resolve a continuity claim (operator only)
+      description: |
+        Operator resolves a continuity claim. Requires authentication.
+        Decision determines whether trust history is carried forward.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [continuity_id, decision]
+              properties:
+                continuity_id:
+                  type: string
+                decision:
+                  type: string
+                  enum: [approved_full, approved_partial, rejected, rejected_laundering]
+                reasoning:
+                  type: string
+      responses:
+        '200':
+          description: Continuity claim resolved
+        '401':
+          description: Authentication required
+
+  /api/identity/verify:
+    post:
+      tags: [Identity]
+      summary: Verify an identity binding
+      description: |
+        Verifies a previously created identity binding. Requires authentication.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [binding_id]
+              properties:
+                binding_id:
+                  type: string
+      responses:
+        '200':
+          description: Binding verification result
+        '401':
+          description: Authentication required
+
+  # ===========================================================================
+  # Needs (Agent Marketplace)
+  # ===========================================================================
+
+  /api/needs/broadcast:
+    post:
+      tags: [Needs]
+      summary: Broadcast a need
+      description: |
+        Broadcast a need to the EMILIA network. Agents declare what capability
+        they need, and the network matches them with entities that have the right
+        skills and trust profile. Uses semantic embedding for matching and
+        optionally evaluates candidates against a trust policy.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [capability_needed]
+              properties:
+                capability_needed:
+                  type: string
+                  description: The capability being requested (e.g. "price_comparison")
+                context:
+                  type: object
+                  description: Structured context for matching (e.g. category, geo)
+                input_data:
+                  type: object
+                  description: Data to pass to the fulfilling entity
+                budget_cents:
+                  type: integer
+                  description: Maximum budget in cents
+                deadline_ms:
+                  type: integer
+                  description: Deadline in milliseconds
+                min_emilia_score:
+                  type: integer
+                  default: 0
+                  description: Legacy minimum compatibility score threshold
+                trust_policy:
+                  type: string
+                  enum: [strict, standard, permissive, discovery]
+                  description: Trust policy for candidate evaluation
+                expires_at:
+                  type: string
+                  format: date-time
+      responses:
+        '201':
+          description: Need broadcast with suggested entities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NeedBroadcastResponse'
+        '401':
+          description: Authentication required
+
+  /api/needs/{id}/claim:
+    post:
+      tags: [Needs]
+      summary: Claim an open need
+      description: |
+        Claim an open need. Trust is evaluated by policy if the need specifies
+        one, or by compatibility score threshold as legacy fallback. The claiming
+        entity cannot be the broadcaster. Atomic — only succeeds if the need is
+        still open.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Need ID (ep_need_...)
+      responses:
+        '200':
+          description: Need claimed
+        '401':
+          description: Authentication required
+        '403':
+          description: Trust evaluation failed or cannot claim own need
+        '404':
+          description: Need not found
+        '409':
+          description: Need already claimed or not open
+        '410':
+          description: Need has expired
+
+  /api/needs/{id}/complete:
+    post:
+      tags: [Needs]
+      summary: Complete a claimed need
+      description: |
+        Mark a claimed need as completed and provide the output data.
+        Only the entity that claimed the need can complete it.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Need ID (ep_need_...)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                output_data:
+                  type: object
+                  description: The result of fulfilling the need
+      responses:
+        '200':
+          description: Need completed
+        '401':
+          description: Authentication required
+        '403':
+          description: Only the claiming entity can complete
+        '404':
+          description: Need not found
+        '409':
+          description: Need is not in a completable state
+
+  /api/needs/{id}/rate:
+    post:
+      tags: [Needs]
+      summary: Rate a completed need
+      description: |
+        Rate the entity that fulfilled a need. Delegates to the same receipt
+        engine as /api/receipts/submit. Only the requesting entity can rate.
+        Must include at least one signal or agent_behavior.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Need ID (ep_need_...)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                delivery_accuracy:
+                  type: number
+                product_accuracy:
+                  type: number
+                price_integrity:
+                  type: number
+                return_processing:
+                  type: number
+                agent_satisfaction:
+                  type: number
+                agent_behavior:
+                  type: string
+                  enum: [completed, retried, abandoned, disputed]
+                claims:
+                  type: object
+                evidence:
+                  type: object
+                context:
+                  type: object
+      responses:
+        '201':
+          description: Need rated, receipt created
+        '401':
+          description: Authentication required
+        '403':
+          description: Only the requesting entity can rate
+        '404':
+          description: Need not found
+        '409':
+          description: Need not completed or already rated
+
+  # ===========================================================================
+  # Policies
+  # ===========================================================================
+
   /api/policies:
     get:
       tags: [Policies]
@@ -393,6 +1385,144 @@ paths:
       responses:
         '200':
           description: Policy registry
+
+  # ===========================================================================
+  # Operations
+  # ===========================================================================
+
+  /api/operators/apply:
+    post:
+      tags: [Operations]
+      summary: Apply to become an operator
+      description: |
+        Public operator application submission. No authentication required.
+        Applications are stored and reviewed by existing operators.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email]
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                background:
+                  type: string
+                motivation:
+                  type: string
+      responses:
+        '201':
+          description: Application submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  email:
+                    type: string
+                  created_at:
+                    type: string
+                    format: date-time
+        '200':
+          description: Already applied (returns existing application ID)
+
+  /api/inquiries:
+    post:
+      tags: [Operations]
+      summary: Submit a partner or investor inquiry
+      description: |
+        Stores partner and investor inquiries. No authentication required.
+        Public form submission endpoint.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, name, email]
+              properties:
+                type:
+                  type: string
+                  enum: [partner, investor]
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                org:
+                  type: string
+                  description: Organization name (partner) or firm name (investor)
+                title:
+                  type: string
+                website:
+                  type: string
+                partnerType:
+                  type: string
+                  description: Type of partnership (partner inquiries only)
+                trustSurface:
+                  type: string
+                  description: Trust surface of interest (partner inquiries only)
+                timeline:
+                  type: string
+                  description: Integration timeline (partner inquiries only)
+                whyEmilia:
+                  type: string
+                  description: Investment thesis (investor inquiries only)
+                helpOffer:
+                  type: string
+                  description: How the investor can help (investor inquiries only)
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Inquiry received
+
+  /api/waitlist:
+    post:
+      tags: [Operations]
+      summary: Join the waitlist
+      description: |
+        Landing page waitlist registration. No authentication required.
+        Assigns the next available entity number.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '201':
+          description: Registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Assigned entity number
+                  email:
+                    type: string
+                  created_at:
+                    type: string
+                    format: date-time
+        '200':
+          description: Already registered
+
+  # ===========================================================================
+  # System
+  # ===========================================================================
 
   /api/health:
     get:
@@ -434,12 +1564,202 @@ paths:
         '200':
           description: Ranked entities
 
+  /api/feed:
+    get:
+      tags: [Needs]
+      summary: Live needs feed (SSE)
+      description: |
+        Server-Sent Events stream of open needs. Agents connect to this to
+        discover work opportunities in real time. Polls every 5 seconds.
+        No authentication required.
+      parameters:
+        - name: capability
+          in: query
+          schema:
+            type: string
+          description: Filter by capability type
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filter by context category (e.g. "electronics")
+        - name: trust_policy
+          in: query
+          schema:
+            type: string
+            enum: [strict, standard, permissive, discovery]
+          description: Only show needs requiring this policy
+        - name: min_confidence
+          in: query
+          schema:
+            type: string
+            enum: [pending, insufficient, provisional, emerging, confident]
+          description: Only show needs where broadcaster meets this confidence
+        - name: min_score
+          in: query
+          schema:
+            type: number
+            default: 0
+          description: Legacy — only show needs requiring at most this score
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 50
+      responses:
+        '200':
+          description: SSE stream of open needs
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /api/audit:
+    get:
+      tags: [System]
+      summary: Query the audit trail
+      description: |
+        Query the append-only audit trail. Requires authentication.
+        Every trust-changing action is recorded with before/after state.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: target_id
+          in: query
+          schema:
+            type: string
+          description: Filter by target entity/dispute/receipt ID
+        - name: target_type
+          in: query
+          schema:
+            type: string
+          description: Filter by target type (e.g. "dispute", "receipt", "entity")
+        - name: actor_id
+          in: query
+          schema:
+            type: string
+          description: Filter by the actor who performed the action
+        - name: event_type
+          in: query
+          schema:
+            type: string
+          description: Filter by event type
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Audit events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      type: object
+                  count:
+                    type: integer
+                  offset:
+                    type: integer
+                  limit:
+                    type: integer
+        '401':
+          description: Authentication required
+
+  # ===========================================================================
+  # Internal / Cron
+  # ===========================================================================
+
+  /api/cron/expire:
+    get:
+      tags: [Internal]
+      summary: Expire stale records (cron)
+      x-internal: true
+      description: |
+        Scheduled job that enforces time-based protocol rules:
+        1. Bilateral confirmations: expire after 48 hours
+        2. Dispute response deadlines: escalate after 7 days
+        3. Continuity claims: expire after 30 days
+
+        Called via Vercel Cron or external scheduler.
+      security:
+        - CronAuth: []
+      responses:
+        '200':
+          description: Expiration results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok, partial]
+                  timestamp:
+                    type: string
+                    format: date-time
+                  bilateral_expired:
+                    type: integer
+                  disputes_escalated:
+                    type: integer
+                  continuity_expired:
+                    type: integer
+                  errors:
+                    type: array
+                    items:
+                      type: object
+        '401':
+          description: CRON_SECRET required
+
+  /api/blockchain/anchor:
+    post:
+      tags: [Internal]
+      summary: Anchor receipts to blockchain (cron)
+      x-internal: true
+      description: |
+        Cron endpoint: collects unanchored receipts, builds Merkle tree,
+        and anchors root to Base L2. Called every 6 hours via Vercel Cron.
+      security:
+        - CronAuth: []
+      responses:
+        '200':
+          description: Anchor batch result
+        '401':
+          description: CRON_SECRET required
+    get:
+      tags: [Internal]
+      summary: Anchor receipts to blockchain (cron, GET alias)
+      x-internal: true
+      description: GET alias for Vercel Cron (which sends GET by default).
+      security:
+        - CronAuth: []
+      responses:
+        '200':
+          description: Anchor batch result
+        '401':
+          description: CRON_SECRET required
+
 components:
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
       description: EP API key (ep_live_...)
+    CronAuth:
+      type: http
+      scheme: bearer
+      description: CRON_SECRET for internal/operator endpoints
 
   schemas:
     TrustProfileResponse:
@@ -531,3 +1851,290 @@ components:
           type: integer
         mcp_tools:
           type: integer
+
+    TrustGateResponse:
+      type: object
+      properties:
+        entity_id:
+          type: string
+        display_name:
+          type: string
+        action:
+          type: string
+        decision:
+          type: string
+          enum: [allow, block]
+        policy_used:
+          type: string
+        confidence:
+          type: string
+        reasons:
+          type: array
+          items:
+            type: string
+        delegation_verified:
+          type: boolean
+          description: Present only when delegation_id was provided
+        appeal_path:
+          type: string
+          description: Present only when decision is block
+
+    ZKProofResponse:
+      type: object
+      properties:
+        proof_id:
+          type: string
+        claim:
+          type: object
+          properties:
+            type:
+              type: string
+            threshold:
+              type: number
+            domain:
+              type: string
+        commitment_root:
+          type: string
+        receipt_count:
+          type: integer
+        salt:
+          type: string
+        anchor_block:
+          type: string
+        entity_id:
+          type: string
+        generated_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+
+    ZKProofVerification:
+      type: object
+      properties:
+        proof_id:
+          type: string
+        valid:
+          type: boolean
+        claim:
+          type: object
+        entity_id:
+          type: string
+        verified_at:
+          type: string
+          format: date-time
+        receipt_count:
+          type: integer
+          description: Present only when proof is valid
+        expires_at:
+          type: string
+          format: date-time
+          description: Present only when proof is valid
+        anchor_block:
+          type: string
+          description: Present only when proof is valid
+        reason:
+          type: string
+          description: Present only when proof is invalid
+
+    AutoSubmitResponse:
+      type: object
+      properties:
+        accepted:
+          type: integer
+        rejected:
+          type: integer
+        receipt_ids:
+          type: array
+          items:
+            type: string
+        validation_errors:
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              reason:
+                type: string
+              entity_id:
+                type: string
+        db_errors:
+          type: array
+          items:
+            type: object
+
+    AutoReceiptConfig:
+      type: object
+      properties:
+        entity_id:
+          type: string
+        enabled:
+          type: boolean
+        redact_fields:
+          type: array
+          items:
+            type: string
+        privacy_mode:
+          type: string
+          enum: [standard, anonymous]
+
+    AdjudicationResponse:
+      type: object
+      properties:
+        dispute_id:
+          type: string
+        disputed_entity_id:
+          type: string
+        receipt_id:
+          type: string
+        adjudication:
+          type: object
+          properties:
+            recommendation:
+              type: string
+              enum: [uphold_dispute, dismiss_dispute, inconclusive]
+            confidence:
+              type: number
+            voucher_count:
+              type: integer
+            participating_count:
+              type: integer
+            weighted_vote:
+              type: object
+              properties:
+                uphold_fraction:
+                  type: number
+        vouchers:
+          type: array
+          items:
+            type: object
+        adjudicated_at:
+          type: string
+          format: date-time
+        triggered_by:
+          type: string
+
+    DelegationJudgmentResponse:
+      type: object
+      properties:
+        principalId:
+          type: string
+        judgmentScore:
+          type: number
+          description: 0.0-1.0 judgment score
+        grade:
+          type: string
+          enum: [excellent, good, fair, poor]
+        agentsAuthorized:
+          type: integer
+        activeAgents:
+          type: integer
+        goodOutcomeRate:
+          type: number
+        avgAgentConfidence:
+          type: number
+        recentSignals:
+          type: array
+          items:
+            type: object
+            properties:
+              agent_entity_id:
+                type: string
+              receipt_id:
+                type: string
+              outcome_positive:
+                type: boolean
+              weight:
+                type: number
+              created_at:
+                type: string
+                format: date-time
+        interpretation:
+          type: string
+
+    AuthorizedAgent:
+      type: object
+      properties:
+        entity_id:
+          type: string
+        name:
+          type: string
+        entity_type:
+          type: string
+        confidence:
+          type: number
+        entity_status:
+          type: string
+        delegated_at:
+          type: string
+          format: date-time
+        delegation_status:
+          type: string
+        delegation_scope:
+          type: array
+          items:
+            type: string
+        delegation_expires_at:
+          type: string
+          format: date-time
+        outcome_summary:
+          type: object
+          properties:
+            total_outcomes:
+              type: integer
+            positive_outcomes:
+              type: integer
+            outcome_rate:
+              type: number
+
+    NeedBroadcastResponse:
+      type: object
+      properties:
+        need:
+          type: object
+          properties:
+            need_id:
+              type: string
+            capability_needed:
+              type: string
+            status:
+              type: string
+            min_emilia_score:
+              type: integer
+            trust_policy:
+              type: string
+            expires_at:
+              type: string
+              format: date-time
+            created_at:
+              type: string
+              format: date-time
+        suggested_entities:
+          type: array
+          items:
+            type: object
+            properties:
+              entity_id:
+                type: string
+              display_name:
+                type: string
+              compat_score:
+                type: number
+              match_score:
+                type: number
+              trust_pass:
+                type: boolean
+              confidence:
+                type: string
+              effective_evidence:
+                type: number
+              failures:
+                type: array
+                items:
+                  type: string
+              warnings:
+                type: array
+                items:
+                  type: string

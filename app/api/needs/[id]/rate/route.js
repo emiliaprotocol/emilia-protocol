@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient, authenticateRequest } from '@/lib/supabase';
 import { createReceipt } from '@/lib/create-receipt';
+import { epProblem } from '@/lib/errors';
 
 /**
  * POST /api/needs/[id]/rate
@@ -12,7 +13,7 @@ export async function POST(request, { params }) {
   try {
     const auth = await authenticateRequest(request);
     if (auth.error) {
-      return NextResponse.json({ error: auth.error }, { status: 401 });
+      return epProblem(401, 'unauthorized', auth.error);
     }
 
     const { id } = await params;
@@ -27,15 +28,15 @@ export async function POST(request, { params }) {
       .single();
 
     if (fetchError || !need) {
-      return NextResponse.json({ error: 'Need not found' }, { status: 404 });
+      return epProblem(404, 'need_not_found', 'Need not found');
     }
 
     if (need.status !== 'completed') {
-      return NextResponse.json({ error: `Need is ${need.status}, can only rate completed needs` }, { status: 409 });
+      return epProblem(409, 'need_not_completed', `Need is ${need.status}, can only rate completed needs`);
     }
 
     if (need.from_entity_id !== auth.entity.id) {
-      return NextResponse.json({ error: 'Only the requesting entity can rate this need' }, { status: 403 });
+      return epProblem(403, 'not_requester', 'Only the requesting entity can rate this need');
     }
 
     // Check if already rated
@@ -46,7 +47,7 @@ export async function POST(request, { params }) {
       .single();
 
     if (existingReceipt) {
-      return NextResponse.json({ error: 'This need has already been rated' }, { status: 409 });
+      return epProblem(409, 'already_rated', 'This need has already been rated');
     }
 
     // Require at least one signal or behavior
@@ -55,7 +56,7 @@ export async function POST(request, { params }) {
     const hasBehavior = !!body.agent_behavior;
 
     if (!hasSignal && !hasBehavior) {
-      return NextResponse.json({ error: 'Must include at least one signal or agent_behavior' }, { status: 400 });
+      return epProblem(400, 'missing_signal', 'Must include at least one signal or agent_behavior');
     }
 
     // Use the SAME receipt engine as /api/receipts/submit
@@ -78,10 +79,9 @@ export async function POST(request, { params }) {
     });
 
     if (result.error) {
-      return NextResponse.json(
-        { error: result.error, flags: result.flags },
-        { status: result.status || 500 }
-      );
+      return epProblem(result.status || 500, 'receipt_creation_failed', result.error, {
+        flags: result.flags,
+      });
     }
 
     const response = {
@@ -96,6 +96,6 @@ export async function POST(request, { params }) {
     return NextResponse.json(response, { status: 201 });
   } catch (err) {
     console.error('Need rate error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient, authenticateRequest } from '@/lib/supabase';
+import { epProblem } from '@/lib/errors';
 
 /**
  * POST /api/needs/[id]/complete
- * 
+ *
  * Mark a claimed need as completed and provide the output.
  * Only the entity that claimed the need can complete it.
- * 
+ *
  * Auth: Bearer ep_live_...
- * 
+ *
  * Body: {
  *   output_data: { ... }  // the result of fulfilling the need
  * }
@@ -17,7 +18,7 @@ export async function POST(request, { params }) {
   try {
     const auth = await authenticateRequest(request);
     if (auth.error) {
-      return NextResponse.json({ error: auth.error }, { status: 401 });
+      return epProblem(401, 'unauthorized', auth.error);
     }
 
     const { id } = await params;
@@ -32,16 +33,16 @@ export async function POST(request, { params }) {
       .single();
 
     if (fetchError || !need) {
-      return NextResponse.json({ error: 'Need not found' }, { status: 404 });
+      return epProblem(404, 'need_not_found', 'Need not found');
     }
 
     if (need.status !== 'claimed' && need.status !== 'in_progress') {
-      return NextResponse.json({ error: `Need is ${need.status}, cannot complete` }, { status: 409 });
+      return epProblem(409, 'need_wrong_state', `Need is ${need.status}, cannot complete`);
     }
 
     // Only the claiming entity can complete
     if (need.claimed_by !== auth.entity.id) {
-      return NextResponse.json({ error: 'Only the claiming entity can complete this need' }, { status: 403 });
+      return epProblem(403, 'not_claimant', 'Only the claiming entity can complete this need');
     }
 
     const { data: completed, error: updateError } = await supabase
@@ -57,7 +58,7 @@ export async function POST(request, { params }) {
 
     if (updateError) {
       console.error('Need complete error:', updateError);
-      return NextResponse.json({ error: 'Failed to complete need' }, { status: 500 });
+      return epProblem(500, 'completion_failed', 'Failed to complete need');
     }
 
     return NextResponse.json({
@@ -70,6 +71,6 @@ export async function POST(request, { params }) {
     });
   } catch (err) {
     console.error('Need complete error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

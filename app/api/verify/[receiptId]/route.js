@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 import { verifyMerkleProof } from '@/lib/blockchain';
 import { computeReceiptHash } from '@/lib/scoring';
+import { epProblem } from '@/lib/errors';
 
 /**
  * GET /api/verify/[receiptId]
@@ -38,7 +39,7 @@ export async function GET(request, { params }) {
       .single();
 
     if (error || !receipt) {
-      return NextResponse.json({ error: 'Receipt not found' }, { status: 404 });
+      return epProblem(404, 'receipt_not_found', 'Receipt not found');
     }
 
     // Recompute hash to verify integrity
@@ -123,6 +124,6 @@ export async function GET(request, { params }) {
     return NextResponse.json(response);
   } catch (err) {
     console.error('Verify error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

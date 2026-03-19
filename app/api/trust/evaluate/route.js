@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { EP_ERRORS } from '@/lib/errors';
+import { buildTrustDecision, passToDecision } from '@/lib/trust-decision';
 
 /**
  * POST /api/trust/evaluate
@@ -30,28 +31,34 @@ export async function POST(request) {
     }
 
     const pr = result.policyResult;
+    const pass = pr?.pass ?? null;
 
-    return NextResponse.json({
-      entity_id: result.entity_id,
-      display_name: result.display_name,
-      entity_type: result.entity_type,
-
-      pass: pr?.pass ?? null,
-      policy_used: pr?.policyName || 'standard',
-      context_used: result.contextUsed,
-
-      score: result.score,
+    return NextResponse.json(buildTrustDecision({
+      decision: pass === null ? 'review' : passToDecision(pass),
+      entityId: result.entity_id,
+      policyUsed: pr?.policyName || 'standard',
       confidence: result.confidence,
-      effective_evidence: result.effectiveEvidence,
-
-      profile: result.profile,
-      anomaly: result.anomaly,
-
-      failures: pr?.failures || [],
+      reasons: pass === false ? (pr?.failures || []) : [],
       warnings: pr?.warnings || [],
-
-      _protocol_version: 'EP/1.1-v2',
-    });
+      contextUsed: result.contextUsed,
+      profileSummary: {
+        confidence: result.confidence,
+        evidence_level: result.effectiveEvidence,
+        dispute_rate: result.profile?.behavioral?.dispute_rate ?? 0,
+      },
+      extensions: {
+        // Backward compatibility
+        pass,
+        display_name: result.display_name,
+        entity_type: result.entity_type,
+        score: result.score,
+        effective_evidence: result.effectiveEvidence,
+        profile: result.profile,
+        anomaly: result.anomaly,
+        failures: pr?.failures || [],
+        _protocol_version: 'EP/1.1-v2',
+      },
+    }));
   } catch (err) {
     console.error('Trust evaluate error:', err);
     return EP_ERRORS.INTERNAL();

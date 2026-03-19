@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
+import { epProblem } from '@/lib/errors';
 
 /**
  * GET /api/leaderboard
- * 
+ *
  * Public trust rankings.
- * 
+ *
  * Query params:
  *   type           - filter by entity_type (see canonical types in register route / OpenAPI)
  *   category       - filter by category
@@ -48,7 +49,7 @@ export async function GET(request) {
     const { data: entities, error, count } = await query;
     if (error) {
       console.error('Leaderboard error:', error);
-      return NextResponse.json({ error: 'Failed to fetch leaderboard' }, { status: 500 });
+      return epProblem(500, 'leaderboard_fetch_failed', 'Failed to fetch leaderboard');
     }
 
     const confLevels = ['pending', 'insufficient', 'provisional', 'emerging', 'confident'];
@@ -98,6 +99,6 @@ export async function GET(request) {
     return NextResponse.json({ leaderboard, rank_by: rankBy, total: count, offset, limit });
   } catch (err) {
     console.error('Leaderboard error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

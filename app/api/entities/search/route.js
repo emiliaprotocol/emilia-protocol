@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
+import { epProblem } from '@/lib/errors';
 
 /**
  * GET /api/entities/search
- * 
+ *
  * Search entities by capability, category, type, or semantic query.
- * 
+ *
  * No auth required — entity directory is public.
- * 
+ *
  * Query params:
  *   q              - semantic search query (uses embeddings)
  *   type           - filter by entity_type (see canonical types in register route / OpenAPI)
@@ -151,7 +152,7 @@ export async function GET(request) {
 
     if (error) {
       console.error('Entity search error:', error);
-      return NextResponse.json({ error: 'Search failed' }, { status: 500 });
+      return epProblem(500, 'search_failed', 'Search failed');
     }
 
     const filtered = await enrichWithCanonicalTrust(results || []);
@@ -165,6 +166,6 @@ export async function GET(request) {
     });
   } catch (err) {
     console.error('Entity search error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

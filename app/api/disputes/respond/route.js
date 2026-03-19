@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { canonicalRespondDispute } from '@/lib/canonical-writer';
-import { EP_ERRORS } from '@/lib/errors';
+import { EP_ERRORS, epProblem } from '@/lib/errors';
 
 /**
  * POST /api/disputes/respond

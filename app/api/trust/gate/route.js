@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { verifyDelegation } from '@/lib/delegation';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { EP_ERRORS } from '@/lib/errors';
+import { buildTrustDecision } from '@/lib/trust-decision';
 
 const GATE_POLICIES = {
   strict:     { min_ee: 40,  max_dispute_rate: 0.02, require_established: true },
@@ -29,19 +30,23 @@ export async function POST(request) {
     });
 
     if (result.error) {
-      return NextResponse.json({
-        entity_id,
-        action,
+      return NextResponse.json(buildTrustDecision({
         decision: 'block',
-        policy_used: policy,
+        entityId: entity_id,
+        policyUsed: policy,
         confidence: 'unknown',
         reasons: ['Entity not found in EP registry'],
-        appeal_path: 'https://emiliaprotocol.ai/appeal',
-      });
+        warnings: [],
+        appealPath: 'https://emiliaprotocol.ai/appeal',
+        extensions: {
+          action,
+        },
+      }));
     }
 
     const policyConfig = GATE_POLICIES[policy] || GATE_POLICIES.standard;
     const reasons = [];
+    const warnings = [];
     const ee = result.effectiveEvidence || 0;
     const conf = result.confidence || 'pending';
     const disputeRate = result.profile?.behavioral?.dispute_rate ?? 0;
@@ -83,24 +88,38 @@ export async function POST(request) {
 
     const decision = reasons.length === 0 ? 'allow' : 'block';
 
-    const response = {
-      entity_id: result.entity_id,
-      display_name: result.display_name,
+    const extensions = {
       action,
-      decision,
-      policy_used: policy,
-      confidence: conf,
-      reasons,
+      display_name: result.display_name,
     };
 
-    if (delegation_id) response.delegation_verified = delegationVerified;
+    if (delegation_id) extensions.delegation_verified = delegationVerified;
+
+    if (value_usd) extensions.value_threshold = {
+      value_usd,
+      escalated_to_strict: value_usd > 10000 && policy !== 'strict',
+    };
 
     if (decision === 'block') {
-      response.appeal_path = 'https://emiliaprotocol.ai/appeal';
-      response._note = 'Trust must never be more powerful than appeal.';
+      extensions._note = 'Trust must never be more powerful than appeal.';
     }
 
-    return NextResponse.json(response);
+    return NextResponse.json(buildTrustDecision({
+      decision,
+      entityId: result.entity_id,
+      policyUsed: policy,
+      confidence: conf,
+      reasons,
+      warnings,
+      appealPath: 'https://emiliaprotocol.ai/appeal',
+      contextUsed: null,
+      profileSummary: {
+        confidence: conf,
+        evidence_level: ee,
+        dispute_rate: disputeRate,
+      },
+      extensions,
+    }));
   } catch (err) {
     console.error('[trust/gate] error:', err);
     return EP_ERRORS.INTERNAL();

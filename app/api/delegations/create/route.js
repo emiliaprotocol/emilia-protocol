@@ -4,7 +4,7 @@
 import { NextResponse } from 'next/server';
 import { createDelegation, EPError } from '@/lib/delegation';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
-import { EP_ERRORS } from '@/lib/errors';
+import { EP_ERRORS, epProblem } from '@/lib/errors';
 
 export async function POST(request) {
   try {
@@ -35,7 +35,7 @@ export async function POST(request) {
     return NextResponse.json(delegation, { status: 201 });
   } catch (err) {
     if (err instanceof EPError) {
-      return NextResponse.json({ error: err.message, code: err.code }, { status: err.status || 400 });
+      return epProblem(err.status || 400, err.code?.toLowerCase() || 'delegation_error', err.message);
     }
     console.error('[delegations/create] error:', err);
     return EP_ERRORS.INTERNAL();

@@ -32,7 +32,7 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient, authenticateRequest } from '@/lib/supabase';
 import { adjudicateDispute } from '@/lib/dispute-adjudication';
-import { EP_ERRORS } from '@/lib/errors';
+import { EP_ERRORS, epProblem } from '@/lib/errors';
 
 // Minimum age before a filer can trigger adjudication themselves.
 // 48 hours: gives the accused entity a fair response window.
@@ -136,8 +136,7 @@ export async function POST(request, { params }) {
     const result = await adjudicateDispute(disputeId, supabase);
 
     if (result.error) {
-      const status = result.status || 500;
-      return NextResponse.json({ error: result.error }, { status });
+      return epProblem(result.status || 500, 'adjudication_failed', result.error);
     }
 
     // For fresh disputes triggered by cron, mark result as advisory

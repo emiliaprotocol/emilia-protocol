@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 import { runAnchorBatch } from '@/lib/blockchain';
+import { epProblem } from '@/lib/errors';
 
 // POST /api/blockchain/anchor
 //
@@ -15,11 +16,11 @@ export async function POST(request) {
     const cronSecret = process.env.CRON_SECRET;
 
     if (!cronSecret) {
-      return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 });
+      return epProblem(500, 'cron_secret_missing', 'CRON_SECRET not configured');
     }
 
     if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return epProblem(401, 'unauthorized', 'Unauthorized');
     }
 
     const supabase = getServiceClient();
@@ -28,7 +29,7 @@ export async function POST(request) {
     return NextResponse.json(result);
   } catch (err) {
     console.error('Anchor cron error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return epProblem(500, 'anchor_failed', 'Anchor batch processing failed');
   }
 }
 

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { canonicalSubmitReceipt } from '@/lib/canonical-writer';
-import { EP_ERRORS } from '@/lib/errors';
+import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { buildAttributionChain, applyAttributionChain } from '@/lib/attribution';
 
 /**
@@ -14,20 +14,20 @@ export async function POST(request) {
   try {
     const auth = await authenticateRequest(request);
     if (auth.error) {
-      return NextResponse.json({ error: auth.error }, { status: 401 });
+      return epProblem(401, 'unauthorized', auth.error);
     }
 
     const body = await request.json();
 
     // === VALIDATION (input validation is route responsibility) ===
     if (!body.entity_id) {
-      return NextResponse.json({ error: 'entity_id is required' }, { status: 400 });
+      return epProblem(400, 'missing_entity_id', 'entity_id is required');
     }
     if (!body.transaction_type) {
-      return NextResponse.json({ error: 'transaction_type is required' }, { status: 400 });
+      return epProblem(400, 'missing_transaction_type', 'transaction_type is required');
     }
     if (!body.transaction_ref) {
-      return NextResponse.json({ error: 'transaction_ref is required — every receipt must reference an external transaction' }, { status: 400 });
+      return epProblem(400, 'missing_transaction_ref', 'transaction_ref is required — every receipt must reference an external transaction');
     }
 
     const validTypes = [
@@ -38,12 +38,12 @@ export async function POST(request) {
       'execution', 'incident', 'listing_review', 'provenance_check',
     ];
     if (!validTypes.includes(body.transaction_type)) {
-      return NextResponse.json({ error: `transaction_type must be one of: ${validTypes.join(', ')}` }, { status: 400 });
+      return epProblem(400, 'invalid_transaction_type', `transaction_type must be one of: ${validTypes.join(', ')}`);
     }
 
     const validBehaviors = ['completed', 'retried_same', 'retried_different', 'abandoned', 'disputed'];
     if (body.agent_behavior && !validBehaviors.includes(body.agent_behavior)) {
-      return NextResponse.json({ error: `agent_behavior must be one of: ${validBehaviors.join(', ')}` }, { status: 400 });
+      return epProblem(400, 'invalid_agent_behavior', `agent_behavior must be one of: ${validBehaviors.join(', ')}`);
     }
 
     // Validate and clamp numeric signal fields to [0, 100]
@@ -52,14 +52,14 @@ export async function POST(request) {
       if (body[field] != null) {
         const val = Number(body[field]);
         if (!Number.isFinite(val) || val < 0 || val > 100) {
-          return NextResponse.json({ error: `${field} must be a number between 0 and 100` }, { status: 400 });
+          return epProblem(400, 'invalid_signal_value', `${field} must be a number between 0 and 100`);
         }
         body[field] = val;
       }
     }
 
     if (typeof body.transaction_ref === 'string' && body.transaction_ref.length > 500) {
-      return NextResponse.json({ error: 'transaction_ref must not exceed 500 characters' }, { status: 400 });
+      return epProblem(400, 'transaction_ref_too_long', 'transaction_ref must not exceed 500 characters');
     }
 
     const hasSignal = numericSignals.some(f => body[f] != null);
@@ -67,17 +67,16 @@ export async function POST(request) {
     const hasBehavior = !!body.agent_behavior;
 
     if (!hasSignal && !hasClaims && !hasBehavior) {
-      return NextResponse.json({ error: 'Receipt must include at least one signal, claims object, or agent_behavior' }, { status: 400 });
+      return epProblem(400, 'missing_signal', 'Receipt must include at least one signal, claims object, or agent_behavior');
     }
 
     // === DELEGATE TO CANONICAL WRITE ENGINE ===
     const result = await canonicalSubmitReceipt(body, auth.entity);
 
     if (result.error) {
-      return NextResponse.json(
-        { error: result.error, flags: result.flags },
-        { status: result.status || 500 }
-      );
+      return epProblem(result.status || 500, 'receipt_submission_failed', result.error, {
+        flags: result.flags,
+      });
     }
 
     const response = {
@@ -113,6 +112,6 @@ export async function POST(request) {
     return NextResponse.json(response, { status: 201 });
   } catch (err) {
     console.error('Receipt submission error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

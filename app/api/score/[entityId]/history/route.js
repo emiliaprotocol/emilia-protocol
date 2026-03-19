@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
+import { epProblem } from '@/lib/errors';
 
 /**
  * GET /api/score/[entityId]/history
  *
  * LEGACY COMPATIBILITY: Compatibility score history over time.
  * For current trust state, use GET /api/trust/profile/:entityId.
- * 
+ *
  * No authentication required — trust data is public.
  *
  * Query params:
@@ -34,7 +35,7 @@ export async function GET(request, { params }) {
       .single();
 
     if (entityError || !entity) {
-      return NextResponse.json({ error: 'Entity not found' }, { status: 404 });
+      return epProblem(404, 'entity_not_found', 'Entity not found');
     }
 
     // Query score history
@@ -52,7 +53,7 @@ export async function GET(request, { params }) {
 
     if (historyError) {
       console.error('Score history error:', historyError);
-      return NextResponse.json({ error: 'Failed to fetch history' }, { status: 500 });
+      return epProblem(500, 'history_fetch_failed', 'Failed to fetch history');
     }
 
     return NextResponse.json({
@@ -64,6 +65,6 @@ export async function GET(request, { params }) {
     });
   } catch (err) {
     console.error('Score history error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

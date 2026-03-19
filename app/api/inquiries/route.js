@@ -3,6 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { epProblem } from '@/lib/errors';
 
 const supabase = process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
   ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
@@ -14,11 +15,11 @@ export async function POST(request) {
     const { type, name, email, ...rest } = body;
 
     if (!type || !name || !email) {
-      return NextResponse.json({ error: 'name, email, and type are required' }, { status: 400 });
+      return epProblem(400, 'missing_fields', 'name, email, and type are required');
     }
 
     if (!['partner', 'investor'].includes(type)) {
-      return NextResponse.json({ error: 'type must be partner or investor' }, { status: 400 });
+      return epProblem(400, 'invalid_type', 'type must be partner or investor');
     }
 
     const record = {
@@ -62,6 +63,6 @@ export async function POST(request) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('[inquiries] Error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

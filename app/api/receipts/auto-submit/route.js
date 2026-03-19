@@ -31,6 +31,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { getServiceClient } from '@/lib/supabase';
+import { epProblem } from '@/lib/errors';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -71,35 +72,19 @@ export async function POST(request) {
     try {
       body = await request.json();
     } catch {
-      return NextResponse.json(
-        { error: 'Invalid JSON body', code: 'BAD_REQUEST', status: 400 },
-        { status: 400 },
-      );
+      return epProblem(400, 'bad_request', 'Invalid JSON body');
     }
 
     if (!body || !Array.isArray(body.receipts)) {
-      return NextResponse.json(
-        { error: 'Body must be { receipts: [...] }', code: 'BAD_REQUEST', status: 400 },
-        { status: 400 },
-      );
+      return epProblem(400, 'bad_request', 'Body must be { receipts: [...] }');
     }
 
     if (body.receipts.length === 0) {
-      return NextResponse.json(
-        { error: 'receipts array is empty', code: 'BAD_REQUEST', status: 400 },
-        { status: 400 },
-      );
+      return epProblem(400, 'bad_request', 'receipts array is empty');
     }
 
     if (body.receipts.length > BATCH_MAX) {
-      return NextResponse.json(
-        {
-          error: `Batch exceeds maximum of ${BATCH_MAX} receipts. Split into smaller batches.`,
-          code: 'BAD_REQUEST',
-          status: 400,
-        },
-        { status: 400 },
-      );
+      return epProblem(400, 'batch_too_large', `Batch exceeds maximum of ${BATCH_MAX} receipts. Split into smaller batches.`);
     }
 
     // -----------------------------------------------------------------------
@@ -240,10 +225,7 @@ export async function POST(request) {
     );
   } catch (err) {
     console.error('[auto-submit] Unhandled error:', err);
-    return NextResponse.json(
-      { error: 'Internal server error', code: 'INTERNAL_ERROR', status: 500 },
-      { status: 500 },
-    );
+    return epProblem(500, 'internal_error', 'Internal server error');
   }
 }
 

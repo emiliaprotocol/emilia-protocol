@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
+import { epProblem } from '@/lib/errors';
 
 /**
  * GET /api/disputes/[disputeId]
- * 
+ *
  * View the status and details of a dispute. Public — transparency is a protocol value.
- * 
+ *
  * The dispute lifecycle:
- *   open → under_review → upheld | reversed | superseded | dismissed
- * 
+ *   open -> under_review -> upheld | reversed | superseded | dismissed
+ *
  * Reversed receipts have graph_weight = 0.0 (neutralized, never deleted).
  */
 export async function GET(request, { params }) {
@@ -33,7 +34,7 @@ export async function GET(request, { params }) {
       .single();
 
     if (error || !dispute) {
-      return NextResponse.json({ error: 'Dispute not found' }, { status: 404 });
+      return epProblem(404, 'dispute_not_found', 'Dispute not found');
     }
 
     // Redact evidence for public view — show field names but not raw values
@@ -59,34 +60,34 @@ export async function GET(request, { params }) {
     return NextResponse.json({
       dispute_id: dispute.dispute_id,
       receipt_id: dispute.receipt_id,
-      
+
       // Who is affected
       entity: dispute.entity,
-      
+
       // Who filed
       filed_by: dispute.filer,
       filed_by_type: dispute.filed_by_type,
-      
+
       // Dispute details
       reason: dispute.reason,
       description: dispute.description,
       evidence_summary: redactEvidence(dispute.evidence),
       _evidence_note: 'Full evidence is restricted to dispute participants and operators.',
-      
+
       // Lifecycle
       status: dispute.status,
       response_deadline: dispute.response_deadline,
-      
+
       // Response (if any)
       has_response: !!dispute.response,
       responded_at: dispute.responded_at,
-      
+
       // Resolution (if resolved)
       resolution: dispute.resolution,
       resolution_rationale: dispute.resolution_rationale,
       resolved_by: dispute.resolved_by,
       resolved_at: dispute.resolved_at,
-      
+
       // Appeal details (if applicable)
       appeal_reason: dispute.appeal_reason,
       appealed_at: dispute.appealed_at,
@@ -100,6 +101,6 @@ export async function GET(request, { params }) {
     });
   } catch (err) {
     console.error('Dispute view error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

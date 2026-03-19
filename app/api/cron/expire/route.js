@@ -1,21 +1,22 @@
 import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
+import { epProblem } from '@/lib/errors';
 
 /**
  * GET /api/cron/expire
- * 
+ *
  * Scheduled job that enforces time-based protocol rules:
- * 
+ *
  * 1. Bilateral confirmations: expire after 48 hours
- *    pending_confirmation → expired
- * 
+ *    pending_confirmation -> expired
+ *
  * 2. Dispute response deadlines: escalate after 7 days
- *    open (past deadline, no response) → under_review
- * 
+ *    open (past deadline, no response) -> under_review
+ *
  * Without this, deadlines are checked only at request time,
  * meaning stale bilateral requests and overdue disputes sit
  * in limbo forever if nobody queries them.
- * 
+ *
  * Call via Vercel Cron (vercel.json) or external scheduler.
  * Requires CRON_SECRET for authentication.
  */
@@ -25,7 +26,7 @@ export async function GET(request) {
   const cronSecret = process.env.CRON_SECRET;
 
   if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return epProblem(401, 'unauthorized', 'Unauthorized');
   }
 
   const supabase = getServiceClient();

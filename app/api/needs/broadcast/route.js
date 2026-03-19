@@ -2,16 +2,17 @@ import { NextResponse } from 'next/server';
 import { getServiceClient, authenticateRequest } from '@/lib/supabase';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import crypto from 'crypto';
+import { epProblem } from '@/lib/errors';
 
 /**
  * POST /api/needs/broadcast
- * 
+ *
  * Broadcast a need to the EMILIA network.
  * Agents declare what capability they need, and the network
  * matches them with entities that have the right skills + trust profile.
- * 
+ *
  * Auth: Bearer ep_live_...
- * 
+ *
  * Body: {
  *   capability_needed: "price_comparison",
  *   context: { "task_type": "purchase", "category": "electronics", "geo": "US-CA" },
@@ -26,14 +27,14 @@ export async function POST(request) {
   try {
     const auth = await authenticateRequest(request);
     if (auth.error) {
-      return NextResponse.json({ error: auth.error }, { status: 401 });
+      return epProblem(401, 'unauthorized', auth.error);
     }
 
     const body = await request.json();
     const supabase = getServiceClient();
 
     if (!body.capability_needed) {
-      return NextResponse.json({ error: 'capability_needed is required' }, { status: 400 });
+      return epProblem(400, 'missing_capability', 'capability_needed is required');
     }
 
     // Generate embedding for semantic matching
@@ -85,9 +86,7 @@ export async function POST(request) {
           const parsed = JSON.parse(body.context);
           if (typeof parsed === 'object') needContext = parsed;
         } catch {
-          return NextResponse.json({
-            error: 'context must be a structured object (e.g. { "category": "electronics", "geo": "US-CA" }), not freeform text.',
-          }, { status: 400 });
+          return epProblem(400, 'invalid_context', 'context must be a structured object (e.g. { "category": "electronics", "geo": "US-CA" }), not freeform text.');
         }
       }
     }
@@ -114,7 +113,7 @@ export async function POST(request) {
 
     if (insertError) {
       console.error('Need broadcast error:', insertError);
-      return NextResponse.json({ error: 'Failed to broadcast need' }, { status: 500 });
+      return epProblem(500, 'broadcast_failed', 'Failed to broadcast need');
     }
 
     // Find suggested entities
@@ -165,7 +164,7 @@ export async function POST(request) {
         })
         .slice(0, 10);
     } else {
-      // Legacy fallback: ranked by relevance × compatibility score
+      // Legacy fallback: ranked by relevance x compatibility score
       suggestions = matches.slice(0, 10).map(m => ({
         entity_id: m.entity_id,
         display_name: m.display_name,
@@ -189,6 +188,6 @@ export async function POST(request) {
     }, { status: 201 });
   } catch (err) {
     console.error('Need broadcast error:', err);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return epProblem(500, 'internal_error', 'Internal server error');
   }
 }
