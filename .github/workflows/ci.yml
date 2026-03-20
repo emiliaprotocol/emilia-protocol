@@ -185,7 +185,41 @@ jobs:
           fi
           echo "OK — path counts match ($spec_paths)."
 
-  # ── Job 8: Docker build smoke test ────────────────────────────────
+  # ── Job 8: Protocol discipline — trust-model violation guardrails ──
+  protocol-discipline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - name: Run protocol discipline checks
+        run: node scripts/check-protocol-discipline.js
+      - name: Run test suite
+        run: npx vitest run
+
+      - name: No direct receipt inserts outside canonical path
+        run: |
+          hits=$(grep -rn "\.from('receipts')\.insert\|\.from(\"receipts\")\.insert" app/ lib/ mcp-server/ --include='*.js' --include='*.mjs' | grep -v "lib/create-receipt.js" | grep -v "lib/canonical-writer.js" || true)
+          if [ -n "$hits" ]; then
+            echo "::error::Direct receipt inserts found outside canonical path:"
+            echo "$hits"
+            exit 1
+          fi
+          echo "OK — no direct receipt inserts outside canonical path."
+
+      - name: No raw EP_ env reads outside lib/env.js
+        run: |
+          hits=$(grep -rn "process\.env\.EP_" lib/ app/ --include='*.js' --include='*.mjs' | grep -v "lib/env.js" || true)
+          if [ -n "$hits" ]; then
+            echo "::error::Raw process.env.EP_ reads found outside lib/env.js:"
+            echo "$hits"
+            exit 1
+          fi
+          echo "OK — no raw EP_ env reads outside lib/env.js."
+
+  # ── Job 9: Docker build smoke test ────────────────────────────────
   docker-build:
     runs-on: ubuntu-latest
     steps:

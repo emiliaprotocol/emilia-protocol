@@ -77,9 +77,9 @@ const ROUTE_POLICIES = {
   'POST /api/blockchain/anchor':      { rateCategory: 'anchor', useAuth: false },
   'POST /api/cron/expire':            { rateCategory: 'anchor', useAuth: false },
 
-  // Public forms
-  'POST /api/operators/apply':        { rateCategory: 'submit', useAuth: true },
-  'POST /api/inquiries':              { rateCategory: 'submit', useAuth: true },
+  // Public forms (no auth — open submission endpoints)
+  'POST /api/operators/apply':        { rateCategory: 'submit', useAuth: false },
+  'POST /api/inquiries':              { rateCategory: 'submit', useAuth: false },
   'POST /api/waitlist':               { rateCategory: 'waitlist', useAuth: false },
 };
 

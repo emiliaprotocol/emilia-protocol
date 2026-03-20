@@ -450,8 +450,8 @@ describe('verifyCommit', () => {
     mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({
       policyResult: { pass: true, failures: [], warnings: [] },
     }));
-    // For issueCommit — no DB
-    mockGetServiceClient.mockReturnValue(null);
+    // For issueCommit — provide a mock DB so the insert succeeds
+    mockGetServiceClient.mockReturnValue(buildMockDb());
     const commit = await issueCommit({
       entity_id: 'entity-123',
       action_type: 'install',

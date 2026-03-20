@@ -465,6 +465,14 @@ describe('ADVERSARIAL BENCHMARK 5: Appeal Reversal Correctness', () => {
                 eq: vi.fn().mockResolvedValue({ error: null }),
               };
             }),
+            // materializeTrustProfile fetches receipts
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockReturnValue({
+                  limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+                }),
+              }),
+            }),
           };
         }
         if (table === 'entities') {
@@ -472,12 +480,12 @@ describe('ADVERSARIAL BENCHMARK 5: Appeal Reversal Correctness', () => {
             update: vi.fn((data) => {
               entityUpdates.push(data);
               return {
-                eq: vi.fn().mockResolvedValue({ error: null }),
+                eq: vi.fn().mockResolvedValue({ data: null, error: null }),
               };
             }),
             select: vi.fn().mockReturnValue({
               eq: vi.fn().mockReturnValue({
-                single: vi.fn().mockResolvedValue({ data: { id: 'ent-001' } }),
+                single: vi.fn().mockResolvedValue({ data: { id: 'ent-001' }, error: null }),
               }),
             }),
           };
@@ -487,7 +495,7 @@ describe('ADVERSARIAL BENCHMARK 5: Appeal Reversal Correctness', () => {
         }
         return makeChain({ data: null });
       }),
-      rpc: vi.fn().mockResolvedValue({ data: 75 }),
+      rpc: vi.fn().mockResolvedValue({ data: 75, error: null }),
     };
 
     mockGetServiceClient.mockReturnValue(mockSupabase);
@@ -535,16 +543,24 @@ describe('ADVERSARIAL BENCHMARK 5: Appeal Reversal Correctness', () => {
                 eq: vi.fn().mockResolvedValue({ error: null }),
               };
             }),
+            // materializeTrustProfile fetches receipts
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockReturnValue({
+                  limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+                }),
+              }),
+            }),
           };
         }
         if (table === 'entities') {
           return {
             update: vi.fn(() => ({
-              eq: vi.fn().mockResolvedValue({ error: null }),
+              eq: vi.fn().mockResolvedValue({ data: null, error: null }),
             })),
             select: vi.fn().mockReturnValue({
               eq: vi.fn().mockReturnValue({
-                single: vi.fn().mockResolvedValue({ data: { id: 'ent-002' } }),
+                single: vi.fn().mockResolvedValue({ data: { id: 'ent-002' }, error: null }),
               }),
             }),
           };
@@ -554,7 +570,7 @@ describe('ADVERSARIAL BENCHMARK 5: Appeal Reversal Correctness', () => {
         }
         return makeChain({ data: null });
       }),
-      rpc: vi.fn().mockResolvedValue({ data: 80 }),
+      rpc: vi.fn().mockResolvedValue({ data: 80, error: null }),
     };
 
     mockGetServiceClient.mockReturnValue(mockSupabase);

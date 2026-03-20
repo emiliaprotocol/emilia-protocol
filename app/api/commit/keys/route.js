@@ -15,22 +15,19 @@ import { _internals } from '@/lib/commit';
 
 export async function GET() {
   try {
-    // ensureKeypair is not directly exported, but signPayload calls it internally.
-    // We use _internals.signPayload to trigger keypair initialization, then read the
-    // public key from a dummy sign operation — however, that's wasteful.
-    // Instead, we call getPublicKeyInfo() which we added to _internals.
-    const publicKeyBase64 = _internals.getPublicKeyBase64();
+    // Trigger keypair initialization (populates trusted key registry)
+    _internals.getPublicKeyBase64();
+
+    // Return all trusted keys from the registry (supports key rotation)
+    const trustedKeys = _internals.getAllTrustedKeys();
 
     return NextResponse.json({
-      keys: [
-        {
-          kid: 'ep-signing-key-1',
-          algorithm: 'Ed25519',
-          public_key_base64: publicKeyBase64,
-          status: 'active',
-          created_at: '2025-01-01T00:00:00Z',
-        },
-      ],
+      keys: trustedKeys.map(({ kid, publicKeyBase64 }) => ({
+        kid,
+        algorithm: 'Ed25519',
+        public_key_base64: publicKeyBase64,
+        status: 'active',
+      })),
       rotation_policy: {
         rotation_interval_days: 90,
         overlap_period_days: 14,

@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "check:protocol": "node scripts/check-protocol-discipline.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",

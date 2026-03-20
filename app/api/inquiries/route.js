@@ -5,6 +5,37 @@ import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase';
 import { epProblem } from '@/lib/errors';
 
+// ---------------------------------------------------------------------------
+// Input sanitization helpers
+// ---------------------------------------------------------------------------
+
+/** Simple email format regex — intentionally permissive (RFC 5321 § 4.1.2). */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Basic URL format validation. */
+const URL_RE = /^https?:\/\/[^\s/$.?#].[^\s]*$/i;
+
+/** Strip HTML tags to prevent stored XSS. */
+function stripHtml(str) {
+  if (typeof str !== 'string') return str;
+  return str.replace(/<[^>]*>/g, '');
+}
+
+/** Trim, strip HTML, and return null for empty strings. */
+function sanitizeText(val) {
+  if (val == null) return null;
+  const cleaned = stripHtml(String(val).trim());
+  return cleaned || null;
+}
+
+/** Validate a URL string if present; return null if invalid. */
+function sanitizeUrl(val) {
+  if (val == null) return null;
+  const trimmed = String(val).trim();
+  if (!trimmed) return null;
+  return URL_RE.test(trimmed) ? trimmed : null;
+}
+
 function getSupabase() {
   try {
     return getServiceClient();
@@ -16,34 +47,56 @@ function getSupabase() {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { type, name, email, ...rest } = body;
 
-    if (!type || !name || !email) {
+    // Honeypot field — bots that auto-fill hidden fields will populate this.
+    // Legitimate users will never see or fill this field.
+    if (body.website_url) {
+      // Silently accept to avoid tipping off bots, but do nothing.
+      return NextResponse.json({ ok: true });
+    }
+
+    const type = typeof body.type === 'string' ? body.type.trim() : '';
+    const name = sanitizeText(body.name);
+    const rawEmail = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+    const rest = body;
+
+    if (!type || !name || !rawEmail) {
       return epProblem(400, 'missing_fields', 'name, email, and type are required');
+    }
+
+    // Validate email format
+    if (!EMAIL_RE.test(rawEmail)) {
+      return epProblem(400, 'invalid_email', 'Valid email address required');
     }
 
     if (!['partner', 'investor'].includes(type)) {
       return epProblem(400, 'invalid_type', 'type must be partner or investor');
     }
 
+    // Sanitize all free-text and URL fields
+    const organization = sanitizeText(rest.org || rest.firm);
+    const title = sanitizeText(rest.title);
+    const website = sanitizeUrl(rest.website);
+    const message = sanitizeText(rest.problem || rest.whyEmilia);
+
     const record = {
       inquiry_type: type,
       name,
-      email,
-      organization: rest.org || rest.firm || null,
-      title: rest.title || null,
-      website: rest.website || null,
-      message: rest.problem || rest.whyEmilia || null,
+      email: rawEmail,
+      organization,
+      title,
+      website,
+      message,
       metadata_json: JSON.stringify({
         ...(type === 'partner' ? {
-          partner_type: rest.partnerType || null,
-          trust_surface: rest.trustSurface || null,
-          timeline: rest.timeline || null,
+          partner_type: sanitizeText(rest.partnerType),
+          trust_surface: sanitizeText(rest.trustSurface),
+          timeline: sanitizeText(rest.timeline),
         } : {
-          why_emilia: rest.whyEmilia || null,
-          help_offer: rest.helpOffer || null,
+          why_emilia: sanitizeText(rest.whyEmilia),
+          help_offer: sanitizeText(rest.helpOffer),
         }),
-        notes: rest.notes || null,
+        notes: sanitizeText(rest.notes),
       }),
       created_at: new Date().toISOString(),
     };
@@ -55,11 +108,15 @@ export async function POST(request) {
       const { error: dbError } = await supabase.from(table).insert(record);
       if (dbError) {
         console.error(`[inquiries] Supabase insert error (${table}):`, dbError.message);
-        // Non-fatal — still return success so the user sees confirmation
+        // Backup: log the full submission as structured JSON so it can be replayed
+        console.error(`[inquiries] BACKUP_RECORD::${JSON.stringify({ table, record, error: dbError.message, ts: new Date().toISOString() })}`);
+        return epProblem(503, 'inquiry_storage_failed', 'Failed to store inquiry. Please try again shortly.', {
+          retry: true,
+        });
       }
     } else {
       // Log to console when no DB is configured
-      console.log(`[inquiries] No Supabase configured. ${type} inquiry from ${name} <${email}>:`, JSON.stringify(record, null, 2));
+      console.log(`[inquiries] No Supabase configured. ${type} inquiry from ${name} <${rawEmail}>:`, JSON.stringify(record, null, 2));
     }
 
     // TODO: Send notification email via SendGrid/Resend when configured
