@@ -18,32 +18,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import crypto from 'crypto';
 
 // ============================================================================
-// Supabase mock helpers
-// ============================================================================
-
-/**
- * Build a thenable chain that resolves to the given value.
- * Simulates the Supabase chained query interface.
- */
-function makeChain(resolveValue) {
-  const chain = {
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    neq: vi.fn().mockReturnThis(),
-    in: vi.fn().mockReturnThis(),
-    is: vi.fn().mockReturnThis(),
-    order: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    insert: vi.fn().mockReturnThis(),
-    update: vi.fn().mockReturnThis(),
-    single: vi.fn().mockResolvedValue(resolveValue),
-    maybeSingle: vi.fn().mockResolvedValue(resolveValue),
-    then: (resolve) => Promise.resolve(resolveValue).then(resolve),
-  };
-  return chain;
-}
-
-// ============================================================================
 // Mock: Supabase
 // ============================================================================
 
@@ -58,15 +32,14 @@ vi.mock('../lib/supabase.js', () => ({
 //
 // We provide the COMMAND_TYPES the handshake module expects and route
 // protocolWrite calls to the real _handle* functions so we exercise the
-// actual business logic without the real protocolWrite invariant checks
-// (which rightfully reject unknown command types until migration adds them).
+// actual business logic without the real protocolWrite invariant checks.
 // ============================================================================
 
 /** Pending handler registration — filled after import */
 let _handshakeHandlers = {};
 
-vi.mock('../lib/protocol-write.js', () => ({
-  COMMAND_TYPES: {
+vi.mock('../lib/protocol-write.js', () => {
+  const COMMAND_TYPES = {
     SUBMIT_RECEIPT: 'submit_receipt',
     CONFIRM_RECEIPT: 'confirm_receipt',
     ISSUE_COMMIT: 'issue_commit',
@@ -80,19 +53,20 @@ vi.mock('../lib/protocol-write.js', () => ({
     ADD_PRESENTATION: 'add_presentation',
     VERIFY_HANDSHAKE: 'verify_handshake',
     REVOKE_HANDSHAKE: 'revoke_handshake',
-  },
-  protocolWrite: vi.fn(async (command) => {
-    const handler = _handshakeHandlers[command.type];
-    if (!handler) {
-      throw new Error(`No handler for command type: ${command.type}`);
-    }
-    const res = await handler(command);
-    return res?.result ?? res;
-  }),
-}));
+  };
 
-// Get reference to the mocked protocolWrite so tests can override it
-const { protocolWrite: mockProtocolWrite } = await import('../lib/protocol-write.js');
+  return {
+    COMMAND_TYPES,
+    protocolWrite: vi.fn(async (command) => {
+      const handler = _handshakeHandlers[command.type];
+      if (!handler) {
+        throw new Error(`No handler for command type: ${command.type}`);
+      }
+      const res = await handler(command);
+      return res?.result ?? res;
+    }),
+  };
+});
 
 // ============================================================================
 // Import module under test (after mocks)
@@ -112,7 +86,7 @@ import {
   _handleVerifyHandshake,
   _handleRevokeHandshake,
   _internals,
-} from '../lib/handshake.js';
+} from '../lib/handshake/index.js';
 
 // Wire handlers after import so they reference the real functions
 _handshakeHandlers = {
@@ -121,7 +95,7 @@ _handshakeHandlers = {
   verify_handshake: _handleVerifyHandshake,
   revoke_handshake: _handleRevokeHandshake,
   // issue_commit — stub that returns a mock commit
-  issue_commit: async (cmd) => ({
+  issue_commit: async () => ({
     result: { commit_id: 'epc_mock_' + crypto.randomBytes(4).toString('hex'), decision: 'allow' },
     aggregateId: 'epc_mock',
   }),
@@ -142,8 +116,15 @@ function createTableSim() {
     return tables[name];
   }
 
-  function buildSelectChain(tableName, rows) {
-    // Rows is an array — will be filtered by chained .eq() calls
+  function applyFilters(rows, filters) {
+    let result = rows;
+    for (const f of filters) {
+      result = result.filter((r) => r[f.col] === f.val);
+    }
+    return result;
+  }
+
+  function buildSelectChain(tableName) {
     let filters = [];
     const chain = {
       select: vi.fn().mockImplementation(() => chain),
@@ -166,7 +147,6 @@ function createTableSim() {
       }),
       then: undefined,
     };
-    // Make it thenable for `await supabase.from(t).select().eq()` (array result)
     chain.then = (resolve, reject) => {
       const filtered = applyFilters(getTable(tableName), filters);
       filters = [];
@@ -175,21 +155,12 @@ function createTableSim() {
     return chain;
   }
 
-  function applyFilters(rows, filters) {
-    let result = rows;
-    for (const f of filters) {
-      result = result.filter((r) => r[f.col] === f.val);
-    }
-    return result;
-  }
-
   function buildInsertChain(tableName) {
     let insertedRows = null;
     const chain = {
       insert: vi.fn().mockImplementation((rows) => {
         const arr = Array.isArray(rows) ? rows : [rows];
         for (const row of arr) {
-          // Auto-generate IDs
           if (tableName === 'handshakes' && !row.handshake_id) {
             row.handshake_id = 'eph_' + crypto.randomBytes(12).toString('hex');
           }
@@ -243,15 +214,12 @@ function createTableSim() {
     return chain;
   }
 
-  /**
-   * Returns a mock supabase client backed by in-memory tables.
-   */
   function mockClient() {
     return {
       from: vi.fn().mockImplementation((tableName) => {
         return {
           select: (...args) => {
-            const c = buildSelectChain(tableName, getTable(tableName));
+            const c = buildSelectChain(tableName);
             c.select(...args);
             return c;
           },
@@ -325,12 +293,6 @@ describe('initiateHandshake', () => {
     vi.clearAllMocks();
     sim = createTableSim();
     mockGetServiceClient.mockReturnValue(sim.mockClient());
-    mockProtocolWrite.mockImplementation(async (command) => {
-      const handler = _handshakeHandlers[command.type];
-      if (!handler) throw new Error(`No handler for command type: ${command.type}`);
-      const res = await handler(command);
-      return res?.result ?? res;
-    });
   });
 
   it('creates a valid basic handshake record with eph_ prefix', async () => {
@@ -422,12 +384,6 @@ describe('addPresentation', () => {
     vi.clearAllMocks();
     sim = createTableSim();
     mockGetServiceClient.mockReturnValue(sim.mockClient());
-    mockProtocolWrite.mockImplementation(async (command) => {
-      const handler = _handshakeHandlers[command.type];
-      if (!handler) throw new Error(`No handler for command type: ${command.type}`);
-      const res = await handler(command);
-      return res?.result ?? res;
-    });
   });
 
   /** Seed a handshake so addPresentation can find it */
@@ -549,7 +505,7 @@ describe('addPresentation', () => {
 
     await expect(
       addPresentation(hs.handshake_id, 'initiator', validPresentation()),
-    ).rejects.toThrow(/verified|state/i);
+    ).rejects.toThrow(/state/i);
   });
 });
 
@@ -564,12 +520,6 @@ describe('verifyHandshake', () => {
     vi.clearAllMocks();
     sim = createTableSim();
     mockGetServiceClient.mockReturnValue(sim.mockClient());
-    mockProtocolWrite.mockImplementation(async (command) => {
-      const handler = _handshakeHandlers[command.type];
-      if (!handler) throw new Error(`No handler for command type: ${command.type}`);
-      const res = await handler(command);
-      return res?.result ?? res;
-    });
   });
 
   /** Seed a fully ready handshake with binding and presentations */
@@ -903,12 +853,6 @@ describe('Security invariants', () => {
     vi.clearAllMocks();
     sim = createTableSim();
     mockGetServiceClient.mockReturnValue(sim.mockClient());
-    mockProtocolWrite.mockImplementation(async (command) => {
-      const handler = _handshakeHandlers[command.type];
-      if (!handler) throw new Error(`No handler for command type: ${command.type}`);
-      const res = await handler(command);
-      return res?.result ?? res;
-    });
   });
 
   it('replay: same nonce cannot be reused (binding nonce is unique per handshake)', async () => {
@@ -957,7 +901,7 @@ describe('Security invariants', () => {
 
     await expect(
       addPresentation(hs_id, 'initiator', validPresentation()),
-    ).rejects.toThrow(/state|verified/i);
+    ).rejects.toThrow(/state/i);
   });
 
   it('revoked handshake returns revoked status', async () => {
@@ -1112,12 +1056,6 @@ describe('Handshake state machine', () => {
     vi.clearAllMocks();
     sim = createTableSim();
     mockGetServiceClient.mockReturnValue(sim.mockClient());
-    mockProtocolWrite.mockImplementation(async (command) => {
-      const handler = _handshakeHandlers[command.type];
-      if (!handler) throw new Error(`No handler for command type: ${command.type}`);
-      const res = await handler(command);
-      return res?.result ?? res;
-    });
   });
 
   it('transitions initiated -> pending_verification -> verified', async () => {
@@ -1152,7 +1090,6 @@ describe('Handshake state machine', () => {
     expect(hsAfterPres.status).toBe('pending_verification');
 
     // Step 2: verify -> status should transition to verified
-    // Add the presentation to the presentations table (it was already added by addPresentation handler)
     const result = await verifyHandshake(hs_id);
 
     expect(result.outcome).toBe('accepted');

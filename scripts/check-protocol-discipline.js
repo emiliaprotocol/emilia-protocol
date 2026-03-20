@@ -235,6 +235,239 @@ function checkHandlerComplexity() {
 }
 
 // ---------------------------------------------------------------------------
+// Handshake Discipline Checks
+// ---------------------------------------------------------------------------
+
+/** Handshake tables that must only be written through approved modules. */
+const HANDSHAKE_TABLES = [
+  'handshakes', 'handshake_parties', 'handshake_presentations',
+  'handshake_bindings', 'handshake_results', 'handshake_policies',
+  'handshake_events',
+];
+
+/** Files that are ALLOWED to write directly to handshake tables. */
+const HANDSHAKE_WRITE_ALLOWLIST = new Set([
+  path.join(ROOT, 'lib', 'handshake.js'),
+  path.join(ROOT, 'lib', 'protocol-write.js'),
+]);
+
+function isInsideHandshakeLib(filePath) {
+  const handshakeDir = path.join(ROOT, 'lib', 'handshake') + path.sep;
+  return filePath.startsWith(handshakeDir);
+}
+
+/**
+ * Check H1: No direct writes to handshake tables outside approved modules.
+ */
+function checkHandshakeTableWrites() {
+  const violations = [];
+  const allFiles = getAllScannable();
+
+  const writeOps = ['insert', 'update', 'upsert'];
+  const patterns = [];
+  for (const table of HANDSHAKE_TABLES) {
+    for (const op of writeOps) {
+      patterns.push({
+        table,
+        op,
+        regex: new RegExp(`\\.from\\(\\s*['"\`]${table}['"\`]\\s*\\)\\s*\\.${op}\\(`, 'g'),
+      });
+    }
+  }
+
+  for (const filePath of allFiles) {
+    if (HANDSHAKE_WRITE_ALLOWLIST.has(filePath)) continue;
+    if (isInsideHandshakeLib(filePath)) continue;
+
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const lines = content.split('\n');
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+      if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) continue;
+
+      for (const { table, op, regex } of patterns) {
+        regex.lastIndex = 0;
+        if (regex.test(line)) {
+          violations.push({
+            file: path.relative(ROOT, filePath),
+            line: i + 1,
+            message: `Direct .${op}() on handshake table "${table}" — must use lib/handshake.js or lib/protocol-write.js`,
+            severity: 'critical',
+            section: 'handshake',
+          });
+        }
+      }
+    }
+  }
+
+  return violations;
+}
+
+/**
+ * Check H2: No raw process.env in handshake runtime code.
+ */
+function checkHandshakeEnv() {
+  const violations = [];
+  const envPattern = /process\.env/g;
+
+  const handshakeMainFile = path.join(ROOT, 'lib', 'handshake.js');
+  const handshakeDir = path.join(ROOT, 'lib', 'handshake');
+
+  const filesToScan = [];
+  if (fs.existsSync(handshakeMainFile)) filesToScan.push(handshakeMainFile);
+  if (fs.existsSync(handshakeDir)) filesToScan.push(...collectFiles(handshakeDir, /\.js$/));
+
+  for (const filePath of filesToScan) {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const lines = content.split('\n');
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+      if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) continue;
+
+      envPattern.lastIndex = 0;
+      if (envPattern.test(line)) {
+        violations.push({
+          file: path.relative(ROOT, filePath),
+          line: i + 1,
+          message: `process.env usage in handshake code — config should come through lib/env.js`,
+          severity: 'warning',
+          section: 'handshake',
+        });
+      }
+    }
+  }
+
+  return violations;
+}
+
+/**
+ * Check H3: No route-level policy logic in handshake routes.
+ */
+function checkHandshakeRoutePolicyLogic() {
+  const violations = [];
+  const handshakeRouteDir = path.join(ROOT, 'app', 'api', 'handshake');
+  if (!fs.existsSync(handshakeRouteDir)) return violations;
+
+  const routeFiles = collectFiles(handshakeRouteDir, /\.js$/);
+  const policyPatterns = /required_claims|minimum_assurance|assurance_level.*check|policy.*valid/;
+
+  for (const filePath of routeFiles) {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const lines = content.split('\n');
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+      if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) continue;
+
+      if (policyPatterns.test(line)) {
+        violations.push({
+          file: path.relative(ROOT, filePath),
+          line: i + 1,
+          message: `Policy validation logic in route handler — routes should be thin adapters that delegate to service layer`,
+          severity: 'warning',
+          section: 'handshake',
+        });
+      }
+    }
+  }
+
+  return violations;
+}
+
+/**
+ * Check H4: No direct trust of embedded issuer keys.
+ */
+function checkEmbeddedIssuerKeys() {
+  const violations = [];
+  const embeddedKeyPattern = /presentation\.publicKey|presentation\.signingKey|payload\.key/g;
+
+  const handshakeMainFile = path.join(ROOT, 'lib', 'handshake.js');
+  const handshakeDir = path.join(ROOT, 'lib', 'handshake');
+
+  const filesToScan = [];
+  if (fs.existsSync(handshakeMainFile)) filesToScan.push(handshakeMainFile);
+  if (fs.existsSync(handshakeDir)) filesToScan.push(...collectFiles(handshakeDir, /\.js$/));
+
+  for (const filePath of filesToScan) {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const lines = content.split('\n');
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmed = line.trim();
+      if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) continue;
+
+      embeddedKeyPattern.lastIndex = 0;
+      if (embeddedKeyPattern.test(line)) {
+        violations.push({
+          file: path.relative(ROOT, filePath),
+          line: i + 1,
+          message: `Direct trust of embedded issuer key — keys must come from authority registry, not embedded in presentations`,
+          severity: 'critical',
+          section: 'handshake',
+        });
+      }
+    }
+  }
+
+  return violations;
+}
+
+/**
+ * Check H5: Invariant test suite presence.
+ */
+function checkHandshakeTestSuite() {
+  const violations = [];
+  const testDir = path.join(ROOT, 'tests');
+
+  const handshakeTestFile = path.join(testDir, 'handshake.test.js');
+  const attackTestFile = path.join(testDir, 'handshake-attack.test.js');
+
+  const handshakeTestExists = fs.existsSync(handshakeTestFile);
+  const attackTestExists = fs.existsSync(attackTestFile);
+
+  if (!handshakeTestExists) {
+    violations.push({
+      file: 'tests/handshake.test.js',
+      line: 0,
+      message: `Missing handshake test suite — tests/handshake.test.js must exist`,
+      severity: 'warning',
+      section: 'handshake',
+    });
+  } else {
+    // Check for security invariant tests
+    const content = fs.readFileSync(handshakeTestFile, 'utf-8');
+    const hasInvariantTests = /invariant|Security Invariants|attack/i.test(content);
+    if (!hasInvariantTests) {
+      violations.push({
+        file: 'tests/handshake.test.js',
+        line: 0,
+        message: `Handshake test suite missing security invariant tests — must include invariant or attack test coverage`,
+        severity: 'warning',
+        section: 'handshake',
+      });
+    }
+  }
+
+  if (!attackTestExists) {
+    violations.push({
+      file: 'tests/handshake-attack.test.js',
+      line: 0,
+      message: `Missing handshake attack test suite — tests/handshake-attack.test.js should exist`,
+      severity: 'warning',
+      section: 'handshake',
+    });
+  }
+
+  return violations;
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -243,8 +476,21 @@ export function runChecks() {
   const envViolations = checkEnvReads();
   const complexityWarnings = checkHandlerComplexity();
 
-  const criticals = [...trustViolations, ...envViolations];
-  const warnings = complexityWarnings;
+  // Handshake discipline checks
+  const hsTableViolations = checkHandshakeTableWrites();
+  const hsEnvWarnings = checkHandshakeEnv();
+  const hsPolicyWarnings = checkHandshakeRoutePolicyLogic();
+  const hsKeyViolations = checkEmbeddedIssuerKeys();
+  const hsTestWarnings = checkHandshakeTestSuite();
+
+  const criticals = [
+    ...trustViolations, ...envViolations,
+    ...hsTableViolations, ...hsKeyViolations,
+  ];
+  const warnings = [
+    ...complexityWarnings,
+    ...hsEnvWarnings, ...hsPolicyWarnings, ...hsTestWarnings,
+  ];
   const all = [...criticals, ...warnings];
 
   return { criticals, warnings, all };
@@ -257,30 +503,62 @@ function main() {
 
   const { criticals, warnings, all } = runChecks();
 
+  // Separate handshake items from general items
+  const generalCriticals = criticals.filter((v) => !v.section);
+  const generalWarnings = warnings.filter((v) => !v.section);
+  const hsCriticals = criticals.filter((v) => v.section === 'handshake');
+  const hsWarnings = warnings.filter((v) => v.section === 'handshake');
+
   if (all.length === 0) {
     console.log('All checks passed. No protocol discipline violations found.');
     process.exit(0);
   }
 
-  // Print violations grouped by severity
-  if (criticals.length > 0) {
-    console.log(`CRITICAL VIOLATIONS (${criticals.length}):`);
+  // Print general violations grouped by severity
+  if (generalCriticals.length > 0) {
+    console.log(`CRITICAL VIOLATIONS (${generalCriticals.length}):`);
     console.log('-'.repeat(40));
-    for (const v of criticals) {
+    for (const v of generalCriticals) {
       console.log(`  ${v.file}:${v.line}`);
       console.log(`    ${v.message}`);
     }
     console.log();
   }
 
-  if (warnings.length > 0) {
-    console.log(`WARNINGS (${warnings.length}):`);
+  if (generalWarnings.length > 0) {
+    console.log(`WARNINGS (${generalWarnings.length}):`);
     console.log('-'.repeat(40));
-    for (const w of warnings) {
+    for (const w of generalWarnings) {
       console.log(`  ${w.file}:${w.line}`);
       console.log(`    ${w.message}`);
     }
     console.log();
+  }
+
+  // Print handshake discipline section
+  if (hsCriticals.length > 0 || hsWarnings.length > 0) {
+    console.log('=== Handshake Discipline ===');
+    console.log();
+
+    if (hsCriticals.length > 0) {
+      console.log(`CRITICAL VIOLATIONS (${hsCriticals.length}):`);
+      console.log('-'.repeat(40));
+      for (const v of hsCriticals) {
+        console.log(`  ${v.file}:${v.line}`);
+        console.log(`    ${v.message}`);
+      }
+      console.log();
+    }
+
+    if (hsWarnings.length > 0) {
+      console.log(`WARNINGS (${hsWarnings.length}):`);
+      console.log('-'.repeat(40));
+      for (const w of hsWarnings) {
+        console.log(`  ${w.file}:${w.line}`);
+        console.log(`    ${w.message}`);
+      }
+      console.log();
+    }
   }
 
   // Summary
