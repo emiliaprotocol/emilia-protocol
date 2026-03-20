@@ -31,7 +31,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { authenticateRequest } from '@/lib/supabase';
-import { canonicalSubmitAutoReceipt } from '@/lib/canonical-writer';
+import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { epProblem } from '@/lib/errors';
 import { getAutoSubmitSecret } from '@/lib/env';
 
@@ -232,7 +232,11 @@ export async function POST(request) {
 
     for (const { receipt, index, idempotency_key } of validated) {
       try {
-        const result = await canonicalSubmitAutoReceipt(receipt, auth.entity);
+        const result = await protocolWrite({
+          type: COMMAND_TYPES.SUBMIT_AUTO_RECEIPT,
+          input: receipt,
+          actor: auth.entity,
+        });
 
         if (result.error) {
           canonicalErrors.push({

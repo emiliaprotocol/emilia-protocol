@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { verifyCommit } from '@/lib/commit';
+import { protocolWrite, COMMAND_TYPES, ProtocolWriteError } from '@/lib/protocol-write';
 import { epProblem } from '@/lib/errors';
 
 /**
@@ -23,7 +23,11 @@ export async function POST(request) {
       return epProblem(400, 'missing_commit_id', 'Provide commit_id');
     }
 
-    const result = await verifyCommit(body.commit_id);
+    const result = await protocolWrite({
+      type: COMMAND_TYPES.VERIFY_COMMIT,
+      actor: 'public',
+      input: { commit_id: body.commit_id },
+    });
 
     // Minimum disclosure per PROTOCOL-STANDARD.md Section 18.4:
     // Verification MUST NOT expose the full commit payload — no scope,
@@ -36,6 +40,9 @@ export async function POST(request) {
       reasons: result.reasons || [],
     });
   } catch (err) {
+    if (err instanceof ProtocolWriteError) {
+      return epProblem(err.status, err.code.toLowerCase(), err.message);
+    }
     console.error('Commit verify error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }

@@ -1,16 +1,16 @@
 import crypto from 'crypto';
 import { NextResponse } from 'next/server';
-import { canonicalFileReport } from '@/lib/canonical-writer';
+import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { checkAbuse } from '@/lib/procedural-justice';
 import { getServiceClient } from '@/lib/supabase';
 
 /**
  * POST /api/disputes/report
- * 
+ *
  * Human appeal endpoint. No authentication required.
- * Routes through canonical writer with abuse detection.
- * 
+ * Routes through protocol write with abuse detection.
+ *
  * "EP must never make trust more powerful than appeal."
  */
 export async function POST(request) {
@@ -50,11 +50,15 @@ export async function POST(request) {
       });
     }
 
-    const result = await canonicalFileReport({
-      entity_id: entityId,
-      report_type: reportType,
-      description: description || '',
-      reporter_ip_hash: reporterIpHash,
+    const result = await protocolWrite({
+      type: COMMAND_TYPES.FILE_REPORT,
+      input: {
+        entity_id: entityId,
+        report_type: reportType,
+        description: description || '',
+        reporter_ip_hash: reporterIpHash,
+      },
+      actor: 'anonymous',
     });
 
     if (result.error) {

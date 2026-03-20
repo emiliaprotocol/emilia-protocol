@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest, getServiceClient } from '@/lib/supabase';
 import { revokeHandshake } from '@/lib/handshake';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { validateRevokeBody } from '@/lib/handshake/schema';
 
 /**
  * POST /api/handshake/[handshakeId]/revoke
@@ -16,11 +17,29 @@ export async function POST(request, { params }) {
     const { handshakeId } = await params;
     const body = await request.json();
 
-    if (!body.reason) {
-      return EP_ERRORS.BAD_REQUEST('reason is required');
+    const validation = validateRevokeBody(body);
+    if (!validation.valid) {
+      return EP_ERRORS.BAD_REQUEST(validation.error);
     }
 
-    const result = await revokeHandshake(handshakeId, body.reason, auth.entity);
+    // Access control: only parties to the handshake may revoke it
+    const supabase = getServiceClient();
+    const entityId = typeof auth.entity === 'object'
+      ? (auth.entity.entity_id || auth.entity.id)
+      : auth.entity;
+
+    const { data: party } = await supabase
+      .from('handshake_parties')
+      .select('id')
+      .eq('handshake_id', handshakeId)
+      .eq('entity_ref', entityId)
+      .maybeSingle();
+
+    if (!party) {
+      return epProblem(403, 'not_party', 'Only parties to the handshake may revoke it');
+    }
+
+    const result = await revokeHandshake(handshakeId, validation.sanitized.reason, auth.entity);
 
     if (result.error) {
       return epProblem(result.status || 500, 'handshake_revocation_failed', result.error);

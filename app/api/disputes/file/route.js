@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
-import { canonicalFileDispute } from '@/lib/canonical-writer';
+import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 
 /**
  * POST /api/disputes/file
- * 
- * File a dispute against a receipt. Routes through canonical writer.
+ *
+ * File a dispute against a receipt. Routes through protocol write.
  * "Trust must never be more powerful than appeal."
  */
 export async function POST(request) {
@@ -27,7 +27,11 @@ export async function POST(request) {
       return EP_ERRORS.BAD_REQUEST(`Invalid reason. Must be one of: ${validReasons.join(', ')}`);
     }
 
-    const result = await canonicalFileDispute(body, auth.entity);
+    const result = await protocolWrite({
+      type: COMMAND_TYPES.FILE_DISPUTE,
+      input: body,
+      actor: auth.entity,
+    });
 
     if (result.error) {
       return epProblem(result.status || 500, 'dispute_filing_failed', result.error, {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
-import { canonicalSubmitReceipt } from '@/lib/canonical-writer';
+import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { buildAttributionChain, applyAttributionChain } from '@/lib/attribution';
 
@@ -71,7 +71,11 @@ export async function POST(request) {
     }
 
     // === DELEGATE TO CANONICAL WRITE ENGINE ===
-    const result = await canonicalSubmitReceipt(body, auth.entity);
+    const result = await protocolWrite({
+      type: COMMAND_TYPES.SUBMIT_RECEIPT,
+      input: body,
+      actor: auth.entity,
+    });
 
     if (result.error) {
       return epProblem(result.status || 500, 'receipt_submission_failed', result.error, {

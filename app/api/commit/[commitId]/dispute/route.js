@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest, getServiceClient } from '@/lib/supabase';
-import { canonicalFileDispute } from '@/lib/canonical-writer';
+import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { CommitError } from '@/lib/commit';
 import { epProblem } from '@/lib/errors';
 
@@ -8,7 +8,7 @@ import { epProblem } from '@/lib/errors';
  * POST /api/commit/[commitId]/dispute
  *
  * Shortcut to open a dispute from a commit. Looks up the commit, finds
- * the bound receipt_id, and delegates to the existing dispute filing logic.
+ * the bound receipt_id, and delegates to protocol write for dispute filing.
  *
  * The commit must have a bound receipt for a dispute to be filed against it.
  */
@@ -52,8 +52,12 @@ export async function POST(request, { params }) {
       },
     };
 
-    // Delegate to canonical dispute filing
-    const result = await canonicalFileDispute(disputeBody, auth.entity);
+    // Delegate to protocol write for dispute filing
+    const result = await protocolWrite({
+      type: COMMAND_TYPES.FILE_DISPUTE,
+      input: disputeBody,
+      actor: auth.entity,
+    });
 
     if (result.error) {
       return epProblem(result.status || 500, 'dispute_filing_failed', result.error, {

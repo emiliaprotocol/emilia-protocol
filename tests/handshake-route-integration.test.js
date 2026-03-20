@@ -36,9 +36,22 @@ const mockAuthenticateRequest = vi.fn().mockResolvedValue({
   entity: 'test-entity-123',
 });
 
+// Mock getServiceClient to return a chainable query builder for access control checks
+function createMockSupabase(partyResult = { data: { id: 'party-1' } }) {
+  const chain = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    maybeSingle: vi.fn().mockResolvedValue(partyResult),
+  };
+  return { from: vi.fn().mockReturnValue(chain), _chain: chain };
+}
+
+const mockSupabase = createMockSupabase();
+const mockGetServiceClient = vi.fn().mockReturnValue(mockSupabase);
+
 vi.mock('@/lib/supabase', () => ({
   authenticateRequest: (...args) => mockAuthenticateRequest(...args),
-  getServiceClient: vi.fn(),
+  getServiceClient: (...args) => mockGetServiceClient(...args),
 }));
 
 // ============================================================================
@@ -112,6 +125,9 @@ import { GET as detailGet } from '@/app/api/handshake/[handshakeId]/route';
 beforeEach(() => {
   vi.clearAllMocks();
   mockAuthenticateRequest.mockResolvedValue({ entity: 'test-entity-123' });
+  // Reset getServiceClient to return a mock with party found (access control passes)
+  const freshMock = createMockSupabase();
+  mockGetServiceClient.mockReturnValue(freshMock);
   mockInitiateHandshake.mockResolvedValue({
     handshake_id: 'eph_test_123',
     mode: 'mutual',
@@ -147,11 +163,12 @@ beforeEach(() => {
 // ============================================================================
 
 describe('POST /api/handshake (create)', () => {
+  // initiator.entity_ref must match auth entity ('test-entity-123') per Finding 3
   const validBody = {
     mode: 'mutual',
     policy_id: 'pol_abc',
     parties: [
-      { role: 'initiator', entity_ref: 'ent_1' },
+      { role: 'initiator', entity_ref: 'test-entity-123' },
       { role: 'responder', entity_ref: 'ent_2' },
     ],
   };
@@ -331,6 +348,7 @@ describe('POST /api/handshake/:id/verify', () => {
     expect(callArgs[1]).toEqual({
       actor: 'test-entity-123',
       payload_hash: 'hash_abc123',
+      nonce: null,
     });
   });
 
@@ -348,6 +366,7 @@ describe('POST /api/handshake/:id/verify', () => {
     expect(callArgs[1]).toEqual({
       actor: 'test-entity-123',
       payload_hash: null,
+      nonce: null,
     });
   });
 
@@ -376,13 +395,14 @@ describe('GET /api/handshake (list)', () => {
     expect(callArgs[1]).toBe('test-entity-123');
   });
 
-  it('17. passes filter params from query string correctly', async () => {
+  it('17. passes filter params from query string correctly (entity_ref forced to auth entity)', async () => {
+    // Finding 11: entity_ref is always forced to auth.entity, ignoring query param
     const req = createMockRequest('GET', 'http://localhost/api/handshake?status=verified&mode=delegated&entity_ref=ent_xyz');
     await listGet(req);
 
     const filters = mockListHandshakes.mock.calls[0][0];
     expect(filters).toEqual({
-      entity_ref: 'ent_xyz',
+      entity_ref: 'test-entity-123',
       status: 'verified',
       mode: 'delegated',
     });

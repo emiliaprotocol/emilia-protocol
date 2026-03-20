@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
-import { canonicalWithdrawDispute } from '@/lib/canonical-writer';
+import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS } from '@/lib/errors';
 
 /**
  * POST /api/disputes/withdraw
- * 
+ *
  * Withdraw an open dispute. Only the filer can withdraw.
  */
 export async function POST(request) {
@@ -18,7 +18,14 @@ export async function POST(request) {
       return EP_ERRORS.BAD_REQUEST('dispute_id is required');
     }
 
-    const result = await canonicalWithdrawDispute(body.dispute_id, auth.entity);
+    const result = await protocolWrite({
+      type: COMMAND_TYPES.WITHDRAW_DISPUTE,
+      input: {
+        dispute_id: body.dispute_id,
+        withdrawer_id: auth.entity.id,
+      },
+      actor: auth.entity,
+    });
 
     if (result.error) {
       return NextResponse.json({ error: result.error }, { status: result.status || 500 });

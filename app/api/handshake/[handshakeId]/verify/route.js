@@ -20,6 +20,7 @@ export async function POST(request, { params }) {
     const result = await verifyHandshake(handshakeId, {
       actor: auth.entity,
       payload_hash: body.payload_hash || null,
+      nonce: body.nonce || null,
     });
 
     if (result.error) {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { canonicalResolveAppeal } from '@/lib/canonical-writer';
-import { validateTransition, DISPUTE_STATES, recordOperatorAction } from '@/lib/procedural-justice';
+import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
+import { recordOperatorAction } from '@/lib/procedural-justice';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { getServiceClient } from '@/lib/supabase';
 import { getCronSecret } from '@/lib/env';
@@ -40,9 +40,16 @@ export async function POST(request) {
 
     if (!dispute) return EP_ERRORS.NOT_FOUND('Dispute');
 
-    const result = await canonicalResolveAppeal(
-      body.dispute_id, body.resolution, body.rationale || null, 'appeal_reviewer'
-    );
+    const result = await protocolWrite({
+      type: COMMAND_TYPES.RESOLVE_APPEAL,
+      input: {
+        dispute_id: body.dispute_id,
+        resolution: body.resolution,
+        rationale: body.rationale || null,
+        operator_id: 'appeal_reviewer',
+      },
+      actor: 'appeal_reviewer',
+    });
 
     if (result.error) {
       return epProblem(result.status || 500, 'appeal_resolution_failed', result.error);

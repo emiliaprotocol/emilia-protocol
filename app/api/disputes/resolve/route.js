@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { canonicalResolveDispute } from '@/lib/canonical-writer';
+import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { validateTransition, DISPUTE_STATES, recordOperatorAction } from '@/lib/procedural-justice';
 import { getServiceClient } from '@/lib/supabase';
@@ -11,7 +11,7 @@ import { getCronSecret } from '@/lib/env';
  * @operator
  * @access operator — requires CRON_SECRET. Not part of the public API.
  *
- * Operator resolves a dispute. Routes through canonical writer.
+ * Operator resolves a dispute. Routes through protocol write.
  * Validates state transition against formal dispute state machine.
  * Records operator action in audit trail.
  * Reversal triggers score recomputation and trust materialization.
@@ -51,9 +51,16 @@ export async function POST(request) {
       return EP_ERRORS.BAD_REQUEST(`Invalid state transition: ${transition.reason}`);
     }
 
-    const result = await canonicalResolveDispute(
-      body.dispute_id, body.resolution, body.rationale || null, 'operator'
-    );
+    const result = await protocolWrite({
+      type: COMMAND_TYPES.RESOLVE_DISPUTE,
+      input: {
+        dispute_id: body.dispute_id,
+        resolution: body.resolution,
+        rationale: body.rationale || null,
+        operator_id: 'operator',
+      },
+      actor: 'operator',
+    });
 
     if (result.error) {
       return epProblem(result.status || 500, 'resolution_failed', result.error);

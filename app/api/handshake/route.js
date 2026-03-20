@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { initiateHandshake, listHandshakes } from '@/lib/handshake';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { validateInitiateBody } from '@/lib/handshake/schema';
 
 /**
  * POST /api/handshake
@@ -9,6 +10,9 @@ import { EP_ERRORS, epProblem } from '@/lib/errors';
  * Initiate a new EP Handshake — a structured identity exchange between parties.
  * The handshake coordinates mutual presentation of identity proofs before
  * a trust decision can be made.
+ *
+ * Authorization: validates that exactly one initiator exists and its entity_ref
+ * matches the authenticated entity.
  */
 export async function POST(request) {
   try {
@@ -17,26 +21,24 @@ export async function POST(request) {
 
     const body = await request.json();
 
-    if (!body.mode) {
-      return EP_ERRORS.BAD_REQUEST('mode is required');
+    const validation = validateInitiateBody(body);
+    if (!validation.valid) {
+      return EP_ERRORS.BAD_REQUEST(validation.error);
     }
-    if (!body.policy_id) {
-      return EP_ERRORS.BAD_REQUEST('policy_id is required');
+
+    // ── Authorization: enforce initiator ownership ──────────────────────
+    const initiators = validation.sanitized.parties.filter((p) => p.role === 'initiator');
+    if (initiators.length !== 1) {
+      return EP_ERRORS.BAD_REQUEST('Exactly one initiator party is required');
     }
-    if (!body.parties || !Array.isArray(body.parties) || body.parties.length < 2) {
-      return EP_ERRORS.BAD_REQUEST('parties is required and must contain at least 2 entries');
+    if (initiators[0].entity_ref !== auth.entity) {
+      return epProblem(403, 'unauthorized_handshake_access',
+        'Initiator entity_ref must match the authenticated entity');
     }
 
     const result = await initiateHandshake({
       actor: auth.entity,
-      mode: body.mode,
-      policy_id: body.policy_id,
-      parties: body.parties,
-      payload: body.payload || {},
-      interaction_id: body.interaction_id || null,
-      binding: body.binding || null,
-      binding_ttl_ms: body.binding_ttl_ms || undefined,
-      idempotency_key: body.idempotency_key || null,
+      ...validation.sanitized,
     });
 
     if (result.error) {
@@ -53,7 +55,9 @@ export async function POST(request) {
 /**
  * GET /api/handshake
  *
- * List handshakes, optionally filtered by entity_ref, status, or mode.
+ * List handshakes, optionally filtered by status or mode.
+ * Reads are scoped to the authenticated entity — the entity_ref filter is
+ * always forced to match auth.entity regardless of query parameters.
  */
 export async function GET(request) {
   try {
@@ -62,7 +66,7 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const filters = {
-      entity_ref: searchParams.get('entity_ref') || null,
+      entity_ref: auth.entity, // forced — callers may only list their own handshakes
       status: searchParams.get('status') || null,
       mode: searchParams.get('mode') || null,
     };

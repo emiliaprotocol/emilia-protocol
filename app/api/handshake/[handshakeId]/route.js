@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest, getServiceClient } from '@/lib/supabase';
 import { getHandshake } from '@/lib/handshake';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 
@@ -7,6 +7,7 @@ import { EP_ERRORS, epProblem } from '@/lib/errors';
  * GET /api/handshake/[handshakeId]
  *
  * Get full handshake state including parties, presentations, binding, and result.
+ * Access restricted to parties of the handshake.
  */
 export async function GET(request, { params }) {
   try {
@@ -14,6 +15,23 @@ export async function GET(request, { params }) {
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();
 
     const { handshakeId } = await params;
+
+    // Access control: only parties to the handshake may view it
+    const supabase = getServiceClient();
+    const entityId = typeof auth.entity === 'object'
+      ? (auth.entity.entity_id || auth.entity.id)
+      : auth.entity;
+
+    const { data: party } = await supabase
+      .from('handshake_parties')
+      .select('id')
+      .eq('handshake_id', handshakeId)
+      .eq('entity_ref', entityId)
+      .maybeSingle();
+
+    if (!party) {
+      return epProblem(403, 'not_party', 'Only parties to the handshake may view it');
+    }
 
     const result = await getHandshake(handshakeId, null, auth.entity);
 

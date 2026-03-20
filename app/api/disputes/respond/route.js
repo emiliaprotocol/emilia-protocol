@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
-import { canonicalRespondDispute } from '@/lib/canonical-writer';
-import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
+import { EP_ERRORS } from '@/lib/errors';
 
 /**
  * POST /api/disputes/respond
- * 
- * Receipt submitter responds to a dispute. Routes through canonical writer.
+ *
+ * Receipt submitter responds to a dispute. Routes through protocol write.
  */
 export async function POST(request) {
   try {
@@ -18,9 +18,16 @@ export async function POST(request) {
       return EP_ERRORS.BAD_REQUEST('dispute_id and response are required');
     }
 
-    const result = await canonicalRespondDispute(
-      body.dispute_id, auth.entity.id, body.response, body.evidence
-    );
+    const result = await protocolWrite({
+      type: COMMAND_TYPES.RESPOND_DISPUTE,
+      input: {
+        dispute_id: body.dispute_id,
+        responder_id: auth.entity.id,
+        response: body.response,
+        evidence: body.evidence,
+      },
+      actor: auth.entity,
+    });
 
     if (result.error) {
       return NextResponse.json({ error: result.error }, { status: result.status || 500 });

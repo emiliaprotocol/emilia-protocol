@@ -136,7 +136,7 @@ describe('Read-only routes have useAuth: false', () => {
     'GET /api/trust/profile/*',
     'POST /api/trust/evaluate',
     'POST /api/trust/install-preflight',
-    'POST /api/trust/gate',
+    // 'POST /api/trust/gate' — now authenticated (audit finding 12)
     'GET /api/trust/domain-score/*',
     'GET /api/trust/zk-proof',
     'GET /api/entities/search',

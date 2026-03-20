@@ -55,6 +55,7 @@ vi.mock('@/lib/env', () => ({
 
 // Import after mocks
 import { POST } from '@/app/api/receipts/auto-submit/route';
+import { _internals as _pwInternals } from '@/lib/protocol-write';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -99,6 +100,7 @@ describe('POST /api/receipts/auto-submit', () => {
     _canonicalResults = [];
     _canonicalCallIndex = 0;
     _mockSecret = 'test-machine-secret-abc123';
+    _pwInternals._idempotencyCache.clear();
   });
 
   // ── 1. Auth required ───────────────────────────────────────────────────

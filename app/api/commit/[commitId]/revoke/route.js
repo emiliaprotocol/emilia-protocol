@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
-import { revokeCommit, getCommitStatus, CommitError } from '@/lib/commit';
+import { getCommitStatus, CommitError } from '@/lib/commit';
 import { authorizeCommitAccess } from '@/lib/commit-auth';
+import { protocolWrite, COMMAND_TYPES, ProtocolWriteError } from '@/lib/protocol-write';
 import { epProblem } from '@/lib/errors';
 
 /**
@@ -37,7 +38,11 @@ export async function POST(request, { params }) {
       return epProblem(400, 'missing_reason', 'reason is required');
     }
 
-    const result = await revokeCommit(commitId, body.reason);
+    const result = await protocolWrite({
+      type: COMMAND_TYPES.REVOKE_COMMIT,
+      actor: auth,
+      input: { commit_id: commitId, reason: body.reason },
+    });
 
     return NextResponse.json({
       commit_id: result.commit_id,
@@ -45,6 +50,9 @@ export async function POST(request, { params }) {
       revoked_at: new Date().toISOString(),
     });
   } catch (err) {
+    if (err instanceof ProtocolWriteError) {
+      return epProblem(err.status, err.code.toLowerCase(), err.message);
+    }
     if (err instanceof CommitError) {
       return epProblem(err.status, err.code.toLowerCase(), err.message);
     }

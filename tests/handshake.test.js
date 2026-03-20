@@ -123,6 +123,16 @@ function createTableSim() {
         valid_to: new Date(Date.now() + 365 * 86_400_000).toISOString(),
       });
     }
+    // Seed default policy on first access to 'handshake_policies'
+    if (name === 'handshake_policies' && tables[name].length === 0) {
+      tables[name].push({
+        policy_id: 'policy-abc-123',
+        policy_key: 'default',
+        policy_version: '1.0.0',
+        status: 'active',
+        rules: {},
+      });
+    }
     return tables[name];
   }
 
@@ -203,6 +213,10 @@ function createTableSim() {
         return chain;
       }),
       eq: vi.fn().mockImplementation((col, val) => {
+        filters.push({ col, val });
+        return chain;
+      }),
+      is: vi.fn().mockImplementation((col, val) => {
         filters.push({ col, val });
         return chain;
       }),
@@ -336,9 +350,12 @@ describe('initiateHandshake', () => {
   });
 
   it('creates a delegated handshake with delegation_chain', async () => {
+    // In delegated mode, the actor is the delegate (not the initiator/principal).
+    // Finding 3: actor must match delegate party entity_ref.
     const result = await initiateHandshake(
       validHandshakeParams({
         mode: 'delegated',
+        actor: 'entity-alice',
         parties: [
           { role: 'initiator', entity_ref: 'entity-principal' },
           {
@@ -605,9 +622,9 @@ describe('verifyHandshake', () => {
   }
 
   it('accepts when all claims are met (outcome = accepted)', async () => {
-    const { hs_id } = seedReadyHandshake();
+    const { hs_id, binding } = seedReadyHandshake();
 
-    const result = await verifyHandshake(hs_id);
+    const result = await verifyHandshake(hs_id, { payload_hash: binding.payload_hash });
 
     expect(result).toBeDefined();
     expect(result.outcome).toBe('accepted');
@@ -806,7 +823,7 @@ describe('verifyHandshake', () => {
   });
 
   it('returns partial when some parties verified and some not', async () => {
-    const { hs_id } = seedReadyHandshake({
+    const { hs_id, binding } = seedReadyHandshake({
       presentations: [],
     });
     // initiator is verified, responder is not
@@ -836,19 +853,19 @@ describe('verifyHandshake', () => {
       },
     );
 
-    const result = await verifyHandshake(hs_id);
+    const result = await verifyHandshake(hs_id, { payload_hash: binding.payload_hash });
 
     expect(result.outcome).toBe('partial');
   });
 
-  it('issues an EP Commit when handshake is accepted', async () => {
-    const { hs_id } = seedReadyHandshake();
+  it('does NOT issue a commit directly — commits come from trust/gate', async () => {
+    const { hs_id, binding } = seedReadyHandshake();
 
-    const result = await verifyHandshake(hs_id);
+    const result = await verifyHandshake(hs_id, { payload_hash: binding.payload_hash });
 
     expect(result.outcome).toBe('accepted');
-    expect(result.commit_ref).toBeDefined();
-    expect(result.commit_ref).toMatch(/^epc_/);
+    // commit_ref is no longer returned from verify — commits are minted by trust/gate
+    expect(result.commit_ref).toBeUndefined();
   });
 });
 
@@ -963,7 +980,7 @@ describe('Security invariants', () => {
       revocation_status: 'good',
     });
 
-    const result = await verifyHandshake(hs_id);
+    const result = await verifyHandshake(hs_id, { payload_hash: _internals.sha256('{}') });
 
     expect(result.policy_version).toBe('2.1.0');
   });
@@ -1100,7 +1117,7 @@ describe('Handshake state machine', () => {
     expect(hsAfterPres.status).toBe('pending_verification');
 
     // Step 2: verify -> status should transition to verified
-    const result = await verifyHandshake(hs_id);
+    const result = await verifyHandshake(hs_id, { payload_hash: _internals.sha256('{}') });
 
     expect(result.outcome).toBe('accepted');
     const hsAfterVerify = sim.getTable('handshakes').find((h) => h.handshake_id === hs_id);

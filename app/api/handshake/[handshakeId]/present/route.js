@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { addPresentation } from '@/lib/handshake';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { validatePresentBody } from '@/lib/handshake/schema';
 
 /**
  * POST /api/handshake/[handshakeId]/present
@@ -17,24 +18,21 @@ export async function POST(request, { params }) {
     const { handshakeId } = await params;
     const body = await request.json();
 
-    if (!body.party_role) {
-      return EP_ERRORS.BAD_REQUEST('party_role is required');
+    const validation = validatePresentBody(body);
+    if (!validation.valid) {
+      return EP_ERRORS.BAD_REQUEST(validation.error);
     }
-    if (!body.presentation_type) {
-      return EP_ERRORS.BAD_REQUEST('presentation_type is required');
-    }
-    if (!body.claims || typeof body.claims !== 'object') {
-      return EP_ERRORS.BAD_REQUEST('claims is required and must be an object');
-    }
+
+    const { party_role, presentation_type, claims, issuer_ref, disclosure_mode } = validation.sanitized;
 
     const result = await addPresentation(
       handshakeId,
-      body.party_role,
+      party_role,
       {
-        type: body.presentation_type,
-        data: body.claims,
-        issuer_ref: body.issuer_ref || null,
-        disclosure_mode: body.disclosure_mode || null,
+        type: presentation_type,
+        data: claims,
+        issuer_ref,
+        disclosure_mode,
       },
       auth.entity
     );

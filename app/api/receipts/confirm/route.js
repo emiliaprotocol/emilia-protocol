@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
-import { canonicalBilateralConfirm } from '@/lib/canonical-writer';
+import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS } from '@/lib/errors';
 
 /**
@@ -19,9 +19,15 @@ export async function POST(request) {
       return EP_ERRORS.BAD_REQUEST('receipt_id and confirm (boolean) are required');
     }
 
-    const result = await canonicalBilateralConfirm(
-      body.receipt_id, auth.entity.id, body.confirm
-    );
+    const result = await protocolWrite({
+      type: COMMAND_TYPES.CONFIRM_RECEIPT,
+      input: {
+        receipt_id: body.receipt_id,
+        confirming_entity_id: auth.entity.id,
+        confirm: body.confirm,
+      },
+      actor: auth.entity,
+    });
 
     if (result.error) {
       return NextResponse.json({ error: result.error }, { status: result.status || 500 });

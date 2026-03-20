@@ -12,9 +12,25 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock('@/lib/supabase', () => ({
-  authenticateRequest: vi.fn(),
-}));
+// Mock getServiceClient for gate_ref verification (commit issue route)
+vi.mock('@/lib/supabase', () => {
+  const mockGateCommit = {
+    commit_id: 'epc_gate_allow',
+    entity_id: 'test-entity',
+    action_type: 'transact',
+    decision: 'allow',
+    scope: {},
+  };
+  const chain = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    maybeSingle: vi.fn().mockResolvedValue({ data: mockGateCommit }),
+  };
+  return {
+    authenticateRequest: vi.fn(),
+    getServiceClient: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue(chain) }),
+  };
+});
 
 vi.mock('@/lib/commit', () => ({
   issueCommit: vi.fn(),
@@ -47,6 +63,7 @@ import {
   fulfillCommit,
 } from '@/lib/commit';
 import { authorizeCommitIssuance, authorizeCommitAccess } from '@/lib/commit-auth';
+import { _internals as _pwInternals } from '@/lib/protocol-write';
 
 // Route handlers
 import { POST as issueRoute } from '@/app/api/commit/issue/route';
@@ -94,6 +111,7 @@ const MOCK_AUTH = { entity: { entity_id: 'test-entity' } };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  _pwInternals._idempotencyCache.clear();
   authenticateRequest.mockResolvedValue(MOCK_AUTH);
   authorizeCommitIssuance.mockResolvedValue({ authorized: true });
   authorizeCommitAccess.mockReturnValue({ authorized: true });
@@ -110,6 +128,7 @@ describe('POST /api/commit/issue — response shape', () => {
     const req = makeRequest({
       action_type: 'transact',
       entity_id: 'test-entity',
+      gate_ref: 'epc_gate_allow',
     });
 
     const res = await issueRoute(req);
@@ -139,6 +158,7 @@ describe('POST /api/commit/issue — response shape', () => {
     const req = makeRequest({
       action_type: 'transact',
       entity_id: 'test-entity',
+      gate_ref: 'epc_gate_allow',
     });
 
     const res = await issueRoute(req);

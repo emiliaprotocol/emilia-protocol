@@ -612,8 +612,8 @@ describe('abuse detection', () => {
 // ============================================================================
 
 describe('COMMAND_TYPES', () => {
-  it('has all 13 expected command types', () => {
-    expect(Object.keys(COMMAND_TYPES)).toHaveLength(13);
+  it('has all 17 expected command types', () => {
+    expect(Object.keys(COMMAND_TYPES)).toHaveLength(17);
     expect(COMMAND_TYPES.SUBMIT_RECEIPT).toBe('submit_receipt');
     expect(COMMAND_TYPES.CONFIRM_RECEIPT).toBe('confirm_receipt');
     expect(COMMAND_TYPES.ISSUE_COMMIT).toBe('issue_commit');
@@ -621,6 +621,10 @@ describe('COMMAND_TYPES', () => {
     expect(COMMAND_TYPES.REVOKE_COMMIT).toBe('revoke_commit');
     expect(COMMAND_TYPES.FILE_DISPUTE).toBe('file_dispute');
     expect(COMMAND_TYPES.RESOLVE_DISPUTE).toBe('resolve_dispute');
+    expect(COMMAND_TYPES.RESPOND_DISPUTE).toBe('respond_dispute');
+    expect(COMMAND_TYPES.APPEAL_DISPUTE).toBe('appeal_dispute');
+    expect(COMMAND_TYPES.RESOLVE_APPEAL).toBe('resolve_appeal');
+    expect(COMMAND_TYPES.WITHDRAW_DISPUTE).toBe('withdraw_dispute');
     expect(COMMAND_TYPES.FILE_REPORT).toBe('file_report');
     expect(COMMAND_TYPES.SUBMIT_AUTO_RECEIPT).toBe('submit_auto_receipt');
     expect(COMMAND_TYPES.INITIATE_HANDSHAKE).toBe('initiate_handshake');
