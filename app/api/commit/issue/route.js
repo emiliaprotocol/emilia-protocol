@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest, getServiceClient } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { CommitError } from '@/lib/commit';
 import { authorizeCommitIssuance } from '@/lib/commit-auth';
 import { protocolWrite, COMMAND_TYPES, ProtocolWriteError } from '@/lib/protocol-write';
@@ -50,7 +51,7 @@ export async function POST(request) {
       }
 
       // Verify gate_ref is a valid, unconsumed commit for this entity + action
-      const supabase = getServiceClient();
+      const supabase = getGuardedClient();
       const { data: gateCommit } = await supabase
         .from('commits')
         .select('commit_id, entity_id, action_type, decision, scope')

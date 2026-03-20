@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { validateTransition, DISPUTE_STATES, recordOperatorAction } from '@/lib/procedural-justice';
-import { getServiceClient } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { getCronSecret } from '@/lib/env';
 
 /**
@@ -36,7 +36,7 @@ export async function POST(request) {
     }
 
     // Fetch current state for validation
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
     const { data: dispute } = await supabase
       .from('disputes')
       .select('status')

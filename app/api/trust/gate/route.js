@@ -7,7 +7,13 @@ import { verifyDelegation } from '@/lib/delegation';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { EP_ERRORS } from '@/lib/errors';
 import { buildTrustDecision } from '@/lib/trust-decision';
-import { authenticateRequest, getServiceClient } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+// TODO(write-discipline): This route still uses getServiceClient because it
+// directly writes to handshake_bindings (consumed_at). That write should be
+// moved into a protocolWrite command (e.g. CONSUME_HANDSHAKE_BINDING), after
+// which this import can be replaced with getGuardedClient from '@/lib/write-guard'.
+import { getGuardedClient } from '@/lib/write-guard';
+import { getServiceClient } from '@/lib/supabase';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { sha256 } from '@/lib/handshake/invariants';
 
@@ -97,8 +103,8 @@ export async function POST(request) {
     let handshakeVerified = null;
     if (body.handshake_id) {
       try {
-        const hsSupabase = getServiceClient();
-        const { data: hs } = await hsSupabase
+        const hsReadClient = getGuardedClient();
+        const { data: hs } = await hsReadClient
           .from('handshakes')
           .select('handshake_id, status, action_type, resource_ref, action_hash, policy_hash')
           .eq('handshake_id', body.handshake_id)
@@ -130,7 +136,7 @@ export async function POST(request) {
 
           if (handshakeVerified !== false) {
             // Check binding not consumed
-            const { data: binding } = await hsSupabase
+            const { data: binding } = await hsReadClient
               .from('handshake_bindings')
               .select('consumed_at, expires_at')
               .eq('handshake_id', body.handshake_id)

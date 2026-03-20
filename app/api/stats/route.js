@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServiceClient } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { TRUST_POLICIES } from '@/lib/scoring-v2';
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -26,7 +26,7 @@ export async function GET() {
   const policyCount = Object.keys(TRUST_POLICIES).length;
 
   try {
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     const { count } = await supabase
       .from('entities')

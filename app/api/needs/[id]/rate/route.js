@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServiceClient, authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { createReceipt } from '@/lib/create-receipt';
 import { epProblem } from '@/lib/errors';
 
@@ -18,7 +19,7 @@ export async function POST(request, { params }) {
 
     const { id } = await params;
     const body = await request.json();
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     // Fetch the need
     const { data: need, error: fetchError } = await supabase

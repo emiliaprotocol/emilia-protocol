@@ -8,7 +8,7 @@
 import { NextResponse } from 'next/server';
 import { getPrincipal } from '@/lib/ep-ix';
 import { EP_ERRORS } from '@/lib/errors';
-import { getServiceClient } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 
 /**
  * GET /api/identity/principal/[principalId]/agents
@@ -28,7 +28,7 @@ export async function GET(request, { params }) {
       return EP_ERRORS.NOT_FOUND('Principal');
     }
 
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     // Fetch all delegations for this principal, most recent first
     const { data: delegations, error: delegationsError } = await supabase

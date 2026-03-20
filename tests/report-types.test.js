@@ -29,7 +29,14 @@ const STALE_REPORT_TYPES = [
 
 // Mock dependencies so we can test the route handler in isolation
 vi.mock('@/lib/supabase', () => ({
-  getServiceClient: vi.fn(() => ({})),
+  getServiceClient: vi.fn(() => ({
+    from: vi.fn(() => ({
+      insert: vi.fn().mockResolvedValue({ error: null }),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+    })),
+  })),
 }));
 
 vi.mock('@/lib/procedural-justice', () => ({

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServiceClient } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { epProblem } from '@/lib/errors';
 
@@ -16,7 +16,7 @@ import { epProblem } from '@/lib/errors';
 export async function GET(request, { params }) {
   try {
     const { entityId } = await params;
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     // Look up by entity_id (slug) or uuid
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entityId);

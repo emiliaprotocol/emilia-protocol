@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { NextResponse } from 'next/server';
-import { getServiceClient, generateApiKey } from '@/lib/supabase';
+import { generateApiKey } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { computeReceiptComposite } from '@/lib/scoring';
 import { epProblem } from '@/lib/errors';
 import { generateEmbedding } from '@/lib/providers/embeddings';
@@ -35,7 +36,7 @@ import { generateEmbedding } from '@/lib/providers/embeddings';
 export async function POST(request) {
   try {
     const body = await request.json();
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     // Validate required fields
     const required = ['entity_id', 'display_name', 'entity_type', 'description'];

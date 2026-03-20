@@ -31,7 +31,14 @@ let _mockAuthResult = { entity: null, error: 'unauthorized' };
 
 vi.mock('@/lib/supabase', () => ({
   authenticateRequest: vi.fn(async () => _mockAuthResult),
-  getServiceClient: vi.fn(() => ({})),
+  getServiceClient: vi.fn(() => ({
+    from: vi.fn(() => ({
+      insert: vi.fn().mockResolvedValue({ error: null }),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+    })),
+  })),
 }));
 
 /** Controls what canonicalSubmitAutoReceipt returns per call */

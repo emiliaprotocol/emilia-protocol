@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServiceClient, authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { epProblem } from '@/lib/errors';
 
@@ -19,7 +20,7 @@ export async function POST(request, { params }) {
     }
 
     const { id } = await params;
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     const { data: need, error: fetchError } = await supabase
       .from('needs')

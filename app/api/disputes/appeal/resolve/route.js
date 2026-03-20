@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { recordOperatorAction } from '@/lib/procedural-justice';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
-import { getServiceClient } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { getCronSecret } from '@/lib/env';
 
 /**
@@ -29,7 +29,7 @@ export async function POST(request) {
       return EP_ERRORS.BAD_REQUEST('dispute_id and resolution are required');
     }
 
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     // Fetch current state for audit
     const { data: dispute } = await supabase

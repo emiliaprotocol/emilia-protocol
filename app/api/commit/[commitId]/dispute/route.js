@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest, getServiceClient } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { CommitError } from '@/lib/commit';
 import { epProblem } from '@/lib/errors';
@@ -21,7 +22,7 @@ export async function POST(request, { params }) {
 
     const { commitId } = await params;
     const body = await request.json();
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     // Look up the commit
     const { data: commit, error: commitError } = await supabase

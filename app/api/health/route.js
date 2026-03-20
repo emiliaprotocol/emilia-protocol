@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServiceClient } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { EP_VERSION_STRING } from '@/lib/protocol-version';
 import { epProblem } from '@/lib/errors';
 import { getUpstashConfig, getBlockchainConfig } from '@/lib/env';
@@ -22,7 +22,7 @@ export async function GET() {
 
   // Database connectivity + counts
   try {
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
     
     const [entities, receipts, disputes] = await Promise.all([
       supabase.from('entities').select('id', { count: 'exact', head: true }),

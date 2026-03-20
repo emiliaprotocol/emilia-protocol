@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest, getServiceClient } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { filterByVisibility, OPERATOR_ROLES } from '@/lib/procedural-justice';
 
@@ -39,7 +40,7 @@ export async function GET(request) {
     const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 200);
     const offset = parseInt(url.searchParams.get('offset') || '0');
 
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
     let query = supabase
       .from('audit_events')
       .select('*')

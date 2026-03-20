@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServiceClient } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { generateEmbedding } from '@/lib/providers/embeddings';
 
@@ -34,7 +34,7 @@ export async function GET(request) {
     const rankBy = searchParams.get('rank_by') || 'score';
     const limit = Math.min(parseInt(searchParams.get('limit')) || 20, 50);
 
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
     const confLevels = ['pending', 'insufficient', 'provisional', 'emerging', 'confident'];
 
     // Uses materialized trust data for performance. Live re-evaluation happens on profile/evaluate endpoints.

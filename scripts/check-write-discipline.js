@@ -72,6 +72,16 @@ function walkDir(dir, results = []) {
   return results;
 }
 
+// Routes that are ALLOWED to import getServiceClient directly.
+// These routes have known trust-table writes that need to be migrated
+// to protocolWrite commands. Until then, they are allowlisted.
+const SERVICE_CLIENT_ALLOWLIST = new Set([
+  // Direct .update() on receipts and disputes for expiration — needs EXPIRE_RECEIPT command
+  'app/api/cron/expire/route.js',
+  // Direct .update() on handshake_bindings for consumption — needs CONSUME_HANDSHAKE_BINDING command
+  'app/api/trust/gate/route.js',
+]);
+
 let violations = [];
 
 try {
@@ -81,6 +91,7 @@ try {
     const content = readFileSync(file, 'utf-8');
     const relPath = relative(projectRoot, file);
 
+    // Check 1: Forbidden canonical function imports
     for (const forbidden of FORBIDDEN_IMPORTS) {
       // Check for direct imports of forbidden functions
       const importPattern = new RegExp(`\\b${forbidden}\\b`);
@@ -101,6 +112,25 @@ try {
         }
       }
     }
+
+    // Check 2: Route files must use getGuardedClient, not getServiceClient.
+    // getServiceClient bypasses runtime write-path enforcement on trust tables.
+    const normalizedPath = relPath.split(sep).join('/');
+    if (!SERVICE_CLIENT_ALLOWLIST.has(normalizedPath)) {
+      const lines = content.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.startsWith('//') || line.startsWith('*')) continue;
+        if (/\bgetServiceClient\b/.test(line)) {
+          violations.push({
+            file: relPath,
+            line: i + 1,
+            function: 'getServiceClient',
+            text: line.substring(0, 120),
+          });
+        }
+      }
+    }
   }
 } catch (e) {
   if (e.code === 'ENOENT') {
@@ -118,7 +148,8 @@ if (violations.length > 0) {
     console.error(`    Line: ${v.text}\n`);
   }
   console.error(`\n${violations.length} violation(s) found.`);
-  console.error('Routes must use protocolWrite() instead of calling mutating functions directly.');
+  console.error('Routes must use protocolWrite() for trust-bearing writes and getGuardedClient() for database access.');
+  console.error('getServiceClient() is only permitted in allowlisted routes and the canonical write layer.');
   process.exit(1);
 } else {
   console.log(`✓ All route files pass write discipline check`);

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServiceClient } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 
 /**
@@ -23,7 +23,7 @@ export async function GET(request, { params }) {
     const after = searchParams.get('after');
     const before = searchParams.get('before');
 
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     // Resolve entity
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(entityId);

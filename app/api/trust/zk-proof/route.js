@@ -24,7 +24,8 @@
 
 import { NextResponse } from 'next/server';
 import { generateZKProof, verifyZKProof } from '@/lib/zk-proofs';
-import { authenticateRequest, getServiceClient } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { EP_ERRORS } from '@/lib/errors';
 
 const VALID_CLAIM_TYPES = ['score_above', 'receipt_count_above', 'domain_score_above'];
@@ -88,7 +89,7 @@ export async function POST(request) {
     }
 
     // 4. Generate the proof
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
     let proof;
     try {
       proof = await generateZKProof(entity_id, claim, supabase);
@@ -151,7 +152,7 @@ export async function GET(request) {
       return EP_ERRORS.BAD_REQUEST('proof_id must start with ep_zkp_');
     }
 
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
     const result = await verifyZKProof(proofId, supabase);
 
     if (result.reason === 'proof_not_found') {

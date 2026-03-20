@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { checkAbuse } from '@/lib/procedural-justice';
-import { getServiceClient } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 
 /**
  * POST /api/disputes/report
@@ -37,7 +37,7 @@ export async function POST(request) {
     // Abuse detection — hash IP for privacy before passing to abuse checks and storage
     const reporterIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const reporterIpHash = crypto.createHash('sha256').update(reporterIp).digest('hex').slice(0, 16);
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
     const abuseCheck = await checkAbuse(supabase, 'report', {
       entity_id: entityId,
       report_type: reportType,

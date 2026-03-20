@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServiceClient } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { runAnchorBatch } from '@/lib/blockchain';
 import { epProblem } from '@/lib/errors';
 import { getCronSecret } from '@/lib/env';
@@ -29,7 +29,7 @@ export async function POST(request) {
       return epProblem(401, 'unauthorized', 'Unauthorized');
     }
 
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
     const result = await runAnchorBatch(supabase);
 
     return NextResponse.json(result);

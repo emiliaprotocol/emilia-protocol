@@ -12,7 +12,7 @@ import { NextResponse } from 'next/server';
 import { getPrincipal } from '@/lib/ep-ix';
 import { getDelegationJudgmentScore } from '@/lib/attribution';
 import { EP_ERRORS } from '@/lib/errors';
-import { getServiceClient } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 
 // Grade thresholds
 function computeGrade(score) {
@@ -67,7 +67,7 @@ export async function GET(request, { params }) {
       return EP_ERRORS.NOT_FOUND('Principal');
     }
 
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     // Fetch judgment score from attribution library
     const judgment = await getDelegationJudgmentScore(principalId, supabase);

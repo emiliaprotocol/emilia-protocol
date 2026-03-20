@@ -1,4 +1,4 @@
-import { getServiceClient } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 
 /**
@@ -38,7 +38,7 @@ export async function GET(request) {
 
   let supabase;
   try {
-    supabase = getServiceClient();
+    supabase = getGuardedClient();
   } catch (e) {
     return epProblem(500, 'feed_unavailable', 'Feed service initialization failed');
   }

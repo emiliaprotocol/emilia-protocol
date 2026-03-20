@@ -25,6 +25,7 @@ vi.mock('@/lib/supabase', () => {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
     maybeSingle: vi.fn().mockResolvedValue({ data: mockGateCommit }),
+    insert: vi.fn().mockResolvedValue({ error: null }),
   };
   return {
     authenticateRequest: vi.fn(),

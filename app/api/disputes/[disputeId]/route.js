@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServiceClient } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 
 /**
@@ -15,7 +15,7 @@ import { epProblem } from '@/lib/errors';
 export async function GET(request, { params }) {
   try {
     const { disputeId } = await params;
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     const { data: dispute, error } = await supabase
       .from('disputes')

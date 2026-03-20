@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest, getServiceClient } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { revokeHandshake } from '@/lib/handshake';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { validateRevokeBody } from '@/lib/handshake/schema';
@@ -23,7 +24,7 @@ export async function POST(request, { params }) {
     }
 
     // Access control: only parties to the handshake may revoke it
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
     const entityId = typeof auth.entity === 'object'
       ? (auth.entity.entity_id || auth.entity.id)
       : auth.entity;

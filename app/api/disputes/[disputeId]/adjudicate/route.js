@@ -30,7 +30,8 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getServiceClient, authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { adjudicateDispute } from '@/lib/dispute-adjudication';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { getCronSecret } from '@/lib/env';
@@ -49,7 +50,7 @@ export async function POST(request, { params }) {
       return EP_ERRORS.BAD_REQUEST('disputeId is required');
     }
 
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     // -------------------------------------------------------------------
     // Authorization: CRON_SECRET or authenticated filer

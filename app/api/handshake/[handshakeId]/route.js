@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest, getServiceClient } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { getHandshake } from '@/lib/handshake';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 
@@ -17,7 +18,7 @@ export async function GET(request, { params }) {
     const { handshakeId } = await params;
 
     // Access control: only parties to the handshake may view it
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
     const entityId = typeof auth.entity === 'object'
       ? (auth.entity.entity_id || auth.entity.id)
       : auth.entity;

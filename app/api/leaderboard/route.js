@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServiceClient } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 
 /**
@@ -27,7 +27,7 @@ export async function GET(request) {
     const limit = Math.min(parseInt(searchParams.get('limit')) || 50, 100);
     const offset = parseInt(searchParams.get('offset')) || 0;
 
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     // Uses materialized trust data for performance. Live re-evaluation happens on profile/evaluate endpoints.
     let query = supabase

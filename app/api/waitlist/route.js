@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServiceClient } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 
 /**
@@ -20,7 +20,7 @@ export async function POST(request) {
       return epProblem(400, 'invalid_email', 'Valid email required');
     }
 
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     // Check if already registered
     const { data: existing } = await supabase

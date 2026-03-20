@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServiceClient } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { verifyMerkleProof } from '@/lib/blockchain';
 import { computeReceiptHash } from '@/lib/scoring';
 import { epProblem } from '@/lib/errors';
@@ -19,7 +19,7 @@ import { epProblem } from '@/lib/errors';
 export async function GET(request, { params }) {
   try {
     const { receiptId } = await params;
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     // Look up the receipt
     const { data: receipt, error } = await supabase

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServiceClient } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 
 // ---------------------------------------------------------------------------
@@ -57,7 +57,7 @@ export async function POST(request) {
 
     const normalizedEmail = rawEmail;
 
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     // Check for duplicate application
     const { data: existing, error: lookupError } = await supabase

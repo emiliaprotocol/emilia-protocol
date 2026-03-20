@@ -2,7 +2,7 @@
 // POST /api/inquiries — stores partner and investor inquiries
 
 import { NextResponse } from 'next/server';
-import { getServiceClient } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 
 // ---------------------------------------------------------------------------
@@ -38,7 +38,7 @@ function sanitizeUrl(val) {
 
 function getSupabase() {
   try {
-    return getServiceClient();
+    return getGuardedClient();
   } catch {
     return null;
   }

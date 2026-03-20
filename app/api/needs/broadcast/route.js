@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServiceClient, authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import crypto from 'crypto';
 import { epProblem } from '@/lib/errors';
@@ -32,7 +33,7 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     if (!body.capability_needed) {
       return epProblem(400, 'missing_capability', 'capability_needed is required');
