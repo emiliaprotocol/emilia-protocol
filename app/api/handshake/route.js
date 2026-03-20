@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
-import { initiateHandshake, getHandshake } from '@/lib/handshake';
+import { initiateHandshake, listHandshakes } from '@/lib/handshake';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 
 /**
@@ -28,12 +28,16 @@ export async function POST(request) {
     }
 
     const result = await initiateHandshake({
+      actor: auth.entity,
       mode: body.mode,
       policy_id: body.policy_id,
       parties: body.parties,
-      binding: body.binding || null,
+      payload: body.payload || {},
       interaction_id: body.interaction_id || null,
-    }, auth.entity);
+      binding: body.binding || null,
+      binding_ttl_ms: body.binding_ttl_ms || undefined,
+      idempotency_key: body.idempotency_key || null,
+    });
 
     if (result.error) {
       return epProblem(result.status || 500, 'handshake_initiation_failed', result.error);
@@ -63,7 +67,7 @@ export async function GET(request) {
       mode: searchParams.get('mode') || null,
     };
 
-    const result = await getHandshake(null, filters, auth.entity);
+    const result = await listHandshakes(filters, auth.entity);
 
     if (result.error) {
       return epProblem(result.status || 500, 'handshake_list_failed', result.error);

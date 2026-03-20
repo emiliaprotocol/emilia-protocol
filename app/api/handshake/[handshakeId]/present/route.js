@@ -27,13 +27,17 @@ export async function POST(request, { params }) {
       return EP_ERRORS.BAD_REQUEST('claims is required and must be an object');
     }
 
-    const result = await addPresentation(handshakeId, {
-      party_role: body.party_role,
-      presentation_type: body.presentation_type,
-      issuer_ref: body.issuer_ref || null,
-      claims: body.claims,
-      disclosure_mode: body.disclosure_mode || null,
-    }, auth.entity);
+    const result = await addPresentation(
+      handshakeId,
+      body.party_role,
+      {
+        type: body.presentation_type,
+        data: body.claims,
+        issuer_ref: body.issuer_ref || null,
+        disclosure_mode: body.disclosure_mode || null,
+      },
+      auth.entity
+    );
 
     if (result.error) {
       return epProblem(result.status || 500, 'presentation_failed', result.error);

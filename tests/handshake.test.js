@@ -113,6 +113,16 @@ function createTableSim() {
 
   function getTable(name) {
     if (!tables[name]) tables[name] = [];
+    // Seed default trusted authority on first access to 'authorities'
+    if (name === 'authorities' && tables[name].length === 0) {
+      tables[name].push({
+        authority_id: 'auth-trusted-ca',
+        key_id: 'issuer-trusted-ca',
+        status: 'active',
+        valid_from: new Date(Date.now() - 365 * 86_400_000).toISOString(),
+        valid_to: new Date(Date.now() + 365 * 86_400_000).toISOString(),
+      });
+    }
     return tables[name];
   }
 

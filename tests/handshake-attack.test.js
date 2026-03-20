@@ -749,11 +749,9 @@ describe('Authority & Issuer Attacks', () => {
   });
 
   // Attack: Present credentials from an issuer not in the authorities table.
-  // When no authority record exists, the system defaults to issuerTrusted = true
-  // (no authority table entry means no revocation info available). This is by design —
-  // the test validates that revocation_checked is true and revocation_status is 'good'
-  // when an issuer_ref is provided but no authority record is found.
-  it('presentation from unknown/unregistered issuer — revocation not enforceable without authority record', async () => {
+  // Unknown issuers default to UNTRUSTED (fail-closed). An issuer_ref that points
+  // to no authority record means the system cannot verify trust — so it rejects.
+  it('presentation from unknown/unregistered issuer — defaults to untrusted', async () => {
     const result = await initiateHandshake(validHandshakeParams());
     const hsId = result.handshake_id;
 
@@ -762,10 +760,10 @@ describe('Authority & Issuer Attacks', () => {
 
     const presentations = sim.getTable('handshake_presentations');
     const pres = presentations.find((p) => p.handshake_id === hsId);
-    // Without an authority record, the system cannot revoke — revocation_checked is true
-    // but the issuer is treated as trusted (no negative signal)
+    // Unknown issuer = untrusted (fail-closed per audit requirement)
     expect(pres.revocation_checked).toBe(true);
-    expect(pres.revocation_status).toBe('good');
+    expect(pres.revocation_status).toBe('revoked');
+    expect(pres.verified).toBe(false);
   });
 
   // Attack: Authority was valid when presentation was created but revoked before
