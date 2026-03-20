@@ -24,7 +24,7 @@ The protocol is open. Managed policy, issuance, verification, monitoring, and wo
 | Metric | Value |
 |---|---|
 | Spec version | v0.9.x |
-| Route parity (API <-> OpenAPI) | 57/57 |
+| Route parity (API <-> OpenAPI) | 62/62 |
 | MCP tools | [see CI] |
 | Test suite | [see CI] |
 | CodeQL | Active |
@@ -46,6 +46,7 @@ EP is a 3-layer system. The core is deliberately small. Everything else is an op
   - Domain-specific scoring (financial, code_execution, communication, +4)
   - Install preflight adapters (MCP servers, npm, GitHub Apps, Chrome extensions)
   - EP Commit (signed pre-action authorization tokens)
+  - EP Handshake (one-sided or mutual identity verification, authority proof, and transaction binding)
 
 - **EP Product Surfaces** — Reference implementations and operator tools. Useful, not required, not part of the standard:
   - Explorer, leaderboards, registry views
@@ -321,6 +322,15 @@ Add `npx @emilia-protocol/mcp-server` to any MCP-compatible host. The server exp
 | `ep_revoke_commit` | Revoke an active commit |
 | `ep_bind_receipt_to_commit` | Bind a post-action receipt to a commit |
 
+**Handshake**
+| Tool | What it does |
+|---|---|
+| `ep_initiate_handshake` | Initiate a structured identity exchange between parties |
+| `ep_add_presentation` | Add an identity presentation (proof) to a handshake |
+| `ep_verify_handshake` | Evaluate handshake presentations against policy |
+| `ep_get_handshake` | Get full handshake state |
+| `ep_revoke_handshake` | Revoke an active handshake |
+
 **Discovery**
 | Tool | What it does |
 |---|---|
@@ -343,9 +353,9 @@ EP Commit turns advisory trust decisions into enforceable pre-action authorizati
 
 ## Protocol Standard
 
-EP is specified as an implementation-independent standard. 17 sections covering the full protocol. Any conformant implementation must produce identical outputs to the reference conformance fixtures.
+EP is specified as an implementation-independent standard. 23 sections covering the full protocol. Any conformant implementation must produce identical outputs to the reference conformance fixtures.
 
-[PROTOCOL-STANDARD.md](docs/PROTOCOL-STANDARD.md) — 17 sections:
+[PROTOCOL-STANDARD.md](docs/PROTOCOL-STANDARD.md) — 23 sections:
 
 1. Introduction (motivation, design principles, terminology)
 2. Entity Identity
@@ -364,6 +374,10 @@ EP is specified as an implementation-independent standard. 17 sections covering 
 15. Attribution Chain Standard
 16. Auto-Receipt Generation
 17. Conformance Requirements
+18. EP Commit — Signed Pre-Action Authorization
+20. Score Discipline
+22. Dual-Control for Trust-Sensitive Operator Actions
+23. EP Handshake Extension
 
 **Falsifiable by design:** anyone can run `npx vitest run` and `python3 conformance/verify_hashes.py` to verify the evaluator produces canonical outputs. Trust that cannot be independently verified is not trust.
 

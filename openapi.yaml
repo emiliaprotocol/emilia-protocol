@@ -41,6 +41,8 @@ tags:
     description: Agent-to-agent need broadcasting and fulfillment marketplace
   - name: Commits
     description: EP Commit — signed pre-action authorization tokens proving trust evaluation happened before action
+  - name: Handshake
+    description: EP Handshake — structured identity exchange between parties before trust decisions
   - name: Policies
     description: Trust policy registry
   - name: Operations
@@ -1658,6 +1660,271 @@ paths:
           description: Failed to retrieve signing keys
 
   # ===========================================================================
+  # Handshake
+  # ===========================================================================
+
+  /api/handshake:
+    post:
+      tags: [Handshake]
+      summary: Initiate a handshake
+      description: |
+        Initiate a new EP Handshake — a structured identity exchange between parties.
+        The handshake coordinates mutual presentation of identity proofs before
+        a trust decision can be made.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mode, policy_id, parties]
+              properties:
+                mode:
+                  type: string
+                  description: Handshake mode (e.g. "mutual", "one-way", "delegated")
+                policy_id:
+                  type: string
+                  description: Trust policy governing the handshake
+                parties:
+                  type: array
+                  minItems: 2
+                  items:
+                    type: object
+                    properties:
+                      entity_ref:
+                        type: string
+                      role:
+                        type: string
+                  description: Parties involved in the handshake (minimum 2)
+                binding:
+                  type: object
+                  description: Optional binding constraints for the handshake
+                interaction_id:
+                  type: string
+                  description: Optional external interaction reference
+      responses:
+        '201':
+          description: Handshake initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HandshakeResponse'
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+    get:
+      tags: [Handshake]
+      summary: List handshakes
+      description: |
+        List handshakes filtered by entity, status, or mode.
+        Returns handshakes the authenticated entity is a party to.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: entity_ref
+          in: query
+          schema:
+            type: string
+          description: Filter by entity reference
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, active, accepted, rejected, revoked]
+          description: Filter by handshake status
+        - name: mode
+          in: query
+          schema:
+            type: string
+          description: Filter by handshake mode
+      responses:
+        '200':
+          description: List of handshakes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HandshakeResponse'
+        '401':
+          description: Authentication required
+
+  /api/handshake/{handshakeId}:
+    get:
+      tags: [Handshake]
+      summary: Get handshake details
+      description: |
+        Get full handshake state including parties, presentations, binding, and result.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: handshakeId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Handshake ID
+      responses:
+        '200':
+          description: Full handshake state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HandshakeResponse'
+        '401':
+          description: Authentication required
+        '404':
+          description: Handshake not found
+
+  /api/handshake/{handshakeId}/present:
+    post:
+      tags: [Handshake]
+      summary: Add identity presentation
+      description: |
+        Add an identity presentation (proof) to a handshake. Each party presents
+        their identity claims for evaluation against the handshake policy.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: handshakeId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Handshake ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [party_role, presentation_type, claims]
+              properties:
+                party_role:
+                  type: string
+                  description: Role of the presenting party in this handshake
+                presentation_type:
+                  type: string
+                  description: Type of identity presentation (e.g. "verifiable_credential", "ep_trust_profile", "attestation")
+                issuer_ref:
+                  type: string
+                  description: Optional reference to the credential issuer
+                claims:
+                  type: object
+                  description: Identity claims being presented
+                disclosure_mode:
+                  type: string
+                  enum: [full, selective, zk]
+                  description: How much of the presentation is disclosed
+      responses:
+        '201':
+          description: Presentation added
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HandshakePresentationResponse'
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '404':
+          description: Handshake not found
+
+  /api/handshake/{handshakeId}/verify:
+    post:
+      tags: [Handshake]
+      summary: Verify handshake
+      description: |
+        Evaluate all presentations in a handshake against the governing policy.
+        Returns a result: accepted, rejected, or partial (awaiting more presentations).
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: handshakeId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Handshake ID
+      responses:
+        '200':
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  handshake_id:
+                    type: string
+                  result:
+                    type: string
+                    enum: [accepted, rejected, partial]
+                  reason_codes:
+                    type: array
+                    items:
+                      type: string
+                  evaluated_at:
+                    type: string
+                    format: date-time
+        '401':
+          description: Authentication required
+        '404':
+          description: Handshake not found
+
+  /api/handshake/{handshakeId}/revoke:
+    post:
+      tags: [Handshake]
+      summary: Revoke handshake
+      description: |
+        Revoke an active handshake. Only parties to the handshake may revoke it.
+        Revocation is terminal — the handshake cannot be reopened.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: handshakeId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Handshake ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+                  description: Reason for revocation
+      responses:
+        '200':
+          description: Handshake revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  handshake_id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [revoked]
+                  revoked_at:
+                    type: string
+                    format: date-time
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '404':
+          description: Handshake not found
+
+  # ===========================================================================
   # Policies
   # ===========================================================================
 
@@ -2584,3 +2851,78 @@ components:
               type: integer
             revocation_mechanism:
               type: string
+
+    HandshakeResponse:
+      type: object
+      description: EP Handshake state including parties, presentations, binding, and result.
+      properties:
+        handshake_id:
+          type: string
+        mode:
+          type: string
+        policy_id:
+          type: string
+        status:
+          type: string
+          enum: [pending, active, accepted, rejected, revoked]
+        parties:
+          type: array
+          items:
+            type: object
+            properties:
+              entity_ref:
+                type: string
+              role:
+                type: string
+              presented:
+                type: boolean
+        presentations:
+          type: array
+          items:
+            $ref: '#/components/schemas/HandshakePresentationResponse'
+        binding:
+          type: object
+        result:
+          type: object
+          properties:
+            outcome:
+              type: string
+              enum: [accepted, rejected, partial]
+            reason_codes:
+              type: array
+              items:
+                type: string
+            evaluated_at:
+              type: string
+              format: date-time
+        interaction_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    HandshakePresentationResponse:
+      type: object
+      description: An identity presentation within a handshake.
+      properties:
+        presentation_id:
+          type: string
+        handshake_id:
+          type: string
+        party_role:
+          type: string
+        presentation_type:
+          type: string
+        issuer_ref:
+          type: string
+        claims:
+          type: object
+        disclosure_mode:
+          type: string
+          enum: [full, selective, zk]
+        created_at:
+          type: string
+          format: date-time

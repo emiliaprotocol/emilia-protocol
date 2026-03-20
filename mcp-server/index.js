@@ -32,6 +32,13 @@
  *   ep_generate_zk_proof    — Prove trust threshold without revealing receipt contents or counterparties
  *   ep_verify_zk_proof      — Verify a commitment trust proof by proof_id (public, no transaction history revealed)
  *
+ * EP HANDSHAKE (structured identity exchange):
+ *   ep_initiate_handshake    — Initiate a structured identity exchange between parties
+ *   ep_add_presentation      — Add an identity presentation (proof) to a handshake
+ *   ep_verify_handshake      — Evaluate handshake presentations against policy
+ *   ep_get_handshake         — Get full handshake state
+ *   ep_revoke_handshake      — Revoke an active handshake
+ *
  * EP COMMIT (signed authorization token for high-stakes machine actions):
  *   ep_issue_commit          — Issue a signed EP Commit before a high-stakes action
  *   ep_verify_commit         — Verify a commit's signature, status, and validity
@@ -649,6 +656,97 @@ const TOOLS = [
       required: ['commit_id', 'receipt_id'],
     },
   },
+
+  // EP Handshake — structured identity exchange
+  {
+    name: 'ep_initiate_handshake',
+    description:
+      'Initiate an EP Handshake — a structured identity exchange between parties. ' +
+      'The handshake coordinates mutual presentation of identity proofs before a trust decision. ' +
+      'Requires at least 2 parties and a governing trust policy.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        mode: { type: 'string', description: 'Handshake mode: "mutual", "one-way", "delegated"' },
+        policy_id: { type: 'string', description: 'Trust policy governing the handshake' },
+        parties: {
+          type: 'array',
+          description: 'Parties in the handshake (min 2). Each: { entity_ref, role }',
+          items: {
+            type: 'object',
+            properties: {
+              entity_ref: { type: 'string' },
+              role: { type: 'string' },
+            },
+            required: ['entity_ref', 'role'],
+          },
+        },
+        binding: { type: 'object', description: 'Optional binding constraints' },
+        interaction_id: { type: 'string', description: 'Optional external interaction reference' },
+      },
+      required: ['mode', 'policy_id', 'parties'],
+    },
+  },
+  {
+    name: 'ep_add_presentation',
+    description:
+      'Add an identity presentation (proof) to an active handshake. ' +
+      'Each party presents their identity claims for evaluation against the handshake policy. ' +
+      'Supports full, selective, or zero-knowledge disclosure modes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        handshake_id: { type: 'string', description: 'Handshake ID to present to' },
+        party_role: { type: 'string', description: 'Role of the presenting party' },
+        presentation_type: { type: 'string', description: 'Type: "verifiable_credential", "ep_trust_profile", "attestation"' },
+        issuer_ref: { type: 'string', description: 'Optional credential issuer reference' },
+        claims: { type: 'object', description: 'Identity claims being presented' },
+        disclosure_mode: { type: 'string', description: 'Disclosure mode: "full", "selective", "zk"' },
+      },
+      required: ['handshake_id', 'party_role', 'presentation_type', 'claims'],
+    },
+  },
+  {
+    name: 'ep_verify_handshake',
+    description:
+      'Evaluate all presentations in a handshake against the governing policy. ' +
+      'Returns: accepted (all requirements met), rejected (policy violations), or partial (awaiting presentations). ' +
+      'Includes reason_codes explaining the outcome.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        handshake_id: { type: 'string', description: 'Handshake ID to verify' },
+      },
+      required: ['handshake_id'],
+    },
+  },
+  {
+    name: 'ep_get_handshake',
+    description:
+      'Get the full state of a handshake including parties, presentations, binding, and result. ' +
+      'Use this to check handshake progress or review completed exchanges.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        handshake_id: { type: 'string', description: 'Handshake ID to retrieve' },
+      },
+      required: ['handshake_id'],
+    },
+  },
+  {
+    name: 'ep_revoke_handshake',
+    description:
+      'Revoke an active handshake. Only parties to the handshake may revoke it. ' +
+      'Revocation is terminal — the handshake cannot be reopened.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        handshake_id: { type: 'string', description: 'Handshake ID to revoke' },
+        reason: { type: 'string', description: 'Reason for revocation' },
+      },
+      required: ['handshake_id', 'reason'],
+    },
+  },
 ];
 
 // =============================================================================
@@ -1133,6 +1231,106 @@ async function handleTool(name, args) {
         `Commit ID: ${data.commit_id}\n` +
         `Receipt ID: ${data.receipt_id}\n` +
         `Status: ${data.status}`;
+    }
+
+    case 'ep_initiate_handshake': {
+      if (!API_KEY) return 'Error: EP_API_KEY required to initiate handshakes.';
+      const body = {
+        mode: args.mode,
+        policy_id: args.policy_id,
+        parties: args.parties,
+        binding: args.binding || null,
+        interaction_id: args.interaction_id || null,
+      };
+      const data = await epFetch('/api/handshake', { method: 'POST', auth: true, body });
+      let out = `Handshake Initiated\n`;
+      out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      out += `Handshake ID: ${data.handshake_id}\n`;
+      out += `Mode:         ${data.mode}\n`;
+      out += `Policy:       ${data.policy_id}\n`;
+      out += `Status:       ${data.status}\n`;
+      if (data.parties?.length) {
+        out += `Parties:      ${data.parties.map(p => `${p.entity_ref} (${p.role})`).join(', ')}\n`;
+      }
+      out += `\nNext: each party calls ep_add_presentation to submit identity proofs.`;
+      return out;
+    }
+
+    case 'ep_add_presentation': {
+      if (!API_KEY) return 'Error: EP_API_KEY required to add presentations.';
+      const body = {
+        party_role: args.party_role,
+        presentation_type: args.presentation_type,
+        issuer_ref: args.issuer_ref || null,
+        claims: args.claims,
+        disclosure_mode: args.disclosure_mode || null,
+      };
+      const data = await epFetch(`/api/handshake/${encodeURIComponent(args.handshake_id)}/present`, {
+        method: 'POST', auth: true, body,
+      });
+      return `Presentation added.\n` +
+        `Presentation ID: ${data.presentation_id}\n` +
+        `Handshake:       ${data.handshake_id}\n` +
+        `Party role:      ${data.party_role}\n` +
+        `Type:            ${data.presentation_type}\n` +
+        `When all parties have presented, call ep_verify_handshake to evaluate.`;
+    }
+
+    case 'ep_verify_handshake': {
+      if (!API_KEY) return 'Error: EP_API_KEY required to verify handshakes.';
+      const data = await epFetch(`/api/handshake/${encodeURIComponent(args.handshake_id)}/verify`, {
+        method: 'POST', auth: true,
+      });
+      let out = `Handshake Verification\n`;
+      out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      out += `Handshake ID: ${data.handshake_id}\n`;
+      out += `Result:       ${data.result === 'accepted' ? '✓ ACCEPTED' : data.result === 'rejected' ? '✗ REJECTED' : '⚠ PARTIAL'}\n`;
+      if (data.reason_codes?.length) {
+        out += `Reasons:\n`;
+        for (const r of data.reason_codes) out += `  ${r}\n`;
+      }
+      if (data.evaluated_at) out += `Evaluated at: ${data.evaluated_at}\n`;
+      return out;
+    }
+
+    case 'ep_get_handshake': {
+      if (!API_KEY) return 'Error: EP_API_KEY required to get handshake details.';
+      const data = await epFetch(`/api/handshake/${encodeURIComponent(args.handshake_id)}`, { auth: true });
+      let out = `Handshake: ${data.handshake_id}\n`;
+      out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      out += `Mode:     ${data.mode}\n`;
+      out += `Policy:   ${data.policy_id}\n`;
+      out += `Status:   ${data.status}\n`;
+      if (data.parties?.length) {
+        out += `\nParties:\n`;
+        for (const p of data.parties) {
+          out += `  ${p.entity_ref} (${p.role}) — ${p.presented ? 'presented' : 'awaiting'}\n`;
+        }
+      }
+      if (data.presentations?.length) {
+        out += `\nPresentations (${data.presentations.length}):\n`;
+        for (const pr of data.presentations) {
+          out += `  ${pr.party_role}: ${pr.presentation_type} [${pr.disclosure_mode || 'full'}]\n`;
+        }
+      }
+      if (data.result) {
+        out += `\nResult: ${data.result.outcome}\n`;
+        if (data.result.reason_codes?.length) {
+          for (const r of data.result.reason_codes) out += `  ${r}\n`;
+        }
+      }
+      return out;
+    }
+
+    case 'ep_revoke_handshake': {
+      if (!API_KEY) return 'Error: EP_API_KEY required to revoke handshakes.';
+      const data = await epFetch(`/api/handshake/${encodeURIComponent(args.handshake_id)}/revoke`, {
+        method: 'POST', auth: true, body: { reason: args.reason },
+      });
+      return `Handshake revoked.\n` +
+        `Handshake ID: ${data.handshake_id}\n` +
+        `Status: ${data.status}\n` +
+        `Reason: ${args.reason}`;
     }
 
     default:

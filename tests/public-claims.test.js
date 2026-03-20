@@ -353,8 +353,8 @@ describe('MCP server README claims', () => {
     expect(readmeToolCount).toBe(actualToolCount);
   });
 
-  it('MCP README claims 29 tools and that matches actual count', () => {
-    // README says "29 tools"
+  it('MCP README claims 34 tools and that matches actual count', () => {
+    // README says "34 tools"
     const claimMatch = mcpReadme.match(/(\d+)\s*tools/);
     expect(claimMatch).not.toBeNull();
     const claimedCount = Number(claimMatch[1]);

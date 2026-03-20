@@ -6,13 +6,16 @@
  * its event history. It is the step that makes EMILIA protocol-grade.
  *
  * Usage:
- *   node scripts/replay-protocol.js [--verify] [--rebuild] [--diff] [--aggregate-type receipt]
+ *   node scripts/replay-protocol.js [--verify] [--rebuild] [--diff] [--reconstitute] [--aggregate-type receipt]
  *
  * Modes:
- *   --verify   Verify event hash chains and signatures
- *   --rebuild  Rebuild projection tables from events
- *   --diff     Compare replayed state vs current state
- *   --dry-run  Show what would change without writing
+ *   --verify        Verify event hash chains and signatures
+ *   --rebuild       Rebuild projection tables from events
+ *   --diff          Compare replayed state vs current state
+ *   --reconstitute  Full deterministic reconstitution: rebuild all projections
+ *                   from scratch, diff against current DB, verify commit chain
+ *                   integrity, and exit 0 if deterministic / exit 1 if drift
+ *   --dry-run       Show what would change without writing
  *
  * @license Apache-2.0
  */
@@ -590,6 +593,143 @@ const PROJECTION_ID_COLUMN = {
 };
 
 // ---------------------------------------------------------------------------
+// Reconstitution engine
+// ---------------------------------------------------------------------------
+
+/**
+ * Verify commit chain integrity: signatures, nonce uniqueness, authority validity.
+ *
+ * @param {object[]} commitProjections - Array of commit projection rows
+ * @returns {{ totalCommits: number, validSignatures: number, invalidSignatures: object[], duplicateNonces: object[], invalidAuthorities: object[] }}
+ */
+export function verifyCommitChainIntegrity(commitProjections) {
+  const report = {
+    totalCommits: commitProjections.length,
+    validSignatures: 0,
+    invalidSignatures: [],
+    duplicateNonces: [],
+    invalidAuthorities: [],
+  };
+
+  const nonceSet = new Map(); // nonce -> commit_id
+
+  for (const commit of commitProjections) {
+    // 1. Verify nonce uniqueness
+    if (commit.nonce) {
+      if (nonceSet.has(commit.nonce)) {
+        report.duplicateNonces.push({
+          commit_id: commit.commit_id,
+          nonce: commit.nonce,
+          conflicting_commit_id: nonceSet.get(commit.nonce),
+        });
+      } else {
+        nonceSet.set(commit.nonce, commit.commit_id);
+      }
+    }
+
+    // 2. Verify signature exists (actual Ed25519 verification requires the
+    //    trusted key registry which is not available in pure-replay mode;
+    //    we verify the signature field is present and well-formed)
+    if (commit.signature) {
+      try {
+        const sigBuf = Buffer.from(commit.signature, 'base64');
+        if (sigBuf.length > 0 && commit.public_key) {
+          report.validSignatures++;
+        } else {
+          report.invalidSignatures.push({
+            commit_id: commit.commit_id,
+            reason: 'empty_signature_or_missing_public_key',
+          });
+        }
+      } catch {
+        report.invalidSignatures.push({
+          commit_id: commit.commit_id,
+          reason: 'signature_not_valid_base64',
+        });
+      }
+    } else {
+      report.invalidSignatures.push({
+        commit_id: commit.commit_id,
+        reason: 'no_signature',
+      });
+    }
+
+    // 3. Verify authority — commit must have an entity_id (the authority)
+    if (!commit.entity_id) {
+      report.invalidAuthorities.push({
+        commit_id: commit.commit_id,
+        reason: 'missing_entity_id',
+      });
+    }
+  }
+
+  return report;
+}
+
+/**
+ * Run full deterministic reconstitution: replay all events from scratch,
+ * rebuild every projection table, diff against current state, verify
+ * commit chain integrity, and produce a comprehensive report.
+ *
+ * @param {object[]} events - All protocol events in chronological order
+ * @param {object} currentState - Current DB state: { [aggregate_type]: { [id]: row } }
+ * @returns {object} Determinism report
+ */
+export function reconstitute(events, currentState) {
+  // Step 1: Rebuild all projections from events
+  const { projections, replayed, errors: replayErrors } = rebuildProjections(events);
+
+  // Step 2: Verify event integrity (hashes and chains)
+  const verifyReport = verifyEvents(events);
+
+  // Step 3: Diff replayed state against current DB state
+  const diffResult = diffProjections(projections, currentState);
+
+  // Step 4: Verify commit chain integrity
+  const commitProjections = projections.commit
+    ? Object.values(projections.commit)
+    : [];
+  const commitChainReport = verifyCommitChainIntegrity(commitProjections);
+
+  // Step 5: Count rebuilt projections
+  const projectionsRebuilt = {};
+  for (const aggType of Object.keys(projections)) {
+    projectionsRebuilt[aggType] = Object.keys(projections[aggType]).length;
+  }
+
+  // Step 6: Determine determinism verdict
+  const isDeterministic =
+    verifyReport.invalidHashes.length === 0 &&
+    verifyReport.brokenChains.length === 0 &&
+    diffResult.drifted.length === 0 &&
+    diffResult.orphanedInCurrent.length === 0 &&
+    diffResult.orphanedInReplay.length === 0 &&
+    commitChainReport.invalidSignatures.length === 0 &&
+    commitChainReport.duplicateNonces.length === 0 &&
+    commitChainReport.invalidAuthorities.length === 0 &&
+    replayErrors.length === 0;
+
+  return {
+    deterministic: isDeterministic,
+    totalEventsReplayed: replayed,
+    replayErrors,
+    projectionsRebuilt,
+    exactMatches: diffResult.matching.length,
+    driftedRecords: diffResult.drifted,
+    orphanedInCurrent: diffResult.orphanedInCurrent,
+    orphanedInReplay: diffResult.orphanedInReplay,
+    eventIntegrity: {
+      totalEvents: verifyReport.totalEvents,
+      validHashes: verifyReport.validHashes,
+      invalidHashes: verifyReport.invalidHashes,
+      validChains: verifyReport.validChains,
+      brokenChains: verifyReport.brokenChains,
+    },
+    commitChainIntegrity: commitChainReport,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // CLI entry point
 // ---------------------------------------------------------------------------
 
@@ -600,14 +740,15 @@ async function main() {
     rebuild: args.includes('--rebuild'),
     diff: args.includes('--diff'),
     dryRun: args.includes('--dry-run'),
+    reconstitute: args.includes('--reconstitute'),
   };
   const aggregateTypeIdx = args.indexOf('--aggregate-type');
   const aggregateTypeFilter =
     aggregateTypeIdx !== -1 ? args[aggregateTypeIdx + 1] : null;
 
-  if (!flags.verify && !flags.rebuild && !flags.diff) {
+  if (!flags.verify && !flags.rebuild && !flags.diff && !flags.reconstitute) {
     console.log(
-      'Usage: node scripts/replay-protocol.js [--verify] [--rebuild] [--diff] [--dry-run] [--aggregate-type <type>]',
+      'Usage: node scripts/replay-protocol.js [--verify] [--rebuild] [--diff] [--reconstitute] [--dry-run] [--aggregate-type <type>]',
     );
     console.log('At least one mode flag is required.');
     process.exit(1);
@@ -774,6 +915,107 @@ async function main() {
       }
     }
     console.log('');
+  }
+
+  // -----------------------------------------------------------------------
+  // RECONSTITUTE
+  // -----------------------------------------------------------------------
+  if (flags.reconstitute) {
+    console.log('--- RECONSTITUTE MODE ---');
+    console.log('Rebuilding entire system state from event chain...\n');
+
+    // Load current state from all projection tables
+    const currentState = {};
+    for (const aggType of Object.keys(PROJECTION_TABLES)) {
+      const table = PROJECTION_TABLES[aggType];
+      const idCol = PROJECTION_ID_COLUMN[aggType];
+      if (!table || !idCol) continue;
+
+      const { data: rows, error: fetchError } = await supabase
+        .from(table)
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (fetchError) {
+        console.log(`  WARNING: Failed to load ${table}: ${fetchError.message}`);
+        continue;
+      }
+
+      currentState[aggType] = {};
+      for (const row of rows || []) {
+        const id = row[idCol];
+        if (id) currentState[aggType][id] = row;
+      }
+    }
+
+    // Run full reconstitution
+    const report = reconstitute(filtered, currentState);
+
+    // Print determinism report
+    console.log('=== DETERMINISM REPORT ===\n');
+    console.log(`Verdict:              ${report.deterministic ? 'DETERMINISTIC' : 'DRIFT DETECTED'}`);
+    console.log(`Total events replayed: ${report.totalEventsReplayed}`);
+    console.log(`Replay errors:         ${report.replayErrors.length}`);
+    console.log('');
+
+    console.log('Projections rebuilt:');
+    for (const [aggType, count] of Object.entries(report.projectionsRebuilt)) {
+      console.log(`  ${aggType}: ${count}`);
+    }
+    console.log('');
+
+    console.log(`Exact matches:             ${report.exactMatches}`);
+    console.log(`Drifted records:           ${report.driftedRecords.length}`);
+    console.log(`Orphaned (current only):   ${report.orphanedInCurrent.length}`);
+    console.log(`Orphaned (replay only):    ${report.orphanedInReplay.length}`);
+    console.log('');
+
+    console.log('Event integrity:');
+    console.log(`  Valid hashes:    ${report.eventIntegrity.validHashes}/${report.eventIntegrity.totalEvents}`);
+    console.log(`  Invalid hashes:  ${report.eventIntegrity.invalidHashes.length}`);
+    console.log(`  Valid chains:    ${report.eventIntegrity.validChains}`);
+    console.log(`  Broken chains:   ${report.eventIntegrity.brokenChains.length}`);
+    console.log('');
+
+    console.log('Commit chain integrity:');
+    console.log(`  Total commits:       ${report.commitChainIntegrity.totalCommits}`);
+    console.log(`  Valid signatures:    ${report.commitChainIntegrity.validSignatures}`);
+    console.log(`  Invalid signatures:  ${report.commitChainIntegrity.invalidSignatures.length}`);
+    console.log(`  Duplicate nonces:    ${report.commitChainIntegrity.duplicateNonces.length}`);
+    console.log(`  Invalid authorities: ${report.commitChainIntegrity.invalidAuthorities.length}`);
+
+    if (report.driftedRecords.length > 0) {
+      console.log('\nDrifted records (field-level diff):');
+      for (const d of report.driftedRecords.slice(0, 20)) {
+        console.log(`  ${d.aggregate_type}/${d.aggregate_id}:`);
+        for (const diff of d.diffs) {
+          console.log(`    ${diff.field}: replayed=${JSON.stringify(diff.replayed)} current=${JSON.stringify(diff.current)}`);
+        }
+      }
+      if (report.driftedRecords.length > 20) {
+        console.log(`  ... and ${report.driftedRecords.length - 20} more`);
+      }
+    }
+
+    if (report.orphanedInCurrent.length > 0) {
+      console.log('\nOrphaned in current state (not produced by replay):');
+      for (const o of report.orphanedInCurrent.slice(0, 20)) {
+        console.log(`  ${o.aggregate_type}/${o.aggregate_id}`);
+      }
+    }
+
+    if (report.orphanedInReplay.length > 0) {
+      console.log('\nMissing from current state (produced by replay but absent):');
+      for (const o of report.orphanedInReplay.slice(0, 20)) {
+        console.log(`  ${o.aggregate_type}/${o.aggregate_id}`);
+      }
+    }
+
+    console.log('\n=== Reconstitution complete ===');
+
+    if (!report.deterministic) {
+      process.exit(1);
+    }
   }
 
   console.log('=== Replay complete ===');

@@ -73,6 +73,14 @@ const ROUTE_POLICIES = {
   'POST /api/commit/*/receipt':       { rateCategory: 'dispute_write', useAuth: true },
   'POST /api/commit/*/dispute':       { rateCategory: 'dispute_write', useAuth: true },
 
+  // Handshake (EP Handshake — structured identity exchange)
+  'POST /api/handshake':              { rateCategory: 'dispute_write', useAuth: true },
+  'GET /api/handshake':               { rateCategory: 'read', useAuth: true },
+  'GET /api/handshake/*':             { rateCategory: 'read', useAuth: true },
+  'POST /api/handshake/*/present':    { rateCategory: 'dispute_write', useAuth: true },
+  'POST /api/handshake/*/verify':     { rateCategory: 'dispute_write', useAuth: true },
+  'POST /api/handshake/*/revoke':     { rateCategory: 'dispute_write', useAuth: true },
+
   // Operations / Cron
   'POST /api/blockchain/anchor':      { rateCategory: 'anchor', useAuth: false },
   'POST /api/cron/expire':            { rateCategory: 'anchor', useAuth: false },

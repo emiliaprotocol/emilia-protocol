@@ -10,7 +10,7 @@
 
 ## What This Is
 
-EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties. This MCP server gives any Claude conversation or agent pipeline direct access to EP's trust-decision surfaces: 29 tools covering trust profiles, policy evaluation, software install preflight, dispute filing, appeals, delegation chains, identity lineage, and pre-action commits. Add it to Claude Desktop in 60 seconds. No self-hosted EP backend required.
+EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties. This MCP server gives any Claude conversation or agent pipeline direct access to EP's trust-decision surfaces: 34 tools covering trust profiles, policy evaluation, software install preflight, dispute filing, appeals, delegation chains, identity lineage, and pre-action commits. Add it to Claude Desktop in 60 seconds. No self-hosted EP backend required.
 
 ---
 
@@ -284,6 +284,11 @@ The submitter has 7 days to respond. Trust is suspended pending resolution.
 | `ep_get_commit_status` | Get current state of a commit | Yes |
 | `ep_revoke_commit` | Revoke an active commit | Yes |
 | `ep_bind_receipt_to_commit` | Bind a post-action receipt to a commit | Yes |
+| `ep_initiate_handshake` | Initiate a structured identity exchange between parties | Yes |
+| `ep_add_presentation` | Add an identity presentation (proof) to a handshake | Yes |
+| `ep_verify_handshake` | Evaluate handshake presentations against policy | Yes |
+| `ep_get_handshake` | Get full handshake state | Yes |
+| `ep_revoke_handshake` | Revoke an active handshake | Yes |
 
 ---
 

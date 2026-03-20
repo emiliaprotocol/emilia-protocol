@@ -77,6 +77,13 @@ vi.mock('../lib/commit.js', () => ({
   revokeCommit: (...args) => mockRevokeCommit(...args),
 }));
 
+vi.mock('../lib/handshake.js', () => ({
+  _handleInitiateHandshake: vi.fn().mockResolvedValue({ result: { handshake_id: 'eph_mock' }, aggregateId: 'eph_mock' }),
+  _handleAddPresentation: vi.fn().mockResolvedValue({ result: { id: 'pres_mock' }, aggregateId: 'eph_mock' }),
+  _handleVerifyHandshake: vi.fn().mockResolvedValue({ result: { outcome: 'accepted' }, aggregateId: 'eph_mock' }),
+  _handleRevokeHandshake: vi.fn().mockResolvedValue({ result: { status: 'revoked' }, aggregateId: 'eph_mock' }),
+}));
+
 vi.mock('../lib/procedural-justice.js', () => ({
   hasPermission: vi.fn().mockReturnValue(true),
   checkAbuse: (...args) => mockCheckAbuse(...args),
@@ -605,8 +612,8 @@ describe('abuse detection', () => {
 // ============================================================================
 
 describe('COMMAND_TYPES', () => {
-  it('has all 9 expected command types', () => {
-    expect(Object.keys(COMMAND_TYPES)).toHaveLength(9);
+  it('has all 13 expected command types', () => {
+    expect(Object.keys(COMMAND_TYPES)).toHaveLength(13);
     expect(COMMAND_TYPES.SUBMIT_RECEIPT).toBe('submit_receipt');
     expect(COMMAND_TYPES.CONFIRM_RECEIPT).toBe('confirm_receipt');
     expect(COMMAND_TYPES.ISSUE_COMMIT).toBe('issue_commit');
@@ -616,6 +623,10 @@ describe('COMMAND_TYPES', () => {
     expect(COMMAND_TYPES.RESOLVE_DISPUTE).toBe('resolve_dispute');
     expect(COMMAND_TYPES.FILE_REPORT).toBe('file_report');
     expect(COMMAND_TYPES.SUBMIT_AUTO_RECEIPT).toBe('submit_auto_receipt');
+    expect(COMMAND_TYPES.INITIATE_HANDSHAKE).toBe('initiate_handshake');
+    expect(COMMAND_TYPES.ADD_PRESENTATION).toBe('add_presentation');
+    expect(COMMAND_TYPES.VERIFY_HANDSHAKE).toBe('verify_handshake');
+    expect(COMMAND_TYPES.REVOKE_HANDSHAKE).toBe('revoke_handshake');
   });
 
   it('every command type has a validator', () => {
@@ -633,7 +644,7 @@ describe('COMMAND_TYPES', () => {
   it('every command type maps to an aggregate', () => {
     for (const type of Object.values(COMMAND_TYPES)) {
       expect(_internals.COMMAND_TO_AGGREGATE[type]).toBeDefined();
-      expect(['receipt', 'commit', 'dispute', 'report']).toContain(
+      expect(['receipt', 'commit', 'dispute', 'report', 'handshake']).toContain(
         _internals.COMMAND_TO_AGGREGATE[type]
       );
     }

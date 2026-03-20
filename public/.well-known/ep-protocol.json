@@ -262,6 +262,17 @@
     "Section 14: Dispute Adjudication Standard",
     "Section 15: Attribution Chain Standard",
     "Section 16: Auto-Receipt Generation",
-    "Section 18: EP Commit — Signed Pre-Action Authorization"
-  ]
+    "Section 18: EP Commit — Signed Pre-Action Authorization",
+    "Section 23: EP Handshake Extension"
+  ],
+  "handshake": {
+    "modes": ["basic", "mutual", "selective", "delegated"],
+    "statuses": ["pending", "verified", "failed", "expired"],
+    "endpoints": {
+      "POST /api/handshake/initiate": "Initiate a handshake with a counterparty",
+      "POST /api/handshake/respond": "Respond to a handshake challenge",
+      "POST /api/handshake/verify": "Verify a completed handshake",
+      "GET /api/handshake/{handshakeId}": "Get handshake details and outcome"
+    }
+  }
 }

@@ -9,6 +9,7 @@
 - **Install preflight** (for software trust)
 - **Compatibility score** or **legacy compatibility score** — only when referring to the numeric field, always labeled legacy
 - **Constitutional principle: trust must never be more powerful than appeal.**
+- **Handshake** — transaction-scoped identity verification and disclosure ceremony
 
 ## Retire from active docs
 

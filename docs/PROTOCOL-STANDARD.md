@@ -48,6 +48,7 @@ This standard is organized into **EP Core** sections and **EP Extension** sectio
 - Section 16: Auto-Receipt Generation
 - Section 18: EP Commit — Signed Pre-Action Authorization
 - Section 22: Dual-Control for Trust-Sensitive Operator Actions
+- Section 23: EP Handshake Extension
 
 **EP Meta** (protocol self-description):
 - Section 21: Machine-Readable Protocol Constitution (`/.well-known/ep-protocol.json`)
@@ -1416,6 +1417,68 @@ The following actions MUST require confirmation from **two distinct operators** 
 ### 22.4 Implementation
 
 Implementations MUST expose a `requireDualControl(action, firstOperatorId, secondOperatorId, firstOperatorRole, secondOperatorRole)` check (or equivalent) that enforces rules 1–3 above before the action is executed.
+
+---
+
+## 23. EP Handshake Extension
+
+### 23.1 Definition
+
+EP Handshake is an optional extension for one-sided or mutual identity verification, authority proof, and transaction binding between counterparties, institutions, or agents.
+
+### 23.2 Modes
+
+- **Basic**: One party proves identity to another
+- **Mutual**: Both parties prove identity to each other
+- **Selective**: Party proves only selected attributes (e.g., `authorized_signer = true`, `sanctions_screened = true`)
+- **Delegated**: Principal proves an agent is authorized to act on its behalf
+
+### 23.3 Canonical Object
+
+```json
+{
+  "handshake_id": "hs_abc123",
+  "mode": "mutual",
+  "initiator": "entity-alice",
+  "responder": "entity-bob",
+  "policy_id": "handshake_strict_v1",
+  "claims_presented": {
+    "initiator": ["identity_verified", "authorized_signer"],
+    "responder": ["sanctions_screened", "kyc_passed"]
+  },
+  "assurance_level": "high",
+  "nonce": "a1b2c3d4e5f6...",
+  "challenge": "c7d8e9f0...",
+  "binding": {
+    "payload_hash": "sha256:abcdef...",
+    "binding_window_iso": "PT15M"
+  },
+  "outcome": "verified",
+  "policy_version": "1.0.0",
+  "timestamp": "2026-03-20T00:00:00Z"
+}
+```
+
+### 23.4 Security Invariants
+
+1. A handshake MUST NOT validate against an expired binding window.
+2. A handshake MUST NOT validate if nonce or challenge requirements fail.
+3. A handshake MUST NOT validate if issuer authority is revoked.
+4. A handshake MUST NOT validate if required claims are missing.
+5. A handshake MUST NOT validate if assurance level falls below policy minimum.
+6. A handshake MUST NOT validate if payload hash differs from the bound transaction.
+7. A delegated handshake MUST NOT validate beyond delegation scope or expiry.
+8. A handshake outcome MUST always reference the exact policy version used.
+
+### 23.5 Relationship to Core Objects
+
+- **Trust Receipt**: records that a handshake occurred.
+- **Trust Profile**: stores durable outcomes from prior handshakes.
+- **Trust Decision**: consumes handshake outputs for policy evaluation.
+
+### 23.6 Policy Model
+
+Handshakes are policy-driven. Each handshake references a `policy_id` that defines required claims, assurance thresholds, and binding requirements.
 
 ---
 
