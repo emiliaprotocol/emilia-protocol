@@ -3,7 +3,7 @@
 **Version:** 1.0
 **Read time:** 3 minutes
 
-The Emilia Protocol (EP) is a trust verification protocol for machine-to-machine interactions. It answers one question: **"Was this action evaluated against policy before it happened, and can all parties prove it?"**
+The Emilia Protocol (EP) is a protocol-grade trust substrate for high-risk action enforcement. It answers one question: **"Should this exact high-risk action be allowed to proceed under this exact policy by this exact actor right now, and can every step be proven later?"**
 
 The entire protocol reduces to five operations.
 

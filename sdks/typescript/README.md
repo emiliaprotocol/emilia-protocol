@@ -1,8 +1,8 @@
 # @emilia-protocol/sdk
 
-**Portable trust for machine counterparties.**
+**Trust before high-risk action.**
 
-The official TypeScript SDK for the [EMILIA Protocol](https://emiliaprotocol.ai) — the trust infrastructure for the age of AI agents, autonomous software, and machine-to-machine commerce.
+The official TypeScript SDK for the [EMILIA Protocol](https://emiliaprotocol.ai) — the protocol-grade trust substrate for high-risk action enforcement across AI agents, enterprise systems, government workflows, and financial operations.
 
 EMILIA maps to six design pillars: **E**vidence, **M**ediation, **I**dentity, **L**ineage, **I**nvocation, **A**ppeals.
 

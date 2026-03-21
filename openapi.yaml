@@ -2,10 +2,11 @@ openapi: 3.0.3
 info:
   title: EMILIA Protocol API
   description: |
-    Trust profiles, policy evaluation, install preflight, disputes, and appeals
-    for counterparties, software, and machine actors.
+    Protocol-grade trust infrastructure for high-risk action enforcement.
 
-    Open trust decisions for agents, software, and machine counterparties. MCP tells agents how to use tools. EP tells them whether they should.
+    EP binds actor identity, authority, policy, and exact action context into a replay-resistant, one-time authorization flow with immutable event traceability.
+
+    Supporting line for AI-native contexts: MCP tells agents how to use tools. EP tells systems whether a high-risk action should be allowed to proceed.
 
     Constitutional principle: trust must never be more powerful than appeal.
   version: 1.1.0

@@ -1,10 +1,8 @@
 # EMILIA Protocol Python SDK
 
-**Portable trust for machine counterparties.**
+**Trust before high-risk action.**
 
-The EMILIA Protocol Python SDK gives agents, services, and developers
-programmatic access to EP trust profiles, policy evaluation, receipt
-submission, disputes, delegations, identity continuity, and more.
+The EMILIA Protocol Python SDK gives services, agents, and developers programmatic access to EP trust decisions, handshake flows, accountable signoff, policy evaluation, receipts, delegations, and audit-grade execution controls.
 
 [![PyPI](https://img.shields.io/pypi/v/emilia-protocol)](https://pypi.org/project/emilia-protocol/)
 [![Python](https://img.shields.io/pypi/pyversions/emilia-protocol)](https://pypi.org/project/emilia-protocol/)
