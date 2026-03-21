@@ -1,11 +1,12 @@
 'use client';
 
 const NAV_LINKS = [
-  ['/', 'Overview'],
-  ['/demo.html', 'Demo'],
-  ['/quickstart', 'Quickstart'],
-  ['/spec', 'Docs'],
-  ['/partners', 'Partners'],
+  ['/protocol', 'Protocol'],
+  ['/use-cases', 'Use Cases'],
+  ['/product/cloud', 'Cloud'],
+  ['/product/enterprise', 'Enterprise'],
+  ['/docs', 'Docs'],
+  ['/investors', 'Investors'],
   ['https://github.com/emiliaprotocol/emilia-protocol', 'GitHub'],
 ];
 
@@ -72,43 +73,9 @@ export default function SiteNav({ activePage }) {
             onMouseLeave={e => { if (label !== activePage) e.target.style.color = '#8b95a5'; }}
           >{label}</a>
         ))}
-
-        {/* Governance / Accountability dropdown */}
-        <div style={{ position: 'relative' }}
-          onMouseEnter={e => { const dd = e.currentTarget.querySelector('[data-gov-dd]'); if (dd) dd.style.display = 'flex'; }}
-          onMouseLeave={e => { const dd = e.currentTarget.querySelector('[data-gov-dd]'); if (dd) dd.style.display = 'none'; }}
-        >
-          <span style={{
-            fontFamily: "'IBM Plex Mono', monospace",
-            fontSize: 11, letterSpacing: 1, textTransform: 'uppercase',
-            color: GOV_LINKS.some(([, l]) => l === activePage) ? '#d4af55' : '#8b95a5',
-            cursor: 'pointer', transition: 'color 0.2s', userSelect: 'none',
-            borderBottom: GOV_LINKS.some(([, l]) => l === activePage) ? '2px solid #d4af55' : '2px solid transparent',
-            paddingBottom: 2,
-          }}>Accountability &#9662;</span>
-          <div data-gov-dd="" style={{
-            display: 'none', flexDirection: 'column', position: 'absolute',
-            top: '100%', left: 0, marginTop: 8,
-            background: 'rgba(10,15,30,0.97)', border: '1px solid rgba(255,255,255,0.06)',
-            borderRadius: 10, padding: '8px 0', minWidth: 160, zIndex: 200,
-            backdropFilter: 'blur(12px)',
-          }}>
-            {GOV_LINKS.map(([href, label]) => (
-              <a key={label} href={href} style={{
-                fontFamily: "'IBM Plex Mono', monospace",
-                fontSize: 11, letterSpacing: 1, textTransform: 'uppercase',
-                color: label === activePage ? '#d4af55' : '#8b95a5',
-                textDecoration: 'none', padding: '8px 16px', transition: 'color 0.2s',
-              }}
-                onMouseEnter={e => { e.target.style.color = '#d4af55'; }}
-                onMouseLeave={e => { if (label !== activePage) e.target.style.color = '#8b95a5'; }}
-              >{label}</a>
-            ))}
-          </div>
-        </div>
       </div>
 
-      <a href="/partners#inquiry" style={{
+      <a href="/partners" style={{
         background: 'transparent', color: '#d4af55',
         padding: '8px 18px', borderRadius: 8,
         textDecoration: 'none', fontSize: 12,
@@ -117,7 +84,7 @@ export default function SiteNav({ activePage }) {
         flexShrink: 0,
         border: '1px solid #d4af55',
         transition: 'background 0.2s, color 0.2s',
-      }}>Partner with Us</a>
+      }}>Request Pilot</a>
     </nav>
   );
 }
