@@ -24,7 +24,14 @@ EP gives agencies a protocol-grade substrate for:
 - replay resistance
 - one-time authorization consumption
 - immutable event history
+- Accountable Signoff when policy requires named ownership
 
-## Positioning line
+## Best first pilot
 
-EP is not another identity system. It is a control layer for high-risk administrative and financial actions.
+Start with one high-risk workflow:
+- payment destination change
+- benefit redirect
+- operator override
+- delegated case action
+
+These workflows create fast proof of value because the cost of weak authorization is visible, expensive, and politically legible.

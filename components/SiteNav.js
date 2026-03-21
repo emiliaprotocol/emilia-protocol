@@ -2,9 +2,10 @@
 
 const NAV_LINKS = [
   ['/protocol', 'Protocol'],
+  ['/government', 'Government'],
+  ['/financial', 'Financial'],
   ['/use-cases', 'Use Cases'],
   ['/product/cloud', 'Cloud'],
-  ['/product/enterprise', 'Enterprise'],
   ['/docs', 'Docs'],
   ['/investors', 'Investors'],
 ];

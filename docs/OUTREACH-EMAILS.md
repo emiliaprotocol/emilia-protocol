@@ -1,30 +1,4 @@
-# EP Outreach Emails — Updated Language
-
-## Standards / working group outreach
-
-Subject: Proposal: trust before high-risk action
-
-Hi [Name],
-
-I’m reaching out to share EMILIA Protocol (EP), a protocol-grade trust substrate for high-risk action enforcement.
-
-EP is designed for a specific control problem: not just identifying who is acting, but determining whether a specific actor, under a specific authority chain, should be allowed to perform a specific high-risk action under a specific policy, with replay resistance, one-time consumption, and durable event traceability.
-
-The current implementation includes:
-- Trust Receipt
-- Trust Profile
-- Trust Decision
-- Handshake for pre-action trust enforcement
-- policy binding
-- one-time authorization consumption
-- immutable event traceability
-
-We believe this fills a real gap between authentication and execution, especially as government, payments, enterprise approvals, and agent workflows become more automated.
-
-Happy to share the protocol draft, implementation, and current positioning materials if useful.
-
-Best,
-[Your Name]
+# EP Outreach Emails — Updated
 
 ## General introduction
 
@@ -36,7 +10,7 @@ EMILIA Protocol (EP) is a protocol-grade trust substrate for high-risk action en
 
 Most systems verify who is acting. EP verifies whether this exact action should be allowed, under this exact policy, by this exact actor, right now.
 
-It does that by binding:
+EP binds:
 - actor identity
 - authority chain
 - exact action context
@@ -45,14 +19,16 @@ It does that by binding:
 - one-time consumption
 - immutable event traceability
 
-We think this is increasingly important for:
-- fraud prevention
-- payment-change controls
+When policy requires named human ownership, EP can also require Accountable Signoff before execution.
+
+We think this is especially relevant for:
+- government fraud prevention
+- payment-change and treasury controls
 - delegated approvals
 - operator overrides
 - AI / agent execution governance
 
-If helpful, I can send the current protocol materials and use-case briefs.
+If helpful, I can send the current protocol materials and a proposed pilot scope.
 
 Best,
 [Your Name]

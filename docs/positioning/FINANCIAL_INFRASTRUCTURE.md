@@ -22,7 +22,14 @@ EP helps institutions:
 - strengthen delegated authority controls
 - improve audit evidence and reconstruction
 - place a trust-control layer between authentication and execution
+- require Accountable Signoff for high-risk thresholds
 
-## Positioning line
+## Best first pilot
 
-EP strengthens the last mile of authorization in financial workflows.
+Start with one high-risk workflow:
+- beneficiary change
+- payout destination change
+- remittance update
+- treasury release approval
+
+These workflows create immediate control value because they combine real fraud risk with a measurable reduction in operational ambiguity.

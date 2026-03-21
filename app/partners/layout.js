@@ -1,6 +1,6 @@
 export const metadata = {
-  title: 'Partner with EMILIA | Pilot Trust Before High-Risk Action',
-  description: 'Help define how high-risk actions are constrained before execution. Apply for a pilot partnership.',
+  title: 'Pilot EMILIA in a High-Risk Workflow',
+  description: 'Start with one action class—payment changes, delegated approvals, operator overrides, or agent execution—and prove the control value fast.',
 };
 
 export default function PartnersLayout({ children }) {
