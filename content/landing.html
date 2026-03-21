@@ -285,6 +285,9 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
   #the-problem [style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr !important}
   #trust-decision [style*="grid-template-columns: repeat(3"]{grid-template-columns:1fr !important}
   section [style*="grid-template-columns: repeat(3,1fr)"]{grid-template-columns:1fr !important}
+  #what-ep-does [style*="grid-template-columns: repeat(3"]{grid-template-columns:1fr !important}
+  #where-it-fits [style*="grid-template-columns: repeat(2"]{grid-template-columns:1fr !important}
+  #product-layers [style*="grid-template-columns: 200px"]{grid-template-columns:1fr !important}
 }
 @media(max-width:600px){
   .fgrid{grid-template-columns:1fr}.hero h1{letter-spacing:-2px}
@@ -363,7 +366,7 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
       <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
       Read the Protocol
     </a>
-    <a href="/explorer" class="btn-g">Explore Public Profiles</a>
+    <a href="#where-it-fits" class="btn-g">See Use Cases</a>
   </div>
 
   <div class="hstats">
@@ -377,6 +380,190 @@ footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid v
 
 <!-- TICKER -->
 <div class="ticker"><div class="ticker-in" id="ticker"></div></div>
+
+<!-- SECTION 2: THE PROBLEM -->
+<section id="the-core-problem">
+  <div class="container-sm">
+    <div class="tc reveal">
+      <div class="st">// The Problem</div>
+      <div class="sh">Verification stops at the door</div>
+    </div>
+    <div class="reveal" style="margin-top:36px;padding:40px 36px;background:linear-gradient(135deg,rgba(248,113,113,0.04),rgba(245,158,11,0.04));border:1px solid rgba(248,113,113,0.15);border-radius:20px">
+      <p style="font-family:var(--disp);font-weight:700;font-size:clamp(17px,2.2vw,24px);color:var(--t1);line-height:1.5;text-align:center;margin:0">Most systems verify <em style="color:var(--cyan);font-style:normal">who</em> is acting. Very few verify whether <em style="color:var(--gold);font-style:normal">this exact high-risk action</em> should be allowed to proceed under <em style="color:var(--green);font-style:normal">this exact policy</em> by <em style="color:var(--purple);font-style:normal">this exact actor</em> right now.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 3: WHAT EP DOES -->
+<section id="what-ep-does" style="padding-top:0">
+  <div class="container-md">
+    <div class="tc reveal">
+      <div class="st">// What EP Does</div>
+      <div class="sh">Six enforcement guarantees</div>
+      <div class="sd" style="margin:0 auto">EP is not an identity provider. It is a trust substrate that enforces policy before high-risk actions proceed.</div>
+    </div>
+    <div class="reveal" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:40px">
+
+      <div style="background:var(--bg-card);border:1px solid rgba(96,165,250,0.2);border-radius:14px;padding:28px">
+        <div style="font-size:24px;margin-bottom:14px">&#128274;</div>
+        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Verifies actor and authority</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.7">Confirms that the entity requesting action has the identity and delegation scope to do so.</div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid rgba(96,165,250,0.2);border-radius:14px;padding:28px">
+        <div style="font-size:24px;margin-bottom:14px">&#127919;</div>
+        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Binds exact action context</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.7">The authorization is tied to the specific action, amount, counterparty, and scope -- not a blanket permission.</div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid rgba(245,158,11,0.2);border-radius:14px;padding:28px">
+        <div style="font-size:24px;margin-bottom:14px">&#128220;</div>
+        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Enforces policy version and hash</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.7">Every trust decision references a specific, versioned policy. No ambiguity about which rules governed the decision.</div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid rgba(245,158,11,0.2);border-radius:14px;padding:28px">
+        <div style="font-size:24px;margin-bottom:14px">&#9989;</div>
+        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Prevents replay through one-time consumption</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.7">Each EP Commit is consumed on use. Replay attacks are structurally impossible.</div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid rgba(52,211,153,0.2);border-radius:14px;padding:28px">
+        <div style="font-size:24px;margin-bottom:14px">&#9997;&#65039;</div>
+        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Supports accountable human signoff</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.7">When policy demands it, a human-in-the-loop signoff is required before execution proceeds. Accountable and auditable.</div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid rgba(52,211,153,0.2);border-radius:14px;padding:28px">
+        <div style="font-size:24px;margin-bottom:14px">&#128210;</div>
+        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Produces immutable event traceability</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.7">Every trust decision, commit, and action is recorded in an append-only, Merkle-anchored audit trail.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 4: WHERE IT FITS -->
+<section id="where-it-fits" style="padding-top:0">
+  <div class="container-md">
+    <div class="tc reveal">
+      <div class="st">// Where It Fits</div>
+      <div class="sh">High-risk domains. Real enforcement.</div>
+    </div>
+    <div class="reveal" style="display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-top:40px">
+
+      <div style="background:var(--bg-card);border:1px solid rgba(248,113,113,0.2);border-radius:16px;padding:32px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;right:0;width:80px;height:80px;background:radial-gradient(circle at top right,rgba(248,113,113,0.08),transparent 70%);border-radius:0 16px 0 0"></div>
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin-bottom:12px">Government</div>
+        <div style="font-weight:700;font-size:18px;color:var(--t1);margin-bottom:10px;line-height:1.3">Fraud prevention</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.7">Benefits disbursement, procurement approvals, and inter-agency authorization. EP enforces policy before funds move -- not after.</div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid rgba(245,158,11,0.2);border-radius:16px;padding:32px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;right:0;width:80px;height:80px;background:radial-gradient(circle at top right,rgba(245,158,11,0.08),transparent 70%);border-radius:0 16px 0 0"></div>
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:12px">Financial Infrastructure</div>
+        <div style="font-weight:700;font-size:18px;color:var(--t1);margin-bottom:10px;line-height:1.3">Controls enforcement</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.7">Wire approvals, trading limits, compliance gates. Bind actor identity, exact transaction context, and policy version before execution.</div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid rgba(96,165,250,0.2);border-radius:16px;padding:32px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;right:0;width:80px;height:80px;background:radial-gradient(circle at top right,rgba(96,165,250,0.08),transparent 70%);border-radius:0 16px 0 0"></div>
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;margin-bottom:12px">Enterprise</div>
+        <div style="font-weight:700;font-size:18px;color:var(--t1);margin-bottom:10px;line-height:1.3">High-risk approvals</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.7">Privileged access, production deployments, data exports. EP creates the control layer between authentication and execution.</div>
+      </div>
+
+      <div style="background:var(--bg-card);border:1px solid rgba(167,139,250,0.2);border-radius:16px;padding:32px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;right:0;width:80px;height:80px;background:radial-gradient(circle at top right,rgba(167,139,250,0.08),transparent 70%);border-radius:0 16px 0 0"></div>
+        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:12px">AI / Agents</div>
+        <div style="font-weight:700;font-size:18px;color:var(--t1);margin-bottom:10px;line-height:1.3">Execution governance</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.7">Before an agent installs software, connects to tools, or transacts autonomously, EP returns a structured trust decision with reasons, confidence, and an appeal path.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 5: WHY IT MATTERS -->
+<section id="why-it-matters" style="padding-top:0">
+  <div class="container-sm">
+    <div class="reveal" style="text-align:center;padding:48px 40px;background:linear-gradient(135deg,rgba(96,165,250,0.04),rgba(245,158,11,0.04));border:1px solid rgba(96,165,250,0.12);border-radius:20px">
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--t3);margin-bottom:20px">Why It Matters</div>
+      <div style="font-family:var(--disp);font-weight:800;font-size:clamp(18px,2.5vw,28px);letter-spacing:-0.5px;line-height:1.4;color:var(--t1);max-width:600px;margin:0 auto">Fraud increasingly happens inside approved-looking workflows. EP creates the control layer between authentication and execution.</div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 6: PRODUCT LAYERS -->
+<section id="product-layers" style="padding-top:0">
+  <div class="container-md">
+    <div class="tc reveal">
+      <div class="st">// Product Layers</div>
+      <div class="sh">From open standard to enterprise deployment</div>
+    </div>
+    <div class="reveal" style="display:flex;flex-direction:column;gap:0;border:1px solid var(--brd);border-radius:14px;overflow:hidden;margin-top:40px">
+
+      <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--brd)">
+        <div style="padding:20px 24px;background:rgba(52,211,153,0.06);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
+          <div style="font-weight:700;font-size:15px;color:var(--green)">Open Protocol</div>
+          <span class="phase-pill phase-live" style="margin-top:6px;display:inline-block;width:fit-content">Apache 2.0</span>
+        </div>
+        <div style="padding:20px 24px;font-size:13px;color:var(--t2);line-height:1.7">The EP Core specification, Trust Decision schema, Trust Receipt schema, scoring algorithms, and policy evaluation logic. Free forever. Fork it, implement it, extend it.</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--brd)">
+        <div style="padding:20px 24px;background:rgba(96,165,250,0.06);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
+          <div style="font-weight:700;font-size:15px;color:var(--cyan)">Open Runtime</div>
+          <span class="phase-pill phase-live" style="margin-top:6px;display:inline-block;width:fit-content">Live</span>
+        </div>
+        <div style="padding:20px 24px;font-size:13px;color:var(--t2);line-height:1.7">Self-hostable reference implementation. MCP server (29 tools), REST API, TypeScript and Python SDKs. Run on your infrastructure, your data, your rules.</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--brd)">
+        <div style="padding:20px 24px;background:rgba(245,158,11,0.06);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
+          <div style="font-weight:700;font-size:15px;color:var(--gold)">Managed Cloud</div>
+          <span class="phase-pill phase-dev" style="margin-top:6px;display:inline-block;width:fit-content">Beta</span>
+        </div>
+        <div style="padding:20px 24px;font-size:13px;color:var(--t2);line-height:1.7">Hosted API at emiliaprotocol.ai. No infrastructure to manage. Free during beta. Production SLAs coming with general availability.</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--brd)">
+        <div style="padding:20px 24px;background:rgba(167,139,250,0.06);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
+          <div style="font-weight:700;font-size:15px;color:var(--purple)">Enterprise Deployment</div>
+          <span class="phase-pill phase-road" style="margin-top:6px;display:inline-block;width:fit-content">Roadmap</span>
+        </div>
+        <div style="padding:20px 24px;font-size:13px;color:var(--t2);line-height:1.7">On-prem or VPC deployment. Custom policy management, operator dashboards, adjudication queues, SSO, and enterprise SLAs.</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:200px 1fr">
+        <div style="padding:20px 24px;background:rgba(248,113,113,0.04);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
+          <div style="font-weight:700;font-size:15px;color:var(--red)">Vertical Packs</div>
+          <span class="phase-pill phase-road" style="margin-top:6px;display:inline-block;width:fit-content">Roadmap</span>
+        </div>
+        <div style="padding:20px 24px;font-size:13px;color:var(--t2);line-height:1.7">Pre-built policy sets, integration adapters, and compliance mappings for government, financial services, healthcare, and defense.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 7: CTA STRIP -->
+<section id="cta-strip" style="padding-top:0">
+  <div class="container-md">
+    <div class="reveal" style="background:linear-gradient(135deg,rgba(96,165,250,0.06),rgba(167,139,250,0.06) 50%,rgba(245,158,11,0.06));border:1px solid rgba(96,165,250,0.15);border-radius:20px;padding:48px 40px;text-align:center">
+      <div style="font-family:var(--disp);font-weight:800;font-size:clamp(22px,3vw,32px);letter-spacing:-1px;margin-bottom:24px;color:var(--t1)">Start here.</div>
+      <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
+        <a href="/spec" class="btn-p">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+          Read the Protocol
+        </a>
+        <a href="/quickstart#agents" class="btn-g">Explore Use Cases</a>
+        <a href="/partners#inquiry" class="btn-gold">Request Pilot</a>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- THE PROBLEM (new narrative section) -->
 <section id="the-problem">

@@ -1,0 +1,51 @@
+import { NextResponse } from 'next/server';
+import { authenticateRequest } from '@/lib/supabase';
+import { issueChallenge } from '@/lib/signoff/challenge';
+import { EP_ERRORS, epProblem } from '@/lib/errors';
+
+/**
+ * POST /api/signoff/challenge
+ *
+ * Issue a new Accountable Signoff challenge. A challenge represents a
+ * request for a human entity to review and attest to an action before
+ * it may proceed.
+ *
+ * Required body fields:
+ *   - handshakeId:         The handshake this signoff is bound to
+ *   - accountableActorRef: The entity_ref of the accountable human
+ *   - signoffPolicyId:     The policy governing this signoff
+ *   - expiresAt:           ISO 8601 expiration timestamp
+ */
+export async function POST(request) {
+  try {
+    const auth = await authenticateRequest(request);
+    if (auth.error) return EP_ERRORS.UNAUTHORIZED();
+
+    const body = await request.json();
+
+    // ── Validate required fields ──────────────────────────────────────
+    const required = ['handshakeId', 'accountableActorRef', 'signoffPolicyId', 'expiresAt'];
+    for (const field of required) {
+      if (!body[field]) {
+        return EP_ERRORS.BAD_REQUEST(`Missing required field: ${field}`);
+      }
+    }
+
+    const result = await issueChallenge({
+      actor: auth.entity,
+      handshakeId: body.handshakeId,
+      accountableActorRef: body.accountableActorRef,
+      signoffPolicyId: body.signoffPolicyId,
+      expiresAt: body.expiresAt,
+    });
+
+    if (result.error) {
+      return epProblem(result.status || 500, 'signoff_challenge_failed', result.error);
+    }
+
+    return NextResponse.json(result, { status: 201 });
+  } catch (err) {
+    console.error('Signoff challenge issuance error:', err);
+    return EP_ERRORS.INTERNAL();
+  }
+}

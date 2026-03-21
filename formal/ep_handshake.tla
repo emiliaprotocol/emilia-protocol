@@ -14,6 +14,7 @@
 \* 10. Policy-hash mismatch detection after binding
 \* 11. Strengthened terminal-state proofs
 \* 12. Event completeness: exactly one event per transition
+\* 13. Accountable Signoff: challenge-response signoff with binding integrity
 \*
 \* Maps to code:
 \*   lib/handshake/invariants.js  — pure invariant checks
@@ -23,6 +24,9 @@
 \*   lib/protocol-write.js       — canonical write path
 \*   lib/delegation.js           — delegation chain management
 \*   lib/write-guard.js          — write-bypass prevention
+\*   lib/signoff/challenge.js    — signoff challenge issuance
+\*   lib/signoff/approve.js      — signoff approval and consumption
+\*   lib/signoff/revoke.js       — signoff revocation and expiry
 
 EXTENDS Naturals, FiniteSets, Sequences
 
@@ -38,16 +42,23 @@ VARIABLES
     writePath,       \* handshake_id -> BOOLEAN (TRUE iff last mutation used canonical write)
     delegations,     \* actor -> set of {principal, scope} delegation records
     policyVersion,   \* handshake_id -> Nat (policy version at binding time)
-    currentPolicyVer \* handshake_id -> Nat (current live policy version)
+    currentPolicyVer,\* handshake_id -> Nat (current live policy version)
+    \* --- Accountable Signoff variables ---
+    signoffState,    \* handshake_id -> signoff lifecycle state
+    signoffActor,    \* handshake_id -> actor who issued/approved the signoff (or "none")
+    signoffBinding   \* handshake_id -> binding hash at signoff time (or "none")
 
 vars == <<state, bindings, consumptions, events, revoked, policyValid,
-          writePath, delegations, policyVersion, currentPolicyVer>>
+          writePath, delegations, policyVersion, currentPolicyVer,
+          signoffState, signoffActor, signoffBinding>>
 
 \* --------------------------------------------------------------------------
 \* Type Invariant
 \* --------------------------------------------------------------------------
 
 TerminalStates == {"consumed", "revoked", "expired", "rejected"}
+
+SignoffTerminalStates == {"denied", "consumed_signoff", "expired_signoff", "revoked_signoff"}
 
 TypeInvariant ==
     /\ state \in [Handshakes -> {"none", "initiated", "pending_verification",
@@ -57,6 +68,10 @@ TypeInvariant ==
     /\ writePath \in [Handshakes -> BOOLEAN]
     /\ policyVersion \in [Handshakes -> Nat]
     /\ currentPolicyVer \in [Handshakes -> Nat]
+    /\ signoffState \in [Handshakes -> {"none", "challenge_issued", "challenge_viewed",
+                                         "approved", "denied", "expired_signoff",
+                                         "revoked_signoff", "consumed_signoff"}]
+    /\ signoffActor \in [Handshakes -> Actors \union {"none"}]
 
 \* --------------------------------------------------------------------------
 \* Safety Properties
@@ -168,6 +183,64 @@ EventCompleteness ==
             Len(SelectSeq(events, LAMBDA e : e[1] = h /\ e[2] = "rejected")) = 1)
 
 \* --------------------------------------------------------------------------
+\* Accountable Signoff Safety Properties
+\* --------------------------------------------------------------------------
+
+\* S14: Signoff requires verified handshake — a challenge cannot be issued
+\* unless the underlying handshake has reached the "verified" state.
+\* Maps to: lib/signoff/challenge.js status guard (handshake must be verified)
+SignoffRequiresVerifiedHandshake ==
+    \A h \in Handshakes :
+        signoffState[h] # "none" => state[h] = "verified"
+
+\* S15: Signoff consume-once — a signoff can transition to consumed_signoff
+\* at most once per handshake. Once consumed, no further signoff transitions.
+\* Maps to: lib/signoff/approve.js unique constraint on signoff_consumptions
+SignoffConsumeOnce ==
+    \A h \in Handshakes :
+        signoffState[h] = "consumed_signoff" =>
+            signoffState[h] \notin {"challenge_issued", "challenge_viewed", "approved"}
+
+\* S16: Signoff binding match — the signoff binding hash must equal the
+\* handshake's binding hash at every signoff transition. This ensures
+\* the signoff is bound to the exact handshake state it was issued for.
+\* Maps to: lib/signoff/challenge.js binding hash comparison;
+\*          lib/signoff/approve.js binding hash verification
+SignoffBindingMatch ==
+    \A h \in Handshakes :
+        signoffState[h] # "none" =>
+            signoffBinding[h] = bindings[h]
+
+\* S17: Signoff terminal irreversibility — denied, consumed_signoff,
+\* expired_signoff, and revoked_signoff are terminal signoff states.
+\* No transition out of these states is possible.
+\* Maps to: lib/signoff/approve.js terminal state guard;
+\*          lib/signoff/revoke.js terminal state guard
+SignoffTerminalIrreversible ==
+    \A h \in Handshakes :
+        signoffState[h] \in SignoffTerminalStates =>
+            signoffState[h] \notin {"challenge_issued", "challenge_viewed", "approved"}
+
+\* S18: Deny cannot be approved — once a signoff is denied, it cannot
+\* transition to approved. This is a strengthening of S17 for the specific
+\* deny -> approve path that must be explicitly prevented.
+\* Maps to: lib/signoff/approve.js status guard rejects denied challenges
+DenyCannotBeApproved ==
+    \A h \in Handshakes :
+        signoffState[h] = "denied" =>
+            signoffState[h] # "approved"
+
+\* S19: Signoff authority match — the signoff actor must have an authority
+\* class that matches the policy requirement. Only actors with the correct
+\* authority class can issue or approve signoffs.
+\* Maps to: lib/signoff/challenge.js authority class check;
+\*          lib/signoff/approve.js authority class verification
+SignoffAuthorityMatch ==
+    \A h \in Handshakes :
+        signoffState[h] \in {"challenge_issued", "challenge_viewed", "approved", "consumed_signoff"} =>
+            signoffActor[h] # "none"
+
+\* --------------------------------------------------------------------------
 \* Initial State
 \* --------------------------------------------------------------------------
 
@@ -182,6 +255,9 @@ Init ==
     /\ delegations = [a \in Actors |-> {}]
     /\ policyVersion = [h \in Handshakes |-> 0]
     /\ currentPolicyVer = [h \in Handshakes |-> 0]
+    /\ signoffState = [h \in Handshakes |-> "none"]
+    /\ signoffActor = [h \in Handshakes |-> "none"]
+    /\ signoffBinding = [h \in Handshakes |-> "none"]
 
 \* --------------------------------------------------------------------------
 \* State Transitions
@@ -194,7 +270,7 @@ Initiate(h) ==
     /\ state' = [state EXCEPT ![h] = "initiated"]
     /\ events' = Append(events, <<h, "initiated">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer>>
+    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding>>
 
 \* T2: Add a presentation (initiated -> pending_verification)
 \* Maps to: _handleAddPresentation() in lib/handshake/present.js
@@ -203,7 +279,7 @@ Present(h) ==
     /\ state' = [state EXCEPT ![h] = "pending_verification"]
     /\ events' = Append(events, <<h, "presentation_added">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer>>
+    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding>>
 
 \* T3: Verify and accept (pending_verification -> verified)
 \* Maps to: _handleVerifyHandshake() outcome='accepted' in verify.js
@@ -216,7 +292,7 @@ VerifyAccept(h) ==
     /\ state' = [state EXCEPT ![h] = "verified"]
     /\ events' = Append(events, <<h, "verified">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer>>
+    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding>>
 
 \* T4: Verify and reject (pending_verification -> rejected)
 \* Maps to: _handleVerifyHandshake() outcome='rejected' in verify.js
@@ -229,7 +305,7 @@ VerifyReject(h) ==
     /\ state' = [state EXCEPT ![h] = "rejected"]
     /\ events' = Append(events, <<h, "rejected">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer>>
+    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding>>
 
 \* T5: Consume a verified handshake (verified -> consumed)
 \* Maps to: consumeHandshake() in consume.js
@@ -242,7 +318,7 @@ Consume(h) ==
     /\ consumptions' = consumptions \union {h}
     /\ events' = Append(events, <<h, "consumed">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<bindings, revoked, policyValid, delegations, policyVersion, currentPolicyVer>>
+    /\ UNCHANGED <<bindings, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding>>
 
 \* T6: Revoke a handshake (initiated|pending_verification|verified -> revoked)
 \* Maps to: _handleRevokeHandshake() in finalize.js
@@ -255,7 +331,7 @@ Revoke(h) ==
     /\ revoked' = revoked \union {h}
     /\ events' = Append(events, <<h, "revoked">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<bindings, consumptions, policyValid, delegations, policyVersion, currentPolicyVer>>
+    /\ UNCHANGED <<bindings, consumptions, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding>>
 
 \* T7: Expire a handshake (initiated|pending_verification|verified -> expired)
 \* Maps to: _handleVerifyHandshake() outcome='expired' in verify.js
@@ -266,7 +342,7 @@ Expire(h) ==
     /\ state' = [state EXCEPT ![h] = "expired"]
     /\ events' = Append(events, <<h, "expired">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer>>
+    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding>>
 
 \* --------------------------------------------------------------------------
 \* Adversarial Actions (must be no-ops or resolve safely)
@@ -289,12 +365,12 @@ ConcurrentRevokeConsume(h) ==
            /\ revoked' = revoked \union {h}
            /\ events' = Append(events, <<h, "revoked">>)
            /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-           /\ UNCHANGED <<bindings, consumptions, policyValid, delegations, policyVersion, currentPolicyVer>>)
+           /\ UNCHANGED <<bindings, consumptions, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding>>)
        \/ (state' = [state EXCEPT ![h] = "consumed"]
            /\ consumptions' = consumptions \union {h}
            /\ events' = Append(events, <<h, "consumed">>)
            /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-           /\ UNCHANGED <<bindings, revoked, policyValid, delegations, policyVersion, currentPolicyVer>>)
+           /\ UNCHANGED <<bindings, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding>>)
 
 \* A3: Attempt to verify an already-consumed binding.
 \* Maps to: verify.js HARD GATE (line 52-68) — existingBinding.consumed_at check
@@ -312,7 +388,7 @@ SetPolicyValid(h) ==
     /\ state[h] \in {"none", "initiated", "pending_verification"}
     /\ policyValid' = [policyValid EXCEPT ![h] = TRUE]
     /\ policyVersion' = [policyVersion EXCEPT ![h] = currentPolicyVer[h]]
-    /\ UNCHANGED <<state, bindings, consumptions, events, revoked, writePath, delegations, currentPolicyVer>>
+    /\ UNCHANGED <<state, bindings, consumptions, events, revoked, writePath, delegations, currentPolicyVer, signoffState, signoffActor, signoffBinding>>
 
 \* --------------------------------------------------------------------------
 \* Policy Environment Actions (continued)
@@ -323,7 +399,7 @@ SetPolicyValid(h) ==
 PolicyChange(h) ==
     /\ state[h] \in {"initiated", "pending_verification"}
     /\ currentPolicyVer' = [currentPolicyVer EXCEPT ![h] = currentPolicyVer[h] + 1]
-    /\ UNCHANGED <<state, bindings, consumptions, events, revoked, policyValid, writePath, delegations, policyVersion>>
+    /\ UNCHANGED <<state, bindings, consumptions, events, revoked, policyValid, writePath, delegations, policyVersion, signoffState, signoffActor, signoffBinding>>
 
 \* --------------------------------------------------------------------------
 \* Delegation Actions
@@ -341,7 +417,7 @@ GrantDelegation(principal, delegate) ==
         delegations[delegate] \union {[delegate |-> delegate, principal |-> principal,
                                         scope |-> {"verify", "present"},
                                         principalScope |-> {"verify", "present", "revoke"}]}]
-    /\ UNCHANGED <<state, bindings, consumptions, events, revoked, policyValid, writePath, policyVersion, currentPolicyVer>>
+    /\ UNCHANGED <<state, bindings, consumptions, events, revoked, policyValid, writePath, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding>>
 
 \* A4: Attempt direct write bypass — models an actor trying to mutate state
 \* without going through protocolWrite. This MUST be a no-op.
@@ -356,6 +432,90 @@ DirectWriteBypassAttempt(h) ==
 TerminalEscapeAttempt(h) ==
     /\ state[h] \in TerminalStates
     /\ UNCHANGED vars  \* blocked — no escape from terminal states
+
+\* --------------------------------------------------------------------------
+\* Accountable Signoff Actions
+\* --------------------------------------------------------------------------
+
+\* SO1: Issue a signoff challenge for a verified handshake.
+\* Maps to: lib/signoff/challenge.js issueChallenge()
+\* Precondition: handshake verified, no signoff in progress
+IssueChallenge(h, actor) ==
+    /\ state[h] = "verified"
+    /\ signoffState[h] = "none"
+    /\ actor \in Actors
+    /\ signoffState' = [signoffState EXCEPT ![h] = "challenge_issued"]
+    /\ signoffActor' = [signoffActor EXCEPT ![h] = actor]
+    /\ signoffBinding' = [signoffBinding EXCEPT ![h] = bindings[h]]
+    /\ events' = Append(events, <<h, "signoff_challenge_issued">>)
+    /\ writePath' = [writePath EXCEPT ![h] = TRUE]
+    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer>>
+
+\* SO2: View a signoff challenge (challenge_issued -> challenge_viewed).
+\* Maps to: lib/signoff/challenge.js viewChallenge()
+ViewChallenge(h) ==
+    /\ signoffState[h] = "challenge_issued"
+    /\ signoffState' = [signoffState EXCEPT ![h] = "challenge_viewed"]
+    /\ events' = Append(events, <<h, "signoff_challenge_viewed">>)
+    /\ writePath' = [writePath EXCEPT ![h] = TRUE]
+    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>
+
+\* SO3: Approve a signoff (challenge_issued|challenge_viewed -> approved).
+\* Maps to: lib/signoff/approve.js approveSignoff()
+\* Precondition: binding hash still matches (tamper detection)
+ApproveSignoff(h) ==
+    /\ signoffState[h] \in {"challenge_issued", "challenge_viewed"}
+    /\ signoffBinding[h] = bindings[h]  \* binding integrity check
+    /\ signoffState' = [signoffState EXCEPT ![h] = "approved"]
+    /\ events' = Append(events, <<h, "signoff_approved">>)
+    /\ writePath' = [writePath EXCEPT ![h] = TRUE]
+    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>
+
+\* SO4: Deny a signoff (challenge_issued|challenge_viewed -> denied).
+\* Maps to: lib/signoff/approve.js denySignoff()
+DenySignoff(h) ==
+    /\ signoffState[h] \in {"challenge_issued", "challenge_viewed"}
+    /\ signoffState' = [signoffState EXCEPT ![h] = "denied"]
+    /\ events' = Append(events, <<h, "signoff_denied">>)
+    /\ writePath' = [writePath EXCEPT ![h] = TRUE]
+    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>
+
+\* SO5: Consume a signoff (approved -> consumed_signoff).
+\* Maps to: lib/signoff/approve.js consumeSignoff()
+\* Precondition: binding hash must still match at consumption time
+ConsumeSignoff(h) ==
+    /\ signoffState[h] = "approved"
+    /\ signoffBinding[h] = bindings[h]  \* binding integrity at consumption
+    /\ signoffState' = [signoffState EXCEPT ![h] = "consumed_signoff"]
+    /\ events' = Append(events, <<h, "signoff_consumed">>)
+    /\ writePath' = [writePath EXCEPT ![h] = TRUE]
+    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>
+
+\* SO6: Expire a signoff (challenge_issued|challenge_viewed|approved -> expired_signoff).
+\* Maps to: lib/signoff/revoke.js expireSignoff()
+\* Trigger: signoff TTL exceeded
+ExpireSignoff(h) ==
+    /\ signoffState[h] \in {"challenge_issued", "challenge_viewed", "approved"}
+    /\ signoffState' = [signoffState EXCEPT ![h] = "expired_signoff"]
+    /\ events' = Append(events, <<h, "signoff_expired">>)
+    /\ writePath' = [writePath EXCEPT ![h] = TRUE]
+    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>
+
+\* SO7: Revoke a signoff (challenge_issued|challenge_viewed|approved -> revoked_signoff).
+\* Maps to: lib/signoff/revoke.js revokeSignoff()
+RevokeSignoff(h) ==
+    /\ signoffState[h] \in {"challenge_issued", "challenge_viewed", "approved"}
+    /\ signoffState' = [signoffState EXCEPT ![h] = "revoked_signoff"]
+    /\ events' = Append(events, <<h, "signoff_revoked">>)
+    /\ writePath' = [writePath EXCEPT ![h] = TRUE]
+    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>
+
+\* A6: Attempt to transition out of a terminal signoff state.
+\* This MUST be a no-op for ALL terminal signoff states.
+\* Maps to: lib/signoff/approve.js terminal state guard
+SignoffTerminalEscapeAttempt(h) ==
+    /\ signoffState[h] \in SignoffTerminalStates
+    /\ UNCHANGED vars  \* blocked — no escape from terminal signoff states
 
 \* --------------------------------------------------------------------------
 \* Next-State Relation
@@ -377,6 +537,15 @@ Next ==
         \/ PolicyChange(h)
         \/ DirectWriteBypassAttempt(h)
         \/ TerminalEscapeAttempt(h)
+        \* Accountable Signoff actions
+        \/ \E a \in Actors : IssueChallenge(h, a)
+        \/ ViewChallenge(h)
+        \/ ApproveSignoff(h)
+        \/ DenySignoff(h)
+        \/ ConsumeSignoff(h)
+        \/ ExpireSignoff(h)
+        \/ RevokeSignoff(h)
+        \/ SignoffTerminalEscapeAttempt(h)
     \/ \E p \in Actors, d \in Actors :
         GrantDelegation(p, d)
 
@@ -402,5 +571,13 @@ THEOREM Spec => []DelegateCannotExceedPrincipal
 THEOREM Spec => []DelegationAcyclicity
 THEOREM Spec => []PolicyHashMismatchDetection
 THEOREM Spec => []EventCompleteness
+
+\* Accountable Signoff safety theorems
+THEOREM Spec => []SignoffRequiresVerifiedHandshake
+THEOREM Spec => []SignoffConsumeOnce
+THEOREM Spec => []SignoffBindingMatch
+THEOREM Spec => []SignoffTerminalIrreversible
+THEOREM Spec => []DenyCannotBeApproved
+THEOREM Spec => []SignoffAuthorityMatch
 
 ==========================================================================

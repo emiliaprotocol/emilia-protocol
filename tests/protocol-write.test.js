@@ -612,8 +612,8 @@ describe('abuse detection', () => {
 // ============================================================================
 
 describe('COMMAND_TYPES', () => {
-  it('has all 17 expected command types', () => {
-    expect(Object.keys(COMMAND_TYPES)).toHaveLength(17);
+  it('has all 26 expected command types', () => {
+    expect(Object.keys(COMMAND_TYPES)).toHaveLength(26);
     expect(COMMAND_TYPES.SUBMIT_RECEIPT).toBe('submit_receipt');
     expect(COMMAND_TYPES.CONFIRM_RECEIPT).toBe('confirm_receipt');
     expect(COMMAND_TYPES.ISSUE_COMMIT).toBe('issue_commit');
@@ -631,6 +631,15 @@ describe('COMMAND_TYPES', () => {
     expect(COMMAND_TYPES.ADD_PRESENTATION).toBe('add_presentation');
     expect(COMMAND_TYPES.VERIFY_HANDSHAKE).toBe('verify_handshake');
     expect(COMMAND_TYPES.REVOKE_HANDSHAKE).toBe('revoke_handshake');
+    expect(COMMAND_TYPES.SIGNOFF_CHALLENGE_ISSUE).toBe('signoff_challenge_issue');
+    expect(COMMAND_TYPES.SIGNOFF_CHALLENGE_VIEW).toBe('signoff_challenge_view');
+    expect(COMMAND_TYPES.SIGNOFF_ATTEST).toBe('signoff_attest');
+    expect(COMMAND_TYPES.SIGNOFF_DENY).toBe('signoff_deny');
+    expect(COMMAND_TYPES.SIGNOFF_CONSUME).toBe('signoff_consume');
+    expect(COMMAND_TYPES.SIGNOFF_CHALLENGE_REVOKE).toBe('signoff_challenge_revoke');
+    expect(COMMAND_TYPES.SIGNOFF_ATTESTATION_REVOKE).toBe('signoff_attestation_revoke');
+    expect(COMMAND_TYPES.SIGNOFF_CHALLENGE_EXPIRE).toBe('signoff_challenge_expire');
+    expect(COMMAND_TYPES.SIGNOFF_ATTESTATION_EXPIRE).toBe('signoff_attestation_expire');
   });
 
   it('every command type has a validator', () => {
@@ -648,7 +657,7 @@ describe('COMMAND_TYPES', () => {
   it('every command type maps to an aggregate', () => {
     for (const type of Object.values(COMMAND_TYPES)) {
       expect(_internals.COMMAND_TO_AGGREGATE[type]).toBeDefined();
-      expect(['receipt', 'commit', 'dispute', 'report', 'handshake']).toContain(
+      expect(['receipt', 'commit', 'dispute', 'report', 'handshake', 'signoff']).toContain(
         _internals.COMMAND_TO_AGGREGATE[type]
       );
     }

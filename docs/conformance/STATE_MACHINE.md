@@ -164,7 +164,140 @@ This ordering is enforced in:
 
 ---
 
+---
+
+## Accountable Signoff State Machine
+
+The signoff lifecycle is a sub-state-machine that activates after a handshake reaches `verified`. It models an accountable challenge-response flow where a human actor must explicitly approve or deny a signoff before it can be consumed.
+
+### Signoff State Diagram
+
+```
+                        +-----------+
+                        |   none    |
+                        +-----+-----+
+                              |
+                    IssueChallenge(h, actor)
+                   (requires state[h] = "verified")
+                              |
+                    +---------v----------+
+                    | challenge_issued   |
+                    +--+-----+-----+----+
+                       |     |     |
+            ViewChallenge()  |     |
+                       |     |     |
+               +-------v---+|     |
+               | challenge_ ||     |
+               | viewed     ||     |
+               +--+----+---+|     |
+                  |    |     |     |
+    ApproveSignoff()   |     |     |
+    (binding match)    |     |     |
+                  |    |     |     |
+             +----v-+  |     |     |
+             |approved| |     |     |
+             +--+--+-+  |     |     |
+                |  |    |     |     |
+   ConsumeSignoff()|    |     |     |
+   (binding match) |    |     |     |
+                |  |    |     |     |
+     +----------v+ |    |     |     |
+     |consumed_  | |    |     |     |
+     |signoff    | |    |     |     |
+     +-----------+ |    |     |     |
+      TERMINAL     |    |     |     |
+                   |  DenySignoff()  |
+                   |    |     |     |
+                   | +--v---+ |     |
+                   | |denied| |     |
+                   | +------+ |     |
+                   |  TERMINAL|     |
+                   |          |     |
+                   |   ExpireSignoff()
+                   |          |     |
+                   |  +-------v---+ |
+                   |  |expired_   | |
+                   |  |signoff    | |
+                   |  +-----------+ |
+                   |   TERMINAL     |
+                   |                |
+                   |     RevokeSignoff()
+                   |                |
+                   |        +-------v---+
+                   |        |revoked_   |
+                   |        |signoff    |
+                   |        +-----------+
+                   |         TERMINAL
+                   |
+        ExpireSignoff() / RevokeSignoff()
+        can also be applied from approved
+```
+
+### Signoff States
+
+| State              | Terminal | Description |
+|--------------------|----------|-------------|
+| `none`             | --       | No signoff in progress for this handshake |
+| `challenge_issued` | No       | Signoff challenge issued, awaiting actor response |
+| `challenge_viewed` | No       | Actor has viewed the challenge but not yet responded |
+| `approved`         | No       | Actor approved the signoff; ready for consumption |
+| `denied`           | Yes      | Actor explicitly denied the signoff |
+| `expired_signoff`  | Yes      | Signoff TTL exceeded before approval or consumption |
+| `revoked_signoff`  | Yes      | Signoff explicitly revoked by authorized party |
+| `consumed_signoff` | Yes      | Signoff consumed; one-time use fulfilled |
+
+### Signoff Transitions
+
+| From               | To                 | Action              | Code Reference |
+|--------------------|--------------------|----------------------|----------------|
+| `none`             | `challenge_issued` | `IssueChallenge()`   | `lib/signoff/challenge.js` |
+| `challenge_issued` | `challenge_viewed` | `ViewChallenge()`    | `lib/signoff/challenge.js` |
+| `challenge_issued` | `approved`         | `ApproveSignoff()`   | `lib/signoff/approve.js` |
+| `challenge_viewed` | `approved`         | `ApproveSignoff()`   | `lib/signoff/approve.js` |
+| `challenge_issued` | `denied`           | `DenySignoff()`      | `lib/signoff/approve.js` |
+| `challenge_viewed` | `denied`           | `DenySignoff()`      | `lib/signoff/approve.js` |
+| `approved`         | `consumed_signoff` | `ConsumeSignoff()`   | `lib/signoff/approve.js` |
+| `challenge_issued` | `expired_signoff`  | `ExpireSignoff()`    | `lib/signoff/revoke.js` |
+| `challenge_viewed` | `expired_signoff`  | `ExpireSignoff()`    | `lib/signoff/revoke.js` |
+| `approved`         | `expired_signoff`  | `ExpireSignoff()`    | `lib/signoff/revoke.js` |
+| `challenge_issued` | `revoked_signoff`  | `RevokeSignoff()`    | `lib/signoff/revoke.js` |
+| `challenge_viewed` | `revoked_signoff`  | `RevokeSignoff()`    | `lib/signoff/revoke.js` |
+| `approved`         | `revoked_signoff`  | `RevokeSignoff()`    | `lib/signoff/revoke.js` |
+
+### Signoff Preconditions
+
+#### IssueChallenge
+- Handshake status is `verified`
+- No signoff currently in progress (`signoffState = "none"`)
+- Actor has authority class matching policy requirement
+
+#### ApproveSignoff
+- Signoff state is `challenge_issued` or `challenge_viewed`
+- Signoff binding hash matches handshake binding hash (tamper detection)
+
+#### ConsumeSignoff
+- Signoff state is `approved`
+- Signoff binding hash matches handshake binding hash at consumption time
+
+#### DenySignoff
+- Signoff state is `challenge_issued` or `challenge_viewed`
+
+#### ExpireSignoff / RevokeSignoff
+- Signoff state is `challenge_issued`, `challenge_viewed`, or `approved`
+
+### Signoff Forbidden Transitions
+
+| From               | To                 | Why Forbidden |
+|--------------------|--------------------|---------------|
+| `denied`           | any state          | Terminal. Denied signoffs cannot be approved or consumed. |
+| `consumed_signoff` | any state          | Terminal. Consumed signoffs are immutable. |
+| `expired_signoff`  | any state          | Terminal. Expired signoffs cannot be reactivated. |
+| `revoked_signoff`  | any state          | Terminal. Revoked signoffs cannot be reinstated. |
+| `denied`           | `approved`         | Explicitly prevented (S18). |
+
+---
+
 ## Formal Model References
 
-- **TLA+ state machine**: `formal/ep_handshake.tla`
-- **Alloy relational model**: `formal/ep_relations.als`
+- **TLA+ state machine**: `formal/ep_handshake.tla` (19 safety theorems, 23 actions)
+- **Alloy relational model**: `formal/ep_relations.als` (32 facts, 15 assertions)

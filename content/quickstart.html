@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Quickstart — EMILIA Protocol</title>
-<meta name="description" content="Get EP integrated in 5 minutes. Add the MCP server to your agent, call the REST API, or submit your first receipt.">
+<meta name="description" content="Protect your first workflow in 30 minutes. Register a policy, initiate a handshake, present credentials, verify, and gate an action.">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 34 34' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='7' y='5' width='2.5' height='24' rx='1.25' fill='%2360a5fa'/%3E%3Crect x='9.5' y='5' width='16' height='2.5' rx='1.25' fill='%2360a5fa'/%3E%3Crect x='9.5' y='15.5' width='12' height='2.5' rx='1.25' fill='%23f59e0b'/%3E%3Crect x='9.5' y='26.5' width='14' height='2.5' rx='1.25' fill='%2360a5fa'/%3E%3C/svg%3E" integrity="">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
@@ -100,6 +100,10 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
   nav{padding:12px 20px}
   .nlinks{display:none}
   .policy-grid{grid-template-columns:1fr}
+  [style*="grid-template-columns: repeat(5"]{grid-template-columns:repeat(3,1fr) !important}
+}
+@media(max-width:500px){
+  [style*="grid-template-columns: repeat(5"]{grid-template-columns:1fr !important}
 }
 </style>
 </head>
@@ -124,27 +128,20 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
 <div class="layout">
   <!-- SIDEBAR -->
   <nav class="sidebar" aria-label="Quickstart navigation">
-    <h5>Get Started</h5>
+    <h5>Quick Start</h5>
     <ul>
       <li><a href="#overview" class="active">Overview</a></li>
-      <li><a href="#step1">1 — MCP Server</a></li>
-      <li><a href="#step2">2 — REST API</a></li>
-      <li><a href="#step3">3 — Register Entity</a></li>
-      <li><a href="#step4">4 — Submit Receipt</a></li>
-      <li><a href="#step5">5 — Query Trust</a></li>
-      <li><a href="#step6">6 — Evaluate Policy</a></li>
-      <li><a href="#step7">7 — Issue EP Commit</a></li>
-    </ul>
-    <h5>Use Cases</h5>
-    <ul>
-      <li><a href="#agents">AI Agents</a></li>
-      <li><a href="#platforms">Platforms</a></li>
-      <li><a href="#software">Software / MCP</a></li>
+      <li><a href="#step1">1 — Browse Policies</a></li>
+      <li><a href="#step2">2 — Initiate Handshake</a></li>
+      <li><a href="#step3">3 — Present Credentials</a></li>
+      <li><a href="#step4">4 — Verify Handshake</a></li>
+      <li><a href="#step5">5 — Gate the Action</a></li>
     </ul>
     <h5>Reference</h5>
     <ul>
-      <li><a href="#api-reference">API Reference</a></li>
-      <li><a href="#policies">Trust Policies</a></li>
+      <li><a href="#flow">Complete Flow</a></li>
+      <li><a href="#next-steps">What Comes Next</a></li>
+      <li><a href="#api-reference">Quick Reference</a></li>
       <li><a href="#sdks">SDKs</a></li>
     </ul>
   </nav>
@@ -152,464 +149,262 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
   <!-- CONTENT -->
   <main class="content" id="overview">
 
-    <div style="font-family:var(--mono);font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--t3);margin-bottom:12px">Documentation</div>
-    <h1>Quickstart</h1>
-    <p style="font-size:17px;color:var(--t1);margin-bottom:8px">Get EP integrated in <strong>5 minutes.</strong></p>
-    <p>Add the MCP server to your Claude config, call the REST API directly, or use the TypeScript/Python SDK. Everything is open — no approval required.</p>
+    <div style="font-family:var(--mono);font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--t3);margin-bottom:12px">Quick Start Guide</div>
+    <h1>Protect Your First Workflow in 30 Minutes</h1>
+    <p style="font-size:17px;color:var(--t1);margin-bottom:8px">The core EP trust loop: <strong>register a policy, initiate a handshake, present credentials, verify, and gate an action.</strong></p>
+    <p>By the end of this guide, you will have a working trust-protected workflow. Five steps. All curl commands. No SDK required.</p>
 
     <div class="callout info">
-      <strong>Base URL:</strong> <code>https://emiliaprotocol.ai</code> &nbsp;·&nbsp;
-      <strong>Auth:</strong> Most write endpoints require <code>Authorization: Bearer ep_live_...</code>. <strong>Entity registration is public</strong> and returns your first API key &nbsp;·&nbsp;
-      <strong>Read endpoints are public</strong> — no API key needed.
+      <strong>Prerequisites:</strong> An EP API key (starts with <code>ep_live_</code> or <code>ep_test_</code>), two registered entities (your agent and a counterparty), and <code>curl</code> or any HTTP client.
     </div>
+
+    <div class="code-block">
+      <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">Shell — Setup</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+      <div class="code-body"><pre><span class="cm"># Set your API key once</span>
+<span class="bash-$">$ </span><span class="bash-cmd">export</span> EP_KEY=<span class="bash-str">"ep_live_your_key_here"</span>
+<span class="bash-$">$ </span><span class="bash-cmd">export</span> EP_BASE=<span class="bash-str">"https://emiliaprotocol.ai"</span></pre></div>
+    </div>
+
     <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:16px 20px;margin:16px 0;font-size:13px;color:var(--t2)">
-      <strong style="color:var(--amber)">Local development:</strong> Use <code>http://localhost:3000</code> as your base URL.
-      The Docker stack runs the app container — you must provide <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>SUPABASE_SERVICE_ROLE_KEY</code> pointing at a real Supabase project.
+      <strong style="color:var(--amber)">Local development:</strong> Replace with <code>http://localhost:3000</code> as your base URL.
     </div>
 
     <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:12px;padding:24px 28px;margin:24px 0 32px">
-      <h3 style="font-family:var(--disp);font-weight:800;font-size:18px;margin:0 0 16px;color:var(--t1)">The EP Mental Model</h3>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
-        <div style="text-align:center;padding:16px 8px;border:1px solid var(--brd);border-radius:10px;background:rgba(96,165,250,0.04)">
-          <div style="font-family:var(--disp);font-weight:900;font-size:24px;color:var(--cyan);margin-bottom:4px">1</div>
-          <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Observe</div>
-          <div style="font-size:12px;color:var(--t2)">receipts</div>
+      <h3 style="font-family:var(--disp);font-weight:800;font-size:18px;margin:0 0 16px;color:var(--t1)">The EP Trust Loop</h3>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">
+        <div style="text-align:center;padding:14px 6px;border:1px solid var(--brd);border-radius:10px;background:rgba(96,165,250,0.04)">
+          <div style="font-family:var(--disp);font-weight:900;font-size:22px;color:var(--cyan);margin-bottom:4px">1</div>
+          <div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--t1);margin-bottom:2px">Browse</div>
+          <div style="font-size:11px;color:var(--t2)">policies</div>
         </div>
-        <div style="text-align:center;padding:16px 8px;border:1px solid var(--brd);border-radius:10px;background:rgba(96,165,250,0.04)">
-          <div style="font-family:var(--disp);font-weight:900;font-size:24px;color:var(--cyan);margin-bottom:4px">2</div>
-          <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Summarize</div>
-          <div style="font-size:12px;color:var(--t2)">profile</div>
+        <div style="text-align:center;padding:14px 6px;border:1px solid var(--brd);border-radius:10px;background:rgba(96,165,250,0.04)">
+          <div style="font-family:var(--disp);font-weight:900;font-size:22px;color:var(--cyan);margin-bottom:4px">2</div>
+          <div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--t1);margin-bottom:2px">Handshake</div>
+          <div style="font-size:11px;color:var(--t2)">initiate</div>
         </div>
-        <div style="text-align:center;padding:16px 8px;border:1px solid var(--brd);border-radius:10px;background:rgba(96,165,250,0.04)">
-          <div style="font-family:var(--disp);font-weight:900;font-size:24px;color:var(--cyan);margin-bottom:4px">3</div>
-          <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Decide</div>
-          <div style="font-size:12px;color:var(--t2)">decision</div>
+        <div style="text-align:center;padding:14px 6px;border:1px solid var(--brd);border-radius:10px;background:rgba(96,165,250,0.04)">
+          <div style="font-family:var(--disp);font-weight:900;font-size:22px;color:var(--cyan);margin-bottom:4px">3</div>
+          <div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--t1);margin-bottom:2px">Present</div>
+          <div style="font-size:11px;color:var(--t2)">credentials</div>
         </div>
-        <div style="text-align:center;padding:16px 8px;border:1px solid var(--brd);border-radius:10px;background:rgba(96,165,250,0.04)">
-          <div style="font-family:var(--disp);font-weight:900;font-size:24px;color:var(--cyan);margin-bottom:4px">4</div>
-          <div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--t1);margin-bottom:4px">Challenge</div>
-          <div style="font-size:12px;color:var(--t2)">appeal</div>
+        <div style="text-align:center;padding:14px 6px;border:1px solid var(--brd);border-radius:10px;background:rgba(96,165,250,0.04)">
+          <div style="font-family:var(--disp);font-weight:900;font-size:22px;color:var(--cyan);margin-bottom:4px">4</div>
+          <div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--t1);margin-bottom:2px">Verify</div>
+          <div style="font-size:11px;color:var(--t2)">handshake</div>
+        </div>
+        <div style="text-align:center;padding:14px 6px;border:1px solid var(--brd);border-radius:10px;background:rgba(245,158,11,0.04)">
+          <div style="font-family:var(--disp);font-weight:900;font-size:22px;color:var(--gold);margin-bottom:4px">5</div>
+          <div style="font-family:var(--mono);font-size:11px;font-weight:700;color:var(--t1);margin-bottom:2px">Gate</div>
+          <div style="font-size:11px;color:var(--t2)">action</div>
         </div>
       </div>
     </div>
 
     <!-- STEP 1 -->
-    <h2 id="step1">Step 1 — Add the MCP Server</h2>
+    <h2 id="step1">Step 1 — Browse Available Policies</h2>
     <div class="step-header">
       <div class="step-num">1</div>
-      <div><div class="step-title">Plug EP into any MCP client</div><div class="step-time">~60 seconds</div></div>
+      <div><div class="step-title">Understand what trust policies are available</div><div class="step-time">~2 minutes</div></div>
     </div>
-    <p>Add this to your <code>claude_desktop_config.json</code> (or any MCP-compatible client config). EP gives your agent 29 trust tools instantly.</p>
-
-    <div class="code-block">
-      <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">JSON — claude_desktop_config.json</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
-      <div class="code-body"><pre>{
-  <span class="prop">"mcpServers"</span>: {
-    <span class="prop">"emilia-protocol"</span>: {
-      <span class="prop">"command"</span>: <span class="str">"npx"</span>,
-      <span class="prop">"args"</span>: [<span class="str">"-y"</span>, <span class="str">"@emilia-protocol/mcp-server"</span>],
-      <span class="prop">"env"</span>: {
-        <span class="prop">"EP_API_KEY"</span>: <span class="str">"ep_live_..."</span>  <span class="cm">// returned when you register your entity</span>
-      }
-    }
-  }
-}</pre></div>
-    </div>
-
-    <p>Without <code>EP_API_KEY</code>, read-only tools still work: <code>ep_trust_profile</code>, <code>ep_trust_evaluate</code>, <code>ep_install_preflight</code>, <code>ep_search_entities</code>, <code>ep_leaderboard</code>.</p>
-
-    <div class="callout tip">
-      <strong>29 MCP tools available:</strong> ep_trust_profile, ep_trust_evaluate, ep_submit_receipt, ep_search_entities, ep_verify_receipt, ep_register_entity, ep_leaderboard, ep_dispute_file, ep_dispute_status, ep_report_trust_issue, ep_appeal_dispute, ep_install_preflight, ep_principal_lookup, ep_lineage, ep_list_policies, ep_create_delegation, ep_verify_delegation, ep_trust_gate, ep_batch_submit, ep_configure_auto_receipt, ep_domain_score, ep_generate_zk_proof, ep_verify_zk_proof, ep_delegation_judgment, ep_issue_commit, ep_verify_commit, ep_get_commit_status, ep_revoke_commit, ep_bind_receipt_to_commit
-    </div>
-
-    <!-- STEP 2 -->
-    <h2 id="step2">Step 2 — Call the REST API</h2>
-    <div class="step-header">
-      <div class="step-num">2</div>
-      <div><div class="step-title">Direct HTTP — no SDK needed</div><div class="step-time">~30 seconds</div></div>
-    </div>
-
-    <div class="tab-row">
-      <button class="qtab active" onclick="switchQTab('shell',this)">Shell</button>
-      <button class="qtab" onclick="switchQTab('ts',this)">TypeScript</button>
-      <button class="qtab" onclick="switchQTab('python',this)">Python</button>
-    </div>
-
-    <div id="qtab-shell">
-      <div class="code-block" style="border-radius:0 12px 12px 12px">
-        <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">Shell</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
-        <div class="code-body"><pre><span class="cm"># Install preflight for an MCP server (public, no auth)</span>
-<span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-flag">-X POST</span> https://emiliaprotocol.ai/api/trust/install-preflight \
-  <span class="bash-flag">-H</span> <span class="bash-str">"Content-Type: application/json"</span> \
-  <span class="bash-flag">-d</span> <span class="bash-str">'{"entity_id":"mcp-server-ep-v1","policy":"mcp_server_safe_v1"}'</span>
-
-<span class="cm"># Get a trust profile</span>
-<span class="bash-$">$ </span><span class="bash-cmd">curl</span> https://emiliaprotocol.ai/api/trust/profile/rex-booking-v1
-
-<span class="cm"># Evaluate against a policy</span>
-<span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-flag">-X POST</span> https://emiliaprotocol.ai/api/trust/evaluate \
-  <span class="bash-flag">-H</span> <span class="bash-str">"Content-Type: application/json"</span> \
-  <span class="bash-flag">-d</span> <span class="bash-str">'{"entity_id":"rex-booking-v1","policy":"standard"}'</span>
-
-<span class="cm"># Search entities</span>
-<span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-str">"https://emiliaprotocol.ai/api/entities/search?q=booking&amp;type=merchant"</span></pre></div>
-      </div>
-    </div>
-
-    <div id="qtab-ts" style="display:none">
-      <div class="code-block" style="border-radius:0 12px 12px 12px">
-        <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">TypeScript</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
-        <div class="code-body"><pre><span class="kw">import</span> { <span class="tp">EPClient</span> } <span class="kw">from</span> <span class="str">'@emilia-protocol/sdk'</span>;
-
-<span class="kw">const</span> ep = <span class="kw">new</span> <span class="tp">EPClient</span>({
-  apiKey: process.env.<span class="tp">EP_API_KEY</span>,               <span class="cm">// optional for reads</span>
-  baseUrl: <span class="str">'https://emiliaprotocol.ai'</span>,
-});
-
-<span class="cm">// Install preflight — check before installing any MCP server</span>
-<span class="kw">const</span> preflight = <span class="kw">await</span> ep.<span class="fn">installPreflight</span>(<span class="str">'mcp-server-ep-v1'</span>);
-console.<span class="fn">log</span>(preflight.decision); <span class="cm">// 'allow' | 'review' | 'deny'</span>
-
-<span class="cm">// Get a trust profile</span>
-<span class="kw">const</span> profile = <span class="kw">await</span> ep.<span class="fn">getTrustProfile</span>(<span class="str">'rex-booking-v1'</span>);
-console.<span class="fn">log</span>(profile.current_confidence); <span class="cm">// 'confident' | 'emerging' | 'provisional' | 'insufficient' | 'pending'</span>
-
-<span class="cm">// Evaluate against a policy</span>
-<span class="kw">const</span> result = <span class="kw">await</span> ep.<span class="fn">evaluateTrust</span>({
-  entityId: <span class="str">'rex-booking-v1'</span>,
-  policy: <span class="str">'standard'</span>,
-  context: { category: <span class="str">'electronics'</span>, value_band: <span class="str">'high'</span> },
-});
-<span class="kw">if</span> (!result.pass) console.<span class="fn">log</span>(<span class="str">'Failures:'</span>, result.failures);</pre></div>
-      </div>
-    </div>
-
-    <div id="qtab-python" style="display:none">
-      <div class="code-block" style="border-radius:0 12px 12px 12px">
-        <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">Python</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
-        <div class="code-body"><pre><span class="kw">from</span> emilia_protocol <span class="kw">import</span> <span class="tp">EPClient</span>
-
-ep = <span class="tp">EPClient</span>(
-    api_key=<span class="str">"ep_live_..."</span>,           <span class="cm"># optional for reads</span>
-    base_url=<span class="str">"https://emiliaprotocol.ai"</span>
-)
-
-<span class="cm"># Install preflight — check before installing any MCP server</span>
-preflight = ep.<span class="fn">install_preflight</span>(<span class="str">"mcp-server-ep-v1"</span>)
-print(preflight[<span class="str">"decision"</span>])  <span class="cm"># allow | review | deny</span>
-
-<span class="cm"># Get a trust profile</span>
-profile = ep.<span class="fn">get_trust_profile</span>(<span class="str">"rex-booking-v1"</span>)
-print(profile[<span class="str">"current_confidence"</span>])  <span class="cm"># confident | emerging | provisional | insufficient | pending</span>
-
-<span class="cm"># Evaluate against a policy</span>
-result = ep.<span class="fn">evaluate_trust</span>(<span class="str">"rex-booking-v1"</span>, policy=<span class="str">"standard"</span>,
-                     context={<span class="str">"category"</span>: <span class="str">"electronics"</span>})
-<span class="kw">if</span> result[<span class="str">"decision"</span>] != <span class="str">"allow"</span>:
-    print(<span class="str">"Reasons:"</span>, result[<span class="str">"reasons"</span>])</pre></div>
-      </div>
-    </div>
-
-    <!-- STEP 3 -->
-    <h2 id="step3">Step 3 — Register Your Entity</h2>
-    <div class="step-header">
-      <div class="step-num">3</div>
-      <div><div class="step-title">Get your entity ID and API key</div><div class="step-time">~1 minute</div></div>
-    </div>
-    <p>Register your agent, merchant, or service. You'll get a permanent <code>entity_id</code> and an API key for write operations. <strong>Save the API key — it's only shown once.</strong></p>
+    <p>Before initiating a handshake, understand what trust policies are available. Policies define the thresholds for trust decisions.</p>
 
     <div class="code-block">
       <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">Shell</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
-      <div class="code-body"><pre><span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-flag">-X POST</span> https://emiliaprotocol.ai/api/entities/register \
+      <div class="code-body"><pre><span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-str">"$EP_BASE/api/policies"</span></pre></div>
+    </div>
 
+    <p>The response includes available policies with their requirements:</p>
+
+    <div class="policy-grid">
+      <div class="policy-card"><div class="policy-name">standard</div><div class="policy-desc">Normal transactions. Balanced requirements for confidence and evidence. <code>min_score: 40</code>, <code>min_confidence: provisional</code></div></div>
+      <div class="policy-card"><div class="policy-name">strict</div><div class="policy-desc">High-value transactions. Requires established confidence, low dispute rate. <code>min_score: 70</code>, <code>min_confidence: confident</code></div></div>
+    </div>
+
+    <div class="callout tip">
+      <strong>Pick a policy that matches your risk level.</strong> For this guide, we use <code>"standard"</code>. Policy families include <code>commerce</code>, <code>software</code>, <code>marketplace</code>, and <code>custom</code>.
+    </div>
+
+    <!-- STEP 2 -->
+    <h2 id="step2">Step 2 — Initiate a Handshake</h2>
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div><div class="step-title">Structured identity exchange before a trust decision</div><div class="step-time">~5 minutes</div></div>
+    </div>
+    <p>A handshake is a structured identity exchange between two parties before a trust decision is made. You declare who is involved, which policy governs, and what mode of exchange to use.</p>
+
+    <div class="code-block">
+      <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">Shell — Initiate handshake</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+      <div class="code-body"><pre><span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-flag">-X POST</span> <span class="bash-str">"$EP_BASE/api/handshake"</span> \
+  <span class="bash-flag">-H</span> <span class="bash-str">"Authorization: Bearer $EP_KEY"</span> \
   <span class="bash-flag">-H</span> <span class="bash-str">"Content-Type: application/json"</span> \
   <span class="bash-flag">-d</span> <span class="bash-str">'{
-    "entity_id": "acme-merchant-v1",
-    "display_name": "ACME Merchant",
-    "entity_type": "merchant",
-    "description": "Electronics marketplace seller",
-    "capabilities": ["retail", "electronics", "returns"]
-  }'</span>
+    "mode": "mutual",
+    "policy_id": "standard",
+    "parties": [
+      { "entity_ref": "your-agent-entity-id", "role": "initiator" },
+      { "entity_ref": "counterparty-entity-id", "role": "responder" }
+    ]
+  }'</span></pre></div>
+    </div>
 
-<span class="cm"># Response</span>
+    <p>Save the <code>handshake_id</code> from the <code>201 Created</code> response. You will use it in every subsequent step.</p>
+
+    <div class="code-block">
+      <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">Shell — Save the handshake ID</span></div>
+      <div class="code-body"><pre><span class="bash-$">$ </span><span class="bash-cmd">export</span> HS_ID=<span class="bash-str">"hs_abc123def456"</span></pre></div>
+    </div>
+
+    <div class="callout warn">
+      <strong>Error cases:</strong> <code>400</code> -- missing or invalid fields. <code>401</code> -- missing or invalid API key. <code>403</code> -- initiator entity_ref does not match the authenticated entity.
+    </div>
+
+    <!-- STEP 3 -->
+    <h2 id="step3">Step 3 — Present Credentials</h2>
+    <div class="step-header">
+      <div class="step-num">3</div>
+      <div><div class="step-title">Each party presents identity claims for evaluation</div><div class="step-time">~5 minutes</div></div>
+    </div>
+    <p>Each party presents identity claims for evaluation. The initiator presents first.</p>
+
+    <div class="code-block">
+      <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">Shell — Present credentials (initiator)</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+      <div class="code-body"><pre><span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-flag">-X POST</span> <span class="bash-str">"$EP_BASE/api/handshake/$HS_ID/present"</span> \
+  <span class="bash-flag">-H</span> <span class="bash-str">"Authorization: Bearer $EP_KEY"</span> \
+  <span class="bash-flag">-H</span> <span class="bash-str">"Content-Type: application/json"</span> \
+  <span class="bash-flag">-d</span> <span class="bash-str">'{
+    "party_role": "initiator",
+    "presentation_type": "ep_trust_profile",
+    "claims": {
+      "entity_id": "your-agent-entity-id",
+      "entity_type": "agent",
+      "display_name": "My Agent"
+    },
+    "disclosure_mode": "full"
+  }'</span></pre></div>
+    </div>
+
+    <p>The responder does the same with <code>"party_role": "responder"</code>.</p>
+
+    <div class="callout info">
+      <strong>Presentation types:</strong> <code>ep_trust_profile</code> (EP trust profile), <code>verifiable_credential</code> (W3C VC), <code>attestation</code> (third-party attestation). <strong>Disclosure modes:</strong> <code>full</code>, <code>selective</code>, <code>zk</code> (zero-knowledge proof).
+    </div>
+
+    <!-- STEP 4 -->
+    <h2 id="step4">Step 4 — Verify the Handshake</h2>
+    <div class="step-header">
+      <div class="step-num">4</div>
+      <div><div class="step-title">Evaluate the handshake against the governing policy</div><div class="step-time">~2 minutes</div></div>
+    </div>
+    <p>Once all parties have presented, evaluate the handshake against the governing policy. This is the trust decision.</p>
+
+    <div class="code-block">
+      <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">Shell — Verify handshake</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+      <div class="code-body"><pre><span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-flag">-X POST</span> <span class="bash-str">"$EP_BASE/api/handshake/$HS_ID/verify"</span> \
+  <span class="bash-flag">-H</span> <span class="bash-str">"Authorization: Bearer $EP_KEY"</span> \
+  <span class="bash-flag">-H</span> <span class="bash-str">"Content-Type: application/json"</span> \
+  <span class="bash-flag">-d</span> <span class="bash-str">'{}'</span>
+
+<span class="cm"># Response — Accepted</span>
 {
-  <span class="prop">"entity"</span>: { <span class="prop">"entity_id"</span>: <span class="str">"acme-merchant-v1"</span>, ... },
-  <span class="prop">"api_key"</span>: <span class="str">"ep_live_..."</span>   <span class="cm">// Save this — shown once</span>
+  <span class="prop">"handshake_id"</span>: <span class="str">"hs_abc123def456"</span>,
+  <span class="prop">"result"</span>: <span class="str">"accepted"</span>,
+  <span class="prop">"reason_codes"</span>: [],
+  <span class="prop">"evaluated_at"</span>: <span class="str">"2026-03-20T10:02:00Z"</span>
 }</pre></div>
     </div>
 
     <div class="callout warn">
-      <strong>Entity types:</strong> Core types include <code>agent</code>, <code>merchant</code>, and <code>service_provider</code>. EP also supports software counterparties: <code>github_app</code>, <code>github_action</code>, <code>mcp_server</code>, <code>npm_package</code>, <code>chrome_extension</code>, <code>shopify_app</code>, <code>marketplace_plugin</code>, and <code>agent_tool</code>. The entity_id is permanent and lowercase-hyphenated.
-    </div>
-
-    <!-- STEP 4 -->
-    <h2 id="step4">Step 4 — Submit a Receipt</h2>
-    <div class="step-header">
-      <div class="step-num">4</div>
-      <div><div class="step-title">Record every transaction outcome</div><div class="step-time">~2 minutes</div></div>
-    </div>
-    <p>After every interaction with a counterparty, submit a receipt. The <code>agent_behavior</code> field is the strongest signal — it records what <em>you did next</em>, not what you thought of the experience.</p>
-
-    <div class="code-block">
-      <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">JavaScript</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
-      <div class="code-body"><pre><span class="kw">const</span> response = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'https://emiliaprotocol.ai/api/receipts/submit'</span>, {
-  <span class="prop">method</span>: <span class="str">'POST'</span>,
-  <span class="prop">headers</span>: {
-    <span class="prop">'Authorization'</span>: <span class="str">`Bearer <span class="url">${EP_API_KEY}</span>`</span>,
-    <span class="prop">'Content-Type'</span>: <span class="str">'application/json'</span>,
-  },
-  <span class="prop">body</span>: <span class="fn">JSON.stringify</span>({
-    <span class="prop">entity_id</span>: <span class="str">'acme-merchant-v1'</span>,     <span class="cm">// who you transacted with</span>
-    <span class="prop">transaction_ref</span>: <span class="str">'order_8f7a2b9c'</span>,   <span class="cm">// your external reference (required)</span>
-    <span class="prop">transaction_type</span>: <span class="str">'purchase'</span>,        <span class="cm">// purchase|service|task_completion|delivery|return</span>
-    <span class="prop">agent_behavior</span>: <span class="str">'completed'</span>,        <span class="cm">// STRONGEST SIGNAL: completed|retried_same|retried_different|abandoned|disputed</span>
-    <span class="prop">delivery_accuracy</span>: <span class="num">95</span>,              <span class="cm">// 0-100 (optional)</span>
-    <span class="prop">product_accuracy</span>: <span class="num">92</span>,               <span class="cm">// 0-100 (optional)</span>
-    <span class="prop">price_integrity</span>: <span class="num">100</span>,               <span class="cm">// 0-100 (optional)</span>
-    <span class="prop">context</span>: {                            <span class="cm">// context key for context-aware evaluation</span>
-      <span class="prop">category</span>: <span class="str">'electronics'</span>,
-      <span class="prop">geo</span>: <span class="str">'us'</span>,
-      <span class="prop">value_band</span>: <span class="str">'high'</span>,               <span class="cm">// micro|low|medium|high|very_high</span>
-    },
-  }),
-});
-<span class="kw">const</span> { receipt } = <span class="kw">await</span> response.<span class="fn">json</span>();
-console.<span class="fn">log</span>(receipt.receipt_id);   <span class="cm">// ep_rcpt_...</span>
-console.<span class="fn">log</span>(receipt.receipt_hash);  <span class="cm">// SHA-256 chain-linked hash</span></pre></div>
-    </div>
-
-    <div class="callout info">
-      <strong>Why agent_behavior is the most important field:</strong> It records what your agent did <em>after</em> the transaction — came back (completed), switched to a competitor (retried_different), or abandoned the flow. This behavioral signal carries 40% of the trust weight because it's hard to fake and directly measures value delivery.
+      <strong>Possible results:</strong> <code>accepted</code> -- both parties meet policy thresholds. <code>rejected</code> -- with specific <code>reason_codes</code> like <code>insufficient_confidence</code> or <code>dispute_rate_exceeds_policy</code>. <code>partial</code> -- still awaiting presentations from one or more parties.
     </div>
 
     <!-- STEP 5 -->
-    <h2 id="step5">Step 5 — Query a Trust Profile</h2>
+    <h2 id="step5">Step 5 — Gate the Action</h2>
     <div class="step-header">
       <div class="step-num">5</div>
-      <div><div class="step-title">Read behavioral trust before transacting</div><div class="step-time">~1 API call</div></div>
+      <div><div class="step-title">Authorize a specific action with a trust-backed commit</div><div class="step-time">~5 minutes</div></div>
     </div>
+    <p>After a successful handshake, use the trust gate to authorize a specific action. The gate evaluates the entity, checks the handshake binding, and issues a commit -- a signed pre-authorization token.</p>
 
     <div class="code-block">
-      <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">JavaScript</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
-      <div class="code-body"><pre><span class="kw">const</span> r = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'https://emiliaprotocol.ai/api/trust/profile/acme-merchant-v1'</span>);
-<span class="kw">const</span> profile = <span class="kw">await</span> r.<span class="fn">json</span>();
-
-<span class="cm">// Key fields</span>
-profile.<span class="prop">current_confidence</span>   <span class="cm">// 'pending' | 'insufficient' | 'provisional' | 'emerging' | 'confident'</span>
-profile.<span class="prop">effective_evidence_current</span>  <span class="cm">// credibility-weighted evidence score</span>
-profile.<span class="prop">trust_profile</span>.<span class="prop">behavioral</span>.<span class="prop">completion_rate</span>  <span class="cm">// 0-100</span>
-profile.<span class="prop">trust_profile</span>.<span class="prop">behavioral</span>.<span class="prop">dispute_rate</span>     <span class="cm">// 0-100</span>
-profile.<span class="prop">disputes</span>.<span class="prop">total</span>         <span class="cm">// total disputes against this entity</span>
-profile.<span class="prop">anomaly</span>               <span class="cm">// present if trust velocity anomaly detected</span></pre></div>
-    </div>
-
-    <!-- STEP 6 -->
-    <h2 id="step6">Step 6 — Evaluate Against a Policy</h2>
-    <div class="step-header">
-      <div class="step-num">6</div>
-      <div><div class="step-title">Get a Trust Decision (allow/review/deny) with reasons</div><div class="step-time">~1 API call</div></div>
-    </div>
-    <p>Instead of reading raw numbers and writing your own logic, pass a policy name and get back a Trust Decision (<code>allow</code>, <code>review</code>, or <code>deny</code>) with specific reasons.</p>
-
-    <div class="code-block">
-      <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">JavaScript</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
-      <div class="code-body"><pre><span class="kw">const</span> r = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'https://emiliaprotocol.ai/api/trust/evaluate'</span>, {
-  <span class="prop">method</span>: <span class="str">'POST'</span>,
-  <span class="prop">headers</span>: { <span class="prop">'Content-Type'</span>: <span class="str">'application/json'</span> },
-  <span class="prop">body</span>: <span class="fn">JSON.stringify</span>({
-    <span class="prop">entity_id</span>: <span class="str">'acme-merchant-v1'</span>,
-    <span class="prop">policy</span>: <span class="str">'standard'</span>,   <span class="cm">// strict | standard | permissive | discovery</span>
-    <span class="prop">context</span>: { <span class="prop">category</span>: <span class="str">'electronics'</span>, <span class="prop">value_band</span>: <span class="str">'high'</span> },
-  }),
-});
-<span class="kw">const</span> result = <span class="kw">await</span> r.<span class="fn">json</span>();
-
-<span class="kw">if</span> (result.<span class="prop">pass</span>) {
-  <span class="cm">// proceed with transaction</span>
-} <span class="kw">else</span> {
-  console.<span class="fn">log</span>(result.<span class="prop">failures</span>);  <span class="cm">// ["Dispute rate too high (12% > 5%)", ...]</span>
-  console.<span class="fn">log</span>(result.<span class="prop">warnings</span>);  <span class="cm">// non-blocking observations</span>
-}</pre></div>
-    </div>
-
-    <div class="policy-grid">
-      <div class="policy-card"><div class="policy-name">strict</div><div class="policy-desc">High-value transactions. Requires confident confidence + very low dispute rate.</div></div>
-      <div class="policy-card"><div class="policy-name">standard</div><div class="policy-desc">Normal transactions. Requires emerging confidence + reasonable behavioral rates.</div></div>
-      <div class="policy-card"><div class="policy-name">permissive</div><div class="policy-desc">Low-risk interactions. Allows provisional confidence. Excludes only clear bad actors.</div></div>
-      <div class="policy-card"><div class="policy-name">discovery</div><div class="policy-desc">First-time interactions. Allows unevaluated entities. Use for new counterparties.</div></div>
-    </div>
-
-    <!-- STEP 7 -->
-    <h2 id="step7">Step 7 — Issue &amp; Verify an EP Commit</h2>
-    <div class="step-header">
-      <div class="step-num">7</div>
-      <div><div class="step-title">Get a trust-backed commitment before transacting</div><div class="step-time">~1 API call</div></div>
-    </div>
-    <p>An EP Commit is a trust-backed promise: one party commits to an action, and the counterparty gets a verifiable decision before proceeding. Issue a commit to lock in a trust decision and hold both sides accountable.</p>
-
-    <div class="code-block">
-      <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">Shell — Issue an EP Commit</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
-      <div class="code-body"><pre><span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-flag">-X POST</span> https://emiliaprotocol.ai/api/commit/issue \
-  <span class="bash-flag">-H</span> <span class="bash-str">"Authorization: Bearer $EP_API_KEY"</span> \
+      <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">Shell — Gate the action</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
+      <div class="code-body"><pre><span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-flag">-X POST</span> <span class="bash-str">"$EP_BASE/api/trust/gate"</span> \
+  <span class="bash-flag">-H</span> <span class="bash-str">"Authorization: Bearer $EP_KEY"</span> \
   <span class="bash-flag">-H</span> <span class="bash-str">"Content-Type: application/json"</span> \
   <span class="bash-flag">-d</span> <span class="bash-str">'{
-    "entity_id": "ep_ent_merchant_123",
-    "action_type": "transact",
-    "counterparty_entity_id": "ep_ent_buyer_456",
-    "policy": "transaction_standard_v1",
-    "scope": { "amount_usd": 2400, "currency": "USD" }
+    "entity_id": "counterparty-entity-id",
+    "action": "transact",
+    "policy": "standard",
+    "handshake_id": "hs_abc123def456",
+    "value_usd": 500
   }'</span>
 
-<span class="cm"># Response</span>
+<span class="cm"># Response — Allowed</span>
 {
   <span class="prop">"decision"</span>: <span class="str">"allow"</span>,
-  <span class="prop">"commit"</span>: {
-    <span class="prop">"commit_id"</span>: <span class="str">"epc_..."</span>,
-    <span class="prop">"status"</span>: <span class="str">"active"</span>,
-    <span class="prop">"expires_at"</span>: <span class="str">"..."</span>,
-    <span class="prop">"appeal_path"</span>: <span class="str">"/api/disputes/report"</span>
+  <span class="prop">"entity_id"</span>: <span class="str">"counterparty-entity-id"</span>,
+  <span class="prop">"policy_used"</span>: <span class="str">"standard"</span>,
+  <span class="prop">"confidence"</span>: <span class="str">"emerging"</span>,
+  <span class="prop">"reasons"</span>: [],
+  <span class="prop">"appeal_path"</span>: <span class="str">"https://emiliaprotocol.ai/appeal"</span>,
+  <span class="prop">"extensions"</span>: {
+    <span class="prop">"action"</span>: <span class="str">"transact"</span>,
+    <span class="prop">"handshake_verified"</span>: <span class="kw">true</span>,
+    <span class="prop">"commit_ref"</span>: <span class="str">"cmt_abc123"</span>
   }
 }</pre></div>
     </div>
 
+    <p>The <code>commit_ref</code> is your proof that EP authorized this action. Store it. Every denial includes an <code>appeal_path</code> -- this is a constitutional guarantee.</p>
+
     <div class="callout info">
-      <strong>EP Commit lifecycle:</strong> After issuing a commit, use <code>ep_verify_commit</code> to validate it, <code>ep_get_commit_status</code> to check its state, <code>ep_revoke_commit</code> to cancel, or <code>ep_bind_receipt_to_commit</code> to link a receipt to the commitment after the transaction completes.
+      <strong>Constitutional principle:</strong> Trust must never be more powerful than appeal. Every adverse decision is explainable, challengeable, and reversible when wrong.
     </div>
 
-    <!-- AGENTS USE CASE -->
-    <h2 id="agents">AI Agents — Integration Pattern</h2>
-    <p>The canonical pattern for agents: check trust profile before routing, submit receipt after every transaction, use install preflight before installing any software.</p>
+    <!-- COMPLETE FLOW -->
+    <h2 id="flow">The Complete Flow</h2>
 
     <div class="code-block">
-      <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">TypeScript — Agent trust pattern</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
-      <div class="code-body"><pre><span class="cm">// Before transacting with any counterparty</span>
-<span class="kw">async function</span> <span class="fn">shouldTransactWith</span>(entityId: <span class="tp">string</span>, context: <span class="tp">Context</span>) {
-  <span class="kw">const</span> evaluation = <span class="kw">await</span> ep.<span class="fn">evaluate</span>(entityId, {
-    policy: context.value_band === <span class="str">'high'</span> ? <span class="str">'strict'</span> : <span class="str">'standard'</span>,
-    context,
-  });
-  <span class="kw">return</span> { allowed: evaluation.pass, reasons: evaluation.failures };
-}
-
-<span class="cm">// After completing a transaction</span>
-<span class="kw">async function</span> <span class="fn">recordTransaction</span>(entityId: <span class="tp">string</span>, outcome: <span class="tp">Outcome</span>) {
-  <span class="kw">await</span> ep.<span class="fn">submitReceipt</span>({
-    entity_id: entityId,
-    transaction_ref: outcome.ref,
-    transaction_type: <span class="str">'purchase'</span>,
-    agent_behavior: outcome.cameBack ? <span class="str">'completed'</span> : <span class="str">'retried_different'</span>,
-    context: outcome.context,
-  });
-}
-
-<span class="cm">// Before installing any plugin or MCP server</span>
-<span class="kw">async function</span> <span class="fn">canInstall</span>(entityId: <span class="tp">string</span>) {
-  <span class="kw">const</span> check = <span class="kw">await</span> ep.<span class="fn">installPreflight</span>(entityId, { policy: <span class="str">'mcp_server_safe_v1'</span> });
-  <span class="kw">if</span> (check.decision === <span class="str">'deny'</span>) <span class="kw">throw new</span> <span class="tp">Error</span>(<span class="str">`Install blocked: <span class="url">${check.reasons.join(', ')}</span>`</span>);
-  <span class="kw">return</span> check.decision === <span class="str">'allow'</span>;
-}</pre></div>
+      <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">Sequence — EP Trust Loop</span></div>
+      <div class="code-body"><pre><span class="cm">  You                          EP                      Counterparty</span>
+<span class="cm">   |                           |                           |</span>
+<span class="cm">   |-- POST /api/handshake --->|                           |</span>
+<span class="cm">   |<-- 201 handshake_id ------|                           |</span>
+<span class="cm">   |                           |                           |</span>
+<span class="cm">   |-- POST /present --------->|                           |</span>
+<span class="cm">   |<-- 201 received ----------|                           |</span>
+<span class="cm">   |                           |                           |</span>
+<span class="cm">   |                           |<-- POST /present ---------|</span>
+<span class="cm">   |                           |-- 201 received ---------->|</span>
+<span class="cm">   |                           |                           |</span>
+<span class="cm">   |-- POST /verify ---------->|                           |</span>
+<span class="cm">   |<-- 200 accepted ----------|                           |</span>
+<span class="cm">   |                           |                           |</span>
+<span class="cm">   |-- POST /trust/gate ------>|                           |</span>
+<span class="cm">   |<-- 200 allow + commit ----|                           |</span>
+<span class="cm">   |                           |                           |</span>
+<span class="cm">   |========= ACTION PROCEEDS (with commit_ref) ==========|</span></pre></div>
     </div>
 
-    <!-- PLATFORMS USE CASE -->
-    <h2 id="platforms">Platforms — Webhook Integration</h2>
-    <p>For Shopify and other commerce platforms, configure webhooks to auto-submit receipts on every order lifecycle event.</p>
+    <!-- WHAT COMES NEXT -->
+    <h2 id="next-steps">What Comes Next</h2>
+    <p>After completing the trust loop, extend your integration with these capabilities:</p>
 
-    <div class="code-block">
-      <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">JavaScript — Shopify webhook handler</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
-      <div class="code-body"><pre><span class="cm">// POST /webhooks/shopify/orders — handles Shopify order lifecycle</span>
-<span class="kw">export async function</span> <span class="fn">POST</span>(req) {
-  <span class="kw">const</span> order = <span class="kw">await</span> req.<span class="fn">json</span>();
-  <span class="kw">const</span> merchantId = <span class="str">`shopify-<span class="url">${order.vendor.toLowerCase().replace(/\s+/g, '-')}</span>-v1`</span>;
+    <ul>
+      <li><strong>Submit a receipt</strong> after the action completes: <code>POST /api/receipts/submit</code></li>
+      <li><strong>Revoke a handshake</strong> if something goes wrong: <code>POST /api/handshake/{id}/revoke</code></li>
+      <li><strong>File a dispute</strong> if the counterparty misbehaves: <code>POST /api/disputes/file</code></li>
+      <li><strong>Check trust profile</strong> of any entity: <code>GET /api/trust/profile/{entityId}</code></li>
+    </ul>
 
-  <span class="kw">const</span> behavior =
-    order.financial_status === <span class="str">'refunded'</span> ? <span class="str">'disputed'</span> :
-    order.fulfillment_status === <span class="str">'fulfilled'</span> ? <span class="str">'completed'</span> : <span class="str">'retried_same'</span>;
+    <!-- QUICK REFERENCE -->
+    <h2 id="api-reference">Quick Reference</h2>
 
-  <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'https://emiliaprotocol.ai/api/receipts/submit'</span>, {
-    <span class="prop">method</span>: <span class="str">'POST'</span>,
-    <span class="prop">headers</span>: { <span class="prop">'Authorization'</span>: <span class="str">`Bearer <span class="url">${EP_API_KEY}</span>`</span>, <span class="prop">'Content-Type'</span>: <span class="str">'application/json'</span> },
-    <span class="prop">body</span>: <span class="fn">JSON.stringify</span>({
-      <span class="prop">entity_id</span>: merchantId,
-      <span class="prop">transaction_ref</span>: order.id,
-      <span class="prop">transaction_type</span>: <span class="str">'purchase'</span>,
-      <span class="prop">agent_behavior</span>: behavior,
-      <span class="prop">context</span>: { <span class="prop">category</span>: order.product_type, <span class="prop">geo</span>: order.shipping_address?.country_code?.toLowerCase() },
-    }),
-  });
-  <span class="kw">return new</span> <span class="tp">Response</span>(<span class="str">'ok'</span>);
-}</pre></div>
-    </div>
-
-    <!-- SOFTWARE / MCP USE CASE -->
-    <h2 id="software">Software &amp; MCP Servers — Install Preflight</h2>
-    <p>Use install preflight before adding any MCP server, GitHub App, npm package, or browser extension. EP evaluates publisher identity, permission class, and behavioral trust history.</p>
-
-    <div class="code-block">
-      <div class="code-hdr"><div class="code-dots"><span></span><span></span><span></span></div><span class="code-lang">Shell — Software preflight checks</span><button class="code-copy" onclick="copyCode(this)">Copy</button></div>
-      <div class="code-body"><pre><span class="cm"># Before installing an MCP server</span>
-<span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-flag">-X POST</span> https://emiliaprotocol.ai/api/trust/install-preflight \
-  <span class="bash-flag">-d</span> <span class="bash-str">'{"entity_id":"mcp-server-ep-v1","policy":"mcp_server_safe_v1"}'</span>
-
-<span class="cm"># Before installing a GitHub App</span>
-<span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-flag">-X POST</span> https://emiliaprotocol.ai/api/trust/install-preflight \
-  <span class="bash-flag">-d</span> <span class="bash-str">'{"entity_id":"github_app:acme/code-helper","policy":"github_private_repo_safe_v1"}'</span>
-
-<span class="cm"># Before installing an npm package at build time</span>
-<span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-flag">-X POST</span> https://emiliaprotocol.ai/api/trust/install-preflight \
-  <span class="bash-flag">-d</span> <span class="bash-str">'{"entity_id":"npm:left-pad","policy":"npm_buildtime_safe_v1"}'</span></pre></div>
-    </div>
-
-    <!-- API REFERENCE -->
-    <h2 id="api-reference">API Reference</h2>
-    <p>All endpoints are at <code>https://emiliaprotocol.ai</code>. GET endpoints are public. POST write endpoints require <code>Authorization: Bearer ep_live_...</code>. Exception: <code>/api/entities/register</code> is public and returns the API key.</p>
-
-    <h3>Trust</h3>
-    <div class="api-row"><span class="api-method get">GET</span><div><div class="api-path">/api/trust/profile/:entityId</div><div class="api-desc">Full trust profile with behavioral rates, signals, provenance, disputes, and anomaly state</div></div></div>
-    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/trust/evaluate</div><div class="api-desc">Evaluate entity against a policy. Returns a Trust Decision (allow/review/deny) with specific failure reasons</div></div></div>
-    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/trust/install-preflight</div><div class="api-desc">Software install safety check. Returns allow/review/deny with reasons</div></div></div>
-
-    <h3>Receipts</h3>
-    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/receipts/submit</div><div class="api-desc">Submit a transaction receipt. Requires API key. transaction_ref is mandatory.</div></div><span class="api-auth">Auth</span></div>
-    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/receipts/confirm</div><div class="api-desc">Bilateral confirmation (seller confirms buyer's receipt within 48h window)</div></div><span class="api-auth">Auth</span></div>
-    <div class="api-row"><span class="api-method get">GET</span><div><div class="api-path">/api/verify/:receiptId</div><div class="api-desc">Verify receipt against on-chain Merkle root. Public.</div></div></div>
-
-    <h3>Entities</h3>
-    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/entities/register</div><div class="api-desc">Register a new entity. Returns entity_id and API key (shown once).</div></div><span class="api-auth" style="background:rgba(52,211,153,0.1);color:#34d399;border-color:rgba(52,211,153,0.2)">Public</span></div>
-    <div class="api-row"><span class="api-method get">GET</span><div><div class="api-path">/api/entities/search?q=&type=</div><div class="api-desc">Search entities by name, capability, or category</div></div></div>
-    <div class="api-row"><span class="api-method get">GET</span><div><div class="api-path">/api/leaderboard</div><div class="api-desc">Top entities ranked by trust confidence</div></div></div>
-
-    <h3>EP Commits</h3>
-    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/commit/issue</div><div class="api-desc">Issue a trust-backed commit. Returns a decision (allow/review/deny) and a commit object with expiry and appeal path.</div></div><span class="api-auth">Auth</span></div>
-    <div class="api-row"><span class="api-method get">GET</span><div><div class="api-path">/api/commit/:commitId</div><div class="api-desc">Get commit status: active, fulfilled, revoked, or expired.</div></div></div>
-    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/commit/verify</div><div class="api-desc">Verify a commit is valid and active.</div></div></div>
-    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/commit/revoke</div><div class="api-desc">Revoke an active commit before expiry.</div></div><span class="api-auth">Auth</span></div>
-    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/commit/bind-receipt</div><div class="api-desc">Bind a receipt to a commit, linking the outcome to the original commitment.</div></div><span class="api-auth">Auth</span></div>
-
-    <h3>Disputes &amp; Appeals</h3>
-    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/disputes/file</div><div class="api-desc">File a dispute against a receipt. Receipt submitter has 7 days to respond.</div></div><span class="api-auth">Auth</span></div>
-    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/disputes/report</div><div class="api-desc">File a human trust report. No authentication required.</div></div></div>
-    <div class="api-row"><span class="api-method get">GET</span><div><div class="api-path">/api/disputes/:disputeId</div><div class="api-desc">Get dispute status. Public — transparency is a protocol value.</div></div></div>
-    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/disputes/appeal</div><div class="api-desc">Appeal a dispute resolution. Only dispute participants can appeal.</div></div><span class="api-auth">Auth</span></div>
-
-    <h3>Identity Continuity (EP-IX)</h3>
-    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/identity/bind</div><div class="api-desc">Bind an identity to a principal (GitHub, email, domain)</div></div><span class="api-auth">Auth</span></div>
-    <div class="api-row"><span class="api-method get">GET</span><div><div class="api-path">/api/identity/principal/:principalId</div><div class="api-desc">Look up a principal: controlled entities, bindings, continuity history</div></div></div>
-    <div class="api-row"><span class="api-method get">GET</span><div><div class="api-path">/api/identity/lineage/:entityId</div><div class="api-desc">View entity lineage: predecessors, successors, whitewashing flags</div></div></div>
-
-    <!-- POLICIES -->
-    <h2 id="policies">Trust Policies</h2>
-    <p>Pass a policy name to <code>ep_trust_evaluate</code> or <code>/api/trust/evaluate</code> to get a Trust Decision (allow/review/deny). Four built-in policies plus four software-specific policies.</p>
-
-    <div class="policy-grid">
-      <div class="policy-card"><div class="policy-name">strict</div><div class="policy-desc">High-value transactions. Requires <code>confident</code> confidence level.</div></div>
-      <div class="policy-card"><div class="policy-name">standard</div><div class="policy-desc">Normal use. Requires <code>emerging</code> or better.</div></div>
-      <div class="policy-card"><div class="policy-name">permissive</div><div class="policy-desc">Low-risk. Allows <code>provisional</code> confidence. Excludes clear bad actors.</div></div>
-      <div class="policy-card"><div class="policy-name">discovery</div><div class="policy-desc">First-time interactions. Allows unevaluated entities.</div></div>
-      <div class="policy-card"><div class="policy-name">mcp_server_safe_v1</div><div class="policy-desc">MCP servers. Publisher verified + no dangerous permissions.</div></div>
-      <div class="policy-card"><div class="policy-name">github_private_repo_safe_v1</div><div class="policy-desc">GitHub Apps with private repo access. Strict publisher checks.</div></div>
-      <div class="policy-card"><div class="policy-name">npm_buildtime_safe_v1</div><div class="policy-desc">npm packages at build time. Trusted publishing + provenance required.</div></div>
-      <div class="policy-card"><div class="policy-name">browser_extension_safe_v1</div><div class="policy-desc">Chrome extensions. Permission class + behavioral trust history.</div></div>
-    </div>
+    <div class="api-row"><span class="api-method get">GET</span><div><div class="api-path">/api/policies</div><div class="api-desc">Browse available trust policies</div></div></div>
+    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/handshake</div><div class="api-desc">Initiate a handshake between two parties</div></div><span class="api-auth">Auth</span></div>
+    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/handshake/{id}/present</div><div class="api-desc">Present credentials for a handshake party</div></div><span class="api-auth">Auth</span></div>
+    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/handshake/{id}/verify</div><div class="api-desc">Verify a handshake against its governing policy</div></div><span class="api-auth">Auth</span></div>
+    <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/trust/gate</div><div class="api-desc">Gate a specific action. Returns allow/deny with commit_ref</div></div><span class="api-auth">Auth</span></div>
+    <div class="api-row"><span class="api-method get">GET</span><div><div class="api-path">/api/trust/profile/{entityId}</div><div class="api-desc">Full trust profile for any entity</div></div></div>
 
     <!-- SDKs -->
     <h2 id="sdks">SDKs</h2>
@@ -626,10 +421,12 @@ profile.<span class="prop">anomaly</span>               <span class="cm">// pres
 
     <p>SDK source is in <a href="https://github.com/emiliaprotocol/emilia-protocol/tree/main/sdks" target="_blank">sdks/</a> in the main repo. Both SDKs are Apache 2.0.</p>
 
+    <p>Full API documentation: <a href="/spec">Protocol Specification</a></p>
+
     <div class="cta-box">
-      <h3>Ready to build?</h3>
-      <p>Register your entity, get an API key, and start submitting receipts. The protocol is live and open.</p>
-      <a href="/#register" class="btn-p">Register Your Entity</a>
+      <h3>Ready to protect your first workflow?</h3>
+      <p>Register your entities, set up a handshake, and gate your first action. The protocol is live and open.</p>
+      <a href="/spec" class="btn-p">Read the Full Spec</a>
       <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" class="btn-g">View on GitHub</a>
     </div>
 
@@ -643,15 +440,6 @@ function copyCode(btn) {
     btn.textContent = 'Copied!';
     setTimeout(() => btn.textContent = 'Copy', 2000);
   }).catch(() => {});
-}
-
-function switchQTab(id, btn) {
-  ['shell','ts','python'].forEach(t => {
-    const el = document.getElementById('qtab-'+t);
-    if (el) el.style.display = t === id ? 'block' : 'none';
-  });
-  document.querySelectorAll('.qtab').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
 }
 
 // Sidebar active tracking

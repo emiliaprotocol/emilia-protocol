@@ -46,8 +46,8 @@ describe('EP Conformance Suite -- Protocol Invariants', () => {
   describe('Invariant 1: Write-path completeness', () => {
     const types = Object.values(COMMAND_TYPES);
 
-    it('COMMAND_TYPES is non-empty and has exactly 17 command types', () => {
-      expect(types.length).toBe(17);
+    it('COMMAND_TYPES is non-empty and has exactly 26 command types', () => {
+      expect(types.length).toBe(26);
     });
 
     it('every trust-changing command type has a validator', () => {
@@ -100,7 +100,7 @@ describe('EP Conformance Suite -- Protocol Invariants', () => {
     });
 
     it('aggregate types are one of the known aggregates', () => {
-      const KNOWN_AGGREGATES = new Set(['receipt', 'commit', 'dispute', 'report', 'handshake']);
+      const KNOWN_AGGREGATES = new Set(['receipt', 'commit', 'dispute', 'report', 'handshake', 'signoff']);
       for (const type of types) {
         const agg = _internals.COMMAND_TO_AGGREGATE[type];
         expect(
@@ -154,6 +154,10 @@ describe('EP Conformance Suite -- Protocol Invariants', () => {
         'handshake_policies',
         'handshake_events',
         'handshake_consumptions',
+        'signoff_challenges',
+        'signoff_attestations',
+        'signoff_consumptions',
+        'signoff_events',
       ];
       for (const table of EXPECTED_TABLES) {
         expect(

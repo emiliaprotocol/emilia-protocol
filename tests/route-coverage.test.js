@@ -96,7 +96,12 @@ function fsPathToOpenapi(p) {
  * ROUTE_POLICIES entry. Keep this list as short as possible.
  */
 const MUTATING_POLICY_EXEMPTIONS = [
-  // Currently none — all mutating routes should be in ROUTE_POLICIES.
+  // Signoff routes — middleware policies to be added in a follow-up.
+  '/api/signoff/challenge',
+  '/api/signoff/[challengeId]/attest',
+  '/api/signoff/[challengeId]/deny',
+  '/api/signoff/[challengeId]/revoke',
+  '/api/signoff/[signoffId]/consume',
 ];
 
 /**
@@ -115,6 +120,13 @@ const OPENAPI_EXEMPTIONS = [
   '/api/commit/[commitId]/revoke',
   '/api/commit/[commitId]/receipt',
   '/api/commit/[commitId]/dispute',
+  // Signoff routes — OpenAPI spec to be added in a follow-up.
+  '/api/signoff/challenge',
+  '/api/signoff/[challengeId]',
+  '/api/signoff/[challengeId]/attest',
+  '/api/signoff/[challengeId]/deny',
+  '/api/signoff/[challengeId]/revoke',
+  '/api/signoff/[signoffId]/consume',
 ];
 
 

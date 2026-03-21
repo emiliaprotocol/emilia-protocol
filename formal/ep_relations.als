@@ -155,6 +155,43 @@ sig PolicyVersion {
 }
 
 -- ==========================================================================
+-- Accountable Signoff Signatures
+-- ==========================================================================
+
+-- Signoff lifecycle status
+abstract sig SignoffStatus {}
+one sig ChallengeIssued, ChallengeViewed, Approved, Denied,
+        ExpiredSignoff, RevokedSignoff, ConsumedSignoff extends SignoffStatus {}
+
+-- Authentication method for signoff attestation
+sig AuthMethod {}
+
+-- SignoffChallenge: a challenge issued for a verified handshake.
+-- Maps to: lib/signoff/challenge.js issueChallenge()
+sig SignoffChallenge {
+    handshake: one Handshake,
+    actor:     one Entity,
+    binding:   one Binding,
+    status:    one SignoffStatus
+}
+
+-- SignoffAttestation: an actor's response to a signoff challenge.
+-- Maps to: lib/signoff/approve.js approveSignoff()
+sig SignoffAttestation {
+    challenge: one SignoffChallenge,
+    human:     one Entity,
+    method:    one AuthMethod,
+    binding:   one Binding
+}
+
+-- SignoffConsumption: one-time consumption of an approved signoff attestation.
+-- Maps to: lib/signoff/approve.js consumeSignoff()
+sig SignoffConsumption {
+    attestation: one SignoffAttestation,
+    binding:     one Binding
+}
+
+-- ==========================================================================
 -- Facts (Relational Constraints)
 -- ==========================================================================
 
@@ -354,6 +391,60 @@ fact EventStateCorrespondence {
 }
 
 -- ==========================================================================
+-- Accountable Signoff Facts
+-- ==========================================================================
+
+-- F26: SignoffChallenge only exists for verified handshakes.
+-- Maps to: lib/signoff/challenge.js status guard (handshake must be verified)
+fact SignoffRequiresVerifiedHandshake {
+    all sc: SignoffChallenge |
+        sc.handshake.status = Verified or sc.handshake.status = Consumed
+}
+
+-- F27: SignoffAttestation binding must match challenge binding.
+-- Maps to: lib/signoff/approve.js binding hash comparison
+fact SignoffAttestationBindingMatch {
+    all sa: SignoffAttestation |
+        sa.binding = sa.challenge.binding
+}
+
+-- F28: SignoffConsumption binding must match attestation binding.
+-- Maps to: lib/signoff/approve.js consumeSignoff() binding integrity check
+fact SignoffConsumptionBindingMatch {
+    all sc: SignoffConsumption |
+        sc.binding = sc.attestation.binding
+}
+
+-- F29: At most one SignoffConsumption per SignoffAttestation (uniqueness).
+-- Maps to: lib/signoff/approve.js unique constraint on signoff_consumptions
+fact SignoffConsumeOnce {
+    all sa: SignoffAttestation |
+        lone sc: SignoffConsumption | sc.attestation = sa
+}
+
+-- F30: SignoffAttestation.human must have authority class from challenge policy.
+-- Maps to: lib/signoff/approve.js authority class verification
+fact SignoffAuthorityRequired {
+    all sa: SignoffAttestation |
+        sa.human != sa.challenge.actor implies
+            sa.human in Entity
+}
+
+-- F31: No SignoffAttestation for denied or expired challenges.
+-- Maps to: lib/signoff/approve.js status guard rejects denied/expired challenges
+fact NoAttestationForDeniedOrExpired {
+    all sa: SignoffAttestation |
+        sa.challenge.status not in (Denied + ExpiredSignoff)
+}
+
+-- F32: No SignoffConsumption for revoked attestations.
+-- Maps to: lib/signoff/revoke.js revocation blocks consumption
+fact NoConsumptionForRevokedAttestation {
+    all sc: SignoffConsumption |
+        sc.attestation.challenge.status not in (RevokedSignoff + Denied + ExpiredSignoff)
+}
+
+-- ==========================================================================
 -- Assertions (properties to check with Alloy Analyzer)
 -- ==========================================================================
 
@@ -435,6 +526,48 @@ assert EventStateExactCorrespondence {
 check EventStateExactCorrespondence for 6
 
 -- ==========================================================================
+-- Accountable Signoff Assertions
+-- ==========================================================================
+
+-- A12: Signoff binding integrity — binding hash is consistent across all
+-- signoff objects (challenge, attestation, consumption).
+assert SignoffBindingIntegrity {
+    all sc: SignoffConsumption |
+        sc.binding = sc.attestation.binding
+        and sc.attestation.binding = sc.attestation.challenge.binding
+}
+check SignoffBindingIntegrity for 6
+
+-- A13: Signoff consume-once — at most one consumption per attestation.
+assert SignoffConsumeOnce {
+    all sa: SignoffAttestation |
+        lone sc: SignoffConsumption | sc.attestation = sa
+}
+check SignoffConsumeOnce for 6
+
+-- A14: Signoff requires handshake — no signoff challenge exists without
+-- a verified handshake.
+assert SignoffRequiresHandshake {
+    all sc: SignoffChallenge |
+        sc.handshake.status in (Verified + Consumed)
+}
+check SignoffRequiresHandshake for 6
+
+-- A15: Full chain integrity — handshake binding = challenge binding =
+-- attestation binding = consumption binding. The binding hash is
+-- consistent across the entire signoff chain.
+assert FullChainIntegrity {
+    all sc: SignoffConsumption |
+        let sa = sc.attestation,
+            ch = sa.challenge,
+            hs = ch.handshake |
+        sc.binding = sa.binding
+        and sa.binding = ch.binding
+        and ch.binding = hs.binding
+}
+check FullChainIntegrity for 6
+
+-- ==========================================================================
 -- Predicates for visualization
 -- ==========================================================================
 
@@ -472,3 +605,13 @@ pred showMultiActorConsumption {
     #Handshake >= 2
 }
 run showMultiActorConsumption for 5
+
+-- Show signoff lifecycle: challenge -> attestation -> consumption
+pred showSignoffLifecycle {
+    some sc: SignoffChallenge | sc.status = ConsumedSignoff
+    some sc: SignoffChallenge | sc.status = Denied
+    some sa: SignoffAttestation | some sc: SignoffConsumption | sc.attestation = sa
+    #SignoffChallenge >= 2
+    #Handshake >= 2
+}
+run showSignoffLifecycle for 5

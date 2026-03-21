@@ -19,7 +19,21 @@ EP Core consists of three interoperable objects:
 - Trust Profile
 - Trust Decision
 
-EP Extensions add stronger enforcement for high-risk workflows. The most important of these is Handshake: a pre-action trust artifact that binds actor identity, authority, policy, action context, nonce, expiry, and one-time consumption into a replay-resistant authorization flow.
+EP Extensions add stronger enforcement for high-risk workflows:
+- **Handshake** — a pre-action trust artifact that binds actor identity, authority, policy, action context, nonce, expiry, and one-time consumption into a replay-resistant authorization flow.
+- **Accountable Signoff** — a policy-driven mechanism through which a named human assumes personal responsibility for a specific high-risk action, binding human accountability to the machine trust chain established by Handshake.
+
+### Core vs. Extension Classification
+
+| Component | Classification |
+|---|---|
+| Trust Receipt | EP Core |
+| Trust Profile | EP Core |
+| Trust Decision | EP Core |
+| Handshake | EP Extension |
+| Accountable Signoff | EP Extension |
+
+EP Core objects are required for all conformant implementations. EP Extensions are optional but, when adopted, MUST conform to the requirements specified in their respective sections.
 
 The purpose of the protocol is not to create a universal ranking of entities. Its purpose is to make trust decisions attributable, policy-bound, contestable, and interoperable across systems that need stronger control before high-risk actions execute.
 
@@ -1445,6 +1459,272 @@ EP Handshake is an optional extension for one-sided or mutual identity verificat
 ### 23.6 Policy Model
 
 Handshakes are policy-driven. Each handshake references a `policy_id` that defines required claims, assurance thresholds, and binding requirements.
+
+---
+
+## 24. EP Extension: Accountable Signoff
+
+### 24.1 Purpose
+
+Accountable Signoff is a policy-driven mechanism through which a named human assumes personal responsibility for a specific high-risk action that has been prepared and verified by machine systems.
+
+Handshake establishes machine-side trust: identity is bound, authority is checked, policy is satisfied. Accountable Signoff extends that chain into human accountability. For action classes where machines should not be the final authority, Signoff ensures that a named human has seen the exact action, authenticated at the required assurance level, and made a deliberate decision to approve, deny, or escalate.
+
+Signoff is not MFA (which proves identity), not generic human-in-the-loop (which lacks action specificity), and not manual approval theater (which creates fatigue without accountability). It is a protocol object with a defined lifecycle, cryptographic binding, and append-only audit trail.
+
+### 24.2 Object Models
+
+Accountable Signoff defines three protocol objects that extend the Handshake chain: Challenge, Attestation, and Consumption.
+
+#### 24.2.1 Signoff Challenge
+
+The Challenge is the object delivered to the accountable actor. It contains everything the human needs to make an informed decision.
+
+```json
+{
+  "challenge_id": "ep_soc_{uuid}",
+  "handshake_id": "hs_{uuid}",
+  "binding_hash": "sha256:...",
+  "action_type": "payment_redirect",
+  "resource_ref": "account:12345",
+  "action_diff": { "before": { "destination": "old_acct" }, "after": { "destination": "new_acct" } },
+  "risk_class": "high",
+  "policy_key": "payment_redirect_policy_v1",
+  "policy_version": 1,
+  "policy_hash": "sha256:...",
+  "consequences_summary": "Payment destination will change from old_acct to new_acct for all future disbursements.",
+  "signoff_actor_ref": "ep_entity:jane-chen",
+  "authority_class": "treasury_officer",
+  "required_assurance": "high",
+  "channel": "secure_app",
+  "dual_signoff_required": false,
+  "status": "challenge_issued",
+  "expires_at": "2026-03-20T14:30:00Z",
+  "created_at": "2026-03-20T14:15:00Z",
+  "viewed_at": null,
+  "decided_at": null
+}
+```
+
+**Required fields:**
+
+| Field | Type | Description |
+|---|---|---|
+| `challenge_id` | UUID | Unique identifier, prefixed `ep_soc_` |
+| `handshake_id` | UUID | The verified handshake that triggered this signoff requirement |
+| `binding_hash` | string | SHA-256 binding hash, carried from the handshake binding |
+| `action_type` | string | The action being authorized (matches handshake `action_type`) |
+| `resource_ref` | string | The resource the action targets (matches handshake `resource_ref`) |
+| `action_diff` | JSON | Before/after state diff for the action, if applicable |
+| `risk_class` | string | Policy-assigned risk classification |
+| `policy_key` | string | The policy that requires signoff |
+| `policy_version` | integer | Pinned policy version |
+| `policy_hash` | string | SHA-256 of policy rules at challenge creation |
+| `consequences_summary` | string | Human-readable description of action consequences |
+| `signoff_actor_ref` | string | Entity reference of the human required to sign off |
+| `authority_class` | string | Required authority class for the signoff actor |
+| `required_assurance` | enum | Minimum authentication assurance: `low`, `substantial`, `high` |
+| `channel` | string | Delivery channel: `secure_app`, `out_of_band`, `sms_transitional` |
+| `dual_signoff_required` | boolean | Whether a second independent signoff is required |
+| `status` | enum | Current lifecycle state (see Section 24.3) |
+| `expires_at` | ISO 8601 | Challenge expiry deadline |
+| `created_at` | ISO 8601 | Challenge creation timestamp |
+| `viewed_at` | ISO 8601 or null | Timestamp when accountable actor confirmed viewing |
+| `decided_at` | ISO 8601 or null | Timestamp of approve/deny/escalate decision |
+
+#### 24.2.2 Signoff Attestation
+
+The Attestation is the protocol object that records a human's approval. It is the artifact consumed at execution time. An attestation is created only when the decision is `approved`.
+
+| Field | Type | Description |
+|---|---|---|
+| `attestation_id` | UUID | Unique identifier, prefixed `ep_soa_` |
+| `challenge_id` | UUID | The challenge this attestation responds to |
+| `handshake_id` | UUID | The handshake this attestation is bound to |
+| `binding_hash` | string | MUST exactly match the challenge and handshake `binding_hash` |
+| `signoff_actor_ref` | string | Entity reference of the human who approved |
+| `authority_class` | string | Authority class of the signoff actor at time of approval |
+| `authentication_method` | string | Method used: `passkey`, `platform_biometric`, `secure_app`, `out_of_band`, `sms_transitional` |
+| `authentication_assurance` | enum | Achieved assurance level: `low`, `substantial`, `high` |
+| `decision` | enum | `approved` (only value that creates an attestation) |
+| `decision_context` | JSON or null | Optional structured context the actor provided with approval |
+| `status` | enum | `active`, `consumed`, `expired`, `revoked` |
+| `consumed_at` | ISO 8601 or null | Timestamp of consumption |
+| `consumed_by` | string or null | Entity reference that consumed the attestation |
+| `expires_at` | ISO 8601 | Attestation expiry deadline (MUST be ≤ challenge expiry) |
+| `revoked_at` | ISO 8601 or null | Timestamp of revocation |
+| `revoked_by` | string or null | Entity reference that revoked |
+| `created_at` | ISO 8601 | Attestation creation timestamp |
+
+#### 24.2.3 Signoff Consumption
+
+The Consumption record proves that a specific attestation was used for a specific execution. It is the final link in the chain: Handshake -> Challenge -> Attestation -> Consumption.
+
+| Field | Type | Description |
+|---|---|---|
+| `consumption_id` | UUID | Unique identifier, prefixed `ep_scc_` |
+| `attestation_id` | UUID | The attestation being consumed |
+| `challenge_id` | UUID | The challenge that produced the attestation |
+| `handshake_id` | UUID | The handshake that produced the challenge |
+| `binding_hash` | string | MUST match across all three upstream objects |
+| `action_type` | string | The action that was executed |
+| `resource_ref` | string | The resource the action targeted |
+| `execution_ref` | string | Reference to the downstream execution record |
+| `consumed_by` | string | Entity reference of the system that consumed the attestation |
+| `consumed_at` | ISO 8601 | Timestamp of consumption |
+| `binding_verified` | boolean | Whether `binding_hash` was verified across all objects at consumption time |
+
+**Consumption is atomic.** The attestation's `consumed_at` field and the consumption record MUST be written in the same transaction. The `consumed_at IS NULL` filter on the attestation update ensures exactly-once consumption. A consumption attempt against an already-consumed attestation MUST fail and MUST NOT create a consumption record.
+
+### 24.3 State Machine
+
+Accountable Signoff defines seven states with strictly enforced transitions.
+
+```
+                     ┌───────────────────┐
+                     │  challenge_issued  │
+                     └────────┬──────────┘
+                              │
+                     ┌────────▼──────────┐
+              ┌──────│ challenge_viewed   │──────┐
+              │      └────────┬──────────┘      │
+              ▼               ▼                  ▼
+        ┌──────────┐   ┌──────────┐      ┌────────────┐
+        │  denied  │   │ approved │      │ escalated  │
+        └──────────┘   └────┬─────┘      └────────────┘
+          (terminal)        │               (terminal)
+                  ┌─────────┼──────────┐
+                  ▼         ▼          ▼
+           ┌──────────┐ ┌─────────┐ ┌─────────┐
+           │ consumed │ │ expired │ │ revoked │
+           └──────────┘ └─────────┘ └─────────┘
+            (terminal)   (terminal)  (terminal)
+
+    Additionally: challenge_issued ───► expired (terminal)
+```
+
+**Seven states:**
+
+| State | Meaning |
+|---|---|
+| `challenge_issued` | Challenge created and sent to accountable actor; awaiting acknowledgment |
+| `challenge_viewed` | Accountable actor has confirmed receipt and display of the challenge |
+| `approved` | Human approved the action; attestation created |
+| `denied` | Human explicitly rejected the action; no attestation created |
+| `escalated` | Human declined personal authority; routed to higher authority class |
+| `consumed` | Attestation used exactly once for execution; normal completion |
+| `expired` | TTL exceeded before response (challenge) or before consumption (attestation) |
+| `revoked` | Attestation explicitly revoked by signoff actor, escalation authority, or system |
+
+**Allowed transitions:**
+
+| From | To | Trigger |
+|---|---|---|
+| `challenge_issued` | `challenge_viewed` | Accountable actor's client confirms receipt and display |
+| `challenge_issued` | `expired` | Challenge TTL exceeded before viewing |
+| `challenge_viewed` | `approved` | Human approves after viewing |
+| `challenge_viewed` | `denied` | Human explicitly rejects |
+| `challenge_viewed` | `escalated` | Human declines personal authority |
+| `approved` | `consumed` | Attestation used for execution |
+| `approved` | `expired` | Attestation TTL exceeded before consumption |
+| `approved` | `revoked` | Attestation explicitly revoked |
+
+**Forbidden transitions (non-exhaustive):**
+
+| Transition | Reason |
+|---|---|
+| `challenge_issued` -> `approved` | Human MUST view the action before deciding |
+| `denied` -> any | Terminal state; a denied action requires a new handshake and new challenge |
+| `consumed` -> any | Absolutely terminal; no transitions out |
+| `escalated` -> `approved` | Escalation creates a new challenge at higher authority; original challenge is terminal |
+| `expired` -> any | Terminal state; cannot be un-expired |
+| `revoked` -> any | Terminal state; cannot be un-revoked |
+
+Every state transition MUST emit a mandatory `signoff_events` record before the state change is materialized. The event record includes the `challenge_id`, `attestation_id` (if applicable), the previous state, the new state, the actor who triggered the transition, and the timestamp.
+
+### 24.4 Binding Requirements
+
+The `binding_hash` is the cryptographic thread that ties the entire chain together. It MUST be consistent across all objects in the signoff flow:
+
+1. **Handshake** creates the `binding_hash` as the SHA-256 of the bound action payload.
+2. **Challenge** carries the same `binding_hash` from the handshake.
+3. **Attestation** carries the same `binding_hash` from the challenge.
+4. **Consumption** verifies that the `binding_hash` matches across all three upstream objects.
+
+**At consumption time, the consuming system MUST:**
+
+1. Retrieve the attestation's `binding_hash`.
+2. Retrieve the challenge's `binding_hash` (via `attestation.challenge_id`).
+3. Retrieve the handshake's `binding.payload_hash` (via `challenge.handshake_id`).
+4. Verify that all three values are identical.
+5. Set `binding_verified = true` only if all three match.
+6. Reject consumption if any mismatch is detected.
+
+A consumption record with `binding_verified = false` indicates a protocol violation and MUST trigger an alert in the audit system.
+
+### 24.5 Policy Model
+
+Signoff requirements are expressed as rules within the handshake policy object. When a handshake is verified and its policy contains signoff rules, the signoff gate activates.
+
+**Signoff policy controls:**
+
+| Control | Type | Description |
+|---|---|---|
+| `signoff_required` | boolean | Whether this action class requires human signoff |
+| `signoff_authority_class` | string | Required authority class for the signoff actor |
+| `signoff_assurance_minimum` | enum | Minimum authentication assurance level: `low`, `substantial`, `high` |
+| `signoff_channel` | string | Required delivery channel: `secure_app`, `out_of_band`, `sms_transitional` |
+| `signoff_challenge_ttl` | integer | Challenge expiry in seconds (clamped to [120, 3600]) |
+| `signoff_attestation_ttl` | integer | Attestation expiry in seconds (clamped to [60, 1800]) |
+| `dual_signoff_threshold` | number | Value or risk threshold above which dual signoff is required |
+| `dual_signoff_authority_classes` | array | Authority classes for dual signoff (MUST be distinct actors) |
+| `out_of_band_required` | boolean | Whether the challenge MUST be delivered out-of-band |
+
+Policy controls are evaluated at challenge creation time. The policy version is pinned to the challenge via `policy_version` and `policy_hash`, ensuring that policy changes after challenge issuance do not retroactively alter the requirements for an in-flight signoff.
+
+### 24.6 Integration with Handshake
+
+Consumption of a signoff-required handshake requires BOTH handshake verification AND signoff attestation. Neither is sufficient alone.
+
+**Execution gate for signoff-required actions requires ALL of:**
+
+1. A verified handshake that is not expired and not revoked.
+2. A valid signoff attestation that is not expired, not revoked, and not already consumed.
+3. `binding_hash` match across handshake, challenge, attestation, and consumption.
+4. Atomic consumption of the attestation (insert-or-fail with `consumed_at IS NULL` guard).
+
+If any component is missing, expired, consumed, or mismatched, execution MUST NOT proceed.
+
+### 24.7 Consumption Semantics
+
+Consumption follows exactly-once semantics:
+
+1. **Uniqueness.** Each `consumption_id` MUST be globally unique. Implementations MUST enforce a UNIQUE constraint on `consumption_id`.
+2. **Atomic insert-or-fail.** The consumption record insertion and the attestation `consumed_at` update MUST execute in the same database transaction. If the attestation is already consumed (`consumed_at IS NOT NULL`), the transaction MUST fail without creating a consumption record.
+3. **Non-replayability.** A consumed attestation cannot be consumed again. The `consumed_at IS NULL` predicate on the UPDATE ensures this at the database level.
+4. **Auditability.** Every consumption attempt — successful or failed — MUST be logged in the `signoff_events` table with the outcome.
+
+### 24.8 Conformance Requirements
+
+**A Conformant Implementation adopting Accountable Signoff MUST:**
+
+1. Enforce the seven-state lifecycle with only the allowed transitions specified in Section 24.3.
+2. Reject any challenge where `binding_hash` does not match the referenced handshake's binding hash.
+3. Reject any attestation where `binding_hash` does not match the referenced challenge's binding hash.
+4. Verify `binding_hash` consistency across handshake, challenge, and attestation at consumption time.
+5. Enforce atomic insert-or-fail consumption semantics with a `consumed_at IS NULL` guard.
+6. Emit a `signoff_events` record before every state transition.
+7. Clamp `signoff_challenge_ttl` to [120, 3600] seconds and `signoff_attestation_ttl` to [60, 1800] seconds.
+8. Require that dual signoff actors hold distinct entity references; the same actor MUST NOT serve as both signers.
+9. Pin policy version and policy hash to the challenge at creation time.
+10. Reject execution of signoff-required actions when any component of the execution gate (Section 24.6) is unsatisfied.
+
+**A Conformant Implementation adopting Accountable Signoff SHOULD:**
+
+1. Support out-of-band challenge delivery for action classes where the signoff channel is `out_of_band`.
+2. Support escalation routing to higher authority classes when a signoff actor escalates.
+3. Provide a verification endpoint that confirms the binding chain integrity for a given `consumption_id`.
+4. Record all failed consumption attempts in the audit trail with the reason for failure.
 
 ---
 

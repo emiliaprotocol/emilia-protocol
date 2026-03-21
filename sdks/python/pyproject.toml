@@ -4,17 +4,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "emilia-protocol"
-version = "1.1.0"
-description = "Python SDK for the EMILIA Protocol — portable trust for machine counterparties."
+version = "0.9.0"
+description = "Minimal Python SDK for the EMILIA Protocol — 5 core endpoints + signoff."
 readme = "README.md"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.9"
-dependencies = [
-    "httpx>=0.27.0",
-]
-keywords = ["trust", "ai-agents", "emilia-protocol", "machine-trust", "behavioral-receipt"]
+dependencies = []
+keywords = ["trust", "ai-agents", "emilia-protocol", "handshake", "trust-gate", "signoff"]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
@@ -31,4 +29,4 @@ Repository = "https://github.com/emiliaprotocol/emilia-protocol"
 Documentation = "https://emiliaprotocol.ai/docs"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/emilia_protocol"]
+packages = ["src/ep"]

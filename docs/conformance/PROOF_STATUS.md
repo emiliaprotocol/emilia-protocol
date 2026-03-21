@@ -34,6 +34,12 @@ Maps each protocol invariant to its enforcement in code, test coverage, and form
 | S11 | **Delegation acyclicity**: no circular delegation chains | Yes -- `delegation.js` cycle detection | Yes -- delegation tests | Yes -- `DelegationAcyclicity`, `GrantDelegation` acyclicity guard | Yes -- `DelegationAcyclic` (F21), `NoSelfDelegation` (F20), `NoDelegationCycles` (A8) | Yes | Complete |
 | S12 | **Policy-hash mismatch detection**: changed policy after binding rejects verification | Yes -- `verify.js` `computePolicyHash()` comparison; `policy_hash_mismatch` reason code | Yes -- verification tests | Yes -- `PolicyHashMismatchDetection`, `PolicyChange` action, `VerifyAccept` precondition | Yes -- `PolicyVersionConsistency` (F23), `PolicyHashConsistency` (A9) | Yes | Complete |
 | S13 | **Event completeness**: exactly one event per state transition | Yes -- `requireHandshakeEvent()` in verify.js/finalize.js | Yes -- event tests | Yes -- `EventCompleteness` (per-status event count = 1) | Yes -- `EventStateCorrespondence` (F25), `EventStateExactCorrespondence` (A11) | Yes | Complete |
+| S14 | **Signoff requires verified handshake**: challenge cannot be issued unless handshake is verified | Pending -- `lib/signoff/challenge.js` status guard | Pending | Yes -- `SignoffRequiresVerifiedHandshake` | Yes -- `SignoffRequiresVerifiedHandshake` (F26), `SignoffRequiresHandshake` (A14) | Pending | Partial -- formal model only |
+| S15 | **Signoff consume-once**: signoff consumed_at set exactly once per handshake | Pending -- `lib/signoff/approve.js` unique constraint | Pending | Yes -- `SignoffConsumeOnce` | Yes -- `SignoffConsumeOnce` (F29), `SignoffConsumeOnce` (A13) | Pending | Partial -- formal model only |
+| S16 | **Signoff binding match**: signoffBinding must equal bindingHash at every signoff transition | Pending -- `lib/signoff/challenge.js` binding hash comparison | Pending | Yes -- `SignoffBindingMatch` | Yes -- `SignoffAttestationBindingMatch` (F27), `SignoffConsumptionBindingMatch` (F28), `SignoffBindingIntegrity` (A12), `FullChainIntegrity` (A15) | Pending | Partial -- formal model only |
+| S17 | **Signoff terminal irreversibility**: denied, consumed_signoff, expired_signoff, revoked_signoff are terminal | Pending -- `lib/signoff/approve.js` terminal state guard | Pending | Yes -- `SignoffTerminalIrreversible`, `SignoffTerminalEscapeAttempt` | Yes -- `NoAttestationForDeniedOrExpired` (F31), `NoConsumptionForRevokedAttestation` (F32) | Pending | Partial -- formal model only |
+| S18 | **Deny cannot be approved**: denied signoff has no transition to approved | Pending -- `lib/signoff/approve.js` status guard | Pending | Yes -- `DenyCannotBeApproved` | Yes -- `NoAttestationForDeniedOrExpired` (F31) | Pending | Partial -- formal model only |
+| S19 | **Signoff authority match**: signoffActor must have authority class matching policy requirement | Pending -- `lib/signoff/challenge.js` authority class check | Pending | Yes -- `SignoffAuthorityMatch` | Yes -- `SignoffAuthorityRequired` (F30) | Pending | Partial -- formal model only |
 
 ---
 
@@ -83,10 +89,11 @@ Maps each protocol invariant to its enforcement in code, test coverage, and form
 | Category | Total | Code-enforced | Tested | TLA+ modeled | Alloy modeled | CI gated | Fully covered |
 |----------|-------|---------------|--------|--------------|---------------|----------|---------------|
 | Safety (S1-S13)        | 13 | 13 | 13 | 13 | 13 | 13 | 13 |
+| Safety — Signoff (S14-S19) | 6 | 0 | 0 | 6 | 6 | 0 | 0 |
 | Data Integrity (D1-D5) | 5  | 5  | 5  | 2  | 5  | -- | 2  |
 | Trust & Access (T1-T10) | 10 | 10 | 10 | 4  | 6  | -- | 4  |
 | Adversarial (A1-A5)    | 5  | 5  | 5  | 5  | 5  | -- | 5  |
-| **Total**              | **33** | **33** | **33** | **24** | **29** | **13** | **24** |
+| **Total**              | **39** | **33** | **33** | **30** | **35** | **13** | **24** |
 
 ---
 
@@ -94,8 +101,8 @@ Maps each protocol invariant to its enforcement in code, test coverage, and form
 
 | File | Format | Checks | How to Run |
 |------|--------|--------|------------|
-| `formal/ep_handshake.tla` | TLA+ | 13 safety theorems, 16 actions (including 5 adversarial + delegation + policy-change), 4 new variables | TLC model checker with `Handshakes = {h1, h2}`, `Actors = {a1, a2}`, `Policies = {p1}` |
-| `formal/ep_relations.als` | Alloy 6 | 25 facts, 11 assertions, 4 visualization predicates, 3 new signatures (Mutation, Delegation, PolicyVersion) | Alloy Analyzer `check` commands (scope 6-8) |
+| `formal/ep_handshake.tla` | TLA+ | 19 safety theorems (S1-S19), 23 actions (including 5 adversarial + delegation + policy-change + 8 signoff), 7 new variables (3 signoff) | TLC model checker with `Handshakes = {h1, h2}`, `Actors = {a1, a2}`, `Policies = {p1}` |
+| `formal/ep_relations.als` | Alloy 6 | 32 facts (F1-F32), 15 assertions (A1-A15), 5 visualization predicates, 6 new signatures (Mutation, Delegation, PolicyVersion, SignoffChallenge, SignoffAttestation, SignoffConsumption) | Alloy Analyzer `check` commands (scope 6-8) |
 
 ---
 
@@ -103,7 +110,7 @@ Maps each protocol invariant to its enforcement in code, test coverage, and form
 
 | Script | Purpose | Exit code |
 |--------|---------|-----------|
-| `scripts/check-invariant-coverage.js` | Verifies all 13 critical safety invariants (S1-S13) have coverage across 4 layers: code guard, test, formal model, documentation | `0` = all covered, `1` = missing coverage |
+| `scripts/check-invariant-coverage.js` | Verifies all 19 safety invariants (S1-S19) have coverage across 4 layers: code guard, test, formal model, documentation | `0` = all covered, `1` = missing coverage |
 
 The CI gate checks each invariant for:
 1. **Code guard**: literal term found in `lib/` source files
@@ -152,13 +159,50 @@ If any critical invariant loses any coverage layer, CI fails with a detailed rep
 | `MultiActorNoDoubleConsume` (A10) | Assertion | Two actors cannot both consume same handshake (scope 8) |
 | `EventStateExactCorrespondence` (A11) | Assertion | Terminal events appear exactly once |
 
+### TLA+ Accountable Signoff Additions (`formal/ep_handshake.tla`)
+
+| Property | Type | What it proves |
+|----------|------|----------------|
+| `SignoffRequiresVerifiedHandshake` (S14) | Safety theorem | Challenge cannot be issued unless handshake is verified |
+| `SignoffConsumeOnce` (S15) | Safety theorem | Signoff consumed at most once per handshake |
+| `SignoffBindingMatch` (S16) | Safety theorem | Signoff binding hash equals handshake binding hash at all transitions |
+| `SignoffTerminalIrreversible` (S17) | Safety theorem | denied/consumed_signoff/expired_signoff/revoked_signoff are terminal |
+| `DenyCannotBeApproved` (S18) | Safety theorem | Denied signoff cannot transition to approved |
+| `SignoffAuthorityMatch` (S19) | Safety theorem | Signoff actor must have authority class matching policy |
+| `IssueChallenge` | Signoff action | Issues challenge for verified handshake with binding snapshot |
+| `ViewChallenge` | Signoff action | Marks challenge as viewed |
+| `ApproveSignoff` | Signoff action | Approves signoff with binding integrity check |
+| `DenySignoff` | Signoff action | Denies signoff (terminal) |
+| `ConsumeSignoff` | Signoff action | One-time consumption of approved signoff |
+| `ExpireSignoff` | Signoff action | Expires signoff after TTL |
+| `RevokeSignoff` | Signoff action | Revokes signoff (terminal) |
+| `SignoffTerminalEscapeAttempt` | Adversarial action | Models terminal-state escape; proves UNCHANGED vars |
+
+### Alloy Accountable Signoff Additions (`formal/ep_relations.als`)
+
+| Fact/Assertion | Type | What it proves |
+|----------------|------|----------------|
+| `SignoffRequiresVerifiedHandshake` (F26) | Fact | SignoffChallenge only exists for verified handshakes |
+| `SignoffAttestationBindingMatch` (F27) | Fact | Attestation binding matches challenge binding |
+| `SignoffConsumptionBindingMatch` (F28) | Fact | Consumption binding matches attestation binding |
+| `SignoffConsumeOnce` (F29) | Fact | At most one consumption per attestation |
+| `SignoffAuthorityRequired` (F30) | Fact | Attestation human has required authority |
+| `NoAttestationForDeniedOrExpired` (F31) | Fact | No attestation for denied or expired challenges |
+| `NoConsumptionForRevokedAttestation` (F32) | Fact | No consumption for revoked attestations |
+| `SignoffBindingIntegrity` (A12) | Assertion | Binding hash consistent across all signoff objects |
+| `SignoffConsumeOnce` (A13) | Assertion | At most one consumption per attestation |
+| `SignoffRequiresHandshake` (A14) | Assertion | No signoff without verified handshake |
+| `FullChainIntegrity` (A15) | Assertion | Binding chain: handshake = challenge = attestation = consumption |
+
 ---
 
 ## Next Steps
 
-1. Run TLC on `ep_handshake.tla` with `Handshakes = {h1, h2}`, `Actors = {a1, a2}`, `Policies = {p1}` to confirm all 13 theorems hold
-2. Run Alloy Analyzer on `ep_relations.als` to verify all 11 assertions find no counterexamples
-3. Add TLA+ coverage for D3-D5 (idempotency, party uniqueness, binding hash integrity)
-4. Add Alloy coverage for T8-T9 (interaction binding, role spoofing)
-5. Add `scripts/check-invariant-coverage.js` to CI pipeline (`node scripts/check-invariant-coverage.js`)
-6. Consider property-based testing to bridge formal models and runtime behavior
+1. Run TLC on `ep_handshake.tla` with `Handshakes = {h1, h2}`, `Actors = {a1, a2}`, `Policies = {p1}` to confirm all 19 theorems hold (including S14-S19 signoff theorems)
+2. Run Alloy Analyzer on `ep_relations.als` to verify all 15 assertions find no counterexamples (including A12-A15 signoff assertions)
+3. Implement signoff runtime code (`lib/signoff/challenge.js`, `lib/signoff/approve.js`, `lib/signoff/revoke.js`) to enforce S14-S19
+4. Add signoff test coverage for S14-S19
+5. Add TLA+ coverage for D3-D5 (idempotency, party uniqueness, binding hash integrity)
+6. Add Alloy coverage for T8-T9 (interaction binding, role spoofing)
+7. Update `scripts/check-invariant-coverage.js` to include S14-S19 invariants in CI pipeline
+8. Consider property-based testing to bridge formal models and runtime behavior
