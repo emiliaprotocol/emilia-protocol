@@ -26,26 +26,26 @@ export default function AgentGovernancePackPage() {
   }
 
   const s = {
-    page: { minHeight: '100vh', background: '#05060a', color: '#e8eaf0', fontFamily: "'Space Grotesk', -apple-system, sans-serif" },
+    page: { minHeight: '100vh', background: '#0a0f1e', color: '#f0f2f5', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
     section: { maxWidth: 760, margin: '0 auto', padding: '80px 24px' },
-    sectionAlt: { background: '#0a0c18', borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
-    eyebrow: { fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#00d4ff', marginBottom: 16 },
-    h1: { fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 900, letterSpacing: -1, marginBottom: 16, lineHeight: 1.1 },
-    h2: { fontFamily: "'Outfit', sans-serif", fontSize: 24, fontWeight: 800, letterSpacing: -0.5, marginBottom: 16 },
-    body: { fontSize: 16, color: '#7a809a', lineHeight: 1.75, marginBottom: 24 },
-    card: { background: '#0e1120', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '24px 28px' },
-    cardTitle: { fontFamily: "'Outfit', sans-serif", fontSize: 16, fontWeight: 700, color: '#e8eaf0', marginBottom: 6 },
-    cardBody: { fontSize: 14, color: '#7a809a', lineHeight: 1.65 },
-    cta: { display: 'inline-block', padding: '12px 28px', borderRadius: 8, fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer', border: 'none' },
-    input: { width: '100%', padding: '12px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#0a0c18', color: '#e8eaf0', fontSize: 15, fontFamily: 'inherit', outline: 'none' },
-    label: { display: 'block', fontSize: 13, fontWeight: 600, color: '#7a809a', marginBottom: 6, fontFamily: "'JetBrains Mono', monospace", letterSpacing: 0.5 },
-    mono: { fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: '#00d4ff' },
+    sectionAlt: { background: '#111827', borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
+    eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#4a90d9', marginBottom: 16 },
+    h1: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 700, letterSpacing: -1, marginBottom: 16, lineHeight: 1.1 },
+    h2: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 24, fontWeight: 700, letterSpacing: -0.5, marginBottom: 16 },
+    body: { fontSize: 16, color: '#8b95a5', lineHeight: 1.75, marginBottom: 24 },
+    card: { background: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '24px 28px' },
+    cardTitle: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#f0f2f5', marginBottom: 6 },
+    cardBody: { fontSize: 14, color: '#8b95a5', lineHeight: 1.65 },
+    cta: { display: 'inline-block', padding: '12px 28px', borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer', border: 'none' },
+    input: { width: '100%', padding: '12px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#111827', color: '#f0f2f5', fontSize: 15, fontFamily: 'inherit', outline: 'none' },
+    label: { display: 'block', fontSize: 13, fontWeight: 600, color: '#8b95a5', marginBottom: 6, fontFamily: "'IBM Plex Mono', monospace", letterSpacing: 0.5 },
+    mono: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: '#4a90d9' },
   };
 
   const RISK_CLASSES = [
-    { level: 'Low', color: '#4ade80', actions: 'Read-only queries, status checks, data retrieval', signoff: 'No signoff required. Policy logged, action proceeds.' },
-    { level: 'Medium', color: '#fbbf24', actions: 'Data modifications, configuration changes, non-financial writes', signoff: 'Single named human signoff. Agent pauses, presents action context, waits for attestation.' },
-    { level: 'High', color: '#f97316', actions: 'Financial transactions, access grants, external communications', signoff: 'Named human signoff with action-bound attestation. Signoff is cryptographically bound to exact action parameters.' },
+    { level: 'Low', color: '#3b9b6e', actions: 'Read-only queries, status checks, data retrieval', signoff: 'No signoff required. Policy logged, action proceeds.' },
+    { level: 'Medium', color: '#d4af55', actions: 'Data modifications, configuration changes, non-financial writes', signoff: 'Single named human signoff. Agent pauses, presents action context, waits for attestation.' },
+    { level: 'High', color: '#d4af55', actions: 'Financial transactions, access grants, external communications', signoff: 'Named human signoff with action-bound attestation. Signoff is cryptographically bound to exact action parameters.' },
     { level: 'Critical', color: '#ef4444', actions: 'Irreversible actions, bulk operations, privilege escalation', signoff: 'Dual named human signoff. Two independent principals must attest to the exact action before the agent can proceed.' },
   ];
 
@@ -68,7 +68,7 @@ export default function AgentGovernancePackPage() {
         <p style={{ ...s.body, maxWidth: 640 }}>
           Pre-configured EP deployment for AI agent execution control.
         </p>
-        <a href="#pilot" style={{ ...s.cta, background: '#ffd700', color: '#05060a' }}>Request Agent Governance Pilot</a>
+        <a href="#pilot" style={{ ...s.cta, background: '#d4af55', color: '#0a0f1e' }}>Request Agent Governance Pilot</a>
       </section>
 
       {/* Risk classes */}
@@ -83,10 +83,10 @@ export default function AgentGovernancePackPage() {
                   <span style={{ width: 10, height: 10, borderRadius: '50%', background: r.color, flexShrink: 0 }} />
                   <span style={{ ...s.cardTitle, marginBottom: 0, fontSize: 17 }}>{r.level}</span>
                 </div>
-                <div style={{ fontSize: 13, color: '#7a809a', marginBottom: 6 }}>
+                <div style={{ fontSize: 13, color: '#8b95a5', marginBottom: 6 }}>
                   <span style={s.mono}>Actions: </span>{r.actions}
                 </div>
-                <div style={{ fontSize: 13, color: '#7a809a' }}>
+                <div style={{ fontSize: 13, color: '#8b95a5' }}>
                   <span style={s.mono}>Signoff: </span>{r.signoff}
                 </div>
               </div>
@@ -116,8 +116,8 @@ export default function AgentGovernancePackPage() {
         <div style={s.section}>
           <h2 style={s.h2}>Best first workflow</h2>
           <p style={s.body}>Start with the highest-impact agent trust surface. For most deployments, that is agent-initiated high-value transactions.</p>
-          <div style={{ ...s.card, border: '1px solid rgba(255,215,0,0.2)' }}>
-            <div style={{ ...s.cardTitle, color: '#ffd700', fontSize: 18, marginBottom: 10 }}>Agent-initiated high-value transaction</div>
+          <div style={{ ...s.card, border: '1px solid rgba(212,175,55,0.2)' }}>
+            <div style={{ ...s.cardTitle, color: '#d4af55', fontSize: 18, marginBottom: 10 }}>Agent-initiated high-value transaction</div>
             <div style={s.cardBody}>
               An AI agent determines that a financial transaction, access grant, or irreversible operation should be executed. EP classifies the action by risk, pauses the agent, and presents the exact action context to a named human principal. The principal reviews the parameters and explicitly assumes responsibility through accountable signoff. The signoff is cryptographically bound to the exact action. Only then does the agent proceed. The full attribution chain is preserved: which human authorized the agent, what the agent requested, and who signed off on the exact execution.
             </div>
@@ -130,8 +130,8 @@ export default function AgentGovernancePackPage() {
                 'Immutable evidence record for regulatory and audit requirements',
               ].map((item, i) => (
                 <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                  <span style={{ color: '#ffd700', fontSize: 14, flexShrink: 0, marginTop: 1 }}>+</span>
-                  <span style={{ fontSize: 14, color: '#7a809a', lineHeight: 1.6 }}>{item}</span>
+                  <span style={{ color: '#d4af55', fontSize: 14, flexShrink: 0, marginTop: 1 }}>+</span>
+                  <span style={{ fontSize: 14, color: '#8b95a5', lineHeight: 1.6 }}>{item}</span>
                 </div>
               ))}
             </div>
@@ -144,8 +144,8 @@ export default function AgentGovernancePackPage() {
         <h2 style={s.h2}>Request Agent Governance Pilot</h2>
         {submitted ? (
           <div style={{ ...s.card, textAlign: 'center', padding: 40 }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#ffd700', marginBottom: 8 }}>Thank you</div>
-            <p style={{ color: '#7a809a', fontSize: 15 }}>We review all inquiries personally and will follow up if there is a fit.</p>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#d4af55', marginBottom: 8 }}>Thank you</div>
+            <p style={{ color: '#8b95a5', fontSize: 15 }}>We review all inquiries personally and will follow up if there is a fit.</p>
           </div>
         ) : (
           <div style={s.card}>
@@ -170,7 +170,7 @@ export default function AgentGovernancePackPage() {
               </div>
             </div>
             {error && <p style={{ color: '#f87171', fontSize: 13, marginTop: 12 }}>{error}</p>}
-            <button onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...s.cta, background: !form.name || !form.email ? '#1a1e30' : '#ffd700', color: !form.name || !form.email ? '#4a4f6a' : '#05060a', marginTop: 20, width: '100%', textAlign: 'center' }}>
+            <button onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...s.cta, background: !form.name || !form.email ? '#1a1e30' : '#d4af55', color: !form.name || !form.email ? '#5a6577' : '#0a0f1e', marginTop: 20, width: '100%', textAlign: 'center' }}>
               {submitting ? 'Submitting...' : 'Request Agent Governance Pilot'}
             </button>
           </div>
@@ -178,10 +178,10 @@ export default function AgentGovernancePackPage() {
       </section>
 
       <footer style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '40px 40px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#4a4f6a', letterSpacing: 1 }}>EMILIA PROTOCOL · APACHE 2.0</div>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#5a6577', letterSpacing: 1 }}>EMILIA PROTOCOL · APACHE 2.0</div>
         <div style={{ display: 'flex', gap: 24 }}>
           {[['/governance','Governance'],['/partners','Partners'],['mailto:team@emiliaprotocol.ai','Contact'],['/investors','Investor Inquiries']].map(([href, label]) => (
-            <a key={label} href={href} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#4a4f6a', textDecoration: 'none', letterSpacing: 1, textTransform: 'uppercase' }}>{label}</a>
+            <a key={label} href={href} style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#5a6577', textDecoration: 'none', letterSpacing: 1, textTransform: 'uppercase' }}>{label}</a>
           ))}
         </div>
       </footer>

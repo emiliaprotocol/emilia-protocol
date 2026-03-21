@@ -26,21 +26,21 @@ export default function AccountableSignoffPage() {
   }
 
   const s = {
-    page: { minHeight: '100vh', background: '#05060a', color: '#e8eaf0', fontFamily: "'Space Grotesk', -apple-system, sans-serif" },
+    page: { minHeight: '100vh', background: '#0a0f1e', color: '#f0f2f5', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
     section: { maxWidth: 760, margin: '0 auto', padding: '80px 24px' },
-    sectionAlt: { background: '#0a0c18', borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
-    eyebrow: { fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#00d4ff', marginBottom: 16 },
-    h1: { fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 900, letterSpacing: -1, marginBottom: 16, lineHeight: 1.1 },
-    h2: { fontFamily: "'Outfit', sans-serif", fontSize: 24, fontWeight: 800, letterSpacing: -0.5, marginBottom: 16 },
-    h3: { fontFamily: "'Outfit', sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: -0.3, marginBottom: 10, color: '#e8eaf0' },
-    body: { fontSize: 16, color: '#7a809a', lineHeight: 1.75, marginBottom: 24 },
-    card: { background: '#0e1120', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '24px 28px' },
-    cardTitle: { fontFamily: "'Outfit', sans-serif", fontSize: 16, fontWeight: 700, color: '#e8eaf0', marginBottom: 6 },
-    cardBody: { fontSize: 14, color: '#7a809a', lineHeight: 1.65 },
-    cta: { display: 'inline-block', padding: '12px 28px', borderRadius: 8, fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer', border: 'none' },
-    input: { width: '100%', padding: '12px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#0a0c18', color: '#e8eaf0', fontSize: 15, fontFamily: 'inherit', outline: 'none' },
-    label: { display: 'block', fontSize: 13, fontWeight: 600, color: '#7a809a', marginBottom: 6, fontFamily: "'JetBrains Mono', monospace", letterSpacing: 0.5 },
-    mono: { fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: '#00d4ff' },
+    sectionAlt: { background: '#111827', borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
+    eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#4a90d9', marginBottom: 16 },
+    h1: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 700, letterSpacing: -1, marginBottom: 16, lineHeight: 1.1 },
+    h2: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 24, fontWeight: 700, letterSpacing: -0.5, marginBottom: 16 },
+    h3: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: -0.3, marginBottom: 10, color: '#f0f2f5' },
+    body: { fontSize: 16, color: '#8b95a5', lineHeight: 1.75, marginBottom: 24 },
+    card: { background: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '24px 28px' },
+    cardTitle: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#f0f2f5', marginBottom: 6 },
+    cardBody: { fontSize: 14, color: '#8b95a5', lineHeight: 1.65 },
+    cta: { display: 'inline-block', padding: '12px 28px', borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer', border: 'none' },
+    input: { width: '100%', padding: '12px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#111827', color: '#f0f2f5', fontSize: 15, fontFamily: 'inherit', outline: 'none' },
+    label: { display: 'block', fontSize: 13, fontWeight: 600, color: '#8b95a5', marginBottom: 6, fontFamily: "'IBM Plex Mono', monospace", letterSpacing: 0.5 },
+    mono: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: '#4a90d9' },
   };
 
   const METHODS = [
@@ -76,7 +76,7 @@ export default function AccountableSignoffPage() {
         <p style={{ ...s.body, maxWidth: 640 }}>
           When policy requires human ownership, EP requires a named responsible human to explicitly assume responsibility for the exact action before execution.
         </p>
-        <a href="#pilot" style={{ ...s.cta, background: '#ffd700', color: '#05060a' }}>Request Pilot</a>
+        <a href="#pilot" style={{ ...s.cta, background: '#d4af55', color: '#0a0f1e' }}>Request Pilot</a>
       </section>
 
       {/* Not MFA */}
@@ -95,8 +95,8 @@ export default function AccountableSignoffPage() {
               <div style={s.cardTitle}>Human-in-the-loop</div>
               <div style={s.cardBody}>Confirms a human clicked a button. Does not bind a <span style={s.mono}>named principal</span> to the <span style={s.mono}>exact action context</span>. The audit trail shows a confirmation happened, not who is accountable for what.</div>
             </div>
-            <div style={{ ...s.card, border: '1px solid rgba(255,215,0,0.2)' }}>
-              <div style={{ ...s.cardTitle, color: '#ffd700' }}>Accountable Signoff</div>
+            <div style={{ ...s.card, border: '1px solid rgba(212,175,55,0.2)' }}>
+              <div style={{ ...s.cardTitle, color: '#d4af55' }}>Accountable Signoff</div>
               <div style={s.cardBody}>A named human reviews the exact action parameters and explicitly assumes responsibility. The signoff is cryptographically bound to the <span style={s.mono}>action</span>, the <span style={s.mono}>principal</span>, the <span style={s.mono}>policy</span>, and the <span style={s.mono}>timestamp</span>. It is one-time consumable and replay-resistant.</div>
             </div>
           </div>
@@ -114,7 +114,7 @@ export default function AccountableSignoffPage() {
             { step: '03', label: 'Consume', detail: 'The attestation is consumed exactly once. The action executes. The signoff record is immutable. The attestation cannot be replayed for a different action, a different amount, or a different target.' },
           ].map((s2, i) => (
             <div key={i} style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
-              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 28, fontWeight: 900, color: '#ffd700', flexShrink: 0, lineHeight: 1, minWidth: 44 }}>{s2.step}</div>
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 28, fontWeight: 700, color: '#d4af55', flexShrink: 0, lineHeight: 1, minWidth: 44 }}>{s2.step}</div>
               <div>
                 <div style={{ ...s.cardTitle, fontSize: 17, marginBottom: 4 }}>{s2.label}</div>
                 <div style={s.cardBody}>{s2.detail}</div>
@@ -163,7 +163,7 @@ export default function AccountableSignoffPage() {
             {WHY_IT_MATTERS.map((w, i) => (
               <div key={i} style={s.card}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                  <span style={{ ...s.mono, background: '#0a0c18', padding: '4px 10px', borderRadius: 6, fontSize: 11, letterSpacing: 1 }}>{w.icon}</span>
+                  <span style={{ ...s.mono, background: '#111827', padding: '4px 10px', borderRadius: 6, fontSize: 11, letterSpacing: 1 }}>{w.icon}</span>
                   <span style={s.cardTitle}>{w.context}</span>
                 </div>
                 <div style={s.cardBody}>{w.detail}</div>
@@ -178,8 +178,8 @@ export default function AccountableSignoffPage() {
         <h2 style={s.h2}>Request Pilot</h2>
         {submitted ? (
           <div style={{ ...s.card, textAlign: 'center', padding: 40 }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#ffd700', marginBottom: 8 }}>Thank you</div>
-            <p style={{ color: '#7a809a', fontSize: 15 }}>We review all inquiries personally and will follow up if there is a fit.</p>
+            <div style={{ fontSize: 20, fontWeight: 700, color: '#d4af55', marginBottom: 8 }}>Thank you</div>
+            <p style={{ color: '#8b95a5', fontSize: 15 }}>We review all inquiries personally and will follow up if there is a fit.</p>
           </div>
         ) : (
           <div style={s.card}>
@@ -204,7 +204,7 @@ export default function AccountableSignoffPage() {
               </div>
             </div>
             {error && <p style={{ color: '#f87171', fontSize: 13, marginTop: 12 }}>{error}</p>}
-            <button onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...s.cta, background: !form.name || !form.email ? '#1a1e30' : '#ffd700', color: !form.name || !form.email ? '#4a4f6a' : '#05060a', marginTop: 20, width: '100%', textAlign: 'center' }}>
+            <button onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...s.cta, background: !form.name || !form.email ? '#1a1e30' : '#d4af55', color: !form.name || !form.email ? '#5a6577' : '#0a0f1e', marginTop: 20, width: '100%', textAlign: 'center' }}>
               {submitting ? 'Submitting...' : 'Request Pilot'}
             </button>
           </div>
@@ -212,10 +212,10 @@ export default function AccountableSignoffPage() {
       </section>
 
       <footer style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '40px 40px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#4a4f6a', letterSpacing: 1 }}>EMILIA PROTOCOL · APACHE 2.0</div>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#5a6577', letterSpacing: 1 }}>EMILIA PROTOCOL · APACHE 2.0</div>
         <div style={{ display: 'flex', gap: 24 }}>
           {[['/governance','Governance'],['/partners','Partners'],['mailto:team@emiliaprotocol.ai','Contact'],['/investors','Investor Inquiries']].map(([href, label]) => (
-            <a key={label} href={href} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#4a4f6a', textDecoration: 'none', letterSpacing: 1, textTransform: 'uppercase' }}>{label}</a>
+            <a key={label} href={href} style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#5a6577', textDecoration: 'none', letterSpacing: 1, textTransform: 'uppercase' }}>{label}</a>
           ))}
         </div>
       </footer>

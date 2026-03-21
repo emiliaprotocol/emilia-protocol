@@ -26,20 +26,20 @@ export default function PartnersPage() {
   }
 
   const s = {
-    page: { minHeight: '100vh', background: '#05060a', color: '#e8eaf0', fontFamily: "'Space Grotesk', -apple-system, sans-serif" },
+    page: { minHeight: '100vh', background: '#0a0f1e', color: '#f0f2f5', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
     section: { maxWidth: 760, margin: '0 auto', padding: '80px 24px' },
-    sectionAlt: { background: '#0a0c18', borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
-    eyebrow: { fontFamily: "'JetBrains Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#00d4ff', marginBottom: 16 },
-    h1: { fontFamily: "'Outfit', sans-serif", fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 900, letterSpacing: -1, marginBottom: 16, lineHeight: 1.1 },
-    h2: { fontFamily: "'Outfit', sans-serif", fontSize: 24, fontWeight: 800, letterSpacing: -0.5, marginBottom: 16 },
-    body: { fontSize: 16, color: '#7a809a', lineHeight: 1.75, marginBottom: 24 },
-    card: { background: '#0e1120', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '24px 28px' },
-    cardTitle: { fontFamily: "'Outfit', sans-serif", fontSize: 16, fontWeight: 700, color: '#e8eaf0', marginBottom: 6 },
-    cardBody: { fontSize: 14, color: '#7a809a', lineHeight: 1.65 },
-    cta: { display: 'inline-block', padding: '12px 28px', borderRadius: 8, fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer', border: 'none' },
-    input: { width: '100%', padding: '12px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#0a0c18', color: '#e8eaf0', fontSize: 15, fontFamily: 'inherit', outline: 'none' },
-    label: { display: 'block', fontSize: 13, fontWeight: 600, color: '#7a809a', marginBottom: 6, fontFamily: "'JetBrains Mono', monospace", letterSpacing: 0.5 },
-    li: { fontSize: 15, color: '#7a809a', lineHeight: 1.7, marginBottom: 6 },
+    sectionAlt: { background: '#111827', borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
+    eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#4a90d9', marginBottom: 16 },
+    h1: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 700, letterSpacing: -1, marginBottom: 16, lineHeight: 1.1 },
+    h2: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 24, fontWeight: 700, letterSpacing: -0.5, marginBottom: 16 },
+    body: { fontSize: 16, color: '#8b95a5', lineHeight: 1.75, marginBottom: 24 },
+    card: { background: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '24px 28px' },
+    cardTitle: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#f0f2f5', marginBottom: 6 },
+    cardBody: { fontSize: 14, color: '#8b95a5', lineHeight: 1.65 },
+    cta: { display: 'inline-block', padding: '12px 28px', borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer', border: 'none' },
+    input: { width: '100%', padding: '12px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#111827', color: '#f0f2f5', fontSize: 15, fontFamily: 'inherit', outline: 'none' },
+    label: { display: 'block', fontSize: 13, fontWeight: 600, color: '#8b95a5', marginBottom: 6, fontFamily: "'IBM Plex Mono', monospace", letterSpacing: 0.5 },
+    li: { fontSize: 15, color: '#8b95a5', lineHeight: 1.7, marginBottom: 6 },
   };
 
   const AUDIENCE = [
@@ -86,10 +86,10 @@ export default function PartnersPage() {
           Start with one action class — payment changes, delegated approvals, operator overrides, or agent execution — and prove the control value fast.
         </p>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <a href="#inquiry" style={{ ...s.cta, background: '#00d4ff', color: '#05060a' }}>Apply for a Pilot</a>
-          <a href="mailto:team@emiliaprotocol.ai" style={{ ...s.cta, background: 'transparent', color: '#00d4ff', border: '1px solid rgba(0,212,255,0.3)' }}>Talk to the Team</a>
+          <a href="#inquiry" style={{ ...s.cta, background: '#4a90d9', color: '#0a0f1e' }}>Apply for a Pilot</a>
+          <a href="mailto:team@emiliaprotocol.ai" style={{ ...s.cta, background: 'transparent', color: '#4a90d9', border: '1px solid rgba(212,175,55,0.3)' }}>Talk to the Team</a>
         </div>
-        <p style={{ fontSize: 13, color: '#4a4f6a', marginTop: 16 }}>
+        <p style={{ fontSize: 13, color: '#5a6577', marginTop: 16 }}>
           We are looking for pilot deployment partners, regulated workflow design partners, and control architecture integrators.
         </p>
       </section>
@@ -128,12 +128,12 @@ export default function PartnersPage() {
           <div style={{ ...s.card, marginBottom: 24 }}>
             {PILOT_STEPS.map((step, i) => (
               <div key={i} style={{ display: 'flex', gap: 12, marginBottom: i < PILOT_STEPS.length - 1 ? 12 : 0, alignItems: 'flex-start' }}>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#00d4ff', minWidth: 20, flexShrink: 0 }}>{String(i + 1).padStart(2, '0')}</span>
+                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#4a90d9', minWidth: 20, flexShrink: 0 }}>{String(i + 1).padStart(2, '0')}</span>
                 <span style={s.li}>{step}</span>
               </div>
             ))}
           </div>
-          <a href="#inquiry" style={{ ...s.cta, background: '#00d4ff', color: '#05060a' }}>Apply for a Pilot</a>
+          <a href="#inquiry" style={{ ...s.cta, background: '#4a90d9', color: '#0a0f1e' }}>Apply for a Pilot</a>
         </div>
       </section>
 
@@ -146,8 +146,8 @@ export default function PartnersPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {BENEFITS.map((b, i) => (
             <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-              <span style={{ color: '#00d4ff', fontSize: 14, flexShrink: 0 }}>+</span>
-              <span style={{ fontSize: 14, color: '#7a809a' }}>{b}</span>
+              <span style={{ color: '#4a90d9', fontSize: 14, flexShrink: 0 }}>+</span>
+              <span style={{ fontSize: 14, color: '#8b95a5' }}>{b}</span>
             </div>
           ))}
         </div>
@@ -174,7 +174,7 @@ export default function PartnersPage() {
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {['Government agencies with delegated authority', 'Banks and payment processors', 'Enterprise compliance teams', 'Agent orchestration platforms', 'CI/CD and DevSecOps pipelines', 'Identity and access management vendors', 'Regulated industry SaaS'].map(tag => (
-            <span key={tag} style={{ padding: '6px 14px', borderRadius: 100, border: '1px solid rgba(0,212,255,0.15)', background: 'rgba(0,212,255,0.04)', fontSize: 13, color: '#00d4ff' }}>{tag}</span>
+            <span key={tag} style={{ padding: '6px 14px', borderRadius: 100, border: '1px solid rgba(212,175,55,0.15)', background: 'rgba(212,175,55,0.04)', fontSize: 13, color: '#4a90d9' }}>{tag}</span>
           ))}
         </div>
       </section>
@@ -187,8 +187,8 @@ export default function PartnersPage() {
             We are looking for a small number of deployment partners who want to prove policy-bound, auditable action control in production — not in theory.
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="#inquiry" style={{ ...s.cta, background: '#00d4ff', color: '#05060a' }}>Apply for a Pilot</a>
-            <a href="mailto:team@emiliaprotocol.ai" style={{ ...s.cta, background: 'transparent', color: '#00d4ff', border: '1px solid rgba(0,212,255,0.3)' }}>Request a Conversation</a>
+            <a href="#inquiry" style={{ ...s.cta, background: '#4a90d9', color: '#0a0f1e' }}>Apply for a Pilot</a>
+            <a href="mailto:team@emiliaprotocol.ai" style={{ ...s.cta, background: 'transparent', color: '#4a90d9', border: '1px solid rgba(212,175,55,0.3)' }}>Request a Conversation</a>
           </div>
         </div>
       </section>
@@ -198,8 +198,8 @@ export default function PartnersPage() {
         <h2 style={s.h2}>Frequently asked questions</h2>
         {FAQS.map((faq, i) => (
           <div key={i} style={{ marginBottom: 24, paddingBottom: 24, borderBottom: i < FAQS.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#e8eaf0', marginBottom: 6 }}>{faq.q}</div>
-            <div style={{ fontSize: 15, color: '#7a809a', lineHeight: 1.7 }}>{faq.a}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#f0f2f5', marginBottom: 6 }}>{faq.q}</div>
+            <div style={{ fontSize: 15, color: '#8b95a5', lineHeight: 1.7 }}>{faq.a}</div>
           </div>
         ))}
       </section>
@@ -210,8 +210,8 @@ export default function PartnersPage() {
           <h2 style={s.h2}>Partner inquiry</h2>
           {submitted ? (
             <div style={{ ...s.card, textAlign: 'center', padding: 40 }}>
-              <div style={{ fontSize: 20, fontWeight: 700, color: '#00d4ff', marginBottom: 8 }}>Thank you</div>
-              <p style={{ color: '#7a809a', fontSize: 15 }}>We review all inquiries personally and will follow up if there is a fit.</p>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#4a90d9', marginBottom: 8 }}>Thank you</div>
+              <p style={{ color: '#8b95a5', fontSize: 15 }}>We review all inquiries personally and will follow up if there is a fit.</p>
             </div>
           ) : (
             <div style={s.card}>
@@ -250,7 +250,7 @@ export default function PartnersPage() {
                 </div>
               </div>
               {error && <p style={{ color: '#f87171', fontSize: 13, marginTop: 12 }}>{error}</p>}
-              <button onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...s.cta, background: !form.name || !form.email ? '#1a1e30' : '#00d4ff', color: !form.name || !form.email ? '#4a4f6a' : '#05060a', marginTop: 20, width: '100%', textAlign: 'center' }}>
+              <button onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...s.cta, background: !form.name || !form.email ? '#1a1e30' : '#4a90d9', color: !form.name || !form.email ? '#5a6577' : '#0a0f1e', marginTop: 20, width: '100%', textAlign: 'center' }}>
                 {submitting ? 'Submitting…' : 'Submit Partner Inquiry'}
               </button>
             </div>
@@ -261,10 +261,10 @@ export default function PartnersPage() {
       <SiteNav activePage="Partners" showFooter={false} />
       {/* Footer */}
       <footer style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '40px 40px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#4a4f6a', letterSpacing: 1 }}>EMILIA PROTOCOL · APACHE 2.0</div>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#5a6577', letterSpacing: 1 }}>EMILIA PROTOCOL · APACHE 2.0</div>
         <div style={{ display: 'flex', gap: 24 }}>
           {[['/governance','Governance'],['/partners','Partners'],['mailto:team@emiliaprotocol.ai','Contact'],['/investors','Investor Inquiries']].map(([href, label]) => (
-            <a key={label} href={href} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#4a4f6a', textDecoration: 'none', letterSpacing: 1, textTransform: 'uppercase' }}>{label}</a>
+            <a key={label} href={href} style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#5a6577', textDecoration: 'none', letterSpacing: 1, textTransform: 'uppercase' }}>{label}</a>
           ))}
         </div>
       </footer>
