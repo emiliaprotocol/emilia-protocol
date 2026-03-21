@@ -234,7 +234,7 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
 <section class="hero">
   <div class="hero-label">TRUST INFRASTRUCTURE</div>
   <h1>Trust, before<br>high-risk action.</h1>
-  <p class="hero-sub">Most systems verify who is acting. EP verifies whether this exact high-risk action should be allowed to proceed.</p>
+  <p class="hero-sub">Most systems verify who is acting. EP verifies whether this exact high-risk action should be allowed to proceed. When policy requires human ownership, it requires a named accountable human to assume responsibility before execution.</p>
   <div class="hero-ctas">
     <a href="/protocol" class="btn-gold-outline">Read the Protocol</a>
     <a href="/use-cases" class="btn-ghost">Explore Use Cases</a>
@@ -269,23 +269,23 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
 <section>
   <div class="container fade-in">
     <div class="eyebrow">THE PROBLEM</div>
-    <h2 class="section-title">Fraud and unauthorized action happen<br>inside approved-looking workflows</h2>
+    <h2 class="section-title">Built for approved-looking workflows<br>where ordinary auth fails</h2>
     <div class="problem-grid">
       <div class="problem-item">
-        <h3>Valid sessions</h3>
-        <p>Attackers operate within properly authenticated sessions that pass every perimeter check.</p>
+        <h3>Benefit payment redirection</h3>
+        <p>An authorized operator changes a payment destination inside a valid session. No control catches the action itself.</p>
       </div>
       <div class="problem-item">
-        <h3>Real users</h3>
-        <p>Compromised credentials belong to legitimate employees with legitimate access histories.</p>
+        <h3>Beneficiary and remittance changes</h3>
+        <p>A wire transfer beneficiary is swapped through approved channels. The system sees a legitimate update, not fraud.</p>
       </div>
       <div class="problem-item">
-        <h3>Approved channels</h3>
-        <p>Actions flow through sanctioned tools and APIs that were designed for exactly this purpose.</p>
+        <h3>Privileged infrastructure actions</h3>
+        <p>A production credential is rotated or a deployment is pushed without action-bound authorization. Access was valid.</p>
       </div>
       <div class="problem-item">
-        <h3>Weak action-level controls</h3>
-        <p>Authorization stops at "can this user access this system" -- not "should this specific action proceed right now."</p>
+        <h3>AI agent destructive execution</h3>
+        <p>An agent with broad tool access executes a high-risk action. No human assumed responsibility for the specific operation.</p>
       </div>
     </div>
   </div>
@@ -329,7 +329,7 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
 <section>
   <div class="container fade-in">
     <div class="eyebrow">PROTOCOL DISCIPLINE</div>
-    <h2 class="section-title">Seven binding guarantees, every ceremony</h2>
+    <h2 class="section-title">What EP proves before action</h2>
     <div class="bindings-list">
       <div class="binding-item">
         <span class="binding-num">01</span>
@@ -380,6 +380,13 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
           <p>Append-only audit trail linking every authorization to its outcome.</p>
         </div>
       </div>
+      <div class="binding-item">
+        <span class="binding-num">08</span>
+        <div class="binding-content">
+          <h3>Accountable signoff, when required</h3>
+          <p>Named human responsibility for the exact action, cryptographically bound to the ceremony.</p>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -392,7 +399,17 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
     <div class="eyebrow">HUMAN ACCOUNTABILITY</div>
     <h2 class="section-title">When policy requires human ownership</h2>
     <p class="section-desc">EP can require a named responsible human to explicitly assume responsibility for the exact action before execution. The signoff is cryptographically bound to the action context, the policy, and the signer's identity.</p>
-    <div class="signoff-methods">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:32px;max-width:600px">
+      <div style="padding:24px;border:1px solid var(--brd);border-radius:6px">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--t3);letter-spacing:2px;margin-bottom:10px">MFA</div>
+        <p style="font-size:14px;color:var(--t2);line-height:1.6">Proves user presence.<br>Says nothing about the action.</p>
+      </div>
+      <div style="padding:24px;border:1px solid var(--brd-gold);border-radius:6px;background:var(--gold-bg)">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--gold);letter-spacing:2px;margin-bottom:10px">ACCOUNTABLE SIGNOFF</div>
+        <p style="font-size:14px;color:var(--t1);line-height:1.6">Proves action-specific responsibility.<br>Bound to the exact operation.</p>
+      </div>
+    </div>
+    <div class="signoff-methods" style="margin-top:24px">
       <span class="method-tag">Passkey</span>
       <span class="method-tag">Secure App</span>
       <span class="method-tag">Platform Authenticator</span>
@@ -440,6 +457,38 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
     </div>
   </div>
 </section>
+
+<!-- BEST FIRST PILOTS -->
+<section>
+  <div class="container fade-in">
+    <div class="eyebrow">START HERE</div>
+    <h2 class="section-title">Best first workflow to protect</h2>
+    <div class="buyer-grid">
+      <div class="buyer-card">
+        <h3>Government</h3>
+        <p>Payment destination change. Bind the operator, the beneficiary, and the approval chain before the disbursement system executes.</p>
+        <a href="/use-cases/government" class="card-link">Request government pilot &#8594;</a>
+      </div>
+      <div class="buyer-card">
+        <h3>Financial</h3>
+        <p>Beneficiary change. Require ceremony-grade authorization before any wire transfer destination is modified.</p>
+        <a href="/use-cases/financial" class="card-link">Request financial pilot &#8594;</a>
+      </div>
+      <div class="buyer-card">
+        <h3>Enterprise</h3>
+        <p>Privileged production change. Gate infrastructure modifications behind action-bound trust ceremonies.</p>
+        <a href="/use-cases/enterprise" class="card-link">Request enterprise pilot &#8594;</a>
+      </div>
+      <div class="buyer-card">
+        <h3>AI / Agent</h3>
+        <p>Destructive tool-use action. Require accountable signoff before any agent executes an irreversible operation.</p>
+        <a href="/use-cases/ai-agent" class="card-link">Request agent pilot &#8594;</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
 
 <!-- CTA STRIP -->
 <div class="cta-strip fade-in">
