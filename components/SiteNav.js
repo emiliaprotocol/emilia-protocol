@@ -41,12 +41,12 @@ export default function SiteNav({ activePage }) {
       backdropFilter: 'blur(12px)',
       borderBottom: '1px solid rgba(255,255,255,0.06)',
     }}>
-      <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}>
+      <a href="/" className="ep-logo-link" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}>
         <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
           <rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#sng)"/>
-          <rect x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#4a90d9"/>
-          <rect x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#d4af55"/>
-          <rect x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#4a90d9"/>
+          <rect className="ep-top" x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#4a90d9" style={{ transition: 'transform 0.3s ease' }}/>
+          <rect className="ep-mid" x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#d4af55" style={{ transition: 'transform 0.3s ease' }}/>
+          <rect className="ep-bot" x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#4a90d9" style={{ transition: 'transform 0.3s ease' }}/>
           <defs><linearGradient id="sng" x1="8" y1="5" x2="8" y2="29"><stop offset="0%" stopColor="#4a90d9"/><stop offset="100%" stopColor="#d4af55"/></linearGradient></defs>
         </svg>
         <span style={{
@@ -54,6 +54,13 @@ export default function SiteNav({ activePage }) {
           fontWeight: 700, fontSize: 14, letterSpacing: 3,
           color: '#f0f2f5', textTransform: 'uppercase',
         }}>EMILIA</span>
+        <style>{`
+          .ep-mid { animation: ep-pulse 3s ease-in-out infinite; }
+          @keyframes ep-pulse { 0%,100%{opacity:1}50%{opacity:0.7} }
+          .ep-logo-link:hover .ep-top { transform: translateX(2px); }
+          .ep-logo-link:hover .ep-mid { transform: translateX(3px); }
+          .ep-logo-link:hover .ep-bot { transform: translateX(1.5px); }
+        `}</style>
       </a>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
