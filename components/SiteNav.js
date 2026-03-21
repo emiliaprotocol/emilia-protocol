@@ -55,11 +55,16 @@ export default function SiteNav({ activePage }) {
           color: '#f0f2f5', textTransform: 'uppercase',
         }}>EMILIA</span>
         <style>{`
-          .ep-mid { animation: ep-pulse 3s ease-in-out infinite; }
-          @keyframes ep-pulse { 0%,100%{opacity:1}50%{opacity:0.7} }
-          .ep-logo-link:hover .ep-top { transform: translateX(2px); }
-          .ep-logo-link:hover .ep-mid { transform: translateX(3px); }
-          .ep-logo-link:hover .ep-bot { transform: translateX(1.5px); }
+          .ep-top,.ep-mid,.ep-bot { transform-origin: left center; }
+          .ep-top { animation: pt 4s ease-in-out infinite; }
+          .ep-mid { animation: pm 3s ease-in-out infinite; }
+          .ep-bot { animation: pb 5s ease-in-out infinite; }
+          @keyframes pt{0%,100%{transform:translateX(0) scaleX(1)}25%{transform:translateX(1.5px) scaleX(1.03)}50%{transform:translateX(.5px) scaleX(.98)}75%{transform:translateX(2px) scaleX(1.02)}}
+          @keyframes pm{0%,100%{transform:translateX(0) scaleX(1);opacity:1}30%{transform:translateX(2.5px) scaleX(1.05);opacity:.85}60%{transform:translateX(1px) scaleX(.97);opacity:1}85%{transform:translateX(3px) scaleX(1.04);opacity:.9}}
+          @keyframes pb{0%,100%{transform:translateX(0) scaleX(1)}20%{transform:translateX(1px) scaleX(1.02)}45%{transform:translateX(2px) scaleX(.98)}70%{transform:translateX(.5px) scaleX(1.03)}90%{transform:translateX(1.5px) scaleX(1.01)}}
+          .ep-logo-link:hover .ep-top{animation-duration:1.5s}
+          .ep-logo-link:hover .ep-mid{animation-duration:1.2s}
+          .ep-logo-link:hover .ep-bot{animation-duration:1.8s}
         `}</style>
       </a>
 

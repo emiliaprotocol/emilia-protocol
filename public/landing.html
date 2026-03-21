@@ -40,13 +40,17 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 40px;height:64px;d
 .nav-links{display:flex;align-items:center;gap:22px}
 .nav-links a{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--t2);text-decoration:none;transition:color 0.2s;letter-spacing:1px;text-transform:uppercase}
 .nav-links a:hover{color:var(--gold)}
-/* Animated E prongs */
-.e-prong{transition:transform 0.3s ease}
-.nav-logo:hover .e-top{transform:translateX(2px)}
-.nav-logo:hover .e-mid{transform:translateX(3px)}
-.nav-logo:hover .e-bot{transform:translateX(1.5px)}
-@keyframes prong-pulse{0%,100%{opacity:1}50%{opacity:0.7}}
-.e-mid{animation:prong-pulse 3s ease-in-out infinite}
+/* Animated E prongs — continuous living motion */
+.e-prong{transform-origin:left center}
+.e-top{animation:prong-top 4s ease-in-out infinite}
+.e-mid{animation:prong-mid 3s ease-in-out infinite}
+.e-bot{animation:prong-bot 5s ease-in-out infinite}
+@keyframes prong-top{0%,100%{transform:translateX(0) scaleX(1)}25%{transform:translateX(1.5px) scaleX(1.03)}50%{transform:translateX(0.5px) scaleX(0.98)}75%{transform:translateX(2px) scaleX(1.02)}}
+@keyframes prong-mid{0%,100%{transform:translateX(0) scaleX(1);opacity:1}30%{transform:translateX(2.5px) scaleX(1.05);opacity:0.85}60%{transform:translateX(1px) scaleX(0.97);opacity:1}85%{transform:translateX(3px) scaleX(1.04);opacity:0.9}}
+@keyframes prong-bot{0%,100%{transform:translateX(0) scaleX(1)}20%{transform:translateX(1px) scaleX(1.02)}45%{transform:translateX(2px) scaleX(0.98)}70%{transform:translateX(0.5px) scaleX(1.03)}90%{transform:translateX(1.5px) scaleX(1.01)}}
+.nav-logo:hover .e-top{animation-duration:1.5s}
+.nav-logo:hover .e-mid{animation-duration:1.2s}
+.nav-logo:hover .e-bot{animation-duration:1.8s}
 .btn-outline-gold{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--gold);border:1px solid var(--brd-gold);padding:8px 18px;border-radius:4px;text-decoration:none;transition:all 0.2s;background:transparent;letter-spacing:1px;text-transform:uppercase}
 .btn-outline-gold:hover{background:var(--gold-bg)}
 .gh-star{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--t2);text-decoration:none;padding:6px 14px;border:1px solid var(--brd);border-radius:4px;transition:all 0.2s;letter-spacing:1px}
