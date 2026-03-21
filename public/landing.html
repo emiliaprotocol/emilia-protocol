@@ -3,2208 +3,413 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EMILIA Protocol — Trust Before High-Risk Action</title>
+<title>EMILIA Protocol -- Trust Before High-Risk Action</title>
 <meta name="description" content="Protocol-grade trust infrastructure for high-risk action enforcement. Bind actor identity, authority, policy, and exact action context before execution.">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg width='32' height='32' viewBox='0 0 34 34' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='7' y='5' width='2.5' height='24' rx='1.25' fill='%2300d4ff'/%3E%3Crect x='9.5' y='5' width='16' height='2.5' rx='1.25' fill='%2300d4ff'/%3E%3Crect x='9.5' y='15.5' width='12' height='2.5' rx='1.25' fill='%23ffd700'/%3E%3Crect x='9.5' y='26.5' width='14' height='2.5' rx='1.25' fill='%2300d4ff'/%3E%3C/svg%3E" integrity="">
-<meta property="og:title" content="EMILIA Protocol — Trust Before High-Risk Action">
+<meta property="og:title" content="EMILIA Protocol -- Trust Before High-Risk Action">
 <meta property="og:description" content="Most systems verify who is acting. EP verifies whether this exact high-risk action should be allowed to proceed.">
 <meta property="og:image" content="https://emiliaprotocol.ai/og.png">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
-:root{--bg:#000000;--bg-card:#0f0f0f;--bg-card-h:#141414;--bg-code:#0a0a0a;--brd:rgba(255,255,255,0.08);--brd-a:rgba(96,165,250,0.25);--t1:#f0f4ff;--t2:#94a3b8;--t3:#475569;--cyan:#60a5fa;--cyan-d:rgba(96,165,250,0.1);--gold:#f59e0b;--green:#34d399;--amber:#f59e0b;--red:#f87171;--magenta:#818cf8;--purple:#a78bfa;--glow-c:0 0 50px rgba(96,165,250,0.12);--mono:'JetBrains Mono',monospace;--disp:'Outfit',sans-serif;--body:'Space Grotesk',sans-serif}
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0f1e;
+  --card:#111827;
+  --card-h:#1a2238;
+  --brd:rgba(255,255,255,0.06);
+  --brd-gold:rgba(212,175,55,0.25);
+  --t1:#f0f2f5;
+  --t2:#8b95a5;
+  --t3:#5a6577;
+  --gold:#d4af55;
+  --gold-bg:rgba(212,175,55,0.08);
+  --blue:#4a90d9;
+  --green:#3b9b6e;
+  --sans:'IBM Plex Sans',sans-serif;
+  --mono:'IBM Plex Mono',monospace;
+}
 html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--t1);font-family:var(--body);overflow-x:hidden;-webkit-font-smoothing:antialiased}
-body::before{content:'';position:fixed;inset:0;background:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");pointer-events:none;z-index:9999}
-.gridbg{position:fixed;inset:0;background-image:linear-gradient(rgba(255,255,255,0.012) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.012) 1px,transparent 1px);background-size:60px 60px;z-index:0}
-nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:14px 40px;display:flex;align-items:center;justify-content:space-between;background:rgba(5,6,10,0.88);backdrop-filter:blur(24px);border-bottom:1px solid var(--brd)}
-.nlogo{display:flex;align-items:center;gap:10px;text-decoration:none}
-.nlogo-text{font-family:var(--mono);font-weight:700;font-size:15px;color:var(--t1);letter-spacing:3px}
-.nlinks{display:flex;align-items:center;gap:28px}
-.nlinks a{font-family:var(--mono);font-size:11px;color:var(--t2);text-decoration:none;letter-spacing:1px;text-transform:uppercase;transition:color 0.2s}
-.nlinks a:hover{color:var(--cyan)}
-.nlinks a.hl{color:var(--gold)}
-.nlinks a.ncta{color:var(--bg);background:var(--cyan);padding:7px 16px;border-radius:6px;font-weight:700;transition:all 0.2s}
-.nlinks a.ncta:hover{background:#fff}
-.ntag{font-family:var(--mono);font-size:10px;color:var(--green);letter-spacing:1px;display:flex;align-items:center;gap:6px}
-.ntag-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pdot 2s infinite}
-@keyframes pdot{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(52,211,153,0.4)}50%{opacity:.7;box-shadow:0 0 0 6px rgba(52,211,153,0)}}
+body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:0 40px;height:64px;display:flex;align-items:center;justify-content:space-between;background:rgba(10,15,30,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--brd)}
+.nav-logo{font-family:var(--mono);font-weight:500;font-size:14px;color:var(--t1);letter-spacing:3px;text-decoration:none}
+.nav-links{display:flex;align-items:center;gap:32px}
+.nav-links a{font-family:var(--sans);font-size:13px;font-weight:400;color:var(--t2);text-decoration:none;transition:color 0.2s}
+.nav-links a:hover{color:var(--t1)}
+.btn-outline-gold{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--gold);border:1px solid var(--brd-gold);padding:8px 20px;border-radius:4px;text-decoration:none;transition:all 0.2s;background:transparent}
+.btn-outline-gold:hover{background:var(--gold-bg)}
+
+/* LAYOUT */
+.container{max-width:1200px;margin:0 auto;padding:0 40px}
+section{padding:120px 0}
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--brd-gold),transparent);max-width:600px;margin:0 auto}
+
+/* TYPOGRAPHY */
+.eyebrow{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:16px}
+.section-title{font-family:var(--sans);font-weight:700;font-size:clamp(28px,3.5vw,42px);letter-spacing:-1px;line-height:1.15;margin-bottom:20px;color:var(--t1)}
+.section-desc{font-size:16px;color:var(--t2);max-width:620px;line-height:1.7}
+
+/* BUTTONS */
+.btn-gold-outline{font-family:var(--sans);font-size:14px;font-weight:500;color:var(--gold);border:1px solid var(--brd-gold);padding:14px 28px;border-radius:4px;text-decoration:none;transition:all 0.2s;background:transparent;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.btn-gold-outline:hover{background:var(--gold-bg)}
+.btn-ghost{font-family:var(--sans);font-size:14px;font-weight:400;color:var(--t2);border:1px solid var(--brd);padding:14px 28px;border-radius:4px;text-decoration:none;transition:all 0.2s;background:transparent;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.btn-ghost:hover{color:var(--t1);border-color:rgba(255,255,255,0.15)}
+.btn-gold-solid{font-family:var(--sans);font-size:14px;font-weight:600;color:var(--bg);background:var(--gold);border:none;padding:14px 28px;border-radius:4px;text-decoration:none;transition:all 0.2s;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.btn-gold-solid:hover{opacity:0.9;transform:translateY(-1px)}
 
 /* HERO */
-.hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:140px 40px 80px;text-align:center;z-index:1;overflow:hidden}
-.orb{position:absolute;border-radius:50%;filter:blur(130px);opacity:.22;animation:odrift 14s ease-in-out infinite;pointer-events:none}
-.orb1{width:600px;height:600px;background:radial-gradient(circle,#60a5fa,transparent 70%);top:5%;left:15%}
-.orb2{width:500px;height:500px;background:radial-gradient(circle,#f59e0b,transparent 70%);bottom:15%;right:10%;animation-delay:-7s}
-.orb3{width:300px;height:300px;background:radial-gradient(circle,#a78bfa,transparent 70%);top:40%;left:58%;animation-delay:-3s;opacity:.14}
-@keyframes odrift{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(25px,-15px) scale(1.04)}66%{transform:translate(-15px,20px) scale(.96)}}
-.htag{font-family:var(--mono);font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--cyan);background:var(--cyan-d);border:1px solid rgba(96,165,250,0.2);padding:8px 20px;border-radius:100px;margin-bottom:28px;display:inline-flex;align-items:center;gap:10px;animation:fup .8s ease both}
-.hero h1{font-family:var(--disp);font-weight:900;font-size:clamp(52px,7.5vw,108px);line-height:.92;letter-spacing:-4px;margin-bottom:10px;animation:fup .8s .08s ease both}
-.hero h1 .gr{background:linear-gradient(135deg,var(--cyan) 0%,#60a5fa 40%,var(--gold) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.hero-hook{font-family:var(--disp);font-weight:700;font-size:clamp(18px,2.5vw,26px);color:var(--t2);letter-spacing:-.5px;margin-bottom:18px;animation:fup .8s .12s ease both}
-.hero-hook strong{color:var(--t1)}
-.hero-sub{font-size:clamp(14px,1.5vw,17px);color:var(--t2);max-width:570px;line-height:1.7;margin-bottom:36px;animation:fup .8s .18s ease both}
-.hero-sub strong{color:var(--t1);font-weight:600}
-.hero-badges{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;margin-bottom:36px;animation:fup .8s .22s ease both}
-.hbadge{font-family:var(--mono);font-size:10px;letter-spacing:1px;padding:6px 14px;border-radius:100px;border:1px solid;display:inline-flex;align-items:center;gap:6px}
-.hbadge.c{color:var(--cyan);border-color:rgba(96,165,250,.25);background:rgba(96,165,250,.06)}
-.hbadge.g{color:var(--gold);border-color:rgba(245,158,11,.25);background:rgba(245,158,11,.06)}
-.hbadge.gr{color:var(--green);border-color:rgba(52,211,153,.25);background:rgba(52,211,153,.06)}
-.hbadge.p{color:var(--purple);border-color:rgba(167,139,250,.25);background:rgba(167,139,250,.06)}
-.hero-ctas{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:56px;animation:fup .8s .28s ease both}
-.btn-p{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--bg);background:var(--cyan);border:none;padding:15px 30px;border-radius:8px;cursor:pointer;transition:all .25s;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
-.btn-p:hover{background:#fff;box-shadow:var(--glow-c);transform:translateY(-2px)}
-.btn-g{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:1px;text-transform:uppercase;color:var(--t2);background:transparent;border:1px solid var(--brd);padding:15px 30px;border-radius:8px;cursor:pointer;transition:all .25s;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
-.btn-g:hover{color:var(--t1);border-color:var(--brd-a);background:rgba(255,255,255,.03)}
-.btn-gold{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gold);background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);padding:15px 30px;border-radius:8px;cursor:pointer;transition:all .25s;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
-.btn-gold:hover{background:rgba(245,158,11,.15);transform:translateY(-2px)}
-.hstats{display:flex;gap:52px;justify-content:center;animation:fup .8s .35s ease both;flex-wrap:wrap}
-.hstat{text-align:center}
-.hstat-v{font-family:var(--disp);font-weight:800;font-size:36px;color:var(--t1)}
-.hstat-l{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--t3);margin-top:4px}
-.ticker{width:100%;overflow:hidden;border-top:1px solid var(--brd);border-bottom:1px solid var(--brd);padding:13px 0;background:rgba(0,0,0,.25);position:relative;z-index:1}
-.ticker-in{display:flex;gap:56px;animation:tscroll 65s linear infinite;width:max-content}
-.ticker-i{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11px;white-space:nowrap;color:var(--t2)}
-.ticker-i .td{width:5px;height:5px;border-radius:50%;flex-shrink:0}
-.td.c{background:var(--cyan)}.td.g{background:var(--gold)}.td.gr{background:var(--green)}.td.a{background:var(--amber)}.td.p{background:var(--purple)}
-.ticker-i strong{color:var(--t1)}
-@keyframes tscroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:140px 40px 80px}
+.hero-label{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:32px}
+.hero h1{font-family:var(--sans);font-weight:700;font-size:clamp(48px,6vw,80px);letter-spacing:-2px;line-height:1.05;margin-bottom:24px}
+.hero-sub{font-size:18px;font-weight:300;color:var(--t2);max-width:620px;line-height:1.7;margin:0 auto 40px}
+.hero-ctas{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:64px}
+.hero-stats{display:flex;gap:48px;flex-wrap:wrap;justify-content:center}
+.stat{text-align:center}
+.stat-value{font-family:var(--sans);font-weight:600;font-size:24px;color:var(--t1);margin-bottom:4px}
+.stat-label{font-family:var(--mono);font-size:11px;color:var(--t3);letter-spacing:1px}
+.stat-sep{width:1px;height:40px;background:var(--brd);align-self:center}
 
-/* SECTIONS */
-section{position:relative;z-index:1;padding:100px 40px}
-.container{max-width:1100px;margin:0 auto}
-.container-md{max-width:860px;margin:0 auto}
-.container-sm{max-width:720px;margin:0 auto}
-.st{font-family:var(--mono);font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--t3);margin-bottom:14px}
-.sh{font-family:var(--disp);font-weight:800;font-size:clamp(28px,3.5vw,46px);letter-spacing:-1px;line-height:1.1;margin-bottom:18px}
-.sd{font-size:16px;color:var(--t2);max-width:600px;line-height:1.7}
+/* PROBLEM */
+.problem-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:40px;margin-top:48px}
+.problem-item h3{font-family:var(--sans);font-weight:600;font-size:16px;margin-bottom:6px;color:var(--t1)}
+.problem-item p{font-size:14px;color:var(--t2);line-height:1.6}
+.problem-item::before{content:'';display:block;width:24px;height:1px;background:var(--gold);margin-bottom:16px}
 
-/* MCP COMPARE BANNER */
-.mcp-banner{position:relative;z-index:1;padding:0 40px 80px}
-.mcp-inner{max-width:900px;margin:0 auto;background:linear-gradient(135deg,rgba(96,165,250,.05),rgba(167,139,250,.05));border:1px solid rgba(96,165,250,.12);border-radius:20px;padding:48px 40px;display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}
-.mcp-left .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--purple);margin-bottom:16px}
-.mcp-left h2{font-family:var(--disp);font-weight:800;font-size:clamp(22px,2.8vw,32px);letter-spacing:-1px;line-height:1.2;margin-bottom:14px}
-.mcp-left p{font-size:14px;color:var(--t2);line-height:1.7}
-.mcp-rows{display:flex;flex-direction:column;gap:10px}
-.mcp-row{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.03);border:1px solid var(--brd);border-radius:10px;padding:13px 16px}
-.mcp-row.ep{border-color:rgba(96,165,250,.25);background:rgba(96,165,250,.04)}
-.mcp-row .proto{font-family:var(--mono);font-size:12px;font-weight:700;width:70px;flex-shrink:0}
-.mcp-row .arr{font-family:var(--mono);font-size:11px;color:var(--t3);flex-shrink:0}
-.mcp-row .desc{font-size:13px;color:var(--t2)}
-.mcp-row.ep .desc{color:var(--t1);font-weight:600}
+/* BUYER CARDS */
+.buyer-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-top:48px}
+.buyer-card{background:var(--card);border:1px solid var(--brd);border-radius:6px;padding:36px;transition:all 0.25s;border-top:2px solid transparent}
+.buyer-card:hover{background:var(--card-h);transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,0.3);border-top-color:var(--gold)}
+.buyer-card h3{font-family:var(--sans);font-weight:600;font-size:18px;margin-bottom:10px}
+.buyer-card p{font-size:14px;color:var(--t2);line-height:1.6;margin-bottom:16px}
+.card-link{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--gold);text-decoration:none;transition:opacity 0.2s}
+.card-link:hover{opacity:0.7}
 
-/* PERSONA GRID */
-.persona-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:48px}
-.persona-card{background:var(--bg-card);border:1px solid var(--brd);border-radius:16px;padding:32px;transition:all .3s;position:relative;overflow:hidden}
-.persona-card::after{content:'';position:absolute;inset:0;opacity:0;transition:opacity .3s;border-radius:16px}
-.persona-card.pa::after{background:radial-gradient(circle at top right,rgba(96,165,250,.07),transparent 70%)}
-.persona-card.pp::after{background:radial-gradient(circle at top right,rgba(52,211,153,.07),transparent 70%)}
-.persona-card.ph::after{background:radial-gradient(circle at top right,rgba(245,158,11,.07),transparent 70%)}
-.persona-card:hover::after{opacity:1}
-.persona-card:hover{transform:translateY(-4px)}
-.persona-card.pa:hover{border-color:rgba(96,165,250,.25)}
-.persona-card.pp:hover{border-color:rgba(52,211,153,.25)}
-.persona-card.ph:hover{border-color:rgba(245,158,11,.25)}
-.p-icon{font-size:30px;margin-bottom:18px}
-.p-label{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
-.pa .p-label{color:var(--cyan)}.pp .p-label{color:var(--green)}.ph .p-label{color:var(--gold)}
-.persona-card h3{font-family:var(--disp);font-weight:700;font-size:19px;margin-bottom:10px;line-height:1.2}
-.persona-card p{font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:18px}
-.p-outcomes{display:flex;flex-direction:column;gap:6px;margin-bottom:20px}
-.p-out{font-family:var(--mono);font-size:11px;color:var(--t3);display:flex;align-items:flex-start;gap:8px;line-height:1.5}
-.pa .p-out::before{content:'→';color:var(--cyan)}.pp .p-out::before{content:'→';color:var(--green)}.ph .p-out::before{content:'→';color:var(--gold)}
-.p-cta a{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;text-decoration:none;transition:opacity .2s}
-.pa .p-cta a{color:var(--cyan)}.pp .p-cta a{color:var(--green)}.ph .p-cta a{color:var(--gold)}
-.p-cta a:hover{opacity:.7}
+/* BINDINGS */
+.bindings-list{margin-top:48px;display:grid;grid-template-columns:1fr 1fr;gap:0}
+.binding-item{padding:20px 0;border-bottom:1px solid var(--brd);display:flex;gap:20px;align-items:baseline}
+.binding-item:nth-child(odd){padding-right:40px}
+.binding-item:nth-child(even){padding-left:40px;border-left:1px solid var(--brd)}
+.binding-num{font-family:var(--mono);font-size:11px;color:var(--t3);flex-shrink:0;min-width:24px}
+.binding-content h3{font-family:var(--sans);font-weight:600;font-size:15px;margin-bottom:4px}
+.binding-content p{font-size:14px;color:var(--t2);line-height:1.5}
 
-/* PROBLEM CARDS */
-.problem-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:48px}
-.prob-card{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:32px;transition:all .3s}
-.prob-card:hover{transform:translateY(-3px)}
-.prob-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:18px;font-size:20px}
-.prob-card h3{font-family:var(--disp);font-weight:700;font-size:18px;margin-bottom:8px}
-.prob-card p{color:var(--t2);font-size:13px;line-height:1.7}
-.prob-cost{font-family:var(--mono);font-size:11px;margin-top:16px;padding:10px 14px;border-radius:8px;color:var(--red);background:rgba(248,113,113,.06);border:1px solid rgba(248,113,113,.15);line-height:1.5}
+/* SIGNOFF */
+.signoff-methods{display:flex;gap:16px;flex-wrap:wrap;margin-top:24px}
+.method-tag{font-family:var(--mono);font-size:12px;color:var(--t2);padding:8px 16px;border:1px solid var(--brd);border-radius:4px}
 
-/* TRUST CONSOLE */
-.console-tabs{display:flex;gap:4px;margin-bottom:-1px}
-.ctab{font-family:var(--mono);font-size:11px;letter-spacing:1px;padding:10px 20px;border:1px solid rgba(255,255,255,.07);background:transparent;color:var(--t3);border-radius:8px 8px 0 0;cursor:pointer;transition:all .2s}
-.ctab.active{border-color:rgba(96,165,250,.25);background:rgba(96,165,250,.06);color:var(--cyan);border-bottom-color:var(--bg-card)}
-.sterm{background:var(--bg-card);border:1px solid var(--brd);border-radius:0 12px 12px 12px;overflow:hidden}
-.sterm-bar{display:flex;align-items:center;justify-content:space-between;padding:11px 18px;background:rgba(255,255,255,.02);border-bottom:1px solid var(--brd)}
-.sterm-dots{display:flex;gap:5px}
-.sterm-dots span{width:9px;height:9px;border-radius:50%}
-.sterm-dots span:nth-child(1){background:#ff5f57}.sterm-dots span:nth-child(2){background:#febc2e}.sterm-dots span:nth-child(3){background:#28c840}
-.sterm-title{font-family:var(--mono);font-size:11px;color:var(--t3);letter-spacing:1px}
-.sterm-body{padding:26px}
-.srow{display:flex;gap:10px;margin-bottom:18px}
-.sinp{flex:1;background:var(--bg);border:1px solid var(--brd);border-radius:10px;padding:13px 16px;font-family:var(--mono);font-size:13px;color:var(--t1);outline:none;transition:border-color .25s}
-.sinp::placeholder{color:var(--t3)}
-.sinp:focus{border-color:var(--cyan)}
-.sbtn{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--bg);background:var(--cyan);border:none;padding:13px 22px;border-radius:10px;cursor:pointer;transition:all .25s;white-space:nowrap}
-.sbtn:hover{background:#fff}.sbtn:disabled{opacity:.4;cursor:not-allowed}
-.sres{min-height:90px;display:flex;align-items:center;justify-content:center}
-.sempty{font-family:var(--mono);font-size:11px;color:var(--t3);text-align:center;letter-spacing:.5px;line-height:2.2}
-.stry{color:var(--cyan);cursor:pointer;text-decoration:underline;text-decoration-style:dotted}
-.scard{width:100%;background:rgba(255,255,255,.02);border:1px solid var(--brd);border-radius:12px;padding:22px;animation:rin .4s ease}
-@keyframes rin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.scard-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
-.scard-name{font-family:var(--disp);font-weight:700;font-size:18px}
-.scard-id{font-family:var(--mono);font-size:11px;color:var(--t3);margin-top:3px}
-.sconf{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1px;padding:5px 12px;border-radius:100px}
-.sconf.confident{background:rgba(52,211,153,.1);color:var(--green);border:1px solid rgba(52,211,153,.25)}
-.sconf.emerging{background:rgba(96,165,250,.1);color:var(--cyan);border:1px solid rgba(96,165,250,.25)}
-.sconf.provisional{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.25)}
-.sconf.insufficient{background:rgba(248,113,113,.1);color:var(--red);border:1px solid rgba(248,113,113,.25)}
-.sconf.pending{background:rgba(255,255,255,.05);color:var(--t3);border:1px solid var(--brd)}
-.sbwrap{margin-bottom:10px}
-.sbhead{font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;margin-bottom:5px;display:flex;justify-content:space-between}
-.sbar{height:5px;background:rgba(255,255,255,.05);border-radius:3px;overflow:hidden}
-.sfill{height:100%;border-radius:3px;transition:width .8s cubic-bezier(.4,0,.2,1)}
-.smeta{display:flex;gap:20px;margin-top:14px;flex-wrap:wrap}
-.smeta-i{font-family:var(--mono);font-size:10px;color:var(--t3)}
-.smeta-i strong{color:var(--t2)}
+/* PRODUCT LAYERS */
+.layers-list{margin-top:48px}
+.layer-item{display:flex;align-items:center;gap:24px;padding:20px 0;border-bottom:1px solid var(--brd)}
+.layer-item:last-child{border-bottom:none}
+.layer-badge{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--gold);min-width:140px;flex-shrink:0}
+.layer-name{font-family:var(--sans);font-weight:600;font-size:16px;min-width:220px;flex-shrink:0}
+.layer-desc{font-size:14px;color:var(--t2)}
 
-/* CODE BLOCKS */
-.code-block{background:var(--bg-code);border:1px solid rgba(255,255,255,.07);border-radius:12px;overflow:hidden;font-family:var(--mono);font-size:12px;line-height:1.8}
-.code-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.06)}
-.code-dots{display:flex;gap:5px}
-.code-dots span{width:9px;height:9px;border-radius:50%}
-.code-dots span:nth-child(1){background:#ff5f57}.code-dots span:nth-child(2){background:#febc2e}.code-dots span:nth-child(3){background:#28c840}
-.code-lang{font-size:10px;letter-spacing:1px;color:var(--t3);text-transform:uppercase}
-.code-copy{font-size:10px;letter-spacing:1px;color:var(--t3);cursor:pointer;border:1px solid var(--brd);border-radius:4px;padding:3px 8px;transition:all .2s;background:transparent}
-.code-copy:hover{color:var(--cyan);border-color:rgba(96,165,250,.3)}
-.code-body{padding:20px;overflow-x:auto}
-.code-body pre{margin:0}
-.kw{color:#c792ea}.str{color:#c3e88d}.prop{color:#82aaff}.num{color:#f78c6c}.fn{color:#89ddff}.cm{color:#4a4f6a}.tp{color:var(--gold)}.url{color:var(--cyan)}.op{color:var(--t3)}.bash-${color:var(--t3);user-select:none}.bash-cmd{color:var(--green)}.bash-flag{color:var(--amber)}.bash-str{color:#c3e88d}
-
-/* PROTOCOL STACK */
-.stack-table{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden;border-radius:12px;border:1px solid var(--brd);margin-top:40px}
-.stack-table th{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--t3);background:rgba(255,255,255,.02);padding:12px 18px;text-align:left;border-bottom:1px solid var(--brd)}
-.stack-table td{font-size:13px;color:var(--t2);padding:14px 18px;border-bottom:1px solid var(--brd);background:var(--bg-card)}
-.stack-table tr:last-child td{border-bottom:none}
-.stack-table tr.ep-row td{background:var(--cyan-d);color:var(--t1);font-weight:600}
-.proto-badge{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1px;padding:3px 9px;border-radius:4px}
-.pb-mcp{background:rgba(147,51,234,.15);color:#a78bfa}
-.pb-a2a{background:rgba(59,130,246,.15);color:#60a5fa}
-.pb-ucp{background:rgba(34,197,94,.15);color:#4ade80}
-.pb-pay{background:rgba(251,146,60,.15);color:#fb923c}
-.pb-ep{background:rgba(96,165,250,.2);color:var(--cyan)}
-
-/* STEPS */
-.steps{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:40px}
-.step{background:var(--bg-card);border:1px solid var(--brd);border-radius:12px;padding:28px;transition:all .3s}
-.step:hover{border-color:var(--brd-a);background:var(--bg-card-h);transform:translateY(-2px)}
-.step-num{font-family:var(--disp);font-weight:900;font-size:40px;color:var(--cyan);opacity:.18;margin-bottom:8px;line-height:1}
-.step-name{font-family:var(--disp);font-weight:700;font-size:17px;margin-bottom:8px}
-.step-desc{font-size:13px;color:var(--t2);line-height:1.7}
-
-/* ALGO GRID */
-.algo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:40px}
-.algo-item{background:var(--bg-card);border:1px solid var(--brd);border-radius:12px;padding:24px;transition:all .3s}
-.algo-item:hover{border-color:var(--brd-a);transform:translateY(-2px)}
-.algo-w{font-family:var(--disp);font-weight:900;font-size:32px;color:var(--cyan);margin-bottom:4px}
-.algo-n{font-family:var(--disp);font-weight:700;font-size:15px;margin-bottom:4px}
-.algo-d{font-family:var(--mono);font-size:11px;color:var(--t3);letter-spacing:.3px;line-height:1.5}
-
-/* ECOSYSTEM */
-.eco-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:40px}
-.eco-card{background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;padding:24px;display:flex;gap:16px;align-items:flex-start;transition:all .3s}
-.eco-card:hover{border-color:var(--brd-a);transform:translateY(-2px)}
-.eco-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-.eco-card h4{font-family:var(--disp);font-weight:700;font-size:15px;margin-bottom:4px}
-.eco-card p{font-size:12px;color:var(--t2);line-height:1.6}
-.eco-status{font-family:var(--mono);font-size:10px;margin-top:10px;padding:4px 10px;border-radius:100px;display:inline-block}
-.eco-status.live{color:var(--green);background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2)}
-.eco-status.beta{color:var(--cyan);background:var(--cyan-d);border:1px solid rgba(96,165,250,.2)}
-.eco-status.soon{color:var(--amber);background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2)}
-.eco-status.plan{color:var(--t3);background:rgba(255,255,255,.03);border:1px solid var(--brd)}
-
-/* FAQ */
-.faq-item{background:var(--bg-card);border:1px solid var(--brd);border-radius:12px;overflow:hidden;cursor:pointer;transition:all .25s;margin-bottom:8px}
-.faq-item:hover{border-color:var(--brd-a)}
-.faq-q{font-family:var(--disp);font-weight:600;font-size:15px;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;gap:16px}
-.faq-q::after{content:'+';font-family:var(--mono);font-size:20px;color:var(--cyan);flex-shrink:0;transition:transform .3s}
-.faq-item.open .faq-q::after{transform:rotate(45deg)}
-.faq-a{font-size:14px;color:var(--t2);line-height:1.8;padding:0 24px;max-height:0;overflow:hidden;transition:all .4s ease}
-.faq-a strong{color:var(--t1)}
-.faq-a code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(--cyan);padding:2px 7px;border-radius:4px}
-.faq-item.open .faq-a{max-height:800px;padding:0 24px 24px}
-
-/* CTA BANNER */
-.cta-banner{background:linear-gradient(135deg,rgba(96,165,250,.07),rgba(167,139,250,.07) 50%,rgba(245,158,11,.07));border:1px solid rgba(96,165,250,.15);border-radius:24px;padding:64px 48px;text-align:center}
-.cta-banner h2{font-family:var(--disp);font-weight:900;font-size:clamp(28px,4vw,44px);letter-spacing:-1.5px;margin-bottom:14px}
-.cta-banner p{font-size:16px;color:var(--t2);max-width:480px;margin:0 auto 32px;line-height:1.7}
-.reg-form{display:flex;gap:10px;max-width:440px;margin:0 auto 14px}
-.reg-inp{flex:1;background:rgba(255,255,255,.06);border:1px solid var(--brd);border-radius:10px;padding:14px 18px;font-family:var(--mono);font-size:13px;color:var(--t1);outline:none;transition:border-color .25s}
-.reg-inp::placeholder{color:var(--t3)}
-.reg-inp:focus{border-color:var(--cyan)}
-.reg-go{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--bg);background:linear-gradient(135deg,var(--cyan),var(--gold));border:none;padding:14px 26px;border-radius:10px;cursor:pointer;transition:all .25s;white-space:nowrap}
-.reg-go:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(96,165,250,.2)}
-.reg-note{font-family:var(--mono);font-size:10px;color:var(--t3)}
-.reg-ok{display:none;margin-top:24px}
-
-/* CONSTITUTIONAL PRINCIPLE */
-.principle-box{text-align:center;padding:28px 32px;background:rgba(96,165,250,.03);border:1px solid rgba(96,165,250,.08);border-radius:12px;margin-top:32px}
-.principle-box p{font-family:var(--disp);font-weight:700;font-size:clamp(15px,2vw,21px);color:var(--t2)}
-.principle-box em{color:var(--cyan);font-style:normal}
+/* CTA STRIP */
+.cta-strip{text-align:center;padding:100px 40px;border-top:1px solid var(--brd);border-bottom:1px solid var(--brd)}
+.cta-strip h2{font-family:var(--sans);font-weight:700;font-size:clamp(24px,3vw,36px);letter-spacing:-0.5px;margin-bottom:32px}
+.cta-strip .hero-ctas{margin-bottom:0}
 
 /* FOOTER */
-footer{position:relative;z-index:1;padding:56px 40px 40px;border-top:1px solid var(--brd)}
-.fgrid{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:40px;margin-bottom:48px}
-.fcol-brand p{font-size:13px;color:var(--t2);line-height:1.7;margin-top:12px;max-width:240px}
-.fcol h5{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--t3);margin-bottom:16px}
-.fcol a{display:block;font-size:13px;color:var(--t2);text-decoration:none;margin-bottom:10px;transition:color .2s}
-.fcol a:hover{color:var(--cyan)}
-.fbot{max-width:1100px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;padding-top:24px;border-top:1px solid var(--brd)}
-.fbot-l{font-family:var(--mono);font-size:11px;color:var(--t3);letter-spacing:1px}
-.fbot-r{display:flex;gap:24px}
-.fbot-r a{font-family:var(--mono);font-size:11px;color:var(--t3);text-decoration:none;letter-spacing:1px;transition:color .2s}
-.fbot-r a:hover{color:var(--cyan)}
+footer{padding:48px 40px;text-align:center}
+.footer-brand{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--t3);letter-spacing:2px;margin-bottom:16px}
+.footer-links{display:flex;gap:24px;justify-content:center}
+.footer-links a{font-size:13px;color:var(--t3);text-decoration:none;transition:color 0.2s}
+.footer-links a:hover{color:var(--t2)}
 
-/* UTILS */
-@keyframes fup{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-.reveal{opacity:0;transform:translateY(24px);transition:all .65s cubic-bezier(.16,1,.3,1)}
-.reveal.visible{opacity:1;transform:translateY(0)}
-.tc{text-align:center}
-.phase-pill{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:1px;padding:3px 8px;border-radius:100px}
-.phase-live{color:var(--green);background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2)}
-.phase-dev{color:var(--cyan);background:var(--cyan-d);border:1px solid rgba(96,165,250,.2)}
-.phase-road{color:var(--gold);background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2)}
+/* FADE IN */
+.fade-in{opacity:0;transform:translateY(16px);transition:opacity 0.6s ease,transform 0.6s ease}
+.fade-in.visible{opacity:1;transform:translateY(0)}
 
+/* RESPONSIVE */
 @media(max-width:960px){
-  nav{padding:12px 20px}.nlinks{display:none}
-  section{padding:72px 20px}.hero{padding:110px 20px 60px}
-  .persona-grid,.algo-grid,.problem-grid,.steps,.eco-grid{grid-template-columns:1fr}
-  .mcp-inner{grid-template-columns:1fr;gap:24px;padding:32px 24px}
-  .fgrid{grid-template-columns:1fr 1fr;gap:24px}
-  .hstats{gap:28px}.hero-ctas{flex-direction:column;align-items:center}
-  .fbot{flex-direction:column;gap:16px;text-align:center}
-  .reg-form{flex-direction:column}.cta-banner{padding:40px 24px}
-  .mcp-banner{padding:0 20px 60px}
-  #the-problem [style*="grid-template-columns: 1fr 1fr"]{grid-template-columns:1fr !important}
-  #trust-decision [style*="grid-template-columns: repeat(3"]{grid-template-columns:1fr !important}
-  section [style*="grid-template-columns: repeat(3,1fr)"]{grid-template-columns:1fr !important}
-  #buyer-segments [style*="grid-template-columns: repeat(2"]{grid-template-columns:1fr !important}
-  #what-ep-binds [style*="grid-template-columns: repeat(4"]{grid-template-columns:repeat(2,1fr) !important}
-  #product-layers [style*="grid-template-columns: 200px"]{grid-template-columns:1fr !important}
+  .nav-links{gap:20px}
+  .problem-grid{grid-template-columns:1fr 1fr;gap:32px}
+  .buyer-grid{grid-template-columns:1fr}
+  .bindings-list{grid-template-columns:1fr}
+  .binding-item:nth-child(even){padding-left:0;border-left:none}
+  .binding-item:nth-child(odd){padding-right:0}
+  .hero-stats{gap:32px}
+  .layer-item{flex-direction:column;align-items:flex-start;gap:8px}
 }
-@media(max-width:600px){
-  .fgrid{grid-template-columns:1fr}.hero h1{letter-spacing:-2px}
+@media(max-width:640px){
+  nav{padding:0 20px}
+  .nav-links a:not(.btn-outline-gold){display:none}
+  .container{padding:0 20px}
+  .hero{padding:120px 20px 60px}
+  section{padding:80px 0}
+  .problem-grid{grid-template-columns:1fr}
+  .hero-ctas{flex-direction:column;align-items:center}
+  .hero-stats{flex-direction:column;gap:20px}
+  .stat-sep{width:40px;height:1px}
+  .signoff-methods{flex-direction:column}
 }
-.dia-card{background:var(--bg-card);border:1px solid var(--brd);border-radius:12px;overflow:hidden;cursor:zoom-in;transition:all .25s}
-.dia-card:hover{border-color:rgba(96,165,250,.3);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
-.dia-card img{width:100%;height:auto;display:block;background:#fff;padding:12px}
-.dia-label{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--t3);padding:10px 16px;text-align:center;border-top:1px solid var(--brd)}
-@media(max-width:640px){.dia-card img{padding:8px}section:has(.dia-card){padding-left:12px;padding-right:12px}section:has(.dia-card) .container-md>div:last-child{grid-template-columns:1fr !important}}
-#btt{position:fixed;bottom:32px;right:32px;z-index:900;width:48px;height:48px;border-radius:50%;border:1px solid var(--brd);background:rgba(10,11,20,0.9);backdrop-filter:blur(12px);color:var(--cyan);cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transform:translateY(16px);transition:all .3s;box-shadow:0 4px 16px rgba(0,0,0,.4)}
-#btt:hover{background:var(--cyan);color:var(--bg);border-color:var(--cyan);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,212,255,.3)}
-#btt.show{opacity:1;transform:translateY(0)}
-@media(max-width:640px){#btt{bottom:20px;right:20px;width:40px;height:40px}}
 </style>
 </head>
 <body>
-<div class="gridbg"></div>
 
 <!-- NAV -->
 <nav>
-  <a href="#" class="nlogo">
-    <div style="width:34px;height:34px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-      <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
-        <style>@keyframes b1{0%,100%{width:16px}50%{width:11px}}@keyframes b2{0%,100%{width:12px}50%{width:17px}}@keyframes b3{0%,100%{width:14px}50%{width:9px}}.e1{animation:b1 3s ease-in-out infinite}.e2{animation:b2 3s ease-in-out infinite .4s}.e3{animation:b3 3s ease-in-out infinite .8s}</style>
-        <rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#eg)"/>
-        <rect class="e1" x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#60a5fa"/>
-        <rect class="e2" x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#f59e0b"/>
-        <rect class="e3" x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#60a5fa"/>
-        <defs><linearGradient id="eg" x1="8" y1="5" x2="8" y2="29"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient></defs>
-      </svg>
-    </div>
-    <span class="nlogo-text">EMILIA</span>
-  </a>
-  <div class="nlinks">
-    <a href="/">Overview</a>
-    <a href="/demo.html">Demo</a>
-    <a href="/quickstart">Quickstart</a>
-    <a href="/spec">Docs</a>
-    <a href="/appeal">Appeal</a>
-    <a href="/partners">Partners</a>
-    <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank">GitHub</a>
+  <a href="/" class="nav-logo">EMILIA PROTOCOL</a>
+  <div class="nav-links">
+    <a href="/protocol">Protocol</a>
+    <a href="/use-cases">Use Cases</a>
+    <a href="/cloud">Cloud</a>
+    <a href="/enterprise">Enterprise</a>
+    <a href="/docs">Docs</a>
+    <a href="/investors">Investors</a>
+    <a href="/apply" class="btn-outline-gold">Request Pilot</a>
   </div>
-  <a href="/partners#inquiry" class="ncta" style="background:var(--cyan);color:#000;padding:8px 18px;border-radius:8px;text-decoration:none;font-size:11px;font-family:var(--mono);font-weight:700;letter-spacing:1px;text-transform:uppercase">Partner with Us</a>
 </nav>
 
 <!-- HERO -->
 <section class="hero">
-  <div class="orb orb1"></div>
-  <div class="orb orb2"></div>
-  <div class="orb orb3"></div>
-
-  <div class="htag">Open Protocol &nbsp;·&nbsp; Apache 2.0 &nbsp;·&nbsp; EP Core RFC v1.1</div>
-
-  <h1>Trust, before<br><span class="gr">high-risk action.</span></h1>
-
-  <p class="hero-hook" style="max-width:720px"><strong>Most systems verify who is acting. EP verifies whether this exact high-risk action should be allowed to proceed.</strong></p>
-
-  <p class="hero-sub" style="max-width:680px;font-size:clamp(15px,1.6vw,18px);margin-bottom:20px">
-    EMILIA Protocol is a protocol-grade trust substrate for high-risk action enforcement. It binds actor identity, authority, policy, and exact action context into a replay-resistant, one-time authorization flow before execution.
-  </p>
-
-  <div class="hero-badges">
-    <span class="hbadge c">Trust Decisions</span>
-    <span class="hbadge gr">Action-Level Enforcement</span>
-    <span class="hbadge g">Policy Evaluation</span>
-    <span class="hbadge c">Accountable Signoff</span>
-    <span class="hbadge p">Apache 2.0</span>
-  </div>
-
+  <div class="hero-label">TRUST INFRASTRUCTURE</div>
+  <h1>Trust, before<br>high-risk action.</h1>
+  <p class="hero-sub">Most systems verify who is acting. EP verifies whether this exact high-risk action should be allowed to proceed.</p>
   <div class="hero-ctas">
-    <a href="/spec" class="btn-p">
-      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
-      Read the Protocol
-    </a>
-    <a href="#buyer-segments" class="btn-g">See Use Cases</a>
+    <a href="/protocol" class="btn-gold-outline">Read the Protocol</a>
+    <a href="/use-cases" class="btn-ghost">Explore Use Cases</a>
+    <a href="/apply" class="btn-gold-solid">Request Pilot</a>
   </div>
-
-  <div class="hstats">
-    <div class="hstat"><div class="hstat-v" style="color:var(--cyan)" id="stat-surfaces">—</div><div class="hstat-l">Trust Surfaces</div></div>
-    <div class="hstat"><div class="hstat-v" style="color:var(--gold)" id="stat-checks">—</div><div class="hstat-l">Automated Checks</div></div>
-    <div class="hstat"><div class="hstat-v" style="color:var(--purple)" id="stat-tools">—</div><div class="hstat-l">MCP Tools</div></div>
-    <div class="hstat"><div class="hstat-v" style="color:var(--green)" id="stat-policies">8</div><div class="hstat-l">Trust Policies</div></div>
-    <div class="hstat"><div class="hstat-v"><span id="stat-stars">–</span></div><div class="hstat-l">GitHub Stars</div></div>
-  </div>
-</section>
-
-<!-- TICKER -->
-<div class="ticker"><div class="ticker-in" id="ticker"></div></div>
-
-<!-- BUYER SEGMENTS -->
-<section id="buyer-segments">
-  <div class="container">
-    <div class="tc reveal">
-      <div class="st">// Where It Matters</div>
-      <div class="sh">Built for the workflows where weak authorization causes real damage</div>
+  <div class="hero-stats">
+    <div class="stat">
+      <div class="stat-value">1,300+</div>
+      <div class="stat-label">Tests</div>
     </div>
-    <div class="reveal" style="display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-top:48px">
-
-      <div style="background:var(--bg-card);border:1px solid rgba(248,113,113,0.2);border-radius:16px;padding:32px;position:relative;overflow:hidden;display:flex;flex-direction:column">
-        <div style="position:absolute;top:0;right:0;width:80px;height:80px;background:radial-gradient(circle at top right,rgba(248,113,113,0.08),transparent 70%);border-radius:0 16px 0 0"></div>
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin-bottom:12px">Government</div>
-        <div style="font-weight:700;font-size:18px;color:var(--t1);margin-bottom:10px;line-height:1.3">Fraud prevention</div>
-        <div style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:20px;flex:1">Benefit redirect fraud, operator overrides, payment destination changes inside valid sessions.</div>
-        <a href="/use-cases/government" style="font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--red);text-decoration:none">See fraud-control architecture &rarr;</a>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid rgba(245,158,11,0.2);border-radius:16px;padding:32px;position:relative;overflow:hidden;display:flex;flex-direction:column">
-        <div style="position:absolute;top:0;right:0;width:80px;height:80px;background:radial-gradient(circle at top right,rgba(245,158,11,0.08),transparent 70%);border-radius:0 16px 0 0"></div>
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:12px">Financial Infrastructure</div>
-        <div style="font-weight:700;font-size:18px;color:var(--t1);margin-bottom:10px;line-height:1.3">Controls enforcement</div>
-        <div style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:20px;flex:1">Beneficiary changes, remittance redirects, treasury approvals inside approved workflows.</div>
-        <a href="/use-cases/financial" style="font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--gold);text-decoration:none">See payment-control architecture &rarr;</a>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid rgba(96,165,250,0.2);border-radius:16px;padding:32px;position:relative;overflow:hidden;display:flex;flex-direction:column">
-        <div style="position:absolute;top:0;right:0;width:80px;height:80px;background:radial-gradient(circle at top right,rgba(96,165,250,0.08),transparent 70%);border-radius:0 16px 0 0"></div>
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;margin-bottom:12px">Enterprise</div>
-        <div style="font-weight:700;font-size:18px;color:var(--t1);margin-bottom:10px;line-height:1.3">Privileged actions</div>
-        <div style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:20px;flex:1">Privileged access changes, deployment approvals, security policy modifications.</div>
-        <a href="/use-cases/enterprise" style="font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--cyan);text-decoration:none">See privileged-action architecture &rarr;</a>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid rgba(167,139,250,0.2);border-radius:16px;padding:32px;position:relative;overflow:hidden;display:flex;flex-direction:column">
-        <div style="position:absolute;top:0;right:0;width:80px;height:80px;background:radial-gradient(circle at top right,rgba(167,139,250,0.08),transparent 70%);border-radius:0 16px 0 0"></div>
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:12px">AI / Agents</div>
-        <div style="font-weight:700;font-size:18px;color:var(--t1);margin-bottom:10px;line-height:1.3">Execution governance</div>
-        <div style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:12px;flex:1">Agents with broad tool access but no action-level control.</div>
-        <div style="font-size:12px;color:var(--t3);line-height:1.6;margin-bottom:20px;font-style:italic">MCP tells agents how to use tools. EP tells systems whether a high-risk action should be allowed to proceed.</div>
-        <a href="/use-cases/ai-agent" style="font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--purple);text-decoration:none">See agent governance architecture &rarr;</a>
-      </div>
-
+    <div class="stat-sep"></div>
+    <div class="stat">
+      <div class="stat-value">19</div>
+      <div class="stat-label">Safety Theorems</div>
+    </div>
+    <div class="stat-sep"></div>
+    <div class="stat">
+      <div class="stat-value">Formally</div>
+      <div class="stat-label">Verified</div>
+    </div>
+    <div class="stat-sep"></div>
+    <div class="stat">
+      <div class="stat-value">Apache 2.0</div>
+      <div class="stat-label">License</div>
     </div>
   </div>
 </section>
 
-<!-- WHAT EP BINDS -->
-<section id="what-ep-binds" style="padding-top:0">
-  <div class="container-md">
-    <div class="tc reveal">
-      <div class="st">// What EP Binds</div>
-      <div class="sh">Seven enforcement guarantees per action</div>
-    </div>
-    <div class="reveal" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:40px">
-
-      <div style="background:var(--bg-card);border:1px solid rgba(96,165,250,0.15);border-radius:12px;padding:24px;text-align:center">
-        <div style="font-size:22px;margin-bottom:12px">&#128100;</div>
-        <div style="font-weight:700;font-size:14px;color:var(--t1)">Actor identity</div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid rgba(96,165,250,0.15);border-radius:12px;padding:24px;text-align:center">
-        <div style="font-size:22px;margin-bottom:12px">&#128279;</div>
-        <div style="font-weight:700;font-size:14px;color:var(--t1)">Authority chain</div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid rgba(245,158,11,0.15);border-radius:12px;padding:24px;text-align:center">
-        <div style="font-size:22px;margin-bottom:12px">&#127919;</div>
-        <div style="font-weight:700;font-size:14px;color:var(--t1)">Exact action context</div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid rgba(245,158,11,0.15);border-radius:12px;padding:24px;text-align:center">
-        <div style="font-size:22px;margin-bottom:12px">&#128220;</div>
-        <div style="font-weight:700;font-size:14px;color:var(--t1)">Policy version and hash</div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid rgba(52,211,153,0.15);border-radius:12px;padding:24px;text-align:center">
-        <div style="font-size:22px;margin-bottom:12px">&#128274;</div>
-        <div style="font-weight:700;font-size:14px;color:var(--t1)">Nonce and expiry</div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid rgba(52,211,153,0.15);border-radius:12px;padding:24px;text-align:center">
-        <div style="font-size:22px;margin-bottom:12px">&#9989;</div>
-        <div style="font-weight:700;font-size:14px;color:var(--t1)">One-time consumption</div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid rgba(167,139,250,0.15);border-radius:12px;padding:24px;text-align:center;grid-column:span 2">
-        <div style="font-size:22px;margin-bottom:12px">&#128210;</div>
-        <div style="font-weight:700;font-size:14px;color:var(--t1)">Immutable event traceability</div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- ACCOUNTABLE SIGNOFF -->
-<section id="accountable-signoff" style="padding-top:0">
-  <div class="container-sm">
-    <div class="reveal" style="text-align:center;padding:48px 40px;background:linear-gradient(135deg,rgba(96,165,250,0.04),rgba(52,211,153,0.04));border:1px solid rgba(96,165,250,0.12);border-radius:20px">
-      <div style="font-family:var(--mono);font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--t3);margin-bottom:20px">When policy requires human ownership</div>
-      <div style="font-family:var(--disp);font-weight:800;font-size:clamp(18px,2.5vw,28px);letter-spacing:-0.5px;line-height:1.4;color:var(--t1);max-width:640px;margin:0 auto 24px">When policy requires human ownership, EP can require a named responsible human to explicitly assume responsibility for the exact action before execution.</div>
-      <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:28px">
-        <span class="hbadge c">Passkey</span>
-        <span class="hbadge gr">Secure App</span>
-        <span class="hbadge g">Platform Authenticator</span>
-        <span class="hbadge p">Dual Signoff</span>
-      </div>
-      <a href="/product/accountable-signoff" style="font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--cyan);text-decoration:none">Learn about Accountable Signoff &rarr;</a>
-    </div>
-  </div>
-</section>
-
-<!-- SECTION 5: WHY IT MATTERS -->
-<section id="why-it-matters" style="padding-top:0">
-  <div class="container-sm">
-    <div class="reveal" style="text-align:center;padding:48px 40px;background:linear-gradient(135deg,rgba(96,165,250,0.04),rgba(245,158,11,0.04));border:1px solid rgba(96,165,250,0.12);border-radius:20px">
-      <div style="font-family:var(--mono);font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--t3);margin-bottom:20px">Why It Matters</div>
-      <div style="font-family:var(--disp);font-weight:800;font-size:clamp(18px,2.5vw,28px);letter-spacing:-0.5px;line-height:1.4;color:var(--t1);max-width:600px;margin:0 auto">Fraud increasingly happens inside approved-looking workflows. EP creates the control layer between authentication and execution.</div>
-    </div>
-  </div>
-</section>
-
-<!-- SECTION 6: PRODUCT LAYERS -->
-<section id="product-layers" style="padding-top:0">
-  <div class="container-md">
-    <div class="tc reveal">
-      <div class="st">// Product Layers</div>
-      <div class="sh">From open standard to enterprise deployment</div>
-    </div>
-    <div class="reveal" style="display:flex;flex-direction:column;gap:0;border:1px solid var(--brd);border-radius:14px;overflow:hidden;margin-top:40px">
-
-      <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--brd)">
-        <div style="padding:20px 24px;background:rgba(52,211,153,0.06);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
-          <div style="font-weight:700;font-size:15px;color:var(--green)">Open Protocol</div>
-          <span class="phase-pill phase-live" style="margin-top:6px;display:inline-block;width:fit-content">Apache 2.0</span>
-        </div>
-        <div style="padding:20px 24px;font-size:13px;color:var(--t2);line-height:1.7">The EP Core specification, Trust Decision schema, Trust Receipt schema, scoring algorithms, and policy evaluation logic. Free forever. Fork it, implement it, extend it.</div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--brd)">
-        <div style="padding:20px 24px;background:rgba(96,165,250,0.06);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
-          <div style="font-weight:700;font-size:15px;color:var(--cyan)">Open Runtime</div>
-          <span class="phase-pill phase-live" style="margin-top:6px;display:inline-block;width:fit-content">Live</span>
-        </div>
-        <div style="padding:20px 24px;font-size:13px;color:var(--t2);line-height:1.7">Self-hostable reference implementation. MCP server (29 tools), REST API, TypeScript and Python SDKs. Run on your infrastructure, your data, your rules.</div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--brd)">
-        <div style="padding:20px 24px;background:rgba(245,158,11,0.06);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
-          <div style="font-weight:700;font-size:15px;color:var(--gold)">Managed Cloud</div>
-          <span class="phase-pill phase-dev" style="margin-top:6px;display:inline-block;width:fit-content">Beta</span>
-        </div>
-        <div style="padding:20px 24px;font-size:13px;color:var(--t2);line-height:1.7">Hosted API at emiliaprotocol.ai. No infrastructure to manage. Free during beta. Production SLAs coming with general availability.</div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:200px 1fr;border-bottom:1px solid var(--brd)">
-        <div style="padding:20px 24px;background:rgba(167,139,250,0.06);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
-          <div style="font-weight:700;font-size:15px;color:var(--purple)">Enterprise Deployment</div>
-          <span class="phase-pill phase-road" style="margin-top:6px;display:inline-block;width:fit-content">Roadmap</span>
-        </div>
-        <div style="padding:20px 24px;font-size:13px;color:var(--t2);line-height:1.7">On-prem or VPC deployment. Custom policy management, operator dashboards, adjudication queues, SSO, and enterprise SLAs.</div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:200px 1fr">
-        <div style="padding:20px 24px;background:rgba(248,113,113,0.04);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
-          <div style="font-weight:700;font-size:15px;color:var(--red)">Vertical Packs</div>
-          <span class="phase-pill phase-road" style="margin-top:6px;display:inline-block;width:fit-content">Roadmap</span>
-        </div>
-        <div style="padding:20px 24px;font-size:13px;color:var(--t2);line-height:1.7">Pre-built policy sets, integration adapters, and compliance mappings for government, financial services, healthcare, and defense.</div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- SECTION 7: CTA STRIP -->
-<section id="cta-strip" style="padding-top:0">
-  <div class="container-md">
-    <div class="reveal" style="background:linear-gradient(135deg,rgba(96,165,250,0.06),rgba(167,139,250,0.06) 50%,rgba(245,158,11,0.06));border:1px solid rgba(96,165,250,0.15);border-radius:20px;padding:48px 40px;text-align:center">
-      <div style="font-family:var(--disp);font-weight:800;font-size:clamp(22px,3vw,32px);letter-spacing:-1px;margin-bottom:24px;color:var(--t1)">Start here.</div>
-      <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
-        <a href="/spec" class="btn-p">
-          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
-          Read the Protocol
-        </a>
-        <a href="/quickstart#agents" class="btn-g">Explore Use Cases</a>
-        <a href="/partners#inquiry" class="btn-gold">Request Pilot</a>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- THE PROBLEM (new narrative section) -->
-<section id="the-problem">
-  <div class="container-md">
-    <div class="tc reveal">
-      <div class="st">// The Problem</div>
-      <div class="sh">Agents act. Nobody checks.</div>
-      <div class="sd" style="margin:0 auto">Agent systems now install software, route work, transact, and delegate — but every platform uses private trust heuristics. There is no neutral, portable way to answer the most basic operational question.</div>
-    </div>
-    <div class="reveal" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:40px">
-
-      <div style="background:var(--bg-card);border:1px solid rgba(248,113,113,0.2);border-radius:14px;padding:28px">
-        <div style="font-size:24px;margin-bottom:14px">&#9888;&#65039;</div>
-        <div style="font-weight:700;font-size:16px;color:var(--t1);margin-bottom:8px">Agents install untrusted software</div>
-        <div style="font-size:13px;color:var(--t2);line-height:1.7">MCP servers, plugins, packages — agents connect to tools with no portable way to verify the publisher, check permission scope, or consult behavioral history.</div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid rgba(248,113,113,0.2);border-radius:14px;padding:28px">
-        <div style="font-size:24px;margin-bottom:14px">&#128256;</div>
-        <div style="font-weight:700;font-size:16px;color:var(--t1);margin-bottom:8px">Agents route to unknown tools</div>
-        <div style="font-size:13px;color:var(--t2);line-height:1.7">When an agent picks which API or service to call, there is no shared trust signal. Each platform rebuilds routing logic with private allowlists and ad hoc blocklists.</div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid rgba(248,113,113,0.2);border-radius:14px;padding:28px">
-        <div style="font-size:24px;margin-bottom:14px">&#128101;</div>
-        <div style="font-weight:700;font-size:16px;color:var(--t1);margin-bottom:8px">Agents accept delegation without verification</div>
-        <div style="font-size:13px;color:var(--t2);line-height:1.7">When an agent claims to represent a human or organization, there is no standard way to verify scope, authorization, or historical delegation faithfulness.</div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid rgba(248,113,113,0.2);border-radius:14px;padding:28px">
-        <div style="font-size:24px;margin-bottom:14px">&#128176;</div>
-        <div style="font-weight:700;font-size:16px;color:var(--t1);margin-bottom:8px">Agents transact with unvetted counterparties</div>
-        <div style="font-size:13px;color:var(--t2);line-height:1.7">Autonomous agents make purchases, place orders, and commit resources — but counterparty trust is either siloed to one platform or nonexistent.</div>
-      </div>
-
-    </div>
-    <div class="reveal" style="text-align:center;margin-top:32px">
-      <div style="font-family:var(--mono);font-size:12px;color:var(--t3);line-height:1.8;max-width:600px;margin:0 auto">The result: duplication, inconsistency, weak portability, and <strong style="color:var(--t1)">no shared due process when trust decisions are wrong</strong>.</div>
-    </div>
-  </div>
-</section>
-
-<!-- WHAT EP RETURNS: THE TRUST DECISION -->
-<section id="trust-decision" style="padding-top:0">
-  <div class="container-md">
-    <div class="tc reveal">
-      <div class="st">// What EP Returns</div>
-      <div class="sh">A Decision, Not a Score</div>
-      <div class="sd" style="margin:0 auto">EP does not return a number for you to interpret. It returns a structured trust decision — with reasons, confidence, the policy used, and a path to challenge it if it is wrong.</div>
-    </div>
-    <div class="reveal" style="margin-top:36px;max-width:640px;margin-left:auto;margin-right:auto">
-      <div class="code-block">
-        <div class="code-hdr">
-          <div class="code-dots"><span></span><span></span><span></span></div>
-          <span class="code-lang">JSON — Trust Decision Object</span>
-          <button class="code-copy" onclick="copyCode(this)">Copy</button>
-        </div>
-        <div class="code-body"><pre>{
-  <span class="prop">"decision"</span>: <span class="str">"allow"</span>,
-  <span class="prop">"reasons"</span>: [
-    <span class="str">"verified_provenance"</span>,
-    <span class="str">"low_dispute_rate"</span>,
-    <span class="str">"successful_history_in_domain"</span>
-  ],
-  <span class="prop">"confidence"</span>: <span class="str">"confident"</span>,
-  <span class="prop">"policy"</span>: <span class="str">"standard"</span>,
-  <span class="prop">"context_used"</span>: { <span class="prop">"action"</span>: <span class="str">"install"</span>, <span class="prop">"category"</span>: <span class="str">"mcp_server"</span> },
-  <span class="prop">"appeal_path"</span>: <span class="str">"/api/disputes/report"</span>
-}</pre></div>
-      </div>
-      <div style="font-family:var(--mono);font-size:11px;color:var(--t3);text-align:center;margin-top:12px;line-height:1.6">A Trust Decision, not just a score. EP returns a structured decision object that another system can enforce, audit, challenge, and verify.</div>
-    </div>
-    <div class="reveal" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:32px">
-      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:12px;padding:24px;text-align:center">
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;margin-bottom:10px">Decision</div>
-        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:6px">Allow / Review / Deny</div>
-        <div style="font-size:12px;color:var(--t2);line-height:1.6">Not a score to interpret. A clear, actionable decision your agent can use directly.</div>
-      </div>
-      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:12px;padding:24px;text-align:center">
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--green);text-transform:uppercase;margin-bottom:10px">Reasons</div>
-        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:6px">Explainable by design</div>
-        <div style="font-size:12px;color:var(--t2);line-height:1.6">Every decision comes with specific reasons. No black box. No mystery downgrade.</div>
-      </div>
-      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:12px;padding:24px;text-align:center">
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:10px">Recourse</div>
-        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:6px">Appeal path included</div>
-        <div style="font-size:12px;color:var(--t2);line-height:1.6">Every adverse decision includes a direct appeal path. Challenge it, review it, reverse it.</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- CONSTITUTIONAL GUARANTEE -->
-<section style="padding-top:0">
-  <div class="container-sm">
-    <div class="reveal" style="text-align:center;padding:48px 40px;background:linear-gradient(135deg,rgba(96,165,250,0.04),rgba(245,158,11,0.04));border:1px solid rgba(96,165,250,0.12);border-radius:20px">
-      <div style="font-family:var(--mono);font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--t3);margin-bottom:20px">Constitutional Guarantee</div>
-      <div style="font-family:var(--disp);font-weight:800;font-size:clamp(20px,2.8vw,30px);letter-spacing:-0.5px;line-height:1.3;color:var(--t1);margin-bottom:20px">Trust must never be more powerful than appeal.</div>
-      <div style="font-size:14px;color:var(--t2);line-height:1.8;max-width:520px;margin:0 auto">Any adverse trust decision in EP is <strong style="color:var(--t1)">explainable</strong>, <strong style="color:var(--t1)">challengeable</strong>, <strong style="color:var(--t1)">reviewable</strong>, and <strong style="color:var(--t1)">reversible</strong> when wrong. This is not a feature. It is a protocol requirement.</div>
-      <div style="margin-top:24px">
-        <a href="/appeal" style="font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--cyan);text-decoration:none">File an appeal now &rarr;</a>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- EP COMMIT -->
-<section style="padding-top:0">
-  <div class="container-md">
-    <div class="reveal" style="max-width:700px;margin:0 auto;background:linear-gradient(135deg,rgba(245,158,11,0.05),rgba(96,165,250,0.05));border:1px solid rgba(245,158,11,0.2);border-radius:20px;padding:40px 36px">
-      <div style="font-family:var(--mono);font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:16px">EP Commit</div>
-      <div style="font-family:var(--disp);font-weight:800;font-size:clamp(20px,2.5vw,28px);letter-spacing:-0.5px;line-height:1.3;color:var(--t1);margin-bottom:16px">A signed authorization token for high-stakes machine actions.</div>
-      <p style="font-size:14px;color:var(--t2);line-height:1.8;margin-bottom:16px">Before an agent installs, connects, delegates, or transacts, a relying system can require an <strong style="color:var(--t1)">EP Commit</strong> proving the action was evaluated under policy, tied to identity and delegation, and issued with an appeal path.</p>
-      <p style="font-size:14px;color:var(--gold);line-height:1.8;font-weight:600">No high-stakes machine action should proceed without a signed EP Commit.</p>
-      <p style="font-size:13px;color:var(--t3);line-height:1.8;margin-top:12px">EP Commit does not move money or settle value. It proves the action was evaluated before proceeding.</p>
-    </div>
-  </div>
-</section>
-
-<!-- BEACHHEAD: INSTALL PREFLIGHT -->
-<section style="padding-top:0">
-  <div class="container-md">
-    <div class="tc reveal">
-      <div class="st">// The First Use Case</div>
-      <div class="sh">Software Install Preflight</div>
-      <div class="sd" style="margin:0 auto">The first wedge is the most obvious: before an agent installs or invokes a server, package, plugin, or app — how should trust be evaluated? This is easy to understand, immediately necessary, high consequence, and measurable.</div>
-    </div>
-    <div class="reveal" style="margin-top:36px;max-width:700px;margin-left:auto;margin-right:auto">
-      <div style="background:var(--bg-card);border:1px solid rgba(96,165,250,0.25);border-radius:16px;padding:32px;position:relative;overflow:hidden">
-        <div style="position:absolute;top:0;right:0;width:100px;height:100px;background:radial-gradient(circle at top right,rgba(96,165,250,0.1),transparent 70%);border-radius:0 16px 0 0"></div>
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;margin-bottom:14px">One API call. Clear decision.</div>
-        <div style="font-weight:700;font-size:18px;color:var(--t1);margin-bottom:10px;line-height:1.3">Should my agent connect to this MCP server?</div>
-        <div style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:20px">EP evaluates publisher identity, permission class (read-only vs. code execution vs. network access), and behavioral trust history. Returns allow / review / deny with reasons and recourse.</div>
-        <div class="code-block" style="margin-bottom:0">
-          <div class="code-hdr">
-            <div class="code-dots"><span></span><span></span><span></span></div>
-            <span class="code-lang">Shell</span>
-          </div>
-          <div class="code-body"><pre><span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-flag">-X POST</span> <span class="bash-str">https://emiliaprotocol.ai/api/trust/install-preflight</span> \
-  <span class="bash-flag">-d</span> <span class="bash-str">'{"entity_id":"github:acme/payments-mcp"}'</span>
-
-<span class="cm"># Response:</span>
-<span class="cm"># { "decision": "allow", "reasons": ["publisher_verified", "read_only_permissions"],</span>
-<span class="cm">#   "confidence": "confident", "policy": "mcp_server_safe_v1" }</span></pre></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- 3-LAYER ARCHITECTURE -->
-<section style="padding-top:0">
-  <div class="container-md">
-    <div class="tc reveal">
-      <div class="st">// Architecture</div>
-      <div class="sh">Small Core. Modular Extensions.</div>
-      <div class="sd" style="margin:0 auto">EP is a 3-layer system. The core is deliberately small — three objects that any host can implement. Everything else is an optional extension or a product surface.</div>
-    </div>
-    <div class="reveal" style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:40px">
-
-      <div style="background:var(--bg-card);border:1px solid rgba(96,165,250,0.25);border-radius:16px;padding:28px">
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;margin-bottom:12px">EP Core</div>
-        <div style="font-weight:700;font-size:17px;color:var(--t1);margin-bottom:10px">The Standard</div>
-        <div style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:16px">Three required objects. If a third party can implement these and interoperate, EP has a real standard.</div>
-        <div style="display:flex;flex-direction:column;gap:8px">
-          <div style="font-family:var(--mono);font-size:11px;color:var(--cyan);background:var(--cyan-d);border:1px solid rgba(96,165,250,0.2);border-radius:8px;padding:8px 12px">Trust Receipt</div>
-          <div style="font-family:var(--mono);font-size:11px;color:var(--cyan);background:var(--cyan-d);border:1px solid rgba(96,165,250,0.2);border-radius:8px;padding:8px 12px">Trust Profile</div>
-          <div style="font-family:var(--mono);font-size:11px;color:var(--cyan);background:var(--cyan-d);border:1px solid rgba(96,165,250,0.2);border-radius:8px;padding:8px 12px">Trust Decision</div>
-        </div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid rgba(245,158,11,0.2);border-radius:16px;padding:28px">
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:12px">EP Extensions</div>
-        <div style="font-weight:700;font-size:17px;color:var(--t1);margin-bottom:10px">Important, but Optional</div>
-        <div style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:16px">Advanced capabilities that build on the core. Adopt what you need.</div>
-        <div style="display:flex;flex-direction:column;gap:6px;font-family:var(--mono);font-size:11px;color:var(--t3)">
-          <div>Handshake — Verified counterparty identity, bound to the interaction</div>
-          <div>Disputes &amp; appeals</div>
-          <div>Delegation &amp; attribution</div>
-          <div>Commitment proofs</div>
-          <div>Auto-receipt generation</div>
-          <div>Domain scoring</div>
-          <div>Install preflight adapters</div>
-        </div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid rgba(167,139,250,0.2);border-radius:16px;padding:28px">
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:12px">EP Product Surfaces</div>
-        <div style="font-weight:700;font-size:17px;color:var(--t1);margin-bottom:10px">Not Part of the Standard</div>
-        <div style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:16px">Reference implementations and operator tools. Useful, not required.</div>
-        <div style="display:flex;flex-direction:column;gap:6px;font-family:var(--mono);font-size:11px;color:var(--t3)">
-          <div>Explorer</div>
-          <div>Leaderboards</div>
-          <div>Operator dashboards</div>
-          <div>Registry views</div>
-          <div>Managed adjudication</div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- MCP COMPARE -->
-<div class="mcp-banner">
-  <div class="mcp-inner reveal">
-    <div class="mcp-left">
-      <div class="eyebrow">// The AI Protocol Stack</div>
-      <h2>MCP gives agents <span style="color:#a78bfa">tools.</span><br>EP gives agents <span style="color:var(--cyan)">trust.</span></h2>
-      <p style="margin-bottom:14px;font-style:italic;color:var(--t1);border-left:2px solid var(--cyan);padding-left:12px">MCP tells agents how to use tools. EP tells systems whether a high-risk action should be allowed to proceed.</p>
-      <p style="margin-bottom:14px">Every AI agent stack has a tool layer, a communication layer, and a payment layer. None of them answer the most important question: <strong style="color:var(--t1)">should I trust this counterparty?</strong></p>
-      <p>EP provides a portable, evidence-based, challengeable trust-decision protocol for machine-mediated systems. It is designed to complement tool, identity, and transaction standards — not replace them.</p>
-    </div>
-    <div class="mcp-rows">
-      <div class="mcp-row"><span class="proto" style="color:#a78bfa">MCP</span><span class="arr">→</span><span class="desc">Agent tools &amp; API access</span></div>
-      <div class="mcp-row"><span class="proto" style="color:#60a5fa">A2A</span><span class="arr">→</span><span class="desc">Agent-to-agent communication</span></div>
-      <div class="mcp-row"><span class="proto" style="color:#4ade80">UCP</span><span class="arr">→</span><span class="desc">Discovery, checkout &amp; commerce</span></div>
-      <div class="mcp-row"><span class="proto" style="color:#fb923c">ACP</span><span class="arr">→</span><span class="desc">Autonomous agent payments</span></div>
-      <div class="mcp-row ep"><span class="proto" style="color:var(--cyan)">EP</span><span class="arr" style="color:var(--cyan)">→</span><span class="desc" style="color:var(--t1);font-weight:600">Trust profiles, policy &amp; appeals</span></div>
-    </div>
-  </div>
-</div>
-
-<!-- THREE WINNING WEDGES -->
-<section style="padding-top:0">
-  <div class="container">
-    <div class="tc reveal">
-      <div class="st">// Where EP Wins First</div>
-      <div class="sh">Three beachhead problems. All solved today.</div>
-      <div class="sd" style="margin:0 auto">Don't boil the ocean. EP wins by being the answer to the three questions every agent builder hits immediately.</div>
-    </div>
-    <div class="reveal" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:48px">
-
-      <div style="background:var(--bg-card);border:1px solid rgba(96,165,250,0.25);border-radius:16px;padding:32px;position:relative;overflow:hidden">
-        <div style="position:absolute;top:0;right:0;width:80px;height:80px;background:radial-gradient(circle at top right,rgba(96,165,250,0.12),transparent 70%);border-radius:0 16px 0 0"></div>
-        <div style="font-size:28px;margin-bottom:16px">🔌</div>
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;margin-bottom:10px">Wedge 1 · MCP Install Preflight</div>
-        <h3 style="font-family:var(--disp);font-weight:700;font-size:18px;margin-bottom:10px;line-height:1.3">Should I connect to this server?</h3>
-        <p style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:16px">Before your agent installs an MCP server, EP evaluates publisher identity, permission class (read-only vs. code execution vs. network access), and behavioral trust history. One call. Clear allow / review / deny.</p>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--cyan);background:var(--cyan-d);border:1px solid rgba(96,165,250,0.2);border-radius:8px;padding:10px 14px">ep_install_preflight("github:acme/payments-mcp") → allow</div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid rgba(52,211,153,0.25);border-radius:16px;padding:32px;position:relative;overflow:hidden">
-        <div style="position:absolute;top:0;right:0;width:80px;height:80px;background:radial-gradient(circle at top right,rgba(52,211,153,0.12),transparent 70%);border-radius:0 16px 0 0"></div>
-        <div style="font-size:28px;margin-bottom:16px">🤝</div>
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--green);text-transform:uppercase;margin-bottom:10px">Wedge 2 · Delegation Assurance</div>
-        <h3 style="font-family:var(--disp);font-weight:700;font-size:18px;margin-bottom:10px;line-height:1.3">Is this agent authorized to act for this principal?</h3>
-        <p style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:16px">When an agent claims to represent a human or organization, EP verifies the delegation scope, checks the principal's authorization, and scores the agent's historical delegation faithfulness. No more impersonation risk.</p>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.2);border-radius:8px;padding:10px 14px">ep_delegation_judgment(principal_id="acme-ceo") → score: 0.91, agents_authorized: 3</div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid rgba(167,139,250,0.25);border-radius:16px;padding:32px;position:relative;overflow:hidden">
-        <div style="position:absolute;top:0;right:0;width:80px;height:80px;background:radial-gradient(circle at top right,rgba(167,139,250,0.12),transparent 70%);border-radius:0 16px 0 0"></div>
-        <div style="font-size:28px;margin-bottom:16px">🔒</div>
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:10px">Wedge 3 · Privacy-Preserving Commitment Proofs</div>
-        <h3 style="font-family:var(--disp);font-weight:700;font-size:18px;margin-bottom:10px;line-height:1.3">Prove trust to regulated counterparties without disclosure</h3>
-        <p style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:16px">For finance, healthcare, and government — prove your agent or entity meets a trust threshold without revealing your counterparty list or transaction history. Compliance without data exposure.</p>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--purple);background:rgba(167,139,250,0.06);border:1px solid rgba(167,139,250,0.2);border-radius:8px;padding:10px 14px">ep_generate_zk_proof(entity_id="my-entity", claim_type="min_confidence", threshold="EMERGING") → proof_id: zk_abc123</div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- PERSONAS -->
-<section>
-  <div class="container">
-    <div class="tc reveal">
-      <div class="st">// Built For</div>
-      <div class="sh">Agents. Platforms. Humans.</div>
-      <div class="sd" style="margin:0 auto">EP works for everyone who needs to make or receive a trust decision — without platform lock-in.</div>
-    </div>
-    <div class="persona-grid reveal">
-
-      <div class="persona-card pa">
-        <div class="p-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="20" height="13" rx="2"/><path d="M12 4v4M9.5 4h5"/><circle cx="9" cy="14" r="1.5" fill="#60a5fa" stroke="none"/><circle cx="15" cy="14" r="1.5" fill="#60a5fa" stroke="none"/><line x1="9" y1="18" x2="15" y2="18"/></svg></div>
-        <div class="p-label">AI Agents &amp; Builders</div>
-        <h3>Autonomous trust decisions, built in</h3>
-        <p>Your agent transacts with merchants, connects to MCP servers, and installs plugins — often without a human in the loop. EP gives the relying system a way to evaluate whether those actions should proceed under policy, with reasons and recourse.</p>
-        <div class="p-outcomes">
-          <div class="p-out">Query trust profiles before routing or transacting</div>
-          <div class="p-out">Run install preflight on any plugin or MCP server</div>
-          <div class="p-out">Evaluate custom policies by context (category, geo, value)</div>
-          <div class="p-out">Submit receipts automatically after every interaction</div>
-        </div>
-        <div class="p-cta"><a href="/quickstart#agents">Add EP to your agent →</a></div>
-      </div>
-
-      <div class="persona-card pp">
-        <div class="p-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
-        <div class="p-label">Platforms &amp; Marketplaces</div>
-        <h3>Portable trust that survives migration</h3>
-        <p>Merchant trust locked to one platform is fragile. EP makes trust profiles portable — built from behavioral receipts, cross-platform, owned by the entity not the host.</p>
-        <div class="p-outcomes">
-          <div class="p-out">Shopify/GitHub webhook receipts auto-generated</div>
-          <div class="p-out">Context-aware trust by category, geo, and value</div>
-          <div class="p-out">Full dispute lifecycle with audit trail</div>
-          <div class="p-out">Operator dashboard with accountability metrics</div>
-        </div>
-        <div class="p-cta"><a href="/quickstart#platforms">Integrate your platform →</a></div>
-      </div>
-
-      <div class="persona-card ph">
-        <div class="p-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><polyline points="17 21 12 21 7 21"/><path d="M5.5 6l-2 6h4l-2-6z"/><path d="M18.5 6l-2 6h4l-2-6z"/><line x1="5.5" y1="6" x2="18.5" y2="6"/></svg></div>
-        <div class="p-label">Humans &amp; Due Process</div>
-        <h3>Appeal any trust decision. No account needed.</h3>
-        <p>When trust goes wrong — wrongful downgrade, fraudulent entity, inaccurate profile — you have the right to challenge it. EP's appeal system requires no login, no lawyer, no platform approval.</p>
-        <div class="p-outcomes">
-          <div class="p-out">File a report against any entity, no auth required</div>
-          <div class="p-out">Dispute specific receipts with supporting evidence</div>
-          <div class="p-out">Appeal dispute resolutions to a second reviewer</div>
-          <div class="p-out">EP supports public verification and transparent appeal by design. Visibility can be policy-controlled by implementation</div>
-        </div>
-        <div class="p-cta"><a href="/appeal">Go to the Appeal page →</a></div>
-      </div>
-
-    </div>
-  </div>
-</section>
+<div class="divider"></div>
 
 <!-- THE PROBLEM -->
-<section style="padding-top:0">
-  <div style="max-width:1000px;margin:0 auto">
-    <div class="tc reveal">
-      <div class="st">// Why It Matters</div>
-      <div class="sh">Traditional trust doesn't scale to machines.</div>
-      <div class="sd" style="margin:0 auto">Stars, reviews, and download counts don't scale into a world where AI agents make decisions at machine speed. Traditional review systems are easy to game, hard to port, and rarely challengeable.</div>
-    </div>
-    <div class="problem-grid reveal">
-      <div class="prob-card">
-        <div class="prob-icon" style="background:rgba(248,113,113,.08)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg></div>
-        <h3>No Portable Trust</h3>
-        <p>A merchant's trust history on Amazon means nothing on Shopify. A plugin rated safe on npm isn't recognized on the MCP registry. Every ecosystem reinvents the wheel and every user starts from zero.</p>
-        <div class="prob-cost">Real cost: Sellers lose years of earned trust on migration. Agents accept dangerous defaults because no portable signal exists.</div>
+<section>
+  <div class="container fade-in">
+    <div class="eyebrow">THE PROBLEM</div>
+    <h2 class="section-title">Fraud and unauthorized action happen<br>inside approved-looking workflows</h2>
+    <div class="problem-grid">
+      <div class="problem-item">
+        <h3>Valid sessions</h3>
+        <p>Attackers operate within properly authenticated sessions that pass every perimeter check.</p>
       </div>
-      <div class="prob-card">
-        <div class="prob-icon" style="background:rgba(245,158,11,.08)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="#f59e0b" stroke="none"/></svg></div>
-        <h3>No Context</h3>
-        <p>A generic 4.2-star score doesn't tell you if a seller is safe for a $5,000 electronics purchase. A plugin safe for read-only access is dangerous with code execution. Generic trust is dangerous trust.</p>
-        <div class="prob-cost">Real cost: Agents over-trust in high-risk contexts. Platforms set thresholds that make no sense for their specific use case.</div>
+      <div class="problem-item">
+        <h3>Real users</h3>
+        <p>Compromised credentials belong to legitimate employees with legitimate access histories.</p>
       </div>
-      <div class="prob-card">
-        <div class="prob-icon" style="background:rgba(129,140,248,.08)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><polyline points="17 21 12 21 7 21"/><path d="M5.5 6l-2 6h4l-2-6z"/><path d="M18.5 6l-2 6h4l-2-6z"/><line x1="5.5" y1="6" x2="18.5" y2="6"/></svg></div>
-        <h3>No Due Process</h3>
-        <p>Platform trust decisions change silently. Appeals go unanswered. Merchants lose income without explanation. Developers watch packages flagged with no recourse. If trust can hurt you, it must be challengeable.</p>
-        <div class="prob-cost">Real cost: Trust becomes a weapon. Competitors file false reports. Platforms abuse the power of silence.</div>
+      <div class="problem-item">
+        <h3>Approved channels</h3>
+        <p>Actions flow through sanctioned tools and APIs that were designed for exactly this purpose.</p>
+      </div>
+      <div class="problem-item">
+        <h3>Weak action-level controls</h3>
+        <p>Authorization stops at "can this user access this system" -- not "should this specific action proceed right now."</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- TRUST CONSOLE -->
-<section id="trust" style="padding-top:0">
-  <div class="container-md">
-    <div class="tc reveal">
-      <div class="st">// Human Trust Console</div>
-      <div class="sh">Evaluate any entity. No agent required.</div>
-      <div class="sd" style="margin:0 auto">Query trust profiles, run install preflight on software, or file a trust report — directly in your browser. No login, no code, no agent.</div>
-    </div>
-    <div class="console-tabs reveal" style="margin-top:32px">
-      <button class="ctab active" onclick="switchTab('profile')" id="tab-profile">Trust Profile</button>
-      <button class="ctab" onclick="switchTab('preflight')" id="tab-preflight">Install Preflight</button>
-      <button class="ctab" onclick="switchTab('report')" id="tab-report">File Report</button>
-    </div>
+<div class="divider"></div>
 
-    <!-- TRUST PROFILE PANEL -->
-    <div class="sterm reveal" id="panel-profile">
-      <div class="sterm-bar"><div class="sterm-dots"><span></span><span></span><span></span></div><div class="sterm-title">ep — trust profile</div><div></div></div>
-      <div class="sterm-body">
-        <div class="srow">
-          <input type="text" class="sinp" id="trustInput" placeholder="entity ID, e.g. rex-booking-v1" autocomplete="off">
-          <button class="sbtn" id="trustBtn" onclick="lookupTrust()">View Profile</button>
-        </div>
-        <div class="sres" id="trustResult">
-          <div class="sempty">Enter an entity ID to view their trust profile<br>
-            <span class="stry" onclick="document.getElementById('trustInput').value='rex-booking-v1';lookupTrust()">rex-booking-v1</span> &nbsp;·&nbsp;
-            <span class="stry" onclick="document.getElementById('trustInput').value='ruby-retention-v1';lookupTrust()">ruby-retention-v1</span> &nbsp;·&nbsp;
-            <span class="stry" onclick="document.getElementById('trustInput').value='mcp-server-ep-v1';lookupTrust()">mcp-server-ep-v1</span>
-          </div>
-        </div>
+<!-- BUYER PATHS -->
+<section>
+  <div class="container fade-in">
+    <div class="eyebrow">CONTROL SURFACES</div>
+    <h2 class="section-title">Built for the workflows where weak<br>authorization causes real damage</h2>
+    <div class="buyer-grid">
+      <div class="buyer-card">
+        <h3>Government Fraud Prevention</h3>
+        <p>Bind identity, authority, and action context before benefit disbursement, procurement approval, or credential issuance.</p>
+        <a href="/use-cases/government" class="card-link">See architecture &#8594;</a>
       </div>
-    </div>
-
-    <!-- PREFLIGHT PANEL -->
-    <div class="sterm reveal" id="panel-preflight" style="display:none">
-      <div class="sterm-bar"><div class="sterm-dots"><span></span><span></span><span></span></div><div class="sterm-title">ep — install preflight</div><div></div></div>
-      <div class="sterm-body">
-        <p style="font-family:var(--mono);font-size:11px;color:var(--t3);margin-bottom:14px">Should you install this software? Supports GitHub Apps, MCP servers, npm packages, and Chrome extensions.</p>
-        <div class="srow">
-          <input type="text" class="sinp" id="preflightInput" placeholder="e.g. mcp-server-ep-v1" autocomplete="off">
-          <button class="sbtn" onclick="runPreflight()">Run Preflight</button>
-        </div>
-        <div class="sres" id="preflightResult">
-          <div class="sempty">Enter a software entity to evaluate<br><span class="stry" onclick="document.getElementById('preflightInput').value='mcp-server-ep-v1';runPreflight()">Try: mcp-server-ep-v1</span></div>
-        </div>
+      <div class="buyer-card">
+        <h3>Financial Infrastructure Controls</h3>
+        <p>Enforce ceremony-grade authorization on wire transfers, limit changes, account modifications, and privileged treasury actions.</p>
+        <a href="/use-cases/financial" class="card-link">See architecture &#8594;</a>
       </div>
-    </div>
-
-    <!-- REPORT PANEL -->
-    <div class="sterm reveal" id="panel-report" style="display:none">
-      <div class="sterm-bar"><div class="sterm-dots"><span></span><span></span><span></span></div><div class="sterm-title">ep — file report</div><div></div></div>
-      <div class="sterm-body">
-        <p style="font-family:var(--mono);font-size:11px;color:var(--t3);margin-bottom:14px">No login required. Reports create review objects — they don't directly change trust profiles. For formal disputes, use the <a href="/appeal" style="color:var(--cyan)">appeal page</a>.</p>
-        <div style="display:flex;flex-direction:column;gap:10px">
-          <input type="text" class="sinp" id="reportEntity" placeholder="entity ID you're reporting..." autocomplete="off">
-          <select id="reportReason" style="font-family:var(--mono);font-size:12px;background:var(--bg);border:1px solid var(--brd);color:var(--t1);padding:12px 16px;border-radius:10px;outline:none;cursor:pointer;transition:border-color .25s" onfocus="this.style.borderColor='var(--cyan)'" onblur="this.style.borderColor='rgba(255,255,255,0.06)'">
-            <option value="">Select report type...</option>
-            <option value="wrongly_downgraded">I was wrongly downgraded</option>
-            <option value="harmed_by_trusted_entity">Harmed by a trusted entity</option>
-            <option value="fraudulent_entity">Fraudulent entity</option>
-            <option value="inaccurate_profile">Inaccurate trust profile</option>
-            <option value="other">Other</option>
-          </select>
-          <textarea id="reportDetails" placeholder="Describe what happened..." rows="3" style="font-family:var(--mono);font-size:12px;background:var(--bg);border:1px solid var(--brd);color:var(--t1);padding:12px 16px;border-radius:10px;resize:vertical;outline:none;transition:border-color .25s" onfocus="this.style.borderColor='var(--cyan)'" onblur="this.style.borderColor='rgba(255,255,255,0.06)'"></textarea>
-          <button class="sbtn" onclick="submitReport()">Submit Report</button>
-        </div>
-        <div id="reportResult" style="margin-top:12px"></div>
+      <div class="buyer-card">
+        <h3>Enterprise Privileged Actions</h3>
+        <p>Require bound authorization for infrastructure changes, data exports, permission escalations, and production deployments.</p>
+        <a href="/use-cases/enterprise" class="card-link">See architecture &#8594;</a>
+      </div>
+      <div class="buyer-card">
+        <h3>AI/Agent Execution Governance</h3>
+        <p>Gate autonomous agent actions behind protocol-enforced trust ceremonies before any irreversible real-world execution.</p>
+        <a href="/use-cases/ai-agent" class="card-link">See architecture &#8594;</a>
       </div>
     </div>
   </div>
 </section>
 
-<!-- QUICK START CODE -->
-<section id="quickstart" style="padding-top:0">
-  <div class="container-md">
-    <div class="tc reveal">
-      <div class="st">// Get Started</div>
-      <div class="sh">In production in 5 minutes</div>
-      <div class="sd" style="margin:0 auto">Add the EP MCP server to your Claude config, or call the REST API directly. Everything is open — no approval process, no vendor lock-in.</div>
-    </div>
+<div class="divider"></div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:40px" class="reveal">
-
-      <!-- MCP INSTALL -->
-      <div>
-        <p style="font-family:var(--mono);font-size:11px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">1 — Add to Claude / any MCP client</p>
-        <div class="code-block">
-          <div class="code-hdr">
-            <div class="code-dots"><span></span><span></span><span></span></div>
-            <span class="code-lang">JSON — claude_desktop_config</span>
-            <button class="code-copy" onclick="copyCode(this)">Copy</button>
-          </div>
-          <div class="code-body"><pre>{
-  <span class="prop">"mcpServers"</span>: {
-    <span class="prop">"emilia-protocol"</span>: {
-      <span class="prop">"command"</span>: <span class="str">"npx"</span>,
-      <span class="prop">"args"</span>: [
-        <span class="str">"-y"</span>,
-        <span class="str">"@emilia-protocol/mcp-server"</span>
-      ],
-      <span class="prop">"env"</span>: {
-        <span class="prop">"EP_API_KEY"</span>: <span class="str">"ep_live_..."</span>
-      }
-    }
-  }
-}</pre></div>
-        </div>
-        <p style="font-family:var(--mono);font-size:11px;color:var(--t3);margin-top:10px">29 trust tools instantly available: <code style="color:var(--cyan);background:var(--cyan-d);padding:2px 6px;border-radius:4px">ep_trust_profile</code>, <code style="color:var(--cyan);background:var(--cyan-d);padding:2px 6px;border-radius:4px">ep_trust_evaluate</code>, <code style="color:var(--cyan);background:var(--cyan-d);padding:2px 6px;border-radius:4px">ep_install_preflight</code>, <code style="color:var(--cyan);background:var(--cyan-d);padding:2px 6px;border-radius:4px">ep_generate_zk_proof</code>, <code style="color:var(--cyan);background:var(--cyan-d);padding:2px 6px;border-radius:4px">ep_delegation_judgment</code> and more.</p>
-      </div>
-
-      <!-- REST API -->
-      <div>
-        <p style="font-family:var(--mono);font-size:11px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">2 — Or call the REST API directly</p>
-        <div class="code-block">
-          <div class="code-hdr">
-            <div class="code-dots"><span></span><span></span><span></span></div>
-            <span class="code-lang">Shell</span>
-            <button class="code-copy" onclick="copyCode(this)">Copy</button>
-          </div>
-          <div class="code-body"><pre><span class="cm"># Get a trust profile</span>
-<span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-str">https://emiliaprotocol.ai/api/trust/profile/rex-booking-v1</span>
-
-<span class="cm"># Evaluate against a policy</span>
-<span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-flag">-X POST</span> <span class="bash-str">https://emiliaprotocol.ai/api/trust/evaluate</span> \
-  <span class="bash-flag">-H</span> <span class="bash-str">"Content-Type: application/json"</span> \
-  <span class="bash-flag">-d</span> <span class="bash-str">'{"entity_id":"rex-booking-v1","policy":"standard"}'</span>
-
-<span class="cm"># Run install preflight</span>
-<span class="bash-$">$ </span><span class="bash-cmd">curl</span> <span class="bash-flag">-X POST</span> <span class="bash-str">https://emiliaprotocol.ai/api/trust/install-preflight</span> \
-  <span class="bash-flag">-d</span> <span class="bash-str">'{"entity_id":"mcp-server-ep-v1"}'</span></pre></div>
+<!-- WHAT EP BINDS -->
+<section>
+  <div class="container fade-in">
+    <div class="eyebrow">PROTOCOL DISCIPLINE</div>
+    <h2 class="section-title">Seven binding guarantees, every ceremony</h2>
+    <div class="bindings-list">
+      <div class="binding-item">
+        <span class="binding-num">01</span>
+        <div class="binding-content">
+          <h3>Actor identity</h3>
+          <p>Cryptographically verified identity of the entity requesting the action.</p>
         </div>
       </div>
-    </div>
-
-    <!-- SUBMIT RECEIPT -->
-    <div style="margin-top:20px" class="reveal">
-      <p style="font-family:var(--mono);font-size:11px;color:var(--t3);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">3 — Submit a receipt after every transaction</p>
-      <div class="code-block">
-        <div class="code-hdr">
-          <div class="code-dots"><span></span><span></span><span></span></div>
-          <span class="code-lang">JavaScript</span>
-          <button class="code-copy" onclick="copyCode(this)">Copy</button>
+      <div class="binding-item">
+        <span class="binding-num">02</span>
+        <div class="binding-content">
+          <h3>Authority chain</h3>
+          <p>Complete delegation path from root authority to the acting principal.</p>
         </div>
-        <div class="code-body"><pre><span class="cm">// After your agent completes a transaction with a seller/service</span>
-<span class="kw">const</span> <span class="fn">receipt</span> = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'https://emiliaprotocol.ai/api/receipts/submit'</span>, {
-  <span class="prop">method</span>: <span class="str">'POST'</span>,
-  <span class="prop">headers</span>: { <span class="prop">'Authorization'</span>: <span class="str">`Bearer <span class="url">${EP_API_KEY}</span>`</span>, <span class="prop">'Content-Type'</span>: <span class="str">'application/json'</span> },
-  <span class="prop">body</span>: <span class="fn">JSON.stringify</span>({
-    <span class="prop">entity_id</span>: <span class="str">'acme-merchant-v1'</span>,             <span class="cm">// who you transacted with</span>
-    <span class="prop">transaction_ref</span>: <span class="str">'order_8f7a2b'</span>,           <span class="cm">// external reference (required)</span>
-    <span class="prop">transaction_type</span>: <span class="str">'purchase'</span>,
-    <span class="prop">agent_behavior</span>: <span class="str">'completed'</span>,               <span class="cm">// strongest signal: what you did next</span>
-    <span class="prop">context</span>: { <span class="prop">category</span>: <span class="str">'electronics'</span>, <span class="prop">value_band</span>: <span class="str">'high'</span> }
-  })
-});
-<span class="cm">// Trust profile updates automatically. Your agent rates what it eats.</span></pre></div>
       </div>
-    </div>
-
-    <div style="text-align:center;margin-top:28px" class="reveal">
-      <a href="/quickstart" class="btn-p">Full Quickstart Guide →</a>
-      <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" class="btn-g" style="margin-left:12px">View on GitHub</a>
-    </div>
-  </div>
-</section>
-
-<!-- PROTOCOL STACK -->
-<section id="stack" style="padding-top:0">
-  <div style="max-width:900px;margin:0 auto">
-    <div class="tc reveal">
-      <div class="st">// The Machine Trust Stack</div>
-      <div class="sh">The Missing Layer</div>
-      <div class="sd" style="margin:0 auto">Every protocol handles the mechanics of transacting. None answers the fundamental question: <strong style="color:var(--t1)">should you trust this entity?</strong></div>
-    </div>
-    <table class="stack-table reveal">
-      <thead><tr><th>Layer</th><th>Protocol</th><th>What It Does</th><th>Led By</th></tr></thead>
-      <tbody>
-        <tr><td>Tools</td><td><span class="proto-badge pb-mcp">MCP</span></td><td>Agents connect to external tools and APIs</td><td style="color:var(--t3)">Anthropic</td></tr>
-        <tr><td>Communication</td><td><span class="proto-badge pb-a2a">A2A</span></td><td>Agent-to-agent task delegation</td><td style="color:var(--t3)">Google</td></tr>
-        <tr><td>Commerce</td><td><span class="proto-badge pb-ucp">UCP</span></td><td>Discovery, checkout, payments, post-purchase</td><td style="color:var(--t3)">Google + Shopify</td></tr>
-        <tr><td>Payments</td><td><span class="proto-badge pb-pay">ACP / AP2</span></td><td>Secure autonomous agent payments</td><td style="color:var(--t3)">Google / OpenAI + Stripe</td></tr>
-        <tr class="ep-row"><td style="color:var(--cyan)">Trust</td><td><span class="proto-badge pb-ep">EP</span></td><td>Trust profiles, policy evaluation, and appeals</td><td style="color:var(--cyan)">EMILIA Protocol</td></tr>
-      </tbody>
-    </table>
-    <div class="reveal tc" style="margin-top:24px">
-      <div style="font-family:var(--mono);font-size:11px;color:var(--t3);line-height:2.2">
-        MCP = <span style="color:var(--t2)">USB-C for AI tools</span> &nbsp;·&nbsp; A2A = <span style="color:var(--t2)">TCP/IP for agents</span> &nbsp;·&nbsp; EP = <span style="color:var(--cyan);font-weight:700">The Trust Protocol</span>
-      </div>
-    </div>
-    <div class="reveal" style="margin-top:48px">
-      <div style="max-width:700px;margin:0 auto">
-        <svg viewBox="0 0 700 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">
-          <rect x="0" y="18" width="120" height="58" rx="10" fill="rgba(96,165,250,0.06)" stroke="rgba(96,165,250,0.15)" stroke-width="1"/>
-          <text x="60" y="42" text-anchor="middle" fill="#60a5fa" font-family="Outfit,sans-serif" font-weight="700" font-size="12">Receipts</text>
-          <text x="60" y="62" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono,monospace" font-size="8">Evidence in</text>
-          <text x="137" y="52" text-anchor="middle" fill="#4a4f6a" font-family="JetBrains Mono,monospace" font-size="18">→</text>
-          <rect x="153" y="18" width="120" height="58" rx="10" fill="rgba(52,211,153,0.06)" stroke="rgba(52,211,153,0.15)" stroke-width="1"/>
-          <text x="213" y="42" text-anchor="middle" fill="#34d399" font-family="Outfit,sans-serif" font-weight="700" font-size="12">Trust Engine</text>
-          <text x="213" y="62" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono,monospace" font-size="8">Weigh + evaluate</text>
-          <text x="290" y="52" text-anchor="middle" fill="#4a4f6a" font-family="JetBrains Mono,monospace" font-size="18">→</text>
-          <rect x="306" y="18" width="120" height="58" rx="10" fill="rgba(245,158,11,0.06)" stroke="rgba(245,158,11,0.15)" stroke-width="1"/>
-          <text x="366" y="42" text-anchor="middle" fill="#f59e0b" font-family="Outfit,sans-serif" font-weight="700" font-size="12">Profile + Policy</text>
-          <text x="366" y="62" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono,monospace" font-size="8">Decision out</text>
-          <text x="443" y="52" text-anchor="middle" fill="#4a4f6a" font-family="JetBrains Mono,monospace" font-size="18">→</text>
-          <rect x="459" y="18" width="120" height="58" rx="10" fill="rgba(245,158,11,0.06)" stroke="rgba(245,158,11,0.15)" stroke-width="1"/>
-          <text x="519" y="42" text-anchor="middle" fill="#f59e0b" font-family="Outfit,sans-serif" font-weight="700" font-size="12">Appeals</text>
-          <text x="519" y="62" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono,monospace" font-size="8">Challenge + correct</text>
-          <text x="596" y="52" text-anchor="middle" fill="#4a4f6a" font-family="JetBrains Mono,monospace" font-size="18">→</text>
-          <rect x="612" y="18" width="85" height="58" rx="10" fill="rgba(245,158,11,0.04)" stroke="rgba(245,158,11,0.1)" stroke-width="1"/>
-          <text x="654" y="42" text-anchor="middle" fill="#7a809a" font-family="Outfit,sans-serif" font-weight="700" font-size="12">Anchor</text>
-          <text x="654" y="62" text-anchor="middle" fill="#7a809a" font-family="JetBrains Mono,monospace" font-size="8">On-chain proof</text>
-        </svg>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- HOW IT WORKS -->
-<section id="how">
-  <div style="max-width:820px;margin:0 auto">
-    <div class="reveal">
-      <div class="st">// How It Works</div>
-      <div class="sh">Receipts, Not Reviews</div>
-      <div style="font-size:16px;color:var(--t2);line-height:1.8;margin-top:6px;max-width:700px">
-        Traditional review systems are easy to game, hard to port, and rarely challengeable. EMILIA is different. The <strong style="color:var(--t1)">buying agent</strong> submits a receipt about the seller — and then uses that same trust profile to decide where to transact next. <strong style="color:var(--t1)">You rate what you eat. Lie, and you eat bad food again.</strong> The submitter and the consumer of trust data are the same entity. This creates natural incentive alignment that traditional review systems lack.
-      </div>
-    </div>
-    <div class="steps">
-      <div class="step reveal">
-        <div class="step-num">1</div>
-        <div class="step-name">Entity Registers</div>
-        <div class="step-desc">Agents, merchants, and service providers register on the protocol. Each gets a permanent entity ID and API key. Registration takes one API call.</div>
-      </div>
-      <div class="step reveal">
-        <div class="step-num">2</div>
-        <div class="step-name">Transactions Happen</div>
-        <div class="step-desc">Commerce flows through existing protocols — UCP, ACP, A2A, MCP. EP doesn't mediate the transaction. It evaluates whether the counterparty should be trusted <em>next time</em>.</div>
-      </div>
-      <div class="step reveal">
-        <div class="step-num">3</div>
-        <div class="step-name">Receipts Are Submitted</div>
-        <div class="step-desc">The buying agent submits a receipt: transaction_ref, behavioral outcome (completed/retried/abandoned/disputed), optional context keys, and structured claims. Four-factor weighting: submitter credibility × time decay × graph health × provenance tier.</div>
-      </div>
-      <div class="step reveal">
-        <div class="step-num">4</div>
-        <div class="step-name">Trust Recomputes</div>
-        <div class="step-desc">The trust profile recomputes from rolling receipts. Behavioral-first weights with effective-evidence dampening. Fully auditable. No one can buy their trust — unestablished submitters carry only 0.1× weight.</div>
-      </div>
-    </div>
-
-    <!-- THREE PHASES -->
-    <div class="reveal" style="margin-top:64px;text-align:center">
-      <div class="st">// The Three Phases of Truth</div>
-      <div class="sh" style="font-size:clamp(22px,3vw,34px)">From Self-Reported to <span style="color:var(--cyan)">Protocol-Observed</span></div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:28px">
-      <div class="prob-card reveal" style="border-color:rgba(52,211,153,.2)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-          <span style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--green)">PHASE 1</span>
-          <span class="phase-pill phase-live">LIVE</span>
+      <div class="binding-item">
+        <span class="binding-num">03</span>
+        <div class="binding-content">
+          <h3>Exact action context</h3>
+          <p>The precise operation, target, parameters, and environmental conditions.</p>
         </div>
-        <h3 style="color:var(--green)">Behavioral Truth</h3>
-        <p style="font-size:13px">Agents submit receipts with behavioral outcomes as the primary signal (40% weight). Did they come back? Switch? Abandon? Four-factor receipt weighting resists Sybil attacks from day one.</p>
       </div>
-      <div class="prob-card reveal" style="border-color:rgba(96,165,250,.2)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-          <span style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan)">PHASE 2</span>
-          <span class="phase-pill phase-dev">IN DEV</span>
+      <div class="binding-item">
+        <span class="binding-num">04</span>
+        <div class="binding-content">
+          <h3>Policy version and hash</h3>
+          <p>Immutable reference to the exact policy version that authorized this action.</p>
         </div>
-        <h3 style="color:var(--cyan)">Evidence-Backed Truth</h3>
-        <p style="font-size:13px">Agents submit structured claims with evidence. "Delivered 3 days late" + tracking ID. "Price overcharged 5%" + payment ref. Conflicting claims enter disputed state — dispute rate becomes a signal.</p>
       </div>
-      <div class="prob-card reveal" style="border-color:rgba(245,158,11,.2)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-          <span style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--gold)">PHASE 3</span>
-          <span class="phase-pill phase-road">ROADMAP</span>
+      <div class="binding-item">
+        <span class="binding-num">05</span>
+        <div class="binding-content">
+          <h3>Nonce and expiry</h3>
+          <p>One-time cryptographic nonce and strict temporal bounds on authorization.</p>
         </div>
-        <h3 style="color:var(--gold)">Protocol-Observed Truth</h3>
-        <p style="font-size:13px">EP listens to MCP/A2A/UCP protocol events and auto-generates receipts. Decentralized verification oracles (with their own EP trust profiles) confirm claims against carrier APIs. Commitment proofs for privacy.</p>
       </div>
-    </div>
-  </div>
-</section>
-
-<!-- TRUST ENGINE -->
-<section id="algorithm" style="padding-top:0">
-  <div style="max-width:980px;margin:0 auto">
-    <div class="tc reveal">
-      <div class="st">// The Trust Engine</div>
-      <div class="sh">Behavioral-First. Evidence-Weighted.</div>
-      <div class="sd" style="margin:0 auto">EP doesn't ask "how did you feel?" It asks "what did you do next?" Behavioral signals — did the agent come back, switch, or abandon? — are the strongest Phase 1 truth because they're harder to fake and directly aligned with routing outcomes.</div>
-    </div>
-    <div class="algo-grid reveal">
-      <div class="algo-item"><div class="algo-w">40%</div><div class="algo-n">Behavioral Outcome</div><div class="algo-d">Completed, retried, switched, abandoned, or disputed — observable action, not opinion</div></div>
-      <div class="algo-item"><div class="algo-w">25%</div><div class="algo-n">Consistency</div><div class="algo-d">Low variance over time — mathematical, not self-reported</div></div>
-      <div class="algo-item"><div class="algo-w">12%</div><div class="algo-n">Delivery Accuracy</div><div class="algo-d">Promised vs actual arrival — verifiable signal</div></div>
-      <div class="algo-item"><div class="algo-w">10%</div><div class="algo-n">Product Accuracy</div><div class="algo-d">Listing matched reality</div></div>
-      <div class="algo-item"><div class="algo-w">8%</div><div class="algo-n">Price Integrity</div><div class="algo-d">Quoted vs charged amount</div></div>
-      <div class="algo-item"><div class="algo-w">5%</div><div class="algo-n">Return Processing</div><div class="algo-d">Policy honored on time</div></div>
-    </div>
-
-    <div class="reveal" style="margin-top:32px;max-width:780px;margin-left:auto;margin-right:auto">
-      <div class="prob-card" style="border-color:rgba(96,165,250,.15)">
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);margin-bottom:14px">FOUR-FACTOR RECEIPT WEIGHTING</div>
-        <div style="font-family:var(--mono);font-size:12px;color:var(--t1);background:rgba(0,0,0,.4);padding:14px 16px;border-radius:8px;margin-bottom:14px">receipt_weight = submitter_credibility × time_decay × graph_health × provenance_tier</div>
-        <div style="display:grid;grid-template-columns:auto 1fr;gap:8px 16px;font-family:var(--mono);font-size:11px">
-          <span style="color:var(--cyan)">Submitter</span><span style="color:var(--t2)">Established entity with high trust credibility → full weight. Unestablished = 0.1× regardless of self-asserted quality.</span>
-          <span style="color:var(--green)">Time decay</span><span style="color:var(--t2)">90-day half-life. Recent receipts matter more. Bad history fades. Recovery is rewarded.</span>
-          <span style="color:var(--amber)">Graph health</span><span style="color:var(--t2)">Closed loops = 0.4×. Thin graphs = 0.5×. Cluster collusion = 0.1× and blocked.</span>
-          <span style="color:var(--purple)">Provenance</span><span style="color:var(--t2)">6 tiers (0.3× to 1.0×). Bilateral attestations earn higher weight.</span>
+      <div class="binding-item">
+        <span class="binding-num">06</span>
+        <div class="binding-content">
+          <h3>One-time consumption</h3>
+          <p>Each ceremony token is consumed on use -- no replay, no reuse, no ambiguity.</p>
+        </div>
+      </div>
+      <div class="binding-item">
+        <span class="binding-num">07</span>
+        <div class="binding-content">
+          <h3>Immutable event traceability</h3>
+          <p>Append-only audit trail linking every authorization to its outcome.</p>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- WHAT MAKES EP DIFFERENT -->
-<section id="different">
-  <div class="container-md">
-    <div class="tc reveal">
-      <div class="st">// Protocol Depth</div>
-      <div class="sh">What makes EP different</div>
-      <div class="sd" style="margin:0 auto">EP is not a review widget. It is a trust evaluation engine with four independent evaluation axes — each producing a separate signal that agents can query independently or combine.</div>
+<div class="divider"></div>
+
+<!-- ACCOUNTABLE SIGNOFF -->
+<section>
+  <div class="container fade-in">
+    <div class="eyebrow">HUMAN ACCOUNTABILITY</div>
+    <h2 class="section-title">When policy requires human ownership</h2>
+    <p class="section-desc">EP can require a named responsible human to explicitly assume responsibility for the exact action before execution. The signoff is cryptographically bound to the action context, the policy, and the signer's identity.</p>
+    <div class="signoff-methods">
+      <span class="method-tag">Passkey</span>
+      <span class="method-tag">Secure App</span>
+      <span class="method-tag">Platform Authenticator</span>
+      <span class="method-tag">Dual Signoff</span>
     </div>
-    <div class="reveal" style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:40px">
-
-      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;overflow:hidden">
-        <div style="padding:20px 24px;border-bottom:1px solid var(--brd)">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;margin-bottom:8px">Trust Profiles</div>
-          <div style="font-weight:700;font-size:15px;color:var(--t1)">Behavioral trust across 10 surfaces</div>
-          <div style="font-size:13px;color:var(--t2);margin-top:6px">Not a rating — a multi-dimensional behavioral profile updated in real time from receipts. Separate scores per category, geo, and value range.</div>
-        </div>
-        <div style="padding:16px 24px;background:var(--bg-code);font-family:var(--mono);font-size:11px;line-height:1.9">
-          <div style="color:var(--t3)">POST /api/trust/evaluate</div>
-          <div style="color:var(--t3)">{ "entity_id": "ent_abc", "context": { "category": "electronics", "value_usd": 4800 } }</div>
-          <div style="margin-top:8px;color:var(--green)">→ confidence: "EMERGING", behavioral_score: 0.84</div>
-          <div style="color:var(--t3)">   category_score: 0.91, value_tier: "high", geo: "US"</div>
-          <div style="color:var(--t3)">   anomaly_flags: [], effective_evidence: 14.2</div>
-        </div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;overflow:hidden">
-        <div style="padding:20px 24px;border-bottom:1px solid var(--brd)">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--amber);text-transform:uppercase;margin-bottom:8px">Install Preflight</div>
-          <div style="font-weight:700;font-size:15px;color:var(--t1)">Safe-to-install decision before execution</div>
-          <div style="font-size:13px;color:var(--t2);margin-top:6px">Enforce trust before connection, approval, payment change, delegated action, or tool execution. Policy, authority, action context, and event traceability in one flow.</div>
-        </div>
-        <div style="padding:16px 24px;background:var(--bg-code);font-family:var(--mono);font-size:11px;line-height:1.9">
-          <div style="color:var(--t3)">POST /api/trust/install-preflight</div>
-          <div style="color:var(--t3)">{ "target_type": "mcp_server", "identifier": "github:acme/payments-mcp" }</div>
-          <div style="margin-top:8px;color:var(--green)">→ decision: "allow", risk_level: "low"</div>
-          <div style="color:var(--t3)">   publisher_verified: true, permission_class: "read_only"</div>
-          <div style="color:var(--amber)">   warnings: ["new_publisher_30d"]</div>
-        </div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;overflow:hidden">
-        <div style="padding:20px 24px;border-bottom:1px solid var(--brd)">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:8px">Policy Evaluation</div>
-          <div style="font-weight:700;font-size:15px;color:var(--t1)">Custom trust thresholds per context</div>
-          <div style="font-size:13px;color:var(--t2);margin-top:6px">Define policies that encode your risk tolerance. EP evaluates trust against the policy and returns allow/deny/review — the agent doesn't need to understand trust math.</div>
-        </div>
-        <div style="padding:16px 24px;background:var(--bg-code);font-family:var(--mono);font-size:11px;line-height:1.9">
-          <div style="color:var(--t3)">POST /api/policies/evaluate</div>
-          <div style="color:var(--t3)">{ "policy_id": "pol_highval_electronics", "entity_id": "ent_abc",</div>
-          <div style="color:var(--t3)">  "context": { "value_usd": 4800, "category": "electronics" } }</div>
-          <div style="margin-top:8px;color:var(--green)">→ decision: "allow"</div>
-          <div style="color:var(--t3)">   matched_rule: "high_confidence_high_value_ok"</div>
-          <div style="color:var(--t3)">   evaluated_at: "2026-03-15T14:22:00Z"</div>
-        </div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;overflow:hidden">
-        <div style="padding:20px 24px;border-bottom:1px solid var(--brd)">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin-bottom:8px">Anomaly Detection</div>
-          <div style="font-weight:700;font-size:15px;color:var(--t1)">Behavioral change signals in real time</div>
-          <div style="font-size:13px;color:var(--t2);margin-top:6px">EP tracks behavioral patterns over time. When an entity suddenly changes return rate, category mix, or dispute frequency, an anomaly flag is raised — even if raw score looks fine.</div>
-        </div>
-        <div style="padding:16px 24px;background:var(--bg-code);font-family:var(--mono);font-size:11px;line-height:1.9">
-          <div style="color:var(--t3)">GET /api/entities/ent_abc/anomalies</div>
-          <div style="margin-top:8px;color:var(--red)">→ flags: ["return_rate_spike_7d", "new_category_high_value"]</div>
-          <div style="color:var(--t3)">   baseline_return_rate: 0.04</div>
-          <div style="color:var(--t3)">   current_return_rate: 0.31</div>
-          <div style="color:var(--amber)">   recommendation: "hold_pending_review"</div>
-        </div>
-      </div>
-
+    <div style="margin-top:28px">
+      <a href="/product/accountable-signoff" class="card-link">See Accountable Signoff &#8594;</a>
     </div>
   </div>
 </section>
 
-<!-- NEW PRIMITIVES -->
-<section id="primitives" style="padding-top:0">
-  <div class="container-md">
-    <div class="tc reveal">
-      <div class="st">// New Primitives — Live</div>
-      <div class="sh">What shipped in EP Core v1.1</div>
-      <div class="sd" style="margin:0 auto">These are not roadmap items. They are live in the protocol today — queryable via the MCP server and REST API.</div>
-    </div>
-    <div class="reveal" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:40px">
+<div class="divider"></div>
 
-      <div style="background:var(--bg-card);border:1px solid rgba(52,211,153,0.2);border-radius:14px;padding:24px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--green);text-transform:uppercase">Commitment Proofs</div>
-          <span class="phase-pill phase-live">Live</span>
-        </div>
-        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Prove trust threshold without revealing counterparties</div>
-        <div style="font-size:13px;color:var(--t2);line-height:1.7">An entity can prove it meets a regulated trust threshold — without disclosing who vouched for it or what transactions built its profile. Critical for regulated counterparties in finance, healthcare, and government.</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--green);margin-top:12px">ep_generate_zk_proof · ep_verify_zk_proof</div>
+<!-- PRODUCT LAYERS -->
+<section>
+  <div class="container fade-in">
+    <div class="eyebrow">FROM PROTOCOL TO PRODUCT</div>
+    <h2 class="section-title">Deployment options at every layer</h2>
+    <div class="layers-list">
+      <div class="layer-item">
+        <span class="layer-badge">OPEN</span>
+        <span class="layer-name">Open Protocol</span>
+        <span class="layer-desc">Apache 2.0 licensed specification. Read, implement, extend.</span>
       </div>
-
-      <div style="background:var(--bg-card);border:1px solid rgba(52,211,153,0.2);border-radius:14px;padding:24px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--green);text-transform:uppercase">Auto-Receipt Generation</div>
-          <span class="phase-pill phase-live">Live</span>
-        </div>
-        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Passive behavioral data from every MCP tool call</div>
-        <div style="font-size:13px;color:var(--t2);line-height:1.7">EP intercepts MCP tool call events and auto-generates behavioral receipts without agent-side code. Every tool invocation becomes evidence — no explicit submission required from the developer.</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--green);margin-top:12px">ep_configure_auto_receipt</div>
+      <div class="layer-item">
+        <span class="layer-badge">OPEN</span>
+        <span class="layer-name">Open Runtime</span>
+        <span class="layer-desc">Self-hosted reference implementation for on-premise deployment.</span>
       </div>
-
-      <div style="background:var(--bg-card);border:1px solid rgba(52,211,153,0.2);border-radius:14px;padding:24px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--green);text-transform:uppercase">Trust-Graph Dispute Adjudication</div>
-          <span class="phase-pill phase-live">Live</span>
-        </div>
-        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Disputes resolved by voucher network, not platform operators</div>
-        <div style="font-size:13px;color:var(--t2);line-height:1.7">When two parties dispute a receipt, the resolution is weighted by the trust-graph positions of their vouchers — not by a single centralized operator. Adversarial-resistant by design.</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--green);margin-top:12px">ep_dispute_file · ep_appeal_dispute</div>
+      <div class="layer-item">
+        <span class="layer-badge">MANAGED</span>
+        <span class="layer-name">EP Cloud</span>
+        <span class="layer-desc">Managed control plane with observability, analytics, and policy management.</span>
       </div>
-
-      <div style="background:var(--bg-card);border:1px solid rgba(52,211,153,0.2);border-radius:14px;padding:24px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--green);text-transform:uppercase">Delegation Judgment Score</div>
-          <span class="phase-pill phase-live">Live</span>
-        </div>
-        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Human trust scores for AI delegation quality</div>
-        <div style="font-size:13px;color:var(--t2);line-height:1.7">When a human delegates to an agent, the agent's subsequent behavior is scored for delegation faithfulness — did it stay in scope, honor constraints, and return clean attribution? Humans can see how well agents represent them.</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--green);margin-top:12px">ep_delegation_judgment · ep_verify_delegation</div>
+      <div class="layer-item">
+        <span class="layer-badge">PRIVATE</span>
+        <span class="layer-name">EP Enterprise</span>
+        <span class="layer-desc">Private deployment with dedicated infrastructure, SLAs, and compliance controls.</span>
       </div>
-
-      <div style="background:var(--bg-card);border:1px solid rgba(52,211,153,0.2);border-radius:14px;padding:24px;grid-column:1/-1">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--green);text-transform:uppercase">Attribution Chain</div>
-          <span class="phase-pill phase-live">Live</span>
-        </div>
-        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Principal → Agent → Tool — verifiable accountability at every hop</div>
-        <div style="font-size:13px;color:var(--t2);line-height:1.7;max-width:700px">Every action an agent takes is cryptographically attributed back to the principal who delegated it. When something goes wrong, EP can answer: who authorized this? At what scope? Which tool was invoked? The full chain is auditable without requiring trust in any single party.</div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--green);margin-top:12px">ep_lineage · ep_principal_lookup · ep_verify_delegation</div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- VERIFY / BLOCKCHAIN -->
-<section id="verify" style="padding-top:0">
-  <div class="container-md">
-    <div class="tc reveal">
-      <div class="st">// Auditability</div>
-      <div class="sh">Verify any trust record, independently</div>
-      <div class="sd" style="margin:0 auto">Every receipt is part of an immutable SHA-256 chain, Merkle-anchored to Base L2. No trust required — any skeptic can verify the chain independently with just the anchor hash.</div>
-    </div>
-    <div class="reveal" style="margin-top:40px">
-      <div style="display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap">
-
-        <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:12px;padding:20px 24px;text-align:center;min-width:160px">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;margin-bottom:8px">Receipt</div>
-          <div style="font-family:var(--mono);font-size:11px;color:var(--cyan)">rcpt_a1b2c3</div>
-          <div style="font-size:12px;color:var(--t3);margin-top:6px">SHA-256 hash of<br>all receipt fields</div>
-        </div>
-
-        <div style="padding:0 8px;font-family:var(--mono);font-size:18px;color:var(--t3)">→</div>
-
-        <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:12px;padding:20px 24px;text-align:center;min-width:160px">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;margin-bottom:8px">Linked Chain</div>
-          <div style="font-family:var(--mono);font-size:11px;color:var(--cyan)">prev_hash + record</div>
-          <div style="font-size:12px;color:var(--t3);margin-top:6px">Each entry references<br>the previous hash</div>
-        </div>
-
-        <div style="padding:0 8px;font-family:var(--mono);font-size:18px;color:var(--t3)">→</div>
-
-        <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:12px;padding:20px 24px;text-align:center;min-width:160px">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;margin-bottom:8px">Merkle Root</div>
-          <div style="font-family:var(--mono);font-size:11px;color:var(--amber)">0x4f2a...e91c</div>
-          <div style="font-size:12px;color:var(--t3);margin-top:6px">Daily batch of<br>all receipts</div>
-        </div>
-
-        <div style="padding:0 8px;font-family:var(--mono);font-size:18px;color:var(--t3)">→</div>
-
-        <div style="background:var(--bg-card);border:1px solid rgba(96,165,250,0.3);border-radius:12px;padding:20px 24px;text-align:center;min-width:160px">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;margin-bottom:8px">Base L2</div>
-          <div style="font-family:var(--mono);font-size:11px;color:var(--cyan)">On-chain anchor</div>
-          <div style="font-size:12px;color:var(--t3);margin-top:6px">Immutable. Publicly<br>verifiable. No tokens.</div>
-        </div>
-
-      </div>
-
-      <div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
-        <div style="padding:16px 20px;background:var(--bg-card);border:1px solid var(--brd);border-radius:10px">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;margin-bottom:8px">Verify a receipt</div>
-          <div style="font-family:var(--mono);font-size:11px;color:var(--t2)">GET /api/audit/verify<br>?receipt_id=rcpt_abc</div>
-          <div style="font-size:12px;color:var(--t3);margin-top:8px">Returns the chain proof — anyone can verify without querying EP's servers.</div>
-        </div>
-        <div style="padding:16px 20px;background:var(--bg-card);border:1px solid var(--brd);border-radius:10px">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;margin-bottom:8px">No tokens needed</div>
-          <div style="font-family:var(--mono);font-size:11px;color:var(--t2)">Base L2 read-only<br>wallet not required</div>
-          <div style="font-size:12px;color:var(--t3);margin-top:8px">Anchoring uses Base purely for immutability. No DeFi, no gas fees for API users.</div>
-        </div>
-        <div style="padding:16px 20px;background:var(--bg-card);border:1px solid var(--brd);border-radius:10px">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);text-transform:uppercase;margin-bottom:8px">Tamper-evident</div>
-          <div style="font-family:var(--mono);font-size:11px;color:var(--t2)">Any modification<br>breaks the chain</div>
-          <div style="font-size:12px;color:var(--t3);margin-top:8px">The anchor hash is the ground truth. EP's database is checked against it on every audit request.</div>
-        </div>
+      <div class="layer-item">
+        <span class="layer-badge">VERTICAL</span>
+        <span class="layer-name">Vertical Packs</span>
+        <span class="layer-desc">Pre-built policy templates for government, financial services, and agent governance.</span>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ARCHITECTURE -->
-<section id="architecture" style="padding-top:0">
-  <div class="container-md">
-    <div class="tc reveal">
-      <div class="st">// System Design</div>
-      <div class="sh">Six-layer architecture</div>
-      <div class="sd" style="margin:0 auto">EP is not a monolith. Each layer has a single responsibility and can be replaced independently. The protocol is the interface — the implementation is open source.</div>
+<!-- CTA STRIP -->
+<div class="cta-strip fade-in">
+  <div class="container">
+    <h2>Enforce trust before high-risk action</h2>
+    <div class="hero-ctas">
+      <a href="/protocol" class="btn-gold-outline">Read the Protocol</a>
+      <a href="/use-cases" class="btn-ghost">Explore Use Cases</a>
+      <a href="/apply" class="btn-gold-solid">Request Pilot</a>
     </div>
-    <div class="reveal" style="margin-top:40px;display:flex;flex-direction:column;gap:0;border:1px solid var(--brd);border-radius:14px;overflow:hidden">
-
-      <div style="display:grid;grid-template-columns:160px 1fr;border-bottom:1px solid var(--brd)">
-        <div style="padding:20px 24px;background:rgba(96,165,250,0.06);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;margin-bottom:4px">Layer 1</div>
-          <div style="font-weight:700;font-size:14px;color:var(--t1)">Consumption</div>
-        </div>
-        <div style="padding:20px 24px">
-          <div style="font-size:13px;color:var(--t2);margin-bottom:8px">How trust is consumed. MCP server (29 tools) for agents, REST API for services, SDK for direct integration. All consumption surfaces return the same trust profile schema.</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-family:var(--mono);font-size:10px;color:var(--cyan);background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);padding:3px 8px;border-radius:4px">MCP (29 tools)</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">REST API</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">TypeScript SDK (source)</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Python SDK (source)</span></div>
-        </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:160px 1fr;border-bottom:1px solid var(--brd)">
-        <div style="padding:20px 24px;background:rgba(167,139,250,0.06);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--purple);text-transform:uppercase;margin-bottom:4px">Layer 2</div>
-          <div style="font-weight:700;font-size:14px;color:var(--t1)">Trust Engine</div>
-        </div>
-        <div style="padding:20px 24px">
-          <div style="font-size:13px;color:var(--t2);margin-bottom:8px">Policy evaluation, context resolution, and trust profile assembly. Takes a query (entity + context) and returns a fully evaluated trust decision against registered policies.</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-family:var(--mono);font-size:10px;color:var(--purple);background:rgba(167,139,250,0.08);border:1px solid rgba(167,139,250,0.2);padding:3px 8px;border-radius:4px">Policy Evaluation</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Context Resolution</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Install Preflight</span></div>
-        </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:160px 1fr;border-bottom:1px solid var(--brd)">
-        <div style="padding:20px 24px;background:rgba(245,158,11,0.06);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--amber);text-transform:uppercase;margin-bottom:4px">Layer 3</div>
-          <div style="font-weight:700;font-size:14px;color:var(--t1)">Scoring</div>
-        </div>
-        <div style="padding:20px 24px">
-          <div style="font-size:13px;color:var(--t2);margin-bottom:8px">Weighted receipt aggregation, behavioral scoring across 10 dimensions, effective evidence calculation, confidence level assignment. Runs on every new receipt and every dispute resolution.</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-family:var(--mono);font-size:10px;color:var(--amber);background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);padding:3px 8px;border-radius:4px">4-Factor Weighting</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">10 Dimensions</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Effective Evidence</span></div>
-        </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:160px 1fr;border-bottom:1px solid var(--brd)">
-        <div style="padding:20px 24px;background:rgba(248,113,113,0.06);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--red);text-transform:uppercase;margin-bottom:4px">Layer 4</div>
-          <div style="font-weight:700;font-size:14px;color:var(--t1)">Fraud</div>
-        </div>
-        <div style="padding:20px 24px">
-          <div style="font-size:13px;color:var(--t2);margin-bottom:8px">Sybil detection, graph analysis, cluster collusion identification, anomaly flagging. Runs asynchronously on the receipt graph and surfaces flags to the trust engine in real time.</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-family:var(--mono);font-size:10px;color:var(--red);background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);padding:3px 8px;border-radius:4px">Sybil Detection</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Graph Analysis</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Anomaly Detection</span></div>
-        </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:160px 1fr;border-bottom:1px solid var(--brd)">
-        <div style="padding:20px 24px;background:rgba(52,211,153,0.06);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--green);text-transform:uppercase;margin-bottom:4px">Layer 5</div>
-          <div style="font-weight:700;font-size:14px;color:var(--t1)">Data</div>
-        </div>
-        <div style="padding:20px 24px">
-          <div style="font-size:13px;color:var(--t2);margin-bottom:8px">Receipt storage, entity registry, dispute lifecycle, operator queue, audit log. Supabase (PostgreSQL) with versioned SQL migrations. The schema is public — any party can verify data structure.</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-family:var(--mono);font-size:10px;color:var(--green);background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.2);padding:3px 8px;border-radius:4px">Supabase / PostgreSQL</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">027 migrations</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Versioned schema</span></div>
-        </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:160px 1fr">
-        <div style="padding:20px 24px;background:rgba(96,165,250,0.04);border-right:1px solid var(--brd);display:flex;flex-direction:column;justify-content:center">
-          <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--cyan);text-transform:uppercase;margin-bottom:4px">Layer 6</div>
-          <div style="font-weight:700;font-size:14px;color:var(--t1)">Anchor</div>
-        </div>
-        <div style="padding:20px 24px">
-          <div style="font-size:13px;color:var(--t2);margin-bottom:8px">Every-6-hour Merkle root computation over all receipts, Base L2 anchoring for tamper-evidence. The anchor job (Vercel cron, `0 */6 * * *`) produces a publicly verifiable proof that trust records have not been modified retroactively.</div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap"><span style="font-family:var(--mono);font-size:10px;color:var(--cyan);background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.2);padding:3px 8px;border-radius:4px">Base L2</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">SHA-256 chain</span><span style="font-family:var(--mono);font-size:10px;color:var(--t3);background:var(--bg-card);border:1px solid var(--brd);padding:3px 8px;border-radius:4px">Merkle anchoring</span></div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- VISUAL DIAGRAMS -->
-<section style="padding-top:0">
-  <div class="container-md">
-    <div class="tc reveal">
-      <div class="st">// Visual Overview</div>
-      <div class="sh">How the pieces fit together</div>
-      <div class="sd" style="margin:0 auto">Click any diagram to enlarge.</div>
-    </div>
-    <div class="reveal" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:32px">
-      <div class="dia-card" onclick="openDia('/assets/trust-evaluation-process.svg','Trust Evaluation Process')">
-        <img src="/assets/trust-evaluation-process.svg" alt="Trust Evaluation Process" loading="lazy">
-        <div class="dia-label">Trust Evaluation Process</div>
-      </div>
-      <div class="dia-card" onclick="openDia('/assets/receipts-and-evidence.svg','Receipts & Evidence')">
-        <img src="/assets/receipts-and-evidence.svg" alt="Receipts & Evidence" loading="lazy">
-        <div class="dia-label">Receipts & Evidence</div>
-      </div>
-      <div class="dia-card" onclick="openDia('/assets/identity-continuity.svg','Identity Continuity')">
-        <img src="/assets/identity-continuity.svg" alt="Identity Continuity" loading="lazy">
-        <div class="dia-label">Identity Continuity</div>
-      </div>
-      <div class="dia-card" onclick="openDia('/assets/layered-trust-system.svg','Layered Trust System')">
-        <img src="/assets/layered-trust-system.svg" alt="Layered Trust System" loading="lazy">
-        <div class="dia-label">Layered Trust System</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- DIAGRAM LIGHTBOX -->
-<div id="dia-lb" onclick="closeDia()" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);cursor:zoom-out;align-items:center;justify-content:center;padding:40px">
-  <div style="position:relative;max-width:900px;width:100%;background:#fff;border-radius:16px;padding:24px;box-shadow:0 32px 64px rgba(0,0,0,0.5)" onclick="event.stopPropagation()">
-    <div id="dia-lb-title" style="font-family:var(--mono);font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#333;margin-bottom:16px;text-align:center"></div>
-    <img id="dia-lb-img" src="" alt="" style="width:100%;height:auto;border-radius:8px">
-    <button onclick="closeDia()" style="position:absolute;top:12px;right:16px;background:none;border:none;font-size:24px;color:#999;cursor:pointer;line-height:1">&times;</button>
   </div>
 </div>
-
-<!-- BACK TO TOP -->
-<button id="btt" onclick="window.scrollTo({top:0,behavior:'smooth'})" aria-label="Back to top">
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
-</button>
-
-<!-- ECOSYSTEM -->
-<section id="ecosystem" style="padding-top:0">
-  <div class="container">
-    <div class="tc reveal">
-      <div class="st">// Integrations</div>
-      <div class="sh">Works where trust decisions happen</div>
-      <div class="sd" style="margin:0 auto">EP produces trust profiles from real ecosystem events, not just API calls. Native adapters for the tools developers already use.</div>
-    </div>
-    <div class="eco-grid reveal">
-      <div class="eco-card">
-        <div class="eco-icon" style="background:rgba(167,139,250,.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
-        <div>
-          <h4>MCP Registry</h4>
-          <p>Evaluate any MCP server before adding it to your agent. Install preflight with publisher verification, permission class analysis, and behavioral history.</p>
-          <span class="eco-status live">Live — 29 MCP tools</span>
-        </div>
-      </div>
-      <div class="eco-card">
-        <div class="eco-icon" style="background:rgba(52,211,153,.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"/></svg></div>
-        <div>
-          <h4>GitHub Apps</h4>
-          <p>Trust profiles for GitHub Apps before install. Publisher identity binding, permission analysis, and revocation signal handling. Adapter source complete.</p>
-          <span class="eco-status beta">Beta — pilot integration</span>
-        </div>
-      </div>
-      <div class="eco-card">
-        <div class="eco-icon" style="background:rgba(245,158,11,.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg></div>
-        <div>
-          <h4>Shopify / Commerce</h4>
-          <p>Automatic receipt generation from Shopify order lifecycle webhooks. Merchant trust profiles updated in real time from every order completion, return, and dispute.</p>
-          <span class="eco-status beta">Beta — pilot merchants</span>
-        </div>
-      </div>
-      <div class="eco-card">
-        <div class="eco-icon" style="background:rgba(245,158,11,.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
-        <div>
-          <h4>npm Packages</h4>
-          <p>Install preflight for npm packages. Publisher identity binding via npm trusted publishing. Package incident events and revocation signals feeding trust profiles.</p>
-          <span class="eco-status soon">Coming Q2 2026</span>
-        </div>
-      </div>
-      <div class="eco-card">
-        <div class="eco-icon" style="background:rgba(96,165,250,.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></div>
-        <div>
-          <h4>Chrome Extensions</h4>
-          <p>Trust evaluation for browser extensions before install. Declared permissions, store review state, warning classes, and uninstall signals feeding behavioral trust.</p>
-          <span class="eco-status plan">Roadmap</span>
-        </div>
-      </div>
-      <div class="eco-card">
-        <div class="eco-icon" style="background:rgba(129,140,248,.1)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
-        <div>
-          <h4>REST API &amp; SDKs</h4>
-          <p>Full REST API with TypeScript and Python SDKs (source-distributed in the repo, npm/PyPI publish pending pilot stage). Any system that can make an HTTP request can submit receipts and query trust profiles — no agent required.</p>
-          <span class="eco-status live">Live — Apache 2.0</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- OPEN VS COMMERCIAL -->
-<section id="open-vs-commercial">
-  <div class="container-md">
-    <div class="tc reveal">
-      <div class="st">// Business Model</div>
-      <div class="sh">Open protocol. Paid control plane.</div>
-      <div class="sd" style="margin:0 auto">The protocol is free and open forever. The hosted infrastructure is where commercial value lives.</div>
-    </div>
-    <div class="reveal" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:40px">
-      <div style="background:var(--bg-card);border:1px solid rgba(52,211,153,0.25);border-radius:16px;padding:32px">
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--green);text-transform:uppercase;margin-bottom:14px">Free &amp; Open (Apache 2.0)</div>
-        <div style="font-weight:700;font-size:18px;color:var(--t1);margin-bottom:12px">The Protocol</div>
-        <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--t2);line-height:1.7">
-          <div>EP Core spec, Trust Decision schema, Trust Receipt schema</div>
-          <div>All scoring algorithms and policy evaluation logic</div>
-          <div>MCP server source (29 tools)</div>
-          <div>TypeScript and Python SDKs</div>
-          <div>Self-hosted deployment (your infra, your data)</div>
-          <div>Appeal and dispute protocol</div>
-          <div>Conformance test suite (670 tests)</div>
-        </div>
-      </div>
-      <div style="background:var(--bg-card);border:1px solid rgba(245,158,11,0.25);border-radius:16px;padding:32px">
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:14px">Paid Control Plane</div>
-        <div style="font-weight:700;font-size:18px;color:var(--t1);margin-bottom:12px">The Hosted Service</div>
-        <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--t2);line-height:1.7">
-          <div>Managed API at emiliaprotocol.ai (free during beta)</div>
-          <div>Enterprise SLAs and uptime guarantees</div>
-          <div>Operator dashboards and adjudication queue</div>
-          <div>Custom policy management and configuration</div>
-          <div>Platform integration adapters (Shopify, GitHub, npm)</div>
-          <div>Advanced analytics and trust reporting</div>
-          <div>Dedicated support and onboarding</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- FAQ -->
-<section id="faq">
-  <div class="container-md">
-    <div class="tc reveal">
-      <div class="st">// Questions</div>
-      <div class="sh">Frequently Asked</div>
-    </div>
-    <div style="margin-top:40px" class="reveal">
-
-      <div class="faq-item" onclick="toggleFaq(this)">
-        <div class="faq-q">How is EP different from Trustpilot, Yelp, or Amazon ratings?</div>
-        <div class="faq-a">EP is structurally different in three ways: <strong>the rater has skin in the game</strong> (the buying agent uses the same trust profiles it submits), <strong>the algorithm is fully published</strong> (any skeptic can verify the weights), and <strong>every decision is appealable</strong> (trust can never be more powerful than appeal). Trustpilot and Yelp are reviewer-controlled, platform-profiting, and opaque. EP is behavioral, auditable, and constitutionally bounded.</div>
-      </div>
-      <div class="faq-item" onclick="toggleFaq(this)">
-        <div class="faq-q">Is EP a blockchain project? Do I need tokens or a wallet?</div>
-        <div class="faq-a">No tokens, no wallet, no DeFi. EP uses blockchain anchoring (Base L2 Merkle roots) purely for <strong>auditability</strong> — so anyone can verify that a trust record hasn't been tampered with. The protocol itself is a REST API and MCP server. No crypto knowledge required.</div>
-      </div>
-      <div class="faq-item" onclick="toggleFaq(this)">
-        <div class="faq-q">Can someone game the trust system by submitting fake receipts?</div>
-        <div class="faq-a">EP has four layers of Sybil resistance: <strong>(1) Submitter credibility</strong> — unestablished entities carry only 0.1× weight regardless of what they claim. <strong>(2) Graph health</strong> — closed-loop submitter networks are detected and penalized (0.4×). <strong>(3) Cluster collusion</strong> — coordinated artificial inflation reduces weight to 0.1× and triggers block. <strong>(4) Effective-evidence dampening</strong> — volume of receipts doesn't matter, only the credibility-weighted evidence does. The system is designed so that faking trust at scale is more expensive than earning it honestly.</div>
-      </div>
-      <div class="faq-item" onclick="toggleFaq(this)">
-        <div class="faq-q">What happens when a trust profile is wrong about me?</div>
-        <div class="faq-a">You appeal. The <a href="/appeal" style="color:var(--cyan)">appeal page</a> requires no account and no login. You can file a report about inaccurate profiles, dispute specific receipts with evidence, and appeal dispute resolutions to a second reviewer. The constitutional principle is: <strong style="color:var(--cyan)">trust must never be more powerful than appeal</strong>. EP is designed so that every negative trust effect is explainable, challengeable, and correctable without erasing history.</div>
-      </div>
-      <div class="faq-item" onclick="toggleFaq(this)">
-        <div class="faq-q">Is EP free? What's the business model?</div>
-        <div class="faq-a">The protocol is <strong>Apache 2.0 open source</strong> — free to use, fork, and implement. The hosted API at emiliaprotocol.ai is free during public beta. Future commercial plans will cover enterprise SLAs, dedicated operator support, and custom policy management. Self-hosting is always free. EP will never charge for the core trust evaluation primitives.</div>
-      </div>
-      <div class="faq-item" onclick="toggleFaq(this)">
-        <div class="faq-q">What's "install preflight" and why do I need it?</div>
-        <div class="faq-a">Install preflight (<code>ep_install_preflight</code> or <code>POST /api/trust/install-preflight</code>) answers: <strong>should I install this plugin/app/package?</strong> It evaluates a software entity against a software-specific trust policy covering: publisher identity verification, permission class analysis (read-only vs. code execution vs. network access), behavioral trust history, and provenance. Returns <code>allow</code>, <code>review</code>, or <code>deny</code> with specific reasons. Use it before any AI agent installs an MCP server, GitHub App, npm package, or browser extension.</div>
-      </div>
-      <div class="faq-item" onclick="toggleFaq(this)">
-        <div class="faq-q">What are trust policies? How are they different from scores?</div>
-        <div class="faq-a">A trust score is a number (4.2 stars). A trust policy is a decision framework: <em>"allow if confidence is emerging AND completion rate &gt; 85% AND dispute rate &lt; 5% in the electronics category"</em>. EP ships four built-in policies (<code>strict</code>, <code>standard</code>, <code>permissive</code>, <code>discovery</code>) plus four software policies. You can also pass custom policy logic as JSONB. Policies are context-aware — electronics and apparel can have different requirements. They return a Trust Decision (allow/review/deny) with specific reasons, not just a number.</div>
-      </div>
-      <div class="faq-item" onclick="toggleFaq(this)">
-        <div class="faq-q">How does EP handle identity continuity? What if a merchant re-registers?</div>
-        <div class="faq-a">EP-IX (Identity Continuity Extension) prevents trust whitewashing. Every entity is backed by a <strong>principal</strong> — the enduring actor (person, org, agent system) behind the entity IDs. When an entity re-registers, continuity must be declared and challenged. Predecessors, successors, and continuity decisions are publicly tracked. A bad actor can't cheaply escape their history by creating a new account — EP-IX makes trust portable <em>for good actors</em> while making history persistent <em>for bad ones</em>.</div>
-      </div>
-      <div class="faq-item" onclick="toggleFaq(this)">
-        <div class="faq-q">Can I run my own EP instance? How do I become an operator?</div>
-        <div class="faq-a">Yes — EP is fully self-hostable under Apache 2.0. Run <code>npm install &amp;&amp; npm run dev</code> to start locally. For production, deploy to Vercel or any Node.js host with a Supabase project or compatible PostgREST gateway. To become a dispute resolution <strong>operator</strong> — the humans who review and resolve appeals — see the <a href="/operators" style="color:var(--cyan)">Operators page</a>. Operators are accountable entities with their own EP trust profiles. Their performance (response time, appeal outcomes, error rate) is publicly tracked.</div>
-      </div>
-
-      <div class="faq-item" onclick="toggleFaq(this)">
-        <div class="faq-q">What does EMILIA stand for?</div>
-        <div class="faq-a"><strong>EMILIA</strong> is the public brand name and <strong>EP</strong> is the protocol shorthand. Internally, EMILIA maps to six design pillars: <strong>Evidence</strong>, <strong>Mediation</strong>, <strong>Identity</strong>, <strong>Lineage</strong>, <strong>Invocation</strong>, and <strong>Appeals</strong>.</div>
-      </div>
-      <div class="faq-item" onclick="toggleFaq(this)">
-        <div class="faq-q">How does EP relate to NIST, AAIF, and AI standards?</div>
-        <div class="faq-a">EP is designed to align with emerging AI trust standardization efforts including <strong>NIST</strong> AI safety frameworks and the <strong>AAIF</strong> (Agentic AI Foundation) interoperability agenda. The spec is fully published, Apache 2.0 licensed, and backed by a conformance suite with 670 tests across 28 test files — anyone can implement EP and independently verify conformance.</div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- REGISTER -->
-<section id="register">
-  <div class="container-sm tc">
-    <div class="cta-banner reveal">
-      <div class="st">// Get Started</div>
-      <h2>Register your entity.<br>Start building trust.</h2>
-      <p>Join the protocol. Register an entity, get an API key, and start submitting receipts. It takes one API call — or email us if you want a guided onboarding.</p>
-      <div class="reg-form">
-        <input type="email" class="reg-inp" id="regEmail" placeholder="your@email.com">
-        <button class="reg-go" onclick="submitWaitlist()">Join →</button>
-      </div>
-      <div class="reg-note">Open protocol · Apache 2.0 · No approval required</div>
-      <div class="reg-ok" id="regOk">
-        <div style="font-family:var(--mono);font-size:13px;color:var(--green);display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> You're on the list. We'll reach out with your API key.</div>
-      </div>
-
-      <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:32px">
-        <a href="/quickstart" class="btn-p">Read the Quickstart</a>
-        <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" class="btn-g">View on GitHub</a>
-        <a href="/appeal" class="btn-gold">File an Appeal</a>
-      </div>
-    </div>
-
-    <div class="principle-box reveal" style="margin-top:24px">
-      <p>Constitutional Principle: <em>trust must never be more powerful than appeal.</em></p>
-    </div>
-  </div>
-</section>
-
-<!-- CORRUPTION DEFENSE -->
-<section id="corruption-defense">
-  <div class="container-md">
-    <div class="tc reveal">
-      <div class="st">// Adversarial Resilience</div>
-      <div class="sh">What happens when a bad actor tries to game the system?</div>
-      <div class="sd" style="margin:0 auto">EP was designed assuming adversarial conditions from day one. Here is how the protocol responds to the most common manipulation attempts.</div>
-    </div>
-    <div class="reveal" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:40px">
-
-      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;padding:24px">
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--red);margin-bottom:10px;text-transform:uppercase">Attack</div>
-        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Flood receipts with fake positive reviews</div>
-        <div style="font-size:13px;color:var(--t2);margin-bottom:12px">A Sybil network submits hundreds of receipts attesting high quality for a malicious entity.</div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.15);border-radius:8px;padding:12px">
-          <div style="color:var(--t3);margin-bottom:4px">// Protocol response</div>
-          Submitter credibility weight applied (0.1× for new submitters). Graph health detects closed-loop patterns. Effective evidence dampening ensures fake volume does not create real confidence. Cluster collusion detection flags coordinated networks.
-        </div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;padding:24px">
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--red);margin-bottom:10px;text-transform:uppercase">Attack</div>
-        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">File false reports to damage a competitor</div>
-        <div style="font-size:13px;color:var(--t2);margin-bottom:12px">A bad actor floods the report queue with malicious dispute filings against a legitimate entity.</div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.15);border-radius:8px;padding:12px">
-          <div style="color:var(--t3);margin-bottom:4px">// Protocol response</div>
-          Rate limiting (3/hr per submitter fingerprint). Report credibility weighted by submitter history. Operator review required before any trust change. Dismissed reports lower the submitter's own credibility score.
-        </div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;padding:24px">
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--red);margin-bottom:10px;text-transform:uppercase">Attack</div>
-        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Whitewash identity after trust damage</div>
-        <div style="font-size:13px;color:var(--t2);margin-bottom:12px">An entity with a damaged trust profile re-registers under a new name or entity ID.</div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.15);border-radius:8px;padding:12px">
-          <div style="color:var(--t3);margin-bottom:4px">// Protocol response</div>
-          EP-IX identity lineage tracking links successor entities to predecessors. Host verifier attestations bind canonical identities. Prior receipt graph follows the principal, not just the name.
-        </div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;padding:24px">
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--red);margin-bottom:10px;text-transform:uppercase">Attack</div>
-        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Bribe or coerce an operator decision</div>
-        <div style="font-size:13px;color:var(--t2);margin-bottom:12px">A well-resourced attacker attempts to influence an operator to reverse a legitimate uphold.</div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.15);border-radius:8px;padding:12px">
-          <div style="color:var(--t3);margin-bottom:4px">// Protocol response</div>
-          All operator reasoning is public and permanent. Baseline comparison flags divergence. Governance removal process is peer-triggered, not platform-controlled. No single operator can be the only reviewer.
-        </div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;padding:24px">
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--red);margin-bottom:10px;text-transform:uppercase">Attack</div>
-        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Submit receipts for transactions that never happened</div>
-        <div style="font-size:13px;color:var(--t2);margin-bottom:12px">An entity submits self-generated receipts to bootstrap a fake trust profile with no real interactions.</div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.15);border-radius:8px;padding:12px">
-          <div style="color:var(--t3);margin-bottom:4px">// Protocol response</div>
-          Bilateral receipts require both parties to submit. Provenance tiers weight host-verified receipts (1.0×) over self-asserted (0.4×). Unilateral volume never reaches PROVISIONAL confidence without corroboration.
-        </div>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;padding:24px">
-        <div style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--red);margin-bottom:10px;text-transform:uppercase">Attack</div>
-        <div style="font-weight:700;font-size:15px;color:var(--t1);margin-bottom:8px">Silently alter trust records after anchor</div>
-        <div style="font-size:13px;color:var(--t2);margin-bottom:12px">An attacker gains database access and modifies historical receipts to erase negative history.</div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--green);background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.15);border-radius:8px;padding:12px">
-          <div style="color:var(--t3);margin-bottom:4px">// Protocol response</div>
-          SHA-256 chain links every record to its predecessor. Merkle roots anchored to Base L2 are immutable. Any modification is detectable by anyone with the anchor hash — no trust required.
-        </div>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- CONFIDENCE LEVELS -->
-<section id="confidence">
-  <div class="container-md">
-    <div class="tc reveal">
-      <div class="st">// Evidence Requirements</div>
-      <div class="sh">From zero to confident</div>
-      <div class="sd" style="margin:0 auto">Trust isn't binary. EP tracks five confidence levels based on effective evidence — not raw receipt counts. Fake volume cannot advance an entity past INSUFFICIENT.</div>
-    </div>
-    <div class="reveal" style="margin-top:40px;display:flex;flex-direction:column;gap:0">
-
-      <div style="display:grid;grid-template-columns:140px 1fr 200px;gap:0;border:1px solid var(--brd);border-radius:14px;overflow:hidden">
-        <div style="background:rgba(71,85,105,0.15);padding:14px 20px;border-bottom:1px solid var(--brd);display:flex;align-items:center"><span style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);text-transform:uppercase">Level</span></div>
-        <div style="background:rgba(71,85,105,0.15);padding:14px 20px;border-bottom:1px solid var(--brd);border-left:1px solid var(--brd)"><span style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);text-transform:uppercase">Requirements &amp; Meaning</span></div>
-        <div style="background:rgba(71,85,105,0.15);padding:14px 20px;border-bottom:1px solid var(--brd);border-left:1px solid var(--brd)"><span style="font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--t3);text-transform:uppercase">Agent Behavior</span></div>
-
-        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);display:flex;align-items:center"><span style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--t3)">PENDING</span></div>
-        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);border-left:1px solid var(--brd);font-size:13px;color:var(--t2)">Entity registered but no receipts submitted. Effective evidence = 0.</div>
-        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);border-left:1px solid var(--brd);font-size:12px;color:var(--t3)">Reject or require manual override</div>
-
-        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);display:flex;align-items:center"><span style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--red)">INSUFFICIENT</span></div>
-        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);border-left:1px solid var(--brd);font-size:13px;color:var(--t2)">Receipts exist but effective evidence &lt; 3.0. Volume may be high but submitter credibility and graph health are low.</div>
-        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);border-left:1px solid var(--brd);font-size:12px;color:var(--red)">High-risk: apply conservative policy</div>
-
-        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);display:flex;align-items:center"><span style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--amber)">PROVISIONAL</span></div>
-        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);border-left:1px solid var(--brd);font-size:13px;color:var(--t2)">Effective evidence ≥ 3.0. Some credible receipts exist from independent submitters. Trust is emerging but not yet stable.</div>
-        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);border-left:1px solid var(--brd);font-size:12px;color:var(--amber)">Proceed with value caps or geo limits</div>
-
-        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);display:flex;align-items:center"><span style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--cyan)">EMERGING</span></div>
-        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);border-left:1px solid var(--brd);font-size:13px;color:var(--t2)">Effective evidence ≥ 10.0. Multiple independent submitters, good graph health, consistent behavioral history across receipt types.</div>
-        <div style="padding:16px 20px;border-bottom:1px solid var(--brd);border-left:1px solid var(--brd);font-size:12px;color:var(--cyan)">Proceed with standard policy thresholds</div>
-
-        <div style="padding:16px 20px;display:flex;align-items:center"><span style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--green)">CONFIDENT</span></div>
-        <div style="padding:16px 20px;border-left:1px solid var(--brd);font-size:13px;color:var(--t2)">Effective evidence ≥ 25.0. Deep receipt history, high submitter diversity, strong graph health, no unresolved disputes. Trust is robust across categories.</div>
-        <div style="padding:16px 20px;border-left:1px solid var(--brd);font-size:12px;color:var(--green)">Proceed. Eligible for elevated permissions</div>
-      </div>
-
-      <div style="margin-top:16px;padding:16px 20px;background:var(--bg-card);border:1px solid var(--brd);border-radius:10px;font-family:var(--mono);font-size:12px;color:var(--t3)">
-        <span style="color:var(--amber)">Key insight: </span>effective evidence = Σ(receipt_weight) where receipt_weight = submitter_credibility × time_decay × graph_health × provenance_tier. A single host-verified receipt from a credible submitter counts more than 100 self-asserted receipts from new accounts.
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- EFFECTIVE EVIDENCE -->
-<section id="effective-evidence">
-  <div class="container-md">
-    <div class="tc reveal">
-      <div class="st">// Sybil Resistance</div>
-      <div class="sh">Why lying hurts the liar</div>
-    </div>
-    <div class="reveal" style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:40px">
-
-      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;padding:28px">
-        <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:16px;color:var(--t1)">How effective evidence works</h3>
-        <p style="font-size:14px;color:var(--t2);line-height:1.7;margin-bottom:16px">Raw receipt count is not trust. Each receipt is multiplied by four factors before contributing to confidence:</p>
-        <div style="font-family:var(--mono);font-size:12px;background:var(--bg-code);border:1px solid var(--brd);border-radius:8px;padding:16px;line-height:2">
-          <div><span style="color:var(--cyan)">receipt_weight</span> = </div>
-          <div style="padding-left:16px"><span style="color:var(--t2)">submitter_credibility</span> <span style="color:var(--t3)">// 0.0 – 1.0</span></div>
-          <div style="padding-left:16px">× <span style="color:var(--t2)">time_decay</span> <span style="color:var(--t3)">// recent = higher</span></div>
-          <div style="padding-left:16px">× <span style="color:var(--t2)">graph_health</span> <span style="color:var(--t3)">// closed loops = lower</span></div>
-          <div style="padding-left:16px">× <span style="color:var(--t2)">provenance_tier</span> <span style="color:var(--t3)">// host-verified = 1.0×</span></div>
-        </div>
-        <p style="font-size:13px;color:var(--t2);line-height:1.7;margin-top:16px">A new, unverified submitter with no history starts at 0.1×. Even 1,000 receipts from such submitters only contributes 100 effective evidence units — equivalent to just 4 host-verified receipts.</p>
-      </div>
-
-      <div style="background:var(--bg-card);border:1px solid var(--brd);border-radius:14px;padding:28px">
-        <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:16px;color:var(--t1)">What happens when you attack</h3>
-        <div style="display:flex;flex-direction:column;gap:12px">
-          <div style="padding:14px;background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.15);border-radius:8px">
-            <div style="font-family:var(--mono);font-size:11px;color:var(--red);margin-bottom:6px">SUBMITTING FAKE RECEIPTS</div>
-            <div style="font-size:13px;color:var(--t2)">Each fake receipt from a low-credibility account contributes ~0.04 effective evidence. The attacker spends real infrastructure cost for near-zero trust gain. Graph analysis also flags the pattern, reducing graph_health for the entire cluster.</div>
-          </div>
-          <div style="padding:14px;background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.15);border-radius:8px">
-            <div style="font-family:var(--mono);font-size:11px;color:var(--red);margin-bottom:6px">FILING FALSE REPORTS</div>
-            <div style="font-size:13px;color:var(--t2)">Dismissed reports lower your submitter_credibility. After multiple dismissed reports, your legitimate receipts are down-weighted too — making your own trust profile harder to build.</div>
-          </div>
-          <div style="padding:14px;background:rgba(52,211,153,0.06);border:1px solid rgba(52,211,153,0.15);border-radius:8px">
-            <div style="font-family:var(--mono);font-size:11px;color:var(--green);margin-bottom:6px">THE ASYMMETRY</div>
-            <div style="font-size:13px;color:var(--t2)">Legitimate actors accumulate credibility over time. Attackers burn credibility faster than they can create fake accounts. The cost of a successful attack grows exponentially with each attempt.</div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</section>
 
 <!-- FOOTER -->
 <footer>
-  <div class="fgrid">
-    <div class="fcol-brand">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
-        <svg width="28" height="28" viewBox="0 0 34 34" fill="none"><rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#fg)"/><rect x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#60a5fa"/><rect x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#f59e0b"/><rect x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#60a5fa"/><defs><linearGradient id="fg" x1="8" y1="5" x2="8" y2="29"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient></defs></svg>
-        <span style="font-family:var(--mono);font-weight:700;font-size:14px;letter-spacing:3px">EMILIA</span>
-      </div>
-      <p>The open trust protocol for AI agents, marketplaces, and software. Portable, evidence-based, always appealable.</p>
-      <p style="margin-top:10px;font-family:var(--mono);font-size:11px;color:var(--t3)">Apache 2.0 · EP Core RFC v1.1 · <span id="stat-stars-ft">–</span> GitHub stars</p>
-    </div>
-    <div class="fcol">
-      <h5>Protocol</h5>
-      <a href="/spec">Core Spec (RFC)</a>
-      <a href="/quickstart">Quickstart</a>
-      <a href="#how">How It Works</a>
-      <a href="#algorithm">Trust Engine</a>
-      <a href="/demo.html">Interactive Demo</a>
-    </div>
-    <div class="fcol">
-      <h5>Ecosystem</h5>
-      <a href="#ecosystem">Integrations</a>
-      <a href="/operators">Operators</a>
-      <a href="/appeal">File an Appeal</a>
-      <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank">MCP Server</a>
-      <a href="https://github.com/emiliaprotocol/emilia-protocol/tree/main/sdks" target="_blank">SDKs</a>
-    </div>
-    <div class="fcol">
-      <h5>Project</h5>
-      <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank">GitHub</a>
-      <a href="https://github.com/emiliaprotocol/emilia-protocol/discussions" target="_blank">Discussions</a>
-      <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/GOVERNANCE.md" target="_blank">Governance</a>
-      <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/CONTRIBUTING.md" target="_blank">Contributing</a>
-      <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/SECURITY.md" target="_blank">Security</a>
-      <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/CHANGELOG.md" target="_blank">Changelog</a>
-    </div>
-  </div>
-  <div class="fbot">
-    <div class="fbot-l">© 2026 EMILIA Protocol · Apache 2.0 · Trust must never be more powerful than appeal.</div>
-    <div class="fbot-r">
-      <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank">GitHub</a>
-      <a href="/spec">Spec</a>
-      <a href="/appeal">Appeal</a>
-      <a href="/operators">Operators</a>
-    </div>
+  <div class="footer-brand">EMILIA PROTOCOL &middot; APACHE 2.0</div>
+  <div class="footer-links">
+    <a href="/governance">Governance</a>
+    <a href="/partners">Partners</a>
+    <a href="/investors">Investors</a>
+    <a href="/contact">Contact</a>
   </div>
 </footer>
 
 <script>
-// ===== TICKER =====
-const TICKER_ITEMS = [
-  {dot:'c', text:'<strong>Trust profiles</strong>, not scores'},
-  {dot:'g', text:'<strong>Policies</strong>, not thresholds'},
-  {dot:'gr', text:'<strong>Appeals</strong>, not black boxes'},
-  {dot:'c', text:'<strong>Receipts</strong>, not reviews'},
-  {dot:'p', text:'<strong>Behavioral truth</strong> — you rate what you eat'},
-  {dot:'g', text:'<strong>Sybil resistant</strong> — volume cannot fake trust'},
-  {dot:'gr', text:'<strong>Portable</strong> — works across every platform'},
-  {dot:'c', text:'<strong>Apache 2.0</strong> — open standard, neutral-governance target'},
-  {dot:'a', text:'<strong>Constitutional principle</strong> — trust must never be more powerful than appeal'},
-  {dot:'p', text:'<strong>29 MCP tools</strong> — plug into any agent in 60 seconds'},
-  {dot:'gr', text:'<strong>670 tests / 28 test files</strong> — every claim is verifiable'},
-  {dot:'g', text:'<strong>EP-IX</strong> — identity continuity prevents trust whitewashing'},
-  {dot:'c', text:'<strong>Install preflight</strong> — know before you install'},
-  {dot:'a', text:'<strong>Effective-evidence dampening</strong> — unestablished entities = 0.1× weight'},
-  {dot:'p', text:'<strong>Context-aware</strong> — electronics ≠ apparel ≠ pharmaceuticals'},
-];
-function buildTicker() {
-  const t = document.getElementById('ticker');
-  if (!t) return;
-  const items = [...TICKER_ITEMS, ...TICKER_ITEMS];
-  t.innerHTML = items.map(i => `<div class="ticker-i"><div class="td ${i.dot}"></div>${i.text}</div>`).join('');
-}
-buildTicker();
-
-// Basic HTML escaping for untrusted values inserted into template strings.
-function escapeHtml(str) {
-  if (str == null) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-// ===== GITHUB STARS =====
-async function loadStars() {
-  try {
-    const r = await fetch('https://api.github.com/repos/emiliaprotocol/emilia-protocol');
-    const d = await r.json();
-    const s = d.stargazers_count || 0;
-    const fmt = s >= 1000 ? (s/1000).toFixed(1)+'k' : String(s);
-    document.querySelectorAll('#stat-stars, #stat-stars-ft').forEach(el => { if (el) el.textContent = fmt; });
-  } catch(e) {}
-}
-loadStars();
-
-// ===== DYNAMIC PROOF STATS =====
-async function fetchStats() {
-  try {
-    const r = await fetch('/api/stats');
-    if (!r.ok) return;
-    const d = await r.json();
-    const anim = (id, val) => {
-      const el = document.getElementById(id);
-      if (!el || !val) return;
-      let cur = 0; const step = Math.max(1, Math.floor(val / 30));
-      const iv = setInterval(() => { cur = Math.min(cur + step, val); el.textContent = cur; if (cur >= val) clearInterval(iv); }, 20);
-    };
-    if (d.trust_surfaces) anim('stat-surfaces', d.trust_surfaces);
-    if (d.automated_checks) anim('stat-checks', d.automated_checks);
-    if (d.trust_policies) anim('stat-policies', d.trust_policies);
-    if (d.mcp_tools) anim('stat-tools', d.mcp_tools);
-  } catch {}
-}
-fetchStats();
-
-
-// ===== TAB SWITCHER =====
-function switchTab(tab) {
-  ['profile','preflight','report'].forEach(t => {
-    const panel = document.getElementById('panel-'+t);
-    const btn = document.getElementById('tab-'+t);
-    if (panel) panel.style.display = t === tab ? 'block' : 'none';
-    if (btn) btn.classList.toggle('active', t === tab);
+// Scroll fade-in
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
   });
-}
-
-// ===== TRUST LOOKUP =====
-async function lookupTrust() {
-  const id = document.getElementById('trustInput').value.trim();
-  if (!id) return;
-  const btn = document.getElementById('trustBtn');
-  const res = document.getElementById('trustResult');
-  btn.disabled = true;
-  btn.textContent = 'Loading...';
-  res.innerHTML = '<div class="sempty" style="font-family:var(--mono);font-size:11px;color:var(--t3)">Fetching trust profile...</div>';
-  try {
-    const r = await fetch('/api/trust/profile/' + encodeURIComponent(id));
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error || 'Not found');
-    res.innerHTML = renderProfile(d);
-  } catch(e) {
-    res.innerHTML = `<div class="sempty"><span style="color:var(--red)">${escapeHtml(e.message)}</span></div>`;
-  } finally { btn.disabled = false; btn.textContent = 'View Profile'; }
-}
-
-function renderProfile(d) {
-  const conf = d.current_confidence || 'pending';
-  const VALID_CONF = ['pending','insufficient','provisional','emerging','confident'];
-  const confClass = VALID_CONF.includes(conf) ? conf : 'pending';
-  const p = d.trust_profile || {};
-  const b = p.behavioral || {};
-  const s = p.signals || {};
-  const bars = [
-    {label:'Completion Rate', val:b.completion_rate, color:'#34d399'},
-    {label:'Delivery Accuracy', val:s.delivery_accuracy, color:'#60a5fa'},
-    {label:'Price Integrity', val:s.price_integrity, color:'#f59e0b'},
-    {label:'Consistency', val:typeof p.consistency === 'number' ? p.consistency*100 : null, color:'#a78bfa'},
-  ].filter(b => b.val != null);
-  return `<div class="scard">
-    <div class="scard-head">
-      <div><div class="scard-name">${escapeHtml(d.display_name || d.entity_id)}</div><div class="scard-id">${escapeHtml(d.entity_id)} · ${escapeHtml(d.entity_type || 'entity')}</div></div>
-      <span class="sconf ${confClass}">${conf.toUpperCase()}</span>
-    </div>
-    ${bars.map(b => `<div class="sbwrap"><div class="sbhead"><span>${b.label}</span><span style="color:${b.color}">${Math.round(b.val)}%</span></div><div class="sbar"><div class="sfill" style="width:${Math.min(b.val,100)}%;background:${b.color}"></div></div></div>`).join('')}
-    <div class="smeta">
-      <div class="smeta-i">Receipts: <strong>${d.receipt_count ?? '–'}</strong></div>
-      <div class="smeta-i">Submitters: <strong>${d.unique_submitters ?? '–'}</strong></div>
-      <div class="smeta-i">Evidence: <strong>${d.effective_evidence_current != null ? d.effective_evidence_current.toFixed(2) : '–'}</strong></div>
-      ${d.disputes?.total ? `<div class="smeta-i" style="color:var(--amber)">Disputes: <strong>${d.disputes.total}</strong></div>` : ''}
-    </div>
-    <div style="margin-top:12px"><a href="/entity/${encodeURIComponent(d.entity_id)}" style="font-family:var(--mono);font-size:11px;color:var(--cyan);text-decoration:none">View full profile →</a></div>
-  </div>`;
-}
-
-document.getElementById('trustInput').addEventListener('keydown', e => { if (e.key === 'Enter') lookupTrust(); });
-
-// ===== INSTALL PREFLIGHT =====
-async function runPreflight() {
-  const id = document.getElementById('preflightInput').value.trim();
-  if (!id) return;
-  const res = document.getElementById('preflightResult');
-  res.innerHTML = '<div class="sempty" style="font-family:var(--mono);font-size:11px;color:var(--t3)">Running preflight check...</div>';
-  try {
-    const r = await fetch('/api/trust/install-preflight', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({entity_id:id})
-    });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error || 'Error');
-    const dc = d.decision === 'allow' ? 'var(--green)' : d.decision === 'deny' ? 'var(--red)' : 'var(--amber)';
-    const di = d.decision === 'allow' ? '✓ ALLOW' : d.decision === 'deny' ? '✗ DENY' : '⚠ REVIEW';
-    res.innerHTML = `<div class="scard">
-      <div class="scard-head">
-        <div><div class="scard-name">${escapeHtml(d.display_name || id)}</div><div class="scard-id">${escapeHtml(id)}</div></div>
-        <span class="sconf" style="background:${dc}20;color:${dc};border-color:${dc}40">${di}</span>
-      </div>
-      <div style="font-family:var(--mono);font-size:11px;color:var(--t2);margin-bottom:12px">Policy: ${escapeHtml(d.policy_used)} · Confidence: ${escapeHtml(d.confidence)}</div>
-      ${d.reasons?.length ? `<div>${d.reasons.map(r => `<div style="font-family:var(--mono);font-size:11px;color:var(--t3);margin-bottom:6px">· ${escapeHtml(r)}</div>`).join('')}</div>` : ''}
-    </div>`;
-  } catch(e) {
-    res.innerHTML = `<div class="sempty"><span style="color:var(--red)">${escapeHtml(e.message)}</span></div>`;
-  }
-}
-document.getElementById('preflightInput').addEventListener('keydown', e => { if (e.key === 'Enter') runPreflight(); });
-
-// ===== SUBMIT REPORT =====
-async function submitReport() {
-  const entity = document.getElementById('reportEntity').value.trim();
-  const reason = document.getElementById('reportReason').value;
-  const description = document.getElementById('reportDetails').value.trim();
-  const res = document.getElementById('reportResult');
-  if (!entity || !reason || !description) {
-    res.innerHTML = '<div class="sempty" style="color:var(--amber);font-size:11px;font-family:var(--mono)">Please fill in all fields.</div>';
-    return;
-  }
-  try {
-    const r = await fetch('/api/disputes/report', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({entity_id:entity, report_type:reason, description})
-    });
-    const d = await r.json();
-    if (!r.ok) throw new Error(d.error || 'Error');
-    res.innerHTML = `<div class="scard"><div style="font-family:var(--mono);font-size:12px;color:var(--green)">✓ Report filed: ${escapeHtml(d.report_id || d.dispute_id)}</div><div style="font-family:var(--mono);font-size:11px;color:var(--t3);margin-top:8px">${escapeHtml(d._message || 'Your report has been received and will be reviewed.')}</div></div>`;
-  } catch(e) {
-    res.innerHTML = `<div class="sempty"><span style="color:var(--red)">${escapeHtml(e.message)}</span></div>`;
-  }
-}
-
-// ===== WAITLIST =====
-async function submitWaitlist() {
-  const email = document.getElementById('regEmail').value.trim();
-  if (!email || !email.includes('@')) return;
-  try {
-    await fetch('/api/waitlist', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
-    document.getElementById('regOk').style.display = 'block';
-    document.getElementById('regEmail').value = '';
-  } catch(e) {
-    document.getElementById('regOk').style.display = 'block';
-  }
-}
-document.getElementById('regEmail').addEventListener('keydown', e => { if (e.key === 'Enter') submitWaitlist(); });
-
-// ===== FAQ =====
-function toggleFaq(el) {
-  const wasOpen = el.classList.contains('open');
-  document.querySelectorAll('.faq-item.open').forEach(i => i.classList.remove('open'));
-  if (!wasOpen) el.classList.add('open');
-}
-
-// ===== CODE COPY =====
-function copyCode(btn) {
-  const pre = btn.closest('.code-block').querySelector('pre');
-  const text = pre.textContent;
-  navigator.clipboard.writeText(text).then(() => {
-    btn.textContent = 'Copied!';
-    setTimeout(() => btn.textContent = 'Copy', 2000);
-  }).catch(() => {});
-}
-
-// ===== REVEAL ON SCROLL =====
-const io = new IntersectionObserver(entries => {
-  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } });
-}, { threshold: 0.08 });
-document.querySelectorAll('.reveal').forEach(el => io.observe(el));
-// ===== DIAGRAM LIGHTBOX =====
-function openDia(src, title) {
-  const lb = document.getElementById('dia-lb');
-  document.getElementById('dia-lb-img').src = src;
-  document.getElementById('dia-lb-title').textContent = title;
-  lb.style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-}
-function closeDia() {
-  document.getElementById('dia-lb').style.display = 'none';
-  document.body.style.overflow = '';
-}
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDia(); });
-
-// ===== BACK TO TOP =====
-const btt = document.getElementById('btt');
-window.addEventListener('scroll', () => {
-  btt.classList.toggle('show', window.scrollY > 600);
-}, { passive: true });
-
+}, { threshold: 0.1 });
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
 </script>
 
-<footer style="border-top:1px solid rgba(255,255,255,0.06);padding:40px 40px 32px;display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:11px;letter-spacing:1px;text-transform:uppercase">
-  <span style="color:#4a4f6a">EMILIA PROTOCOL · APACHE 2.0</span>
-  <div style="display:flex;gap:24px">
-    <a href="/governance" style="color:#4a4f6a;text-decoration:none">Governance</a>
-    <a href="/partners" style="color:#4a4f6a;text-decoration:none">Partners</a>
-    <a href="mailto:team@emiliaprotocol.ai" style="color:#4a4f6a;text-decoration:none">Contact</a>
-    <a href="/investors" style="color:#4a4f6a;text-decoration:none">Investor Inquiries</a>
-  </div>
-</footer>
 </body>
 </html>
