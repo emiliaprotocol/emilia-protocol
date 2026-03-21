@@ -122,6 +122,45 @@ export default function EnterpriseUseCasePage() {
         </div>
       </section>
 
+      {/* Concrete risk scenarios */}
+      <section style={{ textAlign: 'center' }}>
+        <div style={{ ...s.section, textAlign: 'left' }}>
+          <h2 style={s.h2}>Where the control gap hurts most</h2>
+          <p style={s.body}>These are the four action surfaces where enterprises have zero action-level trust enforcement today. Each one is a breach vector that existing IAM and RBAC do not cover.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+            {[
+              { title: 'Privileged access changes', body: 'An admin adds a user to a high-privilege group, escalates a role, or grants emergency access. The session is valid. The specific access change has no action-level signoff, no parameter binding, and no replay resistance.' },
+              { title: 'Deployment approvals', body: 'A production deployment proceeds through a CI/CD pipeline. The approval authorizes "a deployment" but does not bind the exact artifact hash, target environment, or configuration snapshot. A staging approval can be replayed against production.' },
+              { title: 'Secrets and credential rotation', body: 'API keys, service account credentials, and database passwords are rotated inside authenticated admin sessions. No existing control binds the rotation action to the exact credential, the exact new value scope, and the exact authorizing principal.' },
+              { title: 'Security policy modifications', body: 'Firewall rules, network ACLs, WAF policies, and endpoint security configurations change inside approved sessions. Post-incident logs show who was logged in. They do not show who authorized the specific policy change or what the exact parameters were.' },
+            ].map((r, i) => (
+              <div key={i} style={s.card}>
+                <div style={s.cardTitle}>{r.title}</div>
+                <div style={s.cardBody}>{r.body}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Why now */}
+      <section style={s.sectionAlt}>
+        <div style={s.section}>
+          <h2 style={s.h2}>Why now</h2>
+          <p style={s.body}>Three forces are converging to make action-level trust enforcement an urgent requirement for enterprise security teams.</p>
+          {[
+            { title: 'Identity compromise is the new perimeter breach', body: 'Attackers do not break through firewalls. They log in with compromised credentials and operate inside authenticated sessions. Session-level controls cannot distinguish a legitimate admin from a threat actor using the same valid session.' },
+            { title: 'Supply chain attacks target the deployment pipeline', body: 'Build systems, CI/CD pipelines, and package registries are attack surfaces. Without action-level binding on deployment approvals, a compromised pipeline can push arbitrary artifacts to production under a valid approval.' },
+            { title: 'Compliance frameworks are moving to action-level evidence', body: 'SOC 2 Type II, ISO 27001:2022, and NIST CSF 2.0 increasingly require evidence of who authorized specific actions, not just who had access. Session-level audit logs are no longer sufficient for examination.' },
+          ].map((w, i) => (
+            <div key={i} style={{ marginBottom: 20 }}>
+              <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: 15, fontWeight: 700, color: '#e8eaf0', marginBottom: 4 }}>{w.title}</div>
+              <div style={{ fontSize: 14, color: '#7a809a', lineHeight: 1.65 }}>{w.body}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* CTA strip */}
       <section style={{ textAlign: 'center' }}>
         <div style={{ ...s.section, maxWidth: 540, paddingTop: 60, paddingBottom: 60 }}>

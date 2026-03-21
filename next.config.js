@@ -21,14 +21,6 @@ const securityHeaders = [
 
 const nextConfig = {
   output: 'standalone',
-  async rewrites() {
-    return [
-      { source: '/', destination: '/landing.html' },
-      { source: '/operators', destination: '/operators.html' },
-      { source: '/apply', destination: '/apply.html' },
-      { source: '/quickstart', destination: '/quickstart.html' },
-    ];
-  },
   async headers() {
     return [
       {

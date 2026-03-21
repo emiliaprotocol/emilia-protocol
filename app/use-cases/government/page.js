@@ -142,14 +142,38 @@ export default function GovernmentUseCasePage() {
         ))}
       </section>
 
+      {/* Best first workflow */}
+      <section style={s.sectionAlt}>
+        <div style={s.section}>
+          <h2 style={s.h2}>Best first workflow</h2>
+          <p style={s.body}>Pick one high-risk action surface and deploy EMILIA in enforcement mode. These are the three most common starting points in government environments.</p>
+          <div style={{ display: 'grid', gap: 16 }}>
+            {[
+              { title: 'Payment destination change', body: 'A benefits recipient or vendor updates their bank account or routing number. EMILIA generates a cryptographic handshake binding the exact new destination, the requesting identity, and the authorizing caseworker before the change commits. If the handshake is not satisfied, the change does not execute.' },
+              { title: 'Benefit redirect', body: 'A disbursement target changes inside an authenticated session. EMILIA requires a named signoff bound to the exact new target, amount, and program. The signoff record is immutable and available to Inspector General auditors in real time.' },
+              { title: 'Operator override', body: 'A caseworker or system operator modifies a record, approves an exception, or escalates privileges. EMILIA enforces action-level accountability: the override does not proceed without a handshake that binds the exact action parameters to the exact operator identity and authority chain.' },
+            ].map((w, i) => (
+              <div key={i} style={s.card}>
+                <div style={s.cardTitle}>{w.title}</div>
+                <div style={s.cardBody}>{w.body}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA strip */}
-      <section style={{ ...s.sectionAlt, textAlign: 'center' }}>
-        <div style={{ ...s.section, maxWidth: 540, paddingTop: 60, paddingBottom: 60 }}>
+      <section style={{ textAlign: 'center' }}>
+        <div style={{ ...s.section, maxWidth: 600, paddingTop: 60, paddingBottom: 60 }}>
           <h2 style={{ ...s.h2, fontSize: 28 }}>Trust before high-risk action in government workflows</h2>
           <p style={s.body}>
             EMILIA is selectively working with government agencies, system integrators, and public-sector technology teams to pilot action-level trust enforcement.
           </p>
-          <a href="#pilot" style={{ ...s.cta, background: '#ffd700', color: '#05060a' }}>Request Pilot</a>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+            <a href="/partners?type=government-pilot" style={{ ...s.cta, background: '#ffd700', color: '#05060a', width: '100%', maxWidth: 380, textAlign: 'center' }}>Request Fraud-Control Pilot</a>
+            <a href="/docs/architecture" style={{ ...s.cta, background: 'transparent', color: '#00d4ff', border: '1px solid rgba(0,212,255,0.3)', width: '100%', maxWidth: 380, textAlign: 'center' }}>See Government Architecture</a>
+            <a href="/docs" style={{ ...s.cta, background: 'transparent', color: '#7a809a', border: '1px solid rgba(255,255,255,0.08)', width: '100%', maxWidth: 380, textAlign: 'center' }}>Download Audit Evidence Model</a>
+          </div>
         </div>
       </section>
 

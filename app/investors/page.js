@@ -132,8 +132,65 @@ export default function InvestorsPage() {
         ))}
       </section>
 
-      {/* Commercial model */}
+      {/* Why this is now a product */}
       <section style={s.sectionAlt}>
+        <div style={s.section}>
+          <h2 style={s.h2}>Why this is now a product, not just a protocol</h2>
+          <p style={s.body}>
+            Open protocols invite forks. EMILIA is built so the product layer is structurally difficult to replicate without the protocol underneath.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 24 }}>
+            <div style={s.card}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#ffd700', marginBottom: 8, textTransform: 'uppercase' }}>Technical Moat</div>
+              <div style={s.cardTitle}>Canonical binding</div>
+              <div style={s.cardBody}>
+                Every trust decision binds actor identity, authority chain, policy version, and exact action context into a single cryptographic envelope. Forks can copy the spec — they cannot replicate the binding depth without reimplementing the full protocol stack.
+              </div>
+            </div>
+            <div style={s.card}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#ffd700', marginBottom: 8, textTransform: 'uppercase' }}>Replay Resistance</div>
+              <div style={s.cardTitle}>One-time consumption</div>
+              <div style={s.cardBody}>
+                Trust handshakes are consumed on use. They cannot be replayed, reused, or forged after the fact. This is not a feature toggle — it is a structural property of the protocol that competing products cannot bolt on.
+              </div>
+            </div>
+            <div style={s.card}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#ffd700', marginBottom: 8, textTransform: 'uppercase' }}>Compliance Layer</div>
+              <div style={s.cardTitle}>Policy-bound decisions</div>
+              <div style={s.cardBody}>
+                Policies are not just rules — they are versioned, hashed, and auditable artifacts. Every action decision references an immutable policy snapshot. Regulators and auditors get a verifiable chain, not a dashboard screenshot.
+              </div>
+            </div>
+            <div style={s.card}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#ffd700', marginBottom: 8, textTransform: 'uppercase' }}>Accountability</div>
+              <div style={s.cardTitle}>Accountable signoff</div>
+              <div style={s.cardBody}>
+                Every high-risk action traces back to a named human principal with a recorded authority chain. This is the ownership layer that turns trust from a signal into a liability instrument. Buyers pay because someone is accountable.
+              </div>
+            </div>
+            <div style={s.card}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#ffd700', marginBottom: 8, textTransform: 'uppercase' }}>Revenue Engine</div>
+              <div style={s.cardTitle}>Cloud control plane</div>
+              <div style={s.cardBody}>
+                The managed service runs policy evaluation, receipt storage, dispute resolution, and audit export as a hosted control plane. This is recurring infrastructure revenue — not consulting, not one-time license fees.
+              </div>
+            </div>
+            <div style={s.card}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#ffd700', marginBottom: 8, textTransform: 'uppercase' }}>Vertical Pricing</div>
+              <div style={s.cardTitle}>Regulated vertical packs</div>
+              <div style={s.cardBody}>
+                Government, financial services, and enterprise compliance teams pay for pre-built policy packs, audit-ready receipt formats, and sector-specific conformance profiles. Vertical pricing captures the compliance premium that horizontal SaaS leaves on the table.
+              </div>
+            </div>
+          </div>
+          <p style={{ fontSize: 15, color: '#7a809a', lineHeight: 1.7 }}>
+            <span style={{ color: '#e8eaf0', fontWeight: 600 }}>The moat is above open source.</span> Competitors can read the spec. They cannot replicate the canonical binding, the consumption model, the policy-versioning chain, or the accountability layer without rebuilding EMILIA from scratch. <span style={{ color: '#e8eaf0', fontWeight: 600 }}>Buyers pay because compliance and liability reduction are existential</span> — not optional. This is not standards work with a business model bolted on. It is a product that requires the protocol to function.
+          </p>
+        </div>
+      </section>
+
+      {/* Commercial model */}
+      <section style={{ background: '#05060a' }}>
         <div style={s.section}>
           <h2 style={s.h2}>Commercial model</h2>
           <p style={s.body}>The protocol can remain open while the company builds products and services around it.</p>

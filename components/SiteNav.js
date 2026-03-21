@@ -5,17 +5,28 @@ const NAV_LINKS = [
   ['/demo.html', 'Demo'],
   ['/quickstart', 'Quickstart'],
   ['/spec', 'Docs'],
-  ['/appeal', 'Appeal'],
   ['/partners', 'Partners'],
   ['https://github.com/emiliaprotocol/emilia-protocol', 'GitHub'],
 ];
 
-const FOOTER_LINKS = [
-  ['/governance', 'Governance'],
-  ['/partners', 'Partners'],
+const GOV_LINKS = [
+  ['/appeal', 'Appeal'],
   ['/operators', 'Operators'],
+  ['/apply', 'Apply'],
+  ['/governance', 'Governance'],
+];
+
+const FOOTER_LINKS = [
+  ['/partners', 'Partners'],
   ['mailto:team@emiliaprotocol.ai', 'Contact'],
   ['/investors', 'Investor Inquiries'],
+];
+
+const FOOTER_GOV_LINKS = [
+  ['/governance', 'Governance'],
+  ['/operators', 'Operators'],
+  ['/apply', 'Apply'],
+  ['/appeal', 'Appeal'],
 ];
 
 export default function SiteNav({ activePage }) {
@@ -59,6 +70,38 @@ export default function SiteNav({ activePage }) {
             onMouseLeave={e => { if (label !== activePage) e.target.style.color = '#4a4f6a'; }}
           >{label}</a>
         ))}
+
+        {/* Governance / Accountability dropdown */}
+        <div style={{ position: 'relative' }}
+          onMouseEnter={e => { const dd = e.currentTarget.querySelector('[data-gov-dd]'); if (dd) dd.style.display = 'flex'; }}
+          onMouseLeave={e => { const dd = e.currentTarget.querySelector('[data-gov-dd]'); if (dd) dd.style.display = 'none'; }}
+        >
+          <span style={{
+            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+            fontSize: 11, letterSpacing: 1, textTransform: 'uppercase',
+            color: GOV_LINKS.some(([, l]) => l === activePage) ? '#00d4ff' : '#4a4f6a',
+            cursor: 'pointer', transition: 'color 0.2s', userSelect: 'none',
+          }}>Accountability &#9662;</span>
+          <div data-gov-dd="" style={{
+            display: 'none', flexDirection: 'column', position: 'absolute',
+            top: '100%', left: 0, marginTop: 8,
+            background: 'rgba(15,15,15,0.97)', border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 10, padding: '8px 0', minWidth: 160, zIndex: 200,
+            backdropFilter: 'blur(12px)',
+          }}>
+            {GOV_LINKS.map(([href, label]) => (
+              <a key={label} href={href} style={{
+                fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                fontSize: 11, letterSpacing: 1, textTransform: 'uppercase',
+                color: label === activePage ? '#00d4ff' : '#94a3b8',
+                textDecoration: 'none', padding: '8px 16px', transition: 'color 0.2s',
+              }}
+                onMouseEnter={e => { e.target.style.color = '#00d4ff'; }}
+                onMouseLeave={e => { if (label !== activePage) e.target.style.color = '#94a3b8'; }}
+              >{label}</a>
+            ))}
+          </div>
+        </div>
       </div>
 
       <a href="/partners#inquiry" style={{
@@ -73,4 +116,4 @@ export default function SiteNav({ activePage }) {
   );
 }
 
-export { FOOTER_LINKS };
+export { FOOTER_LINKS, FOOTER_GOV_LINKS, GOV_LINKS };

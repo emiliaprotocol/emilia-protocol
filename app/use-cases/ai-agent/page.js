@@ -65,6 +65,11 @@ export default function AIAgentUseCasePage() {
         <p style={{ ...s.body, maxWidth: 620 }}>
           AI agents are moving from recommendations to actions. Tool calls execute payments, modify data, and trigger workflows with broad permissions and no action-level control. EMILIA is the trust substrate that enforces accountability before high-risk agent actions proceed.
         </p>
+        <div style={{ ...s.card, borderLeft: '3px solid #00d4ff', marginBottom: 24, padding: '16px 20px' }}>
+          <div style={{ fontSize: 14, color: '#7a809a', lineHeight: 1.65 }}>
+            <span style={{ color: '#e8eaf0', fontWeight: 700 }}>AI is one wedge.</span> The broader category is high-risk action enforcement. EMILIA is not an AI company. It is control infrastructure for any workflow where a high-risk action executes without action-level trust. AI agents are one vertical where this gap is acute and growing.
+          </div>
+        </div>
         <a href="#pilot" style={{ ...s.cta, background: '#ffd700', color: '#05060a' }}>Request Pilot</a>
       </section>
 
@@ -102,9 +107,29 @@ export default function AIAgentUseCasePage() {
         </div>
       </section>
 
-      {/* EMILIA as infrastructure */}
+      {/* Agent-specific enforcement */}
       <section style={s.sectionAlt}>
         <div style={s.section}>
+          <h2 style={s.h2}>How EMILIA enforces trust in agent workflows</h2>
+          <p style={s.body}>Three protocol capabilities make EMILIA the control layer for agent-driven actions.</p>
+          <div style={{ display: 'grid', gap: 16 }}>
+            {[
+              { title: 'Delegated principal attribution', body: 'When an agent acts on behalf of a human, EMILIA records the full delegation chain: which principal delegated authority, to which agent identity, under what scope, with what constraints. The chain is cryptographically bound and auditable. No agent action executes without traceable human accountability.' },
+              { title: 'Exact tool-use binding', body: 'An agent with access to a payment API can call any endpoint. EMILIA binds authorization to the exact tool call parameters: the specific API endpoint, the specific payload, the specific amount and destination. An approval to call transferFunds with $500 to Account A cannot be replayed for $5,000 to Account B.' },
+              { title: 'Accountable signoff thresholds by risk class', body: 'Agent actions are classified into risk tiers. Read-only operations proceed without friction. Medium-risk actions require async principal notification. High-risk actions (payments, data deletion, external API calls with side effects) require explicit principal signoff before execution. The thresholds are policy-driven and configurable per deployment.' },
+            ].map((a, i) => (
+              <div key={i} style={s.card}>
+                <div style={s.cardTitle}>{a.title}</div>
+                <div style={s.cardBody}>{a.body}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* EMILIA as infrastructure */}
+      <section style={{ textAlign: 'center' }}>
+        <div style={{ ...s.section, textAlign: 'left' }}>
           <h2 style={s.h2}>Infrastructure, not an agent tool</h2>
           <p style={s.body}>
             EMILIA is designed as trust substrate for high-risk action enforcement. AI agent control is one application of this substrate, not its boundary. The same protocol primitives that enforce trust before agent actions also enforce trust before government disbursements, financial wire transfers, and enterprise privileged operations.

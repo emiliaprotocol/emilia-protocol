@@ -122,6 +122,45 @@ export default function FinancialUseCasePage() {
         </div>
       </section>
 
+      {/* Best first deployment */}
+      <section style={{ textAlign: 'center' }}>
+        <div style={{ ...s.section, textAlign: 'left' }}>
+          <h2 style={s.h2}>Best first deployment</h2>
+          <p style={s.body}>Start with one high-risk action surface. These are the three workflows where banks and payment operators deploy EMILIA first.</p>
+          <div style={{ display: 'grid', gap: 16 }}>
+            {[
+              { title: 'Beneficiary change', body: 'A counterparty or internal operator modifies wire beneficiary details inside an authenticated treasury session. EMILIA generates a handshake binding the exact new beneficiary, routing instruction, and authorizing principal. The change does not commit until the handshake is satisfied and a named signoff is recorded.' },
+              { title: 'Payout destination change', body: 'An ACH or real-time payment destination is updated in a payment platform. EMILIA requires dual signoff bound to the exact new destination, amount ceiling, and effective date. Each signoff is one-time consumable and replay-resistant.' },
+              { title: 'Treasury release approval', body: 'A treasury management system releases funds above a policy threshold. EMILIA enforces dual-principal signoff with exact parameter binding: amount, currency, counterparty, settlement date, and GL account. The approval cannot be reused for different parameters.' },
+            ].map((d, i) => (
+              <div key={i} style={s.card}>
+                <div style={s.cardTitle}>{d.title}</div>
+                <div style={s.cardBody}>{d.body}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Proof points */}
+      <section style={s.sectionAlt}>
+        <div style={s.section}>
+          <h2 style={s.h2}>Built for banks and payment operators</h2>
+          <p style={s.body}>EMILIA is control infrastructure designed for the exact constraints of regulated financial environments.</p>
+          {[
+            'One-time wire approval semantics: each authorization is cryptographically bound to a single transaction and consumed on use. A captured approval cannot authorize a second wire.',
+            'Exact transaction binding: the handshake locks amount, currency, beneficiary, routing instruction, and settlement date. Any parameter change invalidates the authorization.',
+            'Dual signoff support: high-value and high-risk transactions require two named principals to independently sign off on the exact same bound parameters before execution proceeds.',
+            'Immutable event chain: every handshake, signoff, and execution produces a tamper-evident record. Compliance teams receive SOX-grade action-level evidence, not session access logs.',
+          ].map((item, i) => (
+            <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'flex-start' }}>
+              <span style={{ color: '#ffd700', fontSize: 14, flexShrink: 0, marginTop: 2 }}>+</span>
+              <span style={{ fontSize: 15, color: '#7a809a', lineHeight: 1.6 }}>{item}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* CTA strip */}
       <section style={{ textAlign: 'center' }}>
         <div style={{ ...s.section, maxWidth: 540, paddingTop: 60, paddingBottom: 60 }}>

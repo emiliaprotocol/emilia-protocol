@@ -43,11 +43,9 @@ export default function PartnersPage() {
   };
 
   const AUDIENCE = [
-    { title: 'Platforms and registries', body: 'Add structured trust evaluation before users connect to third-party software, tools, servers, apps, or plugins.' },
-    { title: 'MCP and agent ecosystems', body: 'Use EMILIA to enforce trust before high-risk action in AI-native workflows.' },
-    { title: 'Enterprise security and developer tooling teams', body: 'Create policy-based trust checks for browser extensions, GitHub apps, npm packages, services, and agent tools.' },
-    { title: 'Marketplaces and plugin ecosystems', body: 'Introduce trust preflight, receipts, dispute handling, and continuity signals into marketplace workflows.' },
-    { title: 'Standards and governance contributors', body: 'Help shape broader governance, conformance expectations, and policy discussion as the ecosystem forms.' },
+    { title: 'Pilot deployments', body: 'Test EMILIA in a real workflow — payment approvals, agent execution, operator overrides, or delegated authority. Prove control value in 60 to 90 days with one action class.' },
+    { title: 'Regulated workflow design partners', body: 'Government agencies, banks, and enterprises that need policy-bound, auditable control over high-risk actions before they execute. Shape the compliance patterns that become defaults.' },
+    { title: 'Control architecture partnerships', body: 'Integrate the EMILIA Protocol into existing infrastructure — identity providers, CI/CD pipelines, SIEM platforms, or agent orchestration layers. Make EP the enforcement point inside what you already run.' },
   ];
 
   const PILOT_STEPS = [
@@ -83,16 +81,16 @@ export default function PartnersPage() {
       {/* Hero */}
       <section style={{ ...s.section, paddingTop: 100, paddingBottom: 60 }}>
         <div style={s.eyebrow}>Partners</div>
-        <h1 style={s.h1}>Partner with EMILIA</h1>
-        <p style={{ ...s.body, maxWidth: 600 }}>
-          Help define how high-risk actions are constrained before execution. EMILIA is a protocol-grade trust substrate built to bind actor identity, authority, policy, and exact action context before action proceeds.
+        <h1 style={s.h1}>Pilot EMILIA in a real high-risk workflow</h1>
+        <p style={{ ...s.body, maxWidth: 620 }}>
+          Start with one action class — payment changes, delegated approvals, operator overrides, or agent execution — and prove the control value fast.
         </p>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <a href="#inquiry" style={{ ...s.cta, background: '#00d4ff', color: '#05060a' }}>Apply for a Pilot</a>
           <a href="mailto:team@emiliaprotocol.ai" style={{ ...s.cta, background: 'transparent', color: '#00d4ff', border: '1px solid rgba(0,212,255,0.3)' }}>Talk to the Team</a>
         </div>
         <p style={{ fontSize: 13, color: '#4a4f6a', marginTop: 16 }}>
-          We are looking for pilot partners, ecosystem partners, technical reviewers, and governance contributors.
+          We are looking for pilot deployment partners, regulated workflow design partners, and control architecture integrators.
         </p>
       </section>
 
@@ -101,19 +99,18 @@ export default function PartnersPage() {
         <div style={s.section}>
           <h2 style={s.h2}>Why partner now</h2>
           <p style={s.body}>
-            Trust decisions are becoming more important and more difficult. Agents are connecting to tools. Teams are installing extensions, plugins, and apps. Platforms are exposing users to third-party software at increasing speed. Existing signals such as permissions, signatures, ratings, and registry presence are useful, but they do not fully answer a harder question: should this thing be trusted, under what policy, with what evidence, and with what path for dispute or appeal?
+            High-risk actions are already executing inside authenticated, approved-looking workflows. Agents approve payments. Operators override limits. Delegated authority chains span multiple systems. The question is no longer who is acting — it is whether this exact action should proceed under this exact authority and this exact policy.
           </p>
-          <p style={s.body}>EMILIA is built to address that gap.</p>
           <p style={s.body}>
-            Partners help shape the first real-world implementations of trust preflight, policy-based evaluation, receipts, disputes, appeals, identity continuity, and conformance-backed trust surfaces.
+            EMILIA gives you the enforcement point. Partners deploy it inside a real workflow and prove the control value before competitors define the category.
           </p>
         </div>
       </section>
 
-      {/* Who EMILIA is for */}
+      {/* Partnership categories */}
       <section style={s.section}>
-        <h2 style={s.h2}>Who EMILIA is for</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+        <h2 style={s.h2}>How to partner</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
           {AUDIENCE.map((c, i) => (
             <div key={i} style={s.card}>
               <div style={s.cardTitle}>{c.title}</div>
@@ -173,10 +170,10 @@ export default function PartnersPage() {
       <section style={s.section}>
         <h2 style={s.h2}>Strong first-fit partners</h2>
         <p style={s.body}>
-          The best early partners are organizations that already face meaningful risk around high-risk actions, delegated authority, payment changes, operator overrides, or agent execution.
+          The best early partners are organizations that already face real liability around payment changes, delegated approvals, operator overrides, or agent execution — and need auditable, policy-bound control before action proceeds.
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {['AI tooling platforms', 'Agent frameworks', 'MCP ecosystems', 'App and extension ecosystems', 'Enterprise security teams', 'Marketplaces with plugin risk', 'Developer platforms with third-party integrations'].map(tag => (
+          {['Government agencies with delegated authority', 'Banks and payment processors', 'Enterprise compliance teams', 'Agent orchestration platforms', 'CI/CD and DevSecOps pipelines', 'Identity and access management vendors', 'Regulated industry SaaS'].map(tag => (
             <span key={tag} style={{ padding: '6px 14px', borderRadius: 100, border: '1px solid rgba(0,212,255,0.15)', background: 'rgba(0,212,255,0.04)', fontSize: 13, color: '#00d4ff' }}>{tag}</span>
           ))}
         </div>
@@ -185,9 +182,9 @@ export default function PartnersPage() {
       {/* CTA strip */}
       <section style={{ ...s.sectionAlt, textAlign: 'center' }}>
         <div style={{ ...s.section, maxWidth: 540 }}>
-          <h2 style={{ ...s.h2, fontSize: 28 }}>Want to help define the next layer of trust?</h2>
+          <h2 style={{ ...s.h2, fontSize: 28 }}>Ready to deploy control before action in a real workflow?</h2>
           <p style={s.body}>
-            We are looking for a small number of early partners who want to shape real-world trust preflight, policy evaluation, and dispute-aware trust systems.
+            We are looking for a small number of deployment partners who want to prove policy-bound, auditable action control in production — not in theory.
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <a href="#inquiry" style={{ ...s.cta, background: '#00d4ff', color: '#05060a' }}>Apply for a Pilot</a>
@@ -229,7 +226,7 @@ export default function PartnersPage() {
                   <label style={s.label}>Partner type</label>
                   <select style={{ ...s.input, cursor: 'pointer' }} value={form.partnerType} onChange={e => update('partnerType', e.target.value)}>
                     <option value="">Select…</option>
-                    {['Pilot partner','Ecosystem partner','Technical reviewer','Governance contributor','Standards / foundation interest','Other'].map(o => <option key={o} value={o}>{o}</option>)}
+                    {['Pilot deployment partner','Regulated workflow design partner','Control architecture integration partner','Technical reviewer','Other'].map(o => <option key={o} value={o}>{o}</option>)}
                   </select>
                 </div>
                 <div>
