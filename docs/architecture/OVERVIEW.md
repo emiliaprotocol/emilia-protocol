@@ -2,9 +2,9 @@
 
 ## What EP Is
 
-EMILIA Protocol (EP) is a protocol-grade trust substrate for high-risk action enforcement.
+EMILIA Protocol (EP) is a trust substrate for high-risk action enforcement. It provides a structured, auditable pipeline through which every trust-changing operation must pass. EP does not implement business logic directly; it enforces that trust decisions are made through a verified, logged, policy-bound process with cryptographic binding and replay resistance.
 
-EP exists to ensure that trust-changing or high-risk operations do not execute on the strength of identity alone. Every such operation must be attributable to an authenticated actor, resolved against authority, pinned to a specific policy version and policy hash, bound to exact action context, protected against replay, and durably recorded.
+EP exists because trust-changing writes (issuing a commit, filing a dispute, confirming a receipt, verifying a handshake) carry consequences that cannot be undone by a retry. Every such write must be attributable to an authenticated actor, bound to a specific policy version, logged durably before state change, and protected against replay.
 
 ## Core Objects
 

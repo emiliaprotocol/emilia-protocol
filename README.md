@@ -3,18 +3,24 @@
 [![CI](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-EMILIA Protocol (EP) is a protocol-grade trust substrate for high-risk action enforcement.
+## What is EP?
 
-EP does not stop at identity. It verifies whether a specific actor, operating under a specific authority context, should be allowed to perform a specific high-risk action under a specific policy, exactly once, with replay resistance and durable audit traceability.
+**EMILIA Protocol (EP) is a protocol-grade trust substrate for high-risk action enforcement.**
 
-EP Core consists of three interoperable objects:
+**EP does not stop at identity. It verifies whether a specific actor, operating under a specific authority context, should be allowed to perform a specific high-risk action under a specific policy, exactly once, with replay resistance and durable event traceability.**
+
+**EP enforces trust before high-risk action.**
+
+EP is not a generic identity platform, not a wallet, and not a social reputation layer. It is protocol infrastructure for binding actor identity, authority, policy, and exact action context before execution.
+
+**EP Core** consists of three interoperable objects:
 - Trust Receipt
 - Trust Profile
 - Trust Decision
 
-EP Extensions add stronger enforcement for high-risk workflows. The sharpest extension is **Handshake**, which binds actor identity, authority, policy, action context, nonce, expiry, and one-time consumption into a pre-action authorization flow.
+**EP Extensions** add stronger enforcement for high-risk workflows. The sharpest extension is **Handshake**, which binds actor identity, authority, policy, action context, nonce, expiry, and one-time consumption into a pre-action authorization flow.
 
-EP is open protocol infrastructure. Managed policy, issuance, verification, monitoring, and workflow tooling are optional product surfaces built on top.
+The protocol is open. Managed policy, issuance, verification, monitoring, and workflow tooling are optional product surfaces built on top.
 
 ---
 
@@ -56,7 +62,7 @@ A skeptical reader should be able to answer in 30 seconds: Core = the minimum in
 
 ---
 
-## Four Canonical Decision Contexts
+## Four Canonical High-Risk Action Contexts
 
 EP is decision infrastructure. Every trust evaluation reduces to one of four verbs:
 

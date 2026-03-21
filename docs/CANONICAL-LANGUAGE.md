@@ -1,42 +1,71 @@
 # EP Canonical Language
 
-This document defines the authoritative vocabulary for all EMILIA Protocol documentation, APIs, SDKs, and product surfaces.
+This document defines the authoritative vocabulary for EMILIA Protocol across docs, APIs, SDKs, product surfaces, proposals, investor materials, and website content.
 
-## Core Statements
+## Canonical company line
 
-- **EMILIA Protocol is an open trust-decision protocol — the control layer between authentication and execution. It binds actor + authority + policy + exact action context into immutable events with replay resistance and one-time consumption.**
-- **MCP tells agents how to use tools. EP enforces trust before high-risk action — proving that policy was evaluated before execution proceeds.**
-- **The protocol is free. The control plane is paid.**
-- **No high-stakes machine action should proceed without a signed EP Commit.**
+> **EP enforces trust before high-risk action.**
 
-## Canonical Object Model
+## Canonical technical line
 
-The primary evaluation result is a **Trust Decision** (allow/review/deny), not a boolean.
+> **EMILIA Protocol (EP) is a protocol-grade trust substrate for high-risk action enforcement. It binds actor identity, authority, policy, and exact action context into a replay-resistant, one-time authorization flow with immutable event traceability.**
 
-### Trust Decision Object
-| Field | Type | Description |
+## Canonical market line
+
+> **Most systems verify who is acting. EP verifies whether this exact high-risk action should be allowed to proceed, under this exact policy, by this exact actor, right now.**
+
+## Canonical investor line
+
+> **EP creates the trust-control layer between authentication and execution. It is infrastructure for preventing fraud and unauthorized action inside flows that already look approved on the surface.**
+
+## Canonical AI / agent line
+
+> **MCP tells agents how to use tools. EP tells systems whether a high-risk action should be allowed to proceed.**
+
+Use this as a supporting line in AI-native contexts. It is not the primary company definition.
+
+## What EP is
+
+- A protocol-grade trust substrate
+- A control layer for high-risk action enforcement
+- A policy-bound, authority-aware, replay-resistant decision system
+- An interoperable object model for trust receipts, trust profiles, trust decisions, and pre-action enforcement
+
+## What EP is not
+
+- Not a generic identity platform
+- Not a wallet
+- Not a social reputation network
+- Not a generic workflow engine
+- Not a broad marketplace for “trust”
+
+## Canonical object framing
+
+| Object | Meaning | One-line |
 |---|---|---|
-| `decision` | `allow \| review \| deny` | The trust verdict |
-| `reasons` | `Reason[]` | Structured explanations for the decision |
-| `warnings` | `Warning[]` | Non-blocking concerns |
-| `appeal_path` | `string \| null` | How to challenge this decision |
-| `policy_used` | `PolicyRef` | Which policy version produced this result |
-| `confidence` | `number` | Protocol confidence in the decision (0-1) |
+| Trust Receipt | Portable record of trust-relevant evidence | What happened |
+| Trust Profile | Structured trust state derived from evidence | What is known |
+| Trust Decision | Policy-evaluated decision with reasons | What to do now |
+| Handshake | Pre-action trust enforcement artifact | What must be proven before action |
 
-### Deprecated Vocabulary
-The following terms are **deprecated** and should not appear in new code, docs, or API surfaces:
-- `pass: boolean` -> use `decision: 'allow'`
-- `fail` -> use `decision: 'deny'`
-- `trust_pass` -> use `decision`
-- `failures: string[]` -> use `reasons` with `type: 'denial_reason'`
-- `compat_score` -> use `confidence` or remove
-- `evaluation_result: pass | fail` -> use `decision: allow | review | deny`
+## Required language pillars
 
-### Migration Status
-As of v1.1, all public API surfaces (`/api/trust/evaluate`, `/api/needs/broadcast`, `/api/trust/install-preflight`),
-the OpenAPI spec, the TypeScript SDK types, and PROTOCOL-STANDARD.md use `TrustDecision` as the canonical object.
-Legacy fields (`pass`, `trust_pass`, `failures`) are retained with `deprecated: true` for backward compatibility
-and are derived from the canonical `decision` field.
+Every serious EP document should clearly distinguish:
+- identity
+- authority
+- action binding
+- policy binding
+- replay resistance
+- one-time consumption
+- immutable event traceability
 
-### Enforcement
-All PRs that introduce deprecated vocabulary in public API surfaces, docs, or SDK exports must be flagged.
+## Deprecated framing to avoid
+
+Avoid using these as primary descriptions:
+- portable trust for machine counterparties
+- trust marketplace
+- broad trust layer
+- generic trust for agents and software
+- “whether they should” as the entire company explanation
+
+These phrases can appear in historical or comparative context, but they should not define EP going forward.

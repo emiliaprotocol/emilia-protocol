@@ -1,57 +1,58 @@
-# EP Outreach Emails
+# EP Outreach Emails — Updated Language
 
-## AAIF Cover Email
+## Standards / working group outreach
 
-**To:** pr@aaif.org
-**Subject:** Proposal: Working Group on Trust Before High-Risk Action in Machine-Mediated Systems
+Subject: Proposal: trust before high-risk action
 
-Hello AAIF team,
+Hi [Name],
 
-I'm reaching out to share a proposal for a working group focused on enforcing trust before high-risk action in machine-mediated systems.
+I’m reaching out to share EMILIA Protocol (EP), a protocol-grade trust substrate for high-risk action enforcement.
 
-The standards stack is getting stronger around tool access, communication, and commerce. What still appears underdefined is the trust-decision protocol: how a system evaluates whether a counterparty, plugin, MCP server, marketplace app, seller, merchant, or software component is trustworthy enough for a given context and policy.
+EP is designed for a specific control problem: not just identifying who is acting, but determining whether a specific actor, under a specific authority chain, should be allowed to perform a specific high-risk action under a specific policy, with replay resistance, one-time consumption, and durable event traceability.
 
-EMILIA Protocol (EP) is the control layer between authentication and execution — an open trust-decision protocol that binds actor + authority + policy + exact action context into immutable events with replay resistance and one-time consumption. The current implementation covers trust profiles, policy evaluation, install preflight, disputes, and appeals. The goal is not to ask AAIF to adopt a product, but to offer a draft protocol and working reference implementation that could help shape a neutral standard in the open.
+The current implementation includes:
+- Trust Receipt
+- Trust Profile
+- Trust Decision
+- Handshake for pre-action trust enforcement
+- policy binding
+- one-time authorization consumption
+- immutable event traceability
 
-EP is designed to complement the rest of the stack:
-- MCP for tool access
-- A2A for coordination
-- ACP/UCP/AP2 for commerce and payment flows
-- EP for trust evaluation and appeals
+We believe this fills a real gap between authentication and execution, especially as government, payments, enterprise approvals, and agent workflows become more automated.
 
-The protocol is falsifiable by design — anyone can run the conformance suite to independently verify that the evaluator is producing correct results. Trust that cannot be independently verified is not trust.
+Happy to share the protocol draft, implementation, and current positioning materials if useful.
 
-I've attached the current proposal and supporting specification materials. I'd welcome the chance to discuss whether this belongs as an AAIF working group or related standards effort.
+Best,
+[Your Name]
 
-Best regards,
-Iman Schrock
-EMILIA Protocol
-team@emiliaprotocol.ai
-emiliaprotocol.ai
+## General introduction
 
----
+Subject: EMILIA Protocol — trust before high-risk action
 
-## NIST / CAISI Cover Email
+Hi [Name],
 
-**To:** CAISI team
-**Subject:** Open Protocol for Trust Evaluation and Appeals in Machine-Mediated Systems
+EMILIA Protocol (EP) is a protocol-grade trust substrate for high-risk action enforcement.
 
-Hello CAISI team,
+Most systems verify who is acting. EP verifies whether this exact action should be allowed, under this exact policy, by this exact actor, right now.
 
-I'm writing to share a protocol effort that may be relevant to NIST's work on AI agents, software trust, identity, and machine-mediated decision systems.
+It does that by binding:
+- actor identity
+- authority chain
+- exact action context
+- policy version and hash
+- replay resistance
+- one-time consumption
+- immutable event traceability
 
-EMILIA Protocol (EP) is the control layer between authentication and execution — an open trust-decision protocol that binds actor + authority + policy + exact action context into immutable events with replay resistance and one-time consumption. It complements identity and authorization standards by addressing a distinct question: not only who an actor is or what it is allowed to do, but whether trust has been established for a given context and policy before execution proceeds.
+We think this is increasingly important for:
+- fraud prevention
+- payment-change controls
+- delegated approvals
+- operator overrides
+- AI / agent execution governance
 
-The current EP work includes trust profiles, context-aware policy evaluation, install preflight for software and plugins, disputes, appeals, and human escalation paths.
+If helpful, I can send the current protocol materials and use-case briefs.
 
-We believe this is relevant because systems will increasingly need to enforce trust before high-risk action — not only for agents, but also for third-party software, marketplaces, sellers, and any principal in machine-mediated systems — in a way that is explainable, challengeable, and correctable.
-
-Critically, EP is falsifiable by design: the conformance suite and canonical test vectors allow any party to independently verify that the trust evaluator is producing correct outputs. This aligns with NIST's emphasis on transparency and auditability in AI systems.
-
-I've attached a short proposal and supporting materials and would welcome any guidance on whether this work is relevant to CAISI or related standards discussions.
-
-Best regards,
-Iman Schrock
-EMILIA Protocol
-team@emiliaprotocol.ai
-emiliaprotocol.ai
+Best,
+[Your Name]

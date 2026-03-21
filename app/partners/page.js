@@ -44,7 +44,7 @@ export default function PartnersPage() {
 
   const AUDIENCE = [
     { title: 'Platforms and registries', body: 'Add structured trust evaluation before users connect to third-party software, tools, servers, apps, or plugins.' },
-    { title: 'MCP and agent ecosystems', body: 'Use EMILIA to enforce trust before high-risk action — evaluating actor + authority + policy + exact action context before delegation, connection, or execution.' },
+    { title: 'MCP and agent ecosystems', body: 'Use EMILIA to enforce trust before high-risk action in AI-native workflows.' },
     { title: 'Enterprise security and developer tooling teams', body: 'Create policy-based trust checks for browser extensions, GitHub apps, npm packages, services, and agent tools.' },
     { title: 'Marketplaces and plugin ecosystems', body: 'Introduce trust preflight, receipts, dispute handling, and continuity signals into marketplace workflows.' },
     { title: 'Standards and governance contributors', body: 'Help shape broader governance, conformance expectations, and policy discussion as the ecosystem forms.' },
@@ -72,7 +72,7 @@ export default function PartnersPage() {
   const FAQS = [
     { q: 'Is EMILIA open source?', a: 'EMILIA is being developed as open trust infrastructure with a focus on portability, inspectability, and implementability.' },
     { q: 'Do pilot partners need to commit long term?', a: 'No. Early pilots are designed to be narrow, practical, and time-bounded.' },
-    { q: 'Is this only for AI agents?', a: 'No. EP is the control layer between authentication and execution. The initial wedge includes agents and software, but the trust model applies to any principal taking high-risk action.' },
+    { q: 'Is this only for AI agents?', a: 'No. AI is one entry point. The broader category is high-risk action enforcement across government, payments, enterprise approvals, and agent workflows.' },
     { q: 'Are you looking for technical contributors too?', a: 'Yes. We are open to technical reviewers, maintainers, and governance participants who can strengthen correctness and adoption.' },
   ];
 
@@ -85,7 +85,7 @@ export default function PartnersPage() {
         <div style={s.eyebrow}>Partners</div>
         <h1 style={s.h1}>Partner with EMILIA</h1>
         <p style={{ ...s.body, maxWidth: 600 }}>
-          Help define how trust is enforced before high-risk action — connection, installation, or delegation. EMILIA is the control layer between authentication and execution, producing immutable events with replay resistance and one-time consumption.
+          Help define how high-risk actions are constrained before execution. EMILIA is a protocol-grade trust substrate built to bind actor identity, authority, policy, and exact action context before action proceeds.
         </p>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <a href="#inquiry" style={{ ...s.cta, background: '#00d4ff', color: '#05060a' }}>Apply for a Pilot</a>
@@ -173,7 +173,7 @@ export default function PartnersPage() {
       <section style={s.section}>
         <h2 style={s.h2}>Strong first-fit partners</h2>
         <p style={s.body}>
-          The best early partners are organizations that already face meaningful trust decisions before high-risk action involving third-party software or machine-mediated systems.
+          The best early partners are organizations that already face meaningful risk around high-risk actions, delegated authority, payment changes, operator overrides, or agent execution.
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {['AI tooling platforms', 'Agent frameworks', 'MCP ecosystems', 'App and extension ecosystems', 'Enterprise security teams', 'Marketplaces with plugin risk', 'Developer platforms with third-party integrations'].map(tag => (

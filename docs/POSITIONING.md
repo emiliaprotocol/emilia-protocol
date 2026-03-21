@@ -1,40 +1,48 @@
-# EP Positioning Reference
+# EP Positioning
 
-**Status: Canonical**
-**Last updated: March 2026**
-**Owner: Core team**
-
-This document is the source of truth for all EP positioning. When positioning drifts across README files, pitch decks, demo scripts, standards submissions, or investor materials — fix it here first, then propagate. Do not patch individual documents without updating this one.
-
----
-
-## The One-Line Truth
+## The one-line truth
 
 Use this in every document, every audience, every context:
 
-> "EP enforces trust before high-risk action."
+> **EP enforces trust before high-risk action.**
 
-This is the canonical line. Everything else is a derivative.
+## The technical line
+
+> **EP is a protocol-grade trust substrate that binds actor identity, authority, policy, and exact action context into a replay-resistant, one-time authorization flow.**
+
+## The market line
+
+> **Most systems verify who is acting. EP verifies whether this exact high-risk action should be allowed to proceed.**
+
+## The AI / agent supporting line
+
+> **MCP tells agents how to use tools. EP tells systems whether a high-risk action should be allowed to proceed.**
+
+Use that only as a supporting line in AI-native contexts. Do not let it replace the canonical company definition.
+
+## The One-Line Truth
+
+**Use this in every document, every audience, every context:**
+
+> "MCP tells agents how to use tools. EP tells them whether they should."
+
+This line does the necessary work in one breath: it names MCP (the context everyone in the space already knows), positions EP as the missing complement rather than a competitor, and states the value proposition without jargon. It works for keynotes, README headers, investor one-pagers, and standards proposals.
+
+Do not modify it. Do not replace "whether they should" with "whether to trust them" or "whether it's safe." The original phrasing is deliberate — it captures policy judgment, not just binary safety.
 
 ---
 
-## Supporting line for AI / agent contexts
+## The Technical Line
 
-> "MCP tells agents how to use tools. EP tells systems whether a high-risk action should be allowed to proceed."
+**Use this for standards bodies, enterprise architects, and security-literate audiences:**
 
-Use this when AI tooling is the context. Do not let it replace the canonical line.
+> "EP is the SSL/TLS of AI agent behavior — the trust protocol the internet forgot to build in 1993, arriving just in time for the agents."
 
----
+**Always pair it with this qualifier when speaking to technical audiences:**
 
-## Technical positioning
+> "Unlike TLS, EP is probabilistic, policy-shaped, contextual, contestable, and governance-sensitive. It is not a binary verdict. It is a structured Trust Decision (allow/review/deny) with built-in appeal."
 
-> "EP is a protocol-grade trust substrate that binds actor identity, authority, policy, and exact action context into a replay-resistant, one-time authorization flow."
-
-Use this with:
-- enterprise architects
-- security teams
-- standards bodies
-- sophisticated buyers
+The SSL/TLS analogy works because it conveys infrastructure-layer necessity without requiring explanation. But it will be challenged by engineers who know that TLS is deterministic and cryptographic. Anticipate that challenge by volunteering the qualifier before they raise it. The qualifier is not a concession — it is a feature list.
 
 ---
 
@@ -225,7 +233,7 @@ Use these labels everywhere — in READMEs, documentation, demo scripts, and inv
 
 ### For NIST and Standards Bodies
 
-**Lead with:** Open specification, portable trust object model, constitutional due process, and cross-ecosystem composability.
+**Lead with:** Protocol-grade trust substrate, high-risk action enforcement, policy binding, replay resistance, and one-time authorization semantics.
 
 **Core message:** EP is a vendor-neutral, open-source (Apache 2.0) protocol for trust evaluation and appeals across AI agents, software, and machine actors. It directly addresses all three CAISI pillars: industry-led standard development, open-source protocol implementation, and AI agent security and identity. EP is the proposed reference implementation for a Trust Evaluation and Appeals Working Group, not a finished standard imposed for adoption.
 
@@ -293,7 +301,7 @@ Use these labels everywhere — in READMEs, documentation, demo scripts, and inv
 
 EP operates in a space with no direct equivalent — which is both the opportunity and the positioning challenge. The question is not "why EP instead of X" — it is "why is there no X yet, and why does EP get there first."
 
-**MCP (Model Context Protocol)** — Not a competitor. EP complements MCP. MCP defines tool connectivity. EP evaluates whether that connectivity should happen in a given context. The winning frame applies here directly: "MCP tells agents how to use tools. EP tells them whether they should." Every serious MCP deployment is an eventual EP customer.
+**MCP (Model Context Protocol)** — Not a competitor. EP complements MCP. MCP defines tool connectivity. EP evaluates whether that connectivity should happen in a given context. The strongest supporting frame remains: "MCP tells agents how to use tools. EP tells systems whether a high-risk action should be allowed to proceed." That is a useful AI-native entry point, but the broader category is high-risk action enforcement.
 
 **A2A (Agent-to-Agent Protocol)** — Not a competitor. A2A coordinates agent communication. EP evaluates trust between communicating agents. EP trust context belongs in A2A Agent Cards for routing decisions.
 
