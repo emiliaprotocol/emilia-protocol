@@ -120,9 +120,58 @@ footer{padding:48px 40px;text-align:center}
 .footer-links a{font-size:13px;color:var(--t3);text-decoration:none;transition:color 0.2s}
 .footer-links a:hover{color:var(--t2)}
 
-/* FADE IN */
+/* AMBIENT GLOW — refined, not neon */
+.hero::before{content:'';position:absolute;top:20%;left:50%;transform:translateX(-50%);width:800px;height:400px;background:radial-gradient(ellipse,rgba(212,175,55,0.04) 0%,rgba(74,144,217,0.02) 40%,transparent 70%);pointer-events:none;animation:ambient-breathe 8s ease-in-out infinite}
+@keyframes ambient-breathe{0%,100%{opacity:0.6;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.05)}}
+
+/* HERO ENTRANCE */
+.hero{position:relative}
+.hero-label{animation:hero-fade 0.8s ease both}
+.hero h1{animation:hero-fade 0.8s 0.1s ease both}
+.hero-sub{animation:hero-fade 0.8s 0.2s ease both}
+.hero-ctas{animation:hero-fade 0.8s 0.3s ease both}
+.hero-stats{animation:hero-fade 0.8s 0.45s ease both}
+@keyframes hero-fade{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* CARD HOVER MICRO-INTERACTIONS */
+.buyer-card{position:relative;overflow:hidden}
+.buyer-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:0;transition:opacity 0.3s}
+.buyer-card:hover::before{opacity:1}
+
+.method-tag{transition:all 0.2s}
+.method-tag:hover{border-color:var(--brd-gold);color:var(--gold)}
+
+.layer-item{transition:background 0.2s}
+.layer-item:hover{background:rgba(255,255,255,0.02)}
+
+/* STAT COUNTER ANIMATION */
+.stat-value{opacity:0;animation:stat-enter 0.6s 0.5s ease both}
+.stat-value:nth-child(1){animation-delay:0.5s}
+@keyframes stat-enter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* GOLD LINE ACCENT — subtle horizontal rule animations */
+.divider{opacity:0;animation:line-draw 1s ease both}
+.divider.visible{opacity:1}
+@keyframes line-draw{from{opacity:0;transform:scaleX(0)}to{opacity:1;transform:scaleX(1)}}
+
+/* NAV SCROLL SHADOW */
+nav{transition:box-shadow 0.3s}
+nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
+
+/* BINDING NUMBER GLOW ON SCROLL */
+.binding-item.visible .binding-num{color:var(--gold);transition:color 0.4s 0.2s}
+
+/* FADE IN — enhanced with stagger */
 .fade-in{opacity:0;transform:translateY(16px);transition:opacity 0.6s ease,transform 0.6s ease}
 .fade-in.visible{opacity:1;transform:translateY(0)}
+.fade-in:nth-child(2){transition-delay:0.1s}
+.fade-in:nth-child(3){transition-delay:0.2s}
+.fade-in:nth-child(4){transition-delay:0.15s}
+
+/* REDUCED MOTION */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important}
+}
 
 /* RESPONSIVE */
 @media(max-width:960px){
@@ -153,7 +202,7 @@ footer{padding:48px 40px;text-align:center}
 
 <!-- NAV -->
 <nav>
-  <a href="/" class="nav-logo">EMILIA PROTOCOL</a>
+  <a href="/" class="nav-logo"><svg width="24" height="24" viewBox="0 0 34 34" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin-right:10px"><rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="#4a90d9"/><rect x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#4a90d9"/><rect x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#d4af55"/><rect x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#4a90d9"/></svg>EMILIA PROTOCOL</a>
   <div class="nav-links">
     <a href="/protocol">Protocol</a>
     <a href="/use-cases">Use Cases</a>
@@ -177,12 +226,12 @@ footer{padding:48px 40px;text-align:center}
   </div>
   <div class="hero-stats">
     <div class="stat">
-      <div class="stat-value">1,300+</div>
+      <div class="stat-value" data-count="1300" data-suffix="+">0</div>
       <div class="stat-label">Tests</div>
     </div>
     <div class="stat-sep"></div>
     <div class="stat">
-      <div class="stat-value">19</div>
+      <div class="stat-value" data-count="19">0</div>
       <div class="stat-label">Safety Theorems</div>
     </div>
     <div class="stat-sep"></div>
@@ -400,7 +449,7 @@ footer{padding:48px 40px;text-align:center}
 </footer>
 
 <script>
-// Scroll fade-in
+// Scroll fade-in with stagger
 const observer = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
@@ -408,7 +457,40 @@ const observer = new IntersectionObserver((entries) => {
     }
   });
 }, { threshold: 0.1 });
-document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+document.querySelectorAll('.fade-in, .divider, .binding-item').forEach(el => observer.observe(el));
+
+// Nav shadow on scroll
+const nav = document.querySelector('nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 40);
+}, { passive: true });
+
+// Counter animation for stats
+function animateStats() {
+  document.querySelectorAll('.stat-value[data-count]').forEach(el => {
+    const target = parseInt(el.dataset.count);
+    const suffix = el.dataset.suffix || '';
+    let current = 0;
+    const increment = Math.ceil(target / 40);
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= target) { current = target; clearInterval(timer); }
+      el.textContent = current.toLocaleString() + suffix;
+    }, 30);
+  });
+}
+
+// Trigger counter when stats section is visible
+const statsObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      animateStats();
+      statsObserver.disconnect();
+    }
+  });
+}, { threshold: 0.3 });
+const statsEl = document.querySelector('.hero-stats');
+if (statsEl) statsObserver.observe(statsEl);
 </script>
 
 </body>
