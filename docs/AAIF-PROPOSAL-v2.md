@@ -11,15 +11,16 @@
 
 ## 1. Summary
 
-EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties.
+EMILIA Protocol is an open protocol for trust decisions and pre-action trust enforcement in machine-mediated systems.
 
-Before an agent installs software, connects to a tool, accepts delegated authority, or transacts with a counterparty, EP returns a structured trust decision — with reasons and an appeal path.
+EP Core defines interoperable objects for trust-relevant evidence, trust state, and trust decisions:
+- Trust Receipt
+- Trust Profile
+- Trust Decision
 
-MCP tells agents how to use tools. EP tells them whether they should.
+EP Extensions add stronger enforcement where systems must control whether a specific high-risk action should proceed. The most important extension is Handshake, which binds actor identity, authority, policy, action context, nonce, expiry, and one-time consumption into a replay-resistant authorization flow.
 
-This proposal asks AAIF to consider standardizing **EP Core** as a minimal interoperable trust-decision interface for agent systems. EP Core is deliberately small: **Trust Receipt**, **Trust Profile**, and **Trust Decision**. These three objects are sufficient to let independent implementations exchange trust-relevant evidence, summarize trust state, and make explainable, challengeable trust decisions without requiring any single vendor's private heuristics.
-
-Disputes and appeals, delegation and attribution, commitment proofs, domain scoring, and install-preflight adapters are important EP extensions, but they should be advanced as optional extension tracks rather than prerequisites for Core adoption.
+This proposal asks AAIF to consider EP Core as a minimal interoperable trust-decision interface, while recognizing pre-action enforcement as a key extension area for agent systems operating in high-risk environments.
 
 ---
 

@@ -10,27 +10,31 @@ This document is the source of truth for all EP positioning. When positioning dr
 
 ## The One-Line Truth
 
-**Use this in every document, every audience, every context:**
+Use this in every document, every audience, every context:
 
-> "MCP tells agents how to use tools. EP tells them whether they should."
+> "EP enforces trust before high-risk action."
 
-This line does the necessary work in one breath: it names MCP (the context everyone in the space already knows), positions EP as the missing complement rather than a competitor, and states the value proposition without jargon. It works for keynotes, README headers, investor one-pagers, and standards proposals.
-
-Do not modify it. Do not replace "whether they should" with "whether to trust them" or "whether it's safe." The original phrasing is deliberate — it captures policy judgment, not just binary safety.
+This is the canonical line. Everything else is a derivative.
 
 ---
 
-## The Technical Line
+## Supporting line for AI / agent contexts
 
-**Use this for standards bodies, enterprise architects, and security-literate audiences:**
+> "MCP tells agents how to use tools. EP tells systems whether a high-risk action should be allowed to proceed."
 
-> "EP is the SSL/TLS of AI agent behavior — the trust protocol the internet forgot to build in 1993, arriving just in time for the agents."
+Use this when AI tooling is the context. Do not let it replace the canonical line.
 
-**Always pair it with this qualifier when speaking to technical audiences:**
+---
 
-> "Unlike TLS, EP is probabilistic, policy-shaped, contextual, contestable, and governance-sensitive. It is not a binary verdict. It is a structured Trust Decision (allow/review/deny) with built-in appeal."
+## Technical positioning
 
-The SSL/TLS analogy works because it conveys infrastructure-layer necessity without requiring explanation. But it will be challenged by engineers who know that TLS is deterministic and cryptographic. Anticipate that challenge by volunteering the qualifier before they raise it. The qualifier is not a concession — it is a feature list.
+> "EP is a protocol-grade trust substrate that binds actor identity, authority, policy, and exact action context into a replay-resistant, one-time authorization flow."
+
+Use this with:
+- enterprise architects
+- security teams
+- standards bodies
+- sophisticated buyers
 
 ---
 

@@ -2,9 +2,9 @@
 
 ## Executive Summary
 
-Government fraud overwhelmingly occurs inside apparently valid workflows -- authorized users performing authorized-looking actions through authorized systems. The gap is not identity (who logged in) but action-level trust (whether that specific action, at that moment, under those constraints, was properly authorized). EMILIA Protocol (EP) closes this gap by enforcing pre-action trust verification with cryptographic binding, policy-pinned authorization, and one-time consumption of approval artifacts.
+Government fraud often succeeds inside authorized systems, through authenticated users and approved-looking workflows. The missing control is not simple identity verification. It is action-level trust enforcement: proving that this specific actor, under this specific authority chain, is allowed to perform this specific high-risk action under this specific policy, exactly once.
 
-EP does not replace IAM, SSO, or credentialing systems. It sits downstream of identity and upstream of action execution, ensuring that every trust-changing operation is attributable, policy-bound, replay-resistant, and durably logged before it takes effect.
+EMILIA Protocol (EP) provides that control layer. It sits downstream of identity and upstream of execution, binding high-risk actions to policy, authority, transaction context, replay resistance, and durable event traceability before they take effect.
 
 ---
 

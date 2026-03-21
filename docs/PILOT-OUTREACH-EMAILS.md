@@ -8,11 +8,11 @@ Hi [Name],
 
 I'm reaching out because we're building something that may matter soon for DTC brands before it becomes obvious.
 
-EMILIA Protocol (EP) is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties. For merchants, it lets systems evaluate whether a store is trustworthy enough for a given context and policy. Instead of relying on generic reviews or platform-specific heuristics, EP produces machine-readable trust profiles from receipts, fulfillment outcomes, disputes, and policy evaluation.
+EMILIA Protocol (EP) is the control layer between authentication and execution — an open trust-decision protocol that enforces trust before high-risk action through immutable events, replay resistance, and one-time consumption. For merchants, it lets systems evaluate whether a store is trustworthy enough for a given context and policy. Instead of relying on generic reviews or platform-specific heuristics, EP produces machine-readable trust profiles from receipts, fulfillment outcomes, disputes, and policy evaluation.
 
 For a Shopify brand, that means two immediate things:
 1. AI shopping agents can evaluate your store before checkout
-2. Your store can expose portable trust signals beyond any single platform
+2. Your store can expose structured, evidence-based trust signals beyond any single platform
 
 We're particularly interested in DTC because delivery accuracy, price integrity, return handling, and dispute behavior are measurable and high-value trust signals.
 
@@ -40,9 +40,9 @@ emiliaprotocol.ai
 
 Hi [Name],
 
-I'm reaching out because I think MCP servers are going to need something the ecosystem does not yet have: a portable trust-evaluation protocol.
+I'm reaching out because I think MCP servers are going to need something the ecosystem does not yet have: a control layer between authentication and execution that enforces trust before high-risk action.
 
-EMILIA Protocol (EP) is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties. For MCP servers specifically, it provides trust profiles, policy evaluation, install preflight, disputes, and appeals. For MCP servers specifically, EP can answer the question:
+EMILIA Protocol (EP) is an open trust-decision protocol that binds actor + authority + policy + exact action context into immutable events with replay resistance and one-time consumption. For MCP servers specifically, it provides trust profiles, policy evaluation, install preflight, disputes, and appeals. For MCP servers specifically, EP can answer the question:
 
 **"Is this server safe enough to install or connect to in this context?"**
 
@@ -74,7 +74,7 @@ Hi [Name],
 
 I'm reaching out because GitHub Apps are one of the clearest places where software trust becomes a real operational problem.
 
-EMILIA Protocol (EP) is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties. For GitHub Apps, the core use case is simple:
+EMILIA Protocol (EP) is the control layer between authentication and execution — an open trust-decision protocol that enforces trust before high-risk action through immutable events, replay resistance, and one-time consumption. For GitHub Apps, the core use case is simple:
 
 **"Should this app be trusted enough to install for this scope and policy?"**
 

@@ -1,10 +1,10 @@
 # Why EP
 
-Identity is not authorization. Knowing who someone is does not prove that this specific action, with these specific parameters, under this specific policy, is authorized for exactly one execution. Every major payment fraud, benefits redirect, and unauthorized agent action exploits this gap -- authenticated users performing unauthorized actions within their access scope.
+Identity is not authorization. Authentication is not action control.
 
----
+Most damaging fraud and abuse occurs inside approved-looking workflows: authenticated users, valid sessions, legitimate access, weak action-level constraints.
 
-**EMILIA Protocol (EP)** enforces trust before action. Every trust-changing operation passes through a policy-bound, replay-resistant, one-time-consumption handshake that binds actor identity, authority chain, action parameters, and governing policy into a single cryptographic envelope. The action does not execute until the handshake is verified and consumed.
+EP closes that gap by enforcing trust before high-risk action. It binds actor identity, authority chain, action parameters, policy version and hash, nonce, expiry, and one-time consumption into a single replay-resistant authorization flow.
 
 ---
 

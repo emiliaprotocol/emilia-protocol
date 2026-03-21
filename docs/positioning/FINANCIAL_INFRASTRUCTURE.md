@@ -2,9 +2,9 @@
 
 ## Executive Summary
 
-Payment fraud and unauthorized transaction modification occur predominantly inside approved workflows -- authenticated users, valid sessions, legitimate system access. The failure is not at the perimeter but at the transaction level: approved flows lack proper constraints on what specific action is authorized, for what specific parameters, and for how many uses. EMILIA Protocol (EP) provides pre-action authorization hardening that binds every trust-changing operation to a specific actor, authority chain, policy version, transaction context, and one-time consumption guarantee.
+Financial loss frequently occurs inside approved workflows, not outside them. Valid sessions, real users, and approved-looking processes are not enough when payment instructions, beneficiary data, and approval flows are weakly constrained at the action layer.
 
-EP is not an identity provider, fraud scoring engine, or transaction monitoring system. It is control-strengthening infrastructure that sits between authorization decision and action execution, ensuring that approved actions are exactly scoped, cryptographically bound, and consumed once.
+EMILIA Protocol (EP) is control-strengthening infrastructure for high-risk financial operations. It binds actor identity, authority chain, transaction parameters, policy version and hash, nonce, expiry, and one-time consumption into a pre-action authorization flow before execution.
 
 ---
 

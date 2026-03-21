@@ -2,9 +2,9 @@
 
 ## Executive Summary
 
-As AI agents move from suggestion to execution -- initiating payments, modifying accounts, approving procurement, configuring systems -- trust cannot remain informal. Current agent governance focuses on model quality (alignment, guardrails, prompt engineering) but neglects action control: ensuring that an agent's actions are authorized by specific policy, bound to specific parameters, consumed exactly once, and durably logged. EMILIA Protocol (EP) provides the trust-control layer between AI intent and operational execution.
+As AI systems move from recommendation to execution, the missing governance layer is action control.
 
-EP does not evaluate whether an agent's decision is correct. It enforces that the agent's action is authorized, scoped, bound, and auditable -- regardless of the model, framework, or orchestration layer that produced the decision.
+EMILIA Protocol (EP) is the trust-control layer between intent and execution. It does not judge whether a model is "smart." It enforces whether a high-risk action is authorized, exactly scoped, policy-bound, replay-resistant, and auditable before it proceeds.
 
 ---
 

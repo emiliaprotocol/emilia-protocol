@@ -6,13 +6,21 @@ AI agents now install software, route work to external tools, accept delegated a
 
 ## What EP does
 
-EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties. Before an agent installs software, connects to a tool, accepts delegated authority, or transacts with a counterparty, EP returns a structured trust decision — with reasons and an appeal path.
+EMILIA Protocol is a protocol-grade trust substrate for high-risk action enforcement.
 
-MCP tells agents how to use tools. EP tells them whether they should.
+EP sits between authentication and execution. It determines whether a specific actor, under a specific authority chain, should be allowed to perform a specific high-risk action under a specific policy, with exact action binding, replay resistance, one-time consumption, and immutable event traceability.
+
+This matters because many of the most damaging failures in government, payments, enterprise administration, and agent workflows do not happen outside the perimeter. They happen inside valid sessions, approved-looking workflows, and delegated operations that lack exact action-level trust enforcement.
 
 ## Why now
 
-MCP has crossed 10,000 public servers. It has been adopted by ChatGPT, Cursor, Gemini, and VS Code, and donated to the Linux Foundation. Every host running MCP servers needs trust evaluation before connecting agents to tools. NIST is actively scoping accountability and explainability requirements for agentic AI systems. The infrastructure gap is operational and immediate — and EP is among the first open implementations focused explicitly on trust decisions, recourse, and portable evaluation for agent systems.
+Three shifts make this infrastructure urgent:
+
+1. **High-risk fraud is moving inside approved workflows.** Identity alone is no longer enough when attackers exploit legitimate sessions, delegated authority, and weakly constrained approval paths.
+
+2. **AI and automation increase execution risk.** As systems move from recommendation to action, institutions need a trust-control layer between intent and execution.
+
+3. **Regulators and enterprise buyers increasingly care about control evidence.** EP does not just block or allow. It produces policy-bound, auditable, replay-resistant trust decisions that can be reconstructed later.
 
 ## The 3-layer architecture
 

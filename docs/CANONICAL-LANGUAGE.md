@@ -4,8 +4,8 @@ This document defines the authoritative vocabulary for all EMILIA Protocol docum
 
 ## Core Statements
 
-- **EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties.**
-- **MCP tells agents how to use tools. EP tells them whether they should.**
+- **EMILIA Protocol is an open trust-decision protocol — the control layer between authentication and execution. It binds actor + authority + policy + exact action context into immutable events with replay resistance and one-time consumption.**
+- **MCP tells agents how to use tools. EP enforces trust before high-risk action — proving that policy was evaluated before execution proceeds.**
 - **The protocol is free. The control plane is paid.**
 - **No high-stakes machine action should proceed without a signed EP Commit.**
 

@@ -43,15 +43,15 @@ export default function InvestorsPage() {
   };
 
   const FEATURES = [
-    { title: 'Open trust protocol', body: 'A portable trust model for machine counterparties and software.' },
-    { title: 'Policy-based evaluation', body: 'Trust decisions should depend on context and policy, not a single universal score.' },
-    { title: 'Trust profiles and preflight', body: 'Structured trust surfaces that can be evaluated before connection, installation, or delegation.' },
-    { title: 'Receipts, disputes, and appeals', body: 'Trust should be evidence-based and contestable.' },
-    { title: 'Identity and continuity', body: 'Software and machine counterparties need clearer continuity and lineage over time.' },
+    { title: 'High-risk action enforcement', body: 'Binds actor, authority, policy, and exact action context before any high-risk operation proceeds.' },
+    { title: 'Policy-based evaluation', body: 'Authorization depends on context and policy, not a single universal score.' },
+    { title: 'Replay-resistant authorization', body: 'Each authorization flow is one-time consumable and bound to a specific action context.' },
+    { title: 'Audit-grade event traceability', body: 'Every authorization decision is evidence-based, traceable, and contestable.' },
+    { title: 'Control-strengthening infrastructure', body: 'Strengthens control surfaces across identity, delegation, and lineage over time.' },
     { title: 'Commercial products', body: 'Reference implementations, enterprise trust console, hosted services, integrations, and workflow tooling.' },
   ];
 
-  const REVENUE = ['Enterprise trust console', 'Managed hosting', 'Policy packs and integrations', 'Premium registries and workflow tooling', 'Compliance and audit workflows', 'Onboarding and implementation services', 'Ecosystem-specific trust products built on top of EMILIA'];
+  const REVENUE = ['Enterprise trust console', 'Managed hosting', 'Policy packs and integrations', 'Premium registries and workflow tooling', 'Audit-grade event traceability workflows', 'Onboarding and implementation services', 'Control-strengthening infrastructure built on top of EMILIA'];
 
   return (
     <div style={s.page}>
@@ -62,10 +62,10 @@ export default function InvestorsPage() {
 
       {/* Hero */}
       <section style={{ ...s.section, paddingTop: 100, paddingBottom: 60 }}>
-        <div style={s.eyebrow}>Investor Overview</div>
-        <h1 style={s.h1}>Invest in the next layer of trust infrastructure</h1>
+        <div style={s.eyebrow}>TRUST INFRASTRUCTURE</div>
+        <h1 style={s.h1}>Trust before high-risk action.</h1>
         <p style={{ ...s.body, maxWidth: 600 }}>
-          EMILIA is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties. We believe serious software ecosystems will require a portable way to evaluate whether high-stakes machine actions should proceed under policy.
+          EMILIA Protocol is a protocol-grade trust substrate that binds identity, authority, policy, and exact action context before execution.
         </p>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <a href="#inquiry" style={{ ...s.cta, background: '#ffd700', color: '#05060a' }}>Request Investor Materials</a>
@@ -87,7 +87,7 @@ export default function InvestorsPage() {
             Connection standards help. Metadata helps. Signatures help. Registries help. But they do not fully answer a harder question:
           </p>
           <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: 20, fontWeight: 700, color: '#e8eaf0', lineHeight: 1.5, marginBottom: 24, borderLeft: '3px solid #ffd700', paddingLeft: 20 }}>
-            Should this thing be trusted, under what policy, with what evidence, and with what path for dispute or appeal?
+            Should this exact high-risk action be allowed to proceed, under what policy, with what evidence, and with what path for dispute or appeal?
           </p>
           <p style={s.body}>EMILIA is designed to fill that gap.</p>
         </div>
@@ -100,7 +100,7 @@ export default function InvestorsPage() {
           The shift toward AI agents, machine-to-machine workflows, plugin ecosystems, and delegated software actions creates a new trust problem. The internet has standards for connection, discovery, and identity. It does not yet have a broadly portable trust protocol for machine counterparties and software.
         </p>
         <p style={s.body}>
-          The winning trust protocol is more likely to emerge while these ecosystems are still forming than after habits are already locked in. This is the moment to define trust preflight, policy-aware evaluation, continuity, receipts, disputes, and appeals for modern software ecosystems.
+          The winning trust protocol is more likely to emerge while these ecosystems are still forming than after habits are already locked in. This is the moment to define replay-resistant authorization, policy-aware evaluation, one-time consumption, audit-grade event traceability, and appeals for modern software ecosystems.
         </p>
       </section>
 
@@ -108,7 +108,7 @@ export default function InvestorsPage() {
       <section style={s.sectionAlt}>
         <div style={s.section}>
           <h2 style={s.h2}>What EMILIA is building</h2>
-          <p style={s.body}>EMILIA is building open trust infrastructure with a commercial layer on top.</p>
+          <p style={s.body}>EMILIA is building control-strengthening infrastructure for high-risk action enforcement with a commercial layer on top.</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
             {FEATURES.map((f, i) => (
               <div key={i} style={s.card}>
@@ -229,7 +229,7 @@ export default function InvestorsPage() {
       {/* CTA strip */}
       <section style={{ ...s.sectionAlt, textAlign: 'center' }}>
         <div style={{ ...s.section, maxWidth: 540 }}>
-          <h2 style={{ ...s.h2, fontSize: 28 }}>Interested in backing the control plane for trust decisions before it becomes obvious?</h2>
+          <h2 style={{ ...s.h2, fontSize: 28 }}>Interested in backing control-strengthening infrastructure for high-risk action enforcement?</h2>
           <p style={s.body}>
             We are selectively speaking with aligned investors, strategic partners, and operators who can help EMILIA become both credible infrastructure and a durable company.
           </p>

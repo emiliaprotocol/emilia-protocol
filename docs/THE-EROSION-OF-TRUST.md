@@ -49,7 +49,7 @@ And once trust can influence access, routing, or conversion, it must provide due
 
 ## What EP is
 
-**EMILIA Protocol (EP)** is a portable trust evaluation and appeals layer for counterparties, software, and machine actors.
+**EMILIA Protocol (EP)** is the control layer between authentication and execution — enforcing trust before high-risk action through immutable events, replay resistance, and one-time consumption.
 
 EP computes trust from receipts and evidence rather than reviews. It produces trust profiles rather than a single number. It evaluates against policies rather than arbitrary thresholds. And it includes disputes, appeals, and append-only correction rather than silent mutation.
 
@@ -101,6 +101,6 @@ All seven require real users and real failures first — not premature engineeri
 
 ---
 
-*EMILIA Protocol — Portable trust evaluation and appeals for counterparties, software, and machine actors.*
+*EMILIA Protocol — Trust before high-risk action. The control layer between authentication and execution.*
 
 *emiliaprotocol.ai · github.com/emiliaprotocol/emilia-protocol · Apache 2.0*

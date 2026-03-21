@@ -1,6 +1,6 @@
 # EP Launch Brief
 
-EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties.
+EMILIA Protocol is the control layer between authentication and execution — an open trust-decision protocol that enforces trust before high-risk action through immutable events, replay resistance, and one-time consumption.
 
 Today, EP launches with four live wedges:
 1. install preflight for MCP servers and software packages
@@ -36,7 +36,7 @@ AI agents do not operate at human pace. An agent can execute thousands of transa
 
 The consequence is compounding: trust errors in machine-mediated systems compound faster than human systems can correct them. And the systems being built today — agent frameworks, MCP tool ecosystems, agentic commerce platforms — are being built on exactly the same absent trust foundation that the 1990s web was built on, with the sole difference that the velocity of transactions is orders of magnitude higher.
 
-We are building those systems without the infrastructure to answer that question. EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties — the trust-decision protocol those systems require.
+We are building those systems without the infrastructure to answer that question. EMILIA Protocol is the control layer between authentication and execution — binding actor + authority + policy + exact action context into immutable events with replay resistance and one-time consumption. It is the trust-decision protocol those systems require.
 
 ---
 

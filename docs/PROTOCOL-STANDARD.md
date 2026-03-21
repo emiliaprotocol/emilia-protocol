@@ -10,14 +10,18 @@
 
 ## Abstract
 
-The EMILIA Protocol defines an open, implementation-independent interface for trust-relevant evidence, trust state, and trust decisions in machine-mediated systems. It is designed for contexts in which an agent, host, marketplace, or operator must decide whether to install, connect, delegate, or transact.
+The EMILIA Protocol defines an open, implementation-independent interface for trust-relevant evidence, trust state, trust decisions, and pre-action trust enforcement in machine-mediated systems.
+
+EP is designed for contexts in which a system must decide whether a specific high-risk action should proceed under a specific authority context, governing policy, and transaction binding.
 
 EP Core consists of three interoperable objects:
 - Trust Receipt
 - Trust Profile
 - Trust Decision
 
-The protocol's purpose is not to create a universal ranking of entities. Its purpose is to let independent systems exchange trust-relevant evidence, summarize trust state, and make explainable, challengeable, and privacy-aware trust decisions.
+EP Extensions add stronger enforcement for high-risk workflows. The most important of these is Handshake: a pre-action trust artifact that binds actor identity, authority, policy, action context, nonce, expiry, and one-time consumption into a replay-resistant authorization flow.
+
+The purpose of the protocol is not to create a universal ranking of entities. Its purpose is to make trust decisions attributable, policy-bound, contestable, and interoperable across systems that need stronger control before high-risk actions execute.
 
 ---
 

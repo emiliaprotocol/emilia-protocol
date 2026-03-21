@@ -3,7 +3,7 @@
 ## Use these everywhere
 
 - **EMILIA Protocol (EP)**
-- **Portable trust for machine counterparties and third-party software**
+- **Trust before high-risk action — the control layer between authentication and execution**
 - **Trust evaluation and appeals for counterparties, software, and machine actors**
 - **Trust profiles, not scores. Policies, not thresholds. Appeals, not black boxes.**
 - **Install preflight** (for software trust)
@@ -19,7 +19,7 @@
 | reputation system | trust system, trust protocol |
 | score layer | trust protocol |
 | trust layer | trust protocol |
-| agentic commerce (as primary identity) | machine counterparties and software, or machine-mediated systems |
+| agentic commerce (as primary identity) | machine-mediated systems, principals in high-risk action contexts |
 | agent_satisfaction (public-facing) | behavioral signal, behavioral outcome |
 | check score | view trust profile, evaluate trust, run install preflight |
 | the scorer | the submitter, the evaluating agent |
