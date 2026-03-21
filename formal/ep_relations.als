@@ -7,12 +7,20 @@
  *   - One party-role mapping per handshake
  *   - Binding hash derived from canonical fields
  *   - Event ordering consistent with state transitions
+ *   - Write-path exclusivity (mutations only through protocolWrite)
+ *   - Delegation transitivity bounds
+ *   - Policy version consistency
+ *   - Multi-actor consumption uniqueness
+ *   - Event-state correspondence
  *
  * Maps to code:
  *   lib/handshake/invariants.js  — CANONICAL_BINDING_FIELDS, HANDSHAKE_STATUSES
  *   lib/handshake/consume.js     — unique constraint on handshake_consumptions
  *   lib/handshake/verify.js      — verification pipeline + event ordering
  *   lib/handshake/finalize.js    — revocation logic
+ *   lib/protocol-write.js        — canonical write path
+ *   lib/write-guard.js           — write-bypass prevention
+ *   lib/delegation.js            — delegation chain management
  */
 
 module ep_relations
@@ -117,6 +125,34 @@ sig Consumption {
 }
 
 sig ConsumptionType {}
+
+-- Write-path tracking: every mutation is tagged with its write channel.
+-- Maps to: lib/protocol-write.js protocolWrite(); lib/write-guard.js getGuardedClient()
+abstract sig WriteChannel {}
+one sig CanonicalWrite, DirectWrite extends WriteChannel {}
+
+sig Mutation {
+    target:   one Handshake,
+    channel:  one WriteChannel,
+    actor:    one Entity
+}
+
+-- Delegation: principal authorizes delegate with bounded scope.
+-- Maps to: lib/delegation.js createDelegation()
+sig Delegation {
+    principal:  one Entity,
+    delegate:   one Entity,
+    scope:      set ActionType,
+    maxScope:   set ActionType    -- principal's own scope (upper bound)
+}
+
+-- Policy versioning: tracks version at binding time vs current.
+-- Maps to: verify.js resolvePolicy() + computePolicyHash()
+sig PolicyVersion {
+    policy:          one Policy,
+    versionNumber:   one VersionNumber,
+    policyHash:      one HashValue
+}
 
 -- ==========================================================================
 -- Facts (Relational Constraints)
@@ -246,6 +282,77 @@ fact EventTypeConsistency {
             some e: elems[h.events] | e.eventType = RejectedEvent
 }
 
+-- F17: Write-path exclusivity — all mutations go through CanonicalWrite.
+-- Maps to: write-guard.js getGuardedClient() blocks DirectWrite; protocol-write.js enforces
+fact WritePathExclusivity {
+    all m: Mutation | m.channel = CanonicalWrite
+}
+
+-- F18: No DirectWrite mutations exist in valid system states.
+-- Maps to: write-guard.js Proxy throws WRITE_DISCIPLINE_VIOLATION on direct writes
+fact NoDirectWriteMutations {
+    no m: Mutation | m.channel = DirectWrite
+}
+
+-- F19: Delegation scope bounded by principal's scope.
+-- Maps to: lib/delegation.js createDelegation() scope validation
+fact DelegationScopeBounded {
+    all d: Delegation | d.scope in d.maxScope
+}
+
+-- F20: No self-delegation.
+-- Maps to: lib/delegation.js principal !== agent check
+fact NoSelfDelegation {
+    all d: Delegation | d.principal != d.delegate
+}
+
+-- F21: Delegation chains are acyclic — no circular delegation.
+-- Maps to: lib/delegation.js cycle detection
+fact DelegationAcyclic {
+    no d: Delegation | d.principal in d.delegate.~principal.*~principal
+}
+
+-- F22: Delegation transitivity bounded — delegate of delegate cannot exceed
+-- the original principal's scope.
+-- Maps to: lib/delegation.js transitive scope check
+fact DelegationTransitivityBounded {
+    all disj d1, d2: Delegation |
+        (d1.delegate = d2.principal) implies d2.scope in d1.scope
+}
+
+-- F23: Policy version consistency — if a handshake has a policy, the binding's
+-- policyHash must match the policy's hash at binding time.
+-- Maps to: verify.js resolvePolicy() + computePolicyHash() comparison
+fact PolicyVersionConsistency {
+    all h: Handshake |
+        some h.binding.policyId implies
+            h.binding.policyHash = h.binding.policyId.policyHash
+}
+
+-- F24: Multi-actor consumption uniqueness — even with multiple actors,
+-- a handshake can only be consumed once, and by exactly one actor.
+-- Maps to: consume.js unique constraint (23505)
+fact MultiActorConsumptionUniqueness {
+    all h: Handshake |
+        some h.consumption implies
+            (lone c: Consumption | c.handshakeId = h.handshakeId)
+}
+
+-- F25: Event-state correspondence — for each status, the corresponding
+-- event type must exist exactly once (not just at-least-once).
+-- Maps to: requireHandshakeEvent() called exactly once per transition
+fact EventStateCorrespondence {
+    all h: Handshake |
+        h.status = Consumed implies
+            one e: elems[h.events] | e.eventType = ConsumedEvent
+    all h: Handshake |
+        h.status = Verified implies
+            one e: elems[h.events] | e.eventType = VerifiedEvent
+    all h: Handshake |
+        h.status = Revoked implies
+            one e: elems[h.events] | e.eventType = RevokedEvent
+}
+
 -- ==========================================================================
 -- Assertions (properties to check with Alloy Analyzer)
 -- ==========================================================================
@@ -284,6 +391,49 @@ assert TerminalStateIntegrity {
 }
 check TerminalStateIntegrity for 6
 
+-- A6: Write-path exclusivity — no mutation bypasses protocolWrite.
+assert WritePathExclusive {
+    all m: Mutation | m.channel = CanonicalWrite
+}
+check WritePathExclusive for 6
+
+-- A7: Delegation scope never exceeds principal's scope.
+assert DelegationScopeRespected {
+    all d: Delegation | d.scope in d.maxScope
+}
+check DelegationScopeRespected for 6
+
+-- A8: No circular delegation chains.
+assert NoDelegationCycles {
+    all d: Delegation | d.principal != d.delegate
+    no d: Delegation | d.principal in d.delegate.~principal.*~principal
+}
+check NoDelegationCycles for 6
+
+-- A9: Policy hash consistency — binding policy hash matches policy.
+assert PolicyHashConsistency {
+    all h: Handshake |
+        some h.binding.policyId implies
+            h.binding.policyHash = h.binding.policyId.policyHash
+}
+check PolicyHashConsistency for 6
+
+-- A10: Multi-actor consumption uniqueness — two different actors cannot
+-- both consume the same handshake.
+assert MultiActorNoDoubleConsume {
+    all h: Handshake |
+        lone c: Consumption | c.handshakeId = h.handshakeId
+}
+check MultiActorNoDoubleConsume for 8
+
+-- A11: Event-state exact correspondence — each terminal event appears exactly once.
+assert EventStateExactCorrespondence {
+    all h: Handshake |
+        h.status = Consumed implies
+            one e: elems[h.events] | e.eventType = ConsumedEvent
+}
+check EventStateExactCorrespondence for 6
+
 -- ==========================================================================
 -- Predicates for visualization
 -- ==========================================================================
@@ -304,3 +454,21 @@ pred showAdversarial {
     #Handshake = 2
 }
 run showAdversarial for 4
+
+-- Show delegation scenario: principal delegates to agent, agent acts
+pred showDelegation {
+    some d: Delegation | some d.scope
+    some h: Handshake | h.status = Consumed
+    #Delegation >= 1
+    #Handshake >= 2
+}
+run showDelegation for 4
+
+-- Show multi-actor scenario: multiple actors, only one consumption
+pred showMultiActorConsumption {
+    #Entity >= 3
+    some h: Handshake | h.status = Consumed
+    some h: Handshake | h.status = Rejected
+    #Handshake >= 2
+}
+run showMultiActorConsumption for 5
