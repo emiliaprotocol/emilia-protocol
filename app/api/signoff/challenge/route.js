@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { issueChallenge } from '@/lib/signoff/challenge';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';
+import { epError } from '@/lib/errors/response';
+import { validateSignoffChallenge } from '@/lib/validation/schemas';
 
 /**
  * POST /api/signoff/challenge
@@ -23,7 +26,13 @@ export async function POST(request) {
 
     const body = await request.json();
 
-    // ── Validate required fields ──────────────────────────────────────
+    // ── Schema validation (early gate) ────────────────────────────────
+    const { valid, data, errors } = validateSignoffChallenge(body);
+    if (!valid) {
+      return epError(EP_ERROR_CODES.INVALID_INPUT, errors.join('; '));
+    }
+
+    // ── Manual validation (belt-and-suspenders fallback) ──────────────
     const required = ['handshakeId', 'accountableActorRef', 'signoffPolicyId', 'expiresAt'];
     for (const field of required) {
       if (!body[field]) {
@@ -33,10 +42,7 @@ export async function POST(request) {
 
     const result = await issueChallenge({
       actor: auth.entity,
-      handshakeId: body.handshakeId,
-      accountableActorRef: body.accountableActorRef,
-      signoffPolicyId: body.signoffPolicyId,
-      expiresAt: body.expiresAt,
+      ...data,
     });
 
     if (result.error) {

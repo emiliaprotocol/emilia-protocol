@@ -1,5 +1,7 @@
 # EMILIA Protocol
 
+[![CI](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml)
+
 EMILIA Protocol (EP) is a protocol-grade trust substrate for high-risk action enforcement.
 
 EP does not stop at identity. It verifies whether a specific actor, operating under a specific authority context, should be allowed to perform a specific high-risk action under a specific policy, exactly once, with replay resistance and durable event traceability.

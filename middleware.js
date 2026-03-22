@@ -89,6 +89,35 @@ const ROUTE_POLICIES = {
   'POST /api/operators/apply':        { rateCategory: 'submit', useAuth: false },
   'POST /api/inquiries':              { rateCategory: 'submit', useAuth: false },
   'POST /api/waitlist':               { rateCategory: 'waitlist', useAuth: false },
+
+  // Cloud — reads (dashboards, audit, events)
+  'GET /api/cloud/signoff/pending':   { rateCategory: 'cloud_read', useAuth: true },
+  'GET /api/cloud/signoff/queue':     { rateCategory: 'cloud_read', useAuth: true },
+  'GET /api/cloud/signoff/dashboard': { rateCategory: 'cloud_read', useAuth: true },
+  'GET /api/cloud/signoff/analytics': { rateCategory: 'cloud_read', useAuth: true },
+  'GET /api/cloud/audit/export':      { rateCategory: 'cloud_read', useAuth: true },
+  'GET /api/cloud/audit/integrity':   { rateCategory: 'cloud_read', useAuth: true },
+  'GET /api/cloud/audit/report':      { rateCategory: 'cloud_read', useAuth: true },
+  'GET /api/cloud/events/search':     { rateCategory: 'cloud_read', useAuth: true },
+  'GET /api/cloud/events/timeline/*': { rateCategory: 'cloud_read', useAuth: true },
+  'GET /api/cloud/policies/*/versions': { rateCategory: 'cloud_read', useAuth: true },
+  'GET /api/cloud/policies/*/diff':   { rateCategory: 'cloud_read', useAuth: true },
+
+  // Cloud — writes (notifications, escalations, simulations)
+  'POST /api/cloud/signoff/notify':   { rateCategory: 'cloud_write', useAuth: true },
+  'POST /api/cloud/signoff/escalate': { rateCategory: 'cloud_write', useAuth: true },
+  'POST /api/cloud/policies/*/simulate': { rateCategory: 'cloud_write', useAuth: true },
+
+  // Cloud — admin (policy rollouts)
+  'POST /api/cloud/policies/*/rollout': { rateCategory: 'cloud_admin', useAuth: true },
+
+  // Cloud — webhooks
+  'GET /api/cloud/webhooks':            { rateCategory: 'cloud_read', useAuth: true },
+  'POST /api/cloud/webhooks':           { rateCategory: 'cloud_write', useAuth: true },
+  'GET /api/cloud/webhooks/*':          { rateCategory: 'cloud_read', useAuth: true },
+  'PUT /api/cloud/webhooks/*':          { rateCategory: 'cloud_write', useAuth: true },
+  'DELETE /api/cloud/webhooks/*':       { rateCategory: 'cloud_admin', useAuth: true },
+  'POST /api/cloud/webhooks/*/test':    { rateCategory: 'cloud_write', useAuth: true },
 };
 
 // =============================================================================

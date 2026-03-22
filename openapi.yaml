@@ -50,6 +50,14 @@ tags:
     description: Operator applications and business inquiries
   - name: System
     description: Health, stats, feed, audit, and operational endpoints
+  - name: Signoff
+    description: |
+      Accountable Signoff — challenge-based human attestation for high-risk actions.
+      One-time, replay-resistant authorization flow binding human identity to action approval.
+  - name: Cloud Control Plane
+    description: |
+      Cloud management endpoints for signoff operations, event exploration,
+      audit/compliance, and policy lifecycle management. Requires cloud authentication.
   - name: Internal
     description: |
       Cron jobs, operator-only actions, and internal infrastructure endpoints.
@@ -2305,6 +2313,1103 @@ paths:
         '401':
           description: CRON_SECRET required
 
+  # ===========================================================================
+  # Signoff
+  # ===========================================================================
+
+  /api/signoff/challenge:
+    post:
+      tags: [Signoff]
+      summary: Issue a signoff challenge
+      description: |
+        Issue a new Accountable Signoff challenge. A challenge represents a
+        request for a human entity to review and attest to an action before
+        it may proceed. The challenge is bound to a handshake and governed
+        by a signoff policy.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [handshakeId, accountableActorRef, signoffPolicyId, expiresAt]
+              properties:
+                handshakeId:
+                  type: string
+                  description: The handshake this signoff is bound to
+                accountableActorRef:
+                  type: string
+                  description: The entity_ref of the accountable human
+                signoffPolicyId:
+                  type: string
+                  description: The policy governing this signoff
+                expiresAt:
+                  type: string
+                  format: date-time
+                  description: ISO 8601 expiration timestamp
+      responses:
+        '201':
+          description: Challenge issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignoffChallengeResponse'
+        '400':
+          description: Missing required field
+        '401':
+          description: Authentication required
+
+  /api/signoff/{challengeId}:
+    get:
+      tags: [Signoff]
+      summary: Get challenge details
+      description: |
+        Retrieve details of a signoff challenge by ID. Returns the full
+        challenge record including status, parties, and timestamps.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Signoff challenge ID
+      responses:
+        '200':
+          description: Challenge details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignoffChallengeResponse'
+        '401':
+          description: Authentication required
+        '404':
+          description: Signoff challenge not found
+
+  /api/signoff/{challengeId}/attest:
+    post:
+      tags: [Signoff]
+      summary: Submit attestation
+      description: |
+        Create a signoff attestation — the accountable human entity confirms
+        they have reviewed and approve the challenged action. Binds identity
+        assurance, authentication method, and a cryptographic hash to the
+        attestation record.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Signoff challenge ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [humanEntityRef, authMethod, assuranceLevel, channel, attestationHash]
+              properties:
+                humanEntityRef:
+                  type: string
+                  description: The entity_ref of the attesting human
+                authMethod:
+                  type: string
+                  description: Authentication method used (e.g. 'api_key', 'oauth')
+                assuranceLevel:
+                  type: string
+                  description: Level of identity assurance (e.g. 'high', 'medium')
+                channel:
+                  type: string
+                  description: Channel through which attestation was made
+                attestationHash:
+                  type: string
+                  description: Cryptographic hash binding the attestation
+      responses:
+        '201':
+          description: Attestation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignoffAttestationResponse'
+        '400':
+          description: Missing required field
+        '401':
+          description: Authentication required
+        '404':
+          description: Challenge not found
+
+  /api/signoff/{challengeId}/deny:
+    post:
+      tags: [Signoff]
+      summary: Deny challenge
+      description: |
+        Deny a signoff challenge — the accountable human entity declines
+        the requested action. Updates challenge status to 'denied' and
+        emits a protocol event.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Signoff challenge ID
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: Optional reason for denial
+      responses:
+        '200':
+          description: Challenge denied
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challenge_id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [denied]
+                  reason:
+                    type: string
+        '401':
+          description: Authentication required
+        '404':
+          description: Challenge not found
+
+  /api/signoff/{signoffId}/consume:
+    post:
+      tags: [Signoff]
+      summary: Consume signoff
+      description: |
+        Consume a signoff attestation — marks the attestation as used by
+        binding it to a specific execution. A consumed signoff cannot be
+        reused, ensuring one-time authorization semantics.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: signoffId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Signoff attestation ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [executionRef]
+              properties:
+                executionRef:
+                  type: string
+                  description: Reference to the execution consuming this signoff
+      responses:
+        '201':
+          description: Signoff consumed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  signoff_id:
+                    type: string
+                  consumed:
+                    type: boolean
+                  execution_ref:
+                    type: string
+                  consumed_at:
+                    type: string
+                    format: date-time
+        '400':
+          description: Missing required field (executionRef)
+        '401':
+          description: Authentication required
+        '409':
+          description: Signoff already consumed
+
+  /api/signoff/{challengeId}/revoke:
+    post:
+      tags: [Signoff]
+      summary: Revoke challenge or attestation
+      description: |
+        Revoke a signoff challenge or its attestation. If the challenge has
+        an active attestation and `revokeAttestation` is true in the body,
+        the attestation is revoked; otherwise the challenge itself is revoked.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Signoff challenge ID
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revokeAttestation:
+                  type: boolean
+                  description: If true, revoke the attestation instead of the challenge
+                  default: false
+                reason:
+                  type: string
+                  description: Optional reason for revocation
+      responses:
+        '200':
+          description: Challenge or attestation revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challenge_id:
+                    type: string
+                  revoked:
+                    type: boolean
+                  target:
+                    type: string
+                    enum: [challenge, attestation]
+                  reason:
+                    type: string
+        '401':
+          description: Authentication required
+        '404':
+          description: Challenge not found
+
+  # ===========================================================================
+  # Cloud Control Plane
+  # ===========================================================================
+
+  /api/cloud/signoff/pending:
+    get:
+      tags: [Cloud Control Plane]
+      summary: List pending signoffs
+      description: |
+        List signoff challenges that are pending (awaiting attestation).
+        Supports pagination via limit/offset.
+        Requires cloud read permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+          description: Maximum number of results to return
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+          description: Number of records to skip
+      responses:
+        '200':
+          description: Pending signoff challenges
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challenges:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SignoffChallengeResponse'
+                  total:
+                    type: integer
+                  offset:
+                    type: integer
+                  limit:
+                    type: integer
+                  tenant_id:
+                    type: string
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient permissions
+
+  /api/cloud/signoff/queue:
+    get:
+      tags: [Cloud Control Plane]
+      summary: Signoff queue
+      description: |
+        View the signoff processing queue. Optionally filter by status.
+        Requires cloud read permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by challenge status (e.g. pending, completed, expired)
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+          description: Maximum number of results to return
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+          description: Number of records to skip
+      responses:
+        '200':
+          description: Signoff queue
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  queue:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SignoffChallengeResponse'
+                  total:
+                    type: integer
+                  offset:
+                    type: integer
+                  limit:
+                    type: integer
+                  tenant_id:
+                    type: string
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient permissions
+
+  /api/cloud/signoff/dashboard:
+    get:
+      tags: [Cloud Control Plane]
+      summary: Dashboard stats
+      description: |
+        Summary dashboard data for signoff operations: counts by status
+        (pending, completed, expired) and total. Requires cloud read permission.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  summary:
+                    type: object
+                    properties:
+                      pending:
+                        type: integer
+                      completed:
+                        type: integer
+                      expired:
+                        type: integer
+                      total:
+                        type: integer
+                  tenant_id:
+                    type: string
+                  generated_at:
+                    type: string
+                    format: date-time
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient permissions
+
+  /api/cloud/signoff/analytics:
+    get:
+      tags: [Cloud Control Plane]
+      summary: Analytics time series
+      description: |
+        Analytics data for signoff operations: volume by status and
+        optional date-range filtering. Requires cloud read permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Start of date range (ISO 8601)
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: End of date range (ISO 8601)
+      responses:
+        '200':
+          description: Analytics data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                  by_status:
+                    type: object
+                    additionalProperties:
+                      type: integer
+                  date_range:
+                    type: object
+                    properties:
+                      from:
+                        type: string
+                        format: date-time
+                        nullable: true
+                      to:
+                        type: string
+                        format: date-time
+                        nullable: true
+                  tenant_id:
+                    type: string
+                  generated_at:
+                    type: string
+                    format: date-time
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient permissions
+
+  /api/cloud/signoff/escalate:
+    post:
+      tags: [Cloud Control Plane]
+      summary: Escalate signoff
+      description: |
+        Escalate a stalled or at-risk signoff challenge for manual review.
+        Only pending challenges can be escalated.
+        Requires cloud write permission.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challenge_id, reason]
+              properties:
+                challenge_id:
+                  type: string
+                  description: ID of the challenge to escalate
+                reason:
+                  type: string
+                  description: Reason for escalation
+      responses:
+        '200':
+          description: Challenge escalated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challenge_id:
+                    type: string
+                  escalated:
+                    type: boolean
+                  reason:
+                    type: string
+                  escalated_at:
+                    type: string
+                    format: date-time
+                  tenant_id:
+                    type: string
+        '400':
+          description: Missing challenge_id or reason
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: Challenge not found
+        '409':
+          description: Challenge is not in an escalatable state
+
+  /api/cloud/signoff/notify:
+    post:
+      tags: [Cloud Control Plane]
+      summary: Send notification
+      description: |
+        Trigger a notification for a signoff challenge (e.g. remind a party
+        that attestation is needed). Requires cloud write permission.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challenge_id]
+              properties:
+                challenge_id:
+                  type: string
+                  description: ID of the challenge to notify about
+                channel:
+                  type: string
+                  enum: [email, webhook]
+                  default: webhook
+                  description: Notification channel
+                message:
+                  type: string
+                  description: Optional custom message
+      responses:
+        '200':
+          description: Notification queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challenge_id:
+                    type: string
+                  channel:
+                    type: string
+                  notification_queued:
+                    type: boolean
+                  queued_at:
+                    type: string
+                    format: date-time
+                  tenant_id:
+                    type: string
+        '400':
+          description: Missing challenge_id
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient permissions
+
+  /api/cloud/events/search:
+    get:
+      tags: [Cloud Control Plane]
+      summary: Search events
+      description: |
+        Full-text search across all EP event tables. Supports filtering
+        by event types and date range. Requires cloud read permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Full-text search query
+        - name: event_types
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comma-separated list of event types to filter by
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Start of date range (ISO 8601)
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: End of date range (ISO 8601)
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      type: object
+                  count:
+                    type: integer
+                  tenant_id:
+                    type: string
+        '400':
+          description: Missing required query parameter "q"
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient permissions
+
+  /api/cloud/events/timeline/{handshakeId}:
+    get:
+      tags: [Cloud Control Plane]
+      summary: Event timeline
+      description: |
+        Chronological timeline of all events for a single handshake.
+        Requires cloud read permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: handshakeId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Handshake ID
+      responses:
+        '200':
+          description: Event timeline
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  handshake_id:
+                    type: string
+                  events:
+                    type: array
+                    items:
+                      type: object
+                  count:
+                    type: integer
+                  tenant_id:
+                    type: string
+        '400':
+          description: Missing handshakeId
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient permissions
+
+  /api/cloud/audit/export:
+    get:
+      tags: [Cloud Control Plane]
+      summary: Export evidence
+      description: |
+        Export all events in the date range for compliance/archival.
+        Supports pagination. Requires cloud admin permission (bulk data export).
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Start of date range (ISO 8601)
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: End of date range (ISO 8601)
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 500
+            maximum: 5000
+          description: Maximum number of events to return
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+          description: Number of records to skip
+      responses:
+        '200':
+          description: Exported events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      type: object
+                  total:
+                    type: integer
+                  offset:
+                    type: integer
+                  limit:
+                    type: integer
+                  tenant_id:
+                    type: string
+                  exported_at:
+                    type: string
+                    format: date-time
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient permissions (requires admin)
+
+  /api/cloud/audit/report:
+    get:
+      tags: [Cloud Control Plane]
+      summary: Compliance report
+      description: |
+        Generate an audit report: event summary and integrity score
+        for the specified date range. Requires cloud read permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Start of date range (ISO 8601)
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: End of date range (ISO 8601)
+      responses:
+        '200':
+          description: Audit report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_events:
+                    type: integer
+                  integrity:
+                    type: object
+                    description: Integrity verification results including score and anomalies
+                  date_range:
+                    type: object
+                    properties:
+                      from:
+                        type: string
+                        format: date-time
+                        nullable: true
+                      to:
+                        type: string
+                        format: date-time
+                        nullable: true
+                  tenant_id:
+                    type: string
+                  generated_at:
+                    type: string
+                    format: date-time
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient permissions
+
+  /api/cloud/audit/integrity:
+    get:
+      tags: [Cloud Control Plane]
+      summary: Integrity check
+      description: |
+        Run integrity verification across event tables. Returns anomaly
+        list and integrity score. Requires cloud read permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Start of verification window (ISO 8601)
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: End of verification window (ISO 8601)
+      responses:
+        '200':
+          description: Integrity check results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  score:
+                    type: number
+                    description: Integrity score (0.0 to 1.0)
+                  anomalies:
+                    type: array
+                    items:
+                      type: object
+                  tenant_id:
+                    type: string
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient permissions
+
+  /api/cloud/policies/{policyId}/simulate:
+    post:
+      tags: [Cloud Control Plane]
+      summary: Policy simulation
+      description: |
+        Simulate a policy against a test scenario without applying it.
+        Returns the evaluated policy rules and scenario for dry-run analysis.
+        Requires cloud write permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Policy ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scenario]
+              properties:
+                scenario:
+                  type: object
+                  description: Test scenario to simulate against the policy
+      responses:
+        '200':
+          description: Simulation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  policy_id:
+                    type: string
+                  policy_type:
+                    type: string
+                  scenario:
+                    type: object
+                  result:
+                    type: object
+                    properties:
+                      simulated:
+                        type: boolean
+                      policy_rules:
+                        type: object
+                      evaluated_at:
+                        type: string
+                        format: date-time
+                  tenant_id:
+                    type: string
+        '400':
+          description: Missing scenario object
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: Policy not found
+
+  /api/cloud/policies/{policyId}/rollout:
+    post:
+      tags: [Cloud Control Plane]
+      summary: Policy rollout
+      description: |
+        Initiate a rollout of a policy version to the specified environment.
+        Supports immediate and canary deployment strategies.
+        Requires cloud admin permission (deployment-level action).
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Policy ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version, environment]
+              properties:
+                version:
+                  type: integer
+                  description: Policy version number to roll out
+                environment:
+                  type: string
+                  description: Target environment (e.g. production, staging)
+                strategy:
+                  type: string
+                  enum: [immediate, canary]
+                  default: immediate
+                  description: Rollout strategy
+      responses:
+        '200':
+          description: Rollout initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  policy_id:
+                    type: string
+                  version:
+                    type: integer
+                  environment:
+                    type: string
+                  strategy:
+                    type: string
+                  status:
+                    type: string
+                    enum: [initiated]
+                  initiated_at:
+                    type: string
+                    format: date-time
+                  tenant_id:
+                    type: string
+        '400':
+          description: Missing version or environment
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient permissions (requires admin)
+        '404':
+          description: Policy version not found
+
+  /api/cloud/policies/{policyId}/versions:
+    get:
+      tags: [Cloud Control Plane]
+      summary: Version history
+      description: |
+        List all versions of a policy, ordered by version number descending.
+        Requires cloud read permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Policy ID
+      responses:
+        '200':
+          description: Policy version history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  policy_id:
+                    type: string
+                  versions:
+                    type: array
+                    items:
+                      type: object
+                  count:
+                    type: integer
+                  tenant_id:
+                    type: string
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient permissions
+
+  /api/cloud/policies/{policyId}/diff:
+    get:
+      tags: [Cloud Control Plane]
+      summary: Version diff
+      description: |
+        Compare two versions of a policy to see what changed. Both version
+        numbers must be provided as query parameters.
+        Requires cloud read permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Policy ID
+        - name: v1
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: First version number to compare
+        - name: v2
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: Second version number to compare
+      responses:
+        '200':
+          description: Version diff
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  policy_id:
+                    type: string
+                  v1:
+                    type: object
+                    description: Full version 1 record
+                  v2:
+                    type: object
+                    description: Full version 2 record
+                  tenant_id:
+                    type: string
+        '400':
+          description: Missing v1 or v2 query parameters
+        '401':
+          description: Authentication required
+        '403':
+          description: Insufficient permissions
+        '404':
+          description: One or both versions not found
+
 components:
   securitySchemes:
     BearerAuth:
@@ -2902,6 +4007,56 @@ components:
           type: string
           format: date-time
         updated_at:
+          type: string
+          format: date-time
+
+    SignoffChallengeResponse:
+      type: object
+      description: A signoff challenge record.
+      properties:
+        id:
+          type: string
+        handshake_id:
+          type: string
+        accountable_actor_ref:
+          type: string
+        signoff_policy_id:
+          type: string
+        status:
+          type: string
+          enum: [pending, attested, denied, revoked, expired, consumed]
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    SignoffAttestationResponse:
+      type: object
+      description: A signoff attestation record.
+      properties:
+        id:
+          type: string
+        challenge_id:
+          type: string
+        human_entity_ref:
+          type: string
+        auth_method:
+          type: string
+        assurance_level:
+          type: string
+        channel:
+          type: string
+        attestation_hash:
+          type: string
+        status:
+          type: string
+          enum: [active, consumed, revoked]
+        created_at:
           type: string
           format: date-time
 

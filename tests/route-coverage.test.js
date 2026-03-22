@@ -148,6 +148,11 @@ const OPENAPI_EXEMPTIONS = [
   '/api/cloud/signoff/notify',
   '/api/cloud/signoff/pending',
   '/api/cloud/signoff/queue',
+  // Webhook routes — cloud control-plane, not part of the public protocol API.
+  '/api/cloud/webhooks',
+  '/api/cloud/webhooks/[endpointId]',
+  '/api/cloud/webhooks/[endpointId]/deliveries',
+  '/api/cloud/webhooks/[endpointId]/test',
 ];
 
 

@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { getHandshake } from '@/lib/handshake';
-import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { epProblem } from '@/lib/errors';
+import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';
+import { epError } from '@/lib/errors/response';
 
 /**
  * GET /api/handshake/[handshakeId]
@@ -13,7 +15,7 @@ import { EP_ERRORS, epProblem } from '@/lib/errors';
 export async function GET(request, { params }) {
   try {
     const auth = await authenticateRequest(request);
-    if (auth.error) return EP_ERRORS.UNAUTHORIZED();
+    if (auth.error) return epError(EP_ERROR_CODES.UNAUTHORIZED);
 
     const { handshakeId } = await params;
 
@@ -31,18 +33,18 @@ export async function GET(request, { params }) {
       .maybeSingle();
 
     if (!party) {
-      return epProblem(403, 'not_party', 'Only parties to the handshake may view it');
+      return epError(EP_ERROR_CODES.FORBIDDEN, 'Only parties to the handshake may view it');
     }
 
     const result = await getHandshake(handshakeId, null, auth.entity);
 
     if (result.error) {
-      return epProblem(result.status || 404, 'handshake_not_found', result.error);
+      return epError(EP_ERROR_CODES.HANDSHAKE_NOT_FOUND, result.error);
     }
 
     return NextResponse.json(result);
   } catch (err) {
     console.error('Handshake detail error:', err);
-    return EP_ERRORS.INTERNAL();
+    return epError(EP_ERROR_CODES.INTERNAL);
   }
 }

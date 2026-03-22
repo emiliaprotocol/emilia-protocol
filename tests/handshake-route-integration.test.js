@@ -223,7 +223,8 @@ describe('POST /api/handshake (create)', () => {
 
     expect(res.status).toBe(400);
     const json = await responseJson(res);
-    expect(json.detail).toContain('mode');
+    const detail = json.detail ?? json.error?.detail;
+    expect(detail).toContain('mode');
     expect(mockInitiateHandshake).not.toHaveBeenCalled();
   });
 
@@ -235,7 +236,8 @@ describe('POST /api/handshake (create)', () => {
 
     expect(res.status).toBe(400);
     const json = await responseJson(res);
-    expect(json.detail).toContain('policy_id');
+    const detail = json.detail ?? json.error?.detail;
+    expect(detail).toContain('policy_id');
     expect(mockInitiateHandshake).not.toHaveBeenCalled();
   });
 
@@ -249,7 +251,8 @@ describe('POST /api/handshake (create)', () => {
 
     expect(res.status).toBe(400);
     const json = await responseJson(res);
-    expect(json.detail).toContain('parties');
+    const detail = json.detail ?? json.error?.detail;
+    expect(detail).toContain('parties');
     expect(mockInitiateHandshake).not.toHaveBeenCalled();
   });
 
@@ -316,7 +319,8 @@ describe('POST /api/handshake/:id/present', () => {
 
     expect(res.status).toBe(400);
     const json = await responseJson(res);
-    expect(json.detail).toContain('party_role');
+    const detail = json.detail ?? json.error?.detail;
+    expect(detail).toContain('party_role');
     expect(mockAddPresentation).not.toHaveBeenCalled();
   });
 
@@ -328,7 +332,8 @@ describe('POST /api/handshake/:id/present', () => {
 
     expect(res.status).toBe(400);
     const json = await responseJson(res);
-    expect(json.detail).toContain('presentation_type');
+    const detail = json.detail ?? json.error?.detail;
+    expect(detail).toContain('presentation_type');
     expect(mockAddPresentation).not.toHaveBeenCalled();
   });
 });

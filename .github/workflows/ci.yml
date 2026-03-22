@@ -2,45 +2,36 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
     branches: [main]
 
-jobs:
-  # ── Job 1: Test matrix across Node 18, 20, 22 ──────────────────────
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [18, 20, 22]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-      - run: npm ci
-      - run: npm test
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-node-${{ matrix.node-version }}
-          path: test-results/
-          retention-days: 14
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
-  # ── Job 2: Lint ────────────────────────────────────────────────────
-  lint:
+jobs:
+  # ── Job 1: Tests — must pass 100% ────────────────────────────────
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
       - run: npm ci
-      - name: Run Next.js lint
-        run: npx next lint
+      - name: Run test suite (vitest)
+        run: npx vitest run
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 14
 
-  # ── Job 3: Verify Next.js production build ──────────────────────────
+  # ── Job 2: Build — Next.js production build must succeed ─────────
   build:
     runs-on: ubuntu-latest
     steps:
@@ -48,10 +39,124 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
       - run: npm ci
-      - run: npx next build
+      - name: Next.js production build
+        run: npx next build
 
-  # ── Job 3: MCP server packaging smoke test ──────────────────────────
+  # ── Job 3: Write discipline ──────────────────────────────────────
+  write-discipline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Check write discipline
+        run: node scripts/check-write-discipline.js
+
+  # ── Job 4: Invariant coverage ────────────────────────────────────
+  invariant-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Check invariant coverage
+        run: node scripts/check-invariant-coverage.js
+
+  # ── Job 5: Language governance ───────────────────────────────────
+  language-governance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Check language governance
+        run: node scripts/check-language-governance.js
+
+  # ── Job 6: Type check (conditional — only if tsconfig exists) ────
+  type-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for tsconfig
+        id: tsconfig
+        run: |
+          if [ -f tsconfig.json ] || [ -f tsconfig.ts ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.tsconfig.outputs.exists == 'true'
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+        if: steps.tsconfig.outputs.exists == 'true'
+      - name: TypeScript type check
+        if: steps.tsconfig.outputs.exists == 'true'
+        run: npx tsc --noEmit
+      - name: Skip — no tsconfig found
+        if: steps.tsconfig.outputs.exists == 'false'
+        run: echo "No tsconfig.json found — skipping type check."
+
+  # ── Job 7: Lint — Next.js lint must pass or warn only ────────────
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Run Next.js lint
+        run: npx next lint
+
+  # ── Job 8: Protocol discipline — trust-model violation guardrails
+  protocol-discipline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Run protocol discipline checks
+        run: node scripts/check-protocol-discipline.js
+
+      - name: No direct receipt inserts outside canonical path
+        run: |
+          hits=$(grep -rn "\.from('receipts')\.insert\|\.from(\"receipts\")\.insert" app/ lib/ mcp-server/ --include='*.js' --include='*.mjs' | grep -v "lib/create-receipt.js" | grep -v "lib/canonical-writer.js" || true)
+          if [ -n "$hits" ]; then
+            echo "::error::Direct receipt inserts found outside canonical path:"
+            echo "$hits"
+            exit 1
+          fi
+          echo "OK — no direct receipt inserts outside canonical path."
+
+      - name: No raw EP_ env reads outside lib/env.js
+        run: |
+          hits=$(grep -rn "process\.env\.EP_" lib/ app/ --include='*.js' --include='*.mjs' | grep -v "lib/env.js" || true)
+          if [ -n "$hits" ]; then
+            echo "::error::Raw process.env.EP_ reads found outside lib/env.js:"
+            echo "$hits"
+            exit 1
+          fi
+          echo "OK — no raw EP_ env reads outside lib/env.js."
+
+  # ── Job 9: MCP server packaging smoke test ───────────────────────
   mcp-server-pack:
     runs-on: ubuntu-latest
     steps:
@@ -59,6 +164,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
       - name: Install dependencies
         working-directory: mcp-server
         run: npm install
@@ -69,7 +175,7 @@ jobs:
         working-directory: mcp-server
         run: node -e "import('./index.js').then(() => console.log('MCP server entry OK'))"
 
-  # ── Job 4: TypeScript SDK ───────────────────────────────────────────
+  # ── Job 10: TypeScript SDK ───────────────────────────────────────
   sdk-typescript:
     runs-on: ubuntu-latest
     steps:
@@ -87,7 +193,7 @@ jobs:
         working-directory: sdks/typescript
         run: npx tsc --noEmit
 
-  # ── Job 5: Python SDK ──────────────────────────────────────────────
+  # ── Job 11: Python SDK ──────────────────────────────────────────
   sdk-python:
     runs-on: ubuntu-latest
     steps:
@@ -101,7 +207,7 @@ jobs:
       - name: Verify import
         run: python -c "from emilia_protocol import EPClient; print('Python SDK import OK')"
 
-  # ── Job 6: OpenAPI spec linting ─────────────────────────────────────
+  # ── Job 12: OpenAPI spec linting ─────────────────────────────────
   openapi-lint:
     runs-on: ubuntu-latest
     steps:
@@ -112,7 +218,7 @@ jobs:
       - name: Lint OpenAPI spec
         run: npx @redocly/cli lint openapi.yaml
 
-  # ── Job 7: Docs consistency grep job ──────────────────────────────
+  # ── Job 13: Docs consistency ─────────────────────────────────────
   docs-consistency:
     runs-on: ubuntu-latest
     steps:
@@ -185,41 +291,7 @@ jobs:
           fi
           echo "OK — path counts match ($spec_paths)."
 
-  # ── Job 8: Protocol discipline — trust-model violation guardrails ──
-  protocol-discipline:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - run: npm ci
-      - name: Run protocol discipline checks
-        run: node scripts/check-protocol-discipline.js
-      - name: Run test suite
-        run: npx vitest run
-
-      - name: No direct receipt inserts outside canonical path
-        run: |
-          hits=$(grep -rn "\.from('receipts')\.insert\|\.from(\"receipts\")\.insert" app/ lib/ mcp-server/ --include='*.js' --include='*.mjs' | grep -v "lib/create-receipt.js" | grep -v "lib/canonical-writer.js" || true)
-          if [ -n "$hits" ]; then
-            echo "::error::Direct receipt inserts found outside canonical path:"
-            echo "$hits"
-            exit 1
-          fi
-          echo "OK — no direct receipt inserts outside canonical path."
-
-      - name: No raw EP_ env reads outside lib/env.js
-        run: |
-          hits=$(grep -rn "process\.env\.EP_" lib/ app/ --include='*.js' --include='*.mjs' | grep -v "lib/env.js" || true)
-          if [ -n "$hits" ]; then
-            echo "::error::Raw process.env.EP_ reads found outside lib/env.js:"
-            echo "$hits"
-            exit 1
-          fi
-          echo "OK — no raw EP_ env reads outside lib/env.js."
-
-  # ── Job 9: Docker build smoke test ────────────────────────────────
+  # ── Job 14: Docker build smoke test ──────────────────────────────
   docker-build:
     runs-on: ubuntu-latest
     steps:

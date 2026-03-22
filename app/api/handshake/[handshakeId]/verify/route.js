@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { verifyHandshake } from '@/lib/handshake';
-import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';
+import { epError } from '@/lib/errors/response';
 
 /**
  * POST /api/handshake/[handshakeId]/verify
@@ -12,7 +13,7 @@ import { EP_ERRORS, epProblem } from '@/lib/errors';
 export async function POST(request, { params }) {
   try {
     const auth = await authenticateRequest(request);
-    if (auth.error) return EP_ERRORS.UNAUTHORIZED();
+    if (auth.error) return epError(EP_ERROR_CODES.UNAUTHORIZED);
 
     const { handshakeId } = await params;
     const body = await request.json().catch(() => ({}));
@@ -24,12 +25,12 @@ export async function POST(request, { params }) {
     });
 
     if (result.error) {
-      return epProblem(result.status || 500, 'handshake_verification_failed', result.error);
+      return epError(EP_ERROR_CODES.HANDSHAKE_VERIFICATION_FAILED, result.error);
     }
 
     return NextResponse.json(result);
   } catch (err) {
     console.error('Handshake verification error:', err);
-    return EP_ERRORS.INTERNAL();
+    return epError(EP_ERROR_CODES.INTERNAL);
   }
 }
