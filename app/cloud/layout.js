@@ -17,7 +17,7 @@ const s = {
   wrapper: {
     display: 'flex',
     minHeight: '100vh',
-    background: '#05060a',
+    background: '#0a0f1e',
     color: '#e8eaf0',
     fontFamily: "'Space Grotesk', -apple-system, sans-serif",
   },

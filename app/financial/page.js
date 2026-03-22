@@ -7,12 +7,12 @@ export const metadata = {
 
 export default function FinancialPage() {
   const s = {
-    page: { minHeight: '100vh', background: '#05060a', color: '#e8e6e3', fontFamily: "'IBM Plex Sans', sans-serif" },
+    page: { minHeight: '100vh', background: '#0a0f1e', color: '#e8e6e3', fontFamily: "'IBM Plex Sans', sans-serif" },
     section: { maxWidth: 1080, margin: '0 auto', padding: '64px 24px' },
     sectionAlt: { background: 'rgba(255,255,255,0.02)', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)' },
-    eyebrow: { fontFamily: "'IBM Plex Mono', monospace", color: '#00d4ff', fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 18 },
-    h1: { fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 900, fontSize: 'clamp(42px, 7vw, 72px)', lineHeight: 0.95, letterSpacing: -2, margin: '0 0 16px' },
-    h2: { fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 800, fontSize: 30, letterSpacing: -1, margin: '0 0 16px' },
+    eyebrow: { fontFamily: "'IBM Plex Mono', monospace", color: '#4a90d9', fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 18 },
+    h1: { fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 700, fontSize: 'clamp(42px, 7vw, 72px)', lineHeight: 0.95, letterSpacing: -2, margin: '0 0 16px' },
+    h2: { fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 700, fontSize: 30, letterSpacing: -1, margin: '0 0 16px' },
     body: { color: '#9aa3b2', fontSize: 17, lineHeight: 1.7, maxWidth: 760 },
     card: { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: 20 },
     cardTitle: { fontWeight: 700, fontSize: 18, marginBottom: 8 },
@@ -38,8 +38,8 @@ export default function FinancialPage() {
           EMILIA Protocol is infrastructure for beneficiary changes, payout destination controls, treasury approvals, remittance updates, and other high-risk financial workflows that fail when authentication is treated as enough.
         </p>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 24 }}>
-          <a href="mailto:team@emiliaprotocol.ai?subject=Financial%20pilot%20request" style={{ ...s.cta, background: '#00d4ff', color: '#05060a' }}>Request Financial Pilot</a>
-          <a href="/spec" style={{ ...s.cta, border: '1px solid rgba(0,212,255,0.3)', color: '#00d4ff', background: 'transparent' }}>Read the Protocol</a>
+          <a href="mailto:team@emiliaprotocol.ai?subject=Financial%20pilot%20request" style={{ ...s.cta, background: '#4a90d9', color: '#0a0f1e' }}>Request Financial Pilot</a>
+          <a href="/spec" style={{ ...s.cta, border: '1px solid rgba(74,144,217,0.3)', color: '#4a90d9', background: 'transparent' }}>Read the Protocol</a>
         </div>
       </section>
 

@@ -530,6 +530,165 @@ Create a principal-agent delegation.
 
 ---
 
+## 6. Cloud Control Plane (authenticated)
+
+> All cloud routes require an EP Cloud API key:
+> `Authorization: Bearer ep_cloud_...`
+
+### POST /api/cloud/signoff/escalate
+
+Escalate a pending signoff for review.
+
+**Auth**: EP Cloud API key required.
+
+---
+
+### POST /api/cloud/signoff/notify
+
+Send a signoff notification to the relevant parties.
+
+**Auth**: EP Cloud API key required.
+
+---
+
+### GET /api/cloud/signoff/pending
+
+List all pending signoffs.
+
+**Auth**: EP Cloud API key required.
+
+**Response** (200): Array of pending signoff records.
+
+---
+
+### GET /api/cloud/signoff/queue
+
+Retrieve the signoff processing queue.
+
+**Auth**: EP Cloud API key required.
+
+**Response** (200): Ordered queue of signoff items awaiting action.
+
+---
+
+### GET /api/cloud/signoff/dashboard
+
+Dashboard statistics for signoff operations.
+
+**Auth**: EP Cloud API key required.
+
+**Response** (200): Aggregated signoff metrics (counts, latency, status breakdown).
+
+---
+
+### GET /api/cloud/signoff/analytics
+
+Analytics time series for signoff activity.
+
+**Auth**: EP Cloud API key required.
+
+**Response** (200): Time-bucketed signoff analytics data.
+
+---
+
+### GET /api/cloud/events/search
+
+Search protocol events with filters.
+
+**Auth**: EP Cloud API key required.
+
+**Query parameters**: Supports filtering by event type, entity, date range, and free-text search.
+
+**Response** (200): Array of matching event records.
+
+---
+
+### GET /api/cloud/events/timeline/{handshakeId}
+
+Retrieve the full event timeline for a specific handshake.
+
+**Auth**: EP Cloud API key required.
+
+**Response** (200): Chronological array of events associated with the handshake.
+
+---
+
+### GET /api/cloud/audit/export
+
+Export an evidence package for compliance or review.
+
+**Auth**: EP Cloud API key required.
+
+**Response** (200): Downloadable evidence bundle (events, commits, handshakes).
+
+---
+
+### GET /api/cloud/audit/report
+
+Generate a compliance report.
+
+**Auth**: EP Cloud API key required.
+
+**Response** (200): Structured compliance report with policy adherence summary.
+
+---
+
+### GET /api/cloud/audit/integrity
+
+Check event integrity across the audit trail.
+
+**Auth**: EP Cloud API key required.
+
+**Response** (200): Integrity check result with hash verification status.
+
+---
+
+### POST /api/cloud/policies/{policyId}/simulate
+
+Simulate a policy against historical or hypothetical data.
+
+**Auth**: EP Cloud API key required.
+
+**Request body**: Simulation parameters (entity set, time range, threshold overrides).
+
+**Response** (200): Simulation results showing projected allow/deny outcomes.
+
+---
+
+### POST /api/cloud/policies/{policyId}/rollout
+
+Initiate a staged rollout of a policy version.
+
+**Auth**: EP Cloud API key required.
+
+**Request body**: Rollout configuration (percentage, target groups, schedule).
+
+**Response** (200): Rollout plan with stages and rollback criteria.
+
+---
+
+### GET /api/cloud/policies/{policyId}/versions
+
+List version history for a policy.
+
+**Auth**: EP Cloud API key required.
+
+**Response** (200): Array of policy versions with timestamps and change summaries.
+
+---
+
+### GET /api/cloud/policies/{policyId}/diff
+
+Compare two versions of a policy.
+
+**Auth**: EP Cloud API key required.
+
+**Query parameters**: `from` and `to` version identifiers.
+
+**Response** (200): Structured diff of policy parameters between versions.
+
+---
+
 ## Lifecycle Summary
 
 ```

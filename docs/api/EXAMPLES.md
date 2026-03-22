@@ -556,3 +556,114 @@ Response (201):
 When a receipt is later submitted for this action, the attribution chain will write:
 - Agent `alice-bot`: weight 1.0 (primary attribution)
 - Principal `alice`: weight 0.15 (delegation judgment signal to `principal_delegation_signals`)
+
+---
+
+## Example 4: Cloud Control Plane Usage
+
+**Scenario**: An operations team uses the EP Cloud API to review pending signoffs, check event history for a handshake, and simulate a policy change before rolling it out.
+
+All cloud requests require an EP Cloud API key:
+
+```
+Authorization: Bearer ep_cloud_...
+```
+
+### Step 1: List Pending Signoffs
+
+```
+GET /api/cloud/signoff/pending
+```
+
+Response (200):
+
+```json
+{
+  "pending": [
+    {
+      "signoff_id": "so_a1b2c3",
+      "handshake_id": "hs_m1m2m3m4",
+      "entity_id": "vendor-corp",
+      "action_type": "transact",
+      "value_usd": 5000,
+      "requested_at": "2025-01-01T00:02:00.000Z"
+    }
+  ]
+}
+```
+
+### Step 2: View Event Timeline for a Handshake
+
+```
+GET /api/cloud/events/timeline/hs_m1m2m3m4
+```
+
+Response (200):
+
+```json
+{
+  "handshake_id": "hs_m1m2m3m4",
+  "events": [
+    { "event_type": "initiated", "timestamp": "2025-01-01T00:00:00.000Z" },
+    { "event_type": "presentation_added", "party_role": "initiator", "timestamp": "2025-01-01T00:00:30.000Z" },
+    { "event_type": "presentation_added", "party_role": "responder", "timestamp": "2025-01-01T00:01:00.000Z" },
+    { "event_type": "verified", "outcome": "accepted", "timestamp": "2025-01-01T00:01:30.000Z" }
+  ]
+}
+```
+
+### Step 3: Simulate a Policy Change
+
+```
+POST /api/cloud/policies/strict/simulate
+```
+
+```json
+{
+  "override": { "min_score": 60, "max_dispute_rate": 0.03 },
+  "time_range": "last_30d"
+}
+```
+
+Response (200):
+
+```json
+{
+  "policy_id": "strict",
+  "simulation": {
+    "total_evaluated": 1240,
+    "would_allow": 1105,
+    "would_deny": 135,
+    "change_from_current": { "newly_allowed": 42, "newly_denied": 7 }
+  }
+}
+```
+
+### Step 4: Roll Out the Policy Change
+
+```
+POST /api/cloud/policies/strict/rollout
+```
+
+```json
+{
+  "version": "v2",
+  "stages": [
+    { "percentage": 10, "duration_hours": 24 },
+    { "percentage": 50, "duration_hours": 48 },
+    { "percentage": 100 }
+  ]
+}
+```
+
+Response (200):
+
+```json
+{
+  "policy_id": "strict",
+  "rollout_id": "roll_x1y2z3",
+  "status": "stage_1",
+  "current_percentage": 10,
+  "rollback_on": { "error_rate_above": 0.05 }
+}
+```
