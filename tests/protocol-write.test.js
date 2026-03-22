@@ -612,8 +612,8 @@ describe('abuse detection', () => {
 // ============================================================================
 
 describe('COMMAND_TYPES', () => {
-  it('has all 26 expected command types', () => {
-    expect(Object.keys(COMMAND_TYPES)).toHaveLength(26);
+  it('has all 30 expected command types', () => {
+    expect(Object.keys(COMMAND_TYPES)).toHaveLength(30);
     expect(COMMAND_TYPES.SUBMIT_RECEIPT).toBe('submit_receipt');
     expect(COMMAND_TYPES.CONFIRM_RECEIPT).toBe('confirm_receipt');
     expect(COMMAND_TYPES.ISSUE_COMMIT).toBe('issue_commit');
@@ -657,7 +657,7 @@ describe('COMMAND_TYPES', () => {
   it('every command type maps to an aggregate', () => {
     for (const type of Object.values(COMMAND_TYPES)) {
       expect(_internals.COMMAND_TO_AGGREGATE[type]).toBeDefined();
-      expect(['receipt', 'commit', 'dispute', 'report', 'handshake', 'signoff']).toContain(
+      expect(['receipt', 'commit', 'dispute', 'report', 'handshake', 'signoff', 'continuity']).toContain(
         _internals.COMMAND_TO_AGGREGATE[type]
       );
     }

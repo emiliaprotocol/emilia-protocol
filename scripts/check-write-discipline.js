@@ -76,10 +76,7 @@ function walkDir(dir, results = []) {
 // These routes have known trust-table writes that need to be migrated
 // to protocolWrite commands. Until then, they are allowlisted.
 const SERVICE_CLIENT_ALLOWLIST = new Set([
-  // Direct .update() on receipts and disputes for expiration — needs EXPIRE_RECEIPT command
-  'app/api/cron/expire/route.js',
-  // Direct .update() on handshake_bindings for consumption — needs CONSUME_HANDSHAKE_BINDING command
-  'app/api/trust/gate/route.js',
+  // All former entries migrated to protocolWrite commands.
 ]);
 
 let violations = [];

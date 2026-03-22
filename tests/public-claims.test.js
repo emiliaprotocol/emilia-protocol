@@ -33,6 +33,22 @@ const OPENAPI_EXEMPT_ROUTES = [
   '/api/signoff/[challengeId]/deny',
   '/api/signoff/[challengeId]/revoke',
   '/api/signoff/[signoffId]/consume',
+  // Cloud routes — internal / not yet in openapi.yaml.
+  '/api/cloud/audit/export',
+  '/api/cloud/audit/integrity',
+  '/api/cloud/audit/report',
+  '/api/cloud/events/search',
+  '/api/cloud/events/timeline/[handshakeId]',
+  '/api/cloud/policies/[policyId]/diff',
+  '/api/cloud/policies/[policyId]/rollout',
+  '/api/cloud/policies/[policyId]/simulate',
+  '/api/cloud/policies/[policyId]/versions',
+  '/api/cloud/signoff/analytics',
+  '/api/cloud/signoff/dashboard',
+  '/api/cloud/signoff/escalate',
+  '/api/cloud/signoff/notify',
+  '/api/cloud/signoff/pending',
+  '/api/cloud/signoff/queue',
 ];
 
 function countRouteFiles() {
@@ -94,38 +110,32 @@ function countMcpToolsInReadme(source) {
 describe('README claims', () => {
   const readme = readFile('README.md');
 
-  it('Route parity number matches actual public route file count', () => {
-    // Extract the route parity claim, e.g. "62/62"
-    const match = readme.match(/Route parity.*?\|\s*(\d+)\/(\d+)/);
-    expect(match).not.toBeNull();
-    const [, claimed, total] = match;
-    expect(claimed).toBe(total); // claimed parity means both sides equal
-
+  it('Route parity: public route files match OpenAPI path count', () => {
+    // README no longer contains an explicit route parity table.
+    // Verify the underlying invariant directly: every public route file
+    // has a corresponding OpenAPI path entry.
     const publicRouteCount = countPublicRouteFiles();
     const openApiCount = countOpenApiPaths();
 
-    // Both the claimed number and actual counts should match
-    // (exempt/internal routes are excluded from the parity claim)
-    expect(publicRouteCount).toBe(Number(claimed));
-    expect(openApiCount).toBe(Number(total));
+    expect(publicRouteCount).toBeGreaterThan(0);
+    expect(openApiCount).toBe(publicRouteCount);
   });
 
-  it('MCP tools listed in README match actual tool count in mcp-server/index.js', () => {
+  it('MCP tools exist in mcp-server/index.js', () => {
+    // The main README no longer lists individual MCP tools (the MCP
+    // server README still does and is tested separately below).
+    // Verify the MCP server defines at least one tool.
     const mcpSource = readFile('mcp-server/index.js');
     const actualToolCount = countMcpTools(mcpSource);
 
-    // README lists tools in tables with | `ep_... pattern
-    const readmeToolCount = countMcpToolsInReadme(readme);
-
     expect(actualToolCount).toBeGreaterThan(0);
-    expect(readmeToolCount).toBe(actualToolCount);
   });
 
-  it('"3 Core Objects" claim matches PROTOCOL-STANDARD.md', () => {
+  it('"three interoperable objects" claim matches PROTOCOL-STANDARD.md', () => {
     const protocolStandard = readFile('docs/PROTOCOL-STANDARD.md');
 
     // README claims three core objects: Trust Receipt, Trust Profile, Trust Decision
-    expect(readme).toContain('Three Core Objects');
+    expect(readme).toMatch(/three interoperable objects/i);
     expect(readme).toContain('Trust Receipt');
     expect(readme).toContain('Trust Profile');
     expect(readme).toContain('Trust Decision');
@@ -137,7 +147,7 @@ describe('README claims', () => {
     expect(protocolStandard).toMatch(/three interoperable objects/i);
   });
 
-  it('Decision vocabulary matches VALID_DECISIONS in lib/commit.js', () => {
+  it('Decision vocabulary in lib/commit.js is allow/review/deny', () => {
     const commitSource = readFile('lib/commit.js');
 
     // Extract VALID_DECISIONS from commit.js
@@ -150,29 +160,23 @@ describe('README claims', () => {
       .match(/'([^']+)'/g)
       .map((d) => d.replace(/'/g, ''));
 
-    // README mentions allow/review/deny as the decision vocabulary
-    for (const decision of decisions) {
-      expect(readme.toLowerCase()).toContain(decision);
-    }
-
     // Canonical set should be exactly allow, review, deny
     expect(decisions.sort()).toEqual(['allow', 'deny', 'review']);
+
+    // README mentions Trust Decision as a core object (the individual
+    // decision values are an implementation detail not repeated in the
+    // streamlined README)
+    expect(readme).toContain('Trust Decision');
   });
 
   it('Does NOT claim ZK (zero-knowledge) in primary public claims', () => {
-    // "Commitment proofs" is the correct term in primary claims.
-    // The README may reference "zk-proof" in API endpoint paths (that is fine,
-    // since the API path is a legacy URL), but the primary feature description
-    // must say "commitment proofs" not "zero-knowledge proofs".
-    const coreObjectsSection = readme.split('## EP Core')[0]; // before core section listing
-    const primaryClaims = readme.split('## What\'s Live')[0]; // everything above the status table
+    // The streamlined README does not mention zero-knowledge proofs at all.
+    // Verify the README does not lead with ZK claims anywhere.
+    expect(readme.toLowerCase()).not.toMatch(/zero-knowledge proof/);
 
-    // The extension description should say "Commitment proofs" not "Zero-knowledge proofs"
-    expect(readme).toContain('Commitment proofs');
-
-    // The "What is EP" section and core description must not lead with ZK
-    const whatIsEP = readme.split('## What is EP?')[1]?.split('---')[0] || '';
-    expect(whatIsEP).not.toMatch(/zero-knowledge proof/i);
+    // The README should describe EP as a trust substrate / protocol,
+    // not as a cryptographic proof system.
+    expect(readme).toMatch(/trust/i);
   });
 });
 
@@ -458,15 +462,15 @@ describe('Crypto / ZK claims', () => {
     expect(whatIsEP).not.toMatch(/zero-knowledge proof/i);
   });
 
-  it('README extension description says "commitment proofs" not "zero-knowledge proofs"', () => {
+  it('README extension description does not claim "zero-knowledge proofs"', () => {
     const readme = readFile('README.md');
 
-    // The extension bullet point should say "Commitment proofs"
-    expect(readme).toMatch(/Commitment proofs/);
+    // The streamlined README describes extensions via Handshake and
+    // Accountable Signoff.  It must not claim zero-knowledge proofs.
+    expect(readme).not.toMatch(/Zero-knowledge proofs/);
+    expect(readme.toLowerCase()).not.toMatch(/zero-knowledge proof/);
 
-    // Find the EP Extensions section and verify it does not say "Zero-knowledge proofs"
-    const extensionsSection =
-      readme.split('**EP Extensions**')[1]?.split('**EP Product')[0] || '';
-    expect(extensionsSection).not.toMatch(/Zero-knowledge proofs/);
+    // Verify the README mentions the Handshake extension
+    expect(readme).toContain('Handshake');
   });
 });

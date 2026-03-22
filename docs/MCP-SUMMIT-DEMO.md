@@ -40,7 +40,7 @@
 - Provenance: bilateral vs self-attested
 - Disputes: 0
 
-> This is the key shift. Trust profiles, not scores.
+> This is the key shift. Action-level trust enforcement.
 
 ---
 
@@ -147,7 +147,7 @@ Say: "That's exactly why appeals and operational trust matter — even the trust
 
 ## DO say
 
-- Trust profiles, not scores
+- Action-level trust enforcement
 - Install preflight
 - Policy evaluation
 - Disputes and appeals

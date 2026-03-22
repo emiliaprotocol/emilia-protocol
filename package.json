@@ -1,7 +1,7 @@
 {
   "name": "emilia-protocol",
   "version": "1.0.0",
-  "description": "EMILIA Protocol — Portable trust for machine counterparties and third-party software. Trust profiles, not scores.",
+  "description": "EMILIA Protocol — Trust enforcement for high-risk actions. Action-level trust enforcement.",
   "license": "Apache-2.0",
   "scripts": {
     "dev": "next dev",

@@ -298,7 +298,7 @@ Extended for EP-SX:
 
 ## 11. Mission
 
-> Portable trust evaluation and appeals for counterparties, software, and machine actors.
+> Pre-action trust enforcement and appeals for high-risk actions, software, and machine actors.
 
 EP-SX extends this mission to every ecosystem where humans and agents install, authorize, or rely on third-party software. Commerce is the first vertical. Software trust is the broader application.
 

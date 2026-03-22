@@ -2,6 +2,11 @@ node_modules/
 .next/
 .env
 .env.local
+.env*.local
 *.log
 .DS_Store
 .claude/
+
+# Build artifacts
+sdks/typescript/dist/
+sdks/python/dist/

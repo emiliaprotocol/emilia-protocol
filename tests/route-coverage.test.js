@@ -102,6 +102,11 @@ const MUTATING_POLICY_EXEMPTIONS = [
   '/api/signoff/[challengeId]/deny',
   '/api/signoff/[challengeId]/revoke',
   '/api/signoff/[signoffId]/consume',
+  // Cloud control-plane routes — not part of the public protocol API.
+  '/api/cloud/policies/[policyId]/rollout',
+  '/api/cloud/policies/[policyId]/simulate',
+  '/api/cloud/signoff/escalate',
+  '/api/cloud/signoff/notify',
 ];
 
 /**
@@ -127,6 +132,22 @@ const OPENAPI_EXEMPTIONS = [
   '/api/signoff/[challengeId]/deny',
   '/api/signoff/[challengeId]/revoke',
   '/api/signoff/[signoffId]/consume',
+  // Cloud control-plane routes — internal, not part of the public protocol API.
+  '/api/cloud/audit/export',
+  '/api/cloud/audit/integrity',
+  '/api/cloud/audit/report',
+  '/api/cloud/events/search',
+  '/api/cloud/events/timeline/[handshakeId]',
+  '/api/cloud/policies/[policyId]/diff',
+  '/api/cloud/policies/[policyId]/rollout',
+  '/api/cloud/policies/[policyId]/simulate',
+  '/api/cloud/policies/[policyId]/versions',
+  '/api/cloud/signoff/analytics',
+  '/api/cloud/signoff/dashboard',
+  '/api/cloud/signoff/escalate',
+  '/api/cloud/signoff/notify',
+  '/api/cloud/signoff/pending',
+  '/api/cloud/signoff/queue',
 ];
 
 

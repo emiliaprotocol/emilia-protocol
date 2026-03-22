@@ -270,7 +270,7 @@ Use these labels everywhere — in READMEs, documentation, demo scripts, and inv
 
 **Core message:** EP's MCP server puts trust evaluation directly in Claude and any MCP-compatible agent. Developers do not need to build trust infrastructure — they query it. The trust gate is a pre-action canonical check any agent can run before executing a consequential action.
 
-**The shift to make vivid:** Trust profiles, not scores. A single numeric score collapses context, hides reasoning, and cannot be appealed. A trust profile surfaces confidence level, behavioral outcomes, provenance composition, and dispute history. Agents make decisions against explicit policies, not opaque thresholds.
+**The shift to make vivid:** Action-level trust enforcement. A single numeric score collapses context, hides reasoning, and cannot be appealed. A trust profile surfaces confidence level, behavioral outcomes, provenance composition, and dispute history. Agents make decisions against explicit policies, not opaque thresholds.
 
 **Open-source angle:** Apache 2.0. EP Core RFC is public. The spec is designed to be implemented independently, not consumed through a single vendor. Invite contribution to the conformance suite.
 

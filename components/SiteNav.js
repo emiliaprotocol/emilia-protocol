@@ -34,13 +34,17 @@ export default function SiteNav({ activePage }) {
   return (
     <nav style={{
       position: 'sticky', top: 0, zIndex: 100,
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '0 40px', height: 60,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      height: 60,
       left: 0, right: 0, width: '100%', boxSizing: 'border-box',
       background: 'rgba(10,15,30,0.88)',
       backdropFilter: 'blur(12px)',
       borderBottom: '1px solid rgba(255,255,255,0.06)',
     }}>
+     <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      width: '100%', maxWidth: 1280, padding: '0 40px',
+     }}>
       <a href="/" className="ep-logo-link" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}>
         <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
           <rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#sng)"/>
@@ -109,6 +113,7 @@ export default function SiteNav({ activePage }) {
           transition: 'background 0.2s, color 0.2s',
         }}>Request Pilot</a>
       </div>
+     </div>
     </nav>
   );
 }

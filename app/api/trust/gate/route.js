@@ -8,12 +8,7 @@ import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { EP_ERRORS } from '@/lib/errors';
 import { buildTrustDecision } from '@/lib/trust-decision';
 import { authenticateRequest } from '@/lib/supabase';
-// TODO(write-discipline): This route still uses getServiceClient because it
-// directly writes to handshake_bindings (consumed_at). That write should be
-// moved into a protocolWrite command (e.g. CONSUME_HANDSHAKE_BINDING), after
-// which this import can be replaced with getGuardedClient from '@/lib/write-guard'.
 import { getGuardedClient } from '@/lib/write-guard';
-import { getServiceClient } from '@/lib/supabase';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { sha256 } from '@/lib/handshake/invariants';
 
@@ -205,16 +200,15 @@ export async function POST(request) {
 
         // Consume handshake binding after commit issuance
         if (body.handshake_id && commit_ref) {
-          const hsSupabase = getServiceClient();
-          await hsSupabase
-            .from('handshake_bindings')
-            .update({
-              consumed_at: new Date().toISOString(),
+          await protocolWrite({
+            type: COMMAND_TYPES.CONSUME_HANDSHAKE_BINDING,
+            actor: auth.entity || 'system',
+            input: {
+              handshake_id: body.handshake_id,
               consumed_by: entity_id,
               consumed_for: `commit:${commit_ref}`,
-            })
-            .eq('handshake_id', body.handshake_id)
-            .is('consumed_at', null);
+            },
+          });
         }
       } catch {
         // Commit issuance failure should not block the gate response

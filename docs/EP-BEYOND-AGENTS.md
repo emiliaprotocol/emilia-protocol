@@ -52,5 +52,5 @@ EP's long-term role is bigger than "agent trust." It can become the trust protoc
 
 ---
 
-*Portable trust evaluation and appeals for counterparties, software, and machine actors.*
+*Pre-action trust enforcement and appeals for high-risk workflows, software, and machine actors.*
 *emiliaprotocol.ai · Apache 2.0*

@@ -10,7 +10,7 @@
 
 ## What This Is
 
-EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and machine counterparties. This MCP server gives any Claude conversation or agent pipeline direct access to EP's trust-decision surfaces: 34 tools covering trust profiles, policy evaluation, software install preflight, dispute filing, appeals, delegation chains, identity lineage, and pre-action commits. Add it to Claude Desktop in 60 seconds. No self-hosted EP backend required.
+EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and high-risk workflows. This MCP server gives any Claude conversation or agent pipeline direct access to EP's trust-decision surfaces: 34 tools covering trust profiles, policy evaluation, software install preflight, dispute filing, appeals, delegation chains, identity lineage, and pre-action commits. Add it to Claude Desktop in 60 seconds. No self-hosted EP backend required.
 
 ---
 

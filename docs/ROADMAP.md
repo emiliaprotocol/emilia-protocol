@@ -1,7 +1,7 @@
 # EP Master Roadmap
 
 **Updated:** March 2026
-**Mission:** Portable trust evaluation and appeals for principals in machine-mediated systems.
+**Mission:** Trust enforcement and appeals for principals in machine-mediated systems.
 **One-line:** Freeze the trust core, ship identity continuity, formalize human procedure, add host adapters, turn policies into a platform.
 
 ---

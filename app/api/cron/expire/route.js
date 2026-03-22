@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServiceClient } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
+import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { epProblem } from '@/lib/errors';
 import { getCronSecret } from '@/lib/env';
 
@@ -33,7 +34,7 @@ export async function GET(request) {
     return epProblem(401, 'unauthorized', 'Unauthorized');
   }
 
-  const supabase = getServiceClient();
+  const supabase = getGuardedClient();
   const now = new Date().toISOString();
   const results = { bilateral_expired: 0, disputes_escalated: 0, continuity_expired: 0, errors: [] };
 
@@ -47,10 +48,11 @@ export async function GET(request) {
 
     if (stale && stale.length > 0) {
       const ids = stale.map(r => r.receipt_id);
-      await supabase
-        .from('receipts')
-        .update({ bilateral_status: 'expired' })
-        .in('receipt_id', ids);
+      await protocolWrite({
+        type: COMMAND_TYPES.EXPIRE_RECEIPTS,
+        actor: 'cron:expire',
+        input: { receipt_ids: ids },
+      });
       results.bilateral_expired = ids.length;
     }
   } catch (err) {
@@ -68,10 +70,11 @@ export async function GET(request) {
 
     if (overdue && overdue.length > 0) {
       const ids = overdue.map(d => d.dispute_id);
-      await supabase
-        .from('disputes')
-        .update({ status: 'under_review', updated_at: now })
-        .in('dispute_id', ids);
+      await protocolWrite({
+        type: COMMAND_TYPES.ESCALATE_DISPUTES,
+        actor: 'cron:expire',
+        input: { dispute_ids: ids },
+      });
       results.disputes_escalated = ids.length;
     }
   } catch (err) {
@@ -88,10 +91,11 @@ export async function GET(request) {
 
     if (staleIx && staleIx.length > 0) {
       const ids = staleIx.map(c => c.continuity_id);
-      await supabase
-        .from('continuity_claims')
-        .update({ status: 'expired', updated_at: now })
-        .in('continuity_id', ids);
+      await protocolWrite({
+        type: COMMAND_TYPES.EXPIRE_CONTINUITY_CLAIMS,
+        actor: 'cron:expire',
+        input: { continuity_ids: ids },
+      });
       results.continuity_expired = ids.length;
     }
   } catch (err) {
