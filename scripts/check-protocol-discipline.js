@@ -247,7 +247,7 @@ const HANDSHAKE_TABLES = [
 
 /** Files that are ALLOWED to write directly to handshake tables. */
 const HANDSHAKE_WRITE_ALLOWLIST = new Set([
-  path.join(ROOT, 'lib', 'handshake.js'),
+  path.join(ROOT, 'lib', 'handshake', 'index.js'),
   path.join(ROOT, 'lib', 'protocol-write.js'),
 ]);
 
@@ -312,11 +312,9 @@ function checkHandshakeEnv() {
   const violations = [];
   const envPattern = /process\.env/g;
 
-  const handshakeMainFile = path.join(ROOT, 'lib', 'handshake.js');
   const handshakeDir = path.join(ROOT, 'lib', 'handshake');
 
   const filesToScan = [];
-  if (fs.existsSync(handshakeMainFile)) filesToScan.push(handshakeMainFile);
   if (fs.existsSync(handshakeDir)) filesToScan.push(...collectFiles(handshakeDir, /\.js$/));
 
   for (const filePath of filesToScan) {
@@ -386,11 +384,9 @@ function checkEmbeddedIssuerKeys() {
   const violations = [];
   const embeddedKeyPattern = /presentation\.publicKey|presentation\.signingKey|payload\.key/g;
 
-  const handshakeMainFile = path.join(ROOT, 'lib', 'handshake.js');
   const handshakeDir = path.join(ROOT, 'lib', 'handshake');
 
   const filesToScan = [];
-  if (fs.existsSync(handshakeMainFile)) filesToScan.push(handshakeMainFile);
   if (fs.existsSync(handshakeDir)) filesToScan.push(...collectFiles(handshakeDir, /\.js$/));
 
   for (const filePath of filesToScan) {
