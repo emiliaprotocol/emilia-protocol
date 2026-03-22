@@ -19,7 +19,7 @@ const s = {
     minHeight: '100vh',
     background: '#0a0f1e',
     color: '#e8eaf0',
-    fontFamily: "'Space Grotesk', -apple-system, sans-serif",
+    fontFamily: "'IBM Plex Sans', -apple-system, sans-serif",
   },
   sidebar: {
     width: 220,
@@ -42,7 +42,7 @@ const s = {
     gap: 10,
   },
   logoText: {
-    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+    fontFamily: "'IBM Plex Mono', monospace",
     fontWeight: 700,
     fontSize: 13,
     letterSpacing: 2,
@@ -50,11 +50,11 @@ const s = {
     textTransform: 'uppercase',
   },
   cloudBadge: {
-    fontFamily: "'JetBrains Mono', monospace",
+    fontFamily: "'IBM Plex Mono', monospace",
     fontSize: 9,
     letterSpacing: 2,
     textTransform: 'uppercase',
-    color: '#00d4ff',
+    color: '#4a90d9',
     background: 'rgba(0,212,255,0.08)',
     border: '1px solid rgba(0,212,255,0.15)',
     borderRadius: 4,
@@ -101,7 +101,7 @@ const s = {
     borderTop: '1px solid rgba(255,255,255,0.04)',
   },
   backLink: {
-    fontFamily: "'JetBrains Mono', monospace",
+    fontFamily: "'IBM Plex Mono', monospace",
     fontSize: 10,
     letterSpacing: 1,
     textTransform: 'uppercase',
@@ -127,13 +127,13 @@ const s = {
     zIndex: 40,
   },
   breadcrumb: {
-    fontFamily: "'JetBrains Mono', monospace",
+    fontFamily: "'IBM Plex Mono', monospace",
     fontSize: 11,
     color: '#4a4f6a',
     letterSpacing: 1,
   },
   envBadge: {
-    fontFamily: "'JetBrains Mono', monospace",
+    fontFamily: "'IBM Plex Mono', monospace",
     fontSize: 9,
     letterSpacing: 1,
     textTransform: 'uppercase',

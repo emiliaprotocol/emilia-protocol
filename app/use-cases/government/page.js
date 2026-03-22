@@ -171,7 +171,7 @@ export default function GovernmentUseCasePage() {
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
             <a href="/partners?type=government-pilot" style={{ ...s.cta, background: '#d4af55', color: '#0a0f1e', width: '100%', maxWidth: 380, textAlign: 'center' }}>Request Fraud-Control Pilot</a>
-            <a href="/docs/architecture" style={{ ...s.cta, background: 'transparent', color: '#4a90d9', border: '1px solid rgba(212,175,55,0.3)', width: '100%', maxWidth: 380, textAlign: 'center' }}>See Government Architecture</a>
+            <a href="/docs" style={{ ...s.cta, background: 'transparent', color: '#4a90d9', border: '1px solid rgba(212,175,55,0.3)', width: '100%', maxWidth: 380, textAlign: 'center' }}>See Government Architecture</a>
             <a href="/docs" style={{ ...s.cta, background: 'transparent', color: '#8b95a5', border: '1px solid rgba(255,255,255,0.08)', width: '100%', maxWidth: 380, textAlign: 'center' }}>Download Audit Evidence Model</a>
           </div>
         </div>
