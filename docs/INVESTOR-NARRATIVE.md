@@ -22,15 +22,35 @@ In all of these environments, the missing control is the same: action-level trus
 
 ## What EP has accomplished
 
-EP is no longer a broad trust idea. It is now a protocol-grade trust system with:
-- canonical action binding
-- policy-bound decisions
-- actor and authority enforcement
-- replay resistance
-- one-time consumption
-- immutable events
-- formal conformance surfaces
-- Accountable Signoff for human ownership when policy requires it
+EP is no longer a broad trust idea. It is a shipping product with protocol-grade internals.
+
+**Protocol core** — canonical action binding, policy-bound decisions, actor and authority enforcement, replay resistance, one-time consumption, immutable events, formal conformance surfaces, and Accountable Signoff for named human accountability when policy requires it.
+
+**EP Cloud control plane** — the revenue engine, now built:
+- Policy management with versioning, simulation, and staged rollout
+- Event explorer with full-text search and timeline reconstruction
+- Signoff orchestration dashboard with pending queue, analytics, and escalation
+- Tenant management with environment separation and API key isolation
+- Alerting with threshold, anomaly, absence, and pattern rules
+- Webhooks with HMAC-SHA256 signatures and exponential backoff retry
+
+**SDKs shipped** — TypeScript and Python, zero dependencies, 10 protocol methods plus 15 cloud methods. Integration in 5 lines of code.
+
+**Vertical packs** — pre-built policy configurations across three pricing tiers:
+- Government Control Pack: benefits fraud detection, operator override controls, IG/GAO audit readiness
+- Financial Control Pack: wire transfer protection, dual signoff enforcement, SOX evidence generation
+- Agent Governance Pack: risk classification, signoff thresholds, EU AI Act mapping
+
+**Engineering proof points:**
+- 1,511 tests across 58 files
+- 14 CI quality gates including write discipline, invariant coverage, and language governance
+- 19 TLA+ safety theorems, 32 Alloy facts, 15 assertions
+- 85 red team cases with zero write discipline exceptions
+- Protocol-grade refactor: single sha256, single actor resolver, bounded caches, deterministic idempotency
+
+## Product differentiator: Accountable Signoff
+
+Accountable Signoff is what turns EP from a strong handshake into a complete trust-control substrate. Most trust systems stop at machine verification. EP adds named human accountability — a specific person, under a specific policy, approving a specific action, with an immutable record that the approval happened and who owned it. This is the gap that auditors, regulators, and compliance teams cannot close with identity or workflow tools alone.
 
 ## Why now
 
@@ -55,10 +75,9 @@ EP should be positioned first around high-risk action enforcement in:
 
 ## Business model
 
-The protocol remains open while the company builds monetizable layers around it:
-- managed policy and control plane
-- hosted verification and signoff orchestration
-- workflow integrations
-- sector-specific policy packs
-- audit and evidence tooling
-- enterprise deployment and support
+The protocol remains open while the company monetizes the control plane and vertical packs:
+- **EP Cloud** — managed policy engine, signoff orchestration, event exploration, alerting, and webhooks
+- **Vertical packs** — pre-built policy configurations for government, financial, and agent governance use cases at three pricing tiers
+- **SDKs** — TypeScript and Python with zero-dependency integration
+- Audit and evidence tooling
+- Enterprise deployment and support
