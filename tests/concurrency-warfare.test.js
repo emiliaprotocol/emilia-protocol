@@ -102,7 +102,6 @@ import {
 
 import {
   getHandshakeEvents,
-  recordHandshakeEvent,
 } from '../lib/handshake/events.js';
 
 // Wire handlers after import so they reference the real functions

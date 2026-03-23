@@ -285,14 +285,14 @@ describe('recordHandshakeEvent', () => {
   it('stores a valid event and returns it', async () => {
     const event = await recordHandshakeEvent(supabase, {
       handshake_id: 'hs_001',
-      event_type: 'handshake_created',
+      event_type: 'initiated',
       event_payload: { mode: 'basic' },
       actor_id: 'user_123',
     });
 
     expect(event).toBeDefined();
     expect(event.handshake_id).toBe('hs_001');
-    expect(event.event_type).toBe('handshake_created');
+    expect(event.event_type).toBe('initiated');
     expect(event.actor_id).toBe('user_123');
   });
 });
@@ -308,7 +308,7 @@ describe('getHandshakeEvents', () => {
     // Insert events with explicit timestamps out of order
     await recordHandshakeEvent(supabase, {
       handshake_id: 'hs_order',
-      event_type: 'handshake_verified',
+      event_type: 'verified',
       actor_id: 'actor_b',
       idempotency_key: 'key_b',
       event_payload: {},
@@ -319,7 +319,7 @@ describe('getHandshakeEvents', () => {
 
     await recordHandshakeEvent(supabase, {
       handshake_id: 'hs_order',
-      event_type: 'handshake_created',
+      event_type: 'initiated',
       actor_id: 'actor_a',
       idempotency_key: 'key_a',
       event_payload: {},
@@ -328,8 +328,8 @@ describe('getHandshakeEvents', () => {
 
     const events = await getHandshakeEvents(supabase, 'hs_order');
     expect(events.length).toBe(2);
-    expect(events[0].event_type).toBe('handshake_created');
-    expect(events[1].event_type).toBe('handshake_verified');
+    expect(events[0].event_type).toBe('initiated');
+    expect(events[1].event_type).toBe('verified');
   });
 });
 
@@ -344,14 +344,14 @@ describe('idempotent event recording', () => {
 
     const first = await recordHandshakeEvent(supabase, {
       handshake_id: 'hs_idem',
-      event_type: 'handshake_created',
+      event_type: 'initiated',
       actor_id: 'actor_1',
       idempotency_key: key,
     });
 
     const second = await recordHandshakeEvent(supabase, {
       handshake_id: 'hs_idem',
-      event_type: 'handshake_created',
+      event_type: 'initiated',
       actor_id: 'actor_1',
       idempotency_key: key,
     });
@@ -369,14 +369,13 @@ describe('idempotent event recording', () => {
 describe('HANDSHAKE_EVENT_TYPES', () => {
   it('contains all expected event types', () => {
     const expected = [
-      'handshake_created',
-      'handshake_presented',
-      'handshake_verification_started',
-      'handshake_verified',
-      'handshake_rejected',
-      'handshake_expired',
-      'handshake_cancelled',
-      'handshake_revoked',
+      'initiated',
+      'presentation_added',
+      'status_changed',
+      'verified',
+      'rejected',
+      'expired',
+      'revoked',
     ];
     expect(HANDSHAKE_EVENT_TYPES).toEqual(expected);
   });
