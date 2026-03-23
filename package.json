@@ -1,7 +1,7 @@
 {
   "name": "emilia-protocol",
   "version": "1.0.0",
-  "description": "EMILIA Protocol — Trust enforcement for high-risk actions. Action-level trust enforcement.",
+  "description": "EMILIA Protocol — Trust enforcement for high-risk actions. Open protocol for pre-action binding, policy-bound verification, one-time consumption, and accountable human signoff.",
   "license": "Apache-2.0",
   "scripts": {
     "dev": "next dev",

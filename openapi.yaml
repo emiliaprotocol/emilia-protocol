@@ -2,13 +2,11 @@ openapi: 3.0.3
 info:
   title: EMILIA Protocol API
   description: |
-    Protocol-grade trust infrastructure for high-risk action enforcement.
+    EMILIA Protocol enforces trust before high-risk action.
 
-    EP binds actor identity, authority, policy, and exact action context into a replay-resistant, one-time authorization flow with immutable event traceability.
+    EP verifies whether a specific high-risk action should proceed under a specific authority context, governing policy, and transaction binding. It binds actor identity, authority chain, exact action context, policy version/hash, nonce, and expiry into a single verification envelope — consumed exactly once, with immutable event traceability.
 
-    Supporting line for AI-native contexts: MCP tells agents how to use tools. EP tells systems whether a high-risk action should be allowed to proceed.
-
-    Constitutional principle: trust must never be more powerful than appeal.
+    When policy demands it, EP requires named human signoff before execution (Accountable Signoff).
   version: 1.1.0
   license:
     name: Apache 2.0

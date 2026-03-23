@@ -1,7 +1,7 @@
 {
   "name": "@emilia-protocol/mcp-server",
   "version": "1.0.0",
-  "description": "EMILIA Protocol MCP Server — trust decisions for AI agents via MCP",
+  "description": "EMILIA Protocol MCP Server — trust enforcement for high-risk actions via MCP. Pre-action binding, policy-bound verification, and accountable human signoff.",
   "main": "index.js",
   "type": "module",
   "bin": {

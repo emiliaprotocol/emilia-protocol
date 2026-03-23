@@ -4,13 +4,13 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![MCP](https://img.shields.io/badge/protocol-MCP-5a5aff)](https://modelcontextprotocol.io)
 
-**Trust decisions for AI agents — signed authorization, evaluation, and appeal via MCP.**
+**Trust enforcement for high-risk actions via MCP. Pre-action binding, policy-bound verification, one-time consumption, and accountable human signoff.**
 
 ---
 
 ## What This Is
 
-EMILIA Protocol is an open protocol for making, explaining, challenging, and verifying trust decisions about agents, software, and high-risk workflows. This MCP server gives any Claude conversation or agent pipeline direct access to EP's trust-decision surfaces: 34 tools covering trust profiles, policy evaluation, software install preflight, dispute filing, appeals, delegation chains, identity lineage, and pre-action commits. Add it to Claude Desktop in 60 seconds. No self-hosted EP backend required.
+EMILIA Protocol enforces trust before high-risk action. EP verifies whether a specific high-risk action should proceed under a specific authority context, governing policy, and transaction binding. This MCP server gives any Claude conversation or agent pipeline direct access to EP's trust-decision surfaces: 34 tools covering trust profiles, policy evaluation, handshake verification, signoff orchestration, and pre-action binding. Add it to Claude Desktop in 60 seconds. No self-hosted EP backend required.
 
 ---
 
