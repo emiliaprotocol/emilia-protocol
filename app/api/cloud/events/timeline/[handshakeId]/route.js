@@ -22,7 +22,7 @@ export async function GET(request, { params }) {
       return epProblem(400, 'missing_handshake_id', 'handshakeId path parameter is required');
     }
 
-    const events = await getTimeline(handshakeId);
+    const events = await getTimeline(handshakeId, auth.tenantId);
 
     return NextResponse.json({
       handshake_id: handshakeId,

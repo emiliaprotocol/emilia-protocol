@@ -72,6 +72,8 @@ function inlineFormat(text) {
   text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
   text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
   text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+  // Strip dangerous protocols from links to prevent XSS
+  text = text.replace(/href="(javascript|data|vbscript):[^"]*"/gi, 'href="#"');
   return text;
 }
 

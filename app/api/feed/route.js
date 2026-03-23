@@ -1,6 +1,11 @@
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 
+/** Escape LIKE metacharacters to prevent pattern injection. */
+function escapeLike(str) {
+  return str.replace(/[%_\\]/g, '\\$&');
+}
+
 /**
  * GET /api/feed
  *
@@ -67,7 +72,7 @@ export async function GET(request) {
             .order('created_at', { ascending: false })
             .limit(limit);
 
-          if (capability) query = query.ilike('capability_needed', `%${capability}%`);
+          if (capability) query = query.ilike('capability_needed', `%${escapeLike(capability)}%`);
           if (category) query = query.contains('context', { category });
           if (trustPolicy) query = query.eq('trust_policy', trustPolicy);
           if (minScore > 0) query = query.lte('min_emilia_score', minScore);

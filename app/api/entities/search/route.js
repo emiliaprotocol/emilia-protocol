@@ -4,6 +4,15 @@ import { epProblem } from '@/lib/errors';
 import { generateEmbedding } from '@/lib/providers/embeddings';
 
 /**
+ * Sanitize user input to prevent PostgREST filter DSL injection.
+ * Strips metacharacters that could alter filter semantics.
+ */
+function sanitizePostgrestInput(str) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/[,;.()"'\\]/g, '');
+}
+
+/**
  * GET /api/entities/search
  *
  * Search entities by capability, category, type, or semantic query.
@@ -132,7 +141,8 @@ export async function GET(request) {
     if (category) query = query.eq('category', category);
     if (capability) query = query.contains('capabilities', [capability]);
     if (q) {
-      query = query.or(`display_name.ilike.%${q}%,description.ilike.%${q}%,entity_id.ilike.%${q}%`);
+      const sanitized = sanitizePostgrestInput(q);
+      query = query.or(`display_name.ilike.%${sanitized}%,description.ilike.%${sanitized}%,entity_id.ilike.%${sanitized}%`);
     }
 
     const { data: results, error } = await query;

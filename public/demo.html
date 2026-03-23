@@ -350,16 +350,16 @@ async function runStep1(btn) {
     res.innerHTML = `<div class="result-card">
       <div class="label">Trust Profile</div>
       <div><span class="val" style="font-size:16px;font-weight:700;">${esc(d.display_name || d.entity_id)}</span></div>
-      <div style="margin-top:8px;">Confidence: <span class="val">${d.current_confidence || 'pending'}</span></div>
-      <div>Evidence: <span class="val">${d.effective_evidence_current || 0}</span> (current) / <span class="val">${d.effective_evidence_historical || 0}</span> (historical)</div>
-      <div>Receipts: <span class="val">${d.receipt_count || 0}</span> from <span class="val">${d.unique_submitters || 0}</span> submitters</div>
+      <div style="margin-top:8px;">Confidence: <span class="val">${esc(String(d.current_confidence || 'pending'))}</span></div>
+      <div>Evidence: <span class="val">${esc(String(d.effective_evidence_current || 0))}</span> (current) / <span class="val">${esc(String(d.effective_evidence_historical || 0))}</span> (historical)</div>
+      <div>Receipts: <span class="val">${esc(String(d.receipt_count || 0))}</span> from <span class="val">${esc(String(d.unique_submitters || 0))}</span> submitters</div>
       ${bh.completion_rate != null ? `<div style="margin-top:8px;"><span class="label">Behavioral</span></div>
-      <div>Completion: <span class="val">${bh.completion_rate}%</span> · Dispute: <span class="val">${bh.dispute_rate || 0}%</span></div>` : ''}
+      <div>Completion: <span class="val">${esc(String(bh.completion_rate))}%</span> · Dispute: <span class="val">${esc(String(bh.dispute_rate || 0))}%</span></div>` : ''}
       ${sg.delivery_accuracy != null ? `<div style="margin-top:8px;"><span class="label">Signals</span></div>
-      <div>Delivery: <span class="val">${sg.delivery_accuracy}</span> · Product: <span class="val">${sg.product_accuracy}</span> · Price: <span class="val">${sg.price_integrity}</span></div>` : ''}
+      <div>Delivery: <span class="val">${esc(String(sg.delivery_accuracy))}</span> · Product: <span class="val">${esc(String(sg.product_accuracy))}</span> · Price: <span class="val">${esc(String(sg.price_integrity))}</span></div>` : ''}
       ${prov.breakdown ? `<div style="margin-top:8px;"><span class="label">Provenance</span></div>
-      <div>${Object.entries(prov.breakdown).map(([k,v]) => `${k}: <span class="val">${v}</span>`).join(' · ')}</div>` : ''}
-      <div style="margin-top:12px;color:var(--t3);font-size:10px;">Legacy compat: ${d.compat_score || 'N/A'}</div>
+      <div>${Object.entries(prov.breakdown).map(([k,v]) => `${esc(k)}: <span class="val">${esc(String(v))}</span>`).join(' · ')}</div>` : ''}
+      <div style="margin-top:12px;color:var(--t3);font-size:10px;">Legacy compat: ${esc(String(d.compat_score || 'N/A'))}</div>
     </div>`;
   } catch(e) {
     res.innerHTML = `<div class="result-card"><span class="warn">${esc(String(e))}</span></div>`;
@@ -382,7 +382,7 @@ async function runStep2(btn) {
     res.innerHTML = `<div class="result-card">
       <div class="label">Policy Evaluation — ${esc(d.policy_used || 'strict')}</div>
       <div style="font-size:18px;font-weight:700;" class="${cls}">${icon}</div>
-      <div style="margin-top:8px;">Confidence: <span class="val">${d.confidence || 'pending'}</span></div>
+      <div style="margin-top:8px;">Confidence: <span class="val">${esc(String(d.confidence || 'pending'))}</span></div>
       ${d.failures?.length ? `<div style="margin-top:8px;"><span class="label">Failures</span></div>${d.failures.map(f => `<div class="fail">✗ ${esc(f)}</div>`).join('')}` : ''}
       ${d.warnings?.length ? `<div style="margin-top:8px;"><span class="label">Warnings</span></div>${d.warnings.map(w => `<div class="warn">⚠ ${esc(w)}</div>`).join('')}` : ''}
     </div>`;
@@ -411,8 +411,8 @@ async function runStep3(btn) {
     res.innerHTML = `<div class="result-card">
       <div class="label">Install Preflight — ${esc(d.policy_used || 'mcp_server_safe_v1')}</div>
       <div style="font-size:18px;font-weight:700;" class="${dc}">${icon}</div>
-      <div style="margin-top:8px;">Confidence: <span class="val">${d.confidence || 'pending'}</span></div>
-      <div>Entity type: <span class="val">${d.entity_type || 'unknown'}</span></div>
+      <div style="margin-top:8px;">Confidence: <span class="val">${esc(String(d.confidence || 'pending'))}</span></div>
+      <div>Entity type: <span class="val">${esc(String(d.entity_type || 'unknown'))}</span></div>
       ${d.reasons?.length ? `<div style="margin-top:8px;"><span class="label">Reasons</span></div>${d.reasons.map(r => `<div style="color:var(--t2);">· ${esc(r)}</div>`).join('')}` : ''}
     </div>`;
   } catch(e) {

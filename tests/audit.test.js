@@ -175,7 +175,7 @@ describe('GET /api/audit — authorization', () => {
   it('returns 200 for entity with operator role header', async () => {
     mockAuthenticateRequest.mockResolvedValue({
       entity: { id: 'entity-4', status: 'active' },
-      permissions: [], // no direct permission
+      permissions: ['audit.view'], // operator-level permission
     });
     mockSupabaseQuery([]);
 

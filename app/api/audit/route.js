@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
-import { filterByVisibility, OPERATOR_ROLES } from '@/lib/procedural-justice';
+import { filterByVisibility } from '@/lib/procedural-justice';
 
 /**
  * GET /api/audit?target_id=...&target_type=...&limit=50
@@ -21,12 +21,11 @@ export async function GET(request) {
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();
 
     // Enforce operator-level authorization: caller must have audit.view permission.
-    // Check permissions from the API key record first, then fall back to role header.
+    // Only check verified permissions from the authenticated API key record.
+    // NOTE: x-ep-role header check was removed — it allowed unauthenticated
+    // role escalation (HIGH-02 pentest finding).
     const permissions = auth.permissions || [];
-    const roleHeader = request.headers.get('x-ep-role');
-    const hasAuditPermission =
-      permissions.includes('audit.view') ||
-      (roleHeader && OPERATOR_ROLES[roleHeader]?.permissions?.includes('audit.view'));
+    const hasAuditPermission = permissions.includes('audit.view');
 
     if (!hasAuditPermission) {
       return epProblem(403, 'insufficient_permissions', 'Audit access requires operator role with audit.view permission');

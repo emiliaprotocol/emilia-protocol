@@ -318,7 +318,7 @@ describe('authenticateCloudRequest', () => {
     expect(result.permissions).toEqual(['read', 'write', 'admin']);
   });
 
-  it('defaults to [read, write] when permissions column is null', async () => {
+  it('defaults to [] (no permissions) when permissions column is null', async () => {
     const mock = makeSupabaseMock({
       keyRow: defaultKeyRow({ permissions: null }),
       tenant: defaultTenant(),
@@ -328,10 +328,10 @@ describe('authenticateCloudRequest', () => {
     const req = makeRequest(`Bearer ${RAW_KEY}`);
     const result = await authenticateCloudRequest(req);
 
-    expect(result.permissions).toEqual(['read', 'write']);
+    expect(result.permissions).toEqual([]);
   });
 
-  it('defaults to [read, write] when permissions is not an array', async () => {
+  it('defaults to [] (no permissions) when permissions is not an array', async () => {
     const mock = makeSupabaseMock({
       keyRow: defaultKeyRow({ permissions: 'read' }),
       tenant: defaultTenant(),
@@ -341,7 +341,7 @@ describe('authenticateCloudRequest', () => {
     const req = makeRequest(`Bearer ${RAW_KEY}`);
     const result = await authenticateCloudRequest(req);
 
-    expect(result.permissions).toEqual(['read', 'write']);
+    expect(result.permissions).toEqual([]);
   });
 
   // === Unexpected errors ==================================================

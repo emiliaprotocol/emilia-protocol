@@ -102,6 +102,21 @@ vi.mock('@/lib/handshake', () => ({
 }));
 
 // ============================================================================
+// Mock: @/lib/handshake-auth — authorization passes by default
+// ============================================================================
+
+const mockAuthorizeHandshakeVerify = vi.fn().mockResolvedValue(undefined);
+
+vi.mock('@/lib/handshake-auth', () => ({
+  authorizeHandshakeVerify: (...args) => mockAuthorizeHandshakeVerify(...args),
+  resolveAuthEntityId: (actor) => {
+    if (!actor) return null;
+    if (typeof actor === 'string') return actor;
+    return actor.entity_id || actor.id || actor.entity_ref || null;
+  },
+}));
+
+// ============================================================================
 // Mock: @/lib/errors — use real implementations
 // ============================================================================
 

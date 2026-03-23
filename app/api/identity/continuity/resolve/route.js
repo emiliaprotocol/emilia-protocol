@@ -2,11 +2,16 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { resolveContinuity } from '@/lib/ep-ix';
 import { EP_ERRORS } from '@/lib/errors';
+import { epProblem } from '@/lib/errors';
 
 export async function POST(request) {
   try {
     const auth = await authenticateRequest(request);
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();
+
+    if (!auth.permissions?.includes('dispute.review')) {
+      return epProblem(403, 'forbidden', 'Identity continuity resolution requires dispute.review permission');
+    }
 
     const body = await request.json();
     if (!body.continuity_id) return EP_ERRORS.BAD_REQUEST('continuity_id is required');

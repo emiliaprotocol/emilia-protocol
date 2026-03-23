@@ -88,23 +88,23 @@ describe('authenticateRequest', () => {
     expect(result.error).toBeUndefined();
   });
 
-  it('returns 401 with key_not_found when key does not exist', async () => {
+  it('returns 401 with auth_failed when key does not exist', async () => {
     mockFrom.mockImplementation(() => makeChain({ data: [], error: null }));
 
     const result = await authenticateRequest(makeRequest(`Bearer ${TEST_KEY}`));
     expect(result.status).toBe(401);
-    expect(result.code).toBe('key_not_found');
-    expect(result.error).toContain('not found');
+    expect(result.code).toBe('auth_failed');
+    expect(result.error).toContain('Authentication failed');
   });
 
-  it('returns 403 with key_revoked when key is revoked', async () => {
+  it('returns 401 with auth_failed when key is revoked', async () => {
     const revokedRow = { entity_id: 'ent-1', permissions: ['read'], revoked_at: '2025-01-01T00:00:00Z' };
     mockFrom.mockImplementation(() => makeChain({ data: [revokedRow], error: null }));
 
     const result = await authenticateRequest(makeRequest(`Bearer ${TEST_KEY}`));
-    expect(result.status).toBe(403);
-    expect(result.code).toBe('key_revoked');
-    expect(result.error).toContain('revoked');
+    expect(result.status).toBe(401);
+    expect(result.code).toBe('auth_failed');
+    expect(result.error).toContain('Authentication failed');
   });
 
   it('returns 503 on database error, NOT "invalid key"', async () => {

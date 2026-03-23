@@ -54,6 +54,12 @@ export async function POST(request) {
       'chrome_extension', 'shopify_app', 'marketplace_plugin', 'agent_tool',
     ];
 
+    // Block reserved entity IDs to prevent privilege escalation
+    const RESERVED_ENTITY_IDS = ['system', 'admin', 'operator', 'root', 'superuser', 'service'];
+    if (RESERVED_ENTITY_IDS.includes(body.entity_id?.toLowerCase())) {
+      return epProblem(400, 'reserved_entity_id', 'This entity ID is reserved and cannot be used');
+    }
+
     if (!VALID_ENTITY_TYPES.includes(body.entity_type)) {
       return epProblem(400, 'invalid_entity_type', `entity_type must be one of: ${VALID_ENTITY_TYPES.join(', ')}`);
     }
@@ -70,7 +76,7 @@ export async function POST(request) {
       .single();
 
     if (existing) {
-      return epProblem(409, 'entity_id_taken', `entity_id "${body.entity_id}" is already registered`);
+      return epProblem(400, 'registration_failed', 'Unable to complete registration');
     }
 
     // Rate limiting handled by middleware on all /api/* routes

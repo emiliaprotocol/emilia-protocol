@@ -1,8 +1,17 @@
 import { NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { getGuardedClient } from '@/lib/write-guard';
 import { runAnchorBatch } from '@/lib/blockchain';
 import { epProblem } from '@/lib/errors';
 import { getCronSecret } from '@/lib/env';
+
+function safeCompare(a, b) {
+  if (!a || !b) return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
 
 /**
  * POST /api/blockchain/anchor
@@ -25,7 +34,7 @@ export async function POST(request) {
       return epProblem(500, 'cron_secret_missing', 'CRON_SECRET not configured');
     }
 
-    if (authHeader !== `Bearer ${cronSecret}`) {
+    if (!safeCompare(authHeader, `Bearer ${cronSecret}`)) {
       return epProblem(401, 'unauthorized', 'Unauthorized');
     }
 
@@ -39,7 +48,8 @@ export async function POST(request) {
   }
 }
 
-// Also support GET for Vercel Cron (which sends GET by default)
-export async function GET(request) {
-  return POST(request);
+// Vercel Cron sends GET by default, but we require POST to avoid
+// leaking the Authorization header in access logs / query strings.
+export async function GET() {
+  return new Response('Method not allowed', { status: 405 });
 }

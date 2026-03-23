@@ -31,6 +31,15 @@ export async function GET(request, { params }) {
       return EP_ERRORS.NOT_FOUND('Signoff challenge');
     }
 
+    // ── Authorization: caller must be the accountable actor or have operator permissions ──
+    const callerEntityId = auth.entityId || auth.entity_id;
+    const isAccountableActor = callerEntityId && callerEntityId === challenge.accountable_actor_ref;
+    const hasOperatorPermission = auth.permissions?.includes('signoff.view') || auth.permissions?.includes('operator');
+
+    if (!isAccountableActor && !hasOperatorPermission) {
+      return epProblem(403, 'forbidden', 'You must be the accountable actor or have operator permissions to view this challenge');
+    }
+
     return NextResponse.json(challenge);
   } catch (err) {
     console.error('Signoff challenge fetch error:', err);

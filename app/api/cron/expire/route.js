@@ -1,8 +1,17 @@
 import { NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { getGuardedClient } from '@/lib/write-guard';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { epProblem } from '@/lib/errors';
 import { getCronSecret } from '@/lib/env';
+
+function safeCompare(a, b) {
+  if (!a || !b) return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
 
 /**
  * GET /api/cron/expire
@@ -30,7 +39,7 @@ export async function GET(request) {
   const authHeader = request.headers.get('authorization');
   const cronSecret = getCronSecret();
 
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || !safeCompare(authHeader, `Bearer ${cronSecret}`)) {
     return epProblem(401, 'unauthorized', 'Unauthorized');
   }
 
