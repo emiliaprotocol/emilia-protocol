@@ -182,6 +182,14 @@ We follow the principle of coordinated disclosure. Please do not disclose vulner
 | API key derivation | crypto.randomBytes(32) | Stored as SHA-256 hash |
 | Owner ID | crypto.randomUUID() | ep_owner_<uuid> (portable, not IP-derived) |
 
+## Security Posture
+
+- **Independent penetration testing completed** (Shannon AI Penetration Testing Framework, 2026-03-23)
+- **31 findings identified and remediated** (5 critical, 12 high, 8 medium, 6 low)
+- **CI pipeline includes 16 automated quality gates** including secret scanning (gitleaks), write discipline enforcement, invariant coverage, and language governance
+- **Security checklist** maintained at `docs/conformance/SECURITY_CHECKLIST.md`
+- **Threat model** at `docs/security/THREAT_MODEL.md`
+
 ## Conformance
 
 Any implementation claiming EP compatibility must pass the conformance suite:

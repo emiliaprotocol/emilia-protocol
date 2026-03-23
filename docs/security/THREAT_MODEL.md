@@ -141,3 +141,47 @@ Each threat is listed with its attack vector, mitigation mechanism, and the code
 - `lib/handshake/verify.js` (`_handleVerifyHandshake`): Hard gate at top queries `consumed_at` before processing. Binding consumption update uses `.is('consumed_at', null)` filter, making it a conditional write that only succeeds if the binding has not been consumed.
 - Database: Unique constraint on `handshake_consumptions` prevents duplicate consumption records.
 - If the conditional update affects zero rows (because another request consumed it first), the consumption silently fails and the binding remains consumed by the first request only.
+
+---
+
+## Attack Vectors Identified in Penetration Testing
+
+The following attack vectors were identified during independent penetration testing (Shannon AI, 2026-03-23) and have been fully remediated.
+
+### PostgREST Filter DSL Injection
+
+Supabase `.or()` accepts raw filter strings that are passed directly to the PostgREST query engine. If user input is interpolated into these filter strings without sanitization, an attacker can inject arbitrary filter predicates, bypassing intended query constraints and accessing unauthorized data.
+
+**Remediation**: All `.or()` calls now sanitize user-supplied input before interpolation. Input validation rejects filter metacharacters.
+
+---
+
+### JavaScript Destructuring Parameter Drop
+
+JavaScript object destructuring silently discards properties not listed in the destructuring pattern. When security-critical parameters (such as `actor`) are omitted from a function's destructuring signature, they are silently dropped, and authorization checks that depend on those parameters are bypassed. This is a language-level footgun: no error is thrown, and the function executes without the authorization context it requires.
+
+**Remediation**: All security-critical functions now explicitly validate the presence of required authorization parameters after destructuring. CI checks detect destructuring patterns in security paths that omit authorization-relevant fields.
+
+---
+
+### DNS Rebinding on Webhooks
+
+Webhook URL validation at registration time is insufficient. An attacker can register a domain that resolves to a public IP during validation, then change the DNS record to point to an internal IP (RFC 1918 range) before the webhook is delivered. The server then makes an HTTP request to an internal service, enabling SSRF.
+
+**Remediation**: URL validation now occurs at delivery time, not just at registration. The resolved IP is checked against private ranges immediately before the outbound HTTP request is made.
+
+---
+
+### Header-Based Role Injection
+
+If authorization decisions rely on user-supplied HTTP headers (e.g., `X-Role`, `X-Admin`), an attacker can inject arbitrary headers to escalate privileges. User-controlled headers must never be trusted for authorization.
+
+**Remediation**: All authorization flows now use the authenticated session context from `authenticateRequest()`. No route trusts user-supplied headers for role or permission decisions.
+
+---
+
+### Cross-Tenant Query Leakage
+
+Cloud data queries that do not include an explicit `tenant_id` filter can return data belonging to other tenants. Implicit tenant isolation (e.g., relying on row-level security alone without application-level enforcement) is insufficient when queries are constructed dynamically.
+
+**Remediation**: Every cloud query now includes an explicit `tenant_id` filter derived from the authenticated session. No query relies solely on implicit isolation mechanisms.
