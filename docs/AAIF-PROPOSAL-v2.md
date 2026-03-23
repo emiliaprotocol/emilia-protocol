@@ -1,17 +1,15 @@
 # EMILIA Protocol (EP) — Proposal for AAIF Consideration
 
-EMILIA Protocol is an open protocol for pre-action trust enforcement in machine-mediated systems. While agent safety is one wedge, EP applies equally to government fraud prevention and financial infrastructure controls — anywhere high-risk actions require policy-bound authorization before execution.
+EMILIA Protocol is an open protocol for trust decisions and pre-action trust enforcement in machine-mediated systems.
 
-EP Core defines interoperable objects for trust-relevant evidence, trust state, and trust decisions:
+EP exists for contexts in which a system must decide whether a specific high-risk action should proceed under a specific authority context, governing policy, and transaction binding.
+
+EP Core defines interoperable objects for:
 - Trust Receipt
 - Trust Profile
 - Trust Decision
 
-EP Extensions add stronger enforcement where systems must control whether a specific high-risk action should proceed. The most important extension is Handshake, which binds actor identity, authority, policy, action context, nonce, expiry, and one-time consumption into a replay-resistant authorization flow.
-
-When policy requires named human ownership, EP can also require **Accountable Signoff** before execution.
-
-This proposal asks AAIF to consider EP Core as a minimal interoperable trust-decision interface, while recognizing pre-action enforcement as a key extension area for agent systems operating in high-risk environments.
+EP Extensions add stronger enforcement where high-risk actions require exact action binding, replay resistance, one-time consumption, and—when policy requires it—named human ownership through Accountable Signoff.
 
 ## Why AAIF should care
 

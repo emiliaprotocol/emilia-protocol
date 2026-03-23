@@ -291,7 +291,29 @@ jobs:
           fi
           echo "OK — path counts match ($spec_paths)."
 
-  # ── Job 14: Docker build smoke test ──────────────────────────────
+  # ── Job 14: Secret scanning (gitleaks) ──────────────────────────
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Job 15: Docs secrets lint ──────────────────────────────────
+  docs-secrets-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check docs for leaked secrets
+        run: node scripts/check-docs-secrets.js
+
+  # ── Job 16: Docker build smoke test ──────────────────────────────
   docker-build:
     runs-on: ubuntu-latest
     steps:

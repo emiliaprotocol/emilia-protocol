@@ -60,13 +60,30 @@ export default function FinancialPage() {
       <section style={s.section}>
         <h2 style={s.h2}>What EP proves before a financial action executes</h2>
         <ul style={s.list}>
-          <li>who is acting and under what authority chain</li>
-          <li>what exact action is being requested, on what exact target</li>
-          <li>which policy version and policy hash govern the action</li>
-          <li>that the authorization artifact cannot be replayed or reused</li>
-          <li>that accountable human signoff occurred when thresholds require human ownership</li>
-          <li>that the full decision path is reconstructable through immutable events</li>
+          <li>Actor identity -- cryptographically verified, never self-asserted</li>
+          <li>Authority chain -- complete delegation path from root to acting principal</li>
+          <li>Exact transaction binding -- precise operation, target, parameters, and conditions</li>
+          <li>Policy version and hash -- immutable reference to the governing policy at decision time</li>
+          <li>Replay resistance -- one-time nonce and strict temporal bounds</li>
+          <li>One-time consumption -- each ceremony token consumed on use, no reuse</li>
+          <li>Accountable signoff when required -- named human responsibility bound to the exact action</li>
         </ul>
+      </section>
+
+      <section style={s.sectionAlt}>
+        <div style={s.section}>
+          <h2 style={s.h2}>Best first pilot</h2>
+          <p style={s.body}>Start with one high-risk workflow and expand from there.</p>
+          <ul style={{ ...s.list, marginTop: 16 }}>
+            <li>Beneficiary change</li>
+            <li>Payout destination change</li>
+            <li>Remittance update</li>
+            <li>Treasury release approval</li>
+          </ul>
+          <div style={{ marginTop: 24 }}>
+            <a href="mailto:team@emiliaprotocol.ai?subject=Financial%20pilot%20request" style={{ ...s.cta, background: '#4a90d9', color: '#0a0f1e' }}>Request Financial Pilot</a>
+          </div>
+        </div>
       </section>
     </div>
   );

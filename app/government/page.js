@@ -69,6 +69,19 @@ export default function GovernmentPage() {
           <li>Accountable Signoff when policy requires named human ownership</li>
         </ul>
       </section>
+
+      <section style={s.sectionAlt}>
+        <div style={s.section}>
+          <h2 style={s.h2}>What evidence agencies get after each controlled action</h2>
+          <ul style={s.list}>
+            <li>Decision record -- who acted, what was requested, what policy governed</li>
+            <li>Event chain -- complete sequence from request through enforcement to outcome</li>
+            <li>Signoff trace if required -- named human responsibility bound to the exact action</li>
+            <li>Policy snapshot -- immutable reference to the exact policy version at decision time</li>
+            <li>Reconstruction-ready export -- full evidence package for audit, oversight, and legal review</li>
+          </ul>
+        </div>
+      </section>
     </div>
   );
 }

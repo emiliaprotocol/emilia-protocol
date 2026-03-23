@@ -1,0 +1,109 @@
+# Gitleaks configuration for Emilia Protocol
+# https://github.com/gitleaks/gitleaks
+
+title = "emilia-protocol gitleaks config"
+
+# ── Allowlist (global) ───────────────────────────────────────────
+[allowlist]
+  description = "Global allowlist"
+  paths = [
+    '''\.env\.example$''',
+    '''\.env\.sample$''',
+    '''\.env\.template$''',
+    '''docs/.*\.md$''',
+    '''content/.*\.md$''',
+    '''README\.md$''',
+    '''CHANGELOG\.md$''',
+    '''node_modules/''',
+    '''\.gitleaks\.toml$''',
+  ]
+
+# ── Custom rules ─────────────────────────────────────────────────
+
+[[rules]]
+  id = "supabase-service-role-key"
+  description = "Supabase service role key"
+  regex = '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}'''
+  tags = ["supabase", "jwt"]
+
+[[rules]]
+  id = "openai-api-key"
+  description = "OpenAI API key"
+  regex = '''sk-[A-Za-z0-9]{20,}'''
+  tags = ["openai", "api-key"]
+  [rules.allowlist]
+    regexTarget = "line"
+    regexes = [
+      '''sk-your-''',
+      '''sk-xxx''',
+      '''sk-\.\.\.''',
+      '''sk-<''',
+      '''sk-\{''',
+      '''placeholder''',
+      '''example''',
+      '''EXAMPLE''',
+    ]
+
+[[rules]]
+  id = "anthropic-api-key"
+  description = "Anthropic API key"
+  regex = '''sk-ant-[A-Za-z0-9_-]{20,}'''
+  tags = ["anthropic", "api-key"]
+  [rules.allowlist]
+    regexTarget = "line"
+    regexes = [
+      '''placeholder''',
+      '''example''',
+      '''your-''',
+      '''xxx''',
+    ]
+
+[[rules]]
+  id = "twilio-auth-token"
+  description = "Twilio Auth Token"
+  regex = '''(?i)twilio[_\s]*auth[_\s]*token\s*[:=]\s*['\"]?[a-f0-9]{32}['\"]?'''
+  tags = ["twilio"]
+
+[[rules]]
+  id = "twilio-api-key"
+  description = "Twilio API Key"
+  regex = '''SK[a-f0-9]{32}'''
+  tags = ["twilio", "api-key"]
+
+[[rules]]
+  id = "pem-private-key"
+  description = "PEM private key"
+  regex = '''-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----'''
+  tags = ["private-key", "pem"]
+
+[[rules]]
+  id = "jwt-token"
+  description = "Real JWT token (not a placeholder)"
+  regex = '''eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}'''
+  tags = ["jwt"]
+  [rules.allowlist]
+    regexTarget = "line"
+    regexes = [
+      '''example''',
+      '''placeholder''',
+      '''test''',
+      '''mock''',
+      '''dummy''',
+    ]
+
+[[rules]]
+  id = "database-url-with-credentials"
+  description = "Database URL with embedded credentials"
+  regex = '''(?i)(postgres|mysql|mongodb|redis|amqp|mssql)(:\/\/|s:\/\/)[^\s:]+:[^\s@]+@[^\s/]+'''
+  tags = ["database", "credentials"]
+  [rules.allowlist]
+    regexTarget = "line"
+    regexes = [
+      '''localhost''',
+      '''127\.0\.0\.1''',
+      '''example\.com''',
+      '''your-''',
+      '''placeholder''',
+      '''username:password''',
+      '''user:pass''',
+    ]
