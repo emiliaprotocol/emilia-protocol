@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">
+  <style>
+    .bracket { fill: none; stroke: #3B82F6; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+  </style>
+  <!-- Left chevron > -->
+  <polyline class="bracket" points="72,12 100,30 72,48"/>
+  <!-- Right chevron < -->
+  <polyline class="bracket" points="128,12 100,30 128,48"/>
+  <!-- Interlock bars at center -->
+  <rect fill="#3B82F6" x="96" y="27" width="8" height="6" rx="1"/>
+</svg>

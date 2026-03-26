@@ -70,6 +70,16 @@ export default function FinancialPage() {
         </ul>
       </section>
 
+      <section style={s.section}>
+        <div style={{ ...s.card, borderLeft: '3px solid #22C55E', padding: '28px 32px' }}>
+          <h3 style={{ fontWeight: 700, fontSize: 18, marginBottom: 8 }}>Start with Emilia Eye</h3>
+          <p style={s.cardBody}>
+            Eye can flag beneficiary changes, payout destination changes, remittance updates, and unusual treasury approval paths, then escalate into EP Handshake or Accountable Signoff.
+          </p>
+          <a href="/eye" style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#22C55E', textDecoration: 'none', marginTop: 12, display: 'inline-block', letterSpacing: 1 }}>See Emilia Eye &#8594;</a>
+        </div>
+      </section>
+
       <section style={s.sectionAlt}>
         <div style={s.section}>
           <h2 style={s.h2}>Best first pilot</h2>

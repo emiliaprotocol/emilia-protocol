@@ -194,6 +194,94 @@ class IssueCommitParams:
 
 
 @dataclass
+class RecordObservationParams:
+    """Parameters for recording a behavioral or contextual observation."""
+
+    source_type: str
+    source_ref: str
+    subject_ref: str
+    actor_ref: str
+    action_type: str
+    observation_type: str
+    severity_hint: str
+    expires_at: str
+    target_ref: Optional[str] = None
+    issuer_ref: Optional[str] = None
+    evidence_hash: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        d: Dict[str, Any] = {
+            "source_type": self.source_type,
+            "source_ref": self.source_ref,
+            "subject_ref": self.subject_ref,
+            "actor_ref": self.actor_ref,
+            "action_type": self.action_type,
+            "observation_type": self.observation_type,
+            "severity_hint": self.severity_hint,
+            "expires_at": self.expires_at,
+        }
+        if self.target_ref is not None:
+            d["target_ref"] = self.target_ref
+        if self.issuer_ref is not None:
+            d["issuer_ref"] = self.issuer_ref
+        if self.evidence_hash is not None:
+            d["evidence_hash"] = self.evidence_hash
+        if self.metadata is not None:
+            d["metadata"] = self.metadata
+        return d
+
+
+@dataclass
+class CheckActionParams:
+    """Parameters for checking an action against recorded observations."""
+
+    subject_ref: str
+    actor_ref: str
+    action_type: str
+    context_hash: str
+    target_ref: Optional[str] = None
+    issuer_ref: Optional[str] = None
+    payload_hash: Optional[str] = None
+    policy_class: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        d: Dict[str, Any] = {
+            "subject_ref": self.subject_ref,
+            "actor_ref": self.actor_ref,
+            "action_type": self.action_type,
+            "context_hash": self.context_hash,
+        }
+        if self.target_ref is not None:
+            d["target_ref"] = self.target_ref
+        if self.issuer_ref is not None:
+            d["issuer_ref"] = self.issuer_ref
+        if self.payload_hash is not None:
+            d["payload_hash"] = self.payload_hash
+        if self.policy_class is not None:
+            d["policy_class"] = self.policy_class
+        return d
+
+
+@dataclass
+class CreateSuppressionParams:
+    """Parameters for creating a suppression."""
+
+    scope_binding_hash: str
+    reason_code: str
+    justification: str
+    expires_at: str
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "scope_binding_hash": self.scope_binding_hash,
+            "reason_code": self.reason_code,
+            "justification": self.justification,
+            "expires_at": self.expires_at,
+        }
+
+
+@dataclass
 class ExportAuditParams:
     """Parameters for exporting audit data."""
 
@@ -977,4 +1065,78 @@ class PolicyDiff:
             version_a=d.get("versionA", ""),
             version_b=d.get("versionB", ""),
             changes=[PolicyChange.from_dict(c) for c in d.get("changes", [])],
+        )
+
+
+# ---------------------------------------------------------------------------
+# Eye Responses
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ObservationResponse:
+    """Response from recording an observation."""
+
+    observation_id: str = ""
+    observation_type: str = ""
+    severity_hint: str = ""
+    observed_at: str = ""
+    expires_at: str = ""
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "ObservationResponse":
+        return cls(
+            observation_id=d.get("observation_id", d.get("observationId", "")),
+            observation_type=d.get("observation_type", d.get("observationType", "")),
+            severity_hint=d.get("severity_hint", d.get("severityHint", "")),
+            observed_at=d.get("observed_at", d.get("observedAt", "")),
+            expires_at=d.get("expires_at", d.get("expiresAt", "")),
+        )
+
+
+@dataclass
+class AdvisoryResponse:
+    """Response from checking an action or retrieving an advisory."""
+
+    advisory_id: str = ""
+    status: str = ""
+    reason_codes: List[str] = field(default_factory=list)
+    recommended_policy_action: str = ""
+    evidence_refs: List[str] = field(default_factory=list)
+    scope_binding_hash: str = ""
+    issued_at: str = ""
+    expires_at: str = ""
+    version: int = 1
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "AdvisoryResponse":
+        return cls(
+            advisory_id=d.get("advisory_id", d.get("advisoryId", "")),
+            status=d.get("status", ""),
+            reason_codes=d.get("reason_codes", d.get("reasonCodes", [])),
+            recommended_policy_action=d.get("recommended_policy_action", d.get("recommendedPolicyAction", "")),
+            evidence_refs=d.get("evidence_refs", d.get("evidenceRefs", [])),
+            scope_binding_hash=d.get("scope_binding_hash", d.get("scopeBindingHash", "")),
+            issued_at=d.get("issued_at", d.get("issuedAt", "")),
+            expires_at=d.get("expires_at", d.get("expiresAt", "")),
+            version=d.get("version", 1),
+        )
+
+
+@dataclass
+class SuppressionResponse:
+    """Response from creating a suppression."""
+
+    suppression_id: str = ""
+    status: str = ""
+    created_at: str = ""
+    expires_at: str = ""
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "SuppressionResponse":
+        return cls(
+            suppression_id=d.get("suppression_id", d.get("suppressionId", "")),
+            status=d.get("status", ""),
+            created_at=d.get("created_at", d.get("createdAt", "")),
+            expires_at=d.get("expires_at", d.get("expiresAt", "")),
         )

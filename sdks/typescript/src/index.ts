@@ -84,6 +84,70 @@ export interface IssueCommitParams {
   binding?: Record<string, unknown>;
 }
 
+// -- Eye Params -------------------------------------------------------------
+
+export interface RecordObservationParams {
+  source_type: string;
+  source_ref: string;
+  subject_ref: string;
+  actor_ref: string;
+  action_type: string;
+  target_ref?: string;
+  issuer_ref?: string;
+  observation_type: string;
+  severity_hint: string;
+  evidence_hash?: string;
+  expires_at: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface CheckActionParams {
+  subject_ref: string;
+  actor_ref: string;
+  action_type: string;
+  target_ref?: string;
+  issuer_ref?: string;
+  context_hash: string;
+  payload_hash?: string;
+  policy_class?: string;
+}
+
+export interface CreateSuppressionParams {
+  scope_binding_hash: string;
+  reason_code: string;
+  justification: string;
+  expires_at: string;
+}
+
+// -- Eye Responses ----------------------------------------------------------
+
+export interface ObservationResponse {
+  observation_id: string;
+  observation_type: string;
+  severity_hint: string;
+  observed_at: string;
+  expires_at: string;
+}
+
+export interface AdvisoryResponse {
+  advisory_id: string;
+  status: string;
+  reason_codes: string[];
+  recommended_policy_action: string;
+  evidence_refs: string[];
+  scope_binding_hash: string;
+  issued_at: string;
+  expires_at: string;
+  version: number;
+}
+
+export interface SuppressionResponse {
+  suppression_id: string;
+  status: string;
+  created_at: string;
+  expires_at: string;
+}
+
 // -- Cloud Params -----------------------------------------------------------
 
 export interface SignoffFilters {
@@ -835,5 +899,34 @@ export class EPClient {
       undefined,
       true,
     );
+  }
+
+  // ------------------------------------------------------------------
+  // Eye — Observation & Advisory
+  // ------------------------------------------------------------------
+
+  /** Record a behavioral or contextual observation for the Eye subsystem. */
+  async recordObservation(params: RecordObservationParams): Promise<ObservationResponse> {
+    return this.request<ObservationResponse>('POST', '/api/eye/observations', params, true);
+  }
+
+  /** Check an action against recorded observations and return an advisory. */
+  async checkAction(params: CheckActionParams): Promise<AdvisoryResponse> {
+    return this.request<AdvisoryResponse>('POST', '/api/eye/check', params, true);
+  }
+
+  /** Retrieve an existing advisory by ID. */
+  async getAdvisory(advisoryId: string): Promise<AdvisoryResponse> {
+    return this.request<AdvisoryResponse>(
+      'GET',
+      `/api/eye/advisories/${encodeURIComponent(advisoryId)}`,
+      undefined,
+      true,
+    );
+  }
+
+  /** Create a suppression to exclude a reason code from future advisories. */
+  async createSuppression(params: CreateSuppressionParams): Promise<SuppressionResponse> {
+    return this.request<SuppressionResponse>('POST', '/api/eye/suppressions', params, true);
   }
 }

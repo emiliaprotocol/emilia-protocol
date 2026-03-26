@@ -74,6 +74,13 @@ from .types import (
     AuditEvent,
     IntegrityCheck,
     PolicyChange,
+    # Eye types
+    RecordObservationParams,
+    CheckActionParams,
+    CreateSuppressionParams,
+    ObservationResponse,
+    AdvisoryResponse,
+    SuppressionResponse,
 )
 
 __all__ = [
@@ -131,6 +138,13 @@ __all__ = [
     "CreateDelegationParams",
     "IssueCommitParams",
     "ExportAuditParams",
+    # Eye types
+    "RecordObservationParams",
+    "CheckActionParams",
+    "CreateSuppressionParams",
+    "ObservationResponse",
+    "AdvisoryResponse",
+    "SuppressionResponse",
 ]
 
 __version__ = "0.9.0"
@@ -897,3 +911,128 @@ class EPClient:
             auth=True,
         )
         return CommitVerification.from_dict(data)
+
+    # ------------------------------------------------------------------
+    # Eye — Observation & Advisory
+    # ------------------------------------------------------------------
+
+    def record_observation(
+        self,
+        source_type: str,
+        source_ref: str,
+        subject_ref: str,
+        actor_ref: str,
+        action_type: str,
+        observation_type: str,
+        severity_hint: str,
+        expires_at: str,
+        target_ref: Optional[str] = None,
+        issuer_ref: Optional[str] = None,
+        evidence_hash: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> ObservationResponse:
+        """Record a behavioral or contextual observation for the Eye subsystem.
+
+        Args:
+            source_type: Type of the observation source.
+            source_ref: Reference to the observation source.
+            subject_ref: Reference to the subject being observed.
+            actor_ref: Reference to the acting entity.
+            action_type: Type of action observed.
+            observation_type: Classification of the observation.
+            severity_hint: Severity hint for the observation.
+            expires_at: ISO 8601 expiration timestamp.
+            target_ref: Optional target reference.
+            issuer_ref: Optional issuer reference.
+            evidence_hash: Optional hash of evidence data.
+            metadata: Optional metadata dictionary.
+        """
+        params = RecordObservationParams(
+            source_type=source_type,
+            source_ref=source_ref,
+            subject_ref=subject_ref,
+            actor_ref=actor_ref,
+            action_type=action_type,
+            observation_type=observation_type,
+            severity_hint=severity_hint,
+            expires_at=expires_at,
+            target_ref=target_ref,
+            issuer_ref=issuer_ref,
+            evidence_hash=evidence_hash,
+            metadata=metadata,
+        )
+        data = self._request("POST", "/api/eye/observations", params.to_dict(), auth=True)
+        return ObservationResponse.from_dict(data)
+
+    def check_action(
+        self,
+        subject_ref: str,
+        actor_ref: str,
+        action_type: str,
+        context_hash: str,
+        target_ref: Optional[str] = None,
+        issuer_ref: Optional[str] = None,
+        payload_hash: Optional[str] = None,
+        policy_class: Optional[str] = None,
+    ) -> AdvisoryResponse:
+        """Check an action against recorded observations and return an advisory.
+
+        Args:
+            subject_ref: Reference to the subject.
+            actor_ref: Reference to the acting entity.
+            action_type: Type of action to check.
+            context_hash: Hash of the action context.
+            target_ref: Optional target reference.
+            issuer_ref: Optional issuer reference.
+            payload_hash: Optional hash of the payload.
+            policy_class: Optional policy class to evaluate against.
+        """
+        params = CheckActionParams(
+            subject_ref=subject_ref,
+            actor_ref=actor_ref,
+            action_type=action_type,
+            context_hash=context_hash,
+            target_ref=target_ref,
+            issuer_ref=issuer_ref,
+            payload_hash=payload_hash,
+            policy_class=policy_class,
+        )
+        data = self._request("POST", "/api/eye/check", params.to_dict(), auth=True)
+        return AdvisoryResponse.from_dict(data)
+
+    def get_advisory(self, advisory_id: str) -> AdvisoryResponse:
+        """Retrieve an existing advisory by ID.
+
+        Args:
+            advisory_id: The advisory to retrieve.
+        """
+        data = self._request(
+            "GET",
+            f"/api/eye/advisories/{quote(advisory_id, safe='')}",
+            auth=True,
+        )
+        return AdvisoryResponse.from_dict(data)
+
+    def create_suppression(
+        self,
+        scope_binding_hash: str,
+        reason_code: str,
+        justification: str,
+        expires_at: str,
+    ) -> SuppressionResponse:
+        """Create a suppression to exclude a reason code from future advisories.
+
+        Args:
+            scope_binding_hash: The scope binding hash to suppress.
+            reason_code: The reason code to suppress.
+            justification: Justification for the suppression.
+            expires_at: ISO 8601 expiration timestamp.
+        """
+        params = CreateSuppressionParams(
+            scope_binding_hash=scope_binding_hash,
+            reason_code=reason_code,
+            justification=justification,
+            expires_at=expires_at,
+        )
+        data = self._request("POST", "/api/eye/suppressions", params.to_dict(), auth=True)
+        return SuppressionResponse.from_dict(data)

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">
+  <style>
+    .shield { fill: none; stroke: #3B82F6; stroke-width: 3; stroke-linejoin: round; }
+    .check { fill: none; stroke: #22C55E; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+  </style>
+  <!-- Shield outline -->
+  <path class="shield" d="M100,6 L130,14 L130,32 Q130,50 100,56 Q70,50 70,32 L70,14 Z"/>
+  <!-- Checkmark -->
+  <polyline class="check" points="85,30 95,40 115,22"/>
+</svg>

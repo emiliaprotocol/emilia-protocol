@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">
+  <style>
+    .letter { fill: #22C55E; }
+  </style>
+  <!-- E -->
+  <g>
+    <rect class="letter" x="30" y="10" width="4" height="40"/>
+    <rect class="letter" x="30" y="10" width="24" height="4"/>
+    <rect class="letter" x="30" y="28" width="20" height="4"/>
+    <rect class="letter" x="30" y="46" width="24" height="4"/>
+  </g>
+  <!-- Y -->
+  <g>
+    <polygon class="letter" points="80,10 84,10 92,26 100,10 104,10 94,28 94,50 90,50 90,28"/>
+  </g>
+  <!-- Mirrored E (flipped horizontally) -->
+  <g>
+    <rect class="letter" x="146" y="10" width="4" height="40"/>
+    <rect class="letter" x="126" y="10" width="24" height="4"/>
+    <rect class="letter" x="130" y="28" width="20" height="4"/>
+    <rect class="letter" x="126" y="46" width="24" height="4"/>
+  </g>
+</svg>

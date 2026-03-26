@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 200" width="300" height="200">
+  <style>
+    .label { font-family: 'IBM Plex Mono', 'SF Mono', 'Fira Code', monospace; font-size: 13px; fill: #94A3B8; }
+    .layer-line { stroke: #334155; stroke-width: 1; }
+  </style>
+
+  <!-- Layer 1: Eye (top) -->
+  <g transform="translate(40, 20)">
+    <!-- Mini EYE logo -->
+    <g>
+      <rect fill="#22C55E" x="0" y="6" width="2" height="20"/>
+      <rect fill="#22C55E" x="0" y="6" width="12" height="2"/>
+      <rect fill="#22C55E" x="0" y="14" width="10" height="2"/>
+      <rect fill="#22C55E" x="0" y="24" width="12" height="2"/>
+      <polygon fill="#22C55E" points="18,6 20,6 24,14 28,6 30,6 25,16 25,26 23,26 23,16"/>
+      <rect fill="#22C55E" x="46" y="6" width="2" height="20"/>
+      <rect fill="#22C55E" x="36" y="6" width="12" height="2"/>
+      <rect fill="#22C55E" x="38" y="14" width="10" height="2"/>
+      <rect fill="#22C55E" x="36" y="24" width="12" height="2"/>
+    </g>
+    <text class="label" x="70" y="20">warns</text>
+  </g>
+
+  <!-- Divider -->
+  <line class="layer-line" x1="40" y1="62" x2="260" y2="62"/>
+
+  <!-- Connector arrow -->
+  <polygon fill="#334155" points="146,55 150,62 154,55"/>
+
+  <!-- Layer 2: Handshake (middle) -->
+  <g transform="translate(40, 75)">
+    <!-- Mini handshake -->
+    <g>
+      <polyline fill="none" stroke="#3B82F6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="10,6 24,16 10,26"/>
+      <polyline fill="none" stroke="#3B82F6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="38,6 24,16 38,26"/>
+      <rect fill="#3B82F6" x="21" y="14" width="6" height="4" rx="1"/>
+    </g>
+    <text class="label" x="70" y="20">verifies</text>
+  </g>
+
+  <!-- Divider -->
+  <line class="layer-line" x1="40" y1="117" x2="260" y2="117"/>
+
+  <!-- Connector arrow -->
+  <polygon fill="#334155" points="146,110 150,117 154,110"/>
+
+  <!-- Layer 3: Signoff (bottom) -->
+  <g transform="translate(40, 130)">
+    <!-- Mini shield + check -->
+    <g>
+      <path fill="none" stroke="#3B82F6" stroke-width="2" stroke-linejoin="round" d="M24,4 L40,9 L40,20 Q40,32 24,36 Q8,32 8,20 L8,9 Z"/>
+      <polyline fill="none" stroke="#22C55E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="16,19 22,25 33,15"/>
+    </g>
+    <text class="label" x="70" y="24">owns</text>
+  </g>
+
+  <!-- Right side: flow label -->
+  <g>
+    <line stroke="#334155" stroke-width="1" stroke-dasharray="4,3" x1="240" y1="36" x2="240" y2="165"/>
+    <text font-family="'IBM Plex Mono', monospace" font-size="10" fill="#475569" transform="rotate(-90, 255, 100)" x="255" y="100">EMILIA PROTOCOL</text>
+  </g>
+</svg>

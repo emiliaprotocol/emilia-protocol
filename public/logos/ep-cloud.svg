@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">
+  <style>
+    .cloud { fill: none; stroke: #3B82F6; stroke-width: 3; }
+    .lock-body { fill: #22C55E; }
+    .lock-shackle { fill: none; stroke: #22C55E; stroke-width: 2.5; stroke-linecap: round; }
+  </style>
+  <!-- Minimalist cloud shape -->
+  <path class="cloud" d="M55,42 L145,42 Q158,42 158,32 Q158,22 146,22 Q146,12 132,12 Q124,6 112,8 Q106,4 96,6 Q86,4 80,10 Q68,8 62,16 Q50,18 50,28 Q50,42 55,42 Z"/>
+  <!-- Lock body -->
+  <rect class="lock-body" x="93" y="28" width="14" height="11" rx="2"/>
+  <!-- Lock shackle -->
+  <path class="lock-shackle" d="M96,28 L96,24 Q96,20 100,20 Q104,20 104,24 L104,28"/>
+  <!-- Keyhole -->
+  <circle fill="#020617" cx="100" cy="32" r="2"/>
+  <rect fill="#020617" x="99" y="33" width="2" height="3"/>
+</svg>
