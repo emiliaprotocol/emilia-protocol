@@ -26,20 +26,20 @@ export default function GovernmentPackPage() {
   }
 
   const s = {
-    page: { minHeight: '100vh', background: '#0a0f1e', color: '#f0f2f5', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
+    page: { minHeight: '100vh', background: '#020617', color: '#F8FAFC', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
     section: { maxWidth: 760, margin: '0 auto', padding: '80px 24px' },
-    sectionAlt: { background: '#111827', borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
-    eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#4a90d9', marginBottom: 16 },
+    sectionAlt: { background: '#0F172A', borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
+    eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#3B82F6', marginBottom: 16 },
     h1: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 700, letterSpacing: -1, marginBottom: 16, lineHeight: 1.1 },
     h2: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 24, fontWeight: 700, letterSpacing: -0.5, marginBottom: 16 },
-    body: { fontSize: 16, color: '#8b95a5', lineHeight: 1.75, marginBottom: 24 },
-    card: { background: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '24px 28px' },
-    cardTitle: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#f0f2f5', marginBottom: 6 },
-    cardBody: { fontSize: 14, color: '#8b95a5', lineHeight: 1.65 },
+    body: { fontSize: 16, color: '#94A3B8', lineHeight: 1.75, marginBottom: 24 },
+    card: { background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '24px 28px' },
+    cardTitle: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#F8FAFC', marginBottom: 6 },
+    cardBody: { fontSize: 14, color: '#94A3B8', lineHeight: 1.65 },
     cta: { display: 'inline-block', padding: '12px 28px', borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer', border: 'none' },
-    input: { width: '100%', padding: '12px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#111827', color: '#f0f2f5', fontSize: 15, fontFamily: 'inherit', outline: 'none' },
-    label: { display: 'block', fontSize: 13, fontWeight: 600, color: '#8b95a5', marginBottom: 6, fontFamily: "'IBM Plex Mono', monospace", letterSpacing: 0.5 },
-    mono: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: '#4a90d9' },
+    input: { width: '100%', padding: '12px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#0F172A', color: '#F8FAFC', fontSize: 15, fontFamily: 'inherit', outline: 'none' },
+    label: { display: 'block', fontSize: 13, fontWeight: 600, color: '#94A3B8', marginBottom: 6, fontFamily: "'IBM Plex Mono', monospace", letterSpacing: 0.5 },
+    mono: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: '#3B82F6' },
   };
 
   const FEATURES = [
@@ -61,7 +61,7 @@ export default function GovernmentPackPage() {
         <p style={{ ...s.body, maxWidth: 640 }}>
           Pre-configured EP deployment for government fraud prevention.
         </p>
-        <a href="#pilot" style={{ ...s.cta, background: '#d4af55', color: '#0a0f1e' }}>Request Government Pilot</a>
+        <a href="#pilot" style={{ ...s.cta, background: '#22C55E', color: '#020617' }}>Request Government Pilot</a>
       </section>
 
       {/* Features */}
@@ -87,7 +87,7 @@ export default function GovernmentPackPage() {
         <h2 style={s.h2}>Best first workflow</h2>
         <p style={s.body}>Start with the highest-impact trust surface. For most government deployments, that is payment destination change.</p>
         <div style={{ ...s.card, border: '1px solid rgba(212,175,55,0.2)' }}>
-          <div style={{ ...s.cardTitle, color: '#d4af55', fontSize: 18, marginBottom: 10 }}>Payment destination change</div>
+          <div style={{ ...s.cardTitle, color: '#22C55E', fontSize: 18, marginBottom: 10 }}>Payment destination change</div>
           <div style={s.cardBody}>
             A benefits recipient, vendor, or disbursement target updates their bank account, routing number, or payment address. EP generates a cryptographic handshake binding the exact new destination, the requesting identity, the authorizing caseworker, and the applicable policy. If the handshake is not satisfied, the change does not execute. The signoff record is immutable and available to Inspector General auditors in real time.
           </div>
@@ -100,8 +100,8 @@ export default function GovernmentPackPage() {
               'Policy defines which changes require signoff based on risk class',
             ].map((item, i) => (
               <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <span style={{ color: '#d4af55', fontSize: 14, flexShrink: 0, marginTop: 1 }}>+</span>
-                <span style={{ fontSize: 14, color: '#8b95a5', lineHeight: 1.6 }}>{item}</span>
+                <span style={{ color: '#22C55E', fontSize: 14, flexShrink: 0, marginTop: 1 }}>+</span>
+                <span style={{ fontSize: 14, color: '#94A3B8', lineHeight: 1.6 }}>{item}</span>
               </div>
             ))}
           </div>
@@ -114,8 +114,8 @@ export default function GovernmentPackPage() {
           <h2 style={s.h2}>Request Government Pilot</h2>
           {submitted ? (
             <div style={{ ...s.card, textAlign: 'center', padding: 40 }}>
-              <div style={{ fontSize: 20, fontWeight: 700, color: '#d4af55', marginBottom: 8 }}>Thank you</div>
-              <p style={{ color: '#8b95a5', fontSize: 15 }}>We review all inquiries personally and will follow up if there is a fit.</p>
+              <div style={{ fontSize: 20, fontWeight: 700, color: '#22C55E', marginBottom: 8 }}>Thank you</div>
+              <p style={{ color: '#94A3B8', fontSize: 15 }}>We review all inquiries personally and will follow up if there is a fit.</p>
             </div>
           ) : (
             <div style={s.card}>
@@ -140,7 +140,7 @@ export default function GovernmentPackPage() {
                 </div>
               </div>
               {error && <p style={{ color: '#f87171', fontSize: 13, marginTop: 12 }}>{error}</p>}
-              <button onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...s.cta, background: !form.name || !form.email ? '#1a1e30' : '#d4af55', color: !form.name || !form.email ? '#5a6577' : '#0a0f1e', marginTop: 20, width: '100%', textAlign: 'center' }}>
+              <button onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...s.cta, background: !form.name || !form.email ? '#1a1e30' : '#22C55E', color: !form.name || !form.email ? '#64748B' : '#020617', marginTop: 20, width: '100%', textAlign: 'center' }}>
                 {submitting ? 'Submitting...' : 'Request Government Pilot'}
               </button>
             </div>
@@ -149,10 +149,10 @@ export default function GovernmentPackPage() {
       </section>
 
       <footer style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '40px 40px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#5a6577', letterSpacing: 1 }}>EMILIA PROTOCOL · APACHE 2.0</div>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#64748B', letterSpacing: 1 }}>EMILIA PROTOCOL · APACHE 2.0</div>
         <div style={{ display: 'flex', gap: 24 }}>
           {[['/governance','Governance'],['/partners','Partners'],['mailto:team@emiliaprotocol.ai','Contact'],['/investors','Investor Inquiries']].map(([href, label]) => (
-            <a key={label} href={href} style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#5a6577', textDecoration: 'none', letterSpacing: 1, textTransform: 'uppercase' }}>{label}</a>
+            <a key={label} href={href} style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#64748B', textDecoration: 'none', letterSpacing: 1, textTransform: 'uppercase' }}>{label}</a>
           ))}
         </div>
       </footer>

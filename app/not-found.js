@@ -12,9 +12,9 @@ export default function NotFound() {
         <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;700&display=swap" rel="stylesheet" />
         <style>{`
           *{margin:0;padding:0;box-sizing:border-box}
-          body{background:#0a0f1e;color:#f0f4ff;font-family:'IBM Plex Sans',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px}
+          body{background:#020617;color:#f0f4ff;font-family:'IBM Plex Sans',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px}
           .logo{font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:3px;color:#475569;text-transform:uppercase;margin-bottom:48px}
-          .code{font-family:'IBM Plex Mono',monospace;font-size:80px;font-weight:700;color:rgba(74,144,217,0.15);line-height:1;margin-bottom:16px}
+          .code{font-family:'IBM Plex Mono',monospace;font-size:80px;font-weight:700;color:rgba(59,130,246,0.15);line-height:1;margin-bottom:16px}
           h1{font-size:clamp(22px,4vw,32px);font-weight:700;margin-bottom:12px}
           p{font-size:15px;color:#64748b;max-width:420px;line-height:1.7;margin-bottom:36px}
           .links{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}

@@ -85,8 +85,8 @@ export default function SpecPage() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: `
-        body { background: #0a0f1e; color: #e8eaf0; font-family: 'IBM Plex Sans', sans-serif; -webkit-font-smoothing: antialiased; line-height: 1.8; margin: 0; }
-        a { color: #4a90d9; text-decoration: none; }
+        body { background: #020617; color: #e8eaf0; font-family: 'IBM Plex Sans', sans-serif; -webkit-font-smoothing: antialiased; line-height: 1.8; margin: 0; }
+        a { color: #3B82F6; text-decoration: none; }
         a:hover { text-decoration: underline; }
         .spec-content { max-width: 800px; margin: 0 auto; padding: 48px 24px 120px; }
         .spec-content h1 { font-family: 'IBM Plex Sans', sans-serif; font-weight: 700; font-size: 36px; letter-spacing: -1px; margin: 48px 0 16px; color: #e8eaf0; }
@@ -97,16 +97,16 @@ export default function SpecPage() {
         .spec-content strong { color: #e8eaf0; }
         .spec-content ul, .spec-content ol { color: #7a809a; padding-left: 24px; margin-bottom: 12px; }
         .spec-content li { margin-bottom: 4px; font-size: 15px; }
-        .spec-content li::marker { color: #4a90d9; }
-        .spec-content code { font-family: 'IBM Plex Mono', monospace; font-size: 13px; background: rgba(74,144,217,0.06); color: #4a90d9; padding: 2px 6px; border-radius: 4px; }
-        .spec-content .code-block { background: #111827; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0 16px; }
+        .spec-content li::marker { color: #3B82F6; }
+        .spec-content code { font-family: 'IBM Plex Mono', monospace; font-size: 13px; background: rgba(59,130,246,0.06); color: #3B82F6; padding: 2px 6px; border-radius: 4px; }
+        .spec-content .code-block { background: #0F172A; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 12px 0 16px; }
         .spec-content .code-block code { background: none; padding: 0; font-size: 12px; color: #7a809a; line-height: 1.6; }
         .spec-content .table-wrap { overflow-x: auto; margin: 12px 0 16px; }
         .spec-content table { width: 100%; border-collapse: collapse; font-size: 13px; font-family: 'IBM Plex Mono', monospace; }
-        .spec-content th { text-align: left; padding: 8px 12px; background: #111827; color: #e8eaf0; border: 1px solid rgba(255,255,255,0.06); font-weight: 600; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+        .spec-content th { text-align: left; padding: 8px 12px; background: #0F172A; color: #e8eaf0; border: 1px solid rgba(255,255,255,0.06); font-weight: 600; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
         .spec-content td { padding: 8px 12px; border: 1px solid rgba(255,255,255,0.06); color: #7a809a; }
         .spec-content hr { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 32px 0; }
-        .spec-badge { display: inline-flex; align-items: center; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 2px; color: #4a90d9; background: rgba(74,144,217,0.08); border: 1px solid rgba(74,144,217,0.15); padding: 8px 16px; border-radius: 100px; margin-bottom: 24px; }
+        .spec-badge { display: inline-flex; align-items: center; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 2px; color: #3B82F6; background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.15); padding: 8px 16px; border-radius: 100px; margin-bottom: 24px; }
         .spec-footer { margin-top: 64px; text-align: center; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #4a4f6a; letter-spacing: 1px; }
       `}} />
       <link rel="preconnect" href="https://fonts.googleapis.com" />

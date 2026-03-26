@@ -4,15 +4,15 @@ import SiteNav from '@/components/SiteNav';
 
 export default function GovernancePage() {
   const s = {
-    page: { minHeight: '100vh', background: '#0a0f1e', color: '#f0f2f5', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
+    page: { minHeight: '100vh', background: '#020617', color: '#F8FAFC', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
     section: { maxWidth: 680, margin: '0 auto', padding: '80px 24px' },
-    sectionAlt: { background: '#111827', borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
-    eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#d4af55', marginBottom: 16 },
+    sectionAlt: { background: '#0F172A', borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
+    eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#22C55E', marginBottom: 16 },
     h1: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 'clamp(32px, 5vw, 44px)', fontWeight: 700, letterSpacing: -1, marginBottom: 16, lineHeight: 1.1 },
     h2: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 24, fontWeight: 700, letterSpacing: -0.5, marginBottom: 16 },
-    body: { fontSize: 16, color: '#8b95a5', lineHeight: 1.75, marginBottom: 24 },
-    cta: { display: 'inline-block', padding: '12px 28px', borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', textDecoration: 'none', border: '1px solid rgba(212,175,55,0.25)', color: '#d4af55', background: 'transparent' },
-    code: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, background: 'rgba(74,144,217,0.08)', color: '#4a90d9', padding: '2px 6px', borderRadius: 4 },
+    body: { fontSize: 16, color: '#94A3B8', lineHeight: 1.75, marginBottom: 24 },
+    cta: { display: 'inline-block', padding: '12px 28px', borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', textDecoration: 'none', border: '1px solid rgba(212,175,55,0.25)', color: '#22C55E', background: 'transparent' },
+    code: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, background: 'rgba(59,130,246,0.08)', color: '#3B82F6', padding: '2px 6px', borderRadius: 4 },
   };
 
   const LANES = [
@@ -76,8 +76,8 @@ export default function GovernancePage() {
               'Sybil-resistant: no purchased influence on adjudication outcomes',
             ].map((item, i) => (
               <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <span style={{ color: '#d4af55', fontSize: 14, flexShrink: 0, marginTop: 2 }}>+</span>
-                <span style={{ fontSize: 15, color: '#8b95a5', lineHeight: 1.6 }}>{item}</span>
+                <span style={{ color: '#22C55E', fontSize: 14, flexShrink: 0, marginTop: 2 }}>+</span>
+                <span style={{ fontSize: 15, color: '#94A3B8', lineHeight: 1.6 }}>{item}</span>
               </div>
             ))}
           </div>
@@ -102,8 +102,8 @@ export default function GovernancePage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {LANES.map((lane, i) => (
               <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                <span style={{ color: '#d4af55', fontSize: 14, flexShrink: 0 }}>+</span>
-                <span style={{ fontSize: 15, color: '#8b95a5' }}>{lane}</span>
+                <span style={{ color: '#22C55E', fontSize: 14, flexShrink: 0 }}>+</span>
+                <span style={{ fontSize: 15, color: '#94A3B8' }}>{lane}</span>
               </div>
             ))}
           </div>
@@ -117,10 +117,10 @@ export default function GovernancePage() {
       </section>
 
       <footer style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '40px 40px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#5a6577', letterSpacing: 1 }}>EMILIA PROTOCOL -- APACHE 2.0</div>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#64748B', letterSpacing: 1 }}>EMILIA PROTOCOL -- APACHE 2.0</div>
         <div style={{ display: 'flex', gap: 24 }}>
           {[['/governance','Governance'],['/partners','Partners'],['mailto:team@emiliaprotocol.ai','Contact'],['/investors','Investor Inquiries']].map(([href, label]) => (
-            <a key={label} href={href} style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#5a6577', textDecoration: 'none', letterSpacing: 1, textTransform: 'uppercase' }}>{label}</a>
+            <a key={label} href={href} style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#64748B', textDecoration: 'none', letterSpacing: 1, textTransform: 'uppercase' }}>{label}</a>
           ))}
         </div>
       </footer>

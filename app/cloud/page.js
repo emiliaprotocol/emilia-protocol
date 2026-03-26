@@ -3,16 +3,16 @@
 import { useState, useEffect } from 'react';
 
 const s = {
-  page: { minHeight: '100vh', background: '#0a0f1e', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
+  page: { minHeight: '100vh', background: '#020617', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
   container: { maxWidth: 1120, margin: '0 auto', padding: '40px 24px' },
-  eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#d4af55', marginBottom: 8 },
+  eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#22C55E', marginBottom: 8 },
   h1: { fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 8, color: '#e8eaf0' },
   subtitle: { fontSize: 14, color: '#7a809a', marginBottom: 32 },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 },
-  statCard: { background: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '20px 24px' },
+  statCard: { background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '20px 24px' },
   statLabel: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: '#7a809a', marginBottom: 8 },
   statValue: { fontSize: 32, fontWeight: 700, letterSpacing: -1 },
-  card: { background: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: 24, marginBottom: 24 },
+  card: { background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: 24, marginBottom: 24 },
   cardTitle: { fontSize: 15, fontWeight: 600, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
   mono: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 },
   th: { padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: '#4a4f6a', fontFamily: "'IBM Plex Mono', monospace", letterSpacing: 1.5, textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.06)' },
@@ -40,8 +40,8 @@ const MOCK_HEALTH = [
   { service: 'Alert Router', status: 'operational', latency: '18ms', uptime: '99.97%' },
 ];
 
-const statusColor = { success: '#3b9b6e', pending: '#d4af55', alert: '#f87171' };
-const healthColor = { operational: '#3b9b6e', degraded: '#d4af55', down: '#f87171' };
+const statusColor = { success: '#22C55E', pending: '#22C55E', alert: '#f87171' };
+const healthColor = { operational: '#22C55E', degraded: '#22C55E', down: '#f87171' };
 
 export default function CloudDashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -83,11 +83,11 @@ export default function CloudDashboardPage() {
           <div style={s.grid}>
             <div style={s.statCard}>
               <div style={s.statLabel}>Total Handshakes</div>
-              <div style={{ ...s.statValue, color: '#4a90d9' }}>{stats.handshakes.toLocaleString()}</div>
+              <div style={{ ...s.statValue, color: '#3B82F6' }}>{stats.handshakes.toLocaleString()}</div>
             </div>
             <div style={s.statCard}>
               <div style={s.statLabel}>Active Policies</div>
-              <div style={{ ...s.statValue, color: '#d4af55' }}>{stats.policies}</div>
+              <div style={{ ...s.statValue, color: '#22C55E' }}>{stats.policies}</div>
             </div>
             <div style={s.statCard}>
               <div style={s.statLabel}>Tenants</div>
@@ -95,7 +95,7 @@ export default function CloudDashboardPage() {
             </div>
             <div style={s.statCard}>
               <div style={s.statLabel}>Uptime</div>
-              <div style={{ ...s.statValue, color: '#3b9b6e' }}>{stats.uptime}%</div>
+              <div style={{ ...s.statValue, color: '#22C55E' }}>{stats.uptime}%</div>
             </div>
           </div>
         )}
@@ -104,7 +104,7 @@ export default function CloudDashboardPage() {
           <div style={s.card}>
             <div style={s.cardTitle}>
               <span>Recent Activity</span>
-              <a href="/cloud/events" style={{ ...s.mono, color: '#4a90d9', textDecoration: 'none' }}>View all</a>
+              <a href="/cloud/events" style={{ ...s.mono, color: '#3B82F6', textDecoration: 'none' }}>View all</a>
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
@@ -118,7 +118,7 @@ export default function CloudDashboardPage() {
               <tbody>
                 {activity.map(a => (
                   <tr key={a.id}>
-                    <td style={{ ...s.td, ...s.mono, color: '#4a90d9' }}>{a.id}</td>
+                    <td style={{ ...s.td, ...s.mono, color: '#3B82F6' }}>{a.id}</td>
                     <td style={s.td}>
                       <span style={s.dot(statusColor[a.status])} />
                       {a.event}

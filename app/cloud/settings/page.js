@@ -3,29 +3,29 @@
 import { useState, useEffect } from 'react';
 
 const s = {
-  page: { minHeight: '100vh', background: '#0a0f1e', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
+  page: { minHeight: '100vh', background: '#020617', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
   container: { maxWidth: 900, margin: '0 auto', padding: '40px 24px' },
-  eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#d4af55', marginBottom: 8 },
+  eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#22C55E', marginBottom: 8 },
   h1: { fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 8, color: '#e8eaf0' },
   subtitle: { fontSize: 14, color: '#7a809a', marginBottom: 32 },
-  card: { background: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: 24, marginBottom: 24 },
+  card: { background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: 24, marginBottom: 24 },
   cardTitle: { fontSize: 16, fontWeight: 600, marginBottom: 4 },
   cardDesc: { fontSize: 13, color: '#7a809a', marginBottom: 20 },
   fieldGroup: { marginBottom: 20 },
   label: { display: 'block', fontSize: 11, fontWeight: 600, color: '#7a809a', marginBottom: 6, fontFamily: "'IBM Plex Mono', monospace", letterSpacing: 1, textTransform: 'uppercase' },
-  input: { width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#0a0f1e', color: '#e8eaf0', fontSize: 14, fontFamily: "'IBM Plex Sans', sans-serif", outline: 'none', boxSizing: 'border-box' },
-  select: { width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#0a0f1e', color: '#e8eaf0', fontSize: 14, fontFamily: "'IBM Plex Sans', sans-serif", outline: 'none', boxSizing: 'border-box', appearance: 'none' },
-  toggle: (on) => ({ width: 44, height: 24, borderRadius: 12, background: on ? '#4a90d9' : '#1f2937', border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }),
+  input: { width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#020617', color: '#e8eaf0', fontSize: 14, fontFamily: "'IBM Plex Sans', sans-serif", outline: 'none', boxSizing: 'border-box' },
+  select: { width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#020617', color: '#e8eaf0', fontSize: 14, fontFamily: "'IBM Plex Sans', sans-serif", outline: 'none', boxSizing: 'border-box', appearance: 'none' },
+  toggle: (on) => ({ width: 44, height: 24, borderRadius: 12, background: on ? '#3B82F6' : '#1f2937', border: 'none', cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }),
   toggleDot: (on) => ({ width: 18, height: 18, borderRadius: '50%', background: '#e8eaf0', position: 'absolute', top: 3, left: on ? 23 : 3, transition: 'left 0.2s' }),
   row: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' },
   rowLabel: { fontSize: 14 },
   rowDesc: { fontSize: 12, color: '#7a809a', marginTop: 2 },
-  btn: { padding: '10px 24px', borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', border: 'none', cursor: 'pointer', background: '#d4af55', color: '#0a0f1e' },
+  btn: { padding: '10px 24px', borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', border: 'none', cursor: 'pointer', background: '#22C55E', color: '#020617' },
   btnDanger: { padding: '10px 24px', borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', border: '1px solid rgba(248,113,113,0.3)', cursor: 'pointer', background: 'transparent', color: '#f87171' },
   mono: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 },
   loading: { textAlign: 'center', padding: 60, color: '#4a4f6a', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 },
   error: { background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 8, padding: '12px 16px', color: '#f87171', fontSize: 13, marginBottom: 24 },
-  success: { background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.15)', borderRadius: 8, padding: '12px 16px', color: '#3b9b6e', fontSize: 13, marginBottom: 24 },
+  success: { background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.15)', borderRadius: 8, padding: '12px 16px', color: '#22C55E', fontSize: 13, marginBottom: 24 },
 };
 
 export default function SettingsPage() {

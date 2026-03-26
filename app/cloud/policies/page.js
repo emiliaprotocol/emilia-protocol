@@ -3,15 +3,15 @@
 import { useState, useEffect } from 'react';
 
 const s = {
-  page: { minHeight: '100vh', background: '#0a0f1e', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
+  page: { minHeight: '100vh', background: '#020617', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
   container: { maxWidth: 1120, margin: '0 auto', padding: '40px 24px' },
-  eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#d4af55', marginBottom: 8 },
+  eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#22C55E', marginBottom: 8 },
   h1: { fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 8, color: '#e8eaf0' },
   subtitle: { fontSize: 14, color: '#7a809a', marginBottom: 32 },
-  card: { background: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: 24, marginBottom: 24 },
+  card: { background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: 24, marginBottom: 24 },
   topBar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, gap: 12 },
-  searchInput: { flex: 1, maxWidth: 360, padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#0a0f1e', color: '#e8eaf0', fontSize: 13, fontFamily: "'IBM Plex Sans', sans-serif", outline: 'none' },
-  btn: { padding: '10px 20px', borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', border: 'none', cursor: 'pointer', background: '#d4af55', color: '#0a0f1e' },
+  searchInput: { flex: 1, maxWidth: 360, padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#020617', color: '#e8eaf0', fontSize: 13, fontFamily: "'IBM Plex Sans', sans-serif", outline: 'none' },
+  btn: { padding: '10px 20px', borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', border: 'none', cursor: 'pointer', background: '#22C55E', color: '#020617' },
   mono: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 },
   th: { padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: '#4a4f6a', fontFamily: "'IBM Plex Mono', monospace", letterSpacing: 1.5, textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.06)' },
   td: { padding: '12px 14px', fontSize: 13, borderBottom: '1px solid rgba(255,255,255,0.03)' },
@@ -31,13 +31,13 @@ const MOCK_POLICIES = [
 ];
 
 const statusBadge = (status) => {
-  const map = { active: ['rgba(0,255,136,0.1)', '#3b9b6e'], draft: ['rgba(212,175,85,0.1)', '#d4af55'], inactive: ['rgba(122,128,154,0.1)', '#7a809a'] };
+  const map = { active: ['rgba(0,255,136,0.1)', '#22C55E'], draft: ['rgba(34,197,94,0.1)', '#22C55E'], inactive: ['rgba(122,128,154,0.1)', '#7a809a'] };
   const [bg, fg] = map[status] || map.inactive;
   return <span style={s.badge(bg, fg)}>{status}</span>;
 };
 
 const enforcementBadge = (mode) => {
-  const map = { strict: ['rgba(74,144,217,0.1)', '#4a90d9'], advisory: ['rgba(212,175,85,0.1)', '#d4af55'] };
+  const map = { strict: ['rgba(59,130,246,0.1)', '#3B82F6'], advisory: ['rgba(34,197,94,0.1)', '#22C55E'] };
   const [bg, fg] = map[mode] || ['rgba(122,128,154,0.1)', '#7a809a'];
   return <span style={s.badge(bg, fg)}>{mode}</span>;
 };
@@ -105,7 +105,7 @@ export default function PoliciesPage() {
             <tbody>
               {filtered.map(p => (
                 <tr key={p.id}>
-                  <td style={{ ...s.td, ...s.mono, color: '#4a90d9' }}>{p.id}</td>
+                  <td style={{ ...s.td, ...s.mono, color: '#3B82F6' }}>{p.id}</td>
                   <td style={{ ...s.td, fontWeight: 500 }}>{p.name}</td>
                   <td style={{ ...s.td, ...s.mono, color: '#7a809a' }}>{p.version}</td>
                   <td style={s.td}>{statusBadge(p.status)}</td>

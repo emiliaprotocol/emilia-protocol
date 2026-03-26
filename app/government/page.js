@@ -7,10 +7,10 @@ export const metadata = {
 
 export default function GovernmentPage() {
   const s = {
-    page: { minHeight: '100vh', background: '#0a0f1e', color: '#e8e6e3', fontFamily: "'IBM Plex Sans', sans-serif" },
+    page: { minHeight: '100vh', background: '#020617', color: '#e8e6e3', fontFamily: "'IBM Plex Sans', sans-serif" },
     section: { maxWidth: 1080, margin: '0 auto', padding: '64px 24px' },
     sectionAlt: { background: 'rgba(255,255,255,0.02)', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)' },
-    eyebrow: { fontFamily: "'IBM Plex Mono', monospace", color: '#4a90d9', fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 18 },
+    eyebrow: { fontFamily: "'IBM Plex Mono', monospace", color: '#3B82F6', fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 18 },
     h1: { fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 700, fontSize: 'clamp(42px, 7vw, 72px)', lineHeight: 0.95, letterSpacing: -2, margin: '0 0 16px' },
     h2: { fontFamily: "'IBM Plex Sans', sans-serif", fontWeight: 700, fontSize: 30, letterSpacing: -1, margin: '0 0 16px' },
     body: { color: '#9aa3b2', fontSize: 17, lineHeight: 1.7, maxWidth: 760 },
@@ -38,8 +38,8 @@ export default function GovernmentPage() {
           EMILIA Protocol creates the control layer between authentication and execution for high-risk public workflows. EP is built for payment integrity, benefit redirect prevention, operator overrides, delegated administrative actions, and AI-assisted execution in government systems.
         </p>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 24 }}>
-          <a href="mailto:team@emiliaprotocol.ai?subject=Government%20pilot%20request" style={{ ...s.cta, background: '#4a90d9', color: '#0a0f1e' }}>Request Government Pilot</a>
-          <a href="/spec" style={{ ...s.cta, border: '1px solid rgba(74,144,217,0.3)', color: '#4a90d9', background: 'transparent' }}>Read the Protocol</a>
+          <a href="mailto:team@emiliaprotocol.ai?subject=Government%20pilot%20request" style={{ ...s.cta, background: '#3B82F6', color: '#020617' }}>Request Government Pilot</a>
+          <a href="/spec" style={{ ...s.cta, border: '1px solid rgba(59,130,246,0.3)', color: '#3B82F6', background: 'transparent' }}>Read the Protocol</a>
         </div>
       </section>
 

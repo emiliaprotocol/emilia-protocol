@@ -42,15 +42,15 @@ export default function AuditExportPage() {
   };
 
   const s = {
-    page: { minHeight: '100vh', background: '#0a0f1e', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
+    page: { minHeight: '100vh', background: '#020617', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
     container: { maxWidth: 1080, margin: '0 auto', padding: '40px 24px' },
-    eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#d4af55', marginBottom: 8 },
+    eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#22C55E', marginBottom: 8 },
     h1: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 8 },
     subtitle: { fontSize: 14, color: '#7a809a', marginBottom: 32 },
-    card: { background: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 24, marginBottom: 24 },
+    card: { background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 24, marginBottom: 24 },
     label: { display: 'block', fontSize: 12, fontWeight: 600, color: '#7a809a', marginBottom: 6, fontFamily: "'IBM Plex Mono', monospace", letterSpacing: 0.5 },
-    input: { width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#111827', color: '#e8eaf0', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' },
-    select: { width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#111827', color: '#e8eaf0', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', appearance: 'none' },
+    input: { width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#0F172A', color: '#e8eaf0', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' },
+    select: { width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#0F172A', color: '#e8eaf0', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', appearance: 'none' },
     btn: { padding: '10px 24px', borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', border: 'none', cursor: 'pointer' },
     mono: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 },
     th: { padding: '10px 14px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#4a4f6a', fontFamily: "'IBM Plex Mono', monospace", letterSpacing: 1, textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.06)' },
@@ -58,7 +58,7 @@ export default function AuditExportPage() {
   };
 
   const integrityBadge = (status) => {
-    const colors = { verified: '#3b9b6e', mismatch: '#f87171', pending: '#d4af55' };
+    const colors = { verified: '#22C55E', mismatch: '#f87171', pending: '#22C55E' };
     return (
       <span style={{ ...s.mono, color: colors[status] || '#7a809a', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
         <span style={{ width: 6, height: 6, borderRadius: '50%', background: colors[status] || '#7a809a', display: 'inline-block' }} />
@@ -104,7 +104,7 @@ export default function AuditExportPage() {
             )}
           </div>
           {error && <p style={{ color: '#f87171', fontSize: 13, marginTop: 12 }}>{error}</p>}
-          <button onClick={handleGenerate} disabled={generating} style={{ ...s.btn, background: generating ? '#1a1e30' : '#d4af55', color: generating ? '#4a4f6a' : '#0a0f1e', marginTop: 20 }}>
+          <button onClick={handleGenerate} disabled={generating} style={{ ...s.btn, background: generating ? '#1a1e30' : '#22C55E', color: generating ? '#4a4f6a' : '#020617', marginTop: 20 }}>
             {generating ? 'Generating...' : 'Generate Report'}
           </button>
         </div>
@@ -127,7 +127,7 @@ export default function AuditExportPage() {
               <tbody>
                 {reports.map(r => (
                   <tr key={r.id}>
-                    <td style={{ ...s.td, ...s.mono, color: '#4a90d9' }}>{r.id}</td>
+                    <td style={{ ...s.td, ...s.mono, color: '#3B82F6' }}>{r.id}</td>
                     <td style={s.td}>{r.type}</td>
                     <td style={{ ...s.td, ...s.mono, color: '#7a809a' }}>{r.scope}</td>
                     <td style={{ ...s.td, ...s.mono, color: '#7a809a', fontSize: 12 }}>{new Date(r.generated).toLocaleString()}</td>
@@ -135,9 +135,9 @@ export default function AuditExportPage() {
                     <td style={s.td}>{integrityBadge(r.integrity)}</td>
                     <td style={s.td}>
                       {r.status === 'complete' ? (
-                        <button style={{ ...s.btn, padding: '4px 12px', background: 'transparent', color: '#4a90d9', border: '1px solid rgba(212,175,85,0.3)', fontSize: 11 }}>Download</button>
+                        <button style={{ ...s.btn, padding: '4px 12px', background: 'transparent', color: '#3B82F6', border: '1px solid rgba(34,197,94,0.3)', fontSize: 11 }}>Download</button>
                       ) : (
-                        <span style={{ ...s.mono, color: '#d4af55' }}>Processing...</span>
+                        <span style={{ ...s.mono, color: '#22C55E' }}>Processing...</span>
                       )}
                     </td>
                   </tr>

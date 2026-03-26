@@ -3,16 +3,16 @@
 import { useState, useEffect } from 'react';
 
 const s = {
-  page: { minHeight: '100vh', background: '#0a0f1e', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
+  page: { minHeight: '100vh', background: '#020617', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
   container: { maxWidth: 1120, margin: '0 auto', padding: '40px 24px' },
-  eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#d4af55', marginBottom: 8 },
+  eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#22C55E', marginBottom: 8 },
   h1: { fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 8, color: '#e8eaf0' },
   subtitle: { fontSize: 14, color: '#7a809a', marginBottom: 32 },
   topBar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, gap: 12 },
-  searchInput: { flex: 1, maxWidth: 360, padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#0a0f1e', color: '#e8eaf0', fontSize: 13, fontFamily: "'IBM Plex Sans', sans-serif", outline: 'none' },
-  btn: { padding: '10px 20px', borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', border: 'none', cursor: 'pointer', background: '#d4af55', color: '#0a0f1e' },
+  searchInput: { flex: 1, maxWidth: 360, padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#020617', color: '#e8eaf0', fontSize: 13, fontFamily: "'IBM Plex Sans', sans-serif", outline: 'none' },
+  btn: { padding: '10px 20px', borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', border: 'none', cursor: 'pointer', background: '#22C55E', color: '#020617' },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340, 1fr))', gap: 20 },
-  card: { background: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: 24 },
+  card: { background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: 24 },
   cardHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   tenantName: { fontSize: 16, fontWeight: 600 },
   mono: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 },
@@ -33,9 +33,9 @@ const MOCK_TENANTS = [
   { id: 'ten_wayne', name: 'Wayne Industries', slug: 'wayne-ind', plan: 'enterprise', status: 'active', region: 'us-east-1', handshakes: 1456, policies: 9, members: 32, created: '2026-02-05T00:00:00Z' },
 ];
 
-const statusColor = { active: '#3b9b6e', suspended: '#f87171', pending: '#d4af55' };
+const statusColor = { active: '#22C55E', suspended: '#f87171', pending: '#22C55E' };
 const planBadge = (plan) => {
-  const map = { enterprise: ['rgba(212,175,85,0.1)', '#d4af55'], business: ['rgba(74,144,217,0.1)', '#4a90d9'] };
+  const map = { enterprise: ['rgba(34,197,94,0.1)', '#22C55E'], business: ['rgba(59,130,246,0.1)', '#3B82F6'] };
   const [bg, fg] = map[plan] || ['rgba(122,128,154,0.1)', '#7a809a'];
   return <span style={s.badge(bg, fg)}>{plan}</span>;
 };

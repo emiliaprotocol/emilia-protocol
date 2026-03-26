@@ -70,17 +70,17 @@ function confidenceDisplay(conf) {
   const map = {
     PENDING: { label: 'PENDING', color: '#7a809a' },
     'LOW EVIDENCE': { label: 'LOW EVIDENCE', color: '#ff9f1c' },
-    PROVISIONAL: { label: 'PROVISIONAL', color: '#d4af55' },
-    EMERGING: { label: 'EMERGING', color: '#4a90d9' },
-    ESTABLISHED: { label: 'ESTABLISHED', color: '#3b9b6e' },
+    PROVISIONAL: { label: 'PROVISIONAL', color: '#22C55E' },
+    EMERGING: { label: 'EMERGING', color: '#3B82F6' },
+    ESTABLISHED: { label: 'ESTABLISHED', color: '#22C55E' },
   };
   return map[conf] || { label: conf, color: '#7a809a' };
 }
 
 function behaviorLabel(b) {
   const map = {
-    completed: ['Completed', '#3b9b6e'],
-    retried_same: ['Retried Same', '#d4af55'],
+    completed: ['Completed', '#22C55E'],
+    retried_same: ['Retried Same', '#22C55E'],
     retried_different: ['Switched', '#ff9f1c'],
     abandoned: ['Abandoned', '#ff3b3b'],
     disputed: ['Disputed', '#ff2d78'],
@@ -115,15 +115,15 @@ export default async function EntityProfile({ params }) {
     confidenceMessage = `Current effective evidence: ${currentEvidence}. Very low credibility weight.`;
   } else if (currentEvidence < 5.0) {
     confidence = 'PROVISIONAL';
-    confidenceColor = '#d4af55';
+    confidenceColor = '#22C55E';
     confidenceMessage = `Current effective evidence: ${currentEvidence}/5.0 needed.`;
   } else if (currentEvidence < 20.0) {
     confidence = 'EMERGING';
-    confidenceColor = '#4a90d9';
+    confidenceColor = '#3B82F6';
     confidenceMessage = `Current effective evidence: ${currentEvidence}. Score is meaningful.`;
   } else {
     confidence = 'CONFIDENT';
-    confidenceColor = '#3b9b6e';
+    confidenceColor = '#22C55E';
     confidenceMessage = `Current effective evidence: ${currentEvidence} from ${trustProfile.uniqueSubmitters} submitters.`;
   }
 
@@ -138,9 +138,9 @@ export default async function EntityProfile({ params }) {
   } : null;
 
   const bars = breakdown ? [
-    ScoreBar({ label: 'Delivery Accuracy', value: breakdown.delivery_accuracy, color: '#4a90d9' }),
-    ScoreBar({ label: 'Product Accuracy', value: breakdown.product_accuracy, color: '#3b9b6e' }),
-    ScoreBar({ label: 'Price Integrity', value: breakdown.price_integrity, color: '#d4af55' }),
+    ScoreBar({ label: 'Delivery Accuracy', value: breakdown.delivery_accuracy, color: '#3B82F6' }),
+    ScoreBar({ label: 'Product Accuracy', value: breakdown.product_accuracy, color: '#22C55E' }),
+    ScoreBar({ label: 'Price Integrity', value: breakdown.price_integrity, color: '#22C55E' }),
     ScoreBar({ label: 'Return Processing', value: breakdown.return_processing, color: '#ff9f1c' }),
     ScoreBar({ label: 'Agent Satisfaction', value: breakdown.agent_satisfaction, color: '#ff2d78' }),
     ScoreBar({ label: 'Consistency', value: breakdown.consistency, color: '#7a809a' }),
@@ -162,9 +162,9 @@ export default async function EntityProfile({ params }) {
         <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <style dangerouslySetInnerHTML={{ __html: `
           :root {
-            --bg: #0a0f1e; --bg-card: #111827; --brd: rgba(255,255,255,0.06);
+            --bg: #020617; --bg-card: #0F172A; --brd: rgba(255,255,255,0.06);
             --t1: #e8eaf0; --t2: #7a809a; --t3: #4a4f6a;
-            --cyan: #4a90d9; --gold: #d4af55; --green: #3b9b6e;
+            --cyan: #3B82F6; --gold: #22C55E; --green: #22C55E;
             --mono: 'IBM Plex Mono', monospace; --disp: 'IBM Plex Sans', sans-serif; --body: 'IBM Plex Sans', sans-serif;
           }
           *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -187,7 +187,7 @@ export default async function EntityProfile({ params }) {
             <a href="/operators" style="color:#4a4f6a;text-decoration:none">Operators</a>
             <a href="/appeal" style="color:#4a4f6a;text-decoration:none">Appeal</a>
             <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" style="color:#4a4f6a;text-decoration:none">GitHub</a>
-            <a href="/apply" style="background:#4a90d9;color:#0a0f1e;padding:8px 18px;border-radius:8px;text-decoration:none;font-weight:700;letter-spacing:1px;font-size:12px">Apply to Review</a>
+            <a href="/apply" style="background:#3B82F6;color:#020617;padding:8px 18px;border-radius:8px;text-decoration:none;font-weight:700;letter-spacing:1px;font-size:12px">Apply to Review</a>
           </div>
         </nav>
         <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px 80px' }}>
@@ -236,7 +236,7 @@ export default async function EntityProfile({ params }) {
               { label: 'Unique Submitters', value: uniqueSubmitters },
               { label: 'Member Since', value: memberSince },
             ].map(({ label, value }) => (
-              <div key={label} style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '16px 12px', textAlign: 'center' }}>
+              <div key={label} style={{ background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '16px 12px', textAlign: 'center' }}>
                 <div style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 20, marginBottom: 4 }}>{value}</div>
                 <div style={{ fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: 2, color: '#4a4f6a', textTransform: 'uppercase' }}>{label}</div>
               </div>
@@ -245,7 +245,7 @@ export default async function EntityProfile({ params }) {
 
           {/* Score breakdown */}
           {breakdown && (
-            <div style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 24, marginBottom: 40 }}>
+            <div style={{ background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 24, marginBottom: 40 }}>
               <div style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: 3, color: '#4a4f6a', textTransform: 'uppercase', marginBottom: 20 }}>
                 Score Breakdown
               </div>
@@ -279,7 +279,7 @@ export default async function EntityProfile({ params }) {
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {entity.capabilities.map((cap) => (
-                  <span key={cap} style={{ fontFamily: 'var(--mono)', fontSize: 11, color: '#4a90d9', background: 'rgba(74,144,217,0.08)', border: '1px solid rgba(74,144,217,0.15)', padding: '6px 12px', borderRadius: 100 }}>
+                  <span key={cap} style={{ fontFamily: 'var(--mono)', fontSize: 11, color: '#3B82F6', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)', padding: '6px 12px', borderRadius: 100 }}>
                     {cap}
                   </span>
                 ))}
@@ -299,11 +299,11 @@ export default async function EntityProfile({ params }) {
                   const date = new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                   const anchored = !!r.anchor_batch_id;
                   return (
-                    <div key={r.receipt_id} style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div key={r.receipt_id} style={{ background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                         <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: '#7a809a' }}>{r.transaction_type}</span>
                         <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: bColor, background: `${bColor}15`, padding: '2px 8px', borderRadius: 100 }}>{bLabel}</span>
-                        {anchored && <span style={{ fontSize: 10, color: '#3b9b6e' }}>⛓ anchored</span>}
+                        {anchored && <span style={{ fontSize: 10, color: '#22C55E' }}>⛓ anchored</span>}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                         <span style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 14 }}>{r.composite_score}</span>
@@ -317,13 +317,13 @@ export default async function EntityProfile({ params }) {
           )}
 
           {/* API reference */}
-          <div style={{ marginTop: 48, padding: 20, background: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, fontFamily: 'var(--mono)', fontSize: 11 }}>
+          <div style={{ marginTop: 48, padding: 20, background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, fontFamily: 'var(--mono)', fontSize: 11 }}>
             <div style={{ color: '#4a4f6a', fontSize: 10, letterSpacing: 2, marginBottom: 8 }}>API</div>
             <div style={{ color: '#7a809a' }}>
-              <span style={{ color: '#3b9b6e' }}>GET</span> /api/score/{entity.entity_id}
+              <span style={{ color: '#22C55E' }}>GET</span> /api/score/{entity.entity_id}
             </div>
             <div style={{ color: '#7a809a', marginTop: 4 }}>
-              <span style={{ color: '#d4af55' }}>MCP</span> ep_trust_profile entity_id="{entity.entity_id}"
+              <span style={{ color: '#22C55E' }}>MCP</span> ep_trust_profile entity_id="{entity.entity_id}"
             </div>
           </div>
 

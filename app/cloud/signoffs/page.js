@@ -3,19 +3,19 @@
 import { useState, useEffect } from 'react';
 
 const s = {
-  page: { minHeight: '100vh', background: '#0a0f1e', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
+  page: { minHeight: '100vh', background: '#020617', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
   container: { maxWidth: 1120, margin: '0 auto', padding: '40px 24px' },
-  eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#d4af55', marginBottom: 8 },
+  eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#22C55E', marginBottom: 8 },
   h1: { fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 8, color: '#e8eaf0' },
   subtitle: { fontSize: 14, color: '#7a809a', marginBottom: 32 },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 32 },
-  statCard: { background: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '20px 24px' },
+  statCard: { background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '20px 24px' },
   statLabel: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: '#7a809a', marginBottom: 8 },
   statValue: { fontSize: 28, fontWeight: 700, letterSpacing: -1 },
-  card: { background: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: 24, marginBottom: 24 },
+  card: { background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: 24, marginBottom: 24 },
   cardTitle: { fontSize: 15, fontWeight: 600, marginBottom: 16 },
   tabs: { display: 'flex', gap: 0, marginBottom: 24, borderBottom: '1px solid rgba(255,255,255,0.06)' },
-  tab: (active) => ({ padding: '10px 20px', fontSize: 13, fontWeight: 500, color: active ? '#e8eaf0' : '#4a4f6a', background: 'none', border: 'none', borderBottom: active ? '2px solid #d4af55' : '2px solid transparent', cursor: 'pointer', fontFamily: "'IBM Plex Sans', sans-serif" }),
+  tab: (active) => ({ padding: '10px 20px', fontSize: 13, fontWeight: 500, color: active ? '#e8eaf0' : '#4a4f6a', background: 'none', border: 'none', borderBottom: active ? '2px solid #22C55E' : '2px solid transparent', cursor: 'pointer', fontFamily: "'IBM Plex Sans', sans-serif" }),
   mono: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 },
   th: { padding: '10px 14px', textAlign: 'left', fontSize: 10, fontWeight: 600, color: '#4a4f6a', fontFamily: "'IBM Plex Mono', monospace", letterSpacing: 1.5, textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.06)' },
   td: { padding: '12px 14px', fontSize: 13, borderBottom: '1px solid rgba(255,255,255,0.03)' },
@@ -34,7 +34,7 @@ const MOCK_SIGNOFFS = [
   { id: 'sig_e2f9a6', handshake: 'hs_1d6e4b9a', policy: 'sanctions-screen', signer: 'ops@globex.com', status: 'expired', created: '2026-03-18T10:00:00Z', expires: '2026-03-19T10:00:00Z' },
 ];
 
-const statusColor = { pending: '#d4af55', completed: '#3b9b6e', expired: '#f87171' };
+const statusColor = { pending: '#22C55E', completed: '#22C55E', expired: '#f87171' };
 
 export default function SignoffsPage() {
   const [loading, setLoading] = useState(true);
@@ -76,11 +76,11 @@ export default function SignoffsPage() {
           <div style={s.grid}>
             <div style={s.statCard}>
               <div style={s.statLabel}>Pending</div>
-              <div style={{ ...s.statValue, color: '#d4af55' }}>{summary.pending}</div>
+              <div style={{ ...s.statValue, color: '#22C55E' }}>{summary.pending}</div>
             </div>
             <div style={s.statCard}>
               <div style={s.statLabel}>Completed</div>
-              <div style={{ ...s.statValue, color: '#3b9b6e' }}>{summary.completed}</div>
+              <div style={{ ...s.statValue, color: '#22C55E' }}>{summary.completed}</div>
             </div>
             <div style={s.statCard}>
               <div style={s.statLabel}>Expired</div>
@@ -113,7 +113,7 @@ export default function SignoffsPage() {
             <tbody>
               {filtered.map(sig => (
                 <tr key={sig.id}>
-                  <td style={{ ...s.td, ...s.mono, color: '#4a90d9' }}>{sig.id}</td>
+                  <td style={{ ...s.td, ...s.mono, color: '#3B82F6' }}>{sig.id}</td>
                   <td style={{ ...s.td, ...s.mono, color: '#7a809a' }}>{sig.handshake}</td>
                   <td style={{ ...s.td, ...s.mono }}>{sig.policy}</td>
                   <td style={{ ...s.td, fontSize: 12 }}>{sig.signer}</td>

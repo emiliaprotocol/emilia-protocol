@@ -17,18 +17,18 @@
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --bg:#0a0f1e;
-  --card:#111827;
+  --bg:#020617;
+  --card:#0F172A;
   --card-h:#1a2238;
   --brd:rgba(255,255,255,0.06);
   --brd-gold:rgba(212,175,55,0.25);
-  --t1:#f0f2f5;
-  --t2:#8b95a5;
-  --t3:#5a6577;
-  --gold:#d4af55;
+  --t1:#F8FAFC;
+  --t2:#94A3B8;
+  --t3:#64748B;
+  --gold:#22C55E;
   --gold-bg:rgba(212,175,55,0.08);
-  --blue:#4a90d9;
-  --green:#3b9b6e;
+  --blue:#3B82F6;
+  --green:#22C55E;
   --sans:'IBM Plex Sans',sans-serif;
   --mono:'IBM Plex Mono',monospace;
 }
@@ -36,7 +36,7 @@ html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:16px;line-height:1.7;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 
 /* NAV */
-nav{position:fixed;top:0;left:0;right:0;z-index:100;height:60px;display:flex;align-items:center;justify-content:center;background:rgba(10,15,30,0.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--brd)}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;height:60px;display:flex;align-items:center;justify-content:center;background:rgba(2,6,23,0.88);backdrop-filter:blur(12px);border-bottom:1px solid var(--brd)}
 .nav-inner{display:flex;align-items:center;justify-content:space-between;width:100%;max-width:1280px;padding:0 40px}
 .nav-logo{font-family:var(--mono);font-weight:700;font-size:14px;color:var(--t1);letter-spacing:3px;text-decoration:none;display:flex;align-items:center;gap:10px;text-transform:uppercase;flex-shrink:0}
 .nav-links{display:flex;align-items:center;gap:22px}
@@ -137,7 +137,7 @@ footer{padding:48px 40px;text-align:center}
 .footer-links a:hover{color:var(--t2)}
 
 /* AMBIENT GLOW — refined, not neon */
-.hero::before{content:'';position:absolute;top:20%;left:50%;transform:translateX(-50%);width:800px;height:400px;background:radial-gradient(ellipse,rgba(212,175,55,0.04) 0%,rgba(74,144,217,0.02) 40%,transparent 70%);pointer-events:none;animation:ambient-breathe 8s ease-in-out infinite}
+.hero::before{content:'';position:absolute;top:20%;left:50%;transform:translateX(-50%);width:800px;height:400px;background:radial-gradient(ellipse,rgba(212,175,55,0.04) 0%,rgba(59,130,246,0.02) 40%,transparent 70%);pointer-events:none;animation:ambient-breathe 8s ease-in-out infinite}
 @keyframes ambient-breathe{0%,100%{opacity:0.6;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.05)}}
 
 /* HERO ENTRANCE */
@@ -229,7 +229,7 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
 <!-- NAV -->
 <nav>
 <div class="nav-inner">
-  <a href="/" class="nav-logo"><svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#elg)"/><rect class="e-prong e-top" x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#4a90d9"/><rect class="e-prong e-mid" x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#d4af55"/><rect class="e-prong e-bot" x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#4a90d9"/><defs><linearGradient id="elg" x1="8" y1="5" x2="8" y2="29"><stop offset="0%" stop-color="#4a90d9"/><stop offset="100%" stop-color="#d4af55"/></linearGradient></defs></svg>EMILIA</a>
+  <a href="/" class="nav-logo"><svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#elg)"/><rect class="e-prong e-top" x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#3B82F6"/><rect class="e-prong e-mid" x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#22C55E"/><rect class="e-prong e-bot" x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#3B82F6"/><defs><linearGradient id="elg" x1="8" y1="5" x2="8" y2="29"><stop offset="0%" stop-color="#3B82F6"/><stop offset="100%" stop-color="#22C55E"/></linearGradient></defs></svg>EMILIA</a>
   <div class="nav-links">
     <a href="/protocol">Protocol</a>
     <a href="/government">Government</a>

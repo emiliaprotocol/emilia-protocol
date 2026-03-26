@@ -21,21 +21,21 @@ const STATES = [
 ];
 
 const s = {
-  page: { minHeight: '100vh', background: '#0a0f1e', color: '#f0f2f5', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
+  page: { minHeight: '100vh', background: '#020617', color: '#F8FAFC', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
   section: { maxWidth: 760, margin: '0 auto', padding: '80px 24px' },
-  sectionAlt: { background: '#111827', borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
-  eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#d4af55', marginBottom: 16 },
+  sectionAlt: { background: '#0F172A', borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
+  eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#22C55E', marginBottom: 16 },
   h1: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 700, letterSpacing: -1, marginBottom: 16, lineHeight: 1.1 },
   h2: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 24, fontWeight: 700, letterSpacing: -0.5, marginBottom: 16 },
-  body: { fontSize: 16, color: '#8b95a5', lineHeight: 1.75, marginBottom: 24 },
+  body: { fontSize: 16, color: '#94A3B8', lineHeight: 1.75, marginBottom: 24 },
   endpointRow: { display: 'flex', gap: 16, alignItems: 'baseline', padding: '16px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' },
-  endpointName: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 14, fontWeight: 500, color: '#d4af55', minWidth: 100, flexShrink: 0 },
-  endpointDesc: { fontSize: 14, color: '#8b95a5', lineHeight: 1.6 },
+  endpointName: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 14, fontWeight: 500, color: '#22C55E', minWidth: 100, flexShrink: 0 },
+  endpointDesc: { fontSize: 14, color: '#94A3B8', lineHeight: 1.6 },
   stateRow: { display: 'flex', gap: 16, alignItems: 'baseline', padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.06)' },
-  stateName: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 500, color: '#4a90d9', minWidth: 140, flexShrink: 0 },
-  stateDesc: { fontSize: 14, color: '#8b95a5', lineHeight: 1.6 },
-  cta: { display: 'inline-block', padding: '12px 28px', borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', textDecoration: 'none', border: '1px solid rgba(212,175,55,0.25)', color: '#d4af55', background: 'transparent', transition: 'background 0.2s', marginRight: 12 },
-  ctaGhost: { display: 'inline-block', padding: '12px 28px', borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', textDecoration: 'none', border: '1px solid rgba(255,255,255,0.06)', color: '#8b95a5', background: 'transparent', transition: 'color 0.2s' },
+  stateName: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 500, color: '#3B82F6', minWidth: 140, flexShrink: 0 },
+  stateDesc: { fontSize: 14, color: '#94A3B8', lineHeight: 1.6 },
+  cta: { display: 'inline-block', padding: '12px 28px', borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', textDecoration: 'none', border: '1px solid rgba(212,175,55,0.25)', color: '#22C55E', background: 'transparent', transition: 'background 0.2s', marginRight: 12 },
+  ctaGhost: { display: 'inline-block', padding: '12px 28px', borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', textDecoration: 'none', border: '1px solid rgba(255,255,255,0.06)', color: '#94A3B8', background: 'transparent', transition: 'color 0.2s' },
   divider: { height: 1, background: 'linear-gradient(90deg, transparent, rgba(212,175,55,0.25), transparent)', maxWidth: 400, margin: '0 auto' },
 };
 
