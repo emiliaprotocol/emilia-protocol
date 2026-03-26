@@ -3,10 +3,10 @@
 This package rewrites the outward-facing documentation, proposals, and website copy so they all tell the same company story.
 
 ## Core shift
-Old framing:
-- portable trust
-- machine counterparties
-- install preflight as the main wedge
+Old framing (deprecated):
+- "portable trust"
+- "machine counterparties"
+- pre-action enforcement as the main wedge
 - broad software trust / score / graph language
 
 New framing:

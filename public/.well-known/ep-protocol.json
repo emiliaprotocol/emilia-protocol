@@ -207,7 +207,7 @@
       "GET /api/identity/lineage/{entityId}": "Entity identity lineage",
       "GET /api/identity/principal/{principalId}": "Principal identity details",
       "GET /api/identity/principal/{principalId}/agents": "Agents under a principal",
-      "POST /api/identity/principal/{principalId}/delegation-judgment": "Principal delegation judgment"
+      "POST /api/identity/principal/{principalId}/delegation-judgment": "Principal delegation authority"
     },
     "score_legacy": {
       "GET /api/score/{entityId}": "Legacy compatibility score (DEPRECATED, see Section 20)",

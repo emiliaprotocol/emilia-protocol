@@ -119,7 +119,7 @@ paths:
   /api/trust/install-preflight:
     post:
       tags: [Software Trust]
-      summary: Software install preflight
+      summary: Software pre-action enforcement (experimental)
       description: |
         EP-SX: Should I install this plugin/app/package/extension? Evaluates
         publisher verification, permission risk, provenance, and incident history
@@ -755,9 +755,9 @@ paths:
   /api/disputes/{disputeId}/adjudicate:
     post:
       tags: [Disputes]
-      summary: Trigger trust-graph adjudication
+      summary: Trigger trust evaluation
       description: |
-        Triggers trust-graph adjudication for a dispute. The trust graph's
+        Triggers trust evaluation for a dispute. The trust graph's
         high-confidence counterparties vote on whether to uphold or dismiss.
 
         Authorization: CRON_SECRET (automated) or the dispute filer (after 48h
@@ -983,9 +983,9 @@ paths:
   /api/identity/principal/{principalId}/delegation-judgment:
     get:
       tags: [Identity]
-      summary: Get principal delegation judgment score
+      summary: Get principal delegation authority
       description: |
-        Returns a principal's delegation judgment score — a measure of how well
+        Returns a principal's delegation authority — a measure of how well
         this human chooses and oversees the agents they authorize. Scores humans,
         not just machines: "can I trust the human who authorized this agent?"
 

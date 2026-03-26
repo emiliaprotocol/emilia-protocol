@@ -225,7 +225,7 @@ describe('ROUTE: Dispute flow behavior', () => {
 });
 
 // ============================================================================
-// 5. Install Preflight — software policy evaluation
+// 5. Pre-Action Enforcement — software policy evaluation (experimental)
 // ============================================================================
 
 describe('ROUTE: /api/trust/install-preflight — software policies', () => {

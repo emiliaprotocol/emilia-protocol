@@ -154,7 +154,7 @@ We follow the principle of coordinated disclosure. Please do not disclose vulner
 **Mitigations:**
 - Context-aware evaluation: trust profiles can be filtered by category, geo, value band
 - Policy evaluation includes context — "trusted for electronics" does not mean "trusted for furniture"
-- Install preflight evaluates software entities against host-specific policies
+- Pre-action enforcement evaluates software entities against host-specific policies
 
 **Status:** Implemented. Adversarial tests verify split-behavior detection.
 

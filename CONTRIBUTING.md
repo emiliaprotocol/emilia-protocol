@@ -94,7 +94,7 @@ lib/
 app/api/
   trust/profile/          — GET canonical trust profile (primary read surface)
   trust/evaluate/         — POST policy evaluation (primary decision surface)
-  trust/install-preflight/ — POST software install preflight (EP-SX)
+  trust/install-preflight/ — POST software pre-action enforcement (EP-SX, experimental)
   score/                  — GET compatibility score (legacy)
   receipts/submit/        — POST receipt submission
   disputes/               — file, status, report

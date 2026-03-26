@@ -210,7 +210,7 @@ Signals: active_disputes, reversed_receipts, human_reports, appeal_outcomes
 
 ---
 
-## 7. Install Preflight Flow
+## 7. Pre-Action Enforcement Flow (experimental)
 
 The canonical EP-SX flow for "should I install this?"
 

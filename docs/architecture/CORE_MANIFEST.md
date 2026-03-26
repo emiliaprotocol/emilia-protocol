@@ -183,7 +183,7 @@ Business features built ON the protocol. These consume trust decisions but do no
 | `app/api/score/[entityId]/route.js` | Score retrieval (product wrapper around canonical evaluator) |
 | `app/api/score/[entityId]/history/route.js` | Score history |
 | `app/api/trust/profile/[entityId]/route.js` | Trust profile page data |
-| `app/api/trust/install-preflight/route.js` | Software install pre-check |
+| `app/api/trust/install-preflight/route.js` | Software pre-action enforcement (experimental) |
 | `app/api/trust/domain-score/[entityId]/route.js` | Domain-specific scoring |
 | `app/api/trust/zk-proof/route.js` | ZK proof generation |
 | `app/api/inquiries/route.js` | Contact form |

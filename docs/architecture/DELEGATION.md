@@ -174,7 +174,7 @@ When an agent acts under delegation, the outcome is not theirs alone. The princi
 | Role | Entity | Weight | Purpose |
 |---|---|---|---|
 | `agent` | Agent entity | 1.0 | Full weight: the agent performed the action |
-| `principal` | Principal entity | 0.15 | Weak signal: delegation judgment quality |
+| `principal` | Principal entity | 0.15 | Weak signal: delegation authority quality |
 
 The 0.15 weight is deliberately weak. A single delegation gone wrong should not destroy a principal's trust profile. But a pattern of authorizing misbehaving agents should be legible to the system.
 

@@ -555,7 +555,7 @@ Response (201):
 
 When a receipt is later submitted for this action, the attribution chain will write:
 - Agent `alice-bot`: weight 1.0 (primary attribution)
-- Principal `alice`: weight 0.15 (delegation judgment signal to `principal_delegation_signals`)
+- Principal `alice`: weight 0.15 (delegation authority signal to `principal_delegation_signals`)
 
 ---
 

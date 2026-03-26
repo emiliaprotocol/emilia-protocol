@@ -1,7 +1,7 @@
 /**
  * EMILIA Protocol — Delegation Judgment Tests
  *
- * Tests for the principal delegation judgment scoring system.
+ * Tests for the principal delegation authority system.
  * Covers getDelegationJudgmentScore() from lib/attribution.js and the
  * grade/interpretation logic that the route layer applies on top.
  *

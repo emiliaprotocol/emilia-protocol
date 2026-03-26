@@ -103,7 +103,7 @@ the product useful but are not part of the trust protocol.
 | 3 | `/api/entities/{entityId}/auto-receipt` | GET | Entities | Get auto-receipt config |
 | 4 | `/api/entities/{entityId}/auto-receipt` | POST | Entities | Update auto-receipt config |
 | 5 | `/api/receipts/auto-submit` | POST | Receipts | Batch auto-submit behavioral receipts |
-| 6 | `/api/trust/install-preflight` | POST | Software Trust | Software install preflight check |
+| 6 | `/api/trust/install-preflight` | POST | Software Trust | Software pre-action enforcement (experimental) |
 | 7 | `/api/trust/zk-proof` | POST | Trust | Generate a commitment trust proof |
 | 8 | `/api/trust/zk-proof` | GET | Trust | Verify a commitment trust proof |
 | 9 | `/api/trust/domain-score/{entityId}` | GET | Trust | Domain-specific trust scores |

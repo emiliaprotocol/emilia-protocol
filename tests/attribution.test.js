@@ -79,7 +79,7 @@ describe('buildAttributionChain', () => {
     expect(chain[0].weight).toBe(1.0);
   });
 
-  it('principal weight is 0.15 (weak delegation judgment signal)', () => {
+  it('principal weight is 0.15 (weak delegation authority signal)', () => {
     const receipt = {
       entity_id: 'agent-entity-5',
       delegation_id: 'deleg_001',
