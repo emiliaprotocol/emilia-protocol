@@ -106,7 +106,7 @@ export default function AppealPage() {
   };
 
   const s = {
-    page: { minHeight: '100vh', background: '#0a0b14', color: '#e8e6e3', fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif', padding: '24px 24px 60px' },
+    page: { minHeight: '100vh', background: '#0a0f1e', color: '#e8e6e3', fontFamily: "'IBM Plex Sans', sans-serif", padding: '24px 24px 60px' },
     container: { maxWidth: 640, margin: '0 auto' },
     h1: { fontSize: 32, fontWeight: 700, marginBottom: 8 },
     sub: { fontSize: 14, color: '#8b8fa3', lineHeight: 1.6, marginBottom: 40 },
@@ -114,28 +114,28 @@ export default function AppealPage() {
     tabs: { display: 'flex', gap: 8, marginBottom: 32, flexWrap: 'wrap' },
     tab: (active) => ({
       padding: '10px 20px', borderRadius: 8, border: 'none', cursor: 'pointer',
-      background: active ? 'rgba(0,212,255,0.15)' : 'rgba(255,255,255,0.05)',
+      background: active ? 'rgba(212,175,85,0.15)' : 'rgba(255,255,255,0.05)',
       color: active ? '#4a90d9' : '#8b8fa3', fontSize: 13, fontWeight: 600,
     }),
     input: { width: '100%', padding: '12px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#e8e6e3', fontSize: 14, marginBottom: 12, outline: 'none', boxSizing: 'border-box' },
     select: { width: '100%', padding: '12px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#e8e6e3', fontSize: 14, marginBottom: 12, outline: 'none', boxSizing: 'border-box' },
     textarea: { width: '100%', padding: '12px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: '#e8e6e3', fontSize: 14, marginBottom: 12, outline: 'none', minHeight: 120, resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' },
-    btn: { padding: '12px 24px', borderRadius: 8, border: 'none', cursor: 'pointer', background: '#4a90d9', color: '#0a0b14', fontSize: 14, fontWeight: 600 },
-    btnDanger: { padding: '10px 20px', borderRadius: 8, border: '1px solid rgba(255,45,120,0.3)', cursor: 'pointer', background: 'rgba(255,45,120,0.1)', color: '#ff2d78', fontSize: 13, fontWeight: 600 },
-    btnAppeal: { padding: '10px 20px', borderRadius: 8, border: '1px solid rgba(255,215,0,0.3)', cursor: 'pointer', background: 'rgba(255,215,0,0.1)', color: '#d4af55', fontSize: 13, fontWeight: 600 },
+    btn: { padding: '12px 24px', borderRadius: 8, border: 'none', cursor: 'pointer', background: '#4a90d9', color: '#0a0f1e', fontSize: 14, fontWeight: 600 },
+    btnDanger: { padding: '10px 20px', borderRadius: 8, border: '1px solid rgba(239,68,68,0.3)', cursor: 'pointer', background: 'rgba(239,68,68,0.1)', color: '#ef4444', fontSize: 13, fontWeight: 600 },
+    btnAppeal: { padding: '10px 20px', borderRadius: 8, border: '1px solid rgba(212,175,85,0.3)', cursor: 'pointer', background: 'rgba(212,175,85,0.1)', color: '#d4af55', fontSize: 13, fontWeight: 600 },
     card: { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: 24, marginTop: 24 },
     label: { fontSize: 11, color: '#8b8fa3', fontFamily: 'monospace', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8, display: 'block' },
     row: { display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' },
-    error: { background: 'rgba(255,45,120,0.1)', border: '1px solid rgba(255,45,120,0.3)', borderRadius: 8, padding: 16, color: '#ff2d78', marginTop: 16 },
-    success: { background: 'rgba(0,255,136,0.1)', border: '1px solid rgba(0,255,136,0.3)', borderRadius: 8, padding: 16, color: '#00ff88', marginTop: 16 },
-    warning: { background: 'rgba(255,215,0,0.1)', border: '1px solid rgba(255,215,0,0.3)', borderRadius: 8, padding: 16, color: '#d4af55', marginTop: 16 },
+    error: { background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, padding: 16, color: '#ef4444', marginTop: 16 },
+    success: { background: 'rgba(59,155,110,0.1)', border: '1px solid rgba(59,155,110,0.3)', borderRadius: 8, padding: 16, color: '#3b9b6e', marginTop: 16 },
+    warning: { background: 'rgba(212,175,85,0.1)', border: '1px solid rgba(212,175,85,0.3)', borderRadius: 8, padding: 16, color: '#d4af55', marginTop: 16 },
   };
 
   const statusColor = (status) => {
     const map = {
-      open: '#d4af55', under_review: '#4a90d9', upheld: '#8b8fa3', reversed: '#00ff88',
+      open: '#d4af55', under_review: '#4a90d9', upheld: '#8b8fa3', reversed: '#3b9b6e',
       dismissed: '#8b8fa3', appealed: '#d4af55', appeal_upheld: '#8b8fa3',
-      appeal_reversed: '#00ff88', appeal_dismissed: '#8b8fa3', withdrawn: '#8b8fa3',
+      appeal_reversed: '#3b9b6e', appeal_dismissed: '#8b8fa3', withdrawn: '#8b8fa3',
     };
     return map[status] || '#8b8fa3';
   };
@@ -172,7 +172,7 @@ export default function AppealPage() {
               <div style={s.card}>
                 <div style={s.label}>Trust Profile</div>
                 <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>{result.data.display_name}</div>
-                <div style={s.row}><span style={{ color: '#8b8fa3' }}>Confidence</span><span style={{ color: result.data.current_confidence === 'confident' ? '#00ff88' : '#d4af55' }}>{result.data.current_confidence}</span></div>
+                <div style={s.row}><span style={{ color: '#8b8fa3' }}>Confidence</span><span style={{ color: result.data.current_confidence === 'confident' ? '#3b9b6e' : '#d4af55' }}>{result.data.current_confidence}</span></div>
                 <div style={s.row}><span style={{ color: '#8b8fa3' }}>Established</span><span>{result.data.historical_establishment ? 'Yes' : 'No'}</span></div>
                 <div style={s.row}><span style={{ color: '#8b8fa3' }}>Compatibility Score</span><span>{result.data.compat_score}/100</span></div>
                 <div style={s.row}><span style={{ color: '#8b8fa3' }}>Effective Evidence</span><span>{result.data.effective_evidence_current}</span></div>
@@ -184,8 +184,8 @@ export default function AppealPage() {
                 {result.data.trust_profile?.behavioral && (
                   <div style={{ marginTop: 16 }}>
                     <div style={s.label}>Behavioral Rates</div>
-                    <div style={s.row}><span style={{ color: '#8b8fa3' }}>Completion</span><span style={{ color: '#00ff88' }}>{result.data.trust_profile.behavioral.completion_rate}%</span></div>
-                    <div style={s.row}><span style={{ color: '#8b8fa3' }}>Dispute</span><span style={{ color: result.data.trust_profile.behavioral.dispute_rate > 5 ? '#ff2d78' : '#8b8fa3' }}>{result.data.trust_profile.behavioral.dispute_rate}%</span></div>
+                    <div style={s.row}><span style={{ color: '#8b8fa3' }}>Completion</span><span style={{ color: '#3b9b6e' }}>{result.data.trust_profile.behavioral.completion_rate}%</span></div>
+                    <div style={s.row}><span style={{ color: '#8b8fa3' }}>Dispute</span><span style={{ color: result.data.trust_profile.behavioral.dispute_rate > 5 ? '#ef4444' : '#8b8fa3' }}>{result.data.trust_profile.behavioral.dispute_rate}%</span></div>
                   </div>
                 )}
 
@@ -247,7 +247,7 @@ export default function AppealPage() {
 
                 {/* Appeal details if dispute was appealed */}
                 {result.data.appealed_at && (
-                  <div style={{ marginTop: 16, borderTop: '1px solid rgba(255,215,0,0.2)', paddingTop: 16 }}>
+                  <div style={{ marginTop: 16, borderTop: '1px solid rgba(212,175,85,0.2)', paddingTop: 16 }}>
                     <div style={{ ...s.label, color: '#d4af55' }}>Appeal</div>
                     <div style={s.row}><span style={{ color: '#8b8fa3' }}>Appealed at</span><span>{new Date(result.data.appealed_at).toLocaleDateString()}</span></div>
                     {result.data.appeal_reason && <div style={{ marginTop: 8, fontSize: 13, color: '#8b8fa3', lineHeight: 1.6 }}><strong style={{ color: '#d4af55' }}>Appeal reason:</strong> {result.data.appeal_reason}</div>}
@@ -277,7 +277,7 @@ export default function AppealPage() {
         {/* === APPEAL TAB === */}
         {mode === 'appeal' && !appealSubmitted && (
           <div>
-            <div style={{ fontSize: 13, color: '#8b8fa3', lineHeight: 1.7, marginBottom: 20, padding: 16, background: 'rgba(255,215,0,0.05)', borderRadius: 8, border: '1px solid rgba(255,215,0,0.15)' }}>
+            <div style={{ fontSize: 13, color: '#8b8fa3', lineHeight: 1.7, marginBottom: 20, padding: 16, background: 'rgba(212,175,85,0.05)', borderRadius: 8, border: '1px solid rgba(212,175,85,0.15)' }}>
               <strong style={{ color: '#d4af55' }}>When to appeal:</strong> If a dispute was resolved as upheld, reversed, or dismissed and you believe the resolution was wrong, you can appeal. Appeals are reviewed by a senior operator. The appeal decision is final.
             </div>
             <input style={s.input} placeholder="Dispute ID to appeal (ep_disp_...)" value={appealDisputeId} onChange={e => setAppealDisputeId(e.target.value)} />
@@ -307,14 +307,15 @@ export default function AppealPage() {
             1. Anyone can <strong style={{ color: '#e8e6e3' }}>report</strong> a trust issue — no account needed.<br/>
             2. EP entity holders can <strong style={{ color: '#e8e6e3' }}>file a formal dispute</strong> against a specific receipt.<br/>
             3. The receipt submitter has <strong style={{ color: '#e8e6e3' }}>7 days to respond</strong> with counter-evidence.<br/>
-            4. Operators review and resolve: <strong style={{ color: '#00ff88' }}>upheld</strong>, <strong style={{ color: '#ff2d78' }}>reversed</strong>, or <strong style={{ color: '#8b8fa3' }}>dismissed</strong>.<br/>
+            4. Operators review and resolve: <strong style={{ color: '#3b9b6e' }}>upheld</strong>, <strong style={{ color: '#ef4444' }}>reversed</strong>, or <strong style={{ color: '#8b8fa3' }}>dismissed</strong>.<br/>
             5. Reversed receipts are <strong style={{ color: '#e8e6e3' }}>neutralized</strong> (weight → 0), never deleted. The ledger is append-only.<br/>
             6. The entity's trust profile <strong style={{ color: '#e8e6e3' }}>immediately recomputes</strong> to reflect the reversal.<br/>
-            <span style={{ display: 'inline-block', marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,215,0,0.15)' }}>
+            <span style={{ display: 'inline-block', marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(212,175,85,0.15)' }}>
               7. If the resolution was wrong, either party can <strong style={{ color: '#d4af55' }}>appeal</strong>. Appeals go to a senior reviewer.<br/>
               8. Appeal outcomes are <strong style={{ color: '#e8e6e3' }}>final</strong>: appeal upheld (original stands), appeal reversed (original overturned + trust recomputed), or appeal dismissed.<br/>
             </span>
             <span style={{ display: 'inline-block', marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+
               At any point before review begins, the filer can <strong style={{ color: '#e8e6e3' }}>withdraw</strong> a dispute.
             </span>
           </div>

@@ -40,8 +40,8 @@ const MOCK_HEALTH = [
   { service: 'Alert Router', status: 'operational', latency: '18ms', uptime: '99.97%' },
 ];
 
-const statusColor = { success: '#00ff88', pending: '#d4af55', alert: '#f87171' };
-const healthColor = { operational: '#00ff88', degraded: '#d4af55', down: '#f87171' };
+const statusColor = { success: '#3b9b6e', pending: '#d4af55', alert: '#f87171' };
+const healthColor = { operational: '#3b9b6e', degraded: '#d4af55', down: '#f87171' };
 
 export default function CloudDashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -95,7 +95,7 @@ export default function CloudDashboardPage() {
             </div>
             <div style={s.statCard}>
               <div style={s.statLabel}>Uptime</div>
-              <div style={{ ...s.statValue, color: '#00ff88' }}>{stats.uptime}%</div>
+              <div style={{ ...s.statValue, color: '#3b9b6e' }}>{stats.uptime}%</div>
             </div>
           </div>
         )}

@@ -33,7 +33,7 @@ const MOCK_TENANTS = [
   { id: 'ten_wayne', name: 'Wayne Industries', slug: 'wayne-ind', plan: 'enterprise', status: 'active', region: 'us-east-1', handshakes: 1456, policies: 9, members: 32, created: '2026-02-05T00:00:00Z' },
 ];
 
-const statusColor = { active: '#00ff88', suspended: '#f87171', pending: '#d4af55' };
+const statusColor = { active: '#3b9b6e', suspended: '#f87171', pending: '#d4af55' };
 const planBadge = (plan) => {
   const map = { enterprise: ['rgba(212,175,85,0.1)', '#d4af55'], business: ['rgba(74,144,217,0.1)', '#4a90d9'] };
   const [bg, fg] = map[plan] || ['rgba(122,128,154,0.1)', '#7a809a'];

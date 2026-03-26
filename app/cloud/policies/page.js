@@ -31,7 +31,7 @@ const MOCK_POLICIES = [
 ];
 
 const statusBadge = (status) => {
-  const map = { active: ['rgba(0,255,136,0.1)', '#00ff88'], draft: ['rgba(212,175,85,0.1)', '#d4af55'], inactive: ['rgba(122,128,154,0.1)', '#7a809a'] };
+  const map = { active: ['rgba(0,255,136,0.1)', '#3b9b6e'], draft: ['rgba(212,175,85,0.1)', '#d4af55'], inactive: ['rgba(122,128,154,0.1)', '#7a809a'] };
   const [bg, fg] = map[status] || map.inactive;
   return <span style={s.badge(bg, fg)}>{status}</span>;
 };

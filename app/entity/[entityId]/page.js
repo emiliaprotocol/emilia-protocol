@@ -72,14 +72,14 @@ function confidenceDisplay(conf) {
     'LOW EVIDENCE': { label: 'LOW EVIDENCE', color: '#ff9f1c' },
     PROVISIONAL: { label: 'PROVISIONAL', color: '#d4af55' },
     EMERGING: { label: 'EMERGING', color: '#4a90d9' },
-    ESTABLISHED: { label: 'ESTABLISHED', color: '#00ff88' },
+    ESTABLISHED: { label: 'ESTABLISHED', color: '#3b9b6e' },
   };
   return map[conf] || { label: conf, color: '#7a809a' };
 }
 
 function behaviorLabel(b) {
   const map = {
-    completed: ['Completed', '#00ff88'],
+    completed: ['Completed', '#3b9b6e'],
     retried_same: ['Retried Same', '#d4af55'],
     retried_different: ['Switched', '#ff9f1c'],
     abandoned: ['Abandoned', '#ff3b3b'],
@@ -123,7 +123,7 @@ export default async function EntityProfile({ params }) {
     confidenceMessage = `Current effective evidence: ${currentEvidence}. Score is meaningful.`;
   } else {
     confidence = 'CONFIDENT';
-    confidenceColor = '#00ff88';
+    confidenceColor = '#3b9b6e';
     confidenceMessage = `Current effective evidence: ${currentEvidence} from ${trustProfile.uniqueSubmitters} submitters.`;
   }
 
@@ -139,7 +139,7 @@ export default async function EntityProfile({ params }) {
 
   const bars = breakdown ? [
     ScoreBar({ label: 'Delivery Accuracy', value: breakdown.delivery_accuracy, color: '#4a90d9' }),
-    ScoreBar({ label: 'Product Accuracy', value: breakdown.product_accuracy, color: '#00ff88' }),
+    ScoreBar({ label: 'Product Accuracy', value: breakdown.product_accuracy, color: '#3b9b6e' }),
     ScoreBar({ label: 'Price Integrity', value: breakdown.price_integrity, color: '#d4af55' }),
     ScoreBar({ label: 'Return Processing', value: breakdown.return_processing, color: '#ff9f1c' }),
     ScoreBar({ label: 'Agent Satisfaction', value: breakdown.agent_satisfaction, color: '#ff2d78' }),
@@ -162,9 +162,9 @@ export default async function EntityProfile({ params }) {
         <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <style dangerouslySetInnerHTML={{ __html: `
           :root {
-            --bg: #0a0f1e; --bg-card: #0e1120; --brd: rgba(255,255,255,0.06);
+            --bg: #0a0f1e; --bg-card: #111827; --brd: rgba(255,255,255,0.06);
             --t1: #e8eaf0; --t2: #7a809a; --t3: #4a4f6a;
-            --cyan: #4a90d9; --gold: #d4af55; --green: #00ff88;
+            --cyan: #4a90d9; --gold: #d4af55; --green: #3b9b6e;
             --mono: 'IBM Plex Mono', monospace; --disp: 'IBM Plex Sans', sans-serif; --body: 'IBM Plex Sans', sans-serif;
           }
           *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -236,7 +236,7 @@ export default async function EntityProfile({ params }) {
               { label: 'Unique Submitters', value: uniqueSubmitters },
               { label: 'Member Since', value: memberSince },
             ].map(({ label, value }) => (
-              <div key={label} style={{ background: '#0e1120', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '16px 12px', textAlign: 'center' }}>
+              <div key={label} style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '16px 12px', textAlign: 'center' }}>
                 <div style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 20, marginBottom: 4 }}>{value}</div>
                 <div style={{ fontFamily: 'var(--mono)', fontSize: 9, letterSpacing: 2, color: '#4a4f6a', textTransform: 'uppercase' }}>{label}</div>
               </div>
@@ -245,7 +245,7 @@ export default async function EntityProfile({ params }) {
 
           {/* Score breakdown */}
           {breakdown && (
-            <div style={{ background: '#0e1120', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 24, marginBottom: 40 }}>
+            <div style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 24, marginBottom: 40 }}>
               <div style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: 3, color: '#4a4f6a', textTransform: 'uppercase', marginBottom: 20 }}>
                 Score Breakdown
               </div>
@@ -299,11 +299,11 @@ export default async function EntityProfile({ params }) {
                   const date = new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                   const anchored = !!r.anchor_batch_id;
                   return (
-                    <div key={r.receipt_id} style={{ background: '#0e1120', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div key={r.receipt_id} style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                         <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: '#7a809a' }}>{r.transaction_type}</span>
                         <span style={{ fontFamily: 'var(--mono)', fontSize: 10, color: bColor, background: `${bColor}15`, padding: '2px 8px', borderRadius: 100 }}>{bLabel}</span>
-                        {anchored && <span style={{ fontSize: 10, color: '#00ff88' }}>⛓ anchored</span>}
+                        {anchored && <span style={{ fontSize: 10, color: '#3b9b6e' }}>⛓ anchored</span>}
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                         <span style={{ fontFamily: 'var(--disp)', fontWeight: 700, fontSize: 14 }}>{r.composite_score}</span>
@@ -317,10 +317,10 @@ export default async function EntityProfile({ params }) {
           )}
 
           {/* API reference */}
-          <div style={{ marginTop: 48, padding: 20, background: '#0e1120', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, fontFamily: 'var(--mono)', fontSize: 11 }}>
+          <div style={{ marginTop: 48, padding: 20, background: '#111827', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, fontFamily: 'var(--mono)', fontSize: 11 }}>
             <div style={{ color: '#4a4f6a', fontSize: 10, letterSpacing: 2, marginBottom: 8 }}>API</div>
             <div style={{ color: '#7a809a' }}>
-              <span style={{ color: '#00ff88' }}>GET</span> /api/score/{entity.entity_id}
+              <span style={{ color: '#3b9b6e' }}>GET</span> /api/score/{entity.entity_id}
             </div>
             <div style={{ color: '#7a809a', marginTop: 4 }}>
               <span style={{ color: '#d4af55' }}>MCP</span> ep_trust_profile entity_id="{entity.entity_id}"

@@ -25,7 +25,7 @@ const s = {
   mono: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12 },
   loading: { textAlign: 'center', padding: 60, color: '#4a4f6a', fontFamily: "'IBM Plex Mono', monospace", fontSize: 13 },
   error: { background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 8, padding: '12px 16px', color: '#f87171', fontSize: 13, marginBottom: 24 },
-  success: { background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.15)', borderRadius: 8, padding: '12px 16px', color: '#00ff88', fontSize: 13, marginBottom: 24 },
+  success: { background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.15)', borderRadius: 8, padding: '12px 16px', color: '#3b9b6e', fontSize: 13, marginBottom: 24 },
 };
 
 export default function SettingsPage() {

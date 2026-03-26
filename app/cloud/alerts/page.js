@@ -40,7 +40,7 @@ const MOCK_ALERTS = [
 const sevColor = { critical: '#f87171', high: '#fb923c', medium: '#d4af55', low: '#4a90d9' };
 const sevBadge = (sev) => <span style={s.badge(`${sevColor[sev]}18`, sevColor[sev])}>{sev}</span>;
 const statusBadge = (st) => {
-  const map = { active: ['rgba(248,113,113,0.1)', '#f87171'], acknowledged: ['rgba(212,175,85,0.1)', '#d4af55'], resolved: ['rgba(0,255,136,0.1)', '#00ff88'] };
+  const map = { active: ['rgba(248,113,113,0.1)', '#f87171'], acknowledged: ['rgba(212,175,85,0.1)', '#d4af55'], resolved: ['rgba(0,255,136,0.1)', '#3b9b6e'] };
   const [bg, fg] = map[st] || ['rgba(122,128,154,0.1)', '#7a809a'];
   return <span style={s.badge(bg, fg)}>{st}</span>;
 };
@@ -96,7 +96,7 @@ export default function AlertsPage() {
           </div>
           <div style={s.statCard}>
             <div style={s.statLabel}>Resolved (7d)</div>
-            <div style={{ ...s.statValue, color: '#00ff88' }}>{counts.resolved}</div>
+            <div style={{ ...s.statValue, color: '#3b9b6e' }}>{counts.resolved}</div>
           </div>
           <div style={s.statCard}>
             <div style={s.statLabel}>Total</div>
@@ -131,7 +131,7 @@ export default function AlertsPage() {
             {a.status === 'active' && (
               <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
                 <button style={s.btnSmall}>Acknowledge</button>
-                <button style={{ ...s.btnSmall, borderColor: 'rgba(0,255,136,0.3)', color: '#00ff88' }}>Resolve</button>
+                <button style={{ ...s.btnSmall, borderColor: 'rgba(0,255,136,0.3)', color: '#3b9b6e' }}>Resolve</button>
               </div>
             )}
           </div>

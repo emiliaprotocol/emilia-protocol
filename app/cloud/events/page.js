@@ -19,7 +19,7 @@ const s = {
   dot: (color) => ({ width: 7, height: 7, borderRadius: '50%', background: color, display: 'inline-block', marginRight: 8 }),
   typeBadge: (type) => {
     const map = {
-      'handshake.completed': '#00ff88', 'handshake.initiated': '#4a90d9', 'policy.violation': '#f87171',
+      'handshake.completed': '#3b9b6e', 'handshake.initiated': '#4a90d9', 'policy.violation': '#f87171',
       'signoff.requested': '#d4af55', 'alert.triggered': '#f87171', 'audit.export': '#7a809a',
     };
     return map[type] || '#4a4f6a';

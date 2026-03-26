@@ -34,7 +34,7 @@ const MOCK_SIGNOFFS = [
   { id: 'sig_e2f9a6', handshake: 'hs_1d6e4b9a', policy: 'sanctions-screen', signer: 'ops@globex.com', status: 'expired', created: '2026-03-18T10:00:00Z', expires: '2026-03-19T10:00:00Z' },
 ];
 
-const statusColor = { pending: '#d4af55', completed: '#00ff88', expired: '#f87171' };
+const statusColor = { pending: '#d4af55', completed: '#3b9b6e', expired: '#f87171' };
 
 export default function SignoffsPage() {
   const [loading, setLoading] = useState(true);
@@ -80,7 +80,7 @@ export default function SignoffsPage() {
             </div>
             <div style={s.statCard}>
               <div style={s.statLabel}>Completed</div>
-              <div style={{ ...s.statValue, color: '#00ff88' }}>{summary.completed}</div>
+              <div style={{ ...s.statValue, color: '#3b9b6e' }}>{summary.completed}</div>
             </div>
             <div style={s.statCard}>
               <div style={s.statLabel}>Expired</div>
