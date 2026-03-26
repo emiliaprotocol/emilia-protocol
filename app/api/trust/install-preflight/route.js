@@ -4,7 +4,7 @@ import { EP_ERRORS } from '@/lib/errors';
 import { buildTrustDecision } from '@/lib/trust-decision';
 
 /**
- * POST /api/trust/install-preflight
+ * POST /api/trust/install-preflight (experimental — pre-action enforcement)
  *
  * EP-SX: "Should I install this plugin/app/package/extension/MCP server?"
  * Routes through the canonical evaluator — same trust brain as profile and evaluate.
@@ -87,7 +87,7 @@ export async function POST(request) {
       },
     }));
   } catch (err) {
-    console.error('Install preflight error:', err);
+    console.error('Pre-action enforcement error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

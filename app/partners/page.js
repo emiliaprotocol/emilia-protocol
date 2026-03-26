@@ -49,10 +49,10 @@ export default function PartnersPage() {
   ];
 
   const PILOT_STEPS = [
-    'Select one trust surface such as MCP servers, browser extensions, GitHub apps, npm packages, or agent tools',
+    'Select one high-risk workflow such as a beneficiary change, payment destination change, operator override, privileged production action, or destructive agent tool use',
     'Define one or two policies relevant to your workflow',
     'Register counterparties and generate trust profiles',
-    'Run policy evaluation and install preflight',
+    'Run policy evaluation, Handshake, and—if needed—Accountable Signoff',
     'Capture trust receipts and workflow decisions',
     'Test dispute and appeal paths where relevant',
     'Produce a final trust review with lessons, metrics, and implementation recommendations',

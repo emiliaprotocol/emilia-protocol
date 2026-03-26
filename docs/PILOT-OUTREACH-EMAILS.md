@@ -29,7 +29,7 @@ Hi [Name],
 
 EMILIA Protocol (EP) is infrastructure for a specific control problem: high-risk actions that occur inside approved-looking workflows but are weakly constrained at the action layer.
 
-EP binds actor identity, authority chain, policy, exact transaction context, nonce, expiry, and one-time consumption before a payment-related action is allowed to proceed.
+EP binds actor identity, authority chain, policy, exact transaction context, nonce, expiry, and one-time consumption before a financial action is allowed to proceed.
 
 A pilot could focus on:
 - beneficiary changes
@@ -38,6 +38,25 @@ A pilot could focus on:
 - treasury approvals
 
 If relevant, I’d be glad to send a short technical brief and pilot outline.
+
+Best,
+[Your Name]
+
+## Enterprise
+
+Subject: Pilot idea — privileged-action control before execution
+
+Hi [Name],
+
+EMILIA Protocol (EP) is designed to enforce trust before high-risk action in workflows where broad access is not enough.
+
+A pilot could focus on one enterprise action class such as:
+- privileged production changes
+- secrets rotation
+- emergency override approvals
+- delegated admin actions
+
+If useful, I can send a short brief and pilot architecture.
 
 Best,
 [Your Name]

@@ -276,7 +276,7 @@ export class EPClient {
   }
 
   /**
-   * EP-SX: Software install preflight check.
+   * EP-SX: Software pre-action enforcement check (experimental).
    *
    * Evaluates a software entity (MCP server, npm package, browser extension,
    * GitHub App, Shopify App, etc.) for installation safety. Returns allow/

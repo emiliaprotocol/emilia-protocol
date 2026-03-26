@@ -1,6 +1,6 @@
 # EMILIA Protocol MCP Server
 
-Trust decisions for AI agents — 29 tools covering trust profiles, policy evaluation, software install preflight, dispute filing, appeals, delegation chains, identity lineage, and pre-action commits.
+Trust decisions for AI agents — 29 tools covering trust profiles, policy evaluation, pre-action enforcement, dispute filing, appeals, delegation chains, identity lineage, and pre-action commits.
 
 ## Install in Claude Desktop
 
@@ -66,7 +66,7 @@ EP_API_KEY=ep_live_your_key_here npx @emilia-protocol/mcp-server
 | `ep_register_entity` | Register a new entity — returns first API key | No |
 | `ep_leaderboard` | Top entities ranked by trust confidence | No |
 | `ep_verify_receipt` | Verify a receipt against its Merkle proof | No |
-| `ep_install_preflight` | Software trust check before installing plugins/packages | No |
+| `ep_install_preflight` | Software pre-action enforcement before installing plugins/packages (experimental) | No |
 | `ep_dispute_file` | Challenge an inaccurate or fraudulent receipt | Yes |
 | `ep_dispute_status` | Check the status of a dispute | No |
 | `ep_appeal_dispute` | Appeal a dispute resolution | Yes |
@@ -95,7 +95,7 @@ EP_API_KEY=ep_live_your_key_here npx @emilia-protocol/mcp-server
 | `EP_AUTO_RECEIPT_OPT_IN` | Set to `"true"` to enable automatic receipt generation at startup | No |
 | `EP_AUTO_RECEIPT_ENTITY_ID` | Entity ID to attribute auto-generated receipts to | No |
 
-Read-only operations — trust profiles, policy evaluation, trust gates, install preflight, search, leaderboard, dispute status, lineage — work without an API key.
+Read-only operations — trust profiles, policy evaluation, trust gates, pre-action enforcement, search, leaderboard, dispute status, lineage — work without an API key.
 
 ## Get an API Key
 

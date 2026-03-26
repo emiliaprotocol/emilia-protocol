@@ -1,144 +1,120 @@
 # EMILIA Protocol
 
-<!-- GitHub repo description: EMILIA Protocol — Trust enforcement for high-risk actions. Open protocol for pre-action binding, policy-bound verification, one-time consumption, and accountable human signoff. -->
-
 [![CI](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
-EMILIA Protocol enforces trust before high-risk action.
+## What is EP?
 
-EP verifies whether a specific high-risk action should proceed under a specific authority context, governing policy, and transaction binding.
+**EMILIA Protocol (EP) is a protocol-grade trust substrate for high-risk action enforcement.**
 
----
+**EP does not stop at identity. It verifies whether a specific actor, operating under a specific authority context, should be allowed to perform a specific high-risk action under a specific policy, exactly once, with replay resistance and durable event traceability.**
 
-## What EP Does
+**EP enforces trust before high-risk action.**
 
-EP binds actor identity, authority chain, exact action context, policy version/hash, nonce, and expiry into a single verification envelope. Each envelope is consumed exactly once (no replay). When policy demands it, EP requires named human signoff before execution (Accountable Signoff). Every decision produces an immutable event record.
+EP is not a generic identity platform, not a wallet, and not a social reputation layer. It is protocol infrastructure for binding actor identity, authority, policy, and exact action context before execution.
 
-**Core enforcement properties:**
+**EP Core** consists of three interoperable objects:
+- Trust Receipt
+- Trust Profile
+- Trust Decision
 
-- **Pre-action binding** — actor, authority, action, and policy are bound before execution, not after
-- **One-time consumption** — nonce + expiry enforce single-use; replay is structurally impossible
-- **Accountable Signoff** — when policy requires it, a named human must approve before the action proceeds
-- **Immutable event traceability** — every trust decision, every policy evaluation, every signoff is recorded and cannot be altered
+**EP Extensions** add stronger enforcement for high-risk workflows. The most important extension is **Handshake**, which binds actor identity, authority, policy, exact action context, nonce, expiry, and one-time consumption into a pre-action authorization flow.
 
----
+When policy requires named human ownership, EP can also require **Accountable Signoff** before execution.
 
-## Where It Fits
-
-- **Government fraud prevention** — benefit redirects, payment destination changes, eligibility overrides
-- **Financial infrastructure controls** — wire transfers, beneficiary changes, treasury approvals
-- **Enterprise privileged actions** — deployment approvals, configuration changes, access escalation
-- **AI/agent execution governance** — delegated authority, tool-use binding, autonomous action gates
+The protocol is open. Managed policy, verification, signoff orchestration, monitoring, evidence tooling, and sector-specific packs are optional product layers built on top.
 
 ---
 
-## Product Stack
+## The EP stack
 
-| Layer | Description |
-|-------|-------------|
-| **Open Protocol** | Free, forkable, Apache 2.0. The specification. |
-| **Open Runtime** | Self-hosted, full control. Run EP on your infrastructure. |
-| **EP Cloud** | Managed policy registry, signoff orchestration, event explorer, audit exports. |
-| **EP Enterprise** | VPC deployment, data residency, SSO/SCIM. |
-| **Vertical Packs** | Government, Financial, Agent Governance. |
+- **Emilia Eye** — lightweight warning layer that flags when stricter EP trust controls should apply
+- **EP Handshake** — policy-bound pre-action trust enforcement
+- **Accountable Signoff** — named human ownership when policy requires it
+
+> **Eye warns. EP verifies. Signoff owns.**
 
 ---
 
-## Proof Points
+## Conformance status
 
 | Metric | Value |
-|--------|-------|
-| Tests | 1,511 across 58 files |
-| TLA+ safety theorems | 19 |
-| Alloy facts | 32 |
-| Alloy assertions | 15 |
-| Red team cases | 85 |
-| CI quality gates | 16 |
-| Write discipline exceptions | 0 |
-| Formal verification | TLA+, Alloy, property-based tests |
+|---|---|
+| Spec version | v1.0 |
+| Route parity (API ↔ OpenAPI) | see CI |
+| Tests | see CI |
+| Formal models | TLA+ + Alloy |
+| CodeQL | Active |
+| SBOM / Provenance | Active |
 
 ---
 
-## Quick Start
+## EP Core / EP Extensions / EP Product Surfaces
 
-See [docs/guides/QUICK_START_INTEGRATION.md](docs/guides/QUICK_START_INTEGRATION.md) for a full walkthrough: register a policy, initiate a handshake, present credentials, verify, and gate an action.
+EP is a three-layer system. The core is deliberately small. Everything else is either an optional extension or a product surface built on top.
 
-### Install
+- **EP Core** — the interoperable standard: **Trust Receipt**, **Trust Profile**, and **Trust Decision**.
+- **EP Extensions** — stronger enforcement where systems must constrain execution:
+  - Handshake
+  - Accountable Signoff
+  - Commit
+  - Delegation and attribution
+  - Disputes and appeals where governance requires them
+- **EP Product Surfaces** — reference implementations and commercial layers:
+  - Open runtime
+  - Cloud control plane
+  - Enterprise deployment layer
+  - Government, financial, and agent-governance packs
 
-```bash
-npm install emilia-protocol
-```
-
-### Environment
-
-```bash
-export EP_KEY="ep_live_your_key_here"
-export EP_BASE="https://emiliaprotocol.ai"
-```
-
-### Run Tests
-
-```bash
-npm test
-```
-
----
-
-## Architecture
-
-### EP Core
-
-Three interoperable objects:
-
-- **Trust Receipt** — immutable record of a trust-relevant event
-- **Trust Profile** — aggregated trust state for an entity
-- **Trust Decision** — policy-bound allow/review/deny determination
-
-### EP Extensions
-
-- **Handshake** — binds actor identity, authority, policy, exact action context, nonce, expiry, and one-time consumption into a replay-resistant authorization flow
-- **Accountable Signoff** — requires named human ownership before execution when policy demands it
-
-### Three-Plane Architecture
-
-| Plane | Responsibility |
-|-------|---------------|
-| **Control** | Policy registration, entity management, configuration |
-| **Decision** | Trust evaluation, gate checks, handshake verification |
-| **Evidence** | Receipt storage, event traceability, audit export |
-
-### Write Path
-
-All mutations flow through a single canonical write path (`protocolWrite`). A runtime write-guard enforces this invariant — no trust-relevant state change bypasses the protocol layer. Zero exceptions across the entire codebase.
+A skeptical reader should be able to answer in 30 seconds:
+Core = the minimum interoperable standard.
+Extensions = stronger enforcement you opt into.
+Product Surfaces = tools built on top, not the protocol itself.
 
 ---
 
-## MCP Server
+## Four canonical high-risk action contexts
 
-The [MCP server](mcp-server/) gives any Claude conversation or agent pipeline direct access to EP trust-decision surfaces. 34 tools covering trust profiles, policy evaluation, handshake verification, signoff orchestration, and pre-action binding.
+EP is decision infrastructure. Every serious deployment should anchor to a concrete action surface such as:
 
-```bash
-npx @emilia-protocol/mcp-server
-```
-
-See [mcp-server/README.md](mcp-server/README.md) for configuration and tool reference.
+| Context | Example |
+|---|---|
+| Government | payment destination change, benefit redirect, operator override |
+| Financial | beneficiary change, payout destination change, treasury approval |
+| Enterprise | privileged production change, secrets rotation, permission escalation |
+| AI / Agent | destructive tool use, autonomous irreversible action |
 
 ---
 
-## Contributing
+## Three core objects
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+EP standardizes three interoperable objects:
 
-## Security
+| Object | What it is | One-line |
+|---|---|---|
+| Trust Receipt | A portable record of an observed event relevant to trust | What happened |
+| Trust Profile | A standardized summary of observable trust state | What is known |
+| Trust Decision | A policy-evaluated result with reasons and appeal path | What to do now |
 
-See [SECURITY.md](SECURITY.md).
+If a third party can implement these three objects and interoperate, EP has a real standard.
 
-## License
+---
 
-Apache 2.0 — see [LICENSE](LICENSE).
+## Quickstart in five calls
 
-## Links
+1. create policy
+2. initiate handshake
+3. present evidence
+4. verify
+5. signoff and consume
 
-- Homepage: [emiliaprotocol.ai](https://emiliaprotocol.ai)
-- GitHub: [github.com/emiliaprotocol/emilia-protocol](https://github.com/emiliaprotocol/emilia-protocol)
-- npm: [@emilia-protocol/mcp-server](https://www.npmjs.com/package/@emilia-protocol/mcp-server)
+That is the irreducible EP story.
+
+---
+
+## Why EP exists
+
+Most systems verify who is acting.
+Very few verify whether **this exact high-risk action** should be allowed to proceed **under this exact policy** by **this exact actor** right now.
+
+That is the gap EP closes.

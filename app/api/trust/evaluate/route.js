@@ -7,7 +7,7 @@ import { buildTrustDecision, passToDecision } from '@/lib/trust-decision';
  * POST /api/trust/evaluate
  *
  * Evaluate an entity against a trust policy with optional context.
- * Routes through the canonical evaluator — same trust brain as profile and install-preflight.
+ * Routes through the canonical evaluator — same trust brain as profile and pre-action enforcement.
  *
  * Body: { entity_id, policy, context }
  */

@@ -305,7 +305,7 @@ class EPClient:
         policy: Optional[str] = None,
         context: Optional[dict[str, str]] = None,
     ) -> dict[str, Any]:
-        """EP-SX install preflight — should I install this software entity?
+        """EP-SX pre-action enforcement (experimental) — should I install this software entity?
 
         Evaluates a software entity against a software-specific trust policy.
         Returns ``allow`` / ``review`` / ``deny`` with specific reasons covering

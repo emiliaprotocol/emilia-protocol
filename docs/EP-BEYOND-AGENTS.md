@@ -1,56 +1,28 @@
 # EP Beyond Agents
 
-**EMILIA Protocol is not only for AI-to-AI interactions.**
+EMILIA Protocol is not limited to AI-native systems.
 
-It is an open protocol for making, explaining, challenging, and verifying trust decisions about counterparties, software, and machine actors — whether the decision-maker is an AI agent, an automation, a marketplace, an enterprise system, or a human.
+EP is a protocol-grade trust substrate for high-risk action enforcement across government workflows, financial infrastructure, enterprise privileged actions, and agent execution. AI is one wedge. The broader category is action-level trust control before execution.
 
----
+## Domains where EP fits
 
-## The problem
+### Government
+Payment integrity, benefit redirects, operator overrides, delegated administrative actions.
 
-Trust decisions are fragmented across stars, reviews, download counts, publisher verification, internal heuristics, and proprietary risk models. These signals are not portable, not contextual, not policy-driven, not challengeable, and not reversible.
+### Financial infrastructure
+Beneficiary changes, payout destination changes, remittance updates, treasury approvals.
 
-As more systems automate decisions, that becomes dangerous.
+### Enterprise privileged actions
+Production changes, secrets rotation, permission escalation, emergency overrides.
 
-## What EP does
+### AI / agent control
+Destructive tool use, autonomous irreversible actions, delegated principal workflows.
 
-- **Trust profiles** instead of one-dimensional scores
-- **Policy evaluation** instead of arbitrary thresholds
-- **Install preflight** for software, plugins, and MCP servers
-- **Disputes and appeals** for contested trust
-- **Append-only correction** instead of silent rewriting
-- **Context-aware trust** rather than generic, context-free trust
-
-## Agents are optional
-
-EP works whether trust is being evaluated by an AI shopping agent, a procurement workflow, a Shopify webhook, a GitHub admin, a marketplace, or a human deciding whether to install a plugin.
-
-The protocol is an API and an evidence model, not an agent dependency.
-
-## Where EP applies
-
-| Domain | Trust question |
-|---|---|
-| **Commerce** | Should I buy from this merchant or seller? |
-| **Software** | Should I install this plugin, package, or MCP server? |
-| **Marketplaces** | Should I trust this app, vendor, extension, or listing? |
-| **Machine actors** | Should I route work to this agent or service? |
-
-## Why EP is different
-
-EP is not built around popularity. It is built around evidence, provenance, context, policy, challengeability, and appeals.
-
-## The constitutional idea
-
-**Trust must never be more powerful than appeal.**
-
-Trust can be evaluated, challenged, reviewed, and corrected — without erasing history.
-
-## The future
-
-EP's long-term role is bigger than "agent trust." It can become the trust protocol for software ecosystems, marketplaces, machine-mediated commerce, install decisions, principal continuity, and humans and AI operating in the same trust graph.
-
----
-
-*Pre-action trust enforcement and appeals for high-risk workflows, software, and machine actors.*
-*emiliaprotocol.ai · Apache 2.0*
+The kernel remains the same across all four domains:
+- identity from auth
+- authority resolution
+- policy binding
+- exact action binding
+- replay resistance
+- one-time consumption
+- immutable events

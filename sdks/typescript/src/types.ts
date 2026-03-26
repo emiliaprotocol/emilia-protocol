@@ -405,7 +405,7 @@ export interface DomainScoreResult {
   domains: Partial<Record<TrustDomain, DomainScore>>;
 }
 
-/** Result of a software install preflight check. */
+/** Result of a software pre-action enforcement check (experimental). */
 export interface InstallPreflightResult {
   entity_id: string;
   display_name: string;

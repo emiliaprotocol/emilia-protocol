@@ -51,7 +51,7 @@ Versioning model: Protocol spec and reference repo share the root version (1.0.x
 - Policy registry API (GET /api/policies)
 
 ### Software Trust (EP-SX)
-- Install preflight: allow/review/deny for software entities
+- Pre-action enforcement (experimental): allow/review/deny for software entities
 - Host adapters: GitHub Apps, npm packages, MCP servers, Chrome extensions
 
 ### Identity Continuity (EP-IX)

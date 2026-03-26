@@ -4,9 +4,8 @@ EMILIA Protocol (EP) is a protocol-grade trust substrate for high-risk action en
 
 Most systems verify who is acting. EP verifies whether this exact high-risk action should be allowed to proceed, under this exact policy, by this exact actor, right now.
 
-## What EP has accomplished
+## What EP now provides
 
-EP now provides:
 - canonical trust receipts, trust profiles, and trust decisions
 - Handshake for pre-action trust enforcement
 - actor and authority enforcement
@@ -14,17 +13,12 @@ EP now provides:
 - replay resistance
 - one-time authorization consumption
 - immutable event traceability
+- Accountable Signoff when policy requires human ownership
 - conformance and proof surfaces
 
 ## Core launch line
 
 > **EP enforces trust before high-risk action.**
-
-## Supporting lines
-
-- Identity tells you who is acting. EP tells you whether this exact action should be allowed.
-- EP is the trust-control layer between authentication and execution.
-- EP is built for environments where fraud, ambiguity, and weak approval semantics are unacceptable.
 
 ## Best launch wedges
 
@@ -32,5 +26,3 @@ EP now provides:
 - payment and beneficiary change controls
 - high-risk enterprise approvals
 - agent execution governance
-
-These are the clearest expressions of the category EP now owns.

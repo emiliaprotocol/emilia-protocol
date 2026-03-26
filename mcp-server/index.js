@@ -26,7 +26,7 @@
  *   ep_domain_score         — Per-domain trust breakdown
  *
  * SPRINT 4A: Attribution Chain
- *   ep_delegation_judgment  — Principal delegation judgment score (how well they choose agents)
+ *   ep_delegation_judgment  — Principal delegation authority (how well they choose agents)
  *
  * SPRINT 5A: Privacy-Preserving Commitment Proof layer
  *   ep_generate_zk_proof    — Prove trust threshold without revealing receipt contents or counterparties
@@ -565,7 +565,7 @@ const TOOLS = [
   {
     name: 'ep_delegation_judgment',
     description:
-      'Get a principal\'s delegation judgment score — how well they choose and authorize agents. ' +
+      'Get a principal\'s delegation authority — how well they choose and authorize agents. ' +
       'High judgment principals consistently authorize well-behaved agents. ' +
       'Low judgment principals frequently authorize agents that fail, dispute, or abandon tasks. ' +
       'This signal is deliberately weak (0.15 weight per outcome): a single bad delegation should not ' +
@@ -874,7 +874,7 @@ async function handleTool(name, args) {
       const body = { entity_id: args.entity_id, policy: args.policy || 'standard' };
       if (args.context) body.context = args.context;
       const data = await epFetch('/api/trust/install-preflight', { method: 'POST', body });
-      let out = `Install Preflight: ${data.display_name} (${data.entity_id})\n`;
+      let out = `Pre-Action Enforcement: ${data.display_name} (${data.entity_id})\n`;
       out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
       out += `Decision: ${data.decision === 'allow' ? '✓ ALLOW' : data.decision === 'deny' ? '✗ DENY' : '⚠ REVIEW'}\n`;
       out += `Policy: ${data.policy_used}\n`;
@@ -1067,7 +1067,7 @@ async function handleTool(name, args) {
 
     case 'ep_delegation_judgment': {
       const data = await epFetch(`/api/attribution/delegation-judgment/${encodeURIComponent(args.principal_id)}`);
-      let out = `Delegation Judgment: ${args.principal_id}\n`;
+      let out = `Delegation Authority: ${args.principal_id}\n`;
       out += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
       if (data.judgment_score == null) {
         out += `Score: pending (no delegation signals yet)\n`;
@@ -1594,7 +1594,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
           type: 'text',
           text: `Should I install "${entity_id}" in my ${ctx} environment?\n\n` +
             `Please:\n` +
-            `1. Call ep_install_preflight with entity_id="${entity_id}"\n` +
+            `1. Call ep_install_preflight with entity_id="${entity_id}" (pre-action enforcement)\n` +
             `2. Call ep_lineage to check for suspicious continuity gaps\n` +
             `3. Call ep_trust_profile for full behavioral history\n` +
             `4. Give me a clear INSTALL / REVIEW / DENY recommendation with reasons\n` +

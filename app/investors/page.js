@@ -46,7 +46,7 @@ export default function InvestorsPage() {
     { title: 'Protocol-grade trust substrate', body: 'Infrastructure for high-risk action enforcement between authentication and execution.' },
     { title: 'Policy-based evaluation', body: 'Trust decisions should depend on context and policy, not a single universal score.' },
     { title: 'Handshake and action control', body: 'Pre-action trust enforcement that binds actor, authority, policy, and exact action context.' },
-    { title: 'Receipts, disputes, and appeals', body: 'Trust should be policy-bound and contestable.' },
+    { title: 'Accountable signoff and evidence', body: 'High-risk actions can require named human ownership, policy snapshots, and reconstruction-ready event trails.' },
     { title: 'Replay-resistant authorization', body: 'One-time consumption, policy binding, and immutable events for high-risk workflows.' },
     { title: 'Commercial products', body: 'Reference implementations, enterprise trust console, hosted services, integrations, and workflow tooling.' },
   ];
@@ -62,10 +62,10 @@ export default function InvestorsPage() {
 
       {/* Hero */}
       <section style={{ ...s.section, paddingTop: 100, paddingBottom: 60 }}>
-        <div style={s.eyebrow}>Investor Overview</div>
-        <h1 style={s.h1}>Invest in trust infrastructure for high-risk action</h1>
+        <div style={s.eyebrow}>Trust Infrastructure</div>
+        <h1 style={s.h1}>Trust before high-risk action.</h1>
         <p style={{ ...s.body, maxWidth: 600 }}>
-          EMILIA is a protocol-grade trust substrate for high-risk action enforcement. It binds identity, authority, policy, and exact action context before execution, creating the control layer between authentication and action.
+          EMILIA is a protocol-grade trust substrate for high-risk action enforcement. It creates the control layer between authentication and execution.
         </p>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <a href="#inquiry" style={{ ...s.cta, background: '#22C55E', color: '#020617' }}>Request Investor Materials</a>
@@ -100,7 +100,7 @@ export default function InvestorsPage() {
           As governments, enterprises, financial systems, and AI-assisted workflows automate more execution, they need a trust-control layer between authentication and action. That is the category EMILIA now occupies.
         </p>
         <p style={s.body}>
-          The winning trust protocol is more likely to emerge while these ecosystems are still forming than after habits are already locked in. This is the moment to define trust preflight, policy-aware evaluation, continuity, receipts, disputes, and appeals for modern software ecosystems.
+          The winning trust protocol is more likely to emerge while these ecosystems are still forming than after habits are already locked in. This is the moment to define action-level trust control for governments, financial infrastructure, enterprise privileged actions, and agent execution before weak habits become permanent.
         </p>
       </section>
 
@@ -215,7 +215,7 @@ export default function InvestorsPage() {
           We believe trust infrastructure becomes stronger when the protocol layer is open and the commercial layer is clearly separated. The company can build the reference experience, hosted services, enterprise tooling, and implementation support. Over time, broader participation in governance, conformance expectations, and ecosystem input should strengthen legitimacy and adoption.
         </p>
         <p style={s.body}>
-          EMILIA is not being built as a closed scoring product masquerading as infrastructure. It is being built as an open trust protocol with real implementation discipline and a credible path toward broader legitimacy.
+          EMILIA is not being built as a closed scoring product masquerading as infrastructure. It is being built as an open protocol for high-risk action enforcement with a commercial layer above the repo: cloud control plane, enterprise deployment, and regulated vertical packs.
         </p>
       </section>
 
@@ -267,14 +267,14 @@ export default function InvestorsPage() {
             </div>
           </div>
           <div style={{ ...s.card, borderColor: 'rgba(212,175,55,0.2)' }}>
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#22C55E', marginBottom: 8, textTransform: 'uppercase' }}>Delegation Judgment Score</div>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#64748B', marginBottom: 8, textTransform: 'uppercase' }}>Delegation Authority · Experimental</div>
             <div style={s.cardTitle}>First system to score human AI-delegation quality</div>
             <div style={s.cardBody}>
-              EMILIA now scores the humans who delegate to AI agents, not just the agents themselves. The Delegation Judgment Score surfaces which principals make high-quality, low-risk delegation decisions. This is a new asset class of behavioral data — no other trust system tracks this dimension.
+              EMILIA now scores the humans who delegate to AI agents, not just the agents themselves. Delegation Authority surfaces which principals make high-quality, low-risk delegation decisions. This is a new asset class of behavioral data — no other trust system tracks this dimension.
             </div>
           </div>
           <div style={{ ...s.card, borderColor: 'rgba(212,175,55,0.2)' }}>
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#22C55E', marginBottom: 8, textTransform: 'uppercase' }}>Trust-Graph Adjudication</div>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#64748B', marginBottom: 8, textTransform: 'uppercase' }}>Trust Evaluation · Experimental</div>
             <div style={s.cardTitle}>Adversarially resistant trust</div>
             <div style={s.cardBody}>
               Disputes are no longer resolved by operator judgment alone. High-confidence vouchers in the trust graph vote on contested receipts. The system is Sybil-resistant by design — voting weight is earned through accumulated evidence, not purchased. This makes the trust signal structurally harder to manipulate at scale.

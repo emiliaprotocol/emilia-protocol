@@ -7,7 +7,7 @@ import { EP_ERRORS } from '@/lib/errors';
  *
  * The PRIMARY canonical read surface for EP trust data.
  * Routes through the canonical evaluator — same trust brain
- * used by evaluate, install-preflight, needs/claim, and MCP.
+ * used by evaluate, pre-action enforcement, needs/claim, and MCP.
  *
  * No auth required. Public endpoint.
  */

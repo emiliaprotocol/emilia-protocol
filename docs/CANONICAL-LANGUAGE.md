@@ -18,11 +18,19 @@ This document defines the authoritative vocabulary for EMILIA Protocol across do
 
 > **EP creates the trust-control layer between authentication and execution. It is infrastructure for preventing fraud and unauthorized action inside flows that already look approved on the surface.**
 
-## Canonical AI / agent line
+## Canonical AI / agent supporting line
 
 > **MCP tells agents how to use tools. EP tells systems whether a high-risk action should be allowed to proceed.**
 
-Use this as a supporting line in AI-native contexts. It is not the primary company definition.
+Use this as a supporting line in AI-native contexts. It is not the main company definition.
+
+## Canonical signoff line
+
+> **Accountable Signoff ensures that when policy requires human ownership, a named responsible human must explicitly assume responsibility for the exact action before it executes.**
+
+## Canonical Eye line
+
+> **Emilia Eye is the lightweight warning layer that flags when stricter EP trust controls should apply.**
 
 ## What EP is
 
@@ -39,33 +47,12 @@ Use this as a supporting line in AI-native contexts. It is not the primary compa
 - Not a generic workflow engine
 - Not a broad marketplace for “trust”
 
-## Canonical object framing
-
-| Object | Meaning | One-line |
-|---|---|---|
-| Trust Receipt | Portable record of trust-relevant evidence | What happened |
-| Trust Profile | Structured trust state derived from evidence | What is known |
-| Trust Decision | Policy-evaluated decision with reasons | What to do now |
-| Handshake | Pre-action trust enforcement artifact | What must be proven before action |
-
-## Required language pillars
-
-Every serious EP document should clearly distinguish:
-- identity
-- authority
-- action binding
-- policy binding
-- replay resistance
-- one-time consumption
-- immutable event traceability
-
 ## Deprecated framing to avoid
 
-Avoid using these as primary descriptions:
-- portable trust for machine counterparties
+Do not use these as primary descriptions:
+- trust before high-risk action
+- actors and high-risk workflows
+- install preflight as the main company story
 - trust marketplace
-- broad trust layer
-- generic trust for agents and software
-- “whether they should” as the entire company explanation
-
-These phrases can appear in historical or comparative context, but they should not define EP going forward.
+- credit score for the agent economy
+- software trust as the whole category

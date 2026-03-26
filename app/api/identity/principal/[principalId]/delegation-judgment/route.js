@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // EMILIA Protocol — GET /api/identity/principal/[principalId]/delegation-judgment
 //
-// Returns a principal's delegation judgment score: a measure of how well this
+// Returns a principal's delegation authority: a measure of how well this
 // human chooses and oversees the agents they authorize.
 //
 // This is a new EP primitive that scores humans, not just machines.
@@ -54,7 +54,7 @@ function buildInterpretation(judgmentScore, grade, agentsAuthorized, activeAgent
 /**
  * GET /api/identity/principal/[principalId]/delegation-judgment
  *
- * Returns the principal's delegation judgment score and breakdown.
+ * Returns the principal's delegation authority and breakdown.
  * No auth required — public, for trust evaluation purposes.
  */
 export async function GET(request, { params }) {

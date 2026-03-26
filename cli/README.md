@@ -1,6 +1,6 @@
 # @emilia-protocol/cli
 
-Command-line interface for EMILIA Protocol — query trust profiles, evaluate policies, submit receipts, and run install preflight from your terminal.
+Command-line interface for EMILIA Protocol — query trust profiles, evaluate policies, submit receipts, and run pre-action enforcement from your terminal.
 
 ## Install
 

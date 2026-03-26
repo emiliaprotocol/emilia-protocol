@@ -37,7 +37,7 @@ These three objects are what EP proposes as its contribution to agent identity a
 - Domain-specific scoring
 - Privacy-preserving commitment proofs
 - Auto-receipt generation
-- Software install preflight adapters
+- Software pre-action enforcement adapters
 - Voucher-based adjudication
 
 ### EP Product Surfaces (explicitly not in standard scope)
@@ -73,7 +73,7 @@ EP's privacy-preserving commitment proof extension enables entities to demonstra
 
 ### Govern
 - Policy-based trust evaluation: operators define trust policies with configurable thresholds, and Trust Decisions are evaluated against those policies — not against a single global score
-- Human oversight via delegation judgment: the attribution chain extension enables auditing the quality of human delegation decisions over time
+- Human oversight via delegation authority: the attribution chain extension enables auditing the quality of human delegation decisions over time
 - Constitutional guarantee: adverse trust effects carry mandatory explainability and appeal paths
 
 ### Map

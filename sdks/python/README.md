@@ -202,9 +202,9 @@ scores = await client.domain_score(
 )
 ```
 
-#### `install_preflight(entity_id, policy, context)`
+#### `install_preflight(entity_id, policy, context)` *(experimental)*
 
-EP-SX: Software install trust check.
+EP-SX: Software pre-action enforcement check.
 
 ```python
 result = await client.install_preflight(

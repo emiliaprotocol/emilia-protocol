@@ -22,7 +22,7 @@
 
 > MCP gives systems access to tools.
 > EP gives them a way to evaluate whether a server or software component should be trusted enough to connect in this context.
-> In five minutes, I'll query a trust profile, run install preflight, generate a privacy-preserving commitment proof, and verify it — all through MCP tools in Claude.
+> In five minutes, I'll query a trust profile, run pre-action enforcement, generate a privacy-preserving commitment proof, and verify it — all through MCP tools in Claude.
 
 ---
 
@@ -44,12 +44,12 @@
 
 ---
 
-## 1:30–3:00 — Install preflight (the sharpest wedge)
+## 1:30–3:00 — Pre-action enforcement (the sharpest wedge)
 
 > MCP tells you what a server can do. EP helps answer whether it should be trusted enough to connect in this environment.
 
 **Prompt Claude:**
-> Run install preflight for mcp-server-ep-v1 with policy mcp_server_safe_v1 in this context: host is mcp, data_sensitivity is private_workspace, tool_scope is repo_read.
+> Run pre-action enforcement for mcp-server-ep-v1 with policy mcp_server_safe_v1 in this context: host is mcp, data_sensitivity is private_workspace, tool_scope is repo_read.
 
 **While Claude runs, say:**
 > This is one of EP's most important use cases. Not "what is this server?" but "is it safe enough for this specific context and policy?"
@@ -113,7 +113,7 @@
 
 > The trust graph is an immune system. When a receipt is disputed, the graph's own high-confidence vouchers vote on it. The accused cannot dominate their own adjudication. Upheld disputes collapse to zero weight. Dismissed disputes are fully restored. The graph corrects itself — without operators, without platform intervention.
 
-> Humans have trust scores. For the first time, there is a verifiable record of how well a human delegates to AI agents — a delegation judgment grade derived from the Principal→Agent→Tool attribution chain embedded in every receipt. Excellent, good, fair, or poor. Auditable. Portable. Yours.
+> Humans have trust scores. For the first time, there is a verifiable record of how well a human delegates to AI agents — a delegation authority grade derived from the Principal→Agent→Tool attribution chain embedded in every receipt. Excellent, good, fair, or poor. Auditable. Portable. Yours.
 
 > And for regulated industries — healthcare, legal, finance — the commitment proof privacy guarantee means the trust protocol is no longer opt-out because of confidentiality concerns. You prove what you need to prove. You reveal nothing else.
 
@@ -126,7 +126,7 @@
 ## Prepared Claude prompts (copy these)
 
 1. `Show me the trust profile for mcp-server-ep-v1.`
-2. `Run install preflight for mcp-server-ep-v1 with policy mcp_server_safe_v1 in this context: host is mcp, data_sensitivity is private_workspace, tool_scope is repo_read.`
+2. `Run pre-action enforcement for mcp-server-ep-v1 with policy mcp_server_safe_v1 in this context: host is mcp, data_sensitivity is private_workspace, tool_scope is repo_read.`
 3. `Enable auto-receipt generation for mcp-server-ep-v1 in privacy mode.`
 4. `Generate a commitment proof that mcp-server-ep-v1 has a trust score above 0.80 in the financial domain.`
 5. `Verify that proof. Use only the proof_id.`
@@ -148,7 +148,7 @@ Say: "That's exactly why appeals and operational trust matter — even the trust
 ## DO say
 
 - Action-level trust enforcement
-- Install preflight
+- Pre-action enforcement
 - Policy evaluation
 - Disputes and appeals
 - Context-aware decisions

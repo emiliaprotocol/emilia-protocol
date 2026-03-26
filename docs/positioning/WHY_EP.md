@@ -6,21 +6,6 @@ Most damaging fraud and abuse occurs inside approved-looking workflows: authenti
 
 **EMILIA Protocol (EP)** closes that gap by enforcing trust before high-risk action. It binds actor identity, authority chain, action parameters, policy version and hash, nonce, expiry, and one-time consumption into a single replay-resistant authorization flow. The action does not execute until the handshake is verified and consumed.
 
-## The problem
-
-Most systems answer:
-- who is acting?
-- what broad permissions do they have?
-
-Far fewer systems answer:
-- should this exact high-risk action be allowed?
-- under this exact policy?
-- under this exact authority chain?
-- with protection against replay and reuse?
-- with immutable evidence if something goes wrong later?
-
-EP is designed to answer those questions.
-
 ## The result
 
 EP creates a trust-control layer between authentication and execution. It is built for:

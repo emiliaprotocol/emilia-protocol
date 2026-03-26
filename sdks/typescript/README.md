@@ -21,7 +21,7 @@ EMILIA maps to six design pillars: **E**vidence, **M**ediation, **I**dentity, **
   - [Trust Evaluation](#trust-evaluation)
   - [Trust Gate](#trust-gate)
   - [Domain Scores](#domain-scores)
-  - [Install Preflight](#install-preflight)
+  - [Pre-Action Enforcement (experimental)](#install-preflight)
   - [Entities](#entities)
   - [Receipts](#receipts)
   - [Disputes & Due Process](#disputes--due-process)
@@ -282,7 +282,7 @@ console.log(relevant.domains.delegation?.dispute_rate);   // 0.2
 
 #### `ep.installPreflight(entityId, policy?, context?)`
 
-EP-SX: Software install preflight check. Use before installing any plugin, package, extension, MCP server, or marketplace app.
+EP-SX: Software pre-action enforcement check (experimental). Use before installing any plugin, package, extension, MCP server, or marketplace app.
 
 ```typescript
 // MCP server

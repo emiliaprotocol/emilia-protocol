@@ -93,7 +93,7 @@ export async function POST(request) {
 
     // === ATTRIBUTION CHAIN (fire-and-forget) ===
     // If the receipt carries a delegation_id, propagate the outcome up the
-    // chain to the authorizing principal as a weak delegation judgment signal.
+    // chain to the authorizing principal as a weak delegation authority signal.
     // This runs entirely async — it must never delay or fail the submit response.
     if (body.delegation_id && result.receipt && !result.deduplicated) {
       const receiptForAttribution = {

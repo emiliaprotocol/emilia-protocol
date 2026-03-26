@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EP Interactive Demo — Trust Evaluation in 5 Steps</title>
-<meta name="description" content="See EMILIA Protocol in action: trust profiles, install preflight, disputes, and policy evaluation — live.">
+<meta name="description" content="Five-step EP demo: create policy, initiate handshake, present evidence, verify, and signoff/consume for a high-risk action.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -214,10 +214,10 @@
   <div class="step">
     <div class="step-header">
       <div class="step-num" style="background:rgba(245,158,11,0.1);color:var(--gold);border:1px solid rgba(245,158,11,0.2);">3</div>
-      <div class="step-title">Run Install Preflight</div>
+      <div class="step-title">Run High-Risk Action Control Demo</div>
     </div>
     <div class="step-desc">
-      MCP tells you what a server can do. <strong>EP tells you whether it should be trusted enough to connect.</strong> Install preflight evaluates software entities against context-specific safety policies.
+      MCP tells you what a server can do. <strong>EP tells you whether it should be trusted enough to connect.</strong> Pre-action enforcement evaluates software entities against context-specific safety policies.
     </div>
     <div class="term">
       <div class="term-bar">
@@ -225,7 +225,7 @@
         <div class="term-label">POST /api/trust/install-preflight</div>
       </div>
       <div class="term-body">
-        <div class="code-block"><span class="comment">// Should I install this MCP server in a private workspace?</span>
+        <div class="code-block"><span class="comment">// Should I install this high-risk action in a private workspace?</span>
 {
   <span class="key">"entity_id"</span>: <span class="str">"mcp-server-ep-v1"</span>,
   <span class="key">"policy"</span>: <span class="str">"mcp_server_safe_v1"</span>,
@@ -409,7 +409,7 @@ async function runStep3(btn) {
     const dc = d.decision === 'allow' ? 'pass' : d.decision === 'deny' ? 'fail' : 'warn';
     const icon = d.decision === 'allow' ? '✓ ALLOW' : d.decision === 'deny' ? '✗ DENY' : '⚠ REVIEW';
     res.innerHTML = `<div class="result-card">
-      <div class="label">Install Preflight — ${esc(d.policy_used || 'mcp_server_safe_v1')}</div>
+      <div class="label">High-Risk Action Control Demo — ${esc(d.policy_used || 'mcp_server_safe_v1')}</div>
       <div style="font-size:18px;font-weight:700;" class="${dc}">${icon}</div>
       <div style="margin-top:8px;">Confidence: <span class="val">${esc(String(d.confidence || 'pending'))}</span></div>
       <div>Entity type: <span class="val">${esc(String(d.entity_type || 'unknown'))}</span></div>

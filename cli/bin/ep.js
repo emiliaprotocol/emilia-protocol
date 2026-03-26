@@ -5,7 +5,7 @@
  * Usage:
  *   ep profile <entityId>                     Look up a trust profile
  *   ep evaluate <entityId> [--policy strict]  Evaluate against a trust policy
- *   ep preflight <entityId> [--policy mcp_server_safe_v1]  Software install preflight
+ *   ep preflight <entityId> [--policy mcp_server_safe_v1]  Software pre-action enforcement (experimental)
  *   ep register <entityId> --name "Name"      Register a new entity
  *   ep submit <entityId> --ref <txRef> --behavior completed  Submit a receipt
  *   ep verify <receiptId>                     Verify a receipt
@@ -62,7 +62,7 @@ EP CLI — EMILIA Protocol
 Commands:
   ep profile <entityId>                     Look up trust profile
   ep evaluate <entityId> [--policy P]       Evaluate against policy (default: standard)
-  ep preflight <entityId> [--policy P]      Software install preflight
+  ep preflight <entityId> [--policy P]      Software pre-action enforcement (experimental)
   ep register <entityId> --name "Name"      Register entity
   ep submit <entityId> --ref R --behavior B Submit receipt
   ep verify <receiptId>                     Verify receipt

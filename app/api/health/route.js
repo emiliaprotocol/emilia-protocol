@@ -74,7 +74,7 @@ export async function GET() {
       surfaces: {
         trust_profile: '/api/trust/profile/:entityId',
         trust_evaluate: '/api/trust/evaluate',
-        install_preflight: '/api/trust/install-preflight',
+        install_preflight: '/api/trust/install-preflight', // experimental
         receipt_submit: '/api/receipts/submit',
         dispute_file: '/api/disputes/file',
         dispute_report: '/api/disputes/report',

@@ -265,7 +265,7 @@ The submitter has 7 days to respond. Trust is suspended pending resolution.
 | `ep_register_entity` | Register a new entity — returns first API key | No |
 | `ep_leaderboard` | Top entities ranked by trust confidence | No |
 | `ep_verify_receipt` | Verify a receipt against its Merkle proof | No |
-| `ep_install_preflight` | Software trust check before installing plugins/packages | No |
+| `ep_install_preflight` | Software pre-action enforcement before installing plugins/packages (experimental) | No |
 | `ep_dispute_file` | Challenge an inaccurate or fraudulent receipt | Yes |
 | `ep_dispute_status` | Check the status of a dispute | No |
 | `ep_appeal_dispute` | Appeal a dispute resolution | Yes |
@@ -824,7 +824,7 @@ No successors.
 
 ### ep_delegation_judgment
 
-Score a principal's track record of choosing and overseeing agents. This is the inverse of `ep_trust_profile` — instead of asking "can I trust this agent?", it asks "can I trust the human who authorized it?" A principal with a poor delegation judgment score has a history of authorizing misbehaving agents, even if those individual agents no longer appear active.
+Score a principal's track record of choosing and overseeing agents. This is the inverse of `ep_trust_profile` — instead of asking "can I trust this agent?", it asks "can I trust the human who authorized it?" A principal with poor delegation authority has a history of authorizing misbehaving agents, even if those individual agents no longer appear active.
 
 **Parameters:**
 
@@ -961,7 +961,7 @@ Use `ep_list_policies` to see the full set of currently available policies.
 | `EP_API_KEY` | Your API key (`ep_live_...`). Required for write operations: submitting receipts, filing disputes, creating delegations, filing appeals. | For writes |
 | `EP_BASE_URL` | API endpoint. Defaults to `https://emiliaprotocol.ai` | No |
 
-Read-only operations — trust profiles, policy evaluation, trust gates, install preflight, search, leaderboard, dispute status, lineage — work without an API key.
+Read-only operations — trust profiles, policy evaluation, trust gates, pre-action enforcement, search, leaderboard, dispute status, lineage — work without an API key.
 
 ---
 

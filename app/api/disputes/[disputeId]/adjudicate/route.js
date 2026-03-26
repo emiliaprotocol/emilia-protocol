@@ -1,7 +1,7 @@
 /**
  * POST /api/disputes/[disputeId]/adjudicate
  *
- * Triggers trust-graph adjudication for a dispute.
+ * Triggers trust evaluation for a dispute.
  *
  * Authorization:
  *   - CRON_SECRET bearer token (for automated cron-based adjudication after
@@ -133,7 +133,7 @@ export async function POST(request, { params }) {
     }
 
     // -------------------------------------------------------------------
-    // Run trust-graph adjudication
+    // Run trust evaluation
     // -------------------------------------------------------------------
     const result = await adjudicateDispute(disputeId, supabase);
 
@@ -158,7 +158,7 @@ export async function POST(request, { params }) {
       adjudicated_at: result.adjudicated_at,
       triggered_by: triggeredBy,
 
-      _protocol: 'EP trust-graph adjudication v1',
+      _protocol: 'EP trust evaluation v1',
       _note: isAdvisory
         ? 'Advisory: dispute is less than 48h old. Adjudication complete but response window still open.'
         : 'Adjudication complete. Result stored in dispute record. Operator retains final resolution authority.',

@@ -60,7 +60,7 @@ export async function GET(request, { params }) {
       historicalEstablished = false;
     }
 
-    // CURRENT CONFIDENCE from the canonical evaluator (same trust brain as profile/evaluate/install-preflight)
+    // CURRENT CONFIDENCE from the canonical evaluator (same trust brain as profile/evaluate/pre-action enforcement)
     const canonical = await canonicalEvaluate(entity.id, {
       includeDisputes: false,
       includeEstablishment: false,

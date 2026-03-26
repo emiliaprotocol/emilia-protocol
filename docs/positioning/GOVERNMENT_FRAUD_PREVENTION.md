@@ -34,4 +34,10 @@ Start with one high-risk workflow:
 - operator override
 - delegated case action
 
-These workflows create fast proof of value because the cost of weak authorization is visible, expensive, and politically legible.
+## What evidence agencies get
+
+- decision record
+- event chain
+- policy snapshot
+- signoff trace if required
+- reconstruction-ready export

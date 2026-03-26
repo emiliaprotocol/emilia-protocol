@@ -4,7 +4,7 @@ Trust erodes when institutions confuse identity with authorization and broad acc
 
 In modern systems, many of the most damaging failures happen inside valid sessions, approved-looking workflows, and delegated operations that were never truly constrained at the action layer.
 
-That is why **EMILIA Protocol (EP)** matters.
+That is why EMILIA Protocol matters.
 
 EP is not just a broad trust idea. It is a protocol-grade trust substrate for high-risk action enforcement. It exists to answer a narrower, more operationally serious question:
 
@@ -27,5 +27,4 @@ EP is not just a broad trust idea. It is a protocol-grade trust substrate for hi
 - replay resistance
 - one-time consumption
 - immutable event traceability
-
-That is the category EP now occupies: **trust before high-risk action**.
+- accountable signoff when policy requires human ownership

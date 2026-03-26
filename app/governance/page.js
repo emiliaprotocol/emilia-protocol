@@ -58,7 +58,7 @@ export default function GovernancePage() {
         </p>
       </section>
 
-      {/* Trust-graph adjudication */}
+      {/* Trust evaluation */}
       <section style={s.sectionAlt}>
         <div style={s.section}>
           <h2 style={s.h2}>Trust-graph dispute adjudication</h2>
@@ -91,7 +91,7 @@ export default function GovernancePage() {
           Every receipt now carries an attribution chain: <code style={s.code}>Principal &rarr; Agent &rarr; Tool</code>. This creates a verifiable record of which human authorized which agent action, executed through which tool. Accountability for agent behavior is not diffused -- it traces back to a specific human delegation decision.
         </p>
         <p style={s.body}>
-          The Delegation Judgment Score extends this further: EMILIA now scores the quality of human delegation decisions, not just agent outcomes. Principals who consistently authorize well-scoped, low-risk delegations build positive reputation. Principals who authorize reckless or disputed actions accumulate negative signal. Human accountability for machine behavior becomes legible and contestable.
+          Delegation Authority extends this further: EMILIA now scores the quality of human delegation decisions, not just agent outcomes. Principals who consistently authorize well-scoped, low-risk delegations build positive reputation. Principals who authorize reckless or disputed actions accumulate negative signal. Human accountability for machine behavior becomes legible and contestable.
         </p>
       </section>
 

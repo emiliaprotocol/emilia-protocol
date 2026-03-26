@@ -1,4 +1,4 @@
-# EP Outreach Emails — Updated
+# EP Outreach Emails
 
 ## General introduction
 

@@ -62,7 +62,7 @@
 - [x] Migration 027
 
 ### Software Trust (EP-SX)
-- [x] Install preflight (POST /api/trust/install-preflight)
+- [x] Pre-action enforcement (POST /api/trust/install-preflight) (experimental)
 - [x] Software entity types (github_app, mcp_server, npm_package, chrome_extension, etc.)
 - [x] 4 software policies (github_private_repo_safe, npm_buildtime_safe, browser_extension_safe, mcp_server_safe)
 - [x] Host adapter stubs (GitHub, npm, MCP, Chrome)
@@ -224,7 +224,7 @@ All items below were built and merged in the second sprint wave. They are live, 
 
 ### Evaluator Integration
 - [x] Continuity-aware trust profile output (lineage, inherited disputes, whitewashing flag)
-- [ ] Install preflight: fail on suspicious continuity gaps
+- [ ] Pre-action enforcement: fail on suspicious continuity gaps
 
 ### Deadline Enforcement
 - [x] Challenge window expiry (7 days) in cron
@@ -314,7 +314,7 @@ All items below were built and merged in the second sprint wave. They are live, 
 - [ ] Search any entity
 - [ ] View full trust profile
 - [ ] Run policy evaluation
-- [ ] Run install preflight
+- [ ] Run pre-action enforcement
 - [ ] See dispute history
 - [ ] File report / appeal
 - [ ] Principal lineage view
@@ -347,7 +347,7 @@ All items below were built and merged in the second sprint wave. They are live, 
 
 ### Policy Families
 - [ ] Commerce trust policies
-- [ ] Install preflight policies (per host type)
+- [ ] Pre-action enforcement policies (per host type)
 - [ ] Marketplace seller/app approval policies
 - [ ] MCP server safety policies
 - [ ] npm/GitHub package safety policies
@@ -370,7 +370,7 @@ All items below were built and merged in the second sprint wave. They are live, 
 - [ ] Continuity graph views
 - [ ] Whitewashing alerts
 - [ ] Provenance mix analytics
-- [ ] Install preflight failure reasons by host
+- [ ] Pre-action enforcement failure reasons by host
 
 **Success condition:** Enterprise operators can monitor trust health across their ecosystem.
 
@@ -385,7 +385,7 @@ All items below were built and merged in the second sprint wave. They are live, 
 - [ ] Versioned spec publishing flow
 - [ ] "How to certify your implementation" guide
 - [ ] Minimal implementation guide for outside builders
-- [ ] Canonical test vectors for: trust profiles, disputes, appeals, continuity, install preflight
+- [ ] Canonical test vectors for: trust profiles, disputes, appeals, continuity, pre-action enforcement
 
 ### Governance
 - [ ] First external implementation passes conformance suite

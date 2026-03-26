@@ -22,7 +22,7 @@ EP helps institutions:
 - strengthen delegated authority controls
 - improve audit evidence and reconstruction
 - place a trust-control layer between authentication and execution
-- require Accountable Signoff for high-risk thresholds
+- require Accountable Signoff for higher-risk thresholds
 
 ## Best first pilot
 
@@ -32,4 +32,12 @@ Start with one high-risk workflow:
 - remittance update
 - treasury release approval
 
-These workflows create immediate control value because they combine real fraud risk with a measurable reduction in operational ambiguity.
+## What EP proves before a financial action executes
+
+- actor identity
+- authority chain
+- exact transaction binding
+- policy version and policy hash
+- replay resistance
+- one-time consumption
+- accountable signoff when required
