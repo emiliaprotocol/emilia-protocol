@@ -69,7 +69,7 @@ export default function InvestorsPage() {
         </p>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <a href="#inquiry" style={{ ...s.cta, background: '#22C55E', color: '#020617' }}>Request Investor Materials</a>
-          <a href="mailto:team@emiliaprotocol.ai" style={{ ...s.cta, background: 'transparent', color: '#22C55E', border: '1px solid rgba(212,175,55,0.3)' }}>Start a Conversation</a>
+          <a href="mailto:team@emiliaprotocol.ai" style={{ ...s.cta, background: 'transparent', color: '#22C55E', border: '1px solid rgba(34,197,94,0.3)' }}>Start a Conversation</a>
         </div>
         <p style={{ fontSize: 13, color: '#64748B', marginTop: 16, maxWidth: 520 }}>
           We are selectively speaking with aligned investors, strategic partners, and operators who can help EMILIA become both credible infrastructure and a durable company.
@@ -244,40 +244,40 @@ export default function InvestorsPage() {
         ))}
       </section>
 
-      {/* New in v1.0 */}
+      {/* What makes EP defensible */}
       <section style={s.section}>
-        <div style={s.eyebrow}>New in v1.0</div>
-        <h2 style={s.h2}>Four new primitives that expand the moat</h2>
+        <div style={s.eyebrow}>Defensibility</div>
+        <h2 style={s.h2}>Why EP is a moat, not a feature</h2>
         <p style={s.body}>
-          EMILIA v1.0 ships four capabilities that move the protocol from trust decisions into regulated-industry infrastructure, passive data accumulation, and adversarially resistant adjudication.
+          EP{"'"}s defensibility comes from protocol-grade properties that cannot be replicated by adding a feature to an existing product.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-          <div style={{ ...s.card, borderColor: 'rgba(212,175,55,0.2)' }}>
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#3B82F6', marginBottom: 8, textTransform: 'uppercase' }}>Commitment Proofs</div>
-            <div style={s.cardTitle}>Unlocks regulated industries</div>
+          <div style={{ ...s.card, borderColor: 'rgba(34,197,94,0.2)' }}>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#22C55E', marginBottom: 8, textTransform: 'uppercase' }}>Canonical Binding</div>
+            <div style={s.cardTitle}>Cryptographic action binding</div>
             <div style={s.cardBody}>
-              Counterparties can prove their trust score exceeds a policy threshold without revealing the underlying receipts. A financial institution can verify an agent meets compliance requirements; the agent never discloses its transaction history. Commitment proofs are a hard moat — the HMAC-SHA256 commitment layer and Merkle tree construction require cryptographic depth most trust products cannot replicate.
+              Every authorization binds 12 fields into a single SHA-256 hash: actor, authority, policy version, exact action context, nonce, and expiry. Forks cannot replicate the binding discipline — it is enforced by runtime guards, CI gates, and formal verification.
             </div>
           </div>
-          <div style={{ ...s.card, borderColor: 'rgba(212,175,55,0.2)' }}>
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#22C55E', marginBottom: 8, textTransform: 'uppercase' }}>Auto-Receipt Generation</div>
-            <div style={s.cardTitle}>Passive data accumulation</div>
+          <div style={{ ...s.card, borderColor: 'rgba(34,197,94,0.2)' }}>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#22C55E', marginBottom: 8, textTransform: 'uppercase' }}>One-Time Consumption</div>
+            <div style={s.cardTitle}>Replay-resistant by construction</div>
             <div style={s.cardBody}>
-              Every MCP tool call now optionally generates a behavioral receipt automatically. Operators opt in once; the trust graph grows with every agent action thereafter. The data moat deepens without any additional integration work — compounding evidence accumulates across every connected workflow.
+              Every authorization can be consumed exactly once. Database triggers prevent reversal. Unique constraints enforce atomic insert-or-fail. 100-way concurrent race tests prove zero double-consumption under adversarial conditions.
             </div>
           </div>
-          <div style={{ ...s.card, borderColor: 'rgba(212,175,55,0.2)' }}>
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#64748B', marginBottom: 8, textTransform: 'uppercase' }}>Delegation Authority · Experimental</div>
-            <div style={s.cardTitle}>First system to score human AI-delegation quality</div>
+          <div style={{ ...s.card, borderColor: 'rgba(34,197,94,0.2)' }}>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#3B82F6', marginBottom: 8, textTransform: 'uppercase' }}>Accountable Signoff</div>
+            <div style={s.cardTitle}>Named human ownership before execution</div>
             <div style={s.cardBody}>
-              EMILIA now scores the humans who delegate to AI agents, not just the agents themselves. Delegation Authority surfaces which principals make high-quality, low-risk delegation decisions. This is a new asset class of behavioral data — no other trust system tracks this dimension.
+              When policy requires it, a named responsible human must explicitly assume ownership of the exact action before it executes. Not MFA. Not approval theater. Cryptographically bound, policy-driven accountability with recorded authority chain.
             </div>
           </div>
-          <div style={{ ...s.card, borderColor: 'rgba(212,175,55,0.2)' }}>
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#64748B', marginBottom: 8, textTransform: 'uppercase' }}>Trust Evaluation · Experimental</div>
-            <div style={s.cardTitle}>Adversarially resistant trust</div>
+          <div style={{ ...s.card, borderColor: 'rgba(34,197,94,0.2)' }}>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 2, color: '#3B82F6', marginBottom: 8, textTransform: 'uppercase' }}>Cloud Control Plane</div>
+            <div style={s.cardTitle}>Revenue engine above the open protocol</div>
             <div style={s.cardBody}>
-              Disputes are no longer resolved by operator judgment alone. High-confidence vouchers in the trust graph vote on contested receipts. The system is Sybil-resistant by design — voting weight is earned through accumulated evidence, not purchased. This makes the trust signal structurally harder to manipulate at scale.
+              Managed policy registry, signoff orchestration, event explorer, audit exports, tenant management, alerting, and webhooks. The protocol is open. The control plane is the recurring revenue product. Vertical packs for government, financial, and agent governance add sector pricing.
             </div>
           </div>
         </div>
@@ -286,13 +286,13 @@ export default function InvestorsPage() {
       {/* CTA strip */}
       <section style={{ ...s.sectionAlt, textAlign: 'center' }}>
         <div style={{ ...s.section, maxWidth: 540 }}>
-          <h2 style={{ ...s.h2, fontSize: 28 }}>Interested in backing the control plane for trust decisions before it becomes obvious?</h2>
+          <h2 style={{ ...s.h2, fontSize: 28 }}>Interested in backing the trust-control layer between authentication and execution?</h2>
           <p style={s.body}>
             We are selectively speaking with aligned investors, strategic partners, and operators who can help EMILIA become both credible infrastructure and a durable company.
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <a href="#inquiry" style={{ ...s.cta, background: '#22C55E', color: '#020617' }}>Request Investor Materials</a>
-            <a href="mailto:team@emiliaprotocol.ai" style={{ ...s.cta, background: 'transparent', color: '#22C55E', border: '1px solid rgba(212,175,55,0.3)' }}>Start a Conversation</a>
+            <a href="mailto:team@emiliaprotocol.ai" style={{ ...s.cta, background: 'transparent', color: '#22C55E', border: '1px solid rgba(34,197,94,0.3)' }}>Start a Conversation</a>
           </div>
         </div>
       </section>
