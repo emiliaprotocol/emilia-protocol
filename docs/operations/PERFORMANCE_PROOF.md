@@ -131,24 +131,53 @@ The p90/p95 at high VU counts is driven by:
 
 ---
 
+## Per-Endpoint Performance (50 VUs, Supported Band)
+
+Measured from dual-key mutual accepted flow at 50 concurrent VUs:
+
+| Endpoint | p50 | min | Notes |
+|----------|-----|-----|-------|
+| **Handshake create** | **246ms** | 198ms | Single RPC (create_handshake_atomic) |
+| **Present (both parties)** | **688ms** | 605ms | 2 presents with separate auth |
+| **Verify** | **345ms** | 285ms | Reads + write RPC (verify_handshake_writes) |
+| **Signoff challenge** | **123ms** | 102ms | Lightweight policy check |
+| **Full E2E flow** | **1,427ms** | 1,264ms | Create → present → verify → challenge |
+
+### Handshake Create (isolated, 50 VUs)
+
+| Metric | Observed |
+|--------|----------|
+| p50 | 235ms |
+| p90 | 352ms |
+| p95 | 777ms |
+| min | 191ms |
+| Throughput | 40 req/s |
+| Error rate | 9% (503 backpressure at peak) |
+
+---
+
 ## Operating Envelope
 
-### Supported Band (up to ~100 VUs)
+### Supported Band
 
-The system operates within design parameters:
+Per-endpoint capacity at stable low concurrency (10-25 VUs):
 
-| Metric | Observed | Target |
-|--------|----------|--------|
-| p50 | ~235ms | < 250ms |
-| p90 | ~1,282ms | < 2,000ms |
-| Error rate | < 1% | < 1% |
-| Throughput | ~33 req/s | sustained |
+| Endpoint | p50 target | Floor |
+|----------|-----------|-------|
+| Create | < 250ms | 191ms |
+| Present | < 400ms | 305ms |
+| Verify | < 400ms | 285ms |
+| Challenge | < 150ms | 102ms |
+
+### Full Flow
+
+The full mutual accepted flow (create + 2 presents + verify + challenge) completes in ~1.4s p50. At 50 VUs, 80% of requests succeed with the remaining 20% receiving clean 503 backpressure.
 
 At this concurrency level:
-- Zero handshake creation failures
 - Atomic transaction integrity — no partial state
 - Idempotency enforced — duplicate keys return existing handshake
 - All events logged — no silent writes
+- Accepted verify outcome with mutual dual-key presentation
 
 ### Overload Band (100–500 VUs)
 
