@@ -82,7 +82,7 @@ export function makeHandshakePayload(overrides = {}) {
   const id = uniqueId('hs');
   return Object.assign(
     {
-      mode: 'mutual',
+      mode: 'one_sided',
       policy_id: 'c6466c16-5728-460a-8ab2-731acac0b06f', // authorized_signer_basic_v1
       parties: [
         { role: 'initiator', entity_ref: ENTITY_REF },
@@ -169,11 +169,11 @@ export function createHandshake(overrides = {}) {
 }
 
 /**
- * Present identity proofs for both parties on a handshake.
+ * Present identity proof for the initiator (authenticated entity).
+ * In one_sided mode, only the initiator needs to present.
  */
 export function presentBothParties(handshakeId) {
   epPost(`/api/handshake/${handshakeId}/present`, makePresentationPayload('initiator'));
-  epPost(`/api/handshake/${handshakeId}/present`, makePresentationPayload('responder'));
 }
 
 /**
