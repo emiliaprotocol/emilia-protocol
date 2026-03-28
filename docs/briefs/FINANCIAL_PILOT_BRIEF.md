@@ -61,15 +61,20 @@ Integration is at the API layer. No changes to core banking or payment logic.
 
 | Metric | Value |
 |--------|-------|
-| Automated test cases | 1,511 |
+| Automated test cases | 1,500+ across 59 files |
 | TLA+ formal verification theorems | 19 |
 | Red team attack scenarios | 85 |
+| Security findings identified and remediated | 31 |
 | Write discipline exceptions in codebase | 0 |
+| Handshake creation floor latency | 249ms (atomic Postgres transaction) |
+| Load test: 500 concurrent users | 95.4% success rate |
+| CI quality gates | 16 |
 
 Formal verification covers replay prevention, token binding, signoff bypass,
 context manipulation, and concurrent transaction interference. Red team scenarios
 include credential theft, session hijacking, insider collusion, and BEC attack
-chains.
+chains. Load testing confirms the system sustains concurrent authorization
+requests without partial state or replay windows under contention.
 
 ## Next Step
 

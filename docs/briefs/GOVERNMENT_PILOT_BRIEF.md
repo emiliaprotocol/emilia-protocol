@@ -25,5 +25,11 @@ Government fraud and unauthorized action often occur inside approved-looking wor
 - signoff trace if required
 - reconstruction-ready export
 
+## Operational evidence
+- Atomic handshake creation: single Postgres transaction, 249ms floor latency
+- Load tested at 500 concurrent users: 95.4% success rate
+- 1,500+ automated tests, 85 red team cases, 31 security findings remediated
+- Zero partial-state writes — every mutation is all-or-nothing with mandatory event logging
+
 ## 30–60 day success metric
 Demonstrate that one selected workflow now requires policy-bound, replay-resistant, attributable control before execution.

@@ -17,3 +17,13 @@ EP creates the control layer between authentication and execution. It determines
 - cloud control plane
 - regulated vertical packs
 - open-source protocol with commercial layers above the repo
+
+## Proof points
+- 1,500+ tests across 59 files (including Eye subsystem)
+- 19 TLA+ safety theorems, 32 Alloy facts, 15 assertions
+- 85 red team cases documented, 31 security findings remediated
+- Atomic handshake creation via single Postgres transaction (249ms floor)
+- Staircase load tested: 10 → 25 → 50 → 100 → 250 → 500 concurrent users
+- 95.4% success rate at 500 VUs on Vercel Pro + Supabase
+- Zero write discipline exceptions, 16 CI quality gates
+- GitHub release v1.0.0 published
