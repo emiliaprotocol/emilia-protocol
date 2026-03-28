@@ -11,3 +11,4 @@ node_modules/
 sdks/typescript/dist/
 sdks/python/dist/
 .vercel
+*-results.json
