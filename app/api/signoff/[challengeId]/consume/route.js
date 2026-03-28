@@ -18,7 +18,7 @@ export async function POST(request, { params }) {
     const auth = await authenticateRequest(request);
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();
 
-    const { signoffId } = await params;
+    const { challengeId: signoffId } = await params;
     const body = await request.json();
 
     if (!body.executionRef) {

@@ -120,6 +120,7 @@ export async function POST(request) {
         pricing_model: body.pricing_model || null,
         pricing_amount_cents: body.pricing_amount_cents || 0,
         capability_embedding: embedding,
+        api_key_hash: apiKeyHash,
         a2a_endpoint: body.a2a_endpoint || null,
         ucp_profile_url: body.ucp_profile_url || null,
       })

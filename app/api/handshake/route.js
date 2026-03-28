@@ -41,7 +41,7 @@ export async function POST(request) {
     if (initiators.length !== 1) {
       return epError(EP_ERROR_CODES.INVALID_INPUT, 'Exactly one initiator party is required');
     }
-    if (initiators[0].entity_ref !== auth.entity) {
+    if (initiators[0].entity_ref !== auth.entity.entity_id) {
       return epError(EP_ERROR_CODES.UNAUTHORIZED_HANDSHAKE,
         'Initiator entity_ref must match the authenticated entity');
     }

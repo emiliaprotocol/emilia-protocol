@@ -10,3 +10,4 @@ node_modules/
 # Build artifacts
 sdks/typescript/dist/
 sdks/python/dist/
+.vercel

@@ -59,7 +59,22 @@ let _counter = 0;
 /** Generate a unique ID scoped to this VU + iteration. */
 export function uniqueId(prefix = 'lt') {
   _counter++;
-  return `${prefix}-${__VU}-${__ITER}-${_counter}-${Date.now()}`;
+  const vu = typeof __VU !== 'undefined' ? __VU : 0;
+  const iter = typeof __ITER !== 'undefined' ? __ITER : 0;
+  return `${prefix}-${vu}-${iter}-${_counter}-${Date.now()}`;
+}
+
+/** Generate a pseudo-UUID v4 (k6 has no crypto.randomUUID). */
+function uuid4() {
+  const hex = '0123456789abcdef';
+  let u = '';
+  for (let i = 0; i < 36; i++) {
+    if (i === 8 || i === 13 || i === 18 || i === 23) { u += '-'; }
+    else if (i === 14) { u += '4'; }
+    else if (i === 19) { u += hex[(Math.random() * 4 | 0) + 8]; }
+    else { u += hex[Math.random() * 16 | 0]; }
+  }
+  return u;
 }
 
 /** Build a valid handshake creation payload. */
@@ -68,13 +83,13 @@ export function makeHandshakePayload(overrides = {}) {
   return Object.assign(
     {
       mode: 'mutual',
-      policy_id: `policy-loadtest-${id}`,
+      policy_id: uuid4(),
       parties: [
         { role: 'initiator', entity_ref: ENTITY_REF },
         { role: 'responder', entity_ref: RESPONDER_REF },
       ],
       action_type: 'connect',
-      resource_ref: `resource-${id}`,
+      resource_ref: uuid4(),
       payload: { test: true, run_id: id },
       idempotency_key: `idem-${id}`,
     },
