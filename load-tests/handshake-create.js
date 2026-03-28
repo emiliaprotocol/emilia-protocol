@@ -51,7 +51,7 @@ export default function () {
     'response has id': (r) => {
       try {
         const body = r.json();
-        return !!(body.id || body.handshakeId);
+        return !!(body.handshake_id || body.id || body.handshakeId);
       } catch {
         return false;
       }

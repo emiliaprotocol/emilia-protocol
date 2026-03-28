@@ -165,7 +165,7 @@ export function createHandshake(overrides = {}) {
     return { id: null, response: res, error: `create failed: ${res.status}` };
   }
   const body = res.json();
-  return { id: body.id || body.handshakeId, response: res, error: null };
+  return { id: body.handshake_id || body.id || body.handshakeId, response: res, error: null };
 }
 
 /**
