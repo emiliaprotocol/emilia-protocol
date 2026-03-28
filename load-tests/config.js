@@ -124,6 +124,8 @@ export function makeChallengePayload(handshakeId, bindingHash) {
     accountableActorRef: ENTITY_REF,
     bindingHash: bindingHash || 'unknown',
     signoffPolicyId: __ENV.EP_POLICY_ID || 'd1f14bbc-b4df-4ba3-94ef-998d236c0dc0',
+    requiredAssurance: 'high',
+    allowedMethods: ['api_key'],
     expiresAt: new Date(Date.now() + 3600_000).toISOString(),
   };
 }
