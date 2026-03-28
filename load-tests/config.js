@@ -14,12 +14,18 @@
 
 export const BASE_URL = __ENV.EP_BASE_URL || 'http://localhost:3000';
 export const API_KEY = __ENV.EP_API_KEY || '';
+export const RESPONDER_API_KEY = __ENV.EP_RESPONDER_API_KEY || '';
 export const ENTITY_REF = __ENV.EP_ENTITY_REF || 'ep:entity:loadtest-actor';
 export const RESPONDER_REF = __ENV.EP_RESPONDER_REF || 'ep:entity:loadtest-responder';
 
 export const HEADERS = {
   'Content-Type': 'application/json',
   Authorization: `Bearer ${API_KEY}`,
+};
+
+export const RESPONDER_HEADERS = {
+  'Content-Type': 'application/json',
+  Authorization: `Bearer ${RESPONDER_API_KEY}`,
 };
 
 // ── SLO thresholds (from GOD FILE SS13.1) ────────────────────────────────────
@@ -82,8 +88,8 @@ export function makeHandshakePayload(overrides = {}) {
   const id = uniqueId('hs');
   return Object.assign(
     {
-      mode: 'basic',
-      policy_id: 'c6466c16-5728-460a-8ab2-731acac0b06f', // authorized_signer_basic_v1
+      mode: 'mutual',
+      policy_id: __ENV.EP_POLICY_ID || 'd1f14bbc-b4df-4ba3-94ef-998d236c0dc0', // load_test_minimal_v1
       parties: [
         { role: 'initiator', entity_ref: ENTITY_REF },
         { role: 'responder', entity_ref: RESPONDER_REF },
@@ -169,11 +175,15 @@ export function createHandshake(overrides = {}) {
 }
 
 /**
- * Present identity proof for the initiator (authenticated entity).
- * In one_sided mode, only the initiator needs to present.
+ * Present identity proofs for both parties using their respective API keys.
  */
 export function presentBothParties(handshakeId) {
+  // Initiator presents with initiator key
   epPost(`/api/handshake/${handshakeId}/present`, makePresentationPayload('initiator'));
+  // Responder presents with responder key
+  http.post(`${BASE_URL}/api/handshake/${handshakeId}/present`,
+    JSON.stringify(makePresentationPayload('responder')),
+    { headers: RESPONDER_HEADERS });
 }
 
 /**

@@ -15,6 +15,7 @@
 
 import { check, sleep, group } from 'k6';
 import { Trend, Rate, Counter } from 'k6/metrics';
+import http from 'k6/http';
 import {
   standardStages,
   SLO,
@@ -22,6 +23,8 @@ import {
   makeHandshakePayload,
   makePresentationPayload,
   makeChallengePayload,
+  BASE_URL,
+  RESPONDER_HEADERS,
   makeAttestationPayload,
   makeConsumePayload,
 } from './config.js';
@@ -74,20 +77,34 @@ export default function () {
     const hsBody = createRes.json();
     const handshakeId = hsBody.handshake_id || hsBody.id || hsBody.handshakeId;
 
-    // Step 2: Present initiator (basic mode — single-key auth)
+    // Step 2: Present both parties (mutual mode — dual-key auth)
     const presInit = epPost(
       `/api/handshake/${handshakeId}/present`,
       makePresentationPayload('initiator'),
     );
-    stepPresent.add(presInit.timings.duration);
+    const presResp = http.post(
+      `${BASE_URL}/api/handshake/${handshakeId}/present`,
+      JSON.stringify(makePresentationPayload('responder')),
+      { headers: RESPONDER_HEADERS },
+    );
+    stepPresent.add(presInit.timings.duration + presResp.timings.duration);
 
     if (!check(presInit, { 'present initiator: 201': (r) => r.status === 201 })) {
       failed = true;
       return;
     }
+    if (!check(presResp, { 'present responder: 201': (r) => r.status === 201 })) {
+      failed = true;
+      return;
+    }
 
-    // Step 3: Verify handshake (may return rejected in basic mode — that's correct)
-    const verifyRes = epPost(`/api/handshake/${handshakeId}/verify`, {});
+    // Step 3: Verify handshake
+    // Pass binding hashes from the create response so verify doesn't reject for missing hashes
+    const bindingData = hsBody.binding || {};
+    const verifyRes = epPost(`/api/handshake/${handshakeId}/verify`, {
+      payload_hash: bindingData.payload_hash || null,
+      nonce: bindingData.nonce || null,
+    });
     stepVerify.add(verifyRes.timings.duration);
 
     if (!check(verifyRes, { 'verify: 200': (r) => r.status === 200 })) {
