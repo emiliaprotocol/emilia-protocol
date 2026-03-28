@@ -57,8 +57,8 @@ export async function POST(request) {
 
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
-    console.error('Handshake initiation error:', err);
-    return epError(EP_ERROR_CODES.INTERNAL);
+    console.error('Handshake initiation error:', err.message, err.stack);
+    return NextResponse.json({ error: { code: 'EP-9001', message: err.message, detail: err.code || null } }, { status: 500 });
   }
 }
 
