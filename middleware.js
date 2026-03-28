@@ -74,12 +74,14 @@ const ROUTE_POLICIES = {
   'POST /api/commit/*/dispute':       { rateCategory: 'dispute_write', useAuth: true },
 
   // Handshake (EP Handshake — structured identity exchange)
-  'POST /api/handshake':              { rateCategory: 'protocol_write', useAuth: true },
+  // Protocol routes skip middleware rate limiting — auth + DB-level idempotency
+  // provide sufficient protection without the Upstash roundtrip penalty.
+  'POST /api/handshake':              { rateCategory: null, useAuth: true },
   'GET /api/handshake':               { rateCategory: 'read', useAuth: true },
   'GET /api/handshake/*':             { rateCategory: 'read', useAuth: true },
-  'POST /api/handshake/*/present':    { rateCategory: 'protocol_write', useAuth: true },
-  'POST /api/handshake/*/verify':     { rateCategory: 'protocol_write', useAuth: true },
-  'POST /api/handshake/*/revoke':     { rateCategory: 'protocol_write', useAuth: true },
+  'POST /api/handshake/*/present':    { rateCategory: null, useAuth: true },
+  'POST /api/handshake/*/verify':     { rateCategory: null, useAuth: true },
+  'POST /api/handshake/*/revoke':     { rateCategory: null, useAuth: true },
 
   // Operations / Cron
   'POST /api/blockchain/anchor':      { rateCategory: 'anchor', useAuth: false },
@@ -185,11 +187,15 @@ export async function middleware(request) {
 
   const { rateCategory, useAuth } = classifyRoute(request.method, pathname);
 
+  // Protocol routes (rateCategory: null) skip middleware rate limiting entirely.
+  // They rely on auth + DB-level idempotency instead, saving an Upstash roundtrip (~80ms).
+  if (rateCategory === null) {
+    return NextResponse.next();
+  }
+
   const ip = getClientIP(request);
 
   // For authenticated write routes, use API key prefix + IP as rate limit key.
-  // This prevents shared NATs from being over-punished while still
-  // throttling per-identity on authenticated writes.
   let rateLimitKey = ip;
   if (useAuth) {
     const keyPrefix = getApiKeyPrefix(request);
