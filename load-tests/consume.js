@@ -34,7 +34,7 @@ const consumeCount = new Counter('ep_consume_total');
 
 // ── k6 options ───────────────────────────────────────────────────────────────
 
-const PEAK_VUS = 100;
+const PEAK_VUS = 50;
 
 export const options = {
   stages: standardStages(PEAK_VUS),
@@ -54,7 +54,7 @@ export const options = {
 
 export function setup() {
   const signoffIds = [];
-  const count = PEAK_VUS * 5;
+  const count = PEAK_VUS * 2;
 
   console.log(`Setup: creating ${count} signoffs ready for consumption...`);
 

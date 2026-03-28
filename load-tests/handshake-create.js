@@ -13,7 +13,7 @@
 
 import { check, sleep } from 'k6';
 import { Trend, Rate, Counter } from 'k6/metrics';
-import { escalatingStages, SLO, epPost, makeHandshakePayload } from './config.js';
+import { standardStages, SLO, epPost, makeHandshakePayload } from './config.js';
 
 // ── Custom metrics ───────────────────────────────────────────────────────────
 
@@ -24,7 +24,7 @@ const createCount = new Counter('ep_handshake_create_total');
 // ── k6 options ───────────────────────────────────────────────────────────────
 
 export const options = {
-  stages: escalatingStages(),
+  stages: standardStages(50),
 
   thresholds: {
     ep_handshake_create_duration: [

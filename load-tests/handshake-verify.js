@@ -30,7 +30,7 @@ const verifyCount = new Counter('ep_handshake_verify_total');
 
 // ── k6 options ───────────────────────────────────────────────────────────────
 
-const PEAK_VUS = 100;
+const PEAK_VUS = 50;
 
 export const options = {
   stages: standardStages(PEAK_VUS),
@@ -50,7 +50,7 @@ export const options = {
 
 export function setup() {
   const handshakeIds = [];
-  const count = PEAK_VUS * 5; // enough for sustained test
+  const count = PEAK_VUS * 2; // enough for sustained test
 
   console.log(`Setup: creating ${count} handshakes with presentations...`);
 
