@@ -7,6 +7,12 @@ import { epError } from '@/lib/errors/response';
 import { validateInitiateBody } from '@/lib/handshake/schema';
 import { validateHandshakeCreate } from '@/lib/validation/schemas';
 
+// ── Overload backpressure ────────────────────────────────────────────────────
+// Fast-fail under concurrency pressure instead of slow timeout collapse.
+// Per-instance counter — each serverless function instance tracks its own load.
+let _inflight = 0;
+const MAX_CONCURRENT = 50;
+
 /**
  * POST /api/handshake
  *
@@ -18,6 +24,14 @@ import { validateHandshakeCreate } from '@/lib/validation/schemas';
  * matches the authenticated entity.
  */
 export async function POST(request) {
+  // Overload guard: prefer fast 503 over slow timeout
+  if (_inflight >= MAX_CONCURRENT) {
+    return NextResponse.json(
+      { error: 'Service overloaded', retry_after: 2 },
+      { status: 503, headers: { 'Retry-After': '2' } },
+    );
+  }
+  _inflight++;
   try {
     const auth = await authenticateRequest(request);
     if (auth.error) return epError(EP_ERROR_CODES.UNAUTHORIZED);
@@ -59,6 +73,8 @@ export async function POST(request) {
   } catch (err) {
     console.error('Handshake initiation error:', err);
     return epError(EP_ERROR_CODES.INTERNAL);
+  } finally {
+    _inflight--;
   }
 }
 
