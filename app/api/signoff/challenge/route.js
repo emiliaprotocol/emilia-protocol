@@ -51,7 +51,7 @@ export async function POST(request) {
 
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
-    console.error('Signoff challenge issuance error:', err);
-    return EP_ERRORS.INTERNAL();
+    console.error('Signoff challenge issuance error:', err.message);
+    return NextResponse.json({ _err: err.message }, { status: 500 });
   }
 }
