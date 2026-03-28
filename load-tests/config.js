@@ -83,7 +83,7 @@ export function makeHandshakePayload(overrides = {}) {
   return Object.assign(
     {
       mode: 'mutual',
-      policy_id: uuid4(),
+      policy_id: 'c6466c16-5728-460a-8ab2-731acac0b06f', // authorized_signer_basic_v1
       parties: [
         { role: 'initiator', entity_ref: ENTITY_REF },
         { role: 'responder', entity_ref: RESPONDER_REF },
