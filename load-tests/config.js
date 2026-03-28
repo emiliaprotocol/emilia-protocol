@@ -118,11 +118,12 @@ export function makePresentationPayload(role = 'initiator') {
 }
 
 /** Build signoff challenge payload. */
-export function makeChallengePayload(handshakeId) {
+export function makeChallengePayload(handshakeId, bindingHash) {
   return {
     handshakeId,
     accountableActorRef: ENTITY_REF,
-    signoffPolicyId: `signoff-policy-${uniqueId('sp')}`,
+    bindingHash: bindingHash || 'unknown',
+    signoffPolicyId: __ENV.EP_POLICY_ID || 'd1f14bbc-b4df-4ba3-94ef-998d236c0dc0',
     expiresAt: new Date(Date.now() + 3600_000).toISOString(),
   };
 }

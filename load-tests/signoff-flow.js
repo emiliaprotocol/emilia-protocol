@@ -114,8 +114,9 @@ export default function () {
       return;
     }
 
-    // Step 4: Issue challenge
-    const challengeRes = epPost('/api/signoff/challenge', makeChallengePayload(handshakeId));
+    // Step 4: Issue challenge (pass binding_hash from create response)
+    const bindingHash = bindingData.binding_hash || '';
+    const challengeRes = epPost('/api/signoff/challenge', makeChallengePayload(handshakeId, bindingHash));
     stepChallenge.add(challengeRes.timings.duration);
 
     if (!check(challengeRes, { 'challenge: 201': (r) => r.status === 201 })) {
