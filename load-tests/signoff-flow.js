@@ -99,11 +99,13 @@ export default function () {
     }
 
     // Step 3: Verify handshake
-    // Pass binding hashes from the create response so verify doesn't reject for missing hashes
+    // Pass all hashes from the create response so verify can match them
     const bindingData = hsBody.binding || {};
     const verifyRes = epPost(`/api/handshake/${handshakeId}/verify`, {
       payload_hash: bindingData.payload_hash || null,
       nonce: bindingData.nonce || null,
+      action_hash: hsBody.action_hash || null,
+      policy_hash: hsBody.policy_hash || null,
     });
     stepVerify.add(verifyRes.timings.duration);
 

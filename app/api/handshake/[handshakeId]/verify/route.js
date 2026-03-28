@@ -30,6 +30,8 @@ export async function POST(request, { params }) {
       actor: auth.entity,
       payload_hash: body.payload_hash || null,
       nonce: body.nonce || null,
+      action_hash: body.action_hash || null,
+      policy_hash: body.policy_hash || null,
     });
 
     if (result.error) {
