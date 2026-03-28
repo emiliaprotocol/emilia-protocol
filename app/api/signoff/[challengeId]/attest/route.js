@@ -53,6 +53,7 @@ export async function POST(request, { params }) {
 
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
-    return NextResponse.json({ _e: err.message, _c: err.code }, { status: 500 });
+    console.error('Signoff attestation error:', err);
+    return EP_ERRORS.INTERNAL();
   }
 }
