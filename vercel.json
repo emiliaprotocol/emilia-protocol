@@ -1,4 +1,11 @@
 {
+  "functions": {
+    "app/api/**/*.js": {
+      "maxDuration": 60,
+      "memory": 1024
+    }
+  },
+  "regions": ["pdx1"],
   "crons": [
     {
       "path": "/api/blockchain/anchor",
