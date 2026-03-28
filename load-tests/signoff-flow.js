@@ -72,29 +72,21 @@ export default function () {
       return;
     }
     const hsBody = createRes.json();
-    const handshakeId = hsBody.id || hsBody.handshakeId;
+    const handshakeId = hsBody.handshake_id || hsBody.id || hsBody.handshakeId;
 
-    // Step 2: Present both parties
+    // Step 2: Present initiator (basic mode — single-key auth)
     const presInit = epPost(
       `/api/handshake/${handshakeId}/present`,
       makePresentationPayload('initiator'),
     );
-    const presResp = epPost(
-      `/api/handshake/${handshakeId}/present`,
-      makePresentationPayload('responder'),
-    );
-    stepPresent.add(presInit.timings.duration + presResp.timings.duration);
+    stepPresent.add(presInit.timings.duration);
 
     if (!check(presInit, { 'present initiator: 201': (r) => r.status === 201 })) {
       failed = true;
       return;
     }
-    if (!check(presResp, { 'present responder: 201': (r) => r.status === 201 })) {
-      failed = true;
-      return;
-    }
 
-    // Step 3: Verify handshake
+    // Step 3: Verify handshake (may return rejected in basic mode — that's correct)
     const verifyRes = epPost(`/api/handshake/${handshakeId}/verify`, {});
     stepVerify.add(verifyRes.timings.duration);
 

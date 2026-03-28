@@ -42,6 +42,6 @@ export async function POST(request, { params }) {
       return epError(EP_ERROR_CODES.FORBIDDEN, err.message);
     }
     console.error('Handshake verification error:', err);
-    return NextResponse.json({ _err: err.message }, { status: 500 });
+    return epError(EP_ERROR_CODES.INTERNAL);
   }
 }
