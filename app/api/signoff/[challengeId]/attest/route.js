@@ -53,7 +53,10 @@ export async function POST(request, { params }) {
 
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
-    console.error('Signoff attestation error:', err);
-    return EP_ERRORS.INTERNAL();
+    console.error('Signoff attestation error:', err.message, err.code);
+    // Structured error response for debugging attestation failures
+    return NextResponse.json({
+      error: { code: 'EP-9001', message: err.message, detail: err.code || null }
+    }, { status: err.status || 500 });
   }
 }
