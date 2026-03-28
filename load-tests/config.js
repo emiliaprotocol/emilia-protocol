@@ -125,7 +125,7 @@ export function makeChallengePayload(handshakeId, bindingHash) {
     bindingHash: bindingHash || 'unknown',
     signoffPolicyId: __ENV.EP_POLICY_ID || 'd1f14bbc-b4df-4ba3-94ef-998d236c0dc0',
     requiredAssurance: 'high',
-    allowedMethods: ['api_key'],
+    allowedMethods: ['platform_authenticator'],
     expiresAt: new Date(Date.now() + 3600_000).toISOString(),
   };
 }
@@ -134,7 +134,7 @@ export function makeChallengePayload(handshakeId, bindingHash) {
 export function makeAttestationPayload() {
   return {
     humanEntityRef: ENTITY_REF,
-    authMethod: 'api_key',
+    authMethod: 'platform_authenticator',
     assuranceLevel: 'high',
     channel: 'load_test',
     attestationHash: `sha256:${uniqueId('hash')}`,
