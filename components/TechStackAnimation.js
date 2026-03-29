@@ -171,7 +171,7 @@ export function TechStackComposition() {
 
   return (
     <AbsoluteFill style={{ background: 'transparent', fontFamily: FONT_SANS, overflow: 'hidden' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', padding: '32px 28px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', padding: '36px 32px' }}>
         {/* Animated E + tagline */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32, opacity: taglineOpacity }}>
           <ProngSVG progress={prongProgress} color={LAYERS[activeIndex].color} />
@@ -185,7 +185,7 @@ export function TechStackComposition() {
         </div>
 
         {/* Stack layers */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, position: 'relative' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, position: 'relative' }}>
           <ScanLine frame={frame} totalDuration={durationInFrames} />
           {LAYERS.map((layer, i) => (
             <LayerRow
