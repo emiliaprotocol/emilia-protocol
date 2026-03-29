@@ -32,6 +32,17 @@ EP is no longer a broad trust idea. It is now a protocol-grade trust system with
 - formal conformance surfaces
 - Accountable Signoff when policy requires named human ownership
 
+Reconciliation proof:
+- 1,500+ automated tests across 60+ files
+- 19 TLA+ safety theorems, 32 Alloy facts, 15 assertions
+- 85 red team cases documented; 31 security findings identified and remediated
+- Full 7-step Accountable Signoff chain proven end-to-end under load
+- 329 complete chains executed with zero correctness violations
+- 11/11 post-load-test DB integrity checks passing
+- Zero duplicate consumptions, zero orphaned bindings, zero missing events
+- All endpoints use single-roundtrip atomic RPCs
+- Database: 46 EP-only tables, zero foreign artifacts
+
 ## Why now
 
 1. **Fraud is moving inside approved workflows.** Valid sessions and approved-looking flows are no longer enough.

@@ -27,4 +27,8 @@
 - Financial Pack
 - Agent Governance Pack
 
+## Proof
+
+The protocol layer beneath has been proven end-to-end: 1,500+ automated tests across 60+ files, 329 complete Accountable Signoff chains with zero correctness violations, all endpoints using single-roundtrip atomic RPCs, and 46 EP-only database tables with zero foreign artifacts.
+
 This is the business model: open protocol below, managed trust infrastructure above, vertical control systems on top.

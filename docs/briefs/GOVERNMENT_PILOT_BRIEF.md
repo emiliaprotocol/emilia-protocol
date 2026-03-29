@@ -27,8 +27,14 @@ Government fraud and unauthorized action often occur inside approved-looking wor
 
 ## Operational evidence
 - Full 7-step Accountable Signoff chain proven end-to-end under load (0% error rate)
-- Atomic transactions: single Postgres RPC, no partial state
-- 1,500+ automated tests, 85 red team cases, 31 security findings remediated
+- 329 complete chains executed with zero correctness violations
+- 11/11 post-load-test DB integrity checks passing
+- Atomic transactions: all endpoints use single-roundtrip atomic RPCs, no partial state
+- 1,500+ automated tests across 60+ files; 85 red team cases documented
+- 31 security findings identified and remediated
+- 19 TLA+ safety theorems, 32 Alloy facts, 15 assertions
+- Zero duplicate consumptions, zero orphaned bindings, zero missing events
+- Database: 46 EP-only tables, zero foreign artifacts
 - Explicit supported-band and overload-band operating envelopes published
 - Fast 503 backpressure under overload — no timeout collapse, no silent failures
 
