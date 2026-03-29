@@ -8,7 +8,7 @@ import { styles, cta, color, font, radius } from '@/lib/tokens';
 const HeroAnimation = dynamic(() => import('@/components/HeroAnimation'), {
   ssr: false,
   loading: () => (
-    <div style={{ width: '100%', maxWidth: 580, height: 320, borderRadius: 4, border: `1px solid ${color.border}`, background: '#F5F5F4' }} />
+    <div style={{ width: '100%', aspectRatio: '640 / 400', borderRadius: 4, border: `1px solid ${color.border}`, background: '#F5F5F4' }} />
   ),
 });
 
@@ -107,13 +107,13 @@ export default function HomePage() {
       <SiteNav activePage="" />
 
       {/* ── HERO ── */}
-      <section style={{ minHeight: '85vh', display: 'flex', alignItems: 'center', padding: '120px 0 80px' }}>
+      <section style={{ display: 'flex', alignItems: 'center', minHeight: 'calc(100vh - 56px)', padding: '56px 0 0' }}>
         <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80,
+          display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', gap: 48,
           alignItems: 'center', width: '100%', maxWidth: 1120,
           margin: '0 auto', padding: '0 32px',
         }}>
-          {/* Animation — left */}
+          {/* Animation — left, fills column */}
           <div>
             <HeroAnimation />
           </div>

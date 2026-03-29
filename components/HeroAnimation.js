@@ -5,18 +5,18 @@ import { TechStackComposition } from './TechStackAnimation';
 
 export default function HeroAnimation() {
   return (
-    <div style={{ width: '100%', maxWidth: 580 }}>
+    <div style={{ width: '100%' }}>
       <Player
         component={TechStackComposition}
-        compositionWidth={580}
-        compositionHeight={320}
+        compositionWidth={640}
+        compositionHeight={400}
         durationInFrames={360}
         fps={30}
         loop
         autoPlay
         style={{
           width: '100%',
-          aspectRatio: '580 / 320',
+          aspectRatio: '640 / 400',
           borderRadius: 4,
           border: '1px solid #E7E5E4',
           background: '#FAFAF9',

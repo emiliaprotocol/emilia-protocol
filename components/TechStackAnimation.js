@@ -64,13 +64,13 @@ function DomainTag({ label, color: tagColor, delay, frame, fps }) {
       style={{
         display: 'inline-block',
         fontFamily: FONT_MONO,
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: 500,
         letterSpacing: 1.5,
         color: tagColor,
         border: `1px solid ${tagColor}30`,
         borderRadius: 3,
-        padding: '5px 12px',
+        padding: '6px 14px',
         opacity,
         transform: `translateY(${y}px)`,
         background: `${tagColor}08`,
@@ -100,8 +100,8 @@ function LayerRow({ layer, index, frame, fps, totalDuration }) {
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 18,
-        padding: '14px 22px',
+        gap: 20,
+        padding: '16px 24px',
         borderRadius: 6,
         border: `1px solid ${isActive ? layer.color + '35' : '#E7E5E4'}`,
         background: isActive ? `${layer.color}06` : 'transparent',
@@ -171,11 +171,11 @@ export function TechStackComposition() {
 
   return (
     <AbsoluteFill style={{ background: 'transparent', fontFamily: FONT_SANS, overflow: 'hidden' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', padding: '20px 0' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', padding: '32px 28px' }}>
         {/* Animated E + tagline */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, opacity: taglineOpacity }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32, opacity: taglineOpacity }}>
           <ProngSVG progress={prongProgress} color={LAYERS[activeIndex].color} />
-          <div style={{ fontFamily: FONT_MONO, fontSize: 14, letterSpacing: 0.5, color: '#0C0A09' }}>
+          <div style={{ fontFamily: FONT_MONO, fontSize: 15, letterSpacing: 0.5, color: '#0C0A09' }}>
             <span style={{ color: activeIndex === 0 ? '#16A34A' : '#A1A1AA' }}>Eye warns.</span>
             {' '}
             <span style={{ color: activeIndex === 1 ? '#3B82F6' : '#A1A1AA' }}>EP verifies.</span>
@@ -185,7 +185,7 @@ export function TechStackComposition() {
         </div>
 
         {/* Stack layers */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, position: 'relative' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, position: 'relative' }}>
           <ScanLine frame={frame} totalDuration={durationInFrames} />
           {LAYERS.map((layer, i) => (
             <LayerRow
