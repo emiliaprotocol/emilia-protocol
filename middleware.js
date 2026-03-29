@@ -84,8 +84,11 @@ const ROUTE_POLICIES = {
   'POST /api/handshake/*/revoke':     { rateCategory: null, useAuth: true },
 
   // Operations / Cron
-  'POST /api/blockchain/anchor':      { rateCategory: 'anchor', useAuth: false },
-  'POST /api/cron/expire':            { rateCategory: 'anchor', useAuth: false },
+  // Cron routes skip rate limiting (CRON_SECRET auth is sufficient)
+  'POST /api/blockchain/anchor':      { rateCategory: null, useAuth: false },
+  'GET /api/blockchain/anchor':       { rateCategory: null, useAuth: false },
+  'POST /api/cron/expire':            { rateCategory: null, useAuth: false },
+  'GET /api/cron/expire':             { rateCategory: null, useAuth: false },
 
   // Public forms (no auth — open submission endpoints)
   'POST /api/operators/apply':        { rateCategory: 'submit', useAuth: false },

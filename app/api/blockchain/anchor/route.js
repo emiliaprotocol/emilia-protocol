@@ -50,6 +50,7 @@ export async function POST(request) {
 
 // Vercel Cron sends GET by default, but we require POST to avoid
 // leaking the Authorization header in access logs / query strings.
-export async function GET() {
-  return new Response('Method not allowed', { status: 405 });
+// Vercel Cron sends GET requests — proxy to POST handler
+export async function GET(request) {
+  return POST(request);
 }
