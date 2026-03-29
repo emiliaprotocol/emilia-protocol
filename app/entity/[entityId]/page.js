@@ -245,7 +245,7 @@ export default async function EntityProfile({ params }) {
 
           {/* Score breakdown */}
           {breakdown && (
-            <div style={{ background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 24, marginBottom: 40 }}>
+            <div style={{ background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: 24, marginBottom: 40 }}>
               <div style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: 3, color: '#4a4f6a', textTransform: 'uppercase', marginBottom: 20 }}>
                 Score Breakdown
               </div>
@@ -254,7 +254,7 @@ export default async function EntityProfile({ params }) {
           )}
 
           {!showBreakdown && (
-            <div style={{ background: `${confidenceColor}10`, border: `1px solid ${confidenceColor}30`, borderRadius: 12, padding: 20, marginBottom: 40 }}>
+            <div style={{ background: `${confidenceColor}10`, border: `1px solid ${confidenceColor}30`, borderRadius: 8, padding: 20, marginBottom: 40 }}>
               <div style={{ fontFamily: 'var(--mono)', fontSize: 11, color: confidenceColor, marginBottom: 4 }}>{confidence}</div>
               <div style={{ fontSize: 13, color: '#7a809a', lineHeight: 1.6, marginBottom: 12 }}>
                 {confidenceMessage}
@@ -317,7 +317,7 @@ export default async function EntityProfile({ params }) {
           )}
 
           {/* API reference */}
-          <div style={{ marginTop: 48, padding: 20, background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, fontFamily: 'var(--mono)', fontSize: 11 }}>
+          <div style={{ marginTop: 48, padding: 20, background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, fontFamily: 'var(--mono)', fontSize: 11 }}>
             <div style={{ color: '#4a4f6a', fontSize: 10, letterSpacing: 2, marginBottom: 8 }}>API</div>
             <div style={{ color: '#7a809a' }}>
               <span style={{ color: '#22C55E' }}>GET</span> /api/score/{entity.entity_id}

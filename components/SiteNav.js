@@ -54,11 +54,10 @@ export default function SiteNav({ activePage }) {
           {/* Logo */}
           <a href="/" className="ep-logo-link" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}>
             <svg width="34" height="34" viewBox="0 0 34 34" fill="none">
-              <rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#sng)"/>
-              <rect className="ep-top" x="9.5" y="5" width="16" height="2.5" rx="1.25" fill={color.blue}/>
-              <rect className="ep-mid" x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill={color.green}/>
-              <rect className="ep-bot" x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill={color.blue}/>
-              <defs><linearGradient id="sng" x1="8" y1="5" x2="8" y2="29"><stop offset="0%" stopColor={color.blue}/><stop offset="100%" stopColor={color.green}/></linearGradient></defs>
+              <rect x="7" y="5" width="2.5" height="24" rx="1.25" fill={color.t2}/>
+              <rect className="ep-top" x="9.5" y="5" width="16" height="2.5" rx="1.25" fill={color.t1}/>
+              <rect className="ep-mid" x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill={color.t2}/>
+              <rect className="ep-bot" x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill={color.t1}/>
             </svg>
             <span style={{
               fontFamily: font.mono,
