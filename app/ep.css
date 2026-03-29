@@ -5,10 +5,10 @@
 
 /* ─── Nav Links ──────────────────────────────────────────── */
 .ep-nav-link {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.5px;
-  color: #78716C;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #57534E;
   text-decoration: none;
   transition: color 0.15s;
   padding-bottom: 2px;
@@ -20,6 +20,7 @@
 }
 .ep-nav-link[data-active="true"] {
   color: #0C0A09;
+  font-weight: 600;
   border-bottom-color: #0C0A09;
 }
 
@@ -217,7 +218,7 @@
   .ep-mobile-menu {
     display: none;
     position: fixed;
-    top: 56px;
+    top: 60px;
     left: 0;
     right: 0;
     bottom: 0;
@@ -232,10 +233,10 @@
     display: flex;
   }
   .ep-mobile-menu a {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 14px;
-    letter-spacing: 0.5px;
-    color: #78716C;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    color: #57534E;
     text-decoration: none;
     padding: 14px 0;
     border-bottom: 1px solid #E7E5E4;

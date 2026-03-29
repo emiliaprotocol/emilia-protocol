@@ -41,7 +41,7 @@ export default function SiteNav({ activePage }) {
       <nav style={{
         position: 'sticky', top: 0, zIndex: 100,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        height: 56,
+        height: 60,
         left: 0, right: 0, width: '100%', boxSizing: 'border-box',
         background: 'rgba(250,250,249,0.85)',
         backdropFilter: 'blur(16px)',
@@ -79,7 +79,7 @@ export default function SiteNav({ activePage }) {
           </a>
 
           {/* Desktop links */}
-          <div className="ep-nav-links" style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
+          <div className="ep-nav-links" style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
             {NAV_LINKS.map(([href, label]) => (
               <a
                 key={label}
