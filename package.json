@@ -20,7 +20,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "remotion": "^4.0.441",
-    "viem": "^2.21.0"
+    "viem": "^2.47.6"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
