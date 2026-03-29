@@ -36,6 +36,21 @@ The protocol is open. Managed policy, verification, signoff orchestration, monit
 
 ---
 
+## Proof points
+
+| Metric | Value |
+|---|---|
+| Automated tests | 1,500+ across 60+ files |
+| TLA+ safety theorems | 19 |
+| Alloy facts / assertions | 32 facts, 15 assertions |
+| Red team cases | 85 documented |
+| Security findings remediated | 31 |
+| CI quality gates | 16 |
+| Full 7-step signoff chain | Proven end-to-end under load |
+| Handshake create p50 | 236ms at 50 VUs |
+
+See [Performance Proof](docs/operations/PERFORMANCE_PROOF.md) | [Operating Envelope](docs/operations/OPERATING_ENVELOPE.md) | [Security Policy](SECURITY.md)
+
 ## Conformance status
 
 | Metric | Value |

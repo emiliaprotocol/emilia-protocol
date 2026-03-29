@@ -283,6 +283,32 @@ export default function InvestorsPage() {
         </div>
       </section>
 
+      {/* What is proven now */}
+      <section style={s.section}>
+        <div style={s.eyebrow}>Proof Status</div>
+        <h2 style={s.h2}>What is no longer theoretical</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+          <div style={{ ...s.card, borderColor: 'rgba(34,197,94,0.2)' }}>
+            <div style={s.cardTitle}>Accepted mutual flow</div>
+            <div style={s.cardBody}>
+              Full 7-step Accountable Signoff chain proven end-to-end under load: create, present (dual-key), verify (accepted), challenge, attest, consume. Zero errors at 50 concurrent users.
+            </div>
+          </div>
+          <div style={{ ...s.card, borderColor: 'rgba(34,197,94,0.2)' }}>
+            <div style={s.cardTitle}>Measured operating envelope</div>
+            <div style={s.cardBody}>
+              Supported band with per-endpoint latency targets. Overload band with explicit 503 backpressure instead of timeout collapse. No correctness violations under stress.
+            </div>
+          </div>
+          <div style={{ ...s.card, borderColor: 'rgba(34,197,94,0.2)' }}>
+            <div style={s.cardTitle}>Protocol + product coherence</div>
+            <div style={s.cardBody}>
+              Open protocol, open runtime, managed cloud, enterprise packs, vertical pricing. GitHub release v1.0.0 published. 1,500+ tests, 19 TLA+ theorems, 85 red team cases.
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA strip */}
       <section style={{ ...s.sectionAlt, textAlign: 'center' }}>
         <div style={{ ...s.section, maxWidth: 540 }}>

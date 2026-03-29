@@ -76,6 +76,15 @@ include credential theft, session hijacking, insider collusion, and BEC attack
 chains. Load testing confirms the system sustains concurrent authorization
 requests without partial state or replay windows under contention.
 
+## Who buys this internally
+
+- Treasury
+- Payment operations
+- Fraud and risk
+- Controls
+- Security architecture
+- Compliance
+
 ## Next Step
 
 Request a 30-day pilot deployment:
