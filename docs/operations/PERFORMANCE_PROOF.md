@@ -136,15 +136,17 @@ The p90/p95 at high VU counts is driven by:
 Measured from dual-key mutual accepted flow at 50 concurrent VUs.
 Full 7-step Accountable Signoff chain proven end-to-end.
 
-| Step | p50 | min | Notes |
-|------|-----|-----|-------|
-| **1. Handshake create** | **236ms** | 194ms | Single RPC (create_handshake_atomic) |
-| **2-3. Present (both parties)** | **679ms** | 580ms | Dual-key auth, 2 separate presents |
-| **4. Verify (accepted)** | **339ms** | 281ms | Reads + write RPC (verify_handshake_writes) |
-| **5. Challenge** | **260ms** | 219ms | Policy check + event + challenge insert |
-| **6. Attest** | **152ms** | 128ms | Event + attestation insert |
-| **7. Consume** | included | | RPC (consume_signoff_atomic) |
-| **Full E2E flow** | **1,695ms** | 1,491ms | All 7 steps, 35.4 req/s |
+| Step | p50 | min | p90 |
+|------|-----|-----|-----|
+| **1. Create** | **253ms** | 211ms | 336ms |
+| **2-3. Present (dual-key)** | **710ms** | 605ms | 887ms |
+| **4. Verify (accepted)** | **351ms** | 294ms | 471ms |
+| **5. Challenge** | **274ms** | 230ms | 352ms |
+| **6. Attest** | **274ms** | 232ms | 346ms |
+| **7. Consume** | **201ms** | 167ms | 253ms |
+| **Full E2E flow** | **2,108ms** | 1,837ms | 10,372ms |
+
+**Error rate: 0.0%. Checks: 6,524 passed, 0 failed. Throughput: 36 req/s.**
 
 ### Handshake Create (isolated, 50 VUs)
 
