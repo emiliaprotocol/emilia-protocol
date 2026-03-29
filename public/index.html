@@ -21,14 +21,12 @@
   --card:#0F172A;
   --card-h:#1a2238;
   --brd:rgba(255,255,255,0.06);
-  --brd-gold:rgba(212,175,55,0.25);
+  --brd-accent:rgba(255,255,255,0.08);
   --t1:#F8FAFC;
   --t2:#94A3B8;
   --t3:#64748B;
-  --gold:#22C55E;
-  --gold-bg:rgba(212,175,55,0.08);
-  --blue:#3B82F6;
   --green:#22C55E;
+  --blue:#3B82F6;
   --sans:'IBM Plex Sans',sans-serif;
   --mono:'IBM Plex Mono',monospace;
 }
@@ -41,7 +39,7 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;height:60px;display:flex;ali
 .nav-logo{font-family:var(--mono);font-weight:700;font-size:14px;color:var(--t1);letter-spacing:3px;text-decoration:none;display:flex;align-items:center;gap:10px;text-transform:uppercase;flex-shrink:0}
 .nav-links{display:flex;align-items:center;gap:22px}
 .nav-links a{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--t2);text-decoration:none;transition:color 0.2s;letter-spacing:1px;text-transform:uppercase}
-.nav-links a:hover{color:var(--gold)}
+.nav-links a:hover{color:var(--green)}
 /* Animated E prongs — continuous 3s breathing cycle */
 .e-prong{transform-origin:left center;will-change:transform}
 .e-top{animation:prong-breathe 3s ease-in-out infinite}
@@ -51,34 +49,35 @@ nav{position:fixed;top:0;left:0;right:0;z-index:100;height:60px;display:flex;ali
 .nav-logo:hover .e-top{animation-duration:1.2s}
 .nav-logo:hover .e-mid{animation-duration:1.2s}
 .nav-logo:hover .e-bot{animation-duration:1.2s}
-.btn-outline-gold{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--gold);border:1px solid var(--gold);padding:8px 18px;border-radius:8px;text-decoration:none;transition:background 0.2s,color 0.2s;background:transparent;letter-spacing:1px;text-transform:uppercase}
-.btn-outline-gold:hover{background:var(--gold);color:var(--bg)}
+.btn-outline-gold{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--green);border:1px solid var(--green);padding:8px 18px;border-radius:8px;text-decoration:none;transition:background 0.2s,color 0.2s;background:transparent;letter-spacing:1px;text-transform:uppercase}
+.btn-outline-gold:hover{background:var(--green);color:var(--bg)}
 .gh-star{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--t2);text-decoration:none;padding:6px 14px;border:1px solid var(--brd);border-radius:4px;transition:all 0.2s;letter-spacing:1px}
-.gh-star:hover{border-color:var(--brd-gold);color:var(--t1)}
+.gh-star:hover{border-color:var(--brd-accent);color:var(--t1)}
 .gh-star svg{width:14px;height:14px}
 
 /* LAYOUT */
 .container{max-width:1200px;margin:0 auto;padding:0 40px}
 section{padding:120px 0}
-.divider{height:1px;background:linear-gradient(90deg,transparent 0%,var(--brd-gold) 30%,rgba(212,175,55,0.45) 50%,var(--brd-gold) 70%,transparent 100%);background-size:200% 100%;max-width:600px;margin:0 auto;animation:divider-shimmer 8s linear infinite}
-@keyframes divider-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.divider{height:1px;background:linear-gradient(90deg,transparent 0%,var(--brd) 30%,rgba(255,255,255,0.1) 50%,var(--brd) 70%,transparent 100%);max-width:600px;margin:0 auto}
 
 /* TYPOGRAPHY */
-.eyebrow{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:16px}
+.eyebrow{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:3px;text-transform:uppercase;color:var(--green);margin-bottom:16px}
 .section-title{font-family:var(--sans);font-weight:700;font-size:clamp(28px,3.5vw,42px);letter-spacing:-1px;line-height:1.15;margin-bottom:20px;color:var(--t1)}
 .section-desc{font-size:16px;color:var(--t2);max-width:620px;line-height:1.7}
 
 /* BUTTONS */
-.btn-gold-outline{font-family:var(--sans);font-size:14px;font-weight:500;color:var(--gold);border:1px solid var(--brd-gold);padding:14px 28px;border-radius:4px;text-decoration:none;transition:all 0.2s;background:transparent;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
-.btn-gold-outline:hover{background:var(--gold);color:var(--bg)}
+.btn-gold-outline{font-family:var(--sans);font-size:14px;font-weight:500;color:var(--green);border:1px solid var(--brd-accent);padding:14px 28px;border-radius:4px;text-decoration:none;transition:all 0.2s;background:transparent;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.btn-gold-outline:hover{background:var(--green);color:var(--bg)}
 .btn-ghost{font-family:var(--sans);font-size:14px;font-weight:400;color:var(--t2);border:1px solid var(--brd);padding:14px 28px;border-radius:4px;text-decoration:none;transition:all 0.2s;background:transparent;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
 .btn-ghost:hover{color:var(--t1);border-color:rgba(255,255,255,0.15)}
-.btn-gold-solid{font-family:var(--sans);font-size:14px;font-weight:600;color:var(--bg);background:var(--gold);border:none;padding:14px 28px;border-radius:4px;text-decoration:none;transition:all 0.2s;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
+.btn-gold-solid{font-family:var(--sans);font-size:14px;font-weight:600;color:var(--bg);background:var(--green);border:none;padding:14px 28px;border-radius:4px;text-decoration:none;transition:all 0.2s;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
 .btn-gold-solid:hover{opacity:0.9;transform:translateY(-1px)}
+.btn-gold-outline:focus-visible,.btn-ghost:focus-visible,.btn-gold-solid:focus-visible,.btn-outline-gold:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.btn-gold-outline:active,.btn-ghost:active,.btn-gold-solid:active,.btn-outline-gold:active{transform:scale(0.97)}
 
 /* HERO */
 .hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:140px 40px 80px}
-.hero-label{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:32px}
+.hero-label{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:3px;text-transform:uppercase;color:var(--green);margin-bottom:32px}
 .hero h1{font-family:var(--sans);font-weight:700;font-size:clamp(48px,6vw,80px);letter-spacing:-2px;line-height:1.05;margin-bottom:24px}
 .hero-sub{font-size:18px;font-weight:300;color:var(--t2);max-width:620px;line-height:1.7;margin:0 auto 40px}
 .hero-ctas{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:64px}
@@ -92,15 +91,15 @@ section{padding:120px 0}
 .problem-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:40px;margin-top:48px}
 .problem-item h3{font-family:var(--sans);font-weight:600;font-size:16px;margin-bottom:6px;color:var(--t1)}
 .problem-item p{font-size:14px;color:var(--t2);line-height:1.6}
-.problem-item::before{content:'';display:block;width:24px;height:1px;background:var(--gold);margin-bottom:16px}
+.problem-item::before{content:'';display:block;width:24px;height:1px;background:var(--green);margin-bottom:16px}
 
 /* BUYER CARDS */
 .buyer-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-top:48px}
-.buyer-card{background:var(--card);border:1px solid var(--brd);border-radius:6px;padding:36px;transition:transform 0.3s ease,box-shadow 0.3s ease,background 0.3s ease,border-color 0.3s ease;border-top:2px solid transparent}
-.buyer-card:hover{background:var(--card-h);transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,0.25),0 4px 12px rgba(212,175,55,0.06);border-top-color:var(--gold)}
+.buyer-card{background:var(--card);border:1px solid var(--brd);border-radius:8px;padding:36px;transition:transform 0.3s ease,box-shadow 0.3s ease,background 0.3s ease,border-color 0.3s ease;border-top:2px solid transparent}
+.buyer-card:hover{background:var(--card-h);transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,0.25),0 4px 12px rgba(34,197,94,0.06);border-top-color:var(--green)}
 .buyer-card h3{font-family:var(--sans);font-weight:600;font-size:18px;margin-bottom:10px}
 .buyer-card p{font-size:14px;color:var(--t2);line-height:1.6;margin-bottom:16px}
-.card-link{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--gold);text-decoration:none;transition:opacity 0.2s}
+.card-link{font-family:var(--sans);font-size:13px;font-weight:500;color:var(--green);text-decoration:none;transition:opacity 0.2s}
 .card-link:hover{opacity:0.7}
 
 /* BINDINGS */
@@ -120,7 +119,7 @@ section{padding:120px 0}
 .layers-list{margin-top:48px}
 .layer-item{display:flex;align-items:center;gap:24px;padding:20px 0;border-bottom:1px solid var(--brd)}
 .layer-item:last-child{border-bottom:none}
-.layer-badge{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--gold);min-width:140px;flex-shrink:0}
+.layer-badge{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--green);min-width:140px;flex-shrink:0}
 .layer-name{font-family:var(--sans);font-weight:600;font-size:16px;min-width:220px;flex-shrink:0}
 .layer-desc{font-size:14px;color:var(--t2)}
 
@@ -137,7 +136,7 @@ footer{padding:48px 40px;text-align:center}
 .footer-links a:hover{color:var(--t2)}
 
 /* AMBIENT GLOW — refined, not neon */
-.hero::before{content:'';position:absolute;top:20%;left:50%;transform:translateX(-50%);width:800px;height:400px;background:radial-gradient(ellipse,rgba(212,175,55,0.04) 0%,rgba(59,130,246,0.02) 40%,transparent 70%);pointer-events:none;animation:ambient-breathe 8s ease-in-out infinite}
+.hero::before{content:'';position:absolute;top:20%;left:50%;transform:translateX(-50%);width:800px;height:400px;background:radial-gradient(ellipse,rgba(34,197,94,0.03) 0%,rgba(59,130,246,0.02) 40%,transparent 70%);pointer-events:none;animation:ambient-breathe 8s ease-in-out infinite}
 @keyframes ambient-breathe{0%,100%{opacity:0.6;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.05)}}
 
 /* HERO ENTRANCE */
@@ -151,18 +150,18 @@ footer{padding:48px 40px;text-align:center}
 
 /* CARD HOVER MICRO-INTERACTIONS */
 .buyer-card{position:relative;overflow:hidden}
-.buyer-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:0;transition:opacity 0.3s}
+.buyer-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--green),transparent);opacity:0;transition:opacity 0.3s}
 .buyer-card:hover::before{opacity:1}
 
 .method-tag{transition:all 0.2s}
-.method-tag:hover{border-color:var(--brd-gold);color:var(--gold)}
+.method-tag:hover{border-color:var(--brd-accent);color:var(--green)}
 
 /* STAT COUNTER ANIMATION */
 .stat-value{opacity:0;animation:stat-enter 0.6s 0.5s ease both}
 .stat-value:nth-child(1){animation-delay:0.5s}
 @keyframes stat-enter{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
-/* GOLD LINE ACCENT — fade in on scroll, then shimmer */
+/* DIVIDER — fade in on scroll */
 .divider{opacity:0;transform:scaleX(0);transition:opacity 0.8s ease,transform 0.8s ease}
 .divider.visible{opacity:1;transform:scaleX(1)}
 
@@ -171,7 +170,7 @@ nav{transition:box-shadow 0.3s}
 nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
 
 /* BINDING NUMBER GLOW ON SCROLL */
-.binding-item.visible .binding-num{color:var(--gold);transition:color 0.4s 0.2s}
+.binding-item.visible .binding-num{color:var(--green);transition:color 0.4s 0.2s}
 
 /* FADE IN — enhanced with stagger */
 .fade-in{opacity:0;transform:translateY(16px);transition:opacity 0.6s ease,transform 0.6s ease}
@@ -432,12 +431,12 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
     <h2 class="section-title">When policy requires human ownership</h2>
     <p class="section-desc">EP can require a named responsible human to explicitly assume responsibility for the exact action before execution. The signoff is cryptographically bound to the action context, the policy, and the signer's identity.</p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:32px;max-width:600px">
-      <div style="padding:24px;border:1px solid var(--brd);border-radius:6px">
+      <div style="padding:24px;border:1px solid var(--brd);border-radius:8px">
         <div style="font-family:var(--mono);font-size:11px;color:var(--t3);letter-spacing:2px;margin-bottom:10px">MFA</div>
         <p style="font-size:14px;color:var(--t2);line-height:1.6">Proves user presence.<br>Says nothing about the action.</p>
       </div>
-      <div style="padding:24px;border:1px solid var(--brd-gold);border-radius:6px;background:var(--gold-bg)">
-        <div style="font-family:var(--mono);font-size:11px;color:var(--gold);letter-spacing:2px;margin-bottom:10px">ACCOUNTABLE SIGNOFF</div>
+      <div style="padding:24px;border:1px solid var(--brd-accent);border-radius:8px;background:rgba(34,197,94,0.04)">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--green);letter-spacing:2px;margin-bottom:10px">ACCOUNTABLE SIGNOFF</div>
         <p style="font-size:14px;color:var(--t1);line-height:1.6">Proves action-specific responsibility.<br>Bound to the exact operation.</p>
       </div>
     </div>
@@ -498,15 +497,15 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
     <p class="section-desc" style="margin-bottom:32px">For teams not ready to redesign high-risk workflows immediately, Emilia Eye provides a lightweight warning layer that flags when stricter EP controls should apply.</p>
     <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:32px;max-width:620px">
       <div style="display:flex;gap:12px;align-items:baseline">
-        <span style="color:var(--gold);font-size:14px;flex-shrink:0">+</span>
+        <span style="color:var(--green);font-size:14px;flex-shrink:0">+</span>
         <span style="font-size:15px;color:var(--t2);line-height:1.6">Lightweight warning-first deployment</span>
       </div>
       <div style="display:flex;gap:12px;align-items:baseline">
-        <span style="color:var(--gold);font-size:14px;flex-shrink:0">+</span>
+        <span style="color:var(--green);font-size:14px;flex-shrink:0">+</span>
         <span style="font-size:15px;color:var(--t2);line-height:1.6">Explainable reasons, not opaque scores</span>
       </div>
       <div style="display:flex;gap:12px;align-items:baseline">
-        <span style="color:var(--gold);font-size:14px;flex-shrink:0">+</span>
+        <span style="color:var(--green);font-size:14px;flex-shrink:0">+</span>
         <span style="font-size:15px;color:var(--t2);line-height:1.6">Direct escalation into EP Handshake and Accountable Signoff</span>
       </div>
     </div>
@@ -558,15 +557,15 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
     <h2 class="section-title">Why banks and agencies buy now</h2>
     <div style="display:grid;grid-template-columns:1fr;gap:16px;margin-top:32px;max-width:760px">
       <div style="display:flex;gap:16px;align-items:baseline">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--gold);flex-shrink:0">01</span>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--green);flex-shrink:0">01</span>
         <p style="font-size:16px;color:var(--t2);line-height:1.7">Fraud is moving inside approved-looking workflows. Authenticated users, valid sessions, legitimate tools -- the attack surface is the action itself.</p>
       </div>
       <div style="display:flex;gap:16px;align-items:baseline">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--gold);flex-shrink:0">02</span>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--green);flex-shrink:0">02</span>
         <p style="font-size:16px;color:var(--t2);line-height:1.7">Action-level control is the missing layer between identity and execution. Authentication says who. EP says whether this exact action should proceed.</p>
       </div>
       <div style="display:flex;gap:16px;align-items:baseline">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--gold);flex-shrink:0">03</span>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--green);flex-shrink:0">03</span>
         <p style="font-size:16px;color:var(--t2);line-height:1.7">EP proves what happened, who owned the decision, and why the action was allowed -- reconstructable evidence for audit, compliance, and legal defensibility.</p>
       </div>
     </div>

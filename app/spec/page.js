@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import SiteNav from '@/components/SiteNav';
+import SiteFooter from '@/components/SiteFooter';
 
 export const metadata = {
   title: 'EP Core RFC v1.0 — EMILIA Protocol Specification',
@@ -117,6 +118,7 @@ export default function SpecPage() {
           EMILIA Protocol — EP Core RFC v1.0 — Apache 2.0 License
         </div>
       </div>
+      <SiteFooter />
     </>
   );
 }

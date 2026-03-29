@@ -9,15 +9,15 @@ const s = {
   h1: { fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 8, color: '#e8eaf0' },
   subtitle: { fontSize: 14, color: '#7a809a', marginBottom: 32 },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 },
-  statCard: { background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '20px 24px' },
+  statCard: { background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '20px 24px' },
   statLabel: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: '#7a809a', marginBottom: 8 },
   statValue: { fontSize: 28, fontWeight: 700, letterSpacing: -1 },
   tabs: { display: 'flex', gap: 0, marginBottom: 24, borderBottom: '1px solid rgba(255,255,255,0.06)' },
   tab: (active) => ({ padding: '10px 20px', fontSize: 13, fontWeight: 500, color: active ? '#e8eaf0' : '#4a4f6a', background: 'none', border: 'none', borderBottom: active ? '2px solid #22C55E' : '2px solid transparent', cursor: 'pointer', fontFamily: "'IBM Plex Sans', sans-serif" }),
-  card: { background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: 24, marginBottom: 16 },
+  card: { background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: 24, marginBottom: 16 },
   alertCard: (severity) => {
     const borderMap = { critical: 'rgba(248,113,113,0.3)', high: 'rgba(248,113,113,0.15)', medium: 'rgba(34,197,94,0.15)', low: 'rgba(59,130,246,0.1)' };
-    return { ...{ background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: 20, marginBottom: 12 }, borderLeft: `3px solid ${borderMap[severity] || 'rgba(255,255,255,0.06)'}` };
+    return { ...{ background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: 20, marginBottom: 12 }, borderLeft: `3px solid ${borderMap[severity] || 'rgba(255,255,255,0.06)'}` };
   },
   alertHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   alertTitle: { fontSize: 14, fontWeight: 600 },

@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import SiteNav from '@/components/SiteNav';
+import SiteFooter from '@/components/SiteFooter';
+import { styles, cta, color, grid, font, radius } from '@/lib/tokens';
 
 export default function GovernmentPackPage() {
   const [form, setForm] = useState({ name:'', org:'', title:'', email:'', surface:'', problem:'', notes:'' });
@@ -25,23 +27,6 @@ export default function GovernmentPackPage() {
     setSubmitting(false);
   }
 
-  const s = {
-    page: { minHeight: '100vh', background: '#020617', color: '#F8FAFC', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
-    section: { maxWidth: 760, margin: '0 auto', padding: '80px 24px' },
-    sectionAlt: { background: '#0F172A', borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
-    eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#3B82F6', marginBottom: 16 },
-    h1: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 700, letterSpacing: -1, marginBottom: 16, lineHeight: 1.1 },
-    h2: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 24, fontWeight: 700, letterSpacing: -0.5, marginBottom: 16 },
-    body: { fontSize: 16, color: '#94A3B8', lineHeight: 1.75, marginBottom: 24 },
-    card: { background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '24px 28px' },
-    cardTitle: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#F8FAFC', marginBottom: 6 },
-    cardBody: { fontSize: 14, color: '#94A3B8', lineHeight: 1.65 },
-    cta: { display: 'inline-block', padding: '12px 28px', borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer', border: 'none' },
-    input: { width: '100%', padding: '12px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#0F172A', color: '#F8FAFC', fontSize: 15, fontFamily: 'inherit', outline: 'none' },
-    label: { display: 'block', fontSize: 13, fontWeight: 600, color: '#94A3B8', marginBottom: 6, fontFamily: "'IBM Plex Mono', monospace", letterSpacing: 0.5 },
-    mono: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: '#3B82F6' },
-  };
-
   const FEATURES = [
     { title: 'Benefits payment redirect controls', body: 'Cryptographic handshake required before any payment destination change commits. The handshake binds the exact new destination, program, amount, and authorizing principal. No redirect executes without satisfied trust policy.' },
     { title: 'Operator override constraints', body: 'Every caseworker or system operator override produces a named signoff record. The signoff is bound to the exact action parameters, not a session-level approval. Override without accountability does not proceed.' },
@@ -51,31 +36,31 @@ export default function GovernmentPackPage() {
   ];
 
   return (
-    <div style={s.page}>
+    <div style={styles.page}>
       <SiteNav activePage="" />
 
       {/* Hero */}
-      <section style={{ ...s.section, paddingTop: 100, paddingBottom: 60 }}>
-        <div style={s.eyebrow}>Product / Government Control Pack</div>
-        <h1 style={s.h1}>Government Control Pack</h1>
-        <p style={{ ...s.body, maxWidth: 640 }}>
+      <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 60 }}>
+        <div style={styles.eyebrowBlue}>Product / Government Control Pack</div>
+        <h1 style={styles.h1}>Government Control Pack</h1>
+        <p style={{ ...styles.body, maxWidth: 640 }}>
           Pre-configured EP deployment for government fraud prevention.
         </p>
-        <a href="#pilot" style={{ ...s.cta, background: '#22C55E', color: '#020617' }}>Request Government Pilot</a>
+        <a href="#pilot" className="ep-cta" style={cta.primary}>Request Government Pilot</a>
       </section>
 
       {/* Features */}
-      <section style={s.sectionAlt}>
-        <div style={s.section}>
-          <h2 style={s.h2}>Included controls</h2>
-          <p style={s.body}>
+      <section style={styles.sectionAlt}>
+        <div style={styles.section}>
+          <h2 style={styles.h2}>Included controls</h2>
+          <p style={styles.body}>
             The Government Control Pack includes pre-configured policies, signoff workflows, and evidence formats designed for government fraud prevention. Deploy against a single trust surface in weeks, not months.
           </p>
-          <div style={{ display: 'grid', gap: 16 }}>
+          <div style={grid.stack}>
             {FEATURES.map((f, i) => (
-              <div key={i} style={s.card}>
-                <div style={s.cardTitle}>{f.title}</div>
-                <div style={s.cardBody}>{f.body}</div>
+              <div key={i} className="ep-card-hover" style={styles.card}>
+                <div style={styles.cardTitle}>{f.title}</div>
+                <div style={styles.cardBody}>{f.body}</div>
               </div>
             ))}
           </div>
@@ -83,12 +68,12 @@ export default function GovernmentPackPage() {
       </section>
 
       {/* Best first workflow */}
-      <section style={s.section}>
-        <h2 style={s.h2}>Best first workflow</h2>
-        <p style={s.body}>Start with the highest-impact trust surface. For most government deployments, that is payment destination change.</p>
-        <div style={{ ...s.card, border: '1px solid rgba(212,175,55,0.2)' }}>
-          <div style={{ ...s.cardTitle, color: '#22C55E', fontSize: 18, marginBottom: 10 }}>Payment destination change</div>
-          <div style={s.cardBody}>
+      <section style={styles.section}>
+        <h2 style={styles.h2}>Best first workflow</h2>
+        <p style={styles.body}>Start with the highest-impact trust surface. For most government deployments, that is payment destination change.</p>
+        <div className="ep-card-accent" style={{ ...styles.card, border: `1px solid ${color.border}` }}>
+          <div style={{ ...styles.cardTitle, color: color.green, fontSize: 18, marginBottom: 10 }}>Payment destination change</div>
+          <div style={styles.cardBody}>
             A benefits recipient, vendor, or disbursement target updates their bank account, routing number, or payment address. EP generates a cryptographic handshake binding the exact new destination, the requesting identity, the authorizing caseworker, and the applicable policy. If the handshake is not satisfied, the change does not execute. The signoff record is immutable and available to Inspector General auditors in real time.
           </div>
           <div style={{ marginTop: 16, display: 'grid', gap: 8 }}>
@@ -100,8 +85,8 @@ export default function GovernmentPackPage() {
               'Policy defines which changes require signoff based on risk class',
             ].map((item, i) => (
               <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <span style={{ color: '#22C55E', fontSize: 14, flexShrink: 0, marginTop: 1 }}>+</span>
-                <span style={{ fontSize: 14, color: '#94A3B8', lineHeight: 1.6 }}>{item}</span>
+                <span style={{ color: color.green, fontSize: 14, flexShrink: 0, marginTop: 1 }}>+</span>
+                <span style={{ fontSize: 14, color: color.t2, lineHeight: 1.6 }}>{item}</span>
               </div>
             ))}
           </div>
@@ -109,38 +94,38 @@ export default function GovernmentPackPage() {
       </section>
 
       {/* Pilot form */}
-      <section id="pilot" style={s.sectionAlt}>
-        <div style={s.section}>
-          <h2 style={s.h2}>Request Government Pilot</h2>
+      <section id="pilot" style={styles.sectionAlt}>
+        <div style={styles.section}>
+          <h2 style={styles.h2}>Request Government Pilot</h2>
           {submitted ? (
-            <div style={{ ...s.card, textAlign: 'center', padding: 40 }}>
-              <div style={{ fontSize: 20, fontWeight: 700, color: '#22C55E', marginBottom: 8 }}>Thank you</div>
-              <p style={{ color: '#94A3B8', fontSize: 15 }}>We review all inquiries personally and will follow up if there is a fit.</p>
+            <div style={{ ...styles.card, textAlign: 'center', padding: 40 }}>
+              <div style={{ fontSize: 20, fontWeight: 700, color: color.green, marginBottom: 8 }}>Thank you</div>
+              <p style={{ color: color.t2, fontSize: 15 }}>We review all inquiries personally and will follow up if there is a fit.</p>
             </div>
           ) : (
-            <div style={s.card}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div style={styles.card}>
+              <div style={grid.cols2}>
                 {[['name','Name'],['org','Agency / Organization'],['title','Title'],['email','Email']].map(([k,label]) => (
                   <div key={k}>
-                    <label style={s.label}>{label}</label>
-                    <input style={s.input} value={form[k]} onChange={e => update(k, e.target.value)} />
+                    <label style={styles.label}>{label}</label>
+                    <input className="ep-input" style={styles.input} value={form[k]} onChange={e => update(k, e.target.value)} />
                   </div>
                 ))}
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={s.label}>Trust surface of interest</label>
-                  <input style={s.input} placeholder="e.g. benefits disbursement, payment routing, operator approvals" value={form.surface} onChange={e => update('surface', e.target.value)} />
+                  <label style={styles.label}>Trust surface of interest</label>
+                  <input className="ep-input" style={styles.input} placeholder="e.g. benefits disbursement, payment routing, operator approvals" value={form.surface} onChange={e => update('surface', e.target.value)} />
                 </div>
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={s.label}>Problem description</label>
-                  <textarea style={{ ...s.input, minHeight: 80, resize: 'vertical' }} value={form.problem} onChange={e => update('problem', e.target.value)} />
+                  <label style={styles.label}>Problem description</label>
+                  <textarea className="ep-input" style={{ ...styles.input, minHeight: 80, resize: 'vertical' }} value={form.problem} onChange={e => update('problem', e.target.value)} />
                 </div>
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={s.label}>Notes</label>
-                  <input style={s.input} value={form.notes} onChange={e => update('notes', e.target.value)} />
+                  <label style={styles.label}>Notes</label>
+                  <input className="ep-input" style={styles.input} value={form.notes} onChange={e => update('notes', e.target.value)} />
                 </div>
               </div>
-              {error && <p style={{ color: '#f87171', fontSize: 13, marginTop: 12 }}>{error}</p>}
-              <button onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...s.cta, background: !form.name || !form.email ? '#1a1e30' : '#22C55E', color: !form.name || !form.email ? '#64748B' : '#020617', marginTop: 20, width: '100%', textAlign: 'center' }}>
+              {error && <p style={{ color: color.red, fontSize: 13, marginTop: 12 }}>{error}</p>}
+              <button className="ep-cta" onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...(!form.name || !form.email ? cta.disabled : cta.primary), marginTop: 20, width: '100%', textAlign: 'center' }}>
                 {submitting ? 'Submitting...' : 'Request Government Pilot'}
               </button>
             </div>
@@ -148,14 +133,7 @@ export default function GovernmentPackPage() {
         </div>
       </section>
 
-      <footer style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '40px 40px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#64748B', letterSpacing: 1 }}>EMILIA PROTOCOL · APACHE 2.0</div>
-        <div style={{ display: 'flex', gap: 24 }}>
-          {[['/governance','Governance'],['/partners','Partners'],['mailto:team@emiliaprotocol.ai','Contact'],['/investors','Investor Inquiries']].map(([href, label]) => (
-            <a key={label} href={href} style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#64748B', textDecoration: 'none', letterSpacing: 1, textTransform: 'uppercase' }}>{label}</a>
-          ))}
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import './ep.css';
+
 export const metadata = {
   title: 'EMILIA Protocol — Trust Before High-Risk Action',
   description: 'Protocol-grade trust infrastructure for high-risk action enforcement. Bind actor identity, authority, policy, exact action context, replay resistance, one-time consumption, and accountable signoff before execution.',

@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import SiteNav from '@/components/SiteNav';
+import SiteFooter from '@/components/SiteFooter';
+import { styles, cta, color, grid, font, radius } from '@/lib/tokens';
 
 export default function AccountableSignoffPage() {
   const [form, setForm] = useState({ name:'', org:'', title:'', email:'', surface:'', problem:'', notes:'' });
@@ -24,24 +26,6 @@ export default function AccountableSignoffPage() {
     } catch (err) { setError(err.message); }
     setSubmitting(false);
   }
-
-  const s = {
-    page: { minHeight: '100vh', background: '#020617', color: '#F8FAFC', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
-    section: { maxWidth: 760, margin: '0 auto', padding: '80px 24px' },
-    sectionAlt: { background: '#0F172A', borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' },
-    eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#3B82F6', marginBottom: 16 },
-    h1: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 700, letterSpacing: -1, marginBottom: 16, lineHeight: 1.1 },
-    h2: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 24, fontWeight: 700, letterSpacing: -0.5, marginBottom: 16 },
-    h3: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 18, fontWeight: 700, letterSpacing: -0.3, marginBottom: 10, color: '#F8FAFC' },
-    body: { fontSize: 16, color: '#94A3B8', lineHeight: 1.75, marginBottom: 24 },
-    card: { background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '24px 28px' },
-    cardTitle: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 16, fontWeight: 700, color: '#F8FAFC', marginBottom: 6 },
-    cardBody: { fontSize: 14, color: '#94A3B8', lineHeight: 1.65 },
-    cta: { display: 'inline-block', padding: '12px 28px', borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer', border: 'none' },
-    input: { width: '100%', padding: '12px 16px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: '#0F172A', color: '#F8FAFC', fontSize: 15, fontFamily: 'inherit', outline: 'none' },
-    label: { display: 'block', fontSize: 13, fontWeight: 600, color: '#94A3B8', marginBottom: 6, fontFamily: "'IBM Plex Mono', monospace", letterSpacing: 0.5 },
-    mono: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: '#3B82F6' },
-  };
 
   const METHODS = [
     { title: 'Passkey', body: 'FIDO2/WebAuthn credential bound to device hardware. Phishing-resistant, biometric-gated. The strongest available consumer-grade signoff method.' },
@@ -66,47 +50,47 @@ export default function AccountableSignoffPage() {
   ];
 
   return (
-    <div style={s.page}>
+    <div style={styles.page}>
       <SiteNav activePage="" />
 
       {/* Hero */}
-      <section style={{ ...s.section, paddingTop: 100, paddingBottom: 60 }}>
-        <div style={s.eyebrow}>Product / Accountable Signoff</div>
-        <h1 style={s.h1}>Accountable Signoff</h1>
-        <p style={{ ...s.body, maxWidth: 640 }}>
+      <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 60 }}>
+        <div style={styles.eyebrowBlue}>Product / Accountable Signoff</div>
+        <h1 style={styles.h1}>Accountable Signoff</h1>
+        <p style={{ ...styles.body, maxWidth: 640 }}>
           When policy requires human ownership, EP requires a named responsible human to explicitly assume responsibility for the exact action before execution.
         </p>
-        <a href="#pilot" style={{ ...s.cta, background: '#22C55E', color: '#020617' }}>Request Pilot</a>
+        <a href="#pilot" className="ep-cta" style={cta.primary}>Request Pilot</a>
       </section>
 
       {/* Not MFA */}
-      <section style={s.sectionAlt}>
-        <div style={s.section}>
-          <h2 style={s.h2}>Not MFA. Not human-in-the-loop. Named human accountability.</h2>
-          <p style={s.body}>
+      <section style={styles.sectionAlt}>
+        <div style={styles.section}>
+          <h2 style={styles.h2}>Not MFA. Not human-in-the-loop. Named human accountability.</h2>
+          <p style={styles.body}>
             Multi-factor authentication proves identity. Human-in-the-loop confirms a step happened. Neither binds a named human to a specific action with cryptographic evidence.
           </p>
-          <div style={{ display: 'grid', gap: 16 }}>
-            <div style={s.card}>
-              <div style={s.cardTitle}>MFA</div>
-              <div style={s.cardBody}>Proves you are who you claim to be. Does not prove you authorized <span style={s.mono}>this specific action</span> with <span style={s.mono}>these specific parameters</span>. A session authenticated with MFA can still execute unauthorized actions.</div>
+          <div style={grid.stack}>
+            <div className="ep-card-hover" style={styles.card}>
+              <div style={styles.cardTitle}>MFA</div>
+              <div style={styles.cardBody}>Proves you are who you claim to be. Does not prove you authorized <span style={styles.mono}>this specific action</span> with <span style={styles.mono}>these specific parameters</span>. A session authenticated with MFA can still execute unauthorized actions.</div>
             </div>
-            <div style={s.card}>
-              <div style={s.cardTitle}>Human-in-the-loop</div>
-              <div style={s.cardBody}>Confirms a human clicked a button. Does not bind a <span style={s.mono}>named principal</span> to the <span style={s.mono}>exact action context</span>. The audit trail shows a confirmation happened, not who is accountable for what.</div>
+            <div className="ep-card-hover" style={styles.card}>
+              <div style={styles.cardTitle}>Human-in-the-loop</div>
+              <div style={styles.cardBody}>Confirms a human clicked a button. Does not bind a <span style={styles.mono}>named principal</span> to the <span style={styles.mono}>exact action context</span>. The audit trail shows a confirmation happened, not who is accountable for what.</div>
             </div>
-            <div style={{ ...s.card, border: '1px solid rgba(212,175,55,0.2)' }}>
-              <div style={{ ...s.cardTitle, color: '#22C55E' }}>Accountable Signoff</div>
-              <div style={s.cardBody}>A named human reviews the exact action parameters and explicitly assumes responsibility. The signoff is cryptographically bound to the <span style={s.mono}>action</span>, the <span style={s.mono}>principal</span>, the <span style={s.mono}>policy</span>, and the <span style={s.mono}>timestamp</span>. It is one-time consumable and replay-resistant.</div>
+            <div className="ep-card-accent" style={{ ...styles.card, border: `1px solid ${color.border}` }}>
+              <div style={{ ...styles.cardTitle, color: color.green }}>Accountable Signoff</div>
+              <div style={styles.cardBody}>A named human reviews the exact action parameters and explicitly assumes responsibility. The signoff is cryptographically bound to the <span style={styles.mono}>action</span>, the <span style={styles.mono}>principal</span>, the <span style={styles.mono}>policy</span>, and the <span style={styles.mono}>timestamp</span>. It is one-time consumable and replay-resistant.</div>
             </div>
           </div>
         </div>
       </section>
 
       {/* How it works */}
-      <section style={s.section}>
-        <h2 style={s.h2}>How it works</h2>
-        <p style={s.body}>Three steps. No ambiguity about who authorized what.</p>
+      <section style={styles.section}>
+        <h2 style={styles.h2}>How it works</h2>
+        <p style={styles.body}>Three steps. No ambiguity about who authorized what.</p>
         <div style={{ display: 'grid', gap: 20 }}>
           {[
             { step: '01', label: 'Challenge', detail: 'The system presents the exact action context to the named principal: what will happen, to what, with what parameters. The challenge is cryptographically bound to the action.' },
@@ -114,10 +98,10 @@ export default function AccountableSignoffPage() {
             { step: '03', label: 'Consume', detail: 'The attestation is consumed exactly once. The action executes. The signoff record is immutable. The attestation cannot be replayed for a different action, a different amount, or a different target.' },
           ].map((s2, i) => (
             <div key={i} style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
-              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 28, fontWeight: 700, color: '#22C55E', flexShrink: 0, lineHeight: 1, minWidth: 44 }}>{s2.step}</div>
+              <div style={{ fontFamily: font.mono, fontSize: 28, fontWeight: 700, color: color.green, flexShrink: 0, lineHeight: 1, minWidth: 44 }}>{s2.step}</div>
               <div>
-                <div style={{ ...s.cardTitle, fontSize: 17, marginBottom: 4 }}>{s2.label}</div>
-                <div style={s.cardBody}>{s2.detail}</div>
+                <div style={{ ...styles.cardTitle, fontSize: 17, marginBottom: 4 }}>{s2.label}</div>
+                <div style={styles.cardBody}>{s2.detail}</div>
               </div>
             </div>
           ))}
@@ -125,15 +109,15 @@ export default function AccountableSignoffPage() {
       </section>
 
       {/* Methods */}
-      <section style={s.sectionAlt}>
-        <div style={s.section}>
-          <h2 style={s.h2}>Signoff methods</h2>
-          <p style={s.body}>EP supports multiple attestation methods. Policy determines which methods are acceptable for each action risk class.</p>
-          <div style={{ display: 'grid', gap: 16 }}>
+      <section style={styles.sectionAlt}>
+        <div style={styles.section}>
+          <h2 style={styles.h2}>Signoff methods</h2>
+          <p style={styles.body}>EP supports multiple attestation methods. Policy determines which methods are acceptable for each action risk class.</p>
+          <div style={grid.stack}>
             {METHODS.map((m, i) => (
-              <div key={i} style={s.card}>
-                <div style={s.cardTitle}>{m.title}</div>
-                <div style={s.cardBody}>{m.body}</div>
+              <div key={i} className="ep-card-hover" style={styles.card}>
+                <div style={styles.cardTitle}>{m.title}</div>
+                <div style={styles.cardBody}>{m.body}</div>
               </div>
             ))}
           </div>
@@ -141,32 +125,32 @@ export default function AccountableSignoffPage() {
       </section>
 
       {/* When required */}
-      <section style={s.section}>
-        <h2 style={s.h2}>When signoff is required</h2>
-        <p style={s.body}>Policy defines when accountable signoff is required. These are the most common trigger surfaces.</p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+      <section style={styles.section}>
+        <h2 style={styles.h2}>When signoff is required</h2>
+        <p style={styles.body}>Policy defines when accountable signoff is required. These are the most common trigger surfaces.</p>
+        <div style={grid.auto(280)}>
           {WHEN_REQUIRED.map((w, i) => (
-            <div key={i} style={s.card}>
-              <div style={s.cardTitle}>{w.title}</div>
-              <div style={s.cardBody}>{w.body}</div>
+            <div key={i} className="ep-card-hover" style={styles.card}>
+              <div style={styles.cardTitle}>{w.title}</div>
+              <div style={styles.cardBody}>{w.body}</div>
             </div>
           ))}
         </div>
       </section>
 
       {/* Why it matters */}
-      <section style={s.sectionAlt}>
-        <div style={s.section}>
-          <h2 style={s.h2}>Why it matters</h2>
-          <p style={s.body}>Different environments need accountable signoff for different reasons. The mechanism is the same. The evidence it produces satisfies each context.</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+      <section style={styles.sectionAlt}>
+        <div style={styles.section}>
+          <h2 style={styles.h2}>Why it matters</h2>
+          <p style={styles.body}>Different environments need accountable signoff for different reasons. The mechanism is the same. The evidence it produces satisfies each context.</p>
+          <div style={grid.auto(280)}>
             {WHY_IT_MATTERS.map((w, i) => (
-              <div key={i} style={s.card}>
+              <div key={i} className="ep-card-hover" style={styles.card}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                  <span style={{ ...s.mono, background: '#0F172A', padding: '4px 10px', borderRadius: 6, fontSize: 11, letterSpacing: 1 }}>{w.icon}</span>
-                  <span style={s.cardTitle}>{w.context}</span>
+                  <span style={{ ...styles.mono, background: color.card, padding: '4px 10px', borderRadius: radius.sm, fontSize: 11, letterSpacing: 1 }}>{w.icon}</span>
+                  <span style={styles.cardTitle}>{w.context}</span>
                 </div>
-                <div style={s.cardBody}>{w.detail}</div>
+                <div style={styles.cardBody}>{w.detail}</div>
               </div>
             ))}
           </div>
@@ -174,51 +158,44 @@ export default function AccountableSignoffPage() {
       </section>
 
       {/* Pilot form */}
-      <section id="pilot" style={s.section}>
-        <h2 style={s.h2}>Request Pilot</h2>
+      <section id="pilot" style={styles.section}>
+        <h2 style={styles.h2}>Request Pilot</h2>
         {submitted ? (
-          <div style={{ ...s.card, textAlign: 'center', padding: 40 }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#22C55E', marginBottom: 8 }}>Thank you</div>
-            <p style={{ color: '#94A3B8', fontSize: 15 }}>We review all inquiries personally and will follow up if there is a fit.</p>
+          <div style={{ ...styles.card, textAlign: 'center', padding: 40 }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: color.green, marginBottom: 8 }}>Thank you</div>
+            <p style={{ color: color.t2, fontSize: 15 }}>We review all inquiries personally and will follow up if there is a fit.</p>
           </div>
         ) : (
-          <div style={s.card}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={styles.card}>
+            <div style={grid.cols2}>
               {[['name','Name'],['org','Organization'],['title','Title'],['email','Email']].map(([k,label]) => (
                 <div key={k}>
-                  <label style={s.label}>{label}</label>
-                  <input style={s.input} value={form[k]} onChange={e => update(k, e.target.value)} />
+                  <label style={styles.label}>{label}</label>
+                  <input className="ep-input" style={styles.input} value={form[k]} onChange={e => update(k, e.target.value)} />
                 </div>
               ))}
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={s.label}>Trust surface of interest</label>
-                <input style={s.input} placeholder="e.g. payment authorization, agent governance, privilege escalation" value={form.surface} onChange={e => update('surface', e.target.value)} />
+                <label style={styles.label}>Trust surface of interest</label>
+                <input className="ep-input" style={styles.input} placeholder="e.g. payment authorization, agent governance, privilege escalation" value={form.surface} onChange={e => update('surface', e.target.value)} />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={s.label}>Problem description</label>
-                <textarea style={{ ...s.input, minHeight: 80, resize: 'vertical' }} value={form.problem} onChange={e => update('problem', e.target.value)} />
+                <label style={styles.label}>Problem description</label>
+                <textarea className="ep-input" style={{ ...styles.input, minHeight: 80, resize: 'vertical' }} value={form.problem} onChange={e => update('problem', e.target.value)} />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={s.label}>Notes</label>
-                <input style={s.input} value={form.notes} onChange={e => update('notes', e.target.value)} />
+                <label style={styles.label}>Notes</label>
+                <input className="ep-input" style={styles.input} value={form.notes} onChange={e => update('notes', e.target.value)} />
               </div>
             </div>
-            {error && <p style={{ color: '#f87171', fontSize: 13, marginTop: 12 }}>{error}</p>}
-            <button onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...s.cta, background: !form.name || !form.email ? '#1a1e30' : '#22C55E', color: !form.name || !form.email ? '#64748B' : '#020617', marginTop: 20, width: '100%', textAlign: 'center' }}>
+            {error && <p style={{ color: color.red, fontSize: 13, marginTop: 12 }}>{error}</p>}
+            <button className="ep-cta" onClick={handleSubmit} disabled={submitting || !form.name || !form.email} style={{ ...(!form.name || !form.email ? cta.disabled : cta.primary), marginTop: 20, width: '100%', textAlign: 'center' }}>
               {submitting ? 'Submitting...' : 'Request Pilot'}
             </button>
           </div>
         )}
       </section>
 
-      <footer style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '40px 40px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#64748B', letterSpacing: 1 }}>EMILIA PROTOCOL · APACHE 2.0</div>
-        <div style={{ display: 'flex', gap: 24 }}>
-          {[['/governance','Governance'],['/partners','Partners'],['mailto:team@emiliaprotocol.ai','Contact'],['/investors','Investor Inquiries']].map(([href, label]) => (
-            <a key={label} href={href} style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: '#64748B', textDecoration: 'none', letterSpacing: 1, textTransform: 'uppercase' }}>{label}</a>
-          ))}
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

@@ -5,7 +5,7 @@ const s = {
   h1: { fontSize: 36, fontWeight: 700, letterSpacing: -0.5, lineHeight: 1.2, marginBottom: 16 },
   sub: { fontSize: 16, color: '#94A3B8', lineHeight: 1.6, marginBottom: 40 },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16, marginBottom: 48 },
-  card: { background: '#0F172A', border: '1px solid rgba(34,197,94,0.15)', borderRadius: 10, padding: 24 },
+  card: { background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: 24 },
   cardTitle: { fontSize: 15, fontWeight: 600, color: '#F8FAFC', marginBottom: 8 },
   cardBody: { fontSize: 13, color: '#94A3B8', lineHeight: 1.6 },
   label: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: '#22C55E', marginBottom: 8 },

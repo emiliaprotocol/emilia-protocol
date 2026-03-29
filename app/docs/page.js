@@ -1,6 +1,11 @@
-'use client';
-
 import SiteNav from '@/components/SiteNav';
+import SiteFooter from '@/components/SiteFooter';
+import { styles, color, font, radius } from '@/lib/tokens';
+
+export const metadata = {
+  title: 'Documentation | EMILIA Protocol',
+  description: 'Technical documentation, specifications, and integration guides for EP.',
+};
 
 const DOC_SECTIONS = [
   { title: 'Architecture', desc: 'System architecture, component topology, and deployment models.', href: '/spec' },
@@ -12,53 +17,32 @@ const DOC_SECTIONS = [
   { title: 'Guides', desc: 'Integration guides, SDK quickstarts, and tutorials.', href: '/quickstart' },
 ];
 
-const s = {
-  page: { minHeight: '100vh', background: '#020617', color: '#F8FAFC', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" },
-  section: { maxWidth: 900, margin: '0 auto', padding: '100px 24px 80px' },
-  eyebrow: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#22C55E', marginBottom: 16 },
-  h1: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 'clamp(32px, 5vw, 48px)', fontWeight: 700, letterSpacing: -1, marginBottom: 16, lineHeight: 1.1 },
-  body: { fontSize: 16, color: '#94A3B8', lineHeight: 1.75, marginBottom: 48, maxWidth: 620 },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 },
-  card: {
-    background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10,
-    padding: '28px 24px', textDecoration: 'none', color: '#F8FAFC',
-    transition: 'all 0.25s', display: 'block',
-  },
-  cardTitle: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 16, fontWeight: 700, marginBottom: 8 },
-  cardDesc: { fontSize: 14, color: '#94A3B8', lineHeight: 1.65, marginBottom: 12 },
-  cardLink: { fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, fontWeight: 500, color: '#3B82F6', letterSpacing: 1 },
-  extLinks: { marginTop: 48, padding: '32px 0', borderTop: '1px solid rgba(255,255,255,0.06)' },
-  extTitle: { fontFamily: "'IBM Plex Sans', sans-serif", fontSize: 18, fontWeight: 700, marginBottom: 16 },
-  extLink: { display: 'block', fontSize: 14, color: '#3B82F6', textDecoration: 'none', marginBottom: 8, transition: 'color 0.2s' },
-};
-
 export default function DocsPage() {
   return (
-    <div style={s.page}>
+    <div style={styles.page}>
       <SiteNav activePage="Docs" />
-      <div style={s.section}>
-        <div style={s.eyebrow}>Documentation</div>
-        <h1 style={s.h1}>EMILIA Protocol Docs</h1>
-        <p style={s.body}>Technical documentation, specifications, and integration guides for EP.</p>
-        <div style={s.grid}>
+      <div style={{ ...styles.sectionWide, paddingTop: 100, paddingBottom: 80, maxWidth: 900 }}>
+        <div style={styles.eyebrow}>Documentation</div>
+        <h1 style={styles.h1}>EMILIA Protocol Docs</h1>
+        <p style={{ ...styles.body, maxWidth: 620 }}>Technical documentation, specifications, and integration guides for EP.</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
           {DOC_SECTIONS.map(doc => (
-            <a key={doc.title} href={doc.href} style={s.card}
-              onMouseEnter={e => { e.currentTarget.style.background = '#1a2238'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#0F172A'; }}
-            >
-              <div style={s.cardTitle}>{doc.title}</div>
-              <div style={s.cardDesc}>{doc.desc}</div>
-              <span style={s.cardLink}>View &#8594;</span>
+            <a key={doc.title} href={doc.href} className="ep-card-hover" style={{ ...styles.card, textDecoration: 'none', color: color.t1, display: 'block' }}>
+              <div style={styles.cardTitle}>{doc.title}</div>
+              <div style={{ fontSize: 14, color: color.t2, lineHeight: 1.65, marginBottom: 12 }}>{doc.desc}</div>
+              <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 500, color: color.blue, letterSpacing: 1 }}>View &#8594;</span>
             </a>
           ))}
         </div>
-        <div style={s.extLinks}>
-          <div style={s.extTitle}>Additional Resources</div>
-          <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" rel="noopener noreferrer" style={s.extLink}>GitHub Repository</a>
-          <a href="/quickstart" style={s.extLink}>Quickstart Guide</a>
-          <a href="/governance" style={s.extLink}>Governance</a>
+        <div style={{ marginTop: 48, padding: '32px 0', borderTop: `1px solid ${color.border}` }}>
+          <div style={{ ...styles.h3, fontSize: 18 }}>Additional Resources</div>
+          <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" rel="noopener noreferrer" style={{ display: 'block', fontSize: 14, color: color.blue, textDecoration: 'none', marginBottom: 8 }}>GitHub Repository</a>
+          <a href="/quickstart" style={{ display: 'block', fontSize: 14, color: color.blue, textDecoration: 'none', marginBottom: 8 }}>Quickstart Guide</a>
+          <a href="/governance" style={{ display: 'block', fontSize: 14, color: color.blue, textDecoration: 'none', marginBottom: 8 }}>Governance</a>
         </div>
       </div>
+
+      <SiteFooter />
     </div>
   );
 }
