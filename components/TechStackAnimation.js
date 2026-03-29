@@ -42,13 +42,13 @@ function ProngSVG({ progress, color: prongColor }) {
   return (
     <svg width="52" height="52" viewBox="0 0 34 34" fill="none" style={{ opacity: interpolate(progress, [0, 0.3], [0, 1], { extrapolateRight: 'clamp' }) }}>
       <rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#elg2)" />
-      <rect x="9.5" y="5" width={interpolate(spread, [0, 1], [4, 16])} height="2.5" rx="1.25" fill="#3B82F6" />
+      <rect x="9.5" y="5" width={interpolate(spread, [0, 1], [4, 16])} height="2.5" rx="1.25" fill="#0C0A09" />
       <rect x="9.5" y="15.5" width={interpolate(spread, [0, 1], [4, 12])} height="2.5" rx="1.25" fill={prongColor} />
-      <rect x="9.5" y="26.5" width={interpolate(spread, [0, 1], [4, 14])} height="2.5" rx="1.25" fill="#3B82F6" />
+      <rect x="9.5" y="26.5" width={interpolate(spread, [0, 1], [4, 14])} height="2.5" rx="1.25" fill="#0C0A09" />
       <defs>
         <linearGradient id="elg2" x1="8" y1="5" x2="8" y2="29">
-          <stop offset="0%" stopColor="#3B82F6" />
-          <stop offset="100%" stopColor="#16A34A" />
+          <stop offset="0%" stopColor="#0C0A09" />
+          <stop offset="100%" stopColor="#B08D35" />
         </linearGradient>
       </defs>
     </svg>
@@ -118,7 +118,7 @@ function LayerRow({ layer, index, frame, fps, totalDuration }) {
         <div style={{ fontFamily: FONT_MONO, fontSize: 10, fontWeight: 500, letterSpacing: 2, color: layer.color, textTransform: 'uppercase' }}>
           {layer.label}
         </div>
-        <div style={{ fontFamily: FONT_SANS, fontSize: 18, fontWeight: 600, color: isActive ? '#0C0A09' : '#A8A29E', marginTop: 2 }}>
+        <div style={{ fontFamily: FONT_SANS, fontSize: 18, fontWeight: 600, color: isActive ? '#0C0A09' : '#A1A1AA', marginTop: 2 }}>
           {layer.verb}
         </div>
       </div>
@@ -128,7 +128,7 @@ function LayerRow({ layer, index, frame, fps, totalDuration }) {
           <DomainTag
             key={d}
             label={d}
-            color={isActive ? layer.color : '#A8A29E'}
+            color={isActive ? layer.color : '#A1A1AA'}
             delay={isActive ? layerStart + 12 + i * 6 : 0}
             frame={isActive ? frame : 0}
             fps={fps}
@@ -176,11 +176,11 @@ export function TechStackComposition() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, opacity: taglineOpacity }}>
           <ProngSVG progress={prongProgress} color={LAYERS[activeIndex].color} />
           <div style={{ fontFamily: FONT_MONO, fontSize: 14, letterSpacing: 0.5, color: '#0C0A09' }}>
-            <span style={{ color: activeIndex === 0 ? '#16A34A' : '#A8A29E' }}>Eye warns.</span>
+            <span style={{ color: activeIndex === 0 ? '#16A34A' : '#A1A1AA' }}>Eye warns.</span>
             {' '}
-            <span style={{ color: activeIndex === 1 ? '#3B82F6' : '#A8A29E' }}>EP verifies.</span>
+            <span style={{ color: activeIndex === 1 ? '#3B82F6' : '#A1A1AA' }}>EP verifies.</span>
             {' '}
-            <span style={{ color: activeIndex === 2 ? '#B08D35' : '#A8A29E' }}>Signoff owns.</span>
+            <span style={{ color: activeIndex === 2 ? '#B08D35' : '#A1A1AA' }}>Signoff owns.</span>
           </div>
         </div>
 

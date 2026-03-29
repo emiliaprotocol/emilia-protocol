@@ -1,24 +1,23 @@
 'use client';
 
-import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import { styles, cta, color, font, radius, grid } from '@/lib/tokens';
+import { styles, cta, color, font, radius } from '@/lib/tokens';
 
 const HeroAnimation = dynamic(() => import('@/components/HeroAnimation'), {
   ssr: false,
   loading: () => (
-    <div style={{ width: '100%', maxWidth: 580, height: 320, borderRadius: 6, border: `1px solid ${color.border}`, background: '#F5F5F4' }} />
+    <div style={{ width: '100%', maxWidth: 580, height: 320, borderRadius: 4, border: `1px solid ${color.border}`, background: '#F5F5F4' }} />
   ),
 });
 
 const STATS = [
-  { value: '1,511', label: 'Tests' },
-  { value: '19', label: 'Safety Theorems' },
-  { value: '85', label: 'Red Team Cases' },
-  { value: 'Formally', label: 'Verified' },
-  { value: 'Apache 2.0', label: 'License' },
+  { value: '1,511', label: 'tests' },
+  { value: '19', label: 'safety theorems' },
+  { value: '85', label: 'red team cases' },
+  { value: 'Formally', label: 'verified' },
+  { value: 'Apache 2.0', label: 'license' },
 ];
 
 const PROBLEMS = [
@@ -54,22 +53,50 @@ const DEPLOY_LAYERS = [
   { badge: 'VERTICAL', name: 'Vertical Packs', desc: 'Pre-built policy templates for government, financial services, and agent governance.' },
 ];
 
-function Divider() {
-  return <div style={{ height: 1, background: color.border, maxWidth: 600, margin: '0 auto' }} />;
-}
+const DEPLOY_STEPS = [
+  { color: '#16A34A', label: 'Start with Eye', body: 'Warning-only escalation. Flag when stricter controls should apply. No enforcement, no friction.' },
+  { color: '#3B82F6', label: 'Enforce with Handshake', body: 'Policy-bound pre-action trust enforcement. Canonical binding, replay resistance, one-time consumption.' },
+  { color: '#B08D35', label: 'Own with Signoff', body: 'Named human ownership when policy requires it. Not MFA. Cryptographically bound, action-specific accountability.' },
+];
+
+/* ─── Reusable layout primitives ─── */
 
 function Eyebrow({ children }) {
-  return <div style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 500, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 14 }}>{children}</div>;
+  return (
+    <div style={{
+      fontFamily: font.mono, fontSize: 10, fontWeight: 500,
+      letterSpacing: 2, textTransform: 'uppercase',
+      color: color.gold, marginBottom: 14,
+    }}>{children}</div>
+  );
 }
 
 function SectionTitle({ children }) {
-  return <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(28px, 3.5vw, 42px)', letterSpacing: -1, lineHeight: 1.15, marginBottom: 20, color: color.t1 }}>{children}</h2>;
+  return (
+    <h2 style={{
+      fontFamily: font.sans, fontWeight: 700,
+      fontSize: 'clamp(24px, 3vw, 36px)',
+      letterSpacing: -0.5, lineHeight: 1.2,
+      marginBottom: 16, color: color.t1,
+    }}>{children}</h2>
+  );
 }
 
-function Section({ children, alt, wide }) {
+function SectionDesc({ children }) {
   return (
-    <section style={alt ? { background: '#F5F5F4', borderTop: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` } : undefined}>
-      <div style={{ maxWidth: wide ? 1120 : 760, margin: '0 auto', padding: '100px 32px' }}>{children}</div>
+    <p style={{
+      fontSize: 16, color: color.t2,
+      maxWidth: 560, lineHeight: 1.7,
+    }}>{children}</p>
+  );
+}
+
+function Section({ children, wide }) {
+  return (
+    <section style={{ padding: '100px 0' }}>
+      <div style={{ maxWidth: wide ? 1120 : 1120, margin: '0 auto', padding: '0 32px' }}>
+        {children}
+      </div>
     </section>
   );
 }
@@ -81,38 +108,56 @@ export default function HomePage() {
 
       {/* ── HERO ── */}
       <section style={{ minHeight: '85vh', display: 'flex', alignItems: 'center', padding: '120px 0 80px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center', width: '100%', maxWidth: 1120, margin: '0 auto', padding: '0 32px' }}>
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80,
+          alignItems: 'center', width: '100%', maxWidth: 1120,
+          margin: '0 auto', padding: '0 32px',
+        }}>
           {/* Animation — left */}
           <div>
             <HeroAnimation />
           </div>
 
           {/* Text — right */}
-          <div style={{ maxWidth: 520 }}>
-            <div style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 500, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 20 }}>
-              TRUST INFRASTRUCTURE
-            </div>
+          <div>
+            <div style={{
+              fontFamily: font.mono, fontSize: 10, fontWeight: 500,
+              letterSpacing: 2, textTransform: 'uppercase',
+              color: color.gold, marginBottom: 20,
+            }}>Trust Infrastructure</div>
 
-            <h1 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(36px, 4.5vw, 56px)', letterSpacing: -1.5, lineHeight: 1.06, marginBottom: 20, color: color.t1 }}>
-              Trust, before<br />high-risk action.
+            <h1 style={{
+              fontFamily: font.sans, fontWeight: 700,
+              fontSize: 'clamp(36px, 4.5vw, 56px)',
+              letterSpacing: -1.5, lineHeight: 1.06,
+              marginBottom: 20, color: color.t1,
+            }}>
+              Trust, before<br />high-risk <em style={{ fontStyle: 'normal', color: color.gold }}>action.</em>
             </h1>
 
-            <p style={{ fontSize: 17, fontWeight: 400, color: color.t2, maxWidth: 440, lineHeight: 1.65, marginBottom: 32 }}>
-              Most systems verify who is acting. EP verifies whether this exact high-risk action should be allowed to proceed.
+            <p style={{
+              fontSize: 17, fontWeight: 400,
+              color: color.t2, maxWidth: 440,
+              lineHeight: 1.65, marginBottom: 32,
+            }}>
+              Most systems verify who is acting. EP verifies whether this exact high-risk action should be allowed to proceed — by this actor, under this policy, right now.
             </p>
 
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <a href="/protocol" className="ep-cta" style={{ ...cta.primary }}>Read the Protocol</a>
-              <a href="/use-cases" className="ep-cta-secondary" style={cta.secondary}>Explore Use Cases</a>
-              <a href="/partners" className="ep-cta" style={cta.ghost}>Request Pilot →</a>
+              <a href="/protocol" className="ep-cta" style={cta.primary}>Read the Protocol</a>
+              <a href="/partners" className="ep-cta-secondary" style={cta.secondary}>Request Pilot</a>
+              <a href="/use-cases" className="ep-cta-ghost" style={cta.ghost}>Use Cases →</a>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Stats bar */}
-      <section style={{ borderTop: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}`, padding: '20px 0' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16, maxWidth: 1120, margin: '0 auto', padding: '0 32px' }}>
+      {/* ── STATS BAR ── */}
+      <div style={{ borderTop: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}`, padding: '20px 0' }}>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          flexWrap: 'wrap', gap: 16, maxWidth: 1120, margin: '0 auto', padding: '0 32px',
+        }}>
           {STATS.map((s, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
@@ -123,137 +168,165 @@ export default function HomePage() {
             </div>
           ))}
         </div>
-      </section>
-
-      <Divider />
+      </div>
 
       {/* ── THE PROBLEM ── */}
-      <Section wide>
-        <Eyebrow>THE PROBLEM</Eyebrow>
-        <SectionTitle>Built for approved-looking workflows where ordinary auth fails</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 40, marginTop: 48 }}>
-          {PROBLEMS.map((p, i) => (
-            <div key={i}>
-              <div style={{ width: 24, height: 1, background: color.gold, marginBottom: 16 }} />
-              <h3 style={{ fontFamily: font.sans, fontWeight: 600, fontSize: 16, marginBottom: 6, color: color.t1 }}>{p.title}</h3>
-              <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.6 }}>{p.body}</p>
-            </div>
-          ))}
+      <Section>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'start' }}>
+          <div>
+            <Eyebrow>THE PROBLEM</Eyebrow>
+            <SectionTitle>Built for approved-looking workflows where ordinary auth fails</SectionTitle>
+            <SectionDesc>Fraud is moving inside valid sessions. Authenticated users, legitimate tools, approved channels — the attack surface is the action itself.</SectionDesc>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {PROBLEMS.map((p, i) => (
+              <div key={i} style={{
+                padding: '20px 0',
+                borderBottom: `1px solid ${color.border}`,
+                ...(i === 0 ? { borderTop: `1px solid ${color.border}` } : {}),
+              }}>
+                <h3 style={{ fontFamily: font.sans, fontWeight: 600, fontSize: 15, marginBottom: 4, color: color.t1 }}>{p.title}</h3>
+                <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.6 }}>{p.body}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </Section>
-
-      <Divider />
 
       {/* ── CONTROL SURFACES ── */}
-      <Section wide>
+      <Section>
         <Eyebrow>CONTROL SURFACES</Eyebrow>
         <SectionTitle>Built for the workflows where weak authorization causes real damage</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginTop: 48 }}>
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0,
+          marginTop: 40, borderTop: `1px solid ${color.border}`,
+        }}>
           {SURFACES.map((s, i) => (
-            <div key={i} className="ep-card" style={{ ...styles.card, borderTop: '2px solid transparent', transition: 'transform 0.3s, box-shadow 0.3s, background 0.3s, border-color 0.3s' }}>
-              <h3 style={{ fontFamily: font.sans, fontWeight: 600, fontSize: 18, marginBottom: 10, color: color.t1 }}>{s.title}</h3>
-              <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.6, marginBottom: 16 }}>{s.body}</p>
-              <a href={s.href} style={{ fontFamily: font.sans, fontSize: 13, fontWeight: 500, color: color.gold, textDecoration: 'none' }}>See architecture →</a>
+            <div key={i} style={{
+              padding: '24px 20px 24px 0',
+              borderRight: i < 3 ? `1px solid ${color.border}` : 'none',
+              ...(i > 0 ? { paddingLeft: 20 } : {}),
+            }}>
+              <h3 style={{ fontFamily: font.sans, fontWeight: 600, fontSize: 14, marginBottom: 8, color: color.t1 }}>{s.title}</h3>
+              <p style={{ fontSize: 13, color: color.t2, lineHeight: 1.55, marginBottom: 10 }}>{s.body}</p>
+              <a href={s.href} style={{ fontFamily: font.mono, fontSize: 11, color: color.gold, textDecoration: 'none', transition: 'color 0.15s' }}>See architecture →</a>
             </div>
           ))}
         </div>
       </Section>
-
-      <Divider />
 
       {/* ── PROTOCOL DISCIPLINE ── */}
       <Section>
         <Eyebrow>PROTOCOL DISCIPLINE</Eyebrow>
         <SectionTitle>What EP proves before action</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, marginTop: 48 }}>
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0,
+          marginTop: 40, borderTop: `1px solid ${color.border}`,
+        }}>
           {BINDINGS.map((b, i) => (
-            <div key={i} style={{ padding: '20px 0', borderBottom: `1px solid ${color.border}`, display: 'flex', gap: 20, alignItems: 'baseline', ...(i % 2 === 0 ? { paddingRight: 40 } : { paddingLeft: 40, borderLeft: `1px solid ${color.border}` }) }}>
-              <span style={{ fontFamily: font.mono, fontSize: 11, color: color.t3, flexShrink: 0, minWidth: 24 }}>{b.num}</span>
-              <div>
-                <h3 style={{ fontFamily: font.sans, fontWeight: 600, fontSize: 15, marginBottom: 4, color: color.t1 }}>{b.title}</h3>
-                <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.5 }}>{b.body}</p>
-              </div>
+            <div key={i} style={{
+              padding: '20px 16px 20px 0',
+              borderBottom: `1px solid ${color.border}`,
+              borderRight: (i + 1) % 4 !== 0 ? `1px solid ${color.border}` : 'none',
+              ...((i % 4 !== 0) ? { paddingLeft: 16 } : {}),
+            }}>
+              <span style={{ fontFamily: font.mono, fontSize: 10, color: color.gold, letterSpacing: 1, display: 'block', marginBottom: 6 }}>{b.num}</span>
+              <h3 style={{ fontFamily: font.sans, fontWeight: 600, fontSize: 14, marginBottom: 4, color: color.t1 }}>{b.title}</h3>
+              <p style={{ fontSize: 13, color: color.t2, lineHeight: 1.5 }}>{b.body}</p>
             </div>
           ))}
         </div>
       </Section>
 
-      <Divider />
-
       {/* ── ACCOUNTABLE SIGNOFF ── */}
       <Section>
         <Eyebrow>HUMAN ACCOUNTABILITY</Eyebrow>
         <SectionTitle>When policy requires human ownership</SectionTitle>
-        <p style={{ fontSize: 16, color: color.t2, lineHeight: 1.75, marginBottom: 24, maxWidth: 620 }}>
+        <SectionDesc>
           EP can require a named responsible human to explicitly assume responsibility for the exact action before execution. The signoff is cryptographically bound to the action context, the policy, and the signer's identity.
-        </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, maxWidth: 600 }}>
-          <div style={{ padding: 24, border: `1px solid ${color.border}`, borderRadius: 6 }}>
-            <div style={{ fontFamily: font.mono, fontSize: 11, color: color.t3, letterSpacing: 2, marginBottom: 10 }}>MFA</div>
+        </SectionDesc>
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0,
+          marginTop: 28, maxWidth: 520,
+          border: `1px solid ${color.border}`, borderRadius: 4, overflow: 'hidden',
+        }}>
+          <div style={{ padding: '20px 24px', borderRight: `1px solid ${color.border}` }}>
+            <div style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, letterSpacing: 1.5, marginBottom: 8, textTransform: 'uppercase' }}>MFA</div>
             <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.6 }}>Proves user presence.<br />Says nothing about the action.</p>
           </div>
-          <div style={{ padding: 24, border: '1px solid rgba(176,141,53,0.25)', borderRadius: 6, background: 'rgba(176,141,53,0.06)' }}>
-            <div style={{ fontFamily: font.mono, fontSize: 11, color: color.gold, letterSpacing: 2, marginBottom: 10 }}>ACCOUNTABLE SIGNOFF</div>
+          <div style={{ padding: '20px 24px', background: 'rgba(176,141,53,0.06)' }}>
+            <div style={{ fontFamily: font.mono, fontSize: 10, color: color.gold, letterSpacing: 1.5, marginBottom: 8, textTransform: 'uppercase' }}>Accountable Signoff</div>
             <p style={{ fontSize: 14, color: color.t1, lineHeight: 1.6 }}>Proves action-specific responsibility.<br />Bound to the exact operation.</p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 24 }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 20 }}>
           {['Passkey', 'Secure App', 'Platform Authenticator', 'Dual Signoff'].map(m => (
-            <span key={m} style={{ fontFamily: font.mono, fontSize: 12, color: color.t2, padding: '8px 16px', border: `1px solid ${color.border}`, borderRadius: 4 }}>{m}</span>
+            <span key={m} style={{
+              fontFamily: font.mono, fontSize: 11, color: color.t3,
+              padding: '6px 14px', border: `1px solid ${color.border}`, borderRadius: 4,
+              letterSpacing: 0.5,
+            }}>{m}</span>
           ))}
         </div>
-        <div style={{ marginTop: 28 }}>
-          <a href="/product/accountable-signoff" style={{ fontFamily: font.sans, fontSize: 13, fontWeight: 500, color: color.gold, textDecoration: 'none' }}>See Accountable Signoff →</a>
-        </div>
       </Section>
-
-      <Divider />
 
       {/* ── PRODUCT LAYERS ── */}
       <Section>
         <Eyebrow>FROM PROTOCOL TO PRODUCT</Eyebrow>
         <SectionTitle>Deployment options at every layer</SectionTitle>
-        <div style={{ marginTop: 48 }}>
+        <div style={{ marginTop: 32, borderTop: `1px solid ${color.border}` }}>
           {DEPLOY_LAYERS.map((l, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 24, padding: '20px 0', borderBottom: i < DEPLOY_LAYERS.length - 1 ? `1px solid ${color.border}` : 'none' }}>
-              <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 500, color: color.gold, minWidth: 140, flexShrink: 0 }}>{l.badge}</span>
-              <span style={{ fontFamily: font.sans, fontWeight: 600, fontSize: 16, minWidth: 220, flexShrink: 0, color: color.t1 }}>{l.name}</span>
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', gap: 24,
+              padding: '16px 0',
+              borderBottom: `1px solid ${color.border}`,
+              transition: 'background 0.15s',
+            }}>
+              <span style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 500, color: color.t3, minWidth: 72, letterSpacing: 1 }}>{l.badge}</span>
+              <span style={{ fontFamily: font.sans, fontWeight: 600, fontSize: 15, minWidth: 180, color: color.t1 }}>{l.name}</span>
               <span style={{ fontSize: 14, color: color.t2 }}>{l.desc}</span>
             </div>
           ))}
         </div>
       </Section>
 
-      <Divider />
-
       {/* ── HOW EP DEPLOYS ── */}
-      <Section wide>
+      <Section>
         <Eyebrow>HOW EMILIA DEPLOYS IN PRACTICE</Eyebrow>
         <SectionTitle>Three layers, one control surface</SectionTitle>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20, marginTop: 24 }}>
-          {[
-            { label: 'Start with Eye', body: 'Warning-only escalation. Flag when stricter controls should apply. No enforcement, no friction.' },
-            { label: 'Enforce with Handshake', body: 'Policy-bound pre-action trust enforcement. Canonical binding, replay resistance, one-time consumption.' },
-            { label: 'Own with Signoff', body: 'Named human ownership when policy requires it. Not MFA. Cryptographically bound, action-specific accountability.' },
-          ].map((item, i) => (
-            <div key={i} style={styles.card}>
-              <h3 style={{ color: color.gold, fontSize: 13, fontFamily: font.mono, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>{item.label}</h3>
-              <p style={{ fontSize: 15, color: color.t2, lineHeight: 1.6 }}>{item.body}</p>
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0,
+          marginTop: 32, borderTop: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}`,
+        }}>
+          {DEPLOY_STEPS.map((item, i) => (
+            <div key={i} style={{
+              padding: '24px 20px 24px 0',
+              borderRight: i < 2 ? `1px solid ${color.border}` : 'none',
+              ...(i > 0 ? { paddingLeft: 20 } : {}),
+            }}>
+              <div style={{
+                fontFamily: font.mono, fontSize: 10, fontWeight: 500,
+                color: item.color, letterSpacing: 1.5,
+                textTransform: 'uppercase', marginBottom: 8,
+              }}>{item.label}</div>
+              <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.6 }}>{item.body}</p>
             </div>
           ))}
         </div>
       </Section>
 
-      <Divider />
-
       {/* ── CTA STRIP ── */}
       <section style={{ padding: '80px 0', borderTop: `1px solid ${color.border}` }}>
         <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 32px' }}>
-          <h2 style={{ fontFamily: font.sans, fontWeight: 600, fontSize: 'clamp(20px, 2.5vw, 28px)', letterSpacing: -0.3, marginBottom: 24, color: color.t2 }}>Enforce trust before high-risk action</h2>
+          <h2 style={{
+            fontFamily: font.sans, fontWeight: 600,
+            fontSize: 'clamp(20px, 2.5vw, 28px)',
+            letterSpacing: -0.3, marginBottom: 24, color: color.t2,
+          }}>Enforce trust before high-risk action</h2>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <a href="/protocol" className="ep-cta" style={cta.primary}>Read the Protocol</a>
-            <a href="/use-cases" className="ep-cta-secondary" style={cta.secondary}>Explore Use Cases</a>
-            <a href="/partners" className="ep-cta" style={cta.ghost}>Request Pilot →</a>
+            <a href="/partners" className="ep-cta-secondary" style={cta.secondary}>Request Pilot</a>
+            <a href="/use-cases" className="ep-cta-ghost" style={cta.ghost}>Use Cases →</a>
           </div>
         </div>
       </section>

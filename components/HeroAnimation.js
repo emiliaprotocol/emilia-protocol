@@ -17,9 +17,9 @@ export default function HeroAnimation() {
         style={{
           width: '100%',
           aspectRatio: '580 / 320',
-          borderRadius: 6,
+          borderRadius: 4,
           border: '1px solid #E7E5E4',
-          background: 'rgba(245,245,244,0.5)',
+          background: '#FAFAF9',
         }}
         controls={false}
         showPosterWhenPaused={false}
