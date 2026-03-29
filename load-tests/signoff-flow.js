@@ -124,7 +124,7 @@ export default function () {
       return;
     }
     const challengeBody = challengeRes.json();
-    const challengeId = challengeBody.id || challengeBody.challengeId;
+    const challengeId = challengeBody.challenge_id || challengeBody.id || challengeBody.challengeId;
 
     // Step 5: Attest
     const attestRes = epPost(`/api/signoff/${challengeId}/attest`, makeAttestationPayload());
@@ -135,7 +135,7 @@ export default function () {
       return;
     }
     const attestBody = attestRes.json();
-    const signoffId = attestBody.id || attestBody.signoffId;
+    const signoffId = attestBody.signoff_id || attestBody.id || attestBody.signoffId;
 
     // Step 6: Consume signoff
     const consumeRes = epPost(`/api/signoff/${signoffId}/consume`, makeConsumePayload());
