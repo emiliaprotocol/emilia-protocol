@@ -1,6 +1,5 @@
 /* ═══════════════════════════════════════════════════════════
-   EP Shared Styles
-   Replaces inline onMouseEnter/onMouseLeave with CSS.
+   EP Shared Styles — White theme
    Provides hover, focus-visible, and transition classes.
    ═══════════════════════════════════════════════════════════ */
 
@@ -8,9 +7,8 @@
 .ep-nav-link {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 11px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: #71717A;
+  letter-spacing: 0.5px;
+  color: #78716C;
   text-decoration: none;
   transition: color 0.15s;
   padding-bottom: 2px;
@@ -18,33 +16,32 @@
 }
 .ep-nav-link:hover,
 .ep-nav-link:focus-visible {
-  color: #FAFAFA;
+  color: #0C0A09;
 }
 .ep-nav-link[data-active="true"] {
-  color: #FAFAFA;
-  border-bottom-color: #FAFAFA;
+  color: #0C0A09;
+  border-bottom-color: #0C0A09;
 }
 
 /* ─── Cards ──────────────────────────────────────────────── */
 .ep-card-hover {
-  transition: background 0.2s ease-out, transform 0.2s ease-out, border-color 0.2s ease-out;
+  transition: background 0.15s, transform 0.2s ease-out, border-color 0.15s;
 }
 .ep-card-hover:hover,
 .ep-card-hover:focus-visible {
-  background: #1f1f23;
+  background: #F5F5F4;
   transform: translateY(-2px);
 }
 
-/* Card with top-line accent on hover */
 .ep-card-accent {
   border-top: 2px solid transparent;
-  transition: background 0.2s ease-out, transform 0.2s ease-out, border-top-color 0.2s ease-out;
+  transition: background 0.15s, transform 0.2s ease-out, border-top-color 0.15s;
 }
 .ep-card-accent:hover,
 .ep-card-accent:focus-visible {
-  background: #1f1f23;
+  background: #F5F5F4;
   transform: translateY(-2px);
-  border-top-color: rgba(255,255,255,0.14);
+  border-top-color: #D6D3D1;
 }
 
 /* ─── CTAs ───────────────────────────────────────────────── */
@@ -52,48 +49,45 @@
   transition: opacity 0.15s, transform 0.15s;
 }
 .ep-cta:hover {
-  opacity: 0.88;
+  opacity: 0.8;
   transform: translateY(-1px);
 }
 .ep-cta:active {
   transform: scale(0.97);
 }
 .ep-cta:focus-visible {
-  outline: 2px solid rgba(255,255,255,0.3);
+  outline: 2px solid #B08D35;
   outline-offset: 2px;
 }
 
-/* Secondary CTA (outline) — fill on hover */
 .ep-cta-secondary {
-  transition: background 0.15s, color 0.15s, transform 0.15s;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
 }
 .ep-cta-secondary:hover {
-  background: rgba(255,255,255,0.05);
-  border-color: rgba(255,255,255,0.2);
+  background: rgba(0,0,0,0.02);
+  border-color: #0C0A09;
   transform: translateY(-1px);
 }
 .ep-cta-secondary:active {
   transform: scale(0.97);
 }
 .ep-cta-secondary:focus-visible {
-  outline: 2px solid rgba(255,255,255,0.3);
+  outline: 2px solid #B08D35;
   outline-offset: 2px;
 }
 
-/* Ghost CTA — brighten on hover */
 .ep-cta-ghost {
-  transition: color 0.15s, border-color 0.15s, transform 0.15s;
+  transition: color 0.15s, transform 0.15s;
 }
 .ep-cta-ghost:hover {
-  color: #F8FAFC;
-  border-color: rgba(255,255,255,0.15);
+  color: #0C0A09;
   transform: translateY(-1px);
 }
 .ep-cta-ghost:active {
   transform: scale(0.97);
 }
 .ep-cta-ghost:focus-visible {
-  outline: 2px solid rgba(255,255,255,0.3);
+  outline: 2px solid #B08D35;
   outline-offset: 2px;
 }
 
@@ -104,39 +98,38 @@
   gap: 6px;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 11px;
-  color: #71717A;
+  color: #78716C;
   text-decoration: none;
   padding: 6px 14px;
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid #E7E5E4;
   border-radius: 4px;
   transition: border-color 0.15s, color 0.15s;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
 }
 .ep-gh-star:hover,
 .ep-gh-star:focus-visible {
-  border-color: rgba(255,255,255,0.15);
-  color: #F8FAFC;
+  border-color: #0C0A09;
+  color: #0C0A09;
 }
 
 /* ─── Inputs ─────────────────────────────────────────────── */
 .ep-input:focus {
-  border-color: rgba(255,255,255,0.2);
-  box-shadow: 0 0 0 2px rgba(255,255,255,0.05);
+  border-color: #D6D3D1;
+  box-shadow: 0 0 0 2px rgba(176,141,53,0.1);
 }
 
 /* ─── Footer Links ───────────────────────────────────────── */
 .ep-footer-link {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 11px;
-  color: #52525B;
+  color: #78716C;
   text-decoration: none;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+  letter-spacing: 0.5px;
   transition: color 0.15s;
 }
 .ep-footer-link:hover,
 .ep-footer-link:focus-visible {
-  color: #71717A;
+  color: #0C0A09;
 }
 
 /* ─── Endpoint/State Rows ────────────────────────────────── */
@@ -144,7 +137,7 @@
   transition: background 0.15s;
 }
 .ep-row:hover {
-  background: rgba(255,255,255,0.02);
+  background: rgba(0,0,0,0.01);
 }
 
 /* ─── List Items (+ bullet style) ────────────────────────── */
@@ -155,24 +148,24 @@
   align-items: flex-start;
 }
 .ep-list-bullet {
-  color: #FAFAFA;
+  color: #0C0A09;
   font-size: 14px;
   flex-shrink: 0;
   margin-top: 2px;
 }
 .ep-list-bullet-neg {
-  color: #f87171;
+  color: #DC2626;
   font-size: 14px;
   flex-shrink: 0;
   margin-top: 2px;
 }
 
-/* ─── Moat Card Tag ──────────────────────────────────────── */
+/* ─── Tags ──────────────────────────────────────────────── */
 .ep-tag {
   font-family: 'IBM Plex Mono', monospace;
   font-size: 10px;
   letter-spacing: 2px;
-  color: #FAFAFA;
+  color: #0C0A09;
   margin-bottom: 8px;
   text-transform: uppercase;
 }
@@ -190,10 +183,10 @@
   font-family: 'IBM Plex Sans', sans-serif;
   font-size: 20px;
   font-weight: 700;
-  color: #F8FAFC;
+  color: #0C0A09;
   line-height: 1.5;
   margin-bottom: 24px;
-  border-left: 3px solid #22C55E;
+  border-left: 3px solid #B08D35;
   padding-left: 20px;
 }
 
@@ -202,7 +195,7 @@
   display: none;
   background: none;
   border: none;
-  color: #71717A;
+  color: #78716C;
   cursor: pointer;
   padding: 8px;
 }
@@ -224,12 +217,12 @@
   .ep-mobile-menu {
     display: none;
     position: fixed;
-    top: 60px;
+    top: 56px;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(2,6,23,0.96);
-    backdrop-filter: blur(12px);
+    background: rgba(250,250,249,0.96);
+    backdrop-filter: blur(16px);
     z-index: 99;
     padding: 32px 24px;
     flex-direction: column;
@@ -241,19 +234,18 @@
   .ep-mobile-menu a {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 14px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: #71717A;
+    letter-spacing: 0.5px;
+    color: #78716C;
     text-decoration: none;
     padding: 14px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid #E7E5E4;
     transition: color 0.15s;
   }
   .ep-mobile-menu a:hover {
-    color: #FAFAFA;
+    color: #0C0A09;
   }
   .ep-mobile-menu a[data-active="true"] {
-    color: #FAFAFA;
+    color: #0C0A09;
   }
 }
 

@@ -43,8 +43,8 @@ export default function SiteNav({ activePage }) {
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         height: 60,
         left: 0, right: 0, width: '100%', boxSizing: 'border-box',
-        background: 'rgba(2,6,23,0.88)',
-        backdropFilter: 'blur(12px)',
+        background: 'rgba(250,250,249,0.85)',
+        backdropFilter: 'blur(16px)',
         borderBottom: `1px solid ${color.border}`,
       }}>
         <div style={{
@@ -130,7 +130,7 @@ export default function SiteNav({ activePage }) {
         <a
           href="/partners"
           onClick={() => setMobileOpen(false)}
-          style={{ color: color.green, borderBottomColor: 'transparent', marginTop: 8 }}
+          style={{ color: color.gold, borderBottomColor: 'transparent', marginTop: 8 }}
         >Request Pilot</a>
       </div>
     </>
