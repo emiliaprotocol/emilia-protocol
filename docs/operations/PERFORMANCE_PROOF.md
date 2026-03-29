@@ -146,7 +146,32 @@ Full 7-step Accountable Signoff chain proven end-to-end.
 | **7. Consume** | **201ms** | 167ms | 253ms |
 | **Full E2E flow** | **2,108ms** | 1,837ms | 10,372ms |
 
-**Error rate: 0.0%. Checks: 6,524 passed, 0 failed. Throughput: 36 req/s.**
+**Error rate: 0.0%. Checks: 2,303 passed, 0 failed. Throughput: 12.6 req/s.**
+
+All endpoints now use single-roundtrip atomic RPCs:
+create, present, verify, challenge, attest, consume.
+
+---
+
+## Post-Load-Test DB Reconciliation
+
+After each load test run, `scripts/reconcile-load-test.js` queries the database and proves correctness. Results from the final run (329 complete 7-step chains):
+
+| Check | Result |
+|-------|--------|
+| Handshakes = handshake_created events | 329 = 329 PASS |
+| Bindings 1:1 with handshakes | 329 = 329 PASS |
+| Parties 2x for mutual mode | 658 = 658 PASS |
+| Verified = accepted results | 329 = 329 PASS |
+| Challenges = challenge_issued events | 329 = 329 PASS |
+| Attestations = signoff_approved events | 329 = 329 PASS |
+| No duplicate consumptions | 329 total, 0 duplicates PASS |
+| No orphaned bindings | 0 orphans PASS |
+| No partial terminal states | All 329 verified have results PASS |
+| No missing terminal events | 329 OK PASS |
+| Protocol events sanity | 1,645 events PASS |
+
+**11/11 checks passed. Zero correctness violations under load.**
 
 ### Handshake Create (isolated, 50 VUs)
 
