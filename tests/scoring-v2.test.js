@@ -6,6 +6,8 @@ import {
   EP_WEIGHTS_V2,
   DISPUTE_DAMPENING_FACTOR,
   DISPUTE_RESOLVED_FACTOR,
+  validateScoringWeights,
+  WEIGHT_BOUNDS,
 } from '../lib/scoring-v2.js';
 
 function makeReceipt(overrides = {}) {
@@ -267,5 +269,144 @@ describe('evaluateTrustPolicy', () => {
     const profile = computeTrustProfile(receipts, {});
     const result = evaluateTrustPolicy(profile, TRUST_POLICIES.discovery);
     expect(result.pass).toBe(true);
+  });
+});
+
+// =============================================================================
+// Weight validation
+// =============================================================================
+
+describe('validateScoringWeights', () => {
+  it('accepts valid EP_WEIGHTS_V2 defaults', () => {
+    const result = validateScoringWeights(EP_WEIGHTS_V2);
+    expect(result.valid).toBe(true);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('rejects missing dimensions', () => {
+    const result = validateScoringWeights({ behavioral: 0.40 });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some(e => e.includes('missing'))).toBe(true);
+  });
+
+  it('rejects out-of-bounds weights', () => {
+    const result = validateScoringWeights({
+      behavioral: 0.60, // max is 0.50
+      consistency: 0.10,
+      delivery: 0.10,
+      product: 0.10,
+      price: 0.05,
+      returns: 0.05,
+    });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some(e => e.includes('behavioral') && e.includes('outside bounds'))).toBe(true);
+  });
+
+  it('rejects weights that do not sum to 1.0', () => {
+    const result = validateScoringWeights({
+      behavioral: 0.40,
+      consistency: 0.25,
+      delivery: 0.12,
+      product: 0.10,
+      price: 0.08,
+      returns: 0.10, // total = 1.05
+    });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some(e => e.includes('sum'))).toBe(true);
+  });
+
+  it('rejects when behavioral + consistency < 0.35', () => {
+    const result = validateScoringWeights({
+      behavioral: 0.20,
+      consistency: 0.10, // sum = 0.30 < 0.35
+      delivery: 0.25,
+      product: 0.20,
+      price: 0.15,
+      returns: 0.10,
+    });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some(e => e.includes('behavioral + consistency'))).toBe(true);
+  });
+
+  it('accepts valid government-style weights', () => {
+    const govWeights = {
+      behavioral: 0.25,
+      consistency: 0.30,
+      delivery: 0.20,
+      product: 0.10,
+      price: 0.12,
+      returns: 0.03,
+    };
+    const result = validateScoringWeights(govWeights);
+    expect(result.valid).toBe(true);
+    expect(result.weights).toEqual(govWeights);
+  });
+});
+
+// =============================================================================
+// Policy-configurable weights (computeTrustProfile with custom weights)
+// =============================================================================
+
+describe('computeTrustProfile with custom weights', () => {
+  it('uses EP_WEIGHTS_V2 by default (no weights param)', () => {
+    const receipts = [makeReceipt({ submitted_by: 's1' })];
+    const result = computeTrustProfile(receipts, {});
+    expect(result.weights_version).toBe('ep-v2-default');
+    expect(result.weights_used).toEqual(EP_WEIGHTS_V2);
+  });
+
+  it('uses custom weights when provided', () => {
+    const customWeights = {
+      behavioral: 0.25,
+      consistency: 0.30,
+      delivery: 0.20,
+      product: 0.10,
+      price: 0.12,
+      returns: 0.03,
+    };
+    const receipts = Array(5).fill(null).map((_, i) => makeReceipt({
+      submitted_by: `s-${i}`,
+      submitter_established: true,
+      submitter_score: 90,
+    }));
+    const result = computeTrustProfile(receipts, {}, new Set(), customWeights);
+    expect(result.weights_version).toBe('policy');
+    expect(result.weights_used).toEqual(customWeights);
+  });
+
+  it('produces different scores with different weights', () => {
+    // Receipts with high delivery but low behavioral signals
+    const receipts = Array(10).fill(null).map((_, i) => makeReceipt({
+      submitted_by: `s-${i % 4}`,
+      submitter_established: true,
+      submitter_score: 85,
+      agent_behavior: 'retried_different', // low behavioral score (40)
+      delivery_accuracy: 98,               // high delivery score
+      composite_score: 70,
+    }));
+
+    const defaultResult = computeTrustProfile(receipts, {});
+    const deliveryHeavy = computeTrustProfile(receipts, {}, new Set(), {
+      behavioral: 0.20,
+      consistency: 0.15,
+      delivery: 0.25,
+      product: 0.15,
+      price: 0.15,
+      returns: 0.10,
+    });
+
+    // Delivery-heavy weights should produce a higher score for these receipts
+    // because delivery is 98 but behavioral is low
+    expect(deliveryHeavy.score).not.toBe(defaultResult.score);
+  });
+
+  it('same weights as EP_WEIGHTS_V2 produces same score', () => {
+    const receipts = Array(5).fill(null).map((_, i) => makeReceipt({
+      submitted_by: `s-${i}`,
+      submitter_established: true,
+    }));
+    const defaultResult = computeTrustProfile(receipts, {});
+    const explicitResult = computeTrustProfile(receipts, {}, new Set(), { ...EP_WEIGHTS_V2 });
+    expect(explicitResult.score).toBe(defaultResult.score);
   });
 });

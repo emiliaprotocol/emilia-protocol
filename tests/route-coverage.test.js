@@ -153,6 +153,8 @@ const OPENAPI_EXEMPTIONS = [
   '/api/cloud/webhooks/[endpointId]',
   '/api/cloud/webhooks/[endpointId]/deliveries',
   '/api/cloud/webhooks/[endpointId]/test',
+  // Key management — internal operational endpoint, not public API.
+  '/api/keys/rotate',
 ];
 
 

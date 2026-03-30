@@ -52,6 +52,9 @@ const ROUTE_POLICIES = {
   'POST /api/delegations/create':     { rateCategory: 'dispute_write', useAuth: true },
   'GET /api/delegations/*/verify':    { rateCategory: 'read', useAuth: false },
 
+  // Keys (writes)
+  'POST /api/keys/rotate':            { rateCategory: 'dispute_write', useAuth: true },
+
   // Identity (writes)
   'POST /api/identity/bind':          { rateCategory: 'dispute_write', useAuth: true },
   'POST /api/identity/continuity':    { rateCategory: 'dispute_write', useAuth: true },

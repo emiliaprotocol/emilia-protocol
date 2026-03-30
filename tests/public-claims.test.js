@@ -54,6 +54,8 @@ const OPENAPI_EXEMPT_ROUTES = [
   '/api/cloud/webhooks/[endpointId]',
   '/api/cloud/webhooks/[endpointId]/deliveries',
   '/api/cloud/webhooks/[endpointId]/test',
+  // Key management — internal operational endpoint.
+  '/api/keys/rotate',
 ];
 
 function countRouteFiles() {
