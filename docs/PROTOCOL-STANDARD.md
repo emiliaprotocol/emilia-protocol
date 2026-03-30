@@ -1,5 +1,7 @@
 # EMILIA Protocol Standard
 
+**Version:** 1.1
+
 ## Abstract
 
 The EMILIA Protocol defines an open, implementation-independent interface for trust-relevant evidence, trust state, trust decisions, and pre-action trust enforcement in machine-mediated systems.

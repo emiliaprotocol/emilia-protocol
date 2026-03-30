@@ -101,7 +101,7 @@ const MUTATING_POLICY_EXEMPTIONS = [
   '/api/signoff/[challengeId]/attest',
   '/api/signoff/[challengeId]/deny',
   '/api/signoff/[challengeId]/revoke',
-  '/api/signoff/[signoffId]/consume',
+  '/api/signoff/[challengeId]/consume',
   // Cloud control-plane routes — not part of the public protocol API.
   '/api/cloud/policies/[policyId]/rollout',
   '/api/cloud/policies/[policyId]/simulate',
@@ -131,7 +131,7 @@ const OPENAPI_EXEMPTIONS = [
   '/api/signoff/[challengeId]/attest',
   '/api/signoff/[challengeId]/deny',
   '/api/signoff/[challengeId]/revoke',
-  '/api/signoff/[signoffId]/consume',
+  '/api/signoff/[challengeId]/consume',
   // Cloud control-plane routes — internal, not part of the public protocol API.
   '/api/cloud/audit/export',
   '/api/cloud/audit/integrity',

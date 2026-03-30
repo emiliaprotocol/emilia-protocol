@@ -612,8 +612,8 @@ describe('abuse detection', () => {
 // ============================================================================
 
 describe('COMMAND_TYPES', () => {
-  it('has all 30 expected command types', () => {
-    expect(Object.keys(COMMAND_TYPES)).toHaveLength(30);
+  it('has all 34 expected command types', () => {
+    expect(Object.keys(COMMAND_TYPES)).toHaveLength(34);
     expect(COMMAND_TYPES.SUBMIT_RECEIPT).toBe('submit_receipt');
     expect(COMMAND_TYPES.CONFIRM_RECEIPT).toBe('confirm_receipt');
     expect(COMMAND_TYPES.ISSUE_COMMIT).toBe('issue_commit');
@@ -640,6 +640,14 @@ describe('COMMAND_TYPES', () => {
     expect(COMMAND_TYPES.SIGNOFF_ATTESTATION_REVOKE).toBe('signoff_attestation_revoke');
     expect(COMMAND_TYPES.SIGNOFF_CHALLENGE_EXPIRE).toBe('signoff_challenge_expire');
     expect(COMMAND_TYPES.SIGNOFF_ATTESTATION_EXPIRE).toBe('signoff_attestation_expire');
+    expect(COMMAND_TYPES.CONSUME_HANDSHAKE_BINDING).toBe('consume_handshake_binding');
+    expect(COMMAND_TYPES.EXPIRE_RECEIPTS).toBe('expire_receipts');
+    expect(COMMAND_TYPES.ESCALATE_DISPUTES).toBe('escalate_disputes');
+    expect(COMMAND_TYPES.EXPIRE_CONTINUITY_CLAIMS).toBe('expire_continuity_claims');
+    expect(COMMAND_TYPES.EYE_RECORD_OBSERVATION).toBe('eye_record_observation');
+    expect(COMMAND_TYPES.EYE_ISSUE_ADVISORY).toBe('eye_issue_advisory');
+    expect(COMMAND_TYPES.EYE_CREATE_SUPPRESSION).toBe('eye_create_suppression');
+    expect(COMMAND_TYPES.EYE_REVOKE_SUPPRESSION).toBe('eye_revoke_suppression');
   });
 
   it('every command type has a validator', () => {
@@ -657,7 +665,7 @@ describe('COMMAND_TYPES', () => {
   it('every command type maps to an aggregate', () => {
     for (const type of Object.values(COMMAND_TYPES)) {
       expect(_internals.COMMAND_TO_AGGREGATE[type]).toBeDefined();
-      expect(['receipt', 'commit', 'dispute', 'report', 'handshake', 'signoff', 'continuity']).toContain(
+      expect(['receipt', 'commit', 'dispute', 'report', 'handshake', 'signoff', 'continuity', 'eye']).toContain(
         _internals.COMMAND_TO_AGGREGATE[type]
       );
     }

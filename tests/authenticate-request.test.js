@@ -12,10 +12,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // to getServiceClient() within supabase.js use our mock client.
 // ---------------------------------------------------------------------------
 
-const mockFrom = vi.fn();
+const mockRpc = vi.fn();
 
 vi.mock('@supabase/supabase-js', () => ({
-  createClient: vi.fn(() => ({ from: mockFrom })),
+  createClient: vi.fn(() => ({ rpc: mockRpc })),
 }));
 
 vi.mock('../lib/env.js', () => ({
@@ -36,24 +36,6 @@ function makeRequest(authHeader) {
   };
 }
 
-/**
- * Build a fluent Supabase query-chain mock that resolves to `value`.
- * Supports .select().eq() chains that resolve when awaited.
- */
-function makeChain(value) {
-  const p = Promise.resolve(value);
-  const self = {};
-  self.select = vi.fn().mockReturnValue(self);
-  self.eq = vi.fn().mockReturnValue(self);
-  self.is = vi.fn().mockReturnValue(self);
-  self.maybeSingle = vi.fn().mockReturnValue(self);
-  self.single = vi.fn().mockReturnValue(self);
-  self.update = vi.fn().mockReturnValue(self);
-  self.then = p.then.bind(p);
-  self.catch = p.catch.bind(p);
-  return self;
-}
-
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -64,22 +46,14 @@ describe('authenticateRequest', () => {
   });
 
   it('returns the entity for a valid API key', async () => {
-    const activeKeyRow = { entity_id: 'ent-1', permissions: ['read'], revoked_at: null };
     const entityRow = { id: 'ent-1', status: 'active', name: 'TestEntity' };
 
-    let callIndex = 0;
-    mockFrom.mockImplementation((table) => {
-      callIndex++;
-      if (table === 'api_keys' && callIndex === 1) {
-        return makeChain({ data: [activeKeyRow], error: null });
-      }
-      if (table === 'api_keys' && callIndex === 2) {
-        return makeChain({ data: null, error: null });
-      }
-      if (table === 'entities') {
-        return makeChain({ data: entityRow, error: null });
-      }
-      return makeChain({ data: null, error: null });
+    mockRpc.mockResolvedValue({
+      data: {
+        entity: entityRow,
+        permissions: ['read'],
+      },
+      error: null,
     });
 
     const result = await authenticateRequest(makeRequest(`Bearer ${TEST_KEY}`));
@@ -89,7 +63,10 @@ describe('authenticateRequest', () => {
   });
 
   it('returns 401 with auth_failed when key does not exist', async () => {
-    mockFrom.mockImplementation(() => makeChain({ data: [], error: null }));
+    mockRpc.mockResolvedValue({
+      data: { error: 'auth_failed', reason: 'key_not_found' },
+      error: null,
+    });
 
     const result = await authenticateRequest(makeRequest(`Bearer ${TEST_KEY}`));
     expect(result.status).toBe(401);
@@ -98,8 +75,10 @@ describe('authenticateRequest', () => {
   });
 
   it('returns 401 with auth_failed when key is revoked', async () => {
-    const revokedRow = { entity_id: 'ent-1', permissions: ['read'], revoked_at: '2025-01-01T00:00:00Z' };
-    mockFrom.mockImplementation(() => makeChain({ data: [revokedRow], error: null }));
+    mockRpc.mockResolvedValue({
+      data: { error: 'auth_failed', reason: 'key_revoked' },
+      error: null,
+    });
 
     const result = await authenticateRequest(makeRequest(`Bearer ${TEST_KEY}`));
     expect(result.status).toBe(401);
@@ -108,9 +87,10 @@ describe('authenticateRequest', () => {
   });
 
   it('returns 503 on database error, NOT "invalid key"', async () => {
-    mockFrom.mockImplementation(() =>
-      makeChain({ data: null, error: { message: 'connection refused' } }),
-    );
+    mockRpc.mockResolvedValue({
+      data: null,
+      error: { message: 'connection refused' },
+    });
 
     const result = await authenticateRequest(makeRequest(`Bearer ${TEST_KEY}`));
     expect(result.status).toBe(503);

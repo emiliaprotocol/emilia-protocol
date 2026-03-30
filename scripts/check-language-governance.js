@@ -68,6 +68,7 @@ const EXCLUDED_FILES = new Set([
   'docs/STYLE-GUIDE.md',
   'docs/CANONICAL-LANGUAGE.md',
   'docs/EP_LANGUAGE_REFRESH_SUMMARY.md',
+  'docs/REWRITE_EVERYTHING_SUMMARY.md',
 ]);
 
 // ---------------------------------------------------------------------------

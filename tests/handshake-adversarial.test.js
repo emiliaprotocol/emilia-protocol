@@ -277,6 +277,93 @@ function createTableSim() {
     return chain;
   }
 
+  function handleRpc(fnName, params) {
+    if (fnName === 'create_handshake_atomic') {
+      const handshake_id = 'eph_' + crypto.randomBytes(12).toString('hex');
+      getTable('handshakes').push({
+        handshake_id, mode: params.p_mode, policy_id: params.p_policy_id,
+        policy_version: params.p_policy_version || null, interaction_id: params.p_interaction_id || null,
+        action_type: params.p_action_type || null, resource_ref: params.p_resource_ref || null,
+        intent_ref: params.p_intent_ref || null, action_hash: params.p_action_hash || null,
+        policy_hash: params.p_policy_hash || null, idempotency_key: params.p_idempotency_key || null,
+        party_set_hash: params.p_party_set_hash || null, metadata: params.p_metadata_json || {},
+        status: 'initiated', created_at: new Date().toISOString(),
+      });
+      if (Array.isArray(params.p_parties)) {
+        for (const p of params.p_parties) {
+          getTable('handshake_parties').push({
+            id: crypto.randomBytes(8).toString('hex'), handshake_id,
+            party_role: p.party_role, entity_ref: p.entity_ref,
+            assurance_level: p.assurance_level || null, delegation_chain: p.delegation_chain || null,
+            verified_status: 'pending',
+          });
+        }
+      }
+      if (params.p_binding) getTable('handshake_bindings').push({ handshake_id, ...params.p_binding });
+      getTable('handshake_events').push({
+        event_id: crypto.randomBytes(12).toString('hex'), handshake_id,
+        event_type: 'handshake_initiated', actor_id: params.p_event_actor_id || 'system',
+        detail: params.p_event_detail || {}, created_at: new Date().toISOString(),
+        sequence_number: getTable('handshake_events').length + 1,
+      });
+      return Promise.resolve({ data: { handshake_id }, error: null });
+    }
+    if (fnName === 'present_handshake_writes') {
+      const presentation = {
+        id: crypto.randomBytes(8).toString('hex'), handshake_id: params.p_handshake_id,
+        party_role: params.p_party_role, presentation_type: params.p_presentation_type,
+        issuer_ref: params.p_issuer_ref || null, presentation_hash: params.p_presentation_hash,
+        disclosure_mode: params.p_disclosure_mode || 'full', raw_claims: params.p_raw_claims || null,
+        normalized_claims: params.p_normalized_claims || null,
+        canonical_claims_hash: params.p_canonical_claims_hash || null,
+        authority_id: params.p_authority_id || null, issuer_status: params.p_issuer_status || 'unknown',
+        verified: params.p_verified !== undefined ? params.p_verified : false,
+        revocation_checked: params.p_revocation_checked || false,
+        revocation_status: params.p_revocation_status || 'unknown',
+        created_at: new Date().toISOString(),
+      };
+      getTable('handshake_presentations').push(presentation);
+      const hs = getTable('handshakes').find((h) => h.handshake_id === params.p_handshake_id);
+      if (hs && hs.status === 'initiated') hs.status = 'pending_verification';
+      getTable('handshake_events').push({
+        event_id: crypto.randomBytes(12).toString('hex'), handshake_id: params.p_handshake_id,
+        event_type: 'presentation_added', actor_id: params.p_actor_id || 'system',
+        detail: params.p_event_detail || {}, created_at: new Date().toISOString(),
+        sequence_number: getTable('handshake_events').length + 1,
+      });
+      return Promise.resolve({ data: presentation, error: null });
+    }
+    if (fnName === 'verify_handshake_writes') {
+      const hs = getTable('handshakes').find((h) => h.handshake_id === params.p_handshake_id);
+      if (hs) hs.status = params.p_new_status;
+      if (Array.isArray(params.p_party_updates)) {
+        for (const pu of params.p_party_updates) {
+          const party = getTable('handshake_parties').find((p) => p.id === pu.id);
+          if (party) party.verified_status = pu.verified_status;
+        }
+      }
+      if (params.p_consume_binding) {
+        const binding = getTable('handshake_bindings').find((b) => b.handshake_id === params.p_handshake_id);
+        if (binding) binding.consumed_at = new Date().toISOString();
+      }
+      getTable('handshake_verifications').push({
+        id: crypto.randomBytes(8).toString('hex'), handshake_id: params.p_handshake_id,
+        outcome: params.p_outcome, reason_codes: params.p_reason_codes,
+        assurance_achieved: params.p_assurance_achieved, policy_version: params.p_policy_version,
+        binding_hash: params.p_binding_hash, policy_hash: params.p_policy_hash,
+        created_at: new Date().toISOString(),
+      });
+      getTable('handshake_events').push({
+        event_id: crypto.randomBytes(12).toString('hex'), handshake_id: params.p_handshake_id,
+        event_type: params.p_event_type || 'handshake_verified',
+        actor_id: params.p_actor_id || 'system', detail: params.p_event_detail || {},
+        created_at: new Date().toISOString(), sequence_number: getTable('handshake_events').length + 1,
+      });
+      return Promise.resolve({ data: null, error: null });
+    }
+    return Promise.resolve({ data: null, error: null });
+  }
+
   function mockClient() {
     return {
       from: vi.fn().mockImplementation((tableName) => {
@@ -296,6 +383,7 @@ function createTableSim() {
           },
         };
       }),
+      rpc: vi.fn().mockImplementation((fnName, params) => handleRpc(fnName, params)),
     };
   }
 

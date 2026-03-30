@@ -377,6 +377,9 @@ describe('validateSignoffChallenge', () => {
     handshakeId: 'hs_abc',
     accountableActorRef: 'entity_human',
     signoffPolicyId: 'pol_signoff',
+    bindingHash: 'sha256:abc123',
+    requiredAssurance: 'high',
+    allowedMethods: ['password', 'totp'],
     expiresAt: '2025-12-31T23:59:59Z',
   };
 

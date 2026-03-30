@@ -33,7 +33,7 @@ async function responseJson(response) {
 // ============================================================================
 
 const mockAuthenticateRequest = vi.fn().mockResolvedValue({
-  entity: 'test-entity-123',
+  entity: { entity_id: 'test-entity-123', id: 'test-entity-123' },
 });
 
 // Mock getServiceClient to return a chainable query builder for access control checks
@@ -139,7 +139,7 @@ import { GET as detailGet } from '@/app/api/handshake/[handshakeId]/route';
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockAuthenticateRequest.mockResolvedValue({ entity: 'test-entity-123' });
+  mockAuthenticateRequest.mockResolvedValue({ entity: { entity_id: 'test-entity-123', id: 'test-entity-123' } });
   // Reset getServiceClient to return a mock with party found (access control passes)
   const freshMock = createMockSupabase();
   mockGetServiceClient.mockReturnValue(freshMock);
@@ -196,7 +196,8 @@ describe('POST /api/handshake (create)', () => {
     // Should be called with a single object argument containing actor
     const callArgs = mockInitiateHandshake.mock.calls[0];
     expect(callArgs).toHaveLength(1);
-    expect(callArgs[0]).toHaveProperty('actor', 'test-entity-123');
+    expect(callArgs[0]).toHaveProperty('actor');
+    expect(callArgs[0].actor).toEqual({ entity_id: 'test-entity-123', id: 'test-entity-123' });
     expect(callArgs[0]).toHaveProperty('mode', 'mutual');
     expect(callArgs[0]).toHaveProperty('policy_id', 'pol_abc');
     expect(callArgs[0]).toHaveProperty('parties', validBody.parties);
@@ -323,7 +324,7 @@ describe('POST /api/handshake/:id/present', () => {
     await presentPost(req, mockParams);
 
     const callArgs = mockAddPresentation.mock.calls[0];
-    expect(callArgs[3]).toBe('test-entity-123');
+    expect(callArgs[3]).toEqual({ entity_id: 'test-entity-123', id: 'test-entity-123' });
   });
 
   it('11. returns 400 when party_role is missing', async () => {
@@ -366,9 +367,11 @@ describe('POST /api/handshake/:id/verify', () => {
     const callArgs = mockVerifyHandshake.mock.calls[0];
     expect(callArgs[0]).toBe(handshakeId);
     expect(callArgs[1]).toEqual({
-      actor: 'test-entity-123',
+      actor: { entity_id: 'test-entity-123', id: 'test-entity-123' },
       payload_hash: 'hash_abc123',
       nonce: null,
+      action_hash: null,
+      policy_hash: null,
     });
   });
 
@@ -384,9 +387,11 @@ describe('POST /api/handshake/:id/verify', () => {
     const callArgs = mockVerifyHandshake.mock.calls[0];
     expect(callArgs[0]).toBe(handshakeId);
     expect(callArgs[1]).toEqual({
-      actor: 'test-entity-123',
+      actor: { entity_id: 'test-entity-123', id: 'test-entity-123' },
       payload_hash: null,
       nonce: null,
+      action_hash: null,
+      policy_hash: null,
     });
   });
 
@@ -412,7 +417,7 @@ describe('GET /api/handshake (list)', () => {
 
     const callArgs = mockListHandshakes.mock.calls[0];
     // listHandshakes(filters, actor)
-    expect(callArgs[1]).toBe('test-entity-123');
+    expect(callArgs[1]).toEqual({ entity_id: 'test-entity-123', id: 'test-entity-123' });
   });
 
   it('17. passes filter params from query string correctly (entity_ref forced to auth entity)', async () => {
@@ -422,7 +427,7 @@ describe('GET /api/handshake (list)', () => {
 
     const filters = mockListHandshakes.mock.calls[0][0];
     expect(filters).toEqual({
-      entity_ref: 'test-entity-123',
+      entity_ref: { entity_id: 'test-entity-123', id: 'test-entity-123' },
       status: 'verified',
       mode: 'delegated',
     });
@@ -454,6 +459,6 @@ describe('POST /api/handshake/:id/revoke', () => {
     const callArgs = mockRevokeHandshake.mock.calls[0];
     expect(callArgs[0]).toBe('eph_revoke_321');
     expect(callArgs[1]).toBe('policy_violation');
-    expect(callArgs[2]).toBe('test-entity-123');
+    expect(callArgs[2]).toEqual({ entity_id: 'test-entity-123', id: 'test-entity-123' });
   });
 });

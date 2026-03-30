@@ -102,10 +102,10 @@ describe('TRUST_TABLES list', () => {
     expect(tableMatch).not.toBeNull();
   });
 
-  it('contains the expected number of trust tables (17)', () => {
+  it('contains the expected number of trust tables (20)', () => {
     const entries = tableMatch[1].match(/'[^']+'/g);
     expect(entries).not.toBeNull();
-    expect(entries.length).toBe(17);
+    expect(entries.length).toBe(20);
   });
 
   const expectedCoreTables = [

@@ -32,7 +32,7 @@ const OPENAPI_EXEMPT_ROUTES = [
   '/api/signoff/[challengeId]/attest',
   '/api/signoff/[challengeId]/deny',
   '/api/signoff/[challengeId]/revoke',
-  '/api/signoff/[signoffId]/consume',
+  '/api/signoff/[challengeId]/consume',
   // Cloud routes — internal / not yet in openapi.yaml.
   '/api/cloud/audit/export',
   '/api/cloud/audit/integrity',
