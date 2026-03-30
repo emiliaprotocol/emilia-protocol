@@ -155,6 +155,8 @@ const OPENAPI_EXEMPTIONS = [
   '/api/cloud/webhooks/[endpointId]/test',
   // Key management — internal operational endpoint, not public API.
   '/api/keys/rotate',
+  // Cloud scoring calibration — cloud control-plane.
+  '/api/cloud/scoring/recommendations',
 ];
 
 

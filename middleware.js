@@ -98,6 +98,9 @@ const ROUTE_POLICIES = {
   'POST /api/inquiries':              { rateCategory: 'submit', useAuth: false },
   'POST /api/waitlist':               { rateCategory: 'waitlist', useAuth: false },
 
+  // Cloud — scoring calibration
+  'GET /api/cloud/scoring/recommendations': { rateCategory: 'cloud_read', useAuth: true },
+
   // Cloud — reads (dashboards, audit, events)
   'GET /api/cloud/signoff/pending':   { rateCategory: 'cloud_read', useAuth: true },
   'GET /api/cloud/signoff/queue':     { rateCategory: 'cloud_read', useAuth: true },
