@@ -45,6 +45,9 @@ During verification, TLC identified and we fixed 4 real spec bugs:
 | T17 | SignoffChallengeExpiresIfUnanswered | Safety | **Verified (TLC 2.19, 2026-04-02)** — code guard in `lib/signoff/challenge.js` |
 | T18 | SignoffAttestationRequiresMFA | Safety | **Verified (TLC 2.19, 2026-04-02)** — code guard in `lib/signoff/attest.js` |
 | T19 | TerminalEscapeAttemptIsRejected | Safety | **Verified (TLC 2.19, 2026-04-02)** |
+| T20 | TypeInvariant | Structural | **Verified (TLC 2.19, 2026-04-02)** — all state variables maintain declared type invariants throughout every reachable state |
+
+**20 properties total: T1–T19 are behavioral safety properties; T20 (TypeInvariant) is a structural invariant ensuring no variable escapes its declared type.**
 
 **Model scope note:** Verified with `Handshakes = {h1}` (single handshake). Two-handshake
 verification is computationally feasible with a more compact events representation;
@@ -106,4 +109,4 @@ When a property is verified by a model checker:
 
 ---
 
-*Last updated: 2026-04-02 — All 20 TLA+ properties verified by TLC 2.19; all 15 Alloy assertions verified by Alloy 6.1.0*
+*Last updated: 2026-04-02 — 20 TLA+ properties verified by TLC 2.19 (T1–T19 behavioral safety + T20 TypeInvariant structural); all 15 Alloy assertions verified by Alloy 6.1.0*

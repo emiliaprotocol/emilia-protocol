@@ -6,7 +6,7 @@ The EMILIA Protocol Python SDK gives services, agents, and developers programmat
 
 [![PyPI](https://img.shields.io/pypi/v/emilia-protocol)](https://pypi.org/project/emilia-protocol/)
 [![Python](https://img.shields.io/pypi/pyversions/emilia-protocol)](https://pypi.org/project/emilia-protocol/)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue)](../../LICENSE)
 
 ---
 
