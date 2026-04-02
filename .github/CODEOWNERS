@@ -1,0 +1,26 @@
+# EMILIA Protocol — Code Ownership
+#
+# Governance transition plan: working group target Q2 2026 (see GOVERNANCE.md).
+# Until then, all changes require review from the current maintainer.
+#
+# Format: pattern  @owner
+
+# Default: all files require maintainer review
+*                           @rexrubyai
+
+# Core protocol — trust scoring, write path, state machines
+lib/scoring*.js             @rexrubyai
+lib/protocol-write.js       @rexrubyai
+lib/write-guard.js          @rexrubyai
+lib/canonical-evaluator.js  @rexrubyai
+lib/signoff/                @rexrubyai
+lib/handshake/              @rexrubyai
+
+# Formal verification models
+formal/                     @rexrubyai
+
+# Database schema — migrations require extra scrutiny
+supabase/migrations/        @rexrubyai
+
+# CI/CD — pipeline changes require maintainer review
+.github/                    @rexrubyai

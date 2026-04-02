@@ -1,0 +1,69 @@
+name: TLC Model Checker
+
+on:
+  push:
+    paths:
+      - 'formal/**.tla'
+      - 'formal/**.cfg'
+      - '.github/workflows/tlc.yml'
+  pull_request:
+    paths:
+      - 'formal/**.tla'
+      - 'formal/**.cfg'
+      - '.github/workflows/tlc.yml'
+  workflow_dispatch:
+
+jobs:
+  tlc:
+    name: Verify ep_handshake.tla
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Download tla2tools.jar
+        run: |
+          curl -L -o tla2tools.jar \
+            https://github.com/tlaplus/tlaplus/releases/latest/download/tla2tools.jar
+
+      - name: Run TLC on ep_handshake.tla
+        working-directory: formal
+        run: |
+          java -Xmx2G -jar ../tla2tools.jar \
+            -workers auto \
+            -config ep_handshake.cfg \
+            ep_handshake.tla \
+            2>&1 | tee tlc-output.txt
+          # TLC exits 0 on success, non-zero if a property is violated or the
+          # spec fails to parse. The tee above preserves output for the artifact.
+
+      - name: Check TLC result
+        working-directory: formal
+        run: |
+          if grep -q "Error:" tlc-output.txt; then
+            echo "TLC found an error — one or more invariants are violated."
+            grep -A 20 "Error:" tlc-output.txt
+            exit 1
+          fi
+          if grep -q "Model checking completed. No error has been found." tlc-output.txt; then
+            echo "TLC: all invariants hold. No counterexample found."
+          else
+            echo "TLC did not produce a clean completion message. Check the artifact."
+            cat tlc-output.txt
+            exit 1
+          fi
+
+      - name: Upload TLC output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tlc-output
+          path: formal/tlc-output.txt
+          retention-days: 90

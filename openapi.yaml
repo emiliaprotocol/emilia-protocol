@@ -2687,6 +2687,1025 @@ paths:
         '500':
           description: Simulation failed
 
+  /api/cloud/audit/export:
+    get:
+      tags: [Cloud]
+      summary: Export audit events for compliance
+      description: |
+        Export all events in a date range for compliance or archival.
+        Requires admin permission (bulk data export).
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Start of date range (inclusive)
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: End of date range (inclusive)
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 500
+            maximum: 5000
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Exported audit events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      type: object
+                  total:
+                    type: integer
+                  offset:
+                    type: integer
+                  limit:
+                    type: integer
+                  tenant_id:
+                    type: string
+                  exported_at:
+                    type: string
+                    format: date-time
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Admin permission required
+        '500':
+          description: Export failed
+
+  /api/cloud/audit/integrity:
+    get:
+      tags: [Cloud]
+      summary: Verify audit event integrity
+      description: |
+        Run integrity verification across event tables.
+        Returns an anomaly list and integrity score.
+        Requires read permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Start of verification window
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: End of verification window
+      responses:
+        '200':
+          description: Integrity verification result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tenant_id:
+                    type: string
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Read permission required
+        '500':
+          description: Integrity check failed
+
+  /api/cloud/audit/report:
+    get:
+      tags: [Cloud]
+      summary: Generate audit report
+      description: |
+        Generate an audit report: event summary and integrity score for a date range.
+        Requires read permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: Start of report range
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: End of report range
+      responses:
+        '200':
+          description: Audit report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_events:
+                    type: integer
+                  integrity:
+                    type: object
+                  date_range:
+                    type: object
+                    properties:
+                      from:
+                        type: string
+                        nullable: true
+                      to:
+                        type: string
+                        nullable: true
+                  tenant_id:
+                    type: string
+                  generated_at:
+                    type: string
+                    format: date-time
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Read permission required
+        '500':
+          description: Report generation failed
+
+  /api/cloud/events/search:
+    get:
+      tags: [Cloud]
+      summary: Full-text search across EP events
+      description: |
+        Full-text search across all EP event tables for the authenticated tenant.
+        Requires read permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search query string
+        - name: event_types
+          in: query
+          schema:
+            type: string
+          description: Comma-separated list of event types to filter by
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Matching events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      type: object
+                  count:
+                    type: integer
+                  tenant_id:
+                    type: string
+        '400':
+          description: Query parameter "q" is required
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Read permission required
+        '500':
+          description: Search failed
+
+  /api/cloud/events/timeline/{handshakeId}:
+    get:
+      tags: [Cloud]
+      summary: Get event timeline for a handshake
+      description: |
+        Chronological timeline of all events for a single handshake.
+        Requires read permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: handshakeId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Handshake ID
+      responses:
+        '200':
+          description: Handshake event timeline
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  handshake_id:
+                    type: string
+                  events:
+                    type: array
+                    items:
+                      type: object
+                  count:
+                    type: integer
+                  tenant_id:
+                    type: string
+        '400':
+          description: handshakeId path parameter is required
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Read permission required
+        '500':
+          description: Timeline query failed
+
+  /api/cloud/policies/{policyId}/diff:
+    get:
+      tags: [Cloud]
+      summary: Diff two policy versions
+      description: |
+        Compare two versions of a policy to see what changed.
+        Requires read permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Policy ID
+        - name: v1
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: First version number to compare
+        - name: v2
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: Second version number to compare
+      responses:
+        '200':
+          description: Policy diff result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  policy_id:
+                    type: string
+                  v1:
+                    type: object
+                  v2:
+                    type: object
+                  tenant_id:
+                    type: string
+        '400':
+          description: Both v1 and v2 query parameters are required
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Read permission required
+        '500':
+          description: Policy diff query failed
+
+  /api/cloud/policies/{policyId}/rollout:
+    post:
+      tags: [Cloud]
+      summary: Initiate a policy version rollout
+      description: |
+        Initiate a rollout of a policy version to the specified environment.
+        Requires admin permission (deployment-level action).
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Policy ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version, environment]
+              properties:
+                version:
+                  type: integer
+                  description: Policy version number to roll out
+                environment:
+                  type: string
+                  description: Target environment (e.g. "production", "staging")
+                strategy:
+                  type: string
+                  enum: [immediate, canary]
+                  default: immediate
+      responses:
+        '200':
+          description: Rollout initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  policy_id:
+                    type: string
+                  version:
+                    type: integer
+                  environment:
+                    type: string
+                  strategy:
+                    type: string
+                  status:
+                    type: string
+                  initiated_at:
+                    type: string
+                    format: date-time
+                  tenant_id:
+                    type: string
+        '400':
+          description: version and environment are required
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Admin permission required
+        '500':
+          description: Rollout failed
+
+  /api/cloud/policies/{policyId}/versions:
+    get:
+      tags: [Cloud]
+      summary: List policy versions
+      description: |
+        List all versions of a policy, ordered newest first.
+        Requires read permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Policy ID
+      responses:
+        '200':
+          description: Policy versions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  policy_id:
+                    type: string
+                  versions:
+                    type: array
+                    items:
+                      type: object
+                  count:
+                    type: integer
+                  tenant_id:
+                    type: string
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Read permission required
+        '500':
+          description: Policy versions query failed
+
+  /api/cloud/signoff/analytics:
+    get:
+      tags: [Cloud]
+      summary: Signoff analytics
+      description: |
+        Analytics data for signoff operations: completion rates,
+        processing times, and volume trends.
+        Requires read permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: date_from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: date_to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Signoff analytics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                  by_status:
+                    type: object
+                  date_range:
+                    type: object
+                    properties:
+                      from:
+                        type: string
+                        nullable: true
+                      to:
+                        type: string
+                        nullable: true
+                  tenant_id:
+                    type: string
+                  generated_at:
+                    type: string
+                    format: date-time
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Read permission required
+        '500':
+          description: Analytics query failed
+
+  /api/cloud/signoff/dashboard:
+    get:
+      tags: [Cloud]
+      summary: Signoff dashboard summary
+      description: |
+        Summary dashboard data for signoff operations: counts by status,
+        recent activity, and processing metrics.
+        Requires read permission.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Signoff dashboard data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  summary:
+                    type: object
+                    properties:
+                      pending:
+                        type: integer
+                      completed:
+                        type: integer
+                      expired:
+                        type: integer
+                      total:
+                        type: integer
+                  tenant_id:
+                    type: string
+                  generated_at:
+                    type: string
+                    format: date-time
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Read permission required
+        '500':
+          description: Dashboard query failed
+
+  /api/cloud/signoff/escalate:
+    post:
+      tags: [Cloud]
+      summary: Escalate a signoff challenge
+      description: |
+        Escalate a stalled or at-risk signoff challenge for manual review.
+        Requires write permission.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challenge_id, reason]
+              properties:
+                challenge_id:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Challenge escalated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challenge_id:
+                    type: string
+                  escalated:
+                    type: boolean
+                  reason:
+                    type: string
+                  escalated_at:
+                    type: string
+                    format: date-time
+                  tenant_id:
+                    type: string
+        '400':
+          description: challenge_id and reason are required
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Write permission required
+        '500':
+          description: Escalation failed
+
+  /api/cloud/signoff/notify:
+    post:
+      tags: [Cloud]
+      summary: Send signoff notification
+      description: |
+        Trigger a notification for a signoff challenge to remind a party
+        that attestation is needed.
+        Requires write permission.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challenge_id]
+              properties:
+                challenge_id:
+                  type: string
+                channel:
+                  type: string
+                  enum: [email, webhook]
+                  default: webhook
+                message:
+                  type: string
+      responses:
+        '200':
+          description: Notification queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challenge_id:
+                    type: string
+                  channel:
+                    type: string
+                  notification_queued:
+                    type: boolean
+                  queued_at:
+                    type: string
+                    format: date-time
+                  tenant_id:
+                    type: string
+        '400':
+          description: challenge_id is required
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Write permission required
+        '500':
+          description: Notification failed
+
+  /api/cloud/signoff/pending:
+    get:
+      tags: [Cloud]
+      summary: List pending signoff challenges
+      description: |
+        List signoff challenges that are pending (awaiting attestation).
+        Requires read permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Pending signoff challenges
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challenges:
+                    type: array
+                    items:
+                      type: object
+                  total:
+                    type: integer
+                  offset:
+                    type: integer
+                  limit:
+                    type: integer
+                  tenant_id:
+                    type: string
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Read permission required
+        '500':
+          description: Pending challenges query failed
+
+  /api/cloud/signoff/queue:
+    get:
+      tags: [Cloud]
+      summary: View signoff processing queue
+      description: |
+        View the signoff processing queue, optionally filtered by status.
+        Requires read permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: Filter by challenge status
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Signoff queue
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  queue:
+                    type: array
+                    items:
+                      type: object
+                  total:
+                    type: integer
+                  offset:
+                    type: integer
+                  limit:
+                    type: integer
+                  tenant_id:
+                    type: string
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Read permission required
+        '500':
+          description: Queue query failed
+
+  /api/cloud/webhooks:
+    get:
+      tags: [Cloud]
+      summary: List webhook endpoints
+      description: |
+        List all webhook endpoints for the authenticated tenant.
+        Requires read permission.
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Webhook endpoints
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  endpoints:
+                    type: array
+                    items:
+                      type: object
+                  count:
+                    type: integer
+                  tenant_id:
+                    type: string
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Read permission required
+        '500':
+          description: Webhooks query failed
+    post:
+      tags: [Cloud]
+      summary: Create a webhook endpoint
+      description: |
+        Create a new webhook endpoint. The response includes the HMAC signing secret,
+        which is shown only once — store it securely.
+        Requires write permission.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, events]
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: Webhook destination URL (must use HTTPS or HTTP)
+                events:
+                  type: array
+                  items:
+                    type: string
+                  description: Event types to subscribe to
+      responses:
+        '201':
+          description: Webhook endpoint created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  endpoint:
+                    type: object
+                  secret:
+                    type: string
+                    description: HMAC signing secret — shown once, store securely
+                  tenant_id:
+                    type: string
+        '400':
+          description: Invalid URL or event list
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Write permission required
+        '500':
+          description: Webhook creation failed
+
+  /api/cloud/webhooks/{endpointId}:
+    get:
+      tags: [Cloud]
+      summary: Get webhook endpoint details
+      description: |
+        Get details of a specific webhook endpoint.
+        Requires read permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: endpointId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Webhook endpoint ID
+      responses:
+        '200':
+          description: Webhook endpoint details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  endpoint:
+                    type: object
+                  tenant_id:
+                    type: string
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Read permission required
+        '404':
+          description: Webhook endpoint not found
+        '500':
+          description: Webhook query failed
+    put:
+      tags: [Cloud]
+      summary: Update a webhook endpoint
+      description: |
+        Update a webhook endpoint's URL, subscribed events, or status.
+        Requires write permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: endpointId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Webhook endpoint ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  format: uri
+                events:
+                  type: array
+                  items:
+                    type: string
+                status:
+                  type: string
+                  enum: [active, paused, disabled]
+      responses:
+        '200':
+          description: Webhook endpoint updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  endpoint:
+                    type: object
+                  tenant_id:
+                    type: string
+        '400':
+          description: Invalid URL, event list, or status
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Write permission required
+        '404':
+          description: Webhook endpoint not found
+        '500':
+          description: Webhook update failed
+    delete:
+      tags: [Cloud]
+      summary: Delete a webhook endpoint
+      description: |
+        Remove a webhook endpoint and its delivery history.
+        Requires write permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: endpointId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Webhook endpoint ID
+      responses:
+        '200':
+          description: Webhook endpoint deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    type: boolean
+                  endpoint_id:
+                    type: string
+                  tenant_id:
+                    type: string
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Write permission required
+        '404':
+          description: Webhook endpoint not found
+        '500':
+          description: Webhook delete failed
+
+  /api/cloud/webhooks/{endpointId}/deliveries:
+    get:
+      tags: [Cloud]
+      summary: List webhook deliveries
+      description: |
+        List recent deliveries for a webhook endpoint.
+        Requires read permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: endpointId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Webhook endpoint ID
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            maximum: 200
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: Filter by delivery status
+      responses:
+        '200':
+          description: Webhook deliveries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deliveries:
+                    type: array
+                    items:
+                      type: object
+                  count:
+                    type: integer
+                  endpoint_id:
+                    type: string
+                  tenant_id:
+                    type: string
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Read permission required
+        '404':
+          description: Webhook endpoint not found
+        '500':
+          description: Deliveries query failed
+
+  /api/cloud/webhooks/{endpointId}/test:
+    post:
+      tags: [Cloud]
+      summary: Send a test webhook delivery
+      description: |
+        Send a test webhook delivery to verify endpoint connectivity.
+        The endpoint must be active.
+        Requires write permission.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: endpointId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Webhook endpoint ID
+      responses:
+        '200':
+          description: Test delivery result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  delivery:
+                    type: object
+                  tenant_id:
+                    type: string
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Write permission required
+        '404':
+          description: Webhook endpoint not found
+        '500':
+          description: Test delivery failed
+
 components:
   securitySchemes:
     BearerAuth:

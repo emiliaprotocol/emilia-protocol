@@ -31,18 +31,23 @@ Verified properties describe what *has been proven* true given the model's assum
 | T11 | ConcurrentRevokeConsumeIsSerializable | Safety | **Specified — not yet verified** |
 | T12 | ReplayAfterConsumptionIsRejected | Safety | **Specified — not yet verified** |
 | T13 | DuplicateConsumeAttemptIsRejected | Safety | **Specified — not yet verified** |
-| T14 | SignoffRequiresAuthorizedActor | Safety | **Specified — code guard pending** |
-| T15 | SignoffCannotBeReusedAcrossHandshakes | Safety | **Specified — code guard pending** |
-| T16 | SignoffRevocationPreventsConsumption | Safety | **Specified — code guard pending** |
-| T17 | SignoffChallengeExpiresIfUnanswered | Safety | **Specified — code guard pending** |
-| T18 | SignoffAttestationRequiresMFA | Safety | **Specified — code guard pending** |
+| T14 | SignoffRequiresAuthorizedActor | Safety | **Code guard implemented** (`lib/signoff/attest.js` — humanEntityRef + authMethod validation) — TLC verification pending |
+| T15 | SignoffCannotBeReusedAcrossHandshakes | Safety | **Code guard implemented** (`lib/signoff/challenge.js` — handshakeId + bindingHash binding) — TLC verification pending |
+| T16 | SignoffRevocationPreventsConsumption | Safety | **Code guard implemented** (`lib/signoff/invariants.js` — SIGNOFF_TERMINAL_STATES blocks consumption) — TLC verification pending |
+| T17 | SignoffChallengeExpiresIfUnanswered | Safety | **Code guard implemented** (`lib/signoff/challenge.js` — expires_at + cron expiry) — TLC verification pending |
+| T18 | SignoffAttestationRequiresMFA | Safety | **Code guard implemented** (`lib/signoff/attest.js` — assuranceLevel + SIGNOFF_ALLOWED_METHODS) — TLC verification pending |
 | T19 | TerminalEscapeAttemptIsRejected | Safety | **Specified — not yet verified** |
 
-**To verify:** Run TLC on `ep_handshake.tla` with the suggested parameters.
-See [TLA+ Toolbox setup](https://lamport.azurewebsites.net/tla/toolbox.html) or use the CLI:
+**To verify:** A TLC configuration file `ep_handshake.cfg` now exists in this directory.
+Run it directly with:
 ```
-java -jar tla2tools.jar -config ep_handshake.cfg TLCHandshake
+cd formal
+java -jar tla2tools.jar -config ep_handshake.cfg ep_handshake.tla 2>&1 | tee tlc-output.txt
 ```
+See `formal/RUN_TLC.md` for full download and run instructions.
+A GitHub Actions workflow (`.github/workflows/tlc.yml`) will run TLC automatically
+on every push that touches `formal/`.  All 20 invariants listed in `ep_handshake.cfg`
+will be checked; CI fails if any property is violated.
 
 ---
 

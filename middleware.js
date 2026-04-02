@@ -76,6 +76,16 @@ const ROUTE_POLICIES = {
   'POST /api/commit/*/receipt':       { rateCategory: 'dispute_write', useAuth: true },
   'POST /api/commit/*/dispute':       { rateCategory: 'dispute_write', useAuth: true },
 
+  // Signoff (EP Signoff — accountable human sign-off ceremony)
+  // Write routes use protocol_write (60/min per key), same as handshake.
+  // GET challenge uses read; all mutations require auth-scoped rate limiting.
+  'POST /api/signoff/challenge':              { rateCategory: 'protocol_write', useAuth: true },
+  'GET /api/signoff/*':                       { rateCategory: 'read', useAuth: true },
+  'POST /api/signoff/*/attest':               { rateCategory: 'protocol_write', useAuth: true },
+  'POST /api/signoff/*/consume':              { rateCategory: 'protocol_write', useAuth: true },
+  'POST /api/signoff/*/deny':                 { rateCategory: 'protocol_write', useAuth: true },
+  'POST /api/signoff/*/revoke':               { rateCategory: 'protocol_write', useAuth: true },
+
   // Handshake (EP Handshake — structured identity exchange)
   // Write routes use protocol_write (60/min per key) — previously null which created a DoS vector.
   // DB-level idempotency on present/verify is not a substitute for rate limiting on creation.
