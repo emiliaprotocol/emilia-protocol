@@ -43,7 +43,7 @@
   },
   "homepage": "https://emiliaprotocol.ai",
   "devDependencies": {
-    "typescript": "^5.6.3",
+    "typescript": "^6.0.2",
     "vitest": "^3.0.0"
   }
 }
