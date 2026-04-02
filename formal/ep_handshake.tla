@@ -30,7 +30,8 @@
 
 EXTENDS Naturals, FiniteSets, Sequences
 
-CONSTANTS Handshakes, Actors, Policies
+CONSTANTS Handshakes, Actors, Policies,
+          MaxPolicyVer  \* Upper bound on currentPolicyVer to keep TLC state space finite
 
 VARIABLES
     state,           \* handshake_id -> status
@@ -429,6 +430,7 @@ SetPolicyValid(h) ==
 \* Maps to: policy_versions table update; verify.js computePolicyHash() comparison
 PolicyChange(h) ==
     /\ state[h] \in {"initiated", "pending_verification"}
+    /\ currentPolicyVer[h] < MaxPolicyVer  \* TLC bound: prevent infinite state space
     /\ currentPolicyVer' = [currentPolicyVer EXCEPT ![h] = currentPolicyVer[h] + 1]
     /\ UNCHANGED <<state, bindings, consumptions, events, revoked, policyValid, writePath, delegations, policyVersion, signoffState, signoffActor, signoffBinding>>
 
