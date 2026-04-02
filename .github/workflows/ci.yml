@@ -90,7 +90,18 @@ jobs:
       - name: Check language governance
         run: node scripts/check-language-governance.js
 
-  # ── Job 6: Type check (conditional — only if tsconfig exists) ────
+  # ── Job 6a: License headers ──────────────────────────────────────
+  license-headers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check license headers
+        run: node scripts/check-license-headers.js
+
+  # ── Job 6b: Type check (conditional — only if tsconfig exists) ───
   type-check:
     runs-on: ubuntu-latest
     steps:

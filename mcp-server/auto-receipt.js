@@ -1,5 +1,6 @@
 /**
  * EMILIA Protocol — Auto-Receipt Middleware
+ * @license Apache-2.0
  *
  * Wraps MCP tool call handlers and automatically generates behavioral receipts
  * from every tool invocation outcome. This closes the data loop: every tool call

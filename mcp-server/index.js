@@ -2,6 +2,7 @@
 
 /**
  * EMILIA Protocol — MCP Server
+ * @license Apache-2.0
  *
  * Trust evaluation tools for AI agents.
  * Add this server to any MCP-compatible client to give your agent
