@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest, generateApiKey, getServiceClient } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * POST /api/keys/rotate
@@ -44,7 +45,7 @@ export async function POST(request) {
       .eq('entity_id', entity.id);
 
     if (revokeError) {
-      console.error('[key-rotation] Failed to revoke old key:', revokeError);
+      logger.error('[key-rotation] Failed to revoke old key:', revokeError);
       return epProblem(500, 'rotation_failed', 'Failed to revoke old key');
     }
 
@@ -59,7 +60,7 @@ export async function POST(request) {
       });
 
     if (insertError) {
-      console.error('[key-rotation] Failed to insert new key:', insertError);
+      logger.error('[key-rotation] Failed to insert new key:', insertError);
       return epProblem(500, 'rotation_failed', 'Failed to create new key');
     }
 
@@ -70,7 +71,7 @@ export async function POST(request) {
       .eq('id', entity.id);
 
     if (entityUpdateError) {
-      console.error('[key-rotation] Failed to update entity key hash:', entityUpdateError);
+      logger.error('[key-rotation] Failed to update entity key hash:', entityUpdateError);
       return epProblem(500, 'rotation_failed', 'Failed to update entity key reference');
     }
 
@@ -80,7 +81,7 @@ export async function POST(request) {
       old_key_invalidated: true,
     }, { status: 201 });
   } catch (err) {
-    console.error('[key-rotation] Unexpected error:', err);
+    logger.error('[key-rotation] Unexpected error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

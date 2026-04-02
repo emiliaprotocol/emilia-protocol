@@ -3,6 +3,7 @@ import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * GET /api/cloud/signoff/pending?limit=50&offset=0
@@ -30,7 +31,7 @@ export async function GET(request) {
       .range(offset, offset + limit - 1);
 
     if (error) {
-      console.error('[cloud/signoff/pending] Query error:', error);
+      logger.error('[cloud/signoff/pending] Query error:', error);
       return epProblem(500, 'signoff_pending_query_failed', error.message);
     }
 
@@ -45,7 +46,7 @@ export async function GET(request) {
     if (err.name === 'CloudAuthorizationError') {
       return epProblem(403, 'forbidden', err.message);
     }
-    console.error('[cloud/signoff/pending] Error:', err);
+    logger.error('[cloud/signoff/pending] Error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

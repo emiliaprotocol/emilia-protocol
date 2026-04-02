@@ -34,6 +34,7 @@ import { authenticateRequest } from '@/lib/supabase';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { epProblem } from '@/lib/errors';
 import { getAutoSubmitSecret } from '@/lib/env';
+import { logger } from '../../../../lib/logger.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -84,7 +85,7 @@ async function authenticateAutoSubmit(request) {
 
   if (!secret) {
     // Server-side misconfiguration — EP_AUTO_SUBMIT_SECRET not set
-    console.error('[auto-submit] EP_AUTO_SUBMIT_SECRET is not configured');
+    logger.error('[auto-submit] EP_AUTO_SUBMIT_SECRET is not configured');
     return { error: 'Auto-submit authentication is not configured on this server' };
   }
 
@@ -257,7 +258,7 @@ export async function POST(request) {
           });
         }
       } catch (err) {
-        console.error('[auto-submit] Canonical write failed for receipt %d: %s', index, err.message);
+        logger.error('[auto-submit] Canonical write failed for receipt %d: %s', index, err.message);
         canonicalErrors.push({
           index,
           reason: 'Internal write error',
@@ -287,7 +288,7 @@ export async function POST(request) {
       { status: totalAccepted > 0 ? 207 : 422 },
     );
   } catch (err) {
-    console.error('[auto-submit] Unhandled error:', err);
+    logger.error('[auto-submit] Unhandled error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

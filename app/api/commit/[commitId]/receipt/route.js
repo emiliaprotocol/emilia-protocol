@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { bindReceiptToCommit, fulfillCommit, getCommitStatus, CommitError } from '@/lib/commit';
 import { epProblem } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * POST /api/commit/[commitId]/receipt
@@ -49,7 +50,7 @@ export async function POST(request, { params }) {
     if (err instanceof CommitError) {
       return epProblem(err.status, err.code.toLowerCase(), err.message);
     }
-    console.error('Commit receipt error:', err);
+    logger.error('Commit receipt error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

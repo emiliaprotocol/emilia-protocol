@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
+import { logger } from '../../../lib/logger.js';
 
 // ---------------------------------------------------------------------------
 // Input sanitization helpers
@@ -107,16 +108,16 @@ export async function POST(request) {
       const table = type === 'partner' ? 'partner_inquiries' : 'investor_inquiries';
       const { error: dbError } = await supabase.from(table).insert(record);
       if (dbError) {
-        console.error(`[inquiries] Supabase insert error (${table}):`, dbError.message);
+        logger.error(`[inquiries] Supabase insert error (${table}):`, dbError.message);
         // Backup: log the full submission as structured JSON so it can be replayed
-        console.error(`[inquiries] BACKUP_RECORD::${JSON.stringify({ table, record, error: dbError.message, ts: new Date().toISOString() })}`);
+        logger.error(`[inquiries] BACKUP_RECORD::${JSON.stringify({ table, record, error: dbError.message, ts: new Date().toISOString() })}`);
         return epProblem(503, 'inquiry_storage_failed', 'Failed to store inquiry. Please try again shortly.', {
           retry: true,
         });
       }
     } else {
       // Log to console when no DB is configured
-      console.log(`[inquiries] No Supabase configured. ${type} inquiry from ${name} <${rawEmail}>:`, JSON.stringify(record, null, 2));
+      logger.info(`[inquiries] No Supabase configured. ${type} inquiry from ${name} <${rawEmail}>:`, JSON.stringify(record, null, 2));
     }
 
     // TODO: Send notification email via SendGrid/Resend when configured
@@ -124,7 +125,7 @@ export async function POST(request) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error('[inquiries] Error:', err);
+    logger.error('[inquiries] Error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

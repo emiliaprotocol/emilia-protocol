@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { denyChallenge } from '@/lib/signoff/deny';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * POST /api/signoff/[challengeId]/deny
@@ -30,7 +31,7 @@ export async function POST(request, { params }) {
 
     return NextResponse.json(result);
   } catch (err) {
-    console.error('Signoff denial error:', err);
+    logger.error('Signoff denial error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

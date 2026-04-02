@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { getDomainScores } from '@/lib/domain-scoring';
 import { EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 export async function GET(request, { params }) {
   try {
@@ -15,7 +16,7 @@ export async function GET(request, { params }) {
     const result = await getDomainScores(entityId, domains);
     return NextResponse.json(result);
   } catch (err) {
-    console.error('[trust/domain-score] error:', err);
+    logger.error('[trust/domain-score] error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * POST /api/disputes/file
@@ -44,7 +45,7 @@ export async function POST(request) {
       _message: 'Dispute filed. The receipt submitter has 7 days to respond.',
     }, { status: 201 });
   } catch (err) {
-    console.error('Dispute filing error:', err);
+    logger.error('Dispute filing error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

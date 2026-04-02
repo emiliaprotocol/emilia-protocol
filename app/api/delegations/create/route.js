@@ -6,6 +6,7 @@ import { authenticateRequest } from '@/lib/supabase';
 import { createDelegation, EPError } from '@/lib/delegation';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
 
 export async function POST(request) {
   try {
@@ -48,7 +49,7 @@ export async function POST(request) {
     if (err instanceof EPError) {
       return epProblem(err.status || 400, err.code?.toLowerCase() || 'delegation_error', err.message);
     }
-    console.error('[delegations/create] error:', err);
+    logger.error('[delegations/create] error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

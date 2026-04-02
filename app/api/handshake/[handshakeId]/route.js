@@ -5,6 +5,7 @@ import { getHandshake } from '@/lib/handshake';
 import { epProblem } from '@/lib/errors';
 import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';
 import { epError } from '@/lib/errors/response';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * GET /api/handshake/[handshakeId]
@@ -44,7 +45,7 @@ export async function GET(request, { params }) {
 
     return NextResponse.json(result);
   } catch (err) {
-    console.error('Handshake detail error:', err);
+    logger.error('Handshake detail error:', err);
     return epError(EP_ERROR_CODES.INTERNAL);
   }
 }

@@ -3,6 +3,7 @@ import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../../../lib/logger.js';
 
 /**
  * GET /api/cloud/webhooks/[endpointId]/deliveries
@@ -32,7 +33,7 @@ export async function GET(request, { params }) {
       .maybeSingle();
 
     if (lookupErr) {
-      console.error('[cloud/webhooks/deliveries] Lookup error:', lookupErr);
+      logger.error('[cloud/webhooks/deliveries] Lookup error:', lookupErr);
       return epProblem(500, 'webhook_query_failed', lookupErr.message);
     }
 
@@ -59,7 +60,7 @@ export async function GET(request, { params }) {
     const { data: deliveries, error } = await query;
 
     if (error) {
-      console.error('[cloud/webhooks/deliveries] Query error:', error);
+      logger.error('[cloud/webhooks/deliveries] Query error:', error);
       return epProblem(500, 'deliveries_query_failed', error.message);
     }
 
@@ -73,7 +74,7 @@ export async function GET(request, { params }) {
     if (err.name === 'CloudAuthorizationError') {
       return epProblem(403, 'forbidden', err.message);
     }
-    console.error('[cloud/webhooks/deliveries] Error:', err);
+    logger.error('[cloud/webhooks/deliveries] Error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

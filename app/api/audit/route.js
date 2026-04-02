@@ -3,6 +3,7 @@ import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { filterByVisibility } from '@/lib/procedural-justice';
+import { logger } from '../../../lib/logger.js';
 
 /**
  * GET /api/audit?target_id=...&target_type=...&limit=50
@@ -62,7 +63,7 @@ export async function GET(request) {
       limit,
     });
   } catch (err) {
-    console.error('Audit query error:', err);
+    logger.error('Audit query error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

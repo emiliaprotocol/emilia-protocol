@@ -4,6 +4,7 @@ import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
 import { registerEndpoint } from '@/lib/cloud/webhooks';
 import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * GET /api/cloud/webhooks
@@ -26,7 +27,7 @@ export async function GET(request) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('[cloud/webhooks] List error:', error);
+      logger.error('[cloud/webhooks] List error:', error);
       return epProblem(500, 'webhooks_query_failed', error.message);
     }
 
@@ -39,7 +40,7 @@ export async function GET(request) {
     if (err.name === 'CloudAuthorizationError') {
       return epProblem(403, 'forbidden', err.message);
     }
-    console.error('[cloud/webhooks] Error:', err);
+    logger.error('[cloud/webhooks] Error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }
@@ -95,7 +96,7 @@ export async function POST(request) {
     if (err.name === 'CloudAuthorizationError') {
       return epProblem(403, 'forbidden', err.message);
     }
-    console.error('[cloud/webhooks] POST error:', err);
+    logger.error('[cloud/webhooks] POST error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

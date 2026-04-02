@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { revokeChallenge, revokeAttestation } from '@/lib/signoff/revoke';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * POST /api/signoff/[challengeId]/revoke
@@ -39,7 +40,7 @@ export async function POST(request, { params }) {
 
     return NextResponse.json(result);
   } catch (err) {
-    console.error('Signoff revocation error:', err);
+    logger.error('Signoff revocation error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

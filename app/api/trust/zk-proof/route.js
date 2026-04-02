@@ -27,6 +27,7 @@ import { generateZKProof, verifyZKProof } from '@/lib/zk-proofs';
 import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
 
 const VALID_CLAIM_TYPES = ['score_above', 'receipt_count_above', 'domain_score_above'];
 const VALID_DOMAINS = [
@@ -130,7 +131,7 @@ export async function POST(request) {
       { status: 201 }
     );
   } catch (err) {
-    console.error('[zk-proof POST] error:', err);
+    logger.error('[zk-proof POST] error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }
@@ -191,7 +192,7 @@ export async function GET(request) {
 
     return NextResponse.json(response);
   } catch (err) {
-    console.error('[zk-proof GET] error:', err);
+    logger.error('[zk-proof GET] error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

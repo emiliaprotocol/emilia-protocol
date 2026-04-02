@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { EP_ERRORS } from '@/lib/errors';
 import { buildTrustDecision } from '@/lib/trust-decision';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * POST /api/trust/install-preflight (experimental — pre-action enforcement)
@@ -87,7 +88,7 @@ export async function POST(request) {
       },
     }));
   } catch (err) {
-    console.error('Pre-action enforcement error:', err);
+    logger.error('Pre-action enforcement error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

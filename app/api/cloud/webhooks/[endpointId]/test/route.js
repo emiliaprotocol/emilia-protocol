@@ -4,6 +4,7 @@ import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
 import { deliverWebhook } from '@/lib/cloud/webhooks';
 import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../../../lib/logger.js';
 
 /**
  * POST /api/cloud/webhooks/[endpointId]/test
@@ -29,7 +30,7 @@ export async function POST(request, { params }) {
       .maybeSingle();
 
     if (lookupErr) {
-      console.error('[cloud/webhooks/test] Lookup error:', lookupErr);
+      logger.error('[cloud/webhooks/test] Lookup error:', lookupErr);
       return epProblem(500, 'webhook_query_failed', lookupErr.message);
     }
 
@@ -66,7 +67,7 @@ export async function POST(request, { params }) {
     if (err.name === 'CloudAuthorizationError') {
       return epProblem(403, 'forbidden', err.message);
     }
-    console.error('[cloud/webhooks/test] Error:', err);
+    logger.error('[cloud/webhooks/test] Error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

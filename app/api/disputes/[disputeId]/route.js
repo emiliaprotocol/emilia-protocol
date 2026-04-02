@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * GET /api/disputes/[disputeId]
@@ -100,7 +101,7 @@ export async function GET(request, { params }) {
       updated_at: dispute.updated_at,
     });
   } catch (err) {
-    console.error('Dispute view error:', err);
+    logger.error('Dispute view error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

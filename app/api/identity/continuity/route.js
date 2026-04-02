@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { fileContinuityClaim } from '@/lib/ep-ix';
 import { EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
 
 export async function POST(request) {
   try {
@@ -21,7 +22,7 @@ export async function POST(request) {
 
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
-    console.error('Continuity claim error:', err);
+    logger.error('Continuity claim error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

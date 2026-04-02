@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getPrincipal } from '@/lib/ep-ix';
 import { EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 export async function GET(request, { params }) {
   try {
@@ -10,7 +11,7 @@ export async function GET(request, { params }) {
 
     return NextResponse.json(result);
   } catch (err) {
-    console.error('Principal lookup error:', err);
+    logger.error('Principal lookup error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

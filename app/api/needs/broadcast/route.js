@@ -5,6 +5,7 @@ import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import crypto from 'crypto';
 import { epProblem } from '@/lib/errors';
 import { generateEmbedding } from '@/lib/providers/embeddings';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * POST /api/needs/broadcast
@@ -91,7 +92,7 @@ export async function POST(request) {
       .single();
 
     if (insertError) {
-      console.error('Need broadcast error:', insertError);
+      logger.error('Need broadcast error:', insertError);
       return epProblem(500, 'broadcast_failed', 'Failed to broadcast need');
     }
 
@@ -169,7 +170,7 @@ export async function POST(request) {
       _suggestion_mode: needPolicy ? 'policy_evaluated' : 'legacy_compat',
     }, { status: 201 });
   } catch (err) {
-    console.error('Need broadcast error:', err);
+    logger.error('Need broadcast error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

@@ -4,6 +4,7 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { CommitError } from '@/lib/commit';
 import { epProblem } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * POST /api/commit/[commitId]/dispute
@@ -75,7 +76,7 @@ export async function POST(request, { params }) {
     if (err instanceof CommitError) {
       return epProblem(err.status, err.code.toLowerCase(), err.message);
     }
-    console.error('Commit dispute error:', err);
+    logger.error('Commit dispute error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

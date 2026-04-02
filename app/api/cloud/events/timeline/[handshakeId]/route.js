@@ -3,6 +3,7 @@ import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getTimeline } from '@/lib/cloud/event-explorer';
 import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../../../lib/logger.js';
 
 /**
  * GET /api/cloud/events/timeline/[handshakeId]
@@ -34,7 +35,7 @@ export async function GET(request, { params }) {
     if (err.name === 'CloudAuthorizationError') {
       return epProblem(403, 'forbidden', err.message);
     }
-    console.error('[cloud/events/timeline] Error:', err);
+    logger.error('[cloud/events/timeline] Error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

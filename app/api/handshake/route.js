@@ -6,6 +6,7 @@ import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';
 import { epError } from '@/lib/errors/response';
 import { validateInitiateBody } from '@/lib/handshake/schema';
 import { validateHandshakeCreate } from '@/lib/validation/schemas';
+import { logger } from '../../../lib/logger.js';
 
 // ── Overload backpressure ────────────────────────────────────────────────────
 // Fast-fail under concurrency pressure instead of slow timeout collapse.
@@ -71,7 +72,7 @@ export async function POST(request) {
 
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
-    console.error('Handshake initiation error:', err);
+    logger.error('Handshake initiation error:', err);
     return epError(EP_ERROR_CODES.INTERNAL);
   } finally {
     _inflight--;
@@ -105,7 +106,7 @@ export async function GET(request) {
 
     return NextResponse.json(result);
   } catch (err) {
-    console.error('Handshake list error:', err);
+    logger.error('Handshake list error:', err);
     return epError(EP_ERROR_CODES.INTERNAL);
   }
 }

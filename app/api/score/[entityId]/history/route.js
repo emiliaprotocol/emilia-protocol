@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * GET /api/score/[entityId]/history
@@ -52,7 +53,7 @@ export async function GET(request, { params }) {
     const { data: history, error: historyError } = await query;
 
     if (historyError) {
-      console.error('Score history error:', historyError);
+      logger.error('Score history error:', historyError);
       return epProblem(500, 'history_fetch_failed', 'Failed to fetch history');
     }
 
@@ -64,7 +65,7 @@ export async function GET(request, { params }) {
       history: history || [],
     });
   } catch (err) {
-    console.error('Score history error:', err);
+    logger.error('Score history error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

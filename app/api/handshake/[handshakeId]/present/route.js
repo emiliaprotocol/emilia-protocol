@@ -6,6 +6,7 @@ import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';
 import { epError } from '@/lib/errors/response';
 import { validatePresentBody } from '@/lib/handshake/schema';
 import { validatePresent } from '@/lib/validation/schemas';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * POST /api/handshake/[handshakeId]/present
@@ -53,7 +54,7 @@ export async function POST(request, { params }) {
 
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
-    console.error('Handshake presentation error:', err);
+    logger.error('Handshake presentation error:', err);
     return epError(EP_ERROR_CODES.INTERNAL);
   }
 }

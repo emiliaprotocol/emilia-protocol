@@ -4,6 +4,7 @@ import { getCommitStatus, CommitError } from '@/lib/commit';
 import { authorizeCommitAccess } from '@/lib/commit-auth';
 import { protocolWrite, COMMAND_TYPES, ProtocolWriteError } from '@/lib/protocol-write';
 import { epProblem } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * POST /api/commit/[commitId]/revoke
@@ -56,7 +57,7 @@ export async function POST(request, { params }) {
     if (err instanceof CommitError) {
       return epProblem(err.status, err.code.toLowerCase(), err.message);
     }
-    console.error('Commit revoke error:', err);
+    logger.error('Commit revoke error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

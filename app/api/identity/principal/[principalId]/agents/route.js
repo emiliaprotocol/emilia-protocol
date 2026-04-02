@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { getPrincipal } from '@/lib/ep-ix';
 import { EP_ERRORS } from '@/lib/errors';
 import { getGuardedClient } from '@/lib/write-guard';
+import { logger } from '../../../../../../lib/logger.js';
 
 /**
  * GET /api/identity/principal/[principalId]/agents
@@ -38,7 +39,7 @@ export async function GET(request, { params }) {
       .order('created_at', { ascending: false });
 
     if (delegationsError) {
-      console.error('[principal/agents] delegations query error:', delegationsError.message);
+      logger.error('[principal/agents] delegations query error:', delegationsError.message);
       return EP_ERRORS.INTERNAL();
     }
 
@@ -123,7 +124,7 @@ export async function GET(request, { params }) {
 
     return NextResponse.json({ principalId, agents });
   } catch (err) {
-    console.error('[principal/agents] error:', err);
+    logger.error('[principal/agents] error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

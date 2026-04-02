@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
+import { logger } from '../../../lib/logger.js';
 
 /**
  * POST /api/waitlist
@@ -64,7 +65,7 @@ export async function POST(request) {
       if (error.code === '42P01') {
         return NextResponse.json({ id: lastEntityId + 1, email, fallback: true });
       }
-      console.error('Waitlist insert error:', error);
+      logger.error('Waitlist insert error:', error);
       return epProblem(500, 'registration_failed', 'Registration failed');
     }
 
@@ -74,7 +75,7 @@ export async function POST(request) {
       created_at: entry.created_at,
     }, { status: 201 });
   } catch (err) {
-    console.error('Waitlist error:', err);
+    logger.error('Waitlist error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

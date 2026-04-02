@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { verifyDelegation } from '@/lib/delegation';
 import { EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 export async function GET(request, { params }) {
   try {
@@ -14,7 +15,7 @@ export async function GET(request, { params }) {
     const result = await verifyDelegation(delegationId, actionType);
     return NextResponse.json(result);
   } catch (err) {
-    console.error('[delegations/verify] error:', err);
+    logger.error('[delegations/verify] error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

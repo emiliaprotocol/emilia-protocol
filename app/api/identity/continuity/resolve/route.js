@@ -3,6 +3,7 @@ import { authenticateRequest } from '@/lib/supabase';
 import { resolveContinuity } from '@/lib/ep-ix';
 import { EP_ERRORS } from '@/lib/errors';
 import { epProblem } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 export async function POST(request) {
   try {
@@ -22,7 +23,7 @@ export async function POST(request) {
 
     return NextResponse.json(result);
   } catch (err) {
-    console.error('Continuity resolve error:', err);
+    logger.error('Continuity resolve error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

@@ -3,6 +3,7 @@ import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../../../lib/logger.js';
 
 /**
  * POST /api/cloud/policies/[policyId]/rollout
@@ -36,7 +37,7 @@ export async function POST(request, { params }) {
       .maybeSingle();
 
     if (vErr) {
-      console.error('[cloud/policies/rollout] Version query error:', vErr);
+      logger.error('[cloud/policies/rollout] Version query error:', vErr);
       return epProblem(500, 'rollout_query_failed', vErr.message);
     }
 
@@ -57,7 +58,7 @@ export async function POST(request, { params }) {
     if (err.name === 'CloudAuthorizationError') {
       return epProblem(403, 'forbidden', err.message);
     }
-    console.error('[cloud/policies/rollout] Error:', err);
+    logger.error('[cloud/policies/rollout] Error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

@@ -3,6 +3,7 @@ import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * POST /api/cloud/signoff/escalate
@@ -37,7 +38,7 @@ export async function POST(request) {
       .maybeSingle();
 
     if (lookupErr) {
-      console.error('[cloud/signoff/escalate] Lookup error:', lookupErr);
+      logger.error('[cloud/signoff/escalate] Lookup error:', lookupErr);
       return epProblem(500, 'escalation_lookup_failed', lookupErr.message);
     }
 
@@ -60,7 +61,7 @@ export async function POST(request) {
     if (err.name === 'CloudAuthorizationError') {
       return epProblem(403, 'forbidden', err.message);
     }
-    console.error('[cloud/signoff/escalate] Error:', err);
+    logger.error('[cloud/signoff/escalate] Error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

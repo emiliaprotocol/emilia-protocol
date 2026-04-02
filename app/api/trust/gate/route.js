@@ -11,6 +11,7 @@ import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { sha256 } from '@/lib/handshake/invariants';
+import { logger } from '../../../../lib/logger.js';
 
 const GATE_POLICIES = {
   strict:     { min_ee: 40,  max_dispute_rate: 0.02, require_established: true },
@@ -235,7 +236,7 @@ export async function POST(request) {
       extensions,
     }));
   } catch (err) {
-    console.error('[trust/gate] error:', err);
+    logger.error('[trust/gate] error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

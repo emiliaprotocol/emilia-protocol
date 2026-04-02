@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * POST /api/receipts/confirm
@@ -39,7 +40,7 @@ export async function POST(request) {
 
     return NextResponse.json({ ...result, _message: message });
   } catch (err) {
-    console.error('Bilateral confirmation error:', err);
+    logger.error('Bilateral confirmation error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

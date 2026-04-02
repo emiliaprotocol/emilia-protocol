@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
+import { logger } from '../../../lib/logger.js';
 
 /**
  * GET /api/leaderboard
@@ -48,7 +49,7 @@ export async function GET(request) {
 
     const { data: entities, error, count } = await query;
     if (error) {
-      console.error('Leaderboard error:', error);
+      logger.error('Leaderboard error:', error);
       return epProblem(500, 'leaderboard_fetch_failed', 'Failed to fetch leaderboard');
     }
 
@@ -97,7 +98,7 @@ export async function GET(request) {
 
     return NextResponse.json({ leaderboard, rank_by: rankBy, total: count, offset, limit });
   } catch (err) {
-    console.error('Leaderboard error:', err);
+    logger.error('Leaderboard error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

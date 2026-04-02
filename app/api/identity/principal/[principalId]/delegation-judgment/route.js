@@ -13,6 +13,7 @@ import { getPrincipal } from '@/lib/ep-ix';
 import { getDelegationJudgmentScore } from '@/lib/attribution';
 import { EP_ERRORS } from '@/lib/errors';
 import { getGuardedClient } from '@/lib/write-guard';
+import { logger } from '../../../../../../lib/logger.js';
 
 // Grade thresholds
 function computeGrade(score) {
@@ -150,7 +151,7 @@ export async function GET(request, { params }) {
       },
     });
   } catch (err) {
-    console.error('[delegation-judgment] error:', err);
+    logger.error('[delegation-judgment] error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

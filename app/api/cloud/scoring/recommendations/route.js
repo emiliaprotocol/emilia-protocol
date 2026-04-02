@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { collectCalibrationData, computeWeightRecommendation, VERTICAL_PACKS } from '@/lib/cloud/calibration';
 import { epProblem } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * GET /api/cloud/scoring/recommendations
@@ -80,7 +81,7 @@ export async function GET(request) {
       _protocol_version: 'EP/1.1-v2',
     });
   } catch (err) {
-    console.error('Scoring recommendations error:', err);
+    logger.error('Scoring recommendations error:', err);
     return epProblem(500, 'calibration_failed', 'Weight calibration computation failed');
   }
 }

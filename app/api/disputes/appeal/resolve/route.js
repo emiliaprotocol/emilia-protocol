@@ -4,6 +4,7 @@ import { recordOperatorAction } from '@/lib/procedural-justice';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { getGuardedClient } from '@/lib/write-guard';
 import { getCronSecret } from '@/lib/env';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * POST /api/disputes/appeal/resolve
@@ -69,7 +70,7 @@ export async function POST(request) {
 
     return NextResponse.json(result);
   } catch (err) {
-    console.error('Appeal resolution error:', err);
+    logger.error('Appeal resolution error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

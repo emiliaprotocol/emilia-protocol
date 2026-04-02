@@ -3,6 +3,7 @@ import { authenticateRequest } from '@/lib/supabase';
 import { getCommitStatus, CommitError } from '@/lib/commit';
 import { authorizeCommitAccess } from '@/lib/commit-auth';
 import { epProblem } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * GET /api/commit/[commitId]
@@ -35,7 +36,7 @@ export async function GET(request, { params }) {
     if (err instanceof CommitError) {
       return epProblem(err.status, err.code.toLowerCase(), err.message);
     }
-    console.error('Commit status error:', err);
+    logger.error('Commit status error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

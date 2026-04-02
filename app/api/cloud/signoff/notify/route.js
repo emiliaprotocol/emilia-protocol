@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * POST /api/cloud/signoff/notify
@@ -37,7 +38,7 @@ export async function POST(request) {
     if (err.name === 'CloudAuthorizationError') {
       return epProblem(403, 'forbidden', err.message);
     }
-    console.error('[cloud/signoff/notify] Error:', err);
+    logger.error('[cloud/signoff/notify] Error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

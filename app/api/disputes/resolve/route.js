@@ -4,6 +4,7 @@ import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { validateTransition, DISPUTE_STATES, recordOperatorAction } from '@/lib/procedural-justice';
 import { getGuardedClient } from '@/lib/write-guard';
 import { getCronSecret } from '@/lib/env';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * POST /api/disputes/resolve
@@ -83,7 +84,7 @@ export async function POST(request) {
       _message: `Dispute ${body.resolution}. Trust state updated.`,
     });
   } catch (err) {
-    console.error('Dispute resolution error:', err);
+    logger.error('Dispute resolution error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

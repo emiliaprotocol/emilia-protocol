@@ -20,6 +20,7 @@ import { authenticateRequest } from '@/lib/supabase';
 import { getAutoReceiptConfig, setAutoReceiptConfig } from '@/lib/auto-receipt-config';
 import { EP_ERRORS } from '@/lib/errors';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
+import { logger } from '../../../../../lib/logger.js';
 
 // ---------------------------------------------------------------------------
 // GET — retrieve current config
@@ -65,7 +66,7 @@ export async function GET(request, { params }) {
       ...config,
     });
   } catch (err) {
-    console.error('[auto-receipt GET] error:', err);
+    logger.error('[auto-receipt GET] error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }
@@ -148,7 +149,7 @@ export async function POST(request, { params }) {
       { status: 200 },
     );
   } catch (err) {
-    console.error('[auto-receipt POST] error:', err);
+    logger.error('[auto-receipt POST] error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
 
 // ---------------------------------------------------------------------------
 // Input sanitization helpers
@@ -69,10 +70,10 @@ export async function POST(request) {
     if (lookupError) {
       // Table may not exist yet — fall back gracefully
       if (lookupError.code === '42P01') {
-        console.warn('operator_applications table missing — run migration 022');
+        logger.warn('operator_applications table missing — run migration 022');
         return NextResponse.json({ id: null, email: normalizedEmail, fallback: true }, { status: 201 });
       }
-      console.error('Operator application lookup error:', lookupError);
+      logger.error('Operator application lookup error:', lookupError);
       return epProblem(500, 'lookup_failed', 'Could not check for existing application');
     }
 
@@ -104,10 +105,10 @@ export async function POST(request) {
       }
       // Table may not exist yet — fall back gracefully
       if (error.code === '42P01') {
-        console.warn('operator_applications table missing — run migration 022');
+        logger.warn('operator_applications table missing — run migration 022');
         return NextResponse.json({ id: null, email: normalizedEmail, fallback: true }, { status: 201 });
       }
-      console.error('Operator application insert error:', error);
+      logger.error('Operator application insert error:', error);
       return epProblem(500, 'application_failed', 'Application failed');
     }
 
@@ -117,7 +118,7 @@ export async function POST(request) {
       created_at: entry.created_at,
     }, { status: 201 });
   } catch (err) {
-    console.error('Operator apply error:', err);
+    logger.error('Operator apply error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

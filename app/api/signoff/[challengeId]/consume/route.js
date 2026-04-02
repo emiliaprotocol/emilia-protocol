@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { consumeSignoff } from '@/lib/signoff/consume';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * POST /api/signoff/[signoffId]/consume
@@ -37,7 +38,7 @@ export async function POST(request, { params }) {
 
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
-    console.error('Signoff consumption error:', err);
+    logger.error('Signoff consumption error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

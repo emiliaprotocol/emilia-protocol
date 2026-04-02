@@ -35,6 +35,7 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { adjudicateDispute } from '@/lib/dispute-adjudication';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { getCronSecret } from '@/lib/env';
+import { logger } from '../../../../../lib/logger.js';
 
 // Minimum age before a filer can trigger adjudication themselves.
 // 48 hours: gives the accused entity a fair response window.
@@ -170,7 +171,7 @@ export async function POST(request, { params }) {
     return NextResponse.json(response, { status: responseStatus });
 
   } catch (err) {
-    console.error('Adjudication route error:', err);
+    logger.error('Adjudication route error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

@@ -3,6 +3,7 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { verifyMerkleProof } from '@/lib/blockchain';
 import { computeReceiptHash } from '@/lib/scoring';
 import { epProblem } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * GET /api/verify/[receiptId]
@@ -123,7 +124,7 @@ export async function GET(request, { params }) {
 
     return NextResponse.json(response);
   } catch (err) {
-    console.error('Verify error:', err);
+    logger.error('Verify error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

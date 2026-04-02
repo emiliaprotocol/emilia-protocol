@@ -3,6 +3,7 @@ import { authenticateRequest } from '@/lib/supabase';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { buildAttributionChain, applyAttributionChain } from '@/lib/attribution';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * POST /api/receipts/submit
@@ -108,14 +109,14 @@ export async function POST(request) {
       // was provided alongside the delegation_id).
       if (chain.length > 1) {
         applyAttributionChain(receiptForAttribution, chain).catch((err) => {
-          console.error('[EP Attribution] Background attribution failed:', err.message);
+          logger.error('[EP Attribution] Background attribution failed:', err.message);
         });
       }
     }
 
     return NextResponse.json(response, { status: 201 });
   } catch (err) {
-    console.error('Receipt submission error:', err);
+    logger.error('Receipt submission error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

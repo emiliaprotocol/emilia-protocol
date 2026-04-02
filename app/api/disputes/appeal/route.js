@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * POST /api/disputes/appeal
@@ -38,7 +39,7 @@ export async function POST(request) {
 
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
-    console.error('Appeal filing error:', err);
+    logger.error('Appeal filing error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { generateEmbedding } from '@/lib/providers/embeddings';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * Sanitize user input to prevent PostgREST filter DSL injection.
@@ -120,7 +121,7 @@ export async function GET(request) {
           }
         }
       } catch (e) {
-        console.warn('Semantic search failed, falling back to filter search:', e.message);
+        logger.warn('Semantic search failed, falling back to filter search:', e.message);
       }
     }
 
@@ -148,7 +149,7 @@ export async function GET(request) {
     const { data: results, error } = await query;
 
     if (error) {
-      console.error('Entity search error:', error);
+      logger.error('Entity search error:', error);
       return epProblem(500, 'search_failed', 'Search failed');
     }
 
@@ -162,7 +163,7 @@ export async function GET(request) {
       rank_by: rankBy,
     });
   } catch (err) {
-    console.error('Entity search error:', err);
+    logger.error('Entity search error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

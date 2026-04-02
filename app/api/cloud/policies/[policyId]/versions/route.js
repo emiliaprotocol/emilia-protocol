@@ -3,6 +3,7 @@ import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../../../lib/logger.js';
 
 /**
  * GET /api/cloud/policies/[policyId]/versions
@@ -26,7 +27,7 @@ export async function GET(request, { params }) {
       .order('version', { ascending: false });
 
     if (error) {
-      console.error('[cloud/policies/versions] Query error:', error);
+      logger.error('[cloud/policies/versions] Query error:', error);
       return epProblem(500, 'policy_versions_query_failed', error.message);
     }
 
@@ -40,7 +41,7 @@ export async function GET(request, { params }) {
     if (err.name === 'CloudAuthorizationError') {
       return epProblem(403, 'forbidden', err.message);
     }
-    console.error('[cloud/policies/versions] Error:', err);
+    logger.error('[cloud/policies/versions] Error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

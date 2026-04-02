@@ -5,6 +5,7 @@ import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';
 import { epError } from '@/lib/errors/response';
 import { authorizeHandshakeVerify, resolveAuthEntityId } from '@/lib/handshake-auth';
 import { getServiceClient } from '@/lib/supabase';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * POST /api/handshake/[handshakeId]/verify
@@ -43,7 +44,7 @@ export async function POST(request, { params }) {
     if (err.name === 'HandshakeError' && err.status === 403) {
       return epError(EP_ERROR_CODES.FORBIDDEN, err.message);
     }
-    console.error('Handshake verification error:', err);
+    logger.error('Handshake verification error:', err);
     return epError(EP_ERROR_CODES.INTERNAL);
   }
 }

@@ -5,6 +5,7 @@ import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';
 import { epError } from '@/lib/errors/response';
 import { validateSignoffChallenge } from '@/lib/validation/schemas';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * POST /api/signoff/challenge
@@ -51,7 +52,7 @@ export async function POST(request) {
 
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
-    console.error('Signoff challenge error:', err);
+    logger.error('Signoff challenge error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

@@ -4,6 +4,7 @@ import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
 import { getServiceClient } from '@/lib/supabase';
 import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * GET /api/cloud/webhooks/[endpointId]
@@ -28,7 +29,7 @@ export async function GET(request, { params }) {
       .maybeSingle();
 
     if (error) {
-      console.error('[cloud/webhooks] GET error:', error);
+      logger.error('[cloud/webhooks] GET error:', error);
       return epProblem(500, 'webhook_query_failed', error.message);
     }
 
@@ -44,7 +45,7 @@ export async function GET(request, { params }) {
     if (err.name === 'CloudAuthorizationError') {
       return epProblem(403, 'forbidden', err.message);
     }
-    console.error('[cloud/webhooks/[endpointId]] GET error:', err);
+    logger.error('[cloud/webhooks/[endpointId]] GET error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }
@@ -76,7 +77,7 @@ export async function PUT(request, { params }) {
       .maybeSingle();
 
     if (lookupErr) {
-      console.error('[cloud/webhooks] PUT lookup error:', lookupErr);
+      logger.error('[cloud/webhooks] PUT lookup error:', lookupErr);
       return epProblem(500, 'webhook_query_failed', lookupErr.message);
     }
 
@@ -125,7 +126,7 @@ export async function PUT(request, { params }) {
       .single();
 
     if (updateErr) {
-      console.error('[cloud/webhooks] PUT update error:', updateErr);
+      logger.error('[cloud/webhooks] PUT update error:', updateErr);
       return epProblem(500, 'webhook_update_failed', updateErr.message);
     }
 
@@ -137,7 +138,7 @@ export async function PUT(request, { params }) {
     if (err.name === 'CloudAuthorizationError') {
       return epProblem(403, 'forbidden', err.message);
     }
-    console.error('[cloud/webhooks/[endpointId]] PUT error:', err);
+    logger.error('[cloud/webhooks/[endpointId]] PUT error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }
@@ -166,7 +167,7 @@ export async function DELETE(request, { params }) {
       .maybeSingle();
 
     if (lookupErr) {
-      console.error('[cloud/webhooks] DELETE lookup error:', lookupErr);
+      logger.error('[cloud/webhooks] DELETE lookup error:', lookupErr);
       return epProblem(500, 'webhook_query_failed', lookupErr.message);
     }
 
@@ -187,7 +188,7 @@ export async function DELETE(request, { params }) {
       .eq('endpoint_id', endpointId);
 
     if (deleteErr) {
-      console.error('[cloud/webhooks] DELETE error:', deleteErr);
+      logger.error('[cloud/webhooks] DELETE error:', deleteErr);
       return epProblem(500, 'webhook_delete_failed', deleteErr.message);
     }
 
@@ -200,7 +201,7 @@ export async function DELETE(request, { params }) {
     if (err.name === 'CloudAuthorizationError') {
       return epProblem(403, 'forbidden', err.message);
     }
-    console.error('[cloud/webhooks/[endpointId]] DELETE error:', err);
+    logger.error('[cloud/webhooks/[endpointId]] DELETE error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

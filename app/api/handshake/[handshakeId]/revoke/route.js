@@ -4,6 +4,7 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { revokeHandshake } from '@/lib/handshake';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { validateRevokeBody } from '@/lib/handshake/schema';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * POST /api/handshake/[handshakeId]/revoke
@@ -48,7 +49,7 @@ export async function POST(request, { params }) {
 
     return NextResponse.json(result);
   } catch (err) {
-    console.error('Handshake revocation error:', err);
+    logger.error('Handshake revocation error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

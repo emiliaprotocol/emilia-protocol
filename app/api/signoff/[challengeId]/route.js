@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * GET /api/signoff/[challengeId]
@@ -42,7 +43,7 @@ export async function GET(request, { params }) {
 
     return NextResponse.json(challenge);
   } catch (err) {
-    console.error('Signoff challenge fetch error:', err);
+    logger.error('Signoff challenge fetch error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

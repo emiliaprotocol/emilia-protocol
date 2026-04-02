@@ -5,6 +5,7 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { computeReceiptComposite } from '@/lib/scoring';
 import { epProblem } from '@/lib/errors';
 import { generateEmbedding } from '@/lib/providers/embeddings';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * POST /api/entities/register
@@ -128,7 +129,7 @@ export async function POST(request) {
       .single();
 
     if (insertError) {
-      console.error('Entity insert error:', insertError);
+      logger.error('Entity insert error:', insertError);
       return epProblem(500, 'registration_failed', 'Failed to register entity');
     }
 
@@ -157,7 +158,7 @@ export async function POST(request) {
       _note: 'Query /api/trust/profile/:entityId for full trust profile. compat_score is for sorting only.',
     }, { status: 201 });
   } catch (err) {
-    console.error('Registration error:', err);
+    logger.error('Registration error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

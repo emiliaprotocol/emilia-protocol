@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * POST /api/disputes/respond
@@ -38,7 +39,7 @@ export async function POST(request) {
       _message: 'Response recorded. Dispute is now under review.',
     });
   } catch (err) {
-    console.error('Dispute response error:', err);
+    logger.error('Dispute response error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

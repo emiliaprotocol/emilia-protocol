@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { protocolWrite, COMMAND_TYPES, ProtocolWriteError } from '@/lib/protocol-write';
 import { epProblem } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * POST /api/commit/verify
@@ -43,7 +44,7 @@ export async function POST(request) {
     if (err instanceof ProtocolWriteError) {
       return epProblem(err.status, err.code.toLowerCase(), err.message);
     }
-    console.error('Commit verify error:', err);
+    logger.error('Commit verify error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

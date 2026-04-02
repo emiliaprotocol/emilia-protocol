@@ -3,6 +3,7 @@ import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { queryEvents, verifyIntegrity } from '@/lib/cloud/event-explorer';
 import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * GET /api/cloud/audit/report?date_from=...&date_to=...
@@ -40,7 +41,7 @@ export async function GET(request) {
     if (err.name === 'CloudAuthorizationError') {
       return epProblem(403, 'forbidden', err.message);
     }
-    console.error('[cloud/audit/report] Error:', err);
+    logger.error('[cloud/audit/report] Error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

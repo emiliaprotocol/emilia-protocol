@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * GET /api/trust/profile/:entityId
@@ -84,7 +85,7 @@ export async function GET(request, { params }) {
       _protocol_version: 'EP/1.1-v2',
     });
   } catch (err) {
-    console.error('Trust profile error:', err);
+    logger.error('Trust profile error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

@@ -4,6 +4,7 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { runAnchorBatch } from '@/lib/blockchain';
 import { epProblem } from '@/lib/errors';
 import { getCronSecret } from '@/lib/env';
+import { logger } from '../../../../lib/logger.js';
 
 function safeCompare(a, b) {
   if (!a || !b) return false;
@@ -43,7 +44,7 @@ export async function POST(request) {
 
     return NextResponse.json(result);
   } catch (err) {
-    console.error('Anchor cron error:', err);
+    logger.error('Anchor cron error:', err);
     return epProblem(500, 'anchor_failed', 'Anchor batch processing failed');
   }
 }

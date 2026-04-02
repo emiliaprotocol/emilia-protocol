@@ -3,6 +3,7 @@ import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../../../lib/logger.js';
 
 /**
  * GET /api/cloud/policies/[policyId]/diff?v1=...&v2=...
@@ -34,7 +35,7 @@ export async function GET(request, { params }) {
       .in('version', [parseInt(v1, 10), parseInt(v2, 10)]);
 
     if (error) {
-      console.error('[cloud/policies/diff] Query error:', error);
+      logger.error('[cloud/policies/diff] Query error:', error);
       return epProblem(500, 'policy_diff_query_failed', error.message);
     }
 
@@ -54,7 +55,7 @@ export async function GET(request, { params }) {
     if (err.name === 'CloudAuthorizationError') {
       return epProblem(403, 'forbidden', err.message);
     }
-    console.error('[cloud/policies/diff] Error:', err);
+    logger.error('[cloud/policies/diff] Error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

@@ -3,6 +3,7 @@ import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { searchEvents } from '@/lib/cloud/event-explorer';
 import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * GET /api/cloud/events/search?q=...&event_types=...&date_from=...&date_to=...
@@ -48,7 +49,7 @@ export async function GET(request) {
     if (err.name === 'CloudAuthorizationError') {
       return epProblem(403, 'forbidden', err.message);
     }
-    console.error('[cloud/events/search] Error:', err);
+    logger.error('[cloud/events/search] Error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

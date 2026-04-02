@@ -3,6 +3,7 @@ import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../../../lib/logger.js';
 
 /**
  * POST /api/cloud/policies/[policyId]/simulate
@@ -35,7 +36,7 @@ export async function POST(request, { params }) {
       .maybeSingle();
 
     if (error) {
-      console.error('[cloud/policies/simulate] Query error:', error);
+      logger.error('[cloud/policies/simulate] Query error:', error);
       return epProblem(500, 'policy_query_failed', error.message);
     }
 
@@ -61,7 +62,7 @@ export async function POST(request, { params }) {
     if (err.name === 'CloudAuthorizationError') {
       return epProblem(403, 'forbidden', err.message);
     }
-    console.error('[cloud/policies/simulate] Error:', err);
+    logger.error('[cloud/policies/simulate] Error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

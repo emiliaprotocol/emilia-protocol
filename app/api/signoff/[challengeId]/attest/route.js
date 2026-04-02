@@ -5,6 +5,7 @@ import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';
 import { epError } from '@/lib/errors/response';
 import { validateSignoffAttest } from '@/lib/validation/schemas';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * POST /api/signoff/[challengeId]/attest
@@ -53,7 +54,7 @@ export async function POST(request, { params }) {
 
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
-    console.error('Signoff attestation error:', err.message, err.code);
+    logger.error('Signoff attestation error:', err.message, err.code);
     // Structured error response for debugging attestation failures
     return NextResponse.json({
       error: { code: 'EP-9001', message: err.message, detail: err.code || null }

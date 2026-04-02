@@ -3,6 +3,7 @@ import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { epProblem } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * POST /api/needs/[id]/claim
@@ -117,7 +118,7 @@ export async function POST(request, { params }) {
       message: 'Need claimed successfully. Complete it by posting to /api/needs/{id}/complete',
     });
   } catch (err) {
-    console.error('Need claim error:', err);
+    logger.error('Need claim error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

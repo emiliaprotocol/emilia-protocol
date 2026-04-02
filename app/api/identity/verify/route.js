@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { verifyBinding } from '@/lib/ep-ix';
 import { EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
 
 export async function POST(request) {
   try {
@@ -16,7 +17,7 @@ export async function POST(request) {
 
     return NextResponse.json(result);
   } catch (err) {
-    console.error('Identity verify error:', err);
+    logger.error('Identity verify error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

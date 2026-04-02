@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { epProblem } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * GET /api/score/[entityId]
@@ -126,7 +127,7 @@ export async function GET(request, { params }) {
       member_since: entity.created_at,
     });
   } catch (err) {
-    console.error('Score lookup error:', err);
+    logger.error('Score lookup error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

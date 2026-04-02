@@ -5,6 +5,7 @@ import { CommitError } from '@/lib/commit';
 import { authorizeCommitIssuance } from '@/lib/commit-auth';
 import { protocolWrite, COMMAND_TYPES, ProtocolWriteError } from '@/lib/protocol-write';
 import { epProblem } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
 
 // High-stakes action types MUST be routed through /api/trust/gate.
 // Direct issuance is only permitted for lower-risk actions.
@@ -109,7 +110,7 @@ export async function POST(request) {
     if (err instanceof CommitError) {
       return epProblem(err.status, err.code.toLowerCase(), err.message);
     }
-    console.error('Commit issue error:', err);
+    logger.error('Commit issue error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

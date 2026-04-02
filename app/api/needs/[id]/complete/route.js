@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * POST /api/needs/[id]/complete
@@ -58,7 +59,7 @@ export async function POST(request, { params }) {
       .single();
 
     if (updateError) {
-      console.error('Need complete error:', updateError);
+      logger.error('Need complete error:', updateError);
       return epProblem(500, 'completion_failed', 'Failed to complete need');
     }
 
@@ -71,7 +72,7 @@ export async function POST(request, { params }) {
       message: 'Need completed. The requesting entity can now rate you via /api/needs/{id}/rate',
     });
   } catch (err) {
-    console.error('Need complete error:', err);
+    logger.error('Need complete error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

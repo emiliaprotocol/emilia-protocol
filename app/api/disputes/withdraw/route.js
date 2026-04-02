@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * POST /api/disputes/withdraw
@@ -33,7 +34,7 @@ export async function POST(request) {
 
     return NextResponse.json(result);
   } catch (err) {
-    console.error('Dispute withdrawal error:', err);
+    logger.error('Dispute withdrawal error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

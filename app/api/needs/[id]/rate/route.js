@@ -3,6 +3,7 @@ import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { createReceipt } from '@/lib/create-receipt';
 import { epProblem } from '@/lib/errors';
+import { logger } from '../../../../../lib/logger.js';
 
 /**
  * POST /api/needs/[id]/rate
@@ -96,7 +97,7 @@ export async function POST(request, { params }) {
 
     return NextResponse.json(response, { status: 201 });
   } catch (err) {
-    console.error('Need rate error:', err);
+    logger.error('Need rate error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
 }

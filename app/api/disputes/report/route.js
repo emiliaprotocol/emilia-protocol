@@ -4,6 +4,7 @@ import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { checkAbuse } from '@/lib/procedural-justice';
 import { getGuardedClient } from '@/lib/write-guard';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * POST /api/disputes/report
@@ -73,7 +74,7 @@ export async function POST(request) {
       _principle: 'Trust must never be more powerful than appeal.',
     }, { status: 201 });
   } catch (err) {
-    console.error('Report filing error:', err);
+    logger.error('Report filing error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }

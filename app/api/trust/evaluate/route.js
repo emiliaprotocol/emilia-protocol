@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { EP_ERRORS } from '@/lib/errors';
 import { buildTrustDecision, passToDecision } from '@/lib/trust-decision';
+import { logger } from '../../../../lib/logger.js';
 
 /**
  * POST /api/trust/evaluate
@@ -60,7 +61,7 @@ export async function POST(request) {
       },
     }));
   } catch (err) {
-    console.error('Trust evaluate error:', err);
+    logger.error('Trust evaluate error:', err);
     return EP_ERRORS.INTERNAL();
   }
 }
