@@ -1,0 +1,6 @@
+#!/bin/sh
+# EMILIA Protocol — pre-commit hook
+# Runs lint-staged to enforce code quality on staged files.
+# Install: npm run prepare  (runs 'husky' which makes this executable)
+
+npx lint-staged
