@@ -585,6 +585,11 @@ Next ==
 
 Spec == Init /\ [][Next]_vars
 
+\* TLC exploration bound — prevents the events sequence from growing without
+\* limit, keeping the state space finite. 20 events covers all reachable
+\* lifecycle paths for 2 handshakes (including full signoff ceremonies).
+BoundedExploration == Len(events) <= 20
+
 \* --------------------------------------------------------------------------
 \* Theorems — properties that TLC should verify
 \* --------------------------------------------------------------------------
