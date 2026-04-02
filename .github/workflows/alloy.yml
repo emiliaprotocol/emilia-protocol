@@ -1,0 +1,122 @@
+name: Alloy
+
+on:
+  push:
+    paths:
+      - 'formal/*.als'
+      - '.github/workflows/alloy.yml'
+  workflow_dispatch:
+
+jobs:
+  alloy-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Download Alloy 6
+        run: |
+          wget -q -O alloy.jar \
+            https://github.com/AlloyTools/org.alloytools.alloy/releases/download/v6.1.0/org.alloytools.alloy.dist.jar
+
+      - name: Write Alloy runner
+        run: |
+          cat > AlloyCheck.java << 'JAVAEOF'
+          import edu.mit.csail.sdg.alloy4.A4Reporter;
+          import edu.mit.csail.sdg.alloy4.Err;
+          import edu.mit.csail.sdg.alloy4.ErrorWarning;
+          import edu.mit.csail.sdg.alloy4compiler.ast.Command;
+          import edu.mit.csail.sdg.alloy4compiler.ast.Module;
+          import edu.mit.csail.sdg.alloy4compiler.parser.CompUtil;
+          import edu.mit.csail.sdg.alloy4compiler.translator.A4Options;
+          import edu.mit.csail.sdg.alloy4compiler.translator.A4Solution;
+          import edu.mit.csail.sdg.alloy4compiler.translator.TranslateAlloyToKodkod;
+          import java.util.ArrayList;
+          import java.util.List;
+
+          public class AlloyCheck {
+              public static void main(String[] args) throws Exception {
+                  if (args.length < 1) {
+                      System.err.println("Usage: AlloyCheck <model.als>");
+                      System.exit(1);
+                  }
+                  String modelPath = args[0];
+
+                  List<String> warnings = new ArrayList<>();
+                  A4Reporter rep = new A4Reporter() {
+                      @Override
+                      public void warning(ErrorWarning msg) {
+                          warnings.add("WARNING: " + msg);
+                          System.out.println("WARNING: " + msg);
+                      }
+                  };
+
+                  System.out.println("Parsing: " + modelPath);
+                  Module world = CompUtil.parseEverything_fromFile(rep, null, modelPath);
+                  System.out.println("Parse OK.");
+
+                  A4Options options = new A4Options();
+                  options.solver = A4Options.SatSolver.SAT4J;
+
+                  List<Command> commands = world.getAllCommands();
+                  System.out.println("Commands: " + commands.size());
+
+                  int checks = 0, passes = 0, failures = 0, runs = 0, satisfiable = 0;
+                  for (Command cmd : commands) {
+                      System.out.printf("  %-12s %s ... ", cmd.check ? "check" : "run", cmd.label);
+                      System.out.flush();
+                      A4Solution sol = TranslateAlloyToKodkod.execute_command(
+                          rep, world.getAllReachableSigs(), cmd, options);
+                      if (cmd.check) {
+                          checks++;
+                          if (sol.satisfiable()) {
+                              System.out.println("COUNTEREXAMPLE FOUND");
+                              failures++;
+                          } else {
+                              System.out.println("No counterexample found.");
+                              passes++;
+                          }
+                      } else {
+                          runs++;
+                          if (sol.satisfiable()) {
+                              System.out.println("instance found");
+                              satisfiable++;
+                          } else {
+                              System.out.println("no instance");
+                          }
+                      }
+                  }
+
+                  System.out.println();
+                  System.out.println("Results:");
+                  System.out.printf("  checks: %d passed, %d failed%n", passes, failures);
+                  System.out.printf("  runs:   %d satisfiable%n", satisfiable);
+
+                  if (failures > 0) {
+                      System.out.println();
+                      System.out.println("FAIL: " + failures + " check(s) found counterexamples.");
+                      System.exit(1);
+                  }
+                  System.out.println("OK: all checks passed.");
+              }
+          }
+          JAVAEOF
+
+      - name: Compile runner
+        run: javac -cp alloy.jar AlloyCheck.java
+
+      - name: Run Alloy checks
+        run: java -cp .:alloy.jar AlloyCheck formal/ep_relations.als
+
+      - name: Upload Alloy output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: alloy-output
+          path: formal/ep_relations.als
+          retention-days: 30
