@@ -13,6 +13,10 @@ const securityHeaders = [
 
 const nextConfig = {
   output: 'standalone',
+  // Enable instrumentation.js (graceful shutdown, OpenTelemetry, etc.)
+  experimental: {
+    instrumentationHook: true,
+  },
   async headers() {
     return [
       {
