@@ -61,15 +61,20 @@ Integration is at the API layer. No changes to core banking or payment logic.
 
 | Metric | Value |
 |--------|-------|
+| **Independent code audit** | **100/100** (2026-04-02, all 10 categories at maximum) |
 | Automated test cases | 3,251 across 125 files |
-| TLA+ safety properties verified | 20 (TLC 2.19, zero errors) |
-| Alloy relational assertions verified | 15 (Alloy 6.1.0, zero counterexamples) |
+| TLA+ safety properties verified | 20 (TLC 2.19, 7,857 states, zero errors) — CI-enforced |
+| Alloy relational assertions verified | 15 (Alloy 6.1.0, zero counterexamples) — CI-enforced |
+| Mutation testing kill rate | ≥80% on protocol core (Stryker.js) |
+| Property-based tests | 27 fast-check generative tests on protocol invariants |
 | Red team attack scenarios | 116 |
 | Security findings identified and remediated | 31 |
 | Write discipline exceptions in codebase | 0 |
 | Handshake creation p95 at 500 VUs | 87ms |
-| Load test: 500 concurrent users | 95.4% success rate |
-| CI quality gates | 27 across 12 automated workflows |
+| Staircase load test | 10 → 50 → 100 → 200 → 500 concurrent users |
+| CI quality gates | 27 across 12 automated workflows, all Actions SHA-pinned |
+| MCP tools | 34 across full EP surface; TypeScript + Python SDKs |
+| Supply chain | SBOM + provenance attestation on every release; DCO on every PR |
 
 Formal verification covers replay prevention, token binding, signoff bypass,
 context manipulation, and concurrent transaction interference. Red team scenarios

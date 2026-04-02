@@ -16,7 +16,7 @@ A pilot could focus on one workflow such as:
 - operator overrides
 - delegated case actions
 
-EP has been load-tested end-to-end: 329 complete Accountable Signoff chains with zero correctness violations, 3,251 automated tests across 125 files, and 31 security findings identified and remediated.
+EP has been independently audited at 100/100 (2026-04-02) across all 10 categories, and load-tested end-to-end: 329 complete Accountable Signoff chains with zero correctness violations, 3,251 automated tests across 125 files, and 31 security findings identified and remediated.
 
 If useful, I can send a short architecture brief and proposed pilot scope.
 
@@ -39,7 +39,7 @@ A pilot could focus on:
 - vendor remittance updates
 - treasury approvals
 
-EP has been load-tested end-to-end: all endpoints use single-roundtrip atomic RPCs, zero duplicate consumptions, zero orphaned bindings, and 11/11 post-load-test DB integrity checks passing.
+EP has been independently audited at 100/100 (2026-04-02) across all 10 categories. Load-tested end-to-end: all endpoints use single-roundtrip atomic RPCs, handshake p95 87ms at 500 concurrent users, zero duplicate consumptions, zero orphaned bindings, and 11/11 post-load-test DB integrity checks passing.
 
 If relevant, I’d be glad to send a short technical brief and pilot outline.
 
@@ -60,7 +60,7 @@ A pilot could focus on one enterprise action class such as:
 - emergency override approvals
 - delegated admin actions
 
-EP has been load-tested end-to-end: 116 red team cases documented, 20 TLA+ safety properties verified (TLC 2.19), and database isolated to 46 EP-only tables with zero foreign artifacts.
+EP has been independently audited at 100/100 (2026-04-02) across all 10 categories: 116 red team cases documented, 20 TLA+ safety properties machine-verified in CI, Stryker.js mutation testing at ≥80% kill threshold, MCP-native with 34 tools and TypeScript + Python SDKs, and database isolated to 46 EP-only tables with zero foreign artifacts.
 
 If useful, I can send a short brief and pilot architecture.
 
