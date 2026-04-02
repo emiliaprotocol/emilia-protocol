@@ -6,21 +6,21 @@
 # Format: pattern  @owner
 
 # Default: all files require maintainer review
-*                           @rexrubyai
+*                           @futureenterprises
 
 # Core protocol — trust scoring, write path, state machines
-lib/scoring*.js             @rexrubyai
-lib/protocol-write.js       @rexrubyai
-lib/write-guard.js          @rexrubyai
-lib/canonical-evaluator.js  @rexrubyai
-lib/signoff/                @rexrubyai
-lib/handshake/              @rexrubyai
+lib/scoring*.js             @futureenterprises
+lib/protocol-write.js       @futureenterprises
+lib/write-guard.js          @futureenterprises
+lib/canonical-evaluator.js  @futureenterprises
+lib/signoff/                @futureenterprises
+lib/handshake/              @futureenterprises
 
 # Formal verification models
-formal/                     @rexrubyai
+formal/                     @futureenterprises
 
 # Database schema — migrations require extra scrutiny
-supabase/migrations/        @rexrubyai
+supabase/migrations/        @futureenterprises
 
 # CI/CD — pipeline changes require maintainer review
-.github/                    @rexrubyai
+.github/                    @futureenterprises

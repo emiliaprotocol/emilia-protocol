@@ -183,7 +183,7 @@ All items below were built and merged in the second sprint wave. They are live, 
 - [ ] Set up Upstash Redis (production rate limiting)
 - [ ] Verify /api/health returns healthy on production
 - [ ] Verify /api/cron/expire runs on Vercel schedule
-- [ ] Wire RexRuby to submit real receipts (blocked on Twilio)
+- [ ] Wire Future Enterprises to submit real receipts (blocked on Twilio)
 - [ ] Add spec.emiliaprotocol.ai CNAME
 
 ### Build

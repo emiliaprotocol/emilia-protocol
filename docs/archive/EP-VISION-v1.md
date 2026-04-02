@@ -358,7 +358,7 @@ EP doesn't handle the commerce. It tells the agent: "this counterparty has a ver
 - [ ] Counter-receipts (48hr window)
 - [ ] Conflict receipts (disputed state + evidence window)
 - [ ] Entity taxonomy documentation
-- [ ] RexRuby.ai integration (first live receipts)
+- [ ] Future Enterprises integration (first live receipts)
 - [ ] NIST ITL concept paper submission
 
 ### Q3 2026 (v2.0 — Verified)
