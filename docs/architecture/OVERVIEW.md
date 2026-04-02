@@ -85,46 +85,40 @@ Both tables are append-only. Database triggers prevent UPDATE and DELETE operati
 
 ## System Diagram
 
-```
-                          +------------------+
-                          |   Route Handler  |
-                          | (thin adapter)   |
-                          +--------+---------+
-                                   |
-                          uses getGuardedClient()
-                          (blocks trust-table writes)
-                                   |
-                                   v
-                          +------------------+
-                          |  protocolWrite() |  <-- single choke point
-                          |  lib/protocol-   |
-                          |  write.js        |
-                          +--------+---------+
-                                   |
-              +--------------------+--------------------+
-              |                    |                    |
-              v                    v                    v
-     +----------------+   +----------------+   +----------------+
-     | Canonical       |   | Handshake      |   | Commit         |
-     | Writer          |   | Module         |   | Module         |
-     | (receipts,      |   | (create,       |   | (issue,        |
-     |  disputes,      |   |  present,      |   |  verify,       |
-     |  reports)       |   |  verify,       |   |  revoke)       |
-     +--------+--------+   |  finalize)     |   +--------+-------+
-              |             +--------+-------+            |
-              |                      |                    |
-              v                      v                    v
-     +-----------------------------------------------------------+
-     |                    Supabase (Trust Tables)                 |
-     |  receipts | commits | disputes | trust_reports |           |
-     |  handshakes | handshake_parties | handshake_presentations  |
-     |  handshake_bindings | handshake_results | handshake_events |
-     |  handshake_policies | handshake_consumptions |             |
-     |  protocol_events                                           |
-     +-----------------------------------------------------------+
+```mermaid
+flowchart TD
+    Client(["Client / MCP Agent"])
+    MW["middleware.js\n(rate limiting, CSP nonce)"]
+    RH["Route Handler\n(thin adapter — read-only client only)"]
+    WG["write-guard.js\ngetGuardedClient()\nblocks direct trust-table writes"]
+    PW["protocolWrite()\nlib/protocol-write.js\n— single choke point —"]
 
-     CI Enforcement:
-       scripts/check-write-discipline.js   -- route-level import guard
-       scripts/check-protocol-discipline.js -- trust-table write guard
-       lib/write-guard.js                  -- runtime proxy enforcement
+    CW["Canonical Writer\nreceipts · disputes\nreports · delegations"]
+    HM["Handshake Module\nlib/handshake/\ncreate · present\nverify · finalize"]
+    CM["Commit Module\nlib/commit.js\nissue · verify · revoke"]
+    SM["Signoff Module\nlib/signoff/\nchallenge · attest\nconsume · deny · revoke"]
+
+    DB[("Supabase\n(Trust Tables)\nreceipts · commits · disputes\nhandshakes · handshake_parties\nhandshake_presentations\nhandshake_bindings · handshake_results\nhandshake_events · protocol_events\nsignoff_challenges · signoff_attestations\nsignoff_consumptions")]
+
+    CI["CI Enforcement\ncheck-write-discipline.js\ncheck-protocol-discipline.js\ncheck-invariant-coverage.js"]
+
+    Client --> MW
+    MW --> RH
+    RH -- "read queries" --> WG
+    RH -- "mutations" --> PW
+    WG --> DB
+    PW --> CW
+    PW --> HM
+    PW --> CM
+    PW --> SM
+    CW --> DB
+    HM --> DB
+    CM --> DB
+    SM --> DB
+    CI -. "gate on CI" .-> PW
 ```
+
+**Write discipline summary:**
+- Route handlers receive a guarded Supabase client (`getGuardedClient()`) that blocks mutations on trust tables at the proxy level.
+- All trust-changing mutations route through `protocolWrite()`, which enforces invariant checks, idempotency, event-first logging, and telemetry.
+- CI scripts verify at build time that no route imports a service client directly.

@@ -193,6 +193,21 @@ jobs:
         working-directory: mcp-server
         run: node -e "import('./index.js').then(() => console.log('MCP server entry OK'))"
 
+  # ── Job 9b: Benchmark gate — performance regression check ────────
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Run benchmark tests
+        run: npx vitest run tests/benchmark.test.js tests/adversarial-benchmarks.test.js
+        env:
+          BENCHMARK_CI: '1'
+
   # ── Job 10: TypeScript SDK ───────────────────────────────────────
   sdk-typescript:
     runs-on: ubuntu-latest
