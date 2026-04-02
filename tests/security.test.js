@@ -47,21 +47,25 @@ describe('Security Headers (next.config.js)', () => {
     });
   }
 
-  it('includes Content-Security-Policy header', () => {
-    expect(configSrc).toContain('Content-Security-Policy');
+  it('applies static security headers to all routes via /:path*', () => {
+    expect(configSrc).toContain("'/:path*'");
   });
 
-  it('applies headers to all routes via /:path*', () => {
-    expect(configSrc).toContain("'/:path*'");
+  it('sets nonce-based CSP dynamically in middleware.js', () => {
+    // CSP is set per-request with a nonce in middleware.js (resolves HIGH-09 pentest finding).
+    // next.config.js no longer embeds CSP to avoid 'unsafe-inline' on script-src.
+    const middlewareSrc = readFile('middleware.js');
+    expect(middlewareSrc).toContain('Content-Security-Policy');
   });
 });
 
 // ---------------------------------------------------------------------------
-// 2. CSP Directives
+// 2. CSP Directives (nonce-based, enforced in middleware.js)
 // ---------------------------------------------------------------------------
 
 describe('Content Security Policy directives', () => {
-  const configSrc = readFile('next.config.js');
+  // CSP moved from next.config.js to middleware.js for per-request nonce support.
+  const middlewareSrc = readFile('middleware.js');
 
   const requiredDirectives = [
     "default-src 'self'",
@@ -75,16 +79,23 @@ describe('Content Security Policy directives', () => {
 
   for (const directive of requiredDirectives) {
     it(`includes "${directive}"`, () => {
-      expect(configSrc).toContain(directive);
+      expect(middlewareSrc).toContain(directive);
     });
   }
 
   it('allows Google Fonts in style-src', () => {
-    expect(configSrc).toContain('https://fonts.googleapis.com');
+    expect(middlewareSrc).toContain('https://fonts.googleapis.com');
   });
 
   it('allows Google Fonts CDN in font-src', () => {
-    expect(configSrc).toContain('https://fonts.gstatic.com');
+    expect(middlewareSrc).toContain('https://fonts.gstatic.com');
+  });
+
+  it('uses per-request nonce (no unsafe-inline in script-src)', () => {
+    // Nonce is injected at request time — 'unsafe-inline' must not appear in script-src.
+    // Use [^\n]* to avoid spanning to other directives on separate lines.
+    expect(middlewareSrc).toContain("nonce-");
+    expect(middlewareSrc).not.toMatch(/script-src[^\n]*'unsafe-inline'/);
   });
 });
 

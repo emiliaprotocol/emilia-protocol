@@ -26,13 +26,13 @@ process.env.EP_API_KEY  = 'ep_test_integration_key';
 // ---------------------------------------------------------------------------
 
 vi.mock('@modelcontextprotocol/sdk/server/index.js', () => ({
-  Server: vi.fn().mockImplementation(() => ({
-    setRequestHandler: vi.fn(),
-    connect: vi.fn().mockResolvedValue(undefined),
-  })),
+  Server: vi.fn(function MockServer() {
+    this.setRequestHandler = vi.fn();
+    this.connect = vi.fn().mockResolvedValue(undefined);
+  }),
 }));
 vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
-  StdioServerTransport: vi.fn().mockImplementation(() => ({})),
+  StdioServerTransport: vi.fn(function MockTransport() {}),
 }));
 vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
   CallToolRequestSchema:       'CallToolRequestSchema',
