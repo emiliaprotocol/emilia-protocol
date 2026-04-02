@@ -28,7 +28,7 @@
     "@remotion/player": "^4.0.441",
     "@sentry/nextjs": "^8.0.0",
     "@supabase/supabase-js": "^2.45.0",
-    "next": "^15.0.0",
+    "next": "^16.2.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "remotion": "^4.0.441",
