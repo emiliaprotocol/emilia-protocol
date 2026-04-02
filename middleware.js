@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/rate-limit';
+import { randomBytes } from 'crypto';
 
 /**
  * EMILIA Protocol — API Rate Limiting Middleware
@@ -196,13 +197,46 @@ function getApiKeyPrefix(request) {
 }
 
 // =============================================================================
+// CSP nonce generator
+// =============================================================================
+
+/**
+ * Build a per-request Content-Security-Policy header with a nonce.
+ * The nonce replaces 'unsafe-inline' for script-src, satisfying the
+ * HIGH-09 pentest finding while still supporting Next.js inline scripts.
+ */
+function buildCSP(nonce) {
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}'`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "img-src 'self' data: blob:",
+    "font-src 'self' https://fonts.gstatic.com",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://mainnet.base.org https://sepolia.base.org",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join('; ');
+}
+
+// =============================================================================
 // Middleware
 // =============================================================================
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
-  if (!pathname.startsWith('/api/')) return NextResponse.next();
+  // Non-API page requests: inject per-request nonce and CSP header.
+  // The nonce is forwarded via x-nonce request header so server components
+  // can read it (e.g. in app/layout.js) and pass it to <Script> tags.
+  if (!pathname.startsWith('/api/')) {
+    const nonce = randomBytes(16).toString('base64');
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-nonce', nonce);
+    const response = NextResponse.next({ request: { headers: requestHeaders } });
+    response.headers.set('Content-Security-Policy', buildCSP(nonce));
+    return response;
+  }
 
   const { rateCategory, useAuth } = classifyRoute(request.method, pathname);
 
@@ -259,5 +293,9 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: '/api/:path*',
+  matcher: [
+    // Apply to all routes: page routes get nonce-based CSP; API routes get rate limiting.
+    // Exclude Next.js internals and static files.
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 };

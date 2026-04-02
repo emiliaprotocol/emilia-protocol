@@ -1,4 +1,7 @@
 /** @type {import('next').NextConfig} */
+// CSP is set dynamically per-request in middleware.js using a nonce,
+// removing 'unsafe-inline' from script-src (resolves HIGH-09 pentest finding).
+// These static headers cover everything CSP does not.
 const securityHeaders = [
   { key: 'X-DNS-Prefetch-Control', value: 'on' },
   { key: 'X-Frame-Options', value: 'DENY' },
@@ -6,23 +9,6 @@ const securityHeaders = [
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-  {
-    key: 'Content-Security-Policy',
-    value: [
-      "default-src 'self'",
-      // TODO: Migrate to nonce-based CSP to remove 'unsafe-inline' from script-src.
-      // Next.js without nonce support configured requires 'unsafe-inline'.
-      // 'unsafe-eval' has been removed (HIGH-09 pentest finding).
-      "script-src 'self' 'unsafe-inline'",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "img-src 'self' data: blob:",
-      "font-src 'self' https://fonts.gstatic.com",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://mainnet.base.org https://sepolia.base.org",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "frame-ancestors 'none'",
-    ].join('; '),
-  },
 ];
 
 const nextConfig = {
