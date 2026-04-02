@@ -75,8 +75,10 @@ describe('E2E: Complete trust lifecycle', () => {
   });
 
   it('step 5: strict policy evaluation on healthy entity', () => {
+    // 30 receipts from 15 distinct submitters (2 each).
+    // With concentration cap (2.0/submitter): 15 × ~1.44 = ~21.6 qualityGatedEvidence → 'confident'.
     const receipts = Array(30).fill(null).map((_, i) => makeReceipt({
-      submitted_by: `est-${i % 5}`,
+      submitted_by: `est-${i % 15}`,
       submitter_established: true, submitter_score: 90,
       provenance_tier: 'bilateral', bilateral_status: 'confirmed',
       composite_score: 88, delivery_accuracy: 92, price_integrity: 95,

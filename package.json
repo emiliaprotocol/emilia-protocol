@@ -25,6 +25,7 @@
   "devDependencies": {
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
+    "@vitest/coverage-v8": "^4.1.2",
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.0.0",
     "fast-check": "^4.6.0",

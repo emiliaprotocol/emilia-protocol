@@ -41,8 +41,8 @@ The protocol is open. Managed policy, verification, signoff orchestration, monit
 | Metric | Value |
 |---|---|
 | Automated tests | 1,500+ across 60+ files |
-| TLA+ safety theorems | 19 |
-| Alloy facts / assertions | 32 facts, 15 assertions |
+| TLA+ safety theorems specified | 19 (verification pending — see [formal/PROOF_STATUS.md](formal/PROOF_STATUS.md)) |
+| Alloy facts / assertions specified | 32 facts, 15 assertions (verification pending) |
 | Red team cases | 85 documented |
 | Security findings remediated | 31 |
 | CI quality gates | 16 |

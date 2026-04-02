@@ -725,7 +725,10 @@ describe('Benchmark: Summary', () => {
     console.log('NOTE: Mock-based. Measures code-path overhead, NOT DB latency.');
     console.log('========================================\n');
 
-    // This test always passes — it exists to emit the summary header
-    expect(true).toBe(true);
+    // Verify the SLO constants are internally coherent (p50 < p95 < p99)
+    for (const [label, thresholds] of Object.entries(SLO)) {
+      expect(thresholds.p50).toBeLessThan(thresholds.p95);
+      expect(thresholds.p95).toBeLessThan(thresholds.p99);
+    }
   });
 });

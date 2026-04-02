@@ -39,15 +39,17 @@ function makeReceipt(overrides = {}) {
 
 describe('ROUTE: /api/trust/evaluate — context fallback', () => {
   it('context-specific receipts produce different profile than global', () => {
+    // Use non-overlapping submitter pools so concentration cap doesn't suppress
+    // one category's evidence when receipts are combined in the global profile.
     const electronics = Array(15).fill(null).map((_, i) => makeReceipt({
-      submitted_by: `s-${i % 5}`,
+      submitted_by: `elec-s-${i % 5}`,
       delivery_accuracy: 96,
       context: { category: 'electronics' },
       provenance_tier: 'bilateral',
       bilateral_status: 'confirmed',
     }));
     const furniture = Array(15).fill(null).map((_, i) => makeReceipt({
-      submitted_by: `s-${i % 5}`,
+      submitted_by: `furn-s-${i % 5}`,
       delivery_accuracy: 55,
       context: { category: 'furniture' },
       provenance_tier: 'bilateral',

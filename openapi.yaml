@@ -50,6 +50,10 @@ tags:
     description: Secondary governance and inquiry surfaces
   - name: System
     description: Health, stats, audit, and operational endpoints
+  - name: Signoff
+    description: Accountable Signoff — named human ownership for high-risk actions requiring explicit attestation
+  - name: Cloud
+    description: Cloud tenant API — scoring calibration, policy simulation, and tenant-scoped configuration
   - name: Internal
     description: |
       Cron jobs, operator-only actions, and internal infrastructure endpoints.
@@ -2304,6 +2308,384 @@ paths:
           description: Anchor batch result
         '401':
           description: CRON_SECRET required
+
+  # ===========================================================================
+  # Signoff (Accountable Human Signoff)
+  # ===========================================================================
+
+  /api/signoff/{challengeId}/attest:
+    post:
+      tags: [Signoff]
+      summary: Attest a signoff challenge
+      description: |
+        Create a signoff attestation — the accountable human entity confirms
+        they have reviewed and approve the challenged action. The attestation
+        is cryptographically bound via attestationHash and is one-time: a
+        consumed attestation cannot be reused.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Signoff challenge ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [humanEntityRef, authMethod, assuranceLevel, channel, attestationHash]
+              properties:
+                humanEntityRef:
+                  type: string
+                  description: Entity ref of the attesting human
+                authMethod:
+                  type: string
+                  description: Authentication method used (e.g. "api_key", "oauth")
+                assuranceLevel:
+                  type: string
+                  description: Level of identity assurance (e.g. "high", "medium")
+                channel:
+                  type: string
+                  description: Channel through which attestation was made
+                attestationHash:
+                  type: string
+                  description: Cryptographic hash binding the attestation
+      responses:
+        '201':
+          description: Attestation created
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Missing or invalid required fields
+        '401':
+          description: Authentication required
+        '403':
+          description: Not authorized to attest this challenge
+        '500':
+          description: Attestation creation failed
+
+  /api/signoff/{challengeId}/deny:
+    post:
+      tags: [Signoff]
+      summary: Deny a signoff challenge
+      description: |
+        Deny a signoff challenge — the accountable human entity declines the
+        requested action. Updates challenge status to "denied" and emits a
+        protocol event. The agent system must treat a denial as a hard block.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Signoff challenge ID
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  description: Optional human-readable reason for the denial
+      responses:
+        '200':
+          description: Challenge denied
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Not authorized to deny this challenge
+        '500':
+          description: Denial failed
+
+  /api/signoff/{challengeId}/revoke:
+    post:
+      tags: [Signoff]
+      summary: Revoke a signoff challenge or attestation
+      description: |
+        Revoke a signoff challenge or its attestation. If the challenge has an
+        active attestation and revokeAttestation is true in the body, the
+        attestation is revoked; otherwise the challenge itself is revoked.
+        Revocation is terminal — a revoked challenge cannot be reopened.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Signoff challenge ID
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revokeAttestation:
+                  type: boolean
+                  description: If true, revoke the attestation rather than the challenge itself
+                reason:
+                  type: string
+                  description: Optional reason for revocation
+      responses:
+        '200':
+          description: Challenge or attestation revoked
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required
+        '403':
+          description: Not authorized to revoke this challenge
+        '500':
+          description: Revocation failed
+
+  /api/signoff/{challengeId}/consume:
+    post:
+      tags: [Signoff]
+      summary: Consume a signoff attestation
+      description: |
+        Consume a signoff attestation — marks the attestation as used by
+        binding it to a specific execution. A consumed signoff cannot be
+        reused, ensuring one-time authorization semantics. The executionRef
+        ties the signoff to the actual action taken.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Signoff challenge ID (also used as signoff ID)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [executionRef]
+              properties:
+                executionRef:
+                  type: string
+                  description: Reference to the execution consuming this signoff
+      responses:
+        '201':
+          description: Signoff consumed and bound to execution
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Missing executionRef
+        '401':
+          description: Authentication required
+        '403':
+          description: Not authorized to consume this signoff
+        '500':
+          description: Consumption failed
+
+  # ===========================================================================
+  # Keys
+  # ===========================================================================
+
+  /api/keys/rotate:
+    post:
+      tags: [Entities]
+      summary: Rotate API key
+      description: |
+        Rotates the caller's API key. The old key is revoked immediately and
+        a new key is issued. The entity's identity, trust score, and history
+        are preserved — only the credential changes.
+
+        The new key is returned ONCE and must be stored securely. It cannot
+        be retrieved after the response.
+      security:
+        - BearerAuth: []
+      responses:
+        '201':
+          description: Key rotated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  new_key:
+                    type: string
+                    description: The newly issued API key (shown once — store securely)
+                  rotated_at:
+                    type: string
+                    format: date-time
+                  old_key_invalidated:
+                    type: boolean
+                    example: true
+        '400':
+          description: Invalid request
+        '401':
+          description: Authentication required — current key must be valid
+        '403':
+          description: Not authorized
+        '500':
+          description: Key rotation failed
+
+  # ===========================================================================
+  # Cloud (Tenant API)
+  # ===========================================================================
+
+  /api/cloud/scoring/recommendations:
+    get:
+      tags: [Cloud]
+      summary: Get scoring weight calibration recommendations
+      description: |
+        Returns weight calibration recommendations based on dispute outcomes
+        for the authenticated tenant. Requires Cloud API authentication
+        (tenant-scoped).
+
+        The recommendation does NOT auto-apply. Feed it into
+        POST /api/cloud/policies/{policyId}/simulate to backtest, then
+        POST /api/cloud/policies/{policyId}/rollout to deploy with signoff.
+
+        Query parameters control the rolling window and optional vertical
+        pack comparison.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: window
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 90
+            minimum: 7
+            maximum: 365
+          description: Rolling window in days for dispute outcome analysis
+        - name: vertical
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [government, financial, agent_governance, ecommerce]
+          description: Include a named vertical pack for weight comparison
+      responses:
+        '200':
+          description: Calibration recommendations with analysis
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recommendation:
+                    type: object
+                    nullable: true
+                    description: Proposed weights with confidence and sample size (null if insufficient data)
+                  sufficient_data:
+                    type: boolean
+                  reason:
+                    type: string
+                  analysis:
+                    type: object
+                    description: Per-dimension overweight/underweight ratios
+                  vertical_pack:
+                    type: object
+                    nullable: true
+                    description: The requested vertical preset weights (if vertical query param was provided)
+                  current_weights:
+                    type: object
+                    description: Protocol default weights for comparison
+        '400':
+          description: Invalid vertical name
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Not authorized for this tenant
+        '500':
+          description: Weight calibration computation failed
+
+  /api/cloud/policies/{policyId}/simulate:
+    post:
+      tags: [Cloud]
+      summary: Simulate a policy against a test scenario
+      description: |
+        Simulate a policy against a test scenario without applying it.
+        Returns the policy rules and scenario evaluation results as a
+        dry-run. Requires Cloud API write permission.
+
+        Use this to validate a weight recommendation (from
+        GET /api/cloud/scoring/recommendations) before committing to a rollout.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Policy ID to simulate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scenario]
+              properties:
+                scenario:
+                  type: object
+                  description: Test scenario to evaluate against the policy rules
+      responses:
+        '200':
+          description: Simulation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  policy_id:
+                    type: string
+                  policy_type:
+                    type: string
+                  scenario:
+                    type: object
+                  result:
+                    type: object
+                    properties:
+                      simulated:
+                        type: boolean
+                      policy_rules:
+                        type: object
+                      evaluated_at:
+                        type: string
+                        format: date-time
+                  tenant_id:
+                    type: string
+        '400':
+          description: Missing scenario in request body
+        '401':
+          description: Cloud API authentication required
+        '403':
+          description: Write permission required
+        '500':
+          description: Simulation failed
 
 components:
   securitySchemes:

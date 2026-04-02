@@ -422,4 +422,79 @@ describe('applyAttributionChain', () => {
     const result = await applyAttributionChain(receipt, chain, mockSupabase);
     expect(result.principal_attributed).toBe(false); // insert failed gracefully
   });
+
+  it('logs console.error when DB insert fails with non-table-missing error — line 162', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const receipt = {
+      entity_id: 'agent-entity',
+      receipt_id: 'receipt-uuid-8',
+      agent_behavior: 'completed',
+    };
+    const chain = [
+      { role: 'agent',     entity_id: 'agent-entity',   weight: 1.0 },
+      { role: 'principal', entity_id: 'human-principal', weight: 0.15 },
+    ];
+
+    const insertMock = vi.fn().mockResolvedValue({
+      error: { message: 'permission denied for table principal_delegation_signals' },
+    });
+    const mockSupabase = { from: vi.fn(() => ({ insert: insertMock })) };
+
+    const result = await applyAttributionChain(receipt, chain, mockSupabase);
+    expect(result.principal_attributed).toBe(false);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[EP Attribution]'),
+      expect.stringContaining('permission denied')
+    );
+    errorSpy.mockRestore();
+  });
+
+  it('catches unexpected thrown errors without propagating — line 170', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const receipt = {
+      entity_id: 'agent-entity',
+      receipt_id: 'receipt-uuid-9',
+      agent_behavior: 'completed',
+    };
+    const chain = [
+      { role: 'agent',     entity_id: 'agent-entity',   weight: 1.0 },
+      { role: 'principal', entity_id: 'human-principal', weight: 0.15 },
+    ];
+
+    const insertMock = vi.fn().mockRejectedValue(new Error('network unreachable'));
+    const mockSupabase = { from: vi.fn(() => ({ insert: insertMock })) };
+
+    // Must NOT throw
+    const result = await applyAttributionChain(receipt, chain, mockSupabase);
+    expect(result.principal_attributed).toBe(false);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Unexpected error'),
+      expect.stringContaining('network unreachable')
+    );
+    errorSpy.mockRestore();
+  });
+});
+
+// ── getDelegationJudgmentScore: catch block (lines 272-273) ──────────────────
+
+describe('getDelegationJudgmentScore — catch block', () => {
+  it('returns null-safe defaults when DB query rejects unexpectedly — lines 272-273', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const mockSupabase = {
+      from: vi.fn(() => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        then: (_, reject) => Promise.reject(new Error('unexpected crash')).catch(reject || ((e) => { throw e; })),
+      })),
+    };
+
+    const result = await getDelegationJudgmentScore('principal-1', mockSupabase);
+    expect(result.judgment_score).toBeNull();
+    expect(result.agents_authorized).toBe(0);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('getDelegationJudgmentScore failed'),
+      expect.stringContaining('unexpected crash')
+    );
+    errorSpy.mockRestore();
+  });
 });

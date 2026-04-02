@@ -77,14 +77,14 @@ const ROUTE_POLICIES = {
   'POST /api/commit/*/dispute':       { rateCategory: 'dispute_write', useAuth: true },
 
   // Handshake (EP Handshake — structured identity exchange)
-  // Protocol routes skip middleware rate limiting — auth + DB-level idempotency
-  // provide sufficient protection without the Upstash roundtrip penalty.
-  'POST /api/handshake':              { rateCategory: null, useAuth: true },
+  // Write routes use protocol_write (60/min per key) — previously null which created a DoS vector.
+  // DB-level idempotency on present/verify is not a substitute for rate limiting on creation.
+  'POST /api/handshake':              { rateCategory: 'protocol_write', useAuth: true },
   'GET /api/handshake':               { rateCategory: 'read', useAuth: true },
   'GET /api/handshake/*':             { rateCategory: 'read', useAuth: true },
-  'POST /api/handshake/*/present':    { rateCategory: null, useAuth: true },
-  'POST /api/handshake/*/verify':     { rateCategory: null, useAuth: true },
-  'POST /api/handshake/*/revoke':     { rateCategory: null, useAuth: true },
+  'POST /api/handshake/*/present':    { rateCategory: 'protocol_write', useAuth: true },
+  'POST /api/handshake/*/verify':     { rateCategory: 'protocol_write', useAuth: true },
+  'POST /api/handshake/*/revoke':     { rateCategory: 'protocol_write', useAuth: true },
 
   // Operations / Cron
   // Cron routes skip rate limiting (CRON_SECRET auth is sufficient)

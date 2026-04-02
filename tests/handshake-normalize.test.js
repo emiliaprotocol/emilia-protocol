@@ -170,3 +170,48 @@ describe('computePresentationHash — backward compat', () => {
     expect(computePresentationHash('hello')).toBe(hashStr);
   });
 });
+
+// ── coerceBooleanLike: FALSY_STRINGS path (line 77) ─────────────────────────
+
+describe('normalizeClaims — boolean-like falsy strings (line 77)', () => {
+  it('coerces "no" to false', () => {
+    const result = normalizeClaims({ authorized_signer: 'no' });
+    expect(result).toEqual({ authorized_signer: false });
+  });
+
+  it('coerces "false" to false', () => {
+    const result = normalizeClaims({ kyc_verified: 'false' });
+    expect(result).toEqual({ kyc_verified: false });
+  });
+
+  it('coerces "0" to false', () => {
+    const result = normalizeClaims({ aml_verified: '0' });
+    expect(result).toEqual({ aml_verified: false });
+  });
+});
+
+// ── roles array with unrecognized role → canonical null, if(canonical) false (line 134) ──
+
+describe('normalizeClaims — roles with unrecognized role', () => {
+  it('skips unrecognized role names in roles array', () => {
+    const result = normalizeClaims({ roles: ['authorized_signer', 'totally_unknown_role_xyz'] });
+    // authorized_signer should be included, unknown should not appear
+    expect(result).toHaveProperty('authorized_signer', true);
+    expect(result).not.toHaveProperty('totally_unknown_role_xyz');
+  });
+});
+
+// ── claimsToCanonicalHash with null/undefined input (line 165 branch) ────────
+
+describe('claimsToCanonicalHash — null/undefined input (line 165)', () => {
+  it('returns a hash when called with null', () => {
+    const h = claimsToCanonicalHash(null);
+    expect(typeof h).toBe('string');
+    expect(h).toHaveLength(64);
+  });
+
+  it('returns a hash when called with undefined', () => {
+    const h = claimsToCanonicalHash(undefined);
+    expect(typeof h).toBe('string');
+  });
+});

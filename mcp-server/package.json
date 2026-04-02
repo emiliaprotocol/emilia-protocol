@@ -12,8 +12,14 @@
     "auto-receipt.js",
     "README.md"
   ],
+  "scripts": {
+    "test": "vitest run"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0"
   },
   "keywords": [
     "mcp",

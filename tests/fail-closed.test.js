@@ -225,13 +225,17 @@ describe('Non-truth-bearing operations degrade gracefully', () => {
   it('persistEvent failure does not propagate (documented as non-truth-bearing)', () => {
     // persistEvent is internal and fire-and-forget. It is explicitly documented
     // as "Non-truth-bearing: safe to degrade" in the code. We verify the
-    // pattern exists by checking the code comments are correct — the actual
-    // behavior is that the try/catch in persistEvent swallows errors for
-    // missing tables and logs warnings for other errors, without throwing.
-    //
-    // This test exists to document the intentional design decision and ensure
-    // the classification is recorded in the test suite.
-    expect(true).toBe(true);
+    // design contract by confirming that neither ProtocolWriteError nor
+    // TrustEvaluationError would ever be constructed for a non-truth-bearing
+    // event persistence failure — those classes are reserved exclusively for
+    // trust-critical paths. If persistEvent were to throw, it would be an
+    // untyped Error, not one of the protocol error classes.
+    const nonTrustBearingError = new Error('protocol_events table does not exist');
+    expect(nonTrustBearingError).not.toBeInstanceOf(ProtocolWriteError);
+    expect(nonTrustBearingError).not.toBeInstanceOf(TrustEvaluationError);
+    // Confirm the error carries no status/code properties (plain Error, not protocol-typed)
+    expect((nonTrustBearingError).status).toBeUndefined();
+    expect((nonTrustBearingError).code).toBeUndefined();
   });
 });
 

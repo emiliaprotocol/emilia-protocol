@@ -216,7 +216,9 @@ describe('ADVERSARIAL: Volume of low-quality self-attested receipts', () => {
     }));
     const profile = computeTrustProfile(receipts, {});
     expect(profile.score).toBeGreaterThan(80);
-    expect(profile.effectiveEvidence).toBeGreaterThan(50);
+    // With concentration cap (2.0 per submitter), 20 submitters × 2.0 = 40.0 max effective evidence.
+    // Test confirms high-quality receipts still produce substantial evidence — just capped per-submitter.
+    expect(profile.effectiveEvidence).toBeGreaterThan(35);
   });
 });
 
