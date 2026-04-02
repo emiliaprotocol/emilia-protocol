@@ -151,12 +151,16 @@ DelegateCannotExceedPrincipal ==
         \A d \in delegations[a] :
             d.scope \subseteq d.principalScope
 
-\* S11: Delegation acyclicity — no circular delegation chains. If A delegates
-\* to B, B cannot (directly or transitively) delegate back to A.
+\* S11: Delegation acyclicity — no direct circular delegation chains.
+\* delegations[x] stores delegations received by x; each record carries
+\* d.principal = the actor who granted authority to x.
+\* Acyclicity (direct): if Y granted to X (delegations[X] has d.principal=Y),
+\* then X must not have granted to Y (no record in delegations[Y] has d.principal=X).
 \* Maps to: lib/delegation.js cycle detection in createDelegation()
 DelegationAcyclicity ==
     \A a \in Actors :
-        a \notin {d.delegate : d \in delegations[a]}
+        \A d \in delegations[a] :
+            ~\E d2 \in delegations[d.principal] : d2.principal = a
 
 \* S12: Policy-hash mismatch detection — if the current policy version differs
 \* from the version bound at handshake creation, verification must fail.
@@ -408,11 +412,12 @@ PolicyChange(h) ==
 \* D1: Grant delegation — principal authorizes a delegate with bounded scope.
 \* Maps to: createDelegation() in lib/delegation.js
 \* Precondition: delegate is not the principal (no self-delegation),
-\*               no circular chains
+\*               adding (principal -> delegate) must not create a direct cycle.
+\* Direct cycle check: delegate has not already granted authority to principal,
+\* i.e. delegations[principal] must not contain a record with d.principal = delegate.
 GrantDelegation(principal, delegate) ==
     /\ principal # delegate
-    /\ delegate \notin {d.delegate : d \in delegations[principal]}
-    /\ principal \notin {d.delegate : d \in delegations[delegate]}  \* acyclicity
+    /\ ~\E d \in delegations[principal] : d.principal = delegate  \* no direct cycle
     /\ delegations' = [delegations EXCEPT ![delegate] =
         delegations[delegate] \union {[delegate |-> delegate, principal |-> principal,
                                         scope |-> {"verify", "present"},
