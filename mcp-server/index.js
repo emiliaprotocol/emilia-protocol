@@ -1613,3 +1613,6 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
+
+// Exported for integration tests only.
+export { handleTool };
