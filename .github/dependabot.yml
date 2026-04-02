@@ -1,36 +1,102 @@
+# Dependabot configuration
+# Keeps GitHub Actions SHA pins up to date and bumps npm/pip dependencies.
+#
+# For GitHub Actions: Dependabot opens PRs that update the SHA pin and
+# version comment whenever a new release is published. This gives both
+# supply-chain security (exact SHA) and automated upgrade signal.
+
 version: 2
+
 updates:
-  # Root npm dependencies
-  - package-ecosystem: npm
-    directory: /
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 10
-
-  # MCP server npm dependencies
-  - package-ecosystem: npm
-    directory: /mcp-server
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 10
-
-  # TypeScript SDK npm dependencies
-  - package-ecosystem: npm
-    directory: /sdks/typescript
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 10
-
-  # Python SDK pip dependencies
-  - package-ecosystem: pip
-    directory: /sdks/python
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 10
-
-  # GitHub Actions versions
+  # ── GitHub Actions ─────────────────────────────────────────────────────────
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: UTC
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - github-actions
+    commit-message:
+      prefix: "ci(deps)"
+    groups:
+      github-official-actions:
+        patterns:
+          - "actions/*"
+      security-actions:
+        patterns:
+          - "gitleaks/*"
+          - "github/codeql-action"
+          - "christophebedard/*"
+
+  # ── npm (root workspace) ────────────────────────────────────────────────────
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: UTC
     open-pull-requests-limit: 10
+    labels:
+      - dependencies
+      - javascript
+    commit-message:
+      prefix: "chore(deps)"
+    ignore:
+      # Avoid major version bumps on Next.js without a manual migration review
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@sentry/nextjs"
+        update-types: ["version-update:semver-major"]
+
+  # ── npm (MCP server) ────────────────────────────────────────────────────────
+  - package-ecosystem: npm
+    directory: /mcp-server
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: UTC
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - javascript
+      - mcp-server
+    commit-message:
+      prefix: "chore(deps)"
+
+  # ── npm (TypeScript SDK) ────────────────────────────────────────────────────
+  - package-ecosystem: npm
+    directory: /sdks/typescript
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: UTC
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - javascript
+      - sdk
+    commit-message:
+      prefix: "chore(deps)"
+
+  # ── pip (Python SDK) ────────────────────────────────────────────────────────
+  - package-ecosystem: pip
+    directory: /sdks/python
+    schedule:
+      interval: weekly
+      day: monday
+      time: "09:00"
+      timezone: UTC
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - python
+      - sdk
+    commit-message:
+      prefix: "chore(deps)"

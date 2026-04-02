@@ -8,11 +8,11 @@ jobs:
   dco:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
         with:
           fetch-depth: 0
 
       - name: Check DCO sign-off
-        uses: christophebedard/dco-check@v0.4.0
+        uses: christophebedard/dco-check@30353d8deedf393cf55ba33355e71da7fdd095c7  # v0.4.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
