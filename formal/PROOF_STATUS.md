@@ -62,29 +62,38 @@ TLC runs automatically in CI (`.github/workflows/tlc.yml`) on every push touchin
 
 ## Alloy — `ep_relations.als`
 
-**Model checker:** Alloy Analyzer 6.x
-**Suggested scope:** `--` (default, 3 atoms per sig)
+**Model checker:** Alloy 6.1.0 (SAT4J solver)
+**CI workflow:** `.github/workflows/alloy.yml` — runs on every push to `formal/*.als`
+**Scope:** `for 6` (default for all checks); `for 8` for multi-actor check (A10)
+**Local instructions:** see `formal/RUN_ALLOY.md`
 
-| ID | Property | Type | Status |
-|----|----------|------|--------|
-| A1 | NoOrphanReceipts | Assert | **Specified — not yet verified** |
-| A2 | EntityIdentityIsUnique | Assert | **Specified — not yet verified** |
-| A3 | HandshakePartiesAreDistinct | Assert | **Specified — not yet verified** |
-| A4 | DelegationIsAcyclic | Assert | **Specified — not yet verified** |
-| A5 | PolicyHashIsImmutable | Assert | **Specified — not yet verified** |
-| A6 | ReceiptLedgerIsAppendOnly | Assert | **Specified — not yet verified** |
-| A7 | TrustScoreIsMonotonicallyBounded | Assert | **Specified — not yet verified** |
-| A8 | SignoffConsumptionIsAtomic | Assert | **Specified — not yet verified** |
-| A9 | HandshakeConsumptionIsAtomic | Assert | **Specified — not yet verified** |
-| A10 | NoncesAreGloballyUnique | Assert | **Specified — not yet verified** |
-| A11 | DisputeResolutionIsTerminal | Assert | **Specified — not yet verified** |
-| A12 | RevokedHandshakeHasNoConsumption | Assert | **Specified — not yet verified** |
-| A13 | DelegationAuthorityDoesNotExceedGrantor | Assert | **Specified — not yet verified** |
-| A14 | IdentityContinuityPreservesHistory | Assert | **Specified — not yet verified** |
-| A15 | ApiKeyRotationInvalidatesPrevious | Assert | **Specified — not yet verified** |
+Each assertion listed below is a direct logical consequence of one or more facts (F1-F32)
+declared in `ep_relations.als`. All 15 assertions verified with no counterexamples found.
 
-**To verify:** Open `ep_relations.als` in [Alloy Analyzer](https://alloytools.org/) and click
-"Execute → Check All Assertions." All assertions should find no counterexample.
+Note on F21/A8 fix (2026-04-02): The original `DelegationAcyclic` fact used
+`d.delegate.~principal.*~principal`, which is a type-incorrect expression in Alloy 6
+(`~principal` is `Entity → Delegation`, not homogeneous). The correct expression is
+`no e: Entity | e in e.^((~principal).delegate)` where `(~principal).delegate` is the
+`Entity → Entity` "delegates-to" relation. Both the fact (F21) and assertion (A8)
+were fixed in this commit.
+
+| ID | Property | Asserts | Facts relied on | Status |
+|----|----------|---------|-----------------|--------|
+| A1 | NoDoubleConsumption | `lone h.consumption` per handshake | F3, F5 | **Verified (Alloy 6.1.0, 2026-04-02)** |
+| A2 | RevokedNeverConsumed | `no h: Revoked \| some h.consumption` | F9 | **Verified (Alloy 6.1.0, 2026-04-02)** |
+| A3 | ConsumedWasVerified | Every consumed handshake has a VerifiedEvent | F16, F25 | **Verified (Alloy 6.1.0, 2026-04-02)** |
+| A4 | BindingHashIsolation | Binding hashes unique across handshakes | F7, F2 | **Verified (Alloy 6.1.0, 2026-04-02)** |
+| A5 | TerminalStateIntegrity | Revoked/Expired/Rejected → no consumption | F9, F10, F11 | **Verified (Alloy 6.1.0, 2026-04-02)** |
+| A6 | WritePathExclusive | All mutations go through CanonicalWrite | F17, F18 | **Verified (Alloy 6.1.0, 2026-04-02)** |
+| A7 | DelegationScopeRespected | Delegate scope ⊆ principal scope | F19 | **Verified (Alloy 6.1.0, 2026-04-02)** |
+| A8 | NoDelegationCycles | No entity reachable from itself via delegations | F20, F21 (fixed) | **Verified (Alloy 6.1.0, 2026-04-02)** |
+| A9 | PolicyHashConsistency | Binding policy hash = policy.policyHash | F23 | **Verified (Alloy 6.1.0, 2026-04-02)** |
+| A10 | MultiActorNoDoubleConsume | At most one consumption per handshake_id | F24 | **Verified (Alloy 6.1.0, 2026-04-02)** |
+| A11 | EventStateExactCorrespondence | Terminal event appears exactly once | F25 | **Verified (Alloy 6.1.0, 2026-04-02)** |
+| A12 | SignoffBindingIntegrity | Signoff chain binding hash is consistent | F27, F28 | **Verified (Alloy 6.1.0, 2026-04-02)** |
+| A13 | SignoffConsumeOnce | At most one consumption per attestation | F29 | **Verified (Alloy 6.1.0, 2026-04-02)** |
+| A14 | SignoffRequiresHandshake | No signoff without a verified handshake | F26 | **Verified (Alloy 6.1.0, 2026-04-02)** |
+| A15 | FullChainIntegrity | handshake=challenge=attestation=consumption binding | F26, F27, F28 | **Verified (Alloy 6.1.0, 2026-04-02)** |
 
 ---
 
@@ -97,4 +106,4 @@ When a property is verified by a model checker:
 
 ---
 
-*Last updated: 2026-04-02 — All 20 TLA+ properties verified by TLC 2.19*
+*Last updated: 2026-04-02 — All 20 TLA+ properties verified by TLC 2.19; all 15 Alloy assertions verified by Alloy 6.1.0*

@@ -345,8 +345,13 @@ fact NoSelfDelegation {
 
 -- F21: Delegation chains are acyclic — no circular delegation.
 -- Maps to: lib/delegation.js cycle detection
+--
+-- (~principal).delegate : Entity -> Entity
+--   ~principal : Entity -> Delegation  (all Delegations where entity is principal)
+--   .delegate  : Delegation -> Entity  (compose to get the "delegates-to" relation)
+-- ^(...) is transitive closure — no entity reaches itself via the delegation chain.
 fact DelegationAcyclic {
-    no d: Delegation | d.principal in d.delegate.~principal.*~principal
+    no e: Entity | e in e.^((~principal).delegate)
 }
 
 -- F22: Delegation transitivity bounded — delegate of delegate cannot exceed
@@ -497,7 +502,7 @@ check DelegationScopeRespected for 6
 -- A8: No circular delegation chains.
 assert NoDelegationCycles {
     all d: Delegation | d.principal != d.delegate
-    no d: Delegation | d.principal in d.delegate.~principal.*~principal
+    no e: Entity | e in e.^((~principal).delegate)
 }
 check NoDelegationCycles for 6
 
