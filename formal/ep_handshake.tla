@@ -379,6 +379,7 @@ DuplicateConsumeAttempt(h) ==
 \* A2: Concurrent revoke and consume on same verified handshake.
 \* Maps to: DB-level atomicity; exactly one wins.
 \* Model: non-deterministic choice — either revoke wins or consume wins.
+\* Side-effect: any in-progress signoff is terminated (matches Revoke/Consume behavior).
 ConcurrentRevokeConsume(h) ==
     /\ state[h] = "verified"
     /\ h \notin consumptions
@@ -387,12 +388,20 @@ ConcurrentRevokeConsume(h) ==
            /\ revoked' = revoked \union {h}
            /\ events' = Append(events, <<h, "revoked">>)
            /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-           /\ UNCHANGED <<bindings, consumptions, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding>>)
+           /\ signoffState' = [signoffState EXCEPT ![h] =
+                 IF signoffState[h] \in {"challenge_issued", "challenge_viewed", "approved"}
+                 THEN "revoked_signoff"
+                 ELSE signoffState[h]]
+           /\ UNCHANGED <<bindings, consumptions, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>)
        \/ (state' = [state EXCEPT ![h] = "consumed"]
            /\ consumptions' = consumptions \union {h}
            /\ events' = Append(events, <<h, "consumed">>)
            /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-           /\ UNCHANGED <<bindings, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding>>)
+           /\ signoffState' = [signoffState EXCEPT ![h] =
+                 IF signoffState[h] \in {"challenge_issued", "challenge_viewed", "approved"}
+                 THEN "revoked_signoff"
+                 ELSE signoffState[h]]
+           /\ UNCHANGED <<bindings, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>)
 
 \* A3: Attempt to verify an already-consumed binding.
 \* Maps to: verify.js HARD GATE (line 52-68) — existingBinding.consumed_at check
