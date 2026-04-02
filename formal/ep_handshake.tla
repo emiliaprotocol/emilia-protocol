@@ -190,12 +190,16 @@ EventCompleteness ==
 \* Accountable Signoff Safety Properties
 \* --------------------------------------------------------------------------
 
-\* S14: Signoff requires verified handshake — a challenge cannot be issued
-\* unless the underlying handshake has reached the "verified" state.
+\* S14: Signoff requires verified handshake — a challenge can only be ACTIVE
+\* (challenge_issued, challenge_viewed, approved) when the handshake is "verified".
+\* Once the handshake transitions to a terminal state, the signoff also becomes
+\* terminal (revoked_signoff, expired_signoff), which is compatible with
+\* revoked/expired handshake state.
 \* Maps to: lib/signoff/challenge.js status guard (handshake must be verified)
 SignoffRequiresVerifiedHandshake ==
     \A h \in Handshakes :
-        signoffState[h] # "none" => state[h] = "verified"
+        signoffState[h] \in {"challenge_issued", "challenge_viewed", "approved"}
+            => state[h] = "verified"
 
 \* S15: Signoff consume-once — a signoff can transition to consumed_signoff
 \* at most once per handshake. Once consumed, no further signoff transitions.
