@@ -330,6 +330,8 @@ Consume(h) ==
 \* Maps to: _handleRevokeHandshake() in finalize.js
 \* Guard: cannot revoke already-revoked/expired (finalize.js line 78)
 \* Guard: cannot revoke already-consumed (consume-once safety)
+\* Side-effect: any in-progress signoff challenge is terminated ("revoked")
+\*              so SignoffRequiresVerifiedHandshake is preserved.
 Revoke(h) ==
     /\ state[h] \in {"initiated", "pending_verification", "verified"}
     /\ h \notin consumptions
@@ -337,18 +339,28 @@ Revoke(h) ==
     /\ revoked' = revoked \union {h}
     /\ events' = Append(events, <<h, "revoked">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<bindings, consumptions, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding>>
+    /\ signoffState' = [signoffState EXCEPT ![h] =
+          IF signoffState[h] \in {"challenge_issued", "challenge_viewed", "approved"}
+          THEN "revoked"
+          ELSE signoffState[h]]
+    /\ UNCHANGED <<bindings, consumptions, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>
 
 \* T7: Expire a handshake (initiated|pending_verification|verified -> expired)
 \* Maps to: _handleVerifyHandshake() outcome='expired' in verify.js
 \* Trigger: binding past expires_at (invariants.js checkNotExpired)
+\* Side-effect: any in-progress signoff challenge is terminated ("expired")
+\*              so SignoffRequiresVerifiedHandshake is preserved.
 Expire(h) ==
     /\ state[h] \in {"initiated", "pending_verification", "verified"}
     /\ h \notin consumptions
     /\ state' = [state EXCEPT ![h] = "expired"]
     /\ events' = Append(events, <<h, "expired">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding>>
+    /\ signoffState' = [signoffState EXCEPT ![h] =
+          IF signoffState[h] \in {"challenge_issued", "challenge_viewed", "approved"}
+          THEN "expired"
+          ELSE signoffState[h]]
+    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>
 
 \* --------------------------------------------------------------------------
 \* Adversarial Actions (must be no-ops or resolve safely)
