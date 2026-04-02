@@ -341,7 +341,7 @@ Revoke(h) ==
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
     /\ signoffState' = [signoffState EXCEPT ![h] =
           IF signoffState[h] \in {"challenge_issued", "challenge_viewed", "approved"}
-          THEN "revoked"
+          THEN "revoked_signoff"
           ELSE signoffState[h]]
     /\ UNCHANGED <<bindings, consumptions, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>
 
@@ -358,7 +358,7 @@ Expire(h) ==
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
     /\ signoffState' = [signoffState EXCEPT ![h] =
           IF signoffState[h] \in {"challenge_issued", "challenge_viewed", "approved"}
-          THEN "expired"
+          THEN "expired_signoff"
           ELSE signoffState[h]]
     /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>
 
