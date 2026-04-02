@@ -40,14 +40,14 @@ The protocol is open. Managed policy, verification, signoff orchestration, monit
 
 | Metric | Value |
 |---|---|
-| Automated tests | 1,500+ across 60+ files |
-| TLA+ safety theorems specified | 19 (verification pending — see [formal/PROOF_STATUS.md](formal/PROOF_STATUS.md)) |
-| Alloy facts / assertions specified | 32 facts, 15 assertions (verification pending) |
+| Automated tests | 3,233 across 100+ files |
+| TLA+ safety properties | 20 — **Verified (TLC 2.19, 2026-04-02)** — see [formal/PROOF_STATUS.md](formal/PROOF_STATUS.md) |
+| Alloy relational assertions | 32 facts, 15 assertions — **Verified (Alloy 6.1.0, 2026-04-02)** |
 | Red team cases | 85 documented |
 | Security findings remediated | 31 |
-| CI quality gates | 16 |
+| CI quality gates | 18 |
 | Full 7-step signoff chain | Proven end-to-end under load |
-| Handshake create p50 | 236ms at 50 VUs |
+| Handshake create p95 | 87ms at 500 VUs |
 
 See [Performance Proof](docs/operations/PERFORMANCE_PROOF.md) | [Operating Envelope](docs/operations/OPERATING_ENVELOPE.md) | [Security Policy](SECURITY.md)
 
