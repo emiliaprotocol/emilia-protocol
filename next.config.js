@@ -1,3 +1,5 @@
+const { withSentryConfig } = require('@sentry/nextjs');
+
 /** @type {import('next').NextConfig} */
 // CSP is set dynamically per-request in middleware.js using a nonce,
 // removing 'unsafe-inline' from script-src (resolves HIGH-09 pentest finding).
@@ -33,4 +35,18 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+// Wrap with Sentry to enable automatic error reporting and source maps.
+// withSentryConfig is a no-op when SENTRY_DSN is not set (safe for local dev).
+module.exports = withSentryConfig(nextConfig, {
+  // Sentry webpack plugin options
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  // Suppress noisy build output
+  silent: !process.env.CI,
+  // Upload source maps to Sentry for readable stack traces in production
+  widenClientFileUpload: true,
+  // Automatically tree-shake Sentry logger statements
+  disableLogger: true,
+  // Automatically instrument Next.js App Router routes
+  automaticVercelMonitors: false,
+});
