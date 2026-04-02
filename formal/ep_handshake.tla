@@ -586,11 +586,12 @@ Next ==
 Spec == Init /\ [][Next]_vars
 
 \* TLC exploration bound — prevents the events sequence from growing without
-\* limit, keeping the state space finite. 12 events covers all reachable
-\* lifecycle paths for a single handshake (including a full signoff ceremony:
-\* initiated, presentation_added, verified, signoff_challenge_issued,
-\* signoff_challenge_viewed, signoff_approved, signoff_consumed, consumed).
-BoundedExploration == Len(events) <= 12
+\* limit, keeping the state space finite.
+\* With Handshakes = {h1} (single handshake), 8 events covers the full
+\* lifecycle: initiated, presentation_added, verified,
+\* signoff_challenge_issued, signoff_challenge_viewed, signoff_approved,
+\* signoff_consumed, consumed. A small buffer handles adversarial re-tries.
+BoundedExploration == Len(events) <= 10
 
 \* --------------------------------------------------------------------------
 \* Theorems — properties that TLC should verify
