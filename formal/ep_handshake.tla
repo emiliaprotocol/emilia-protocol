@@ -313,11 +313,13 @@ VerifyReject(h) ==
 
 \* T5: Consume a verified handshake (verified -> consumed)
 \* Maps to: consumeHandshake() in consume.js
-\* Preconditions: verified state, not already consumed, not revoked
+\* Preconditions: verified state, not already consumed, not revoked,
+\*                no pending signoff ceremony (challenge_issued/viewed/approved blocks consumption)
 Consume(h) ==
     /\ state[h] = "verified"
     /\ h \notin consumptions
     /\ h \notin revoked
+    /\ signoffState[h] \notin {"challenge_issued", "challenge_viewed", "approved"}
     /\ state' = [state EXCEPT ![h] = "consumed"]
     /\ consumptions' = consumptions \union {h}
     /\ events' = Append(events, <<h, "consumed">>)
