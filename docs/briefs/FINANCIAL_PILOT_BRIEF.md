@@ -61,14 +61,15 @@ Integration is at the API layer. No changes to core banking or payment logic.
 
 | Metric | Value |
 |--------|-------|
-| Automated test cases | 1,500+ across 59 files |
-| TLA+ formal verification theorems | 19 |
-| Red team attack scenarios | 85 |
+| Automated test cases | 3,251 across 125 files |
+| TLA+ safety properties verified | 20 (TLC 2.19, zero errors) |
+| Alloy relational assertions verified | 15 (Alloy 6.1.0, zero counterexamples) |
+| Red team attack scenarios | 116 |
 | Security findings identified and remediated | 31 |
 | Write discipline exceptions in codebase | 0 |
-| Handshake creation floor latency | 249ms (atomic Postgres transaction) |
+| Handshake creation p95 at 500 VUs | 87ms |
 | Load test: 500 concurrent users | 95.4% success rate |
-| CI quality gates | 16 |
+| CI quality gates | 27 across 12 automated workflows |
 
 Formal verification covers replay prevention, token binding, signoff bypass,
 context manipulation, and concurrent transaction interference. Red team scenarios

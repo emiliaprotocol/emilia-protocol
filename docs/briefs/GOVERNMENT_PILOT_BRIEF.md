@@ -30,9 +30,9 @@ Government fraud and unauthorized action often occur inside approved-looking wor
 - 329 complete chains executed with zero correctness violations
 - 11/11 post-load-test DB integrity checks passing
 - Atomic transactions: all endpoints use single-roundtrip atomic RPCs, no partial state
-- 1,500+ automated tests across 60+ files; 85 red team cases documented
+- 3,251 automated tests across 125 files; 116 red team cases documented
 - 31 security findings identified and remediated
-- 19 TLA+ safety theorems, 32 Alloy facts, 15 assertions
+- 20 TLA+ safety properties verified (TLC 2.19), 32 Alloy facts + 15 assertions verified (Alloy 6.1.0)
 - Zero duplicate consumptions, zero orphaned bindings, zero missing events
 - Database: 46 EP-only tables, zero foreign artifacts
 - Explicit supported-band and overload-band operating envelopes published

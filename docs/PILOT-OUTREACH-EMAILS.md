@@ -16,7 +16,7 @@ A pilot could focus on one workflow such as:
 - operator overrides
 - delegated case actions
 
-EP has been load-tested end-to-end: 329 complete Accountable Signoff chains with zero correctness violations, 1,500+ automated tests across 60+ files, and 31 security findings identified and remediated.
+EP has been load-tested end-to-end: 329 complete Accountable Signoff chains with zero correctness violations, 3,251 automated tests across 125 files, and 31 security findings identified and remediated.
 
 If useful, I can send a short architecture brief and proposed pilot scope.
 
@@ -60,7 +60,7 @@ A pilot could focus on one enterprise action class such as:
 - emergency override approvals
 - delegated admin actions
 
-EP has been load-tested end-to-end: 85 red team cases documented, 19 TLA+ safety theorems verified, and database isolated to 46 EP-only tables with zero foreign artifacts.
+EP has been load-tested end-to-end: 116 red team cases documented, 20 TLA+ safety properties verified (TLC 2.19), and database isolated to 46 EP-only tables with zero foreign artifacts.
 
 If useful, I can send a short brief and pilot architecture.
 

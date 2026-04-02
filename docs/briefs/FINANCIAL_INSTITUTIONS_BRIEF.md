@@ -22,9 +22,9 @@ Many of the most expensive failures in finance happen inside approved-looking wo
 
 | Metric | Result |
 |--------|--------|
-| Automated tests | 1,500+ across 60+ files |
-| Formal verification | 19 TLA+ safety theorems, 32 Alloy facts, 15 assertions |
-| Red team cases | 85 documented |
+| Automated tests | 3,251 across 125 files |
+| Formal verification | 20 TLA+ properties verified (TLC 2.19), 32 Alloy facts + 15 assertions (Alloy 6.1.0) |
+| Red team cases | 116 documented |
 | Security findings | 31 identified and remediated |
 | Signoff chain | Full 7-step Accountable Signoff proven end-to-end under load |
 | Load-test chains | 329 complete, zero correctness violations |

@@ -52,7 +52,7 @@ npm test                     # Run all tests in watch mode
 npm run test:run conformance/  # Run conformance suite only
 ```
 
-Expected output: 3,233 tests passing across 122 files.
+Expected output: 3,251 tests passing across 125 files.
 
 ### MCP Server (standalone)
 ```bash

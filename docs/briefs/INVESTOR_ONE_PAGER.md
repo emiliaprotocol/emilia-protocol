@@ -19,16 +19,15 @@ EP creates the control layer between authentication and execution. It determines
 - open-source protocol with commercial layers above the repo
 
 ## Proof points
-- 1,500+ automated tests across 60+ files
-- 19 TLA+ safety theorems, 32 Alloy facts, 15 assertions
-- 85 red team cases documented; 31 security findings identified and remediated
+- 3,251 automated tests across 125 files
+- 20 TLA+ safety properties verified (TLC 2.19), 32 Alloy facts + 15 assertions verified (Alloy 6.1.0)
+- 116 red team cases documented; 31 security findings identified and remediated
 - Full 7-step Accountable Signoff chain proven end-to-end under load
 - 329 complete chains executed with zero correctness violations
 - 11/11 post-load-test DB integrity checks passing
 - Zero duplicate consumptions, zero orphaned bindings, zero missing events
 - All endpoints use single-roundtrip atomic RPCs
 - Database: 46 EP-only tables, zero foreign artifacts
-- Staircase load tested: 10 → 25 → 50 → 100 → 250 → 500 concurrent users
-- 95.4% success rate at 500 VUs on Vercel Pro + Supabase
-- Zero write discipline exceptions, 16 CI quality gates
+- Staircase load tested: 10 → 50 → 100 → 200 → 500 concurrent users; handshake create p95 87ms
+- Zero write discipline exceptions, 27 CI quality gates across 12 automated workflows
 - GitHub release v1.0.0 published

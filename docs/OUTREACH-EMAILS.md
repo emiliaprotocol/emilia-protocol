@@ -31,9 +31,9 @@ We think this is especially relevant for:
 If helpful, I can send the current protocol materials and a proposed pilot scope.
 
 **Proof:**
-- 1,500+ automated tests across 60+ files
-- 19 TLA+ safety theorems, 32 Alloy facts, 15 assertions
-- 85 red team cases documented; 31 security findings identified and remediated
+- 3,251 automated tests across 125 files
+- 20 TLA+ safety properties verified (TLC 2.19), 32 Alloy facts + 15 assertions (Alloy 6.1.0)
+- 116 red team cases documented; 31 security findings identified and remediated
 - Full 7-step Accountable Signoff chain proven end-to-end under load
 - 329 complete chains executed with zero correctness violations
 - Zero duplicate consumptions, zero orphaned bindings, zero missing events
