@@ -1,0 +1,65 @@
+name: k6 Performance Baseline
+
+on:
+  # Manual trigger: run against any environment
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Target base URL (e.g. https://staging.emiliaprotocol.com)'
+        required: true
+        default: 'https://staging.emiliaprotocol.com'
+      entity_id:
+        description: 'Entity ID registered in the target environment'
+        required: false
+        default: 'perf-test-entity-001'
+
+  # Scheduled: run nightly against staging to catch regressions
+  schedule:
+    - cron: '0 3 * * *'   # 03:00 UTC daily
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring \
+            --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" \
+            | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update -q
+          sudo apt-get install -q k6
+
+      - name: Run baseline smoke test
+        run: |
+          k6 run tests/k6/baseline.js \
+            --env BASE_URL="${{ inputs.base_url || 'https://staging.emiliaprotocol.com' }}" \
+            --env API_KEY="${{ secrets.PERF_TEST_API_KEY }}" \
+            --env ENTITY_ID="${{ inputs.entity_id || 'perf-test-entity-001' }}" \
+            --out json=k6-results.json
+        continue-on-error: false
+
+      - name: Upload k6 results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-results
+          path: k6-results.json
+          retention-days: 90
+
+      - name: Annotate with summary
+        if: always()
+        run: |
+          if [ -f k6-results.json ]; then
+            p95=$(jq -r '[.[] | select(.type=="Point" and .metric=="http_req_duration") | .data.value] | sort | .[length * 0.95 | floor]' k6-results.json 2>/dev/null || echo "N/A")
+            echo "### k6 Baseline Results" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Metric | Value |" >> "$GITHUB_STEP_SUMMARY"
+            echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Approximate p95 latency | ${p95}ms |" >> "$GITHUB_STEP_SUMMARY"
+          fi
