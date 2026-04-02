@@ -2313,6 +2313,107 @@ paths:
   # Signoff (Accountable Human Signoff)
   # ===========================================================================
 
+  /api/signoff/challenge:
+    post:
+      tags: [Signoff]
+      summary: Issue a signoff challenge
+      description: >
+        Issue a new Accountable Signoff challenge. A challenge represents a
+        request for a human entity to review and attest to an action before
+        it may proceed. The challenge is cryptographically bound to a specific
+        handshake binding via binding_hash.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [handshakeId, accountableActorRef, signoffPolicyId, expiresAt]
+              properties:
+                handshakeId:
+                  type: string
+                  format: uuid
+                  description: The handshake this signoff is bound to
+                accountableActorRef:
+                  type: string
+                  description: entity_ref of the accountable human actor
+                signoffPolicyId:
+                  type: string
+                  description: Policy governing this signoff ceremony
+                expiresAt:
+                  type: string
+                  format: date-time
+                  description: ISO 8601 expiration timestamp
+      responses:
+        '201':
+          description: Challenge issued successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challenge_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [challenge_issued]
+                  expires_at:
+                    type: string
+                    format: date-time
+        '400':
+          description: Missing or invalid required fields
+        '401':
+          description: Not authorized
+
+  /api/signoff/{challengeId}:
+    get:
+      tags: [Signoff]
+      summary: Get signoff challenge details
+      description: >
+        Retrieve details of a signoff challenge by ID. Returns the challenge
+        record including current status, binding material, and expiry.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: challengeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Signoff challenge ID
+      responses:
+        '200':
+          description: Challenge details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challenge_id:
+                    type: string
+                    format: uuid
+                  handshake_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [challenge_issued, challenge_viewed, approved, denied, expired, revoked, consumed]
+                  binding_hash:
+                    type: string
+                  accountable_actor_ref:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+        '401':
+          description: Not authorized
+        '404':
+          description: Challenge not found
+
   /api/signoff/{challengeId}/attest:
     post:
       tags: [Signoff]
