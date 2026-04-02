@@ -351,4 +351,210 @@ describe.skipIf(SKIP)('DB invariant: signoff challenge status is forward-only', 
     );
     expect(rows[0].status).toBe('revoked');
   });
+
+  it('allows expiry: issued → expired', async () => {
+    const hId = await insertHandshake();
+    const bId = await insertBinding(hId);
+    const cId = await insertChallenge(bId);
+
+    await query(
+      `UPDATE signoff_challenges SET status = 'expired' WHERE challenge_id = $1`, [cId],
+    );
+    const { rows } = await query(
+      `SELECT status FROM signoff_challenges WHERE challenge_id = $1`, [cId],
+    );
+    expect(rows[0].status).toBe('expired');
+  });
+
+  it('blocks backward transition: approved → challenge_viewed', async () => {
+    const hId = await insertHandshake();
+    const bId = await insertBinding(hId);
+    const cId = await insertChallenge(bId);
+
+    await query(
+      `UPDATE signoff_challenges SET status = 'approved' WHERE challenge_id = $1`, [cId],
+    );
+    await expect(
+      query(
+        `UPDATE signoff_challenges SET status = 'challenge_viewed' WHERE challenge_id = $1`,
+        [cId],
+      ),
+    ).rejects.toThrow('SIGNOFF_BACKWARD_TRANSITION');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ── 5. Handshake nonce uniqueness ───────────────────────────────────────────
+// ---------------------------------------------------------------------------
+
+describe.skipIf(SKIP)('DB invariant: handshake nonces are globally unique', () => {
+  it('rejects a duplicate nonce', async () => {
+    const nonce = `nonce-dup-${Math.random().toString(36).slice(2)}`;
+    await query(`INSERT INTO handshakes (nonce, status) VALUES ($1, 'initiated')`, [nonce]);
+    await expect(
+      query(`INSERT INTO handshakes (nonce, status) VALUES ($1, 'initiated')`, [nonce]),
+    ).rejects.toThrow(/unique|duplicate/i);
+  });
+
+  it('accepts two handshakes with different nonces', async () => {
+    const n1 = `nonce-a-${Math.random().toString(36).slice(2)}`;
+    const n2 = `nonce-b-${Math.random().toString(36).slice(2)}`;
+    const { rows: r1 } = await query(
+      `INSERT INTO handshakes (nonce, status) VALUES ($1, 'initiated') RETURNING handshake_id`, [n1],
+    );
+    const { rows: r2 } = await query(
+      `INSERT INTO handshakes (nonce, status) VALUES ($1, 'initiated') RETURNING handshake_id`, [n2],
+    );
+    expect(r1[0].handshake_id).not.toBe(r2[0].handshake_id);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ── 6. Handshake status constraints ─────────────────────────────────────────
+// ---------------------------------------------------------------------------
+
+describe.skipIf(SKIP)('DB invariant: handshake status is constrained to valid values', () => {
+  it('rejects an invalid handshake status', async () => {
+    const nonce = `nonce-inv-${Math.random().toString(36).slice(2)}`;
+    await expect(
+      query(`INSERT INTO handshakes (nonce, status) VALUES ($1, 'hacked')`, [nonce]),
+    ).rejects.toThrow(/check|constraint/i);
+  });
+
+  it('allows all valid handshake statuses', async () => {
+    const statuses = ['initiated', 'presented', 'verified', 'consumed', 'revoked', 'expired'];
+    for (const status of statuses) {
+      const nonce = `nonce-${status}-${Math.random().toString(36).slice(2)}`;
+      await expect(
+        query(`INSERT INTO handshakes (nonce, status) VALUES ($1, $2)`, [nonce, status]),
+      ).resolves.not.toThrow();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ── 7. One binding per handshake ────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+
+describe.skipIf(SKIP)('DB invariant: each handshake has at most one binding', () => {
+  it('rejects a second binding for the same handshake', async () => {
+    const hId = await insertHandshake();
+    await insertBinding(hId);
+    await expect(
+      query(
+        `INSERT INTO handshake_bindings (handshake_id, payload_hash, nonce, expires_at)
+         VALUES ($1, $2, $3, now() + interval '1 hour')`,
+        [hId, 'phash-second', `bnonce-${Math.random().toString(36).slice(2)}`],
+      ),
+    ).rejects.toThrow(/unique|duplicate/i);
+  });
+
+  it('allows one binding per handshake', async () => {
+    const hId = await insertHandshake();
+    const bId = await insertBinding(hId);
+    expect(bId).toBeTruthy();
+    const { rows } = await query(
+      `SELECT count(*) FROM handshake_bindings WHERE handshake_id = $1`, [hId],
+    );
+    expect(parseInt(rows[0].count, 10)).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ── 8. Entity uniqueness ────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+
+describe.skipIf(SKIP)('DB invariant: entity_id is globally unique', () => {
+  it('rejects a duplicate entity_id', async () => {
+    const eid = `ent-dup-${Math.random().toString(36).slice(2)}`;
+    await insertEntity(eid);
+    await expect(insertEntity(eid)).rejects.toThrow(/unique|duplicate/i);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ── 9. Cross-handshake consumption isolation ────────────────────────────────
+// ---------------------------------------------------------------------------
+
+describe.skipIf(SKIP)('DB invariant: consumption does not bleed across handshakes', () => {
+  it('two distinct handshakes can each be consumed independently', async () => {
+    const hId1 = await insertHandshake();
+    const bId1 = await insertBinding(hId1);
+    const hId2 = await insertHandshake();
+    const bId2 = await insertBinding(hId2);
+
+    await query(
+      `UPDATE handshake_bindings SET consumed_at = now() WHERE id = $1`, [bId1],
+    );
+    await query(
+      `UPDATE handshake_bindings SET consumed_at = now() WHERE id = $1`, [bId2],
+    );
+
+    const { rows: r1 } = await query(
+      `SELECT consumed_at FROM handshake_bindings WHERE id = $1`, [bId1],
+    );
+    const { rows: r2 } = await query(
+      `SELECT consumed_at FROM handshake_bindings WHERE id = $1`, [bId2],
+    );
+    expect(r1[0].consumed_at).toBeTruthy();
+    expect(r2[0].consumed_at).toBeTruthy();
+  });
+
+  it('consuming one binding does not affect the other handshake binding', async () => {
+    const hId1 = await insertHandshake();
+    const bId1 = await insertBinding(hId1);
+    const hId2 = await insertHandshake();
+    const bId2 = await insertBinding(hId2);
+
+    await query(
+      `UPDATE handshake_bindings SET consumed_at = now() WHERE id = $1`, [bId1],
+    );
+
+    const { rows } = await query(
+      `SELECT consumed_at FROM handshake_bindings WHERE id = $1`, [bId2],
+    );
+    expect(rows[0].consumed_at).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ── 10. Signoff FK integrity ─────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+
+describe.skipIf(SKIP)('DB invariant: signoff FK relationships are enforced', () => {
+  it('rejects a challenge referencing a non-existent binding', async () => {
+    const fakeBindingId = '00000000-0000-0000-0000-000000000000';
+    await expect(
+      query(
+        `INSERT INTO signoff_challenges (handshake_id, binding_hash, status, expires_at)
+         VALUES ($1, $2, 'challenge_issued', now() + interval '10 minutes')`,
+        [fakeBindingId, 'bhash-fake'],
+      ),
+    ).rejects.toThrow(/foreign key|fk|violates/i);
+  });
+
+  it('rejects an attestation referencing a non-existent challenge', async () => {
+    const hId = await insertHandshake();
+    const bId = await insertBinding(hId);
+    const fakeChallengeId = '00000000-0000-0000-0000-000000000001';
+    await expect(
+      query(
+        `INSERT INTO signoff_attestations
+           (challenge_id, handshake_id, binding_hash, auth_method)
+         VALUES ($1, $2, $3, 'passkey')`,
+        [fakeChallengeId, bId, 'bhash-xyz'],
+      ),
+    ).rejects.toThrow(/foreign key|fk|violates/i);
+  });
+
+  it('rejects a consumption referencing a non-existent attestation', async () => {
+    const fakeSignoffId = '00000000-0000-0000-0000-000000000002';
+    await expect(
+      query(
+        `INSERT INTO signoff_consumptions (signoff_id, binding_hash, execution_ref)
+         VALUES ($1, $2, $3)`,
+        [fakeSignoffId, 'bhash-fake', 'exec-fake'],
+      ),
+    ).rejects.toThrow(/foreign key|fk|violates/i);
+  });
 });
