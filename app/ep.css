@@ -250,24 +250,110 @@
   }
 }
 
+/* ─── Scroll Reveal ──────────────────────────────────────── */
+.ep-reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 580ms cubic-bezier(0.23, 1, 0.32, 1),
+              transform 580ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.ep-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Stagger offsets — apply alongside ep-reveal */
+.ep-stagger-1 { transition-delay: 40ms; }
+.ep-stagger-2 { transition-delay: 80ms; }
+.ep-stagger-3 { transition-delay: 120ms; }
+.ep-stagger-4 { transition-delay: 160ms; }
+.ep-stagger-5 { transition-delay: 200ms; }
+.ep-stagger-6 { transition-delay: 240ms; }
+.ep-stagger-7 { transition-delay: 280ms; }
+.ep-stagger-8 { transition-delay: 320ms; }
+
+/* ─── Hero fade-in (CSS-only, above the fold) ────────────── */
+@keyframes ep-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.ep-hero-badge {
+  animation: ep-fade-up 500ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.ep-hero-text {
+  animation: ep-fade-up 600ms cubic-bezier(0.23, 1, 0.32, 1) 60ms both;
+}
+.ep-hero-visual {
+  animation: ep-fade-up 600ms cubic-bezier(0.23, 1, 0.32, 1) 120ms both;
+}
+
+/* ─── Badge pulse dot ────────────────────────────────────── */
+@keyframes ep-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.85); }
+}
+.ep-pulse-dot {
+  animation: ep-pulse 2.4s ease-in-out infinite;
+}
+
+/* ─── Card Lift ─────────────────────────────────────────── */
+.ep-card-lift {
+  transition: transform 220ms cubic-bezier(0.23, 1, 0.32, 1),
+              box-shadow 220ms cubic-bezier(0.23, 1, 0.32, 1),
+              border-color 160ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .ep-card-lift:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 28px rgba(0,0,0,0.07);
+  }
+}
+
+/* ─── Problem Row Hover ─────────────────────────────────── */
+.ep-problem-row {
+  border-left: 3px solid transparent;
+  margin-left: -3px;
+  padding-left: 3px;
+  transition: background 160ms ease, border-left-color 160ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .ep-problem-row:hover {
+    background: rgba(176,141,53,0.04);
+    border-left-color: #B08D35;
+  }
+}
+
 /* ─── Reduced Motion ─────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .ep-card-hover,
   .ep-card-accent,
+  .ep-card-lift,
   .ep-cta,
   .ep-cta-secondary,
   .ep-cta-ghost,
   .ep-nav-link,
   .ep-gh-star,
   .ep-footer-link,
-  .ep-row {
+  .ep-row,
+  .ep-reveal,
+  .ep-hero-badge,
+  .ep-hero-text,
+  .ep-hero-visual {
     transition: none !important;
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
   .ep-card-hover:hover,
   .ep-card-accent:hover,
+  .ep-card-lift:hover,
   .ep-cta:hover,
   .ep-cta-secondary:hover,
   .ep-cta-ghost:hover {
     transform: none !important;
+    box-shadow: none !important;
+  }
+  .ep-pulse-dot {
+    animation: none !important;
   }
 }
