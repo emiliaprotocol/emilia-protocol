@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/rate-limit';
-import { randomBytes } from 'crypto';
 
 /**
  * EMILIA Protocol — API Rate Limiting Middleware
@@ -230,7 +229,7 @@ export async function middleware(request) {
   // The nonce is forwarded via x-nonce request header so server components
   // can read it (e.g. in app/layout.js) and pass it to <Script> tags.
   if (!pathname.startsWith('/api/')) {
-    const nonce = randomBytes(16).toString('base64');
+    const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-nonce', nonce);
     const response = NextResponse.next({ request: { headers: requestHeaders } });
