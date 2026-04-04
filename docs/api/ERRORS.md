@@ -152,12 +152,40 @@ These errors occur during handshake operations when replay prevention or policy 
 
 | Error | Cause |
 |---|---|
-| `binding_expired` | Binding TTL exceeded. TTL is clamped to [60s, 1800s] |
-| `binding_already_consumed` | Binding's `consumed_at` is already set. One-time use enforced |
+| `binding_expired` | Binding TTL exceeded. TTL is clamped to [60s, 1800s]. Evaluated using the **DB server clock** (`now()`) inside the `verify_handshake_writes` RPC — immune to client clock skew |
+| `binding_already_consumed` | Binding's `consumed_at` is already set. One-time use enforced via `SELECT ... FOR UPDATE` inside the verify RPC to prevent race conditions |
+| `missing_binding` | No binding row found for the given handshake — binding was never created or was deleted |
+| `nonce_required` | The binding has a stored nonce but none was provided at verification time. Prevents nonce-omission bypass: callers must always supply the nonce when the binding was issued with one |
+| `nonce_mismatch` | A nonce was provided but does not match the stored binding nonce |
+| `missing_nonce` | The binding itself has no nonce field — the binding was created without a nonce (distinct from `nonce_required`) |
+| `payload_hash_required` | The binding has a stored `payload_hash` but none was provided at verification time. Symmetric with `nonce_required` |
+| `payload_hash_mismatch` | A payload hash was provided but does not match the stored binding hash |
 | `policy_hash_mismatch` | Policy rules hash at verification time differs from hash at initiation time. Policy changed during the handshake |
+| `policy_version_pin_mismatch` | The policy version number recorded at handshake creation no longer matches the current live version. Distinct from `policy_hash_mismatch` — catches cases where version incremented but hash was not yet updated |
 | `policy_not_found` | Policy referenced by `policy_id` does not exist |
 | `policy_load_failed` | Database error while loading policy |
-| `nonce_missing` | Binding requires a nonce but none was provided |
+
+## Issuer Authority Errors
+
+These errors occur when the issuer authority for a handshake presentation is invalid at write time.
+
+| Error | Cause | Alert Level |
+|---|---|---|
+| `authority_revoked_at_write` | The issuer authority was valid when the JS layer checked it but was revoked before the `present_handshake_writes` RPC committed. The RPC re-checks under `SELECT ... FOR UPDATE` and overrides `verified=false` | **S2** |
+| `authority_expired_at_write` | The issuer authority's `valid_to` timestamp passed between the JS check and the RPC write. Same TOCTOU window as above | **S2** |
+
+Both of these indicate a TOCTOU race was detected and neutralized. The presentation row is written with `verified=false` and the `issuer_status` field set to the appropriate error code. No trust is granted.
+
+## EP-IX Continuity Errors
+
+These errors occur during EP-IX identity continuity claim operations.
+
+| Error | Cause |
+|---|---|
+| `challenge_rate_limit` | The claim already has the maximum number of open challenges (5). No new challenges can be opened until existing ones are resolved |
+| `self_contest_not_allowed` | The challenger controls the entity that filed the continuity claim. Self-contest is blocked at the principal level and at the ownership graph level (entities table lookup) |
+| `claim_frozen` | The claim is in `frozen_pending_dispute` state. Direct resolution is blocked until the dispute is adjudicated and the claim is unfrozen |
+| `claim_already_terminal` | The claim is in a terminal state (`approved_full`, `approved_partial`, `rejected`, `expired`, `withdrawn`) — no further transitions are permitted |
 
 ## Event Persistence Failures
 

@@ -46,12 +46,18 @@ During verification, TLC identified and we fixed 4 real spec bugs:
 | T18 | SignoffAttestationRequiresMFA | Safety | **Verified (TLC 2.19, 2026-04-02)** — code guard in `lib/signoff/attest.js` |
 | T19 | TerminalEscapeAttemptIsRejected | Safety | **Verified (TLC 2.19, 2026-04-02)** |
 | T20 | TypeInvariant | Structural | **Verified (TLC 2.19, 2026-04-02)** — all state variables maintain declared type invariants throughout every reachable state |
+| T21 | ContinuityTypeInvariant | Structural | **Specified (2026-04-04)** — EP-IX claim/filer/openChallenges variables maintain declared types |
+| T22 | ContinuityTerminalIrreversibility | Safety | **Specified (2026-04-04)** — terminal continuity states (approved_full, approved_partial, rejected, expired, withdrawn) cannot transition to active states |
+| T23 | FrozenClaimBlocksResolution | Safety | **Specified (2026-04-04)** — frozen_pending_dispute claims cannot be directly approved or rejected; unfreeze required first |
+| T24 | ChallengeRateLimit | Safety | **Specified (2026-04-04)** — openChallenges[c] never exceeds MAX_OPEN_CHALLENGES (5); maps to max-challenge count guard in lib/ep-ix.js |
+| T25 | SelfContestImpossible | Safety | **Specified (2026-04-04)** — ContinuityChallenge action requires challenger ≠ claimFiler; maps to self-contest guard in lib/ep-ix.js |
+| T26 | WithdrawnClaimIsTerminal | Safety | **Specified (2026-04-04)** — withdrawn state is terminal; maps to withdrawContinuityClaim() guard in lib/ep-ix.js |
 
-**20 properties total: T1–T19 are behavioral safety properties; T20 (TypeInvariant) is a structural invariant ensuring no variable escapes its declared type.**
+**26 properties total: T1–T19 are behavioral safety properties; T20 (TypeInvariant) is a structural invariant; T21–T26 are EP-IX identity continuity safety invariants (added 2026-04-04).**
 
-**Model scope note:** Verified with `Handshakes = {h1}` (single handshake). Two-handshake
+**Model scope note:** Verified with `Handshakes = {h1}` (single handshake), `Claims = {c1}` (single claim). Two-handshake
 verification is computationally feasible with a more compact events representation;
-single-handshake covers all per-handshake safety properties.
+single-handshake covers all per-handshake safety properties. Single-claim covers all per-claim EP-IX properties.
 
 **To re-run locally:**
 ```
@@ -109,4 +115,4 @@ When a property is verified by a model checker:
 
 ---
 
-*Last updated: 2026-04-02 — 20 TLA+ properties verified by TLC 2.19 (T1–T19 behavioral safety + T20 TypeInvariant structural); all 15 Alloy assertions verified by Alloy 6.1.0*
+*Last updated: 2026-04-04 — 26 TLA+ properties total: T1–T20 verified by TLC 2.19 (2026-04-02); T21–T26 specified for EP-IX continuity (pending TLC run after Claims constant addition); all 15 Alloy assertions verified by Alloy 6.1.0*

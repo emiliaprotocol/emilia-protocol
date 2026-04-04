@@ -161,6 +161,61 @@ Filter application logs by `_ep_telemetry` to isolate protocol write events from
 - `checks.database.status` not `"ok"`: **S2**
 - `checks.rate_limiter.backend` is `"in_memory"` in production: **S3**
 
+### 10. Binding Security Check Rates (New — 2026-04-04)
+
+**Why**: Migrations 069–071 added DB-authoritative security checks inside the `verify_handshake_writes` RPC. These checks produce structured log fields that reveal attack signals and operational anomalies that are invisible in higher-level verification outcome metrics.
+
+**Metric**: Count of each error code, grouped by 5-minute window.
+
+**Error codes to track and their significance**:
+
+| Code | Source | Normal rate | Alert threshold | What it means |
+|---|---|---|---|---|
+| `nonce_required` | `lib/handshake/bind.js` | 0 | Any > 0 in 1h: **S3** | Caller sent a verify request without supplying the binding nonce. Could be: (a) client bug, (b) nonce-omission replay attempt |
+| `nonce_mismatch` | `lib/handshake/bind.js` | < 0.1% | > 1% of verifications: **S3** | Provided nonce doesn't match stored value — replay or mutation attempt |
+| `payload_hash_required` | `lib/handshake/bind.js` | 0 | Any > 0 in 1h: **S3** | Caller omitted payload hash when binding requires it — same bypass pattern as nonce_required |
+| `payload_hash_mismatch` | `lib/handshake/bind.js` | < 0.1% | > 1% of verifications: **S3** | Payload tampered between bind and verify |
+| `binding_already_consumed` | `verify_handshake_writes` RPC | < 0.01% | Any > 0 in 1h: **S2** | Replay attempt or double-processing bug; RPC's FOR UPDATE lock neutralized the race |
+| `binding_expired` | `verify_handshake_writes` RPC | < 5% | > 20% in 5min: **S3** | Clients taking too long; may indicate a processing bottleneck or clock drift |
+| `policy_version_pin_mismatch` | `lib/handshake/verify.js` | 0 | Any > 0: **S3** | A handshake was created against policy version N but the live version changed before verification — indicates a rapid policy rollout during active handshakes |
+| `authority_revoked_at_write` | `present_handshake_writes` RPC | 0 | Any > 0: **S2** | Issuer authority was revoked between JS check and DB write; TOCTOU race detected and blocked |
+| `authority_expired_at_write` | `present_handshake_writes` RPC | 0 | Any > 0: **S2** | Issuer authority expired between JS check and DB write; same TOCTOU window |
+
+**Source**: Application logs containing the `reason_codes` array from `checkBinding()` and `issuer_status` field from presentation rows.
+
+**Log search pattern** (JSON log aggregation):
+```
+reason_codes: ["nonce_required" OR "nonce_mismatch" OR "payload_hash_required" OR ...]
+issuer_status: ["authority_revoked_at_write" OR "authority_expired_at_write"]
+```
+
+### 11. FOR UPDATE Lock Contention (New — 2026-04-04)
+
+**Why**: Migrations 069 and 073 added `SELECT ... FOR UPDATE` inside `verify_handshake_writes` and `present_handshake_writes` RPCs to close TOCTOU races. Under high concurrent load on the same binding, lock waits can accumulate.
+
+**Metric**: Track `verify_handshake` p95/p99 latency during concurrent verify bursts. A sustained rise in p99 with no change in p50 is the contention signature.
+
+**Baseline** (updated from load tests — see `docs/operations/PERFORMANCE_PROOF.md`):
+- `verify_handshake` p50: < 300ms, p95: < 1,000ms, p99: < 2,000ms
+
+**Alert threshold**:
+- p99 `verify_handshake` > 3,000ms for 2+ minutes: **S3** (potential lock contention)
+- `already_consumed` count > 0 alongside latency spike: **S2** (concurrent consume race in progress)
+
+**Note**: Each binding is consumed at most once, so lock contention on a single binding is bounded by the number of concurrent race attempts, not sustained load. Sustained latency elevation points to database resource pressure rather than protocol contention.
+
+### 12. EP-IX Continuity Challenge Monitoring (New — 2026-04-04)
+
+**Why**: The EP-IX rate-limit guard (max 5 open challenges per claim) and self-contest guard are security controls. Hitting either guard in production indicates either an attack or a client bug.
+
+**Metric**: Count of EP-IX guard rejections by type, 1-hour windows.
+
+| Guard | Error code | Alert threshold | What it means |
+|---|---|---|---|
+| Challenge rate limit | `challenge_rate_limit` | > 10 in 1h on same claim: **S3** | Coordinated challenge-spam against a specific continuity claim |
+| Self-contest | `self_contest_not_allowed` | Any > 0: **S3** | Client attempting to challenge its own claim (either bug or evasion attempt) |
+| Frozen claim resolution | `claim_frozen` | Any in unexpected flow: **S4** | Client not checking claim state before resolving |
+
 ## Key Metrics Summary
 
 | Metric | Source | Alert Level |
@@ -175,6 +230,14 @@ Filter application logs by `_ep_telemetry` to isolate protocol write events from
 | HTTP 503 rate (rate_limit_unavailable) | Access logs | S2 |
 | Health check status | `/api/health` | S1/S3 |
 | Abuse pattern triggers | Application logs | S3/S4 |
+| nonce_required / nonce_mismatch count | Application logs | S3 |
+| payload_hash_required / mismatch count | Application logs | S3 |
+| authority_revoked_at_write count | Application logs | S2 |
+| authority_expired_at_write count | Application logs | S2 |
+| policy_version_pin_mismatch count | Application logs | S3 |
+| verify_handshake p99 latency | Telemetry logs | S3 |
+| challenge_rate_limit rejections | Application logs | S3 |
+| self_contest_not_allowed count | Application logs | S3 |
 
 ## Dashboard Recommendations
 
@@ -189,8 +252,9 @@ Filter application logs by `_ep_telemetry` to isolate protocol write events from
 
 - Handshake initiations per minute
 - Verification success/failure ratio
-- Failure breakdown by category (expired, consumed, policy mismatch)
-- Binding consumption latency
+- Failure breakdown by category (expired, consumed, policy mismatch, nonce_required, policy_version_pin_mismatch)
+- Binding consumption latency (p50/p95/p99)
+- FOR UPDATE lock contention signal: p99 latency vs p50 divergence
 
 ### Dashboard 3: Security and Abuse
 
@@ -198,6 +262,9 @@ Filter application logs by `_ep_telemetry` to isolate protocol write events from
 - Write-guard violations (should always be zero)
 - Abuse pattern triggers by pattern type
 - API key authentication failures by error code (`key_not_found`, `key_revoked`, `entity_inactive`)
+- Binding security check rejections: nonce_required, payload_hash_required, nonce_mismatch (should all be zero in steady state)
+- Issuer authority TOCTOU rejections: authority_revoked_at_write, authority_expired_at_write
+- EP-IX guard rejections: challenge_rate_limit, self_contest_not_allowed
 
 ### Dashboard 4: Infrastructure
 
