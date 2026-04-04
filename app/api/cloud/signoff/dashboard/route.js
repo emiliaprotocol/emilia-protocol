@@ -24,18 +24,22 @@ export async function GET(request) {
       supabase
         .from('signoff_challenges')
         .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', auth.tenantId)
         .eq('status', 'pending'),
       supabase
         .from('signoff_challenges')
         .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', auth.tenantId)
         .eq('status', 'completed'),
       supabase
         .from('signoff_challenges')
         .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', auth.tenantId)
         .eq('status', 'expired'),
       supabase
         .from('signoff_challenges')
-        .select('id', { count: 'exact', head: true }),
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', auth.tenantId),
     ]);
 
     return NextResponse.json({

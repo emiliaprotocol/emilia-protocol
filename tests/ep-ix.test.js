@@ -484,7 +484,7 @@ describe('challengeContinuity', () => {
     auditChain.insert = vi.fn().mockResolvedValue({ data: null, error: null });
 
     let callCount = 0;
-    mockSupabase.from.mockImplementation(() => {
+    mockSupabase.from.mockImplementation((table) => {
       callCount++;
       if (callCount === 1) {
         // claim lookup
@@ -493,6 +493,17 @@ describe('challengeContinuity', () => {
         return chain;
       }
       if (callCount === 2) {
+        // rate limit: count open challenges
+        const chain = makeChain({ data: null, error: null, count: 0 });
+        chain.in = vi.fn().mockReturnThis();
+        return chain;
+      }
+      if (callCount === 3) {
+        // ownership graph: entities owned by principal
+        const chain = makeChain({ data: [], error: null });
+        return chain;
+      }
+      if (callCount === 4) {
         // challenge insert
         const chain = makeChain({ data: challenge, error: null });
         chain.insert = vi.fn().mockReturnThis();
@@ -500,7 +511,7 @@ describe('challengeContinuity', () => {
         chain.single = vi.fn().mockResolvedValue({ data: challenge, error: null });
         return chain;
       }
-      if (callCount === 3) {
+      if (callCount === 5) {
         // update claim
         const chain = makeChain({ data: null, error: null });
         chain.update = vi.fn().mockReturnThis();

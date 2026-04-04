@@ -3,6 +3,8 @@ import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { checkClaimsAgainstPolicy, getRequiredPartiesForMode } from '@/lib/handshake/policy';
+import { checkAssuranceLevel } from '@/lib/handshake/invariants';
 import { logger } from '../../../../../../lib/logger.js';
 
 /**
@@ -11,7 +13,11 @@ import { logger } from '../../../../../../lib/logger.js';
  * Simulate a policy against a test scenario without applying it.
  * Requires: write permission.
  *
- * Body: { scenario: { ... } }
+ * Body:
+ *   scenario.parties — array of { role, claims, assurance_level }
+ *
+ * Returns per-role evaluation results: which claims pass/fail, whether
+ * assurance is sufficient, and an overall pass/fail decision.
  */
 export async function POST(request, { params }) {
   try {
@@ -28,11 +34,11 @@ export async function POST(request, { params }) {
 
     const supabase = getGuardedClient();
 
-    // Fetch the current policy
     const { data: policy, error } = await supabase
-      .from('policies')
+      .from('handshake_policies')
       .select('*')
-      .eq('id', policyId)
+      .eq('tenant_id', auth.tenantId)
+      .eq('policy_id', policyId)
       .maybeSingle();
 
     if (error) {
@@ -44,16 +50,46 @@ export async function POST(request, { params }) {
       return EP_ERRORS.NOT_FOUND('Policy');
     }
 
-    // Simulation is a dry-run evaluation of the policy rules against the scenario.
-    // The actual simulation logic depends on the policy engine; here we return
-    // the policy and scenario for the caller to evaluate.
+    const scenarioParties = Array.isArray(body.scenario.parties) ? body.scenario.parties : [];
+    const requiredRoles = getRequiredPartiesForMode(policy);
+    const roleResults = {};
+    let passed = true;
+
+    for (const role of requiredRoles) {
+      const roleReqs = policy.rules?.required_parties?.[role];
+      if (!roleReqs) continue;
+
+      const party = scenarioParties.find((p) => p.role === role);
+      const claims = party?.claims || {};
+      const assuranceLevel = party?.assurance_level || null;
+
+      const claimsResult = checkClaimsAgainstPolicy(claims, roleReqs);
+
+      let assuranceResult = null;
+      if (roleReqs.minimum_assurance) {
+        assuranceResult = assuranceLevel
+          ? checkAssuranceLevel(assuranceLevel, roleReqs.minimum_assurance)
+          : { ok: false, code: 'ASSURANCE_BELOW_MINIMUM', message: 'No assurance level provided' };
+      }
+
+      const rolePassed = claimsResult.satisfied && (assuranceResult == null || assuranceResult.ok);
+      if (!rolePassed) passed = false;
+
+      roleResults[role] = {
+        passed: rolePassed,
+        claims: claimsResult,
+        assurance: assuranceResult,
+      };
+    }
+
     return NextResponse.json({
       policy_id: policyId,
-      policy_type: policy.type || policy.policy_type,
+      policy_key: policy.policy_key,
+      policy_version: policy.version,
       scenario: body.scenario,
       result: {
-        simulated: true,
-        policy_rules: policy.rules || policy.config || {},
+        passed,
+        roles: roleResults,
         evaluated_at: new Date().toISOString(),
       },
       tenant_id: auth.tenantId,

@@ -31,6 +31,7 @@ export async function GET(request, { params }) {
     const { data: versions, error } = await supabase
       .from('policy_versions')
       .select('*')
+      .eq('tenant_id', auth.tenantId)
       .eq('policy_id', policyId)
       .in('version', [parseInt(v1, 10), parseInt(v2, 10)]);
 

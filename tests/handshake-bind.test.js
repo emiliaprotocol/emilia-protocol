@@ -31,7 +31,7 @@ describe('checkBinding', () => {
       nonce: 'abc123',
       payload_hash: null,
     };
-    const result = checkBinding(binding);
+    const result = checkBinding(binding, null, 'abc123');
     expect(result).toHaveLength(0);
   });
 

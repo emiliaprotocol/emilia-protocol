@@ -445,10 +445,12 @@ async function initHandshakeWithSim(sim, params = {}) {
  */
 function verifyOptsFromSim(sim, hsId) {
   const hs = sim.getTable('handshakes').find((h) => h.handshake_id === hsId);
+  const binding = sim.getTable('handshake_bindings').find((b) => b.handshake_id === hsId);
   return {
     payload: { action: 'connect', target: 'service-xyz' },
     policy_hash: hs?.policy_hash || undefined,
     action_hash: hs?.action_hash || undefined,
+    nonce: binding?.nonce || binding?._nonce || undefined,
   };
 }
 

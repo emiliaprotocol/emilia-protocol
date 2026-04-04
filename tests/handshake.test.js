@@ -778,7 +778,7 @@ describe('verifyHandshake', () => {
   it('accepts when all claims are met (outcome = accepted)', async () => {
     const { hs_id, binding } = seedReadyHandshake();
 
-    const result = await verifyHandshake(hs_id, { payload: binding._test_payload });
+    const result = await verifyHandshake(hs_id, { payload: binding._test_payload, nonce: binding.nonce });
 
     expect(result).toBeDefined();
     expect(result.outcome).toBe('accepted');
@@ -1008,7 +1008,7 @@ describe('verifyHandshake', () => {
       },
     );
 
-    const result = await verifyHandshake(hs_id, { payload: binding._test_payload });
+    const result = await verifyHandshake(hs_id, { payload: binding._test_payload, nonce: binding.nonce });
 
     expect(result.outcome).toBe('partial');
   });
@@ -1016,7 +1016,7 @@ describe('verifyHandshake', () => {
   it('does NOT issue a commit directly — commits come from trust/gate', async () => {
     const { hs_id, binding } = seedReadyHandshake();
 
-    const result = await verifyHandshake(hs_id, { payload: binding._test_payload });
+    const result = await verifyHandshake(hs_id, { payload: binding._test_payload, nonce: binding.nonce });
 
     expect(result.outcome).toBe('accepted');
     // commit_ref is no longer returned from verify — commits are minted by trust/gate
@@ -1118,10 +1118,11 @@ describe('Security invariants', () => {
       entity_ref: 'entity-alice',
       verified_status: 'pending',
     });
+    const bindingNonce = crypto.randomBytes(32).toString('hex');
     sim.getTable('handshake_bindings').push({
       handshake_id: hs_id,
       payload_hash: _internals.sha256('{}'),
-      nonce: crypto.randomBytes(32).toString('hex'),
+      nonce: bindingNonce,
       expires_at: new Date(Date.now() + 600_000).toISOString(),
     });
     sim.getTable('handshake_presentations').push({
@@ -1135,7 +1136,7 @@ describe('Security invariants', () => {
       revocation_status: 'good',
     });
 
-    const result = await verifyHandshake(hs_id, { payload: {} });
+    const result = await verifyHandshake(hs_id, { payload: {}, nonce: bindingNonce });
 
     expect(result.policy_version).toBe('2.1.0');
   });
@@ -1258,10 +1259,11 @@ describe('Handshake state machine', () => {
       assurance_level: 'substantial',
       verified_status: 'pending',
     });
+    const smNonce = crypto.randomBytes(32).toString('hex');
     sim.getTable('handshake_bindings').push({
       handshake_id: hs_id,
       payload_hash: _internals.sha256('{}'),
-      nonce: crypto.randomBytes(32).toString('hex'),
+      nonce: smNonce,
       expires_at: new Date(Date.now() + 600_000).toISOString(),
     });
 
@@ -1272,7 +1274,7 @@ describe('Handshake state machine', () => {
     expect(hsAfterPres.status).toBe('pending_verification');
 
     // Step 2: verify -> status should transition to verified
-    const result = await verifyHandshake(hs_id, { payload: {} });
+    const result = await verifyHandshake(hs_id, { payload: {}, nonce: smNonce });
 
     expect(result.outcome).toBe('accepted');
     const hsAfterVerify = sim.getTable('handshakes').find((h) => h.handshake_id === hs_id);

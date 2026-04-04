@@ -27,6 +27,7 @@ export async function GET(request) {
     let query = supabase
       .from('signoff_challenges')
       .select('*', { count: 'exact' })
+      .eq('tenant_id', auth.tenantId)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 

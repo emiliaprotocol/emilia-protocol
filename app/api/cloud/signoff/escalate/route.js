@@ -34,6 +34,7 @@ export async function POST(request) {
     const { data: challenge, error: lookupErr } = await supabase
       .from('signoff_challenges')
       .select('id, status')
+      .eq('tenant_id', auth.tenantId)
       .eq('id', body.challenge_id)
       .maybeSingle();
 

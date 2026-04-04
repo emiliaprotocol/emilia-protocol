@@ -26,6 +26,7 @@ export async function GET(request) {
     const { data: challenges, error, count } = await supabase
       .from('signoff_challenges')
       .select('*', { count: 'exact' })
+      .eq('tenant_id', auth.tenantId)
       .eq('status', 'pending')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
