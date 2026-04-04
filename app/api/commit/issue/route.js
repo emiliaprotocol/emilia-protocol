@@ -55,7 +55,7 @@ export async function POST(request) {
       const supabase = getGuardedClient();
       const { data: gateCommit } = await supabase
         .from('commits')
-        .select('commit_id, entity_id, action_type, decision, scope')
+        .select('commit_id, entity_id, action_type, decision, scope, policy_snapshot')
         .eq('commit_id', body.gate_ref)
         .maybeSingle();
 
@@ -70,6 +70,16 @@ export async function POST(request) {
       }
       if (gateCommit.action_type !== body.action_type) {
         return epProblem(403, 'gate_action_mismatch', 'gate_ref was issued for a different action type');
+      }
+
+      // Policy crossover guard: gate commit and issuing commit must share the same policy.
+      // A gate evaluated under policy='permissive' MUST NOT satisfy a commit that requires
+      // policy='strict'. Without this check, a low-bar gate_ref can bypass tighter policies.
+      const issuingPolicyId = body.policy?.id ?? body.policy?.policy_id ?? null;
+      const gatePolicyId = gateCommit.policy_snapshot?.id ?? gateCommit.policy_snapshot?.policy_id ?? null;
+      if (issuingPolicyId && gatePolicyId && issuingPolicyId !== gatePolicyId) {
+        return epProblem(403, 'gate_policy_mismatch',
+          'gate_ref was issued under a different policy than the commit being issued');
       }
     }
 

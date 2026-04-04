@@ -469,10 +469,11 @@ function validPresentation(overrides = {}) {
 }
 
 function verifyOptsFromSim(sim, hsId) {
-  const binding = sim.getTable('handshake_bindings').find((b) => b.handshake_id === hsId);
   const hs = sim.getTable('handshakes').find((h) => h.handshake_id === hsId);
+  // All test handshakes are created via validHandshakeParams() with this payload.
+  // Server now recomputes payload_hash from the raw payload — we must pass the object.
   return {
-    payload_hash: binding?.payload_hash || undefined,
+    payload: { action: 'connect', target: 'service-xyz' },
     policy_hash: hs?.policy_hash || undefined,
     action_hash: hs?.action_hash || undefined,
   };

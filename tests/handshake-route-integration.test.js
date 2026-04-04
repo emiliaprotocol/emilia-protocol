@@ -358,8 +358,9 @@ describe('POST /api/handshake/:id/verify', () => {
   const handshakeId = 'eph_test_123';
   const mockParams = { params: Promise.resolve({ handshakeId }) };
 
-  it('13. passes options object {actor, payload_hash} as second argument', async () => {
-    const body = { payload_hash: 'hash_abc123' };
+  it('13. passes options object {actor, payload} as second argument', async () => {
+    const rawPayload = { action: 'connect', target: 'service-xyz' };
+    const body = { payload: rawPayload };
     const req = createMockRequest('POST', `http://localhost/api/handshake/${handshakeId}/verify`, body);
     await verifyPost(req, mockParams);
 
@@ -368,7 +369,7 @@ describe('POST /api/handshake/:id/verify', () => {
     expect(callArgs[0]).toBe(handshakeId);
     expect(callArgs[1]).toEqual({
       actor: { entity_id: 'test-entity-123', id: 'test-entity-123' },
-      payload_hash: 'hash_abc123',
+      payload: rawPayload,
       nonce: null,
       action_hash: null,
       policy_hash: null,
@@ -388,7 +389,7 @@ describe('POST /api/handshake/:id/verify', () => {
     expect(callArgs[0]).toBe(handshakeId);
     expect(callArgs[1]).toEqual({
       actor: { entity_id: 'test-entity-123', id: 'test-entity-123' },
-      payload_hash: null,
+      payload: null,
       nonce: null,
       action_hash: null,
       policy_hash: null,

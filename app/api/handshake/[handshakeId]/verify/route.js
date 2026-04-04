@@ -29,7 +29,7 @@ export async function POST(request, { params }) {
 
     const result = await verifyHandshake(handshakeId, {
       actor: auth.entity,
-      payload_hash: body.payload_hash || null,
+      payload: body.payload || null,
       nonce: body.nonce || null,
       action_hash: body.action_hash || null,
       policy_hash: body.policy_hash || null,

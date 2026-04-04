@@ -727,10 +727,13 @@ describe('verifyHandshake', () => {
       });
     }
 
-    // Binding
+    // Binding — _test_payload stores the raw payload so tests can pass it at verify time.
+    // Server recomputes payload_hash from the raw object; we must not pass a hash string.
+    const SEED_PAYLOAD = { action: 'connect' };
     const binding = {
       handshake_id: hs_id,
-      payload_hash: _internals.sha256(JSON.stringify({ action: 'connect' })),
+      payload_hash: _internals.sha256(JSON.stringify(SEED_PAYLOAD)),
+      _test_payload: SEED_PAYLOAD,
       nonce: crypto.randomBytes(32).toString('hex'),
       expires_at: new Date(Date.now() + 600_000).toISOString(),
       bound_at: new Date().toISOString(),
@@ -775,7 +778,7 @@ describe('verifyHandshake', () => {
   it('accepts when all claims are met (outcome = accepted)', async () => {
     const { hs_id, binding } = seedReadyHandshake();
 
-    const result = await verifyHandshake(hs_id, { payload_hash: binding.payload_hash });
+    const result = await verifyHandshake(hs_id, { payload: binding._test_payload });
 
     expect(result).toBeDefined();
     expect(result.outcome).toBe('accepted');
@@ -909,11 +912,12 @@ describe('verifyHandshake', () => {
     expect(result.reason_codes.some((c) => c.includes('revoked'))).toBe(true);
   });
 
-  it('rejects when payload hash mismatches', async () => {
+  it('rejects when payload mismatches stored hash', async () => {
     const { hs_id } = seedReadyHandshake();
 
+    // Pass a different payload — server computes its hash, which won't match stored hash
     const result = await verifyHandshake(hs_id, {
-      payload_hash: 'wrong_hash_does_not_match',
+      payload: { action: 'tampered_payload', injected: true },
     });
 
     expect(result.reason_codes).toContain('payload_hash_mismatch');
@@ -1004,7 +1008,7 @@ describe('verifyHandshake', () => {
       },
     );
 
-    const result = await verifyHandshake(hs_id, { payload_hash: binding.payload_hash });
+    const result = await verifyHandshake(hs_id, { payload: binding._test_payload });
 
     expect(result.outcome).toBe('partial');
   });
@@ -1012,7 +1016,7 @@ describe('verifyHandshake', () => {
   it('does NOT issue a commit directly — commits come from trust/gate', async () => {
     const { hs_id, binding } = seedReadyHandshake();
 
-    const result = await verifyHandshake(hs_id, { payload_hash: binding.payload_hash });
+    const result = await verifyHandshake(hs_id, { payload: binding._test_payload });
 
     expect(result.outcome).toBe('accepted');
     // commit_ref is no longer returned from verify — commits are minted by trust/gate
@@ -1131,7 +1135,7 @@ describe('Security invariants', () => {
       revocation_status: 'good',
     });
 
-    const result = await verifyHandshake(hs_id, { payload_hash: _internals.sha256('{}') });
+    const result = await verifyHandshake(hs_id, { payload: {} });
 
     expect(result.policy_version).toBe('2.1.0');
   });
@@ -1268,7 +1272,7 @@ describe('Handshake state machine', () => {
     expect(hsAfterPres.status).toBe('pending_verification');
 
     // Step 2: verify -> status should transition to verified
-    const result = await verifyHandshake(hs_id, { payload_hash: _internals.sha256('{}') });
+    const result = await verifyHandshake(hs_id, { payload: {} });
 
     expect(result.outcome).toBe('accepted');
     const hsAfterVerify = sim.getTable('handshakes').find((h) => h.handshake_id === hs_id);

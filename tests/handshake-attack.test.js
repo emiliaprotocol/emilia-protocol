@@ -439,15 +439,14 @@ async function initHandshakeWithSim(sim, params = {}) {
 }
 
 /**
- * Helper: build verify options (payload_hash, policy_hash, action_hash) from sim state.
- * Required because checkBinding now mandates payload_hash when binding has one,
- * and verify handler requires action_hash and policy_hash when the handshake has them.
+ * Helper: build verify options (payload, policy_hash, action_hash) from sim state.
+ * Server now recomputes payload_hash from the raw payload — we must pass the object.
+ * All test handshakes use validHandshakeParams() with payload { action, target }.
  */
 function verifyOptsFromSim(sim, hsId) {
-  const binding = sim.getTable('handshake_bindings').find((b) => b.handshake_id === hsId);
   const hs = sim.getTable('handshakes').find((h) => h.handshake_id === hsId);
   return {
-    payload_hash: binding?.payload_hash || undefined,
+    payload: { action: 'connect', target: 'service-xyz' },
     policy_hash: hs?.policy_hash || undefined,
     action_hash: hs?.action_hash || undefined,
   };
@@ -502,9 +501,10 @@ describe('Replay Attacks', () => {
     // Add a presentation to B with the exact same data (replayed)
     await addPresentation(hsIdB, 'initiator', pres);
 
-    // Verify handshake B — the payload_hash bound to A differs from B's binding
-    const verifyResult = await verifyHandshake(hsIdB, { payload_hash: storedHash });
-    // The payload_hash does not match B's binding, so it should produce payload_hash_mismatch
+    // Verify handshake B — attacker presents A's payload, but B was bound with a different payload.
+    // Server recomputes hash from the presented payload; it won't match B's stored binding hash.
+    const verifyResult = await verifyHandshake(hsIdB, { payload: { action: 'connect', target: 'service-A-only' } });
+    // The computed hash does not match B's binding payload_hash → payload_hash_mismatch
     expect(verifyResult.reason_codes).toContain('payload_hash_mismatch');
     expect(verifyResult.outcome).not.toBe('accepted');
   });
@@ -839,10 +839,7 @@ describe('Policy Evasion', () => {
   // as the payload_hash for handshake B verification, hoping to pass binding checks.
   it('substituting a valid presentation from a different handshake is rejected — binding mismatch', async () => {
     // Handshake A — legitimate
-    const resultA = await initiateHandshake(validHandshakeParams({ payload: { secret: 'alpha' } }));
-    const hsIdA = resultA.handshake_id;
-    const bindingA = sim.getTable('handshake_bindings').find((b) => b.handshake_id === hsIdA);
-    const hashA = bindingA.payload_hash;
+    await initiateHandshake(validHandshakeParams({ payload: { secret: 'alpha' } }));
 
     // Handshake B — attacker's handshake with different payload
     const resultB = await initiateHandshake(validHandshakeParams({ payload: { secret: 'beta' } }));
@@ -851,8 +848,9 @@ describe('Policy Evasion', () => {
 
     await addPresentation(hsIdB, 'initiator', validPresentation());
 
-    // Attacker passes handshake A's payload_hash during B's verification
-    const verifyResult = await verifyHandshake(hsIdB, { payload_hash: hashA });
+    // Attacker presents handshake A's raw payload during B's verification.
+    // Server computes hash of A's payload, which won't match B's stored binding hash.
+    const verifyResult = await verifyHandshake(hsIdB, { payload: { secret: 'alpha' } });
     expect(verifyResult.reason_codes).toContain('payload_hash_mismatch');
     expect(verifyResult.outcome).not.toBe('accepted');
   });
