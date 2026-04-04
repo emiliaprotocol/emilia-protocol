@@ -16,7 +16,7 @@ A pilot could focus on one workflow such as:
 - operator overrides
 - delegated case actions
 
-EP has been independently audited at 100/100 (2026-04-02) across all 10 categories, and load-tested end-to-end: 329 complete Accountable Signoff chains with zero correctness violations, 3,251 automated tests across 125 files, and 31 security findings identified and remediated.
+EP has been independently audited at 100/100 (2026-04-02) across all 10 categories, and load-tested end-to-end: 329 complete Accountable Signoff chains with zero correctness violations, 3,277 automated tests across 125 files, and 31 security findings identified and remediated.
 
 If useful, I can send a short architecture brief and proposed pilot scope.
 
