@@ -55,9 +55,10 @@ const DEPLOY_LAYERS = [
 ];
 
 const DEPLOY_STEPS = [
-  { color: color.green, label: 'Start with Eye',          body: 'Warning-only escalation. Flag when stricter controls should apply. No enforcement, no friction.' },
-  { color: color.blue,  label: 'Enforce with Handshake',  body: 'Policy-bound pre-action trust enforcement. Canonical binding, replay resistance, one-time consumption.' },
-  { color: color.gold,  label: 'Own with Signoff',        body: 'Named human ownership when policy requires it. Not MFA. Cryptographically bound, action-specific accountability.' },
+  { color: color.green, label: 'Start with Eye',          body: 'Observe, shadow, then enforce. Eye runs alongside existing workflows — logging first, flagging without blocking, then enforcing full ceremony when ready.' },
+  { color: color.blue,  label: 'Enforce with Handshake',  body: 'Policy-bound pre-action trust enforcement. Canonical binding, replay resistance, one-time consumption. Seven properties verified before execution proceeds.' },
+  { color: color.gold,  label: 'Own with Signoff',        body: 'Named human ownership when policy requires it. Not MFA. Cryptographically bound, action-specific accountability before execution.' },
+  { color: color.t2,    label: 'Seal with Commit',        body: 'Atomic write to the immutable audit chain. Handshake consumed, signoff consumed, event chain sealed. Execution released. Cannot be undone.' },
 ];
 
 /* ─── Badge chip for product layer rows ─────────────────── */
@@ -412,9 +413,9 @@ export default function HomePage() {
         <C>
           <div className="ep-reveal" style={{ marginBottom: 40 }}>
             <Eyebrow>How Emilia Deploys in Practice</Eyebrow>
-            <SectionTitle>Three layers, one control surface</SectionTitle>
+            <SectionTitle>Four layers, one control surface</SectionTitle>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
             {DEPLOY_STEPS.map((item, i) => (
               <div
                 key={i}

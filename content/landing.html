@@ -495,19 +495,19 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
   <div class="container fade-in">
     <div class="eyebrow">START LIGHTER</div>
     <h2 class="section-title">Start lighter with Emilia Eye</h2>
-    <p class="section-desc" style="margin-bottom:32px">For teams not ready to redesign high-risk workflows immediately, Emilia Eye provides a lightweight warning layer that flags when stricter EP controls should apply.</p>
+    <p class="section-desc" style="margin-bottom:32px">Emilia Eye is a three-phase behavioral monitoring layer: Observe (log without blocking), Shadow (flag without enforcing), Enforce (full EP ceremony required). Teams deploy Eye first — before any workflow redesign — and promote to enforcement when ready.</p>
     <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:32px;max-width:620px">
       <div style="display:flex;gap:12px;align-items:baseline">
         <span style="color:var(--gold);font-size:14px;flex-shrink:0">+</span>
-        <span style="font-size:15px;color:var(--t2);line-height:1.6">Lightweight warning-first deployment</span>
+        <span style="font-size:15px;color:var(--t2);line-height:1.6">OBSERVE: passive logging, zero friction, full audit trail from day one</span>
       </div>
       <div style="display:flex;gap:12px;align-items:baseline">
         <span style="color:var(--gold);font-size:14px;flex-shrink:0">+</span>
-        <span style="font-size:15px;color:var(--t2);line-height:1.6">Explainable reasons, not opaque scores</span>
+        <span style="font-size:15px;color:var(--t2);line-height:1.6">SHADOW: flag anomalies without blocking — explainable reasons, not opaque scores</span>
       </div>
       <div style="display:flex;gap:12px;align-items:baseline">
         <span style="color:var(--gold);font-size:14px;flex-shrink:0">+</span>
-        <span style="font-size:15px;color:var(--t2);line-height:1.6">Direct escalation into EP Handshake and Accountable Signoff</span>
+        <span style="font-size:15px;color:var(--t2);line-height:1.6">ENFORCE: full ceremony required — direct escalation into Handshake and Signoff</span>
       </div>
     </div>
     <div style="display:flex;gap:12px;flex-wrap:wrap">
@@ -577,19 +577,23 @@ nav.scrolled{box-shadow:0 4px 24px rgba(0,0,0,0.4)}
 <section>
   <div class="container fade-in">
     <div class="eyebrow">HOW EMILIA DEPLOYS IN PRACTICE</div>
-    <h2 class="section-title">Three layers, one control surface</h2>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin-top:24px">
+    <h2 class="section-title">Four layers, one control surface</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-top:24px">
       <div class="card">
         <h3 style="color:#22C55E;font-size:13px;font-family:var(--mono);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Start with Eye</h3>
-        <p style="font-size:15px;color:var(--t2);line-height:1.6">Warning-only escalation. Flag when stricter controls should apply. No enforcement, no friction.</p>
+        <p style="font-size:15px;color:var(--t2);line-height:1.6">Observe, shadow, then enforce. Eye runs alongside existing workflows — logging first, flagging without blocking, then enforcing full ceremony when ready.</p>
       </div>
       <div class="card">
         <h3 style="color:#22C55E;font-size:13px;font-family:var(--mono);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Enforce with Handshake</h3>
-        <p style="font-size:15px;color:var(--t2);line-height:1.6">Policy-bound pre-action trust enforcement. Canonical binding, replay resistance, one-time consumption.</p>
+        <p style="font-size:15px;color:var(--t2);line-height:1.6">Policy-bound pre-action trust enforcement. Canonical binding, replay resistance, one-time consumption. Seven properties verified before execution proceeds.</p>
       </div>
       <div class="card">
         <h3 style="color:#22C55E;font-size:13px;font-family:var(--mono);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Own with Signoff</h3>
-        <p style="font-size:15px;color:var(--t2);line-height:1.6">Named human ownership when policy requires it. Not MFA. Cryptographically bound, action-specific accountability.</p>
+        <p style="font-size:15px;color:var(--t2);line-height:1.6">Named human ownership when policy requires it. Not MFA. Cryptographically bound, action-specific accountability before execution.</p>
+      </div>
+      <div class="card">
+        <h3 style="color:#22C55E;font-size:13px;font-family:var(--mono);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px">Seal with Commit</h3>
+        <p style="font-size:15px;color:var(--t2);line-height:1.6">Atomic write to the immutable audit chain. Handshake consumed, signoff consumed, event chain sealed. Execution released. Cannot be undone.</p>
       </div>
     </div>
   </div>
