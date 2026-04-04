@@ -9,7 +9,7 @@ import { styles, cta, color, font, radius } from '@/lib/tokens';
 const HeroAnimation = dynamic(() => import('@/components/HeroAnimation'), {
   ssr: false,
   loading: () => (
-    <div style={{ width: '100%', aspectRatio: '4/3', borderRadius: 6, border: `1px solid ${color.border}`, background: '#F5F5F4' }} />
+    <div style={{ width: '100%', aspectRatio: '600/560', borderRadius: 6, border: `1px solid ${color.border}`, background: '#F5F5F4' }} />
   ),
 });
 
