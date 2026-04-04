@@ -94,9 +94,14 @@ Authorization: Bearer ep_live_...
     { <span class="key">"role"</span>: <span class="str">"initiator"</span>, <span class="key">"entity_ref"</span>: <span class="str">"your-entity-id"</span> },
     { <span class="key">"role"</span>: <span class="str">"responder"</span>, <span class="key">"entity_ref"</span>: <span class="str">"counterparty-id"</span> }
   ],
-  <span class="key">"action_type"</span>: <span class="str">"connect"</span>,
-  <span class="key">"resource_ref"</span>: <span class="str">"resource-uuid"</span>,
-  <span class="key">"payload"</span>: { <span class="key">"description"</span>: <span class="str">"Beneficiary change request"</span> }
+  <span class="key">"action_type"</span>: <span class="str">"beneficiary_change"</span>,
+  <span class="key">"resource_ref"</span>: <span class="str">"acct-7291-usd"</span>,
+  <span class="key">"payload"</span>: {
+    <span class="key">"beneficiary_name"</span>: <span class="str">"Meridian Logistics Ltd"</span>,
+    <span class="key">"account_number"</span>: <span class="str">"****4821"</span>,
+    <span class="key">"routing"</span>: <span class="str">"SWIFT:MLOGUS33"</span>,
+    <span class="key">"effective_date"</span>: <span class="str">"2026-04-07"</span>
+  }
 }</pre>
   <div class="result"><strong>Response (201):</strong> Returns <code>handshake_id</code>, <code>binding</code> (with <code>binding_hash</code>, <code>payload_hash</code>, <code>nonce</code>), <code>action_hash</code>, <code>policy_hash</code>. Save these for later steps.</div>
 </div>
@@ -111,7 +116,7 @@ Authorization: Bearer ep_live_initiator_key
 {
   <span class="key">"party_role"</span>: <span class="str">"initiator"</span>,
   <span class="key">"presentation_type"</span>: <span class="str">"self_asserted"</span>,
-  <span class="key">"claims"</span>: { <span class="key">"name"</span>: <span class="str">"Jane Smith"</span>, <span class="key">"role"</span>: <span class="str">"Treasury Analyst"</span> },
+  <span class="key">"claims"</span>: { <span class="key">"name"</span>: <span class="str">"Jane Smith"</span>, <span class="key">"role"</span>: <span class="str">"Payments Operator"</span> },
   <span class="key">"disclosure_mode"</span>: <span class="str">"full"</span>
 }</pre>
 </div>
@@ -126,7 +131,7 @@ Authorization: Bearer ep_live_responder_key
 {
   <span class="key">"party_role"</span>: <span class="str">"responder"</span>,
   <span class="key">"presentation_type"</span>: <span class="str">"self_asserted"</span>,
-  <span class="key">"claims"</span>: { <span class="key">"name"</span>: <span class="str">"Compliance Officer"</span> },
+  <span class="key">"claims"</span>: { <span class="key">"name"</span>: <span class="str">"David Chen"</span>, <span class="key">"role"</span>: <span class="str">"Treasury Manager"</span> },
   <span class="key">"disclosure_mode"</span>: <span class="str">"full"</span>
 }</pre>
 </div>
