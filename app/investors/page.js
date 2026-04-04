@@ -288,7 +288,7 @@ export default function InvestorsPage() {
           <div style={styles.card}>
             <div style={styles.cardTitle}>Protocol + product coherence</div>
             <div style={styles.cardBody}>
-              Open protocol, open runtime, managed cloud, enterprise packs, vertical pricing. GitHub release v1.0.0 published. 1,500+ tests, 19 TLA+ theorems, 85 red team cases.
+              Open protocol, open runtime, managed cloud, enterprise packs, vertical pricing. GitHub release v1.0.0 published. 3,277 automated tests across 125 files, 20 TLA+ theorems machine-verified (TLC 2.19, 0 errors), 116 red team cases documented and remediated.
             </div>
           </div>
         </div>

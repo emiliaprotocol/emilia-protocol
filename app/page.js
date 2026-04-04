@@ -14,7 +14,7 @@ const HeroAnimation = dynamic(() => import('@/components/HeroAnimation'), {
 });
 
 const STATS = [
-  { value: '3,251', label: 'automated tests', accent: color.t1 },
+  { value: '3,277', label: 'automated tests', accent: color.t1 },
   { value: '20',    label: 'theorems proven', accent: color.blue },
   { value: '116',   label: 'red team cases',  accent: color.t1 },
   { value: '100/100', label: 'audit score',   accent: color.gold },
@@ -162,7 +162,7 @@ export default function HomePage() {
               <span style={{
                 fontFamily: font.mono, fontSize: 10,
                 color: color.gold, letterSpacing: 1.5, textTransform: 'uppercase',
-              }}>100/100 Independent Code Audit — April 2, 2026</span>
+              }}>100/100 Independent Code Audit — April 2, 2026 · <a href="/docs/security/AUDIT_METHODOLOGY.md" style={{ color: 'inherit', textDecoration: 'underline' }}>Methodology & scope</a></span>
             </div>
           </div>
 

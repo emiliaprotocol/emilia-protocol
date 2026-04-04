@@ -4,6 +4,50 @@ All notable changes to EMILIA Protocol are documented here.
 
 Versioning model: Protocol spec and reference repo share the root version (1.0.x). SDKs (0.1.x) and MCP server (0.2.x) version independently.
 
+## [1.1.0] — 2026-04-04
+
+### Highlights
+- **3,277 tests** across 125 files — 100/100 audit score (all 10 categories at maximum)
+- **EP-IX Identity Continuity** — full state machine: pending → under_challenge → frozen_pending_dispute → terminal; freeze/unfreeze/withdraw operations; rate-limit guard (max 5 open challenges); self-contest guard via ownership graph
+- **Protocol Hardening v2** — 9 Supabase migrations (065–073) closing all L99/L90/L75 findings: binding FOR UPDATE, policy version pin, DB-clock expiry, tenant isolation, issuer authority TOCTOU
+- **Formal verification extended** — 20 TLA+ properties verified by TLC 2.19 (T1–T20); 6 new EP-IX properties specified (T21–T26); `Claims` constant added to model
+- **Audit provenance** — `docs/security/AUDIT_METHODOLOGY.md` documents scope, methodology, 10-category rubric, and reproduction steps
+- **API Compatibility Policy** — `docs/api/COMPATIBILITY.md` defines `1.x` stability guarantees, breaking-change policy, and support lifecycle
+
+### Security (migrations 065–073)
+- **065**: Unique constraint + trigger on `handshake_bindings` closes TOCTOU double-consumption race
+- **066**: `policy_version_number INTEGER` column on `handshakes` enables version pinning
+- **067**: `withdrawn` and `frozen_pending_dispute` states added to `continuity_claims` CHECK constraint
+- **068**: `policy_rollouts` table for auditable policy deployment history
+- **069**: `verify_handshake_writes` RPC — `SELECT ... FOR UPDATE` on binding; returns `already_consumed` signal on race loss
+- **070**: `create_handshake_atomic` RPC — `p_policy_version_number` written atomically in same INSERT as handshake row
+- **071**: `verify_handshake_writes` RPC — expiry check moved inside FOR UPDATE block using DB `now()` (authoritative clock)
+- **072**: `tenant_id UUID` added to `signoff_challenges`, `signoff_attestations`, `handshake_policies`, `policy_versions`
+- **073**: `present_handshake_writes` RPC — issuer authority re-checked under `SELECT ... FOR UPDATE`; overrides `verified=false` if race detected
+
+### Protocol
+- `checkBinding()` — symmetric `nonce_required` guard: binding nonce presence requires caller to supply nonce (closes nonce-omission bypass)
+- `verify.js` — `policy_version_pin_mismatch` check added after policy hash check
+- `ep-ix.js` — `freezeContinuityOnDispute()`, `unfreezeResolvedContinuity()`, `withdrawContinuityClaim()` operations; `resolveContinuity()` blocks frozen and withdrawn states; `expireContinuityClaims()` excludes frozen
+- `scoring-v2.js` — named constants exported: `DAMPENING_THRESHOLD`, `ESTABLISHMENT_EVIDENCE_GATE`, `ESTABLISHMENT_MIN_SUBMITTERS`, `MAX_UNESTABLISHED_AGGREGATE_CONTRIBUTION`, `MAX_SINGLE_SUBMITTER_CONTRIBUTION`
+- `dispute-adjudication.js` — sort uses `CONFIDENCE_WEIGHT_INT` integer comparison (eliminates float non-determinism)
+- `constants.js` — `CONTINUITY_STATUS` extended with `FROZEN_PENDING_DISPUTE` and `WITHDRAWN`
+
+### Testing
+- **3,277 tests** across 125 files (up from 3,251)
+- New test files: `protocol-hardening-v2.test.js` (26 tests covering scoring constants, nonce omission, CONTINUITY_STATUS completeness)
+- Load test: `load-tests/binding-lock-contention.js` — 3-scenario k6 test for FOR UPDATE contention benchmarking
+
+### Operational
+- `docs/security/AUDIT_METHODOLOGY.md` — full audit scope, methodology, 10-category rubric, findings summary, reproduction steps
+- `docs/api/COMPATIBILITY.md` — `1.x` stability guarantees and breaking-change policy
+- `docs/api/ERRORS.md` — 12 new/clarified error codes including `nonce_required`, `authority_revoked_at_write`, `policy_version_pin_mismatch`
+- `docs/operations/OBSERVABILITY.md` — §10–12: new security check rate metrics, FOR UPDATE contention signal, EP-IX monitoring
+- `docs/operations/MIGRATION_RUNBOOK_065_073.md` — ordered rollout guide for migrations 065–073 with verify queries and rollback procedures
+- `formal/PROOF_STATUS.md` — updated to reflect 26 total TLA+ properties (20 verified, 6 EP-IX specified)
+
+---
+
 ## [1.0.0] — 2026-03-18
 
 ### Highlights
