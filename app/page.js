@@ -163,7 +163,7 @@ export default function HomePage() {
               <span style={{
                 fontFamily: font.mono, fontSize: 10,
                 color: color.gold, letterSpacing: 1.5, textTransform: 'uppercase',
-              }}>100/100 Independent Code Audit — April 2, 2026 · <a href="/docs/security/AUDIT_METHODOLOGY.md" style={{ color: 'inherit', textDecoration: 'underline' }}>Methodology & scope</a></span>
+              }}>100/100 Internal Security Audit — April 2, 2026 · <a href="/docs/security/AUDIT_METHODOLOGY.md" style={{ color: 'inherit', textDecoration: 'underline' }}>Methodology & scope</a></span>
             </div>
           </div>
 

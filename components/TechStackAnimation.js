@@ -3,9 +3,9 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring } from 'remotion';
 
 /*
-  Three-layer stack animation for the EP hero.
+  Four-layer stack animation for the EP hero.
   Cycles through the protocol layers:
-    Eye (warns) → EP Handshake (verifies) → Signoff (owns)
+    Eye (observes) → EP Handshake (verifies) → Signoff (owns) → Commit (seals)
   Each layer pulses in with its associated tech domains.
   White background theme, gold accent.
 */
@@ -13,7 +13,7 @@ import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring } fr
 const LAYERS = [
   {
     label: 'EYE',
-    verb: 'warns',
+    verb: 'observes',
     color: '#16A34A',
     domains: ['GOV', 'FIN', 'ENT', 'AI'],
     icon: '◉',
@@ -31,6 +31,13 @@ const LAYERS = [
     color: '#B08D35',
     domains: ['PASSKEY', 'SECURE APP', 'DUAL', 'AUDIT'],
     icon: '◈',
+  },
+  {
+    label: 'EP COMMIT',
+    verb: 'seals',
+    color: '#78716C',
+    domains: ['IMMUTABLE', 'CONSUMED', 'SEALED', 'RELEASED'],
+    icon: '◼',
   },
 ];
 
@@ -82,7 +89,7 @@ function DomainTag({ label, color: tagColor, delay, frame, fps }) {
 }
 
 function LayerRow({ layer, index, frame, fps, totalDuration }) {
-  const cycleLength = totalDuration / 3;
+  const cycleLength = totalDuration / 4;
   const layerStart = index * cycleLength;
 
   const fadeIn = interpolate(frame, [layerStart, layerStart + 20], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
@@ -141,8 +148,8 @@ function LayerRow({ layer, index, frame, fps, totalDuration }) {
 
 function ScanLine({ frame, totalDuration }) {
   const progress = (frame % totalDuration) / totalDuration;
-  const y = interpolate(progress, [0, 0.33, 0.66, 1], [0, 33, 66, 100]);
-  const opacity = interpolate(Math.sin(progress * Math.PI * 3), [-1, 1], [0.08, 0.3]);
+  const y = interpolate(progress, [0, 0.25, 0.5, 0.75, 1], [0, 25, 50, 75, 100]);
+  const opacity = interpolate(Math.sin(progress * Math.PI * 4), [-1, 1], [0.08, 0.3]);
   return (
     <div
       style={{
@@ -166,8 +173,8 @@ export function TechStackComposition() {
   const taglineOpacity = interpolate(frame, [0, 30], [0, 1], { extrapolateRight: 'clamp' });
   const prongProgress = interpolate(frame, [0, 45], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' });
 
-  const cycleLength = durationInFrames / 3;
-  const activeIndex = Math.min(Math.floor(frame / cycleLength), 2);
+  const cycleLength = durationInFrames / 4;
+  const activeIndex = Math.min(Math.floor(frame / cycleLength), 3);
 
   return (
     <AbsoluteFill style={{ background: 'transparent', fontFamily: FONT_SANS, overflow: 'hidden' }}>
@@ -176,11 +183,13 @@ export function TechStackComposition() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 32, opacity: taglineOpacity }}>
           <ProngSVG progress={prongProgress} color={LAYERS[activeIndex].color} />
           <div style={{ fontFamily: FONT_MONO, fontSize: 15, letterSpacing: 0.5, color: '#0C0A09' }}>
-            <span style={{ color: activeIndex === 0 ? '#16A34A' : '#A1A1AA' }}>Eye warns.</span>
+            <span style={{ color: activeIndex === 0 ? '#16A34A' : '#A1A1AA' }}>Eye observes.</span>
             {' '}
-            <span style={{ color: activeIndex === 1 ? '#3B82F6' : '#A1A1AA' }}>EP verifies.</span>
+            <span style={{ color: activeIndex === 1 ? '#3B82F6' : '#A1A1AA' }}>Handshake verifies.</span>
             {' '}
             <span style={{ color: activeIndex === 2 ? '#B08D35' : '#A1A1AA' }}>Signoff owns.</span>
+            {' '}
+            <span style={{ color: activeIndex === 3 ? '#78716C' : '#A1A1AA' }}>Commit seals.</span>
           </div>
         </div>
 
