@@ -8,12 +8,6 @@ import { validateInitiateBody } from '@/lib/handshake/schema';
 import { validateHandshakeCreate } from '@/lib/validation/schemas';
 import { logger } from '../../../lib/logger.js';
 
-// ── Overload backpressure ────────────────────────────────────────────────────
-// Fast-fail under concurrency pressure instead of slow timeout collapse.
-// Per-instance counter — each serverless function instance tracks its own load.
-let _inflight = 0;
-const MAX_CONCURRENT = 50;
-
 /**
  * POST /api/handshake
  *
@@ -25,14 +19,6 @@ const MAX_CONCURRENT = 50;
  * matches the authenticated entity.
  */
 export async function POST(request) {
-  // Overload guard: prefer fast 503 over slow timeout
-  if (_inflight >= MAX_CONCURRENT) {
-    return NextResponse.json(
-      { error: 'Service overloaded', retry_after: 2 },
-      { status: 503, headers: { 'Retry-After': '2' } },
-    );
-  }
-  _inflight++;
   try {
     const auth = await authenticateRequest(request);
     if (auth.error) return epError(EP_ERROR_CODES.UNAUTHORIZED);
@@ -74,8 +60,6 @@ export async function POST(request) {
   } catch (err) {
     logger.error('Handshake initiation error:', err);
     return epError(EP_ERROR_CODES.INTERNAL);
-  } finally {
-    _inflight--;
   }
 }
 
@@ -93,7 +77,7 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const filters = {
-      entity_ref: auth.entity, // forced — callers may only list their own handshakes
+      entity_ref: auth.entity.entity_id, // forced — callers may only list their own handshakes
       status: searchParams.get('status') || null,
       mode: searchParams.get('mode') || null,
     };

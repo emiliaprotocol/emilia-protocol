@@ -112,7 +112,7 @@ export async function POST(request, { params }) {
 
     if (!isCron) {
       // Non-cron caller must be the filer
-      if (callerEntity.id !== dispute.filed_by) {
+      if (callerEntity.entity_id !== dispute.filed_by) {
         // Allow operators (future: check for operator permission)
         // For now, only the filer and cron can trigger adjudication
         return EP_ERRORS.FORBIDDEN(

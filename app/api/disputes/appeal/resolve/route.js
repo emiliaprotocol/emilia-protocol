@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { recordOperatorAction } from '@/lib/procedural-justice';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { getGuardedClient } from '@/lib/write-guard';
 import { getCronSecret } from '@/lib/env';
 import { logger } from '../../../../../lib/logger.js';
+
+function safeCompare(a, b) {
+  if (!a || !b) return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
 
 /**
  * POST /api/disputes/appeal/resolve
@@ -21,7 +30,7 @@ export async function POST(request) {
   try {
     const authHeader = request.headers.get('authorization');
     const cronSecret = getCronSecret();
-    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    if (!cronSecret || !safeCompare(authHeader, `Bearer ${cronSecret}`)) {
       return EP_ERRORS.UNAUTHORIZED();
     }
 

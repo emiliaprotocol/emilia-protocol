@@ -23,7 +23,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { generateZKProof, verifyZKProof } from '@/lib/zk-proofs';
+import { generateCommitmentProof, verifyCommitmentProof } from '@/lib/zk-proofs';
 import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { EP_ERRORS } from '@/lib/errors';
@@ -93,7 +93,7 @@ export async function POST(request) {
     const supabase = getGuardedClient();
     let proof;
     try {
-      proof = await generateZKProof(entity_id, claim, supabase);
+      proof = await generateCommitmentProof(entity_id, claim, supabase);
     } catch (err) {
       if (err.code === 'claim_not_provable') {
         return NextResponse.json(
@@ -154,7 +154,7 @@ export async function GET(request) {
     }
 
     const supabase = getGuardedClient();
-    const result = await verifyZKProof(proofId, supabase);
+    const result = await verifyCommitmentProof(proofId, supabase);
 
     if (result.reason === 'proof_not_found') {
       return EP_ERRORS.NOT_FOUND('Commitment proof');
