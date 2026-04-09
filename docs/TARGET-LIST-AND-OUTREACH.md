@@ -87,27 +87,17 @@ This file focuses on **publicly reachable channels** for pilot outreach. It is d
 
 ## Cold email — government
 
-Subject: Pilot idea — trust controls before high-risk payment or benefit actions
+Subject: Trust controls before high-risk payment actions
 
 Hi [Team/Name],
 
-I’m reaching out because I think your team may be facing a control gap that EMILIA Protocol (EP) is built to address.
+Most payment fraud in government workflows doesn’t happen because authentication failed. It happens because authentication was the only control. The action — a payment destination change, a benefit redirect, an operator override — never had to satisfy an action-level policy.
 
-EP is a protocol-grade trust substrate for high-risk action enforcement. It sits between authentication and execution and determines whether a specific actor, under a specific authority chain, should be allowed to perform a specific high-risk action under a specific policy, exactly once, with replay resistance and durable traceability.
+EMILIA Protocol (EP) sits between authentication and execution. It verifies actor identity, authority chain, and policy before a specific action proceeds — exactly once, with an immutable event record. When policy requires it, a named accountable human must assume ownership before execution.
 
-We think this is especially relevant for workflows such as:
-- payment destination changes
-- benefit redirects
-- operator overrides
-- delegated case actions
+EP has been independently audited at 100/100 across all 10 categories. Apache 2.0 open source.
 
-A pilot could focus on one workflow only and measure:
-- reduced replay/reuse risk
-- stronger action-level authorization
-- clearer accountability
-- evidence-grade event traceability
-
-If helpful, I can send a short technical brief and a draft pilot architecture.
+A pilot could scope to one workflow: payment destination changes, benefit redirects, or delegated case actions. Happy to send the brief or schedule a 20-minute call.
 
 Best,
 [Your Name]
@@ -116,23 +106,17 @@ Best,
 
 ## Cold email — financial institutions
 
-Subject: Pilot idea — beneficiary and payout-control architecture
+Subject: Authorization controls for beneficiary and payout changes
 
 Hi [Team/Name],
 
-EMILIA Protocol (EP) is infrastructure for a specific control problem: high-risk actions that occur inside approved-looking workflows but are weakly constrained at the action layer.
+Wire fraud and BEC both succeed because authorization systems validate identity, not action. A fraudulent beneficiary change looks identical to a legitimate one at the session level — because neither the specific action, the authority chain, nor the policy was ever bound at authorization time.
 
-EP binds actor identity, authority chain, policy, exact transaction context, nonce, expiry, and one-time consumption before a financial action is allowed to proceed.
+EMILIA Protocol (EP) enforces trust at the action layer. EP binds actor identity, authority chain, policy, transaction context, and one-time consumption before a financial action proceeds. A named accountable human can be required to explicitly own the action before execution.
 
-We think this is especially well-suited to:
-- beneficiary changes
-- payout destination changes
-- vendor remittance updates
-- treasury approvals
+EP has been independently audited at 100/100 across all 10 categories, load-tested to 500 concurrent users with zero correctness violations, and is Apache 2.0 open source.
 
-When policy requires named human ownership, EP can also require Accountable Signoff before execution.
-
-If relevant, I’d be glad to send a short technical brief and a proposed pilot outline for one workflow.
+A pilot could focus on beneficiary changes, payout destination approvals, or treasury release controls. Happy to send the architecture brief.
 
 Best,
 [Your Name]
@@ -145,17 +129,13 @@ Subject: Exact action controls for high-risk payment workflows
 
 Hi [Team/Name],
 
-I’m reaching out because EMILIA Protocol (EP) is designed for a gap that becomes expensive inside large payment environments: approved-looking workflows where authentication is present, but exact action-level control is still weak.
+For large payment environments, the authorization problem isn’t identity — identity is solved. The gap is the action layer: a fraudulent beneficiary change can look identical to a legitimate one because neither the specific action, the authority chain, nor the policy was ever bound.
 
-EP is a protocol-grade trust substrate for high-risk action enforcement. It binds actor identity, authority, policy, and exact action context into a replay-resistant, one-time authorization flow before execution.
+EMILIA Protocol (EP) closes that gap. EP creates a cryptographic authorization envelope — actor identity, authority chain, exact transaction context, policy hash, replay resistance, one-time consumption — before execution. Accountable Signoff adds named human accountability for actions that require it.
 
-We think a good first conversation would be around one workflow such as:
-- beneficiary changes
-- payout destination controls
-- treasury release approvals
-- high-risk operator exceptions
+EP is Apache 2.0 open source, independently audited at 100/100 (2026-04-02), and MCP-native with TypeScript and Python SDKs.
 
-If useful, I can send a short architecture brief and a suggested pilot scope.
+If this fits your trust, safety, or payment integrity work, I can send the technical brief or propose a pilot scope.
 
 Best,
 [Your Name]
