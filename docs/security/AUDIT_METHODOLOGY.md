@@ -1,4 +1,4 @@
-# Independent Code Audit — Methodology and Scope
+# Internal Security Audit — Methodology and Scope
 
 **Score**: 100/100 across all 10 categories
 **Date**: April 2, 2026
