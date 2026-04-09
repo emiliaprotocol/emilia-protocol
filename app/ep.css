@@ -323,6 +323,13 @@
   }
 }
 
+/* ─── Table Row Hover ────────────────────────────────────── */
+@media (hover: hover) and (pointer: fine) {
+  .ep-row-hover:hover {
+    background: rgba(245,244,240,0.7);
+  }
+}
+
 /* ─── Reduced Motion ─────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   .ep-card-hover,
