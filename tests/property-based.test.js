@@ -145,6 +145,32 @@ describe('Property-Based Tests — Binding Invariants', () => {
   });
 });
 
+describe('Property-Based Tests — Hash Canonicalization (nested objects)', () => {
+  it('computePayloadHash is stable under nested key insertion order', () => {
+    const a = computePayloadHash({ z: 1, nested: { y: 2, x: 3 } });
+    const b = computePayloadHash({ nested: { x: 3, y: 2 }, z: 1 });
+    expect(a).toBe(b);
+  });
+
+  it('computeContextHash is stable under nested key insertion order', () => {
+    const a = computeContextHash({ action_type: 'connect', meta: { b: 2, a: 1 } });
+    const b = computeContextHash({ meta: { a: 1, b: 2 }, action_type: 'connect' });
+    expect(a).toBe(b);
+  });
+
+  it('computePolicyHash is stable under nested key insertion order', () => {
+    const a = computePolicyHash({ required_parties: { responder: true, initiator: true }, min_assurance: 'high' });
+    const b = computePolicyHash({ min_assurance: 'high', required_parties: { initiator: true, responder: true } });
+    expect(a).toBe(b);
+  });
+
+  it('computePayloadHash detects changes in nested values', () => {
+    const a = computePayloadHash({ nested: { key: 'value-a' } });
+    const b = computePayloadHash({ nested: { key: 'value-b' } });
+    expect(a).not.toBe(b);
+  });
+});
+
 describe('Property-Based Tests — Party Set Hash', () => {
   const arbParty = fc.record({
     role: fc.constantFrom('initiator', 'responder', 'verifier', 'delegate'),
