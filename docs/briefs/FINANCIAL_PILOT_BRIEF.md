@@ -62,11 +62,11 @@ Integration is at the API layer. No changes to core banking or payment logic.
 | Metric | Value |
 |--------|-------|
 | **Independent code audit** | **100/100** (2026-04-02, all 10 categories at maximum) |
-| Automated test cases | 3,277 across 125 files |
+| Automated test cases | 3,282 across 125 files |
 | TLA+ safety properties verified | 20 (TLC 2.19, 7,857 states, zero errors) — CI-enforced |
 | Alloy relational assertions verified | 15 (Alloy 6.1.0, zero counterexamples) — CI-enforced |
 | Mutation testing kill rate | ≥80% on protocol core (Stryker.js) |
-| Property-based tests | 27 fast-check generative tests on protocol invariants |
+| Property-based tests | 31 fast-check generative tests on protocol invariants |
 | Red team attack scenarios | 116 |
 | Security findings identified and remediated | 31 |
 | Write discipline exceptions in codebase | 0 |

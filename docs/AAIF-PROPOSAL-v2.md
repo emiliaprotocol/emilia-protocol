@@ -45,9 +45,9 @@ All 10 categories — formal verification, test quality, documentation, security
 - Both models run automatically in CI on every change to `formal/`
 
 **Test depth**
-- 3,277 automated tests across 125 files
+- 3,282 automated tests across 125 files
 - 116 adversarial / red team cases
-- 27 fast-check property-based tests covering protocol invariants generatively
+- 31 fast-check property-based tests covering protocol invariants generatively
 - Stryker.js mutation testing with ≥80% kill threshold on protocol core
 - Postgres integration tests against a live database in CI
 

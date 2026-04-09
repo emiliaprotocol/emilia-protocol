@@ -20,7 +20,16 @@ EP is offered to NIST as a candidate contribution to the emerging trust-decision
 
 ## 2. EP Architecture for Standards Audiences
 
-To support clear scoping in standards discussions, EP is organized into three layers:
+To support clear scoping in standards discussions, EP is organized into four protocol components and two standardization layers:
+
+### EP Protocol Components (four layers)
+
+The four composable protocol components, each with a distinct trust responsibility:
+
+1. **EP Eye** — Observes contextual signals and produces advisories (OBSERVE → SHADOW → ENFORCE lifecycle). Does not make trust decisions.
+2. **EP Handshake** — Cryptographic consent ceremony that binds identity, authority, policy, and action into a verifiable, replay-resistant envelope.
+3. **EP Signoff** — Named human accountability gate. A specific principal assumes irrevocable ownership of an action outcome.
+4. **EP Commit** — Atomic, immutable action close. Hash-linked, blockchain-anchored. No partial states.
 
 ### EP Core (candidate for standardization)
 Three interoperable objects that define the minimal trust evaluation interface:

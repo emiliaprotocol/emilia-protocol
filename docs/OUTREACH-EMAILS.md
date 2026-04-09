@@ -32,9 +32,9 @@ If helpful, I can send the current protocol materials and a proposed pilot scope
 
 **Proof:**
 - Independent code audit: 100/100 (2026-04-02) — all 10 categories at maximum
-- 3,277 automated tests across 125 files; Stryker.js mutation testing at ≥80% kill threshold
+- 3,282 automated tests across 125 files; Stryker.js mutation testing at ≥80% kill threshold
 - 20 TLA+ safety properties verified (TLC 2.19, 7,857 states, 0 errors); 32 Alloy facts + 15 assertions (Alloy 6.1.0) — both enforced in CI
-- 116 red team cases documented; 31 security findings identified and remediated
+- 116 red team cases documented; 31 security findings identified and remediated; 2 additional protocol hardening items identified and closed via post-audit internal review (nested-payload hash canonicalization, signoff double-consumption defense-in-depth)
 - Full 7-step Accountable Signoff chain proven end-to-end under load
 - 329 complete chains executed with zero correctness violations
 - Zero duplicate consumptions, zero orphaned bindings, zero missing events

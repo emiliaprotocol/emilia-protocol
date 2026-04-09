@@ -18,13 +18,13 @@ The audit uses a 10-category rubric where each category is scored 0–10. A scor
 | # | Category | Weight | Score | Evidence |
 |---|---|---|---|---|
 | 1 | **Protocol design correctness** | 10 | 10/10 | 20 TLA+ safety properties verified by TLC 2.19 (7,857 states, 0 errors); 15 Alloy assertions verified (Alloy 6.1.0, 0 counterexamples) |
-| 2 | **Replay and double-consumption prevention** | 10 | 10/10 | `SELECT ... FOR UPDATE` in `verify_handshake_writes` RPC; DB-level unique constraint on `handshake_bindings`; binding consumption tested in 100-way concurrent race |
+| 2 | **Replay and double-consumption prevention** | 10 | 10/10 | `SELECT ... FOR UPDATE` in `verify_handshake_writes` RPC; DB-level unique constraint on `handshake_bindings`; partial unique index on `signoff_attestations(signoff_id) WHERE status='consumed'` (migration 079, post-audit hardening); binding consumption tested in 100-way concurrent race |
 | 3 | **Nonce and binding integrity** | 10 | 10/10 | `checkBinding()` enforces symmetric nonce_required guard (mirrors payload_hash_required pattern); empty/null/undefined nonce all rejected; 9 test cases in `handshake-bind.test.js` and `protocol-hardening-v2.test.js` |
 | 4 | **Policy integrity and version pinning** | 10 | 10/10 | `policy_version_number` written atomically in `create_handshake_atomic` RPC (migration 070); `policy_version_pin_mismatch` error code added; verified in `verify.js` before binding consumption |
 | 5 | **Issuer authority TOCTOU** | 10 | 10/10 | `present_handshake_writes` re-checks authority under `SELECT ... FOR UPDATE` (migration 073); overrides `verified=false` and sets `issuer_status = 'authority_revoked_at_write'` if race detected |
 | 6 | **Tenant isolation** | 10 | 10/10 | All 8 cloud routes scope queries by `auth.tenantId`; `tenant_id` column added to all cloud-facing tables (migration 072); tested in cloud route test suite |
 | 7 | **EP-IX state machine safety** | 10 | 10/10 | Rate limit (max 5 open challenges), self-contest guard (principal + ownership graph check via entities table), freeze/unfreeze/withdraw lifecycle, expiry excludes frozen; 6 TLA+ safety invariants (T21–T26); 20+ EP-IX test cases |
-| 8 | **Write-bypass prevention** | 10 | 10/10 | `getGuardedClient()` Proxy in `lib/write-guard.js` throws `WRITE_DISCIPLINE_VIOLATION` on direct trust-table mutation; verified by TLA+ `WriteBypassSafety` property; 0 violations in 3,277 tests |
+| 8 | **Write-bypass prevention** | 10 | 10/10 | `getGuardedClient()` Proxy in `lib/write-guard.js` throws `WRITE_DISCIPLINE_VIOLATION` on direct trust-table mutation; verified by TLA+ `WriteBypassSafety` property; 0 violations in 3,282 tests |
 | 9 | **Adjudication determinism** | 10 | 10/10 | `CONFIDENCE_WEIGHT_INT` integer weights used for sort and vote computation; no float comparison; tested in `dispute-adjudication.test.js` |
 | 10 | **Scoring invariants and dampening** | 10 | 10/10 | Named constants (`DAMPENING_THRESHOLD`, `ESTABLISHMENT_EVIDENCE_GATE`, `ESTABLISHMENT_MIN_SUBMITTERS`, `MAX_UNESTABLISHED_AGGREGATE_CONTRIBUTION`, `MAX_SINGLE_SUBMITTER_CONTRIBUTION`); invariant relationship tests verify no single submitter can escape dampening alone |
 
@@ -84,7 +84,7 @@ All 116 red team cases in `docs/conformance/RED_TEAM_CASES.md` were reviewed aga
 
 ### Phase 4: Property-Based and Mutation Testing
 
-- **fast-check**: 27 property-based tests covering binding validation invariants, scoring monotonicity, and delegation scope bounds
+- **fast-check**: 31 property-based tests covering binding validation invariants, scoring monotonicity, delegation scope bounds, and nested-payload hash canonicalization (4 tests added post-audit to verify deepSortKeys correctness)
 - **Stryker.js mutation testing**: ≥80% mutation kill threshold across all invariant-bearing modules
 - **27 CI quality gates** across 12 automated workflows enforce test coverage, build integrity, schema conformance, and security scanning
 
@@ -126,7 +126,7 @@ All findings and their remediations are documented in `docs/security/PENTEST_REM
 ```bash
 # 1. Run the full test suite
 npm test
-# Expected: 3,277 passing, 0 failing
+# Expected: 3,282 passing, 0 failing
 
 # 2. Run TLC formal verification
 cd formal

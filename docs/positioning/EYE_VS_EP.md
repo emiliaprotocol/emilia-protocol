@@ -2,9 +2,9 @@
 
 ## The Principle
 
-**Eye warns. EP verifies. Signoff owns.**
+**Eye observes. Handshake verifies. Signoff owns. Commit seals.**
 
-These are three distinct responsibilities with three distinct owners. No layer performs the work of another. No layer is optional when its responsibility is triggered. The boundaries between them are architectural, not configurable.
+These are four distinct responsibilities with four distinct owners. No layer performs the work of another. No layer is optional when its responsibility is triggered. The boundaries between them are architectural, not configurable.
 
 ---
 
@@ -27,6 +27,12 @@ EP does not observe context between handshakes. It does not maintain state about
 Signoff records human accountability. It answers the question: *has a named human with matching authority seen this specific action, understood its consequences, and accepted responsibility for its execution?*
 
 Signoff does not verify identity or authority on its own. It does not assess context. It consumes a verified handshake and produces an attestation that a human owns the outcome.
+
+### Commit
+
+Commit atomically closes an action. It answers the question: *has this action been irrevocably sealed with all prerequisites satisfied and the record permanently immutable?*
+
+Commit does not verify identity, assess context, or gate on human ownership. It receives a completed action and seals it: hash-linked, blockchain-anchored, immutable. Once committed, the record cannot be partially reversed through protocol means. There are no partial states.
 
 ---
 
@@ -94,7 +100,7 @@ Signoff does not verify identity or authority on its own. It does not assess con
 
 ## How They Compose
 
-The three layers compose sequentially in the trust evaluation path:
+The four layers compose sequentially in the trust evaluation path:
 
 ```
 1. Eye: "There are active signals for this scope. Status: elevated.
@@ -127,8 +133,12 @@ For a `review_required` status:
             has been reported compromised (Eye advisory adv_...)."
             Human approves, denies, or escalates.
             |
-4. Result: If approved, action authorized with signoff attestation.
-           Eye advisory + signoff attestation recorded in audit trail.
+4. Commit:  Action atomically sealed.
+            Commit record: immutable, hash-linked, blockchain-anchored.
+            No partial states. The action is SEALED.
+            |
+5. Result: Action authorized, owned, and sealed.
+           Eye advisory + signoff attestation + commit record in audit trail.
 ```
 
-Eye never bypasses EP. EP never bypasses Signoff (when policy requires it). Signoff never bypasses EP. The chain is sequential and non-negotiable.
+Eye never bypasses Handshake. Handshake never bypasses Signoff (when policy requires it). Signoff never bypasses Commit. The chain is sequential and non-negotiable.
