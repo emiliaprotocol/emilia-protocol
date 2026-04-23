@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { checkRateLimit, getClientIP, RATE_LIMITS } from '@/lib/rate-limit';
+import { siemEvent } from '@/lib/siem';
 
 /**
  * EMILIA Protocol — API Rate Limiting Middleware
@@ -237,6 +238,25 @@ export async function middleware(request) {
     return response;
   }
 
+  // Cloud routes: enforce origin allowlist to prevent cross-origin reads from
+  // arbitrary websites. Public protocol routes intentionally have no CORS restriction.
+  if (pathname.startsWith('/api/cloud/')) {
+    const origin = request.headers.get('origin');
+    if (origin) {
+      const allowedOrigins = process.env.ALLOWED_ORIGINS
+        ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+        : [];
+      // Always allow same-origin (no Origin header) and configured origins.
+      // In development (no ALLOWED_ORIGINS set) allow all to avoid blocking local dev.
+      if (allowedOrigins.length > 0 && !allowedOrigins.includes(origin)) {
+        return NextResponse.json(
+          { error: 'Origin not allowed', code: 'cors_denied' },
+          { status: 403 }
+        );
+      }
+    }
+  }
+
   const { rateCategory, useAuth } = classifyRoute(request.method, pathname);
 
   // Protocol routes (rateCategory: null) skip middleware rate limiting entirely.
@@ -268,6 +288,13 @@ export async function middleware(request) {
     }
 
     const config = RATE_LIMITS[rateCategory];
+    // SIEM: rate limit exceeded — high severity for write categories
+    siemEvent('RATE_LIMIT_EXCEEDED', {
+      category: rateCategory,
+      key: rateLimitKey.slice(0, 16), // truncate to avoid logging full key prefix
+      pathname,
+      method: request.method,
+    });
     const res = NextResponse.json(
       {
         error: 'Rate limit exceeded',

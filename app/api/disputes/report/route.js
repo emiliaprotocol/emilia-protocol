@@ -4,6 +4,7 @@ import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { checkAbuse } from '@/lib/procedural-justice';
 import { getGuardedClient } from '@/lib/write-guard';
+import { getClientIP } from '@/lib/rate-limit';
 import { logger } from '../../../../lib/logger.js';
 
 /**
@@ -21,7 +22,11 @@ export async function POST(request) {
     // Accept both field naming conventions
     const entityId = body.entity_id;
     const reportType = body.report_type || body.reason;
-    const description = body.description || body.details;
+    // Cap at 5000 chars to prevent DB bloat on this unauthenticated endpoint
+    const rawDescription = body.description || body.details;
+    const description = typeof rawDescription === 'string'
+      ? rawDescription.trim().slice(0, 5000)
+      : '';
 
     if (!entityId || !reportType) {
       return EP_ERRORS.BAD_REQUEST('entity_id and report_type (or reason) are required');
@@ -35,8 +40,9 @@ export async function POST(request) {
       return EP_ERRORS.BAD_REQUEST(`Invalid report_type. Must be one of: ${validTypes.join(', ')}`);
     }
 
-    // Abuse detection — hash IP for privacy before passing to abuse checks and storage
-    const reporterIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    // Abuse detection — use getClientIP() which reads the rightmost (trusted edge)
+    // value from x-forwarded-for, not the first (attacker-controlled) value.
+    const reporterIp = getClientIP(request);
     const reporterIpHash = crypto.createHash('sha256').update(reporterIp).digest('hex').slice(0, 16);
     const supabase = getGuardedClient();
     const abuseCheck = await checkAbuse(supabase, 'report', {

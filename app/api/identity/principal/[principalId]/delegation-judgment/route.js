@@ -11,6 +11,7 @@
 import { NextResponse } from 'next/server';
 import { getPrincipal } from '@/lib/ep-ix';
 import { getDelegationJudgmentScore } from '@/lib/attribution';
+import { authenticateRequest } from '@/lib/supabase';
 import { EP_ERRORS } from '@/lib/errors';
 import { getGuardedClient } from '@/lib/write-guard';
 import { logger } from '../../../../../../lib/logger.js';
@@ -56,11 +57,20 @@ function buildInterpretation(judgmentScore, grade, agentsAuthorized, activeAgent
  * GET /api/identity/principal/[principalId]/delegation-judgment
  *
  * Returns the principal's delegation authority and breakdown.
- * No auth required — public, for trust evaluation purposes.
+ * Auth required — judgment score reveals per-agent outcome rates
+ * which are sensitive to the principal and their counterparties.
  */
 export async function GET(request, { params }) {
   try {
+    const auth = await authenticateRequest(request);
+    if (auth.error) return EP_ERRORS.UNAUTHORIZED();
+
     const { principalId } = await params;
+
+    // Only the principal themselves or operators may view judgment scores.
+    if (auth.entity.entity_id !== principalId && !auth.entity.is_operator) {
+      return EP_ERRORS.FORBIDDEN('You may only view delegation judgment for your own principal.');
+    }
 
     // Verify the principal exists
     const principalResult = await getPrincipal(principalId);

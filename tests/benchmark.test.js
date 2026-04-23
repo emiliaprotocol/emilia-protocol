@@ -308,9 +308,33 @@ function createTableSim() {
       if (hs && hs.status === 'initiated') hs.status = 'pending_verification';
       return Promise.resolve({ data: presentation, error: null });
     }
-    if (fnName === 'verify_handshake_writes') {
+    if (fnName === 'load_verify_context') {
+      // Audit-fix (H8) mock: snapshot read replacing three parallel queries.
       const hs = getTable('handshakes').find((h) => h.handshake_id === params.p_handshake_id);
-      if (hs) hs.status = params.p_new_status;
+      if (!hs) {
+        return Promise.resolve({ data: null, error: { code: 'P0002', message: 'HANDSHAKE_NOT_FOUND' } });
+      }
+      return Promise.resolve({
+        data: {
+          handshake: hs,
+          parties: getTable('handshake_parties').filter((p) => p.handshake_id === params.p_handshake_id),
+          presentations: getTable('handshake_presentations').filter((p) => p.handshake_id === params.p_handshake_id),
+          binding: getTable('handshake_bindings').find((b) => b.handshake_id === params.p_handshake_id) || null,
+        },
+        error: null,
+      });
+    }
+    if (fnName === 'verify_handshake_writes') {
+      // Audit-fix (H3) mock: emulate the status re-check that migration 081
+      // added. If the handshake is not in a valid source state, return P0004.
+      const hs = getTable('handshakes').find((h) => h.handshake_id === params.p_handshake_id);
+      if (!hs) {
+        return Promise.resolve({ data: null, error: { code: 'P0002', message: 'HANDSHAKE_NOT_FOUND' } });
+      }
+      if (hs.status !== 'initiated' && hs.status !== 'pending_verification') {
+        return Promise.resolve({ data: null, error: { code: 'P0004', message: 'INVALID_STATE_TRANSITION' } });
+      }
+      hs.status = params.p_new_status;
       if (Array.isArray(params.p_party_updates)) {
         for (const pu of params.p_party_updates) {
           const party = getTable('handshake_parties').find((p) => p.id === pu.id);

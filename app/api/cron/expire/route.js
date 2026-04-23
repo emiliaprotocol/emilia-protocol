@@ -1,17 +1,8 @@
 import { NextResponse } from 'next/server';
-import { timingSafeEqual } from 'crypto';
 import { getGuardedClient } from '@/lib/write-guard';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { epProblem } from '@/lib/errors';
-import { getCronSecret } from '@/lib/env';
-
-function safeCompare(a, b) {
-  if (!a || !b) return false;
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
-}
+import { authenticateOperator } from '@/lib/operator-auth';
 
 /**
  * GET /api/cron/expire
@@ -35,12 +26,10 @@ function safeCompare(a, b) {
  * Requires CRON_SECRET for authentication.
  */
 export async function GET(request) {
-  // Authenticate cron
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = getCronSecret();
-
-  if (!cronSecret || !safeCompare(authHeader, `Bearer ${cronSecret}`)) {
-    return epProblem(401, 'unauthorized', 'Unauthorized');
+  // Authenticate operator (supports per-operator tokens + legacy CRON_SECRET)
+  const auth = authenticateOperator(request);
+  if (!auth.valid) {
+    return epProblem(401, 'unauthorized', auth.error || 'Unauthorized');
   }
 
   const supabase = getGuardedClient();

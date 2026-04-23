@@ -20,8 +20,9 @@ export async function GET(request) {
     const url = new URL(request.url);
     const dateFrom = url.searchParams.get('date_from');
     const dateTo = url.searchParams.get('date_to');
-    const limit = Math.min(parseInt(url.searchParams.get('limit') || '500', 10), 5000);
-    const offset = parseInt(url.searchParams.get('offset') || '0', 10);
+    const limit = Math.min(Math.max(1, parseInt(url.searchParams.get('limit') || '500', 10) || 500), 5000);
+    const rawOffset = parseInt(url.searchParams.get('offset') || '0', 10);
+    const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
 
     const filters = { limit, offset };
     if (dateFrom) filters.date_from = dateFrom;

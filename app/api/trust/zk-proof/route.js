@@ -27,6 +27,7 @@ import { generateCommitmentProof, verifyCommitmentProof } from '@/lib/zk-proofs'
 import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { EP_ERRORS } from '@/lib/errors';
+import { siemEvent } from '@/lib/siem';
 import { logger } from '../../../../lib/logger.js';
 
 const VALID_CLAIM_TYPES = ['score_above', 'receipt_count_above', 'domain_score_above'];
@@ -113,7 +114,14 @@ export async function POST(request) {
       throw err; // re-throw unexpected errors
     }
 
-    // 5. Return proof — safe to share publicly
+    // 5. SIEM: commitment proof generation is a medium-severity security event
+    siemEvent('COMMITMENT_PROOF_GENERATED', {
+      proof_id: proof.proof_id,
+      entity_id: proof.entity_id,
+      claim_type: proof.claim?.type,
+    });
+
+    // 6. Return proof — safe to share publicly
     return NextResponse.json(
       {
         proof_id: proof.proof_id,

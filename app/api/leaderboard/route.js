@@ -25,8 +25,9 @@ export async function GET(request) {
     const includeNew = searchParams.get('include_new') === 'true';
     const rankBy = searchParams.get('rank_by') || 'score';
     const minConfidence = searchParams.get('min_confidence') || null;
-    const limit = Math.min(parseInt(searchParams.get('limit')) || 50, 100);
-    const offset = parseInt(searchParams.get('offset')) || 0;
+    const limit = Math.min(Math.max(0, parseInt(searchParams.get('limit'), 10) || 50), 100);
+    const rawOffset = parseInt(searchParams.get('offset'), 10);
+    const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
 
     const supabase = getGuardedClient();
 

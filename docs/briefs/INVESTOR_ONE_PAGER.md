@@ -23,9 +23,9 @@ EP creates the control layer between authentication and execution. It determines
 
 ## Proof points
 - **Independent code audit: 100/100** (2026-04-02) — 10/10 categories at maximum
-- 3,282 automated tests across 125 files
-- 20 TLA+ safety properties verified (TLC 2.19, 7,857 states, 0 errors); 32 Alloy facts + 15 assertions verified (Alloy 6.1.0, 0 counterexamples) — both run in CI on every change
-- Stryker.js mutation testing — ≥80% kill threshold on protocol core; 31 fast-check property-based tests
+- 3,235 automated tests across 124 files
+- 25 TLA+ safety properties verified (TLC 2.19, 7,857 states, 0 errors); 32 Alloy facts + 15 assertions verified (Alloy 6.1.0, 0 counterexamples) — both run in CI on every change
+- Stryker.js mutation testing — ≥80% kill threshold on protocol core; 19 fast-check property-based tests
 - 116 red team cases documented; 31 security findings identified and remediated
 - Full 7-step Accountable Signoff chain proven end-to-end under load
 - 329 complete chains executed with zero correctness violations

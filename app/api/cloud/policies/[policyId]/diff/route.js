@@ -33,7 +33,14 @@ export async function GET(request, { params }) {
       .select('*')
       .eq('tenant_id', auth.tenantId)
       .eq('policy_id', policyId)
-      .in('version', [parseInt(v1, 10), parseInt(v2, 10)]);
+      .in('version', (() => {
+        const n1 = parseInt(v1, 10);
+        const n2 = parseInt(v2, 10);
+        if (!Number.isInteger(n1) || !Number.isInteger(n2) || n1 < 1 || n2 < 1) {
+          return [-1]; // guaranteed no-match — validation error handled below
+        }
+        return [n1, n2];
+      })());
 
     if (error) {
       logger.error('[cloud/policies/diff] Query error:', error);

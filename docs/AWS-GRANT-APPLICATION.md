@@ -60,7 +60,7 @@ EP provides four composable layers:
 
 2. **Privacy-preserving trust proofs:** Entities can prove "my trust score exceeds threshold X in domain Y" without revealing their receipts, counterparties, or interaction history (HMAC-SHA256 commitment scheme).
 
-3. **Formal verification:** 20 TLA+ safety properties and 32 Alloy relational facts, machine-checked and CI-enforced. This is production protocol assurance, not academic exercise.
+3. **Formal verification:** 25 TLA+ safety properties and 32 Alloy relational facts, machine-checked and CI-enforced. This is production protocol assurance, not academic exercise.
 
 4. **Federation architecture:** Multiple independent operators issue and cross-verify receipts via shared cryptographic proofs. No single point of failure. No central authority.
 
@@ -71,7 +71,7 @@ EP provides four composable layers:
 | Metric | Value |
 |--------|-------|
 | Live handshakes processed | 112,000+ |
-| Automated tests | 3,282 across 125 files |
+| Automated tests | 3,235 across 124 files |
 | Adversarial/red-team tests | 116 cases |
 | Formal verification | TLA+ (7,857 states) + Alloy (32 facts, 15 assertions) |
 | Database tables | 50 (all RLS-hardened) |

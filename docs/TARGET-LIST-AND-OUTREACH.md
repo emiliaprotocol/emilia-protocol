@@ -95,7 +95,7 @@ Most payment fraud in government workflows doesn’t happen because authenticati
 
 EMILIA Protocol (EP) sits between authentication and execution. It verifies actor identity, authority chain, and policy before a specific action proceeds — exactly once, with an immutable event record. When policy requires it, a named accountable human must assume ownership before execution.
 
-EP has been independently audited at 100/100 across all 10 categories. Apache 2.0 open source.
+EP has been internally audited at 100/100 against an adversarial red-team rubric across all 10 categories. Apache 2.0 open source.
 
 A pilot could scope to one workflow: payment destination changes, benefit redirects, or delegated case actions. Happy to send the brief or schedule a 20-minute call.
 
@@ -114,7 +114,7 @@ Wire fraud and BEC both succeed because authorization systems validate identity,
 
 EMILIA Protocol (EP) enforces trust at the action layer. EP binds actor identity, authority chain, policy, transaction context, and one-time consumption before a financial action proceeds. A named accountable human can be required to explicitly own the action before execution.
 
-EP has been independently audited at 100/100 across all 10 categories, load-tested to 500 concurrent users with zero correctness violations, and is Apache 2.0 open source.
+EP has been internally audited at 100/100 against an adversarial red-team rubric across all 10 categories, load-tested to 500 concurrent users with zero correctness violations, and is Apache 2.0 open source.
 
 A pilot could focus on beneficiary changes, payout destination approvals, or treasury release controls. Happy to send the architecture brief.
 
@@ -133,7 +133,7 @@ For large payment environments, the authorization problem isn’t identity — i
 
 EMILIA Protocol (EP) closes that gap. EP creates a cryptographic authorization envelope — actor identity, authority chain, exact transaction context, policy hash, replay resistance, one-time consumption — before execution. Accountable Signoff adds named human accountability for actions that require it.
 
-EP is Apache 2.0 open source, independently audited at 100/100 (2026-04-02), and MCP-native with TypeScript and Python SDKs.
+EP is Apache 2.0 open source, internally audited at 100/100 against an adversarial red-team rubric (2026-04-02), and MCP-native with TypeScript and Python SDKs.
 
 If this fits your trust, safety, or payment integrity work, I can send the technical brief or propose a pilot scope.
 

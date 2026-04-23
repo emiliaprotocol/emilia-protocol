@@ -63,7 +63,7 @@ EP Commit      Atomic action seal
 
 3. **Named human accountability.** When an AI acts with real-world consequences, EP's Signoff layer ensures a specific named human has seen the exact action, understood the consequences, and accepted responsibility. Not a role. A person.
 
-4. **Formal verification.** 20 TLA+ safety properties verified by model checking (7,857 states, 0 errors). 32 Alloy relational facts verified (0 counterexamples). Both run in CI on every commit.
+4. **Formal verification.** 25 TLA+ safety properties verified by model checking (7,857 states, 0 errors). 32 Alloy relational facts verified (0 counterexamples). Both run in CI on every commit.
 
 5. **Due process.** Disputes, appeals, human reports, graph-based adjudication. Trust must never be more powerful than appeal.
 
@@ -78,7 +78,7 @@ EP is not a proposal. It is production-grade software with formal verification.
 | Metric | Value |
 |--------|-------|
 | **Live handshakes** | 112,000+ |
-| **Automated tests** | 3,282 across 125 files |
+| **Automated tests** | 3,235 across 124 files |
 | **Adversarial tests** | 116 red team cases |
 | **Property-based tests** | Fast-check invariant tests |
 | **Mutation testing** | Stryker.js, 80%+ kill threshold |

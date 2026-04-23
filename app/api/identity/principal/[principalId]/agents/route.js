@@ -7,6 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import { getPrincipal } from '@/lib/ep-ix';
+import { authenticateRequest } from '@/lib/supabase';
 import { EP_ERRORS } from '@/lib/errors';
 import { getGuardedClient } from '@/lib/write-guard';
 import { logger } from '../../../../../../lib/logger.js';
@@ -17,11 +18,21 @@ import { logger } from '../../../../../../lib/logger.js';
  * Lists all agents this principal has ever authorized, with their trust
  * profiles and per-agent outcome summaries.
  *
- * No auth required — public, for trust evaluation and inspection.
+ * Auth required — delegation graph (scope, max_value_usd, outcome rates)
+ * is sensitive. Only the principal themselves or operators may browse it.
+ * Use GET /api/delegations/[id]/verify for public delegation spot-checks.
  */
 export async function GET(request, { params }) {
   try {
+    const auth = await authenticateRequest(request);
+    if (auth.error) return EP_ERRORS.UNAUTHORIZED();
+
     const { principalId } = await params;
+
+    // Only the principal themselves or operators may list their delegation history.
+    if (auth.entity.entity_id !== principalId && !auth.entity.is_operator) {
+      return EP_ERRORS.FORBIDDEN('You may only view delegation history for your own principal.');
+    }
 
     // Verify the principal exists
     const principalResult = await getPrincipal(principalId);

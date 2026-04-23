@@ -37,8 +37,9 @@ export async function GET(request) {
     const targetType = url.searchParams.get('target_type');
     const actorId = url.searchParams.get('actor_id');
     const eventType = url.searchParams.get('event_type');
-    const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 200);
-    const offset = parseInt(url.searchParams.get('offset') || '0');
+    const limit = Math.min(Math.max(1, parseInt(url.searchParams.get('limit') || '50', 10) || 50), 200);
+    const rawOffset = parseInt(url.searchParams.get('offset') || '0', 10);
+    const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
 
     const supabase = getGuardedClient();
     let query = supabase

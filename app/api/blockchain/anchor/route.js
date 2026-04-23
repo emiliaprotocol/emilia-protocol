@@ -1,42 +1,27 @@
 import { NextResponse } from 'next/server';
-import { timingSafeEqual } from 'crypto';
 import { getGuardedClient } from '@/lib/write-guard';
 import { runAnchorBatch } from '@/lib/blockchain';
 import { epProblem } from '@/lib/errors';
-import { getCronSecret } from '@/lib/env';
+import { authenticateOperator } from '@/lib/operator-auth';
 import { logger } from '../../../../lib/logger.js';
-
-function safeCompare(a, b) {
-  if (!a || !b) return false;
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
-}
 
 /**
  * POST /api/blockchain/anchor
  *
  * @internal
- * @access cron — requires CRON_SECRET. Not part of the public API.
+ * @access cron — requires operator token or CRON_SECRET (legacy).
  *
  * Cron endpoint: collects unanchored receipts, builds Merkle tree,
  * anchors root to Base L2. Called every 6 hours via Vercel Cron.
- * Auth: CRON_SECRET header required.
+ * Auth: Per-operator token (ep_op_*) or legacy CRON_SECRET.
  * Vercel cron config: see vercel.json (schedule: every 6 hours)
  */
 export async function POST(request) {
   try {
-    // Verify cron secret
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = getCronSecret();
-
-    if (!cronSecret) {
-      return epProblem(500, 'cron_secret_missing', 'CRON_SECRET not configured');
-    }
-
-    if (!safeCompare(authHeader, `Bearer ${cronSecret}`)) {
-      return epProblem(401, 'unauthorized', 'Unauthorized');
+    // Verify operator identity (supports per-operator tokens + legacy CRON_SECRET)
+    const auth = authenticateOperator(request);
+    if (!auth.valid) {
+      return epProblem(401, 'unauthorized', auth.error || 'Unauthorized');
     }
 
     const supabase = getGuardedClient();

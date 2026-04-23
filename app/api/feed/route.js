@@ -34,8 +34,9 @@ export async function GET(request) {
   const minConfidence = searchParams.get('min_confidence');
   // LEGACY: min_score filters by compat_score sort key, not trust decision.
   // New consumers should use trust_policy or min_confidence params instead.
-  const minScore = parseFloat(searchParams.get('min_score')) || 0;
-  const limit = Math.min(parseInt(searchParams.get('limit')) || 20, 50);
+  const rawMinScore = parseFloat(searchParams.get('min_score'));
+  const minScore = Number.isFinite(rawMinScore) ? Math.max(0, Math.min(1, rawMinScore)) : 0;
+  const limit = Math.min(Math.max(1, parseInt(searchParams.get('limit'), 10) || 20), 50);
 
   const lastEventId = request.headers.get('Last-Event-ID');
 
@@ -51,7 +52,8 @@ export async function GET(request) {
   const stream = new ReadableStream({
     async start(controller) {
       // SSE event ID counter; resume from Last-Event-ID when reconnecting
-      let eventId = lastEventId ? parseInt(lastEventId, 10) || 0 : 0;
+      const parsedEventId = lastEventId ? parseInt(lastEventId, 10) : 0;
+      let eventId = Number.isFinite(parsedEventId) && parsedEventId >= 0 ? parsedEventId : 0;
 
       // Deduplication: track need_id -> updated_at for needs already sent
       const sentNeeds = new Map();

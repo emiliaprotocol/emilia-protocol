@@ -248,6 +248,23 @@ function createTableSim() {
   }
 
   function handleRpc(fnName, params) {
+    // Audit-fix (H8) mock: snapshot read consolidating handshake + parties +
+    // presentations + binding, introduced by migration 082.
+    if (fnName === 'load_verify_context') {
+      const hs = getTable('handshakes').find((h) => h.handshake_id === params.p_handshake_id);
+      if (!hs) {
+        return Promise.resolve({ data: null, error: { code: 'P0002', message: 'HANDSHAKE_NOT_FOUND' } });
+      }
+      return Promise.resolve({
+        data: {
+          handshake: hs,
+          parties: getTable('handshake_parties').filter((p) => p.handshake_id === params.p_handshake_id),
+          presentations: getTable('handshake_presentations').filter((p) => p.handshake_id === params.p_handshake_id),
+          binding: getTable('handshake_bindings').find((b) => b.handshake_id === params.p_handshake_id) || null,
+        },
+        error: null,
+      });
+    }
     if (fnName === 'create_handshake_atomic') {
       const handshake_id = 'eph_' + crypto.randomBytes(12).toString('hex');
       const hs = {

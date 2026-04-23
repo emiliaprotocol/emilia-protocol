@@ -19,8 +19,9 @@ export async function GET(request) {
 
     const url = new URL(request.url);
     const status = url.searchParams.get('status');
-    const limit = Math.min(parseInt(url.searchParams.get('limit') || '50', 10), 200);
-    const offset = parseInt(url.searchParams.get('offset') || '0', 10);
+    const limit = Math.min(Math.max(1, parseInt(url.searchParams.get('limit') || '50', 10) || 50), 200);
+    const rawOffset = parseInt(url.searchParams.get('offset') || '0', 10);
+    const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
 
     const supabase = getGuardedClient();
 

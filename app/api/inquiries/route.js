@@ -56,9 +56,9 @@ export async function POST(request) {
       return NextResponse.json({ ok: true });
     }
 
-    const type = typeof body.type === 'string' ? body.type.trim() : '';
-    const name = sanitizeText(body.name);
-    const rawEmail = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
+    const type = typeof body.type === 'string' ? body.type.trim().slice(0, 20) : '';
+    const name = sanitizeText(body.name)?.slice(0, 200) ?? null;
+    const rawEmail = typeof body.email === 'string' ? body.email.trim().toLowerCase().slice(0, 254) : '';
     const rest = body;
 
     if (!type || !name || !rawEmail) {
@@ -74,11 +74,11 @@ export async function POST(request) {
       return epProblem(400, 'invalid_type', 'type must be partner or investor');
     }
 
-    // Sanitize all free-text and URL fields
-    const organization = sanitizeText(rest.org || rest.firm);
-    const title = sanitizeText(rest.title);
-    const website = sanitizeUrl(rest.website);
-    const message = sanitizeText(rest.problem || rest.whyEmilia);
+    // Sanitize and cap all free-text and URL fields
+    const organization = sanitizeText(rest.org || rest.firm)?.slice(0, 200) ?? null;
+    const title = sanitizeText(rest.title)?.slice(0, 200) ?? null;
+    const website = sanitizeUrl(rest.website)?.slice(0, 500) ?? null;
+    const message = sanitizeText(rest.problem || rest.whyEmilia)?.slice(0, 5000) ?? null;
 
     const record = {
       inquiry_type: type,

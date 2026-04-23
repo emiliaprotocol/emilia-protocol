@@ -110,7 +110,30 @@ function buildSupabaseMock({
     eq: vi.fn().mockResolvedValue({ data: presentations, error: null }),
   };
   const bindingFetchChain = makeChain({ data: binding, error: null });
-  const rpcChain = vi.fn().mockResolvedValue({ data: null, error: rpcError });
+
+  // Audit-fix (H8) compat: verify.js now calls `load_verify_context` RPC
+  // instead of four parallel reads. Keep the legacy table mocks for tests
+  // that still assert on them, but also respond to the new RPC using the
+  // same fixture data.
+  const rpcChain = vi.fn((fnName) => {
+    if (fnName === 'load_verify_context') {
+      if (handshakeError) {
+        return Promise.resolve({ data: null, error: handshakeError });
+      }
+      if (!handshake) {
+        return Promise.resolve({
+          data: null,
+          error: { code: 'P0002', message: 'HANDSHAKE_NOT_FOUND' },
+        });
+      }
+      return Promise.resolve({
+        data: { handshake, parties, presentations, binding },
+        error: null,
+      });
+    }
+    // verify_handshake_writes and other RPCs keep the prior behavior.
+    return Promise.resolve({ data: null, error: rpcError });
+  });
 
   let callCount = 0;
   return {

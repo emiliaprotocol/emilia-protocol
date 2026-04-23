@@ -14,7 +14,7 @@ Most payment fraud in government workflows doesn't happen because authentication
 
 EMILIA Protocol (EP) sits between authentication and execution. It verifies actor identity, authority chain, and policy before a specific action is allowed to proceed — exactly once, with an immutable event record.
 
-A pilot could focus on one workflow: payment destination changes, benefit redirects, or delegated case actions. EP has been independently audited at 100/100 across all 10 categories and load-tested end-to-end.
+A pilot could focus on one workflow: payment destination changes, benefit redirects, or delegated case actions. EP has been internally audited at 100/100 against an adversarial red-team rubric across all 10 categories and load-tested end-to-end.
 
 If useful, I can send a short architecture brief and a draft pilot scope.
 
@@ -33,7 +33,7 @@ Federal payment workflows have strong pre-payment data verification. The action 
 
 EMILIA Protocol (EP) enforces those controls before execution. It binds actor identity, authority chain, policy hash, and exact transaction context. When policy requires it, Accountable Signoff requires a named human to explicitly assume ownership before the payment proceeds.
 
-EP is Apache 2.0 open source, independently audited at 100/100 (2026-04-02), and load-tested to 500 concurrent users with zero correctness violations.
+EP is Apache 2.0 open source, internally audited at 100/100 against an adversarial red-team rubric (2026-04-02), and load-tested to 500 concurrent users with zero correctness violations.
 
 A pilot could scope to payment destination changes or high-risk exception approvals. Happy to send the brief or schedule a 20-minute discovery call.
 
@@ -52,7 +52,7 @@ Provider and beneficiary fraud in Medicaid programs consistently exploits the sa
 
 EMILIA Protocol (EP) closes that gap. Before a beneficiary change, provider update, or high-risk exception executes, EP verifies the actor's authority, the policy, and the action context — and requires named human accountability when policy demands it.
 
-EP is Apache 2.0 open source and independently audited at 100/100.
+EP is Apache 2.0 open source and internally audited at 100/100 against an adversarial red-team rubric.
 
 If a pilot around beneficiary change controls or provider workflow integrity is worth a conversation, I'm happy to send the brief.
 
@@ -71,7 +71,7 @@ Wire fraud and business email compromise both succeed because authorization syst
 
 EMILIA Protocol (EP) enforces trust at the action layer. EP binds actor identity, authority chain, policy, transaction context, expiry, and one-time consumption before a financial action proceeds. A named accountable human can be required to explicitly own the action before execution.
 
-EP has been independently audited at 100/100 across all 10 categories. All endpoints use single-roundtrip atomic RPCs with zero duplicate consumptions in end-to-end load tests.
+EP has been internally audited at 100/100 against an adversarial red-team rubric across all 10 categories. All endpoints use single-roundtrip atomic RPCs with zero duplicate consumptions in end-to-end load tests.
 
 A pilot could focus on beneficiary changes, payout destination approvals, or treasury release controls. Happy to send the architecture brief or talk through a pilot scope.
 
@@ -90,7 +90,7 @@ For large payment environments, the authorization problem isn't identity — ide
 
 EMILIA Protocol (EP) is designed for that gap. EP creates a protocol-grade authorization envelope: actor identity, authority chain, exact transaction context, policy version and hash, replay resistance, one-time consumption, and immutable event traceability — all bound before execution.
 
-The protocol is Apache 2.0 open source, independently audited at 100/100 (2026-04-02), and MCP-native with TypeScript and Python SDKs.
+The protocol is Apache 2.0 open source, internally audited at 100/100 against an adversarial red-team rubric (2026-04-02), and MCP-native with TypeScript and Python SDKs.
 
 If this is relevant to your trust, safety, or payment integrity work, I can send the technical brief or propose a pilot scope for one workflow.
 
@@ -109,7 +109,7 @@ Most production incidents and insider risk events share a pattern: someone with 
 
 EMILIA Protocol (EP) is the enforcement layer for that gap. Before a privileged action executes, EP verifies actor identity, authority chain, exact action context, and policy. Accountable Signoff requires a named human to explicitly own the action when policy demands it.
 
-EP is Apache 2.0 open source, independently audited at 100/100 (2026-04-02), and MCP-native with 34 tools and TypeScript + Python SDKs.
+EP is Apache 2.0 open source, internally audited at 100/100 against an adversarial red-team rubric (2026-04-02), and MCP-native with 34 tools and TypeScript + Python SDKs.
 
 A pilot could focus on one action class — production deployments, secrets rotation, emergency override approvals, or delegated admin actions. Happy to send the brief.
 
@@ -130,7 +130,7 @@ MCP defines how agents call tools. It doesn't enforce whether a specific high-ri
 
 EMILIA Protocol (EP) fills that layer. Before an agent action executes, EP verifies the principal's authority, the delegation chain, the exact action context, and the policy — then enforces one-time consumption and produces a human-attributable, immutable event record. Accountable Signoff adds a named human gate for actions that require it.
 
-EP is independently audited at 100/100 and MCP-native with 34 tools.
+EP is internally audited at 100/100 against an adversarial red-team rubric and MCP-native with 34 tools.
 
 If agent action governance is a live problem, I'd be glad to send the brief or talk through a pilot scope.
 

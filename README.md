@@ -28,11 +28,12 @@ The protocol is open. Managed policy, verification, signoff orchestration, monit
 
 ## The EP stack
 
-- **Emilia Eye** — lightweight warning layer that flags when stricter EP trust controls should apply
-- **EP Handshake** — policy-bound pre-action trust enforcement
-- **Accountable Signoff** — named human ownership when policy requires it
+- **EP Eye** — observes and classifies agent behavior (OBSERVE → SHADOW → ENFORCE)
+- **EP Handshake** — cryptographic consent ceremony with 7-property binding
+- **EP Signoff** — named human ownership of outcomes
+- **EP Commit** — atomic, immutable action close
 
-> **Eye warns. EP verifies. Signoff owns.**
+> **Eye observes. Handshake verifies. Signoff owns. Commit seals.**
 
 ---
 
@@ -45,7 +46,7 @@ The protocol is open. Managed policy, verification, signoff orchestration, monit
 | Alloy relational assertions | 32 facts, 15 assertions — **Verified (Alloy 6.1.0, 2026-04-02)** |
 | Red team cases | 116 documented |
 | Security findings remediated | 31 |
-| CI quality gates | 27 across 12 automated workflows |
+| CI quality gates | 28 across 13 automated workflows (incl. Playwright E2E) |
 | Full 7-step signoff chain | Proven end-to-end under load |
 | Handshake create p95 | 87ms at 500 VUs |
 
@@ -55,9 +56,11 @@ See [Performance Proof](docs/operations/PERFORMANCE_PROOF.md) | [Operating Envel
 
 | Metric | Value |
 |---|---|
-| Spec version | v1.0 |
-| Route parity (API ↔ OpenAPI) | see CI |
-| Tests | see CI |
+| Spec version | EP-CORE-v1.0 |
+| Conformance test | **7/7 required checks PASS** |
+| Standalone verify | `npm install @emilia-protocol/verify` (zero deps) |
+| Embed widget | `<ep-trust-badge entity-id="...">` |
+| Discovery | `/.well-known/ep-trust.json` + `/.well-known/ep-keys.json` |
 | Formal models | TLA+ + Alloy |
 | CodeQL | Active |
 | SBOM / Provenance | Active |

@@ -43,10 +43,10 @@ export async function POST(request) {
       return NextResponse.json({ id: null, email: '', created_at: new Date().toISOString() }, { status: 201 });
     }
 
-    const name = sanitizeText(body.name);
-    const rawEmail = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
-    const background = sanitizeText(body.background);
-    const motivation = sanitizeText(body.motivation);
+    const name = sanitizeText(body.name)?.slice(0, 200) ?? null;
+    const rawEmail = typeof body.email === 'string' ? body.email.trim().toLowerCase().slice(0, 254) : '';
+    const background = sanitizeText(body.background)?.slice(0, 5000) ?? null;
+    const motivation = sanitizeText(body.motivation)?.slice(0, 5000) ?? null;
 
     // Validate email format
     if (!rawEmail || !EMAIL_RE.test(rawEmail)) {
