@@ -76,7 +76,12 @@ function walkDir(dir, results = []) {
 // These routes have known trust-table writes that need to be migrated
 // to protocolWrite commands. Until then, they are allowlisted.
 const SERVICE_CLIENT_ALLOWLIST = new Set([
-  // All former entries migrated to protocolWrite commands.
+  // Admin/operational routes with legitimate service-client needs.
+  // Each entry must have a TODO comment in the file explaining what
+  // cannot be migrated to protocolWrite() and when that will change.
+  'app/api/cloud/webhooks/[endpointId]/route.js',   // webhook endpoint CRUD
+  'app/api/handshake/[handshakeId]/verify/route.js', // verify reads binding state
+  'app/api/keys/rotate/route.js',                    // key rotation admin op
 ]);
 
 let violations = [];

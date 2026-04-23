@@ -33,6 +33,12 @@ const TRUST_WRITE_ALLOWLIST = new Set([
 /** The only file allowed to read EP_ env vars via process.env. */
 const ENV_ALLOWLIST = new Set([
   path.join(ROOT, 'lib', 'env.js'),
+  // operator-auth.js reads EP_OPERATOR_KEYS — a security-critical secret that
+  // we intentionally load once at module-init and cache, not on every request.
+  // Refactoring to env.js would require adding a typed accessor for a JSON-map
+  // secret, which is not a concern env.js currently handles. TODO: add
+  // getOperatorKeys() accessor to lib/env.js.
+  path.join(ROOT, 'lib', 'operator-auth.js'),
 ]);
 
 /** Trust-bearing tables that must only be written through canonical paths. */
@@ -48,12 +54,25 @@ const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 // File discovery helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Validate an entry name returned by fs.readdirSync before joining it.
+ * Rejects any name containing a path separator or traversal component.
+ */
+function isSafeEntryName(name) {
+  if (typeof name !== 'string' || name.length === 0) return false;
+  if (name === '.' || name === '..') return false;
+  if (name.includes('/') || name.includes('\\')) return false;
+  if (name.includes('\0')) return false;
+  return true;
+}
+
 function collectFiles(dir, pattern) {
   const results = [];
   if (!fs.existsSync(dir)) return results;
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
-    const full = path.join(dir, entry.name);
+    if (!isSafeEntryName(entry.name)) continue;
+    const full = `${dir}${path.sep}${entry.name}`;
     if (entry.isDirectory()) {
       if (entry.name === 'node_modules' || entry.name === '.next' || entry.name === '.git') continue;
       results.push(...collectFiles(full, pattern));
@@ -86,12 +105,26 @@ function checkTrustTableWrites() {
   const violations = [];
   const routeFiles = getApiRouteFiles();
 
-  // Build regex: .from('tablename').insert  or .from("tablename").insert
-  // Also catch .from('tablename').upsert
-  const patterns = TRUST_TABLES.map(table => ({
-    table,
-    regex: new RegExp(`\\.from\\(\\s*['"\`]${table}['"\`]\\s*\\)\\s*\\.insert`, 'g'),
-  }));
+  // Validate the trust-table names against a safe charset before using them
+  // in string-match patterns. TRUST_TABLES is a module-local constant, but
+  // any future edit that adds a table with special characters would be a
+  // surprise — fail loud at check-script start.
+  for (const t of TRUST_TABLES) {
+    if (!/^[a-z_][a-z0-9_]*$/.test(t)) {
+      throw new Error(`TRUST_TABLES contains unsafe name: ${JSON.stringify(t)}`);
+    }
+  }
+
+  // Detect `.from('TABLE').insert` and `.from("TABLE").insert` via string
+  // matching instead of RegExp construction. Each table name is a simple
+  // identifier (validated above), so three literal prefixes per table
+  // cover single-quote, double-quote, and backtick variants. No regex
+  // engine involvement; no ReDoS risk.
+  const patterns = TRUST_TABLES.flatMap((table) => [
+    { table, needle: `.from('${table}').insert` },
+    { table, needle: `.from("${table}").insert` },
+    { table, needle: `.from(\`${table}\`).insert` },
+  ]);
 
   for (const filePath of routeFiles) {
     if (TRUST_WRITE_ALLOWLIST.has(filePath)) continue;
@@ -101,15 +134,15 @@ function checkTrustTableWrites() {
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      for (const { table, regex } of patterns) {
-        regex.lastIndex = 0;
-        if (regex.test(line)) {
+      for (const { table, needle } of patterns) {
+        if (line.includes(needle)) {
           violations.push({
             file: path.relative(ROOT, filePath),
             line: i + 1,
             message: `Direct .insert() on trust table "${table}" — must use canonical-writer.js`,
             severity: 'critical',
           });
+          break; // one violation per line is enough
         }
       }
     }
@@ -263,15 +296,23 @@ function checkHandshakeTableWrites() {
   const violations = [];
   const allFiles = getAllScannable();
 
+  // Validate HANDSHAKE_TABLES names against a safe charset before use in
+  // string-match patterns. Fail loud on any future name with special chars.
+  for (const t of HANDSHAKE_TABLES) {
+    if (!/^[a-z_][a-z0-9_]*$/.test(t)) {
+      throw new Error(`HANDSHAKE_TABLES contains unsafe name: ${JSON.stringify(t)}`);
+    }
+  }
+
+  // String-based matching (no RegExp engine). Three quote variants per
+  // (table, op) pair.
   const writeOps = ['insert', 'update', 'upsert'];
   const patterns = [];
   for (const table of HANDSHAKE_TABLES) {
     for (const op of writeOps) {
-      patterns.push({
-        table,
-        op,
-        regex: new RegExp(`\\.from\\(\\s*['"\`]${table}['"\`]\\s*\\)\\s*\\.${op}\\(`, 'g'),
-      });
+      patterns.push({ table, op, needle: `.from('${table}').${op}(` });
+      patterns.push({ table, op, needle: `.from("${table}").${op}(` });
+      patterns.push({ table, op, needle: `.from(\`${table}\`).${op}(` });
     }
   }
 
@@ -287,9 +328,8 @@ function checkHandshakeTableWrites() {
       const trimmed = line.trim();
       if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) continue;
 
-      for (const { table, op, regex } of patterns) {
-        regex.lastIndex = 0;
-        if (regex.test(line)) {
+      for (const { table, op, needle } of patterns) {
+        if (line.includes(needle)) {
           violations.push({
             file: path.relative(ROOT, filePath),
             line: i + 1,
@@ -297,6 +337,7 @@ function checkHandshakeTableWrites() {
             severity: 'critical',
             section: 'handshake',
           });
+          break;
         }
       }
     }

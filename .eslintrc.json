@@ -1,0 +1,30 @@
+{
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "react/no-unescaped-entities": "off",
+    "react-hooks/exhaustive-deps": "warn",
+    "@next/next/no-img-element": "warn",
+    "@next/next/no-html-link-for-pages": "warn",
+    "@next/next/no-page-custom-font": "warn",
+    "jsx-a11y/alt-text": "warn"
+  },
+  "ignorePatterns": [
+    "node_modules/",
+    ".next/",
+    "out/",
+    "coverage/",
+    "dist/",
+    "build/",
+    "packages/",
+    "sdks/",
+    "scripts/",
+    "tests/",
+    "e2e/",
+    "conformance/",
+    "supabase/",
+    "formal/",
+    "infrastructure/",
+    "create-ep-app/",
+    "public/embed.js"
+  ]
+}
