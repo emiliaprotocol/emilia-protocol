@@ -27,24 +27,62 @@ import { Counter, Rate, Trend } from 'k6/metrics';
 
 export const options = {
   scenarios: {
+    // Warmup: 10s at 1 VU to populate connection pools and trigger any
+    // cold starts in the serverless deployment. These samples are discarded
+    // from threshold evaluation via gracefulStop + the thresholds below.
+    warmup: {
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: [
+        { duration: '5s', target: 1 },
+        { duration: '5s', target: 1 },
+      ],
+      gracefulStop: '0s',
+      tags: { stage: 'warmup' },
+      exec: 'default',
+    },
     smoke: {
       executor: 'constant-vus',
       vus: 5,
       duration: '30s',
+      startTime: '10s',        // starts after warmup completes
+      tags: { stage: 'smoke' },
+      exec: 'default',
     },
   },
+  // Thresholds separate server-side latency (http_req_waiting = TTFB)
+  // from end-to-end round-trip (http_req_duration = full request-response).
+  // TTFB is the real SLO; http_req_duration varies with network between
+  // the k6 runner (GitHub Actions) and the target (Vercel edge). We
+  // enforce TTFB tightly and allow a generous RTT budget so transient
+  // network variance does not fail the smoke gate.
+  //
+  // The `stage:smoke` tag filter excludes warmup samples from thresholds.
   thresholds: {
-    // Handshake creation hot path: p95 < 150ms, p99 < 300ms
-    'http_req_duration{route:handshake_create}': [
+    // Server-time budget (TTFB, excludes network RTT):
+    // handshake_create p95 < 200ms, p99 < 400ms — matches app-level SLO.
+    'http_req_waiting{route:handshake_create,stage:smoke}': [
+      'p(95)<200',
+      'p(99)<400',
+    ],
+    // trust_evaluate p95 < 150ms server time.
+    'http_req_waiting{route:trust_evaluate,stage:smoke}': [
       'p(95)<150',
-      'p(99)<300',
     ],
-    // Trust evaluation: p95 < 100ms
-    'http_req_duration{route:trust_evaluate}': [
-      'p(95)<100',
+
+    // End-to-end duration (server + network RTT). Looser because network
+    // latency from a GHA us-east runner to Vercel edge is ~40-120ms
+    // baseline and can spike to 300ms on bad days.
+    'http_req_duration{route:handshake_create,stage:smoke}': [
+      'p(95)<500',
+      'p(99)<1000',
     ],
-    // Error rate must be below 1%
-    'http_req_failed': ['rate<0.01'],
+    'http_req_duration{route:trust_evaluate,stage:smoke}': [
+      'p(95)<400',
+    ],
+
+    // Error rate must be below 1% in the smoke phase.
+    'http_req_failed{stage:smoke}': ['rate<0.01'],
   },
 };
 

@@ -9,6 +9,7 @@ const NAV_LINKS = [
   ['/playground', 'Playground'],
   ['/adopt', 'Adopt'],
   ['/product/cloud', 'Cloud'],
+  ['/trust-desk', 'Trust Desk'],
   ['/docs', 'Docs'],
   ['/investors', 'Investors'],
 ];

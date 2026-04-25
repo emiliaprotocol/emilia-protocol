@@ -1,0 +1,101 @@
+{
+  "slug": "acme-sample",
+  "company": "Acme AI (sample)",
+  "website": "https://acme.example.com",
+  "contact": {
+    "name": "Jane Example",
+    "email": "security@acme.example.com",
+    "role": "Head of Security"
+  },
+  "product_tagline": "AI-native KYC automation for mid-market banks.",
+  "engagement": {
+    "tier": "packet",
+    "buyer_name": "[Redacted Bank]",
+    "started_at": "2026-04-20",
+    "delivered_at": "2026-04-22",
+    "expires_at": "2026-10-22"
+  },
+  "status": "active",
+  "last_rehashed": null,
+  "claims": [
+    {
+      "id": "questionnaire-response",
+      "title": "Completed AI-specific security questionnaire",
+      "category": "questionnaire",
+      "source_file": "content/templates/ai-data-handling.md",
+      "summary": "Full response to buyer's 42-question AI security review, aligned with SOC 2 and NIST AI RMF.",
+      "content_hash": null,
+      "payload_hash": null,
+      "signature": null,
+      "signed_at": null,
+      "signer": null,
+      "claim_id_signed": null
+    },
+    {
+      "id": "ai-data-handling",
+      "title": "AI Data Handling & Model Training Disclosure",
+      "category": "policy",
+      "source_file": "content/templates/ai-data-handling.md",
+      "summary": "Discloses what customer data the AI processes, retention, training scope, and deletion.",
+      "content_hash": null,
+      "payload_hash": null,
+      "signature": null,
+      "signed_at": null,
+      "signer": null,
+      "claim_id_signed": null
+    },
+    {
+      "id": "prompt-injection",
+      "title": "Prompt Injection Defense Statement",
+      "category": "policy",
+      "source_file": "content/templates/prompt-injection.md",
+      "summary": "Threat model, defense-in-depth layers, testing cadence, and kill-switch procedures.",
+      "content_hash": null,
+      "payload_hash": null,
+      "signature": null,
+      "signed_at": null,
+      "signer": null,
+      "claim_id_signed": null
+    },
+    {
+      "id": "ai-subprocessors",
+      "title": "AI Subprocessor & Data Flow Map",
+      "category": "policy",
+      "source_file": "content/templates/ai-subprocessors.md",
+      "summary": "Every third-party service that processes customer data via AI, with DPA and region.",
+      "content_hash": null,
+      "payload_hash": null,
+      "signature": null,
+      "signed_at": null,
+      "signer": null,
+      "claim_id_signed": null
+    },
+    {
+      "id": "agent-access-control",
+      "title": "AI Agent Access Control Policy",
+      "category": "policy",
+      "source_file": "content/templates/agent-access-control.md",
+      "summary": "Tier 0–3 agent action classification, approval flow, and tenant isolation.",
+      "content_hash": null,
+      "payload_hash": null,
+      "signature": null,
+      "signed_at": null,
+      "signer": null,
+      "claim_id_signed": null
+    },
+    {
+      "id": "ai-incident-response",
+      "title": "AI Incident Response Runbook",
+      "category": "policy",
+      "source_file": "content/templates/ai-incident-response.md",
+      "summary": "Severity matrix, detection sources, notification SLAs, and post-mortem process.",
+      "content_hash": null,
+      "payload_hash": null,
+      "signature": null,
+      "signed_at": null,
+      "signer": null,
+      "claim_id_signed": null
+    }
+  ],
+  "notes_for_buyer": "This trust page is current as of the last_rehashed timestamp. Claims expire on engagement.expires_at; refreshes require a new retainer cycle or ad-hoc re-engagement. Buyer-side independent verification endpoint ships day 21."
+}
