@@ -16,6 +16,17 @@ title = "emilia-protocol gitleaks config"
     '''CHANGELOG\.md$''',
     '''node_modules/''',
     '''\.gitleaks\.toml$''',
+    # Build artifacts and lockfiles should not be scanned for secrets.
+    '''package-lock\.json$''',
+    '''\.next/''',
+    '''coverage/''',
+    '''dist/''',
+    # Test fixtures intentionally include placeholder credentials, key
+    # headers, and other secret-looking strings to verify that redaction,
+    # validation, and parsing code handle them correctly.
+    '''tests/.*\.test\.js$''',
+    '''mcp-server/tests/.*\.test\.js$''',
+    '''sdks/.*/tests?/.*''',
   ]
 
 # ── Custom rules ─────────────────────────────────────────────────
@@ -75,6 +86,23 @@ title = "emilia-protocol gitleaks config"
   description = "PEM private key"
   regex = '''-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----'''
   tags = ["private-key", "pem"]
+  [rules.allowlist]
+    regexTarget = "line"
+    regexes = [
+      # Redaction-test fixtures: lines that pair the PEM header with a
+      # redaction sentinel ([REDACTED], expect, toBe, etc.) are testing
+      # that secret-redaction code recognizes and replaces the header.
+      # No real key material is present.
+      '''(?i)\bredact''',
+      '''(?i)\bexpect\(''',
+      '''(?i)\btoBe\(''',
+      '''(?i)\bexample\b''',
+      '''(?i)\bplaceholder\b''',
+      # Bare PEM header with no preceding context (literal one-liner) is
+      # almost certainly a test sentinel. Real keys span multiple lines
+      # with base64 content; bare headers don't decrypt to anything.
+      '''['"\`]-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----['"\`]''',
+    ]
 
 [[rules]]
   id = "jwt-token"

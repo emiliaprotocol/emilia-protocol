@@ -357,7 +357,11 @@ describe('SDK (TypeScript) claims', () => {
   const sdkReadme = readFile('sdks/typescript/README.md');
 
   it('EP_BASE_URL referenced in SDK README matches actual default in client.ts', () => {
-    const clientSource = readFile('sdks/typescript/dist/client.js');
+    // Read the source TS, not the compiled dist/. CI doesn't build the SDK
+    // before running this suite (sdks/typescript/dist/ is gitignored), and
+    // the value being verified — DEFAULT_BASE_URL — is identical in source
+    // and compiled output anyway.
+    const clientSource = readFile('sdks/typescript/src/client.ts');
 
     // Extract DEFAULT_BASE_URL from client.ts
     const defaultUrlMatch = clientSource.match(
@@ -371,7 +375,11 @@ describe('SDK (TypeScript) claims', () => {
   });
 
   it('SDK README EP_BASE_URL default matches code default', () => {
-    const clientSource = readFile('sdks/typescript/dist/client.js');
+    // Read the source TS, not the compiled dist/. CI doesn't build the SDK
+    // before running this suite (sdks/typescript/dist/ is gitignored), and
+    // the value being verified — DEFAULT_BASE_URL — is identical in source
+    // and compiled output anyway.
+    const clientSource = readFile('sdks/typescript/src/client.ts');
 
     const defaultUrlMatch = clientSource.match(
       /DEFAULT_BASE_URL\s*=\s*['"]([^'"]+)['"]/
