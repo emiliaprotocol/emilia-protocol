@@ -1,15 +1,20 @@
+import Link from 'next/link';
+import { IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
+
+const ibmPlexSans = IBM_Plex_Sans({ subsets: ['latin'], weight: ['400', '700'], display: 'swap' });
+const ibmPlexMono = IBM_Plex_Mono({ subsets: ['latin'], weight: ['400', '700'], display: 'swap' });
+
 export const metadata = {
   title: '404 — EMILIA Protocol',
 };
 
 export default function NotFound() {
+  const fontClass = `${ibmPlexSans.className} ${ibmPlexMono.className}`;
   return (
-    <html lang="en">
+    <html lang="en" className={fontClass}>
       <head>
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;700&display=swap" rel="stylesheet" />
         <style>{`
           *{margin:0;padding:0;box-sizing:border-box}
           body{background:#020617;color:#f0f4ff;font-family:'IBM Plex Sans',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px}
@@ -31,7 +36,7 @@ export default function NotFound() {
         <h1>Page not found</h1>
         <p>This route doesn&rsquo;t exist in the protocol. The entity you&rsquo;re looking for may have moved or never existed.</p>
         <div className="links">
-          <a href="/" className="btn-p">Back to Home</a>
+          <Link href="/" className="btn-p">Back to Home</Link>
           <a href="/appeal" className="btn-s">File an Appeal</a>
           <a href="https://github.com/emiliaprotocol/emilia-protocol" target="_blank" className="btn-s">GitHub</a>
         </div>

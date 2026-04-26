@@ -15,9 +15,23 @@ const securityHeaders = [
 
 const nextConfig = {
   output: 'standalone',
-  // Enable instrumentation.js (graceful shutdown, OpenTelemetry, etc.)
-  experimental: {
-    instrumentationHook: true,
+  // Pin file-tracing root to this repo. Without it, Next.js walks up the
+  // filesystem looking for a lockfile and may pick a parent monorepo root
+  // (e.g., ~/Documents/package-lock.json), which produces a "multiple
+  // lockfiles detected" warning at build time.
+  outputFileTracingRoot: __dirname,
+  // instrumentation.js is loaded automatically since Next.js 15 — the
+  // experimental.instrumentationHook flag is no longer needed (and emits a
+  // build warning if set).
+  async rewrites() {
+    return [
+      // Serve /.well-known/ep-keys.json from the dynamic API route.
+      // ep-trust.json is static (public/.well-known/ep-trust.json).
+      {
+        source: '/.well-known/ep-keys.json',
+        destination: '/api/discovery/keys',
+      },
+    ];
   },
   async headers() {
     return [
@@ -36,17 +50,17 @@ const nextConfig = {
 };
 
 // Wrap with Sentry to enable automatic error reporting and source maps.
-// withSentryConfig is a no-op when SENTRY_DSN is not set (safe for local dev).
-module.exports = withSentryConfig(nextConfig, {
-  // Sentry webpack plugin options
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-  // Suppress noisy build output
-  silent: !process.env.CI,
-  // Upload source maps to Sentry for readable stack traces in production
-  widenClientFileUpload: true,
-  // Automatically tree-shake Sentry logger statements
-  disableLogger: true,
-  // Automatically instrument Next.js App Router routes
-  automaticVercelMonitors: false,
-});
+// Only enable Sentry build plugin when SENTRY_AUTH_TOKEN is set — prevents
+// build failures on federation operators and CI environments without Sentry.
+if (process.env.SENTRY_AUTH_TOKEN) {
+  module.exports = withSentryConfig(nextConfig, {
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    silent: !process.env.CI,
+    widenClientFileUpload: true,
+    disableLogger: true,
+    automaticVercelMonitors: false,
+  });
+} else {
+  module.exports = nextConfig;
+}

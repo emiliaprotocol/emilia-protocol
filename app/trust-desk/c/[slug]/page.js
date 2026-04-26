@@ -11,6 +11,7 @@
  * no CTA — this is a trust document, not a marketing page.
  */
 
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { loadCustomer, trustPageStatus } from '@/lib/trust-desk/customers';
 import { styles, color, font, radius } from '@/lib/tokens';
@@ -148,7 +149,7 @@ export default async function TrustPage({ params }) {
           <div>
             Published by <a href="/trust-desk" style={{ color: color.t2, textDecoration: 'underline' }}>AI Trust Desk</a>
             {' · '}
-            powered by <a href="/" style={{ color: color.t2, textDecoration: 'underline' }}>Emilia Protocol</a>
+            powered by <Link href="/" style={{ color: color.t2, textDecoration: 'underline' }}>Emilia Protocol</Link>
           </div>
           {startedAt && <div style={{ fontFamily: font.mono }}>Published {startedAt.toISOString()}</div>}
         </div>

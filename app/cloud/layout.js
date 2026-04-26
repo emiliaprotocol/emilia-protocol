@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const SIDEBAR_LINKS = [
@@ -189,7 +190,7 @@ export default function CloudLayout({ children }) {
         </nav>
 
         <div style={s.sidebarFooter}>
-          <a href="/" style={s.backLink}>{'\u2190'} Back to site</a>
+          <Link href="/" style={s.backLink}>{'\u2190'} Back to site</Link>
         </div>
       </aside>
 

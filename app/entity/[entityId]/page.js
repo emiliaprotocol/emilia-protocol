@@ -1,6 +1,15 @@
+import Link from 'next/link';
 import { getServiceClient } from '@/lib/supabase';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { notFound } from 'next/navigation';
+
+// Entity profile is an SSR-only embed-friendly document that intentionally
+// builds its own `<html>` tree (used as a previewable, copy-pasteable trust
+// card). The `no-page-custom-font` lint rule targets the legacy Pages Router
+// `pages/_document.js` pattern that does not apply to App Router pages —
+// suppressing the rule here avoids a false-positive warning without forcing
+// a `next/font` rewrite that would break the self-contained document model.
+/* eslint-disable @next/next/no-page-custom-font */
 
 export async function generateMetadata({ params }) {
   const { entityId } = await params;
@@ -175,12 +184,12 @@ export default async function EntityProfile({ params }) {
       </head>
       <body>
         <nav style="position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:60px;background:rgba(0,0,0,0.85);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,0.06);font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase">
-          <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none">
+          <Link href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none">
             <svg width="34" height="34" viewBox="0 0 34 34" fill="none"><rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="url(#ng3)"/><rect x="9.5" y="5" width="16" height="2.5" rx="1.25" fill="#60a5fa"/><rect x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#f59e0b"/><rect x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill="#60a5fa"/><defs><linearGradient id="ng3" x1="8" y1="5" x2="8" y2="29"><stop offset="0%" stop-color="#60a5fa"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient></defs></svg>
             <span style="font-weight:700;font-size:14px;letter-spacing:3px;color:#e8eaf0">EMILIA</span>
-          </a>
+          </Link>
           <div style="display:flex;align-items:center;gap:24px">
-            <a href="/" style="color:#4a4f6a;text-decoration:none">Home</a>
+            <Link href="/" style="color:#4a4f6a;text-decoration:none">Home</Link>
             <a href="/quickstart" style="color:#4a4f6a;text-decoration:none">Quickstart</a>
             <a href="/demo.html" style="color:#4a4f6a;text-decoration:none">Demo</a>
             <a href="/spec" style="color:#4a4f6a;text-decoration:none">Spec</a>
@@ -193,9 +202,9 @@ export default async function EntityProfile({ params }) {
         <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px 80px' }}>
           {/* Nav */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 48, fontFamily: 'var(--mono)', fontSize: 12, letterSpacing: 1 }}>
-            <a href="/" style={{ color: '#e8eaf0', fontWeight: 600, letterSpacing: 2, fontSize: 14 }}>EMILIA</a>
+            <Link href="/" style={{ color: '#e8eaf0', fontWeight: 600, letterSpacing: 2, fontSize: 14 }}>EMILIA</Link>
             <div style={{ display: 'flex', gap: 24 }}>
-              <a href="/#score" style={{ color: '#7a809a' }}>TRUST LOOKUP</a>
+              <Link href="/#score" style={{ color: '#7a809a' }}>TRUST LOOKUP</Link>
               <a href="https://github.com/emiliaprotocol/emilia-protocol" style={{ color: '#7a809a' }}>GITHUB</a>
             </div>
           </div>

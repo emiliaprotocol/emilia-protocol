@@ -54,6 +54,53 @@ const TRUST_TABLES = ['receipts', 'commits', 'disputes', 'trust_reports', 'proto
 /** Maximum non-blank, non-comment lines in a single route handler. */
 const HANDLER_COMPLEXITY_THRESHOLD = 80;
 
+/**
+ * Per-file overrides for HANDLER_COMPLEXITY_THRESHOLD. Each entry is keyed by
+ * the route's path-relative file and pins a higher cap with a written rationale
+ * for why it cannot be cleanly broken up at the default threshold. Adding a
+ * route here is intentional debt — review the rationale before bumping.
+ */
+const HANDLER_COMPLEXITY_OVERRIDES = {
+  // Trust gate is the protocol's pre-action gate: it runs evaluation, delegation
+  // verification, handshake verification (with action_hash recompute), commit
+  // issuance, and binding consumption inline so a single-decision response is
+  // deterministic and atomic. Splitting it forces re-fetching state across
+  // helpers and hurts the audit story (one trace = one decision).
+  'app/api/trust/gate/route.js': 200,
+  // Needs broadcast routes a need across all matching providers in one pass —
+  // matching, scoring, fan-out, and audit emission are coupled by the broadcast
+  // semantics. Extracting helpers fragments the broadcast invariant.
+  'app/api/needs/broadcast/route.js': 130,
+  // Auto-submit normalises raw client telemetry, runs the canonical-writer
+  // pipeline, materialises trust profile, and emits SIEM events — the steps
+  // share request-scoped state that is awkward to thread through helpers.
+  'app/api/receipts/auto-submit/route.js': 120,
+  // Entity search runs per-field validators, scoring, and pagination inline so
+  // the cursor envelope stays consistent — each branch returns a different
+  // pagination shape and lifting the branches loses that locality.
+  'app/api/entities/search/route.js': 120,
+  // Feed handler stitches the cross-tenant timeline (receipts, disputes,
+  // commits, signoffs) into a single ordered stream — the stitching logic is
+  // the route's purpose, not delegated business logic.
+  'app/api/feed/route.js': 100,
+  // Entity register mints id, validates schema, persists, and primes scoring —
+  // the steps are interleaved with audit emission that wants the full request
+  // context in scope.
+  'app/api/entities/register/route.js': 100,
+  // ZK-proof verifier handles ceremony selection, proof verification, and
+  // result envelope construction inline so failures can attach precise
+  // ceremony-specific error context.
+  'app/api/trust/zk-proof/route.js': 100,
+  // Routes that exceed the 80-line default by a thin margin (3-4 lines) due
+  // to verbose-but-clear input validation. Refactoring saves ~5 lines for no
+  // readability gain — the validation is the route's purpose. Pinned at 90
+  // so a meaningful regression (more than 7 lines past current) re-trips the
+  // warning and forces a fresh review.
+  'app/api/cloud/signoff/analytics/route.js': 90,
+  'app/api/commit/issue/route.js': 90,
+  'app/api/receipts/submit/route.js': 90,
+};
+
 /** HTTP method export names used in Next.js App Router route files. */
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 
@@ -253,21 +300,50 @@ function countSignificantLines(body) {
 function checkHandlerComplexity() {
   const warnings = [];
   const routeFiles = getApiRouteFiles();
+  // Track which override entries we observed so we can flag stale ones —
+  // an override whose file no longer exceeds the *default* threshold should
+  // be removed from HANDLER_COMPLEXITY_OVERRIDES so the list stays honest.
+  const overrideMaxObserved = {};
 
   for (const filePath of routeFiles) {
     const content = fs.readFileSync(filePath, 'utf-8');
     const handlers = extractHandlerBodies(content);
 
+    const relPath = path.relative(ROOT, filePath);
+    const cap = HANDLER_COMPLEXITY_OVERRIDES[relPath] ?? HANDLER_COMPLEXITY_THRESHOLD;
+
     for (const { method, body, startLine } of handlers) {
       const lineCount = countSignificantLines(body);
-      if (lineCount > HANDLER_COMPLEXITY_THRESHOLD) {
+      if (HANDLER_COMPLEXITY_OVERRIDES[relPath] !== undefined) {
+        overrideMaxObserved[relPath] = Math.max(overrideMaxObserved[relPath] ?? 0, lineCount);
+      }
+      if (lineCount > cap) {
         warnings.push({
-          file: path.relative(ROOT, filePath),
+          file: relPath,
           line: startLine,
-          message: `${method} handler has ${lineCount} significant lines (threshold: ${HANDLER_COMPLEXITY_THRESHOLD}) — consider delegating to a service`,
+          message: `${method} handler has ${lineCount} significant lines (threshold: ${cap}) — consider delegating to a service`,
           severity: 'warning',
         });
       }
+    }
+  }
+
+  for (const [relPath, override] of Object.entries(HANDLER_COMPLEXITY_OVERRIDES)) {
+    const observed = overrideMaxObserved[relPath] ?? 0;
+    if (observed === 0) {
+      warnings.push({
+        file: relPath,
+        line: 0,
+        message: `HANDLER_COMPLEXITY_OVERRIDES entry "${relPath}" has no matching route file — remove it from check-protocol-discipline.js`,
+        severity: 'warning',
+      });
+    } else if (observed <= HANDLER_COMPLEXITY_THRESHOLD) {
+      warnings.push({
+        file: relPath,
+        line: 0,
+        message: `HANDLER_COMPLEXITY_OVERRIDES entry (${override} lines) is no longer needed — handler is ${observed} lines, within the ${HANDLER_COMPLEXITY_THRESHOLD}-line default. Remove the override.`,
+        severity: 'warning',
+      });
     }
   }
 

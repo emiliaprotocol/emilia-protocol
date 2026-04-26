@@ -1,7 +1,18 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { JetBrains_Mono, Outfit, Space_Grotesk } from 'next/font/google';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
+
+// Self-host the spec page's three custom fonts so the spec renders without
+// blocking on Google Fonts CSS and so the @next/next/no-page-custom-font
+// lint rule stays clear. The font-family strings (`JetBrains Mono`,
+// `Outfit`, `Space Grotesk`) used in the inline <style> tag below match
+// next/font's emitted family names verbatim.
+const jetBrainsMono = JetBrains_Mono({ subsets: ['latin'], weight: ['400', '500', '600'], display: 'swap' });
+const outfit = Outfit({ subsets: ['latin'], weight: ['700', '800', '900'], display: 'swap' });
+const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], weight: ['400', '500', '600'], display: 'swap' });
+const SPEC_FONT_CLASS = `${jetBrainsMono.className} ${outfit.className} ${spaceGrotesk.className}`;
 
 export const metadata = {
   title: 'EP Core RFC v1.0 — EMILIA Protocol Specification',
@@ -82,7 +93,7 @@ export default function SpecPage() {
   const html = mdToHtml(md);
 
   return (
-    <>
+    <div className={SPEC_FONT_CLASS}>
       <style dangerouslySetInnerHTML={{ __html: `
         body { background: #05060a; color: #e8eaf0; font-family: 'Space Grotesk', sans-serif; -webkit-font-smoothing: antialiased; line-height: 1.8; margin: 0; }
         a { color: #00d4ff; text-decoration: none; }
@@ -108,8 +119,6 @@ export default function SpecPage() {
         .spec-badge { display: inline-flex; align-items: center; gap: 8px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 2px; color: #00d4ff; background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.15); padding: 8px 16px; border-radius: 100px; margin-bottom: 24px; }
         .spec-footer { margin-top: 64px; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #4a4f6a; letter-spacing: 1px; }
       `}} />
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@700;800;900&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
       <SiteNav activePage="Spec" />
       <div className="spec-content">
         <div className="spec-badge">EP CORE RFC v1.0 · APACHE 2.0</div>
@@ -119,6 +128,6 @@ export default function SpecPage() {
         </div>
       </div>
       <SiteFooter />
-    </>
+    </div>
   );
 }

@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
@@ -312,7 +313,7 @@ export default function AppealPage() {
         </div>
 
         <div style={{ marginTop: 24, textAlign: 'center', fontSize: 11, color: color.t3, fontFamily: font.mono, letterSpacing: 1 }}>
-          <a href="/" style={{ color: color.t3, textDecoration: 'none' }}>EMILIA PROTOCOL</a> — TRUST MUST NEVER BE MORE POWERFUL THAN APPEAL
+          <Link href="/" style={{ color: color.t3, textDecoration: 'none' }}>EMILIA PROTOCOL</Link> — TRUST MUST NEVER BE MORE POWERFUL THAN APPEAL
         </div>
       </div>
     </div>
