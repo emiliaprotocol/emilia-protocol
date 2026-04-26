@@ -88,6 +88,16 @@ function makeSupabaseMock({
       }
       return { insert: vi.fn().mockResolvedValue({ data: null, error: null }) };
     }),
+    // blockchain.js now uses bulk_update_receipt_anchors RPC for the receipt
+    // anchoring updates instead of N individual UPDATE statements. Provide a
+    // permissive default — most tests don't assert on the RPC payload, just
+    // that the pipeline runs to completion.
+    rpc: vi.fn((fnName, _params) => {
+      if (fnName === 'bulk_update_receipt_anchors') {
+        return Promise.resolve({ data: null, error: null });
+      }
+      return Promise.resolve({ data: null, error: null });
+    }),
   };
   return mock;
 }
@@ -332,22 +342,40 @@ describe('runAnchorBatch — happy path (skipped anchor)', () => {
     expect(result.receipts_anchored).toBe(1);
   });
 
-  it('batch insert error is non-fatal (anchor already on-chain)', async () => {
+  it('batch insert error throws to surface state divergence', async () => {
+    // Updated assertion: blockchain.js now THROWS when the anchor_batches DB
+    // record insert fails. The previous "non-fatal" behavior silently lost
+    // the linkage between on-chain anchor and DB tracking, requiring manual
+    // reconciliation. The new behavior surfaces the divergence immediately
+    // so ops can intervene before downstream verification depends on the
+    // missing record.
     const supabase = makeSupabaseMock({
       unanchored: makeReceipts(2),
       batchInsertErr: { message: 'insert failed' },
     });
-    // Should not throw — batch store failure is non-fatal per the code
-    const result = await runAnchorBatch(supabase);
-    expect(result.status).toBe('anchored');
+    await expect(runAnchorBatch(supabase)).rejects.toThrow(
+      /Anchor batch DB record failed/,
+    );
   });
 
-  it('calls receipts.update for each receipt', async () => {
+  it('updates receipts via bulk_update_receipt_anchors RPC', async () => {
+    // blockchain.js now batches receipt anchor updates through a single
+    // bulk_update_receipt_anchors RPC instead of N individual UPDATE
+    // statements via supabase.from('receipts').update(...).eq(...). The
+    // RPC takes the full update set as `p_updates` and applies them in
+    // one round-trip.
     const receipts = makeReceipts(3);
     const supabase = makeSupabaseMock({ unanchored: receipts });
     await runAnchorBatch(supabase);
-    // from('receipts') is called for initial fetch + 3 updates
-    const calls = supabase.from.mock.calls.filter(([t]) => t === 'receipts');
-    expect(calls.length).toBeGreaterThanOrEqual(2);
+
+    const rpcCalls = supabase.rpc.mock.calls.filter(
+      ([fnName]) => fnName === 'bulk_update_receipt_anchors',
+    );
+    expect(rpcCalls.length).toBeGreaterThanOrEqual(1);
+    // The RPC payload should include all 3 receipts
+    const updates = rpcCalls[0]?.[1]?.p_updates;
+    if (Array.isArray(updates)) {
+      expect(updates.length).toBe(3);
+    }
   });
 });

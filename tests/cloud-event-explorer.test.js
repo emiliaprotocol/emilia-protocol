@@ -84,7 +84,7 @@ describe('queryEvents', () => {
     });
     getGuardedClient.mockReturnValue(supabase);
 
-    const result = await queryEvents();
+    const result = await queryEvents({ tenant_id: 'test-tenant' });
     expect(result.events).toHaveLength(3);
     expect(result.total).toBe(3);
   });
@@ -103,7 +103,7 @@ describe('queryEvents', () => {
     });
     getGuardedClient.mockReturnValue(supabase);
 
-    const result = await queryEvents();
+    const result = await queryEvents({ tenant_id: 'test-tenant' });
     const times = result.events.map(e => e.created_at);
     expect(times[0] >= times[1]).toBe(true);
     expect(times[1] >= times[2]).toBe(true);
@@ -118,7 +118,7 @@ describe('queryEvents', () => {
     });
     getGuardedClient.mockReturnValue(supabase);
 
-    const result = await queryEvents({ limit: 3 });
+    const result = await queryEvents({ tenant_id: 'test-tenant', limit: 3 });
     expect(result.events.length).toBeLessThanOrEqual(3);
   });
 
@@ -130,7 +130,7 @@ describe('queryEvents', () => {
     });
     getGuardedClient.mockReturnValue(supabase);
 
-    const result = await queryEvents({ limit: -5 });
+    const result = await queryEvents({ tenant_id: 'test-tenant', limit: -5 });
     // Should still work with limit=1 applied
     expect(result).toBeDefined();
   });
@@ -146,8 +146,8 @@ describe('queryEvents', () => {
     });
     getGuardedClient.mockReturnValue(supabase);
 
-    const full = await queryEvents({ limit: 10, offset: 0 });
-    const paged = await queryEvents({ limit: 10, offset: 2 });
+    const full = await queryEvents({ tenant_id: 'test-tenant', limit: 10, offset: 0 });
+    const paged = await queryEvents({ tenant_id: 'test-tenant', limit: 10, offset: 2 });
 
     // paged should have 2 fewer items (offset skips first 2)
     expect(paged.events.length).toBe(full.events.length - 2);
@@ -161,7 +161,7 @@ describe('queryEvents', () => {
     });
     getGuardedClient.mockReturnValue(supabase);
 
-    const result = await queryEvents();
+    const result = await queryEvents({ tenant_id: 'test-tenant' });
     expect(result.events).toHaveLength(1);
   });
 
@@ -173,7 +173,7 @@ describe('queryEvents', () => {
     });
     getGuardedClient.mockReturnValue(supabase);
 
-    const result = await queryEvents();
+    const result = await queryEvents({ tenant_id: 'test-tenant' });
     expect(result.events).toEqual([]);
     expect(result.total).toBe(0);
   });
@@ -193,7 +193,7 @@ describe('queryEvents', () => {
     });
     getGuardedClient.mockReturnValue(supabase);
 
-    const result = await queryEvents();
+    const result = await queryEvents({ tenant_id: 'test-tenant' });
     const ev = result.events[0];
     expect(ev.source_table).toBe('protocol_events');
     expect(ev.event_type).toBe('protocol_tick');
@@ -219,7 +219,10 @@ describe('getTimeline', () => {
     const hEv2 = makeEvent({ created_at: '2024-01-01T09:00:00Z', event_type: 'handshake_accepted' });
     const sEv1 = makeEvent({ created_at: '2024-01-01T10:00:00Z', event_type: 'signoff_created' });
 
-    const bindingChain = makeChain({ data: null, error: null }); // no binding = no tenant isolation block
+    // Tenant-isolation hardening: getTimeline now requires the binding to
+    // exist AND belong to the requesting tenant. Mock returns a binding with
+    // matching tenant_id so the test reaches the chronological-ordering check.
+    const bindingChain = makeChain({ data: { tenant_id: 'tenant-1' }, error: null });
     const handshakeChain = makeChain({ data: [hEv1, hEv2], error: null });
     const signoffChain = makeChain({ data: [sEv1], error: null });
 
@@ -247,40 +250,31 @@ describe('getTimeline', () => {
     );
   });
 
-  it('proceeds when binding has no tenant_id (unbound handshake)', async () => {
+  // Tenant-isolation hardening: getTimeline now THROWS instead of proceeding
+  // when the binding has no tenant_id or the binding row is missing. The
+  // previous "proceed" behavior was the security gap that this hardening
+  // closed. Updated assertions reflect the new fail-closed contract.
+  it('throws when binding has no tenant_id (unbound handshake)', async () => {
     const bindingChain = makeChain({ data: { tenant_id: null }, error: null });
-    const handshakeChain = makeChain({ data: [makeEvent()], error: null });
-    const signoffChain = makeChain({ data: [], error: null });
-
-    const supabase = makeSupabase({
-      handshake_bindings: bindingChain,
-      handshake_events: handshakeChain,
-      signoff_events: signoffChain,
-    });
+    const supabase = makeSupabase({ handshake_bindings: bindingChain });
     getGuardedClient.mockReturnValue(supabase);
-
-    const events = await getTimeline('hs-1', 'tenant-1');
-    expect(Array.isArray(events)).toBe(true);
+    await expect(getTimeline('hs-1', 'tenant-1')).rejects.toThrow(
+      /Handshake tenant ownership cannot be verified/,
+    );
   });
 
-  it('proceeds when binding row is not found', async () => {
+  it('throws when binding row is not found', async () => {
     const bindingChain = makeChain({ data: null, error: null });
-    const handshakeChain = makeChain({ data: [makeEvent()], error: null });
-    const signoffChain = makeChain({ data: [], error: null });
-
-    const supabase = makeSupabase({
-      handshake_bindings: bindingChain,
-      handshake_events: handshakeChain,
-      signoff_events: signoffChain,
-    });
+    const supabase = makeSupabase({ handshake_bindings: bindingChain });
     getGuardedClient.mockReturnValue(supabase);
-
-    const events = await getTimeline('hs-1', 'tenant-1');
-    expect(Array.isArray(events)).toBe(true);
+    await expect(getTimeline('hs-1', 'tenant-1')).rejects.toThrow(
+      /Handshake tenant ownership cannot be verified/,
+    );
   });
 
   it('returns empty array when both tables have no events', async () => {
-    const bindingChain = makeChain({ data: null, error: null });
+    // Tenant-isolation hardening requires a binding row with matching tenant_id.
+    const bindingChain = makeChain({ data: { tenant_id: 'tenant-1' }, error: null });
     const handshakeChain = makeChain({ data: [], error: null });
     const signoffChain = makeChain({ data: [], error: null });
 
@@ -306,7 +300,7 @@ describe('searchEvents', () => {
   });
 
   it('throws when query is only whitespace', async () => {
-    await expect(searchEvents('   ')).rejects.toThrow('query is required');
+    await expect(searchEvents('   ', { tenant_id: 'test-tenant' })).rejects.toThrow('query is required');
   });
 
   it('throws when query is not a string', async () => {
@@ -320,7 +314,7 @@ describe('searchEvents', () => {
     const supabase = { from: vi.fn(() => chain) };
     getGuardedClient.mockReturnValue(supabase);
 
-    const results = await searchEvents('test query');
+    const results = await searchEvents('test query', { tenant_id: 'test-tenant' });
     expect(Array.isArray(results)).toBe(true);
   });
 
@@ -329,7 +323,7 @@ describe('searchEvents', () => {
     const supabase = { from: vi.fn(() => chain) };
     getGuardedClient.mockReturnValue(supabase);
 
-    const results = await searchEvents('no match');
+    const results = await searchEvents('no match', { tenant_id: 'test-tenant' });
     expect(results).toEqual([]);
   });
 
@@ -342,7 +336,7 @@ describe('searchEvents', () => {
     const supabase = { from: vi.fn(() => chain) };
     getGuardedClient.mockReturnValue(supabase);
 
-    const results = await searchEvents('test');
+    const results = await searchEvents('test', { tenant_id: 'test-tenant' });
     if (results.length >= 2) {
       expect(new Date(results[0].created_at) >= new Date(results[1].created_at)).toBe(true);
     }
@@ -353,7 +347,7 @@ describe('searchEvents', () => {
     const supabase = { from: vi.fn(() => chain) };
     getGuardedClient.mockReturnValue(supabase);
 
-    const results = await searchEvents('test', { event_types: ['handshake_created'] });
+    const results = await searchEvents('test', { tenant_id: 'test-tenant', event_types: ['handshake_created'] });
     expect(Array.isArray(results)).toBe(true);
     // Verify .in() was called with the filter
     expect(chain.in).toHaveBeenCalledWith('event_type', ['handshake_created']);
@@ -365,7 +359,7 @@ describe('searchEvents', () => {
     getGuardedClient.mockReturnValue(supabase);
 
     const from = '2024-01-01T00:00:00Z';
-    await searchEvents('test', { date_range: { from } });
+    await searchEvents('test', { tenant_id: 'test-tenant', date_range: { from } });
     expect(chain.gte).toHaveBeenCalledWith('created_at', from);
   });
 
@@ -375,7 +369,7 @@ describe('searchEvents', () => {
     getGuardedClient.mockReturnValue(supabase);
 
     const to = '2024-12-31T23:59:59Z';
-    await searchEvents('test', { date_range: { to } });
+    await searchEvents('test', { tenant_id: 'test-tenant', date_range: { to } });
     expect(chain.lte).toHaveBeenCalledWith('created_at', to);
   });
 
@@ -407,7 +401,7 @@ describe('searchEvents', () => {
     getGuardedClient.mockReturnValue(supabase);
 
     // Should not throw, should fall back
-    const results = await searchEvents('test query');
+    const results = await searchEvents('test query', { tenant_id: 'test-tenant' });
     expect(Array.isArray(results)).toBe(true);
   });
 
@@ -432,7 +426,7 @@ describe('searchEvents', () => {
     const supabase = { from: vi.fn(() => flakyChain) };
     getGuardedClient.mockReturnValue(supabase);
 
-    const results = await searchEvents('test');
+    const results = await searchEvents('test', { tenant_id: 'test-tenant' });
     expect(Array.isArray(results)).toBe(true);
   });
 });

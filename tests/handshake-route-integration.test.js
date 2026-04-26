@@ -422,13 +422,17 @@ describe('GET /api/handshake (list)', () => {
   });
 
   it('17. passes filter params from query string correctly (entity_ref forced to auth entity)', async () => {
-    // Finding 11: entity_ref is always forced to auth.entity, ignoring query param
+    // Finding 11: entity_ref is always forced to auth.entity, ignoring query param.
+    // Updated: the route now passes the resolved entity_ref STRING (auth.entity.id
+    // / .entity_id), not the full auth.entity object. listHandshakes operates on
+    // entity_ref strings, not on the auth-context object — passing the object
+    // was an earlier bug that surfaced as type confusion downstream.
     const req = createMockRequest('GET', 'http://localhost/api/handshake?status=verified&mode=delegated&entity_ref=ent_xyz');
     await listGet(req);
 
     const filters = mockListHandshakes.mock.calls[0][0];
     expect(filters).toEqual({
-      entity_ref: { entity_id: 'test-entity-123', id: 'test-entity-123' },
+      entity_ref: 'test-entity-123',
       status: 'verified',
       mode: 'delegated',
     });

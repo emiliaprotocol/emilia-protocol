@@ -65,37 +65,38 @@ describe('getTimeline — tenant mismatch (line 144)', () => {
     ).rejects.toThrow('Handshake does not belong to this tenant');
   });
 
-  it('proceeds when binding has no tenant_id (no isolation check needed)', async () => {
-    // binding.tenant_id is null — skip tenant check
+  // Tenant-isolation hardening: getTimeline now THROWS instead of proceeding
+  // when the binding has no tenant_id or the binding row is missing. The
+  // previous "proceed" behavior was the security gap closed by the
+  // hardening. Updated assertions reflect the new fail-closed contract.
+  it('throws when binding has no tenant_id (cannot verify ownership)', async () => {
     const bindingChain = makeChain({ data: { tenant_id: null }, error: null });
-    const eventsChain = makeChain({ data: [], error: null });
-
     const supabase = {
       from: vi.fn((table) => {
         if (table === 'handshake_bindings') return bindingChain;
-        return eventsChain;
+        return makeChain({ data: [], error: null });
       }),
     };
     getGuardedClient.mockReturnValue(supabase);
 
-    const result = await getTimeline('hs-1', 'tenant-mine');
-    expect(Array.isArray(result)).toBe(true);
+    await expect(
+      getTimeline('hs-1', 'tenant-mine')
+    ).rejects.toThrow(/Handshake tenant ownership cannot be verified/);
   });
 
-  it('proceeds when binding row does not exist (data=null)', async () => {
+  it('throws when binding row does not exist (cannot verify ownership)', async () => {
     const bindingChain = makeChain({ data: null, error: null });
-    const eventsChain = makeChain({ data: [], error: null });
-
     const supabase = {
       from: vi.fn((table) => {
         if (table === 'handshake_bindings') return bindingChain;
-        return eventsChain;
+        return makeChain({ data: [], error: null });
       }),
     };
     getGuardedClient.mockReturnValue(supabase);
 
-    const result = await getTimeline('hs-1', 'tenant-x');
-    expect(Array.isArray(result)).toBe(true);
+    await expect(
+      getTimeline('hs-1', 'tenant-x')
+    ).rejects.toThrow(/Handshake tenant ownership cannot be verified/);
   });
 });
 
@@ -127,7 +128,7 @@ describe('searchEvents — textSearch non-text-search error (line 252)', () => {
     };
     getGuardedClient.mockReturnValue(supabase);
 
-    const result = await searchEvents('some query');
+    const result = await searchEvents('some query', { tenant_id: 'test-tenant' });
     // Should not throw; just returns [] for each failing table
     expect(Array.isArray(result)).toBe(true);
     expect(result).toHaveLength(0);
@@ -157,7 +158,7 @@ describe('searchEvents — catch block on table query throw (lines 257-258)', ()
     };
     getGuardedClient.mockReturnValue(supabase);
 
-    const result = await searchEvents('search term');
+    const result = await searchEvents('search term', { tenant_id: 'test-tenant' });
     expect(Array.isArray(result)).toBe(true);
     expect(result).toHaveLength(0);
   });
@@ -208,7 +209,7 @@ describe('searchEvents — textSearch error triggers ilike fallback', () => {
     const supabase = { from: vi.fn(() => chain) };
     getGuardedClient.mockReturnValue(supabase);
 
-    const result = await searchEvents('fallback query');
+    const result = await searchEvents('fallback query', { tenant_id: 'test-tenant' });
     // At least the fallback path should have been tried
     expect(Array.isArray(result)).toBe(true);
   });
