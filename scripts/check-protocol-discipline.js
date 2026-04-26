@@ -39,6 +39,13 @@ const ENV_ALLOWLIST = new Set([
   // secret, which is not a concern env.js currently handles. TODO: add
   // getOperatorKeys() accessor to lib/env.js.
   path.join(ROOT, 'lib', 'operator-auth.js'),
+  // mcp-server/index.js reads EP_BASE_URL, EP_API_KEY, EP_AUTO_RECEIPT_URL,
+  // and EP_AUTO_RECEIPT_KEY at startup. These are MCP-server entry-point
+  // configuration, evaluated once when the server boots. The MCP server is
+  // a separate process from the Next.js app and does not import lib/env.js
+  // (which is bundled with the app). TODO: extract a shared env loader if
+  // we ever need to deduplicate config across processes.
+  path.join(ROOT, 'mcp-server', 'index.js'),
 ]);
 
 /** Trust-bearing tables that must only be written through canonical paths. */

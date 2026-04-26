@@ -23,6 +23,14 @@ servers:
   - url: http://localhost:3000
     description: Local development
 
+# Default security requirement for every operation. Individual operations may
+# override (including `security: []` to mark a specific operation as
+# explicitly public). Without this root-level declaration, the redocly
+# `security-defined` lint rule fires on any operation that omits its own
+# `security:` block — currently 30 of 96 operations.
+security:
+  - BearerAuth: []
+
 tags:
   - name: Trust
     description: Trust profiles and policy-bound evaluation surfaces
