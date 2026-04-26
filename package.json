@@ -16,6 +16,8 @@
     "check:protocol": "node scripts/check-protocol-discipline.js",
     "reconstitute": "node scripts/replay-protocol.js --reconstitute",
     "test:mutation": "stryker run",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "setup": "npm install && cp .env.example .env.local 2>/dev/null || true && echo 'Setup complete. Edit .env.local with your credentials.'",
     "prepare": "husky"
   },
@@ -35,14 +37,18 @@
     "remotion": "^4.0.441",
     "viem": "^2.21.0"
   },
+  "overrides": {
+    "rollup": "^4.22.5"
+  },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@stryker-mutator/core": "^8.0.0",
+    "@stryker-mutator/vitest-runner": "^8.0.0",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@vitest/coverage-v8": "^4.1.2",
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.0.0",
-    "@stryker-mutator/core": "^8.0.0",
-    "@stryker-mutator/vitest-runner": "^8.0.0",
     "fast-check": "^4.6.0",
     "husky": "^9.0.0",
     "lint-staged": "^15.0.0",

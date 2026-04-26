@@ -263,9 +263,19 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
 
+      # NOTE on --exclude-dir=.github: every grep here scans the working tree
+      # for stale strings. The grep patterns themselves live in this
+      # workflow file (and any future PR description / CHANGELOG entry).
+      # Without --exclude-dir=.github, each check would self-match the
+      # pattern literal in this file and fail. The CHANGELOG-filter on the
+      # tool-count and SDK-name checks works only by accident (every line
+      # containing those literals also contains "CHANGELOG"); the v0.2.0
+      # check did not have that accident and broke. Adding the exclude
+      # makes the no-self-match guarantee structural, not accidental.
+
       - name: No stale tool counts outside CHANGELOG
         run: |
-          hits=$(grep -rn '"15 tools"\|"20 tools"\|"22 tools"\|"23 tools"\|15 tools\|20 tools\|22 tools\|23 tools' --include='*.md' --include='*.yml' --include='*.yaml' --include='*.js' --include='*.ts' --include='*.json' . | grep -v CHANGELOG | grep -v node_modules || true)
+          hits=$(grep -rn '"15 tools"\|"20 tools"\|"22 tools"\|"23 tools"\|15 tools\|20 tools\|22 tools\|23 tools' --include='*.md' --include='*.yml' --include='*.yaml' --include='*.js' --include='*.ts' --include='*.json' --exclude-dir=node_modules --exclude-dir=.github . | grep -v CHANGELOG || true)
           if [ -n "$hits" ]; then
             echo "::error::Stale tool counts found outside CHANGELOG:"
             echo "$hits"
@@ -275,7 +285,7 @@ jobs:
 
       - name: No stale test counts outside CHANGELOG
         run: |
-          hits=$(grep -rn '"152 tests"\|"152 passing"\|152 tests\|152 passing' --include='*.md' --include='*.yml' --include='*.yaml' --include='*.js' --include='*.ts' --include='*.json' . | grep -v CHANGELOG | grep -v node_modules || true)
+          hits=$(grep -rn '"152 tests"\|"152 passing"\|152 tests\|152 passing' --include='*.md' --include='*.yml' --include='*.yaml' --include='*.js' --include='*.ts' --include='*.json' --exclude-dir=node_modules --exclude-dir=.github . | grep -v CHANGELOG || true)
           if [ -n "$hits" ]; then
             echo "::error::Stale test counts found outside CHANGELOG:"
             echo "$hits"
@@ -285,7 +295,7 @@ jobs:
 
       - name: No old SDK name EmiliaClient outside CHANGELOG
         run: |
-          hits=$(grep -rn 'EmiliaClient' --include='*.md' --include='*.yml' --include='*.yaml' --include='*.js' --include='*.ts' --include='*.json' . | grep -v CHANGELOG | grep -v node_modules || true)
+          hits=$(grep -rn 'EmiliaClient' --include='*.md' --include='*.yml' --include='*.yaml' --include='*.js' --include='*.ts' --include='*.json' --exclude-dir=node_modules --exclude-dir=.github . | grep -v CHANGELOG || true)
           if [ -n "$hits" ]; then
             echo "::error::Old SDK name 'EmiliaClient' found outside CHANGELOG:"
             echo "$hits"
@@ -295,7 +305,7 @@ jobs:
 
       - name: No references to v0.2.0
         run: |
-          hits=$(grep -rn 'v0\.2\.0' --include='*.md' --include='*.yml' --include='*.yaml' --include='*.js' --include='*.ts' --include='*.json' . | grep -v node_modules || true)
+          hits=$(grep -rn 'v0\.2\.0' --include='*.md' --include='*.yml' --include='*.yaml' --include='*.js' --include='*.ts' --include='*.json' --exclude-dir=node_modules --exclude-dir=.github . || true)
           if [ -n "$hits" ]; then
             echo "::error::Stale version 'v0.2.0' references found:"
             echo "$hits"
