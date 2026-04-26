@@ -94,19 +94,15 @@ export async function POST(request) {
       },
     };
 
-    // Persist receipt to DB (best effort — receipt document is self-verifying regardless)
-    try {
-      await supabase.from('receipts').insert({
-        receipt_id: receiptId,
-        entity_id: subject,
-        submitted_by: issuer,
-        transaction_type: actionType,
-        transaction_ref: `conformance:${receiptId}`,
-        outcome: outcome === 'positive' ? 95 : (outcome === 'negative' ? 15 : 50),
-      });
-    } catch {
-      // Receipt persistence is best-effort — the signed document IS the receipt
-    }
+    // No DB persistence here. /api/receipt is the protocol-standard
+    // signed-document endpoint — the EP-RECEIPT-v1 payload IS the receipt
+    // (self-verifying via the embedded Ed25519 signature). Callers who need
+    // the receipt in the trust-DB should POST it to /api/receipts/submit,
+    // which goes through canonical-writer.js (the only sanctioned trust-table
+    // writer per check-protocol-discipline.js). Keeping a best-effort insert
+    // here would bypass the canonical writer and silently degrade write
+    // semantics on failure, which is exactly what the discipline check exists
+    // to prevent.
 
     return NextResponse.json(document, { status: 201 });
   } catch (err) {
