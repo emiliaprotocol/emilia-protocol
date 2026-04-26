@@ -9,6 +9,16 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    // Exclude Playwright e2e specs from the vitest test runner — they are run
+    // via `playwright test`, not vitest. Without this, vitest tries to load
+    // the Playwright `test` global and fails with "did not expect
+    // test.describe() to be called here".
+    //
+    // Also exclude **nested** node_modules (e.g., mcp-server/node_modules/) —
+    // the default exclude only catches top-level node_modules/ and would
+    // otherwise pull in third-party tests written for other runners (tape,
+    // recheck, etc.) that fail in the vitest environment.
+    exclude: ['e2e/**', '**/node_modules/**', 'dist/**', '.next/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
@@ -48,23 +58,22 @@ export default defineConfig({
         'lib/ep-ix.js',
       ],
       thresholds: {
-        // Originally locked 2026-04-02 at 95/97/90/97 after audit remediation.
-        // Drift since: the L99 audit fixes (commits ebd1d72, 004bb3d, 7aef06b)
-        // added defensive code paths (POLICY_NOT_FOUND throws, BINDING_HASH_MISMATCH
-        // P0003, fail-closed delegation checks) whose error branches are not
-        // exercised by the existing unit suites. Real coverage on protocol-kernel
-        // code is now 92.65/95.71/88.11/94.65 (2026-04-26).
+        // Ratchet history (never lower — only ratchet up):
+        //  2026-04-02: 95/97/90/97  — original audit lockdown bar
+        //  2026-04-26: 92/95/87/94  — lowered after L99 audit-fix defensive
+        //              branches (POLICY_NOT_FOUND, BINDING_HASH_MISMATCH P0003,
+        //              fail-closed delegation) added uncovered code paths
+        //  2026-04-25: 93/96/88/95  — current ratchet. Actual now sits at
+        //              93.36/96.24/88.71/95.39 after route-coverage segment
+        //              matcher rewrite + canonical_5_receipt_profile fixture
+        //              regen. Bumping +1pt across the board to lock in gains.
         //
-        // Resolution: lower to slightly below current-actual to give a small
-        // ratchet headroom, with a TODO to add tests for the new defensive
-        // branches and ratchet back to 95/97/90/97. Each new commit should
-        // bump these toward the target if it adds branch coverage.
-        //
-        // Never lower further — ratchet up only.
-        statements: 92,
-        functions: 95,
-        branches: 87,
-        lines: 94,
+        // Target remains 95/97/90/97. Each new commit that adds branch
+        // coverage should bump these toward the target. Never lower further.
+        statements: 93,
+        functions: 96,
+        branches: 88,
+        lines: 95,
       },
     },
   },
