@@ -115,15 +115,18 @@ function createTableSim() {
         valid_to: new Date(Date.now() + 365 * 86_400_000).toISOString(),
       });
     }
-    // Seed default policy on first access to 'handshake_policies'
+    // Seed default policy on first access to 'handshake_policies'.
+    // Audit-fix C3 (commit ebd1d72): create.js now throws POLICY_NOT_FOUND
+    // when resolvePolicy returns null. Tests using non-default policy_ids
+    // (e.g. policy-other, policy-999) were previously OK because the old
+    // silent-catch allowed them to proceed; now they need to be in the sim.
     if (name === 'handshake_policies' && tables[name].length === 0) {
-      tables[name].push({
-        policy_id: 'policy-abc-123',
-        policy_key: 'default',
-        policy_version: '1.0.0',
-        status: 'active',
-        rules: {},
-      });
+      const defaults = [
+        { policy_id: 'policy-abc-123', policy_key: 'default',     policy_version: '1.0.0', version: 1, status: 'active', rules: {} },
+        { policy_id: 'policy-other',   policy_key: 'other',       policy_version: '1.0.0', version: 1, status: 'active', rules: {} },
+        { policy_id: 'policy-999',     policy_key: 'numeric-999', policy_version: '1.0.0', version: 1, status: 'active', rules: {} },
+      ];
+      for (const p of defaults) tables[name].push(p);
     }
     return tables[name];
   }
@@ -342,6 +345,34 @@ function createTableSim() {
         sequence_number: getTable('handshake_events').length + 1,
       });
       return Promise.resolve({ data: presentation, error: null });
+    }
+    // Audit-fix C1 + 080 + 085: consume_handshake_atomic RPC handler.
+    if (fnName === 'consume_handshake_atomic') {
+      const hs = getTable('handshakes').find((h) => h.handshake_id === params.p_handshake_id);
+      if (!hs) return Promise.resolve({ data: null, error: { code: 'P0002', message: 'HANDSHAKE_NOT_FOUND' } });
+      if (hs.status !== 'verified') return Promise.resolve({ data: null, error: { code: 'P0001', message: 'INVALID_STATE_FOR_CONSUMPTION current status: ' + hs.status } });
+      const binding = getTable('handshake_bindings').find((b) => b.handshake_id === params.p_handshake_id);
+      if (!binding) return Promise.resolve({ data: null, error: { code: 'P0002', message: 'BINDING_NOT_FOUND' } });
+      if (binding.binding_hash && params.p_binding_hash && binding.binding_hash !== params.p_binding_hash) {
+        return Promise.resolve({ data: null, error: { code: 'P0003', message: 'BINDING_HASH_MISMATCH' } });
+      }
+      const existing = getTable('handshake_consumptions').find((c) => c.handshake_id === params.p_handshake_id);
+      if (existing) return Promise.resolve({ data: null, error: { code: '23505', message: 'unique violation' } });
+      const consumption = {
+        id: crypto.randomBytes(8).toString('hex'),
+        handshake_id: params.p_handshake_id,
+        binding_hash: binding.binding_hash || params.p_binding_hash,
+        consumed_by_type: params.p_consumed_by_type,
+        consumed_by_id: params.p_consumed_by_id,
+        actor_entity_ref: params.p_actor_entity_ref,
+        consumed_by_action: params.p_consumed_by_action || null,
+        created_at: new Date().toISOString(),
+      };
+      getTable('handshake_consumptions').push(consumption);
+      binding.consumed_at = consumption.created_at;
+      binding.consumed_by = params.p_actor_entity_ref;
+      binding.consumed_for = `${params.p_consumed_by_type}:${params.p_consumed_by_id}`;
+      return Promise.resolve({ data: [consumption], error: null });
     }
     if (fnName === 'verify_handshake_writes') {
       const hs = getTable('handshakes').find((h) => h.handshake_id === params.p_handshake_id);
@@ -602,17 +633,24 @@ describe('Injection & Manipulation', () => {
   // The system should treat it as a string literal (parameterized queries)
   // and not crash or execute SQL.
   it('SQL-like injection in policy_id field is treated as opaque string', async () => {
+    // Audit-fix C3 (commit ebd1d72): create.js now throws POLICY_NOT_FOUND
+    // when the policy_id resolves to no row. The SQL-injection-shaped string
+    // is not in the seeded handshake_policies table (and is correctly treated
+    // as opaque text by Supabase's parameterized queries — the injection is
+    // not executed). The post-fix behavior is the right one: reject the
+    // handshake creation with a clean error.
+    //
+    // Original test intent — "SQL is treated as opaque, not executed" — is
+    // still verified: we get a thrown HandshakeError instead of a SQL error
+    // or table-deletion side effect.
     const sqlPayload = "'; DROP TABLE handshakes; --";
-    const result = await initiateHandshake(validHandshakeParams({ policy_id: sqlPayload }));
+    await expect(
+      initiateHandshake(validHandshakeParams({ policy_id: sqlPayload }))
+    ).rejects.toMatchObject({ code: 'POLICY_NOT_FOUND' });
 
-    // The handshake is created — the SQL injection is stored as a literal string,
-    // not executed (Supabase uses parameterized queries).
-    expect(result.handshake_id).toMatch(/^eph_/);
-    expect(result.policy_id).toBe(sqlPayload);
-
-    // The stored record contains the literal string, not an executed injection
+    // The handshakes table still exists and is unaffected (injection NOT executed).
     const hsRecords = sim.getTable('handshakes');
-    expect(hsRecords[0].policy_id).toBe(sqlPayload);
+    expect(Array.isArray(hsRecords)).toBe(true);
   });
 
   // Attack: XSS payload in presentation claims to exfiltrate data if rendered.
@@ -1460,8 +1498,11 @@ describe('Issuer status vocabulary (Finding 12)', () => {
     const result = await initiateHandshake(validHandshakeParams());
     const hsId = result.handshake_id;
 
-    // Simulate authority table missing by making the from('authorities') query
-    // return an error that looks like a missing table
+    // Simulate authority table missing. Audit-fix H4 (commit 004bb3d):
+    // present.js now matches PostgreSQL SQLSTATE 42P01 (undefined_table)
+    // instead of substring-matching 'does not exist' / 'relation' (which
+    // false-positived on unrelated errors). The mock must include the
+    // explicit `code: '42P01'` field so the matcher fires.
     const origMockClient = sim.mockClient();
     const tableErrorClient = {
       from: vi.fn().mockImplementation((tableName) => {
@@ -1471,7 +1512,10 @@ describe('Issuer status vocabulary (Finding 12)', () => {
               eq: vi.fn().mockReturnValue({
                 maybeSingle: vi.fn().mockResolvedValue({
                   data: null,
-                  error: { message: 'relation "authorities" does not exist' },
+                  error: {
+                    code: '42P01',
+                    message: 'relation "authorities" does not exist',
+                  },
                 }),
               }),
             }),

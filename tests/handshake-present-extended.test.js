@@ -109,7 +109,12 @@ function makeCommand(overrides = {}) {
 // ── Lines 141-142: no issuer_ref → self_asserted ─────────────────────────────
 
 describe('_handleAddPresentation — self_asserted trust (lines 141-142)', () => {
-  it('sets issuerTrusted=true and issuerTrustReason=self_asserted when no issuer_ref', async () => {
+  it('sets issuerTrusted=false and issuerTrustReason=self_asserted when no issuer_ref', async () => {
+    // Audit-fix H4 (commit 004bb3d): self-asserted presentations are now
+    // UNTRUSTED by default. Policies must opt in per-role via
+    // rules.required_parties.<role>.allow_self_asserted = true; verify.js
+    // checks that flag against the issuer_status. Previous behavior
+    // (issuerTrusted=true) was the underlying H4 vulnerability.
     const db = makeBaseSupabase({
       handshake: validHandshake,
       party: validParty,
@@ -117,12 +122,10 @@ describe('_handleAddPresentation — self_asserted trust (lines 141-142)', () =>
     mockGetServiceClient.mockReturnValue(db);
 
     const result = await _handleAddPresentation(makeCommand({ issuer_ref: null }));
-    // If we reach here without throwing, the self_asserted path ran successfully
     expect(result).toHaveProperty('_protocolEventWritten', true);
-    // Verify the rpc was called with p_issuer_trusted: true
     expect(db.rpc).toHaveBeenCalledWith(
       'present_handshake_writes',
-      expect.objectContaining({ p_issuer_trusted: true, p_issuer_status: 'self_asserted' })
+      expect.objectContaining({ p_issuer_trusted: false, p_issuer_status: 'self_asserted' })
     );
   });
 });
@@ -144,16 +147,25 @@ describe('_handleAddPresentation — authority DB error (line 155)', () => {
   });
 
   it('does NOT throw when authority error is a missing-table error', async () => {
+    // Audit-fix H4 (commit 004bb3d): present.js now matches PostgreSQL
+    // SQLSTATE 42P01 (undefined_table) explicitly instead of substring-
+    // matching the error message. The mock must include the explicit
+    // `code: '42P01'` field so the matcher fires.
     const db = makeBaseSupabase({
       handshake: validHandshake,
       party: validParty,
-      authorityResult: { data: null, error: { message: 'relation "authorities" does not exist' } },
+      authorityResult: {
+        data: null,
+        error: {
+          code: '42P01',
+          message: 'relation "authorities" does not exist',
+        },
+      },
     });
     mockGetServiceClient.mockReturnValue(db);
 
     const result = await _handleAddPresentation(makeCommand({ issuer_ref: 'key-abc' }));
     expect(result).toHaveProperty('_protocolEventWritten', true);
-    // authority_table_missing → issuerTrusted = false
     expect(db.rpc).toHaveBeenCalledWith(
       'present_handshake_writes',
       expect.objectContaining({ p_issuer_trusted: false, p_issuer_status: 'authority_table_missing' })

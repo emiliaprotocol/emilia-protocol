@@ -394,6 +394,35 @@ function createTableSim() {
       });
       return Promise.resolve({ data: presentation, error: null });
     }
+    // Audit-fix C1 + 080 + 085: consume_handshake_atomic RPC handler.
+    // Critical for the 12 concurrency-warfare tests that exercise consume races.
+    if (fnName === 'consume_handshake_atomic') {
+      const hs = getTable('handshakes').find((h) => h.handshake_id === params.p_handshake_id);
+      if (!hs) return Promise.resolve({ data: null, error: { code: 'P0002', message: 'HANDSHAKE_NOT_FOUND' } });
+      if (hs.status !== 'verified') return Promise.resolve({ data: null, error: { code: 'P0001', message: 'INVALID_STATE_FOR_CONSUMPTION current status: ' + hs.status } });
+      const binding = getTable('handshake_bindings').find((b) => b.handshake_id === params.p_handshake_id);
+      if (!binding) return Promise.resolve({ data: null, error: { code: 'P0002', message: 'BINDING_NOT_FOUND' } });
+      if (binding.binding_hash && params.p_binding_hash && binding.binding_hash !== params.p_binding_hash) {
+        return Promise.resolve({ data: null, error: { code: 'P0003', message: 'BINDING_HASH_MISMATCH' } });
+      }
+      const existing = getTable('handshake_consumptions').find((c) => c.handshake_id === params.p_handshake_id);
+      if (existing) return Promise.resolve({ data: null, error: { code: '23505', message: 'unique violation' } });
+      const consumption = {
+        id: crypto.randomBytes(8).toString('hex'),
+        handshake_id: params.p_handshake_id,
+        binding_hash: binding.binding_hash || params.p_binding_hash,
+        consumed_by_type: params.p_consumed_by_type,
+        consumed_by_id: params.p_consumed_by_id,
+        actor_entity_ref: params.p_actor_entity_ref,
+        consumed_by_action: params.p_consumed_by_action || null,
+        created_at: new Date().toISOString(),
+      };
+      getTable('handshake_consumptions').push(consumption);
+      binding.consumed_at = consumption.created_at;
+      binding.consumed_by = params.p_actor_entity_ref;
+      binding.consumed_for = `${params.p_consumed_by_type}:${params.p_consumed_by_id}`;
+      return Promise.resolve({ data: [consumption], error: null });
+    }
     if (fnName === 'verify_handshake_writes') {
       const hs = getTable('handshakes').find((h) => h.handshake_id === params.p_handshake_id);
       if (hs) hs.status = params.p_new_status;

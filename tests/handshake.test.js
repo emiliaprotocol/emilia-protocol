@@ -123,15 +123,15 @@ function createTableSim() {
         valid_to: new Date(Date.now() + 365 * 86_400_000).toISOString(),
       });
     }
-    // Seed default policy on first access to 'handshake_policies'
+    // Seed default policies. Audit-fix C3 (commit ebd1d72): create.js now
+    // throws POLICY_NOT_FOUND when resolvePolicy returns null, so any
+    // policy_id used by tests must exist in the sim.
     if (name === 'handshake_policies' && tables[name].length === 0) {
-      tables[name].push({
-        policy_id: 'policy-abc-123',
-        policy_key: 'default',
-        policy_version: '1.0.0',
-        status: 'active',
-        rules: {},
-      });
+      const defaults = [
+        { policy_id: 'policy-abc-123',  policy_key: 'default',    policy_version: '1.0.0', version: 1, status: 'active', rules: {} },
+        { policy_id: 'policy-restricted', policy_key: 'restricted', policy_version: '1.0.0', version: 1, status: 'active', rules: {} },
+      ];
+      for (const p of defaults) tables[name].push(p);
     }
     return tables[name];
   }
@@ -351,6 +351,48 @@ function createTableSim() {
       return Promise.resolve({ data: presentation, error: null });
     }
 
+    // Audit-fix C1 + 080 + 085 (commits ebd1d72, 004bb3d): consume.js
+    // now goes through this RPC. Mirrors the SQL function:
+    //   - lock handshakes row, status must be 'verified' (P0001 if not)
+    //   - lock handshake_bindings row, hash must match (P0003 if not)
+    //   - insert into handshake_consumptions (UNIQUE → 23505 if dup)
+    //   - update handshake_bindings.consumed_at atomically
+    if (fnName === 'consume_handshake_atomic') {
+      const hs = getTable('handshakes').find((h) => h.handshake_id === params.p_handshake_id);
+      if (!hs) {
+        return Promise.resolve({ data: null, error: { code: 'P0002', message: 'HANDSHAKE_NOT_FOUND' } });
+      }
+      if (hs.status !== 'verified') {
+        return Promise.resolve({ data: null, error: { code: 'P0001', message: 'INVALID_STATE_FOR_CONSUMPTION current status: ' + hs.status } });
+      }
+      const binding = getTable('handshake_bindings').find((b) => b.handshake_id === params.p_handshake_id);
+      if (!binding) {
+        return Promise.resolve({ data: null, error: { code: 'P0002', message: 'BINDING_NOT_FOUND' } });
+      }
+      if (binding.binding_hash && params.p_binding_hash && binding.binding_hash !== params.p_binding_hash) {
+        return Promise.resolve({ data: null, error: { code: 'P0003', message: 'BINDING_HASH_MISMATCH' } });
+      }
+      const existing = getTable('handshake_consumptions').find((c) => c.handshake_id === params.p_handshake_id);
+      if (existing) {
+        return Promise.resolve({ data: null, error: { code: '23505', message: 'unique violation: signoff_consumption_handshake_id' } });
+      }
+      const consumption = {
+        id: crypto.randomBytes(8).toString('hex'),
+        handshake_id: params.p_handshake_id,
+        binding_hash: binding.binding_hash || params.p_binding_hash,
+        consumed_by_type: params.p_consumed_by_type,
+        consumed_by_id: params.p_consumed_by_id,
+        actor_entity_ref: params.p_actor_entity_ref,
+        consumed_by_action: params.p_consumed_by_action || null,
+        created_at: new Date().toISOString(),
+      };
+      getTable('handshake_consumptions').push(consumption);
+      // Atomic mark per migration 085
+      binding.consumed_at = consumption.created_at;
+      binding.consumed_by = params.p_actor_entity_ref;
+      binding.consumed_for = `${params.p_consumed_by_type}:${params.p_consumed_by_id}`;
+      return Promise.resolve({ data: [consumption], error: null });
+    }
     if (fnName === 'verify_handshake_writes') {
       const hs = getTable('handshakes').find((h) => h.handshake_id === params.p_handshake_id);
       if (hs) {

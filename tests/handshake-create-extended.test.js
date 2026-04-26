@@ -45,7 +45,20 @@ vi.mock('../lib/protocol-write.js', () => ({
 }));
 
 vi.mock('../lib/handshake/policy.js', () => ({
-  resolvePolicy: vi.fn().mockResolvedValue(null),
+  // Audit-fix C3 (commit ebd1d72): create.js now throws POLICY_NOT_FOUND when
+  // resolvePolicy returns null, instead of silently catching and proceeding
+  // with policy_hash=null. Default mock now returns a valid stub so tests
+  // that target downstream failure modes (RPC errors, idempotency, etc.)
+  // reach their actual assertion targets. Tests that specifically exercise
+  // the policy-not-found path use `.mockResolvedValueOnce(null)` to override.
+  resolvePolicy: vi.fn().mockResolvedValue({
+    policy_id: 'pol-1',
+    policy_key: 'default',
+    policy_version: '1.0.0',
+    version: 1,
+    status: 'active',
+    rules: {},
+  }),
   checkClaimsAgainstPolicy: vi.fn(() => ({ satisfied: true, missing: [] })),
   getRequiredPartiesForMode: vi.fn(() => []),
 }));
