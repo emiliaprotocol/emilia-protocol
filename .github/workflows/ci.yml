@@ -397,21 +397,15 @@ jobs:
         run: docker build -t ep-test .
 
   # ── Job 17: E2E smoke tests (Playwright) ─────────────────────────
-  # Gated on workflow_dispatch and the RUN_E2E repo variable. Currently the
-  # e2e suite spins up `npm run dev` as its webServer and the dev server has
-  # heavyweight startup cost + flaky behavior in the GHA environment (Vitest
-  # files erroneously loaded by the test runner, ESM/CJS interop with the
-  # Next.js dev pipeline). Running on every push wastes ~5 min per build and
-  # adds noise without catching real regressions.
-  #
-  # To re-enable on push: set the repo variable RUN_E2E=true in the GitHub
-  # repo settings, OR run manually via the Actions tab.
+  # Runs the Playwright smoke suite against the **production** Next.js
+  # server (`npm run build` + `npm run start`), not `npm run dev`. The
+  # dev-server route was previously gated as workflow_dispatch because it
+  # was slow (~5 min), flaky, and pulled vitest into Playwright's runner.
+  # Production server boots in ~3s, behaves like prod, and the vitest
+  # confusion is resolved by the e2e/** exclude in vitest.config.js.
   e2e:
     runs-on: ubuntu-latest
     needs: build
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      vars.RUN_E2E == 'true'
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
@@ -421,10 +415,21 @@ jobs:
       - run: npm ci
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
+      - name: Build production bundle
+        run: npm run build
+        env:
+          # next build needs valid envs at compile time; supply minimal stubs
+          # so the build doesn't fail trying to read real secrets.
+          NEXT_PUBLIC_SUPABASE_URL: 'https://e2e.supabase.local'
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'e2e-anon-key'
       - name: Run E2E smoke tests
         run: npx playwright test
         env:
           CI: 'true'
+          # `next start` re-reads NEXT_PUBLIC_* at boot for runtime config —
+          # keep parity with the build step so the production server starts.
+          NEXT_PUBLIC_SUPABASE_URL: 'https://e2e.supabase.local'
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: 'e2e-anon-key'
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
