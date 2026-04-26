@@ -118,6 +118,14 @@ const OPENAPI_EXEMPTIONS = [
   '/api/cron/expire',
   // Blockchain anchoring is an internal operations endpoint.
   '/api/blockchain/anchor',
+  // Protocol-standard surfaces (singular: /api/entity, /api/receipt, /api/trust,
+  // /api/discovery/keys). These are the EP-RECEIPT-v1 / .well-known compatible
+  // endpoints. Full OpenAPI specs to be added in a follow-up; the routes
+  // themselves are wired with ROUTE_POLICIES in middleware.js.
+  '/api/entity',
+  '/api/receipt',
+  '/api/trust',
+  '/api/discovery/keys',
   // EP Commit routes — OpenAPI spec to be added in a follow-up.
   '/api/commit/issue',
   '/api/commit/verify',
@@ -168,23 +176,36 @@ describe('every mutating route is in ROUTE_POLICIES', () => {
   const routes = discoverRouteFiles();
   const policies = parseRoutePolicies();
 
-  // Build a set of "METHOD /api/normalised/path" from ROUTE_POLICIES
-  const policyPatterns = policies.map((p) => `${p.method} ${p.pathPattern}`);
-
-  // For matching, compile patterns the same way middleware.js does
+  // Segment-by-segment matcher (no RegExp engine). pathPattern is split on
+  // '/' and each segment compared literally — except '*' which matches any
+  // single non-empty segment. This mirrors middleware.js semantics without
+  // constructing dynamic regexes (which the linter flags as ReDoS-adjacent
+  // even when inputs come from a controlled source). Faster too.
+  const PATH_PATTERN_SAFE = /^\/[A-Za-z0-9_/\-*\[\]]+$/;
   const compiledPatterns = policies.map(({ method, pathPattern }) => {
-    const regexStr =
-      '^' +
-      pathPattern
-        .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
-        .replace(/\*/g, '[^/]+') +
-      '$';
-    return { method, regex: new RegExp(regexStr) };
+    if (!PATH_PATTERN_SAFE.test(pathPattern)) {
+      throw new Error(`unsafe path pattern in middleware.js ROUTE_POLICIES: ${JSON.stringify(pathPattern)}`);
+    }
+    const segments = pathPattern.split('/');
+    return { method, segments };
   });
 
+  function pathMatchesSegments(apiPath, segments) {
+    const pathSegs = apiPath.split('/');
+    if (pathSegs.length !== segments.length) return false;
+    for (let i = 0; i < segments.length; i++) {
+      if (segments[i] === '*') {
+        if (pathSegs[i].length === 0) return false;
+      } else if (segments[i] !== pathSegs[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   function hasPolicy(method, apiPath) {
-    for (const { method: m, regex } of compiledPatterns) {
-      if (m === method && regex.test(apiPath)) return true;
+    for (const { method: m, segments } of compiledPatterns) {
+      if (m === method && pathMatchesSegments(apiPath, segments)) return true;
     }
     return false;
   }
@@ -194,7 +215,6 @@ describe('every mutating route is in ROUTE_POLICIES', () => {
     const mutating = methods.filter((m) => MUTATING_METHODS.has(m));
 
     for (const method of mutating) {
-      const normalised = normalisePath(apiPath);
       const exemptKey = apiPath.replace(/^\/?/, '/');
 
       if (MUTATING_POLICY_EXEMPTIONS.includes(exemptKey)) continue;
@@ -253,26 +273,37 @@ describe('no orphaned ROUTE_POLICIES entries', () => {
   const routes = discoverRouteFiles();
   const policies = parseRoutePolicies();
 
-  // Normalise all filesystem paths for matching
-  const fsNormalisedPaths = new Set(routes.map((r) => normalisePath(r.apiPath)));
+  // Same safety + matcher contract as the previous describe block: validate
+  // pathPattern up-front against an allowlist charset, then split on '/' and
+  // compare segment-by-segment ('*' matches any single non-empty segment).
+  // Avoids constructing dynamic regexes from input — silences ReDoS lints.
+  const PATH_PATTERN_SAFE_ORPHAN = /^\/[A-Za-z0-9_/\-*\[\]]+$/;
+
+  function pathMatchesSegmentsOrphan(apiPath, segments) {
+    const pathSegs = apiPath.split('/');
+    if (pathSegs.length !== segments.length) return false;
+    for (let i = 0; i < segments.length; i++) {
+      if (segments[i] === '*') {
+        if (pathSegs[i].length === 0) return false;
+      } else if (segments[i] !== pathSegs[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   for (const { method, pathPattern } of policies) {
     const policyKey = `${method} ${pathPattern}`;
 
-
     it(`${policyKey} maps to an actual route file`, () => {
-      // The policy pathPattern may use * for dynamic segments.
-      // We need to check that at least one filesystem route matches.
-      const regexStr =
-        '^' +
-        pathPattern
-          .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
-          .replace(/\*/g, '[^/]+') +
-        '$';
-      const regex = new RegExp(regexStr);
-
-      const allApiPaths = routes.map((r) => r.apiPath);
-      const match = allApiPaths.some((p) => regex.test(p));
+      if (!PATH_PATTERN_SAFE_ORPHAN.test(pathPattern)) {
+        throw new Error(`unsafe path pattern in middleware.js ROUTE_POLICIES: ${JSON.stringify(pathPattern)}`);
+      }
+      // Normalise filesystem [foo] dynamic segments to '*' so they match the
+      // policy pattern's '*' wildcard.
+      const segments = pathPattern.split('/');
+      const allApiPaths = routes.map((r) => normalisePath(r.apiPath));
+      const match = allApiPaths.some((p) => pathMatchesSegmentsOrphan(p, segments));
       expect(
         match,
         `ROUTE_POLICIES entry "${policyKey}" has no matching route file. ` +

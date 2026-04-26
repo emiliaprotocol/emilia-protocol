@@ -39,6 +39,12 @@ const ROUTE_POLICIES = {
   'GET /api/entities/search':         { rateCategory: 'read', useAuth: false },
   'POST /api/entities/*/auto-receipt': { rateCategory: 'dispute_write', useAuth: true },
 
+  // Protocol-standard surfaces (singular, EP-RECEIPT-v1 / EP-IX vocabulary)
+  'POST /api/entity':                 { rateCategory: 'register', useAuth: false },        // entity registration
+  'POST /api/receipt':                { rateCategory: 'submit',   useAuth: true },         // receipt submission
+  'GET /api/trust':                   { rateCategory: 'read',     useAuth: false },        // trust profile lookup
+  'GET /api/discovery/keys':          { rateCategory: 'read',     useAuth: false },        // public well-known keys discovery
+
   // Disputes (writes)
   'POST /api/disputes/file':          { rateCategory: 'dispute_write', useAuth: true },
   'POST /api/disputes/respond':       { rateCategory: 'dispute_write', useAuth: true },
