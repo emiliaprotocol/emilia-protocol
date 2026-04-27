@@ -175,6 +175,10 @@ const OPENAPI_EXEMPTIONS = [
   '/api/v1/signoffs/[signoffId]/approve',
   '/api/v1/signoffs/[signoffId]/reject',
   '/api/v1/adapters/gov/benefit-bank-change/precheck',
+  '/api/v1/adapters/gov/caseworker-override/precheck',
+  '/api/v1/adapters/fin/vendor-bank-change/precheck',
+  '/api/v1/adapters/fin/beneficiary-creation/precheck',
+  '/api/v1/adapters/fin/payment-release/precheck',
 ];
 
 

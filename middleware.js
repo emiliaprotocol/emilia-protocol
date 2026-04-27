@@ -55,10 +55,15 @@ const ROUTE_POLICIES = {
   'POST /api/v1/signoffs/request':                 { rateCategory: 'submit', useAuth: true }, // request human signoff
   'POST /api/v1/signoffs/*/approve':               { rateCategory: 'submit', useAuth: true }, // approver acts
   'POST /api/v1/signoffs/*/reject':                { rateCategory: 'submit', useAuth: true }, // approver acts
-  // GovGuard demo adapters (MD §8) — thin façades over /api/v1/trust-receipts
-  // pre-filled for specific government workflows. Same auth + rate posture
-  // as the underlying create endpoint.
-  'POST /api/v1/adapters/gov/benefit-bank-change/precheck': { rateCategory: 'submit', useAuth: true },
+  // GovGuard + FinGuard demo adapters (MD §8) — thin façades over
+  // /api/v1/trust-receipts pre-filled for specific workflows. Same auth +
+  // rate posture as the underlying create endpoint. All implemented via
+  // lib/guard-adapter.runGuardPrecheck().
+  'POST /api/v1/adapters/gov/benefit-bank-change/precheck':  { rateCategory: 'submit', useAuth: true },
+  'POST /api/v1/adapters/gov/caseworker-override/precheck':  { rateCategory: 'submit', useAuth: true },
+  'POST /api/v1/adapters/fin/vendor-bank-change/precheck':   { rateCategory: 'submit', useAuth: true },
+  'POST /api/v1/adapters/fin/beneficiary-creation/precheck': { rateCategory: 'submit', useAuth: true },
+  'POST /api/v1/adapters/fin/payment-release/precheck':      { rateCategory: 'submit', useAuth: true },
 
   // Disputes (writes)
   'POST /api/disputes/file':          { rateCategory: 'dispute_write', useAuth: true },
