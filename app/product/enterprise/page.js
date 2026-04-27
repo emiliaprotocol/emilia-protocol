@@ -27,14 +27,24 @@ export default function EnterprisePage() {
     setSubmitting(false);
   }
 
+  // Honest enterprise feature list. SAML / SCIM / OIDC removed —
+  // not implemented in lib/cloud/auth.js or anywhere else. K8s / VMware /
+  // OpenShift deployments removed from list and from "Deployment models"
+  // section: no Helm charts, no manifests, no operators in repo. These
+  // are pilot-track items; see the explicit roadmap below.
   const FEATURES = [
-    { title: 'VPC / private deployment', body: 'EP runs entirely within your infrastructure boundary. No trust data, policy configurations, or signoff records leave your network. Deploy in your VPC, private cloud, or air-gapped environment.' },
+    { title: 'VPC / private deployment', body: 'EP runs entirely within your infrastructure boundary. No trust data, policy configurations, or signoff records leave your network. Reference AWS CloudFormation template ships in infrastructure/aws/.' },
     { title: 'Data residency', body: 'All trust data, event records, and policy configurations reside in your chosen jurisdiction. Meet data sovereignty requirements without architectural compromise.' },
-    { title: 'SSO / SCIM', body: 'Integrate with your identity provider via SAML 2.0 or OIDC. Automated user provisioning and deprovisioning through SCIM. Principal identities in EP map directly to your enterprise directory.' },
     { title: 'Evidence retention & legal hold', body: 'Configurable retention policies for all trust events. Legal hold capability preserves evidence across retention boundaries for litigation, investigation, or regulatory response.' },
-    { title: 'Regulator artifact exports', body: 'Generate structured evidence packages for regulatory examination. Pre-formatted for common regulatory frameworks including SOX, FISMA, PCI-DSS, and sector-specific requirements.' },
+    { title: 'Regulator artifact exports', body: 'Generate structured evidence packages for regulatory examination, mapped to control families used in SOX and sector-specific frameworks (full FISMA / PCI-DSS mapping is roadmap).' },
     { title: 'Investigation tooling', body: 'Query and reconstruct action sequences across time, principals, and trust surfaces. Investigation mode provides forensic-grade evidence chains for incident response and internal audit.' },
     { title: 'Delegated administration', body: 'Hierarchical administration with scoped permissions. Delegate policy management, signoff configuration, and evidence access to business units without granting global control.' },
+  ];
+
+  const ROADMAP = [
+    { title: 'SSO / SCIM (SAML 2.0, OIDC, automated provisioning)', body: 'Pilot-track work. EP currently authenticates via API keys + EP-IX identity bindings. SAML / OIDC / SCIM integration is scoped per pilot when an enterprise IdP is in play.' },
+    { title: 'On-prem Kubernetes / VMware / OpenShift packaging', body: 'Container images and AWS CFN templates ship today. Helm charts, OpenShift operators, and VMware OVF templates are roadmap — pilots needing them get them as part of the engagement.' },
+    { title: 'Air-gap installer', body: 'Air-gapped deployment is a pilot-track engagement, not a downloadable installer. The runtime supports offline operation; the packaging is bespoke for now.' },
   ];
 
   return (
@@ -69,14 +79,33 @@ export default function EnterprisePage() {
         </div>
       </section>
 
+      {/* Roadmap (pilot-track) — explicit so enterprise procurement teams
+          do not mistake aspirational integrations for delivered features. */}
+      <section style={styles.section}>
+        <div style={styles.eyebrowBlue}>Roadmap (pilot-track)</div>
+        <h2 style={styles.h2}>Asked-for, not yet shipped.</h2>
+        <p style={styles.body}>
+          Items below come up in nearly every enterprise pilot conversation.
+          They are scoped per engagement rather than shipped off-the-shelf.
+        </p>
+        <div style={grid.auto(280)}>
+          {ROADMAP.map((f, i) => (
+            <div key={i} className="ep-card-hover" style={{ ...styles.card, opacity: 0.85 }}>
+              <div style={styles.cardTitle}>{f.title}</div>
+              <div style={styles.cardBody}>{f.body}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Deployment models */}
       <section style={styles.section}>
         <h2 style={styles.h2}>Deployment models</h2>
         <p style={styles.body}>EP Enterprise supports multiple deployment topologies based on your security requirements and infrastructure constraints.</p>
         <div style={grid.stack}>
           {[
-            { title: 'Customer VPC', body: 'EP control plane deployed in your cloud account. You control the network boundary, encryption keys, and data lifecycle. We provide the container images, configuration, and operational runbooks.' },
-            { title: 'Private cloud', body: 'On-premises deployment for environments that require physical infrastructure control. Supports VMware, OpenShift, and bare-metal Kubernetes. Air-gap compatible with offline policy updates.' },
+            { title: 'Customer VPC (AWS today)', body: 'EP control plane deployed in your cloud account. You control the network boundary, encryption keys, and data lifecycle. We provide the container images, the AWS CloudFormation template (infrastructure/aws/template.yaml), configuration, and operational runbooks.' },
+            { title: 'Private cloud / on-prem (pilot-track)', body: 'On-premises deployment for environments that require physical infrastructure control. Container images run anywhere Linux runs; Helm charts, OpenShift operators, and VMware OVF templates are scoped per pilot rather than shipped as off-the-shelf artifacts.' },
             { title: 'Hybrid', body: 'Policy management and event explorer in EP Cloud. Signoff orchestration and evidence storage in your infrastructure. Minimizes operational burden while maintaining data residency for sensitive records.' },
           ].map((d, i) => (
             <div key={i} className="ep-card-hover" style={styles.card}>

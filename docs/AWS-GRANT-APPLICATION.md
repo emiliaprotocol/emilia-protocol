@@ -70,17 +70,17 @@ EP provides four composable layers:
 
 | Metric | Value |
 |--------|-------|
-| Live handshakes processed | 112,000+ |
-| Automated tests | 3,235 across 124 files |
-| Adversarial/red-team tests | 116 cases |
-| Formal verification | TLA+ (7,857 states) + Alloy (32 facts, 15 assertions) |
-| Database tables | 50 (all RLS-hardened) |
-| API endpoints | 45+ (all rate-limited, auth-enforced) |
-| MCP tools | 34 (native AI agent integration) |
-| SDKs | TypeScript + Python |
-| Blockchain anchoring | Base L2, Merkle roots, ~$0.60/month |
-| Compliance mappings | NIST AI RMF (38/38 subcategories), EU AI Act (Articles 9-15, 26) |
-| Protocol governance | PIP process (6 accepted PIPs) |
+| Automated tests | 3,365 across 127 files (vitest) |
+| Adversarial / red-team test cases | 85 cataloged in `docs/conformance/RED_TEAM_CASES.md` |
+| Formal verification | TLA+: 20 properties verified (T1–T20, TLC 2.19, 7,857 states, 0 errors); 6 EP-IX properties (T21–T26) specified, model run pending. Alloy: 32 facts, 15 assertions (Alloy 6.1.0). |
+| Database tables | ~50, all RLS-hardened (see `supabase/migrations/`) |
+| API endpoints | 50+ (all rate-limited; mutating endpoints auth-enforced via `middleware.js` ROUTE_POLICIES) |
+| MCP tools | 34 EP-prefixed tools (`mcp-server/index.js`) |
+| SDKs | TypeScript SDK in repo (`sdks/typescript/`); Python SDK in repo (`sdks/python/`); npm-published `@emilia-protocol/sdk@0.1.0` |
+| Blockchain anchoring | Base L2, Merkle roots (`lib/blockchain.js`) |
+| Compliance mappings | 38 NIST AI RMF subcategories mapped across all four functions (GOVERN, MAP, MEASURE, MANAGE); EU AI Act Articles 9–15 + 26 (Title III, Chapter 2 — high-risk AI systems) |
+| Protocol governance | PIP process — 5 PIPs accepted (PIP-001 through PIP-005). PIP-006 Federation in design. |
+| Pre-execution product surface | EP GovGuard + EP FinGuard v1 trust-receipts API (`/api/v1/trust-receipts/*`, `/api/v1/signoffs/*`) |
 
 ---
 

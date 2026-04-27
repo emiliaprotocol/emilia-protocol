@@ -41,14 +41,14 @@ The protocol is open. Managed policy, verification, signoff orchestration, monit
 
 | Metric | Value |
 |---|---|
-| Automated tests | 3,277 across 125 files |
-| TLA+ safety properties | 20 — **Verified (TLC 2.19, 2026-04-02)** — see [formal/PROOF_STATUS.md](formal/PROOF_STATUS.md) |
+| Automated tests | 3,365 across 127 files |
+| TLA+ safety properties | 20 verified (T1–T20) — TLC 2.19, 2026-04-02 — see [formal/PROOF_STATUS.md](formal/PROOF_STATUS.md). 6 additional EP-IX properties (T21–T26) specified, model run pending. |
 | Alloy relational assertions | 32 facts, 15 assertions — **Verified (Alloy 6.1.0, 2026-04-02)** |
-| Red team cases | 116 documented |
+| Red team cases | 85 cataloged in [docs/conformance/RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |
 | Security findings remediated | 31 |
-| CI quality gates | 28 across 13 automated workflows (incl. Playwright E2E) |
+| CI quality gates | See `.github/workflows/` (~13 workflows) |
 | Full 7-step signoff chain | Proven end-to-end under load |
-| Handshake create p95 | 87ms at 500 VUs |
+| Handshake create p95 | 575ms at 50 VUs (per [docs/operations/PERFORMANCE_PROOF.md](docs/operations/PERFORMANCE_PROOF.md)) |
 
 See [Performance Proof](docs/operations/PERFORMANCE_PROOF.md) | [Operating Envelope](docs/operations/OPERATING_ENVELOPE.md) | [Security Policy](SECURITY.md) | [Audit Methodology](docs/security/AUDIT_METHODOLOGY.md) | [API Compatibility Policy](docs/api/COMPATIBILITY.md)
 

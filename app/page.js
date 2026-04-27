@@ -13,11 +13,18 @@ const HeroAnimation = dynamic(() => import('@/components/HeroAnimation'), {
   ),
 });
 
+// Stats below are the source-of-truth numbers as of 2026-04-26. Each value
+// is independently verifiable in the repo:
+//   3,365 tests / 127 files — `npx vitest run` summary
+//   20 TLA+ theorems verified — formal/PROOF_STATUS.md (T1–T20)
+//   85 red team cases — docs/conformance/RED_TEAM_CASES.md line 1
+//   Internal audit — docs/security/AUDIT_METHODOLOGY.md (self-administered)
+// Do NOT mark as third-party "Verified". Do NOT inflate.
 const STATS = [
-  { value: '3,277', label: 'Automated Tests',   sub: '125 test files',           accent: color.t1 },
+  { value: '3,365', label: 'Automated Tests',   sub: '127 test files',           accent: color.t1 },
   { value: '20',    label: 'Theorems Proven',   sub: 'TLC 2.19, zero errors',    accent: color.blue },
-  { value: '116',   label: 'Red Team Cases',    sub: '31 findings remediated',   accent: color.t1 },
-  { value: '100/100', label: 'Audit Score',     sub: 'April 2, 2026',            accent: color.gold },
+  { value: '85',    label: 'Red Team Cases',    sub: 'Cataloged in repo',        accent: color.t1 },
+  { value: '100/100', label: 'Internal Audit',  sub: 'Self-administered · Apr 2', accent: color.gold },
   { value: 'Apache 2.0', label: 'License',      sub: 'Open specification',       accent: color.green },
 ];
 
@@ -62,7 +69,7 @@ const DEPLOY_STEPS = [
 ];
 
 const DEV_TOOLS = [
-  { title: 'Verify Package',    body: 'Zero-dependency offline receipt verification. Ed25519 + Merkle proofs. Just math, no EP server required.', code: 'npm install @emilia-protocol/verify', href: 'https://github.com/emiliaprotocol/emilia-protocol/tree/main/packages/verify', accent: color.green,  codeLight: false },
+  { title: 'Verify Package',    body: 'Zero-dependency offline receipt verification. Ed25519 + Merkle proofs. Just math, no EP server required.', code: 'packages/verify (npm publish pending)', href: 'https://github.com/emiliaprotocol/emilia-protocol/tree/main/packages/verify', accent: color.green,  codeLight: false },
   { title: 'Trust Playground',  body: 'Walk through the EP lifecycle interactively. Create entities, issue receipts, run handshakes — all from one page.', code: '/playground', href: '/playground', accent: color.blue,   codeLight: true },
   { title: 'Trust Explorer',    body: 'Verify any receipt, proof, or entity. Like Etherscan for trust. Public, transparent, cryptographically verified.', code: '/explorer', href: '/explorer', accent: color.gold,   codeLight: true },
   { title: 'Embed Widget',      body: 'Drop a trust badge on any page. One script tag, one web component. Live data from the EP operator.', code: '<ep-trust-badge />', href: '/adopt', accent: color.t2,    codeLight: true },
@@ -185,7 +192,12 @@ export default function HomePage() {
                 </div>
               </div>
               <div style={{ marginLeft: 4, paddingLeft: 12, borderLeft: `1px solid ${color.border}` }}>
-                <div style={{ fontFamily: font.mono, fontSize: 9, color: color.gold, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 600 }}>VERIFIED</div>
+                {/* "INTERNAL" not "VERIFIED" — the audit is self-administered
+                    per docs/security/AUDIT_METHODOLOGY.md. Federal procurement
+                    teams treat "Verified" badges as third-party attestations;
+                    misrepresenting an internal review as third-party-verified
+                    is the kind of claim that triggers protests. */}
+                <div style={{ fontFamily: font.mono, fontSize: 9, color: color.gold, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 600 }}>INTERNAL</div>
               </div>
             </div>
           </div>
@@ -576,7 +588,7 @@ export default function HomePage() {
               {
                 code: 'SYS_ARCH::002',
                 title: 'Compliance-mapped',
-                body: 'Formal mappings to NIST AI RMF (38/38 subcategories) and EU AI Act (Articles 9–15). SOC 2 Type II audit in progress. Built for procurement, not just developers.',
+                body: 'Formal mappings to 38 NIST AI RMF subcategories across all four functions (GOVERN, MAP, MEASURE, MANAGE) and EU AI Act Articles 9–15 + 26. SOC 2 Type II preparation underway. Built for procurement, not just developers.',
                 accent: color.blue,
               },
               {
@@ -677,7 +689,7 @@ export default function HomePage() {
           color: 'rgba(255,255,255,0.3)', letterSpacing: 1.5, textTransform: 'uppercase',
         }}>
           <span>Compliance: NIST AI RMF · EU AI ACT</span>
-          <span>Tests: 3,277 passing · 0 failing</span>
+          <span>Tests: 3,365 passing · 0 failing</span>
           <span>Formal verification: 20 theorems · 0 errors</span>
         </div>
       </section>

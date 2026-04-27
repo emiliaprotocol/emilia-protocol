@@ -18,12 +18,18 @@ import { styles, color, font, radius } from '@/lib/tokens';
 
 const ACCENT = color.blue; // Trust Desk signature color
 
-// Replace after buying the Stripe Payment Links.
+// Stripe Payment Links — set via NEXT_PUBLIC_STRIPE_* env vars at deploy
+// time. When the env var is missing we fall back to mailto:team@... so a
+// click on a "Buy" button on production never lands on a 404 — it opens
+// an email to the sales team. The previous fallback was a literal
+// REPLACE_EMERGENCY URL that produced a broken link if the env was unset,
+// which a buyer testing the live site would discover instantly.
+const SALES_MAILTO = 'mailto:team@emiliaprotocol.ai?subject=Trust%20Desk%20order';
 const STRIPE_LINKS = {
-  emergency: process.env.NEXT_PUBLIC_STRIPE_EMERGENCY || 'https://buy.stripe.com/REPLACE_EMERGENCY',
-  full:      process.env.NEXT_PUBLIC_STRIPE_FULL      || 'https://buy.stripe.com/REPLACE_FULL',
-  packet:    process.env.NEXT_PUBLIC_STRIPE_PACKET    || 'https://buy.stripe.com/REPLACE_PACKET',
-  retainer:  process.env.NEXT_PUBLIC_STRIPE_RETAINER  || 'https://buy.stripe.com/REPLACE_RETAINER',
+  emergency: process.env.NEXT_PUBLIC_STRIPE_EMERGENCY || SALES_MAILTO,
+  full:      process.env.NEXT_PUBLIC_STRIPE_FULL      || SALES_MAILTO,
+  packet:    process.env.NEXT_PUBLIC_STRIPE_PACKET    || SALES_MAILTO,
+  retainer:  process.env.NEXT_PUBLIC_STRIPE_RETAINER  || SALES_MAILTO,
 };
 
 export default function TrustDeskLanding() {

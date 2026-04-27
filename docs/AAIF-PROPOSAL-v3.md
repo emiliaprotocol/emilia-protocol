@@ -63,7 +63,7 @@ EP Commit      Atomic action seal
 
 3. **Named human accountability.** When an AI acts with real-world consequences, EP's Signoff layer ensures a specific named human has seen the exact action, understood the consequences, and accepted responsibility. Not a role. A person.
 
-4. **Formal verification.** 25 TLA+ safety properties verified by model checking (7,857 states, 0 errors). 32 Alloy relational facts verified (0 counterexamples). Both run in CI on every commit.
+4. **Formal verification.** 20 TLA+ safety properties verified by model checking (T1–T20, 7,857 states, 0 errors). 6 additional EP-IX properties (T21–T26) specified, model run pending. 32 Alloy relational facts + 15 assertions verified (0 counterexamples). Both run in CI on every commit.
 
 5. **Due process.** Disputes, appeals, human reports, graph-based adjudication. Trust must never be more powerful than appeal.
 
@@ -77,25 +77,25 @@ EP is not a proposal. It is production-grade software with formal verification.
 
 | Metric | Value |
 |--------|-------|
-| **Live handshakes** | 112,000+ |
-| **Automated tests** | 3,235 across 124 files |
-| **Adversarial tests** | 116 red team cases |
+| **Automated tests** | 3,365 across 127 files (vitest) |
+| **Adversarial tests** | 85 red team cases (`docs/conformance/RED_TEAM_CASES.md`) |
 | **Property-based tests** | Fast-check invariant tests |
 | **Mutation testing** | Stryker.js, 80%+ kill threshold |
-| **Formal verification** | TLA+ (20 properties, 7,857 states) + Alloy (32 facts, 15 assertions) |
-| **Database tables** | 50 (all RLS-enabled with explicit policies) |
+| **Formal verification** | TLA+: 20 properties verified (T1–T20, 7,857 states); 6 EP-IX properties (T21–T26) specified, model run pending. Alloy: 32 facts, 15 assertions verified |
+| **Database tables** | ~50 (all RLS-enabled with explicit policies) |
 | **SECURITY DEFINER functions** | 27 (all search_path-hardened) |
-| **API endpoints** | 45+ routes, all rate-limited |
+| **API endpoints** | 50+ routes, all rate-limited |
 | **MCP tools** | 34 (trust profile, handshake, receipt, signoff, commit, dispute, delegation) |
-| **SDKs** | TypeScript (25 methods) + Python (21 methods) |
-| **Blockchain anchoring** | Base L2, Merkle root publishing, ~$0.60/mo |
-| **Performance** | Handshake create p95: 87ms at 500 concurrent |
+| **SDKs** | TypeScript (`sdks/typescript/`) + Python (`sdks/python/`) |
+| **Blockchain anchoring** | Base L2, Merkle root publishing |
+| **Performance** | Handshake create p95: 575ms at 50 VUs (per `docs/operations/PERFORMANCE_PROOF.md`) |
 | **Conformance** | 7/7 required checks PASS — `CONFORMANT: EP Core v1.0` |
-| **CI quality gates** | 28 across 13 workflows (incl. Playwright E2E) |
-| **Standalone verify** | `@emilia-protocol/verify` — zero-dep offline verification (shipped) |
-| **Adoption primitives** | Trust Explorer, Playground, Embed Widget, Gradient of Commitment (all shipped) |
+| **CI quality gates** | ~13 workflows in `.github/workflows/` (incl. Playwright E2E) |
+| **Standalone verify** | Source at `packages/verify/`; npm publication pending |
+| **Adoption primitives** | Trust Explorer, Playground, Adopt page (all shipped) |
 | **AWS deployment** | CloudFormation template at `infrastructure/aws/template.yaml` |
-| **Security audit** | 96/100 internal audit score, Cure53 engagement planned |
+| **Pre-execution products** | EP GovGuard + EP FinGuard v1 trust-receipts API |
+| **Security audit** | Internal audit score 100/100 (self-administered, see `docs/security/AUDIT_METHODOLOGY.md`); third-party engagement planned |
 
 ---
 
@@ -105,9 +105,9 @@ EP has formal compliance mappings for:
 
 | Framework | Coverage |
 |-----------|----------|
-| **NIST AI RMF 1.0** | 38/38 subcategories mapped across GOVERN, MAP, MEASURE, MANAGE |
-| **EU AI Act** | Articles 9–15 and 26 fully mapped (risk management, data governance, logging, transparency, human oversight, cybersecurity) |
-| **SOC 2 Type II** | Mapping complete, audit engagement planned |
+| **NIST AI RMF 1.0** | 38 subcategories mapped across GOVERN, MAP, MEASURE, MANAGE — see `docs/compliance/NIST-AI-RMF-MAPPING.md`. (NIST AI RMF 1.0 has additional subcategories beyond these 38; the mapping is high-risk-AI-systems-focused, not exhaustive across the full framework.) |
+| **EU AI Act** | Articles 9–15 and 26 mapped — high-risk AI systems (Title III, Chapter 2). See `docs/compliance/EU-AI-ACT-MAPPING.md`. |
+| **SOC 2 Type II** | Preparation underway; auditor selection in progress. |
 
 These are not aspirational — they cite specific EP primitives, API endpoints, and architectural features for each requirement.
 

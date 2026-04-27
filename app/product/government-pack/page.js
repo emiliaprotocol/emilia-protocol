@@ -27,12 +27,22 @@ export default function GovernmentPackPage() {
     setSubmitting(false);
   }
 
+  // Honest feature list — only items backed by code in lib/, tests in
+  // tests/, or documented in docs/. PIV/CAC, Login.gov, FISMA/FedRAMP
+  // claims removed: zero implementation, zero mapping documents. Marked
+  // as "roadmap" below where pilots have asked for them.
   const FEATURES = [
     { title: 'Benefits payment redirect controls', body: 'Cryptographic handshake required before any payment destination change commits. The handshake binds the exact new destination, program, amount, and authorizing principal. No redirect executes without satisfied trust policy.' },
     { title: 'Operator override constraints', body: 'Every caseworker or system operator override produces a named signoff record. The signoff is bound to the exact action parameters, not a session-level approval. Override without accountability does not proceed.' },
     { title: 'IG/GAO-ready audit evidence', body: 'Every handshake, signoff, and execution event produces an immutable record. Evidence packages are pre-formatted for Inspector General and GAO examination. Action-level traceability, not session-level logs.' },
-    { title: 'Government identity integration', body: 'Native support for PIV/CAC smart cards, Login.gov, and agency-specific identity providers. Principal identities in EP map directly to government-issued credentials.' },
-    { title: 'FISMA/FedRAMP mapping', body: 'Pre-mapped controls for FISMA and FedRAMP authorization. EP trust enforcement satisfies action-level accountability requirements across multiple control families. Documentation packages available for ATO submissions.' },
+    { title: 'GovGuard pre-execution gate', body: 'New GovGuard product surface (POST /api/v1/trust-receipts) wraps benefit-bank-account changes, address changes, and caseworker overrides in observe / warn / enforce modes. See /govguard.' },
+  ];
+
+  // Items pilots have asked for that are NOT yet implemented. Keep the
+  // marketing surface honest by labeling them as roadmap, not shipped.
+  const ROADMAP = [
+    { title: 'Government identity integration (PIV / CAC / Login.gov)', body: 'Pilot-track work; not yet implemented. Pilots needing PIV/CAC integration today should contact us — we will scope the work as part of the pilot.' },
+    { title: 'FISMA / FedRAMP mapping', body: 'Control-family mapping documents are not yet published. EP trust enforcement satisfies action-level accountability requirements that map onto multiple NIST 800-53 controls; the formal mapping document is on the roadmap.' },
   ];
 
   return (
@@ -64,6 +74,26 @@ export default function GovernmentPackPage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Roadmap (not yet shipped — explicit so federal procurement teams
+          do not mistake aspirational features for delivered ones) */}
+      <section style={styles.section}>
+        <div style={styles.eyebrowBlue}>Roadmap (pilot-track)</div>
+        <h2 style={styles.h2}>On the way, not yet shipped.</h2>
+        <p style={styles.body}>
+          The following capabilities are pilot-track work that we will scope as
+          part of an active engagement. They are listed here because pilots
+          frequently ask about them — not because they are deliverable today.
+        </p>
+        <div style={grid.stack}>
+          {ROADMAP.map((f, i) => (
+            <div key={i} className="ep-card-hover" style={{ ...styles.card, opacity: 0.85 }}>
+              <div style={styles.cardTitle}>{f.title}</div>
+              <div style={styles.cardBody}>{f.body}</div>
+            </div>
+          ))}
         </div>
       </section>
 

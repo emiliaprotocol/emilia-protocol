@@ -23,19 +23,28 @@ const STATES = [
   { state: 'EXPIRED',         desc: 'Ceremony token exceeded temporal bounds.',                color: color.t3    },
 ];
 
+// Only PIPs with a corresponding file in PIPs/ are listed. PIP-006
+// (Federation) is in design but no draft file exists yet — adding it
+// here without the file produces a contradiction the first reviewer
+// who runs `ls PIPs/` will catch. Add it back when PIPs/PIP-006-*.md
+// lands.
 const PIPS = [
   { pip: 'PIP-001', title: 'Core Freeze',           status: 'Accepted' },
   { pip: 'PIP-002', title: 'Handshake',             status: 'Accepted' },
   { pip: 'PIP-003', title: 'Accountable Signoff',   status: 'Accepted' },
   { pip: 'PIP-004', title: 'EP Commit',             status: 'Accepted' },
   { pip: 'PIP-005', title: 'Emilia Eye',            status: 'Accepted' },
-  { pip: 'PIP-006', title: 'Federation',            status: 'Draft'    },
 ];
 
+// Compliance numbers must match the underlying mapping documents exactly.
+// "38/38" with "all subcategories mapped" implied 100% framework coverage,
+// but NIST AI RMF 1.0 has ~72+ subcategories and the mapping doc covers
+// 38 selectively across all four functions. Federal procurement teams will
+// cross-check against the published framework.
 const COMPLIANCE = [
-  { framework: 'NIST AI RMF', coverage: '38/38',       detail: 'GOVERN, MAP, MEASURE, MANAGE — all subcategories mapped', accent: color.green },
-  { framework: 'EU AI Act',   coverage: 'Full',         detail: 'Risk management, human oversight, transparency, cybersecurity', accent: color.blue },
-  { framework: 'SOC 2 II',    coverage: 'In progress',  detail: 'Audit engagement planned, controls mapped', accent: color.gold },
+  { framework: 'NIST AI RMF', coverage: '38 mapped',    detail: 'Across GOVERN, MAP, MEASURE, MANAGE — see docs/compliance/NIST-AI-RMF-MAPPING.md', accent: color.green },
+  { framework: 'EU AI Act',   coverage: 'Articles 9-15, 26', detail: 'High-risk AI systems (Title III, Chapter 2) — see docs/compliance/EU-AI-ACT-MAPPING.md', accent: color.blue },
+  { framework: 'SOC 2 II',    coverage: 'Preparing',    detail: 'Auditor selection in progress', accent: color.gold },
 ];
 
 export default function ProtocolPage() {
@@ -174,7 +183,7 @@ export default function ProtocolPage() {
             <div style={styles.eyebrow}>Compliance & Standards</div>
             <h2 style={styles.h2}>Built for regulated adoption</h2>
             <p style={styles.body}>
-              EP has formal compliance mappings for NIST AI RMF (38/38 subcategories), EU AI Act (Articles 9-15, 26), and SOC 2 Type II. Every mapping cites specific EP primitives — not aspirational claims.
+              EP has formal compliance mappings for 38 NIST AI RMF subcategories across all four functions (GOVERN, MAP, MEASURE, MANAGE) and EU AI Act Articles 9–15 + 26. SOC 2 Type II preparation is underway. Every mapping cites specific EP primitives — not aspirational claims.
             </p>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>

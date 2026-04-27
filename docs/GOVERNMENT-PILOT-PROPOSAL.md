@@ -38,7 +38,9 @@ Pre-built policy configurations for common government workflows:
 - **FISMA/FedRAMP compliance mapping** — map EP controls to NIST 800-53 control families, providing a starting point for ATO documentation
 
 ## Proof points
-- 3,235 automated tests across 124 files, 25 TLA+ safety properties machine-verified (TLC 2.19, 7,857 states, 0 errors), 116 red team cases documented and remediated
+- 3,365 automated tests across 127 files
+- 20 TLA+ safety properties verified (T1–T20, TLC 2.19, 7,857 states, 0 errors); 6 additional EP-IX properties (T21–T26) specified, model run pending
+- 85 red team cases cataloged in `docs/conformance/RED_TEAM_CASES.md`
 - Zero write discipline exceptions
 - Append-only event store with DB-level immutability triggers
 
