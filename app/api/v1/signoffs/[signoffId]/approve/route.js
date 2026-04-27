@@ -9,7 +9,8 @@
 //   - approval cannot be repeated (one-shot per signoff)
 
 import { NextResponse } from 'next/server';
-import { authenticateRequest, getServiceClient } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 
@@ -29,7 +30,7 @@ export async function handleSignoffDecision(request, params, decision) {
       return epProblem(400, 'missing_action_hash', 'approved_action_hash is required');
     }
 
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     // Find the signoff request — search by event_type + signoff_id in
     // after_state. The audit_events table is the source of truth.

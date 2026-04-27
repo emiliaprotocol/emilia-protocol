@@ -12,7 +12,8 @@
 // shape is the canonical evidence; PDF is a rendering of it).
 
 import { NextResponse } from 'next/server';
-import { authenticateRequest, getServiceClient } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 
@@ -22,7 +23,7 @@ export async function GET(request, { params }) {
     if (auth.error) return epProblem(401, 'unauthorized', auth.error);
 
     const { receiptId } = await params;
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     const { data: events, error } = await supabase
       .from('audit_events')

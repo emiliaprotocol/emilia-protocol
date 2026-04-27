@@ -18,7 +18,8 @@
 
 import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
-import { authenticateRequest, getServiceClient } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import {
   evaluateGuardPolicy,
@@ -118,7 +119,7 @@ export async function POST(request) {
       receipt_status = 'denied';
     }
 
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
     try {
       await supabase.from('audit_events').insert({
         event_type: 'guard.trust_receipt.created',

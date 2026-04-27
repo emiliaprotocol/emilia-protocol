@@ -12,7 +12,8 @@
 // inside a single transaction that also checks the prior consume sentinel.
 
 import { NextResponse } from 'next/server';
-import { authenticateRequest, getServiceClient } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 
@@ -31,7 +32,7 @@ export async function POST(request, { params }) {
       return epProblem(400, 'missing_executing_system', 'executing_system is required');
     }
 
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     // ── Load full timeline (source of truth) ──────────────────────────────
     const { data: events, error: eventsErr } = await supabase

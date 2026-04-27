@@ -7,7 +7,8 @@
 
 import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
-import { authenticateRequest, getServiceClient } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 
@@ -24,7 +25,7 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}));
     if (!body.receipt_id) return epProblem(400, 'missing_receipt_id', 'receipt_id is required');
 
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     const { data: events, error } = await supabase
       .from('audit_events')

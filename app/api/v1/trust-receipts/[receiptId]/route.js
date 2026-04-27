@@ -7,7 +7,8 @@
 // current receipt status.
 
 import { NextResponse } from 'next/server';
-import { authenticateRequest, getServiceClient } from '@/lib/supabase';
+import { authenticateRequest } from '@/lib/supabase';
+import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 
@@ -24,7 +25,7 @@ export async function GET(request, { params }) {
       return epProblem(400, 'invalid_receipt_id', 'receipt_id must match tr_<32-hex>');
     }
 
-    const supabase = getServiceClient();
+    const supabase = getGuardedClient();
 
     // Pull the full event timeline for this receipt. Ordered by created_at
     // so the latest state wins.
