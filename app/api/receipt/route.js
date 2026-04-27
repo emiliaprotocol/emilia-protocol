@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { NextResponse } from 'next/server';
+import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 
@@ -9,25 +10,42 @@ import { epProblem } from '@/lib/errors';
  * Protocol-standard receipt submission endpoint.
  * Creates a self-verifying EP-RECEIPT-v1 document with Ed25519 signature.
  *
- * This is the conformance-standard route. Returns the signed receipt document
- * in EP-RECEIPT-v1 format — the protocol's self-verifying receipt format.
+ * This route is AUTHENTICATED. The issuer is derived from the authenticated
+ * entity, not from the request body — anything in `body.issuer` is checked
+ * against the auth context and rejected on mismatch. Without this guard the
+ * route is a receipt-forgery vector: any caller could specify any
+ * `issuer` and receive an Ed25519 signature attesting to that issuer's
+ * authorship of an arbitrary claim.
  *
- * Body: { issuer, subject, outcome, action_type, context? }
+ * Body: { subject, outcome, action_type, context?, issuer? (optional but
+ *        must equal authenticated entity if provided) }
  * Returns: EP-RECEIPT-v1 signed document
- *
- * @public — accepts issuer entity_id, looks up signing key from DB.
  */
 export async function POST(request) {
   try {
+    const auth = await authenticateRequest(request);
+    if (auth.error) return epProblem(401, 'unauthorized', auth.error);
+
     const body = await request.json();
 
-    const issuer = (body.issuer || '').trim();
+    // ── ISSUER COMES FROM AUTH (per safety invariant) ────────────────────
+    // Body issuer is optional; if present, must match auth. Never trust
+    // a body-supplied issuer alone.
+    const authedIssuer = auth.entity;
+    if (body.issuer && body.issuer.trim() && body.issuer.trim() !== authedIssuer) {
+      return epProblem(
+        403,
+        'issuer_mismatch',
+        'body.issuer does not match authenticated entity',
+      );
+    }
+    const issuer = authedIssuer;
+
     const subject = (body.subject || '').trim();
     const outcome = body.outcome || 'positive';
     const actionType = body.action_type || 'interaction';
     const context = body.context || {};
 
-    if (!issuer) return epProblem(400, 'missing_issuer', 'issuer is required');
     if (!subject) return epProblem(400, 'missing_subject', 'subject is required');
 
     const supabase = getGuardedClient();

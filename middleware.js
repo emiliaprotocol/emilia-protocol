@@ -55,6 +55,10 @@ const ROUTE_POLICIES = {
   'POST /api/v1/signoffs/request':                 { rateCategory: 'submit', useAuth: true }, // request human signoff
   'POST /api/v1/signoffs/*/approve':               { rateCategory: 'submit', useAuth: true }, // approver acts
   'POST /api/v1/signoffs/*/reject':                { rateCategory: 'submit', useAuth: true }, // approver acts
+  // GovGuard demo adapters (MD §8) — thin façades over /api/v1/trust-receipts
+  // pre-filled for specific government workflows. Same auth + rate posture
+  // as the underlying create endpoint.
+  'POST /api/v1/adapters/gov/benefit-bank-change/precheck': { rateCategory: 'submit', useAuth: true },
 
   // Disputes (writes)
   'POST /api/disputes/file':          { rateCategory: 'dispute_write', useAuth: true },

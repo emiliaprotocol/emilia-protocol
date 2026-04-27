@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // EP GovGuard + FinGuard — POST /api/v1/signoffs/[signoffId]/reject
 //
-// Same invariant set as /approve, just with a 'rejected' decision shape.
-// Self-rejection is allowed (initiator can withdraw their own request) but
-// any third-party rejection still requires authentication. Sharing the
-// implementation keeps approve/reject semantics in lock-step.
+// Thin route wrapper that delegates to the shared handler in
+// lib/guard-signoff.js. Same invariant set as /approve; the only
+// difference is the recorded decision.
 
-import { handleSignoffDecision } from '../approve/route';
+import { handleSignoffDecision } from '@/lib/guard-signoff';
 
 export async function POST(request, { params }) {
   return handleSignoffDecision(request, params, 'rejected');

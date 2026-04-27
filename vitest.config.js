@@ -36,7 +36,8 @@ export default defineConfig({
         'lib/siem.js',         // SIEM HTTP forwarder
         'lib/shutdown.js',     // process SIGTERM/SIGINT lifecycle
         'lib/logger.js',       // pino transport setup
-        'lib/verify.js',       // standalone receipt verifier (CLI tool, not the protocol)
+        // (lib/verify.js removed — duplicate of packages/verify/index.js, kept the
+        // canonical packages/verify/ copy and deleted the lib/ duplicate.)
         'lib/operator-auth.js',// HMAC operator-token loader (init-time, env-driven)
         // ── Commercial / product layers — separate coverage discipline ──────
         // The protocol-kernel coverage bar (95/97%) was set against trust-

@@ -8,7 +8,7 @@ import { logger } from '../../../../../lib/logger.js';
 
 export async function GET(request, { params }) {
   try {
-    const { delegationId } = params;
+    const { delegationId } = await params;
     const url = new URL(request.url);
     const actionType = url.searchParams.get('action_type') || null;
 

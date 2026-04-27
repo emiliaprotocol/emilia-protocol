@@ -8,7 +8,7 @@ import { logger } from '../../../../../lib/logger.js';
 
 export async function GET(request, { params }) {
   try {
-    const { entityId } = params;
+    const { entityId } = await params;
     const url = new URL(request.url);
     const domainsParam = url.searchParams.get('domains');
     const domains = domainsParam ? domainsParam.split(',').map(d => d.trim()).filter(Boolean) : null;

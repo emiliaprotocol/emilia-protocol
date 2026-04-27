@@ -106,6 +106,10 @@ const HANDLER_COMPLEXITY_OVERRIDES = {
   // reducing complexity — the steps share request-scoped state and the
   // response shape includes the full decision context.
   'app/api/v1/trust-receipts/route.js': 130,
+  // GovGuard demo adapter — same handler shape as /api/v1/trust-receipts
+  // (auth, validation, canonical-action build, policy eval, audit emit)
+  // pre-filled for the benefit-bank-change scenario. Same rationale.
+  'app/api/v1/adapters/gov/benefit-bank-change/precheck/route.js': 110,
 };
 
 /** HTTP method export names used in Next.js App Router route files. */

@@ -20,9 +20,14 @@ import { styles, color, font, radius } from '@/lib/tokens';
 
 const ACCENT = color.blue;
 
-const STRIPE_PACKET_URL    = process.env.NEXT_PUBLIC_STRIPE_PACKET    || 'https://buy.stripe.com/REPLACE_PACKET';
-const STRIPE_EMERGENCY_URL = process.env.NEXT_PUBLIC_STRIPE_EMERGENCY || 'https://buy.stripe.com/REPLACE_EMERGENCY';
-const FORM_WEBHOOK_URL     = process.env.NEXT_PUBLIC_INTAKE_WEBHOOK   || 'https://submit-form.com/REPLACE';
+// Fallback to a sales mailto when Stripe link envs are missing — a click
+// on production never lands on a 404. Same pattern as app/trust-desk/page.js.
+const SALES_MAILTO         = 'mailto:team@emiliaprotocol.ai?subject=Trust%20Desk%20order';
+const STRIPE_PACKET_URL    = process.env.NEXT_PUBLIC_STRIPE_PACKET    || SALES_MAILTO;
+const STRIPE_EMERGENCY_URL = process.env.NEXT_PUBLIC_STRIPE_EMERGENCY || SALES_MAILTO;
+// Form webhook fallback also goes to mailto so a missing env doesn't post
+// PII to a placeholder URL.
+const FORM_WEBHOOK_URL     = process.env.NEXT_PUBLIC_INTAKE_WEBHOOK   || SALES_MAILTO;
 
 const INITIAL = {
   company: '', website: '', contact_name: '', contact_email: '',

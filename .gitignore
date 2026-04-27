@@ -12,3 +12,11 @@ sdks/typescript/dist/
 sdks/python/dist/
 .vercel
 *-results.json
+
+# Tool-generated directories — local-only, must not be tracked.
+# .aidesigner = AIDesigner CLI workspace; .serena = Serena agent state;
+# coverage/  = vitest --coverage output. All three were appearing as
+# "untracked" in routine `git status` output — silence them.
+.aidesigner/
+.serena/
+coverage/

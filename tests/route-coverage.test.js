@@ -174,6 +174,7 @@ const OPENAPI_EXEMPTIONS = [
   '/api/v1/signoffs/request',
   '/api/v1/signoffs/[signoffId]/approve',
   '/api/v1/signoffs/[signoffId]/reject',
+  '/api/v1/adapters/gov/benefit-bank-change/precheck',
 ];
 
 
