@@ -45,6 +45,17 @@ const ROUTE_POLICIES = {
   'GET /api/trust':                   { rateCategory: 'read',     useAuth: false },        // trust profile lookup
   'GET /api/discovery/keys':          { rateCategory: 'read',     useAuth: false },        // public well-known keys discovery
 
+  // GovGuard + FinGuard product API (v1) — pre-execution trust receipts.
+  // All v1 endpoints require auth (per MD §12.2.1: actor identity must come
+  // from authenticated context, never request body alone).
+  'POST /api/v1/trust-receipts':                   { rateCategory: 'submit', useAuth: true }, // create receipt (precheck + policy eval)
+  'GET /api/v1/trust-receipts/*':                  { rateCategory: 'read',   useAuth: true }, // single-receipt lookup
+  'POST /api/v1/trust-receipts/*/consume':         { rateCategory: 'submit', useAuth: true }, // one-time consume
+  'GET /api/v1/trust-receipts/*/evidence':         { rateCategory: 'read',   useAuth: true }, // evidence packet
+  'POST /api/v1/signoffs/request':                 { rateCategory: 'submit', useAuth: true }, // request human signoff
+  'POST /api/v1/signoffs/*/approve':               { rateCategory: 'submit', useAuth: true }, // approver acts
+  'POST /api/v1/signoffs/*/reject':                { rateCategory: 'submit', useAuth: true }, // approver acts
+
   // Disputes (writes)
   'POST /api/disputes/file':          { rateCategory: 'dispute_write', useAuth: true },
   'POST /api/disputes/respond':       { rateCategory: 'dispute_write', useAuth: true },

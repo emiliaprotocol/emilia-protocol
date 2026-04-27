@@ -165,6 +165,15 @@ const OPENAPI_EXEMPTIONS = [
   '/api/keys/rotate',
   // Cloud scoring calibration — cloud control-plane.
   '/api/cloud/scoring/recommendations',
+  // GovGuard + FinGuard product API (v1) — OpenAPI spec to be added in a
+  // follow-up. The endpoints are wired in middleware.js ROUTE_POLICIES.
+  '/api/v1/trust-receipts',
+  '/api/v1/trust-receipts/[receiptId]',
+  '/api/v1/trust-receipts/[receiptId]/consume',
+  '/api/v1/trust-receipts/[receiptId]/evidence',
+  '/api/v1/signoffs/request',
+  '/api/v1/signoffs/[signoffId]/approve',
+  '/api/v1/signoffs/[signoffId]/reject',
 ];
 
 
