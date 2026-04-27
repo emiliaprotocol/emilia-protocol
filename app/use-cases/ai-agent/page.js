@@ -94,9 +94,11 @@ export default function AIAgentUseCasePage() {
             borderLeft: `1px solid ${color.border}`,
           }}>
             {[
-              { value: '82%', label: 'Of enterprises piloting agentic AI in 2024 (Gartner)', accent: color.blue },
-              { value: '0',   label: 'Agent frameworks with native action-level trust enforcement', accent: color.t3 },
-              { value: '∞',   label: 'Blast radius of an agent with broad tool access and no controls', accent: '#DC2626' },
+              // Stat removed: prior "82% Gartner" claim could not be sourced
+              // to a specific Gartner report ID and date. Restore once cited.
+              { value: 'Most',  label: 'Major agent platforms ship without action-level trust enforcement', accent: color.blue },
+              { value: '0',     label: 'Agent frameworks with native action-level trust enforcement', accent: color.t3 },
+              { value: '∞',     label: 'Blast radius of an agent with broad tool access and no controls', accent: '#DC2626' },
             ].map((s, i) => (
               <div key={i} style={{ padding: '28px 24px', borderRight: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` }}>
                 <div style={{ fontFamily: font.sans, fontSize: 28, fontWeight: 700, color: s.accent, marginBottom: 6 }}>{s.value}</div>

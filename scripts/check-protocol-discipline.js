@@ -99,6 +99,13 @@ const HANDLER_COMPLEXITY_OVERRIDES = {
   'app/api/cloud/signoff/analytics/route.js': 90,
   'app/api/commit/issue/route.js': 90,
   'app/api/receipts/submit/route.js': 90,
+  // GovGuard + FinGuard v1 trust-receipt creation. The handler performs the
+  // full pre-action gate inline: auth, body validation, actor-mismatch
+  // guard, canonical action build + hash, policy evaluation, enforcement-
+  // mode mapping, and audit emission. Splitting reduces line count without
+  // reducing complexity — the steps share request-scoped state and the
+  // response shape includes the full decision context.
+  'app/api/v1/trust-receipts/route.js': 130,
 };
 
 /** HTTP method export names used in Next.js App Router route files. */

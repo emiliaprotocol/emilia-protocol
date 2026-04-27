@@ -41,7 +41,7 @@ The protocol is open. Managed policy, verification, signoff orchestration, monit
 
 | Metric | Value |
 |---|---|
-| Automated tests | 3,365 across 127 files |
+| Automated tests | 3,436 across 129 files |
 | TLA+ safety properties | 20 verified (T1–T20) — TLC 2.19, 2026-04-02 — see [formal/PROOF_STATUS.md](formal/PROOF_STATUS.md). 6 additional EP-IX properties (T21–T26) specified, model run pending. |
 | Alloy relational assertions | 32 facts, 15 assertions — **Verified (Alloy 6.1.0, 2026-04-02)** |
 | Red team cases | 85 cataloged in [docs/conformance/RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |
@@ -58,7 +58,7 @@ See [Performance Proof](docs/operations/PERFORMANCE_PROOF.md) | [Operating Envel
 |---|---|
 | Spec version | EP-CORE-v1.0 |
 | Conformance test | **7/7 required checks PASS** |
-| Standalone verify | `npm install @emilia-protocol/verify` (zero deps) |
+| Standalone verify | Source at `packages/verify/` (zero deps); npm publication pending |
 | Embed widget | `<ep-trust-badge entity-id="...">` |
 | Discovery | `/.well-known/ep-trust.json` + `/.well-known/ep-keys.json` |
 | Formal models | TLA+ + Alloy |

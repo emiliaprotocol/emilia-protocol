@@ -34,11 +34,11 @@ Pre-built policy configurations for common government workflows:
 - **Payment destination change controls** — require signoff before modifying payment routing, with identity and authority verification at each step
 - **Benefits redirect controls** — prevent unauthorized changes to benefit delivery targets, with mandatory Accountable Signoff
 - **Operator override constraints** — scope operator overrides to specific actions, enforce time-limited authority, and log every override with full context
-- **PIV/CAC/Login.gov identity integration** — bind EP actor identity to government-issued credentials, supporting PIV, CAC, and Login.gov as identity sources
-- **FISMA/FedRAMP compliance mapping** — map EP controls to NIST 800-53 control families, providing a starting point for ATO documentation
+- **PIV/CAC/Login.gov identity integration (roadmap)** — pilot-track work; not yet implemented. Pilots needing federal-credential integration today get it scoped as part of the engagement.
+- **FISMA/FedRAMP compliance mapping (roadmap)** — control-family mapping documents are not yet published. EP enforcement satisfies action-level accountability requirements that map onto multiple NIST 800-53 controls; the formal mapping document is on the roadmap.
 
 ## Proof points
-- 3,365 automated tests across 127 files
+- 3,436 automated tests across 129 files
 - 20 TLA+ safety properties verified (T1–T20, TLC 2.19, 7,857 states, 0 errors); 6 additional EP-IX properties (T21–T26) specified, model run pending
 - 85 red team cases cataloged in `docs/conformance/RED_TEAM_CASES.md`
 - Zero write discipline exceptions

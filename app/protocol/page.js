@@ -23,17 +23,17 @@ const STATES = [
   { state: 'EXPIRED',         desc: 'Ceremony token exceeded temporal bounds.',                color: color.t3    },
 ];
 
-// Only PIPs with a corresponding file in PIPs/ are listed. PIP-006
-// (Federation) is in design but no draft file exists yet — adding it
-// here without the file produces a contradiction the first reviewer
-// who runs `ls PIPs/` will catch. Add it back when PIPs/PIP-006-*.md
-// lands.
+// Every entry must correspond to a file under PIPs/. Engineering
+// reviewers run `ls PIPs/` against this list — listing a PIP without
+// its file creates a discoverable contradiction. PIP-006 was restored
+// once PIPs/PIP-006-federation.md was authored.
 const PIPS = [
   { pip: 'PIP-001', title: 'Core Freeze',           status: 'Accepted' },
   { pip: 'PIP-002', title: 'Handshake',             status: 'Accepted' },
   { pip: 'PIP-003', title: 'Accountable Signoff',   status: 'Accepted' },
   { pip: 'PIP-004', title: 'EP Commit',             status: 'Accepted' },
   { pip: 'PIP-005', title: 'Emilia Eye',            status: 'Accepted' },
+  { pip: 'PIP-006', title: 'Federation',            status: 'Draft'    },
 ];
 
 // Compliance numbers must match the underlying mapping documents exactly.

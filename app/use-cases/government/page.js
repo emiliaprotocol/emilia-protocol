@@ -89,8 +89,8 @@ export default function GovernmentUseCasePage() {
             borderLeft: `1px solid ${color.border}`,
           }}>
             {[
-              { value: '$236B', label: 'GAO-reported improper payments annually', accent: color.green },
-              { value: '$125K', label: 'Average BEC loss per incident (FBI IC3)', accent: color.green },
+              { value: '$236B', label: 'GAO improper payments estimate, FY2023 (GAO-24-106607)', accent: color.green },
+              { value: '$125K', label: 'Median BEC loss per complaint, IC3 2023 Annual Report', accent: color.green },
               { value: '0',     label: 'Action-level trust layers in most workflows today', accent: color.t3 },
             ].map((s, i) => (
               <div key={i} style={{ padding: '28px 24px', borderRight: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` }}>
