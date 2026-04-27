@@ -29,9 +29,6 @@ import {
   OPERATOR_APPLICATION_STATUS,
 } from '@/lib/constants.js';
 
-// ── design-tokens.js ──────────────────────────────────────────────────────
-
-import { COLORS, FONTS } from '@/lib/design-tokens.js';
 
 // =============================================================================
 // ENTITY_STATUS
@@ -396,90 +393,7 @@ describe('OPERATOR_APPLICATION_STATUS', () => {
   });
 });
 
-// =============================================================================
-// DESIGN TOKENS — COLORS
-// =============================================================================
-
-describe('COLORS (design-tokens.js)', () => {
-  it('is a frozen object', () => {
-    expect(Object.isFrozen(COLORS)).toBe(true);
-  });
-
-  it('bg is a dark hex color', () => {
-    expect(COLORS.bg).toBe('#020617');
-  });
-
-  it('bgCard is a slightly lighter dark color', () => {
-    expect(COLORS.bgCard).toBe('#0F172A');
-  });
-
-  it('bgCardHover is defined', () => {
-    expect(COLORS.bgCardHover).toBe('#1a2235');
-  });
-
-  it('gold is the green color value (design note: both gold and green are #22C55E)', () => {
-    expect(COLORS.gold).toBe('#22C55E');
-    expect(COLORS.green).toBe('#22C55E');
-  });
-
-  it('blue is #3B82F6', () => {
-    expect(COLORS.blue).toBe('#3B82F6');
-  });
-
-  it('text is #F8FAFC', () => {
-    expect(COLORS.text).toBe('#F8FAFC');
-  });
-
-  it('textSecondary is #94A3B8', () => {
-    expect(COLORS.textSecondary).toBe('#94A3B8');
-  });
-
-  it('textMuted is #64748B', () => {
-    expect(COLORS.textMuted).toBe('#64748B');
-  });
-
-  it('border uses rgba format', () => {
-    expect(COLORS.border).toMatch(/^rgba\(/);
-  });
-
-  it('borderGold uses rgba format', () => {
-    expect(COLORS.borderGold).toMatch(/^rgba\(/);
-  });
-
-  it('has all expected keys', () => {
-    const keys = ['bg', 'bgCard', 'bgCardHover', 'gold', 'blue', 'green', 'text', 'textSecondary', 'textMuted', 'border', 'borderGold'];
-    for (const key of keys) {
-      expect(COLORS).toHaveProperty(key);
-    }
-  });
-});
-
-// =============================================================================
-// DESIGN TOKENS — FONTS
-// =============================================================================
-
-describe('FONTS (design-tokens.js)', () => {
-  it('is a frozen object', () => {
-    expect(Object.isFrozen(FONTS)).toBe(true);
-  });
-
-  it('sans includes IBM Plex Sans', () => {
-    expect(FONTS.sans).toContain('IBM Plex Sans');
-  });
-
-  it('sans includes -apple-system fallback', () => {
-    expect(FONTS.sans).toContain('-apple-system');
-  });
-
-  it('mono includes IBM Plex Mono', () => {
-    expect(FONTS.mono).toContain('IBM Plex Mono');
-  });
-
-  it('mono includes monospace fallback', () => {
-    expect(FONTS.mono).toContain('monospace');
-  });
-
-  it('has exactly two font stacks: sans and mono', () => {
-    expect(Object.keys(FONTS)).toEqual(['sans', 'mono']);
-  });
-});
+// (lib/design-tokens.js was deleted — duplicate of lib/tokens.js with no
+// callers in app/ or components/. Tests that exercised it are removed
+// alongside the module so the test suite doesn't import a non-existent
+// file.)
