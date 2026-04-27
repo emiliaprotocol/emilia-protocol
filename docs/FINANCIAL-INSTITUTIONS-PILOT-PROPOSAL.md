@@ -35,7 +35,7 @@ The policy model supports threshold-based escalation matrices. For example, tran
 The Financial Reference Pack includes pre-built policy configurations for the highest-risk wire transfer scenarios: beneficiary changes, remittance changes, and payout destination changes. These patterns are documented and ready to deploy.
 
 ## Proof points
-- 3,441 automated tests across 129 files
+- 3,430 automated tests across 129 files
 - 20 TLA+ safety properties verified (T1–T20, TLC 2.19, 7,857 states, 0 errors); 6 additional EP-IX properties (T21–T26) specified, model run pending
 - 85 red team cases cataloged in `docs/conformance/RED_TEAM_CASES.md`
 - 29 concurrency warfare tests (100-way consumption races)

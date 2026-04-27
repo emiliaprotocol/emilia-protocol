@@ -156,7 +156,7 @@ We think EP represents a design worth contributing to standards discussions arou
 What EP has built:
 - A 5-endpoint trust ceremony (initiate → evaluate → signoff → execute → audit)
 - Formal verification via TLA+ (20 safety properties, 7,857 states, 0 errors) and Alloy (32 facts, 15 assertions)
-- 3,441 automated tests, 85 red team cases cataloged, 31 security findings remediated
+- 3,430 automated tests, 85 red team cases cataloged, 31 security findings remediated
 - Apache 2.0 open source with TypeScript and Python SDKs
 - Internal adversarial code audit: 100/100 (2026-04-02)
 
