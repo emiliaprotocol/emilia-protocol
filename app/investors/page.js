@@ -67,7 +67,7 @@ export default function InvestorsPage() {
   const PROOF = [
     { title: 'Accepted mutual flow', body: 'Full 7-step Accountable Signoff chain proven end-to-end under load: create, present (dual-key), verify (accepted), challenge, attest, consume. Zero errors at 50 concurrent users.' },
     { title: 'Measured operating envelope', body: 'Supported band with per-endpoint latency targets. Overload band with explicit 503 backpressure instead of timeout collapse. No correctness violations under stress.' },
-    { title: 'Protocol + product coherence', body: 'Open protocol, open runtime, managed cloud, enterprise packs, vertical pricing. GitHub release v1.1.0 published. 3,436 automated tests across 129 files, 20 TLA+ theorems machine-verified (TLC 2.19, 0 errors), 85 red team cases cataloged in docs/conformance/RED_TEAM_CASES.md.' },
+    { title: 'Protocol + product coherence', body: 'Open protocol, open runtime, managed cloud, enterprise packs, vertical pricing. GitHub release v1.1.0 published. 3,441 automated tests across 129 files, 20 TLA+ theorems machine-verified (TLC 2.19, 0 errors), 85 red team cases cataloged in docs/conformance/RED_TEAM_CASES.md.' },
   ];
 
   const cardStyle = (accent) => ({
@@ -109,7 +109,7 @@ export default function InvestorsPage() {
             borderLeft: `1px solid ${color.border}`,
           }}>
             {[
-              { value: '3,436', label: 'Automated tests across 129 files', accent: color.gold },
+              { value: '3,441', label: 'Automated tests across 129 files', accent: color.gold },
               { value: '20',    label: 'TLA+ theorems machine-verified, 0 errors', accent: color.gold },
               { value: '85',    label: 'Red team cases cataloged in repo', accent: color.gold },
             ].map((s, i) => (

@@ -77,7 +77,7 @@ EP is not a proposal. It is production-grade software with formal verification.
 
 | Metric | Value |
 |--------|-------|
-| **Automated tests** | 3,436 across 129 files (vitest) |
+| **Automated tests** | 3,441 across 129 files (vitest) |
 | **Adversarial tests** | 85 red team cases (`docs/conformance/RED_TEAM_CASES.md`) |
 | **Property-based tests** | Fast-check invariant tests |
 | **Mutation testing** | Stryker.js, 80%+ kill threshold |

@@ -38,7 +38,7 @@ Pre-built policy configurations for common government workflows:
 - **FISMA/FedRAMP compliance mapping (roadmap)** — control-family mapping documents are not yet published. EP enforcement satisfies action-level accountability requirements that map onto multiple NIST 800-53 controls; the formal mapping document is on the roadmap.
 
 ## Proof points
-- 3,436 automated tests across 129 files
+- 3,441 automated tests across 129 files
 - 20 TLA+ safety properties verified (T1–T20, TLC 2.19, 7,857 states, 0 errors); 6 additional EP-IX properties (T21–T26) specified, model run pending
 - 85 red team cases cataloged in `docs/conformance/RED_TEAM_CASES.md`
 - Zero write discipline exceptions

@@ -15,13 +15,13 @@ const HeroAnimation = dynamic(() => import('@/components/HeroAnimation'), {
 
 // Stats below are the source-of-truth numbers as of 2026-04-27. Each value
 // is independently verifiable in the repo:
-//   3,436 tests / 129 files — `npx vitest run` summary
+//   3,441 tests / 129 files — `npx vitest run` summary
 //   20 TLA+ theorems verified — formal/PROOF_STATUS.md (T1–T20)
 //   85 red team cases — docs/conformance/RED_TEAM_CASES.md line 1
 //   Internal audit — docs/security/AUDIT_METHODOLOGY.md (self-administered)
 // Do NOT mark as third-party "Verified". Do NOT inflate.
 const STATS = [
-  { value: '3,436', label: 'Automated Tests',   sub: '129 test files',           accent: color.t1 },
+  { value: '3,441', label: 'Automated Tests',   sub: '129 test files',           accent: color.t1 },
   { value: '20',    label: 'Theorems Proven',   sub: 'TLC 2.19, zero errors',    accent: color.blue },
   { value: '85',    label: 'Red Team Cases',    sub: 'Cataloged in repo',        accent: color.t1 },
   { value: '100/100', label: 'Internal Audit',  sub: 'Self-administered · Apr 2', accent: color.gold },
@@ -689,7 +689,7 @@ export default function HomePage() {
           color: 'rgba(255,255,255,0.3)', letterSpacing: 1.5, textTransform: 'uppercase',
         }}>
           <span>Compliance: NIST AI RMF · EU AI ACT</span>
-          <span>Tests: 3,436 passing · 0 failing</span>
+          <span>Tests: 3,441 passing · 0 failing</span>
           <span>Formal verification: 20 theorems · 0 errors</span>
         </div>
       </section>

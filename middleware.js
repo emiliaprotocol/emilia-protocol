@@ -233,7 +233,13 @@ function buildCSP(nonce) {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob:",
     "font-src 'self' https://fonts.gstatic.com",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://mainnet.base.org https://sepolia.base.org",
+    // connect-src wildcard `*.base.org` covers both mainnet.base.org and
+    // sepolia.base.org without coupling the CSP to specific subdomains.
+    // If blockchain config moves to a different chain, update both this
+    // line and lib/blockchain.js BASE_CHAIN/BASE_SEPOLIA constants in
+    // lockstep — silently dropping connect-src will block the browser
+    // verifier without a console error visible to the operator.
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.base.org",
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",

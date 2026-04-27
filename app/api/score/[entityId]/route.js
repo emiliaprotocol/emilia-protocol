@@ -50,14 +50,21 @@ export async function GET(request, { params }) {
     let historicalEstablished = false;
     let historicalEvidence = 0;
     let uniqueSubmitters = 0;
+    // is_entity_established RPC has been live since migration 020. The
+    // try/catch is defensive against transient RPC failure — log so SIEM
+    // sees the failure rather than silently degrading every score lookup
+    // to "not established".
     try {
-      const { data: estData } = await supabase.rpc('is_entity_established', { p_entity_id: entity.id });
-      if (estData && estData[0]) {
+      const { data: estData, error: estErr } = await supabase.rpc('is_entity_established', { p_entity_id: entity.id });
+      if (estErr) {
+        logger.warn('[score] is_entity_established RPC error:', { entityId: entity.id, error: estErr.message });
+      } else if (estData && estData[0]) {
         historicalEstablished = estData[0].established;
         historicalEvidence = estData[0].effective_evidence;
         uniqueSubmitters = estData[0].unique_submitters;
       }
-    } catch {
+    } catch (e) {
+      logger.warn('[score] is_entity_established threw:', { entityId: entity.id, error: e.message });
       historicalEstablished = false;
     }
 

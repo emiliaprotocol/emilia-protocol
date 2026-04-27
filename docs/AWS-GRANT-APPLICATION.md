@@ -70,7 +70,7 @@ EP provides four composable layers:
 
 | Metric | Value |
 |--------|-------|
-| Automated tests | 3,436 across 129 files (vitest) |
+| Automated tests | 3,441 across 129 files (vitest) |
 | Adversarial / red-team test cases | 85 cataloged in `docs/conformance/RED_TEAM_CASES.md` |
 | Formal verification | TLA+: 20 properties verified (T1–T20, TLC 2.19, 7,857 states, 0 errors); 6 EP-IX properties (T21–T26) specified, model run pending. Alloy: 32 facts, 15 assertions (Alloy 6.1.0). |
 | Database tables | ~50, all RLS-hardened (see `supabase/migrations/`) |

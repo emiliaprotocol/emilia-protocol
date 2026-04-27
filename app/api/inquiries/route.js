@@ -40,7 +40,12 @@ function sanitizeUrl(val) {
 function getSupabase() {
   try {
     return getGuardedClient();
-  } catch {
+  } catch (e) {
+    // Don't return success-shaped responses when the DB is uninitialised —
+    // the caller checks for null and falls back to logger-only persistence
+    // (with a BACKUP_RECORD line that ops can replay). Log the init
+    // failure so missing config is visible in SIEM.
+    logger.error('[inquiries] getGuardedClient() failed at startup:', e?.message);
     return null;
   }
 }

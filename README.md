@@ -41,7 +41,7 @@ The protocol is open. Managed policy, verification, signoff orchestration, monit
 
 | Metric | Value |
 |---|---|
-| Automated tests | 3,436 across 129 files |
+| Automated tests | 3,441 across 129 files |
 | TLA+ safety properties | 20 verified (T1–T20) — TLC 2.19, 2026-04-02 — see [formal/PROOF_STATUS.md](formal/PROOF_STATUS.md). 6 additional EP-IX properties (T21–T26) specified, model run pending. |
 | Alloy relational assertions | 32 facts, 15 assertions — **Verified (Alloy 6.1.0, 2026-04-02)** |
 | Red team cases | 85 cataloged in [docs/conformance/RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |
