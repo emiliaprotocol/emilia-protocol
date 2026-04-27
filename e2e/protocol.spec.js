@@ -21,9 +21,10 @@ test.describe('Protocol Page', () => {
     const govSection = page.locator('text=Protocol Governance');
     await expect(govSection.first()).toBeVisible({ timeout: 10_000 });
 
-    // PIP table should have entries
-    const pip000 = page.locator('text=PIP-000');
-    await expect(pip000.first()).toBeVisible();
+    // PIP table should have entries. PIP-001 ("Core Freeze") is the first
+    // accepted PIP — there is no PIP-000, so check for PIP-001 instead.
+    const pip001 = page.locator('text=PIP-001');
+    await expect(pip001.first()).toBeVisible();
   });
 
   test('compliance section renders', async ({ page }) => {

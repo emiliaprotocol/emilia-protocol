@@ -18,16 +18,18 @@ test.describe('Homepage', () => {
     const nav = page.locator('nav');
     await expect(nav).toBeVisible();
 
-    // Protocol link in nav
-    const protocolLink = page.locator('a[href="/protocol"]');
+    // Protocol link in nav. Use .first() — the homepage has multiple
+    // /protocol links (nav, hero CTA, footer, etc.); the smoke test just
+    // needs to confirm at least one is rendered and visible.
+    const protocolLink = page.locator('a[href="/protocol"]').first();
     await expect(protocolLink).toBeVisible();
   });
 
   test('nav links navigate correctly', async ({ page }) => {
     await page.goto('/');
 
-    // Click Protocol link
-    await page.click('a[href="/protocol"]');
+    // Click the first Protocol link — strict-mode disambiguation again.
+    await page.locator('a[href="/protocol"]').first().click();
     await expect(page).toHaveURL(/\/protocol/);
   });
 
