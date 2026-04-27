@@ -29,7 +29,7 @@
   },
   "dependencies": {
     "@remotion/player": "^4.0.441",
-    "@sentry/nextjs": "^8.0.0",
+    "@sentry/nextjs": "10.50.0",
     "@supabase/supabase-js": "^2.45.0",
     "next": "^15.0.0",
     "react": "^19.0.0",
@@ -38,12 +38,13 @@
     "viem": "^2.21.0"
   },
   "overrides": {
-    "rollup": "^4.22.5"
+    "rollup": "^4.22.5",
+    "postcss": "^8.5.12"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
-    "@stryker-mutator/core": "^8.0.0",
-    "@stryker-mutator/vitest-runner": "^8.0.0",
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/vitest-runner": "^9.6.1",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@vitest/coverage-v8": "^4.1.2",
