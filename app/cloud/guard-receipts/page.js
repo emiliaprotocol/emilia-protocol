@@ -5,8 +5,16 @@
 // not subject to write-discipline route restrictions; only files under
 // app/api/**/route.js need to use getGuardedClient). Replays the
 // guard.* event stream to derive each receipt's current status.
+//
+// AUTH GATE: This page exposes organization_id, action_type, amounts, and
+// adapter metadata. Without a valid Bearer token from the request, render
+// a "sign-in required" placeholder with NO data. This is the minimum
+// guard until /cloud/* gets proper session-cookie auth — browsers
+// navigating to this URL without authenticating see only the placeholder.
 
 import Link from 'next/link';
+import { headers } from 'next/headers';
+import { authenticateRequest } from '@/lib/supabase';
 import { getServiceClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger.js';
 
@@ -103,7 +111,50 @@ function statusBadge(status) {
   );
 }
 
+function SignInRequired() {
+  return (
+    <div style={{ minHeight: '100vh', background: '#020617', color: '#e8eaf0', fontFamily: "'IBM Plex Sans', -apple-system, sans-serif" }}>
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: '120px 24px', textAlign: 'center' }}>
+        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 3, textTransform: 'uppercase', color: '#7a809a', marginBottom: 16 }}>
+          Authentication required
+        </div>
+        <h1 style={{ fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 16 }}>Guard Receipts</h1>
+        <p style={{ fontSize: 14, color: '#7a809a', maxWidth: 480, margin: '0 auto 32px', lineHeight: 1.7 }}>
+          This dashboard exposes pre-action trust receipts including organization,
+          action-type, and amount metadata. Provide an EP operator API key to view
+          recent activity:
+        </p>
+        <div style={{ background: '#0F172A', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '16px 20px', textAlign: 'left', fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: '#7a809a', maxWidth: 540, margin: '0 auto' }}>
+          <div style={{ color: '#B08D35', marginBottom: 6 }}># Programmatic (curl):</div>
+          <div>curl -H &quot;Authorization: Bearer ep_live_...&quot; \</div>
+          <div style={{ marginLeft: 12 }}>https://emiliaprotocol.ai/cloud/guard-receipts</div>
+          <div style={{ color: '#B08D35', marginTop: 16, marginBottom: 6 }}># Or query the API directly:</div>
+          <div>GET /api/v1/trust-receipts/&#123;id&#125;/evidence</div>
+        </div>
+        <p style={{ fontSize: 12, color: '#4a4f6a', marginTop: 32, fontFamily: "'IBM Plex Mono', monospace" }}>
+          Browser-cookie authentication for /cloud/* lands in v1.1. Until then,
+          this dashboard is API-key gated.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default async function GuardReceiptsPage() {
+  // Auth gate. authenticateRequest expects a Request, but we only have
+  // headers() — wrap in a minimal shim so the same RPC validation path runs.
+  const h = await headers();
+  const authHeader = h.get('authorization') || '';
+  if (!authHeader.startsWith('Bearer ep_')) {
+    return <SignInRequired />;
+  }
+  const auth = await authenticateRequest({
+    headers: { get: (name) => h.get(name) || null },
+  });
+  if (auth.error) {
+    return <SignInRequired />;
+  }
+
   const { receipts, error } = await loadRecentReceipts();
 
   // Aggregate stats

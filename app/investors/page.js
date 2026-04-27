@@ -67,7 +67,7 @@ export default function InvestorsPage() {
   const PROOF = [
     { title: 'Accepted mutual flow', body: 'Full 7-step Accountable Signoff chain proven end-to-end under load: create, present (dual-key), verify (accepted), challenge, attest, consume. Zero errors at 50 concurrent users.' },
     { title: 'Measured operating envelope', body: 'Supported band with per-endpoint latency targets. Overload band with explicit 503 backpressure instead of timeout collapse. No correctness violations under stress.' },
-    { title: 'Protocol + product coherence', body: 'Open protocol, open runtime, managed cloud, enterprise packs, vertical pricing. GitHub release v1.1.0 published. 3,430 automated tests across 129 files, 20 TLA+ theorems machine-verified (TLC 2.19, 0 errors), 85 red team cases cataloged in docs/conformance/RED_TEAM_CASES.md.' },
+    { title: 'Protocol + product coherence', body: 'Open protocol, open runtime, managed cloud, enterprise packs, vertical pricing. EP Core v1.0 frozen (PIP-001 accepted); CHANGELOG tracks the v1.1.0 maintenance line. 3,430 automated tests across 129 files, 20 TLA+ theorems machine-verified (TLC 2.19, 0 errors), 85 red team cases cataloged in docs/conformance/RED_TEAM_CASES.md.' },
   ];
 
   const cardStyle = (accent) => ({

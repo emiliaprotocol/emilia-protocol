@@ -29,6 +29,6 @@
 
 ## Proof
 
-The protocol layer beneath has been proven end-to-end: 3,235 automated tests across 124 files, 329 complete Accountable Signoff chains with zero correctness violations, all endpoints using single-roundtrip atomic RPCs, and 46 EP-only database tables with zero foreign artifacts.
+The protocol layer beneath has been proven end-to-end: 3,430 automated tests across 129 files, 329 complete Accountable Signoff chains with zero correctness violations, all endpoints using single-roundtrip atomic RPCs, and 46 EP-only database tables with zero foreign artifacts.
 
 This is the business model: open protocol below, managed trust infrastructure above, vertical control systems on top.

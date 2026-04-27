@@ -20,9 +20,9 @@ This mapping covers EP's ability to help operators satisfy obligations under the
 | 9(1): Establish a risk management system | EP provides a structured, auditable trust evaluation pipeline (`protocolWrite()`) through which every high-risk action passes. System is continuous, documented, and versioned. |
 | 9(2)(a): Identify and analyze known risks | EP Eye observation layer classifies risk patterns by domain. Trust profiles track anomaly flags, negative outcome rates, and provenance quality. |
 | 9(2)(b): Estimate and evaluate risks | EP Trust Decisions produce `allow`/`review`/`deny` with evidence sufficiency metrics, domain scores, and confidence levels. |
-| 9(2)(c): Evaluate risks from reasonably foreseeable misuse | EP adversarial test suite: 116 red team cases including Sybil attacks, trust farming, collusion detection, and replay attempts. |
+| 9(2)(c): Evaluate risks from reasonably foreseeable misuse | EP adversarial test suite: 85 red team cases including Sybil attacks, trust farming, collusion detection, and replay attempts. |
 | 9(2)(d): Adopt risk management measures | EP four-layer enforcement: Eye → Handshake → Signoff → Commit. Each layer has independent controls, audit trails, and enforcement capabilities. |
-| 9(4): Testing to identify appropriate measures | EP: 670+ automated tests, TLA+ model checking (7,857 states), Alloy relational verification, property-based testing with fast-check. |
+| 9(4): Testing to identify appropriate measures | EP: 3,430 automated tests across 129 files, TLA+ model checking (7,857 states), Alloy relational verification, property-based testing with fast-check. |
 | 9(5): Testing against previously defined metrics | EP conformance test suite with deterministic fixtures, mutation testing (80%+ kill), and cross-language hash verification. |
 | 9(7): Risk management throughout AI system lifecycle | EP Trust Profiles are continuously updated. Score history tracks changes. Dispute lifecycle enables ongoing risk correction. |
 
@@ -42,7 +42,7 @@ This mapping covers EP's ability to help operators satisfy obligations under the
 
 | Requirement | EP Implementation |
 |-------------|-------------------|
-| 11(1): Technical documentation maintained | EP: PROTOCOL-STANDARD.md (17 sections), architecture docs (18 files), API documentation (8 files), formal specifications (TLA+, Alloy). |
+| 11(1): Technical documentation maintained | EP: PROTOCOL-STANDARD.md (Abstract + Core objects + Extensions), architecture docs (18 files), API documentation (8 files), formal specifications (TLA+, Alloy). |
 | 11(1): Documentation kept up to date | EP PIP process governs all protocol changes. Version-controlled documentation in git. CI enforces doc consistency. |
 
 ---
@@ -87,7 +87,7 @@ This mapping covers EP's ability to help operators satisfy obligations under the
 |-------------|-------------------|
 | 15(1): Appropriate level of accuracy | EP provides configurable policy thresholds. Four assurance levels (low/medium/substantial/high). Domain-specific scoring. |
 | 15(3): Resilient against errors | EP: 5-mechanism replay prevention, atomic RPCs with FOR UPDATE locks, fail-closed design on all trust-bearing operations. |
-| 15(4): Cybersecurity measures | EP: RLS on all 50 tables, timing-safe auth, CSP with per-request nonce, HSTS, write guard, SIEM integration. Formal threat model documented. |
+| 15(4): Cybersecurity measures | EP: RLS-hardened tables (~50), timing-safe auth, CSP with per-request nonce, HSTS, write guard, SIEM integration. Formal threat model documented. |
 
 ---
 

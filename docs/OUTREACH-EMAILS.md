@@ -134,7 +134,7 @@ A valid session doesn't constrain what action happens, under what policy, by wha
 
 EMILIA Protocol (EP) is the trust-control layer between authentication and execution. It verifies whether a specific high-risk action should be allowed to proceed, under a specific policy and authority chain, right now — and produces a cryptographic, auditable record of that decision.
 
-We've built a production-grade, independently audited implementation. The protocol is Apache 2.0 open source with TypeScript and Python SDKs. Commercial layers include a managed cloud, conformance certification, and integration tooling.
+We've built a production-grade, internally audited (self-administered) implementation. The protocol is Apache 2.0 open source with TypeScript and Python SDKs. Commercial layers include a managed cloud, conformance certification, and integration tooling.
 
 If this is a space you're tracking, I'd welcome a 30-minute call. Happy to share the audit report and pilot pipeline.
 

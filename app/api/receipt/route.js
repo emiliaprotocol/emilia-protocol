@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
+import { logger } from '@/lib/logger.js';
 
 /**
  * POST /api/receipt
@@ -78,22 +79,34 @@ export async function POST(request) {
       protocol_version: 'EP-CORE-v1.0',
     };
 
-    // Sign the canonical payload with Ed25519
-    let signatureValue = null;
-    if (issuerEntity.private_key_encrypted) {
-      try {
-        const privateKeyDer = Buffer.from(issuerEntity.private_key_encrypted, 'base64url');
-        const keyObject = crypto.createPrivateKey({
-          key: privateKeyDer,
-          format: 'der',
-          type: 'pkcs8',
-        });
-        const canonicalPayload = JSON.stringify(payload, Object.keys(payload).sort());
-        const sig = crypto.sign(null, Buffer.from(canonicalPayload, 'utf8'), keyObject);
-        signatureValue = Buffer.from(sig).toString('base64url');
-      } catch (sigErr) {
-        // Signing failed — return unsigned receipt
-      }
+    // Sign the canonical payload with Ed25519. A receipt without a valid
+    // signature is not a receipt — fail loud rather than returning an
+    // unsigned document that callers might mistakenly treat as
+    // authoritative. The canonical /api/receipt path is "issuer entity
+    // has a key, signing succeeds"; missing key or signing failure is a
+    // 5xx, not a silently-degraded 201.
+    if (!issuerEntity.private_key_encrypted) {
+      logger.warn('[api/receipt] Issuer has no signing key', { issuer });
+      return epProblem(
+        409,
+        'issuer_unsigned',
+        'Issuer entity has no signing key on file; cannot mint a signed receipt',
+      );
+    }
+    let signatureValue;
+    try {
+      const privateKeyDer = Buffer.from(issuerEntity.private_key_encrypted, 'base64url');
+      const keyObject = crypto.createPrivateKey({
+        key: privateKeyDer,
+        format: 'der',
+        type: 'pkcs8',
+      });
+      const canonicalPayload = JSON.stringify(payload, Object.keys(payload).sort());
+      const sig = crypto.sign(null, Buffer.from(canonicalPayload, 'utf8'), keyObject);
+      signatureValue = Buffer.from(sig).toString('base64url');
+    } catch (sigErr) {
+      logger.error('[api/receipt] Ed25519 signing failed', { issuer, error: sigErr?.message });
+      return epProblem(500, 'signing_failed', 'Receipt signing failed');
     }
 
     // Build EP-RECEIPT-v1 document

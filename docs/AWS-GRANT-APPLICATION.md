@@ -66,6 +66,38 @@ EP provides four composable layers:
 
 ---
 
+## Productized Surfaces: EP GovGuard + EP FinGuard
+
+EMILIA Protocol is the open standard. EP GovGuard and EP FinGuard are the
+productized surfaces — the same v1 trust-receipts API pre-filled for two
+high-leverage pilot domains:
+
+- **EP GovGuard** ([/govguard](https://emiliaprotocol.ai/govguard)) — pre-execution control for government benefit/payment changes.
+  Domain adapters: benefit-bank-account changes, caseworker overrides.
+- **EP FinGuard** ([/finguard](https://emiliaprotocol.ai/finguard)) — pre-execution trust for treasury & payment ops.
+  Domain adapters: vendor-bank-change, beneficiary creation, large payment release, AI-agent-initiated payment actions.
+
+Both share a single API surface:
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/v1/trust-receipts` | Create receipt (precheck + policy eval + audit emit) |
+| `GET /api/v1/trust-receipts/{id}` | Read receipt state (replays event log) |
+| `POST /api/v1/trust-receipts/{id}/consume` | One-time consume bound to action_hash |
+| `GET /api/v1/trust-receipts/{id}/evidence` | Full evidence packet (timeline, signoff trail, consume record) |
+| `POST /api/v1/signoffs/request` | Open a signoff request against a pending receipt |
+| `POST /api/v1/signoffs/{id}/approve` | Approver acts (self-approval forbidden, action_hash bound) |
+| `POST /api/v1/signoffs/{id}/reject` | Approver rejects |
+
+Three enforcement modes (per-organization, per-action-type): **observe** (log
+only, never block — the audit-only rollout posture), **warn** (return decision,
+let caller decide), **enforce** (fail closed). Pilots typically start in observe
+for 2–4 weeks to generate the "what would have been blocked" report, then
+flip to enforce once the agency or institution is comfortable with the
+delta.
+
+---
+
 ## Current State (Production-Ready)
 
 | Metric | Value |
@@ -156,7 +188,7 @@ EP provides four composable layers:
 ## References
 
 - **GitHub:** github.com/emilia-protocol
-- **Protocol Standard:** PROTOCOL-STANDARD.md (17 sections)
+- **Protocol Standard:** PROTOCOL-STANDARD.md (Abstract + Core objects + Extensions)
 - **Formal Models:** formal/ep_handshake.tla, formal/ep_relations.als
 - **NIST Engagement:** docs/NIST-ENGAGEMENT-PLAN.md
 - **AAIF Proposal:** docs/AAIF-PROPOSAL-v3.md

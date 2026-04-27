@@ -97,6 +97,11 @@ const HANDLER_COMPLEXITY_OVERRIDES = {
   'app/api/cloud/signoff/analytics/route.js': 90,
   'app/api/commit/issue/route.js': 90,
   'app/api/receipts/submit/route.js': 90,
+  // /api/receipt grew slightly past the default after the auth gate + the
+  // fail-loud-on-signing-failure invariants landed (per the audit). The
+  // handler is still a thin orchestrator; the 4 extra lines pay for
+  // explicit error paths instead of silently returning unsigned receipts.
+  'app/api/receipt/route.js': 90,
   // GovGuard + FinGuard v1 trust-receipt creation. The handler performs the
   // full pre-action gate inline: auth, body validation, actor-mismatch
   // guard, canonical action build + hash, policy evaluation, enforcement-

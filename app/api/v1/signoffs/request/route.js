@@ -17,6 +17,10 @@ import { logger } from '@/lib/logger.js';
 // callers can shorten via expires_in_minutes.
 const DEFAULT_APPROVAL_TTL_MS = 4 * 60 * 60 * 1000;
 
+// Mirror the pattern enforced on GET /api/v1/trust-receipts/{id} so a
+// malformed or path-traversal-shaped receipt_id never reaches the DB.
+const RECEIPT_ID_PATTERN = /^tr_[a-f0-9]{32}$/;
+
 export async function POST(request) {
   try {
     const auth = await authenticateRequest(request);
@@ -24,6 +28,9 @@ export async function POST(request) {
 
     const body = await request.json().catch(() => ({}));
     if (!body.receipt_id) return epProblem(400, 'missing_receipt_id', 'receipt_id is required');
+    if (!RECEIPT_ID_PATTERN.test(body.receipt_id)) {
+      return epProblem(400, 'invalid_receipt_id', 'receipt_id must match tr_<32-hex>');
+    }
 
     const supabase = getGuardedClient();
 

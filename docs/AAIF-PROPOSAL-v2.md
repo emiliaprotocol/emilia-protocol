@@ -40,12 +40,12 @@ EP is not a proposal. It is a working, audited, production-grade protocol.
 All 10 categories — formal verification, test quality, documentation, security, CI/CD, developer experience, MCP server, performance, licensing, and production readiness — scored at maximum.
 
 **Formal verification (machine-checked, CI-enforced)**
-- 25 TLA+ safety properties verified by TLC model checker (7,857 states, 0 errors) — replay prevention, one-time consumption, delegation acyclicity, concurrent revoke/consume serializability, signoff lifecycle integrity
+- 20 TLA+ safety properties verified by TLC model checker (7,857 states, 0 errors) — replay prevention, one-time consumption, delegation acyclicity, concurrent revoke/consume serializability, signoff lifecycle integrity
 - 32 Alloy relational facts + 15 assertions verified by Alloy 6.1.0 (0 counterexamples) — structural invariants across all aggregate types
 - Both models run automatically in CI on every change to `formal/`
 
 **Test depth**
-- 3,235 automated tests across 124 files
+- 3,430 automated tests across 129 files
 - 116 adversarial / red team cases
 - 19 fast-check property-based tests covering protocol invariants generatively
 - Stryker.js mutation testing with ≥80% kill threshold on protocol core

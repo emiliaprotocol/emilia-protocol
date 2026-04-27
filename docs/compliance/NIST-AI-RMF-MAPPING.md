@@ -22,7 +22,7 @@ This document maps EMILIA Protocol capabilities to the four core functions of th
 | GOVERN 1.3 | Processes for risk management are established | EP Handshake ceremony enforces a structured pre-action authorization process. Every high-risk action requires policy evaluation before execution. |
 | GOVERN 1.7 | Processes for decommission are defined | EP Commit revocation with mandatory reason field. Delegation revocation. Entity suspension with audit trail. |
 | GOVERN 2.1 | Roles and responsibilities are defined | EP Accountable Signoff maps specific principals to specific actions. Delegation judgment scoring evaluates human oversight quality. |
-| GOVERN 2.2 | Personnel are trained on risk management | EP provides structured documentation (PROTOCOL-STANDARD.md, 17 sections) and formal verification models (TLA+, Alloy) that serve as training material. |
+| GOVERN 2.2 | Personnel are trained on risk management | EP provides structured documentation (PROTOCOL-STANDARD.md and the canonical-docs map) and formal verification models (TLA+, Alloy) that serve as training material. |
 | GOVERN 3.2 | Policies align with organizational values | EP policy evaluation returns human-readable reasons with every Trust Decision. Appeal paths are always available. |
 | GOVERN 4.1 | Organizational practices are monitored | EP Eye OBSERVE lifecycle monitors action patterns without enforcement. SHADOW mode logs hypothetical enforcement for validation. |
 | GOVERN 4.3 | Organizational practices are updated | EP PIP process (Protocol Improvement Proposals) provides structured governance for protocol evolution. |
@@ -42,7 +42,7 @@ This document maps EMILIA Protocol capabilities to the four core functions of th
 | MAP 2.1 | AI risks are identified | EP Eye observations classify risk patterns by domain (financial, government, enterprise, AI/agent) and signal class. |
 | MAP 2.2 | Impacts are assessed | EP domain scoring evaluates impact per domain (financial, code_execution, communication, delegation, infrastructure, content_creation, data_access). |
 | MAP 3.1 | AI system benefits and costs are assessed | EP trust reports provide cost-benefit evidence: positive/negative outcome rates, evidence depth, provenance composition. |
-| MAP 3.5 | Scientific integrity is maintained | EP formal verification: 25 TLA+ safety properties, 32 Alloy relational facts — machine-checked, CI-enforced. |
+| MAP 3.5 | Scientific integrity is maintained | EP formal verification: 20 TLA+ safety properties verified (T1–T20) plus 6 specified, 32 Alloy relational facts — machine-checked, CI-enforced. |
 | MAP 5.1 | Likelihood of risks is assessed | EP anomaly detection (trust velocity), effective-evidence dampening (Sybil resistance), and graph-based collusion detection. |
 
 ---
@@ -51,12 +51,12 @@ This document maps EMILIA Protocol capabilities to the four core functions of th
 
 | NIST Subcategory | Requirement | EP Implementation |
 |-----------------|-------------|-------------------|
-| MEASURE 1.1 | Approaches for risk measurement are documented | EP PROTOCOL-STANDARD.md (17 sections) documents all measurement approaches. Scoring rationale in SCORING_RATIONALE.md. |
-| MEASURE 2.1 | AI systems are tested before deployment | 670+ automated tests, 116 adversarial test cases, 19 property-based tests, mutation testing with 80%+ kill threshold. |
+| MEASURE 1.1 | Approaches for risk measurement are documented | EP PROTOCOL-STANDARD.md (Abstract + Core objects + Extensions) documents all measurement approaches. Scoring rationale in SCORING_RATIONALE.md. |
+| MEASURE 2.1 | AI systems are tested before deployment | 3,430 automated tests across 129 files, 85 adversarial test cases, 19 property-based tests, mutation testing with 80%+ kill threshold. |
 | MEASURE 2.3 | AI system performance is tracked | EP Trust Profile materialization: snapshot on write, freshness check on read. Score history API tracks changes over time. |
 | MEASURE 2.5 | AI systems are evaluated for bias | EP provenance tiers (6 levels, 0.3x–1.0x weight) prevent over-reliance on any single evidence source. Bilateral confirmation required for highest weight. |
 | MEASURE 2.6 | AI system metrics are measured | EP canonical evaluator produces structured metrics: confidence level, evidence depth, behavioral rates, domain scores, anomaly flags. |
-| MEASURE 2.7 | AI systems are evaluated for cybersecurity | EP security: RLS on all 50 tables, SECURITY DEFINER search_path hardened, atomic RPCs with FOR UPDATE locks, timing-safe secret comparison, nonce-based CSP. |
+| MEASURE 2.7 | AI systems are evaluated for cybersecurity | EP security: RLS-hardened tables (~50), SECURITY DEFINER search_path hardened, atomic RPCs with FOR UPDATE locks, timing-safe secret comparison, nonce-based CSP. |
 | MEASURE 2.11 | Fairness is assessed | EP procedural justice: dispute lifecycle with human appeal, graph-based adjudication where accused entity cannot dominate their own case (0.4x self-weight cap). |
 | MEASURE 4.1 | Measurement approaches are documented | EP conformance test suite with deterministic fixtures, cross-language hash verification (JS + Python), and Stryker mutation testing. |
 

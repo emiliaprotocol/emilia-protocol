@@ -97,14 +97,14 @@
 - [x] STYLE-GUIDE.md — canonical vocabulary
 - [x] CANONICAL-DOCS.md — document map
 - [x] GOVERNANCE.md, CONTRIBUTING.md
-- [x] PROTOCOL-STANDARD.md — v1 with 17 sections (incl. Commitment Proofs §13, Dispute Adjudication Standard §14, Attribution Chain §15, Auto-Receipt §16, Conformance §17)
+- [x] PROTOCOL-STANDARD.md — v1 (Abstract, Core objects, Extensions). Detailed sub-specs (Commitment Proofs, Dispute Adjudication Standard, Attribution Chain, Auto-Receipt, Conformance) live in their own dedicated docs and the conformance test suite (`conformance/conformance.test.js`), not as numbered subsections of this single file.
 - [x] docs/LAUNCH.md — manifesto document
 
 ---
 
 ## Sprint Wave 2 — Shipped
 
-All items below were built and merged in the second sprint wave. They are live, tested, and reflected in PROTOCOL-STANDARD.md v1 (17 sections).
+All items below were built and merged in the second sprint wave. They are live, tested, and reflected in PROTOCOL-STANDARD.md v1.
 
 ### Auto-Receipt Generation
 - Opt-in, privacy-preserving, fire-and-forget behavioral receipt creation on every MCP tool call
@@ -155,7 +155,7 @@ All items below were built and merged in the second sprint wave. They are live, 
 - Turns advisory trust decisions into enforceable pre-action authorization
 
 ### Protocol Standard
-- PROTOCOL-STANDARD.md updated to 17 sections
+- PROTOCOL-STANDARD.md updated to v1.1
 - New sections: §13 Commitment Proofs, §14 Dispute Adjudication Standard, §15 Attribution Chain, §16 Auto-Receipt, §17 Conformance
 - NIST-ready
 

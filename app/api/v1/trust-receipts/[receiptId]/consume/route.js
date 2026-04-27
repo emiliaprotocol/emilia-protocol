@@ -105,6 +105,13 @@ export async function POST(request, { params }) {
     });
 
     if (insertErr) {
+      // Postgres unique_violation (SQLSTATE 23505) on the
+      // guard_receipt_consume_once partial unique index means another
+      // request raced this one and won. Return 409 (the receipt has
+      // already been consumed) instead of 500.
+      if (insertErr.code === '23505') {
+        return epProblem(409, 'receipt_already_consumed', 'Receipt has already been consumed');
+      }
       logger.error('[guard] consume: audit insert failed:', insertErr);
       return epProblem(500, 'internal_error', 'Failed to record consume');
     }

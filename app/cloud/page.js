@@ -103,7 +103,7 @@ export default function CloudPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginTop: 16 }}>
             <div style={{ padding: 12, border: '1px solid rgba(34,197,94,0.1)', borderRadius: 8 }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: '#F8FAFC' }}>Government</div>
-              <div style={{ fontSize: 12, color: '#94A3B8' }}>Payment integrity, benefit controls, FedRAMP alignment</div>
+              <div style={{ fontSize: 12, color: '#94A3B8' }}>Payment integrity, benefit controls, GovGuard pre-execution gate</div>
             </div>
             <div style={{ padding: 12, border: '1px solid rgba(34,197,94,0.1)', borderRadius: 8 }}>
               <div style={{ fontSize: 14, fontWeight: 600, color: '#F8FAFC' }}>Financial</div>

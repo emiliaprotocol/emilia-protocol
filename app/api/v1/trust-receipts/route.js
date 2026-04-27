@@ -25,6 +25,7 @@ import {
   evaluateGuardPolicy,
   applyEnforcementMode,
   hashCanonicalAction,
+  GUARD_ACTION_TYPES,
   GUARD_DECISIONS,
   ENFORCEMENT_MODES,
 } from '@/lib/guard-policies';
@@ -45,6 +46,18 @@ export async function POST(request) {
     const required = ['organization_id', 'action_type', 'target_resource_id'];
     for (const f of required) {
       if (!body[f]) return epProblem(400, `missing_${f}`, `${f} is required`);
+    }
+
+    // ── action_type allowlist ─────────────────────────────────────────────
+    // Without this, the default-allow path issues a real audit-recorded
+    // receipt for any garbage action_type the caller supplies. Constrain
+    // to the documented GUARD_ACTION_TYPES vocabulary.
+    if (!Object.values(GUARD_ACTION_TYPES).includes(body.action_type)) {
+      return epProblem(
+        400,
+        'invalid_action_type',
+        `action_type must be one of: ${Object.values(GUARD_ACTION_TYPES).join(', ')}`,
+      );
     }
 
     // ── CRITICAL INVARIANT (per MD §2.4 + §12.2.1) ───────────────────────
@@ -92,16 +105,21 @@ export async function POST(request) {
     const actionHash = hashCanonicalAction(canonicalAction);
 
     // ── Policy evaluation ─────────────────────────────────────────────────
+    // authenticateRequest returns { entity, permissions } — actorRole and
+    // authStrength are NOT on the auth shape today. Pass through what the
+    // body supplies (advisory only, not security-relevant — the policy
+    // engine treats these as informational hints) and document the gap.
+    // When the auth layer grows role/strength fields, replace with auth.*.
     const baseDecision = evaluateGuardPolicy({
       organizationId: body.organization_id,
       actorId: actor_id,
-      actorRole: auth.actorRole || body.actor_role || 'unknown',
+      actorRole: body.actor_role || 'unknown',
       actionType: body.action_type,
       targetChangedFields: body.target_changed_fields || [],
       amount: body.amount,
       currency: body.currency,
       riskFlags: body.risk_flags || [],
-      authStrength: auth.authStrength || 'mfa',
+      authStrength: 'mfa',  // hardcoded until authenticateRequest exposes it
       initiatorId: actor_id,
     });
 

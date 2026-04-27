@@ -64,6 +64,7 @@ function makeChain(resolveValue) {
     eq: vi.fn().mockReturnThis(),
     in: vi.fn().mockReturnThis(),
     order: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
     insert: vi.fn().mockResolvedValue(resolveValue),
     update: vi.fn().mockReturnThis(),
     single: vi.fn().mockResolvedValue(resolveValue),
@@ -378,7 +379,7 @@ describe('POST /api/v1/signoffs/request', () => {
     mockGetGuardedClient.mockReturnValue(makeSupabase({
       audit_events: { resolve: { data: [], error: null } },
     }));
-    const res = await requestSignoff(req({ receipt_id: 'tr_missing' }));
+    const res = await requestSignoff(req({ receipt_id: 'tr_' + 'b'.repeat(32) }));
     expect(res.status).toBe(404);
   });
 
@@ -390,7 +391,7 @@ describe('POST /api/v1/signoffs/request', () => {
     mockGetGuardedClient.mockReturnValue(makeSupabase({
       audit_events: { resolve: { data: events, error: null } },
     }));
-    const res = await requestSignoff(req({ receipt_id: 'tr_x' }));
+    const res = await requestSignoff(req({ receipt_id: 'tr_' + 'a'.repeat(32) }));
     expect(res.status).toBe(409);
   });
 
@@ -403,7 +404,7 @@ describe('POST /api/v1/signoffs/request', () => {
     mockGetGuardedClient.mockReturnValue(makeSupabase({
       audit_events: { resolve: { data: events, error: null } },
     }));
-    const res = await requestSignoff(req({ receipt_id: 'tr_x' }));
+    const res = await requestSignoff(req({ receipt_id: 'tr_' + 'a'.repeat(32) }));
     expect(res.status).toBe(409);
   });
 
@@ -415,7 +416,7 @@ describe('POST /api/v1/signoffs/request', () => {
     mockGetGuardedClient.mockReturnValue(makeSupabase({
       audit_events: { resolve: { data: events, error: null } },
     }));
-    const res = await requestSignoff(req({ receipt_id: 'tr_x', expires_in_minutes: 60 }));
+    const res = await requestSignoff(req({ receipt_id: 'tr_' + 'a'.repeat(32), expires_in_minutes: 60 }));
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.signoff_id).toMatch(/^sig_[0-9a-f]{32}$/);
@@ -446,6 +447,7 @@ describe('POST /api/v1/signoffs/:id/approve', () => {
             eq: vi.fn().mockReturnThis(),
             in: vi.fn().mockReturnThis(),
             order: vi.fn().mockReturnThis(),
+            limit: vi.fn().mockReturnThis(),
             insert: vi.fn().mockResolvedValue({ data: null, error: null }),
             then: (resolve) => {
               // Disambiguate by call order — first call is requests
@@ -479,6 +481,7 @@ describe('POST /api/v1/signoffs/:id/approve', () => {
         eq: vi.fn().mockReturnThis(),
         in: vi.fn().mockReturnThis(),
         order: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
         then: (resolve) => Promise.resolve({ data: [], error: null }).then(resolve),
       })),
     });
