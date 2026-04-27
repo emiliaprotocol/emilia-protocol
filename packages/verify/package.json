@@ -1,0 +1,48 @@
+{
+  "name": "@emilia-protocol/verify",
+  "version": "1.0.0",
+  "description": "Zero-dependency standalone verification for EP trust receipts, Merkle anchors, and commitment proofs. Uses only Node.js built-in crypto. No EP infrastructure required.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    }
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "emilia-protocol",
+    "trust",
+    "verification",
+    "ed25519",
+    "merkle",
+    "receipts",
+    "cryptography",
+    "zero-dependency",
+    "offline-verification"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
+    "directory": "packages/verify"
+  },
+  "homepage": "https://emiliaprotocol.ai",
+  "bugs": {
+    "url": "https://github.com/emiliaprotocol/emilia-protocol/issues"
+  },
+  "author": "Emilia Protocol Contributors",
+  "scripts": {
+    "test": "node --test test.js"
+  }
+}

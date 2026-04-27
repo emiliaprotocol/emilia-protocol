@@ -1,0 +1,354 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Emilia Protocol — AWS Operator Stack
+  Deploys a conformant EP operator on AWS using Aurora Serverless,
+  Lambda, API Gateway, CloudFront, and ElastiCache.
+
+Parameters:
+  OperatorId:
+    Type: String
+    Description: EP operator identifier (e.g., ep_operator_acme)
+    AllowedPattern: '^ep_operator_[a-z0-9_]+$'
+
+  DomainName:
+    Type: String
+    Description: Domain for the EP operator (e.g., ep.acme.com)
+
+  DBMasterPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 32
+    Description: Master password for Aurora (min 32 chars)
+
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues: [production, staging]
+
+Resources:
+  # ═══════════════════════════════════════════════════════════════
+  # VPC & Networking
+  # ═══════════════════════════════════════════════════════════════
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${OperatorId}-vpc'
+
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.10.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetA
+      RouteTableId: !Ref PublicRouteTable
+
+  # ═══════════════════════════════════════════════════════════════
+  # Aurora Serverless v2 (PostgreSQL 16)
+  # ═══════════════════════════════════════════════════════════════
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: EP operator private subnets
+      SubnetIds:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB
+
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EP Aurora access
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+
+  AuroraCluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      Engine: aurora-postgresql
+      EngineVersion: '16.1'
+      DatabaseName: ep_operator
+      MasterUsername: ep_admin
+      MasterUserPassword: !Ref DBMasterPassword
+      ServerlessV2ScalingConfiguration:
+        MinCapacity: 0.5
+        MaxCapacity: 8
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref DBSecurityGroup
+      StorageEncrypted: true
+      DeletionProtection: true
+      BackupRetentionPeriod: 14
+
+  AuroraInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBClusterIdentifier: !Ref AuroraCluster
+      DBInstanceClass: db.serverless
+      Engine: aurora-postgresql
+
+  # ═══════════════════════════════════════════════════════════════
+  # ElastiCache (Redis) — Rate Limiting
+  # ═══════════════════════════════════════════════════════════════
+  RedisSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EP Redis access
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+
+  RedisSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: EP Redis subnets
+      SubnetIds:
+        - !Ref PrivateSubnetA
+        - !Ref PrivateSubnetB
+
+  RedisCluster:
+    Type: AWS::ElastiCache::CacheCluster
+    Properties:
+      CacheNodeType: cache.t4g.micro
+      Engine: redis
+      NumCacheNodes: 1
+      CacheSubnetGroupName: !Ref RedisSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref RedisSecurityGroup
+
+  # ═══════════════════════════════════════════════════════════════
+  # Lambda Functions
+  # ═══════════════════════════════════════════════════════════════
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EP Lambda functions
+      VpcId: !Ref VPC
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: SecretsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Sub 'arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${OperatorId}/*'
+
+  CoreFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${OperatorId}-core'
+      Runtime: nodejs20.x
+      Handler: index.handler
+      MemorySize: 512
+      Timeout: 30
+      Role: !GetAtt LambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds: [!Ref LambdaSecurityGroup]
+        SubnetIds: [!Ref PrivateSubnetA, !Ref PrivateSubnetB]
+      Environment:
+        Variables:
+          EP_OPERATOR_ID: !Ref OperatorId
+          EP_ENVIRONMENT: !Ref Environment
+          DATABASE_SECRET_ARN: !Ref DatabaseSecret
+
+  CronFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${OperatorId}-cron'
+      Runtime: nodejs20.x
+      Handler: cron.handler
+      MemorySize: 256
+      Timeout: 300
+      Role: !GetAtt LambdaRole.Arn
+      VpcConfig:
+        SecurityGroupIds: [!Ref LambdaSecurityGroup]
+        SubnetIds: [!Ref PrivateSubnetA, !Ref PrivateSubnetB]
+      Environment:
+        Variables:
+          EP_OPERATOR_ID: !Ref OperatorId
+          DATABASE_SECRET_ARN: !Ref DatabaseSecret
+
+  # ═══════════════════════════════════════════════════════════════
+  # API Gateway
+  # ═══════════════════════════════════════════════════════════════
+  ApiGateway:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub '${OperatorId}-api'
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins: ['*']
+        AllowMethods: ['GET', 'POST', 'OPTIONS']
+        AllowHeaders: ['Content-Type', 'Authorization']
+
+  ApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref ApiGateway
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt CoreFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  ApiRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref ApiGateway
+      RouteKey: '$default'
+      Target: !Sub 'integrations/${ApiIntegration}'
+
+  ApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref ApiGateway
+      StageName: '$default'
+      AutoDeploy: true
+
+  CoreFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CoreFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*'
+
+  # ═══════════════════════════════════════════════════════════════
+  # EventBridge (Cron)
+  # ═══════════════════════════════════════════════════════════════
+  AnchorSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: 'rate(15 minutes)'
+      Targets:
+        - Arn: !GetAtt CronFunction.Arn
+          Id: anchor-target
+          Input: '{"task": "anchor"}'
+
+  ExpireSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: 'rate(5 minutes)'
+      Targets:
+        - Arn: !GetAtt CronFunction.Arn
+          Id: expire-target
+          Input: '{"task": "expire"}'
+
+  CronFunctionPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CronFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+
+  # ═══════════════════════════════════════════════════════════════
+  # Secrets Manager
+  # ═══════════════════════════════════════════════════════════════
+  DatabaseSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${OperatorId}/database-url'
+      SecretString: !Sub >-
+        postgresql://ep_admin:${DBMasterPassword}@${AuroraCluster.Endpoint.Address}:5432/ep_operator
+
+  OperatorKeysSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${OperatorId}/operator-keys'
+      Description: Per-operator HMAC signing keys (JSON map)
+      SecretString: '{}'
+
+  # ═══════════════════════════════════════════════════════════════
+  # CloudWatch Alarms
+  # ═══════════════════════════════════════════════════════════════
+  LambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${OperatorId}-lambda-errors'
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref CoreFunction
+
+Outputs:
+  ApiEndpoint:
+    Description: EP API endpoint
+    Value: !GetAtt ApiGateway.ApiEndpoint
+
+  AuroraEndpoint:
+    Description: Aurora cluster endpoint
+    Value: !GetAtt AuroraCluster.Endpoint.Address
+
+  ConformanceTestCommand:
+    Description: Run this to verify conformance
+    Value: !Sub 'npx ep-conformance-test ${ApiGateway.ApiEndpoint}'
