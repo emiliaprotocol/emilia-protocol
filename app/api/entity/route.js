@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
+import { logger } from '@/lib/logger.js';
 // API key generated inline — no dependency on lib/supabase internals
 import { epProblem } from '@/lib/errors';
 
@@ -62,7 +63,7 @@ export async function POST(request) {
       });
 
     if (entityError) {
-      console.error('[entity/route] Registration failed:', entityError);
+      logger.error('[entity/route] Registration failed:', entityError);
       return epProblem(500, 'registration_failed', entityError.message || JSON.stringify(entityError));
     }
 
@@ -73,7 +74,7 @@ export async function POST(request) {
       api_key: apiKey,
     }, { status: 201 });
   } catch (err) {
-    console.error('[entity/route] Unhandled error:', err);
+    logger.error('[entity/route] Unhandled error:', err);
     return epProblem(500, 'internal_error', err.message || 'Entity registration failed');
   }
 }

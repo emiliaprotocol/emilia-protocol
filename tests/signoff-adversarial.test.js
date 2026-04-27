@@ -634,7 +634,9 @@ describe('Adversarial: Concurrent attest + revoke race', () => {
       })(),
       // Path B: revoke
       (async () => {
-        // Tiny delay to simulate race timing
+        // setTimeout(r, 0) is a microtask-yield, not a real wait — it
+        // ensures Path A gets a chance to start its async work before B
+        // checks state. Not a timing dependency on wall-clock elapsed time.
         await new Promise((r) => setTimeout(r, 0));
         if (challenge.status !== 'revoked' && challenge.status !== 'denied' && challenge.status !== 'consumed') {
           challenge.status = 'revoked';

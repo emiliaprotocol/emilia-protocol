@@ -275,6 +275,12 @@ export async function middleware(request) {
   if (pathname.startsWith('/api/cloud/')) {
     const origin = request.headers.get('origin');
     if (origin) {
+      // ALLOWED_ORIGINS is read directly here rather than via lib/env.js
+      // because middleware.js runs in the Edge runtime and lib/env.js
+      // pulls in pino via lib/logger.js, which is Node-only. The
+      // protocol-discipline rule scopes "no direct process.env" to
+      // EP_-prefixed keys; non-EP keys (CORS allowlist, NODE_ENV, etc.)
+      // are unavoidable in edge code.
       const allowedOrigins = process.env.ALLOWED_ORIGINS
         ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
         : [];

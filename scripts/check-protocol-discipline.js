@@ -33,12 +33,10 @@ const TRUST_WRITE_ALLOWLIST = new Set([
 /** The only file allowed to read EP_ env vars via process.env. */
 const ENV_ALLOWLIST = new Set([
   path.join(ROOT, 'lib', 'env.js'),
-  // operator-auth.js reads EP_OPERATOR_KEYS — a security-critical secret that
-  // we intentionally load once at module-init and cache, not on every request.
-  // Refactoring to env.js would require adding a typed accessor for a JSON-map
-  // secret, which is not a concern env.js currently handles. TODO: add
-  // getOperatorKeys() accessor to lib/env.js.
-  path.join(ROOT, 'lib', 'operator-auth.js'),
+  // (operator-auth.js used to be here — TODO closed by adding
+  // getOperatorKeys() / getCronSecret() to lib/env.js. The module now
+  // routes both EP_OPERATOR_KEYS and CRON_SECRET reads through lib/env
+  // and no longer touches process.env directly.)
   // mcp-server/index.js reads EP_BASE_URL, EP_API_KEY, EP_AUTO_RECEIPT_URL,
   // and EP_AUTO_RECEIPT_KEY at startup. These are MCP-server entry-point
   // configuration, evaluated once when the server boots. The MCP server is

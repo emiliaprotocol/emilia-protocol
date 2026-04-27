@@ -792,8 +792,12 @@ describe('Timing Attacks', () => {
     const binding = bindings.find((b) => b.handshake_id === hsId);
     binding.expires_at = new Date().toISOString();
 
-    // Allow 1ms for clock to advance past the boundary
-    await new Promise((r) => setTimeout(r, 2));
+    // Real-clock dependency: bumped to 5ms so coarse OS timer granularity
+    // (typically 5-15ms in unit-test environments) doesn't make the
+    // boundary-crossing intermittent. Replace with vi.useFakeTimers() if
+    // this ever flakes — the test only needs `Date.now()` to advance past
+    // the binding's `expires_at`, not actual elapsed time.
+    await new Promise((r) => setTimeout(r, 5));
 
     const verifyResult = await verifyHandshake(hsId);
     expect(verifyResult.reason_codes).toContain('binding_expired');
