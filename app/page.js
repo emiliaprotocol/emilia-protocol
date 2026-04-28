@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
@@ -61,6 +62,19 @@ const DEPLOY_LAYERS = [
   { badge: 'VERTICAL', name: 'Vertical Packs', desc: 'Pre-built policy templates for government, financial services, and agent governance.', accent: color.t3 },
 ];
 
+// Three-step product story for the homepage. The four-layer technical
+// model (Eye → Handshake → Signoff → Commit) lives on /protocol; what
+// the homepage shows is the customer-facing version: a high-risk
+// action arrives, EP demands proof, EP issues a receipt. Same plumbing,
+// non-technical framing.
+const HOW_IT_WORKS = [
+  { step: '01', color: color.green, label: 'Intercept',           body: 'EP sits between approval and execution. Payments, overrides, vendor changes, autonomous AI actions — every high-risk write is gated before it reaches the system of record.' },
+  { step: '02', color: color.blue,  label: 'Require Proof',       body: 'Verified actor identity. Verified authority chain. Policy-pinned action context. One-time nonce. Where policy requires it: a named, accountable human signoff bound to the exact action hash.' },
+  { step: '03', color: color.gold,  label: 'Generate Trust Receipt', body: 'A signed, Merkle-anchored receipt is produced. Auditor-grade evidence packet at /api/v1/trust-receipts/{id}/evidence. Publicly verifiable with `npm install @emilia-protocol/verify`.' },
+];
+
+// Legacy four-layer step list (kept for any place that imports it; the
+// homepage now renders HOW_IT_WORKS by default).
 const DEPLOY_STEPS = [
   { step: '01', color: color.green, label: 'Start with Eye',          body: 'Observe, shadow, then enforce. Eye runs alongside existing workflows — logging first, flagging without blocking, then enforcing full ceremony when ready.', filled: true },
   { step: '02', color: color.blue,  label: 'Enforce with Handshake',  body: 'Policy-bound pre-action trust enforcement. Canonical binding, replay resistance, one-time consumption. Seven properties verified before execution proceeds.', filled: false },
@@ -208,7 +222,7 @@ export default function HomePage() {
                 fontFamily: font.mono, fontSize: 10, fontWeight: 500,
                 letterSpacing: 2, textTransform: 'uppercase',
                 color: color.gold, marginBottom: 20,
-              }}>Trust Infrastructure</div>
+              }}>Pre-Execution Trust Layer</div>
 
               <h1 style={{
                 fontFamily: font.sans, fontWeight: 700,
@@ -216,22 +230,22 @@ export default function HomePage() {
                 letterSpacing: -2.5, lineHeight: 0.96,
                 marginBottom: 28, color: color.t1,
               }}>
-                Trust, before<br />
-                high-risk{' '}
-                <em style={{ fontStyle: 'normal', color: color.gold }}>action.</em>
+                Fraud stops{' '}
+                <em style={{ fontStyle: 'normal', color: color.gold }}>before</em>{' '}
+                money moves.
               </h1>
 
               <p style={{
                 fontSize: 17, color: color.t2,
-                maxWidth: 440, lineHeight: 1.7, marginBottom: 36,
+                maxWidth: 460, lineHeight: 1.7, marginBottom: 36,
               }}>
-                Most systems verify who is acting. EP verifies whether this exact high-risk action should be allowed — by this actor, under this policy, right now.
+                Every high-risk action — payments, overrides, approvals — is cryptographically verified before execution. No trust. No assumptions. Only proof.
               </p>
 
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <a href="/protocol" className="ep-cta"           style={cta.primary}>Read the Protocol</a>
-                <a href="/partners" className="ep-cta-secondary" style={cta.secondary}>Request Pilot</a>
-                <a href="/use-cases" className="ep-cta-ghost"    style={cta.ghost}>Use Cases →</a>
+                <a href="/partners" className="ep-cta"          style={cta.primary}>Request Pilot</a>
+                <Link href="/r/example" className="ep-cta-secondary" style={cta.secondary}>See Live Example</Link>
+                <a href="/protocol" className="ep-cta-ghost"    style={cta.ghost}>Read the Protocol →</a>
               </div>
             </div>
 
@@ -269,6 +283,37 @@ export default function HomePage() {
           </div>
         </C>
       </div>
+
+      {/* ── HOW IT WORKS — 3-step product story ───────────────── */}
+      <section style={{ padding: '96px 0 80px', borderBottom: `1px solid ${color.border}` }}>
+        <C>
+          <div className="ep-reveal" style={{ marginBottom: 40, textAlign: 'center' }}>
+            <Eyebrow>How EMILIA Works</Eyebrow>
+            <SectionTitle>A control layer between approval and execution.</SectionTitle>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, position: 'relative' }}>
+            {HOW_IT_WORKS.map((item, i) => (
+              <div
+                key={i}
+                className="ep-card-lift ep-reveal"
+                style={{
+                  background: color.card,
+                  border: `1px solid ${color.border}`,
+                  borderRadius: radius.base,
+                  padding: '32px 28px',
+                }}
+              >
+                <div style={{
+                  fontFamily: font.mono, fontSize: 11, fontWeight: 600,
+                  color: item.color, letterSpacing: 1.5,
+                  textTransform: 'uppercase', marginBottom: 8,
+                }}>{item.step} · {item.label}</div>
+                <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.65, marginTop: 12 }}>{item.body}</p>
+              </div>
+            ))}
+          </div>
+        </C>
+      </section>
 
       {/* ── THE PROBLEM ──────────────────────────────────────── */}
       <section style={{ padding: '88px 0', borderBottom: `1px solid ${color.border}` }}>
