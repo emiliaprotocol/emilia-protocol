@@ -2,9 +2,10 @@
 // EP — Public Trust Receipt page (the "[See Live Example]" target).
 //
 // /r/{receiptId} renders a public-facing trust-receipt evidence packet:
+//   - a buyer-readable "what happened" narrative
 //   - the canonical action that was authorized
+//   - the named humans who took ownership of the decision
 //   - the signed Ed25519 attestation
-//   - the Merkle anchor (when present)
 //   - the full timeline of state transitions
 //   - a "Verify yourself" code block — anyone can install
 //     @emilia-protocol/verify and re-check the signature
@@ -37,26 +38,59 @@ export const metadata = {
 // ─── Demo receipt — built once at module load ─────────────────────────────
 // The demo is a real Ed25519-signed EP-RECEIPT-v1 document. The keypair
 // lives only in this module's runtime; it is regenerated on every cold
-// boot. This is fine for a public demo (the receipt's value is "look at
-// what a real signed receipt looks like," not "trust this specific key").
+// boot. That is deliberate — the receipt's value is "look at what a real
+// EP-signed receipt looks like and verify the signature with our public
+// npm package," not "trust this specific demo key forever."
+//
+// Scenario (per GTM brief, 2026-04-26):
+// A vendor self-service portal request attempted to change Acme
+// Industrial LLC's deposit account of record. EMILIA's risk engine
+// flagged four signals; policy required two-party named approval
+// before the change could be applied. Both approvers signed off; the
+// change was applied. The receipt below is the cryptographic record.
 
 function buildDemoReceipt() {
   const { privateKey, publicKey } = crypto.generateKeyPairSync('ed25519');
-  const issuedAt = new Date('2026-04-15T10:30:00Z').toISOString();
-  const expiresAt = new Date('2026-04-16T10:30:00Z').toISOString();
+  const issuedAt = new Date('2026-04-15T22:14:08Z').toISOString();
+  const expiresAt = new Date('2026-04-16T22:14:08Z').toISOString();
+
+  // We never print the actual routing/account numbers on a public page —
+  // only their hashes. Hashes prove the receipt is bound to a specific
+  // change without leaking PII. Production receipts use the same pattern.
+  const beforeBank = crypto
+    .createHash('sha256')
+    .update('demo|routing:121000358|account:7421-9933-4421')
+    .digest('hex');
+  const afterBank = crypto
+    .createHash('sha256')
+    .update('demo|routing:063100277|account:8884-2210-9988')
+    .digest('hex');
 
   const payload = {
     receipt_id: 'tr_example',
     issuer: 'ep_demo_treasury_v1',
-    subject: 'recipient_demo_acme_corp',
+    subject: 'vendor:VEND-9821',
     claim: {
-      action_type: 'large_payment_release',
+      action_type: 'vendor_bank_account_change',
       outcome: 'allow_with_signoff',
       context: {
         organization: 'demo_treasury',
-        amount_usd: 250000,
-        beneficiary: 'Acme Corp — Account ****9876',
-        purpose: 'Q2 vendor settlement',
+        vendor_id: 'VEND-9821',
+        vendor_name: 'Acme Industrial LLC',
+        change: {
+          before_bank_hash: `sha256:${beforeBank}`,
+          after_bank_hash: `sha256:${afterBank}`,
+        },
+        submitted_via: 'vendor_self_service_portal',
+        submitter_session_hash: 'sha256:8b2f0a1c4e9d…',
+        risk_signals: [
+          'NEW_DESTINATION',
+          'AFTER_HOURS_SUBMISSION',
+          'NO_PRIOR_CHANGE_30D',
+          'UNUSUAL_SUBMITTER_ASN',
+        ],
+        approval_policy: 'two_party_independent_approval',
+        outbound_payments_pending_usd: 248750,
       },
     },
     created_at: issuedAt,
@@ -90,18 +124,47 @@ function buildDemoReceipt() {
     },
     public_key: publicKeyB64,
     organization_id: 'org_demo_treasury',
-    action_type: 'large_payment_release',
+    action_type: 'vendor_bank_account_change',
     decision: 'allow_with_signoff',
     enforcement_mode: 'enforce',
     expires_at: expiresAt,
+    // ── Buyer-readable narrative — sits at the top of the page ──
+    narrative: {
+      headline:
+        'Vendor bank-account change — fraud signals tripped, two-party approval required.',
+      body:
+        'On April 15, 2026 at 22:14 UTC, the vendor self-service portal received a request to change the deposit account of record for Acme Industrial LLC (vendor VEND-9821). EMILIA flagged four risk signals (new destination, after-hours, no change in 30 days, unusual submitter ASN). Policy required two independent named humans to approve before the change could be applied. With $248,750 in vendor payments scheduled to that account, no payment was released until both approvals were on record.',
+      outcome:
+        'Two named humans approved. Change applied. Cryptographic record below.',
+    },
+    risk_signals: payload.claim.context.risk_signals,
+    change_hashes: payload.claim.context.change,
+    payments_at_risk_usd: payload.claim.context.outbound_payments_pending_usd,
     timeline: [
-      { event: 'guard.trust_receipt.created', actor_id: 'ap_user_alice', at: '2026-04-15T10:30:00Z', action: 'create' },
-      { event: 'guard.signoff.requested',     actor_id: 'ap_user_alice', at: '2026-04-15T10:30:05Z', action: 'request_signoff' },
-      { event: 'guard.signoff.approved',      actor_id: 'treasurer_bob', at: '2026-04-15T11:14:22Z', action: 'approved' },
-      { event: 'guard.trust_receipt.consumed', actor_id: 'swift_gateway', at: '2026-04-15T11:14:30Z', action: 'consume' },
+      { event: 'guard.trust_receipt.created',  actor_id: 'vendor_portal_agent',     at: '2026-04-15T22:14:08Z', action: 'submit_change' },
+      { event: 'eye.risk.flagged',             actor_id: 'ep_eye',                  at: '2026-04-15T22:14:08Z', action: 'flag_high_risk' },
+      { event: 'guard.signoff.requested',      actor_id: 'ep_policy_engine',        at: '2026-04-15T22:14:09Z', action: 'request_two_party_approval' },
+      { event: 'guard.signoff.approved',       actor_id: 'ap_controller_jane_park', at: '2026-04-15T22:32:41Z', action: 'approve_1_of_2' },
+      { event: 'guard.signoff.approved',       actor_id: 'cfo_delegate_kevin_chen', at: '2026-04-15T22:48:17Z', action: 'approve_2_of_2' },
+      { event: 'guard.trust_receipt.consumed', actor_id: 'vendor_master_data_svc',  at: '2026-04-15T22:48:22Z', action: 'apply_change' },
     ],
-    signoff: { required: true, approver_id: 'treasurer_bob', approved_at: '2026-04-15T11:14:22Z' },
-    consume: { consumed_at: '2026-04-15T11:14:30Z', consumed_by_system: 'swift_gateway', execution_reference_id: 'swift_msg_8E2A1F4B' },
+    signoff: {
+      required: true,
+      threshold: 'two_party_independent_approval',
+      approvers: [
+        { id: 'ap_controller_jane_park', role: 'AP Controller',  approved_at: '2026-04-15T22:32:41Z' },
+        { id: 'cfo_delegate_kevin_chen', role: 'CFO Delegate',   approved_at: '2026-04-15T22:48:17Z' },
+      ],
+      // Single-approver fallbacks below preserve back-compat with any
+      // older renderer that reads .approver_id / .approved_at scalars.
+      approver_id: 'ap_controller_jane_park',
+      approved_at: '2026-04-15T22:48:17Z',
+    },
+    consume: {
+      consumed_at: '2026-04-15T22:48:22Z',
+      consumed_by_system: 'vendor_master_data_svc',
+      execution_reference_id: 'vmd_change_8E2A1F4B',
+    },
     is_demo: true,
   };
 }
@@ -130,6 +193,10 @@ async function loadReceipt(receiptId) {
     if (!created) return null;
     const base = created.after_state || {};
 
+    // Real receipts may have one OR many signoff approvals. Collect them all.
+    const approvalEvents = events.filter((e) => e.event_type === 'guard.signoff.approved');
+    const consumeEvent = events.find((e) => e.event_type === 'guard.trust_receipt.consumed');
+
     return {
       receipt_id: receiptId,
       organization_id: base.organization_id,
@@ -137,6 +204,10 @@ async function loadReceipt(receiptId) {
       decision: base.decision,
       enforcement_mode: base.enforcement_mode,
       expires_at: base.expires_at,
+      narrative: null, // narratives are demo-only; real receipts speak through their fields
+      risk_signals: base.risk_signals || [],
+      change_hashes: base.change || null,
+      payments_at_risk_usd: base.outbound_payments_pending_usd || null,
       timeline: events.map((e) => ({
         event: e.event_type,
         actor_id: e.actor_id,
@@ -145,13 +216,19 @@ async function loadReceipt(receiptId) {
       })),
       signoff: {
         required: !!base.signoff_required,
-        approver_id: events.find((e) => e.event_type === 'guard.signoff.approved')?.actor_id || null,
-        approved_at: events.find((e) => e.event_type === 'guard.signoff.approved')?.created_at || null,
+        threshold: base.approval_policy || null,
+        approvers: approvalEvents.map((e) => ({
+          id: e.actor_id,
+          role: null,
+          approved_at: e.created_at,
+        })),
+        approver_id: approvalEvents[0]?.actor_id || null,
+        approved_at: approvalEvents[approvalEvents.length - 1]?.created_at || null,
       },
       consume: {
-        consumed_at: events.find((e) => e.event_type === 'guard.trust_receipt.consumed')?.after_state?.consumed_at || null,
-        consumed_by_system: events.find((e) => e.event_type === 'guard.trust_receipt.consumed')?.after_state?.consumed_by_system || null,
-        execution_reference_id: events.find((e) => e.event_type === 'guard.trust_receipt.consumed')?.after_state?.execution_reference_id || null,
+        consumed_at: consumeEvent?.after_state?.consumed_at || null,
+        consumed_by_system: consumeEvent?.after_state?.consumed_by_system || null,
+        execution_reference_id: consumeEvent?.after_state?.execution_reference_id || null,
       },
       is_demo: false,
     };
@@ -190,10 +267,29 @@ function Row({ label, children }) {
   );
 }
 
+function RiskChip({ code }) {
+  return (
+    <span style={{
+      fontFamily: font.mono, fontSize: 10, fontWeight: 500,
+      color: '#B91C1C',
+      background: 'rgba(185,28,28,0.06)',
+      border: '1px solid rgba(185,28,28,0.2)',
+      padding: '4px 10px', borderRadius: 2, letterSpacing: 0.5,
+      textTransform: 'uppercase',
+    }}>{code}</span>
+  );
+}
+
 export default async function ReceiptPage({ params }) {
   const { receiptId } = await params;
   const r = await loadReceipt(receiptId);
   if (!r) notFound();
+
+  const approvers = r.signoff?.approvers && r.signoff.approvers.length > 0
+    ? r.signoff.approvers
+    : (r.signoff?.approver_id
+        ? [{ id: r.signoff.approver_id, role: null, approved_at: r.signoff.approved_at }]
+        : []);
 
   return (
     <div style={styles.page}>
@@ -208,13 +304,11 @@ export default async function ReceiptPage({ params }) {
             fontFamily: font.mono, fontSize: 12, color: '#B08D35',
             marginBottom: 32,
           }}>
-            DEMO RECEIPT — generated at server boot with an ephemeral keypair so this
-            page works without prod DB access. Real receipts come from
-            <code style={{ marginLeft: 6 }}>POST /api/v1/trust-receipts</code>
-            and live forever in the append-only audit log.
+            DEMO RECEIPT — synthetic vendor scenario, real Ed25519 signature generated at server boot. The signature below verifies; the public key rotates each cold start. Production receipts come from <code style={{ marginLeft: 4 }}>POST /api/v1/trust-receipts</code> and live forever in the append-only audit log.
           </div>
         )}
 
+        {/* ── Header ────────────────────────────────────────────── */}
         <div style={{ marginBottom: 32 }}>
           <div style={{ fontFamily: font.mono, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 8 }}>
             EP-RECEIPT-v1 · TRUST RECEIPT
@@ -235,7 +329,48 @@ export default async function ReceiptPage({ params }) {
           </div>
         </div>
 
-        {/* ── 1. The action ─────────────────────────────────────── */}
+        {/* ── 0. What happened (narrative — demo only) ──────────── */}
+        {r.narrative && (
+          <section style={{ marginBottom: 48 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 12, color: color.t1 }}>What happened</h2>
+            <div style={{
+              background: '#FDFCFB',
+              border: `1px solid ${color.border}`,
+              borderLeft: `3px solid ${color.gold}`,
+              borderRadius: radius.base,
+              padding: '20px 24px',
+            }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: color.t1, marginBottom: 12, lineHeight: 1.5 }}>
+                {r.narrative.headline}
+              </div>
+              <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.7, marginBottom: r.narrative.outcome ? 12 : 0 }}>
+                {r.narrative.body}
+              </p>
+              {r.narrative.outcome && (
+                <p style={{ fontSize: 14, color: color.t1, lineHeight: 1.7, fontWeight: 500 }}>
+                  {r.narrative.outcome}
+                </p>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ── 1. Risk signals (the "Eye" layer's verdict) ───────── */}
+        {Array.isArray(r.risk_signals) && r.risk_signals.length > 0 && (
+          <section style={{ marginBottom: 48 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: color.t1 }}>
+              Risk signals fired
+            </h2>
+            <p style={{ fontSize: 13, color: color.t2, marginBottom: 16, lineHeight: 1.6 }}>
+              EMILIA&apos;s Eye layer matched these signals against the policy and required signoff before consume.
+            </p>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {r.risk_signals.map((s, i) => <RiskChip key={i} code={s} />)}
+            </div>
+          </section>
+        )}
+
+        {/* ── 2. The action ─────────────────────────────────────── */}
         <section style={{ marginBottom: 48 }}>
           <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: color.t1 }}>The action</h2>
           <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '8px 24px' }}>
@@ -243,23 +378,70 @@ export default async function ReceiptPage({ params }) {
             <Row label="Action type">{r.action_type || '—'}</Row>
             <Row label="Decision"><StatusBadge value={r.decision} /></Row>
             <Row label="Enforcement mode">{r.enforcement_mode || 'enforce'}</Row>
+            {r.change_hashes?.before_bank_hash && (
+              <Row label="Before (hashed)">
+                <span style={{ color: color.t3 }}>{r.change_hashes.before_bank_hash.slice(0, 24)}…</span>
+              </Row>
+            )}
+            {r.change_hashes?.after_bank_hash && (
+              <Row label="After (hashed)">
+                <span style={{ color: color.t1 }}>{r.change_hashes.after_bank_hash.slice(0, 24)}…</span>
+              </Row>
+            )}
+            {r.payments_at_risk_usd != null && (
+              <Row label="Payments held">${r.payments_at_risk_usd.toLocaleString()} pending until both approvals on record</Row>
+            )}
             <Row label="Expires at">{r.expires_at ? new Date(r.expires_at).toISOString() : '—'}</Row>
           </div>
         </section>
 
-        {/* ── 2. Signoff ────────────────────────────────────────── */}
-        {r.signoff?.required && (
+        {/* ── 3. Accountable signoff (now multi-approver) ───────── */}
+        {r.signoff?.required && approvers.length > 0 && (
           <section style={{ marginBottom: 48 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: color.t1 }}>Accountable signoff</h2>
-            <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '8px 24px' }}>
-              <Row label="Required">{r.signoff.required ? 'Yes — policy required a named approver' : 'No'}</Row>
-              <Row label="Approver">{r.signoff.approver_id || '— pending —'}</Row>
-              <Row label="Approved at">{r.signoff.approved_at ? new Date(r.signoff.approved_at).toISOString() : '— pending —'}</Row>
+            <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: color.t1 }}>
+              Accountable signoff
+            </h2>
+            <p style={{ fontSize: 13, color: color.t2, marginBottom: 16, lineHeight: 1.6 }}>
+              Policy:{' '}
+              <code style={{ fontFamily: font.mono, background: '#F5F4F0', padding: '2px 6px', borderRadius: 2 }}>
+                {r.signoff.threshold || 'signoff_required'}
+              </code>
+              . Each approver assumes named, cryptographically bound responsibility for this exact action.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+              {approvers.map((a, i) => (
+                <div key={i} style={{
+                  background: color.card,
+                  border: `1px solid ${color.border}`,
+                  borderTop: `2px solid ${color.green}`,
+                  borderRadius: radius.base,
+                  padding: '16px 20px',
+                }}>
+                  <div style={{
+                    fontFamily: font.mono, fontSize: 10,
+                    color: color.green, letterSpacing: 1.5, textTransform: 'uppercase',
+                    marginBottom: 6,
+                  }}>
+                    Approval {i + 1} of {approvers.length}
+                  </div>
+                  <div style={{ fontFamily: font.mono, fontSize: 13, fontWeight: 600, color: color.t1, marginBottom: 4 }}>
+                    {a.id}
+                  </div>
+                  {a.role && (
+                    <div style={{ fontSize: 12, color: color.t2, marginBottom: 8 }}>
+                      {a.role}
+                    </div>
+                  )}
+                  <div style={{ fontFamily: font.mono, fontSize: 11, color: color.t3 }}>
+                    {a.approved_at ? new Date(a.approved_at).toISOString() : '— pending —'}
+                  </div>
+                </div>
+              ))}
             </div>
           </section>
         )}
 
-        {/* ── 3. Consume / execution ────────────────────────────── */}
+        {/* ── 4. Execution / consume ────────────────────────────── */}
         {r.consume?.consumed_at && (
           <section style={{ marginBottom: 48 }}>
             <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: color.t1 }}>Execution</h2>
@@ -271,7 +453,7 @@ export default async function ReceiptPage({ params }) {
           </section>
         )}
 
-        {/* ── 4. Timeline ───────────────────────────────────────── */}
+        {/* ── 5. Timeline ───────────────────────────────────────── */}
         <section style={{ marginBottom: 48 }}>
           <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16, color: color.t1 }}>Timeline</h2>
           <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '20px 24px' }}>
@@ -285,7 +467,7 @@ export default async function ReceiptPage({ params }) {
           </div>
         </section>
 
-        {/* ── 5. Verify yourself — the killer feature ───────────── */}
+        {/* ── 6. Verify yourself — the killer feature ───────────── */}
         <section style={{ marginBottom: 48 }}>
           <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: color.t1 }}>Verify it yourself</h2>
           <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.7, marginBottom: 16 }}>
@@ -316,10 +498,10 @@ const result = verifyReceipt(evidence);
           )}
         </section>
 
-        {/* ── 6. Footer CTA ─────────────────────────────────────── */}
+        {/* ── 7. Footer CTA ─────────────────────────────────────── */}
         <section style={{ borderTop: `1px solid ${color.border}`, paddingTop: 32, marginTop: 48, textAlign: 'center' }}>
           <p style={{ fontSize: 14, color: color.t2, marginBottom: 16 }}>
-            Want a receipt like this for your own high-risk actions?
+            Want a receipt like this for every high-risk action your team takes?
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <a href="/govguard" style={{ fontFamily: font.sans, fontSize: 14, fontWeight: 500, padding: '10px 20px', background: color.t1, color: '#FAFAF9', borderRadius: 4, textDecoration: 'none' }}>EP GovGuard</a>

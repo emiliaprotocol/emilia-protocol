@@ -47,6 +47,29 @@ const COMPLIANCE = [
   { framework: 'SOC 2 II',    coverage: 'Preparing',    detail: 'Auditor selection in progress', accent: color.gold },
 ];
 
+// ─── Eight binding properties (Core 01–07 + Signoff extension 08) ─────────
+// Visual grid moved here from the homepage so the buyer-facing page stays
+// 30-second readable and the technical depth lives one click away.
+const BINDINGS = [
+  { num: '01', title: 'Actor identity',                     body: 'Cryptographically verified identity of the entity requesting the action.',                  code: 'verify(entity.keyId)' },
+  { num: '02', title: 'Authority chain',                    body: 'Complete delegation path from root authority to the acting principal.',                     code: '∀d ∈ D: d(root→actor)' },
+  { num: '03', title: 'Exact action context',               body: 'The precise operation, target, parameters, and environmental conditions.',                  code: 'bind(action, params)' },
+  { num: '04', title: 'Policy version and hash',            body: 'Immutable reference to the exact policy version that authorized this action.',              code: 'pin(policy.sha256)' },
+  { num: '05', title: 'Nonce and expiry',                   body: 'One-time cryptographic nonce and strict temporal bounds on authorization.',                 code: 'N_{t} ≠ N_{t-1}' },
+  { num: '06', title: 'One-time consumption',               body: 'Each ceremony token is consumed on use — no replay, no reuse, no ambiguity.',               code: 'consume(token_id, lock)' },
+  { num: '07', title: 'Immutable event traceability',       body: 'Append-only audit trail linking every authorization to its outcome.',                       code: 'Append(Log, Hash(E))' },
+  { num: '08', title: 'Accountable signoff (extension)',    body: 'Named human responsibility for the exact action, cryptographically bound to the ceremony.', code: 'attest(actor, action)' },
+];
+
+// Four-step phased rollout (OBSERVE → SHADOW → ENFORCE-with-handshake →
+// SEAL). Same content the homepage used to render.
+const ROLLOUT = [
+  { step: '01', accent: color.green, label: 'Start with Eye',         body: 'Observe, shadow, then enforce. Eye runs alongside existing workflows — logging first, flagging without blocking, then enforcing full ceremony when ready.', filled: true  },
+  { step: '02', accent: color.blue,  label: 'Enforce with Handshake', body: 'Policy-bound pre-action trust enforcement. Canonical binding, replay resistance, one-time consumption. Seven properties verified before execution proceeds.', filled: false },
+  { step: '03', accent: color.gold,  label: 'Own with Signoff',       body: 'Named human ownership when policy requires it. Not MFA. Cryptographically bound, action-specific accountability before execution.',                          filled: false },
+  { step: '04', accent: color.t2,    label: 'Seal with Commit',       body: 'Atomic write to the immutable audit chain. Handshake consumed, signoff consumed, event chain sealed. Execution released. Cannot be undone.',                  filled: false },
+];
+
 export default function ProtocolPage() {
   useEffect(() => {
     const els = document.querySelectorAll('.ep-reveal');
@@ -130,7 +153,7 @@ export default function ProtocolPage() {
         </div>
       </section>
 
-      {/* Seven binding guarantees */}
+      {/* Seven binding guarantees + signoff extension — visual grid */}
       <section style={styles.sectionAlt}>
         <div style={styles.section}>
           <div className="ep-reveal" style={{ marginBottom: 40 }}>
@@ -138,9 +161,50 @@ export default function ProtocolPage() {
             <h2 style={styles.h2}>What EP binds, every ceremony</h2>
             <p style={styles.body}>
               Actor identity. Authority chain. Exact action context. Policy version and hash. Nonce and expiry.
-              One-time consumption. Immutable event traceability. Every ceremony. No exceptions.
+              One-time consumption. Immutable event traceability. Every ceremony. No exceptions. The
+              eighth property — accountable signoff — applies whenever policy requires named human ownership.
             </p>
           </div>
+
+          {/* Border-collapse grid — same pattern the homepage used to render */}
+          <div className="ep-reveal ep-stagger-1" style={{
+            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
+            borderTop: `1px solid ${color.border}`,
+            borderLeft: `1px solid ${color.border}`,
+            background: '#F5F4F0',
+            marginBottom: 32,
+          }}>
+            {BINDINGS.map((b, i) => (
+              <div key={i} className="ep-card-lift" style={{
+                position: 'relative', overflow: 'hidden',
+                background: color.card,
+                borderRight: `1px solid ${color.border}`,
+                borderBottom: `1px solid ${color.border}`,
+                padding: '24px',
+              }}>
+                {/* Ghost number */}
+                <div aria-hidden style={{
+                  position: 'absolute', right: -8, top: -16,
+                  fontFamily: font.mono, fontWeight: 700, fontSize: 80,
+                  color: 'rgba(232,229,225,0.6)', pointerEvents: 'none',
+                  lineHeight: 1, userSelect: 'none',
+                }}>{b.num}</div>
+                <div style={{ position: 'relative', zIndex: 1 }}>
+                  <div style={{ fontFamily: font.mono, fontSize: 9, color: color.t3, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 14 }}>
+                    Property_{b.num}
+                  </div>
+                  <h4 style={{ fontFamily: font.sans, fontWeight: 600, fontSize: 13, marginBottom: 6, color: color.t1 }}>{b.title}</h4>
+                  <p style={{ fontSize: 12, color: color.t2, lineHeight: 1.55, marginBottom: 14 }}>{b.body}</p>
+                  <div style={{
+                    fontFamily: font.mono, fontSize: 9,
+                    background: '#F5F4F0', border: `1px solid ${color.border}`,
+                    padding: '6px 10px', textAlign: 'center', color: color.t3,
+                  }}>{b.code}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
           <div className="ep-reveal" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <a href="/spec" className="ep-cta-secondary" style={cta.secondary}>Read the Full Spec</a>
             <a href="/partners" className="ep-cta-ghost" style={cta.ghost}>Request Pilot</a>
@@ -173,6 +237,53 @@ export default function ProtocolPage() {
               <span style={{ fontFamily: font.mono, fontSize: 10, color: p.status === 'Accepted' ? color.green : color.gold, letterSpacing: 1.5, textTransform: 'uppercase' }}>{p.status}</span>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Phased rollout — Eye → Handshake → Signoff → Commit */}
+      <section style={styles.sectionAlt}>
+        <div style={styles.section}>
+          <div className="ep-reveal" style={{ marginBottom: 40 }}>
+            <div style={styles.eyebrow}>Rollout Schematics</div>
+            <h2 style={styles.h2}>Progressive phased deployment</h2>
+            <p style={styles.body}>
+              EP rolls out in four phases. Most pilots begin in <strong>OBSERVE</strong> for 2–4 weeks
+              to generate the &ldquo;what would have been blocked&rdquo; report before flipping to enforce.
+            </p>
+          </div>
+          <div style={{ position: 'relative' }}>
+            {/* Connecting line */}
+            <div aria-hidden style={{
+              position: 'absolute', top: 20, left: 36, right: 36,
+              height: 1, background: color.border, zIndex: 0,
+            }} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, position: 'relative', zIndex: 1 }}>
+              {ROLLOUT.map((item, i) => (
+                <div key={i} className="ep-card-lift ep-reveal" style={{
+                  background: color.card,
+                  border: `1px solid ${color.border}`,
+                  borderRadius: radius.base,
+                  padding: '28px',
+                }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 2,
+                    background: item.filled ? color.t1 : '#F5F4F0',
+                    border: item.filled ? 'none' : `1px solid ${color.border}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    marginBottom: 20,
+                    fontFamily: font.mono, fontSize: 12, fontWeight: 600,
+                    color: item.filled ? color.gold : color.t2,
+                  }}>{item.step}</div>
+                  <div style={{
+                    fontFamily: font.mono, fontSize: 10, fontWeight: 500,
+                    color: item.accent, letterSpacing: 1.5,
+                    textTransform: 'uppercase', marginBottom: 10,
+                  }}>{item.label}</div>
+                  <p style={{ fontSize: 13, color: color.t2, lineHeight: 1.65 }}>{item.body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 

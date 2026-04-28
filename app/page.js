@@ -14,6 +14,14 @@ const HeroAnimation = dynamic(() => import('@/components/HeroAnimation'), {
   ),
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Homepage — buyer-facing flow.
+// The technical depth (8 binding properties, 4-step rollout schematic, MFA
+// comparison, DEPLOY_LAYERS table, protocol-properties grid) lives one click
+// away on /protocol. The homepage's only job is to convert a cold reader
+// into someone who clicks "See Live Example" or "Request Pilot" within 30s.
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Stats below are the source-of-truth numbers as of 2026-04-27. Each value
 // is independently verifiable in the repo:
 //   3,430 tests / 129 files — `npx vitest run` summary
@@ -22,11 +30,11 @@ const HeroAnimation = dynamic(() => import('@/components/HeroAnimation'), {
 //   Internal audit — docs/security/AUDIT_METHODOLOGY.md (self-administered)
 // Do NOT mark as third-party "Verified". Do NOT inflate.
 const STATS = [
-  { value: '3,430', label: 'Automated Tests',   sub: '129 test files',           accent: color.t1 },
-  { value: '20',    label: 'Theorems Proven',   sub: 'TLC 2.19, zero errors',    accent: color.blue },
-  { value: '85',    label: 'Red Team Cases',    sub: 'Cataloged in repo',        accent: color.t1 },
-  { value: '100/100', label: 'Internal Audit',  sub: 'Self-administered · Apr 2', accent: color.gold },
-  { value: 'Apache 2.0', label: 'License',      sub: 'Open specification',       accent: color.green },
+  { value: '3,430',     label: 'Automated Tests',  sub: '129 test files',           accent: color.t1 },
+  { value: '20',        label: 'Theorems Proven',  sub: 'TLC 2.19, zero errors',    accent: color.blue },
+  { value: '85',        label: 'Red Team Cases',   sub: 'Cataloged in repo',        accent: color.t1 },
+  { value: '100/100',   label: 'Internal Audit',   sub: 'Self-administered · Apr 2', accent: color.gold },
+  { value: 'Apache 2.0', label: 'License',         sub: 'Open specification',       accent: color.green },
 ];
 
 const PROBLEMS = [
@@ -43,25 +51,6 @@ const SURFACES = [
   { title: 'AI/Agent Execution Governance',     body: 'Gate autonomous agent actions behind protocol-enforced trust ceremonies before any irreversible real-world execution.', href: '/use-cases/ai-agent',  accent: color.t2,    tags: ['AGENTIC AI', 'HUMAN-IN-LOOP'] },
 ];
 
-const BINDINGS = [
-  { num: '01', title: 'Actor identity',                    body: 'Cryptographically verified identity of the entity requesting the action.',              code: 'verify(entity.keyId)' },
-  { num: '02', title: 'Authority chain',                   body: 'Complete delegation path from root authority to the acting principal.',                  code: '∀d ∈ D: d(root→actor)' },
-  { num: '03', title: 'Exact action context',              body: 'The precise operation, target, parameters, and environmental conditions.',               code: 'bind(action, params)' },
-  { num: '04', title: 'Policy version and hash',           body: 'Immutable reference to the exact policy version that authorized this action.',           code: 'pin(policy.sha256)' },
-  { num: '05', title: 'Nonce and expiry',                  body: 'One-time cryptographic nonce and strict temporal bounds on authorization.',              code: 'N_{t} ≠ N_{t-1}' },
-  { num: '06', title: 'One-time consumption',              body: 'Each ceremony token is consumed on use — no replay, no reuse, no ambiguity.',           code: 'consume(token_id, lock)' },
-  { num: '07', title: 'Immutable event traceability',      body: 'Append-only audit trail linking every authorization to its outcome.',                    code: 'Append(Log, Hash(E))' },
-  { num: '08', title: 'Accountable signoff, when required', body: 'Named human responsibility for the exact action, cryptographically bound to the ceremony.', code: 'attest(actor, action)' },
-];
-
-const DEPLOY_LAYERS = [
-  { badge: 'OPEN',     name: 'Open Protocol',  desc: 'Apache 2.0 licensed specification. Read, implement, extend.', accent: color.green },
-  { badge: 'OPEN',     name: 'Open Runtime',   desc: 'Self-hosted reference implementation for on-premise deployment.', accent: color.green },
-  { badge: 'MANAGED',  name: 'EP Cloud',       desc: 'Managed control plane with observability, analytics, and policy management.', accent: color.blue },
-  { badge: 'PRIVATE',  name: 'EP Enterprise',  desc: 'Private deployment with dedicated infrastructure, SLAs, and compliance controls.', accent: color.gold },
-  { badge: 'VERTICAL', name: 'Vertical Packs', desc: 'Pre-built policy templates for government, financial services, and agent governance.', accent: color.t3 },
-];
-
 // Three-step product story for the homepage. The four-layer technical
 // model (Eye → Handshake → Signoff → Commit) lives on /protocol; what
 // the homepage shows is the customer-facing version: a high-risk
@@ -73,39 +62,12 @@ const HOW_IT_WORKS = [
   { step: '03', color: color.gold,  label: 'Generate Trust Receipt', body: 'A signed, Merkle-anchored receipt is produced. Auditor-grade evidence packet at /api/v1/trust-receipts/{id}/evidence. Publicly verifiable with `npm install @emilia-protocol/verify`.' },
 ];
 
-// Legacy four-layer step list (kept for any place that imports it; the
-// homepage now renders HOW_IT_WORKS by default).
-const DEPLOY_STEPS = [
-  { step: '01', color: color.green, label: 'Start with Eye',          body: 'Observe, shadow, then enforce. Eye runs alongside existing workflows — logging first, flagging without blocking, then enforcing full ceremony when ready.', filled: true },
-  { step: '02', color: color.blue,  label: 'Enforce with Handshake',  body: 'Policy-bound pre-action trust enforcement. Canonical binding, replay resistance, one-time consumption. Seven properties verified before execution proceeds.', filled: false },
-  { step: '03', color: color.gold,  label: 'Own with Signoff',        body: 'Named human ownership when policy requires it. Not MFA. Cryptographically bound, action-specific accountability before execution.', filled: false },
-  { step: '04', color: color.t2,    label: 'Seal with Commit',        body: 'Atomic write to the immutable audit chain. Handshake consumed, signoff consumed, event chain sealed. Execution released. Cannot be undone.', filled: false },
-];
-
 const DEV_TOOLS = [
   { title: 'Verify Package',    body: 'Zero-dependency offline receipt verification. Ed25519 + Merkle proofs. Just math, no EP server required.', code: 'npm install @emilia-protocol/verify', href: 'https://www.npmjs.com/package/@emilia-protocol/verify', accent: color.green,  codeLight: false },
   { title: 'Trust Playground',  body: 'Walk through the EP lifecycle interactively. Create entities, issue receipts, run handshakes — all from one page.', code: '/playground', href: '/playground', accent: color.blue,   codeLight: true },
   { title: 'Trust Explorer',    body: 'Verify any receipt, proof, or entity. Like Etherscan for trust. Public, transparent, cryptographically verified.', code: '/explorer', href: '/explorer', accent: color.gold,   codeLight: true },
   { title: 'Embed Widget',      body: 'Drop a trust badge on any page. One script tag, one web component. Live data from the EP operator.', code: '<ep-trust-badge />', href: '/adopt', accent: color.t2,    codeLight: true },
 ];
-
-const BADGE_STYLE = {
-  OPEN:     { color: color.green, bg: 'rgba(22,163,74,0.08)',    border: 'rgba(22,163,74,0.2)' },
-  MANAGED:  { color: color.blue,  bg: 'rgba(59,130,246,0.08)',   border: 'rgba(59,130,246,0.2)' },
-  PRIVATE:  { color: color.gold,  bg: 'rgba(176,141,53,0.08)',   border: 'rgba(176,141,53,0.2)' },
-  VERTICAL: { color: color.t3,    bg: 'rgba(120,113,108,0.06)',  border: 'rgba(120,113,108,0.18)' },
-};
-
-function badgeChip(badge) {
-  const s = BADGE_STYLE[badge] || BADGE_STYLE.VERTICAL;
-  return {
-    fontFamily: font.mono, fontSize: 9, fontWeight: 500,
-    color: s.color, letterSpacing: 1.2, textTransform: 'uppercase',
-    padding: '4px 10px', background: s.bg,
-    border: `1px solid ${s.border}`, borderRadius: 2,
-    display: 'inline-block',
-  };
-}
 
 function tagChip(label) {
   return (
@@ -171,7 +133,6 @@ function useReveal() {
 }
 
 const ALT = { background: '#F5F4F0', borderTop: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` };
-const DARK = { background: '#1C1917' };
 
 export default function HomePage() {
   useReveal();
@@ -312,6 +273,15 @@ export default function HomePage() {
               </div>
             ))}
           </div>
+          <div style={{ marginTop: 32, textAlign: 'center' }}>
+            <Link href="/r/example" style={{
+              fontFamily: font.mono, fontSize: 12, color: color.gold,
+              letterSpacing: 1, textTransform: 'uppercase',
+              textDecoration: 'underline', textUnderlineOffset: 4,
+            }}>
+              See a real receipt →
+            </Link>
+          </div>
         </C>
       </section>
 
@@ -391,275 +361,8 @@ export default function HomePage() {
         </C>
       </section>
 
-      {/* ── PROTOCOL DISCIPLINE ──────────────────────────────── */}
-      <section style={{ padding: '88px 0', borderBottom: `1px solid ${color.border}` }}>
-        <C>
-          <div className="ep-reveal" style={{ marginBottom: 40 }}>
-            <Eyebrow>Protocol Discipline</Eyebrow>
-            <SectionTitle>Core verification axioms</SectionTitle>
-            <SectionDesc>The fundamental properties guaranteed before execution. Any state resolving outside these bounds results in immediate rejection.</SectionDesc>
-          </div>
-          {/* Border-collapse grid — no gaps, borders shared between cells */}
-          <div className="ep-reveal ep-stagger-1" style={{
-            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
-            borderTop: `1px solid ${color.border}`,
-            borderLeft: `1px solid ${color.border}`,
-            background: '#F5F4F0',
-          }}>
-            {BINDINGS.map((b, i) => (
-              <div key={i} className="ep-card-lift" style={{
-                position: 'relative', overflow: 'hidden',
-                background: color.card,
-                borderRight: `1px solid ${color.border}`,
-                borderBottom: `1px solid ${color.border}`,
-                padding: '24px',
-              }}>
-                {/* Ghost number */}
-                <div aria-hidden style={{
-                  position: 'absolute', right: -8, top: -16,
-                  fontFamily: font.mono, fontWeight: 700, fontSize: 80,
-                  color: 'rgba(232,229,225,0.6)', pointerEvents: 'none',
-                  lineHeight: 1, userSelect: 'none',
-                }}>{b.num}</div>
-                <div style={{ position: 'relative', zIndex: 1 }}>
-                  <div style={{ fontFamily: font.mono, fontSize: 9, color: color.t3, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 14 }}>Property_{b.num}</div>
-                  <h4 style={{ fontFamily: font.sans, fontWeight: 600, fontSize: 13, marginBottom: 6, color: color.t1 }}>{b.title}</h4>
-                  <p style={{ fontSize: 12, color: color.t2, lineHeight: 1.55, marginBottom: 14 }}>{b.body}</p>
-                  <div style={{
-                    fontFamily: font.mono, fontSize: 9,
-                    background: '#F5F4F0', border: `1px solid ${color.border}`,
-                    padding: '6px 10px', textAlign: 'center', color: color.t3,
-                  }}>{b.code}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </C>
-      </section>
-
-      {/* ── ACCOUNTABLE SIGNOFF ──────────────────────────────── */}
-      <section style={{ padding: '88px 0', ...ALT }}>
-        <C>
-          <div className="ep-reveal" style={{ textAlign: 'center', marginBottom: 48 }}>
-            <Eyebrow>Architecture Analysis</Eyebrow>
-            <SectionTitle>When policy requires human ownership</SectionTitle>
-          </div>
-          <div className="ep-reveal ep-stagger-1" style={{
-            display: 'grid', gridTemplateColumns: '1fr 1fr',
-            maxWidth: 900, margin: '0 auto',
-            border: `1px solid ${color.border}`,
-            borderRadius: radius.base, overflow: 'hidden',
-          }}>
-            {/* Left — standard auth flow */}
-            <div style={{ background: '#FDFCFB', padding: '32px', borderRight: `1px solid ${color.border}` }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: `1px solid ${color.border}`, paddingBottom: 16, marginBottom: 24 }}>
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'rgba(185,28,28,0.7)', flexShrink: 0 }} />
-                <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 600, color: color.t1 }}>Standard MFA Pipeline</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {[
-                  { step: '1', label: 'User authenticates via session', tag: 'Session-level only' },
-                  { step: '2', label: 'Session cookie granted', tag: 'Exportable, reusable' },
-                  { step: '3', label: 'Action executes within session', tag: 'No action verification' },
-                  { step: '4', label: 'Fraud succeeds', tag: 'Looks legitimate at auth layer', final: true, error: true },
-                ].map((item, i) => (
-                  <div key={i} style={{
-                    position: 'relative',
-                    padding: '10px 14px',
-                    background: item.error ? 'rgba(185,28,28,0.04)' : color.card,
-                    border: `1px solid ${item.error ? 'rgba(185,28,28,0.25)' : color.border}`,
-                    borderRadius: 3,
-                  }}>
-                    {!item.final && (
-                      <div style={{ position: 'absolute', bottom: -10, left: 18, width: 1, height: 10, background: color.border, zIndex: 1 }} />
-                    )}
-                    <div style={{ fontFamily: font.mono, fontSize: 11, color: color.t2 }}>{item.step}. {item.label}</div>
-                    <div style={{
-                      fontFamily: font.mono, fontSize: 9, marginTop: 4,
-                      color: item.error ? 'rgba(185,28,28,0.8)' : color.t3,
-                      background: item.error ? 'rgba(185,28,28,0.07)' : 'transparent',
-                      display: 'inline-block', padding: item.error ? '2px 6px' : 0,
-                      borderRadius: 2,
-                    }}>{item.tag}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Right — EP Accountable Signoff */}
-            <div style={{ background: color.card, padding: '32px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${color.border}`, paddingBottom: 16, marginBottom: 24 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: color.green, flexShrink: 0 }} />
-                  <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 600, color: color.t1 }}>EP Accountable Signoff</span>
-                </div>
-                <span style={{ fontFamily: font.mono, fontSize: 9, background: color.t1, color: color.gold, padding: '3px 8px', borderRadius: 2, letterSpacing: 1, textTransform: 'uppercase' }}>PASS</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {[
-                  { step: '1', label: 'Action context bound', tag: 'Exact params + target' },
-                  { step: '2', label: 'Policy version evaluated', tag: 'Pinned policy hash' },
-                  { step: '3', label: 'Human attestation required', tag: 'Named, cryptographically bound' },
-                  { step: '4', label: 'Trust established', tag: 'One-time consumption, sealed', final: true },
-                ].map((item, i) => (
-                  <div key={i} style={{
-                    position: 'relative',
-                    padding: '10px 14px',
-                    background: item.final ? 'rgba(22,163,74,0.04)' : '#FFFFFF',
-                    border: `1px solid ${item.final ? 'rgba(22,163,74,0.3)' : 'rgba(22,163,74,0.15)'}`,
-                    borderRadius: 3,
-                  }}>
-                    {!item.final && (
-                      <div style={{ position: 'absolute', bottom: -10, left: 18, width: 1, height: 10, background: 'rgba(22,163,74,0.3)', zIndex: 1 }} />
-                    )}
-                    <div style={{ fontFamily: font.mono, fontSize: 11, color: color.t1 }}>{item.step}. {item.label}</div>
-                    <div style={{ fontFamily: font.mono, fontSize: 9, color: color.green, marginTop: 4, background: 'rgba(22,163,74,0.08)', display: 'inline-block', padding: '2px 6px', borderRadius: 2 }}>{item.tag}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </C>
-      </section>
-
-      {/* ── PRODUCT LAYERS ───────────────────────────────────── */}
-      <section style={{ padding: '88px 0', borderBottom: `1px solid ${color.border}` }}>
-        <C>
-          <div className="ep-reveal" style={{ marginBottom: 32 }}>
-            <Eyebrow>Infrastructure Layers</Eyebrow>
-            <SectionTitle>Deployment options at every layer</SectionTitle>
-          </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th style={{ borderBottom: `1px solid ${color.border}`, paddingBottom: 12, paddingLeft: 16, textAlign: 'left', fontFamily: font.mono, fontSize: 9, color: color.t3, letterSpacing: 2, textTransform: 'uppercase' }}>Layer</th>
-                  <th style={{ borderBottom: `1px solid ${color.border}`, paddingBottom: 12, textAlign: 'left', fontFamily: font.mono, fontSize: 9, color: color.t3, letterSpacing: 2, textTransform: 'uppercase' }}>Name</th>
-                  <th style={{ borderBottom: `1px solid ${color.border}`, paddingBottom: 12, textAlign: 'left', fontFamily: font.mono, fontSize: 9, color: color.t3, letterSpacing: 2, textTransform: 'uppercase' }}>Description</th>
-                  <th style={{ borderBottom: `1px solid ${color.border}`, paddingBottom: 12, textAlign: 'right', paddingRight: 16, fontFamily: font.mono, fontSize: 9, color: color.t3, letterSpacing: 2, textTransform: 'uppercase' }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {DEPLOY_LAYERS.map((l, i) => (
-                  <tr key={i} className="ep-row-hover" style={{ borderBottom: i < DEPLOY_LAYERS.length - 1 ? `1px solid ${color.border}` : 'none' }}>
-                    <td style={{ padding: '14px 16px' }}>
-                      <span style={badgeChip(l.badge)}>{l.badge}</span>
-                    </td>
-                    <td style={{ padding: '14px 0', fontFamily: font.sans, fontWeight: 600, fontSize: 14, color: color.t1, minWidth: 160 }}>{l.name}</td>
-                    <td style={{ padding: '14px 24px 14px 0', fontSize: 13, color: color.t2 }}>{l.desc}</td>
-                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        fontFamily: font.mono, fontSize: 9, textTransform: 'uppercase', letterSpacing: 1,
-                        color: color.green, background: 'rgba(22,163,74,0.08)',
-                        border: '1px solid rgba(22,163,74,0.2)',
-                        padding: '4px 10px', borderRadius: 2,
-                      }}>
-                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: color.green, display: 'inline-block' }} />
-                        Active
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </C>
-      </section>
-
-      {/* ── HOW EP DEPLOYS ───────────────────────────────────── */}
-      <section style={{ padding: '88px 0', ...ALT }}>
-        <C>
-          <div className="ep-reveal" style={{ marginBottom: 40 }}>
-            <Eyebrow>Rollout Schematics</Eyebrow>
-            <SectionTitle>Progressive phased deployment</SectionTitle>
-          </div>
-          <div style={{ position: 'relative' }}>
-            {/* Connecting line */}
-            <div aria-hidden style={{
-              position: 'absolute', top: 20, left: 36, right: 36,
-              height: 1, background: color.border, zIndex: 0,
-            }} />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, position: 'relative', zIndex: 1 }}>
-              {DEPLOY_STEPS.map((item, i) => (
-                <div
-                  key={i}
-                  className="ep-card-lift ep-reveal"
-                  style={{
-                    background: color.card,
-                    border: `1px solid ${color.border}`,
-                    borderRadius: radius.base,
-                    padding: '28px',
-                  }}
-                >
-                  {/* Step badge */}
-                  <div style={{
-                    width: 40, height: 40, borderRadius: 2,
-                    background: item.filled ? color.t1 : '#F5F4F0',
-                    border: item.filled ? 'none' : `1px solid ${color.border}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    marginBottom: 20,
-                    fontFamily: font.mono, fontSize: 12, fontWeight: 600,
-                    color: item.filled ? color.gold : color.t2,
-                  }}>{item.step}</div>
-                  <div style={{
-                    fontFamily: font.mono, fontSize: 10, fontWeight: 500,
-                    color: item.color, letterSpacing: 1.5,
-                    textTransform: 'uppercase', marginBottom: 10,
-                  }}>{item.label}</div>
-                  <p style={{ fontSize: 13, color: color.t2, lineHeight: 1.65 }}>{item.body}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </C>
-      </section>
-
-      {/* ── PROTOCOL PROPERTIES ──────────────────────────────── */}
-      <section style={{ padding: '88px 0', borderBottom: `1px solid ${color.border}` }}>
-        <C>
-          <div className="ep-reveal" style={{ marginBottom: 48 }}>
-            <Eyebrow>Protocol Properties</Eyebrow>
-            <SectionTitle>Why EP is a protocol, not just an API</SectionTitle>
-          </div>
-          <div className="ep-reveal ep-stagger-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 48 }}>
-            {[
-              {
-                code: 'SYS_ARCH::001',
-                title: 'Self-verifying receipts',
-                body: 'Every EP receipt is Ed25519-signed and Merkle-anchored. Anyone can verify it without calling our API — no account, no trust relationship. Just math.',
-                accent: color.green,
-              },
-              {
-                code: 'SYS_ARCH::002',
-                title: 'Compliance-mapped',
-                body: 'Formal mappings to 38 NIST AI RMF subcategories across all four functions (GOVERN, MAP, MEASURE, MANAGE) and EU AI Act Articles 9–15 + 26. SOC 2 Type II preparation underway. Built for procurement, not just developers.',
-                accent: color.blue,
-              },
-              {
-                code: 'SYS_ARCH::003',
-                title: 'Federation-ready',
-                body: 'Multiple independent operators can issue and cross-verify receipts via shared cryptographic proofs. No single point of failure. No central authority. Like email — anyone can run a server.',
-                accent: color.gold,
-              },
-            ].map((item, i) => (
-              <div key={i}>
-                <div style={{
-                  fontFamily: font.mono, fontSize: 10, fontWeight: 500,
-                  color: item.accent, letterSpacing: 1, display: 'block',
-                  marginBottom: 12, borderBottom: `1px solid ${color.border}`,
-                  paddingBottom: 8,
-                }}>{item.code}</div>
-                <h3 style={{ fontFamily: font.sans, fontWeight: 600, fontSize: 17, marginBottom: 10, color: color.t1 }}>{item.title}</h3>
-                <p style={{ fontSize: 13, color: color.t2, lineHeight: 1.7 }}>{item.body}</p>
-              </div>
-            ))}
-          </div>
-        </C>
-      </section>
-
       {/* ── DEVELOPER TOOLS ──────────────────────────────────── */}
-      <section style={{ padding: '88px 0', ...ALT }}>
+      <section style={{ padding: '88px 0', borderBottom: `1px solid ${color.border}` }}>
         <C>
           <div className="ep-reveal" style={{ marginBottom: 40 }}>
             <Eyebrow>Implementation Surface</Eyebrow>
@@ -718,8 +421,8 @@ export default function HomePage() {
               Enforce trust before<br />high-risk action
             </h2>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              <a href="/protocol" className="ep-cta" style={{ ...cta.primary, background: '#FAFAF9', color: '#1C1917', borderRadius: 2 }}>Read the Protocol</a>
-              <a href="/playground" className="ep-cta" style={{ ...cta.primary, background: color.gold, color: '#FAFAF9', borderRadius: 2 }}>Open Playground</a>
+              <Link href="/r/example" className="ep-cta" style={{ ...cta.primary, background: '#FAFAF9', color: '#1C1917', borderRadius: 2 }}>See Live Example</Link>
+              <a href="/protocol" className="ep-cta" style={{ ...cta.primary, background: color.gold, color: '#FAFAF9', borderRadius: 2 }}>Read the Protocol</a>
               <a href="/partners" className="ep-cta-secondary" style={{ ...cta.secondary, color: 'rgba(250,250,249,0.85)', borderColor: 'rgba(255,255,255,0.18)', borderRadius: 2 }}>Request Pilot</a>
             </div>
           </div>
