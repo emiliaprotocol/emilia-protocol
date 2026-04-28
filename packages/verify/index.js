@@ -27,8 +27,43 @@ function sha256(input) {
   return crypto.createHash('sha256').update(input, 'utf8').digest('hex');
 }
 
-function canonicalize(obj) {
-  return JSON.stringify(obj, Object.keys(obj).sort());
+// Recursive canonical JSON — depth-first key sort at every level.
+//
+// The previous implementation
+//
+//   JSON.stringify(obj, Object.keys(obj).sort())
+//
+// was a SHALLOW canonicalization. The second argument to JSON.stringify
+// in array form is a property allowlist filter, NOT a sort order, and it
+// does NOT recurse into nested objects to enforce key order at depth.
+// Worse, it filters nested keys to only those names present in the
+// top-level allowlist.
+//
+// Net effect of the shallow pattern: a verifier and a signer that both
+// "sort keys before signing" could compute different canonical bytes for
+// the same logical document, producing a false-negative signature
+// failure. And nested fields (e.g. claim.context.risk_signals or
+// claim.context.change.after_bank_hash) were not deterministically
+// included in the signed material under the shallow algorithm.
+//
+// The fix below is the same recursive canonicalize() used by
+// lib/guard-policies.js (hashCanonicalAction) on the server side, so
+// signer and verifier produce byte-identical canonical material for any
+// arbitrarily-nested object.
+//
+// Bug history: shipped in 1.0.0, fixed in 1.0.1. See package.json.
+function canonicalize(value) {
+  if (value === null || value === undefined) return JSON.stringify(value);
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalize).join(',')}]`;
+  }
+  if (typeof value === 'object') {
+    return `{${Object.keys(value)
+      .sort()
+      .map((k) => JSON.stringify(k) + ':' + canonicalize(value[k]))
+      .join(',')}}`;
+  }
+  return JSON.stringify(value);
 }
 
 function hashPair(a, b) {

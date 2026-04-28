@@ -65,6 +65,15 @@ const ROUTE_POLICIES = {
   'POST /api/v1/adapters/fin/beneficiary-creation/precheck': { rateCategory: 'submit', useAuth: true },
   'POST /api/v1/adapters/fin/payment-release/precheck':      { rateCategory: 'submit', useAuth: true },
 
+  // Public demo evidence endpoint — unauthenticated by design. Serves
+  // ONLY the synthetic /r/example demo receipt (handler enforces this
+  // via isDemoReceiptId). Production receipts still require auth via
+  // /api/v1/trust-receipts/{id}/evidence above. The auth-required
+  // production endpoint blocked the "verify yourself" code block on
+  // /r/example for cold buyers — this gives them a working URL without
+  // opening up real tenant evidence.
+  'GET /api/demo/trust-receipts/*/evidence':       { rateCategory: 'read', useAuth: false },
+
   // Disputes (writes)
   'POST /api/disputes/file':          { rateCategory: 'dispute_write', useAuth: true },
   'POST /api/disputes/respond':       { rateCategory: 'dispute_write', useAuth: true },

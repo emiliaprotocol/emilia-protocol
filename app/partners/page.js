@@ -271,10 +271,19 @@ export default function PartnersPage() {
                 </select>
               </div>
               <div>
-                <label style={styles.label}>Trust surface</label>
+                <label style={styles.label}>Workflow to control</label>
                 <select className="ep-input" style={{ ...styles.input, cursor: 'pointer' }} value={form.trustSurface} onChange={e => update('trustSurface', e.target.value)}>
                   <option value="">Select...</option>
-                  {['MCP servers','Browser extensions','GitHub apps / actions','npm packages','Agent tools','Marketplace plugins','Other'].map(o => <option key={o} value={o}>{o}</option>)}
+                  {[
+                    'Vendor bank-account change',
+                    'Benefit redirect / benefit-routing change',
+                    'Large payment release',
+                    'Operator override / caseworker override',
+                    'Beneficiary creation',
+                    'Privileged production action',
+                    'AI-agent-initiated payment action',
+                    'Other',
+                  ].map(o => <option key={o} value={o}>{o}</option>)}
                 </select>
               </div>
               <div style={{ gridColumn: '1 / -1' }}>

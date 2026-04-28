@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/verify",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Zero-dependency standalone verification for EP trust receipts, Merkle anchors, and commitment proofs. Uses only Node.js built-in crypto. No EP infrastructure required.",
   "license": "Apache-2.0",
   "type": "module",

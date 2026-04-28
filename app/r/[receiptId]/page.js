@@ -24,13 +24,13 @@
 //   tr_<32-hex> → live receipt fetched from audit_events via the
 //                same code path that powers /api/v1/trust-receipts/{id}/evidence
 
-import crypto from 'node:crypto';
 import { notFound } from 'next/navigation';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, color, font, radius } from '@/lib/tokens';
 import { getServiceClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger.js';
+import { getDemoReceipt, isDemoReceiptId } from '@/lib/demo-receipt.js';
 
 export const metadata = {
   title: 'Trust Receipt — EMILIA Protocol',
@@ -38,141 +38,16 @@ export const metadata = {
     'Publicly verifiable trust receipt: who approved this action, under what authority, when, and with what cryptographic proof. Verify yourself with @emilia-protocol/verify.',
 };
 
-// ─── Demo receipt — built once at module load ─────────────────────────────
-// The demo is a real Ed25519-signed EP-RECEIPT-v1 document. The keypair
-// lives only in this module's runtime; it is regenerated on every cold
-// boot. That is deliberate — the receipt's value is "look at what a real
-// EP-signed receipt looks like and verify the signature with our public
-// npm package," not "trust this specific demo key forever."
-//
-// Scenario (per GTM brief, 2026-04-26):
-// A vendor self-service portal request attempted to change Acme
-// Industrial LLC's deposit account of record. EMILIA's risk engine
-// flagged four signals; policy required two-party named approval
-// before the change could be applied. Both approvers signed off; the
-// change was applied. The receipt below is the cryptographic record.
-
-function buildDemoReceipt() {
-  const { privateKey, publicKey } = crypto.generateKeyPairSync('ed25519');
-  const issuedAt = new Date('2026-04-15T22:14:08Z').toISOString();
-  const expiresAt = new Date('2026-04-16T22:14:08Z').toISOString();
-
-  // We never print the actual routing/account numbers on a public page —
-  // only their hashes. Hashes prove the receipt is bound to a specific
-  // change without leaking PII. Production receipts use the same pattern.
-  const beforeBank = crypto
-    .createHash('sha256')
-    .update('demo|routing:121000358|account:7421-9933-4421')
-    .digest('hex');
-  const afterBank = crypto
-    .createHash('sha256')
-    .update('demo|routing:063100277|account:8884-2210-9988')
-    .digest('hex');
-
-  const payload = {
-    receipt_id: 'tr_example',
-    issuer: 'ep_demo_treasury_v1',
-    subject: 'vendor:VEND-9821',
-    claim: {
-      action_type: 'vendor_bank_account_change',
-      outcome: 'allow_with_signoff',
-      context: {
-        organization: 'demo_treasury',
-        vendor_id: 'VEND-9821',
-        vendor_name: 'Acme Industrial LLC',
-        change: {
-          before_bank_hash: `sha256:${beforeBank}`,
-          after_bank_hash: `sha256:${afterBank}`,
-        },
-        submitted_via: 'vendor_self_service_portal',
-        submitter_session_hash: 'sha256:8b2f0a1c4e9d…',
-        risk_signals: [
-          'NEW_DESTINATION',
-          'AFTER_HOURS_SUBMISSION',
-          'NO_PRIOR_CHANGE_30D',
-          'UNUSUAL_SUBMITTER_ASN',
-        ],
-        approval_policy: 'two_party_independent_approval',
-        outbound_payments_pending_usd: 248750,
-      },
-    },
-    created_at: issuedAt,
-    protocol_version: 'EP-CORE-v1.0',
-  };
-
-  // Canonicalize and sign — same shape used by the real /api/receipt route.
-  const canonicalPayload = JSON.stringify(payload, Object.keys(payload).sort());
-  const signature = crypto
-    .sign(null, Buffer.from(canonicalPayload, 'utf8'), privateKey)
-    .toString('base64url');
-  const publicKeyB64 = publicKey
-    .export({ type: 'spki', format: 'der' })
-    .toString('base64url');
-
-  return {
-    receipt_id: 'tr_example',
-    document: {
-      '@version': 'EP-RECEIPT-v1',
-      payload,
-      signature: {
-        algorithm: 'Ed25519',
-        signer: payload.issuer,
-        value: signature,
-        key_discovery: '/.well-known/ep-keys.json',
-      },
-      metadata: {
-        operator: 'ep_operator_emilia_primary',
-        issued_at: issuedAt,
-      },
-    },
-    public_key: publicKeyB64,
-    organization_id: 'org_demo_treasury',
-    action_type: 'vendor_bank_account_change',
-    decision: 'allow_with_signoff',
-    enforcement_mode: 'enforce',
-    expires_at: expiresAt,
-    // ── Buyer-readable narrative — sits at the top of the page ──
-    narrative: {
-      headline:
-        'Vendor bank-account change — fraud signals tripped, two-party approval required.',
-      body:
-        'On April 15, 2026 at 22:14 UTC, the vendor self-service portal received a request to change the deposit account of record for Acme Industrial LLC (vendor VEND-9821). EMILIA flagged four risk signals (new destination, after-hours, no change in 30 days, unusual submitter ASN). Policy required two independent named humans to approve before the change could be applied. With $248,750 in vendor payments scheduled to that account, no payment was released until both approvals were on record.',
-      outcome:
-        'Two named humans approved. Change applied. Cryptographic record below.',
-    },
-    risk_signals: payload.claim.context.risk_signals,
-    change_hashes: payload.claim.context.change,
-    payments_at_risk_usd: payload.claim.context.outbound_payments_pending_usd,
-    timeline: [
-      { event: 'guard.trust_receipt.created',  actor_id: 'vendor_portal_agent',     at: '2026-04-15T22:14:08Z', action: 'submit_change' },
-      { event: 'eye.risk.flagged',             actor_id: 'ep_eye',                  at: '2026-04-15T22:14:08Z', action: 'flag_high_risk' },
-      { event: 'guard.signoff.requested',      actor_id: 'ep_policy_engine',        at: '2026-04-15T22:14:09Z', action: 'request_two_party_approval' },
-      { event: 'guard.signoff.approved',       actor_id: 'ap_controller_jane_park', at: '2026-04-15T22:32:41Z', action: 'approve_1_of_2' },
-      { event: 'guard.signoff.approved',       actor_id: 'cfo_delegate_kevin_chen', at: '2026-04-15T22:48:17Z', action: 'approve_2_of_2' },
-      { event: 'guard.trust_receipt.consumed', actor_id: 'vendor_master_data_svc',  at: '2026-04-15T22:48:22Z', action: 'apply_change' },
-    ],
-    signoff: {
-      required: true,
-      threshold: 'two_party_independent_approval',
-      approvers: [
-        { id: 'ap_controller_jane_park', role: 'AP Controller',  approved_at: '2026-04-15T22:32:41Z' },
-        { id: 'cfo_delegate_kevin_chen', role: 'CFO Delegate',   approved_at: '2026-04-15T22:48:17Z' },
-      ],
-      // Single-approver fallbacks below preserve back-compat with any
-      // older renderer that reads .approver_id / .approved_at scalars.
-      approver_id: 'ap_controller_jane_park',
-      approved_at: '2026-04-15T22:48:17Z',
-    },
-    consume: {
-      consumed_at: '2026-04-15T22:48:22Z',
-      consumed_by_system: 'vendor_master_data_svc',
-      execution_reference_id: 'vmd_change_8E2A1F4B',
-    },
-    is_demo: true,
-  };
-}
-
-const DEMO_RECEIPT = buildDemoReceipt();
+// Demo receipt is built once in lib/demo-receipt.js with a STABLE Ed25519
+// keypair (hardcoded JWK) and a recursive canonical-JSON signer. Same key
+// across cold starts, same key across routes — so the public_key the page
+// advertises matches the public_key returned by
+// /api/demo/trust-receipts/tr_example/evidence, and verifyReceipt() over
+// the document we serve passes cleanly. This was previously a fresh
+// keypair per cold-boot AND used a shallow canonicalize that left
+// nested fields outside the signed material — both fixed in
+// lib/demo-receipt.js + @emilia-protocol/verify@1.0.1.
+const DEMO_RECEIPT = getDemoReceipt();
 
 // ─── Real-receipt loader (DB) ─────────────────────────────────────────────
 
@@ -182,7 +57,7 @@ async function loadReceipt(receiptId) {
   // Demo: accept both the marketing slug (/r/example) and the canonical
   // receipt_id (/r/tr_example). The receipt itself always carries
   // receipt_id === 'tr_example' regardless of which URL the user hit.
-  if (receiptId === 'example' || receiptId === 'tr_example') return DEMO_RECEIPT;
+  if (isDemoReceiptId(receiptId)) return DEMO_RECEIPT;
   if (!RECEIPT_ID_PATTERN.test(receiptId)) return null;
 
   try {
@@ -310,7 +185,7 @@ export default async function ReceiptPage({ params }) {
             fontFamily: font.mono, fontSize: 12, color: '#B08D35',
             marginBottom: 32,
           }}>
-            DEMO RECEIPT — synthetic vendor scenario, real Ed25519 signature generated at server boot. The signature below verifies; the public key rotates each cold start. Production receipts come from <code style={{ marginLeft: 4 }}>POST /api/v1/trust-receipts</code> and live forever in the append-only audit log.
+            DEMO RECEIPT — synthetic vendor scenario, signed with a stable Ed25519 demo keypair. The full document and public key are returned unauthenticated by <code style={{ margin: '0 4px' }}>GET /api/demo/trust-receipts/tr_example/evidence</code>. The signature below verifies via the &ldquo;Verify it yourself&rdquo; block. Production receipts come from <code style={{ marginLeft: 4 }}>POST /api/v1/trust-receipts</code>.
           </div>
         )}
 
@@ -484,22 +359,36 @@ export default async function ReceiptPage({ params }) {
             fontFamily: font.mono, fontSize: 12, lineHeight: 1.6,
             padding: 20, borderRadius: radius.base,
             overflow: 'auto', margin: 0,
-          }}>{`npm install @emilia-protocol/verify
+          }}>{r.is_demo ? `npm install @emilia-protocol/verify@^1.0.1
 
-// In your code:
 import { verifyReceipt } from '@emilia-protocol/verify';
 
-const evidence = await fetch(
-  'https://emiliaprotocol.ai/api/v1/trust-receipts/${r.receipt_id}/evidence'
+// Public unauthenticated endpoint — only serves the demo receipt:
+const { document, public_key } = await fetch(
+  'https://emiliaprotocol.ai/api/demo/trust-receipts/${r.receipt_id}/evidence'
 ).then(r => r.json());
 
-const result = verifyReceipt(evidence);
-// → { valid: true, signer: '${r.is_demo ? r.document.signature.signer : '...'}' }`}</pre>
+const result = verifyReceipt(document, public_key);
+// → { valid: true, checks: { version: true, signature: true, anchor: null } }
+//
+// The deeply-nested claim.context.change.after_bank_hash and every
+// risk_signal are bound by the recursive canonical signature.` :
+`npm install @emilia-protocol/verify@^1.0.1
+
+// Production endpoint — requires bearer auth (your tenant's evidence)
+import { verifyReceipt } from '@emilia-protocol/verify';
+
+const { document, public_key } = await fetch(
+  'https://emiliaprotocol.ai/api/v1/trust-receipts/${r.receipt_id}/evidence',
+  { headers: { Authorization: 'Bearer ' + process.env.EP_TOKEN } }
+).then(r => r.json());
+
+const result = verifyReceipt(document, public_key);`}</pre>
           {r.is_demo && (
             <p style={{ fontSize: 12, color: color.t3, marginTop: 12, fontFamily: font.mono }}>
-              For this demo receipt, the public key is{' '}
-              <code style={{ wordBreak: 'break-all' }}>{r.public_key.slice(0, 32)}…</code>{' '}
-              (regenerated each server boot — production receipts use a stable, published operator key).
+              Demo public key (stable, hardcoded in <code>lib/demo-receipt.js</code>):{' '}
+              <code style={{ wordBreak: 'break-all' }}>{r.public_key.slice(0, 48)}…</code>
+              <br />Production receipts use operator keys held in <code>EP_OPERATOR_KEYS</code> (env, never in source).
             </p>
           )}
         </section>
