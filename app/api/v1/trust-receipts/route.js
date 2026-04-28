@@ -29,7 +29,19 @@ import {
   GUARD_DECISIONS,
   ENFORCEMENT_MODES,
 } from '@/lib/guard-policies';
+import { evaluateAction as evaluateRulesEngineV0 } from '@/lib/rules-engine.js';
 import { logger } from '@/lib/logger.js';
+
+// Feature flag for the rules-engine v0 shadow signal. When set to
+// 'enabled', every POST runs the new rules-engine in addition to the
+// existing evaluateGuardPolicy() and emits a separate audit_event
+// recording the new evaluator's decision side-by-side with the live
+// decision. Pure observability — does NOT change API response shape
+// or block any existing behavior. Implements the audit's §4 rules
+// engine spec without rewriting live API contract.
+function isRulesEngineV0Enabled() {
+  return process.env.EP_RULES_ENGINE_V0 === 'enabled';
+}
 
 // Receipt expiry: 24 hours by default. Per MD §2.3, expires_at is required
 // on every receipt. 24h is the EP default for handshake-bound receipts.
@@ -166,6 +178,84 @@ export async function POST(request) {
       // Best-effort — receipt is self-verifying via signature; audit is
       // observability, not the source of truth. Log so SIEM picks it up.
       logger.warn('[guard] audit_events insert failed:', e?.message);
+    }
+
+    // ── Rules-engine v0 shadow signal (feature-flagged) ──────────────────
+    // When EP_RULES_ENGINE_V0=enabled, run the audit's §4 rules engine
+    // alongside the live evaluator and emit the result as a separate
+    // audit_event. Pure observability — does not change response shape
+    // or block any behavior. The shadow record gives ops a "what would
+    // the new evaluator have decided" diff that's auditable and
+    // reversible (drop the flag to disable). Nothing here can throw out
+    // of the route — every failure is swallowed + logged.
+    if (isRulesEngineV0Enabled()) {
+      try {
+        const rulesEngineInput = {
+          tenant_id: body.organization_id,
+          environment: mode === ENFORCEMENT_MODES.ENFORCE ? 'enforce' : 'shadow',
+          workflow: body.action_type,
+          actor: {
+            actor_id,
+            role: body.actor_role || 'unknown',
+            department: body.actor_department,
+            // Auth is bearer-token + middleware-enforced; treat as MFA-strong.
+            assurance_level: 'high',
+            mfa_verified: true,
+          },
+          action: {
+            action_id: receiptId,
+            action_type: body.action_type,
+            amount_usd: typeof body.amount === 'number' ? body.amount : undefined,
+          },
+          // Until an authority registry exists, supply a stub authority
+          // that passes every hard-deny check. The engine's useful shadow
+          // signal here is risk-scoring + signoff + quorum, not authority
+          // (which the live evaluator handles via its own path). When the
+          // registry lands, replace this stub with a real lookup.
+          authority: {
+            authority_id: 'shadow_default_authority',
+            scope: [body.action_type],
+            max_amount_usd: Number.MAX_SAFE_INTEGER,
+            revoked: false,
+          },
+          context: {
+            business_hours: typeof body.business_hours === 'boolean' ? body.business_hours : true,
+            velocity_same_actor_24h: body.velocity_same_actor_24h,
+            prior_denials_actor_30d: body.prior_denials_actor_30d,
+            prior_changes_target_30d: body.prior_changes_target_30d,
+            destination_age_days: body.destination_age_days,
+            watchlist_hit: (body.risk_flags || []).includes('watchlist_hit'),
+          },
+        };
+
+        const rulesEngineResult = evaluateRulesEngineV0(rulesEngineInput);
+
+        await supabase.from('audit_events').insert({
+          event_type: 'rules-engine.v0.shadow',
+          actor_id,
+          actor_type: 'system',
+          target_type: 'trust_receipt',
+          target_id: receiptId,
+          action: 'shadow_evaluate',
+          before_state: null,
+          after_state: {
+            rules_engine_decision: rulesEngineResult.decision,
+            rules_engine_reason_codes: rulesEngineResult.reason_codes,
+            rules_engine_required_approvals: rulesEngineResult.required_approvals,
+            rules_engine_required_signoff: rulesEngineResult.required_signoff,
+            rules_engine_risk_score: rulesEngineResult.risk_score,
+            // Live evaluator's decision pinned alongside for diff
+            guard_policy_decision: decision.decision,
+            guard_policy_signoff_required: decision.signoffRequired,
+            // So ops can correlate even after the flag flips
+            feature_flag: 'EP_RULES_ENGINE_V0',
+            evaluator_version: '0',
+          },
+        });
+      } catch (e) {
+        // Shadow signal failure must never break the live route. Log only.
+        logger.warn('[rules-engine.v0] shadow eval failed:', e?.message);
+      }
     }
 
     return NextResponse.json(

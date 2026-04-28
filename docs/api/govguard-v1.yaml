@@ -1,0 +1,627 @@
+# EMILIA GovGuard — Public API v1 (slim surface)
+#
+# This is the buyer-facing API surface for GovGuard pilots. It is
+# deliberately narrower than the canonical openapi.yaml — only the
+# 7 endpoints that a pilot integrator actually uses, and only the 4
+# tags that map to the GovGuard pre-execution control flow:
+#
+#   Trust Receipts — create, read, consume, evidence
+#   Signoffs       — request, approve, reject
+#
+# The full protocol surface (Disputes, Identity, Delegations, Needs,
+# Eye, Federation, Software Trust) lives in openapi.yaml at the repo
+# root. That file is the canonical protocol spec — implementers and
+# auditors should read it. THIS file exists so a procurement team can
+# read 700 lines instead of 4,400 to understand what GovGuard does.
+#
+# When in doubt, the canonical openapi.yaml wins. This file is a
+# projection, not a separate API.
+#
+# License: Apache-2.0
+
+openapi: 3.0.3
+
+info:
+  title: EMILIA GovGuard — Pre-Execution Trust Receipts API
+  version: "1.0.0"
+  description: |
+    GovGuard is the productized surface of EMILIA Protocol focused on
+    payment integrity, vendor data integrity, and operator override
+    control for government, financial, and enterprise workflows.
+
+    Every request gates a single proposed action. The response is a
+    cryptographically signed Trust Receipt that records who authorized
+    what, under which policy, with what evidence — verifiable offline
+    by anyone via the open-source `@emilia-protocol/verify` npm package.
+
+    This slim API doc covers the 7 endpoints needed for a pilot
+    integration. The full protocol surface (disputes, identity,
+    delegations, federation) is available at
+    https://github.com/emiliaprotocol/emilia-protocol/blob/main/openapi.yaml
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+  contact:
+    name: EMILIA Protocol
+    email: iman@emiliaprotocol.ai
+    url: https://emiliaprotocol.ai/govguard
+
+servers:
+  - url: https://emiliaprotocol.ai
+    description: Primary operator (production)
+
+tags:
+  - name: Trust Receipts
+    description: |
+      Create, read, consume, and audit-evidence pre-action trust
+      receipts. Every receipt binds actor identity + authority chain +
+      policy version + exact action context into one cryptographic
+      ceremony, consumable exactly once.
+  - name: Signoffs
+    description: |
+      Named human accountability flow. When policy requires it, a
+      specific principal explicitly assumes responsibility for an
+      exact action before consume.
+
+paths:
+  /api/v1/trust-receipts:
+    post:
+      tags: [Trust Receipts]
+      summary: Create a pre-action trust receipt
+      description: |
+        Issues a pre-action trust receipt for a proposed high-risk
+        action. The receipt records the canonical action, policy
+        evaluation, signoff requirement (if any), and a one-time
+        consumption nonce.
+
+        **Modes:**
+          - `observe` — evaluate, log, never block
+          - `warn`    — return decision, allow caller to act
+          - `enforce` — fail closed if policy denies or signoff missing
+
+        **Receipt expiry:** 24 hours from creation.
+      operationId: createTrustReceipt
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTrustReceiptRequest'
+      responses:
+        '201':
+          description: Receipt created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustReceipt'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden — actor_id in body does not match authenticated entity
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/trust-receipts/{receiptId}:
+    get:
+      tags: [Trust Receipts]
+      summary: Read receipt state
+      description: |
+        Replays the audit-event log for the receipt and returns the
+        current state. Idempotent. Receipt state is the projection
+        of the append-only event chain — every read produces the same
+        state for a given receipt unless new events have been
+        appended (consume, signoff approval, etc.).
+      operationId: getTrustReceipt
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReceiptId'
+      responses:
+        '200':
+          description: Receipt found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustReceipt'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/trust-receipts/{receiptId}/consume:
+    post:
+      tags: [Trust Receipts]
+      summary: One-time consume bound to action_hash
+      description: |
+        Consumes the receipt as the action executes. Bound to the
+        exact action_hash issued at receipt creation. Returns 409 if
+        the receipt has already been consumed (one-time-only),
+        410 if expired, 409 if action_hash differs, 403 if signoff
+        was required but not approved.
+      operationId: consumeTrustReceipt
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReceiptId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsumeTrustReceiptRequest'
+      responses:
+        '200':
+          description: Receipt consumed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConsumeTrustReceiptResponse'
+        '403':
+          description: Signoff required but not approved, or signoff was rejected
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Receipt already consumed, or action_hash mismatch
+        '410':
+          description: Receipt expired
+
+  /api/v1/trust-receipts/{receiptId}/evidence:
+    get:
+      tags: [Trust Receipts]
+      summary: Full evidence packet (auditor view)
+      description: |
+        Returns the complete evidence packet for an external auditor:
+        full timeline of state transitions, signoff trail (if any),
+        consume record (if any), action hash, policy hash, and the
+        signed EP-RECEIPT-v1 document. Verifiable offline with
+        `npm install @emilia-protocol/verify`.
+      operationId: getTrustReceiptEvidence
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ReceiptId'
+      responses:
+        '200':
+          description: Evidence packet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidencePacket'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/signoffs/request:
+    post:
+      tags: [Signoffs]
+      summary: Open a signoff request against a pending receipt
+      description: |
+        Opens a named-human-accountability request against a receipt
+        whose policy required signoff. Returns a `signoff_id` bound
+        to the receipt's `action_hash`. Approval window defaults to
+        4 hours; configurable via `expires_in_minutes` (max 1440).
+      operationId: requestSignoff
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestSignoffRequest'
+      responses:
+        '201':
+          description: Signoff request opened
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignoffRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Receipt does not require signoff, or signoff already requested
+
+  /api/v1/signoffs/{signoffId}/approve:
+    post:
+      tags: [Signoffs]
+      summary: Approver acts (self-approval forbidden, action_hash bound)
+      description: |
+        A named principal approves the action. Self-approval is
+        rejected (the requester cannot also be the approver). The
+        approver must attest to the displayed action_hash + risk
+        flags; mismatch produces 409.
+      operationId: approveSignoff
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SignoffId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveSignoffRequest'
+      responses:
+        '200':
+          description: Signoff approved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignoffDecision'
+        '403':
+          description: Self-approval forbidden, or approver not authorized
+        '409':
+          description: action_hash mismatch, or signoff already decided
+
+  /api/v1/signoffs/{signoffId}/reject:
+    post:
+      tags: [Signoffs]
+      summary: Approver rejects
+      description: |
+        A named principal rejects the action. Receipt cannot be
+        consumed thereafter. Reason is required.
+      operationId: rejectSignoff
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/SignoffId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectSignoffRequest'
+      responses:
+        '200':
+          description: Signoff rejected
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignoffDecision'
+        '409':
+          description: Signoff already decided
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque-token
+      description: |
+        Bearer token issued at pilot onboarding. Each token is bound
+        to a specific tenant (organization_id). Mutating endpoints
+        require this; read endpoints currently require it as well
+        for v1.
+
+  parameters:
+    ReceiptId:
+      name: receiptId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^tr_[a-f0-9]{32}$'
+        example: tr_4f2a1b8c9d3e7f0a4b1c8d3e9f2a4b1c
+      description: Receipt ID — `tr_` followed by 32 lowercase hex characters
+
+    SignoffId:
+      name: signoffId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^sig_[a-f0-9]{32}$'
+      description: Signoff request ID — `sig_` followed by 32 lowercase hex characters
+
+  schemas:
+    CreateTrustReceiptRequest:
+      type: object
+      required: [organization_id, action_type, target_resource_id]
+      properties:
+        organization_id:
+          type: string
+          description: Tenant identifier
+          example: org_demo_treasury
+        action_type:
+          type: string
+          enum:
+            - benefit_bank_account_change
+            - benefit_address_change
+            - caseworker_override
+            - vendor_bank_account_change
+            - beneficiary_creation
+            - large_payment_release
+            - ai_agent_payment_action
+        target_resource_id:
+          type: string
+          description: Identifier of the resource the action operates on
+          example: vendor:VEND-9821
+        actor_id:
+          type: string
+          description: |
+            Optional. If supplied, must match the authenticated entity.
+            The authoritative actor identity is always the auth context.
+        actor_role:
+          type: string
+        target_changed_fields:
+          type: array
+          items: { type: string }
+        amount:
+          type: number
+        currency:
+          type: string
+          example: USD
+        risk_flags:
+          type: array
+          items: { type: string }
+        before_state:
+          type: object
+          description: |
+            Pre-change state of the target resource. Hashed at issuance
+            and stored as `before_state_hash`. The plaintext is not
+            persisted by the operator.
+        after_state:
+          type: object
+          description: Proposed post-change state. Same hashing rules.
+        policy_id:
+          type: string
+        enforcement_mode:
+          type: string
+          enum: [observe, warn, enforce]
+          default: enforce
+
+    TrustReceipt:
+      type: object
+      properties:
+        receipt_id:
+          type: string
+          example: tr_4f2a1b8c9d3e7f0a4b1c8d3e9f2a4b1c
+        decision:
+          type: string
+          enum: [allow, observe, allow_with_signoff, deny]
+        observed_decision:
+          type: string
+          nullable: true
+          description: When `enforcement_mode=observe`, the decision the engine would have made if enforcing.
+        policy_id: { type: string }
+        policy_hash: { type: string }
+        action_hash: { type: string }
+        before_state_hash:
+          type: string
+          nullable: true
+        after_state_hash:
+          type: string
+          nullable: true
+        nonce: { type: string }
+        expires_at:
+          type: string
+          format: date-time
+        signoff_required: { type: boolean }
+        signoff_request_id:
+          type: string
+          nullable: true
+        risk_flags:
+          type: array
+          items: { type: string }
+        receipt_status:
+          type: string
+          enum: [issued, pending_signoff, consumed, denied, expired]
+        enforcement_mode:
+          type: string
+          enum: [observe, warn, enforce]
+        reasons:
+          type: array
+          items: { type: string }
+        canonical_action:
+          type: object
+          description: The exact canonical action — caller must use this verbatim at consume.
+
+    ConsumeTrustReceiptRequest:
+      type: object
+      required: [action_hash, executing_system]
+      properties:
+        action_hash:
+          type: string
+          description: Must match the action_hash issued at receipt creation
+        executing_system:
+          type: string
+          example: vendor_master_data_svc
+        execution_reference_id:
+          type: string
+          nullable: true
+          description: Reference ID in the downstream executing system (e.g. SWIFT message ID)
+
+    ConsumeTrustReceiptResponse:
+      type: object
+      properties:
+        receipt_id: { type: string }
+        status:
+          type: string
+          enum: [consumed]
+        consumed_at:
+          type: string
+          format: date-time
+        consumed_by_system: { type: string }
+        execution_reference_id:
+          type: string
+          nullable: true
+
+    EvidencePacket:
+      type: object
+      properties:
+        receipt_id: { type: string }
+        organization_id: { type: string }
+        action_type: { type: string }
+        decision: { type: string }
+        enforcement_mode: { type: string }
+        expires_at:
+          type: string
+          format: date-time
+        timeline:
+          type: array
+          items:
+            type: object
+            properties:
+              event: { type: string }
+              actor_id: { type: string }
+              at:
+                type: string
+                format: date-time
+              action: { type: string }
+        signoff:
+          type: object
+          properties:
+            required: { type: boolean }
+            threshold:
+              type: string
+              nullable: true
+            approvers:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: string }
+                  role:
+                    type: string
+                    nullable: true
+                  approved_at:
+                    type: string
+                    format: date-time
+        consume:
+          type: object
+          nullable: true
+          properties:
+            consumed_at:
+              type: string
+              format: date-time
+              nullable: true
+            consumed_by_system:
+              type: string
+              nullable: true
+            execution_reference_id:
+              type: string
+              nullable: true
+        document:
+          type: object
+          description: The signed EP-RECEIPT-v1 document — verifiable offline.
+
+    RequestSignoffRequest:
+      type: object
+      required: [receipt_id]
+      properties:
+        receipt_id:
+          type: string
+          pattern: '^tr_[a-f0-9]{32}$'
+        comment:
+          type: string
+          maxLength: 500
+        expires_in_minutes:
+          type: integer
+          minimum: 1
+          maximum: 1440
+          default: 240
+
+    SignoffRequest:
+      type: object
+      properties:
+        signoff_id: { type: string }
+        receipt_id: { type: string }
+        action_hash: { type: string }
+        initiator_id: { type: string }
+        expires_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [pending]
+
+    ApproveSignoffRequest:
+      type: object
+      required: [action_hash, attestation_text, displayed_action_hash]
+      properties:
+        action_hash:
+          type: string
+          description: Must match the receipt's bound action_hash
+        attestation_text:
+          type: string
+          description: |
+            Short exact-action summary the approver explicitly attests to.
+            Per audit §3.3: "If the human did not see the risk flags, the
+            signoff should be invalid."
+          example: "I approve changing vendor VEND-9821 payment destination from bank hash old... to bank hash new... I understand this releases future payments to the new destination."
+        displayed_action_hash:
+          type: string
+          description: The action_hash that was visible to the approver in the UI
+        human_acknowledged_risk_flags:
+          type: array
+          items: { type: string }
+          description: The risk-signal codes the approver explicitly acknowledged
+
+    RejectSignoffRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 4
+          maxLength: 500
+
+    SignoffDecision:
+      type: object
+      properties:
+        signoff_id: { type: string }
+        receipt_id: { type: string }
+        decision:
+          type: string
+          enum: [approved, rejected]
+        decided_by: { type: string }
+        decided_at:
+          type: string
+          format: date-time
+        reason:
+          type: string
+          nullable: true
+
+    Problem:
+      type: object
+      description: RFC 9457 Problem Details
+      properties:
+        type:
+          type: string
+          format: uri
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance:
+          type: string
+          format: uri
+
+  responses:
+    BadRequest:
+      description: Bad request — required field missing or invalid
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+    Unauthorized:
+      description: Unauthorized — bearer token missing or invalid
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
