@@ -15,9 +15,12 @@
 // not a debug view.
 //
 // ID handling:
-//   tr_example → hardcoded demo receipt with a real Ed25519 signature
-//                generated at module-load time. Always works, even
-//                without prod DB access.
+//   example | tr_example → hardcoded demo receipt with a real Ed25519
+//                signature generated at module-load time. Always works,
+//                even without prod DB access. The shorter `/r/example`
+//                slug is the marketing URL printed in proposals + cold
+//                emails; `/r/tr_example` matches the canonical receipt_id
+//                so anyone hand-typing a `tr_*` ID gets the same demo.
 //   tr_<32-hex> → live receipt fetched from audit_events via the
 //                same code path that powers /api/v1/trust-receipts/{id}/evidence
 
@@ -176,7 +179,10 @@ const DEMO_RECEIPT = buildDemoReceipt();
 const RECEIPT_ID_PATTERN = /^tr_[a-f0-9]{32}$/;
 
 async function loadReceipt(receiptId) {
-  if (receiptId === 'tr_example') return DEMO_RECEIPT;
+  // Demo: accept both the marketing slug (/r/example) and the canonical
+  // receipt_id (/r/tr_example). The receipt itself always carries
+  // receipt_id === 'tr_example' regardless of which URL the user hit.
+  if (receiptId === 'example' || receiptId === 'tr_example') return DEMO_RECEIPT;
   if (!RECEIPT_ID_PATTERN.test(receiptId)) return null;
 
   try {
