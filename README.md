@@ -58,7 +58,7 @@ See [Performance Proof](docs/operations/PERFORMANCE_PROOF.md) | [Operating Envel
 |---|---|
 | Spec version | EP-CORE-v1.0 |
 | Conformance test | **7/7 required checks PASS** |
-| Standalone verify | Source at `packages/verify/` (zero deps); npm publication pending |
+| Standalone verify | `npm install @emilia-protocol/verify` — zero deps, Apache-2.0 ([npmjs.com](https://www.npmjs.com/package/@emilia-protocol/verify)) |
 | Embed widget | `<ep-trust-badge entity-id="...">` |
 | Discovery | `/.well-known/ep-trust.json` + `/.well-known/ep-keys.json` |
 | Formal models | TLA+ + Alloy |

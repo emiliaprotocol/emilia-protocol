@@ -124,7 +124,7 @@ delta.
 
 | Item | Amount | Purpose |
 |------|--------|---------|
-| **Standalone verification library** | $25,000 | Zero-dependency offline receipt verification. JS library (`@emilia-protocol/verify`) is **shipped** — funding covers Python/Go/Rust ports + npm publication + auditing. |
+| **Standalone verification library** | $25,000 | Zero-dependency offline receipt verification. JS library (`@emilia-protocol/verify`) is **shipped and published** ([npmjs.com](https://www.npmjs.com/package/@emilia-protocol/verify)) — funding covers Python/Go/Rust ports + third-party audit of the crypto implementation. |
 | **Federation infrastructure** | $40,000 | Conformance test **passes 7/7** on primary operator. Funding covers: AWS CloudFormation deployment of second operator (template exists at `infrastructure/aws/template.yaml`), federation registry, cross-operator verification. |
 | **SOC 2 Type II certification** | $30,000 | Third-party audit (Cure53 or equivalent) + Vanta/Drata continuous compliance monitoring. Required for enterprise and government adoption. |
 | **EP Eval benchmark** | $20,000 | Open-source benchmark for measuring LLM trust-reasoning capability. Training datasets (anonymized). Integration test suite for model providers. |
@@ -140,7 +140,7 @@ delta.
 
 | Deliverable | Timeline | Measurable Outcome |
 |-------------|----------|-------------------|
-| Standalone verification library (cross-language) | Month 1-3 | JS library shipped (`packages/verify/`). Python/Go/Rust ports + npm publish + third-party audit of crypto implementation |
+| Standalone verification library (cross-language) | Month 1-3 | JS library published on npm (`@emilia-protocol/verify@1.0.0`). Python/Go/Rust ports + third-party audit of the crypto implementation. |
 | EP Core v1.0 formal specification | Month 1-2 | Published RFC-style document suitable for standards body review |
 | SOC 2 Type II report | Month 3-6 | Audit report that enterprise procurement teams can evaluate |
 | Federation reference implementation | Month 4-8 | Deploy second operator on AWS using existing CloudFormation template (`infrastructure/aws/template.yaml`), run conformance test, demonstrate cross-operator receipt verification |

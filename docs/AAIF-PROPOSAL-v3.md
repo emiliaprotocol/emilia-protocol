@@ -91,7 +91,7 @@ EP is not a proposal. It is production-grade software with formal verification.
 | **Performance** | Handshake create p95: 575ms at 50 VUs (per `docs/operations/PERFORMANCE_PROOF.md`) |
 | **Conformance** | 7/7 required checks PASS — `CONFORMANT: EP Core v1.0` |
 | **CI quality gates** | ~13 workflows in `.github/workflows/` (incl. Playwright E2E) |
-| **Standalone verify** | Source at `packages/verify/`; npm publication pending |
+| **Standalone verify** | `npm install @emilia-protocol/verify` — zero deps, Apache-2.0, published on npm |
 | **Adoption primitives** | Trust Explorer, Playground, Adopt page (all shipped) |
 | **AWS deployment** | CloudFormation template at `infrastructure/aws/template.yaml` |
 | **Pre-execution products** | EP GovGuard + EP FinGuard v1 trust-receipts API |

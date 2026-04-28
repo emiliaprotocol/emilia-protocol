@@ -69,7 +69,7 @@ const DEPLOY_STEPS = [
 ];
 
 const DEV_TOOLS = [
-  { title: 'Verify Package',    body: 'Zero-dependency offline receipt verification. Ed25519 + Merkle proofs. Just math, no EP server required.', code: 'packages/verify (npm publish pending)', href: 'https://github.com/emiliaprotocol/emilia-protocol/tree/main/packages/verify', accent: color.green,  codeLight: false },
+  { title: 'Verify Package',    body: 'Zero-dependency offline receipt verification. Ed25519 + Merkle proofs. Just math, no EP server required.', code: 'npm install @emilia-protocol/verify', href: 'https://www.npmjs.com/package/@emilia-protocol/verify', accent: color.green,  codeLight: false },
   { title: 'Trust Playground',  body: 'Walk through the EP lifecycle interactively. Create entities, issue receipts, run handshakes — all from one page.', code: '/playground', href: '/playground', accent: color.blue,   codeLight: true },
   { title: 'Trust Explorer',    body: 'Verify any receipt, proof, or entity. Like Etherscan for trust. Public, transparent, cryptographically verified.', code: '/explorer', href: '/explorer', accent: color.gold,   codeLight: true },
   { title: 'Embed Widget',      body: 'Drop a trust badge on any page. One script tag, one web component. Live data from the EP operator.', code: '<ep-trust-badge />', href: '/adopt', accent: color.t2,    codeLight: true },
