@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       base_url:
-        description: 'Target base URL (e.g. https://emilia-protocol-s1r2.vercel.app)'
+        description: 'Target base URL (e.g. https://www.emiliaprotocol.ai)'
         required: true
-        default: 'https://emilia-protocol-s1r2.vercel.app'
+        default: 'https://www.emiliaprotocol.ai'
       entity_id:
         description: 'Entity ID registered in the target environment'
         required: false
@@ -17,17 +17,15 @@ on:
         required: false
         default: 'smoke'
 
-  # Scheduled runs are disabled pending a green manual smoke against
-  # emilia-protocol-s1r2.vercel.app (default base_url above). The earlier
-  # default pointed at staging.emiliaprotocol.com, which never resolved
-  # (the production domain is .ai, not .com) — that produced 100% request
-  # failures every night and triggered the 75% Actions-budget alert on
-  # 2026-04-29. Re-enable both crons after one successful workflow_dispatch
-  # run confirms PERF_TEST_API_KEY + perf-test-entity-001 are seeded in
-  # the s1r2 deployment.
-  # schedule:
-  #   - cron: '0 3 * * *'   # 03:00 UTC daily — smoke test
-  #   - cron: '0 2 * * 0'   # 02:00 UTC every Sunday — full staircase test
+  # Scheduled runs hit the production deployment (www.emiliaprotocol.ai).
+  # s1r2 was evaluated as a staging target but has no DB wiring. The
+  # synthetic load is small (5 VUs × 30s nightly + Sunday staircase) and
+  # uses a dedicated perf-test-entity-001 / test-responder-001 pair so
+  # it is filterable from prod metrics. PERF_TEST_API_KEY is bound to
+  # perf-test-entity-001's owner.
+  schedule:
+    - cron: '0 3 * * *'   # 03:00 UTC daily — smoke test
+    - cron: '0 2 * * 0'   # 02:00 UTC every Sunday — full staircase test
 
 jobs:
   baseline:
@@ -50,7 +48,7 @@ jobs:
 
       - name: Run smoke test (always)
         env:
-          BASE_URL: ${{ inputs.base_url || 'https://emilia-protocol-s1r2.vercel.app' }}
+          BASE_URL: ${{ inputs.base_url || 'https://www.emiliaprotocol.ai' }}
           API_KEY: ${{ secrets.PERF_TEST_API_KEY }}
           ENTITY_ID: ${{ inputs.entity_id || 'perf-test-entity-001' }}
         run: |
@@ -67,7 +65,7 @@ jobs:
           (github.event_name == 'schedule' && github.event.schedule == '0 2 * * 0') ||
           (github.event_name == 'workflow_dispatch' && inputs.test_type == 'staircase')
         env:
-          BASE_URL: ${{ inputs.base_url || 'https://emilia-protocol-s1r2.vercel.app' }}
+          BASE_URL: ${{ inputs.base_url || 'https://www.emiliaprotocol.ai' }}
           API_KEY: ${{ secrets.PERF_TEST_API_KEY }}
           ENTITY_ID: ${{ inputs.entity_id || 'perf-test-entity-001' }}
         run: |
