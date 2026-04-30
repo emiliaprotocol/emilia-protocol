@@ -17,10 +17,13 @@ on:
         required: false
         default: 'smoke'
 
-  # Scheduled: run nightly against staging to catch regressions
-  schedule:
-    - cron: '0 3 * * *'   # 03:00 UTC daily — smoke test
-    - cron: '0 2 * * 0'   # 02:00 UTC every Sunday — full staircase test
+  # Scheduled runs disabled until staging.emiliaprotocol.com is provisioned.
+  # The nightly smoke against an unresolvable host produced 100% failure
+  # rate and consumed Actions minutes (75% budget alert on 2026-04-29).
+  # Re-enable both crons once staging DNS resolves.
+  # schedule:
+  #   - cron: '0 3 * * *'   # 03:00 UTC daily — smoke test
+  #   - cron: '0 2 * * 0'   # 02:00 UTC every Sunday — full staircase test
 
 jobs:
   baseline:
@@ -42,11 +45,15 @@ jobs:
           sudo apt-get install -q k6
 
       - name: Run smoke test (always)
+        env:
+          BASE_URL: ${{ inputs.base_url || 'https://staging.emiliaprotocol.com' }}
+          API_KEY: ${{ secrets.PERF_TEST_API_KEY }}
+          ENTITY_ID: ${{ inputs.entity_id || 'perf-test-entity-001' }}
         run: |
           k6 run tests/k6/baseline.js \
-            --env BASE_URL="${{ inputs.base_url || 'https://staging.emiliaprotocol.com' }}" \
-            --env API_KEY="${{ secrets.PERF_TEST_API_KEY }}" \
-            --env ENTITY_ID="${{ inputs.entity_id || 'perf-test-entity-001' }}" \
+            --env BASE_URL="$BASE_URL" \
+            --env API_KEY="$API_KEY" \
+            --env ENTITY_ID="$ENTITY_ID" \
             --out json=k6-smoke-results.json
         continue-on-error: false
 
@@ -55,12 +62,16 @@ jobs:
         if: >-
           (github.event_name == 'schedule' && github.event.schedule == '0 2 * * 0') ||
           (github.event_name == 'workflow_dispatch' && inputs.test_type == 'staircase')
+        env:
+          BASE_URL: ${{ inputs.base_url || 'https://staging.emiliaprotocol.com' }}
+          API_KEY: ${{ secrets.PERF_TEST_API_KEY }}
+          ENTITY_ID: ${{ inputs.entity_id || 'perf-test-entity-001' }}
         run: |
           echo "### Staircase test (10→500 VUs) — estimated runtime ~7 minutes"
           k6 run tests/k6/staircase.js \
-            --env BASE_URL="${{ inputs.base_url || 'https://staging.emiliaprotocol.com' }}" \
-            --env API_KEY="${{ secrets.PERF_TEST_API_KEY }}" \
-            --env ENTITY_ID="${{ inputs.entity_id || 'perf-test-entity-001' }}" \
+            --env BASE_URL="$BASE_URL" \
+            --env API_KEY="$API_KEY" \
+            --env ENTITY_ID="$ENTITY_ID" \
             --out json=k6-staircase-results.json
         continue-on-error: false
 
