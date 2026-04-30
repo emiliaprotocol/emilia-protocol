@@ -9,17 +9,21 @@
  * ops runbook or use the k6 Cloud schedule.
  *
  * Usage:
- *   k6 run tests/k6/baseline.js -e BASE_URL=https://staging.example.com -e API_KEY=ep_test_...
+ *   k6 run tests/k6/baseline.js -e BASE_URL=https://www.emiliaprotocol.ai -e API_KEY=ep_live_...
  *
  * Required env:
  *   BASE_URL   - Target environment base URL (no trailing slash)
- *   API_KEY    - Valid EP API key for auth (must have test entity pre-registered)
- *   ENTITY_ID  - Entity ID registered in the target environment
+ *   API_KEY    - Valid EP API key for auth (must own ENTITY_ID)
+ *   ENTITY_ID  - Initiator entity ID, pre-registered in the target environment
+ *   RESPONDER_ID (optional, defaults to 'test-responder-001') — responder party
+ *   POLICY_KEY   (optional, defaults to 'authorized_signer_basic_v1') — handshake policy_key.
+ *                The setup() function resolves this to a real policy_id (UUID)
+ *                via GET /api/handshake-policies?policy_key=... once at startup.
  */
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { Counter, Rate, Trend } from 'k6/metrics';
+import { Counter } from 'k6/metrics';
 
 // ---------------------------------------------------------------------------
 // SLO thresholds (from BENCHMARK_BASELINE.md)
@@ -99,21 +103,48 @@ const handshakeErrors = new Counter('handshake_errors');
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
 const API_KEY  = __ENV.API_KEY  || 'ep_test_key';
 const ENTITY_ID = __ENV.ENTITY_ID || 'test-entity-001';
+const RESPONDER_ID = __ENV.RESPONDER_ID || 'test-responder-001';
+const POLICY_KEY = __ENV.POLICY_KEY || 'authorized_signer_basic_v1';
 
 const HEADERS = {
   'Authorization': `Bearer ${API_KEY}`,
   'Content-Type': 'application/json',
 };
 
-function randomNonce() {
-  return `k6-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+// ---------------------------------------------------------------------------
+// Setup — runs once per test, before scenarios start.
+//
+// Resolves POLICY_KEY → policy_id (UUID). Migration 036 changed the
+// handshakes.policy_id column to a UUID FK on handshake_policies, so the
+// route requires a real UUID, not a free-form string. Previous test versions
+// hardcoded `policy_id: 'policy-baseline'` and 500'd on every request.
+// ---------------------------------------------------------------------------
+export function setup() {
+  const res = http.get(
+    `${BASE_URL}/api/handshake-policies?policy_key=${encodeURIComponent(POLICY_KEY)}`,
+    { headers: HEADERS },
+  );
+  if (res.status !== 200) {
+    throw new Error(
+      `[setup] Failed to fetch handshake-policies (HTTP ${res.status}): ${res.body}`,
+    );
+  }
+  const body = JSON.parse(res.body);
+  const policy = (body.policies || [])[0];
+  if (!policy || !policy.policy_id) {
+    throw new Error(
+      `[setup] No active handshake_policy found for policy_key="${POLICY_KEY}". ` +
+      `Seed one (see supabase/migrations/036_handshake_policies.sql) or pass POLICY_KEY=<existing>.`,
+    );
+  }
+  return { policyId: policy.policy_id };
 }
 
 // ---------------------------------------------------------------------------
 // Default scenario
 // ---------------------------------------------------------------------------
 
-export default function () {
+export default function (data) {
   // ── 1. Trust evaluation (read — expected to be fast) ─────────────────────
   const trustRes = http.post(
     `${BASE_URL}/api/trust/evaluate`,
@@ -128,13 +159,18 @@ export default function () {
   sleep(0.1);
 
   // ── 2. Handshake initiation (protocol write — hot path) ──────────────────
+  // POST /api/handshake schema (see lib/handshake/schema.js validateInitiateBody):
+  //   { mode, policy_id (UUID), parties: [{role, entity_ref}, ...] }
+  // The initiator's entity_ref MUST equal the authenticated entity's id.
   const initiateRes = http.post(
     `${BASE_URL}/api/handshake`,
     JSON.stringify({
-      initiator_id: ENTITY_ID,
-      responder_id: 'test-responder-001',
-      nonce: randomNonce(),
-      policy_id: 'policy-baseline',
+      mode: 'basic',
+      policy_id: data.policyId,
+      parties: [
+        { role: 'initiator', entity_ref: ENTITY_ID },
+        { role: 'responder', entity_ref: RESPONDER_ID },
+      ],
     }),
     { headers: HEADERS, tags: { route: 'handshake_create' } },
   );
