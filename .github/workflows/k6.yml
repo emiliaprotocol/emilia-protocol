@@ -17,15 +17,25 @@ on:
         required: false
         default: 'smoke'
 
-  # Scheduled runs hit the production deployment (www.emiliaprotocol.ai).
-  # s1r2 was evaluated as a staging target but has no DB wiring. The
-  # synthetic load is small (5 VUs × 30s nightly + Sunday staircase) and
-  # uses a dedicated perf-test-entity-001 / test-responder-001 pair so
-  # it is filterable from prod metrics. PERF_TEST_API_KEY is bound to
-  # perf-test-entity-001's owner.
-  schedule:
-    - cron: '0 3 * * *'   # 03:00 UTC daily — smoke test
-    - cron: '0 2 * * 0'   # 02:00 UTC every Sunday — full staircase test
+  # Scheduled runs are disabled pending an update to tests/k6/baseline.js.
+  # The current test sends the legacy handshake shape
+  # ({initiator_id, responder_id, nonce, policy_id: 'policy-baseline'})
+  # but migration 036_handshake_policies.sql changed policy_id to a UUID
+  # FK and the route schema now requires {mode, parties:[{role,entity_ref}]}.
+  # The handshake step 500s on the policy UUID lookup.
+  #
+  # State that *has* been done (do not redo):
+  #   - perf-test-entity-001 + test-responder-001 entities are registered
+  #     in the prod Supabase (UUIDs in the entities table)
+  #   - PERF_TEST_API_KEY GitHub secret is set to perf-test-entity-001's key
+  #   - default base_url points at https://www.emiliaprotocol.ai
+  #
+  # To re-enable the cron, update tests/k6/baseline.js to send the new
+  # handshake shape and resolve a real handshake_policies.policy_id (UUID),
+  # then verify with: gh workflow run k6.yml --ref main
+  # schedule:
+  #   - cron: '0 3 * * *'   # 03:00 UTC daily — smoke test
+  #   - cron: '0 2 * * 0'   # 02:00 UTC every Sunday — full staircase test
 
 jobs:
   baseline:
