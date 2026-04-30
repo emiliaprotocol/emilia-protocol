@@ -59,7 +59,14 @@ export async function POST(request) {
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
     logger.error('Handshake initiation error:', err);
-    return epError(EP_ERROR_CODES.INTERNAL);
+    // Surface known-class error messages (HandshakeError, ProtocolWriteError)
+    // as `detail` so the API caller sees the specific failure cause instead
+    // of a generic 500. Bare Error instances stay opaque to avoid leaking
+    // stack traces from internal exceptions.
+    const detail = (err?.code && err?.message)
+      ? `${err.code}: ${err.message}`
+      : null;
+    return epError(EP_ERROR_CODES.INTERNAL, detail);
   }
 }
 
