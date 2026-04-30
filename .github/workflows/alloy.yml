@@ -21,8 +21,10 @@ jobs:
 
       - name: Download Alloy 6
         run: |
+          # v6.0.0 is the latest release that ships a flat org.alloytools.alloy.dist.jar.
+          # v6.1.0 has no jar asset; v6.2.0 only ships platform-specific zips.
           wget -q -O alloy.jar \
-            https://github.com/AlloyTools/org.alloytools.alloy/releases/download/v6.1.0/org.alloytools.alloy.dist.jar
+            https://github.com/AlloyTools/org.alloytools.alloy/releases/download/v6.0.0/org.alloytools.alloy.dist.jar
 
       - name: Write Alloy runner
         run: |
