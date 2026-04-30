@@ -140,7 +140,7 @@ delta.
 
 | Deliverable | Timeline | Measurable Outcome |
 |-------------|----------|-------------------|
-| Standalone verification library (cross-language) | Month 1-3 | JS library published on npm (`@emilia-protocol/verify@1.0.0`). Python/Go/Rust ports + third-party audit of the crypto implementation. |
+| Standalone verification library (cross-language) | Month 1-3 | JS library published on npm (`@emilia-protocol/verify@1.0.1`, current `latest`; 1.0.0 deprecated for shallow-canonicalization regression). Python/Go/Rust ports + third-party audit of the crypto implementation. |
 | EP Core v1.0 formal specification | Month 1-2 | Published RFC-style document suitable for standards body review |
 | SOC 2 Type II report | Month 3-6 | Audit report that enterprise procurement teams can evaluate |
 | Federation reference implementation | Month 4-8 | Deploy second operator on AWS using existing CloudFormation template (`infrastructure/aws/template.yaml`), run conformance test, demonstrate cross-operator receipt verification |
