@@ -380,7 +380,7 @@ import { verifyReceipt } from '@emilia-protocol/verify';
 
 const { document, public_key } = await fetch(
   'https://emiliaprotocol.ai/api/v1/trust-receipts/${r.receipt_id}/evidence',
-  { headers: { Authorization: 'Bearer ' + process.env.EP_TOKEN } }
+  { headers: { Authorization: 'Bearer <YOUR_API_TOKEN>' } }
 ).then(r => r.json());
 
 const result = verifyReceipt(document, public_key);`}</pre>

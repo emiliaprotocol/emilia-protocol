@@ -143,6 +143,7 @@ const SAFE_HOSTS = new Set([
   "wikipedia.org",
   "mozilla.org",
   "w3.org",
+  "apache.org",
   "json-schema.org",
   "yaml.org",
   "markdownguide.org",
