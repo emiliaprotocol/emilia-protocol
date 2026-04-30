@@ -449,6 +449,36 @@ fact NoConsumptionForRevokedAttestation {
         sc.attestation.challenge.status not in (RevokedSignoff + Denied + ExpiredSignoff)
 }
 
+-- F33: Consumed handshakes must have at least one VerifiedEvent in their
+-- event trail. The implementation enforces this via verify.js/finalize.js
+-- (a Verified state + event is required before consume_handshake_atomic
+-- accepts the transition); the prior model had EventCoverage (F12) but
+-- no rule that Verified specifically must appear before Consumed.
+fact ConsumedRequiresVerifiedEvent {
+    all h: Handshake |
+        h.status = Consumed implies
+            some e: elems[h.events] | e.eventType = VerifiedEvent
+}
+
+-- F34: Each Binding belongs to exactly one Handshake. The handshakes
+-- table has a 1:1 relation with bindings (each binding row is owned by
+-- a single handshake_id); the prior model had UniqueBindingHash (F7)
+-- on Binding identity but allowed two Handshakes to reference the same
+-- Binding sig instance, which collapses to a shared bindingHash.
+fact OneBindingPerHandshake {
+    all disj h1, h2: Handshake |
+        h1.binding != h2.binding
+}
+
+-- F35: SignoffChallenge.binding equals its handshake's binding. Closes
+-- the chain Handshake → Challenge → Attestation → Consumption so the
+-- FullChainIntegrity assertion holds. Maps to lib/signoff/challenge.js
+-- which inherits the binding hash from the parent handshake.
+fact SignoffChallengeBindingMatchesHandshake {
+    all sc: SignoffChallenge |
+        sc.binding = sc.handshake.binding
+}
+
 -- ==========================================================================
 -- Assertions (properties to check with Alloy Analyzer)
 -- ==========================================================================
