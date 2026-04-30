@@ -94,9 +94,10 @@ const p95TrustEval     = new Trend('p95_trust_eval_latency');
 // Config
 // ---------------------------------------------------------------------------
 
-const BASE_URL  = __ENV.BASE_URL   || 'http://localhost:3000';
-const API_KEY   = __ENV.API_KEY    || 'ep_test_key';
-const ENTITY_ID = __ENV.ENTITY_ID  || 'bench-entity-001';
+const BASE_URL   = __ENV.BASE_URL    || 'http://localhost:3000';
+const API_KEY    = __ENV.API_KEY     || 'ep_test_key';
+const ENTITY_ID  = __ENV.ENTITY_ID   || 'bench-entity-001';
+const POLICY_KEY = __ENV.POLICY_KEY  || 'authorized_signer_basic_v1';
 
 const AUTH_HEADERS = {
   'Authorization': `Bearer ${API_KEY}`,
@@ -107,20 +108,32 @@ const READ_HEADERS = {
   'Content-Type': 'application/json',
 };
 
-function randomNonce() {
-  return `k6-staircase-${Math.random().toString(36).slice(2)}-${Date.now()}`;
-}
-
 function randomResponder() {
   const ids = ['responder-a', 'responder-b', 'responder-c', 'responder-d'];
   return ids[Math.floor(Math.random() * ids.length)];
+}
+
+// setup() resolves POLICY_KEY → policy_id (UUID). See baseline.js comment.
+export function setup() {
+  const res = http.get(
+    `${BASE_URL}/api/handshake-policies?policy_key=${encodeURIComponent(POLICY_KEY)}`,
+    { headers: AUTH_HEADERS },
+  );
+  if (res.status !== 200) {
+    throw new Error(`[setup] handshake-policies fetch failed (HTTP ${res.status}): ${res.body}`);
+  }
+  const policy = (JSON.parse(res.body).policies || [])[0];
+  if (!policy?.policy_id) {
+    throw new Error(`[setup] No active policy for policy_key="${POLICY_KEY}"`);
+  }
+  return { policyId: policy.policy_id };
 }
 
 // ---------------------------------------------------------------------------
 // Default scenario function
 // ---------------------------------------------------------------------------
 
-export default function () {
+export default function (data) {
   // ── 1. Trust evaluation — read path, should scale well ─────────────────
   const evalRes = http.post(
     `${BASE_URL}/api/trust/evaluate`,
@@ -152,10 +165,12 @@ export default function () {
   const hsRes = http.post(
     `${BASE_URL}/api/handshake`,
     JSON.stringify({
-      initiator_id:  ENTITY_ID,
-      responder_id:  randomResponder(),
-      nonce:         randomNonce(),
-      policy_id:     'policy-staircase-bench',
+      mode: 'basic',
+      policy_id: data.policyId,
+      parties: [
+        { role: 'initiator', entity_ref: ENTITY_ID },
+        { role: 'responder', entity_ref: randomResponder() },
+      ],
     }),
     { headers: AUTH_HEADERS, tags: { route: 'handshake_create' } },
   );

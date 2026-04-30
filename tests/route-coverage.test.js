@@ -126,6 +126,10 @@ const OPENAPI_EXEMPTIONS = [
   '/api/receipt',
   '/api/trust',
   '/api/discovery/keys',
+  // Handshake policy lookup — read-only helper used by k6 perf tests
+  // (and any client that needs to resolve policy_key → policy_id UUID).
+  // OpenAPI spec to be added in a follow-up.
+  '/api/handshake-policies',
   // EP Commit routes — OpenAPI spec to be added in a follow-up.
   '/api/commit/issue',
   '/api/commit/verify',
