@@ -36,9 +36,11 @@ test.describe('Homepage', () => {
   test('Protocol Properties section is visible', async ({ page }) => {
     await page.goto('/');
 
-    // Scroll down to find "Protocol Properties" or self-verifying receipts text
-    const selfVerifying = page.locator('text=Self-verifying');
-    await expect(selfVerifying.first()).toBeVisible({ timeout: 10_000 });
+    // Homepage now lives in the buyer-facing GTM frame (commit 75c3414) — the
+    // technical "Self-verifying" copy moved to /protocol. The homepage's
+    // receipt story is in HOW_IT_WORKS step 03 ("Generate Trust Receipt").
+    const trustReceipt = page.locator('text=Generate Trust Receipt');
+    await expect(trustReceipt.first()).toBeVisible({ timeout: 10_000 });
   });
 
   test('footer is present', async ({ page }) => {
