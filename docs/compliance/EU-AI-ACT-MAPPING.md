@@ -22,7 +22,7 @@ This mapping covers EP's ability to help operators satisfy obligations under the
 | 9(2)(b): Estimate and evaluate risks | EP Trust Decisions produce `allow`/`review`/`deny` with evidence sufficiency metrics, domain scores, and confidence levels. |
 | 9(2)(c): Evaluate risks from reasonably foreseeable misuse | EP adversarial test suite: 85 red team cases including Sybil attacks, trust farming, collusion detection, and replay attempts. |
 | 9(2)(d): Adopt risk management measures | EP four-layer enforcement: Eye → Handshake → Signoff → Commit. Each layer has independent controls, audit trails, and enforcement capabilities. |
-| 9(4): Testing to identify appropriate measures | EP: 3,430 automated tests across 129 files, TLA+ model checking (7,857 states), Alloy relational verification, property-based testing with fast-check. |
+| 9(4): Testing to identify appropriate measures | EP: 3,483 automated tests across 132 files, TLA+ model checking (413,137 states), Alloy relational verification, property-based testing with fast-check. |
 | 9(5): Testing against previously defined metrics | EP conformance test suite with deterministic fixtures, mutation testing (80%+ kill), and cross-language hash verification. |
 | 9(7): Risk management throughout AI system lifecycle | EP Trust Profiles are continuously updated. Score history tracks changes. Dispute lifecycle enables ongoing risk correction. |
 

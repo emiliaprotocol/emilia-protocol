@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       base_url:
-        description: 'Target base URL (e.g. https://staging.emiliaprotocol.com)'
+        description: 'Target base URL (e.g. https://www.emiliaprotocol.ai)'
         required: true
-        default: 'https://staging.emiliaprotocol.com'
+        default: 'https://www.emiliaprotocol.ai'
       entity_id:
         description: 'Entity ID registered in the target environment'
         required: false
@@ -17,10 +17,25 @@ on:
         required: false
         default: 'smoke'
 
-  # Scheduled: run nightly against staging to catch regressions
-  schedule:
-    - cron: '0 3 * * *'   # 03:00 UTC daily — smoke test
-    - cron: '0 2 * * 0'   # 02:00 UTC every Sunday — full staircase test
+  # Scheduled runs are disabled pending an update to tests/k6/baseline.js.
+  # The current test sends the legacy handshake shape
+  # ({initiator_id, responder_id, nonce, policy_id: 'policy-baseline'})
+  # but migration 036_handshake_policies.sql changed policy_id to a UUID
+  # FK and the route schema now requires {mode, parties:[{role,entity_ref}]}.
+  # The handshake step 500s on the policy UUID lookup.
+  #
+  # State that *has* been done (do not redo):
+  #   - perf-test-entity-001 + test-responder-001 entities are registered
+  #     in the prod Supabase (UUIDs in the entities table)
+  #   - PERF_TEST_API_KEY GitHub secret is set to perf-test-entity-001's key
+  #   - default base_url points at https://www.emiliaprotocol.ai
+  #
+  # To re-enable the cron, update tests/k6/baseline.js to send the new
+  # handshake shape and resolve a real handshake_policies.policy_id (UUID),
+  # then verify with: gh workflow run k6.yml --ref main
+  # schedule:
+  #   - cron: '0 3 * * *'   # 03:00 UTC daily — smoke test
+  #   - cron: '0 2 * * 0'   # 02:00 UTC every Sunday — full staircase test
 
 jobs:
   baseline:
@@ -42,11 +57,15 @@ jobs:
           sudo apt-get install -q k6
 
       - name: Run smoke test (always)
+        env:
+          BASE_URL: ${{ inputs.base_url || 'https://www.emiliaprotocol.ai' }}
+          API_KEY: ${{ secrets.PERF_TEST_API_KEY }}
+          ENTITY_ID: ${{ inputs.entity_id || 'perf-test-entity-001' }}
         run: |
           k6 run tests/k6/baseline.js \
-            --env BASE_URL="${{ inputs.base_url || 'https://staging.emiliaprotocol.com' }}" \
-            --env API_KEY="${{ secrets.PERF_TEST_API_KEY }}" \
-            --env ENTITY_ID="${{ inputs.entity_id || 'perf-test-entity-001' }}" \
+            --env BASE_URL="$BASE_URL" \
+            --env API_KEY="$API_KEY" \
+            --env ENTITY_ID="$ENTITY_ID" \
             --out json=k6-smoke-results.json
         continue-on-error: false
 
@@ -55,12 +74,16 @@ jobs:
         if: >-
           (github.event_name == 'schedule' && github.event.schedule == '0 2 * * 0') ||
           (github.event_name == 'workflow_dispatch' && inputs.test_type == 'staircase')
+        env:
+          BASE_URL: ${{ inputs.base_url || 'https://www.emiliaprotocol.ai' }}
+          API_KEY: ${{ secrets.PERF_TEST_API_KEY }}
+          ENTITY_ID: ${{ inputs.entity_id || 'perf-test-entity-001' }}
         run: |
           echo "### Staircase test (10→500 VUs) — estimated runtime ~7 minutes"
           k6 run tests/k6/staircase.js \
-            --env BASE_URL="${{ inputs.base_url || 'https://staging.emiliaprotocol.com' }}" \
-            --env API_KEY="${{ secrets.PERF_TEST_API_KEY }}" \
-            --env ENTITY_ID="${{ inputs.entity_id || 'perf-test-entity-001' }}" \
+            --env BASE_URL="$BASE_URL" \
+            --env API_KEY="$API_KEY" \
+            --env ENTITY_ID="$ENTITY_ID" \
             --out json=k6-staircase-results.json
         continue-on-error: false
 

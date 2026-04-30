@@ -22,10 +22,10 @@ const HeroAnimation = dynamic(() => import('@/components/HeroAnimation'), {
 // into someone who clicks "See Live Example" or "Request Pilot" within 30s.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Stats below are the source-of-truth numbers as of 2026-04-28. Each value
+// Stats below are the source-of-truth numbers as of 2026-04-30. Each value
 // is independently verifiable in the repo:
-//   3,471 tests / 132 files — `npx vitest run` summary
-//   20 TLA+ theorems verified — formal/PROOF_STATUS.md (T1–T20)
+//   3,483 tests / 132 files — `npx vitest run` summary
+//   26 TLA+ invariants verified — formal/PROOF_STATUS.md (T1–T26)
 //   85 red team cases — docs/conformance/RED_TEAM_CASES.md line 1
 //   Apache 2.0 — LICENSE
 //   Internal review — docs/security/AUDIT_METHODOLOGY.md (self-administered)
@@ -35,8 +35,8 @@ const HeroAnimation = dynamic(() => import('@/components/HeroAnimation'), {
 // an assurance signal. Lead with reproducible evidence instead — the
 // methodology link is the credibility carrier.
 const STATS = [
-  { value: '3,471',     label: 'Automated Tests',  sub: '132 test files',           accent: color.t1 },
-  { value: '20',        label: 'Theorems Proven',  sub: 'TLC 2.19, zero errors',    accent: color.blue },
+  { value: '3,483',     label: 'Automated Tests',  sub: '132 test files',           accent: color.t1 },
+  { value: '26',        label: 'Theorems Proven',  sub: 'TLC 2.19, zero errors',    accent: color.blue },
   { value: '85',        label: 'Red Team Cases',   sub: 'Cataloged in repo',        accent: color.t1 },
   { value: 'Reviewed',  label: 'Internal Audit',   sub: 'Methodology public · Apr 2', accent: color.gold },
   { value: 'Apache 2.0', label: 'License',         sub: 'Open specification',       accent: color.green },
@@ -443,8 +443,8 @@ export default function HomePage() {
           color: 'rgba(255,255,255,0.3)', letterSpacing: 1.5, textTransform: 'uppercase',
         }}>
           <span>Compliance: NIST AI RMF · EU AI ACT</span>
-          <span>Tests: 3,430 passing · 0 failing</span>
-          <span>Formal verification: 20 theorems · 0 errors</span>
+          <span>Tests: 3,483 passing · 0 failing</span>
+          <span>Formal verification: 26 theorems · 0 errors</span>
         </div>
       </section>
 

@@ -302,7 +302,7 @@ Initiate(h) ==
     /\ state' = [state EXCEPT ![h] = "initiated"]
     /\ events' = Append(events, <<h, "initiated">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding>>
+    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding, claimFiler, claimState, openChallenges>>
 
 \* T2: Add a presentation (initiated -> pending_verification)
 \* Maps to: _handleAddPresentation() in lib/handshake/present.js
@@ -311,7 +311,7 @@ Present(h) ==
     /\ state' = [state EXCEPT ![h] = "pending_verification"]
     /\ events' = Append(events, <<h, "presentation_added">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding>>
+    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding, claimFiler, claimState, openChallenges>>
 
 \* T3: Verify and accept (pending_verification -> verified)
 \* Maps to: _handleVerifyHandshake() outcome='accepted' in verify.js
@@ -324,7 +324,7 @@ VerifyAccept(h) ==
     /\ state' = [state EXCEPT ![h] = "verified"]
     /\ events' = Append(events, <<h, "verified">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding>>
+    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding, claimFiler, claimState, openChallenges>>
 
 \* T4: Verify and reject (pending_verification -> rejected)
 \* Maps to: _handleVerifyHandshake() outcome='rejected' in verify.js
@@ -337,7 +337,7 @@ VerifyReject(h) ==
     /\ state' = [state EXCEPT ![h] = "rejected"]
     /\ events' = Append(events, <<h, "rejected">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding>>
+    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding, claimFiler, claimState, openChallenges>>
 
 \* T5: Consume a verified handshake (verified -> consumed)
 \* Maps to: consumeHandshake() in consume.js
@@ -352,7 +352,7 @@ Consume(h) ==
     /\ consumptions' = consumptions \union {h}
     /\ events' = Append(events, <<h, "consumed">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<bindings, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding>>
+    /\ UNCHANGED <<bindings, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding, claimFiler, claimState, openChallenges>>
 
 \* T6: Revoke a handshake (initiated|pending_verification|verified -> revoked)
 \* Maps to: _handleRevokeHandshake() in finalize.js
@@ -371,7 +371,7 @@ Revoke(h) ==
           IF signoffState[h] \in {"challenge_issued", "challenge_viewed", "approved"}
           THEN "revoked_signoff"
           ELSE signoffState[h]]
-    /\ UNCHANGED <<bindings, consumptions, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>
+    /\ UNCHANGED <<bindings, consumptions, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding, claimFiler, claimState, openChallenges>>
 
 \* T7: Expire a handshake (initiated|pending_verification|verified -> expired)
 \* Maps to: _handleVerifyHandshake() outcome='expired' in verify.js
@@ -388,7 +388,7 @@ Expire(h) ==
           IF signoffState[h] \in {"challenge_issued", "challenge_viewed", "approved"}
           THEN "expired_signoff"
           ELSE signoffState[h]]
-    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>
+    /\ UNCHANGED <<bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding, claimFiler, claimState, openChallenges>>
 
 \* --------------------------------------------------------------------------
 \* Adversarial Actions (must be no-ops or resolve safely)
@@ -416,7 +416,7 @@ ConcurrentRevokeConsume(h) ==
                  IF signoffState[h] \in {"challenge_issued", "challenge_viewed", "approved"}
                  THEN "revoked_signoff"
                  ELSE signoffState[h]]
-           /\ UNCHANGED <<bindings, consumptions, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>)
+           /\ UNCHANGED <<bindings, consumptions, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding, claimFiler, claimState, openChallenges>>)
        \/ (state' = [state EXCEPT ![h] = "consumed"]
            /\ consumptions' = consumptions \union {h}
            /\ events' = Append(events, <<h, "consumed">>)
@@ -425,7 +425,7 @@ ConcurrentRevokeConsume(h) ==
                  IF signoffState[h] \in {"challenge_issued", "challenge_viewed", "approved"}
                  THEN "revoked_signoff"
                  ELSE signoffState[h]]
-           /\ UNCHANGED <<bindings, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>)
+           /\ UNCHANGED <<bindings, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding, claimFiler, claimState, openChallenges>>)
 
 \* A3: Attempt to verify an already-consumed binding.
 \* Maps to: verify.js HARD GATE (line 52-68) — existingBinding.consumed_at check
@@ -443,7 +443,7 @@ SetPolicyValid(h) ==
     /\ state[h] \in {"none", "initiated", "pending_verification"}
     /\ policyValid' = [policyValid EXCEPT ![h] = TRUE]
     /\ policyVersion' = [policyVersion EXCEPT ![h] = currentPolicyVer[h]]
-    /\ UNCHANGED <<state, bindings, consumptions, events, revoked, writePath, delegations, currentPolicyVer, signoffState, signoffActor, signoffBinding>>
+    /\ UNCHANGED <<state, bindings, consumptions, events, revoked, writePath, delegations, currentPolicyVer, signoffState, signoffActor, signoffBinding, claimFiler, claimState, openChallenges>>
 
 \* --------------------------------------------------------------------------
 \* Policy Environment Actions (continued)
@@ -455,7 +455,7 @@ PolicyChange(h) ==
     /\ state[h] \in {"initiated", "pending_verification"}
     /\ currentPolicyVer[h] < MaxPolicyVer  \* TLC bound: prevent infinite state space
     /\ currentPolicyVer' = [currentPolicyVer EXCEPT ![h] = currentPolicyVer[h] + 1]
-    /\ UNCHANGED <<state, bindings, consumptions, events, revoked, policyValid, writePath, delegations, policyVersion, signoffState, signoffActor, signoffBinding>>
+    /\ UNCHANGED <<state, bindings, consumptions, events, revoked, policyValid, writePath, delegations, policyVersion, signoffState, signoffActor, signoffBinding, claimFiler, claimState, openChallenges>>
 
 \* --------------------------------------------------------------------------
 \* Delegation Actions
@@ -474,7 +474,7 @@ GrantDelegation(principal, delegate) ==
         delegations[delegate] \union {[delegate |-> delegate, principal |-> principal,
                                         scope |-> {"verify", "present"},
                                         principalScope |-> {"verify", "present", "revoke"}]}]
-    /\ UNCHANGED <<state, bindings, consumptions, events, revoked, policyValid, writePath, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding>>
+    /\ UNCHANGED <<state, bindings, consumptions, events, revoked, policyValid, writePath, policyVersion, currentPolicyVer, signoffState, signoffActor, signoffBinding, claimFiler, claimState, openChallenges>>
 
 \* A4: Attempt direct write bypass — models an actor trying to mutate state
 \* without going through protocolWrite. This MUST be a no-op.
@@ -506,7 +506,7 @@ IssueChallenge(h, actor) ==
     /\ signoffBinding' = [signoffBinding EXCEPT ![h] = bindings[h]]
     /\ events' = Append(events, <<h, "signoff_challenge_issued">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer>>
+    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, claimFiler, claimState, openChallenges>>
 
 \* SO2: View a signoff challenge (challenge_issued -> challenge_viewed).
 \* Maps to: lib/signoff/challenge.js viewChallenge()
@@ -515,7 +515,7 @@ ViewChallenge(h) ==
     /\ signoffState' = [signoffState EXCEPT ![h] = "challenge_viewed"]
     /\ events' = Append(events, <<h, "signoff_challenge_viewed">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>
+    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding, claimFiler, claimState, openChallenges>>
 
 \* SO3: Approve a signoff (challenge_issued|challenge_viewed -> approved).
 \* Maps to: lib/signoff/approve.js approveSignoff()
@@ -526,7 +526,7 @@ ApproveSignoff(h) ==
     /\ signoffState' = [signoffState EXCEPT ![h] = "approved"]
     /\ events' = Append(events, <<h, "signoff_approved">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>
+    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding, claimFiler, claimState, openChallenges>>
 
 \* SO4: Deny a signoff (challenge_issued|challenge_viewed -> denied).
 \* Maps to: lib/signoff/approve.js denySignoff()
@@ -535,7 +535,7 @@ DenySignoff(h) ==
     /\ signoffState' = [signoffState EXCEPT ![h] = "denied"]
     /\ events' = Append(events, <<h, "signoff_denied">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>
+    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding, claimFiler, claimState, openChallenges>>
 
 \* SO5: Consume a signoff (approved -> consumed_signoff).
 \* Maps to: lib/signoff/approve.js consumeSignoff()
@@ -546,7 +546,7 @@ ConsumeSignoff(h) ==
     /\ signoffState' = [signoffState EXCEPT ![h] = "consumed_signoff"]
     /\ events' = Append(events, <<h, "signoff_consumed">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>
+    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding, claimFiler, claimState, openChallenges>>
 
 \* SO6: Expire a signoff (challenge_issued|challenge_viewed|approved -> expired_signoff).
 \* Maps to: lib/signoff/revoke.js expireSignoff()
@@ -556,7 +556,7 @@ ExpireSignoff(h) ==
     /\ signoffState' = [signoffState EXCEPT ![h] = "expired_signoff"]
     /\ events' = Append(events, <<h, "signoff_expired">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>
+    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding, claimFiler, claimState, openChallenges>>
 
 \* SO7: Revoke a signoff (challenge_issued|challenge_viewed|approved -> revoked_signoff).
 \* Maps to: lib/signoff/revoke.js revokeSignoff()
@@ -565,7 +565,7 @@ RevokeSignoff(h) ==
     /\ signoffState' = [signoffState EXCEPT ![h] = "revoked_signoff"]
     /\ events' = Append(events, <<h, "signoff_revoked">>)
     /\ writePath' = [writePath EXCEPT ![h] = TRUE]
-    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding>>
+    /\ UNCHANGED <<state, bindings, consumptions, revoked, policyValid, delegations, policyVersion, currentPolicyVer, signoffActor, signoffBinding, claimFiler, claimState, openChallenges>>
 
 \* A6: Attempt to transition out of a terminal signoff state.
 \* This MUST be a no-op for ALL terminal signoff states.
@@ -577,84 +577,6 @@ SignoffTerminalEscapeAttempt(h) ==
 \* --------------------------------------------------------------------------
 \* Next-State Relation
 \* --------------------------------------------------------------------------
-
-Next ==
-    \/ \E h \in Handshakes :
-        \/ Initiate(h)
-        \/ Present(h)
-        \/ VerifyAccept(h)
-        \/ VerifyReject(h)
-        \/ Consume(h)
-        \/ Revoke(h)
-        \/ Expire(h)
-        \/ DuplicateConsumeAttempt(h)
-        \/ ConcurrentRevokeConsume(h)
-        \/ ReplayAfterConsumption(h)
-        \/ SetPolicyValid(h)
-        \/ PolicyChange(h)
-        \/ DirectWriteBypassAttempt(h)
-        \/ TerminalEscapeAttempt(h)
-        \* Accountable Signoff actions
-        \/ \E a \in Actors : IssueChallenge(h, a)
-        \/ ViewChallenge(h)
-        \/ ApproveSignoff(h)
-        \/ DenySignoff(h)
-        \/ ConsumeSignoff(h)
-        \/ ExpireSignoff(h)
-        \/ RevokeSignoff(h)
-        \/ SignoffTerminalEscapeAttempt(h)
-    \/ \E p \in Actors, d \in Actors :
-        GrantDelegation(p, d)
-    \/ EpIxNext
-
-Spec == Init /\ [][Next]_vars
-
-\* TLC exploration bound — prevents the events sequence from growing without
-\* limit, keeping the state space finite.
-\* With Handshakes = {h1} (single handshake), 8 events covers the full
-\* lifecycle: initiated, presentation_added, verified,
-\* signoff_challenge_issued, signoff_challenge_viewed, signoff_approved,
-\* signoff_consumed, consumed. A small buffer handles adversarial re-tries.
-BoundedExploration == Len(events) <= 10
-
-\* --------------------------------------------------------------------------
-\* Theorems — properties that TLC should verify
-\* --------------------------------------------------------------------------
-
-\* Original safety theorems
-THEOREM Spec => []TypeInvariant
-THEOREM Spec => []ConsumeOnceSafety
-THEOREM Spec => []RevokedIsTerminal
-THEOREM Spec => []PolicyRequired
-THEOREM Spec => []EventCoverage
-THEOREM Spec => []ExpiredIsTerminal
-THEOREM Spec => []RejectedIsTerminal
-
-\* New safety theorems (added for expanded coverage)
-THEOREM Spec => []WriteBypassSafety
-THEOREM Spec => []TerminalStateIrreversibility
-THEOREM Spec => []DelegateCannotExceedPrincipal
-THEOREM Spec => []DelegationAcyclicity
-THEOREM Spec => []PolicyHashMismatchDetection
-THEOREM Spec => []EventCompleteness
-
-\* Accountable Signoff safety theorems
-THEOREM Spec => []SignoffRequiresVerifiedHandshake
-THEOREM Spec => []SignoffConsumeOnce
-THEOREM Spec => []SignoffBindingMatch
-THEOREM Spec => []SignoffTerminalIrreversible
-THEOREM Spec => []DenyCannotBeApproved
-THEOREM Spec => []SignoffAuthorityMatch
-
-\* EP-IX Identity Continuity safety theorems
-THEOREM Spec => []ContinuityTypeInvariant
-THEOREM Spec => []ContinuityTerminalIrreversibility
-THEOREM Spec => []FrozenClaimBlocksResolution
-THEOREM Spec => []ChallengeRateLimit
-THEOREM Spec => []SelfContestImpossible
-THEOREM Spec => []WithdrawnClaimIsTerminal
-
-==========================================================================
 
 \* ==========================================================================
 \* EP-IX Identity Continuity — State Machine Extension
@@ -844,3 +766,81 @@ EpIxNext ==
         \/ WithdrawClaim(c)
         \/ FrozenResolveAttempt(c)
         \/ ContinuityTerminalEscapeAttempt(c)
+
+Next ==
+    \/ \E h \in Handshakes :
+        \/ Initiate(h)
+        \/ Present(h)
+        \/ VerifyAccept(h)
+        \/ VerifyReject(h)
+        \/ Consume(h)
+        \/ Revoke(h)
+        \/ Expire(h)
+        \/ DuplicateConsumeAttempt(h)
+        \/ ConcurrentRevokeConsume(h)
+        \/ ReplayAfterConsumption(h)
+        \/ SetPolicyValid(h)
+        \/ PolicyChange(h)
+        \/ DirectWriteBypassAttempt(h)
+        \/ TerminalEscapeAttempt(h)
+        \* Accountable Signoff actions
+        \/ \E a \in Actors : IssueChallenge(h, a)
+        \/ ViewChallenge(h)
+        \/ ApproveSignoff(h)
+        \/ DenySignoff(h)
+        \/ ConsumeSignoff(h)
+        \/ ExpireSignoff(h)
+        \/ RevokeSignoff(h)
+        \/ SignoffTerminalEscapeAttempt(h)
+    \/ \E p \in Actors, d \in Actors :
+        GrantDelegation(p, d)
+    \/ EpIxNext
+
+Spec == Init /\ [][Next]_vars
+
+\* TLC exploration bound — prevents the events sequence from growing without
+\* limit, keeping the state space finite.
+\* With Handshakes = {h1} (single handshake), 8 events covers the full
+\* lifecycle: initiated, presentation_added, verified,
+\* signoff_challenge_issued, signoff_challenge_viewed, signoff_approved,
+\* signoff_consumed, consumed. A small buffer handles adversarial re-tries.
+BoundedExploration == Len(events) <= 10
+
+\* --------------------------------------------------------------------------
+\* Theorems — properties that TLC should verify
+\* --------------------------------------------------------------------------
+
+\* Original safety theorems
+THEOREM Spec => []TypeInvariant
+THEOREM Spec => []ConsumeOnceSafety
+THEOREM Spec => []RevokedIsTerminal
+THEOREM Spec => []PolicyRequired
+THEOREM Spec => []EventCoverage
+THEOREM Spec => []ExpiredIsTerminal
+THEOREM Spec => []RejectedIsTerminal
+
+\* New safety theorems (added for expanded coverage)
+THEOREM Spec => []WriteBypassSafety
+THEOREM Spec => []TerminalStateIrreversibility
+THEOREM Spec => []DelegateCannotExceedPrincipal
+THEOREM Spec => []DelegationAcyclicity
+THEOREM Spec => []PolicyHashMismatchDetection
+THEOREM Spec => []EventCompleteness
+
+\* Accountable Signoff safety theorems
+THEOREM Spec => []SignoffRequiresVerifiedHandshake
+THEOREM Spec => []SignoffConsumeOnce
+THEOREM Spec => []SignoffBindingMatch
+THEOREM Spec => []SignoffTerminalIrreversible
+THEOREM Spec => []DenyCannotBeApproved
+THEOREM Spec => []SignoffAuthorityMatch
+
+\* EP-IX Identity Continuity safety theorems
+THEOREM Spec => []ContinuityTypeInvariant
+THEOREM Spec => []ContinuityTerminalIrreversibility
+THEOREM Spec => []FrozenClaimBlocksResolution
+THEOREM Spec => []ChallengeRateLimit
+THEOREM Spec => []SelfContestImpossible
+THEOREM Spec => []WithdrawnClaimIsTerminal
+
+==========================================================================

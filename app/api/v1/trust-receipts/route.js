@@ -31,17 +31,7 @@ import {
 } from '@/lib/guard-policies';
 import { evaluateAction as evaluateRulesEngineV0 } from '@/lib/rules-engine.js';
 import { logger } from '@/lib/logger.js';
-
-// Feature flag for the rules-engine v0 shadow signal. When set to
-// 'enabled', every POST runs the new rules-engine in addition to the
-// existing evaluateGuardPolicy() and emits a separate audit_event
-// recording the new evaluator's decision side-by-side with the live
-// decision. Pure observability — does NOT change API response shape
-// or block any existing behavior. Implements the audit's §4 rules
-// engine spec without rewriting live API contract.
-function isRulesEngineV0Enabled() {
-  return process.env.EP_RULES_ENGINE_V0 === 'enabled';
-}
+import { isRulesEngineV0Enabled } from '@/lib/env.js';
 
 // Receipt expiry: 24 hours by default. Per MD §2.3, expires_at is required
 // on every receipt. 24h is the EP default for handshake-bound receipts.

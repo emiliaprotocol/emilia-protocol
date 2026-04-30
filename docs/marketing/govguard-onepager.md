@@ -54,7 +54,7 @@ Anyone can install `@emilia-protocol/verify` and re-check the signature without 
 ## Open standard, no lock-in
 
 - **License:** Apache 2.0 — agency can self-host, fork, or independently verify.
-- **Formal verification:** 20 TLA+ theorems verified, 32 Alloy facts + 15 assertions, both run in CI.
+- **Formal verification:** 26 TLA+ theorems verified, 35 Alloy facts + 15 assertions, both run in CI.
 - **Compliance mappings:** NIST AI RMF (38 subcategories), EU AI Act Articles 9–15 + 26.
 - **Open-source verifier:** `npm install @emilia-protocol/verify` — zero-dependency, works offline.
 

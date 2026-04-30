@@ -875,6 +875,29 @@ describe('A.4 — Binding completeness enforcement', () => {
     expect(() => validateBindingCompleteness(material)).not.toThrow();
   });
 
+  it('rejects null binding (non-object guard)', () => {
+    expect(() => validateBindingCompleteness(null)).toThrow(
+      /BINDING_INVARIANT_VIOLATION.*plain object/,
+    );
+  });
+
+  it('rejects string binding (non-object guard)', () => {
+    expect(() => validateBindingCompleteness('not-a-binding')).toThrow(
+      /BINDING_INVARIANT_VIOLATION.*plain object/,
+    );
+  });
+
+  it('canonicalizeBinding rejects function-valued field', () => {
+    // deepSortKeys (internal to canonicalizeBinding) refuses to canonicalize
+    // functions. This guards against accidental closure leakage into hashed
+    // material. Use a plain object so it gets to the recursion that hits the
+    // function-typed value.
+    const malformed = { action_type: 'transact', closure: () => 'leak' };
+    expect(() => canonicalizeBinding(malformed)).toThrow(
+      /CANONICALIZATION_ERROR.*functions/,
+    );
+  });
+
   it('binding hash changes when any field changes', () => {
     const base = validBindingMaterial();
     const baseHash = hashBinding(base);

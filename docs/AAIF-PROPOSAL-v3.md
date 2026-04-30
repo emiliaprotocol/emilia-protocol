@@ -63,7 +63,7 @@ EP Commit      Atomic action seal
 
 3. **Named human accountability.** When an AI acts with real-world consequences, EP's Signoff layer ensures a specific named human has seen the exact action, understood the consequences, and accepted responsibility. Not a role. A person.
 
-4. **Formal verification.** 20 TLA+ safety properties verified by model checking (T1–T20, 7,857 states, 0 errors). 6 additional EP-IX properties (T21–T26) specified, model run pending. 32 Alloy relational facts + 15 assertions verified (0 counterexamples). Both run in CI on every commit.
+4. **Formal verification.** 26 TLA+ safety properties verified by model checking (T1–T26, 413,137 states, 0 errors) — including the EP-IX identity continuity invariants. 35 Alloy relational facts + 15 assertions verified (Alloy 6.0.0, 0 counterexamples). Both run in CI on every commit.
 
 5. **Due process.** Disputes, appeals, human reports, graph-based adjudication. Trust must never be more powerful than appeal.
 
@@ -77,11 +77,11 @@ EP is not a proposal. It is production-grade software with formal verification.
 
 | Metric | Value |
 |--------|-------|
-| **Automated tests** | 3,430 across 129 files (vitest) |
+| **Automated tests** | 3,483 across 132 files (vitest) |
 | **Adversarial tests** | 85 red team cases (`docs/conformance/RED_TEAM_CASES.md`) |
 | **Property-based tests** | Fast-check invariant tests |
 | **Mutation testing** | Stryker.js, 80%+ kill threshold |
-| **Formal verification** | TLA+: 20 properties verified (T1–T20, 7,857 states); 6 EP-IX properties (T21–T26) specified, model run pending. Alloy: 32 facts, 15 assertions verified |
+| **Formal verification** | TLA+: 26 properties verified (T1–T26, 413,137 states, 0 errors). Alloy: 35 facts, 15 assertions verified (Alloy 6.0.0, 0 counterexamples) |
 | **Database tables** | ~50 (all RLS-enabled with explicit policies) |
 | **SECURITY DEFINER functions** | 27 (all search_path-hardened) |
 | **API endpoints** | 50+ routes, all rate-limited |
