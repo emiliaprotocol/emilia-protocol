@@ -264,6 +264,14 @@ describe('validateBody: multi-field error accumulation', () => {
     expect(result.valid).toBe(false);
     expect(result.errors[0]).toBe('Request body must be a JSON object');
   });
+
+  it('captures non-ValidationError thrown by a custom validator', () => {
+    const result = validateBody({ x: 'anything' }, {
+      x: () => { throw new Error('custom blew up'); },
+    });
+    expect(result.valid).toBe(false);
+    expect(result.errors[0]).toBe('x: custom blew up');
+  });
 });
 
 // ============================================================================
@@ -327,6 +335,59 @@ describe('validateHandshakeCreate', () => {
     expect(result.data.action_type).toBe(null);
     expect(result.data.payload).toEqual({});
   });
+
+  // ── Error-path branches (catch blocks in schemas.js:48-66) ──────────────
+  it('rejects parties[i] that is null', () => {
+    const result = validateHandshakeCreate({
+      ...validBody,
+      parties: [null, { role: 'responder', entity_ref: 'e2' }],
+    });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('parties[0]'))).toBe(true);
+  });
+
+  it('rejects parties[i] that is not an object', () => {
+    const result = validateHandshakeCreate({
+      ...validBody,
+      parties: ['not-an-object', { role: 'responder', entity_ref: 'e2' }],
+    });
+    expect(result.valid).toBe(false);
+  });
+
+  it('rejects party with missing entity_ref', () => {
+    const result = validateHandshakeCreate({
+      ...validBody,
+      parties: [
+        { role: 'initiator' },
+        { role: 'responder', entity_ref: 'e2' },
+      ],
+    });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('entity_ref'))).toBe(true);
+  });
+
+  it('rejects invalid action_type', () => {
+    const result = validateHandshakeCreate({ ...validBody, action_type: 'not-a-valid-type' });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('action_type'))).toBe(true);
+  });
+
+  it('rejects non-string resource_ref', () => {
+    const result = validateHandshakeCreate({ ...validBody, resource_ref: 12345 });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('resource_ref'))).toBe(true);
+  });
+
+  it('accepts valid action_type + resource_ref', () => {
+    const result = validateHandshakeCreate({
+      ...validBody,
+      action_type: 'transact',
+      resource_ref: 'urn:bank:account:123',
+    });
+    expect(result.valid).toBe(true);
+    expect(result.data.action_type).toBe('transact');
+    expect(result.data.resource_ref).toBe('urn:bank:account:123');
+  });
 });
 
 // ============================================================================
@@ -365,6 +426,12 @@ describe('validatePresent', () => {
   it('rejects invalid disclosure_mode', () => {
     const result = validatePresent({ ...validBody, disclosure_mode: 'public' });
     expect(result.valid).toBe(false);
+  });
+
+  it('rejects non-string issuer_ref', () => {
+    const result = validatePresent({ ...validBody, issuer_ref: 42 });
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('issuer_ref'))).toBe(true);
   });
 });
 
