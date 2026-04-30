@@ -101,8 +101,8 @@ Maps each protocol invariant to its enforcement in code, test coverage, and form
 
 | File | Format | Checks | How to Run |
 |------|--------|--------|------------|
-| `formal/ep_handshake.tla` | TLA+ | 20 safety theorems (T1–T20, verified by TLC 2.19) + 6 EP-IX continuity properties (T21–T26, specified); 32 actions (including 9 EP-IX continuity actions); 15 variables | TLC model checker with `Handshakes = {h1}`, `Actors = {a1, a2}`, `Policies = {p1}`, `Claims = {c1}` — see `formal/PROOF_STATUS.md` |
-| `formal/ep_relations.als` | Alloy 6 | 32 facts (F1-F32), 15 assertions (A1-A15), 5 visualization predicates, 6 new signatures (Mutation, Delegation, PolicyVersion, SignoffChallenge, SignoffAttestation, SignoffConsumption) | Alloy Analyzer `check` commands (scope 6-8) |
+| `formal/ep_handshake.tla` | TLA+ | 26 safety theorems (T1–T26, all verified by TLC 2.19, including the 6 EP-IX continuity properties); 32 actions (including 9 EP-IX continuity actions); 15 variables | TLC model checker with `Handshakes = {h1}`, `Actors = {a1, a2}`, `Policies = {p1}`, `Claims = {c1}` — see `formal/PROOF_STATUS.md` |
+| `formal/ep_relations.als` | Alloy 6 | 35 facts (F1-F35), 15 assertions (A1-A15), 5 visualization predicates, 6 new signatures (Mutation, Delegation, PolicyVersion, SignoffChallenge, SignoffAttestation, SignoffConsumption) | Alloy Analyzer `check` commands (scope 6-8) |
 
 ---
 
@@ -110,7 +110,7 @@ Maps each protocol invariant to its enforcement in code, test coverage, and form
 
 | Script | Purpose | Exit code |
 |--------|---------|-----------|
-| `scripts/check-invariant-coverage.js` | Verifies all 20 verified safety invariants (T1–T20) have coverage across 4 layers: code guard, test, formal model, documentation | `0` = all covered, `1` = missing coverage |
+| `scripts/check-invariant-coverage.js` | Verifies all 26 verified safety invariants (T1–T26) have coverage across 4 layers: code guard, test, formal model, documentation | `0` = all covered, `1` = missing coverage |
 
 The CI gate checks each invariant for:
 1. **Code guard**: literal term found in `lib/` source files
@@ -198,8 +198,8 @@ If any critical invariant loses any coverage layer, CI fails with a detailed rep
 
 ## Next Steps
 
-1. Run TLC on `ep_handshake.tla` with `Handshakes = {h1}`, `Actors = {a1, a2}`, `Policies = {p1}`, `Claims = {c1}` to confirm all 20 verified theorems hold (T1–T20) and the 6 new EP-IX properties (T21–T26) produce no counterexamples
-2. Run Alloy Analyzer on `ep_relations.als` to verify all 15 assertions find no counterexamples (including A12-A15 signoff assertions)
+1. ~~Run TLC on `ep_handshake.tla` with `Handshakes = {h1}`, `Actors = {a1, a2}`, `Policies = {p1}`, `Claims = {c1}`~~ — **DONE (2026-04-30)**: 413,137 states, 0 errors, all 26 theorems hold including the EP-IX continuity properties (T21–T26).
+2. ~~Run Alloy Analyzer on `ep_relations.als`~~ — **DONE (2026-04-30)**: 15 of 15 assertions pass with 0 counterexamples (including A12–A15 signoff assertions). 35 facts (F1–F35) verified. CI runs Alloy 6.0.0 on every push.
 3. Implement signoff runtime code (`lib/signoff/challenge.js`, `lib/signoff/approve.js`, `lib/signoff/revoke.js`) to enforce S14-S19
 4. Add signoff test coverage for S14-S19
 5. Add TLA+ coverage for D3-D5 (idempotency, party uniqueness, binding hash integrity)

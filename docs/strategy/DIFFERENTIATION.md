@@ -59,7 +59,7 @@ parity, which would be a lie.
    onboarding screen, this matters.**
 
 4. **Formal verification.**
-   20 TLA+ theorems verified, 32 Alloy facts + 15 assertions. No
+   26 TLA+ theorems verified, 35 Alloy facts + 15 assertions. No
    competitor publishes formal models. **For agencies that have to
    defend control choices to internal/external auditors with state-
    machine reasoning, this is novel.**

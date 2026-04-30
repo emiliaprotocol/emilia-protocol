@@ -29,8 +29,8 @@ EP bets on option 2. The protocol that wins will be the one that was ready when 
 - Base L2 blockchain anchoring (~$0.60/month)
 
 ### Formal Verification
-- 25 TLA+ safety properties (7,857 states, 0 errors)
-- 32 Alloy relational facts (0 counterexamples)
+- 25 TLA+ safety properties (413,137 states, 0 errors)
+- 35 Alloy relational facts (0 counterexamples)
 - Both run in CI on every commit
 
 ### Compliance

@@ -60,7 +60,7 @@ EP provides four composable layers:
 
 2. **Privacy-preserving trust proofs:** Entities can prove "my trust score exceeds threshold X in domain Y" without revealing their receipts, counterparties, or interaction history (HMAC-SHA256 commitment scheme).
 
-3. **Formal verification:** 20 TLA+ safety properties verified (T1–T20, TLC 2.19, 7,857 states, 0 errors); 6 additional EP-IX properties (T21–T26) specified, model run pending. 32 Alloy relational facts + 15 assertions verified. All run in CI.
+3. **Formal verification:** 26 TLA+ safety properties verified (T1–T26, TLC 2.19, 413,137 states, 0 errors) — includes the EP-IX identity continuity invariants (T21–T26). 35 Alloy relational facts + 15 assertions verified (Alloy 6.0.0, 0 counterexamples). All run in CI.
 
 4. **Federation architecture:** Multiple independent operators issue and cross-verify receipts via shared cryptographic proofs. No single point of failure. No central authority.
 
@@ -102,9 +102,9 @@ delta.
 
 | Metric | Value |
 |--------|-------|
-| Automated tests | 3,430 across 129 files (vitest) |
+| Automated tests | 3,483 across 132 files (vitest) |
 | Adversarial / red-team test cases | 85 cataloged in `docs/conformance/RED_TEAM_CASES.md` |
-| Formal verification | TLA+: 20 properties verified (T1–T20, TLC 2.19, 7,857 states, 0 errors); 6 EP-IX properties (T21–T26) specified, model run pending. Alloy: 32 facts, 15 assertions (Alloy 6.1.0). |
+| Formal verification | TLA+: 26 properties verified (T1–T26, TLC 2.19, 413,137 states, 0 errors). Alloy: 35 facts, 15 assertions verified (Alloy 6.0.0, 0 counterexamples). |
 | Database tables | ~50, all RLS-hardened (see `supabase/migrations/`) |
 | API endpoints | 50+ (all rate-limited; mutating endpoints auth-enforced via `middleware.js` ROUTE_POLICIES) |
 | MCP tools | 34 EP-prefixed tools (`mcp-server/index.js`) |
