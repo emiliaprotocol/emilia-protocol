@@ -14,6 +14,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "check:protocol": "node scripts/check-protocol-discipline.js",
+    "check:demo-key": "node scripts/check-demo-key-isolation.js",
     "reconstitute": "node scripts/replay-protocol.js --reconstitute",
     "test:mutation": "stryker run",
     "test:e2e": "playwright test",

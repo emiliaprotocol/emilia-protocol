@@ -22,18 +22,23 @@ const HeroAnimation = dynamic(() => import('@/components/HeroAnimation'), {
 // into someone who clicks "See Live Example" or "Request Pilot" within 30s.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Stats below are the source-of-truth numbers as of 2026-04-27. Each value
+// Stats below are the source-of-truth numbers as of 2026-04-28. Each value
 // is independently verifiable in the repo:
-//   3,430 tests / 129 files — `npx vitest run` summary
+//   3,471 tests / 132 files — `npx vitest run` summary
 //   20 TLA+ theorems verified — formal/PROOF_STATUS.md (T1–T20)
 //   85 red team cases — docs/conformance/RED_TEAM_CASES.md line 1
-//   Internal audit — docs/security/AUDIT_METHODOLOGY.md (self-administered)
-// Do NOT mark as third-party "Verified". Do NOT inflate.
+//   Apache 2.0 — LICENSE
+//   Internal review — docs/security/AUDIT_METHODOLOGY.md (self-administered)
+//
+// Note: deliberately removed "100/100" framing. External procurement
+// reviewers treat self-awarded perfect scores as a marketing claim, not
+// an assurance signal. Lead with reproducible evidence instead — the
+// methodology link is the credibility carrier.
 const STATS = [
-  { value: '3,430',     label: 'Automated Tests',  sub: '129 test files',           accent: color.t1 },
+  { value: '3,471',     label: 'Automated Tests',  sub: '132 test files',           accent: color.t1 },
   { value: '20',        label: 'Theorems Proven',  sub: 'TLC 2.19, zero errors',    accent: color.blue },
   { value: '85',        label: 'Red Team Cases',   sub: 'Cataloged in repo',        accent: color.t1 },
-  { value: '100/100',   label: 'Internal Audit',   sub: 'Self-administered · Apr 2', accent: color.gold },
+  { value: 'Reviewed',  label: 'Internal Audit',   sub: 'Methodology public · Apr 2', accent: color.gold },
   { value: 'Apache 2.0', label: 'License',         sub: 'Open specification',       accent: color.green },
 ];
 
@@ -160,18 +165,19 @@ export default function HomePage() {
               }} />
               <div>
                 <div style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: color.t1, letterSpacing: 0.5, lineHeight: 1.2 }}>
-                  Internal Security Audit — 100/100
+                  Internal Protocol Assurance Review
                 </div>
                 <div style={{ fontFamily: font.mono, fontSize: 9, color: color.t3, letterSpacing: 0.5, lineHeight: 1.2, marginTop: 1 }}>
-                  April 2, 2026 · <a href="/docs/security/AUDIT_METHODOLOGY.md" style={{ color: 'inherit', textDecoration: 'underline' }}>Methodology &amp; scope</a>
+                  April 2, 2026 · <a href="/docs/security/AUDIT_METHODOLOGY.md" style={{ color: 'inherit', textDecoration: 'underline' }}>Methodology &amp; scope (public)</a>
                 </div>
               </div>
               <div style={{ marginLeft: 4, paddingLeft: 12, borderLeft: `1px solid ${color.border}` }}>
-                {/* "INTERNAL" not "VERIFIED" — the audit is self-administered
-                    per docs/security/AUDIT_METHODOLOGY.md. Federal procurement
-                    teams treat "Verified" badges as third-party attestations;
-                    misrepresenting an internal review as third-party-verified
-                    is the kind of claim that triggers protests. */}
+                {/* Display "INTERNAL" not "VERIFIED" — the review is self-
+                    administered per docs/security/AUDIT_METHODOLOGY.md.
+                    The previous "100/100" framing was removed because federal
+                    procurement teams treat self-awarded perfect scores as
+                    marketing, not assurance. The methodology link is the
+                    credibility carrier; the badge points readers at it. */}
                 <div style={{ fontFamily: font.mono, fontSize: 9, color: color.gold, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 600 }}>INTERNAL</div>
               </div>
             </div>

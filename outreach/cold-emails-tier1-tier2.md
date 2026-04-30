@@ -1,13 +1,45 @@
 # EMILIA GovGuard — Tier-1 + Tier-2 Cold Email Sequences
 
-**Goal:** 20 sends → 5 first-meeting bookings → 2 deep technical conversations → 1 LOI to scope a paid pilot.
+**Honest goal (90 days, not 14):** 50 sends across 90 days → 1–3 replies →
+1 first-call → 1 advance conversation toward FY27 budget cycle. The
+original "20 sends → 5 meetings → 1 paid pilot in 14 days" framing is
+fantasy at typical 2–5% government cold-email reply rates. See
+`docs/strategy/REALISTIC-90-DAY-PLAN.md` for the rationale.
 
 **Cadence:**
 - **Send window:** Tuesday–Thursday, 8:00–10:30 AM recipient-local-time.
-- **Initial send:** all 20 in a single tight 48-hour window.
+- **Initial send:** spread the named-contact tier across week 1, expand
+  to research-required tier in weeks 2–4.
 - **Follow-up #1:** 7 days after initial — short bump, link to `/r/example`.
-- **Follow-up #2:** 18 days after initial — different angle (audit/oversight) or close.
+- **Follow-up #2:** 18 days after initial — different angle (sustained-
+  evidence claim from `docs/strategy/DIFFERENTIATION.md`) or close.
 - **Stop:** 21 days after initial. No fourth touch.
+
+**Two tiers below — do NOT mix:**
+- **§A NAMED-CONTACT TIER** (8 emails). Each addressed to a specific
+  named individual whose contact appears on a public agency page as of
+  2026-04-26. These are send-ready after a 5-minute address re-verify.
+- **§B RESEARCH-REQUIRED TIER** (12 emails). Each addressed to a unit
+  or generic mailbox with `[Name]` or `[Title]` placeholders. These
+  require 20–40 minutes of LinkedIn / agency-org-chart research per
+  email before send. **Do NOT send with brackets unfilled** — the
+  recipient sees mail-merge gore and the message lands in spam.
+
+**Differentiation note:** The body of every email below pitches "pre-
+execution control layer." That language is non-differentiated against
+Trustpair/Eftsure/Validis. For the second-touch follow-up at day 7+,
+swap in the sustained-evidence angle from
+`docs/strategy/DIFFERENTIATION.md`:
+
+> "Most vendor-payment-integrity tools store their audit log in the
+> vendor's own SaaS database. If the vendor is acquired or sunset,
+> your evidence depends on their continued cooperation. EMILIA produces
+> cryptographically signed receipts that any third party can verify
+> offline forever — even if EMILIA shuts down tomorrow. For agencies
+> with 7+ year retention requirements, that's not equivalent."
+
+That's the line that distinguishes EMILIA from the established
+competitors.
 
 **Deliverables that go with every email:**
 - Live demo URL: `https://emiliaprotocol.ai/r/example`

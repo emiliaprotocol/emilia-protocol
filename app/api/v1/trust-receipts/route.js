@@ -188,6 +188,28 @@ export async function POST(request) {
     // the new evaluator have decided" diff that's auditable and
     // reversible (drop the flag to disable). Nothing here can throw out
     // of the route — every failure is swallowed + logged.
+    //
+    // KNOWN LIMITATIONS — be honest about what this signal does and
+    // doesn't tell you:
+    //
+    //  1. STUB AUTHORITY. The rules-engine input below uses a stub
+    //     authority with max_amount_usd: Number.MAX_SAFE_INTEGER and
+    //     scope: [body.action_type], because no authority registry
+    //     exists yet. This SHORT-CIRCUITS 4 of the 9 hard-deny rules
+    //     in §4.5: AMOUNT_EXCEEDS_AUTHORITY, AUTHORITY_REVOKED,
+    //     AUTHORITY_EXPIRED, ACTION_OUTSIDE_AUTHORITY_SCOPE. The
+    //     shadow signal cannot tell you whether the new evaluator
+    //     would have caught authority-side issues — only signoff,
+    //     quorum, separation-of-duty, and risk-score issues. Until a
+    //     real authority registry is wired here, treat shadow data as
+    //     partial.
+    //
+    //  2. ARBITRARY RISK WEIGHTS. §4.9's risk-score weights (15, 15,
+    //     10, 15, 20, 25, 10, 20, 30) and thresholds (≥80, ≥50, ≥30)
+    //     are heuristics from an external doc, not data-calibrated.
+    //     Real fraud-detection thresholds need labeled outcomes.
+    //     Pitch this as "pre-calibration scaffold" not "production
+    //     fraud engine."
     if (isRulesEngineV0Enabled()) {
       try {
         const rulesEngineInput = {

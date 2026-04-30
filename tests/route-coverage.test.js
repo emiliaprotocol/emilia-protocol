@@ -179,6 +179,13 @@ const OPENAPI_EXEMPTIONS = [
   '/api/v1/adapters/fin/vendor-bank-change/precheck',
   '/api/v1/adapters/fin/beneficiary-creation/precheck',
   '/api/v1/adapters/fin/payment-release/precheck',
+  // Public, unauthenticated demo evidence endpoint. Serves only the
+  // synthetic /r/example demo receipt — NOT part of the protocol API
+  // surface. Documented separately in docs/api/govguard-v1.yaml as a
+  // demo-tier endpoint. Intentionally exempt from the canonical
+  // openapi.yaml so production protocol consumers don't ingest it as a
+  // first-class API.
+  '/api/demo/trust-receipts/[receiptId]/evidence',
 ];
 
 
