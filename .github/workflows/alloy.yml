@@ -1,5 +1,12 @@
 name: Alloy
 
+# Opt every JavaScript-based action into the Node.js 24 runner.
+# GitHub forces this default in June 2026; doing it now eliminates the
+# deprecation-warning noise on every run and surfaces any Node-24 incompat
+# early. Affects actions/checkout, actions/setup-node, actions/upload-artifact, etc.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   push:
     paths:
