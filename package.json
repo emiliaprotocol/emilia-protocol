@@ -33,7 +33,7 @@
     "@sentry/nextjs": "10.50.0",
     "@supabase/supabase-js": "^2.104.1",
     "next": "^15.0.0",
-    "react": "^19.0.0",
+    "react": "^19.2.5",
     "react-dom": "^19.0.0",
     "remotion": "^4.0.452",
     "viem": "^2.21.0"
