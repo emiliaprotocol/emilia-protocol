@@ -33,10 +33,10 @@
     "@sentry/nextjs": "10.50.0",
     "@supabase/supabase-js": "^2.104.1",
     "next": "^15.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
     "remotion": "^4.0.452",
-    "viem": "^2.21.0"
+    "viem": "^2.48.6"
   },
   "overrides": {
     "rollup": "^4.22.5",
@@ -53,7 +53,7 @@
     "eslint-config-next": "^15.0.0",
     "fast-check": "^4.6.0",
     "husky": "^9.0.0",
-    "lint-staged": "^15.0.0",
+    "lint-staged": "^16.4.0",
     "pg": "^8.20.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
