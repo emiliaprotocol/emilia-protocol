@@ -37,15 +37,23 @@ jobs:
 
       - name: Install k6
         run: |
-          sudo gpg -k
-          sudo gpg --no-default-keyring \
-            --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
-            --keyserver hkp://keyserver.ubuntu.com:80 \
-            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          # The previous install used `gpg --recv-keys` against
+          # keyserver.ubuntu.com — that keyserver flakes regularly with
+          # "keyserver receive failed: End of file" (e.g., run 25204805889
+          # on 2026-05-01). Fetch the key directly over HTTPS from k6's
+          # own publish endpoint instead — same key, no keyserver
+          # dependency. Retry the apt step a couple times to absorb any
+          # transient mirror flake.
+          set -eo pipefail
+          curl -fsSL https://dl.k6.io/key.gpg \
+            | sudo gpg --dearmor -o /usr/share/keyrings/k6-archive-keyring.gpg
           echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" \
             | sudo tee /etc/apt/sources.list.d/k6.list
-          sudo apt-get update -q
-          sudo apt-get install -q k6
+          for i in 1 2 3; do
+            sudo apt-get update -q && sudo apt-get install -q -y k6 && break
+            echo "apt attempt $i failed, retrying in 5s"; sleep 5
+          done
+          k6 version
 
       - name: Run smoke test (always)
         env:
