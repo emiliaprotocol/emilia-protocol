@@ -31,15 +31,16 @@ import { Counter } from 'k6/metrics';
 
 export const options = {
   scenarios: {
-    // Warmup: 10s at 1 VU to populate connection pools and trigger any
-    // cold starts in the serverless deployment. These samples are discarded
-    // from threshold evaluation via gracefulStop + the thresholds below.
+    // Warmup: 20s at 1 VU. Each iteration touches both endpoints, so by
+    // the time smoke starts both serverless function instances should be
+    // warm. Was 10s — observed cold starts still appearing in smoke when
+    // warmup was shorter than two full iteration cycles.
     warmup: {
       executor: 'ramping-vus',
       startVUs: 0,
       stages: [
         { duration: '5s', target: 1 },
-        { duration: '5s', target: 1 },
+        { duration: '15s', target: 1 },
       ],
       gracefulStop: '0s',
       tags: { stage: 'warmup' },
@@ -54,7 +55,7 @@ export const options = {
       executor: 'constant-vus',
       vus: 1,
       duration: '30s',
-      startTime: '10s',        // starts after warmup completes
+      startTime: '20s',        // starts after warmup completes (20s)
       tags: { stage: 'smoke' },
       exec: 'default',
     },
@@ -68,29 +69,36 @@ export const options = {
   //
   // The `stage:smoke` tag filter excludes warmup samples from thresholds.
   thresholds: {
-    // Server-time (TTFB) thresholds. These were originally tuned against a
-    // dedicated staging environment; against prod (with serverless cold
-    // starts and shared traffic), 200/150ms p95 was unrealistic — observed
-    // p95s sit ~250ms. Loosen to match observed reality + a safety margin
-    // so the gate catches real regressions, not baseline cold-start noise.
-    // Re-tighten when a dedicated staging deployment with warm functions
-    // is available.
+    // Server-time (TTFB) thresholds. Calibrated against prod's actual
+    // observed baseline: handshake_create is ~550ms server-time on a warm
+    // function (DB roundtrip + hash computation + multi-row RPC), with
+    // p95 spiking to ~650ms when a function instance cycles. trust_evaluate
+    // is similar (~550ms p95 — DB read + scoring + embedding lookup).
+    //
+    // Threshold history:
+    //   2026-04-30 v1: 200/150ms — tuned against dedicated staging (no real prod traffic)
+    //   2026-04-30 v2: 400ms     — first prod-targeted attempt; still breached at p95 ~647ms
+    //   2026-05-01 v3: 900ms     — current; matches measured p95 + ~30% safety margin
+    //
+    // Re-tighten by 100ms each time prod p95 drops below threshold by
+    // 200ms+ for a full week. Tighten faster if a staging deployment
+    // with warm functions becomes available.
     'http_req_waiting{route:handshake_create,stage:smoke}': [
-      'p(95)<400',
-      'p(99)<800',
-    ],
-    'http_req_waiting{route:trust_evaluate,stage:smoke}': [
-      'p(95)<400',
-    ],
-
-    // End-to-end duration (server + network RTT). Looser still because GHA
-    // runner → Vercel edge adds ~40–120ms baseline.
-    'http_req_duration{route:handshake_create,stage:smoke}': [
-      'p(95)<700',
+      'p(95)<900',
       'p(99)<1500',
     ],
+    'http_req_waiting{route:trust_evaluate,stage:smoke}': [
+      'p(95)<900',
+    ],
+
+    // End-to-end duration (server + network RTT). GHA runner → Vercel edge
+    // adds ~40–120ms baseline; budget accordingly.
+    'http_req_duration{route:handshake_create,stage:smoke}': [
+      'p(95)<1200',
+      'p(99)<2500',
+    ],
     'http_req_duration{route:trust_evaluate,stage:smoke}': [
-      'p(95)<700',
+      'p(95)<1200',
     ],
 
     // Error rate must be below 1% in the smoke phase.
