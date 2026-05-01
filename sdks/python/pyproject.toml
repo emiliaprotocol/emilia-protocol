@@ -10,7 +10,7 @@ readme = "README.md"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.9"
 dependencies = [
-    "httpx>=0.24.0",
+    "httpx>=0.28.1",
 ]
 keywords = ["trust", "ai-agents", "emilia-protocol", "handshake", "trust-gate", "signoff"]
 classifiers = [
@@ -31,7 +31,7 @@ Repository = "https://github.com/emiliaprotocol/emilia-protocol"
 Documentation = "https://emiliaprotocol.ai/docs"
 
 [project.optional-dependencies]
-dev = ["pytest>=8.4.2", "pytest-asyncio>=0.21", "httpx>=0.24.0"]
+dev = ["pytest>=8.4.2", "pytest-asyncio>=0.21", "httpx>=0.28.1"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ep"]
