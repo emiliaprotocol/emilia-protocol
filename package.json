@@ -36,7 +36,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "remotion": "^4.0.452",
-    "viem": "^2.21.0"
+    "viem": "^2.48.6"
   },
   "overrides": {
     "rollup": "^4.22.5",
