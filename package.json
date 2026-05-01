@@ -46,7 +46,7 @@
     "@playwright/test": "^1.59.1",
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/vitest-runner": "^9.6.1",
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@vitest/coverage-v8": "^4.1.2",
     "eslint": "^9.0.0",
