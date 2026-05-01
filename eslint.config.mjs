@@ -1,18 +1,11 @@
-// ESLint v9 flat config for emilia-protocol (Next.js 15 + ESLint 9).
+// ESLint v9 flat config for emilia-protocol (Next.js 15+ / ESLint 9+).
 //
-// Bridges `next/core-web-vitals` (still legacy-format under the hood) via
-// FlatCompat so we can drop `.eslintrc.json` and the
-// `ESLINT_USE_FLAT_CONFIG=false` workaround in lint-staged. When
-// eslint-config-next ships a native flat preset, switch to it directly.
+// eslint-config-next v16 ships native flat-config exports, so we import
+// `core-web-vitals` directly and spread it into the array. Previously we
+// used FlatCompat to bridge the legacy preset; that shim is no longer
+// needed and produced confusing stack traces under v16.
 
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { FlatCompat } from '@eslint/eslintrc';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({ baseDirectory: __dirname });
+import nextCoreWebVitals from 'eslint-config-next/core-web-vitals';
 
 export default [
   // Global ignores — flat config replaces .eslintrc `ignorePatterns`.
@@ -38,8 +31,8 @@ export default [
     ],
   },
 
-  // Bridge legacy Next.js preset.
-  ...compat.extends('next/core-web-vitals'),
+  // Native flat preset from eslint-config-next v16+.
+  ...nextCoreWebVitals,
 
   // Project-local rule overrides.
   {

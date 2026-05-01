@@ -50,7 +50,7 @@
     "@types/react": "^19.2.14",
     "@vitest/coverage-v8": "^4.1.2",
     "eslint": "^9.0.0",
-    "eslint-config-next": "^15.0.0",
+    "eslint-config-next": "^16.2.4",
     "fast-check": "^4.6.0",
     "husky": "^9.0.0",
     "lint-staged": "^15.0.0",

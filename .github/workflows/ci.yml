@@ -159,8 +159,14 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - name: Run Next.js lint
-        run: npx next lint
+      - name: Run ESLint
+        # `next lint` is deprecated in Next.js 16 and breaks with a
+        # circular-structure error under eslint-config-next v16+. The repo
+        # already uses flat config (eslint.config.mjs), so invoke ESLint
+        # directly. No --max-warnings=0 because `next lint` didn't enforce
+        # that and adding it now would surface 8 pre-existing default-export
+        # warnings as CI failures (separate cleanup task).
+        run: npx eslint .
 
   # ── Job 8: Protocol discipline — trust-model violation guardrails
   protocol-discipline:
