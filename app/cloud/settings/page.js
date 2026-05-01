@@ -28,6 +28,18 @@ const s = {
   success: { background: 'rgba(0,255,136,0.06)', border: '1px solid rgba(0,255,136,0.15)', borderRadius: 8, padding: '12px 16px', color: '#22C55E', fontSize: 13, marginBottom: 24 },
 };
 
+// Hoisted out of SettingsPage so it's not redefined on every render —
+// otherwise React unmounts/remounts the whole subtree each time the
+// parent re-renders. Caught by eslint-config-next 16's
+// react/component-creation-during-render rule.
+function Toggle({ value, onToggle }) {
+  return (
+    <button style={s.toggle(value)} onClick={onToggle} type="button">
+      <span style={s.toggleDot(value)} />
+    </button>
+  );
+}
+
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -76,12 +88,6 @@ export default function SettingsPage() {
   };
 
   const update = (key, value) => setConfig(prev => ({ ...prev, [key]: value }));
-
-  const Toggle = ({ value, onToggle }) => (
-    <button style={s.toggle(value)} onClick={onToggle} type="button">
-      <span style={s.toggleDot(value)} />
-    </button>
-  );
 
   if (loading) return <div style={s.page}><div style={s.loading}>Loading settings...</div></div>;
 
