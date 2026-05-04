@@ -46,6 +46,25 @@ updates:
       - javascript
     commit-message:
       prefix: "chore(deps)"
+    groups:
+      # Bundle patches/minors of unrelated dev tools into a single PR per
+      # week. Frameworks (next, react, typescript) stay un-grouped so they
+      # surface as standalone PRs that the auto-merge workflow can route
+      # to human review.
+      patch-and-minor-dev:
+        applies-to: version-updates
+        update-types:
+          - patch
+          - minor
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "next"
+          - "react"
+          - "react-dom"
+          - "typescript"
+          - "eslint"
+          - "eslint-config-next"
     ignore:
       # Avoid major version bumps on Next.js without a manual migration review
       - dependency-name: "next"

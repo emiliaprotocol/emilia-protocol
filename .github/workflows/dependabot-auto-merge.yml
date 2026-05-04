@@ -1,0 +1,111 @@
+name: Dependabot Auto-Merge
+
+# Opt every JavaScript-based action into the Node.js 24 runner.
+# GitHub forces this default in June 2026; doing it now eliminates the
+# deprecation-warning noise on every run and surfaces any Node-24 incompat
+# early. Affects actions/checkout, actions/setup-node, actions/upload-artifact, etc.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+# Auto-approves and auto-merges Dependabot PRs that are:
+#   • patch-version updates on any package, OR
+#   • minor-version updates on packages we treat as safe to auto-bump
+#
+# Major-version updates and minor-version updates on framework-shaped
+# packages (next, react, typescript, eslint, eslint-config-next) are
+# left for human review — these have surfaced real breakage in the past.
+#
+# Uses pull_request_target (not pull_request) so the GITHUB_TOKEN has the
+# write permissions needed to approve and merge. This is the GitHub-
+# recommended pattern for Dependabot auto-merge — see
+# https://github.blog/news-insights/the-library/automating-dependabot-with-github-actions/
+# It's safe here because the workflow only reads metadata and calls
+# `gh pr` commands; it never executes user-supplied code from the PR.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@d7267f607e9d3fb96fc2fbe83e0af444713e90b7  # v2.3.0
+
+      - name: Decide auto-merge eligibility
+        id: decide
+        env:
+          UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
+          DEP_NAMES: ${{ steps.meta.outputs.dependency-names }}
+        run: |
+          # update-type is one of:
+          #   version-update:semver-patch
+          #   version-update:semver-minor
+          #   version-update:semver-major
+          # plus security-update variants that we always merge if patch/minor.
+
+          # Packages that require human review even on minor bumps —
+          # past minor releases of these have introduced breaking changes
+          # on this repo (e.g. eslint-config-next 16 dropped `next lint`,
+          # react 19.2 mismatched react-dom).
+          REVIEW_REQUIRED='next react react-dom typescript eslint eslint-config-next'
+
+          ELIGIBLE=false
+          REASON="not eligible"
+
+          case "$UPDATE_TYPE" in
+            version-update:semver-patch)
+              ELIGIBLE=true
+              REASON="patch update"
+              ;;
+            version-update:semver-minor)
+              # Block if any dependency in the PR is in REVIEW_REQUIRED
+              ELIGIBLE=true
+              REASON="minor update"
+              for dep in $DEP_NAMES; do
+                for guarded in $REVIEW_REQUIRED; do
+                  if [ "$dep" = "$guarded" ]; then
+                    ELIGIBLE=false
+                    REASON="minor update on review-required package: $dep"
+                    break 2
+                  fi
+                done
+              done
+              ;;
+            version-update:semver-major)
+              ELIGIBLE=false
+              REASON="major update — human review required"
+              ;;
+          esac
+
+          echo "eligible=$ELIGIBLE" >> "$GITHUB_OUTPUT"
+          echo "reason=$REASON"    >> "$GITHUB_OUTPUT"
+          echo "## Dependabot auto-merge decision" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **update-type**: $UPDATE_TYPE"   >> "$GITHUB_STEP_SUMMARY"
+          echo "- **dependencies**: $DEP_NAMES"    >> "$GITHUB_STEP_SUMMARY"
+          echo "- **eligible**: $ELIGIBLE"         >> "$GITHUB_STEP_SUMMARY"
+          echo "- **reason**: $REASON"             >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Approve PR
+        if: steps.decide.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          REASON: ${{ steps.decide.outputs.reason }}
+        run: |
+          gh pr review --approve "$PR_URL" \
+            --body "Auto-approved by dependabot-auto-merge — $REASON"
+
+      - name: Enable auto-merge (queues until CI is green)
+        if: steps.decide.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge --auto --merge --delete-branch "$PR_URL"

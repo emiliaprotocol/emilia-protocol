@@ -20,6 +20,12 @@ jobs:
           fetch-depth: 0
 
       - name: Check DCO sign-off
-        uses: christophebedard/dco-check@30353d8deedf393cf55ba33355e71da7fdd095c7  # v0.4.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+        # v0.5.0 changed token plumbing: it now reads GITHUB_TOKEN from the
+        # environment instead of the `with: token` input. v0.4.0 still works
+        # but is built on Ubuntu 20.04 and routinely flakes on apt-fetch
+        # against archive.ubuntu.com (e.g. run 25337261765 — failed to
+        # fetch libc6, libssl1.1). Move forward to v0.5.0 with correct
+        # token wiring.
+        uses: christophebedard/dco-check@7b0205d25ead0f898e0b706b58227dd5fa7e3f55  # v0.5.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
