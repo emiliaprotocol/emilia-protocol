@@ -20,3 +20,6 @@ sdks/python/dist/
 .aidesigner/
 .serena/
 coverage/
+
+# Supabase CLI local cache — these change per-developer and per-link
+supabase/.temp/
