@@ -35,7 +35,7 @@
     "next": "^15.0.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
-    "remotion": "^4.0.452",
+    "remotion": "^4.0.457",
     "viem": "^2.48.6"
   },
   "overrides": {
