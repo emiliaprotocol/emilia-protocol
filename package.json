@@ -55,7 +55,7 @@
     "husky": "^9.0.0",
     "lint-staged": "^16.4.0",
     "pg": "^8.20.0",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.0"
   }
 }
