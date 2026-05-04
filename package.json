@@ -31,7 +31,7 @@
   "dependencies": {
     "@remotion/player": "^4.0.452",
     "@sentry/nextjs": "10.50.0",
-    "@supabase/supabase-js": "^2.104.1",
+    "@supabase/supabase-js": "^2.105.1",
     "next": "^15.0.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
