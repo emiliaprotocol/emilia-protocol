@@ -221,6 +221,12 @@ const SAFE_HOSTS = new Set([
   "goldman.com",
   "wellsfargo.com",
   "usbank.com",
+  // Search-engine webmaster portals cited in the SEO submission walkthrough.
+  // These are public dashboard URLs, not integration endpoints.
+  "google.com",
+  "bing.com",
+  "search.google.com",
+  "www.bing.com",
 ]);
 
 // Hostname placeholder patterns (case-insensitive). When a flagged hostname
