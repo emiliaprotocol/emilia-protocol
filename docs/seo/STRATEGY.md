@@ -141,21 +141,65 @@ binding hash, accountable signoff, observe mode, shadow mode, enforce mode.
 | JSON-LD SoftwareApplication | ✅ (root layout) |
 | Indexable pages: noindex on intentional ones | ✅ (`/investors` is noindex) |
 | AI search bots allowed in robots | ✅ (Googlebot, GPTBot, ClaudeBot, PerplexityBot) |
-| `og-default.png` social preview image | ⚠️ **NEEDS CREATION** — referenced in metadata but file doesn't exist yet |
-| Logo at `/logo.png` | ⚠️ **NEEDS VERIFICATION** — referenced in Organization JSON-LD |
+| `og-default.png` social preview image | ✅ Generated 2026-04-29 (1200×630, public/og-default.png) |
+| Logo at `/logo.png` | ✅ Generated 2026-04-29 (512×512 PNG of EP brand mark) |
+| Comparison pages (`/compare/{oauth,mcp-auth-alone,audit-logs,fraud-detection}`) | ✅ All four shipped 2026-04-29 + index page |
+| Starter blog posts | ✅ Four shipped 2026-04-29: MCP best practices, pre-action authorization primer, formal verification explainer, AI voice cloning defense |
 
 ## Pending implementation work
 
 Tracked on TODO.md; the high-leverage SEO follow-ups are:
 
-1. Create `public/og-default.png` (1200×630, EP logo + "Trust before
-   high-risk AI action") — without this, social shares look broken.
-2. Verify `public/logo.png` exists at the size the Organization
-   schema expects (≥112×112 minimum for Google Knowledge Panel).
-3. Submit `https://www.emiliaprotocol.ai/sitemap.xml` to Google
-   Search Console + Bing Webmaster Tools (one-time, takes 5 min each).
-4. Write the first three comparison pages (vs OAuth, vs MCP auth alone,
-   vs audit logs) — biggest near-term ranking gains.
-5. Write three top-of-funnel blog posts (pick from the list above) —
-   start with the MCP authorization piece since it's lowest-difficulty
-   highest-trend.
+1. ✅ ~~Create `public/og-default.png`~~ — done 2026-04-29.
+2. ✅ ~~Verify `public/logo.png`~~ — done 2026-04-29 (512×512).
+3. **Submit** `https://www.emiliaprotocol.ai/sitemap.xml` to Google
+   Search Console + Bing Webmaster Tools (one-time, 5 min each).
+   Walkthrough below.
+4. ✅ ~~All four comparison pages~~ — `/compare/{oauth,mcp-auth-alone,audit-logs,fraud-detection}` shipped 2026-04-29.
+5. ✅ ~~Four top-of-funnel blog posts~~ — MCP best practices, pre-action
+   authorization primer, formal verification explainer, AI voice cloning
+   defense. Next pick (when adding more): federation architecture,
+   compliance walkthroughs (NIST AI RMF / EU AI Act).
+
+## Sitemap submission (Search Console + Bing)
+
+### Google Search Console
+1. Go to https://search.google.com/search-console
+2. Add property → choose **URL prefix** → enter `https://www.emiliaprotocol.ai`
+3. Verify ownership. Easiest path is the **HTML tag** method: copy the
+   `<meta name="google-site-verification" content="..." />` value, add it
+   to `app/layout.js` under `metadata.verification.google`, deploy, click
+   Verify. Domain-method (DNS TXT record) also works if you prefer.
+4. Once verified, left sidebar → **Sitemaps** → enter `sitemap.xml` →
+   Submit. Status will show "Success" once Google fetches it.
+5. Use **URL Inspection** on a few key pages (`/`, `/protocol`, `/govguard`,
+   `/finguard`, `/use-cases/ai-agent`, `/compare/oauth`) and click
+   **Request Indexing** for each. This nudges Google to crawl them within
+   hours instead of days.
+
+### Bing Webmaster Tools
+1. Go to https://www.bing.com/webmasters
+2. Sign in with a Microsoft account. Easiest path: click **Import from
+   Google Search Console** — Bing pulls your verified properties and the
+   sitemap automatically. Skip steps 3–4 if that works.
+3. Manual path: **Add a site** → enter `https://www.emiliaprotocol.ai` →
+   verify with the same `<meta>` tag method (different content value, add
+   it under `metadata.verification.other` in `app/layout.js`).
+4. Left sidebar → **Sitemaps** → **Submit sitemap** → enter
+   `https://www.emiliaprotocol.ai/sitemap.xml`.
+5. Optional: **URL Inspection** → submit individual URLs for indexing.
+   Bing's IndexNow protocol is fast — pages can be indexed within hours.
+
+### What to expect after submission
+- Google: 1–14 days for the first crawl; index coverage report populates
+  over 2–4 weeks.
+- Bing: 24–72 hours for first crawl with IndexNow.
+- Both: monitor the **Coverage** / **Pages** report for errors. Most
+  common issues are 404s (fix or remove from sitemap) and `noindex`
+  tags accidentally applied (we have `/investors` set to noindex
+  intentionally — that's fine).
+- The AI search engines (ChatGPT browsing, Claude search, Perplexity,
+  Google AI Overviews) crawl independently — `app/robots.js` already
+  allows GPTBot, ClaudeBot, PerplexityBot, Google-Extended, OAI-SearchBot.
+  No separate submission needed; they pick up the sitemap automatically
+  once Google does.

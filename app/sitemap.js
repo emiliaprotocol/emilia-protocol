@@ -27,6 +27,24 @@ export default function sitemap() {
     { path: '/use-cases/ai-agent',    priority: 0.9,  changeFrequency: 'monthly' },
   ];
 
+  // Comparison pages — high-conversion procurement queries ("EP vs X").
+  const comparison = [
+    { path: '/compare',                  priority: 0.75, changeFrequency: 'monthly' },
+    { path: '/compare/oauth',            priority: 0.8,  changeFrequency: 'monthly' },
+    { path: '/compare/mcp-auth-alone',   priority: 0.85, changeFrequency: 'monthly' },
+    { path: '/compare/audit-logs',       priority: 0.8,  changeFrequency: 'monthly' },
+    { path: '/compare/fraud-detection',  priority: 0.8,  changeFrequency: 'monthly' },
+  ];
+
+  // Top-of-funnel blog posts — educational content for keyword breadth.
+  const blog = [
+    { path: '/blog',                                              priority: 0.7,  changeFrequency: 'weekly' },
+    { path: '/blog/mcp-authorization-best-practices',             priority: 0.75, changeFrequency: 'monthly' },
+    { path: '/blog/what-is-pre-action-authorization',             priority: 0.75, changeFrequency: 'monthly' },
+    { path: '/blog/how-formal-verification-works-for-protocols',  priority: 0.7,  changeFrequency: 'monthly' },
+    { path: '/blog/ai-voice-cloning-fraud-defense',               priority: 0.75, changeFrequency: 'monthly' },
+  ];
+
   // Product detail pages — packaged offerings.
   const product = [
     { path: '/product/government-pack',       priority: 0.8, changeFrequency: 'monthly' },
@@ -59,7 +77,7 @@ export default function sitemap() {
     { path: '/appeal',     priority: 0.3, changeFrequency: 'yearly' },
   ];
 
-  return [...marketing, ...product, ...functional, ...corporate].map((entry) => ({
+  return [...marketing, ...comparison, ...blog, ...product, ...functional, ...corporate].map((entry) => ({
     url: `${BASE}${entry.path}`,
     lastModified: NOW,
     changeFrequency: entry.changeFrequency,
