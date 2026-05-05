@@ -46,6 +46,15 @@ deferred items to the bottom.
 | ☐ | 1 hr | Identify **1–3 advisors** for credibility on grant applications: NIST AISI contact, AAIF reviewer, AI safety academic, formal-methods researcher. A 30-min "would you let me name you as advisor?" ask in your network. | Lifts conversion rate dramatically on every grant, every cold email, every investor pitch. |
 | ☐ | varies | Watch https://sam.gov/ + https://www.darpa.mil/work-with-us/ weekly for **DARPA SAFE-AI BAAs**. White paper template ready at [`docs/grant-applications/darpa-safe-ai/white-paper.md`](docs/grant-applications/darpa-safe-ai/white-paper.md) — customize against the BAA when one drops. | $0.5M–$5M Phase 1; longest cycle but biggest individual award if it lands. |
 
+## 🔍 SEO submission (5–10 min total — do once, never again)
+
+| ☐ | Time | Action | Why it matters |
+|---|---|---|---|
+| ☐ | 5 min | **Submit sitemap to Google Search Console** at https://search.google.com/search-console. Add `https://www.emiliaprotocol.ai`, verify via HTML tag, then Sitemaps → enter `sitemap.xml`. Walkthrough in [`docs/seo/STRATEGY.md`](docs/seo/STRATEGY.md). | Without this, Google waits to discover the site organically — weeks vs hours. |
+| ☐ | 5 min | **Submit sitemap to Bing Webmaster Tools** at https://www.bing.com/webmasters. Easiest: "Import from Google Search Console" once Google is verified. Otherwise add manually + verify same way. | Bing + IndexNow indexes within 24–72h. ChatGPT search uses Bing's index. |
+| ☐ | 1 min | After Google verifies, copy the verification meta tag value into `app/layout.js` under `metadata.verification.google` so the verification persists across redeploys. | Otherwise every deploy can theoretically un-verify the site. |
+| ☐ | 30 min | Use **URL Inspection → Request Indexing** on the 8 highest-value pages: `/`, `/protocol`, `/govguard`, `/finguard`, `/use-cases/ai-agent`, `/compare/oauth`, `/compare/mcp-auth-alone`, `/blog/mcp-authorization-best-practices`. | Forces a crawl in hours, not days, on the pages most likely to rank. |
+
 ## 🐛 Operational debt (do anytime, no urgency)
 
 | ☐ | Time | Action | Notes |
