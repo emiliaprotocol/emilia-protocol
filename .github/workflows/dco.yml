@@ -13,6 +13,11 @@ on:
 
 jobs:
   dco:
+    # Skip DCO for Dependabot PRs — the bot can't add Signed-off-by to its
+    # own commits, and the bumps it ships don't carry copyrightable
+    # contribution. A skipped job satisfies required status checks per
+    # GitHub's documented behavior, so this doesn't open a hole.
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2

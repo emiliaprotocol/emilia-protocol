@@ -93,17 +93,17 @@ jobs:
           echo "- **eligible**: $ELIGIBLE"         >> "$GITHUB_STEP_SUMMARY"
           echo "- **reason**: $REASON"             >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Approve PR
-        if: steps.decide.outputs.eligible == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          REASON: ${{ steps.decide.outputs.reason }}
-        run: |
-          gh pr review --approve "$PR_URL" \
-            --body "Auto-approved by dependabot-auto-merge — $REASON"
+      # NOTE: An "Approve PR" step is intentionally absent. The
+      # `futureenterprises` org has "Allow GitHub Actions to create and
+      # approve pull requests" disabled, so a `gh pr review --approve`
+      # call would fail. Instead, we configure branch protection on
+      # `main` to NOT require approving review for Dependabot PRs (they
+      # already require all required-status-checks to pass via auto-merge).
+      # `gh pr merge --auto` queues the merge for whenever protection is
+      # satisfied — that includes both CI green and any approval already
+      # present, but it does not REQUIRE the workflow to add an approval.
 
-      - name: Enable auto-merge (queues until CI is green)
+      - name: Enable auto-merge (queues until branch protection is satisfied)
         if: steps.decide.outputs.eligible == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
