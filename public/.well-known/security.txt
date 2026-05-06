@@ -1,0 +1,10 @@
+# EMILIA Protocol — Security contact and disclosure policy
+# Per RFC 9116 (https://www.rfc-editor.org/rfc/rfc9116)
+
+Contact: mailto:security@emiliaprotocol.ai
+Expires: 2027-05-05T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://www.emiliaprotocol.ai/.well-known/security.txt
+Policy: https://www.emiliaprotocol.ai/security
+Acknowledgments: https://www.emiliaprotocol.ai/security
+Hiring: https://www.emiliaprotocol.ai/about

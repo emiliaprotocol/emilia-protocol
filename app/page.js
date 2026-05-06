@@ -26,20 +26,21 @@ const HeroAnimation = dynamic(() => import('@/components/HeroAnimation'), {
 // is independently verifiable in the repo:
 //   3,483 tests / 132 files — `npx vitest run` summary
 //   26 TLA+ invariants verified — formal/PROOF_STATUS.md (T1–T26)
+//   35 Alloy facts — formal/Alloy/EP.als
 //   85 red team cases — docs/conformance/RED_TEAM_CASES.md line 1
 //   Apache 2.0 — LICENSE
-//   Internal review — docs/security/AUDIT_METHODOLOGY.md (self-administered)
 //
-// Note: deliberately removed "100/100" framing. External procurement
-// reviewers treat self-awarded perfect scores as a marketing claim, not
-// an assurance signal. Lead with reproducible evidence instead — the
-// methodology link is the credibility carrier.
+// External cryptographic-protocol review is sequenced against the first
+// pilot's compliance ask; status is public on /security. The previous
+// "Internal Audit" framing was removed because procurement reviewers
+// treat internal review as a non-signal — only externally attested
+// evidence advances third-party-risk intake.
 const STATS = [
-  { value: '3,483',     label: 'Automated Tests',  sub: '132 test files',           accent: color.t1 },
-  { value: '26',        label: 'Theorems Proven',  sub: 'TLC 2.19, zero errors',    accent: color.blue },
-  { value: '85',        label: 'Red Team Cases',   sub: 'Cataloged in repo',        accent: color.t1 },
-  { value: 'Reviewed',  label: 'Internal Audit',   sub: 'Methodology public · Apr 2', accent: color.gold },
-  { value: 'Apache 2.0', label: 'License',         sub: 'Open specification',       accent: color.green },
+  { value: '3,483',     label: 'Automated Tests',  sub: '132 test files',                accent: color.t1 },
+  { value: '26',        label: 'TLA+ Theorems',    sub: 'TLC 2.19, zero errors',         accent: color.blue },
+  { value: '35',        label: 'Alloy Facts',      sub: '15 assertions verified',        accent: color.gold },
+  { value: '85',        label: 'Red Team Cases',   sub: 'Cataloged in repo',             accent: color.t1 },
+  { value: 'Apache 2.0', label: 'License',         sub: 'Open specification',            accent: color.green },
 ];
 
 const PROBLEMS = [
@@ -149,7 +150,11 @@ export default function HomePage() {
       {/* ── HERO ─────────────────────────────────────────────── */}
       <section style={{ padding: '112px 0 0' }}>
         <C>
-          {/* Structural certification badge */}
+          {/* Credibility carrier: lead with formally-verified evidence and
+              the open license, not with self-administered review. The
+              badge points readers at /spec where the TLA+ theorems and
+              Alloy facts are reproducible from the repo, and at /security
+              for the external-review roadmap. */}
           <div className="ep-hero-badge" style={{ marginBottom: 36 }}>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 12,
@@ -165,20 +170,14 @@ export default function HomePage() {
               }} />
               <div>
                 <div style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, color: color.t1, letterSpacing: 0.5, lineHeight: 1.2 }}>
-                  Internal Protocol Assurance Review
+                  Formally verified · Apache 2.0
                 </div>
                 <div style={{ fontFamily: font.mono, fontSize: 9, color: color.t3, letterSpacing: 0.5, lineHeight: 1.2, marginTop: 1 }}>
-                  April 2, 2026 · <a href="/docs/security/AUDIT_METHODOLOGY.md" style={{ color: 'inherit', textDecoration: 'underline' }}>Methodology &amp; scope (public)</a>
+                  26 TLA+ theorems · 35 Alloy facts · <a href="/spec" style={{ color: 'inherit', textDecoration: 'underline' }}>view spec</a>
                 </div>
               </div>
               <div style={{ marginLeft: 4, paddingLeft: 12, borderLeft: `1px solid ${color.border}` }}>
-                {/* Display "INTERNAL" not "VERIFIED" — the review is self-
-                    administered per docs/security/AUDIT_METHODOLOGY.md.
-                    The previous "100/100" framing was removed because federal
-                    procurement teams treat self-awarded perfect scores as
-                    marketing, not assurance. The methodology link is the
-                    credibility carrier; the badge points readers at it. */}
-                <div style={{ fontFamily: font.mono, fontSize: 9, color: color.gold, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 600 }}>INTERNAL</div>
+                <a href="/security" style={{ fontFamily: font.mono, fontSize: 9, color: color.gold, letterSpacing: 1.5, textTransform: 'uppercase', fontWeight: 600, textDecoration: 'none' }}>Trust →</a>
               </div>
             </div>
           </div>

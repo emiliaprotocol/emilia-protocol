@@ -68,6 +68,8 @@ export default function sitemap() {
 
   // Static legal / org pages.
   const corporate = [
+    { path: '/about',      priority: 0.7, changeFrequency: 'monthly' },
+    { path: '/security',   priority: 0.85, changeFrequency: 'monthly' },
     { path: '/contact',    priority: 0.4, changeFrequency: 'yearly' },
     { path: '/partners',   priority: 0.5, changeFrequency: 'monthly' },
     { path: '/investors',  priority: 0.4, changeFrequency: 'yearly' },
@@ -77,7 +79,16 @@ export default function sitemap() {
     { path: '/appeal',     priority: 0.3, changeFrequency: 'yearly' },
   ];
 
-  return [...marketing, ...comparison, ...blog, ...product, ...functional, ...corporate].map((entry) => ({
+  // Legal documents — referenced by every procurement intake form.
+  const legal = [
+    { path: '/legal',                  priority: 0.5, changeFrequency: 'monthly' },
+    { path: '/legal/privacy',          priority: 0.6, changeFrequency: 'monthly' },
+    { path: '/legal/terms',            priority: 0.6, changeFrequency: 'monthly' },
+    { path: '/legal/acceptable-use',   priority: 0.5, changeFrequency: 'monthly' },
+    { path: '/legal/sub-processors',   priority: 0.5, changeFrequency: 'monthly' },
+  ];
+
+  return [...marketing, ...comparison, ...blog, ...product, ...functional, ...corporate, ...legal].map((entry) => ({
     url: `${BASE}${entry.path}`,
     lastModified: NOW,
     changeFrequency: entry.changeFrequency,

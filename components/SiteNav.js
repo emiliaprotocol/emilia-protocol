@@ -12,8 +12,8 @@ const NAV_LINKS = [
   ['/playground', 'Playground'],
   ['/adopt', 'Adopt'],
   ['/product/cloud', 'Cloud'],
+  ['/security', 'Trust'],
   ['/docs', 'Docs'],
-  ['/investors', 'Investors'],
 ];
 
 const GOV_LINKS = [
