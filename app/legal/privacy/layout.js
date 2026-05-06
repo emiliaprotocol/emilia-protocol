@@ -2,7 +2,9 @@ export const metadata = {
   title: 'Privacy Policy — EMILIA Protocol',
   description:
     'How EMILIA Protocol collects, uses, and protects personal data. ' +
-    'GDPR / CCPA / SOX-aligned. Working version pending final counsel review.',
+    'Aligned with GDPR, UK GDPR, and CCPA. Functions as the working ' +
+    'data processing addendum until an executed customer-specific DPA ' +
+    'supersedes it.',
   alternates: { canonical: '/legal/privacy' },
   openGraph: {
     title: 'EMILIA Protocol Privacy Policy',
