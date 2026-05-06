@@ -52,7 +52,7 @@ export default function LegalIndexPage() {
         <div className="ep-tag ep-hero-badge">Legal</div>
         <h1 className="ep-hero-text" style={styles.h1}>Legal documents</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 620 }}>
-          These are the working versions of EMILIA Protocol's legal documents. They are operational policy documents pending final counsel review; the substantive commitments below are accurate today and we update the page when material changes are made. For procurement and DPA negotiation contact <a href={`mailto:${ENTITY.legalEmail}`} style={{ color: color.blue }}>{ENTITY.legalEmail}</a>.
+          The substantive commitments in these documents are accurate today; we update the pages when our practices change. For procurement, DPA negotiation, customer-specific clauses, or jurisdiction-specific addenda contact <a href={`mailto:${ENTITY.legalEmail}`} style={{ color: color.blue }}>{ENTITY.legalEmail}</a>.
         </p>
       </section>
 

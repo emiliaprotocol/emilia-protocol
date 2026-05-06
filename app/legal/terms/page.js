@@ -16,7 +16,7 @@ export default function TermsPage() {
         <div className="ep-tag ep-hero-badge">Legal · Terms</div>
         <h1 style={styles.h1}>Terms of Service</h1>
         <div style={{ fontFamily: font.mono, fontSize: 12, color: color.t3, marginBottom: 24 }}>
-          Effective {EFFECTIVE} · Working version pending final counsel review
+          Effective {EFFECTIVE}
         </div>
         <p style={styles.body}>
           These Terms govern your use of the websites at <code style={{ fontFamily: font.mono, fontSize: 13 }}>emiliaprotocol.ai</code>, the hosted EP Cloud service, the documentation site, and any related interface operated by {ENTITY.legalName} ("EMILIA Protocol", "we", "us"). By using these services you agree to these Terms.
@@ -101,6 +101,10 @@ export default function TermsPage() {
           {ENTITY.address}<br />
           Legal: <a href={`mailto:${ENTITY.legalEmail}`} style={{ color: color.blue }}>{ENTITY.legalEmail}</a><br />
           Security: <a href={`mailto:${ENTITY.securityEmail}`} style={{ color: color.blue }}>{ENTITY.securityEmail}</a>
+        </p>
+
+        <p style={{ ...styles.body, marginTop: 32, fontSize: 12, color: color.t3, fontStyle: 'italic' }}>
+          For executed Master Services Agreements, custom enterprise terms, or order-form negotiation contact <a href={`mailto:${ENTITY.legalEmail}`} style={{ color: color.t3 }}>{ENTITY.legalEmail}</a>.
         </p>
 
       </article>

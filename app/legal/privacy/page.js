@@ -16,7 +16,7 @@ export default function PrivacyPage() {
         <div className="ep-tag ep-hero-badge">Legal · Privacy</div>
         <h1 style={styles.h1}>Privacy Policy</h1>
         <div style={{ fontFamily: font.mono, fontSize: 12, color: color.t3, marginBottom: 24 }}>
-          Effective {EFFECTIVE} · Working version pending final counsel review
+          Effective {EFFECTIVE}
         </div>
         <p style={styles.body}>
           This policy describes how {ENTITY.legalName} ("EMILIA Protocol", "we", "us") collects, uses, and protects personal information when you use the websites at <code style={{ fontFamily: font.mono, fontSize: 13 }}>emiliaprotocol.ai</code>, the EP Cloud service, the open-source reference runtime, the published SDKs, or any related interface.
@@ -101,6 +101,10 @@ export default function PrivacyPage() {
           {ENTITY.address}<br />
           Privacy: <a href={`mailto:${ENTITY.privacyEmail}`} style={{ color: color.blue }}>{ENTITY.privacyEmail}</a><br />
           Legal: <a href={`mailto:${ENTITY.legalEmail}`} style={{ color: color.blue }}>{ENTITY.legalEmail}</a>
+        </p>
+
+        <p style={{ ...styles.body, marginTop: 32, fontSize: 12, color: color.t3, fontStyle: 'italic' }}>
+          This policy is reviewed and updated as our practices change. For DPA negotiation, customer-specific clauses, or jurisdiction-specific addenda, contact <a href={`mailto:${ENTITY.legalEmail}`} style={{ color: color.t3 }}>{ENTITY.legalEmail}</a>.
         </p>
 
       </article>
