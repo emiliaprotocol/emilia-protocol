@@ -18,6 +18,9 @@ export default function SubProcessorsPage() {
         <div style={{ fontFamily: font.mono, fontSize: 12, color: color.t3, marginBottom: 24 }}>
           Effective {EFFECTIVE} · Updated whenever a data flow changes
         </div>
+        <p style={{ ...styles.body, marginBottom: 0, fontSize: 13, color: color.t3, fontStyle: 'italic' }}>
+          Customers can subscribe to change notifications and receive at least 30 days&apos; advance notice of any new sub-processor handling customer data.
+        </p>
         <p style={styles.body}>
           The vendors below process customer data on behalf of {ENTITY.legalName} for the purposes described. Each vendor is contractually bound to data-protection terms equivalent to those we provide our customers. Customers can subscribe to change notifications by emailing <a href={`mailto:${ENTITY.privacyEmail}`} style={{ color: color.blue }}>{ENTITY.privacyEmail}</a>; we provide at least 30 days' advance notice of new sub-processors that handle customer data.
         </p>

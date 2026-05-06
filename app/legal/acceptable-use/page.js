@@ -16,7 +16,7 @@ export default function AcceptableUsePage() {
         <div className="ep-tag ep-hero-badge">Legal · Acceptable Use</div>
         <h1 style={styles.h1}>Acceptable Use Policy</h1>
         <div style={{ fontFamily: font.mono, fontSize: 12, color: color.t3, marginBottom: 24 }}>
-          Effective {EFFECTIVE} · Working version pending final counsel review
+          Effective {EFFECTIVE}
         </div>
         <p style={styles.body}>
           This policy describes what EMILIA Protocol services, SDKs, and brand may not be used for. It supplements the Terms of Service at <a href="/legal/terms" style={{ color: color.blue }}>/legal/terms</a>. Violations may result in suspension or termination of access, removal of content, and notice to law-enforcement or regulatory bodies where required.

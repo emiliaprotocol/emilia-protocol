@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
-import { ENTITY, COMPLIANCE_ROADMAP } from '@/lib/site-config';
+import { ENTITY, COMPLIANCE_ROADMAP, isPlaceholder } from '@/lib/site-config';
 
 export default function SecurityPage() {
   useEffect(() => {
@@ -73,22 +73,28 @@ export default function SecurityPage() {
           Funded or actively being scoped. Each item shows the target window and named partner where committed; items without a named auditor or sponsor are flagged as such — we believe a missed target is more damaging than no target.
         </p>
         <div className="ep-reveal" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {COMPLIANCE_ROADMAP.inProgress.map((c, i) => (
-            <div key={i} style={{
-              border: `1px solid ${color.border}`,
-              borderLeft: `3px solid ${STATUS_COLOR.planned}`,
-              borderRadius: radius.base,
-              padding: '14px 18px',
-              background: '#FAFAF9',
-            }}>
-              <div style={{ fontFamily: font.sans, fontSize: 14, fontWeight: 600, color: color.t1, marginBottom: 4 }}>
-                {c.item}
+          {COMPLIANCE_ROADMAP.inProgress.map((c, i) => {
+            const targetText = isPlaceholder(c.target)
+              ? 'Target window: pending engagement gate (named auditor + funded scope)'
+              : `Target: ${c.target}`;
+            const auditorText = !isPlaceholder(c.auditor) ? ` · ${c.auditor}` : '';
+            return (
+              <div key={i} style={{
+                border: `1px solid ${color.border}`,
+                borderLeft: `3px solid ${STATUS_COLOR.planned}`,
+                borderRadius: radius.base,
+                padding: '14px 18px',
+                background: '#FAFAF9',
+              }}>
+                <div style={{ fontFamily: font.sans, fontSize: 14, fontWeight: 600, color: color.t1, marginBottom: 4 }}>
+                  {c.item}
+                </div>
+                <div style={{ fontFamily: font.mono, fontSize: 11, color: color.t3 }}>
+                  {targetText}{auditorText}
+                </div>
               </div>
-              <div style={{ fontFamily: font.mono, fontSize: 11, color: color.t3 }}>
-                Target: {c.target}{c.auditor ? ` · ${c.auditor}` : ''}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -136,7 +142,7 @@ export default function SecurityPage() {
         </p>
         <ul className="ep-reveal" style={styles.list}>
           <li>Email: <a href={`mailto:${ENTITY.securityEmail}`} style={{ color: color.blue, textDecoration: 'none' }}>{ENTITY.securityEmail}</a></li>
-          <li>Encryption: PGP key fingerprint published at <a href="/.well-known/security.txt" style={{ color: color.blue, textDecoration: 'none' }}>/.well-known/security.txt</a></li>
+          <li>Disclosure metadata: <a href="/.well-known/security.txt" style={{ color: color.blue, textDecoration: 'none' }}>/.well-known/security.txt</a> (RFC 9116). Encrypted reports are accepted; request our PGP key in your initial email and we will respond with the fingerprint before you send sensitive details.</li>
           <li>Acknowledgement: within 48 hours.</li>
           <li>Coordination: minimum 90-day embargo on disclosure for any finding requiring a coordinated patch; we publish the advisory + credit on resolution.</li>
           <li>Safe harbor: we will not pursue legal action against good-faith research that follows this disclosure process and avoids privacy violations, data destruction, or service degradation.</li>

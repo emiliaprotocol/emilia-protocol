@@ -5,7 +5,7 @@ import Image from 'next/image';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
-import { ENTITY, FOUNDERS, ADVISORS } from '@/lib/site-config';
+import { ENTITY, FOUNDERS, ADVISORS, isPlaceholder } from '@/lib/site-config';
 
 export default function AboutPage() {
   useEffect(() => {
@@ -42,50 +42,62 @@ export default function AboutPage() {
 
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 72 }}>
         <h2 className="ep-reveal" style={styles.h2}>Team</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-          {FOUNDERS.map((f, i) => (
-            <div key={i} className="ep-reveal" style={{
-              border: `1px solid ${color.border}`,
-              borderRadius: radius.base,
-              padding: '24px',
-              background: '#FAFAF9',
-            }}>
-              {f.photo ? (
-                <Image
-                  src={f.photo}
-                  alt={f.name}
-                  width={80}
-                  height={80}
-                  style={{ borderRadius: '50%', marginBottom: 16, objectFit: 'cover' }}
-                />
-              ) : (
-                <div style={{
-                  width: 80, height: 80, borderRadius: '50%',
-                  background: `linear-gradient(135deg, ${color.gold}33, ${color.blue}33)`,
-                  marginBottom: 16,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: font.mono, fontSize: 22, fontWeight: 700, color: color.t1,
-                }}>
-                  {f.name && !f.name.startsWith('TODO') ? f.name.split(/\s+/).map(n => n[0]).slice(0, 2).join('') : 'EP'}
-                </div>
-              )}
-              <div style={{ fontFamily: font.sans, fontSize: 17, fontWeight: 700, color: color.t1, marginBottom: 4 }}>
-                {f.name}
+        {FOUNDERS.every(f => isPlaceholder(f.name)) ? (
+          <div className="ep-reveal" style={{
+            border: `1px solid ${color.border}`,
+            borderRadius: radius.base,
+            padding: '24px',
+            background: '#FAFAF9',
+          }}>
+            <p style={{ ...styles.body, marginBottom: 12 }}>
+              The team behind EMILIA Protocol is intentionally not yet listed publicly on this page. Open-source contributors are visible on GitHub at <a href="https://github.com/emiliaprotocol/emilia-protocol/graphs/contributors" target="_blank" rel="noopener noreferrer" style={{ color: color.blue }}>github.com/emiliaprotocol/emilia-protocol</a> with signed commits.
+            </p>
+            <p style={{ ...styles.body, marginBottom: 0 }}>
+              For pilot, procurement, or partnership conversations we make introductions on signed NDA. Reach <a href={`mailto:${ENTITY.email}`} style={{ color: color.blue }}>{ENTITY.email}</a>.
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+            {FOUNDERS.filter(f => !isPlaceholder(f.name)).map((f, i) => (
+              <div key={i} className="ep-reveal" style={{
+                border: `1px solid ${color.border}`,
+                borderRadius: radius.base,
+                padding: '24px',
+                background: '#FAFAF9',
+              }}>
+                {f.photo ? (
+                  <Image
+                    src={f.photo}
+                    alt={f.name}
+                    width={80}
+                    height={80}
+                    style={{ borderRadius: '50%', marginBottom: 16, objectFit: 'cover' }}
+                  />
+                ) : (
+                  <div style={{
+                    width: 80, height: 80, borderRadius: '50%',
+                    background: `linear-gradient(135deg, ${color.gold}33, ${color.blue}33)`,
+                    marginBottom: 16,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontFamily: font.mono, fontSize: 22, fontWeight: 700, color: color.t1,
+                  }}>
+                    {f.name.split(/\s+/).map(n => n[0]).slice(0, 2).join('')}
+                  </div>
+                )}
+                <div style={{ fontFamily: font.sans, fontSize: 17, fontWeight: 700, color: color.t1, marginBottom: 4 }}>{f.name}</div>
+                <div style={{ fontFamily: font.mono, fontSize: 11, color: color.gold, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>{f.role}</div>
+                {!isPlaceholder(f.bio) && (
+                  <p style={{ fontSize: 13, color: color.t2, lineHeight: 1.65, marginBottom: 12 }}>{f.bio}</p>
+                )}
+                {f.linkedin && (
+                  <a href={f.linkedin} target="_blank" rel="noopener noreferrer" style={{ fontFamily: font.mono, fontSize: 11, color: color.blue, textDecoration: 'none' }}>
+                    LinkedIn →
+                  </a>
+                )}
               </div>
-              <div style={{ fontFamily: font.mono, fontSize: 11, color: color.gold, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12 }}>
-                {f.role}
-              </div>
-              <p style={{ fontSize: 13, color: color.t2, lineHeight: 1.65, marginBottom: 12 }}>
-                {f.bio}
-              </p>
-              {f.linkedin && (
-                <a href={f.linkedin} target="_blank" rel="noopener noreferrer" style={{ fontFamily: font.mono, fontSize: 11, color: color.blue, textDecoration: 'none' }}>
-                  LinkedIn →
-                </a>
-              )}
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
         <p className="ep-reveal" style={{ ...styles.body, marginTop: 24, fontSize: 13, color: color.t3 }}>
           Procurement and partnership inquiries: <a href={`mailto:${ENTITY.email}`} style={{ color: color.blue }}>{ENTITY.email}</a>
         </p>

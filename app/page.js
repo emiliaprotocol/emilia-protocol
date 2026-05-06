@@ -2,17 +2,15 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
+import HeroStatic from '@/components/HeroStatic';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
 
-const HeroAnimation = dynamic(() => import('@/components/HeroAnimation'), {
-  ssr: false,
-  loading: () => (
-    <div style={{ width: '100%', aspectRatio: '600/560', borderRadius: 6, border: `1px solid ${color.border}`, background: '#F5F5F4' }} />
-  ),
-});
+// HeroStatic renders the four-phase ceremony schematic synchronously on
+// the server. The previous Remotion-based animation was failing to mount
+// in production, leaving the right panel blank above the fold; the
+// static SVG eliminates that risk and is procurement-grade.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Homepage — buyer-facing flow.
@@ -216,7 +214,7 @@ export default function HomePage() {
             </div>
 
             <div className="ep-hero-visual">
-              <HeroAnimation />
+              <HeroStatic />
             </div>
           </div>
         </C>
