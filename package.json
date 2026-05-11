@@ -34,7 +34,7 @@
     "@supabase/supabase-js": "^2.105.4",
     "next": "^15.5.18",
     "react": "^19.2.6",
-    "react-dom": "^19.2.5",
+    "react-dom": "^19.2.6",
     "remotion": "^4.0.452",
     "viem": "^2.48.11"
   },
