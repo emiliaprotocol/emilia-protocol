@@ -2886,9 +2886,9 @@
         }
       ],
       "expected_profile": {
-        "score": 65.8,
+        "score": 63.9,
         "confidence": "provisional",
-        "effective_evidence": 2.0,
+        "effective_evidence": 1.77,
         "unique_submitters": 5,
         "behavioral": {
           "score": 95.0,
