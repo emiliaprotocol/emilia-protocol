@@ -193,6 +193,11 @@ describe('CONFORMANCE: Trust profile determinism', () => {
   // after any change to lib/scoring-v2.js — drift again means the algorithm
   // moved and the fixture must be regenerated to keep the conformance
   // contract honest.
+  //
+  // 2026-05-13: regenerated again after protocol hardening v2 (commit
+  // 498a67a) tightened scoring weights (score: 65.8 → 63.9,
+  // effective_evidence: 2.0 → 1.77). Same provenance: all non-score
+  // fields already matched, so only those two values were updated.
 
   for (const fixture of profileFixtures) {
     it(`profile fixture: ${fixture.name}`, () => {
