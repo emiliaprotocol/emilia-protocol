@@ -67,14 +67,22 @@ export default function sitemap() {
   ];
 
   // Static legal / org pages.
+  //
+  // Excluded from the sitemap (with rationale):
+  //   /investors  — page is `noindex`; listing it in the sitemap is a
+  //                 contradictory crawl signal that ends up in GSC's
+  //                 "Excluded by noindex tag" bucket. The noindex stays.
+  //   /cloud      — this URL renders the gated EP Cloud dashboard
+  //                 (sidebar + signed-in chrome), not a marketing surface.
+  //                 The marketing page is /product/cloud. Keeping /cloud
+  //                 in the sitemap leads Google to a thin, gated UI and
+  //                 hurts "Crawled - currently not indexed" counts.
   const corporate = [
     { path: '/about',      priority: 0.7, changeFrequency: 'monthly' },
     { path: '/security',   priority: 0.85, changeFrequency: 'monthly' },
     { path: '/contact',    priority: 0.4, changeFrequency: 'yearly' },
     { path: '/partners',   priority: 0.5, changeFrequency: 'monthly' },
-    { path: '/investors',  priority: 0.4, changeFrequency: 'yearly' },
     { path: '/enterprise', priority: 0.7, changeFrequency: 'monthly' },
-    { path: '/cloud',      priority: 0.6, changeFrequency: 'monthly' },
     { path: '/docs',       priority: 0.7, changeFrequency: 'weekly' },
     { path: '/appeal',     priority: 0.3, changeFrequency: 'yearly' },
   ];
