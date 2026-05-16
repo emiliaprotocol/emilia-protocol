@@ -31,14 +31,20 @@ import { Counter } from 'k6/metrics';
 
 export const options = {
   scenarios: {
-    // Warmup: 30s at 1 VU. Each iteration touches both endpoints, so by
-    // the time smoke starts both serverless function instances should be
-    // warm. History:
+    // Warmup: 30s at 1 VU using a dedicated low-volume exec function.
+    // History:
     //   v1: 10s — cold starts still appearing in smoke
     //   v2: 20s — most days warm but cold start observed ~25% of runs
-    //              (5/10 + 5/11 nightly runs failed with p95 ~1.1s; smoke is
-    //              1 VU so a single cold sample dominates p95)
-    //   v3: 30s — current; targets ~3 full iteration cycles before smoke
+    //   v3: 30s — used `exec: default` (same iter rate as smoke) and
+    //              produced ~17 handshake writes in 30s. That, combined
+    //              with smoke writes inside the 60s sliding window,
+    //              consistently exceeded the production protocol_write
+    //              rate limit (60/min per API key, see lib/rate-limit.js)
+    //              and surfaced as ~18% http_req_failed (429s) on 5/16.
+    //   v4: 30s — current; uses `exec: 'warmup'` which fires one slow
+    //              iteration every ~10s, so warmup contributes ≤5
+    //              handshake writes to the 60s window. Smoke can then
+    //              spend the remaining ~55 budget under the cap.
     warmup: {
       executor: 'ramping-vus',
       startVUs: 0,
@@ -48,13 +54,20 @@ export const options = {
       ],
       gracefulStop: '0s',
       tags: { stage: 'warmup' },
-      exec: 'default',
+      exec: 'warmup',
     },
     // Single-VU smoke. The middleware enforces 60 protocol_writes/min per
-    // API key (lib/rate-limit.js); 5 VUs × 0.3s sleep generates ~1000 req/min
-    // and saturates the limiter. 1 VU at the existing sleeps stays under
-    // ~120 req/min total, well under the limit, while still exercising the
-    // hot path enough to surface regressions.
+    // API key (lib/rate-limit.js). The 60-second sliding window covers
+    // both the tail of warmup and the entirety of smoke, so the test
+    // must keep warmup_writes + smoke_writes ≤ 60.
+    //
+    // Budget breakdown (current):
+    //   warmup contributes ≤5 handshake writes (exec: 'warmup', sleep 10s)
+    //   smoke runs sleep ~0.6s/iter ≈ 35 iters in 30s = 35 handshake writes
+    //   total in 60s window ≈ 40, comfortably under the 60-write cap
+    //
+    // If iteration count drops too low for stable p95, raise smoke
+    // sleep cautiously and check the maths against the 60/min budget.
     smoke: {
       executor: 'constant-vus',
       vus: 1,
@@ -117,6 +130,11 @@ export const options = {
 // ---------------------------------------------------------------------------
 
 const handshakeErrors = new Counter('handshake_errors');
+
+// VU-local cap on diagnostic log lines so we never spam more than a few
+// failure samples per run. k6 Counter values are aggregated and not
+// readable per-iteration, so we keep our own integer here.
+let failuresLogged = 0;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -210,7 +228,53 @@ export default function (data) {
 
   if (!ok) {
     handshakeErrors.add(1);
+    // Log up to 3 failure samples per run so the next regression has
+    // diagnostic context — previously the script counted failures
+    // without surfacing what the server actually returned.
+    if (failuresLogged < 3) {
+      failuresLogged += 1;
+      const bodyPreview = (initiateRes.body || '').slice(0, 200);
+      console.error(
+        `[handshake_create FAIL] status=${initiateRes.status} body=${bodyPreview}`,
+      );
+    }
   }
 
-  sleep(0.2);
+  // 0.6s sleep keeps the smoke iteration rate at ~1 iter / 850ms.
+  // Combined with the warmup-stage budget (≤5 writes from the dedicated
+  // warmup exec) this stays comfortably under the 60/min protocol_write
+  // rate limit (lib/rate-limit.js).
+  sleep(0.6);
+}
+
+// ---------------------------------------------------------------------------
+// Warmup scenario function
+//
+// Runs during the 30s warmup stage with a 10s sleep, so it fires only ~3
+// iterations total. The purpose is to wake serverless function instances
+// (cold-start mitigation) without burning the protocol_write rate-limit
+// budget that smoke will need.
+// ---------------------------------------------------------------------------
+
+export function warmup(data) {
+  http.post(
+    `${BASE_URL}/api/trust/evaluate`,
+    JSON.stringify({ entity_id: ENTITY_ID }),
+    { headers: HEADERS, tags: { route: 'trust_evaluate' } },
+  );
+
+  http.post(
+    `${BASE_URL}/api/handshake`,
+    JSON.stringify({
+      mode: 'basic',
+      policy_id: data.policyId,
+      parties: [
+        { role: 'initiator', entity_ref: ENTITY_ID },
+        { role: 'responder', entity_ref: RESPONDER_ID },
+      ],
+    }),
+    { headers: HEADERS, tags: { route: 'handshake_create' } },
+  );
+
+  sleep(10);
 }
