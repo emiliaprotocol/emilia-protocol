@@ -77,6 +77,18 @@ jobs:
 
       - name: Run staircase load test (Sunday schedule + manual staircase)
         # Runs on: (a) Sunday scheduled trigger, or (b) manual dispatch with test_type=staircase
+        #
+        # continue-on-error: true because the test as currently designed
+        # cannot pass against production. 500 VUs × write iterations
+        # vastly exceeds the 60/min protocol_write rate limit per API key
+        # (lib/rate-limit.js), producing ~99.8% 429s and uninterpretable
+        # latency numbers (see 5/17 nightly: error_rate_pct=99.83%). The
+        # data is still useful as an observability snapshot of how the
+        # rate limiter behaves under burst, so we keep the run + upload
+        # the artifacts but don't block CI on it. Redesign tracked
+        # separately — likely path is to split staircase into a reads-
+        # only scaling test plus a writes test that respects the per-key
+        # rate budget.
         if: >-
           (github.event_name == 'schedule' && github.event.schedule == '0 2 * * 0') ||
           (github.event_name == 'workflow_dispatch' && inputs.test_type == 'staircase')
@@ -85,13 +97,14 @@ jobs:
           API_KEY: ${{ secrets.PERF_TEST_API_KEY }}
           ENTITY_ID: ${{ inputs.entity_id || 'perf-test-entity-001' }}
         run: |
-          echo "### Staircase test (10→500 VUs) — estimated runtime ~7 minutes"
+          echo "### Staircase test (10→500 VUs) — informational, not gating"
+          echo "::warning::Staircase is informational only; 99% failures expected at peak against the 60/min write rate limit."
           k6 run tests/k6/staircase.js \
             --env BASE_URL="$BASE_URL" \
             --env API_KEY="$API_KEY" \
             --env ENTITY_ID="$ENTITY_ID" \
             --out json=k6-staircase-results.json
-        continue-on-error: false
+        continue-on-error: true
 
       - name: Upload k6 results
         if: always()

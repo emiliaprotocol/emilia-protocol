@@ -88,26 +88,37 @@ export const options = {
   thresholds: {
     // Server-time (TTFB) thresholds. Calibrated against prod's actual
     // observed baseline: handshake_create is ~250–550ms server-time on a
-    // warm function (DB roundtrip + hash computation + multi-row RPC).
+    // warm function (DB roundtrip + hash computation + multi-row RPC);
+    // trust_evaluate is similar in steady state but heavier on cold
+    // starts (receipt aggregation + scoring + embedding lookup).
     // Smoke is 1 VU for 30s, so a single cold-start sample dominates p95
     // — the threshold has to absorb that or the nightly gate flakes.
     //
-    // Threshold history:
-    //   2026-04-30 v1: 200/150ms — tuned against dedicated staging (no real prod traffic)
-    //   2026-04-30 v2: 400ms     — first prod-targeted attempt; still breached at p95 ~647ms
-    //   2026-05-01 v3: 900ms     — matched measured p95 with ~30% margin; flaked 25% of nightlies
-    //                              when a cold-start sample landed in smoke (5/10 + 5/11 failed
-    //                              with p95 1.1s while warm-day p95 ~265–530ms)
-    //   2026-05-12 v4: 1500ms    — current; absorbs a single cold-start sample at 1 VU. Re-tighten
-    //                              when (a) a staging deployment with always-warm functions exists
-    //                              or (b) smoke is increased to ≥5 VUs so cold samples don't
-    //                              dominate p95
+    // Threshold history (handshake_create):
+    //   2026-04-30 v1: 200/150ms — tuned against dedicated staging
+    //   2026-04-30 v2: 400ms     — first prod-targeted attempt
+    //   2026-05-01 v3: 900ms     — matched measured p95; flaked on cold starts
+    //   2026-05-12 v4: 1500ms    — absorbs a single cold-start sample
+    //
+    // Threshold history (trust_evaluate):
+    //   pre-v5:        1500ms TTFB / 1800ms duration — calibrated identically
+    //                  to handshake_create on the assumption that read latency
+    //                  ≤ write latency. False: receipt aggregation makes
+    //                  trust_evaluate cold-start ~2x heavier (5/17 06:23 nightly
+    //                  hit p95=1.85s with max=2.73s; baseline.js gate failed).
+    //   2026-05-18 v5: 2500ms TTFB / 3000ms duration — absorbs the observed
+    //                  cold-start max with margin. handshake_create thresholds
+    //                  unchanged (it passed at p95=1.13s on the same run).
+    //
+    // Re-tighten when (a) staging with always-warm functions exists, or
+    // (b) smoke runs at ≥5 VUs so a single cold sample doesn't dominate.
     'http_req_waiting{route:handshake_create,stage:smoke}': [
       'p(95)<1500',
       'p(99)<2500',
     ],
     'http_req_waiting{route:trust_evaluate,stage:smoke}': [
-      'p(95)<1500',
+      'p(95)<2500',
+      'p(99)<3500',
     ],
 
     // End-to-end duration (server + network RTT). GHA runner → Vercel edge
@@ -117,7 +128,8 @@ export const options = {
       'p(99)<3000',
     ],
     'http_req_duration{route:trust_evaluate,stage:smoke}': [
-      'p(95)<1800',
+      'p(95)<3000',
+      'p(99)<4000',
     ],
 
     // Error rate must be below 1% in the smoke phase.
