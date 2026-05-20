@@ -78,7 +78,10 @@ function useReveal() {
       // typical 900px viewports never entered the shrunk trigger zone. Changed to
       // only a small bottom exclusion so elements at the fold reveal immediately.
       // threshold:0 fires on first visible pixel (was 0.05, required 5% in-view).
-      { rootMargin: '0px 0px -40px 0px', threshold: 0 }
+      // root: document.documentElement pins the observer to <html> so that
+      // overflow-x:hidden on <body> can't silently become the scroll container
+      // in Chromium, causing IO to observe the wrong root.
+      { root: document.documentElement, rootMargin: '0px 0px -40px 0px', threshold: 0 }
     );
     els.forEach(el => obs.observe(el));
     // Safety-net: after 1.5s reveal anything IO hasn't caught yet (browser quirks,
