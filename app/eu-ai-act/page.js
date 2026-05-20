@@ -1,0 +1,586 @@
+/**
+ * EU AI Act landing page.
+ * SEO + procurement-officer surface for the August 2, 2026 enforcement cliff.
+ *
+ * Maps EP's pre-execution receipt architecture directly to Articles 9–15
+ * (the high-risk system obligations that turn on at Aug 2). Includes a live
+ * countdown — clientside so it ticks without server work.
+ *
+ * @license Apache-2.0
+ */
+'use client';
+
+import { useEffect, useState } from 'react';
+import { motion } from 'motion/react';
+import SiteNav from '@/components/SiteNav';
+import SiteFooter from '@/components/SiteFooter';
+import { styles, cta, color, font, radius } from '@/lib/tokens';
+
+const EASE = [0.23, 1, 0.32, 1];
+
+// Article 113 enforcement begins 2026-08-02 00:00 UTC.
+// Using ISO 8601 Z anchor so the countdown is identical for every visitor
+// regardless of local time zone — penalty exposure starts at UTC midnight.
+const DEADLINE = new Date('2026-08-02T00:00:00Z');
+
+const reveal = (delay = 0) => ({
+  initial: { opacity: 0, y: 18 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: '-40px' },
+  transition: { duration: 0.58, delay, ease: EASE },
+});
+
+const ARTICLES = [
+  {
+    num: 'Art. 9',
+    title: 'Risk management system',
+    burden: 'Continuous risk identification, evaluation, and mitigation across the AI lifecycle.',
+    ep: 'Every receipt carries the policy version that authorized it. Risk register and policy graph are queryable through the Trust Explorer.',
+  },
+  {
+    num: 'Art. 10',
+    title: 'Data governance and quality',
+    burden: 'Training and operational data must be relevant, representative, and free of errors.',
+    ep: 'Action context is bound to receipt at sign time; tampering invalidates the cryptographic chain.',
+  },
+  {
+    num: 'Art. 11',
+    title: 'Technical documentation',
+    burden: 'Documentation kept current and available to authorities on request.',
+    ep: 'TLA+ spec, Alloy facts, and 3,483 automated tests are public. Apache 2.0 — auditors read source, not vendor PDFs.',
+  },
+  {
+    num: 'Art. 12',
+    title: 'Automatic logging',
+    burden: 'Logs must enable post-incident traceability for the full operational life of the system.',
+    ep: 'Pre-execution receipt is the log. Cryptographically signed, replay-proof, queryable by actor/policy/time.',
+    primary: true,
+  },
+  {
+    num: 'Art. 13',
+    title: 'Transparency to users',
+    burden: 'Users must be able to understand and use system outputs.',
+    ep: 'Every receipt is human-inspectable JSON with the policy clause that fired. No black-box decisions.',
+  },
+  {
+    num: 'Art. 14',
+    title: 'Human oversight',
+    burden: 'Natural-person oversight to prevent or minimize risks during operation.',
+    ep: 'The Signoff phase is mandatory for high-risk actions. Cryptographically bound to a real human identity at decision time.',
+    primary: true,
+  },
+  {
+    num: 'Art. 15',
+    title: 'Accuracy, robustness, cybersecurity',
+    burden: 'System must be resilient to errors, faults, and unauthorized third-party alteration.',
+    ep: '26 TLA+ theorems and 35 Alloy facts prove the ceremony cannot be replayed, forged, or partially executed.',
+  },
+];
+
+const HIGH_RISK_DOMAINS = [
+  'Biometric identification',
+  'Critical infrastructure',
+  'Education access and assessment',
+  'Employment and worker management',
+  'Essential services — banking, insurance, credit',
+  'Law enforcement',
+  'Migration, asylum, border control',
+  'Administration of justice and democracy',
+];
+
+const PARALLEL_FORCING_FUNCTIONS = [
+  {
+    region: 'United States',
+    rule: 'Executive Order 14110',
+    detail: 'Federal procurement requires NIST AI RMF alignment. EP maps 38 RMF subcategories.',
+  },
+  {
+    region: 'California',
+    rule: 'SB 1047 successor (2026 session)',
+    detail: 'Audit logging requirements for frontier model deployments.',
+  },
+  {
+    region: 'Colorado',
+    rule: 'Colorado AI Act',
+    detail: 'Effective Feb 2026. Impact assessments and consumer notification.',
+  },
+  {
+    region: 'New York',
+    rule: 'AI Accountability Act',
+    detail: 'Algorithmic decision impact assessments for high-risk uses.',
+  },
+];
+
+function useCountdown(target) {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const diff = Math.max(0, target.getTime() - now.getTime());
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  const minutes = Math.floor((diff / (1000 * 60)) % 60);
+  const seconds = Math.floor((diff / 1000) % 60);
+
+  return { days, hours, minutes, seconds, passed: diff === 0 };
+}
+
+function CountdownBlock({ value, label }) {
+  return (
+    <div style={{ textAlign: 'center', minWidth: 76 }}>
+      <div
+        style={{
+          fontFamily: font.mono,
+          fontSize: 'clamp(32px, 5vw, 48px)',
+          fontWeight: 700,
+          color: color.gold,
+          letterSpacing: -1,
+          lineHeight: 1,
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {String(value).padStart(2, '0')}
+      </div>
+      <div
+        style={{
+          fontFamily: font.mono,
+          fontSize: 10,
+          letterSpacing: 2,
+          color: color.t3,
+          marginTop: 6,
+          textTransform: 'uppercase',
+        }}
+      >
+        {label}
+      </div>
+    </div>
+  );
+}
+
+export default function EuAiActPage() {
+  const { days, hours, minutes, seconds, passed } = useCountdown(DEADLINE);
+
+  return (
+    <div style={styles.page}>
+      <SiteNav activePage="EU AI Act" />
+
+      {/* Hero */}
+      <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 48 }}>
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: EASE }}
+        >
+          <div style={{ ...styles.eyebrow, color: color.gold }}>
+            EU AI Act · Article 113 · Enforcement begins August 2, 2026
+          </div>
+          <h1 style={styles.h1Large}>
+            74 days until every<br />high-risk AI system<br />needs a receipt.
+          </h1>
+          <p style={{ ...styles.body, maxWidth: 580, fontSize: 18, color: color.t2 }}>
+            On August 2, 2026, the EU AI Act&apos;s high-risk obligations turn on.
+            Logging, human oversight, transparency, traceability — mandatory.
+            Penalties up to <strong>€35M or 7% of global turnover</strong>, whichever is higher.
+            EMILIA Protocol is the only formally verified, open-standard answer.
+          </p>
+        </motion.div>
+
+        {/* Live countdown */}
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.12, ease: EASE }}
+          style={{
+            marginTop: 40,
+            padding: '28px 24px',
+            border: `1px solid ${color.border}`,
+            borderRadius: radius.base,
+            background: color.card,
+            display: 'flex',
+            justifyContent: 'space-around',
+            alignItems: 'center',
+            gap: 12,
+            flexWrap: 'wrap',
+          }}
+          aria-label={passed
+            ? 'EU AI Act Article 113 enforcement has begun.'
+            : `Countdown: ${days} days, ${hours} hours, ${minutes} minutes until EU AI Act Article 113 enforcement.`}
+        >
+          {passed ? (
+            <div style={{ textAlign: 'center', width: '100%' }}>
+              <div
+                style={{
+                  fontFamily: font.mono,
+                  fontSize: 24,
+                  fontWeight: 700,
+                  color: color.gold,
+                  letterSpacing: 1,
+                }}
+              >
+                ENFORCEMENT ACTIVE
+              </div>
+              <div
+                style={{
+                  fontFamily: font.mono,
+                  fontSize: 11,
+                  color: color.t3,
+                  marginTop: 8,
+                  letterSpacing: 1,
+                }}
+              >
+                Article 113 in force as of 2026-08-02 00:00 UTC
+              </div>
+            </div>
+          ) : (
+            <>
+              <CountdownBlock value={days} label="Days" />
+              <CountdownBlock value={hours} label="Hours" />
+              <CountdownBlock value={minutes} label="Minutes" />
+              <CountdownBlock value={seconds} label="Seconds" />
+            </>
+          )}
+        </motion.div>
+
+        {/* CTAs */}
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2, ease: EASE }}
+          style={{ display: 'flex', gap: 12, marginTop: 28, flexWrap: 'wrap' }}
+        >
+          <a href="/contact" className="ep-cta" style={cta.primary}>
+            Talk to a compliance engineer
+          </a>
+          <a href="/spec" className="ep-cta-secondary" style={cta.secondary}>
+            Read the spec
+          </a>
+        </motion.div>
+      </section>
+
+      {/* What "high-risk" means */}
+      <section style={styles.sectionAlt}>
+        <div style={styles.section}>
+          <motion.div {...reveal()}>
+            <div style={styles.eyebrow}>Scope</div>
+            <h2 style={styles.h2}>What &quot;high-risk&quot; covers</h2>
+            <p style={styles.body}>
+              The EU AI Act defines high-risk systems by domain. If your AI agent
+              touches any of these, Article 113 obligations apply on day one of
+              enforcement — regardless of whether the agent is autonomous or
+              human-assisted.
+            </p>
+          </motion.div>
+
+          <motion.ul
+            {...reveal(0.08)}
+            style={{
+              listStyle: 'none',
+              padding: 0,
+              margin: '24px 0 0',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+              gap: 12,
+            }}
+          >
+            {HIGH_RISK_DOMAINS.map((domain) => (
+              <li
+                key={domain}
+                style={{
+                  fontFamily: font.sans,
+                  fontSize: 14,
+                  color: color.t1,
+                  padding: '14px 16px',
+                  background: color.card,
+                  border: `1px solid ${color.border}`,
+                  borderLeft: `2px solid ${color.gold}`,
+                  borderRadius: radius.sm,
+                }}
+              >
+                {domain}
+              </li>
+            ))}
+          </motion.ul>
+        </div>
+      </section>
+
+      {/* Article-by-article mapping */}
+      <section style={styles.section}>
+        <motion.div {...reveal()}>
+          <div style={styles.eyebrow}>The mapping</div>
+          <h2 style={styles.h2}>How EP satisfies Articles 9 through 15</h2>
+          <p style={styles.body}>
+            Each obligation maps to a specific phase of the EMILIA ceremony.
+            The two articles most often cited in early enforcement guidance —
+            Art. 12 (logging) and Art. 14 (human oversight) — are highlighted.
+          </p>
+        </motion.div>
+
+        <div style={{ marginTop: 32, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {ARTICLES.map((art, i) => (
+            <motion.div
+              key={art.num}
+              {...reveal(i * 0.04)}
+              style={{
+                border: `1px solid ${art.primary ? color.gold : color.border}`,
+                borderRadius: radius.base,
+                padding: '20px 24px',
+                background: art.primary ? '#FFFBF0' : color.card,
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  gap: 16,
+                  flexWrap: 'wrap',
+                  marginBottom: 8,
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: font.mono,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: art.primary ? color.gold : color.t1,
+                    letterSpacing: 1,
+                  }}
+                >
+                  {art.num}
+                </div>
+                <div
+                  style={{
+                    fontFamily: font.sans,
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: color.t1,
+                  }}
+                >
+                  {art.title}
+                </div>
+                {art.primary && (
+                  <div
+                    style={{
+                      fontFamily: font.mono,
+                      fontSize: 9,
+                      letterSpacing: 2,
+                      color: color.gold,
+                      padding: '2px 8px',
+                      border: `1px solid ${color.gold}`,
+                      borderRadius: radius.sm,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Primary EP fit
+                  </div>
+                )}
+              </div>
+              <div
+                style={{
+                  fontFamily: font.sans,
+                  fontSize: 14,
+                  color: color.t2,
+                  marginBottom: 8,
+                  lineHeight: 1.55,
+                }}
+              >
+                <strong style={{ color: color.t1 }}>The obligation: </strong>
+                {art.burden}
+              </div>
+              <div
+                style={{
+                  fontFamily: font.sans,
+                  fontSize: 14,
+                  color: color.t2,
+                  lineHeight: 1.55,
+                }}
+              >
+                <strong style={{ color: color.t1 }}>How EP satisfies it: </strong>
+                {art.ep}
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* Penalty stakes */}
+      <section style={styles.sectionAlt}>
+        <div style={styles.section}>
+          <motion.div {...reveal()}>
+            <div style={styles.eyebrow}>Penalties</div>
+            <h2 style={styles.h2}>What non-compliance costs</h2>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: 16,
+                marginTop: 24,
+              }}
+            >
+              <div
+                style={{
+                  padding: 24,
+                  background: color.card,
+                  border: `1px solid ${color.border}`,
+                  borderLeft: `3px solid ${color.red}`,
+                  borderRadius: radius.base,
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: font.mono,
+                    fontSize: 28,
+                    fontWeight: 700,
+                    color: color.t1,
+                  }}
+                >
+                  €35M
+                </div>
+                <div style={{ fontFamily: font.mono, fontSize: 11, color: color.t3, marginTop: 8 }}>
+                  Maximum fine — flat ceiling
+                </div>
+              </div>
+              <div
+                style={{
+                  padding: 24,
+                  background: color.card,
+                  border: `1px solid ${color.border}`,
+                  borderLeft: `3px solid ${color.red}`,
+                  borderRadius: radius.base,
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: font.mono,
+                    fontSize: 28,
+                    fontWeight: 700,
+                    color: color.t1,
+                  }}
+                >
+                  7%
+                </div>
+                <div style={{ fontFamily: font.mono, fontSize: 11, color: color.t3, marginTop: 8 }}>
+                  Of global annual turnover — whichever is higher
+                </div>
+              </div>
+              <div
+                style={{
+                  padding: 24,
+                  background: color.card,
+                  border: `1px solid ${color.border}`,
+                  borderLeft: `3px solid ${color.red}`,
+                  borderRadius: radius.base,
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: font.mono,
+                    fontSize: 28,
+                    fontWeight: 700,
+                    color: color.t1,
+                  }}
+                >
+                  Day 1
+                </div>
+                <div style={{ fontFamily: font.mono, fontSize: 11, color: color.t3, marginTop: 8 }}>
+                  No grace period for high-risk systems
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Parallel forcing functions (US + state) */}
+      <section style={styles.section}>
+        <motion.div {...reveal()}>
+          <div style={styles.eyebrow}>Beyond Brussels</div>
+          <h2 style={styles.h2}>Parallel forcing functions</h2>
+          <p style={styles.body}>
+            Even if your AI never touches an EU user, the US Executive Order and
+            three active state laws create the same pre-execution governance
+            requirement on a similar timeline. EP&apos;s NIST AI RMF mapping
+            covers the federal side directly.
+          </p>
+        </motion.div>
+
+        <div
+          style={{
+            marginTop: 24,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+            gap: 16,
+          }}
+        >
+          {PARALLEL_FORCING_FUNCTIONS.map((law, i) => (
+            <motion.div
+              key={law.rule}
+              {...reveal(i * 0.05)}
+              style={{
+                padding: 20,
+                background: color.card,
+                border: `1px solid ${color.border}`,
+                borderRadius: radius.base,
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: font.mono,
+                  fontSize: 10,
+                  letterSpacing: 2,
+                  color: color.t3,
+                  textTransform: 'uppercase',
+                  marginBottom: 8,
+                }}
+              >
+                {law.region}
+              </div>
+              <div
+                style={{
+                  fontFamily: font.sans,
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color: color.t1,
+                  marginBottom: 8,
+                }}
+              >
+                {law.rule}
+              </div>
+              <div style={{ fontFamily: font.sans, fontSize: 13, color: color.t2, lineHeight: 1.55 }}>
+                {law.detail}
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* Closing CTA */}
+      <section style={styles.sectionAlt}>
+        <div style={{ ...styles.section, textAlign: 'center', paddingTop: 64, paddingBottom: 80 }}>
+          <motion.div {...reveal()}>
+            <div style={styles.eyebrow}>Next step</div>
+            <h2 style={{ ...styles.h2, fontSize: 32, marginBottom: 16 }}>
+              74 days is enough — if you start this week.
+            </h2>
+            <p style={{ ...styles.body, maxWidth: 540, margin: '0 auto 28px' }}>
+              We integrate in under a day. Apache 2.0, no vendor lock-in.
+              Reference deployments at federal and fintech pilots underway.
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <a href="/contact" className="ep-cta" style={cta.primary}>
+                Schedule a compliance walkthrough
+              </a>
+              <a href="/quickstart" className="ep-cta-secondary" style={cta.secondary}>
+                Try the SDK
+              </a>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      <SiteFooter />
+    </div>
+  );
+}

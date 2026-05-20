@@ -25,6 +25,10 @@ export default function sitemap() {
     { path: '/use-cases/financial',   priority: 0.85, changeFrequency: 'monthly' },
     { path: '/use-cases/enterprise',  priority: 0.85, changeFrequency: 'monthly' },
     { path: '/use-cases/ai-agent',    priority: 0.9,  changeFrequency: 'monthly' },
+    // Regulatory deadline landing — peak crawl priority through Aug 2, 2026.
+    // Bump back to 0.7 after enforcement passes (the page stays evergreen as
+    // an EU AI Act compliance reference, but loses time-bound urgency).
+    { path: '/eu-ai-act',             priority: 0.95, changeFrequency: 'weekly' },
   ];
 
   // Comparison pages — high-conversion procurement queries ("EP vs X").
