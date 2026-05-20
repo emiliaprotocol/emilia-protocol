@@ -302,6 +302,17 @@
               box-shadow 220ms cubic-bezier(0.23, 1, 0.32, 1),
               border-color 160ms ease;
 }
+/* When ep-card-lift and ep-reveal appear on the same element, ep-card-lift
+   wins the cascade (later in stylesheet, same specificity) and its
+   transition shorthand drops 'opacity' — breaking the reveal fade.
+   This double-class rule has higher specificity (2 classes > 1) and
+   preserves both the slow opacity reveal AND the fast hover transitions. */
+.ep-card-lift.ep-reveal {
+  transition: opacity 580ms cubic-bezier(0.23, 1, 0.32, 1),
+              transform 580ms cubic-bezier(0.23, 1, 0.32, 1),
+              box-shadow 220ms cubic-bezier(0.23, 1, 0.32, 1),
+              border-color 160ms ease;
+}
 @media (hover: hover) and (pointer: fine) {
   .ep-card-lift:hover {
     transform: translateY(-3px);

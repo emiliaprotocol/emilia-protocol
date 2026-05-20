@@ -74,10 +74,17 @@ function useReveal() {
       (entries) => entries.forEach(e => {
         if (e.isIntersecting) { e.target.classList.add('is-visible'); obs.unobserve(e.target); }
       }),
-      { rootMargin: '-60px', threshold: 0.05 }
+      // rootMargin was '-60px' (all sides) — too aggressive; near-fold elements on
+      // typical 900px viewports never entered the shrunk trigger zone. Changed to
+      // only a small bottom exclusion so elements at the fold reveal immediately.
+      // threshold:0 fires on first visible pixel (was 0.05, required 5% in-view).
+      { rootMargin: '0px 0px -40px 0px', threshold: 0 }
     );
     els.forEach(el => obs.observe(el));
-    return () => obs.disconnect();
+    // Safety-net: after 1.5s reveal anything IO hasn't caught yet (browser quirks,
+    // reduced-motion, content already in viewport before observer attached, etc.)
+    const t = setTimeout(() => els.forEach(el => el.classList.add('is-visible')), 1500);
+    return () => { obs.disconnect(); clearTimeout(t); };
   }, []);
 }
 
