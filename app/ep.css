@@ -250,26 +250,13 @@
   }
 }
 
-/* ─── Scroll Reveal ──────────────────────────────────────── */
-/*
- * ARCHITECTURE: JS controls visibility, not CSS.
- *
- * .ep-reveal alone is VISIBLE by default (no opacity:0 here).
- * useReveal() reads the viewport at mount, then:
- *  1. Elements already on-screen: left alone (never hidden).
- *  2. Below-fold elements: given .will-reveal (hidden) and observed.
- *  3. On IO entry: .will-reveal removed, .is-visible added → fades in.
- *  4. After 2s fallback: any remaining .will-reveal is cleared.
- *
- * This guarantees content is always visible when JS is absent or slow.
- */
+/* ─── Scroll Reveal (used by inner pages — IO-triggered) ─── */
+/* homepage/page.js uses Motion whileInView instead of these classes */
 .ep-reveal {
-  transition: opacity 580ms cubic-bezier(0.23, 1, 0.32, 1),
-              transform 580ms cubic-bezier(0.23, 1, 0.32, 1);
-}
-.ep-reveal.will-reveal {
   opacity: 0;
   transform: translateY(18px);
+  transition: opacity 580ms cubic-bezier(0.23, 1, 0.32, 1),
+              transform 580ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 .ep-reveal.is-visible {
   opacity: 1;
@@ -286,25 +273,11 @@
 .ep-stagger-7 { transition-delay: 280ms; }
 .ep-stagger-8 { transition-delay: 320ms; }
 
-/* ─── Hero fade-in (CSS-only, above the fold) ────────────── */
-@keyframes ep-fade-up {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-/* fill-mode: forwards (not 'both') so elements are NEVER pre-hidden.
- * 'both' applies the `from { opacity:0 }` state before the animation
- * starts — if the animation is cancelled/delayed, content stays invisible.
- * 'forwards' only persists the `to` state after completion; the element
- * is at its normal (visible) CSS default before the animation fires. */
-.ep-hero-badge {
-  animation: ep-fade-up 500ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
-}
-.ep-hero-text {
-  animation: ep-fade-up 600ms cubic-bezier(0.23, 1, 0.32, 1) 60ms forwards;
-}
-.ep-hero-visual {
-  animation: ep-fade-up 600ms cubic-bezier(0.23, 1, 0.32, 1) 120ms forwards;
-}
+/* ─── Hero fade-in — handled by Motion in app/page.js ──────── */
+/* ep-hero-badge / ep-hero-text / ep-hero-visual animation rules
+   removed: Motion owns these transitions now. CSS keyframe approach
+   using animation-fill-mode:both was causing persistent blank hero
+   (elements stuck at opacity:0 when animation was cancelled). */
 
 /* ─── Badge pulse dot ────────────────────────────────────── */
 @keyframes ep-pulse {
@@ -321,12 +294,12 @@
               box-shadow 220ms cubic-bezier(0.23, 1, 0.32, 1),
               border-color 160ms ease;
 }
-/* When ep-card-lift and ep-reveal.will-reveal appear on the same element,
+/* When ep-card-lift and ep-reveal appear on the same element (inner pages),
    ep-card-lift's transition shorthand (defined later, same specificity)
    wins the cascade and drops 'opacity' — breaking the reveal fade.
-   Three-class selector beats both to preserve the slow opacity/transform
+   Double-class selector beats both to preserve the slow opacity/transform
    reveal AND the fast box-shadow/border-color hover transitions. */
-.ep-card-lift.ep-reveal.will-reveal {
+.ep-card-lift.ep-reveal {
   transition: opacity 580ms cubic-bezier(0.23, 1, 0.32, 1),
               transform 580ms cubic-bezier(0.23, 1, 0.32, 1),
               box-shadow 220ms cubic-bezier(0.23, 1, 0.32, 1),
@@ -373,7 +346,6 @@
   .ep-footer-link,
   .ep-row,
   .ep-reveal,
-  .ep-reveal.will-reveal,
   .ep-hero-badge,
   .ep-hero-text,
   .ep-hero-visual {

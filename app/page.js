@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
 import Link from 'next/link';
+import { motion } from 'motion/react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import HeroStatic from '@/components/HeroStatic';
@@ -67,52 +67,29 @@ const C = ({ children }) => (
 // Fingerprint-style inset shadow: subtle internal depth without harsh outset shadow.
 const INSET = 'rgba(228,229,225,0.35) 0 1px 0 0 inset, rgba(110,111,109,0.08) 0 -1px 0 0 inset';
 
-function useReveal() {
-  useEffect(() => {
-    const all = Array.from(document.querySelectorAll('.ep-reveal'));
-    if (!all.length) return;
+// ── Motion animation presets ────────────────────────────────────────────────
+// All scroll reveals use Motion whileInView — no manual IntersectionObserver,
+// no class-toggling, no timing hacks. Motion handles edge cases internally.
+const EASE = [0.23, 1, 0.32, 1];
 
-    // --- Split: on-screen vs below-fold -----------------------------------
-    // Elements already in (or very near) the viewport must NEVER be hidden.
-    // Only elements clearly below the fold get the 'will-reveal' class (which
-    // is what sets opacity:0 in CSS). This makes content visible-by-default
-    // on SSR/no-JS and prevents a blank page if IO fires slowly.
-    const vH = window.innerHeight;
-    const below = all.filter(el => el.getBoundingClientRect().top > vH - 60);
-    below.forEach(el => el.classList.add('will-reveal'));
+// Scroll-triggered fade-up: used for every section below the hero.
+// viewport.once:true means it animates once and stays visible.
+const reveal = (delay = 0) => ({
+  initial: { opacity: 0, y: 18 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: '-40px' },
+  transition: { duration: 0.58, delay, ease: EASE },
+});
 
-    if (!below.length) return;
-
-    // --- IntersectionObserver for below-fold reveals ----------------------
-    const obs = new IntersectionObserver(
-      (entries) => entries.forEach(e => {
-        if (e.isIntersecting) {
-          e.target.classList.remove('will-reveal');
-          e.target.classList.add('is-visible');
-          obs.unobserve(e.target);
-        }
-      }),
-      { rootMargin: '0px 0px -40px 0px', threshold: 0 }
-    );
-    below.forEach(el => obs.observe(el));
-
-    // --- Hard fallback: 2s guarantee --------------------------------------
-    // If IO never fires (browser quirk, extension interference, etc.), clear
-    // will-reveal so content is never permanently invisible.
-    const t = setTimeout(() => {
-      below.forEach(el => {
-        el.classList.remove('will-reveal');
-        el.classList.add('is-visible');
-      });
-    }, 2000);
-
-    return () => { obs.disconnect(); clearTimeout(t); };
-  }, []);
-}
+// Above-fold hero elements: triggered by animate (not scroll) so they play
+// immediately on load regardless of viewport position.
+const heroIn = (delay = 0) => ({
+  initial: { opacity: 0, y: 14 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.6, delay, ease: EASE },
+});
 
 export default function HomePage() {
-  useReveal();
-
   return (
     <div style={styles.page}>
       <SiteNav activePage="" />
@@ -121,7 +98,7 @@ export default function HomePage() {
       <section style={{ paddingTop: 120 }}>
         <C>
           {/* Metadata strip — flat, mono, no widget chrome */}
-          <div className="ep-hero-badge" style={{
+          <motion.div {...heroIn(0)} style={{
             display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap',
             marginBottom: 52, paddingBottom: 24,
             borderBottom: `1px solid ${color.border}`,
@@ -142,11 +119,11 @@ export default function HomePage() {
             <a href="/security" style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, letterSpacing: 1.5, textTransform: 'uppercase', textDecoration: 'none' }}>
               Trust Model →
             </a>
-          </div>
+          </motion.div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 0.88fr', gap: 72, alignItems: 'start' }}>
             {/* Left — editorial headline */}
-            <div className="ep-hero-text">
+            <motion.div {...heroIn(0.06)}>
               <div style={{
                 fontFamily: font.mono, fontSize: 11, fontWeight: 500,
                 letterSpacing: 2.5, textTransform: 'uppercase',
@@ -200,18 +177,18 @@ export default function HomePage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </motion.div>
 
             {/* Right — protocol schematic */}
-            <div className="ep-hero-visual" style={{ paddingTop: 12 }}>
+            <motion.div {...heroIn(0.12)} style={{ paddingTop: 12 }}>
               <HeroStatic />
-            </div>
+            </motion.div>
           </div>
         </C>
       </section>
 
       {/* ── STATS STRIP — left-bar pattern (Fingerprint reference) ─ */}
-      <div className="ep-reveal" style={{
+      <motion.div {...reveal()} style={{
         borderTop: `1px solid ${color.border}`,
         borderBottom: `1px solid ${color.border}`,
         background: 'rgba(245,244,240,0.45)',
@@ -249,12 +226,12 @@ export default function HomePage() {
             ))}
           </div>
         </C>
-      </div>
+      </motion.div>
 
       {/* ── HOW IT WORKS — editorial stepped rows ─────────────── */}
       <section style={{ padding: '104px 0 80px', borderBottom: `1px solid ${color.border}` }}>
         <C>
-          <div className="ep-reveal" style={{ marginBottom: 64 }}>
+          <motion.div {...reveal()} style={{ marginBottom: 64 }}>
             <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>
               How EMILIA Works
             </div>
@@ -265,14 +242,14 @@ export default function HomePage() {
             }}>
               A control layer between approval and execution.
             </h2>
-          </div>
+          </motion.div>
 
           {/* Steps as horizontal editorial rows — no card boxes */}
           <div style={{ borderTop: `1px solid ${color.border}` }}>
             {HOW_IT_WORKS.map((item, i) => (
-              <div
+              <motion.div
                 key={i}
-                className={`ep-reveal ep-stagger-${i + 1}`}
+                {...reveal(i * 0.06)}
                 style={{
                   display: 'grid', gridTemplateColumns: '140px 1fr',
                   gap: 56, alignItems: 'start',
@@ -299,7 +276,7 @@ export default function HomePage() {
                 <p style={{ fontSize: 16, color: color.t2, lineHeight: 1.72, maxWidth: 600, margin: 0 }}>
                   {item.body}
                 </p>
-              </div>
+              </motion.div>
             ))}
           </div>
 
@@ -320,7 +297,7 @@ export default function HomePage() {
         <C>
           <div style={{ display: 'grid', gridTemplateColumns: '5fr 7fr', gap: 80, alignItems: 'start' }}>
             {/* Sticky editorial label */}
-            <div className="ep-reveal" style={{ position: 'sticky', top: 96 }}>
+            <motion.div {...reveal()} style={{ position: 'sticky', top: 96 }}>
               <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>
                 Structural Vulnerabilities
               </div>
@@ -336,10 +313,10 @@ export default function HomePage() {
                 legitimate tools, approved channels — the attack surface is
                 the action itself.
               </p>
-            </div>
+            </motion.div>
 
             {/* Problem rows — ep-problem-row gives left-bar gold hover */}
-            <div className="ep-reveal ep-stagger-2" style={{ borderTop: `1px solid ${color.border}` }}>
+            <motion.div {...reveal(0.08)} style={{ borderTop: `1px solid ${color.border}` }}>
               {PROBLEMS.map((p, i) => (
                 <div key={i} className="ep-problem-row" style={{
                   position: 'relative', overflow: 'hidden',
@@ -368,7 +345,7 @@ export default function HomePage() {
                   </div>
                 </div>
               ))}
-            </div>
+            </motion.div>
           </div>
         </C>
       </section>
@@ -381,7 +358,7 @@ export default function HomePage() {
         borderBottom: `1px solid ${color.border}`,
       }}>
         <C>
-          <div className="ep-reveal" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 48 }}>
+          <motion.div {...reveal()} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 48 }}>
             <div>
               <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>
                 Control Surfaces
@@ -401,14 +378,15 @@ export default function HomePage() {
             }}>
               All use cases →
             </a>
-          </div>
+          </motion.div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
             {SURFACES.map((s, i) => (
-              <a
+              <motion.a
                 key={i}
                 href={s.href}
-                className={`ep-card-lift ep-reveal ep-stagger-${i + 1}`}
+                className="ep-card-lift"
+                {...reveal(i * 0.07)}
                 style={{
                   display: 'flex', flexDirection: 'column',
                   background: color.card,
@@ -439,7 +417,7 @@ export default function HomePage() {
                     </span>
                   ))}
                 </div>
-              </a>
+              </motion.a>
             ))}
           </div>
         </C>
@@ -448,7 +426,7 @@ export default function HomePage() {
       {/* ── DEVELOPER TOOLS ──────────────────────────────────── */}
       <section style={{ padding: '104px 0', borderBottom: `1px solid ${color.border}` }}>
         <C>
-          <div className="ep-reveal" style={{ marginBottom: 48 }}>
+          <motion.div {...reveal()} style={{ marginBottom: 48 }}>
             <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>
               Implementation Surface
             </div>
@@ -464,11 +442,11 @@ export default function HomePage() {
                 Zero-dependency verification. Interactive playground.<br />Embeddable trust badges. Integrate in minutes.
               </p>
             </div>
-          </div>
+          </motion.div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
             {DEV_TOOLS.map((item, i) => (
-              <a key={i} href={item.href} className={`ep-card-lift ep-reveal ep-stagger-${i + 1}`} style={{
+              <motion.a key={i} href={item.href} className="ep-card-lift" {...reveal(i * 0.07)} style={{
                 background: color.card,
                 border: `1px solid ${color.border}`,
                 borderTop: `3px solid ${item.accent}`,
@@ -495,7 +473,7 @@ export default function HomePage() {
                 }}>
                   {item.code}
                 </div>
-              </a>
+              </motion.a>
             ))}
           </div>
         </C>
@@ -515,7 +493,7 @@ export default function HomePage() {
           backgroundSize: '36px 36px',
         }} />
         <C>
-          <div className="ep-reveal" style={{ maxWidth: 640 }}>
+          <motion.div {...reveal()} style={{ maxWidth: 640 }}>
             <div style={{
               fontFamily: font.mono, fontSize: 10, letterSpacing: 2,
               textTransform: 'uppercase', color: 'rgba(176,141,53,0.55)',
@@ -542,7 +520,7 @@ export default function HomePage() {
                 Request Pilot
               </a>
             </div>
-          </div>
+          </motion.div>
         </C>
 
         {/* Footer data ticker */}
