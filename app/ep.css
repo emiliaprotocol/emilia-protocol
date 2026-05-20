@@ -251,11 +251,25 @@
 }
 
 /* ─── Scroll Reveal ──────────────────────────────────────── */
+/*
+ * ARCHITECTURE: JS controls visibility, not CSS.
+ *
+ * .ep-reveal alone is VISIBLE by default (no opacity:0 here).
+ * useReveal() reads the viewport at mount, then:
+ *  1. Elements already on-screen: left alone (never hidden).
+ *  2. Below-fold elements: given .will-reveal (hidden) and observed.
+ *  3. On IO entry: .will-reveal removed, .is-visible added → fades in.
+ *  4. After 2s fallback: any remaining .will-reveal is cleared.
+ *
+ * This guarantees content is always visible when JS is absent or slow.
+ */
 .ep-reveal {
-  opacity: 0;
-  transform: translateY(18px);
   transition: opacity 580ms cubic-bezier(0.23, 1, 0.32, 1),
               transform 580ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.ep-reveal.will-reveal {
+  opacity: 0;
+  transform: translateY(18px);
 }
 .ep-reveal.is-visible {
   opacity: 1;
@@ -277,14 +291,19 @@
   from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+/* fill-mode: forwards (not 'both') so elements are NEVER pre-hidden.
+ * 'both' applies the `from { opacity:0 }` state before the animation
+ * starts — if the animation is cancelled/delayed, content stays invisible.
+ * 'forwards' only persists the `to` state after completion; the element
+ * is at its normal (visible) CSS default before the animation fires. */
 .ep-hero-badge {
-  animation: ep-fade-up 500ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  animation: ep-fade-up 500ms cubic-bezier(0.23, 1, 0.32, 1) forwards;
 }
 .ep-hero-text {
-  animation: ep-fade-up 600ms cubic-bezier(0.23, 1, 0.32, 1) 60ms both;
+  animation: ep-fade-up 600ms cubic-bezier(0.23, 1, 0.32, 1) 60ms forwards;
 }
 .ep-hero-visual {
-  animation: ep-fade-up 600ms cubic-bezier(0.23, 1, 0.32, 1) 120ms both;
+  animation: ep-fade-up 600ms cubic-bezier(0.23, 1, 0.32, 1) 120ms forwards;
 }
 
 /* ─── Badge pulse dot ────────────────────────────────────── */
@@ -302,12 +321,12 @@
               box-shadow 220ms cubic-bezier(0.23, 1, 0.32, 1),
               border-color 160ms ease;
 }
-/* When ep-card-lift and ep-reveal appear on the same element, ep-card-lift
-   wins the cascade (later in stylesheet, same specificity) and its
-   transition shorthand drops 'opacity' — breaking the reveal fade.
-   This double-class rule has higher specificity (2 classes > 1) and
-   preserves both the slow opacity reveal AND the fast hover transitions. */
-.ep-card-lift.ep-reveal {
+/* When ep-card-lift and ep-reveal.will-reveal appear on the same element,
+   ep-card-lift's transition shorthand (defined later, same specificity)
+   wins the cascade and drops 'opacity' — breaking the reveal fade.
+   Three-class selector beats both to preserve the slow opacity/transform
+   reveal AND the fast box-shadow/border-color hover transitions. */
+.ep-card-lift.ep-reveal.will-reveal {
   transition: opacity 580ms cubic-bezier(0.23, 1, 0.32, 1),
               transform 580ms cubic-bezier(0.23, 1, 0.32, 1),
               box-shadow 220ms cubic-bezier(0.23, 1, 0.32, 1),
@@ -354,6 +373,7 @@
   .ep-footer-link,
   .ep-row,
   .ep-reveal,
+  .ep-reveal.will-reveal,
   .ep-hero-badge,
   .ep-hero-text,
   .ep-hero-visual {

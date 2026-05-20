@@ -69,24 +69,43 @@ const INSET = 'rgba(228,229,225,0.35) 0 1px 0 0 inset, rgba(110,111,109,0.08) 0 
 
 function useReveal() {
   useEffect(() => {
-    const els = document.querySelectorAll('.ep-reveal');
+    const all = Array.from(document.querySelectorAll('.ep-reveal'));
+    if (!all.length) return;
+
+    // --- Split: on-screen vs below-fold -----------------------------------
+    // Elements already in (or very near) the viewport must NEVER be hidden.
+    // Only elements clearly below the fold get the 'will-reveal' class (which
+    // is what sets opacity:0 in CSS). This makes content visible-by-default
+    // on SSR/no-JS and prevents a blank page if IO fires slowly.
+    const vH = window.innerHeight;
+    const below = all.filter(el => el.getBoundingClientRect().top > vH - 60);
+    below.forEach(el => el.classList.add('will-reveal'));
+
+    if (!below.length) return;
+
+    // --- IntersectionObserver for below-fold reveals ----------------------
     const obs = new IntersectionObserver(
       (entries) => entries.forEach(e => {
-        if (e.isIntersecting) { e.target.classList.add('is-visible'); obs.unobserve(e.target); }
+        if (e.isIntersecting) {
+          e.target.classList.remove('will-reveal');
+          e.target.classList.add('is-visible');
+          obs.unobserve(e.target);
+        }
       }),
-      // rootMargin was '-60px' (all sides) — too aggressive; near-fold elements on
-      // typical 900px viewports never entered the shrunk trigger zone. Changed to
-      // only a small bottom exclusion so elements at the fold reveal immediately.
-      // threshold:0 fires on first visible pixel (was 0.05, required 5% in-view).
-      // root: document.documentElement pins the observer to <html> so that
-      // overflow-x:hidden on <body> can't silently become the scroll container
-      // in Chromium, causing IO to observe the wrong root.
-      { root: document.documentElement, rootMargin: '0px 0px -40px 0px', threshold: 0 }
+      { rootMargin: '0px 0px -40px 0px', threshold: 0 }
     );
-    els.forEach(el => obs.observe(el));
-    // Safety-net: after 1.5s reveal anything IO hasn't caught yet (browser quirks,
-    // reduced-motion, content already in viewport before observer attached, etc.)
-    const t = setTimeout(() => els.forEach(el => el.classList.add('is-visible')), 1500);
+    below.forEach(el => obs.observe(el));
+
+    // --- Hard fallback: 2s guarantee --------------------------------------
+    // If IO never fires (browser quirk, extension interference, etc.), clear
+    // will-reveal so content is never permanently invisible.
+    const t = setTimeout(() => {
+      below.forEach(el => {
+        el.classList.remove('will-reveal');
+        el.classList.add('is-visible');
+      });
+    }, 2000);
+
     return () => { obs.disconnect(); clearTimeout(t); };
   }, []);
 }
