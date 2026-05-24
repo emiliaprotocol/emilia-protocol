@@ -41,7 +41,8 @@
   },
   "overrides": {
     "rollup": "^4.22.5",
-    "postcss": "^8.5.12"
+    "postcss": "^8.5.12",
+    "qs": "^6.15.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
