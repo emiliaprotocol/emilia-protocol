@@ -31,6 +31,6 @@ jobs:
         # against archive.ubuntu.com (e.g. run 25337261765 — failed to
         # fetch libc6, libssl1.1). Move forward to v0.5.0 with correct
         # token wiring.
-        uses: christophebedard/dco-check@7b0205d25ead0f898e0b706b58227dd5fa7e3f55  # v0.5.0
+        uses: christophebedard/dco-check@ec8bfc43106afe98b323ace9133650df10497e12  # v0.5.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
