@@ -19,7 +19,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0"
   },
   "devDependencies": {
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.7"
   },
   "keywords": [
     "mcp",
