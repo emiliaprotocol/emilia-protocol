@@ -29,15 +29,15 @@
     ]
   },
   "dependencies": {
-    "@remotion/player": "^4.0.462",
+    "@remotion/player": "^4.0.466",
     "@sentry/nextjs": "10.53.1",
-    "@supabase/supabase-js": "^2.106.0",
-    "motion": "^12.39.0",
+    "@supabase/supabase-js": "^2.106.2",
+    "motion": "^12.40.0",
     "next": "^15.5.18",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "remotion": "^4.0.452",
-    "viem": "^2.49.3"
+    "viem": "^2.51.0"
   },
   "overrides": {
     "rollup": "^4.22.5",
@@ -48,9 +48,9 @@
     "@playwright/test": "^1.60.0",
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/vitest-runner": "^9.6.1",
-    "@types/node": "^25.9.0",
-    "@types/react": "^19.2.14",
-    "@vitest/coverage-v8": "^4.1.6",
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.2.15",
+    "@vitest/coverage-v8": "^4.1.7",
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.2.6",
     "fast-check": "^4.8.0",
