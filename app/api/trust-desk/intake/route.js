@@ -13,8 +13,6 @@
  */
 
 import { NextResponse, after } from 'next/server';
-import fs from 'node:fs';
-import path from 'node:path';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger';
 import { newEngagementId, deriveSlug } from '@/lib/trust-desk/ids';
@@ -24,7 +22,6 @@ import { runPipeline } from '@/lib/trust-desk/pipeline';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-const UPLOAD_DIR = path.join(process.cwd(), 'data', 'trust-desk', 'uploads');
 const MAX_BYTES = 25 * 1024 * 1024; // 25 MB
 
 export async function POST(request) {
@@ -51,22 +48,20 @@ export async function POST(request) {
     const engagementId = newEngagementId();
     const slug = deriveSlug(fields.company, engagementId);
 
-    // Persist the uploaded questionnaire (or inline text) to disk.
-    let questionnairePath = null;
+    // Resolve the questionnaire content IN MEMORY — never write to the project
+    // filesystem (read-only on Vercel). The content is passed to the pipeline
+    // in-process; only metadata is persisted to the engagement store.
+    let questionnaireContent = null; // string (text) or Buffer (binary)
     let questionnaireFilename = null;
     if (file && file.buffer?.length) {
       if (file.buffer.length > MAX_BYTES) {
         return epProblem(413, 'file_too_large', 'questionnaire exceeds 25 MB');
       }
-      fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+      questionnaireContent = file.buffer;
       questionnaireFilename = safeName(file.filename || 'questionnaire.bin');
-      questionnairePath = path.join(UPLOAD_DIR, `${engagementId}__${questionnaireFilename}`);
-      fs.writeFileSync(questionnairePath, file.buffer);
     } else if (fields.questionnaire_text?.trim()) {
-      fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-      questionnaireFilename = `${engagementId}.md`;
-      questionnairePath = path.join(UPLOAD_DIR, questionnaireFilename);
-      fs.writeFileSync(questionnairePath, fields.questionnaire_text);
+      questionnaireContent = fields.questionnaire_text;
+      questionnaireFilename = 'questionnaire.md';
     } else {
       return epProblem(
         400,
@@ -93,21 +88,29 @@ export async function POST(request) {
       notes: fields.notes || '',
     };
 
-    const engagement = {
+    // Persisted record — metadata only. We persist text questionnaires (small,
+    // useful for retries) but NOT raw binary buffers (kept in-memory only).
+    const engagementRecord = {
       engagement_id: engagementId,
       slug,
       intake,
-      questionnaire_path: questionnairePath,
       questionnaire_filename: questionnaireFilename,
+      questionnaire_text: typeof questionnaireContent === 'string' ? questionnaireContent : null,
       status: STATUS.INTAKE_RECEIVED,
       status_history: [{ status: STATUS.INTAKE_RECEIVED, at: new Date().toISOString() }],
     };
-    await putEngagement(engagement);
+    await putEngagement(engagementRecord);
+
+    // Run input carries the content in-process (the buffer is never persisted).
+    const runInput = {
+      ...engagementRecord,
+      questionnaire_content: questionnaireContent,
+    };
 
     // Run the pipeline AFTER responding so the form gets an instant ack.
     after(async () => {
       try {
-        const result = await runPipeline({ engagement });
+        const result = await runPipeline({ engagement: runInput });
         logger.info('trust-desk intake: pipeline finished', {
           engagement_id: engagementId,
           outcome: result.outcome,
