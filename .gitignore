@@ -23,3 +23,8 @@ coverage/
 
 # Supabase CLI local cache — these change per-developer and per-link
 supabase/.temp/
+
+# AI Trust Desk — runtime state (pipeline-generated, not source).
+# Engagement store + uploaded questionnaires are per-deployment data, like a DB.
+data/trust-desk/engagements/
+data/trust-desk/uploads/

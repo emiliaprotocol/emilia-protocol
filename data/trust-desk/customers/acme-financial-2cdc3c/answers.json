@@ -1,0 +1,229 @@
+{
+  "slug": "acme-financial-2cdc3c",
+  "generated_at": "2026-05-30T05:02:30.233Z",
+  "total_questions": 13,
+  "answered": 13,
+  "escalated": 0,
+  "items": [
+    {
+      "id": "q_001",
+      "question": "Does your AI use customer data for model training?",
+      "section": "AI Data Handling",
+      "status": "answered",
+      "answer": "This document discloses, in plain language, exactly what Acme Financial does with customer data when it is processed by an AI/ML system within the Sentinel KYC AI product surface. It is intended for enterprise buyers (particularly in financial services) whose security, risk, privacy, and compliance teams need to confirm that Acme Financial's use of AI does not introduce undisclosed data flows, unauthorized training on customer data, or model-based data leakage risk.\n\nThis document covers:",
+      "sources": [
+        {
+          "kind": "template",
+          "template_id": "ai-data-handling",
+          "template_hash": "61718d640be3cbc2a74a10d702513c2ff9eec11e7a4b106f16fc53de1b7807d3",
+          "section": "1. Purpose and scope"
+        }
+      ],
+      "confidence": 0.95,
+      "escalation_reason": null
+    },
+    {
+      "id": "q_002",
+      "question": "What is your data retention period for customer-submitted content, and how is deletion handled?",
+      "section": "AI Data Handling",
+      "status": "answered",
+      "answer": "### 4.1. Foundation model training\n\nAcme Financial **does not train foundation models on customer data.** Acme Financial uses foundation models provided by OpenAI, Anthropic, and contracts with each provider specify no training on Acme Financial's API traffic. Specifically:",
+      "sources": [
+        {
+          "kind": "template",
+          "template_id": "ai-data-handling",
+          "template_hash": "61718d640be3cbc2a74a10d702513c2ff9eec11e7a4b106f16fc53de1b7807d3",
+          "section": "4. What is used for training (and what is NOT)"
+        }
+      ],
+      "confidence": 0.95,
+      "escalation_reason": null
+    },
+    {
+      "id": "q_003",
+      "question": "Do you fine-tune foundation models on our data?",
+      "section": "AI Data Handling",
+      "status": "answered",
+      "answer": "### 4.1. Foundation model training\n\nAcme Financial **does not train foundation models on customer data.** Acme Financial uses foundation models provided by OpenAI, Anthropic, and contracts with each provider specify no training on Acme Financial's API traffic. Specifically:",
+      "sources": [
+        {
+          "kind": "template",
+          "template_id": "ai-data-handling",
+          "template_hash": "61718d640be3cbc2a74a10d702513c2ff9eec11e7a4b106f16fc53de1b7807d3",
+          "section": "4. What is used for training (and what is NOT)"
+        }
+      ],
+      "confidence": 0.95,
+      "escalation_reason": null
+    },
+    {
+      "id": "q_004",
+      "question": "Describe your prompt injection defense and how you handle indirect injection from retrieved content.",
+      "section": "Prompt Injection & Model Security",
+      "status": "answered",
+      "answer": "Prompt injection is the class of attack where an adversary inserts instructions into content that a language model subsequently processes, causing the model to deviate from its intended behavior. Attacks are typically classified along two axes:\n\n**By vector:**\n- **Direct prompt injection**: a user (or an attacker posing as one) submits adversarial input in a prompt field.\n- **Indirect prompt injection**: adversarial instructions are embedded in documents, URLs, emails, or other content that the model is asked to process, and the model interprets those instructions as commands.",
+      "sources": [
+        {
+          "kind": "template",
+          "template_id": "prompt-injection",
+          "template_hash": "4d04d12001563a7a9cdc1079a5836fb4899195b462ce408eacea428ddf93d3d5",
+          "section": "1. Threat model"
+        }
+      ],
+      "confidence": 0.95,
+      "escalation_reason": null
+    },
+    {
+      "id": "q_005",
+      "question": "How do you prevent the model from leaking the system prompt or other tenants' data?",
+      "section": "Prompt Injection & Model Security",
+      "status": "answered",
+      "answer": "Acme Financial operates on the assumption that **prompt injection is not fully preventable at the model layer.** No current language model is provably robust to adversarial input. Accordingly, Acme Financial's defenses are layered at the input, processing, tool-invocation, and output boundaries. Failure at any single layer does not expose customer data or enable unauthorized action.\n\n### 2.1. Input sanitization and provenance tagging",
+      "sources": [
+        {
+          "kind": "template",
+          "template_id": "prompt-injection",
+          "template_hash": "4d04d12001563a7a9cdc1079a5836fb4899195b462ce408eacea428ddf93d3d5",
+          "section": "2. Defense posture (defense in depth)"
+        }
+      ],
+      "confidence": 0.95,
+      "escalation_reason": null
+    },
+    {
+      "id": "q_006",
+      "question": "List your AI subprocessors and where customer data flows during inference.",
+      "section": "Subprocessors & Data Flow",
+      "status": "answered",
+      "answer": "This document lists every third-party service that processes customer data in connection with AI/ML functionality, the data class they receive, their retention policy, their contractual training opt-out, their hosting region, and the data protection agreement governing the relationship. It is intended to answer the buyer question: **\"Who sees our data when it flows through your AI, and under what contract?\"**\n\n---",
+      "sources": [
+        {
+          "kind": "template",
+          "template_id": "ai-subprocessors",
+          "template_hash": "e6d83d4e7c6f347be7dd488a2045eec80331088c14f847ad1cddf50de49241fd",
+          "section": "1. Purpose"
+        }
+      ],
+      "confidence": 0.95,
+      "escalation_reason": null
+    },
+    {
+      "id": "q_007",
+      "question": "Do you have an executed DPA with each model provider?",
+      "section": "Subprocessors & Data Flow",
+      "status": "answered",
+      "answer": "### 2.1. Model providers\n\n| Provider | Role | Data received | Retention | Training | Region | DPA |\n|---|---|---|---|---|---|---|\n| **OpenAI** | Primary LLM (GPT-4o / GPT-4 Turbo) | inference only; zero-retention enterprise tier | Zero retention (Enterprise) | Opt-out (contractual) | US (default), EU available | OpenAI Enterprise DPA, signed on file |\n| **Anthropic** | Fallback / comparison LLM (Claude Sonnet) | inference only; zero-retention API tier | Zero retention (commercial API) | No training (default) | US | Anthropic Commercial Services Agreement + DPA, signed on file |\n| None. | authorized operator | customer-submitted content processed at inference only | duration of contract, then deleted within 30 days | no customer data used for model training without explicit opt-in | United States | executed Data Processing Agreement |",
+      "sources": [
+        {
+          "kind": "template",
+          "template_id": "ai-subprocessors",
+          "template_hash": "e6d83d4e7c6f347be7dd488a2045eec80331088c14f847ad1cddf50de49241fd",
+          "section": "2. AI subprocessors"
+        }
+      ],
+      "confidence": 0.95,
+      "escalation_reason": null
+    },
+    {
+      "id": "q_008",
+      "question": "How do you enforce least-privilege tool access for autonomous agents?",
+      "section": "Agent Access Control",
+      "status": "answered",
+      "answer": "This policy governs what actions AI agents within Sentinel KYC AI may take, on whose authority, and under what controls. It applies to every tool call, API invocation, data write, and external side-effect initiated by any model-driven agent in the product.\n\nIt specifically covers the buyer's most common AI-agent risk questions:",
+      "sources": [
+        {
+          "kind": "template",
+          "template_id": "agent-access-control",
+          "template_hash": "22d64f142d1e3a7555e7a70adf92aa0046a9e89f5511dcd917c43f98a1a55956",
+          "section": "1. Scope"
+        }
+      ],
+      "confidence": 0.95,
+      "escalation_reason": null
+    },
+    {
+      "id": "q_009",
+      "question": "Are destructive agent actions gated behind human approval?",
+      "section": "Agent Access Control",
+      "status": "answered",
+      "answer": "Agent tool calls are classified into four tiers. Each tier has distinct authorization, logging, and human-in-the-loop requirements.\n\n### Tier 0 — Read-only, tenant-scoped",
+      "sources": [
+        {
+          "kind": "template",
+          "template_id": "agent-access-control",
+          "template_hash": "22d64f142d1e3a7555e7a70adf92aa0046a9e89f5511dcd917c43f98a1a55956",
+          "section": "3. Capability tiers"
+        }
+      ],
+      "confidence": 0.95,
+      "escalation_reason": null
+    },
+    {
+      "id": "q_010",
+      "question": "Describe your AI incident response process and your breach notification SLA.",
+      "section": "Incident Response",
+      "status": "answered",
+      "answer": "### 4.1. Phase 1 — Declare (0–15 min)\n\n- On-call triages the alert and either declares an incident or closes as noise.\n- If declared: open a #security-incidents channel, page the Incident Commander rotation, and record the initial severity.\n- Incident Commander assigns roles:\n  - **IC**: coordinates overall response and makes decisions.\n  - **Tech Lead**: drives containment and investigation.\n  - **Comms Lead**: drafts customer and regulator notifications.\n  - **Scribe**: maintains the incident timeline.\n- Status page updated to \"investigating\" for SEV-1/2.",
+      "sources": [
+        {
+          "kind": "template",
+          "template_id": "ai-incident-response",
+          "template_hash": "c3cce1c709172a7691fc7a45a9969b35a54933fc1f7dcb73f71019e848bd83aa",
+          "section": "4. Response phases"
+        }
+      ],
+      "confidence": 0.95,
+      "escalation_reason": null
+    },
+    {
+      "id": "q_011",
+      "question": "Do you encrypt customer data at rest and in transit?",
+      "section": "General Security",
+      "status": "answered",
+      "answer": "Acme Financial customer data is processed in us-east-1 by default. Transfers to other regions (for model providers hosted elsewhere) are governed by:\n\n- **EU → US**: Standard Contractual Clauses + EU-US Data Privacy Framework certification where the provider holds it.\n- **Other**: SCCs or equivalent adequacy mechanism per the destination jurisdiction.",
+      "sources": [
+        {
+          "kind": "template",
+          "template_id": "ai-data-handling",
+          "template_hash": "61718d640be3cbc2a74a10d702513c2ff9eec11e7a4b106f16fc53de1b7807d3",
+          "section": "9. Cross-border transfers"
+        }
+      ],
+      "confidence": 0.95,
+      "escalation_reason": null
+    },
+    {
+      "id": "q_012",
+      "question": "Do you enforce MFA and least-privilege access reviews for employees?",
+      "section": "General Security",
+      "status": "answered",
+      "answer": "This policy governs what actions AI agents within Sentinel KYC AI may take, on whose authority, and under what controls. It applies to every tool call, API invocation, data write, and external side-effect initiated by any model-driven agent in the product.\n\nIt specifically covers the buyer's most common AI-agent risk questions:",
+      "sources": [
+        {
+          "kind": "template",
+          "template_id": "agent-access-control",
+          "template_hash": "22d64f142d1e3a7555e7a70adf92aa0046a9e89f5511dcd917c43f98a1a55956",
+          "section": "1. Scope"
+        }
+      ],
+      "confidence": 0.95,
+      "escalation_reason": null
+    },
+    {
+      "id": "q_013",
+      "question": "Which cloud provider and region hosts the production AI workload?",
+      "section": "Deployment Specifics",
+      "status": "answered",
+      "answer": "Per information provided by Acme Financial: AWS us-east-1. This reflects the current production configuration; material changes are disclosed via the subprocessor and data-flow policy.",
+      "sources": [
+        {
+          "kind": "intake",
+          "field": "cloud_provider",
+          "value": "AWS us-east-1"
+        }
+      ],
+      "confidence": 0.9,
+      "escalation_reason": null
+    }
+  ]
+}

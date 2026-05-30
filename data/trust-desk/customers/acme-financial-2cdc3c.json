@@ -1,0 +1,154 @@
+{
+  "slug": "acme-financial-2cdc3c",
+  "company": "Acme Financial",
+  "website": null,
+  "contact": {
+    "name": "Jane Okafor",
+    "email": "security@acmefinancial.example",
+    "role": "Head of Security"
+  },
+  "product_tagline": "Sentinel KYC AI for community banks",
+  "engagement": {
+    "tier": "packet",
+    "buyer_name": "Riverbend Community Bank",
+    "started_at": "2026-05-30",
+    "delivered_at": "2026-05-30",
+    "expires_at": "2026-11-30"
+  },
+  "status": "active",
+  "last_rehashed": "2026-05-30T05:02:30.233Z",
+  "generated_by": "trust-desk-pipeline",
+  "pipeline": {
+    "engagement_id": "eng_502b76bca3f922eb68633f5c",
+    "decision": "auto",
+    "pass_rate": 1,
+    "escalated_questions": 0
+  },
+  "claims": [
+    {
+      "id": "questionnaire-response",
+      "title": "Completed AI security questionnaire",
+      "category": "questionnaire",
+      "source_file": "acme-financial-2cdc3c/answers.json",
+      "summary": "Answered 13 of 13 questions (13 verified-source). Aligned with SOC 2 and NIST AI RMF.",
+      "bullets": [
+        "Does your AI use customer data for model training?",
+        "What is your data retention period for customer-submitted content, and how is deletion ha…",
+        "Do you fine-tune foundation models on our data?",
+        "Describe your prompt injection defense and how you handle indirect injection from retriev…"
+      ],
+      "content_hash": "41b570b90b1c27d8c9688e439d903fc74e76842d156faeb2c8034c261621e88f",
+      "policy_version": "1.0",
+      "claim_id": "clm_2456493a81d2",
+      "payload_hash": "2456493a81d210dbcdfeb5a9d890072bfbd4fe7c79746731065e4aa7196a7c71",
+      "signed_at": "2026-05-30T05:02:30.242Z",
+      "signer": "ai-trust-desk",
+      "signature": "1e018892356645a82e7b45fc6b80bdf6aee8ac067885c27cbd008e8ff8012261"
+    },
+    {
+      "id": "ai-data-handling",
+      "title": "AI Data Handling & Model Training Disclosure",
+      "category": "policy",
+      "source_file": "acme-financial-2cdc3c/policies/ai-data-handling.md",
+      "summary": "Signed policy document (12,064 bytes). Hash binds to published text.",
+      "bullets": [
+        "Purpose and scope",
+        "Definitions",
+        "What is processed at inference time",
+        "What is used for training (and what is NOT)",
+        "Zero-retention / model-provider data handling"
+      ],
+      "content_hash": "388a9945bd3534e1a367f5c04964784d03c05d122717284a9bfe14c502308a28",
+      "policy_version": "1.0",
+      "claim_id": "clm_d172a188f9d5",
+      "payload_hash": "d172a188f9d509c9a61376123d728c49f93878f1b8057ededa7fcf5e9443c29c",
+      "signed_at": "2026-05-30T05:02:30.242Z",
+      "signer": "ai-trust-desk",
+      "signature": "a306c78968f08f0aabebf7027923ff4ceec35d92b04b61a3ede31e60690e41a4"
+    },
+    {
+      "id": "prompt-injection",
+      "title": "Prompt Injection Defense Statement",
+      "category": "policy",
+      "source_file": "acme-financial-2cdc3c/policies/prompt-injection.md",
+      "summary": "Signed policy document (9,384 bytes). Hash binds to published text.",
+      "bullets": [
+        "Threat model",
+        "Defense posture (defense in depth)",
+        "Testing and evaluation",
+        "Logging and audit",
+        "Incident response"
+      ],
+      "content_hash": "a8dfae5efb73fda9ff3d7e04f52e3bc973fdf1fd76eb3a92e5c1dbb602625d88",
+      "policy_version": "1.0",
+      "claim_id": "clm_4dbf925742d9",
+      "payload_hash": "4dbf925742d9da35ec3e49d7bb52620f4d90facdd278c7c5f1d59b6df8bd6b26",
+      "signed_at": "2026-05-30T05:02:30.242Z",
+      "signer": "ai-trust-desk",
+      "signature": "03b232b771a994fb7e6f7c163925255f1a7bbffcb5aef1647a905e52bfc794ed"
+    },
+    {
+      "id": "ai-subprocessors",
+      "title": "AI Subprocessor & Data Flow Map",
+      "category": "policy",
+      "source_file": "acme-financial-2cdc3c/policies/ai-subprocessors.md",
+      "summary": "Signed policy document (7,975 bytes). Hash binds to published text.",
+      "bullets": [
+        "Purpose",
+        "AI subprocessors",
+        "Data flow diagram",
+        "Change control for subprocessors",
+        "Regional and cross-border transfer"
+      ],
+      "content_hash": "ef634c5f437ea40007d32292a3a19cbd22a111827bfca33ebe2385cdf608f329",
+      "policy_version": "1.0",
+      "claim_id": "clm_197eeba2982b",
+      "payload_hash": "197eeba2982b068ab5c30550f6415c61b2e9da1888f9e107f53491c73c3eec4e",
+      "signed_at": "2026-05-30T05:02:30.242Z",
+      "signer": "ai-trust-desk",
+      "signature": "d7e684e10ae6252d24799e952303e4a56406d802c9b44254d680b8f528bfd7d4"
+    },
+    {
+      "id": "agent-access-control",
+      "title": "AI Agent Access Control Policy",
+      "category": "policy",
+      "source_file": "acme-financial-2cdc3c/policies/agent-access-control.md",
+      "summary": "Signed policy document (9,638 bytes). Hash binds to published text.",
+      "bullets": [
+        "Scope",
+        "Principle: the agent proposes, the authorization service disposes",
+        "Capability tiers",
+        "Per-tool specifications",
+        "Session scoping"
+      ],
+      "content_hash": "dbfac06ddc866969e449c654319326ad9afcfde693415f9c89828e50b2fbeb0e",
+      "policy_version": "1.0",
+      "claim_id": "clm_72449f05cf8b",
+      "payload_hash": "72449f05cf8b066ad0e756d6fe5276ca874111135909ea7d5787706e7a211f77",
+      "signed_at": "2026-05-30T05:02:30.242Z",
+      "signer": "ai-trust-desk",
+      "signature": "9c62eddabc1400af40f1d67e4b4a0394b13a9a4256b8bffef63c528b875035d1"
+    },
+    {
+      "id": "ai-incident-response",
+      "title": "AI Incident Response Runbook",
+      "category": "policy",
+      "source_file": "acme-financial-2cdc3c/policies/ai-incident-response.md",
+      "summary": "Signed policy document (11,210 bytes). Hash binds to published text.",
+      "bullets": [
+        "Scope",
+        "Severity classification",
+        "Detection sources",
+        "Response phases",
+        "Communication templates"
+      ],
+      "content_hash": "e270a653db0ca35f26a4360799efc90b7c767fd51f1ba26ba6469d48ab6ca93a",
+      "policy_version": "1.0",
+      "claim_id": "clm_d476ba56dc33",
+      "payload_hash": "d476ba56dc3393d1b9519666201ab5333fe5b9f1d8514bc06e25711652b7bf4b",
+      "signed_at": "2026-05-30T05:02:30.242Z",
+      "signer": "ai-trust-desk",
+      "signature": "7fdee68873e3834843fc8e3b35f3dc561fe430df9812020fd8eb2aa0bc5afebf"
+    }
+  ]
+}

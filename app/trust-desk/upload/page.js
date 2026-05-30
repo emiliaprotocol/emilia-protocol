@@ -25,9 +25,8 @@ const ACCENT = color.blue;
 const SALES_MAILTO         = 'mailto:team@emiliaprotocol.ai?subject=Trust%20Desk%20order';
 const STRIPE_PACKET_URL    = process.env.NEXT_PUBLIC_STRIPE_PACKET    || SALES_MAILTO;
 const STRIPE_EMERGENCY_URL = process.env.NEXT_PUBLIC_STRIPE_EMERGENCY || SALES_MAILTO;
-// Form webhook fallback also goes to mailto so a missing env doesn't post
-// PII to a placeholder URL.
-const FORM_WEBHOOK_URL     = process.env.NEXT_PUBLIC_INTAKE_WEBHOOK   || SALES_MAILTO;
+// Intake posts to our own /api/trust-desk/intake (awaited), which persists the
+// engagement and runs the automation pipeline server-side.
 
 const INITIAL = {
   company: '', website: '', contact_name: '', contact_email: '',
@@ -42,6 +41,7 @@ export default function UploadPage() {
   const [file, setFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [engagementId, setEngagementId] = useState(null);
   const [error, setError] = useState(null);
 
   function update(k, v) { setForm((f) => ({ ...f, [k]: v })); }
@@ -73,17 +73,30 @@ export default function UploadPage() {
       if (file) payload.append('questionnaire', file);
       payload.append('submitted_at', new Date().toISOString());
 
-      fetch(FORM_WEBHOOK_URL, { method: 'POST', body: payload }).catch(() => {});
+      // AWAIT the intake — a paid customer must never see "success" while the
+      // submission silently fails. The pipeline runs server-side after this
+      // returns and publishes the trust page or escalates to a reviewer.
+      const res = await fetch('/api/trust-desk/intake', { method: 'POST', body: payload });
+      if (!res.ok) {
+        const detail = await res.json().then((j) => j.detail).catch(() => null);
+        setError(
+          `${detail || 'Submission failed.'} If this persists, email team@emiliaprotocol.ai directly.`,
+        );
+        setSubmitting(false);
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      setEngagementId(data.engagement_id || null);
       setSubmitted(true);
 
       if (form.active_deal_blocked === 'yes') {
         const stripe = form.tier_preference === 'emergency' ? STRIPE_EMERGENCY_URL : STRIPE_PACKET_URL;
         setTimeout(() => {
           window.location.href = `${stripe}?prefilled_email=${encodeURIComponent(form.contact_email)}`;
-        }, 800);
+        }, 1200);
       }
     } catch (err) {
-      setError(`Submission failed: ${err.message}. Email hello@aitrustdesk.com directly.`);
+      setError(`Submission failed: ${err.message}. Email team@emiliaprotocol.ai directly.`);
       setSubmitting(false);
     }
   }
@@ -99,9 +112,14 @@ export default function UploadPage() {
           </h1>
           <p style={{ fontSize: 16, color: color.t2, lineHeight: 1.65, marginTop: 16 }}>
             {qualified
-              ? `You are being redirected to Stripe to complete payment. Once checkout is done we will email you within 2 hours to confirm the intake and assign your reviewer.`
+              ? `You are being redirected to Stripe to complete payment. Your trust page is already being generated — we'll email the live URL as soon as it's ready.`
               : `AI Trust Desk is currently prioritizing vendors with an active stuck deal. We have logged your interest and will reach out when we open capacity for proactive-trust packages (4–6 weeks).`}
           </p>
+          {engagementId ? (
+            <p style={{ fontSize: 13, color: color.t3, marginTop: 12, fontFamily: font.mono }}>
+              Reference: {engagementId}
+            </p>
+          ) : null}
           {qualified ? (
             <p style={{ fontSize: 14, color: color.t3, marginTop: 24 }}>
               If the redirect doesn&apos;t happen in 5 seconds, open{' '}
