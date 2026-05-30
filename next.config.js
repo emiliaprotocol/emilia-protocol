@@ -15,6 +15,11 @@ const securityHeaders = [
 
 const nextConfig = {
   output: 'standalone',
+  // Trust Desk questionnaire parsers (xlsx/pdf-parse/mammoth) are heavy,
+  // optionally-imported, and not bundler-friendly (pdf-parse ships pdfjs +
+  // workers). Externalize them so Next does NOT bundle them but DOES trace
+  // them into the serverless deployment, so the runtime import() resolves.
+  serverExternalPackages: ['xlsx', 'pdf-parse', 'mammoth'],
   // Pin file-tracing root to this repo. Without it, Next.js walks up the
   // filesystem looking for a lockfile and may pick a parent monorepo root
   // (e.g., ~/Documents/package-lock.json), which produces a "multiple

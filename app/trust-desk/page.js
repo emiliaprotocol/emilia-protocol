@@ -61,7 +61,8 @@ export default function TrustDeskLanding() {
             fontFamily: font.sans, fontSize: 20, lineHeight: 1.55, color: color.t2,
             maxWidth: 720, marginTop: 24,
           }}>
-            We answer them in 48 hours and publish a{' '}
+            We answer them automatically — drafted from your intake and our versioned
+            policy templates, every answer cites a source — and publish a{' '}
             <strong style={{ color: color.t1 }}>live trust page your buyer can verify</strong>.
             Prompt injection, model training, RAG data flows, agent tool access, AI incident
             response — the questions your SOC 2 platform does not handle well.
@@ -80,7 +81,7 @@ export default function TrustDeskLanding() {
               Upload your AI security review
             </Link>
             <span style={{ fontSize: 14, color: color.t3 }}>
-              48-hour turnaround · $3,500–$24,500 · No retainer required
+              Published in minutes · $3,500–$24,500 · No retainer required
             </span>
           </div>
 
@@ -142,7 +143,7 @@ export default function TrustDeskLanding() {
               ['Completed AI-specific questionnaire', 'Your buyer\'s security, risk, and AI-governance questions, answered in their language, aligned with SOC 2 and emerging AI-risk frameworks.'],
               ['Five AI policy documents', 'Data Handling & Model Training Disclosure. Prompt Injection Defense Statement. AI Subprocessor & Data Flow Map. Agent Access Control Policy. AI Incident Response Runbook.'],
               ['Live AI Trust Page', 'A URL you share with your buyer. Every claim timestamped, signed, and refreshable. Supersedes PDFs the day you deploy.'],
-              ['Signed claim hashes', 'Every policy and every answer has a SHA-256 hash bound to an audit trail. Signed by AI Trust Desk. Buyer-verifiable from day 21.'],
+              ['Signed claim hashes', 'Every policy and every answer carries a SHA-256 content hash and a signed envelope. Your buyer can verify any claim independently against the live /api/trust-desk/verify endpoint.'],
               ['30-day Q&A Slack channel', 'When your buyer\'s CISO sends a follow-up question, we handle it. Caps at 5 hours total; covers the deal to close.'],
               ['Optional risk-call support', 'If your buyer\'s security team wants a live call to walk through the answers, we join. (Retainer tier only.)'],
             ].map(([t, b]) => (
@@ -204,17 +205,17 @@ export default function TrustDeskLanding() {
             gap: 16, marginTop: 40,
           }}>
             <PricingCard
-              name="Emergency Review" price="$3,500" unit="per questionnaire" turnaround="24 hours"
+              name="Emergency Review" price="$3,500" unit="per questionnaire" turnaround="Minutes"
               href={STRIPE_LINKS.emergency}
               bullets={['Review existing questionnaire', 'Fill missing answers', 'Highlight remaining gaps', 'No policy docs', 'No trust page']}
             />
             <PricingCard
-              name="Full Completion" price="$9,500" unit="per questionnaire" turnaround="48 hours"
+              name="Full Completion" price="$9,500" unit="per questionnaire" turnaround="Minutes"
               href={STRIPE_LINKS.full}
               bullets={['Full questionnaire completion', 'Answer alignment with SOC 2', 'One policy summary doc', 'No trust page', 'No live hosting']}
             />
             <PricingCard
-              name="AI Trust Packet" price="$24,500" unit="per engagement" turnaround="48 hours"
+              name="AI Trust Packet" price="$24,500" unit="per engagement" turnaround="Minutes"
               href={STRIPE_LINKS.packet} highlighted
               bullets={['Full questionnaire', 'All 5 AI policy docs', 'Live AI Trust Page', 'Signed claim hashes', '30-day Q&A Slack']}
             />
@@ -243,7 +244,7 @@ export default function TrustDeskLanding() {
           }}>
             {[
               ['01', 'Upload', 'Send your questionnaire (Excel, PDF, or Word) plus 8 intake questions. Takes 10 minutes.'],
-              ['02', 'We answer', 'Your assigned reviewer (a named human, not an LLM) completes the questionnaire, drafts the policies, and builds your trust page. 24–48 hours.'],
+              ['02', 'We answer', 'Our pipeline drafts every answer from your intake and our 5 versioned policy templates — no answer ships without a cited source. A named reviewer signs off on anything flagged. Minutes for most packets; up to 4 hours if a question needs human review.'],
               ['03', 'You forward', 'We deliver the trust page URL and all deliverables in Slack. You forward the URL to your buyer. Deal moves.'],
             ].map(([k, t, b]) => (
               <div key={k} style={{
@@ -285,7 +286,7 @@ export default function TrustDeskLanding() {
             fontFamily: font.sans, fontSize: 32, fontWeight: 700,
             letterSpacing: '-0.01em', color: color.t1, margin: 0,
           }}>
-            One upload. 48 hours. Deal moves.
+            One upload. Minutes to publish. Deal moves.
           </h2>
           <Link
             href="/trust-desk/upload"
@@ -357,13 +358,13 @@ function PricingCard({ name, price, unit, turnaround, bullets, href, highlighted
 
 const FAQ = [
   { q: 'Who actually fills out the questionnaire?',
-    a: 'A named reviewer with security / compliance background — not an LLM, not a freelancer pool. You will know their name before work starts. They sign the attestation on your trust page.' },
+    a: 'Our automated pipeline drafts every answer from your intake and our versioned policy templates — and no answer ships without a cited source. A named reviewer with a security / compliance background signs off on anything the pipeline flags for human review, and signs the attestation on your trust page. You get speed and a human in the loop where it matters.' },
   { q: 'What if my questionnaire has questions you have not seen?',
     a: 'Most AI security questionnaires share 80% of their content once you have seen 10 of them. For genuinely novel questions, we research the specific standard (NIST AI RMF, OWASP LLM Top 10, etc.) and answer in that framework\'s language.' },
   { q: 'Will my buyer accept a "live trust page" instead of a PDF?',
     a: 'Yes. Enterprise security teams increasingly prefer trust centers (SafeBase, Vanta Trust Center, Drata Trust Center). Our page is the same pattern — with AI-specific policies those tools do not cover.' },
   { q: 'Can I verify the signed claims independently?',
-    a: 'Signed and timestamped hashes ship day 1. Independent buyer-side verification (via a public verify endpoint) lands day 21. Retainer customers get this from day 1.' },
+    a: 'Yes, today. Every claim has a SHA-256 content hash and a signed envelope. Your buyer hits /api/trust-desk/verify/<your-page> and gets per-claim pass/fail on content integrity, payload binding, and signature — no need to take our word for it.' },
   { q: 'Liability?',
     a: 'You remain responsible for the accuracy of the underlying claims about your product. We are responsible for the accuracy of the analysis, the policy drafting, and the platform. Our MSA is straightforward and we will send it on intake.' },
   { q: 'Why fintech only?',

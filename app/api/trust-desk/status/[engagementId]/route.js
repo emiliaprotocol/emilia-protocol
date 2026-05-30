@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(_request, { params }) {
   const { engagementId } = await params;
-  const eng = getEngagement(engagementId);
+  const eng = await getEngagement(engagementId);
   if (!eng) return epProblem(404, 'not_found', 'engagement not found');
 
   const published = eng.status === 'published';

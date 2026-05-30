@@ -67,7 +67,7 @@ async function main() {
     status: 'intake_received',
   };
 
-  putEngagement(engagement);
+  await putEngagement(engagement);
 
   process.stdout.write(`\n▶ Running pipeline for engagement ${engagementId} (slug: ${slug})\n`);
   const result = await runPipeline({ engagement });

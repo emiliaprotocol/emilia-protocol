@@ -15,13 +15,13 @@
 import { NextResponse } from 'next/server';
 import { epProblem } from '@/lib/errors';
 import { signingKeyFingerprint } from '@/lib/trust-desk/signing';
-import { verifyPublishedPage } from '@/lib/trust-desk/page-verify';
+import { verifyPublishedPageAsync } from '@/lib/trust-desk/page-verify';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request, { params }) {
   const { slug } = await params;
-  const result = verifyPublishedPage(slug);
+  const result = await verifyPublishedPageAsync(slug);
   if (!result.found) return epProblem(404, 'not_found', 'trust page not found');
 
   const url = new URL(request.url);

@@ -7,11 +7,14 @@
  * recent publishes, and in-flight runs. Server component reading the on-disk
  * engagement store.
  *
- * GATING: this surfaces customer company names and escalation reasons, so it is
- * noindex + disabled unless TRUST_DESK_INTERNAL_ENABLED=true. Production should
- * additionally put it behind Clerk auth (middleware) before enabling.
+ * GATING: this surfaces customer company names and escalation reasons. Access
+ * requires a valid `td_internal` cookie matching TRUST_DESK_INTERNAL_TOKEN,
+ * obtained via /internal/trust-desk/auth?token=... (timing-safe, httpOnly,
+ * 8h). Disabled entirely when the env token is unset. noindex always.
  */
 
+import crypto from 'node:crypto';
+import { cookies } from 'next/headers';
 import { listEngagements } from '@/lib/trust-desk/store';
 import { color, font, radius } from '@/lib/tokens';
 
@@ -29,22 +32,34 @@ const STATUS_STYLE = {
   intake_received: { bg: '#F5F5F4', border: '#A8A29E', label: 'QUEUED' },
 };
 
-export default function ReviewerDashboard() {
-  if (process.env.TRUST_DESK_INTERNAL_ENABLED !== 'true') {
+export default async function ReviewerDashboard() {
+  const gate = await checkAccess();
+  if (gate !== 'ok') {
     return (
       <main style={wrap}>
+        <div style={eyebrow}>AI Trust Desk · Internal</div>
         <h1 style={{ fontFamily: font.sans, fontSize: 22, color: color.t1 }}>
-          Reviewer dashboard disabled
+          {gate === 'disabled' ? 'Reviewer dashboard disabled' : 'Authentication required'}
         </h1>
-        <p style={{ fontFamily: font.sans, color: color.t2, fontSize: 14, maxWidth: 560 }}>
-          Set <code style={code}>TRUST_DESK_INTERNAL_ENABLED=true</code> to enable, and place this
-          route behind authentication first. It exposes customer engagement details.
+        <p style={{ fontFamily: font.sans, color: color.t2, fontSize: 14, maxWidth: 560, lineHeight: 1.6 }}>
+          {gate === 'disabled' ? (
+            <>
+              Set <code style={code}>TRUST_DESK_INTERNAL_TOKEN</code> on the server to enable this
+              dashboard. It exposes customer engagement details, so it stays off until a token is set.
+            </>
+          ) : (
+            <>
+              Authenticate by visiting{' '}
+              <code style={code}>/internal/trust-desk/auth?token=YOUR_TOKEN</code> with the value of{' '}
+              <code style={code}>TRUST_DESK_INTERNAL_TOKEN</code>. A session cookie is set for 8 hours.
+            </>
+          )}
         </p>
       </main>
     );
   }
 
-  const engagements = listEngagements();
+  const engagements = await listEngagements();
   const escalated = engagements.filter((e) => e.status === 'escalated');
   const inflight = engagements.filter(
     (e) => !['escalated', 'published', 'failed'].includes(e.status),
@@ -70,6 +85,21 @@ export default function ReviewerDashboard() {
       <Section title="Recently published" rows={published.slice(0, 25)} emptyText="No published pages yet." />
     </main>
   );
+}
+
+/**
+ * Access gate. 'disabled' = no server token configured; 'unauthorized' = no
+ * valid cookie; 'ok' = authenticated.
+ */
+async function checkAccess() {
+  const expected = process.env.TRUST_DESK_INTERNAL_TOKEN;
+  if (!expected) return 'disabled';
+  const jar = await cookies();
+  const token = jar.get('td_internal')?.value || '';
+  const a = Buffer.from(token);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return 'unauthorized';
+  return crypto.timingSafeEqual(a, b) ? 'ok' : 'unauthorized';
 }
 
 function Section({ title, rows, emptyText }) {

@@ -102,7 +102,7 @@ export async function POST(request) {
       status: STATUS.INTAKE_RECEIVED,
       status_history: [{ status: STATUS.INTAKE_RECEIVED, at: new Date().toISOString() }],
     };
-    putEngagement(engagement);
+    await putEngagement(engagement);
 
     // Run the pipeline AFTER responding so the form gets an instant ack.
     after(async () => {

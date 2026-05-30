@@ -442,3 +442,57 @@ Other copy that changes:
 - [ ] Observability dashboards live; alerts wired to PagerDuty / Slack
 - [ ] Marketing copy updated to reflect the source-cited model
 - [ ] One real customer engagement completes through the auto path end-to-end without intervention
+
+---
+
+## 14. Production deployment (implemented)
+
+The pipeline ships with two storage backends. Local/dev and the committed demo
+use the **file** backend (zero config). Production on Vercel must use the
+**supabase** backend, because Vercel's runtime filesystem is read-only — the
+file backend can read committed pages but cannot persist new pipeline runs.
+
+### Backend selection
+
+| Env | Effect |
+|-----|--------|
+| _(unset)_ | `file` backend — `data/trust-desk/`. Local, CLI, tests, committed demo. |
+| `TRUST_DESK_STORE=supabase` | Supabase backend — `trust_desk_engagements` + `trust_desk_pages`. Required on Vercel. |
+
+### One-time setup
+
+1. **Apply the migration** `supabase/migrations/092_trust_desk.sql` (creates the
+   two tables, RLS service-role-only, updated_at triggers).
+2. **Set env vars** on the Vercel project:
+
+   | Var | Required | Purpose |
+   |-----|----------|---------|
+   | `TRUST_DESK_STORE` | prod | set to `supabase` |
+   | `ATD_SIGNING_KEY` | prod | HMAC signing key — pipeline fails closed without it in prod |
+   | `ANTHROPIC_API_KEY` _or_ `OPENAI_API_KEY` | recommended | enables LLM answering for non-template questions (Claude preferred). Without it, those questions escalate. |
+   | `RESEND_API_KEY` | optional | customer emails (publish + expiry). Suppressed-and-logged if unset. |
+   | `TRUST_DESK_SLACK_WEBHOOK` | optional | internal pings |
+   | `TRUST_DESK_INTERNAL_TOKEN` | recommended | gates `/internal/trust-desk`; auth via `/internal/trust-desk/auth?token=…` |
+   | `TRUST_DESK_FROM_EMAIL` | optional | from-address for customer mail |
+   | `TRUST_DESK_ANTHROPIC_MODEL` / `TRUST_DESK_OPENAI_MODEL` | optional | model overrides |
+
+3. **Crons** are wired in `vercel.json`: `/api/cron/trust-desk-monitor` runs
+   daily (expiry notices), authenticated via operator token / `CRON_SECRET`.
+
+### What runs where
+
+- **Intake** (`POST /api/trust-desk/intake`) persists the engagement and runs
+  the pipeline via `after()` (post-response), so the form gets an instant ack.
+- **Published pages** are stored as `trust_desk_pages` rows; the renderer
+  (`/trust-desk/c/[slug]`) and verify endpoint read them through `page-store`.
+- **Binary questionnaires** (.xlsx/.pdf/.docx) parse via `xlsx` (SheetJS patched
+  CDN build), `pdf-parse` v2, and `mammoth`, externalized in `next.config.js`
+  (`serverExternalPackages`) so they're traced into the serverless bundle.
+
+### Verification status
+
+- File backend (default): fully exercised — CLI, e2e test, committed demo, all
+  cryptographic checks pass.
+- Supabase backend: built behind the flag with the file backend as the tested
+  default; runtime-verify against a real project after applying the migration
+  (no schema-coupled code — both backends share the same doc shapes).

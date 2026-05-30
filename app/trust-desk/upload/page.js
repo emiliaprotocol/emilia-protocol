@@ -157,8 +157,9 @@ export default function UploadPage() {
           Upload your AI security review
         </h1>
         <p style={{ fontSize: 16, color: color.t2, lineHeight: 1.65, marginTop: 12 }}>
-          Takes about 5 minutes. A reviewer will confirm receipt within 2 business hours;
-          full delivery in 24–48 hours once Stripe payment completes.
+          Takes about 5 minutes. Your trust page is generated automatically — most
+          publish within minutes; anything flagged for human review is handled by a
+          named reviewer within 4 business hours.
         </p>
 
         <form onSubmit={onSubmit} style={{ marginTop: 40, display: 'flex', flexDirection: 'column', gap: 32 }} noValidate>

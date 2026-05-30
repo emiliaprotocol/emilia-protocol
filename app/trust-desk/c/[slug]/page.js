@@ -13,15 +13,16 @@
 
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { loadCustomer, trustPageStatus } from '@/lib/trust-desk/customers';
+import { getPublishedPage } from '@/lib/trust-desk/page-store';
 import { styles, color, font, radius } from '@/lib/tokens';
 
 const ACCENT = color.blue;
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
-  const c = loadCustomer(slug);
-  if (!c) return { title: 'Not found' };
+  const page = await getPublishedPage(slug);
+  if (!page) return { title: 'Not found' };
+  const c = page.customer;
   return {
     title: `${c.company} · AI Trust Page`,
     description: `Published AI security, data handling, and incident response attestations for ${c.company}.`,
@@ -31,10 +32,11 @@ export async function generateMetadata({ params }) {
 
 export default async function TrustPage({ params }) {
   const { slug } = await params;
-  const customer = loadCustomer(slug);
-  if (!customer) notFound();
+  const page = await getPublishedPage(slug);
+  if (!page) notFound();
 
-  const status = trustPageStatus(customer);
+  const customer = page.customer;
+  const status = page.status;
   const startedAt = customer?.engagement?.started_at ? new Date(customer.engagement.started_at) : null;
   const deliveredAt = customer?.engagement?.delivered_at ? new Date(customer.engagement.delivered_at) : null;
   const expiresAt = customer?.engagement?.expires_at ? new Date(customer.engagement.expires_at) : null;
