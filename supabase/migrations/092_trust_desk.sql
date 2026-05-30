@@ -53,14 +53,18 @@ ALTER TABLE trust_desk_pages       ENABLE ROW LEVEL SECURITY;
 -- bypasses RLS) can read/write. The buyer-facing verify endpoint and renderer
 -- run server-side with the service client, so this is the intended posture.
 
--- updated_at touch trigger
+-- updated_at touch trigger. search_path pinned to '' per Supabase advisor
+-- (function_search_path_mutable); NOW() resolves via pg_catalog regardless.
 CREATE OR REPLACE FUNCTION trust_desk_touch_updated_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 DROP TRIGGER IF EXISTS trg_td_eng_touch ON trust_desk_engagements;
 CREATE TRIGGER trg_td_eng_touch BEFORE UPDATE ON trust_desk_engagements
