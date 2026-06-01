@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 import { color, font, radius, cta } from '@/lib/tokens';
 
@@ -56,29 +57,14 @@ export default function SiteNav({ activePage }) {
         }}>
           {/* Logo */}
           <Link href="/" className="ep-logo-link" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}>
-            <svg width="30" height="30" viewBox="0 0 34 34" fill="none">
-              <rect x="7" y="5" width="2.5" height="24" rx="1.25" fill="#B08D35"/>
-              <rect className="ep-top" x="9.5" y="5" width="16" height="2.5" rx="1.25" fill={color.t1}/>
-              <rect className="ep-mid" x="9.5" y="15.5" width="12" height="2.5" rx="1.25" fill="#B08D35"/>
-              <rect className="ep-bot" x="9.5" y="26.5" width="14" height="2.5" rx="1.25" fill={color.t1}/>
-            </svg>
-            <span style={{
-              fontFamily: font.mono,
-              fontWeight: 600, fontSize: 13, letterSpacing: 2,
-              color: color.t1, textTransform: 'uppercase',
-            }}>EMILIA</span>
-            <style>{`
-              .ep-top,.ep-mid,.ep-bot { transform-origin: left center; }
-              .ep-top { animation: pt 4s ease-in-out infinite; }
-              .ep-mid { animation: pm 3s ease-in-out infinite; }
-              .ep-bot { animation: pb 5s ease-in-out infinite; }
-              @keyframes pt{0%,100%{transform:translateX(0) scaleX(1)}25%{transform:translateX(1.5px) scaleX(1.03)}50%{transform:translateX(.5px) scaleX(.98)}75%{transform:translateX(2px) scaleX(1.02)}}
-              @keyframes pm{0%,100%{transform:translateX(0) scaleX(1);opacity:1}30%{transform:translateX(2.5px) scaleX(1.05);opacity:.85}60%{transform:translateX(1px) scaleX(.97);opacity:1}85%{transform:translateX(3px) scaleX(1.04);opacity:.9}}
-              @keyframes pb{0%,100%{transform:translateX(0) scaleX(1)}20%{transform:translateX(1px) scaleX(1.02)}45%{transform:translateX(2px) scaleX(.98)}70%{transform:translateX(.5px) scaleX(1.03)}90%{transform:translateX(1.5px) scaleX(1.01)}}
-              .ep-logo-link:hover .ep-top{animation-duration:1.5s}
-              .ep-logo-link:hover .ep-mid{animation-duration:1.2s}
-              .ep-logo-link:hover .ep-bot{animation-duration:1.8s}
-            `}</style>
+            <Image
+              src="/logo-wordmark.png"
+              alt="EMILIA Protocol"
+              width={110}
+              height={28}
+              priority
+              style={{ height: 28, width: 'auto', display: 'block' }}
+            />
           </Link>
 
           {/* Desktop links */}
