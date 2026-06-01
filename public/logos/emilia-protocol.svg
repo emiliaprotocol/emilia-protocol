@@ -1,15 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="60" height="60">
-  <defs>
-    <linearGradient id="ep-grad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#3B82F6"/>
-      <stop offset="100%" stop-color="#22C55E"/>
-    </linearGradient>
-  </defs>
-  <!-- Stylized E: 4 horizontal bars -->
-  <rect fill="url(#ep-grad)" x="12" y="8" width="36" height="6" rx="1"/>
-  <rect fill="url(#ep-grad)" x="12" y="22" width="28" height="6" rx="1"/>
-  <rect fill="url(#ep-grad)" x="12" y="36" width="32" height="6" rx="1"/>
-  <rect fill="url(#ep-grad)" x="12" y="50" width="36" height="6" rx="1"/>
-  <!-- Vertical spine -->
-  <rect fill="url(#ep-grad)" x="12" y="8" width="6" height="48" rx="1"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="60" height="60" style="color:#0C0A09">
+  <!-- EMILIA "E" mark. Gold vertical stem + middle arm; top/bottom arms use
+       currentColor (ink on light surfaces, white on dark — set via `color`). -->
+  <rect fill="#B08D35"      x="18" y="8"  width="6"  height="44" rx="1.5"/>
+  <rect fill="currentColor" x="24" y="8"  width="20" height="6"  rx="1.5"/>
+  <rect fill="#B08D35"      x="24" y="27" width="16" height="6"  rx="1.5"/>
+  <rect fill="currentColor" x="24" y="46" width="19" height="6"  rx="1.5"/>
 </svg>
