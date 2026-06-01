@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { computeReceiptHash } from '../lib/scoring.js';
 import {
@@ -184,6 +184,25 @@ describe('CONFORMANCE: Establishment rules', () => {
 
 describe('CONFORMANCE: Trust profile determinism', () => {
   const profileFixtures = fixtures.trust_profile_fixtures || [];
+
+  // Freeze the decay clock. lib/scoring-v2.js applies a 90-day half-life
+  // time-decay (timeWeight = 0.5^(ageDays/90)) using Date.now(). With fixed
+  // fixture receipt timestamps, the computed score therefore DRIFTS DOWN every
+  // day as the receipts age — which historically broke this test every few
+  // weeks and forced repeated fixture regenerations (2026-03, 04-26, 05-12).
+  // Pinning Date.now() to a fixed reference instant makes the decay constant,
+  // so the fixture stays valid indefinitely. This does NOT weaken the contract:
+  // a real change to scoring weights still moves the score and is still caught;
+  // only the spurious calendar drift is removed. Expected values below are
+  // computed at this same instant.
+  const FROZEN_NOW = new Date('2026-06-01T00:00:00Z');
+  beforeAll(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(FROZEN_NOW);
+  });
+  afterAll(() => {
+    vi.useRealTimers();
+  });
 
   // 2026-04-25: regenerated canonical_5_receipt_profile from
   // computeTrustProfile() because the fixture had drifted ~3.8 points behind

@@ -79,6 +79,8 @@ const PATTERNS = [
       /verify@emiliaprotocol\.ai/,
       /partners@emiliaprotocol\.ai/,
       /iman@emiliaprotocol\.ai/,
+      // AI Trust Desk transactional sender (TRUST_DESK_FROM_EMAIL default).
+      /trust@emiliaprotocol\.ai/,
     ],
   },
   {
@@ -139,6 +141,7 @@ const SAFE_HOSTS = new Set([
   "twilio.com",
   "openai.com",
   "anthropic.com",
+  "resend.com",
   "emiliaprotocol.ai",
   "wikipedia.org",
   "mozilla.org",

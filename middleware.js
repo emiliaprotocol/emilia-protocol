@@ -175,6 +175,10 @@ const ROUTE_POLICIES = {
   'PUT /api/cloud/webhooks/*':          { rateCategory: 'cloud_write', useAuth: true },
   'DELETE /api/cloud/webhooks/*':       { rateCategory: 'cloud_admin', useAuth: true },
   'POST /api/cloud/webhooks/*/test':    { rateCategory: 'cloud_write', useAuth: true },
+
+  // AI Trust Desk — public intake form submission. No API key (like
+  // /api/entities/register); IP-throttled because it triggers an LLM pipeline.
+  'POST /api/trust-desk/intake':        { rateCategory: 'register', useAuth: false },
 };
 
 // =============================================================================

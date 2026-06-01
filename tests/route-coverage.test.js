@@ -190,6 +190,14 @@ const OPENAPI_EXEMPTIONS = [
   // openapi.yaml so production protocol consumers don't ingest it as a
   // first-class API.
   '/api/demo/trust-receipts/[receiptId]/evidence',
+  // AI Trust Desk — product surface (not the EP protocol API). intake is
+  // a public form POST (rate-limited in middleware.js ROUTE_POLICIES);
+  // status + verify are read endpoints; the monitor is a Vercel cron.
+  // Documented in docs/TRUST-DESK-AUTOMATION-SPEC.md, not openapi.yaml.
+  '/api/trust-desk/intake',
+  '/api/trust-desk/status/[engagementId]',
+  '/api/trust-desk/verify/[slug]',
+  '/api/cron/trust-desk-monitor',
 ];
 
 
