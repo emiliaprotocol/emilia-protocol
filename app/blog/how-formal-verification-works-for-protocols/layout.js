@@ -1,16 +1,16 @@
 export const metadata = {
-  title: 'How Formal Verification Works for Protocols (TLA+ and Alloy)',
+  title: 'We Formally Verified an AI-Safety Protocol — Here\'s the Proof',
   description:
-    'A practical primer on TLA+ and Alloy: what each tool proves, how they ' +
-    'differ, and why pre-action authorization protocols benefit from both. ' +
-    'Worked example from EMILIA Protocol\'s 26 TLA+ theorems and 35 Alloy ' +
-    'facts.',
+    'An AI agent cannot take an irreversible action without a signed human ' +
+    'approval — and we proved it. How EMILIA Protocol\'s 26 TLA+ invariants ' +
+    'and 35 Alloy facts machine-check the authorization ceremony on every ' +
+    'commit, and what that does (and does not) guarantee.',
   alternates: { canonical: '/blog/how-formal-verification-works-for-protocols' },
   openGraph: {
-    title: 'How Formal Verification Works for Protocols',
+    title: 'We Formally Verified an AI-Safety Protocol — Here\'s the Proof',
     description:
-      'TLA+ proves temporal properties. Alloy bounds-checks structural ' +
-      'invariants. A primer with examples from a verified AI auth protocol.',
+      'Most AI governance is policy PDFs. EMILIA\'s core safety guarantee is ' +
+      'machine-checked with TLA+ and Alloy on every commit. Read the proofs.',
     url: 'https://www.emiliaprotocol.ai/blog/how-formal-verification-works-for-protocols',
     type: 'article',
     publishedTime: '2026-04-18T00:00:00.000Z',

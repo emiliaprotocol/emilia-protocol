@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font } from '@/lib/tokens';
@@ -25,10 +26,41 @@ export default function BlogFormalVerificationPage() {
       <SiteNav activePage="" />
 
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 32 }}>
-        <div className="ep-tag ep-hero-badge" style={{ color: color.gold }}>Blog · Formal Methods · April 2026</div>
-        <h1 className="ep-hero-text" style={styles.h1}>How formal verification works for protocols</h1>
-        <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 620 }}>
-          Tests prove a protocol works on the cases the author thought of. Formal verification proves it works on every case the model admits — including the ones the author didn't think of. For an authorization protocol, that gap matters.
+        <div className="ep-tag ep-hero-badge" style={{ color: color.gold }}>Blog · Formal Methods · June 2026</div>
+        <h1 className="ep-hero-text" style={styles.h1}>We formally verified an AI-safety protocol — here&apos;s the proof</h1>
+        <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 640 }}>
+          Most “AI safety” and “AI governance” is policy documents and good intentions. EMILIA’s core
+          guarantee — that an AI agent cannot take an irreversible action without a signed human
+          approval — is written as a formal specification and checked by a model checker on every
+          commit. Tests prove a protocol works on the cases the author thought of; formal verification
+          proves it across every case the model admits. For an authorization protocol standing between
+          an autonomous agent and someone’s money, that gap is the whole point.
+        </p>
+      </section>
+
+      {/* Safety framing — what the proofs guarantee for AI agents */}
+      <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 48 }}>
+        <h2 className="ep-reveal" style={styles.h2}>What the proofs guarantee for an AI agent</h2>
+        <p className="ep-reveal" style={styles.body}>
+          EMILIA sits at the pre-execution moment: an agent is about to do something irreversible, and
+          the protocol decides whether it may proceed. Four of the verified invariants are the
+          load-bearing safety properties — they hold across every reachable state of the model, not
+          just the tested ones:
+        </p>
+        <ul className="ep-reveal" style={{ ...styles.body, paddingLeft: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 720 }}>
+          <li>{inline('ConsumeOnceSafety')} — a signed authorization is consumed exactly once; an agent cannot replay it.</li>
+          <li>{inline('WriteBypassSafety')} — no path can fabricate a committed decision outside the ceremony.</li>
+          <li>{inline('SelfContestImpossible')} — an agent cannot approve, consume, or contest its own action.</li>
+          <li>{inline('TerminalStateIrreversibility')} — once an action is committed or refused, that outcome cannot be silently flipped.</li>
+        </ul>
+        <p className="ep-reveal" style={styles.body}>
+          What it does <em>not</em> prove: anything about a language model’s cognition. This is bounded
+          model-checking of the authorization state machine — it proves the gate around the agent is
+          sound, not that the agent is. That distinction is deliberate, and it is exactly why the gate
+          exists. See it stop a real attack on the{' '}
+          <Link href="/demo" style={{ color: color.gold }}>live crash test</Link>, or try to break the
+          guarantees yourself on the{' '}
+          <Link href="/break-the-ceremony" style={{ color: color.gold }}>open challenge</Link>.
         </p>
       </section>
 
@@ -91,8 +123,8 @@ export default function BlogFormalVerificationPage() {
           The full TLA+ module, the Alloy facts, and the assertion list are in the public repo. The protocol page links to a guided walk-through.
         </p>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <a href="/spec" className="ep-cta" style={cta.primary}>Read the spec</a>
-          <a href="/protocol" className="ep-cta-secondary" style={cta.secondary}>Protocol overview</a>
+          <Link href="/spec" className="ep-cta" style={cta.primary}>Read the spec</Link>
+          <Link href="/protocol" className="ep-cta-secondary" style={cta.secondary}>Protocol overview</Link>
         </div>
       </section>
 
