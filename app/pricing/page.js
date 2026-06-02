@@ -23,6 +23,10 @@ const C = ({ children, style }) => (
   <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 32px', ...style }}>{children}</div>
 );
 
+// EP Cloud "Subscribe" activates the moment a payment link is set in env
+// (see docs/STRIPE_SETUP.md). Until then the CTA falls back to early-access.
+const CLOUD_CHECKOUT = process.env.NEXT_PUBLIC_STRIPE_CLOUD_TEAM || '';
+
 const TIERS = [
   {
     name: 'EP Core',
@@ -49,7 +53,9 @@ const TIERS = [
     priceNote: 'billing opens with our first cohort',
     tagline: 'Hosted control plane — policy management, signoff orchestration, and audit without running infrastructure.',
     accent: color.blue,
-    cta: { label: 'Request early access', href: '/product/cloud#pilot' },
+    cta: CLOUD_CHECKOUT
+      ? { label: 'Subscribe', href: CLOUD_CHECKOUT }
+      : { label: 'Request early access', href: '/product/cloud#pilot' },
     ctaStyle: 'primary',
     highlight: true,
     available: false,
@@ -148,13 +154,25 @@ export default function PricingPage() {
                 </div>
                 <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase', color: color.t3, marginBottom: 16 }}>{t.priceNote}</div>
                 <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.6, marginBottom: 22, minHeight: 64 }}>{t.tagline}</p>
-                <Link
-                  href={t.cta.href}
-                  className={t.ctaStyle === 'primary' ? 'ep-cta' : 'ep-cta-secondary'}
-                  style={{ ...(t.ctaStyle === 'primary' ? cta.primary : cta.secondary), justifyContent: 'center', width: '100%', marginBottom: 24 }}
-                >
-                  {t.cta.label}
-                </Link>
+                {t.cta.href.startsWith('http') ? (
+                  <a
+                    href={t.cta.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={t.ctaStyle === 'primary' ? 'ep-cta' : 'ep-cta-secondary'}
+                    style={{ ...(t.ctaStyle === 'primary' ? cta.primary : cta.secondary), justifyContent: 'center', width: '100%', marginBottom: 24 }}
+                  >
+                    {t.cta.label}
+                  </a>
+                ) : (
+                  <Link
+                    href={t.cta.href}
+                    className={t.ctaStyle === 'primary' ? 'ep-cta' : 'ep-cta-secondary'}
+                    style={{ ...(t.ctaStyle === 'primary' ? cta.primary : cta.secondary), justifyContent: 'center', width: '100%', marginBottom: 24 }}
+                  >
+                    {t.cta.label}
+                  </Link>
+                )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
                   {t.features.map((f) => (
                     <div key={f} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>

@@ -1,0 +1,69 @@
+import { NextResponse } from 'next/server';
+import { epProblem } from '@/lib/errors';
+import { logger } from '../../../lib/logger.js';
+
+export const runtime = 'nodejs';
+
+/**
+ * POST /api/checkout
+ *
+ * Creates a Stripe Checkout Session for an EP Cloud plan and returns its URL.
+ *
+ * The secret key and Price IDs are read from server-side env — never from the
+ * client, never hardcoded. Run `scripts/stripe-setup.mjs` (with your own
+ * rotated key) to create the prices, then set:
+ *   STRIPE_SECRET_KEY, STRIPE_PRICE_CLOUD_TEAM, STRIPE_PRICE_CLOUD_BUSINESS
+ *
+ * If those are unset, this returns 503 and the /pricing page falls back to the
+ * "request early access" flow — so the site never breaks before billing is wired.
+ *
+ * Body: { plan: "team" | "business" }
+ * Returns: { url } | RFC-7807 problem
+ */
+const PRICE_ENV = {
+  team: 'STRIPE_PRICE_CLOUD_TEAM',
+  business: 'STRIPE_PRICE_CLOUD_BUSINESS',
+};
+
+function siteOrigin(request) {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL
+    || process.env.NEXT_PUBLIC_SITE_URL
+    || new URL(request.url).origin
+  );
+}
+
+export async function POST(request) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const plan = typeof body.plan === 'string' ? body.plan : '';
+    const priceEnv = PRICE_ENV[plan];
+    if (!priceEnv) {
+      return epProblem(400, 'invalid_plan', 'Unknown plan. Expected one of: team, business.');
+    }
+
+    const secret = process.env.STRIPE_SECRET_KEY;
+    const priceId = process.env[priceEnv];
+    if (!secret || !priceId) {
+      return epProblem(503, 'checkout_unconfigured', 'Stripe checkout is not configured yet.');
+    }
+
+    const { default: Stripe } = await import('stripe');
+    const stripe = new Stripe(secret);
+    const origin = siteOrigin(request);
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      line_items: [{ price: priceId, quantity: 1 }],
+      allow_promotion_codes: true,
+      billing_address_collection: 'auto',
+      success_url: `${origin}/pricing?status=success&plan=${encodeURIComponent(plan)}`,
+      cancel_url: `${origin}/pricing?status=cancelled`,
+    });
+
+    return NextResponse.json({ url: session.url });
+  } catch (err) {
+    logger.error?.('checkout: failed to create session', { error: err.message });
+    return epProblem(500, 'checkout_failed', 'Could not create a checkout session.');
+  }
+}

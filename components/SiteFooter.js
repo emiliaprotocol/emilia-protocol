@@ -8,6 +8,7 @@ const COL_PRODUCT = [
   ['/govguard', 'GovGuard'],
   ['/finguard', 'FinGuard'],
   ['/pricing', 'Pricing'],
+  ['/network', 'Trust Network'],
   ['/playground', 'Playground'],
   ['/explorer', 'Explorer'],
   ['/adopt', 'Adopt'],
@@ -16,6 +17,7 @@ const COL_PRODUCT = [
 const COL_RESOURCES = [
   ['/docs', 'Docs'],
   ['/blog', 'Blog'],
+  ['/why-emilia', 'Why EMILIA'],
   ['/compare', 'Comparisons'],
   ['/governance', 'Governance'],
   ['https://github.com/emiliaprotocol/emilia-protocol', 'GitHub'],

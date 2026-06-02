@@ -39,6 +39,7 @@
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "remotion": "^4.0.452",
+    "stripe": "^22.2.0",
     "viem": "^2.52.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },

@@ -35,6 +35,7 @@ export default function sitemap() {
 
   // Comparison pages — high-conversion procurement queries ("EP vs X").
   const comparison = [
+    { path: '/why-emilia',               priority: 0.85, changeFrequency: 'monthly' },
     { path: '/compare',                  priority: 0.75, changeFrequency: 'monthly' },
     { path: '/compare/oauth',            priority: 0.8,  changeFrequency: 'monthly' },
     { path: '/compare/mcp-auth-alone',   priority: 0.85, changeFrequency: 'monthly' },
@@ -66,6 +67,7 @@ export default function sitemap() {
     { path: '/demo',        priority: 0.9, changeFrequency: 'weekly' },
     { path: '/break-the-ceremony', priority: 0.8, changeFrequency: 'weekly' },
     { path: '/playground',  priority: 0.6, changeFrequency: 'weekly' },
+    { path: '/network',     priority: 0.75, changeFrequency: 'weekly' },
     { path: '/explorer',    priority: 0.6, changeFrequency: 'daily' },
     { path: '/score',       priority: 0.5, changeFrequency: 'weekly' },
     { path: '/eye',         priority: 0.7, changeFrequency: 'monthly' },

@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * EMILIA Protocol — CI receipt verifier.
  * @license Apache-2.0

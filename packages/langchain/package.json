@@ -1,0 +1,44 @@
+{
+  "name": "@emilia-protocol/langchain",
+  "version": "0.1.0",
+  "description": "Guard LangChain.js tools with EMILIA Protocol — block irreversible agent actions until a named human signs off, and get a verifiable Trust Receipt.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": {
+      "import": "./index.js"
+    }
+  },
+  "files": ["index.js", "README.md"],
+  "license": "Apache-2.0",
+  "keywords": [
+    "langchain",
+    "langchainjs",
+    "ai-agent",
+    "authorization",
+    "human-in-the-loop",
+    "guardrails",
+    "emilia-protocol",
+    "agent-safety"
+  ],
+  "peerDependencies": {
+    "@langchain/core": ">=0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@langchain/core": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/emiliaprotocol/emilia-protocol.git",
+    "directory": "packages/langchain"
+  },
+  "homepage": "https://www.emiliaprotocol.ai/agent-guard",
+  "publishConfig": {
+    "access": "public"
+  }
+}
