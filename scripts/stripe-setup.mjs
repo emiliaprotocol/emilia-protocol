@@ -16,6 +16,20 @@
  * name) — run once, or archive duplicates in the dashboard afterward.
  */
 import process from 'node:process';
+import { readFileSync, existsSync } from 'node:fs';
+
+// Load STRIPE_SECRET_KEY from .env.local / .env if it isn't already exported, so
+// the key never has to go on the command line (or into a chat). `vercel env pull`
+// will also drop it into .env.local for you.
+if (!process.env.STRIPE_SECRET_KEY) {
+  for (const f of ['.env.local', '.env']) {
+    if (!existsSync(f)) continue;
+    for (const line of readFileSync(f, 'utf8').split('\n')) {
+      const m = line.match(/^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
+      if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+    }
+  }
+}
 
 // ── EDIT THESE: your real EP Cloud prices (USD cents, billed monthly) ──────
 const PLANS = [
