@@ -55,7 +55,7 @@ export default function SiteNav({ activePage }) {
       }}>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          width: '100%', maxWidth: 1120, padding: '0 32px',
+          width: '100%', maxWidth: 1280, padding: '0 32px', gap: 24,
         }}>
           {/* Logo */}
           <Link href="/" className="ep-logo-link" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}>
@@ -70,7 +70,7 @@ export default function SiteNav({ activePage }) {
           </Link>
 
           {/* Desktop links */}
-          <div className="ep-nav-links" style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
+          <div className="ep-nav-links" style={{ display: 'flex', alignItems: 'center', gap: 18, margin: '0 auto' }}>
             {NAV_LINKS.map(([href, label]) => (
               <a
                 key={label}
