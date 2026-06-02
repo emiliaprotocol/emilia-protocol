@@ -7,6 +7,7 @@ import { color, font, radius, cta } from '@/lib/tokens';
 
 const NAV_LINKS = [
   ['/protocol', 'Protocol'],
+  ['/demo', 'Demo'],
   ['/govguard', 'GovGuard'],
   ['/finguard', 'FinGuard'],
   ['/explorer', 'Explorer'],
