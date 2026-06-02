@@ -12,6 +12,7 @@ const NAV_LINKS = [
   ['/finguard', 'FinGuard'],
   ['/explorer', 'Explorer'],
   ['/playground', 'Playground'],
+  ['/break-the-ceremony', 'Challenge'],
   ['/adopt', 'Adopt'],
   ['/product/cloud', 'Cloud'],
   ['/security', 'Trust'],

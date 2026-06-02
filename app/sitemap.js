@@ -62,6 +62,7 @@ export default function sitemap() {
   // Functional / dynamic surfaces — present but lower SEO priority.
   const functional = [
     { path: '/demo',        priority: 0.9, changeFrequency: 'weekly' },
+    { path: '/break-the-ceremony', priority: 0.8, changeFrequency: 'weekly' },
     { path: '/playground',  priority: 0.6, changeFrequency: 'weekly' },
     { path: '/explorer',    priority: 0.6, changeFrequency: 'daily' },
     { path: '/score',       priority: 0.5, changeFrequency: 'weekly' },
