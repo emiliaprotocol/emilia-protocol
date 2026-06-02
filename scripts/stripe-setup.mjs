@@ -1,92 +1,125 @@
 /* eslint-disable no-console */
 /**
- * EMILIA Protocol — Stripe pricing setup.
+ * EMILIA Protocol — full Stripe pricing setup.
  * @license Apache-2.0
  *
- * Run ONCE with YOUR OWN (rotated) secret key to create the EP Cloud products,
- * monthly prices, and payment links in Stripe — then it prints the IDs/URLs and
- * the exact `vercel env add` commands to wire them.
+ * Creates EVERY priced product across the project (AI Trust Desk + EP Cloud) as
+ * Stripe products + prices + payment links, then writes the resulting public
+ * env values to `.stripe-vars.json` (price IDs + payment links — NO secrets).
  *
- *   STRIPE_SECRET_KEY=sk_live_xxx node scripts/stripe-setup.mjs
+ *   node scripts/stripe-setup.mjs
  *
- * The key is read from your shell environment and is NEVER written to disk or
- * echoed. Edit the PLANS amounts below to your real prices before running.
+ * Reads STRIPE_SECRET_KEY from your shell, or from .env.local / .env (non-blank).
+ * Because Vercel marks the key "Sensitive", `vercel env pull` writes it BLANK —
+ * so paste your rotated key into .env.local manually (see the error below).
  *
- * Re-running creates NEW products/prices each time (Stripe has no upsert on
- * name) — run once, or archive duplicates in the dashboard afterward.
+ * IDEMPOTENT: products are tagged with metadata.ep_key and reused on re-run, so
+ * running this twice will NOT create duplicates. Edit an amount and re-run to add
+ * a new price + payment link for the changed tier.
  */
 import process from 'node:process';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 
-// Load STRIPE_SECRET_KEY from .env.local / .env if it isn't already exported, so
-// the key never has to go on the command line (or into a chat). `vercel env pull`
-// will also drop it into .env.local for you.
+// ── Load STRIPE_SECRET_KEY from .env.local / .env (ignoring blank values) ──────
 if (!process.env.STRIPE_SECRET_KEY) {
   for (const f of ['.env.local', '.env']) {
     if (!existsSync(f)) continue;
     for (const line of readFileSync(f, 'utf8').split('\n')) {
       const m = line.match(/^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
-      if (m && !(m[1] in process.env)) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+      if (!m) continue;
+      const val = m[2].replace(/^["']|["']$/g, '');
+      if (val && !(m[1] in process.env)) process.env[m[1]] = val; // skip blanks
     }
   }
 }
 
-// ── EDIT THESE: your real EP Cloud prices (USD cents, billed monthly) ──────
-const PLANS = [
-  {
-    key: 'team',
-    name: 'EP Cloud — Team',
-    amount: 9900,
-    description: 'Hosted control plane: managed policy registry, signoff orchestration, audit exports.',
-  },
-  {
-    key: 'business',
-    name: 'EP Cloud — Business',
-    amount: 49900,
-    description: 'Higher limits, webhooks, multi-tenant isolation, and priority support.',
-  },
-];
-// ───────────────────────────────────────────────────────────────────────────
-
 const key = process.env.STRIPE_SECRET_KEY;
 if (!key) {
-  console.error('✗ Set STRIPE_SECRET_KEY in your shell (use your ROTATED key). Aborting.');
+  console.error(`
+✗ STRIPE_SECRET_KEY not found.
+
+  Vercel marks it "Sensitive", so \`vercel env pull\` writes it BLANK — that's why
+  it can't be read automatically. Fix in 10 seconds:
+
+    1. open .env.local
+    2. set:   STRIPE_SECRET_KEY=sk_live_your_rotated_key   (replace the blank line)
+    3. re-run: node scripts/stripe-setup.mjs
+`);
   process.exit(2);
 }
 if (!key.startsWith('sk_')) {
-  console.error('✗ STRIPE_SECRET_KEY does not look like a Stripe secret key. Aborting.');
+  console.error('✗ STRIPE_SECRET_KEY is not a Stripe secret key (must start with sk_).');
   process.exit(2);
 }
-if (key.startsWith('sk_live_')) {
-  console.log('⚠  Using a LIVE key — this creates real, chargeable products.\n');
-}
+if (key.startsWith('sk_live_')) console.log('⚠  LIVE key — creating real, chargeable products.\n');
+
+// ── The full project price book ───────────────────────────────────────────────
+// amount = USD cents. interval = 'month' for recurring, null for one-time.
+// Trust Desk amounts mirror the live /trust-desk page. EDIT only the EP Cloud ones.
+const PRODUCTS = [
+  // AI Trust Desk — fixed-scope engagements (prices already published on /trust-desk)
+  { key: 'td_emergency', name: 'AI Trust Desk — Emergency Review', amount: 350000, interval: null, desc: 'Fixed-scope emergency questionnaire review.', linkEnv: 'NEXT_PUBLIC_STRIPE_EMERGENCY' },
+  { key: 'td_full', name: 'AI Trust Desk — Full Completion', amount: 950000, interval: null, desc: 'Full questionnaire completion.', linkEnv: 'NEXT_PUBLIC_STRIPE_FULL' },
+  { key: 'td_packet', name: 'AI Trust Desk — AI Trust Packet', amount: 2450000, interval: null, desc: 'Full AI Trust Packet engagement.', linkEnv: 'NEXT_PUBLIC_STRIPE_PACKET' },
+  { key: 'td_retainer', name: 'AI Trust Desk — Retainer', amount: 1200000, interval: 'month', desc: 'Ongoing retainer, 3-month minimum.', linkEnv: 'NEXT_PUBLIC_STRIPE_RETAINER' },
+
+  // EP Cloud — monthly subscriptions.  ◀── EDIT THESE TWO AMOUNTS to your real prices
+  { key: 'cloud_team', name: 'EP Cloud — Team', amount: 9900, interval: 'month', desc: 'Hosted control plane: managed policies, signoff orchestration, audit exports.', priceEnv: 'STRIPE_PRICE_CLOUD_TEAM', linkEnv: 'NEXT_PUBLIC_STRIPE_CLOUD_TEAM' },
+  { key: 'cloud_business', name: 'EP Cloud — Business', amount: 49900, interval: 'month', desc: 'Higher limits, webhooks, multi-tenant isolation, priority support.', priceEnv: 'STRIPE_PRICE_CLOUD_BUSINESS', linkEnv: 'NEXT_PUBLIC_STRIPE_CLOUD_BUSINESS' },
+];
 
 const { default: Stripe } = await import('stripe');
 const stripe = new Stripe(key);
 
-const out = {};
-for (const plan of PLANS) {
-  const product = await stripe.products.create({ name: plan.name, description: plan.description });
-  const price = await stripe.prices.create({
-    product: product.id,
-    currency: 'usd',
-    unit_amount: plan.amount,
-    recurring: { interval: 'month' },
-  });
-  const link = await stripe.paymentLinks.create({ line_items: [{ price: price.id, quantity: 1 }] });
-  out[plan.key] = { price: price.id, url: link.url };
-  console.log(`\n${plan.name}`);
-  console.log(`  product: ${product.id}`);
-  console.log(`  price:   ${price.id}  ($${(plan.amount / 100).toFixed(2)}/mo)`);
-  console.log(`  link:    ${link.url}`);
+async function findOrCreateProduct(p) {
+  const list = await stripe.products.list({ limit: 100, active: true });
+  const found = list.data.find((x) => x.metadata?.ep_key === p.key);
+  if (found) return found;
+  return stripe.products.create({ name: p.name, description: p.desc, metadata: { ep_key: p.key, ep_setup: 'v1' } });
 }
 
-console.log('\n──────── wire these env vars (Vercel) ────────');
-console.log('# Embedded checkout (/api/checkout):');
-console.log(`STRIPE_PRICE_CLOUD_TEAM=${out.team?.price ?? ''}`);
-console.log(`STRIPE_PRICE_CLOUD_BUSINESS=${out.business?.price ?? ''}`);
-console.log('# Payment-link fallback (no secret key needed, public URLs):');
-console.log(`NEXT_PUBLIC_STRIPE_CLOUD_TEAM=${out.team?.url ?? ''}`);
-console.log(`NEXT_PUBLIC_STRIPE_CLOUD_BUSINESS=${out.business?.url ?? ''}`);
-console.log('\nSet the secret too (for embedded checkout):  vercel env add STRIPE_SECRET_KEY production');
-console.log('Then redeploy — /pricing goes live.\n');
+async function findOrCreatePrice(product, p) {
+  const prices = await stripe.prices.list({ product: product.id, active: true, limit: 100 });
+  const match = prices.data.find(
+    (pr) => pr.unit_amount === p.amount
+      && (p.interval ? pr.recurring?.interval === p.interval : !pr.recurring),
+  );
+  if (match) return match;
+  return stripe.prices.create({
+    product: product.id,
+    currency: 'usd',
+    unit_amount: p.amount,
+    ...(p.interval ? { recurring: { interval: p.interval } } : {}),
+  });
+}
+
+async function findOrCreateLink(product, price) {
+  const existingId = product.metadata?.ep_link_id;
+  if (existingId) {
+    try {
+      const l = await stripe.paymentLinks.retrieve(existingId);
+      if (l?.active) return l;
+    } catch { /* fall through and recreate */ }
+  }
+  const link = await stripe.paymentLinks.create({ line_items: [{ price: price.id, quantity: 1 }] });
+  await stripe.products.update(product.id, { metadata: { ...product.metadata, ep_link_id: link.id } });
+  return link;
+}
+
+const env = {};
+for (const p of PRODUCTS) {
+  const product = await findOrCreateProduct(p);
+  const price = await findOrCreatePrice(product, p);
+  const link = await findOrCreateLink(product, price);
+  if (p.priceEnv) env[p.priceEnv] = price.id;
+  if (p.linkEnv) env[p.linkEnv] = link.url;
+  const money = `$${(p.amount / 100).toLocaleString('en-US')}${p.interval ? '/mo' : ''}`;
+  console.log(`✓ ${p.name.padEnd(38)} ${money}`);
+  if (p.priceEnv) console.log(`    ${p.priceEnv}=${price.id}`);
+  console.log(`    ${p.linkEnv}=${link.url}`);
+}
+
+writeFileSync('.stripe-vars.json', `${JSON.stringify(env, null, 2)}\n`);
+console.log(`\nWrote .stripe-vars.json — ${Object.keys(env).length} public vars (price IDs + payment links, no secrets).`);
+console.log('Next: tell your assistant "done" and it will wire these into Vercel + redeploy.');
+console.log('(Or set them yourself; the file is gitignored.)');

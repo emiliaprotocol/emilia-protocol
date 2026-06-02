@@ -3,6 +3,7 @@ node_modules/
 .env
 .env.local
 .env*.local
+.stripe-vars.json
 *.log
 .DS_Store
 .claude/
