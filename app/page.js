@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { motion } from 'motion/react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
-import HeroStatic from '@/components/HeroStatic';
+import CrashTestDemo from '@/components/CrashTestDemo';
+import ProofBlock from '@/components/ProofBlock';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -129,32 +130,31 @@ export default function HomePage() {
                 letterSpacing: 2.5, textTransform: 'uppercase',
                 color: color.gold, marginBottom: 28,
               }}>
-                Pre-Execution Trust Layer
+                The Accountability Layer for High-Risk Action
               </div>
 
               <h1 style={{
                 fontFamily: font.sans, fontWeight: 700,
-                fontSize: 'clamp(52px, 6.5vw, 88px)',
-                letterSpacing: -3.5, lineHeight: 0.92,
+                fontSize: 'clamp(48px, 6vw, 82px)',
+                letterSpacing: -3, lineHeight: 0.95,
                 color: color.t1, margin: '0 0 32px',
               }}>
-                Fraud stops{' '}
-                <em style={{ fontStyle: 'normal', color: color.gold }}>before</em>{' '}
-                money moves.
+                Nothing irreversible without a{' '}
+                <em style={{ fontStyle: 'normal', color: color.gold }}>signed human yes.</em>
               </h1>
 
               <p style={{
                 fontSize: 17, color: color.t2,
-                maxWidth: 440, lineHeight: 1.72, margin: '0 0 40px',
+                maxWidth: 460, lineHeight: 1.72, margin: '0 0 40px',
               }}>
-                Every high-risk action — payments, overrides, approvals — is
-                cryptographically verified before execution. No trust.
-                No assumptions. Only proof.
+                When an AI agent is about to do something irreversible — move money, change records,
+                take an action — EMILIA stops it at the pre-execution moment and requires a real human
+                to sign off. Cryptographically enforced. Formally proven.
               </p>
 
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <a href="/partners" className="ep-cta" style={cta.primary}>Request Pilot</a>
-                <Link href="/r/example" className="ep-cta-secondary" style={cta.secondary}>See Live Example</Link>
+                <Link href="/demo" className="ep-cta" style={cta.primary}>Watch an agent get stopped →</Link>
+                <Link href="/partners" className="ep-cta-secondary" style={cta.secondary}>Request a pilot</Link>
               </div>
 
               {/* Inline proof metrics — editorial data strip */}
@@ -179,9 +179,9 @@ export default function HomePage() {
               </div>
             </motion.div>
 
-            {/* Right — protocol schematic */}
+            {/* Right — live crash test */}
             <motion.div {...heroIn(0.12)} style={{ paddingTop: 12 }}>
-              <HeroStatic />
+              <CrashTestDemo />
             </motion.div>
           </div>
         </C>
@@ -227,6 +227,13 @@ export default function HomePage() {
           </div>
         </C>
       </motion.div>
+
+      {/* ── PROOF — formal-verification anchor (the spear tip) ─── */}
+      <section style={{ padding: '96px 0', borderBottom: `1px solid ${color.border}` }}>
+        <C>
+          <ProofBlock />
+        </C>
+      </section>
 
       {/* ── HOW IT WORKS — editorial stepped rows ─────────────── */}
       <section style={{ padding: '104px 0 80px', borderBottom: `1px solid ${color.border}` }}>
