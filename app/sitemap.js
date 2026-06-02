@@ -16,6 +16,8 @@ export default function sitemap() {
   // Top-level marketing surfaces — highest crawl priority.
   const marketing = [
     { path: '/',                      priority: 1.0, changeFrequency: 'weekly' },
+    { path: '/agent-guard',           priority: 0.95, changeFrequency: 'weekly' },
+    { path: '/pricing',               priority: 0.9, changeFrequency: 'monthly' },
     { path: '/protocol',              priority: 0.95, changeFrequency: 'monthly' },
     { path: '/spec',                  priority: 0.9, changeFrequency: 'monthly' },
     { path: '/govguard',              priority: 0.95, changeFrequency: 'monthly' },

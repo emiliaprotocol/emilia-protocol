@@ -2,10 +2,12 @@ import { color, font } from '@/lib/tokens';
 import { ENTITY } from '@/lib/site-config';
 
 const COL_PRODUCT = [
+  ['/agent-guard', 'Agent Guard'],
   ['/protocol', 'Protocol'],
   ['/spec', 'Specification'],
   ['/govguard', 'GovGuard'],
   ['/finguard', 'FinGuard'],
+  ['/pricing', 'Pricing'],
   ['/playground', 'Playground'],
   ['/explorer', 'Explorer'],
   ['/adopt', 'Adopt'],

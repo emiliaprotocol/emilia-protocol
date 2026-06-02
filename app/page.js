@@ -38,10 +38,10 @@ const PROBLEMS = [
 ];
 
 const SURFACES = [
-  { title: 'Government Fraud Prevention',       body: 'Bind identity, authority, and action context before benefit disbursement, procurement approval, or credential issuance.', href: '/use-cases/government', accent: color.green, tags: ['NIST AI RMF', 'EU AI ACT']      },
-  { title: 'Financial Infrastructure Controls', body: 'Enforce ceremony-grade authorization on wire transfers, limit changes, account modifications, and privileged treasury actions.', href: '/use-cases/financial', accent: color.blue,  tags: ['SOX-READY', 'BEC PREVENTION']   },
-  { title: 'Enterprise Privileged Actions',     body: 'Require bound authorization for infrastructure changes, data exports, permission escalations, and production deployments.', href: '/use-cases/enterprise', accent: color.gold,  tags: ['ZERO TRUST', 'PAM LAYER']        },
-  { title: 'AI/Agent Execution Governance',     body: 'Gate autonomous agent actions behind protocol-enforced trust ceremonies before any irreversible real-world execution.', href: '/use-cases/ai-agent',  accent: color.t2,   tags: ['AGENTIC AI', 'HUMAN-IN-LOOP']    },
+  { title: 'AI Agent Action Governance',        body: 'Gate every autonomous agent action behind a verified trust ceremony before any irreversible real-world execution. One line of code; works with any framework.', href: '/agent-guard',         accent: color.t2,   tags: ['AGENTIC AI', 'HUMAN-IN-LOOP']    },
+  { title: 'Financial — Money Movement',         body: 'Ceremony-grade authorization on wire releases, beneficiary changes, account modifications, and privileged treasury actions before funds move.', href: '/finguard',           accent: color.blue,  tags: ['BEC PREVENTION', 'SOX-READY']    },
+  { title: 'Government — Benefit Integrity',     body: 'Bind identity, authority, and action context before a benefit determination, redirect, or override. Accountable decisions, due process proven.', href: '/govguard',           accent: color.green, tags: ['NIST AI RMF', 'EU AI ACT']       },
+  { title: 'Enterprise Privileged Actions',      body: 'Require bound authorization for infrastructure changes, data exports, permission escalations, and production deployments.', href: '/use-cases/enterprise', accent: color.gold,  tags: ['ZERO TRUST', 'PAM LAYER']        },
 ];
 
 // Three-step product story. The four-layer technical model (Eye → Handshake →
@@ -373,10 +373,14 @@ export default function HomePage() {
               <h2 style={{
                 fontFamily: font.sans, fontWeight: 700,
                 fontSize: 'clamp(24px, 2.8vw, 38px)',
-                letterSpacing: -1, lineHeight: 1.15, color: color.t1, maxWidth: 480,
+                letterSpacing: -1, lineHeight: 1.15, color: color.t1, maxWidth: 540,
               }}>
-                Built for the workflows where weak authorization causes real damage
+                When an agent acts on money or someone&rsquo;s livelihood, identity isn&rsquo;t enough
               </h2>
+              <p style={{ fontSize: 15, color: color.t2, lineHeight: 1.7, maxWidth: 480, marginTop: 16 }}>
+                Identity and access tools check <em style={{ fontStyle: 'normal', color: color.t1 }}>who</em> is acting. EMILIA checks whether <em style={{ fontStyle: 'normal', color: color.t1 }}>this exact action</em> should happen &mdash; and binds a named, accountable human to it.{' '}
+                <Link href="/compare" style={{ color: color.gold, textDecoration: 'underline', textUnderlineOffset: 3 }}>vs. legacy controls &rarr;</Link>
+              </p>
             </div>
             <a href="/use-cases" style={{
               fontFamily: font.mono, fontSize: 10, color: color.t3,
@@ -500,33 +504,49 @@ export default function HomePage() {
           backgroundSize: '36px 36px',
         }} />
         <C>
-          <motion.div {...reveal()} style={{ maxWidth: 640 }}>
+          <motion.div {...reveal()} style={{ maxWidth: 720 }}>
             <div style={{
               fontFamily: font.mono, fontSize: 10, letterSpacing: 2,
               textTransform: 'uppercase', color: 'rgba(176,141,53,0.55)',
               marginBottom: 24,
             }}>
-              Initiate Architecture Review
+              Get started
             </div>
             <h2 style={{
               fontFamily: font.sans, fontWeight: 700,
               fontSize: 'clamp(32px, 4.5vw, 60px)',
               letterSpacing: -2.5, lineHeight: 0.97,
-              marginBottom: 44, color: '#FAFAF9',
+              marginBottom: 16, color: '#FAFAF9',
             }}>
-              Enforce trust before<br />high-risk action
+              Three doors.<br />One protocol.
             </h2>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Link href="/r/example" className="ep-cta" style={{ ...cta.primary, background: '#FAFAF9', color: '#1C1917' }}>
-                See Live Example
-              </Link>
-              <a href="/protocol" className="ep-cta" style={{ ...cta.primary, background: color.gold, color: '#FAFAF9' }}>
-                Read the Protocol
-              </a>
-              <a href="/partners" className="ep-cta-secondary" style={{ ...cta.secondary, color: 'rgba(250,250,249,0.8)', borderColor: 'rgba(255,255,255,0.15)' }}>
-                Request Pilot
-              </a>
-            </div>
+            <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.6)', lineHeight: 1.6, maxWidth: 480, margin: 0 }}>
+              Start free and self-hosted, add the managed control plane when you scale, or bring it
+              on-prem with the assurance a bank or agency needs to clear you.
+            </p>
+          </motion.div>
+
+          <motion.div {...reveal(0.08)} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 44 }}>
+            {[
+              { kind: 'Developer', accent: color.green, title: 'Self-host EP Core', body: 'Free and Apache 2.0. SDK, verify, MCP server, and Agent Guard. Gate your first irreversible action in an afternoon.', label: 'Start free', href: '/docs', btn: { background: '#FAFAF9', color: '#1C1917' } },
+              { kind: 'Team', accent: color.blue, title: 'Run it on EP Cloud', body: 'Hosted control plane — managed policy registry, signoff orchestration, and auditor-grade evidence, no infrastructure to run.', label: 'See pricing', href: '/pricing', btn: { background: color.gold, color: '#FAFAF9' } },
+              { kind: 'Enterprise', accent: color.gold, title: 'On-prem + assurance', body: 'VPC or air-gapped, SSO, sector packs, compliance mappings, and an SLA. Procurement-ready.', label: 'Talk to us', href: '/partners', btn: null },
+            ].map((d) => (
+              <div key={d.kind} style={{ display: 'flex', flexDirection: 'column', border: '1px solid rgba(255,255,255,0.12)', borderTop: `3px solid ${d.accent}`, borderRadius: radius.base, padding: '28px 26px', background: 'rgba(255,255,255,0.02)' }}>
+                <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: d.accent, marginBottom: 12 }}>{d.kind}</div>
+                <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 18, color: '#FAFAF9', marginBottom: 8 }}>{d.title}</div>
+                <p style={{ fontSize: 14, color: 'rgba(250,250,249,0.6)', lineHeight: 1.6, marginBottom: 22, flexGrow: 1 }}>{d.body}</p>
+                <Link
+                  href={d.href}
+                  className={d.btn ? 'ep-cta' : 'ep-cta-secondary'}
+                  style={d.btn
+                    ? { ...cta.primary, ...d.btn, width: '100%', justifyContent: 'center' }
+                    : { ...cta.secondary, color: 'rgba(250,250,249,0.85)', borderColor: 'rgba(255,255,255,0.18)', width: '100%', justifyContent: 'center' }}
+                >
+                  {d.label}
+                </Link>
+              </div>
+            ))}
           </motion.div>
         </C>
 

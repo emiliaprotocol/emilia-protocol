@@ -6,16 +6,12 @@ import { useState } from 'react';
 import { color, font, radius, cta } from '@/lib/tokens';
 
 const NAV_LINKS = [
+  ['/agent-guard', 'Agent Guard'],
   ['/protocol', 'Protocol'],
-  ['/demo', 'Demo'],
   ['/govguard', 'GovGuard'],
   ['/finguard', 'FinGuard'],
-  ['/explorer', 'Explorer'],
-  ['/playground', 'Playground'],
-  ['/break-the-ceremony', 'Challenge'],
-  ['/adopt', 'Adopt'],
-  ['/product/cloud', 'Cloud'],
-  ['/security', 'Trust'],
+  ['/demo', 'Demo'],
+  ['/pricing', 'Pricing'],
   ['/docs', 'Docs'],
 ];
 

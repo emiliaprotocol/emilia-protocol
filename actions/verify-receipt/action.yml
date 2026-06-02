@@ -1,0 +1,48 @@
+name: 'Verify EMILIA Trust Receipt'
+description: >-
+  Offline-verify an EP-RECEIPT-v1 Trust Receipt in CI. Fails the build if the
+  Ed25519 signature or Merkle anchor does not check out. Zero infrastructure,
+  no API key — just the published @emilia-protocol/verify package and math.
+author: 'EMILIA Protocol'
+branding:
+  icon: 'shield'
+  color: 'yellow'
+
+inputs:
+  receipt:
+    description: 'Path to the EP-RECEIPT-v1 JSON file to verify.'
+    required: true
+  public-key:
+    description: >-
+      Signer public key (base64url SPKI DER). If omitted, the action fetches the
+      key set from keys-url and tries each key.
+    required: false
+    default: ''
+  keys-url:
+    description: 'URL of the EP key set. Used only when public-key is not provided.'
+    required: false
+    default: 'https://www.emiliaprotocol.ai/.well-known/ep-keys.json'
+  version:
+    description: 'Version of @emilia-protocol/verify to install.'
+    required: false
+    default: 'latest'
+
+runs:
+  using: 'composite'
+  steps:
+    # All ${{ }} values are routed through env vars and referenced as quoted
+    # "$VARS" so untrusted input can never be injected into the shell.
+    - name: Install verifier
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      env:
+        EP_VERIFY_VERSION: ${{ inputs.version }}
+      run: npm install --no-save "@emilia-protocol/verify@$EP_VERIFY_VERSION"
+    - name: Verify Trust Receipt
+      shell: bash
+      env:
+        EP_ACTION_PATH: ${{ github.action_path }}
+        EP_RECEIPT: ${{ inputs.receipt }}
+        EP_PUBLIC_KEY: ${{ inputs.public-key }}
+        EP_KEYS_URL: ${{ inputs.keys-url }}
+      run: node "$EP_ACTION_PATH/verify.mjs"
