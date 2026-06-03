@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
   "name": "io.github.emiliaprotocol/mcp-server",
-  "description": "Trust & human sign-off for AI agents: verify Trust Receipts offline, check entity trust profiles before transacting, and require a named human approval before an agent takes an irreversible action (release a payment, change a record, deploy).",
+  "description": "Trust & human sign-off for AI agents: approval required before irreversible agent actions",
   "version": "0.1.0",
   "repository": {
     "url": "https://github.com/emiliaprotocol/emilia-protocol",
