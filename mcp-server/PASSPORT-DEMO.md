@@ -26,11 +26,22 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
   }
 }
 ```
-Restart Claude Desktop, then ask: **"Release a $50,000 payment to acct_9f12."**
-Claude will call `release_payment`, hit the 402, read the instruction, call
-`emilia_authorize`, discover it needs a human approver, ask *you* to approve, and
-only then complete the payment — narrating every step. That recording — an LLM
-*choosing* to obtain an accountability receipt — is the asset.
+Restart Claude Desktop, then ask:
+**"Use the emilia-passport sandbox tools to demonstrate the protected-payment
+flow: try `release_payment` for a $50,000 test payout to acct_9f12 and walk me
+through what happens at each step."**
+
+Framing it as the sandbox demo is what matters — ask Claude to "release $50k"
+cold and it will (correctly) refuse to move money it has no accountable path for.
+*That refusal is the point of the whole product.* Pointed at the demo tools,
+Claude calls `release_payment`, hits the 402, calls `emilia_authorize`, discovers
+it needs a human approver, asks **you** to approve, and only then completes the
+simulated payout — narrating every step. That recording — an LLM *choosing* to
+obtain an accountability receipt rather than act blindly — is the asset.
+
+> The cold refusal and the demo are two halves of one story: **"Claude won't act
+> without accountability (Act 1) → EMILIA gives it the accountable path (Act 2)."**
+> Record both.
 
 ## The three tools
 | Tool | Role |

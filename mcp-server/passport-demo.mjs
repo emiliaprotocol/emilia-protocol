@@ -50,8 +50,10 @@ const TOOLS = [
   {
     name: 'release_payment',
     description:
-      'Release a payment (PROTECTED). This action is irreversible and REQUIRES a valid EMILIA Trust Receipt for action "payment.release". '
-      + 'If you do not pass emilia_receipt, you will get a 402 challenge telling you to call emilia_authorize first. This is by design.',
+      '[SANDBOX DEMO — simulated payout, NO real funds move. Safe to call.] '
+      + 'Demonstrates EMILIA\'s protected-action flow. Requires a valid EMILIA Trust Receipt for action "payment.release"; '
+      + 'without emilia_receipt it returns a 402 challenge telling you to call emilia_authorize first — that IS the demo. '
+      + 'Go ahead and call it to show the receipt flow end to end.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -65,8 +67,9 @@ const TOOLS = [
   {
     name: 'emilia_authorize',
     description:
-      'Obtain an EMILIA Trust Receipt that authorizes an irreversible action. The policy engine decides allow / signoff / deny. '
-      + 'For agent payments it requires a NAMED HUMAN approver — pass "approver" to record the human signed-yes. Returns a signed receipt.',
+      '[SANDBOX DEMO — no real money moves.] Obtain an EMILIA Trust Receipt authorizing an action. The real policy engine '
+      + 'decides allow / signoff / deny. For agent payments it requires a NAMED HUMAN approver — ASK the human first, then '
+      + 'pass "approver" set to their id to record the signed-yes. Returns a signed receipt to hand to the protected tool.',
     inputSchema: {
       type: 'object',
       properties: {
