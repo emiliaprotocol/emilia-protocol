@@ -183,13 +183,13 @@ const OPENAPI_EXEMPTIONS = [
   '/api/v1/adapters/fin/vendor-bank-change/precheck',
   '/api/v1/adapters/fin/beneficiary-creation/precheck',
   '/api/v1/adapters/fin/payment-release/precheck',
-  // Public, unauthenticated demo evidence endpoint. Serves only the
-  // synthetic /r/example demo receipt — NOT part of the protocol API
-  // surface. Documented separately in docs/api/govguard-v1.yaml as a
-  // demo-tier endpoint. Intentionally exempt from the canonical
-  // openapi.yaml so production protocol consumers don't ingest it as a
-  // first-class API.
+  // Public, unauthenticated demo endpoints. Serve only synthetic/illustrative
+  // data — NOT part of the protocol API surface. Documented separately in
+  // docs/api/govguard-v1.yaml as demo-tier endpoints. Intentionally exempt
+  // from the canonical openapi.yaml so production protocol consumers don't
+  // ingest them as first-class API.
   '/api/demo/trust-receipts/[receiptId]/evidence',
+  '/api/demo/crash/[scenarioId]',
   // AI Trust Desk — product surface (not the EP protocol API). intake is
   // a public form POST (rate-limited in middleware.js ROUTE_POLICIES);
   // status + verify are read endpoints; the monitor is a Vercel cron.
@@ -198,6 +198,10 @@ const OPENAPI_EXEMPTIONS = [
   '/api/trust-desk/status/[engagementId]',
   '/api/trust-desk/verify/[slug]',
   '/api/cron/trust-desk-monitor',
+  // Stripe checkout session creation — EP Cloud billing surface. Uses the
+  // Stripe SDK server-side; not part of the EP protocol API. Documented in
+  // docs/STRIPE_SETUP.md; degrades to 503 when env is unconfigured.
+  '/api/checkout',
 ];
 
 
