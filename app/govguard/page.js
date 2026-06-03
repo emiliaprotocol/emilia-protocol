@@ -6,12 +6,6 @@ import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
 
-export const metadata = {
-  title: 'EMILIA GovGuard — Pre-Execution Trust for Government Programs',
-  description:
-    'Pre-execution control for government benefit/payment changes. Bind actor, authority, policy, and exact action context before the change executes. Observe-only, warn, or enforce mode.',
-};
-
 const PROTECTED_ACTIONS = [
   { type: 'benefit_bank_account_change', label: 'Benefit bank-account change', sample: 'Caseworker changes a claimant\'s benefit destination' },
   { type: 'benefit_address_change', label: 'Benefit mailing-address change', sample: 'Address tied to physical-check delivery' },

@@ -7,12 +7,6 @@ import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
 
-export const metadata = {
-  title: 'EMILIA FinGuard — Pre-Execution Trust for Treasury & Payment Operations',
-  description:
-    'Pre-execution trust for beneficiary/vendor/payment-instruction changes before SWIFT, ACH, Fedwire, RTP, or internal release. One-time consumable receipts, dual signoff, complete evidence packets.',
-};
-
 const PROTECTED_ACTIONS = [
   { type: 'vendor_bank_account_change', label: 'Vendor bank-account change', sample: 'AP user updates routing before $250K release' },
   { type: 'beneficiary_creation', label: 'Beneficiary creation', sample: 'New SWIFT-eligible counterparty added' },

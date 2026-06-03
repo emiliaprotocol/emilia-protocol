@@ -1,14 +1,14 @@
+import { headers } from 'next/headers';
 import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { cta, color, font, radius } from '@/lib/tokens';
 
 export const metadata = {
-  title: 'EMILIA MCP — Trust & Human Sign-off for AI Agents',
+  title: 'EMILIA MCP — Human Sign-off for AI Agent Actions',
   description:
-    'The Model Context Protocol server that gives AI agents a trust layer: verify Trust Receipts, '
-    + 'check entity trust profiles, and — the flagship — require a named human sign-off before an '
-    + 'agent takes an irreversible action. Install in one line; formally verified; Apache-2.0.',
+    "The MCP server that makes AI agents get a named human's signed yes before any "
+    + 'irreversible action. One-line install, formally verified, Apache-2.0.',
   alternates: { canonical: '/mcp' },
   openGraph: {
     title: 'EMILIA MCP — human sign-off for AI agent actions',
@@ -17,6 +17,65 @@ export const metadata = {
     type: 'website',
   },
   keywords: ['MCP server', 'Model Context Protocol', 'AI agent authorization', 'human in the loop MCP', 'trust receipt', 'agent accountability'],
+};
+
+// Page-level structured data. The MCP server as its own SoftwareApplication
+// (distinct from the site-wide EP SoftwareApplication in layout.js), plus a
+// FAQPage backed by the visible FAQ section below — both win AI-search
+// citations for "MCP human in the loop / agent authorization" queries.
+const MCP_SOFTWARE_JSONLD = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: '@emilia-protocol/mcp-server',
+  alternateName: 'EMILIA MCP Server',
+  applicationCategory: 'DeveloperApplication',
+  operatingSystem: 'Cross-platform (Node.js 18+)',
+  description:
+    'MCP server that adds trust and human sign-off to AI agents: verify Trust Receipts, '
+    + 'check entity trust profiles, and require a named human approval before an irreversible agent action.',
+  url: 'https://www.emiliaprotocol.ai/mcp',
+  downloadUrl: 'https://www.npmjs.com/package/@emilia-protocol/mcp-server',
+  installUrl: 'https://www.npmjs.com/package/@emilia-protocol/mcp-server',
+  softwareVersion: '1.0.0',
+  license: 'https://www.apache.org/licenses/LICENSE-2.0',
+  author: { '@type': 'Organization', name: 'EMILIA Protocol' },
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', availability: 'https://schema.org/InStock' },
+  featureList: [
+    'Human sign-off before irreversible agent actions',
+    'Offline-verifiable Trust Receipts (Ed25519)',
+    'Entity trust profiles',
+    'Receipt verification',
+    'Model Context Protocol (MCP) stdio server',
+  ],
+};
+
+const FAQ = [
+  {
+    q: 'What does the EMILIA MCP server do?',
+    a: 'It adds a trust and accountability layer to AI agents over the Model Context Protocol: agents can verify Trust Receipts, check an entity’s trust profile before transacting, and — the flagship — require a named human to sign off before any irreversible action (releasing a payment, changing a record, deploying).',
+  },
+  {
+    q: 'How do I install it?',
+    a: 'Add it to any MCP client (Claude Desktop, Cursor, Cline, Continue) in one line: command "npx" with args ["-y", "@emilia-protocol/mcp-server"]. Public read tools need no key; set EP_API_KEY for write operations.',
+  },
+  {
+    q: 'How is this different from permissions or OAuth?',
+    a: 'Permissions gate access locally and leave no portable proof. EMILIA mints a signed, offline-verifiable Trust Receipt bound to the exact action and the named human who approved it — a credential a counterparty can verify without calling home.',
+  },
+  {
+    q: 'Is it open source?',
+    a: 'Yes — Apache-2.0, and the policy engine is formally verified (26 TLA+ theorems in CI).',
+  },
+];
+
+const MCP_FAQ_JSONLD = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: FAQ.map((f) => ({
+    '@type': 'Question',
+    name: f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  })),
 };
 
 const C = ({ children, style }) => (
@@ -49,10 +108,21 @@ const FLOW = [
 
 const DIRS = ['Official MCP Registry', 'Glama', 'Smithery', 'mcp.so', 'PulseMCP', 'awesome-mcp-servers'];
 
-export default function McpPage() {
+export default async function McpPage() {
+  const nonce = (await headers()).get('x-nonce') ?? '';
   return (
     <div style={{ minHeight: '100vh', background: color.bg, color: color.t1, fontFamily: font.sans }}>
-      <SiteNav activePage="" />
+      <script
+        type="application/ld+json"
+        nonce={nonce}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(MCP_SOFTWARE_JSONLD) }}
+      />
+      <script
+        type="application/ld+json"
+        nonce={nonce}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(MCP_FAQ_JSONLD) }}
+      />
+      <SiteNav activePage="MCP" />
 
       <section style={{ paddingTop: 120, paddingBottom: 56 }}>
         <C>
@@ -135,7 +205,7 @@ export default function McpPage() {
       </section>
 
       {/* DIRECTORIES */}
-      <section style={{ padding: '72px 0' }}>
+      <section style={{ padding: '72px 0', borderBottom: `1px solid ${color.border}` }}>
         <C>
           <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 14 }}>Find us</div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 28 }}>
@@ -146,6 +216,21 @@ export default function McpPage() {
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <a href="https://github.com/emiliaprotocol/emilia-protocol/tree/main/mcp-server" target="_blank" rel="noopener noreferrer" className="ep-cta" style={cta.primary}>Source &rarr;</a>
             <Link href="/agent-guard" className="ep-cta-secondary" style={cta.secondary}>Agent Guard</Link>
+          </div>
+        </C>
+      </section>
+
+      {/* FAQ — backs the FAQPage JSON-LD above */}
+      <section style={{ padding: '80px 0' }}>
+        <C style={{ maxWidth: 820 }}>
+          <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 24 }}>FAQ</div>
+          <div style={{ borderTop: `1px solid ${color.border}` }}>
+            {FAQ.map((f) => (
+              <div key={f.q} style={{ padding: '22px 0', borderBottom: `1px solid ${color.border}` }}>
+                <h3 style={{ fontFamily: font.sans, fontWeight: 600, fontSize: 17, color: color.t1, margin: '0 0 8px' }}>{f.q}</h3>
+                <p style={{ fontSize: 14.5, color: color.t2, lineHeight: 1.7, margin: 0 }}>{f.a}</p>
+              </div>
+            ))}
           </div>
         </C>
       </section>
