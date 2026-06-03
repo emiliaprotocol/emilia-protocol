@@ -12,6 +12,7 @@ const COL_PRODUCT = [
   ['/network', 'Trust Network'],
   ['/playground', 'Playground'],
   ['/explorer', 'Explorer'],
+  ['/mcp', 'MCP Server'],
   ['/adopt', 'Adopt'],
 ];
 

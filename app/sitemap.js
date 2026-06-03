@@ -22,6 +22,7 @@ export default function sitemap() {
     { path: '/spec',                  priority: 0.9, changeFrequency: 'monthly' },
     { path: '/govguard',              priority: 0.95, changeFrequency: 'monthly' },
     { path: '/finguard',              priority: 0.95, changeFrequency: 'monthly' },
+    { path: '/mcp',                   priority: 0.9, changeFrequency: 'monthly' },
     { path: '/use-cases',             priority: 0.9, changeFrequency: 'monthly' },
     { path: '/use-cases/government',  priority: 0.85, changeFrequency: 'monthly' },
     { path: '/use-cases/financial',   priority: 0.85, changeFrequency: 'monthly' },
