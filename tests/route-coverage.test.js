@@ -202,6 +202,10 @@ const OPENAPI_EXEMPTIONS = [
   // Stripe SDK server-side; not part of the EP protocol API. Documented in
   // docs/STRIPE_SETUP.md; degrades to 503 when env is unconfigured.
   '/api/checkout',
+  // Demand-side reference endpoint: refuses an action without a verifiable
+  // EMILIA receipt (402 challenge). Documented in docs/AGENT-GATE.md +
+  // @emilia-protocol/require-receipt; not part of the core protocol API.
+  '/api/v1/guarded',
 ];
 
 
