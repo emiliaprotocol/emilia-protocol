@@ -1,0 +1,33 @@
+{
+  "name": "@emilia-protocol/require-receipt",
+  "version": "0.1.0",
+  "description": "Demand a verifiable EMILIA Trust Receipt for any irreversible agent action. The one-line way for a service to require portable, accountable authorization — not auth, not permissions. Answers 402 and tells the agent exactly what to bring.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": {
+      "import": "./index.js"
+    }
+  },
+  "files": ["index.js", "README.md"],
+  "license": "Apache-2.0",
+  "keywords": [
+    "emilia-protocol",
+    "ai-agent",
+    "trust-receipt",
+    "agent-authorization",
+    "agent-accountability",
+    "402",
+    "agent-commerce",
+    "verifiable-credential",
+    "a2a"
+  ],
+  "engines": { "node": ">=18" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/emiliaprotocol/emilia-protocol.git",
+    "directory": "packages/require-receipt"
+  },
+  "homepage": "https://www.emiliaprotocol.ai/agent-guard",
+  "publishConfig": { "access": "public" }
+}
