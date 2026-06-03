@@ -1,0 +1,49 @@
+name: Publish LangChain Adapter
+
+# Opt every JavaScript-based action into the Node.js 24 runner (GitHub default
+# from June 2026) — matches the other publish workflows.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+# Publishes on a `langchain-v*` tag (e.g. langchain-v0.1.0) or a manual run.
+# Uses the same secrets.NPM_TOKEN as the verify/sdk publishers.
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "langchain-v*"
+
+jobs:
+  publish:
+    name: Publish @emilia-protocol/langchain
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    defaults:
+      run:
+        working-directory: packages/langchain
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: "20"
+          registry-url: https://registry.npmjs.org
+
+      # @langchain/core is an OPTIONAL peer dependency — withGuard is a thin
+      # Proxy that doesn't import it. No install step; files array publishes
+      # only index.js, README.md, and LICENSE.
+      - name: Syntax check
+        run: node --check index.js
+
+      - name: Verify package contents
+        run: npm pack --dry-run
+
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
