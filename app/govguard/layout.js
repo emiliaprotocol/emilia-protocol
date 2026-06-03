@@ -1,10 +1,8 @@
 export const metadata = {
   title: 'GovGuard — Pre-Action Authorization for Government Workflows',
   description:
-    'Bind cryptographic authorization to benefit disbursements, ' +
-    'caseworker overrides, and payment destination changes before ' +
-    'execution. SNAP / Medicaid / UI fraud prevention with action-level ' +
-    'accountability for IG and GAO auditors.',
+    'Pre-action authorization for benefit disbursements, caseworker overrides, and '
+    + 'payment-destination changes. SNAP, Medicaid, and UI fraud prevention with audit proof.',
   alternates: { canonical: '/govguard' },
   openGraph: {
     title: 'EMILIA GovGuard',

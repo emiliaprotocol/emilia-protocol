@@ -1,10 +1,8 @@
 export const metadata = {
-  title: 'FinGuard — Wire Fraud + Vendor-Bank-Change + AI-Voice Defense',
+  title: 'FinGuard — Wire Fraud + Bank-Change + AI-Voice Defense',
   description:
-    'Pre-execution authorization for wire transfers, vendor-bank-change, ' +
-    'beneficiary updates, and high-value payment release. Stops social ' +
-    'engineering and AI-voice-cloned fraud before the action executes. ' +
-    'For community banks, credit unions, and fintech treasury teams.',
+    'Pre-execution authorization for wire transfers, vendor-bank changes, and payment '
+    + 'release. Stops BEC and AI-voice-cloned fraud before the action executes.',
   alternates: { canonical: '/finguard' },
   openGraph: {
     title: 'EMILIA FinGuard',

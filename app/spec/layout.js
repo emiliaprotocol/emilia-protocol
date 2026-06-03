@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'EP Protocol Specification — Formal Verification + Receipt Schema',
+  title: 'Protocol Specification — Formal Verification + Receipts',
   description:
     'The full EMILIA Protocol specification: state machine, formal ' +
     'invariants (26 TLA+ theorems, 35 Alloy facts), EP-RECEIPT-v1 schema, ' +

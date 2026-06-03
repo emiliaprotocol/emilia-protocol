@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Enterprise — Privileged Action Authorization on EMILIA Protocol',
+  title: 'Enterprise — Privileged Action Authorization',
   description:
     'Enterprise overview for EP: privileged action authorization, PAM ' +
     'integration, named signoff for production deployments, data exports, ' +

@@ -6,9 +6,8 @@ import { cta, color, font, radius } from '@/lib/tokens';
 export const metadata = {
   title: 'Pricing — EMILIA Protocol',
   description:
-    'Open-core pricing. EP Core is free and Apache 2.0 — self-host the protocol, SDK, '
-    + 'verify, and MCP server forever. EP Cloud is the managed control plane. EP Enterprise '
-    + 'adds on-prem, SSO, audit support, sector packs, and SLAs.',
+    'Open-core pricing. EP Core is free and Apache 2.0 forever. EP Cloud is the managed '
+    + 'control plane. EP Enterprise adds on-prem, SSO, audit support, and SLAs.',
   alternates: { canonical: '/pricing' },
   openGraph: {
     title: 'EMILIA Protocol — Pricing',

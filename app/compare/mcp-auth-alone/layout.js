@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'MCP Authorization Is Necessary But Not Sufficient — vs EMILIA',
+  title: 'MCP Auth Is Necessary But Not Sufficient',
   description:
     'MCP server authorization gates which tools an agent can call. EP gates ' +
     'whether the specific call about to execute was authorized by a named ' +

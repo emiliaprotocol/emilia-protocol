@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'AI Agent Use Case — Pre-Execution Trust Gate for Autonomous Agents',
+  title: 'AI Agents — Pre-Execution Trust Gate for Autonomy',
   description:
     'Gate every consequential AI agent action behind a cryptographic trust ' +
     'ceremony before execution. Works with OpenAI Agents, Claude Computer ' +

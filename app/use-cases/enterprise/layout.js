@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Enterprise Use Case — Privileged Action Authorization for Zero Trust',
+  title: 'Enterprise — Privileged Actions for Zero Trust',
   description:
     'Bound authorization for infrastructure changes, data exports, ' +
     'permission escalations, production deployments, and other privileged ' +

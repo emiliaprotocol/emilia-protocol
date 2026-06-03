@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Financial Use Case — Wire Fraud, Beneficiary Swap, AI Voice Defense',
+  title: 'Financial — Wire Fraud + AI-Voice Defense',
   description:
     'Pre-execution authorization for wire transfers, vendor-bank-change, ' +
     'beneficiary updates, and high-value payment release. Stops social ' +

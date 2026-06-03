@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Government Use Case — Benefit Integrity & Caseworker Override Control',
+  title: 'Government — Benefit Integrity + Override Control',
   description:
     'Pre-execution trust enforcement for SNAP, Medicaid, unemployment, and ' +
     'federal payment systems. Block benefit-redirection fraud and caseworker ' +

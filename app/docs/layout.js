@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'Documentation — EMILIA Protocol Reference, Quickstarts, Guides',
+  title: 'Documentation — Reference, Quickstarts, and Guides',
   description:
     'Implementer documentation for the EMILIA Protocol: TypeScript and ' +
     'Python SDK quickstarts, MCP server integration, policy authoring, ' +

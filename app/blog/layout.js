@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'EMILIA Protocol Blog — Pre-Action Authorization for AI Agents',
+  title: 'Blog — Pre-Action Authorization for AI Agents',
   description:
     'Field notes on AI agent authorization, MCP best practices, formal ' +
     'verification, fraud defense by action binding, and compliance mapping ' +

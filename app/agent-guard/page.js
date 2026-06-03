@@ -4,12 +4,10 @@ import SiteFooter from '@/components/SiteFooter';
 import { cta, color, font, radius } from '@/lib/tokens';
 
 export const metadata = {
-  title: 'Agent Guard — One Line Between Your AI Agent and a Catastrophe',
+  title: 'Agent Guard — One Line Between Your AI Agent and Disaster',
   description:
-    'EMILIA Agent Guard stops an AI agent before it does anything irreversible — '
-    + 'move money, delete production data, send email, sign a contract — and requires '
-    + 'a signed human yes or a policy that proves it is safe. Framework-agnostic. '
-    + 'Native MCP server. Apache 2.0.',
+    'Agent Guard stops an AI agent before any irreversible action — moving money, '
+    + 'deleting data, sending email — until a named human signs off. Framework-agnostic.',
   alternates: { canonical: '/agent-guard' },
   openGraph: {
     title: 'EMILIA Agent Guard — the kill switch and accountability layer for AI agents',
