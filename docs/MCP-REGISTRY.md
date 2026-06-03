@@ -15,18 +15,25 @@ brew install mcp-publisher        # or: see github.com/modelcontextprotocol/regi
 
 # From the repo root (where server.json lives):
 mcp-publisher login github        # opens GitHub OAuth — authorizes the
-                                  # `io.github.FutureEnterprises/*` namespace
+                                  # `io.github.emiliaprotocol/*` namespace
 mcp-publisher publish             # validates server.json and publishes
 ```
 
 Notes:
-- The server **name** must live in a namespace you control. We publish under
-  `io.github.FutureEnterprises/mcp-server` — the registry grants a namespace based on the
-  authenticated GitHub identity, and our login resolves to the `FutureEnterprises` account.
-  (`io.github.emiliaprotocol/*` would require the `emiliaprotocol` org membership to be **public**
-  — Org → People → your row → visibility: Public — then a fresh `mcp-publisher login github`.
-  We chose the FutureEnterprises namespace to avoid that dependency.) To use a domain namespace
-  instead (`ai.emiliaprotocol/mcp-server`), switch to `mcp-publisher login dns` and add the TXT record.
+- **Namespace = public org membership.** The name `io.github.emiliaprotocol/mcp-server` is granted
+  only if your authenticated GitHub identity is a **public** member of the `emiliaprotocol` org.
+  If publish 403s with "you have permission to publish io.github.<you>/*", your membership is
+  private: Org → People → your row → **Membership: Public** (owners can toggle directly), then
+  re-run `mcp-publisher login github` to mint a fresh token that sees it.
+- **npm package must declare ownership.** `@emilia-protocol/mcp-server`'s `package.json` carries
+  `"mcpName": "io.github.emiliaprotocol/mcp-server"`. The registry fetches the published package
+  and rejects publish (400) if that field is missing — so changing the namespace means
+  re-publishing the npm package with a matching `mcpName`.
+- **Versions must line up.** `server.json` `version` + `packages[0].version` must point at a
+  published npm version whose `package.json` contains `mcpName`. Bump all three together, then
+  tag `mcp-vX.Y.Z` to republish npm before re-running `mcp-publisher publish`.
+- To use a domain namespace instead (`ai.emiliaprotocol/mcp-server`), switch to
+  `mcp-publisher login dns` and add the TXT record it prints.
 - Bump the `version` in `server.json` to match each new npm release, then re-run `publish`.
 - If the CLI reports a schema mismatch, regenerate against the latest schema:
   `mcp-publisher init` writes a fresh `server.json` skeleton you can merge.

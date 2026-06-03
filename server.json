@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
-  "name": "io.github.FutureEnterprises/mcp-server",
+  "name": "io.github.emiliaprotocol/mcp-server",
   "description": "Trust & human sign-off for AI agents: approval required before irreversible agent actions",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "repository": {
     "url": "https://github.com/emiliaprotocol/emilia-protocol",
     "source": "github"
@@ -13,7 +13,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@emilia-protocol/mcp-server",
-      "version": "0.1.0",
+      "version": "1.0.0",
       "transport": {
         "type": "stdio"
       },
