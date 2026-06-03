@@ -1,5 +1,6 @@
 import { headers } from 'next/headers';
 import { IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
+import EuAiActBanner from '@/components/EuAiActBanner';
 import './ep.css';
 
 // Self-host IBM Plex via next/font so the browser does not block on the
@@ -214,7 +215,10 @@ export default async function RootLayout({ children }) {
           nonce={nonce}
         />
       </head>
-      <body style={{ margin: 0, padding: 0, background: '#FAFAF9', overflowX: 'hidden' }}>{children}</body>
+      <body style={{ margin: 0, padding: 0, background: '#FAFAF9', overflowX: 'hidden' }}>
+        <EuAiActBanner />
+        {children}
+      </body>
     </html>
   );
 }

@@ -135,7 +135,7 @@ export default function AgentGuardPage() {
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <Link href="/demo" className="ep-cta" style={cta.primary}>Watch an agent get stopped &rarr;</Link>
-            <Link href="/pricing" className="ep-cta-secondary" style={cta.secondary}>Start free</Link>
+            <Link href="/signup" className="ep-cta-secondary" style={cta.secondary}>Start free &mdash; get a key</Link>
           </div>
         </C>
       </section>

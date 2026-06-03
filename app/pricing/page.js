@@ -187,6 +187,7 @@ export default function PricingPage() {
           <p style={{ fontFamily: font.mono, fontSize: 11, color: color.t3, letterSpacing: 0.3, marginTop: 20, lineHeight: 1.6 }}>
             EP Core is live and free today. EP Cloud is in early access &mdash; metered billing opens with
             our first cohort; request access and we&rsquo;ll onboard you. Enterprise terms are annual and sales-led.
+            {' '}<Link href="/signup" style={{ color: color.gold }}>Or grab a free sandbox key &rarr;</Link>
           </p>
         </C>
       </section>

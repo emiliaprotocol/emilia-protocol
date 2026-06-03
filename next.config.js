@@ -38,6 +38,12 @@ const nextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      // /api is not a page — the API lives under /api/*. Send humans to the docs.
+      { source: '/api', destination: '/docs', permanent: false },
+    ];
+  },
   async headers() {
     return [
       {

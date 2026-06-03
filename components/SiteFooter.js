@@ -7,6 +7,7 @@ const COL_PRODUCT = [
   ['/spec', 'Specification'],
   ['/govguard', 'GovGuard'],
   ['/finguard', 'FinGuard'],
+  ['/signup', 'Start Free'],
   ['/pricing', 'Pricing'],
   ['/network', 'Trust Network'],
   ['/playground', 'Playground'],
@@ -16,6 +17,7 @@ const COL_PRODUCT = [
 
 const COL_RESOURCES = [
   ['/docs', 'Docs'],
+  ['/changelog', 'Changelog'],
   ['/blog', 'Blog'],
   ['/why-emilia', 'Why EMILIA'],
   ['/compare', 'Comparisons'],

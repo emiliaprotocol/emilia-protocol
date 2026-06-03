@@ -1,10 +1,22 @@
-'use client';
-
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { headers } from 'next/headers';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { cta, color, font, radius } from '@/lib/tokens';
+
+// Server-fetch the live network stats so the numbers render in the initial HTML
+// (no client "—" flash, and SEO-visible). Falls back to null → the page still
+// renders with founding-cohort copy.
+async function getStats() {
+  try {
+    const h = await headers();
+    const host = h.get('host') || 'www.emiliaprotocol.ai';
+    const proto = host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : 'https';
+    const res = await fetch(`${proto}://${host}/api/stats`, { cache: 'no-store' });
+    if (res.ok) return await res.json();
+  } catch { /* fall through */ }
+  return null;
+}
 
 const C = ({ children, style }) => (
   <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 32px', ...style }}>{children}</div>
@@ -31,19 +43,10 @@ function StatCard({ value, label, accent }) {
   );
 }
 
-export default function NetworkPage() {
-  const [stats, setStats] = useState(null);
-
-  useEffect(() => {
-    let live = true;
-    fetch('/api/stats')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => { if (live && d) setStats(d); })
-      .catch(() => {});
-    return () => { live = false; };
-  }, []);
-
+export default async function NetworkPage() {
+  const stats = await getStats();
   const fmt = (v) => (typeof v === 'number' ? v.toLocaleString() : '—');
+  const entities = typeof stats?.total_entities === 'number' ? stats.total_entities : null;
 
   return (
     <div style={{ minHeight: '100vh', background: color.bg, color: color.t1, fontFamily: font.sans }}>
@@ -72,7 +75,15 @@ export default function NetworkPage() {
 
       {/* LIVE STATS */}
       <section style={{ borderTop: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}`, background: 'rgba(245,244,240,0.45)' }}>
-        <C>
+        <C style={{ paddingTop: 34, paddingBottom: 6 }}>
+          <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 8 }}>
+            The founding network
+          </div>
+          <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.6, margin: '0 0 22px', maxWidth: 580 }}>
+            {entities !== null
+              ? `${entities.toLocaleString()} verified entities and counting — join the founding cohort that sets the standard before everyone else has to.`
+              : 'A public, cryptographically verifiable registry of entities and receipts — join the founding cohort that sets the standard.'}
+          </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
             {[
               { value: fmt(stats?.total_entities), label: 'Registered Entities', accent: color.t1 },

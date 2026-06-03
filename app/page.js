@@ -528,7 +528,7 @@ export default function HomePage() {
 
           <motion.div {...reveal(0.08)} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 44 }}>
             {[
-              { kind: 'Developer', accent: color.green, title: 'Self-host EP Core', body: 'Free and Apache 2.0. SDK, verify, MCP server, and Agent Guard. Gate your first irreversible action in an afternoon.', label: 'Start free', href: '/docs', btn: { background: '#FAFAF9', color: '#1C1917' } },
+              { kind: 'Developer', accent: color.green, title: 'Start with EP Core', body: 'Free and Apache 2.0. Grab a sandbox API key in 30 seconds — or self-host the SDK, MCP server, and Agent Guard.', label: 'Start free', href: '/signup', btn: { background: '#FAFAF9', color: '#1C1917' } },
               { kind: 'Team', accent: color.blue, title: 'Run it on EP Cloud', body: 'Hosted control plane — managed policy registry, signoff orchestration, and auditor-grade evidence, no infrastructure to run.', label: 'See pricing', href: '/pricing', btn: { background: color.gold, color: '#FAFAF9' } },
               { kind: 'Enterprise', accent: color.gold, title: 'On-prem + assurance', body: 'VPC or air-gapped, SSO, sector packs, compliance mappings, and an SLA. Procurement-ready.', label: 'Talk to us', href: '/partners', btn: null },
             ].map((d) => (
