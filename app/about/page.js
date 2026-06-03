@@ -38,6 +38,12 @@ export default function AboutPage() {
         <p className="ep-reveal" style={styles.body}>
           We treat this as standards work, not platform work. The protocol is open. The reference implementation is open. The conformance suite is open. The trust layer for AI-era infrastructure has to be inspectable, or it isn't trust.
         </p>
+        <p className="ep-reveal" style={styles.body}>
+          Which is also why a lean team is a feature here, not a risk. EMILIA&rsquo;s core safety
+          guarantees are machine-checked — 26 theorems a model checker re-verifies on every change —
+          not vouched for by headcount. You don&rsquo;t have to trust how many people work here. You
+          can check the math yourself.
+        </p>
       </section>
 
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 72 }}>
