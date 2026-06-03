@@ -15,15 +15,18 @@ brew install mcp-publisher        # or: see github.com/modelcontextprotocol/regi
 
 # From the repo root (where server.json lives):
 mcp-publisher login github        # opens GitHub OAuth — authorizes the
-                                  # `io.github.emiliaprotocol/*` namespace
+                                  # `io.github.FutureEnterprises/*` namespace
 mcp-publisher publish             # validates server.json and publishes
 ```
 
 Notes:
-- The server **name** must live in a namespace you control. `io.github.emiliaprotocol/mcp-server`
-  is verified automatically by the GitHub login above (you must be able to push to the
-  `emiliaprotocol` org). To use a domain namespace instead (`ai.emiliaprotocol/mcp-server`),
-  switch to `mcp-publisher login dns` and add the TXT record it prints.
+- The server **name** must live in a namespace you control. We publish under
+  `io.github.FutureEnterprises/mcp-server` — the registry grants a namespace based on the
+  authenticated GitHub identity, and our login resolves to the `FutureEnterprises` account.
+  (`io.github.emiliaprotocol/*` would require the `emiliaprotocol` org membership to be **public**
+  — Org → People → your row → visibility: Public — then a fresh `mcp-publisher login github`.
+  We chose the FutureEnterprises namespace to avoid that dependency.) To use a domain namespace
+  instead (`ai.emiliaprotocol/mcp-server`), switch to `mcp-publisher login dns` and add the TXT record.
 - Bump the `version` in `server.json` to match each new npm release, then re-run `publish`.
 - If the CLI reports a schema mismatch, regenerate against the latest schema:
   `mcp-publisher init` writes a fresh `server.json` skeleton you can merge.
