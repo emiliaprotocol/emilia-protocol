@@ -4,6 +4,7 @@ node_modules/
 .env.local
 .env*.local
 .stripe-vars.json
+.emilia/
 *.log
 .DS_Store
 .claude/
