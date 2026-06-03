@@ -1,5 +1,6 @@
 import { headers } from 'next/headers';
 import Link from 'next/link';
+import Image from 'next/image';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { cta, color, font, radius } from '@/lib/tokens';
@@ -141,6 +142,14 @@ export default async function McpPage() {
             <Link href="/demo" className="ep-cta" style={cta.primary}>Watch an agent get stopped &rarr;</Link>
             <Link href="/agent-guard" className="ep-cta-secondary" style={cta.secondary}>How it works</Link>
           </div>
+          <Image
+            src="/mcp-demo.gif"
+            alt="EMILIA MCP demo: an AI agent is blocked from releasing $50,000 until a named human signs off, then the payment proceeds with a verifiable receipt."
+            width={1589}
+            height={1148}
+            unoptimized
+            style={{ width: '100%', maxWidth: 800, height: 'auto', marginTop: 48, borderRadius: radius.base, border: `1px solid ${color.border}`, boxShadow: '0 10px 50px rgba(12,10,9,0.10)', display: 'block' }}
+          />
         </C>
       </section>
 
