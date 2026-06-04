@@ -213,6 +213,31 @@ export default async function McpPage() {
         </C>
       </section>
 
+      {/* WORKS WITH YOUR STACK */}
+      <section style={{ padding: '80px 0', borderBottom: `1px solid ${color.border}` }}>
+        <C>
+          <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 14 }}>Works with your stack</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+            {[
+              ['MCP client', 'npx -y @emilia-protocol/mcp-server'],
+              ['LangChain.js', 'withGuard() · @emilia-protocol/langchain'],
+              ['CrewAI / AutoGen', 'guard() decorator · examples/'],
+              ['Any Node service', '@emilia-protocol/require-receipt → 402'],
+              ['Verify in JS', '@emilia-protocol/verify'],
+              ['Verify in Python', 'pip install emilia-verify'],
+            ].map(([k, v]) => (
+              <div key={k} style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '16px 18px' }}>
+                <div style={{ fontFamily: font.sans, fontWeight: 600, fontSize: 14, color: color.t1, marginBottom: 4 }}>{k}</div>
+                <code style={{ fontFamily: font.mono, fontSize: 12.5, color: color.t2 }}>{v}</code>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: 13, color: color.t3, marginTop: 14 }}>
+            Trust Receipts verify offline in JavaScript <em style={{ fontStyle: 'normal' }}>and</em> Python &mdash; minted anywhere, checked anywhere. See the <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/QUICKSTART.md" target="_blank" rel="noopener noreferrer" style={{ color: color.gold }}>5-minute quickstart</a>.
+          </p>
+        </C>
+      </section>
+
       {/* DIRECTORIES */}
       <section style={{ padding: '72px 0', borderBottom: `1px solid ${color.border}` }}>
         <C>

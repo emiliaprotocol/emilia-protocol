@@ -117,8 +117,12 @@ const ORGANIZATION_JSONLD = {
   foundingDate: '2026-01-01',
   sameAs: [
     'https://github.com/emiliaprotocol',
+    'https://www.npmjs.com/package/@emilia-protocol/mcp-server',
     'https://www.npmjs.com/package/@emilia-protocol/sdk',
     'https://www.npmjs.com/package/@emilia-protocol/verify',
+    'https://www.npmjs.com/package/@emilia-protocol/require-receipt',
+    'https://www.npmjs.com/package/@emilia-protocol/langchain',
+    'https://pypi.org/project/emilia-verify/',
   ],
 };
 
@@ -171,6 +175,8 @@ const SOFTWARE_APPLICATION_JSONLD = {
     'Formal verification (26 TLA+ theorems, 35 Alloy facts)',
     'NIST AI RMF and EU AI Act compliance mappings',
     'MCP server with 34 tools',
+    'LangChain, CrewAI, and AutoGen integrations',
+    'Offline receipt verification in JavaScript and Python',
     'TypeScript and Python SDKs',
   ],
 };
