@@ -47,3 +47,4 @@ jobs:
         with:
           packages-dir: packages/python-verify/dist/
           print-hash: true
+          skip-existing: true   # re-runs / dispatch on an already-published version exit green
