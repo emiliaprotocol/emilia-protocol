@@ -20,6 +20,7 @@ export default function sitemap() {
     { path: '/pricing',               priority: 0.9, changeFrequency: 'monthly' },
     { path: '/protocol',              priority: 0.95, changeFrequency: 'monthly' },
     { path: '/spec',                  priority: 0.9, changeFrequency: 'monthly' },
+    { path: '/spec/trust-receipt',    priority: 0.85, changeFrequency: 'monthly' },
     { path: '/govguard',              priority: 0.95, changeFrequency: 'monthly' },
     { path: '/finguard',              priority: 0.95, changeFrequency: 'monthly' },
     { path: '/mcp',                   priority: 0.9, changeFrequency: 'monthly' },

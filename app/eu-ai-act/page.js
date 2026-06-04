@@ -405,6 +405,38 @@ export default function EuAiActPage() {
         </div>
       </section>
 
+      {/* Your 30-day path — Article 14 human-oversight kit */}
+      <section style={{ ...styles.section, paddingTop: 56, paddingBottom: 56 }}>
+        <motion.div {...reveal()}>
+          <div style={{ ...styles.eyebrow, color: color.gold }}>Article 14 Human-Oversight Kit</div>
+          <h2 style={{ ...styles.h1, fontSize: 'clamp(26px, 3.4vw, 38px)', marginBottom: 14 }}>Your 30-day path to human oversight.</h2>
+          <p style={{ ...styles.body, maxWidth: 600 }}>
+            Article 14 asks that a human can oversee, intervene, and stop a high-risk system. EMILIA is the
+            technical implementation of that slice — and it&apos;s mostly packaging what you already have.
+          </p>
+          <div style={{ display: 'grid', gap: 12, marginTop: 12 }}>
+            {[
+              ['Week 1 — Inventory', 'List every irreversible action your system can take. Each becomes a canonical action.'],
+              ['Week 2 — Observe', 'Wrap them in Emilia Eye mode — log "what would have been blocked" with zero enforcement. No risk.'],
+              ['Week 3 — Enforce + sign-off', 'Turn on signoff for the high-risk classes; route approvals to your humans. Every approval mints a receipt.'],
+              ['Week 4 — Evidence', 'Export the receipt bundle — an auditor verifies it offline, no need to trust EP or you.'],
+            ].map(([t, d], i) => (
+              <div key={t} style={{ display: 'grid', gridTemplateColumns: '40px 1fr', gap: 18, alignItems: 'start', background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '18px 20px' }}>
+                <div style={{ fontFamily: font.mono, fontWeight: 700, fontSize: 16, color: color.gold }}>{`0${i + 1}`}</div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 15, color: color.t1 }}>{t}</div>
+                  <div style={{ fontSize: 14, color: color.t2, lineHeight: 1.6, marginTop: 3 }}>{d}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: 13, color: color.t3, marginTop: 14 }}>
+            Maps to Art 14 (human oversight), Art 12 (record-keeping), Art 9 (risk management). Not a complete
+            compliance program; not legal advice. Full mapping in the <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/eu-ai-act-article-14-kit.md" target="_blank" rel="noopener noreferrer" style={{ color: color.gold }}>Article 14 kit</a>.
+          </p>
+        </motion.div>
+      </section>
+
       {/* Penalty stakes */}
       <section style={styles.sectionAlt}>
         <div style={styles.section}>
