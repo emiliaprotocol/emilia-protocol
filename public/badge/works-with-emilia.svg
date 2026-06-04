@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="150" height="20" role="img" aria-label="works with EMILIA">
+  <title>works with EMILIA</title>
+  <linearGradient id="g" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <clipPath id="r"><rect width="150" height="20" rx="3" fill="#fff"/></clipPath>
+  <g clip-path="url(#r)">
+    <rect width="74" height="20" fill="#0C0A09"/>
+    <rect x="74" width="76" height="20" fill="#B08D35"/>
+    <rect width="150" height="20" fill="url(#g)"/>
+  </g>
+  <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">
+    <text x="37" y="15" fill="#010101" fill-opacity=".3">works with</text>
+    <text x="37" y="14">works with</text>
+    <text x="112" y="15" fill="#010101" fill-opacity=".3">EMILIA</text>
+    <text x="112" y="14">EMILIA</text>
+  </g>
+</svg>

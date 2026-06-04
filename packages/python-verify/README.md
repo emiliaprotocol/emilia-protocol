@@ -37,4 +37,10 @@ A trust receipt is only as useful as the number of places that can check it. Shi
 verifier in the Python agent ecosystem (LangChain, CrewAI, AutoGen, LlamaIndex) means a
 receipt minted anywhere can be verified offline, in the language your agent already speaks.
 
+## Publishing (maintainers)
+```bash
+python -m build       # produces dist/*.whl + *.tar.gz (verified to build cleanly)
+twine upload dist/*   # your PyPI credentials — nothing is stored
+```
+
 Apache-2.0.
