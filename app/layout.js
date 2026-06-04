@@ -26,14 +26,12 @@ const ibmPlexMono = IBM_Plex_Mono({
 export const metadata = {
   metadataBase: new URL('https://www.emiliaprotocol.ai'),
   title: {
-    default: 'EMILIA Protocol — Trust Before High-Risk AI Action',
+    default: 'EMILIA Protocol — The Accountability Layer for AI Agents',
     template: '%s | EMILIA Protocol',
   },
   description:
-    'Open standard for verifiable pre-action authorization in AI agent systems. ' +
-    'Cryptographically binds actor identity, authority chain, policy version, action ' +
-    'context, and accountable human signoff before any high-risk action executes. ' +
-    '26 TLA+ theorems verified, Apache 2.0, in production.',
+    'The accountability layer for AI agents — a signed human yes before an agent does '
+    + 'anything irreversible, plus a receipt anyone can verify offline. Formally verified, Apache-2.0.',
   applicationName: 'EMILIA Protocol',
   keywords: [
     'AI agent authorization',
@@ -60,7 +58,7 @@ export const metadata = {
     locale: 'en_US',
     url: 'https://www.emiliaprotocol.ai',
     siteName: 'EMILIA Protocol',
-    title: 'EMILIA Protocol — Trust Before High-Risk AI Action',
+    title: 'EMILIA Protocol — The Accountability Layer for AI Agents',
     description:
       'Open, formally-verified protocol for pre-action authorization in AI agent ' +
       'systems. 26 TLA+ theorems verified, Apache 2.0, production-ready.',
@@ -75,7 +73,7 @@ export const metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'EMILIA Protocol — Trust Before High-Risk AI Action',
+    title: 'EMILIA Protocol — The Accountability Layer for AI Agents',
     description:
       'Open, formally-verified pre-action authorization for AI agent systems. ' +
       '26 TLA+ theorems verified.',

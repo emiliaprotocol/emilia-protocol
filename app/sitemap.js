@@ -24,6 +24,8 @@ export default function sitemap() {
     { path: '/govguard',              priority: 0.95, changeFrequency: 'monthly' },
     { path: '/finguard',              priority: 0.95, changeFrequency: 'monthly' },
     { path: '/mcp',                   priority: 0.9, changeFrequency: 'monthly' },
+    { path: '/for-ai-companies',      priority: 0.9, changeFrequency: 'monthly' },
+    { path: '/quickstart',            priority: 0.85, changeFrequency: 'monthly' },
     { path: '/use-cases',             priority: 0.9, changeFrequency: 'monthly' },
     { path: '/use-cases/government',  priority: 0.85, changeFrequency: 'monthly' },
     { path: '/use-cases/financial',   priority: 0.85, changeFrequency: 'monthly' },

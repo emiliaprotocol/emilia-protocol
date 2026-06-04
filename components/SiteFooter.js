@@ -13,6 +13,7 @@ const COL_PRODUCT = [
   ['/playground', 'Playground'],
   ['/explorer', 'Explorer'],
   ['/mcp', 'MCP Server'],
+  ['/for-ai-companies', 'For AI Companies'],
   ['/adopt', 'Adopt'],
 ];
 
