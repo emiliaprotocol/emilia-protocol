@@ -1,0 +1,31 @@
+{
+  "@version": "EP-RECEIPT-v1",
+  "payload": {
+    "receipt_id": "ep_demo_8c1f2a",
+    "issued_at": "2026-06-04T00:00:00Z",
+    "claim": {
+      "action": "payment.release",
+      "outcome": "allow_with_signoff",
+      "approver": "operator:iman.schrock",
+      "context": {
+        "amount": 50000,
+        "destination": "acct_9f12",
+        "currency": "USD"
+      }
+    }
+  },
+  "signature": {
+    "algorithm": "ed25519",
+    "value": "wB70L1QN445B7bvXR6bhATHxNA8-GJ8QULcwozHSVTcICPyxpYZmER4og8ytj5nF0W7OPVDjhlU-KrF9TsfXBw"
+  },
+  "anchor": {
+    "leaf_hash": "778cca54937b133e6c71ed13ea953a2579588c641782e0e15ab3339a84560609",
+    "merkle_proof": [
+      {
+        "hash": "c91e40cb06ad90f0a4556fcc54d9489f7f59cca27494ae05ffe411ee9fdaaed7",
+        "position": "right"
+      }
+    ],
+    "merkle_root": "78be6a4b21e0e3280d6bf9f7d0aa2226ba9926f35cf4c298500c545e27ae5ead"
+  }
+}

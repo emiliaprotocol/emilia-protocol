@@ -36,6 +36,14 @@ await guarded.invoke({ amount: 50000, to: 'acct_9f12' });
 // → throws "EMILIA requires human signoff for \"payment.release\"" until approved
 ```
 
+## Try it (offline, ~5 seconds)
+
+```bash
+node example.mjs
+```
+Shows all three outcomes — small payment allowed, large payment held for human sign-off,
+blocked destination denied — using a local stand-in for the gate (delete `fetchImpl` to go live).
+
 ## Low-level: just ask the gate
 
 ```js

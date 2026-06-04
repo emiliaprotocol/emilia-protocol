@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "emilia-verify"
+version = "1.0.0"
+description = "Zero-infrastructure verification of EMILIA Protocol trust receipts (Ed25519 + Merkle). Byte-compatible with @emilia-protocol/verify."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "Apache-2.0"
+authors = [{ name = "EMILIA Protocol" }]
+keywords = ["emilia", "trust-receipt", "ed25519", "verification", "ai-agents", "accountability", "agent-safety"]
+dependencies = ["cryptography>=41"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: Apache Software License",
+  "Topic :: Security :: Cryptography",
+]
+
+[project.urls]
+Homepage = "https://www.emiliaprotocol.ai/mcp"
+Repository = "https://github.com/emiliaprotocol/emilia-protocol"
+
+[tool.hatch.build.targets.wheel]
+packages = ["emilia_verify"]
