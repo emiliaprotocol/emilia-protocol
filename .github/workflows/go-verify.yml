@@ -15,6 +15,11 @@ on:
 permissions:
   contents: read
 
+env:
+  # Opt into Node 24 now (GitHub forces it on JS-based actions June 16, 2026)
+  # to silence the Node 20 deprecation warning.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -26,5 +31,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22'
+          cache: false # stdlib-only module, no go.sum — skip cache to avoid a warning
       - run: go vet ./...
       - run: go test -v ./...
