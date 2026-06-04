@@ -59,7 +59,7 @@
     "eslint-config-next": "^16.2.7",
     "fast-check": "^4.8.0",
     "husky": "^9.0.0",
-    "lint-staged": "^16.4.0",
+    "lint-staged": "^17.0.7",
     "pg": "^8.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
