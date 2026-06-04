@@ -2,6 +2,17 @@
 
 [![CI](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+[![Discord](https://img.shields.io/badge/Discord-join%20the%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/MSJXjEtD4)
+
+**A named human's signed "yes" before an AI agent does anything irreversible — with a receipt anyone can verify offline.**
+
+Try it in one line (Claude / Cursor / Cline):
+
+```bash
+npx -y @emilia-protocol/mcp-server
+```
+
+**[90-second demo](https://www.emiliaprotocol.ai/mcp)** · **[Quickstart](https://www.emiliaprotocol.ai/quickstart)** · **[Agent code walkthrough](https://www.emiliaprotocol.ai/use-cases/ai-agent)** · **[Discord](https://discord.gg/MSJXjEtD4)**
 
 ## What is EP?
 
