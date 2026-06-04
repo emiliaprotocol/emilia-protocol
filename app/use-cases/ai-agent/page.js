@@ -56,6 +56,23 @@ export default function AIAgentUseCasePage() {
     { title: 'Accountable signoff thresholds by risk class', body: 'Agent actions are classified into risk tiers. Read-only operations proceed without friction. Medium-risk actions require async principal notification. High-risk actions (payments, data deletion, external API calls with side effects) require explicit principal signoff before execution. The thresholds are policy-driven and configurable per deployment.' },
   ];
 
+  const GATE_PATTERN = `const d = await guardAction({ action: 'payment.release', context });
+if (d.deny)            throw new Error(d.reason);   // blocked outright
+if (d.signoffRequired) await waitForHuman(d);       // a NAMED human approves
+// ...otherwise proceed. Every approval mints a Trust Receipt.`;
+
+  const SNIPPETS = [
+    { k: 'MCP server', sub: 'Claude Desktop, Cursor, Cline', code: '{ "command": "npx",\n  "args": ["-y", "@emilia-protocol/mcp-server"] }' },
+    { k: 'LangChain.js', sub: 'wrap any irreversible tool', code: "import { withGuard } from '@emilia-protocol/langchain';\nconst safe = withGuard(tool, { action: 'payment.release' });" },
+    { k: 'CrewAI / AutoGen', sub: 'Python — guard() decorator', code: '@guard("payment.release", context_fn=..., fetch=post)\ndef wire_transfer(amount, destination): ...' },
+  ];
+
+  const codeBox = {
+    fontFamily: font.mono, fontSize: 12.5, lineHeight: 1.7, color: '#D6D3D1',
+    background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: radius.base,
+    padding: '16px 18px', margin: 0, overflowX: 'auto', whiteSpace: 'pre',
+  };
+
   const cardStyle = (accent) => ({
     border: `1px solid ${color.border}`,
     borderTop: `2px solid ${accent}`,
@@ -186,6 +203,35 @@ export default function AIAgentUseCasePage() {
               <span style={{ fontSize: 15, color: color.t2, lineHeight: 1.65 }}>{item}</span>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* What it looks like in code */}
+      <section style={styles.section}>
+        <div className="ep-reveal" style={{ marginBottom: 28 }}>
+          <h2 style={styles.h2}>What it looks like in code</h2>
+          <p style={styles.body}>
+            The gate does one job in every framework: hold an irreversible agent action until it is allowed, denied, or signed off by a named human. Read-only calls pass straight through, so low-risk agent work stays fast.
+          </p>
+        </div>
+        <div className="ep-reveal" style={{ marginBottom: 16 }}>
+          <div style={{ fontFamily: font.mono, fontSize: 10, color: color.blue, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>The gate — same everywhere</div>
+          <pre style={codeBox}>{GATE_PATTERN}</pre>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, marginBottom: 28 }}>
+          {SNIPPETS.map((s, i) => (
+            <div key={s.k} className={`ep-reveal ep-stagger-${i + 1}`} style={cardStyle(color.blue)}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 15, color: color.t1 }}>{s.k}</div>
+                <div style={{ fontSize: 12.5, color: color.t3 }}>{s.sub}</div>
+              </div>
+              <pre style={{ ...codeBox, fontSize: 11.5 }}>{s.code}</pre>
+            </div>
+          ))}
+        </div>
+        <div className="ep-reveal" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <a href="/quickstart" className="ep-cta" style={cta.primary}>Full quickstart →</a>
+          <a href="https://github.com/emiliaprotocol/emilia-protocol/tree/main/examples" target="_blank" rel="noopener noreferrer" className="ep-cta-secondary" style={cta.secondary}>Framework examples →</a>
         </div>
       </section>
 
