@@ -100,6 +100,7 @@ export default function sitemap() {
     { path: '/security',   priority: 0.85, changeFrequency: 'monthly' },
     { path: '/contact',    priority: 0.4, changeFrequency: 'yearly' },
     { path: '/partners',   priority: 0.5, changeFrequency: 'monthly' },
+    { path: '/badge',      priority: 0.5, changeFrequency: 'monthly' },
     { path: '/enterprise', priority: 0.7, changeFrequency: 'monthly' },
     { path: '/docs',       priority: 0.7, changeFrequency: 'weekly' },
     { path: '/appeal',     priority: 0.3, changeFrequency: 'yearly' },
