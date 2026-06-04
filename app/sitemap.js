@@ -45,6 +45,8 @@ export default function sitemap() {
     { path: '/compare/mcp-auth-alone',   priority: 0.85, changeFrequency: 'monthly' },
     { path: '/compare/audit-logs',       priority: 0.8,  changeFrequency: 'monthly' },
     { path: '/compare/fraud-detection',  priority: 0.8,  changeFrequency: 'monthly' },
+    { path: '/compare/permit-io',        priority: 0.8,  changeFrequency: 'monthly' },
+    { path: '/compare/human-in-the-loop', priority: 0.8, changeFrequency: 'monthly' },
   ];
 
   // Top-of-funnel blog posts — educational content for keyword breadth.

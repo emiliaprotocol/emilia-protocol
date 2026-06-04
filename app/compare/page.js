@@ -34,6 +34,20 @@ const COMPARISONS = [
     accent: color.red,
     tag: 'Fraud Detection',
   },
+  {
+    title: 'EMILIA Protocol vs Permit.io',
+    desc: 'Permit.io authorizes what an agent may do (RBAC/ABAC/ReBAC). EP adds a named human signoff before the irreversible action, plus an offline-verifiable receipt. Complementary, not competing.',
+    href: '/compare/permit-io',
+    accent: color.blue,
+    tag: 'Permit.io',
+  },
+  {
+    title: 'EMILIA Protocol vs DIY human-in-the-loop',
+    desc: 'A Slack or email approval is a click and a log line. EP makes the signoff bound to the exact action, replay-resistant, and provable offline — without you maintaining the plumbing.',
+    href: '/compare/human-in-the-loop',
+    accent: color.gold,
+    tag: 'Human-in-the-Loop',
+  },
 ];
 
 export default function ComparePage() {
