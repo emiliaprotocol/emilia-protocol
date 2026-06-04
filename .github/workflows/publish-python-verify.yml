@@ -11,6 +11,11 @@ name: Publish emilia-verify to PyPI
 #   git tag python-verify-v1.0.1 && git push origin python-verify-v1.0.1
 # (PyPI rejects re-publishing an existing version, so always bump first.)
 
+env:
+  # Opt JavaScript actions into Node 24 (GitHub default from June 2026) — silences the
+  # setup-python Node 20 deprecation warning. Matches the other publish workflows.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   workflow_dispatch:
   push:
