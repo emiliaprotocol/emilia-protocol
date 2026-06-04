@@ -1,0 +1,30 @@
+name: go-verify
+
+# Build + test the Go offline receipt verifier. The module lives in
+# packages/go-verify with its own go.mod, so it is isolated from the Next app.
+on:
+  push:
+    paths:
+      - 'packages/go-verify/**'
+      - '.github/workflows/go-verify.yml'
+  pull_request:
+    paths:
+      - 'packages/go-verify/**'
+      - '.github/workflows/go-verify.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/go-verify
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - run: go vet ./...
+      - run: go test -v ./...
