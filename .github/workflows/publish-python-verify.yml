@@ -1,0 +1,49 @@
+name: Publish emilia-verify to PyPI
+
+# Trusted Publishing (OIDC) — NO API token is stored anywhere. On each run PyPI
+# verifies the OIDC claim (owner / repo / workflow filename) and issues a
+# short-lived upload credential. Configure the matching trusted publisher once at:
+#   pypi.org -> Your projects -> emilia-verify -> Manage -> Publishing
+#   Owner: emiliaprotocol | Repo: emilia-protocol
+#   Workflow: publish-python-verify.yml | Environment: (leave blank)
+#
+# Release flow: bump version in packages/python-verify/pyproject.toml, then
+#   git tag python-verify-v1.0.1 && git push origin python-verify-v1.0.1
+# (PyPI rejects re-publishing an existing version, so always bump first.)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'python-verify-v*'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build and publish emilia-verify
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # REQUIRED for PyPI trusted publishing (OIDC)
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5
+        with:
+          python-version: '3.12'
+
+      - name: Build sdist + wheel
+        working-directory: packages/python-verify
+        run: |
+          python -m pip install --upgrade build
+          python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # v1.14.0
+        with:
+          packages-dir: packages/python-verify/dist/
+          print-hash: true
