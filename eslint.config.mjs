@@ -25,6 +25,7 @@ export default [
       'conformance/**',
       'supabase/**',
       'formal/**',
+      'ml/**',
       'infrastructure/**',
       'create-ep-app/**',
       'public/embed.js',
