@@ -41,7 +41,7 @@
   "bugs": {
     "url": "https://github.com/emiliaprotocol/emilia-protocol/issues"
   },
-  "author": "Emilia Protocol Contributors",
+  "author": "EMILIA Protocol, Inc.",
   "scripts": {
     "test": "node --test test.js"
   }

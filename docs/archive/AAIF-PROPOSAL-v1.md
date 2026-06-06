@@ -115,8 +115,8 @@ Total: 40+ files, 14 API endpoints, 4 database migrations, 2 SDKs, 1 MCP server.
 
 ## 6. Community & Governance
 
-EP is currently maintained by EMILIA Inc. The governance roadmap:
-1. **Phase 1 (Current)**: EMILIA Inc. maintains spec + canonical implementation
+EP is currently maintained by EMILIA Protocol, Inc. The governance roadmap:
+1. **Phase 1 (Current)**: EMILIA Protocol, Inc. maintains spec + canonical implementation
 2. **Phase 2**: Advisory Board of early adopters and protocol contributors
 3. **Phase 3**: Transition to AAIF governance (this proposal)
 

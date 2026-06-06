@@ -11,8 +11,8 @@
 **MASTER SERVICES AGREEMENT**
 
 This Master Services Agreement ("Agreement") is entered into as of the date of
-acceptance (the "Effective Date") by and between **[LEGAL ENTITY NAME]**, a
-[Delaware C-Corporation / LLC] ("Provider," "we," "us"), and the customer
+acceptance (the "Effective Date") by and between **EMILIA Protocol, Inc.**, a
+Delaware C-Corporation ("Provider," "we," "us"), and the customer
 identified at checkout or on the order form ("Customer," "you").
 
 By submitting an intake form or completing payment for an AI Trust Desk

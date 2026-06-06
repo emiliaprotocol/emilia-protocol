@@ -28,7 +28,7 @@ Without this, the "Buy" buttons fall back to a `mailto:` — you can still invoi
 manually, but no self-serve checkout.
 
 ### 1.1 [YOU] Create / log into Stripe
-- https://stripe.com → sign up (or log in) as **EMILIA Protocol** (or your LLC).
+- https://stripe.com → sign up (or log in) as **EMILIA Protocol, Inc.** (Delaware C-Corp).
 - Complete **business profile**: legal entity, EIN, address, support email
   (`team@emiliaprotocol.ai`), statement descriptor ("EMILIA TRUST DESK").
 - Add a **bank account** for payouts (requires the business bank account — see Phase 4).
@@ -147,8 +147,8 @@ claims — you need the docs to back them.
 Stripe payouts need a business bank account.
 
 ### 4.1 [YOU] Business entity
-- If not formed: Delaware C-Corp or LLC. Stripe Atlas ($500) does entity + EIN +
-  bank intro in one flow. (The founder strategy brief recommended a C-Corp.)
+- Formed: **EMILIA Protocol, Inc.** — Delaware C-Corp, incorporated 2026-06-03 via
+  Stripe Atlas (entity + EIN + bank intro in one flow).
 
 ### 4.2 [YOU] EIN + business bank account
 - EIN from IRS (free, instant online) → business bank (Mercury / Brex are fast,

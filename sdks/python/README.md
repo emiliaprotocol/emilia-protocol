@@ -499,4 +499,4 @@ pip install -e ".[dev]"
 
 ---
 
-Apache 2.0 — Copyright EMILIA Protocol contributors.
+Apache 2.0 — Copyright EMILIA Protocol, Inc. and contributors.
