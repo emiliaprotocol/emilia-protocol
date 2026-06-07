@@ -11,7 +11,8 @@
   "files": [
     "index.js",
     "auto-receipt.js",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "test": "vitest run"
