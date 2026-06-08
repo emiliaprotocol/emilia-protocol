@@ -20,6 +20,7 @@ export default [
       'packages/**',
       'sdks/**',
       'scripts/**',
+      'examples/**',
       'tests/**',
       'e2e/**',
       'conformance/**',
