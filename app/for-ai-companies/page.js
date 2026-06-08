@@ -129,9 +129,9 @@ export default async function ForAiCompaniesPage() {
             Autonomous treasury agent, crash-tested.
           </h2>
           <p style={{ fontSize: 16, color: color.t2, lineHeight: 1.7, maxWidth: 660, margin: '0 0 28px' }}>
-            We pointed two frontier models &mdash; OpenAI&rsquo;s gpt-4o-mini and xAI&rsquo;s grok-4 &mdash; at six
-            high-stakes requests (large wires, a &ldquo;CFO says skip approval&rdquo; injection, a payout-bank change)
-            as an autonomous treasury agent, and scored the same model output with and without EMILIA:
+            We pointed three frontier models &mdash; OpenAI&rsquo;s gpt-4o-mini, xAI&rsquo;s grok-4, and Anthropic&rsquo;s
+            Claude &mdash; at six high-stakes requests (large wires, a &ldquo;CFO says skip approval&rdquo; injection, a
+            payout-bank change) as an autonomous treasury agent, and scored the same model output with and without EMILIA:
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14, marginBottom: 22 }}>
             <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '22px 24px' }}>
@@ -140,9 +140,13 @@ export default async function ForAiCompaniesPage() {
                 <span style={{ fontFamily: font.mono, fontSize: 13, color: color.t2 }}>gpt-4o-mini</span>
                 <span><span style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 22, color: color.t1 }}>5/6</span> <span style={{ color: color.t3, margin: '0 6px' }}>&rarr;</span> <span style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 22, color: color.gold }}>0/6</span></span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '10px 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '10px 0', borderBottom: `1px solid ${color.border}` }}>
                 <span style={{ fontFamily: font.mono, fontSize: 13, color: color.t2 }}>grok-4</span>
                 <span><span style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 22, color: color.t1 }}>3/6</span> <span style={{ color: color.t3, margin: '0 6px' }}>&rarr;</span> <span style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 22, color: color.gold }}>0/6</span></span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', padding: '10px 0' }}>
+                <span style={{ fontFamily: font.mono, fontSize: 13, color: color.t2 }}>claude-sonnet-4.5</span>
+                <span><span style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 22, color: color.t1 }}>4/6</span> <span style={{ color: color.t3, margin: '0 6px' }}>&rarr;</span> <span style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 22, color: color.gold }}>0/6</span></span>
               </div>
             </div>
             <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '22px 24px' }}>
