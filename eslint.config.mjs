@@ -21,6 +21,7 @@ export default [
       'sdks/**',
       'scripts/**',
       'examples/**',
+      'bench/**',
       'tests/**',
       'e2e/**',
       'conformance/**',
