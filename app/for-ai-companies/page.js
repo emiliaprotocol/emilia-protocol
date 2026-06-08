@@ -108,7 +108,11 @@ export default async function ForAiCompaniesPage() {
             EMILIA ships as an MCP server, so any MCP-capable client — Claude, GPT, Gemini, Cursor, Windsurf —
             can experiment with accountable actions in one line. No partnership meeting required.
           </p>
-          <pre style={{ fontFamily: font.mono, fontSize: 13, color: '#D6D3D1', background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '16px 20px', margin: '0 0 28px', overflowX: 'auto' }}>npx -y @emilia-protocol/mcp-server</pre>
+          <pre style={{ fontFamily: font.mono, fontSize: 13, color: '#D6D3D1', background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '16px 20px', margin: '0 0 18px', overflowX: 'auto' }}>npx -y @emilia-protocol/mcp-server</pre>
+          <p style={{ fontSize: 16, color: color.t2, lineHeight: 1.7, maxWidth: 640, margin: '0 0 14px' }}>
+            Or guard an existing OpenAI-compatible agent &mdash; OpenAI, xAI Grok, Together &mdash; so every irreversible tool call routes through EMILIA before it runs:
+          </p>
+          <pre style={{ fontFamily: font.mono, fontSize: 13, color: '#D6D3D1', background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '16px 20px', margin: '0 0 28px', overflowX: 'auto' }}>npm install @emilia-protocol/openai-guard</pre>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <Link href="/mcp" className="ep-cta" style={cta.primary}>The MCP server &rarr;</Link>
             <Link href="/demo" className="ep-cta-secondary" style={cta.secondary}>Watch an agent get stopped</Link>
