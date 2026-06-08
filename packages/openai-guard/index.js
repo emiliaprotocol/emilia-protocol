@@ -46,6 +46,38 @@ export async function guardAction({ actor, action, context = {}, apiKey, gateUrl
 }
 
 /**
+ * The simplest possible gate. `await guard(action)` → `{ allowed, reason }`.
+ *
+ * `action` is a canonical action string ('payment.release') or an object
+ * { action, context, actor }. Reads EP_API_KEY from the environment by default.
+ *
+ *   import { guard } from '@emilia-protocol/openai-guard';
+ *   const result = await guard('payment.release');
+ *   if (!result.allowed) return result.reason;
+ *
+ * @returns {Promise<{allowed:boolean, reason?:string, decision:string, signoffRequired:boolean, raw:object}>}
+ */
+export async function guard(action, opts = {}) {
+  const spec = typeof action === 'string' ? { action } : { ...(action || {}) };
+  const env = typeof process !== 'undefined' && process.env ? process.env : {};
+  const d = await guardAction({
+    action: spec.action,
+    actor: spec.actor ?? opts.actor,
+    context: spec.context ?? opts.context,
+    apiKey: opts.apiKey ?? spec.apiKey ?? env.EP_API_KEY,
+    gateUrl: opts.gateUrl ?? spec.gateUrl,
+    fetchImpl: opts.fetchImpl ?? spec.fetchImpl,
+  });
+  return {
+    allowed: d.allow,
+    reason: d.reason ?? (d.deny ? 'denied by policy' : d.signoffRequired ? 'human signoff required' : undefined),
+    decision: d.decision,
+    signoffRequired: d.signoffRequired,
+    raw: d.raw,
+  };
+}
+
+/**
  * Wrap a single tool implementation so it routes through EMILIA before running.
  *
  * @param {Function} fn   your async tool implementation: (args) => result
@@ -133,4 +165,4 @@ export async function runToolCalls(toolCalls = [], tools = {}, opts = {}) {
   return out;
 }
 
-export default { guardAction, withGuard, runToolCalls };
+export default { guard, guardAction, withGuard, runToolCalls };

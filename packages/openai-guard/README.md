@@ -10,6 +10,17 @@ Zero dependencies.
 npm install @emilia-protocol/openai-guard
 ```
 
+## One line
+
+```js
+import { guard } from '@emilia-protocol/openai-guard';
+
+const result = await guard('payment.release');   // reads EP_API_KEY from env
+if (!result.allowed) return result.reason;        // "denied by policy" / "human signoff required"
+```
+
+Pass context when the policy needs it: `await guard({ action: 'payment.release', context: { amount } })`.
+
 ## Try it offline (~5s)
 
 ```bash
