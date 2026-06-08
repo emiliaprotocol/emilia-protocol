@@ -61,6 +61,40 @@ const toolResults = await runToolCalls(msg.tool_calls, {
 Point it at OpenAI, Together, Fireworks, etc. by swapping the `baseURL` — the
 guard layer is identical.
 
+## Full signoff ceremony + Trust Receipt (`/receipt`)
+
+For the real hosted flow — mint a pre-action receipt, require a **named** human's
+signoff, and get a verifiable record — use the `/receipt` submodule (needs an EP
+API key). Each function maps 1:1 to a live endpoint.
+
+```js
+import { mintReceipt, requestSignoff, approveSignoff, verifyReceipt } from '@emilia-protocol/openai-guard/receipt';
+
+// 1. Mint a pre-action receipt — the server runs EMILIA's verified policy engine.
+const receipt = await mintReceipt({
+  apiKey: process.env.EP_API_KEY,
+  organization_id: 'org_123',
+  action_type: 'large_payment_release',   // a GUARD_ACTION_TYPES value
+  target_resource_id: 'invoice_4421',
+  amount: 84000,
+});
+
+if (receipt.signoff_required) {
+  // 2. Request signoff on that receipt.
+  const { signoff_id } = await requestSignoff({ apiKey: process.env.EP_API_KEY, receipt_id: receipt.receipt_id });
+
+  // 3. A DIFFERENT, named human approves (EMILIA enforces separation of duty).
+  await approveSignoff({ apiKey: process.env.APPROVER_EP_API_KEY, signoff_id });
+}
+
+// 4. Offline-verify a signed EP-RECEIPT-v1 (install @emilia-protocol/verify).
+// const v = await verifyReceipt(signedReceiptDoc, issuerPublicKey);
+```
+
+The approval is an out-of-band human action — surface the `signoff_id` to your
+dashboard or Slack and approve there. Endpoints: `/api/v1/trust-receipts`,
+`/api/v1/signoffs/request`, `/api/v1/signoffs/{id}/approve`.
+
 ## Scope
 
 EMILIA's formal proofs (26 TLA+ theorems / 35 Alloy facts) cover the policy

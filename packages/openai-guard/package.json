@@ -1,15 +1,18 @@
 {
   "name": "@emilia-protocol/openai-guard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Guard OpenAI-compatible tool calls (OpenAI, xAI Grok, Together, …) with EMILIA Protocol — block irreversible agent actions until a named human signs off.",
   "type": "module",
   "main": "index.js",
   "exports": {
     ".": {
       "import": "./index.js"
+    },
+    "./receipt": {
+      "import": "./receipt.js"
     }
   },
-  "files": ["index.js", "README.md", "LICENSE"],
+  "files": ["index.js", "receipt.js", "README.md", "LICENSE"],
   "license": "Apache-2.0",
   "keywords": [
     "openai",
