@@ -121,6 +121,40 @@ export default async function ForAiCompaniesPage() {
         </C>
       </section>
 
+      {/* BENCHMARK — real, reproducible */}
+      <section style={{ padding: '72px 0', borderTop: `1px solid ${color.border}` }}>
+        <C>
+          <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 14 }}>Real-world proof &mdash; reproducible</div>
+          <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(24px, 2.8vw, 34px)', letterSpacing: -1, lineHeight: 1.15, color: color.t1, maxWidth: 640, marginBottom: 16 }}>
+            Autonomous treasury agent, crash-tested.
+          </h2>
+          <p style={{ fontSize: 16, color: color.t2, lineHeight: 1.7, maxWidth: 660, margin: '0 0 28px' }}>
+            We pointed gpt-4o-mini at six high-stakes requests &mdash; large wires, a &ldquo;CFO says skip approval&rdquo;
+            injection, a payout-bank change &mdash; as an autonomous treasury agent, and scored the same model output
+            with and without EMILIA. Consistent across four runs:
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 14, marginBottom: 22 }}>
+            <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '22px 24px' }}>
+              <div style={{ fontFamily: font.mono, fontSize: 11, color: color.t3, marginBottom: 12 }}>Unauthorized high-stakes actions that executed</div>
+              <div style={{ fontSize: 14, color: color.t2 }}>Agent alone</div>
+              <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 34, color: color.t1, letterSpacing: -1, lineHeight: 1.1 }}>5/6 <span style={{ fontSize: 17, color: color.t3 }}>(83%)</span></div>
+              <div style={{ fontSize: 14, color: color.t2, marginTop: 14 }}>Agent + EMILIA</div>
+              <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 34, color: color.gold, letterSpacing: -1, lineHeight: 1.1 }}>0/6 <span style={{ fontSize: 17, color: color.t3 }}>(0%)</span></div>
+            </div>
+            <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '22px 24px' }}>
+              <div style={{ fontFamily: font.mono, fontSize: 11, color: color.t3, marginBottom: 12 }}>False friction</div>
+              <div style={{ fontSize: 14, color: color.t2 }}>Safe actions EMILIA wrongly blocked</div>
+              <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 34, color: color.t1, letterSpacing: -1, lineHeight: 1.1 }}>0/6 <span style={{ fontSize: 17, color: color.t3 }}>(0%)</span></div>
+              <p style={{ fontSize: 13, color: color.t3, lineHeight: 1.6, margin: '14px 0 0' }}>The EMILIA result is deterministic &mdash; the verified engine gates every &ge;$50k release and bank-destination change, every run.</p>
+            </div>
+          </div>
+          <p style={{ fontSize: 14, color: color.t3, lineHeight: 1.7, maxWidth: 660, margin: 0 }}>
+            Don&rsquo;t take our word for it &mdash; the harness is open. Reproduce it, or point it at your own model:
+          </p>
+          <pre style={{ fontFamily: font.mono, fontSize: 13, color: '#D6D3D1', background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '16px 20px', margin: '12px 0 0', overflowX: 'auto' }}>BENCH_API_KEY=sk-... node bench/run.mjs</pre>
+        </C>
+      </section>
+
       <SiteFooter />
     </div>
   );
