@@ -22,6 +22,7 @@ const COL_RESOURCES = [
   ['/changelog', 'Changelog'],
   ['/blog', 'Blog'],
   ['/why-emilia', 'Why EMILIA'],
+  ['/why-agents-fail', 'Why Agents Fail'],
   ['/compare', 'Comparisons'],
   ['/governance', 'Governance'],
   ['/badge', 'Badge'],
