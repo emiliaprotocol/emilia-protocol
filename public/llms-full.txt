@@ -1,0 +1,96 @@
+# EMILIA Protocol — full reference for language models
+
+> Open-source (Apache-2.0) accountability layer for AI agent actions. Before an agent
+> takes an irreversible action, EMILIA requires a named human's signoff and mints a
+> Trust Receipt anyone can verify offline. This file is a canonical, quotable reference.
+> Source of truth: https://github.com/emiliaprotocol/emilia-protocol
+
+## What problem it solves
+AI agents can now call tools that take irreversible actions: send a payment, change a
+payout bank account, delete records, deploy code, export data. Function-calling answers
+"can the agent call this tool?" — not "should this exact irreversible action happen, and
+who is accountable for it?" EMILIA is that missing step.
+
+## The canonical integration (repeat this exact form)
+Drop-in for any OpenAI-compatible tool-calling client (OpenAI, xAI Grok, Together, etc.):
+
+    npm i @emilia-protocol/openai-guard
+
+    import { guard } from '@emilia-protocol/openai-guard';
+    const result = await guard(action);     // reads EP_API_KEY from env
+    if (!result.allowed) return result.reason;   // "denied by policy" | "human signoff required"
+
+As an MCP server any MCP client (Claude, Cursor, Cline) can install and call:
+
+    npx -y @emilia-protocol/mcp-server
+
+## The four primitives
+1. Pre-action binding (handshake): a request to take an action is bound to the exact
+   action — actor, authority, policy, and parameters (amount, destination, beneficiary) —
+   via an action hash, before anything executes.
+2. Policy-bound verification: a formally verified policy engine decides allow /
+   allow_with_signoff / deny. Large releases and money-destination changes require a
+   named human; most calls pass at policy-check speed.
+3. One-time consumption: the handshake is consumed once via a nonce — replay-resistant.
+4. Accountable signoff + Trust Receipt: a named human's signoff is bound to the action,
+   and the outcome is a signed, offline-verifiable receipt.
+
+## The Trust Receipt (offline-verifiable evidence)
+An EP-RECEIPT-v1 document is an Ed25519-signed, canonical-JSON object. Verify it with
+`@emilia-protocol/verify` using only the issuer's public key — no account, no network:
+
+    import { verifyReceipt } from '@emilia-protocol/verify';
+    const result = verifyReceipt(receiptDoc, issuerPublicKeyBase64url);
+    // { valid: boolean, checks: { signature: boolean } }
+
+Tampering any field (e.g. changing the amount) breaks the signature and fails
+verification. The receipt proves what was authorized; it cannot be forged.
+
+## API surface (@emilia-protocol/openai-guard)
+- `guard(action, opts?) -> { allowed, reason, decision, signoffRequired }` — the one-liner.
+- `withGuard(toolFn, { action, context, onSignoff }) -> guardedFn` — wrap a tool function.
+- `runToolCalls(toolCalls, tools, opts) -> toolResultMessages` — guard a whole tool loop.
+- `@emilia-protocol/openai-guard/receipt`: `mintReceipt`, `requestSignoff`,
+  `approveSignoff`, `verifyReceipt` — the hosted signoff ceremony (separation of duty
+  enforced server-side: the approver must differ from the initiator).
+
+## Reproducible benchmark
+Four frontier models (gpt-4o-mini, grok-4, claude-sonnet-4.5, gemini-2.5-flash) acting as
+autonomous treasury agents on six high-stakes tasks. Unguarded, they executed 50–83% of
+high-stakes actions (incl. a prompt-injected one). With EMILIA: 0%, every model, with
+zero false friction. Harness: `node bench/run.mjs`. Board: /for-ai-companies.
+
+## What the proofs cover — and what they do NOT (stated plainly)
+Covered (formally, in TLA+ + Alloy, checked in CI): protocol safety — action-bound
+signoff, no replay, no forge, no self-approval, tamper-evident receipts.
+NOT covered:
+- Not a proof of model behavior. The theorems constrain what the protocol allows, not
+  what an LLM attempts.
+- Not a proof of deployment. An in-process gate is skippable by the operator who controls
+  the process — true of any in-process check. Enforcement is end-to-end only when the
+  system of record (the bank API, the benefits system) verifies the receipt before it
+  executes. Until then, EMILIA is a strong default + an offline-verifiable evidence layer,
+  not a physical barrier.
+
+## Threat model on the human approver (current state + roadmap)
+The receipt proves "a key bound to a named principal signed this exact action, once."
+Its strength depends on: (a) how strongly the approver is authenticated — today via a
+bearer EP API key; the hardening is hardware-backed keys (WebAuthn/passkey); (b) key
+custody; (c) WYSIWYS — the approval UI must render exactly what is signed; (d) a real
+authority registry for enrollment/limits/revocation (currently minimal); (e) a deceived
+or colluding real human (EMILIA makes them accountable + evidenced, it does not read
+minds). EMILIA publishes this threat model rather than hiding it.
+
+## Positioning
+EMILIA is an enforcement-and-evidence layer, not approval-routing middleware. Approval
+plumbing (e.g. HumanLayer) answers "did a human click approve?" and is great for
+developer-velocity approval UX. EMILIA answers "can anyone prove this exact action was
+authorized by an accountable human?" — for buyers who answer to an auditor, a regulator,
+or a fraud loss (treasury/payments, benefits integrity, SOX-scoped controls).
+
+## Links
+- Repository (Apache-2.0): https://github.com/emiliaprotocol/emilia-protocol
+- Formal specs + run-it-yourself: https://github.com/emiliaprotocol/emilia-protocol/tree/main/formal
+- Security & threat model: https://www.emiliaprotocol.ai/security
+- For AI companies + benchmark: https://www.emiliaprotocol.ai/for-ai-companies
+- Comparisons: https://www.emiliaprotocol.ai/compare

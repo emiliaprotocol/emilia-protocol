@@ -6,6 +6,10 @@
 
 **A named human's signed "yes" before an AI agent does anything irreversible — with a receipt anyone can verify offline.**
 
+![EMILIA crash test — an autonomous agent tries to wire $82,000; the formally-verified policy engine holds it, a named human signs off, the Trust Receipt verifies offline, and a forged copy fails verification.](docs/media/crash-test.gif)
+
+> Run it yourself: `node examples/crash-test.mjs` — fully offline, no API key.
+
 Try it in one line (Claude / Cursor / Cline):
 
 ```bash
@@ -52,9 +56,9 @@ The protocol is open. Managed policy, verification, signoff orchestration, monit
 
 | Metric | Value |
 |---|---|
-| Automated tests | 3,430 across 129 files |
-| TLA+ safety properties | 20 verified (T1–T20) — TLC 2.19, 2026-04-02 — see [formal/PROOF_STATUS.md](formal/PROOF_STATUS.md). 6 additional EP-IX properties (T21–T26) specified, model run pending. |
-| Alloy relational assertions | 32 facts, 15 assertions — **Verified (Alloy 6.1.0, 2026-04-02)** |
+| Automated tests | 3,500 across 134 files (npx vitest run, 2026-06-09) |
+| TLA+ safety properties | 26 verified (T1-T26) - TLC 2.19, latest full run 2026-04-30, 0 errors - see [formal/PROOF_STATUS.md](formal/PROOF_STATUS.md) |
+| Alloy relational assertions | 35 facts, 15 assertions - verified in CI (Alloy 6.0.0, 2026-04-30) |
 | Red team cases | 85 cataloged in [docs/conformance/RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |
 | Security findings remediated | 31 |
 | CI quality gates | See `.github/workflows/` (~13 workflows) |

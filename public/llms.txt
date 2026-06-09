@@ -1,0 +1,50 @@
+# EMILIA Protocol
+
+> Open (Apache-2.0) accountability layer for AI agent actions. Before an agent takes an irreversible action — a payment, a deletion, a record change, a deploy — EMILIA requires a named human's signoff and mints a Trust Receipt that anyone can verify offline. Pre-action authorization plus cryptographic evidence, not after-the-fact logging.
+
+EMILIA answers one question: "can anyone prove this exact irreversible action was authorized by an accountable, named human?" It is an enforcement-and-evidence layer — action-bound signoff, one-time consumption (nonce), an offline-verifiable Ed25519 + Merkle Trust Receipt, and a formally verified policy engine — distinct from approval-routing middleware.
+
+Drop-in for any OpenAI-compatible agent (OpenAI, xAI Grok, Together, Fireworks, Groq):
+
+    npm i @emilia-protocol/openai-guard
+    const r = await guard(action); if (!r.allowed) return r.reason;
+
+Or as an MCP server that any MCP client (Claude, Cursor, Cline) can install and call:
+
+    npx -y @emilia-protocol/mcp-server
+
+## Start here
+- [For AI companies](https://www.emiliaprotocol.ai/for-ai-companies): the agent-accountability problem and a reproducible cross-model benchmark — unguarded frontier-model agents executed 50–83% of high-stakes actions; with EMILIA in front, 0%, with zero false friction.
+- [Quickstart](https://www.emiliaprotocol.ai/quickstart): add the guard to an agent in a few lines.
+- [Why agents fail](https://www.emiliaprotocol.ai/why-agents-fail): four failure modes and the missing step.
+- [Specification](https://www.emiliaprotocol.ai/spec): the protocol — pre-action binding, policy-bound verification, one-time consumption, accountable human signoff.
+- [Trust Receipt format](https://www.emiliaprotocol.ai/spec/trust-receipt): the offline-verifiable evidence artifact.
+
+## Packages
+- `@emilia-protocol/openai-guard` (npm): drop-in guard for OpenAI-compatible tool-calling. `guard(action) -> { allowed, reason }`, plus `withGuard(tool)`, `runToolCalls`, and a `/receipt` signoff ceremony.
+- `@emilia-protocol/verify` (npm): verify a Trust Receipt offline — pure Ed25519 + Merkle, no account, no server, no call home.
+- `@emilia-protocol/mcp-server` (npm): MCP server exposing the guard + signoff tools to any MCP client (`npx -y @emilia-protocol/mcp-server`).
+- `@emilia-protocol/langchain` (npm): guard a LangChain tool's `.invoke`.
+
+## Security & assurance
+- [Security & threat model](https://www.emiliaprotocol.ai/security): what the formal proofs cover — and, stated plainly, what they do not (not a proof of any AI model's behavior; an in-process gate is skippable unless the system of record verifies the receipt before executing).
+- Formal verification: the policy engine is modeled in TLA+ (26 theorems) and Alloy (35 facts), checked on every push in CI. Specs and run-it-yourself instructions: https://github.com/emiliaprotocol/emilia-protocol/tree/main/formal
+
+## Comparisons
+- [EMILIA vs HumanLayer](https://www.emiliaprotocol.ai/compare/humanlayer): approval plumbing vs provable authorization.
+- [vs DIY human-in-the-loop](https://www.emiliaprotocol.ai/compare/human-in-the-loop)
+- [vs OAuth](https://www.emiliaprotocol.ai/compare/oauth)
+- [vs audit logs](https://www.emiliaprotocol.ai/compare/audit-logs)
+- [vs post-action fraud detection](https://www.emiliaprotocol.ai/compare/fraud-detection)
+- [vs Permit.io](https://www.emiliaprotocol.ai/compare/permit-io)
+- [vs MCP authorization alone](https://www.emiliaprotocol.ai/compare/mcp-auth-alone)
+
+## Use cases
+- [Financial / treasury](https://www.emiliaprotocol.ai/use-cases/financial): stop the wire that ordinary auth approves — business-email-compromise and payee-bank-change fraud.
+- [Government / benefits integrity](https://www.emiliaprotocol.ai/use-cases/government)
+- [Enterprise](https://www.emiliaprotocol.ai/use-cases/enterprise)
+- [AI agents](https://www.emiliaprotocol.ai/use-cases/ai-agent)
+
+## Source & examples
+- Repository (Apache-2.0): https://github.com/emiliaprotocol/emilia-protocol
+- Runnable examples: `examples/crash-test.mjs` (full arc, offline), `examples/async-signoff.mjs` (high-volume async), `examples/grok-guard.mjs` (real Grok), `examples/vercel-ai-guard.mjs` (Vercel AI SDK adapter).
