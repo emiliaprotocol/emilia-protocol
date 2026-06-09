@@ -112,7 +112,10 @@ export default async function ForAiCompaniesPage() {
           <p style={{ fontSize: 16, color: color.t2, lineHeight: 1.7, maxWidth: 640, margin: '0 0 14px' }}>
             Or guard an existing OpenAI-compatible agent &mdash; OpenAI, xAI Grok, Together &mdash; so every irreversible tool call routes through EMILIA before it runs:
           </p>
-          <pre style={{ fontFamily: font.mono, fontSize: 13, color: '#D6D3D1', background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '16px 20px', margin: '0 0 28px', overflowX: 'auto' }}>npm install @emilia-protocol/openai-guard</pre>
+          <pre style={{ fontFamily: font.mono, fontSize: 13, color: '#D6D3D1', background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '16px 20px', margin: '0 0 14px', overflowX: 'auto' }}>npm install @emilia-protocol/openai-guard</pre>
+          <p style={{ fontSize: 14, color: color.t3, lineHeight: 1.7, maxWidth: 640, margin: '0 0 28px' }}>
+            For production: a <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/examples/async-signoff.mjs" style={{ color: color.gold, textDecoration: 'none' }}>high-volume async signoff example</a> (the gate is selective &mdash; the agent loop never blocks on a human), and an <a href="https://github.com/xai-org/xai-cookbook/pull/42" style={{ color: color.gold, textDecoration: 'none' }}>open recipe PR</a> on xAI&rsquo;s cookbook.
+          </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <Link href="/mcp" className="ep-cta" style={cta.primary}>The MCP server &rarr;</Link>
             <Link href="/demo" className="ep-cta-secondary" style={cta.secondary}>Watch an agent get stopped</Link>
