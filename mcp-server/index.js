@@ -48,7 +48,7 @@
  *   ep_bind_receipt_to_commit — Bind a post-action receipt to a commit
  *
  * Setup:
- *   EP_BASE_URL=https://emiliaprotocol.ai
+ *   EP_BASE_URL=https://www.emiliaprotocol.ai
  *   EP_API_KEY=ep_live_...  (for authenticated writes; registration is public)
  *
  * @license Apache-2.0
@@ -66,7 +66,9 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { AutoReceiptMiddleware } from './auto-receipt.js';
 
-const BASE_URL = process.env.EP_BASE_URL || 'https://emiliaprotocol.ai';
+// NOTE: use the www host. The apex 307-redirects to www, and fetch drops the
+// Authorization header on the cross-origin redirect — which would 401 authed calls.
+const BASE_URL = process.env.EP_BASE_URL || 'https://www.emiliaprotocol.ai';
 const API_KEY = process.env.EP_API_KEY || '';
 
 // =============================================================================
@@ -352,9 +354,10 @@ const TOOLS = [
   {
     name: 'ep_install_preflight',
     description:
-      'EP-SX: Should I install this plugin/app/package/extension? ' +
-      'Evaluates a software entity against a software-specific trust policy with context. ' +
-      'Returns allow/review/deny with specific reasons covering publisher, permissions, provenance, and trust history.',
+      'BEFORE installing or enabling third-party software an agent depends on — an npm ' +
+      'package, GitHub app, browser extension, or MCP server — check it here. Evaluates the ' +
+      'software against a fit-for-purpose trust policy and returns allow / review / deny with ' +
+      'reasons covering publisher, requested permissions, provenance, and trust history.',
     inputSchema: {
       type: 'object',
       properties: {
