@@ -18,22 +18,22 @@ export default function CompareLandscapePage() {
 
   // Columns: Dimension · EMILIA · HumanLayer · Tenet · DRP (IETF). CIBA + DIY covered in prose.
   const ROWS = [
-    { dim: 'Category', ep: 'Enforcement + evidence layer', hl: 'Approval-routing middleware', tenet: 'Governance layer — gates + audit', drp: 'Authorization protocol (IETF draft)' },
+    { dim: 'Category', ep: 'Enforcement + evidence layer', hl: 'Approval-routing middleware', tenet: 'Governance layer — gates + audit', drp: 'Authorization protocol (individual I-D)' },
     { dim: 'Gates irreversible actions', ep: 'Yes — policy engine + signoff', hl: 'Yes — routes to Slack/email', tenet: 'Yes — auto-pause', drp: 'Yes — 14 pre-action checks' },
     { dim: 'Tamper-evident evidence', ep: 'Ed25519 + Merkle receipt', hl: 'A log line in your own app', tenet: 'SHA-256 hash chain', drp: 'Append-only log + RFC 3161 timestamps' },
     { dim: 'Offline-verifiable receipt', ep: 'Yes — @emilia-protocol/verify, no network', hl: 'No', tenet: 'Verify the chain yourself; no offline receipt lib', drp: 'No — verification requires the log' },
     { dim: 'Formal verification', ep: 'Yes — 26 TLA+ theorems + 35 Alloy facts, in CI', hl: 'No', tenet: 'No', drp: 'No — spec with 14 checks' },
     { dim: 'Separation of duties', ep: 'Enforced — approver ≠ initiator', hl: 'Whoever clicks the button', tenet: 'Not addressed', drp: 'Implicit, not formalized' },
     { dim: 'Approver key custody', ep: 'Server-side today → hardware-backed (roadmap)', hl: '—', tenet: '—', drp: 'User holds the key (client-signed)' },
-    { dim: 'Standard / licensing', ep: 'Apache-2.0 + open spec & conformance', hl: 'Open core', tenet: 'Commercial SaaS ($29/mo)', drp: 'IETF Internet-Draft; Authproof hosted' },
-    { dim: 'Best for', ep: 'Provable authorization for auditors, regulators, fraud/treasury', hl: 'Fast approval UX, dev velocity', tenet: 'Turnkey gates + audit, multi-framework', drp: 'A future interop standard' },
+    { dim: 'Standard / licensing', ep: 'Apache-2.0 + open spec & conformance', hl: 'Open core', tenet: 'Commercial SaaS ($29/mo)', drp: 'Individual Internet-Draft (no IETF standing); Authproof hosted' },
+    { dim: 'Best for', ep: 'Provable authorization for auditors, regulators, fraud/treasury', hl: 'Fast approval UX, dev velocity', tenet: 'Turnkey gates + audit, multi-framework', drp: 'A future interop standard, if adopted' },
   ];
 
   const cols = [
     { key: 'ep', label: 'EMILIA', accent: color.gold },
     { key: 'hl', label: 'HumanLayer', accent: color.t2 },
     { key: 'tenet', label: 'Tenet', accent: color.t2 },
-    { key: 'drp', label: 'DRP (IETF)', accent: color.t2 },
+    { key: 'drp', label: 'DRP (Authproof)', accent: color.t2 },
   ];
 
   return (
@@ -73,7 +73,7 @@ export default function CompareLandscapePage() {
           </table>
         </div>
         <p className="ep-reveal" style={{ ...styles.body, fontSize: 13, color: color.t3, marginTop: 12 }}>
-          Based on each project&rsquo;s public docs and, for DRP, the IETF Internet-Draft <code style={{ fontFamily: font.mono, fontSize: 12 }}>draft-nelson-agent-delegation-receipts</code> (read directly). If we&rsquo;ve mischaracterized anything, tell us and we&rsquo;ll correct it.
+          Based on each project&rsquo;s public docs and, for DRP, the Internet-Draft <code style={{ fontFamily: font.mono, fontSize: 12 }}>draft-nelson-agent-delegation-receipts</code> (an individual submission with no IETF standing — read directly). If we&rsquo;ve mischaracterized anything, tell us and we&rsquo;ll correct it.
         </p>
       </section>
 
@@ -102,7 +102,7 @@ export default function CompareLandscapePage() {
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
         <h2 className="ep-reveal" style={styles.h2}>On the Delegation Receipt Protocol (and where it leads us)</h2>
         <p className="ep-reveal" style={styles.body}>
-          DRP is the serious one to watch — an IETF Internet-Draft for user-signed delegation receipts. We are not here to rebut it. Its core choice is right: the <em>user</em> holds the signing key, which removes the operator from the trust path — and on that one axis it is ahead of where EMILIA is today (we sign server-side; client/hardware-held keys are our top roadmap item, stated openly in our <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/THREAT_MODEL.md" style={{ color: color.blue, textDecoration: 'none' }}>threat model</a>).
+          DRP is the serious one to watch — an individual Internet-Draft for user-signed delegation receipts (Authproof&rsquo;s spec; no IETF working-group standing yet, the same early status any new proposal in this space has, ours included). We are not here to rebut it. Its core choice is right: the <em>user</em> holds the signing key, which removes the operator from the trust path — and on that one axis it is ahead of where EMILIA is today (we sign server-side; client/hardware-held keys are our top roadmap item, stated openly in our <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/THREAT_MODEL.md" style={{ color: color.blue, textDecoration: 'none' }}>threat model</a>).
         </p>
         <p className="ep-reveal" style={styles.body}>
           Where EMILIA adds beyond DRP: a <strong style={{ color: color.t1 }}>formally-verified</strong> policy engine, an <strong style={{ color: color.t1 }}>offline</strong>-verifiable receipt (DRP&rsquo;s draft states verification requires the append-only log), enforced separation of duties, and one-time global consumption. The honest aim is to be a rigorous, offline-verifiable realization of the delegation-receipt idea — not a competing silo.
