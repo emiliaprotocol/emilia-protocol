@@ -48,6 +48,13 @@ const COMPARISONS = [
     accent: color.gold,
     tag: 'Human-in-the-Loop',
   },
+  {
+    title: 'EMILIA Protocol vs HumanLayer',
+    desc: 'HumanLayer is excellent approval plumbing — route a tool call to Slack or email. EP binds the signoff to the exact action and mints an offline-verifiable receipt. Convenience vs cryptographic evidence.',
+    href: '/compare/humanlayer',
+    accent: color.red,
+    tag: 'HumanLayer',
+  },
 ];
 
 export default function ComparePage() {

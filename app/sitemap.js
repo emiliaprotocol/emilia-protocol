@@ -47,6 +47,7 @@ export default function sitemap() {
     { path: '/compare/fraud-detection',  priority: 0.8,  changeFrequency: 'monthly' },
     { path: '/compare/permit-io',        priority: 0.8,  changeFrequency: 'monthly' },
     { path: '/compare/human-in-the-loop', priority: 0.8, changeFrequency: 'monthly' },
+    { path: '/compare/humanlayer',        priority: 0.8, changeFrequency: 'monthly' },
   ];
 
   // Top-of-funnel blog posts — educational content for keyword breadth.

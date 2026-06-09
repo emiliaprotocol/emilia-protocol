@@ -136,6 +136,26 @@ export default function SecurityPage() {
       </section>
 
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
+        <h2 className="ep-reveal" style={styles.h2}>What the proofs do &mdash; and don&rsquo;t &mdash; cover</h2>
+        <p className="ep-reveal" style={styles.body}>
+          A guarantee you have to overstate isn&rsquo;t one. So, precisely:
+        </p>
+        <p className="ep-reveal" style={styles.body}>
+          <strong style={{ color: color.t1 }}>What they prove.</strong> Protocol-level safety: a signoff is bound to the exact action, can&rsquo;t be replayed or forged, can&rsquo;t self-approve, and the receipt is tamper-evident. No actor following the protocol can authorize an action that wasn&rsquo;t approved by an accountable, named human.
+        </p>
+        <p className="ep-reveal" style={styles.body}>
+          <strong style={{ color: color.t1 }}>What they do not prove &mdash; stated plainly:</strong>
+        </p>
+        <ul className="ep-reveal" style={styles.list}>
+          <li><strong style={{ color: color.t1 }}>Not a proof of model behavior.</strong> The theorems constrain what the protocol <em>allows</em>, not what an AI model <em>attempts</em>. They say nothing about whether an LLM makes good decisions &mdash; only that a bad one still can&rsquo;t cross the gate without an accountable yes.</li>
+          <li><strong style={{ color: color.t1 }}>Not a proof of deployment.</strong> If the gate runs inside a process the agent&rsquo;s operator fully controls, that operator can route around it &mdash; true of any in-process check. The enforcement guarantee is end-to-end only when the <em>system of record</em> (the bank API, the benefits system, the deploy pipeline) verifies the Trust Receipt before it executes. Until that integration exists, EMILIA is a strong default and an offline-verifiable evidence layer &mdash; not a physical barrier.</li>
+        </ul>
+        <p className="ep-reveal" style={styles.body}>
+          We lead with this because it&rsquo;s the first question a serious reviewer asks &mdash; and because the receipt is trustworthy precisely to the extent that we&rsquo;re exact about what it attests.
+        </p>
+      </section>
+
+      <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
         <h2 className="ep-reveal" style={styles.h2}>Responsible disclosure</h2>
         <p className="ep-reveal" style={styles.body}>
           Security findings on the protocol, the reference runtime, the SDKs (<code style={{ fontFamily: font.mono, fontSize: 13, color: color.blue }}>@emilia-protocol/sdk</code>, <code style={{ fontFamily: font.mono, fontSize: 13, color: color.blue }}>@emilia-protocol/verify</code>), the MCP server, or any *.emiliaprotocol.ai surface should be reported privately first.
