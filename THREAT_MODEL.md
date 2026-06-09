@@ -105,6 +105,7 @@ layer — not a physical barrier. Also stated on
 
 ## Build order
 1. **Hardware-backed approver auth** (WebAuthn/passkey) — closes #1, #2, and strengthens #6.
+   Build ticket: [docs/WEBAUTHN-SIGNOFF.md](docs/WEBAUTHN-SIGNOFF.md) · protocol spec: [standards/](standards/) §5.
 2. **Authority registry** (data + live enforcement) — closes #4.
 3. **Canonical approval renderer** (WYSIWYS) — closes #3.
 4. **System-of-record verification** integrations — closes #7.
