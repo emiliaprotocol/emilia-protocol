@@ -10,7 +10,7 @@
 
 ## What This Is
 
-EMILIA Protocol enforces trust before high-risk action. EP verifies whether a specific high-risk action should proceed under a specific authority context, governing policy, and transaction binding. This MCP server gives any Claude conversation or agent pipeline direct access to EP's trust-decision surfaces: 34 tools covering trust profiles, policy evaluation, handshake verification, signoff orchestration, and pre-action binding. Add it to Claude Desktop in 60 seconds. No self-hosted EP backend required.
+EMILIA Protocol enforces trust before a high-risk action. This MCP server gives any Claude conversation or agent pipeline EP's gate: call **`ep_guard_action`** before any irreversible action — a payment, deletion, or account change — to require a named human's signoff and get a verifiable receipt, then poll **`ep_check_signoff`** until it's approved. 36 tools in total, including policy evaluation, handshake verification, signoff orchestration, and pre-action binding. Add it to Claude Desktop in 60 seconds. No self-hosted EP backend required.
 
 ---
 

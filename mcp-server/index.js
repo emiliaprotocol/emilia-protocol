@@ -108,6 +108,48 @@ async function epFetch(path, options = {}) {
 // =============================================================================
 
 const TOOLS = [
+  // ═══════════════════════════════════════════════════════════════════════════
+  // HERO — the gate. Use these before any irreversible action. This is the product.
+  // ═══════════════════════════════════════════════════════════════════════════
+  {
+    name: 'ep_guard_action',
+    description:
+      'REQUIRED before any irreversible action: payments, wire transfers, fund releases, ' +
+      'deletions, record or account changes, or sending messages with real-world effect. ' +
+      'Submits the exact action for policy evaluation and human authorization. Returns ' +
+      'APPROVED with a receipt the action may proceed under, or BLOCKED with a receipt_id + ' +
+      'signoff_id while a named human reviews. Do NOT execute the action without an APPROVED ' +
+      'result — if BLOCKED, poll ep_check_signoff with the receipt_id.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        organization_id: { type: 'string', description: 'The organization this action belongs to.' },
+        action_type: { type: 'string', description: 'Kind of action, e.g. "large_payment_release", "vendor_bank_account_change", "ai_agent_payment_action".' },
+        target_resource_id: { type: 'string', description: 'What is being acted on — an invoice id, account id, or record id.' },
+        amount: { type: 'number', description: 'Amount, for payments/releases.' },
+        currency: { type: 'string', description: 'ISO currency code, e.g. "USD".' },
+        destination: { type: 'string', description: 'Where funds or data are going (account, address).' },
+        summary: { type: 'string', description: 'One-line, human-readable description the approver will see.' },
+        risk_flags: { type: 'array', items: { type: 'string' }, description: 'Optional risk signals, e.g. ["new_destination","after_hours"].' },
+      },
+      required: ['organization_id', 'action_type', 'target_resource_id'],
+    },
+  },
+  {
+    name: 'ep_check_signoff',
+    description:
+      'Poll a pending authorization after ep_guard_action returns BLOCKED. Pass the ' +
+      'receipt_id. Returns PENDING, APPROVED (the action may now proceed), or DENIED (with ' +
+      'reason). Safe to call repeatedly until a decision is reached.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        receipt_id: { type: 'string', description: 'The receipt_id returned by ep_guard_action.' },
+      },
+      required: ['receipt_id'],
+    },
+  },
+
   // PRIMARY: Trust profile (canonical read surface)
   {
     name: 'ep_trust_profile',
@@ -756,6 +798,53 @@ const TOOLS = [
 
 async function handleTool(name, args) {
   switch (name) {
+    // ─── HERO: the gate ──────────────────────────────────────────────────────
+    case 'ep_guard_action': {
+      if (!API_KEY) return 'Error: EP_API_KEY required to guard actions. Set it in MCP server config.';
+      // 1. Mint a pre-action trust receipt — runs the formally-verified policy engine server-side.
+      const mint = await epFetch('/api/v1/trust-receipts', {
+        method: 'POST', auth: true,
+        body: {
+          organization_id: args.organization_id,
+          action_type: args.action_type,
+          target_resource_id: args.target_resource_id,
+          amount: args.amount,
+          currency: args.currency,
+          risk_flags: args.risk_flags || [],
+          target_changed_fields: args.action_type === 'vendor_bank_account_change' ? ['bank_account'] : [],
+        },
+      });
+      if (mint.decision === 'deny') {
+        return `BLOCKED — denied by policy.\nreason: ${(mint.reasons || []).join('; ') || 'policy denial'}\n` +
+          `receipt_id: ${mint.receipt_id}\nDo not execute this action.`;
+      }
+      if (!mint.signoff_required) {
+        return `APPROVED — no human signoff required.\nreceipt_id: ${mint.receipt_id}\nThe action may proceed.`;
+      }
+      // 2. Signoff required → open the signoff request for a named human.
+      const sign = await epFetch('/api/v1/signoffs/request', {
+        method: 'POST', auth: true,
+        body: { receipt_id: mint.receipt_id, comment: args.summary || undefined },
+      });
+      return `BLOCKED — a named human must authorize this before it runs.\n` +
+        `receipt_id: ${mint.receipt_id}\nsignoff_id: ${sign.signoff_id}\nstatus: ${sign.status}\n` +
+        `reason: ${(mint.reasons || []).join('; ') || 'policy requires signoff'}\n` +
+        `Do NOT execute the action. Poll ep_check_signoff with this receipt_id until approved.`;
+    }
+
+    case 'ep_check_signoff': {
+      if (!API_KEY) return 'Error: EP_API_KEY required. Set it in MCP server config.';
+      const data = await epFetch(`/api/v1/trust-receipts/${encodeURIComponent(args.receipt_id)}`, { auth: true });
+      const status = data.receipt_status || data.status || 'pending_signoff';
+      if (['approved', 'consumed', 'fulfilled'].includes(status) || data.signoff_approved) {
+        return `APPROVED — the action is authorized and may proceed.\nreceipt_id: ${args.receipt_id}`;
+      }
+      if (['denied', 'rejected', 'revoked'].includes(status)) {
+        return `DENIED — a human rejected this action.\nreceipt_id: ${args.receipt_id}\nreason: ${data.reason || 'not stated'}\nDo not execute the action.`;
+      }
+      return `PENDING — awaiting a named human's signoff.\nreceipt_id: ${args.receipt_id}\nstatus: ${status}\nSafe to call again shortly.`;
+    }
+
     case 'ep_trust_profile': {
       const data = await epFetch(`/api/trust/profile/${encodeURIComponent(args.entity_id)}`);
       return formatTrustProfile(data);
