@@ -153,6 +153,9 @@ export default function SecurityPage() {
         <p className="ep-reveal" style={styles.body}>
           We lead with this because it&rsquo;s the first question a serious reviewer asks &mdash; and because the receipt is trustworthy precisely to the extent that we&rsquo;re exact about what it attests.
         </p>
+        <div className="ep-reveal" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/THREAT_MODEL.md" className="ep-cta-secondary" style={cta.secondary}>Full threat model &amp; trust assumptions &rarr;</a>
+        </div>
       </section>
 
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
