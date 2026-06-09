@@ -1,0 +1,130 @@
+'use client';
+
+import { useEffect } from 'react';
+import SiteNav from '@/components/SiteNav';
+import SiteFooter from '@/components/SiteFooter';
+import { styles, cta, color, font, radius } from '@/lib/tokens';
+
+export default function CompareLandscapePage() {
+  useEffect(() => {
+    const els = document.querySelectorAll('.ep-reveal');
+    const obs = new IntersectionObserver(
+      entries => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('is-visible'); obs.unobserve(e.target); } }),
+      { threshold: 0.12 }
+    );
+    els.forEach(el => obs.observe(el));
+    return () => obs.disconnect();
+  }, []);
+
+  // Columns: Dimension · EMILIA · HumanLayer · Tenet · DRP (IETF). CIBA + DIY covered in prose.
+  const ROWS = [
+    { dim: 'Category', ep: 'Enforcement + evidence layer', hl: 'Approval-routing middleware', tenet: 'Governance layer — gates + audit', drp: 'Authorization protocol (IETF draft)' },
+    { dim: 'Gates irreversible actions', ep: 'Yes — policy engine + signoff', hl: 'Yes — routes to Slack/email', tenet: 'Yes — auto-pause', drp: 'Yes — 14 pre-action checks' },
+    { dim: 'Tamper-evident evidence', ep: 'Ed25519 + Merkle receipt', hl: 'A log line in your own app', tenet: 'SHA-256 hash chain', drp: 'Append-only log + RFC 3161 timestamps' },
+    { dim: 'Offline-verifiable receipt', ep: 'Yes — @emilia-protocol/verify, no network', hl: 'No', tenet: 'Verify the chain yourself; no offline receipt lib', drp: 'No — verification requires the log' },
+    { dim: 'Formal verification', ep: 'Yes — 26 TLA+ theorems + 35 Alloy facts, in CI', hl: 'No', tenet: 'No', drp: 'No — spec with 14 checks' },
+    { dim: 'Separation of duties', ep: 'Enforced — approver ≠ initiator', hl: 'Whoever clicks the button', tenet: 'Not addressed', drp: 'Implicit, not formalized' },
+    { dim: 'Approver key custody', ep: 'Server-side today → hardware-backed (roadmap)', hl: '—', tenet: '—', drp: 'User holds the key (client-signed)' },
+    { dim: 'Standard / licensing', ep: 'Apache-2.0 + open spec & conformance', hl: 'Open core', tenet: 'Commercial SaaS ($29/mo)', drp: 'IETF Internet-Draft; Authproof hosted' },
+    { dim: 'Best for', ep: 'Provable authorization for auditors, regulators, fraud/treasury', hl: 'Fast approval UX, dev velocity', tenet: 'Turnkey gates + audit, multi-framework', drp: 'A future interop standard' },
+  ];
+
+  const cols = [
+    { key: 'ep', label: 'EMILIA', accent: color.gold },
+    { key: 'hl', label: 'HumanLayer', accent: color.t2 },
+    { key: 'tenet', label: 'Tenet', accent: color.t2 },
+    { key: 'drp', label: 'DRP (IETF)', accent: color.t2 },
+  ];
+
+  return (
+    <div style={styles.page}>
+      <SiteNav activePage="" />
+
+      <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 56 }}>
+        <div className="ep-tag ep-hero-badge" style={{ color: color.gold }}>Comparison / The landscape</div>
+        <h1 className="ep-hero-text" style={styles.h1}>The AI agent action-governance landscape</h1>
+        <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 680 }}>
+          &ldquo;Stop my agent before it does something irreversible&rdquo; is a real category now, with real, good products in it. Here is the honest map — what each does well, and the few things that are genuinely EMILIA&rsquo;s. We concede the rest, because a comparison you can&rsquo;t trust isn&rsquo;t worth citing.
+        </p>
+      </section>
+
+      <section className="ep-reveal" style={{ ...styles.section, paddingTop: 0, paddingBottom: 64 }}>
+        <h2 style={styles.h2}>Side by side</h2>
+        <div style={{ overflowX: 'auto', border: `1px solid ${color.border}`, borderRadius: radius.base }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: font.sans, minWidth: 760 }}>
+            <thead>
+              <tr>
+                <th style={styles.tableHead}>Dimension</th>
+                {cols.map(c => (
+                  <th key={c.key} style={{ ...styles.tableHead, color: c.accent }}>{c.label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {ROWS.map(r => (
+                <tr key={r.dim}>
+                  <td style={{ ...styles.tableCell, color: color.t1, fontWeight: 600 }}>{r.dim}</td>
+                  {cols.map(c => (
+                    <td key={c.key} style={{ ...styles.tableCell, ...(c.key === 'ep' ? { color: color.t1, background: '#FAFAF9' } : null) }}>{r[c.key]}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="ep-reveal" style={{ ...styles.body, fontSize: 13, color: color.t3, marginTop: 12 }}>
+          Based on each project&rsquo;s public docs and, for DRP, the IETF Internet-Draft <code style={{ fontFamily: font.mono, fontSize: 12 }}>draft-nelson-agent-delegation-receipts</code> (read directly). If we&rsquo;ve mischaracterized anything, tell us and we&rsquo;ll correct it.
+        </p>
+      </section>
+
+      <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
+        <h2 className="ep-reveal" style={styles.h2}>Where each is the right call</h2>
+        <ul className="ep-reveal" style={styles.list}>
+          <li><strong style={{ color: color.t1 }}>HumanLayer</strong> — the cleanest <em>approval UX</em>. If you want a human in the loop via Slack/email in an afternoon and &ldquo;a human clicked approve&rdquo; is the whole question, it wins on developer velocity. <a href="/compare/humanlayer" style={{ color: color.blue, textDecoration: 'none' }}>Full comparison →</a></li>
+          <li><strong style={{ color: color.t1 }}>Tenet</strong> — turnkey gates plus a SHA-256 hash-chained audit across <em>every</em> tool call, with LangChain/LangGraph, raw OpenAI/Anthropic, and n8n/Mastra adapters and simple pricing. If you want a polished product today, it&rsquo;s a strong choice.</li>
+          <li><strong style={{ color: color.t1 }}>CIBA / WorkOS</strong> — frames approval as an <em>authentication</em> problem using CIBA (an OIDC standard). Right when approval should live in your identity stack; it authenticates a person, but does not bind a cryptographic, offline-verifiable receipt to the exact action.</li>
+          <li><strong style={{ color: color.t1 }}>DIY framework interrupts</strong> — LangGraph/Agents-SDK interrupts give you full control if you&rsquo;re willing to build and maintain the binding, replay protection, and evidence yourself. <a href="/compare/human-in-the-loop" style={{ color: color.blue, textDecoration: 'none' }}>Why that gets expensive →</a></li>
+        </ul>
+      </section>
+
+      <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
+        <h2 className="ep-reveal" style={styles.h2}>What is genuinely EMILIA&rsquo;s</h2>
+        <p className="ep-reveal" style={styles.body}>
+          Gates + audit is no longer rare. Three things still are, and they matter most to a buyer who answers to an auditor, a regulator, or a fraud loss:
+        </p>
+        <ul className="ep-reveal" style={styles.list}>
+          <li><strong style={{ color: color.t1 }}>Formal verification.</strong> The policy engine is machine-checked — 26 TLA+ theorems + 35 Alloy facts, run on every push. No one else in this table claims machine-checked proofs.</li>
+          <li><strong style={{ color: color.t1 }}>An offline-verifiable receipt.</strong> <code style={{ fontFamily: font.mono, fontSize: 13 }}>@emilia-protocol/verify</code> checks a receipt with pure Ed25519 + Merkle math — no log, no network, no account. Hash-chains (Tenet) and append-only logs (DRP) prove tamper-evidence, but you need the log to verify; an EMILIA receipt verifies on its own, years later.</li>
+          <li><strong style={{ color: color.t1 }}>Enforced separation of duties + one-time consumption.</strong> The approver cannot be the initiator, checked in protocol, and a signoff is consumed once.</li>
+        </ul>
+      </section>
+
+      <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
+        <h2 className="ep-reveal" style={styles.h2}>On the Delegation Receipt Protocol (and where it leads us)</h2>
+        <p className="ep-reveal" style={styles.body}>
+          DRP is the serious one to watch — an IETF Internet-Draft for user-signed delegation receipts. We are not here to rebut it. Its core choice is right: the <em>user</em> holds the signing key, which removes the operator from the trust path — and on that one axis it is ahead of where EMILIA is today (we sign server-side; client/hardware-held keys are our top roadmap item, stated openly in our <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/THREAT_MODEL.md" style={{ color: color.blue, textDecoration: 'none' }}>threat model</a>).
+        </p>
+        <p className="ep-reveal" style={styles.body}>
+          Where EMILIA adds beyond DRP: a <strong style={{ color: color.t1 }}>formally-verified</strong> policy engine, an <strong style={{ color: color.t1 }}>offline</strong>-verifiable receipt (DRP&rsquo;s draft states verification requires the append-only log), enforced separation of duties, and one-time global consumption. The honest aim is to be a rigorous, offline-verifiable realization of the delegation-receipt idea — not a competing silo.
+        </p>
+      </section>
+
+      <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
+        <h2 className="ep-reveal" style={styles.h2}>The caveat we hold for everyone, including us</h2>
+        <p className="ep-reveal" style={styles.body}>
+          Any in-process guard is skippable by the operator who controls the process — true of every product here. The differentiator is the evidence that survives outside the runtime, and end-to-end enforcement only when the system of record verifies the receipt before executing. We say this plainly on our <a href="/security" style={{ color: color.blue, textDecoration: 'none' }}>security page</a>.
+        </p>
+      </section>
+
+      <section className="ep-reveal" style={{ ...styles.section, paddingTop: 0, paddingBottom: 96 }}>
+        <h2 style={styles.h2}>See it for yourself</h2>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <a href="/quickstart" className="ep-cta" style={cta.primary}>Add it to your agent</a>
+          <a href="/playground" className="ep-cta-secondary" style={cta.secondary}>Try the live demo</a>
+        </div>
+      </section>
+
+      <SiteFooter />
+    </div>
+  );
+}

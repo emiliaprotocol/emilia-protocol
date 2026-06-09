@@ -41,6 +41,7 @@ export default function sitemap() {
   const comparison = [
     { path: '/why-emilia',               priority: 0.85, changeFrequency: 'monthly' },
     { path: '/compare',                  priority: 0.75, changeFrequency: 'monthly' },
+    { path: '/compare/landscape',        priority: 0.85, changeFrequency: 'monthly' },
     { path: '/compare/oauth',            priority: 0.8,  changeFrequency: 'monthly' },
     { path: '/compare/mcp-auth-alone',   priority: 0.85, changeFrequency: 'monthly' },
     { path: '/compare/audit-logs',       priority: 0.8,  changeFrequency: 'monthly' },

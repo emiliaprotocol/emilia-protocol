@@ -7,6 +7,13 @@ import { styles, color, font, radius } from '@/lib/tokens';
 
 const COMPARISONS = [
   {
+    title: 'The agent action-governance landscape',
+    desc: 'EMILIA vs HumanLayer, Tenet, CIBA/WorkOS, and the IETF Delegation Receipt Protocol — what each does well, and the few things that are genuinely EMILIA\'s. Honest, conceded strengths included.',
+    href: '/compare/landscape',
+    accent: color.gold,
+    tag: 'Full landscape',
+  },
+  {
     title: 'EMILIA Protocol vs OAuth',
     desc: 'Why scoped tokens authorize the session but not the action — and what to layer on top for AI agents and high-value workflows.',
     href: '/compare/oauth',
