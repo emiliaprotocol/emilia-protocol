@@ -836,7 +836,8 @@ async function handleTool(name, args) {
       if (!API_KEY) return 'Error: EP_API_KEY required. Set it in MCP server config.';
       const data = await epFetch(`/api/v1/trust-receipts/${encodeURIComponent(args.receipt_id)}`, { auth: true });
       const status = data.receipt_status || data.status || 'pending_signoff';
-      if (['approved', 'consumed', 'fulfilled'].includes(status) || data.signoff_approved) {
+      // approved_pending_consume = signoff granted, not yet consumed; consumed = fully done.
+      if (['approved_pending_consume', 'approved', 'consumed', 'fulfilled'].includes(status)) {
         return `APPROVED — the action is authorized and may proceed.\nreceipt_id: ${args.receipt_id}`;
       }
       if (['denied', 'rejected', 'revoked'].includes(status)) {
