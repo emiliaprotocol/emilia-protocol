@@ -22,13 +22,15 @@ submission is a proposal, not a standard.)
 
 1. Create an account at <https://datatracker.ietf.org> (email confirmation
    goes to the author address — `team@emiliaprotocol.ai` must be receivable).
-2. Produce xml2rfc v3 XML — the datatracker requires XML for new submissions.
-   The lightest path is kramdown-rfc:
-   `gem install kramdown-rfc && pip install xml2rfc`, convert this markdown to
-   the kramdown-rfc dialect, then `kdrfc <file>.md` emits the XML + TXT.
-3. Upload at <https://datatracker.ietf.org/submit/>, confirm via the email
-   link. The draft posts within minutes and auto-expires in 185 days unless
-   revised (-01, -02, …).
+2. The submission-ready artifacts are already in this directory, generated and
+   validated with xml2rfc 3.34.0:
+   - `draft-schrock-ep-authorization-receipts-00.xml` — the file the
+     datatracker requires (xml2rfc v3).
+   - `draft-schrock-ep-authorization-receipts-00.txt` — the rendered I-D.
+   To regenerate after edits: `pip install xml2rfc && xml2rfc <file>.xml --text`.
+3. Upload the `.xml` at <https://datatracker.ietf.org/submit/>, confirm via
+   the email link. The draft posts within minutes and auto-expires in 185 days
+   unless revised (-01, -02, …).
 4. Where to discuss: `secdispatch@ietf.org` is the IETF venue for "where does
    new security work belong"; a courtesy note to the DRP author (Section 10
    describes how the two compose) is the collegial move.
