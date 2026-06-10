@@ -35,12 +35,13 @@ vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
   StdioServerTransport: vi.fn(function MockTransport() {}),
 }));
 vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
-  CallToolRequestSchema:       'CallToolRequestSchema',
-  ListToolsRequestSchema:      'ListToolsRequestSchema',
-  ListResourcesRequestSchema:  'ListResourcesRequestSchema',
-  ReadResourceRequestSchema:   'ReadResourceRequestSchema',
-  ListPromptsRequestSchema:    'ListPromptsRequestSchema',
-  GetPromptRequestSchema:      'GetPromptRequestSchema',
+  CallToolRequestSchema:              'CallToolRequestSchema',
+  ListToolsRequestSchema:             'ListToolsRequestSchema',
+  ListResourcesRequestSchema:         'ListResourcesRequestSchema',
+  ListResourceTemplatesRequestSchema: 'ListResourceTemplatesRequestSchema',
+  ReadResourceRequestSchema:          'ReadResourceRequestSchema',
+  ListPromptsRequestSchema:           'ListPromptsRequestSchema',
+  GetPromptRequestSchema:             'GetPromptRequestSchema',
 }));
 
 // ---------------------------------------------------------------------------
