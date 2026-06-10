@@ -255,9 +255,14 @@ function getApiKeyPrefix(request) {
  * HIGH-09 pentest finding while still supporting Next.js inline scripts.
  */
 function buildCSP(nonce) {
+  // Development only: Next's dev runtime evaluates eval-source-maps, which a
+  // nonce-only script-src blocks — hydration dies and every client component
+  // is a dead button (bit the WebAuthn e2e). Production CSP is unchanged:
+  // real builds don't eval. (HIGH-09 posture preserved where it matters.)
+  const devEval = process.env.NODE_ENV === 'development' ? " 'unsafe-eval'" : '';
   return [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}'`,
+    `script-src 'self' 'nonce-${nonce}'${devEval}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob:",
     "font-src 'self' https://fonts.gstatic.com",
