@@ -1536,7 +1536,28 @@ const server = new Server(
   { capabilities: { tools: {}, resources: {}, prompts: {} } }
 );
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }));
+// The default surface is the trust-gate + pre-action protocol — the reason
+// to install this server. The legacy registry/reputation tools (entity
+// scoring, leaderboards, disputes, identity continuity, ZK proofs) remain
+// fully implemented and callable, but are hidden from tool discovery unless
+// EP_INCLUDE_REGISTRY_TOOLS=true, so an agent sees a focused, coherent set.
+const CORE_TOOL_NAMES = new Set([
+  'ep_guard_action', 'ep_check_signoff',          // the gate
+  'ep_initiate_handshake', 'ep_add_presentation', // pre-action binding
+  'ep_verify_handshake', 'ep_get_handshake', 'ep_revoke_handshake',
+  'ep_issue_commit', 'ep_verify_commit', 'ep_get_commit_status',
+  'ep_revoke_commit', 'ep_bind_receipt_to_commit',
+  'ep_verify_receipt',                            // offline-verify a receipt
+  'ep_list_policies',                             // discover policies
+  'ep_create_delegation', 'ep_verify_delegation', // delegated authority
+  'ep_install_preflight',                         // vet software before install
+]);
+const INCLUDE_REGISTRY_TOOLS = process.env.EP_INCLUDE_REGISTRY_TOOLS === 'true';
+const ADVERTISED_TOOLS = INCLUDE_REGISTRY_TOOLS
+  ? TOOLS
+  : TOOLS.filter((t) => CORE_TOOL_NAMES.has(t.name));
+
+server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: ADVERTISED_TOOLS }));
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;

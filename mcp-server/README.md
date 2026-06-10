@@ -10,7 +10,7 @@
 
 ## What This Is
 
-EMILIA Protocol enforces trust before a high-risk action. This MCP server gives any Claude conversation or agent pipeline EP's gate: call **`ep_guard_action`** before any irreversible action — a payment, deletion, or account change — to require a named human's signoff and get a verifiable receipt, then poll **`ep_check_signoff`** until it's approved. 36 tools in total, including policy evaluation, handshake verification, signoff orchestration, and pre-action binding. Add it to Claude Desktop in 60 seconds. No self-hosted EP backend required.
+EMILIA Protocol enforces trust before a high-risk action. This MCP server gives any Claude conversation or agent pipeline EP's gate: call **`ep_guard_action`** before any irreversible action — a payment, deletion, or account change — to require a named human's signoff and get a verifiable receipt, then poll **`ep_check_signoff`** until it's approved. 36 tools in all, but by default the server advertises a **focused 17** — the trust gate plus the pre-action protocol (handshake + commit binding, signoff orchestration, policy evaluation, offline receipt verification, delegation, install preflight). Set `EP_INCLUDE_REGISTRY_TOOLS=true` to also expose the legacy registry and reputation tools. Add it to Claude Desktop in 60 seconds. No self-hosted EP backend required.
 
 ---
 
