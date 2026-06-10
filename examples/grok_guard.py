@@ -28,6 +28,7 @@ you prefer; the shapes are identical.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 import urllib.error
@@ -35,6 +36,19 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, Optional
+
+# Silent by default (library convention); your app configures handlers/level.
+# Treasury/ops want the trail: "minted tr_… -> signoff requested -> approved".
+logger = logging.getLogger("emilia.grok_guard")
+
+
+class EmiliaAPIError(Exception):
+    """A transport-level failure reaching the EMILIA API (DNS/TLS/connection).
+
+    HTTP *status codes* are deliberately returned as data, not raised: a policy
+    `deny` or a 4xx is a normal outcome the caller turns into a structured tool
+    result, not an exception. Only when there is no response at all do we raise.
+    """
 
 
 # ── Minimal HTTP (stdlib). Replace with requests/httpx in your backend. ──────
@@ -54,10 +68,17 @@ def _http(method: str, url: str, api_key: str, body: Optional[dict] = None, time
         with urllib.request.urlopen(req, timeout=timeout) as resp:  # nosemgrep  # noqa: S310
             return resp.status, json.loads(resp.read() or b"{}")
     except urllib.error.HTTPError as e:
+        # A 4xx/5xx is a normal outcome the callers interpret (e.g. a policy
+        # deny). Return it as data, never raise — the agent gets a structured
+        # "blocked", not a crash.
         try:
             return e.code, json.loads(e.read() or b"{}")
         except Exception:
             return e.code, {"error": "http_error"}
+    except urllib.error.URLError as e:
+        # No response at all (network/DNS/TLS) — surface a typed error instead
+        # of a bare urllib exception so backends can catch one thing.
+        raise EmiliaAPIError(f"cannot reach EMILIA at {url}: {e.reason}") from e
 
 
 @dataclass
@@ -92,7 +113,7 @@ class EmiliaGuard:
         currency: str = "USD",
         risk_flags: Optional[list[str]] = None,
         target_changed_fields: Optional[list[str]] = None,
-        approver_id: Optional[str] = None,   # the named human you'll route to
+        approver_id: Optional[str] = None,   # strongly recommended — named accountability is the whole point
     ) -> GuardResult:
         status, mint = _http("POST", f"{self.base_url}/api/v1/trust-receipts", self.api_key, {
             "organization_id": organization_id,
@@ -107,6 +128,8 @@ class EmiliaGuard:
             return GuardResult(False, "deny", reason=f"mint failed ({status}): {mint.get('detail') or mint.get('error')}", raw=mint)
 
         decision = mint.get("decision", "deny")
+        logger.info("emilia: minted %s decision=%s signoff_required=%s",
+                    mint.get("receipt_id"), decision, bool(mint.get("signoff_required")))
         if not mint.get("signoff_required"):
             # allow or deny outright — no human needed.
             return GuardResult(decision == "allow", decision, receipt_id=mint.get("receipt_id"),
@@ -122,6 +145,7 @@ class EmiliaGuard:
         url = f"{self.base_url}/signoff/{sreq['signoff_id']}"
         if approver_id:
             url += "?approver=" + urllib.parse.quote(approver_id, safe="")
+        logger.info("emilia: signoff %s opened for %s", sreq.get("signoff_id"), mint["receipt_id"])
         return GuardResult(False, decision, receipt_id=mint["receipt_id"],
                            signoff_id=sreq["signoff_id"], approval_url=url,
                            reason="human signoff required", raw={"mint": mint, "request": sreq})
@@ -135,8 +159,11 @@ class EmiliaGuard:
             st = rec.get("receipt_status")
             if status == 200 and st in terminal:
                 approved = st in ("approved_pending_consume", "consumed")
+                logger.info("emilia: signoff for %s resolved status=%s approved=%s key_class=%s",
+                            receipt_id, st, approved, rec.get("signoff_key_class"))
                 return {"approved": approved, "status": st, "key_class": rec.get("signoff_key_class"), "raw": rec}
             time.sleep(interval_s)
+        logger.info("emilia: signoff for %s timed out after %ss", receipt_id, timeout_s)
         return {"approved": False, "status": "timeout", "key_class": None, "raw": {}}
 
 
