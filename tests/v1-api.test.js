@@ -440,34 +440,31 @@ describe('POST /api/v1/signoffs/:id/approve', () => {
     actionHash,
     expiresAt = new Date(Date.now() + 1e6).toISOString(),
     priorDecisions = [],
+    insertError = null,
   }) {
     mockGetGuardedClient.mockReturnValue({
       from: vi.fn((table) => {
         if (table === 'audit_events') {
-          // Two distinct queries:
-          //   1. SELECT ... WHERE event_type='guard.signoff.requested'
-          //   2. SELECT ... WHERE target_id=... AND event_type IN ('approved','rejected')
-          // The mock returns a chain that resolves with the right shape based
-          // on which `.in()` / `.eq()` filters are applied.
-          return {
+          // Two distinct queries per request, disambiguated by shape:
+          //   1. requests listing — .eq(event_type='guard.signoff.requested').limit(1)
+          //   2. prior-decisions check — .in('event_type', [approved, rejected])
+          // A fresh chain per from() call tracks whether .in() was used, so
+          // the resolver returns the right rows regardless of call order.
+          const requestsRow = [{ target_id: 'tr_x', actor_id: initiator, after_state: { signoff_id: 'sig_1', initiator_id: initiator, action_hash: actionHash, expires_at: expiresAt }, created_at: '2026-04-26T00:00:00Z' }];
+          let usedIn = false;
+          const chain = {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            in: vi.fn().mockReturnThis(),
             order: vi.fn().mockReturnThis(),
             limit: vi.fn().mockReturnThis(),
-            insert: vi.fn().mockResolvedValue({ data: null, error: null }),
-            then: (resolve) => {
-              // Disambiguate by call order — first call is requests
-              // listing, second is prior-decisions check.
-              const calls = mockGetGuardedClient.mock.calls.length;
-              return Promise.resolve({
-                data: calls === 1
-                  ? [{ target_id: 'tr_x', actor_id: initiator, after_state: { signoff_id: 'sig_1', initiator_id: initiator, action_hash: actionHash, expires_at: expiresAt }, created_at: '2026-04-26T00:00:00Z' }]
-                  : priorDecisions,
-                error: null,
-              }).then(resolve);
-            },
+            in: vi.fn(() => { usedIn = true; return chain; }),
+            insert: vi.fn().mockResolvedValue({ data: null, error: insertError }),
+            then: (resolve) => Promise.resolve({
+              data: usedIn ? priorDecisions : requestsRow,
+              error: null,
+            }).then(resolve),
           };
+          return chain;
         }
         return makeChain({ data: null, error: null });
       }),
@@ -537,6 +534,57 @@ describe('POST /api/v1/signoffs/:id/approve', () => {
     });
     const res = await approveSignoff(req({ approved_action_hash: 'a' }), { params: Promise.resolve({ signoffId: 'sig_1' }) });
     expect(res.status).toBe(410);
+  });
+
+  // Happy path — a distinct approver, matching hash, valid window, no prior
+  // decision: reaches the insert and records the decision. This is the bulk
+  // of the handler that no prior test exercised (lines past the guards).
+  it('records an approval (200) and labels the decision key_class C', async () => {
+    authedAs('user_approver');
+    setupSignoffEnv({ initiator: 'user_initiator', actionHash: 'a' });
+    const res = await approveSignoff(req({ approved_action_hash: 'a' }), { params: Promise.resolve({ signoffId: 'sig_1' }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.decision).toBe('approved');
+    expect(body.approver_id).toBe('user_approver');
+  });
+
+  it('returns 409 when the signoff was already decided', async () => {
+    authedAs('user_approver');
+    setupSignoffEnv({
+      initiator: 'user_initiator',
+      actionHash: 'a',
+      priorDecisions: [{ event_type: 'guard.signoff.approved', after_state: { signoff_id: 'sig_1' } }],
+    });
+    const res = await approveSignoff(req({ approved_action_hash: 'a' }), { params: Promise.resolve({ signoffId: 'sig_1' }) });
+    expect(res.status).toBe(409);
+  });
+
+  it('returns 409 when a concurrent decision wins the unique index (23505)', async () => {
+    authedAs('user_approver');
+    setupSignoffEnv({ initiator: 'user_initiator', actionHash: 'a', insertError: { code: '23505' } });
+    const res = await approveSignoff(req({ approved_action_hash: 'a' }), { params: Promise.resolve({ signoffId: 'sig_1' }) });
+    expect(res.status).toBe(409);
+  });
+
+  it('returns 500 on a non-race insert error', async () => {
+    authedAs('user_approver');
+    setupSignoffEnv({ initiator: 'user_initiator', actionHash: 'a', insertError: { code: '42000', message: 'boom' } });
+    const res = await approveSignoff(req({ approved_action_hash: 'a' }), { params: Promise.resolve({ signoffId: 'sig_1' }) });
+    expect(res.status).toBe(500);
+  });
+
+  it('returns 401 when the request is unauthenticated', async () => {
+    mockAuthenticateRequest.mockResolvedValue({ error: 'Missing API key', status: 401 });
+    const res = await approveSignoff(req({ approved_action_hash: 'a' }), { params: Promise.resolve({ signoffId: 'sig_1' }) });
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 500 when the data client throws (catch path)', async () => {
+    authedAs('user_approver');
+    mockGetGuardedClient.mockImplementation(() => { throw new Error('client init boom'); });
+    const res = await approveSignoff(req({ approved_action_hash: 'a' }), { params: Promise.resolve({ signoffId: 'sig_1' }) });
+    expect(res.status).toBe(500);
   });
 });
 
