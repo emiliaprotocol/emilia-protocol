@@ -1,0 +1,4 @@
+-- Placeholder: this version was applied directly on the remote database on
+-- 2026-05-30 (outside the repo's migration flow). The schema it created is
+-- already live; this empty file exists only so local history matches remote.
+-- Intentionally empty.

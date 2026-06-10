@@ -55,6 +55,14 @@ const ROUTE_POLICIES = {
   'POST /api/v1/signoffs/request':                 { rateCategory: 'submit', useAuth: true }, // request human signoff
   'POST /api/v1/signoffs/*/approve':               { rateCategory: 'submit', useAuth: true }, // approver acts
   'POST /api/v1/signoffs/*/reject':                { rateCategory: 'submit', useAuth: true }, // approver acts
+  // Class A signoff (WebAuthn, docs/WEBAUTHN-SIGNOFF.md). The signing pair is
+  // capability-URL + device assertion (no bearer key — the assertion IS the
+  // authentication, verified in-route), so rate-limit by IP. Enrollment
+  // requires an authenticated org-admin key (second-party attestation).
+  'POST /api/v1/signoffs/*/webauthn-options':      { rateCategory: 'submit', useAuth: false }, // issue signing challenge
+  'POST /api/v1/signoffs/*/approve-webauthn':      { rateCategory: 'submit', useAuth: false }, // device-key decision
+  'POST /api/v1/approvers/webauthn/register-options': { rateCategory: 'submit', useAuth: true }, // begin passkey enrollment
+  'POST /api/v1/approvers/webauthn/register-verify':  { rateCategory: 'submit', useAuth: true }, // complete enrollment
   // GovGuard + FinGuard demo adapters (MD §8) — thin façades over
   // /api/v1/trust-receipts pre-filled for specific workflows. Same auth +
   // rate posture as the underlying create endpoint. All implemented via

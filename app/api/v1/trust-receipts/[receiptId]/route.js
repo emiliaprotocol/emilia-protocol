@@ -75,6 +75,13 @@ export async function GET(request, { params }) {
       expires_at: base.expires_at,
       signoff_required: base.signoff_required,
       receipt_status,
+      // Key class of the decisive signoff, per the EP draft §5.1 labeling
+      // requirement: 'A' = approver-held device key (WebAuthn assertion on
+      // file), 'C' = operator-custodied (bearer-key auth, server-recorded).
+      // Pre-labeling decisions default to 'C' — that is what they were.
+      signoff_key_class: signoffApproved || signoffRejected
+        ? ((signoffApproved || signoffRejected).after_state?.key_class || 'C')
+        : null,
       timeline_event_count: events.length,
     });
   } catch (err) {

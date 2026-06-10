@@ -1,0 +1,19 @@
+{
+  "generatedAt": "2026-06-09T20:32:31.966Z",
+  "tests": {
+    "passed": 3500,
+    "skipped": 29,
+    "total": 3529,
+    "files": 134
+  },
+  "tla": {
+    "invariants": 26,
+    "checker": "TLC 2.19"
+  },
+  "alloy": {
+    "facts": 35,
+    "assertions": 15,
+    "version": "6.0.0 (CI)"
+  },
+  "redTeamCases": 85
+}

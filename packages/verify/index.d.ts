@@ -59,3 +59,36 @@ export function verifyReceiptBundle(
   bundle: Record<string, unknown>,
   publicKeyBase64url: string
 ): BundleVerificationResult;
+
+export interface WebAuthnSignoffChecks {
+  challenge_binding: boolean;
+  client_data_type: boolean;
+  user_present: boolean;
+  user_verified: boolean;
+  rp_id_hash: boolean | null;
+  signature: boolean;
+}
+
+export interface WebAuthnSignoffResult {
+  valid: boolean;
+  checks: WebAuthnSignoffChecks;
+  error?: string;
+}
+
+/**
+ * Verify a Class A (approver-held key, WebAuthn) signoff fully offline.
+ * Proves the device signed SHA-256(JCS(context)) with user verification,
+ * against the approver's enrolled P-256 key. Pure math — no network.
+ */
+export function verifyWebAuthnSignoff(
+  signoff: {
+    context: Record<string, unknown>;
+    webauthn: {
+      authenticator_data: string;
+      client_data_json: string;
+      signature: string;
+    };
+  },
+  approverPublicKeySpkiB64u: string,
+  opts?: { rpId?: string }
+): WebAuthnSignoffResult;

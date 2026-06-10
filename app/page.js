@@ -17,13 +17,13 @@ import { styles, cta, color, font, radius } from '@/lib/tokens';
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Stats — independently verifiable in the repo:
-//   3,483 tests / 132 files — `npx vitest run` summary
+//   3,500 tests / 134 files — `npx vitest run` summary
 //   26 TLA+ invariants verified — formal/PROOF_STATUS.md (T1–T26)
 //   35 Alloy facts — formal/Alloy/EP.als
 //   85 red team cases — docs/conformance/RED_TEAM_CASES.md
 //   Apache 2.0 — LICENSE
 const STATS = [
-  { value: '3,483',     label: 'Automated Tests',  sub: '132 test files',                accent: color.t1    },
+  { value: '3,500',     label: 'Automated Tests',  sub: '134 test files',                accent: color.t1    },
   { value: '26',        label: 'TLA+ Theorems',    sub: 'TLC 2.19, zero errors',         accent: color.blue  },
   { value: '35',        label: 'Alloy Facts',       sub: '15 assertions verified',        accent: color.gold  },
   { value: '85',        label: 'Red Team Cases',    sub: 'Cataloged in repo',             accent: color.t1    },
@@ -163,7 +163,7 @@ export default function HomePage() {
                 paddingTop: 28, borderTop: `1px solid ${color.border}`,
               }}>
                 {[
-                  { val: '3,483', label: 'Tests Passing' },
+                  { val: '3,500', label: 'Tests Passing' },
                   { val: '26',    label: 'TLA+ Theorems' },
                   { val: '85',    label: 'Red Team Cases' },
                 ].map(({ val, label }) => (
@@ -560,7 +560,7 @@ export default function HomePage() {
           color: 'rgba(255,255,255,0.22)', letterSpacing: 1.5, textTransform: 'uppercase',
         }}>
           <span>Compliance: NIST AI RMF · EU AI ACT</span>
-          <span>Tests: 3,483 passing · 0 failing</span>
+          <span>Tests: 3,500 passing · 0 failing</span>
           <span>Formal verification: 26 theorems · 0 errors</span>
         </div>
       </section>

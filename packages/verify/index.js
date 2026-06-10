@@ -146,6 +146,122 @@ export function verifyMerkleAnchor(leafHash, proof, expectedRoot) {
 }
 
 // =============================================================================
+// CLASS A SIGNOFF VERIFICATION (WebAuthn, offline)
+// =============================================================================
+
+// authenticatorData layout (WebAuthn L2 §6.1): rpIdHash(32) | flags(1) |
+// signCount(4) | ... Flags bit 0 = UP (user present), bit 2 = UV (user
+// verified — biometric/PIN).
+const FLAG_UP = 0x01;
+const FLAG_UV = 0x04;
+
+/**
+ * Verify a Class A (approver-held key) signoff fully offline.
+ *
+ * What this proves with pure math, no network, no EP server:
+ *   - the WebAuthn challenge the device signed equals
+ *     SHA-256(JCS(context)) for the EXACT context in the signoff — which
+ *     binds the action hash, nonce, approver, and validity window;
+ *   - the signature verifies against the approver's enrolled P-256 key;
+ *   - the authenticator asserted user presence AND user verification
+ *     (a human with the biometric/PIN was there);
+ *   - (if rpId supplied) the assertion was scoped to the expected relying
+ *     party.
+ *
+ * What it does NOT prove (EP draft §6.3): that the key wasn't revoked
+ * after commit time, or what the human SAW when they signed (§11.3).
+ *
+ * @param {object} signoff - {
+ *   context: object,            // the canonical Authorization Context
+ *   webauthn: {
+ *     authenticator_data: string,  // b64u
+ *     client_data_json: string,    // b64u
+ *     signature: string,           // b64u (DER ECDSA)
+ *   }
+ * }
+ * @param {string} approverPublicKeySpkiB64u - enrolled P-256 key, SPKI DER b64u
+ * @param {{ rpId?: string }} [opts]
+ * @returns {{ valid: boolean, checks: object, error?: string }}
+ */
+export function verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, opts = {}) {
+  const checks = {
+    challenge_binding: false,
+    client_data_type: false,
+    user_present: false,
+    user_verified: false,
+    rp_id_hash: null,
+    signature: false,
+  };
+
+  try {
+    if (!signoff?.context || !signoff?.webauthn) {
+      return { valid: false, checks, error: 'Missing context or webauthn evidence' };
+    }
+    const { authenticator_data, client_data_json, signature } = signoff.webauthn;
+    if (!authenticator_data || !client_data_json || !signature) {
+      return { valid: false, checks, error: 'Missing webauthn fields' };
+    }
+
+    // 1. Challenge binding: clientDataJSON.challenge must equal
+    //    b64u(SHA-256(canonical(context))). The context is re-canonicalized
+    //    here — tamper any field (amount, approver, nonce) and this fails.
+    const clientDataBytes = Buffer.from(client_data_json, 'base64url');
+    const clientData = JSON.parse(clientDataBytes.toString('utf8'));
+    const expectedChallenge = crypto
+      .createHash('sha256')
+      .update(canonicalize(signoff.context), 'utf8')
+      .digest()
+      .toString('base64url');
+    checks.challenge_binding = clientData.challenge === expectedChallenge;
+
+    // 2. Ceremony type must be an assertion, not a registration.
+    checks.client_data_type = clientData.type === 'webauthn.get';
+
+    // 3. Authenticator flags: user present + user verified.
+    const authData = Buffer.from(authenticator_data, 'base64url');
+    if (authData.length < 37) {
+      return { valid: false, checks, error: 'authenticator_data too short' };
+    }
+    const flags = authData[32];
+    checks.user_present = (flags & FLAG_UP) === FLAG_UP;
+    checks.user_verified = (flags & FLAG_UV) === FLAG_UV;
+
+    // 4. Optional rpId scope check.
+    if (opts.rpId) {
+      const expectedRpIdHash = crypto.createHash('sha256').update(opts.rpId, 'utf8').digest();
+      checks.rp_id_hash = expectedRpIdHash.equals(authData.subarray(0, 32));
+    }
+
+    // 5. Signature: ECDSA P-256/SHA-256 over authData || SHA-256(clientDataJSON).
+    const signedData = Buffer.concat([
+      authData,
+      crypto.createHash('sha256').update(clientDataBytes).digest(),
+    ]);
+    const keyObject = crypto.createPublicKey({
+      key: Buffer.from(approverPublicKeySpkiB64u, 'base64url'),
+      format: 'der',
+      type: 'spki',
+    });
+    checks.signature = crypto.verify(
+      'sha256',
+      signedData,
+      keyObject,
+      Buffer.from(signature, 'base64url'),
+    );
+  } catch (e) {
+    return { valid: false, checks, error: `WebAuthn verification failed: ${e.message}` };
+  }
+
+  const valid = checks.challenge_binding
+    && checks.client_data_type
+    && checks.user_present
+    && checks.user_verified
+    && checks.signature
+    && (checks.rp_id_hash === null || checks.rp_id_hash === true);
+  return { valid, checks };
+}
+
+// =============================================================================
 // COMMITMENT PROOF VERIFICATION
 // =============================================================================
 

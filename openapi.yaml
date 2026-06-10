@@ -3815,6 +3815,131 @@ paths:
         '500':
           description: Test delivery failed
 
+  /api/v1/approvers/webauthn/register-options:
+    post:
+      tags: [Class A Signoff]
+      summary: Begin approver passkey enrollment (WebAuthn registration options)
+      description: |
+        Start enrolling a named approver's device-bound signing key (key class
+        A). Requires an authenticated EP API key; the authenticated entity is
+        recorded as the second-party attestation on the enrollment.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [approver_id]
+              properties:
+                approver_id: { type: string, description: 'e.g. ep:approver:jchen-controller' }
+                approver_name: { type: string }
+                approver_email: { type: string }
+      responses:
+        '200':
+          description: WebAuthn registration options (single-use, 5-minute challenge)
+        '401':
+          description: Missing or invalid EP API key
+  /api/v1/approvers/webauthn/register-verify:
+    post:
+      tags: [Class A Signoff]
+      summary: Complete approver passkey enrollment (verify attestation)
+      description: |
+        Verify the WebAuthn attestation against the pending challenge and
+        store the credential (COSE + P-256 SPKI for offline verification).
+        ES256/P-256 only.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [approver_id, attestation]
+              properties:
+                approver_id: { type: string }
+                approver_name: { type: string }
+                attestation: { type: object, description: WebAuthn RegistrationResponseJSON }
+      responses:
+        '201':
+          description: Credential enrolled (key class A, second-party attested)
+        '400':
+          description: Attestation invalid or unsupported key type
+        '409':
+          description: Credential already enrolled
+  /api/v1/signoffs/{signoffId}/webauthn-options:
+    post:
+      tags: [Class A Signoff]
+      summary: Issue the WebAuthn signing challenge for a pending signoff
+      description: |
+        Builds the canonical Authorization Context for this signoff and
+        returns WebAuthn authentication options whose challenge is
+        SHA-256(JCS(context)) — action-bound and single-use by construction.
+        Capability-URL auth: possession of the unguessable signoff_id permits
+        viewing; authorizing additionally requires the device assertion.
+      parameters:
+        - name: signoffId
+          in: path
+          required: true
+          schema: { type: string, pattern: '^sig_[a-f0-9]{32}$' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [approver_id]
+              properties:
+                approver_id: { type: string }
+      responses:
+        '200':
+          description: Authentication options + the exact context being signed
+        '403':
+          description: Approver is the initiator (separation of duties)
+        '404':
+          description: Signoff not found or approver not enrolled
+        '409':
+          description: Signoff already decided
+        '410':
+          description: Signoff window expired
+  /api/v1/signoffs/{signoffId}/approve-webauthn:
+    post:
+      tags: [Class A Signoff]
+      summary: Decide a signoff with an approver-held device key (key class A)
+      description: |
+        Verifies the WebAuthn assertion (challenge = context hash, user
+        verification required, separation of duties enforced) and records the
+        decision with the assertion embedded, so the receipt verifies offline
+        against the approver's enrolled key. Denials are signed the same way.
+      parameters:
+        - name: signoffId
+          in: path
+          required: true
+          schema: { type: string, pattern: '^sig_[a-f0-9]{32}$' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [approver_id, assertion]
+              properties:
+                approver_id: { type: string }
+                decision: { type: string, enum: [approved, rejected], default: approved }
+                assertion: { type: object, description: WebAuthn AuthenticationResponseJSON }
+      responses:
+        '200':
+          description: Decision recorded with key class A evidence
+        '400':
+          description: Assertion invalid
+        '403':
+          description: SoD violation or credential not enrolled for approver
+        '409':
+          description: Already decided, replay, or action-hash mismatch
+        '410':
+          description: Challenge or signoff window expired
 components:
   securitySchemes:
     BearerAuth:

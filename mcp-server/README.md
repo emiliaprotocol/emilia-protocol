@@ -255,6 +255,8 @@ The submitter has 7 days to respond. Trust is suspended pending resolution.
 
 | Tool | Description | Auth Required |
 |------|-------------|:---:|
+| `ep_guard_action` | THE GATE — call before any irreversible action; mints a receipt, opens signoff | Yes |
+| `ep_check_signoff` | Poll a pending signoff until a named human approves or denies | Yes |
 | `ep_trust_profile` | Full trust profile — the canonical read surface | No |
 | `ep_trust_evaluate` | Policy evaluation with Trust Decision (allow/review/deny) and failure reasons | No |
 | `ep_trust_gate` | Pre-action trust check — call before irreversible actions | No |

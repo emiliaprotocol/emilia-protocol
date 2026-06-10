@@ -162,6 +162,15 @@ export async function POST(request) {
           before_state_hash: beforeHash,
           after_state_hash: afterHash,
           expires_at: expiresAt.toISOString(),
+          // WYSIWYS (draft §11.3 control 1): the signoff render surface MUST
+          // draw from the exact bytes that were hashed, so the canonical
+          // action is persisted with the receipt — not re-described later.
+          canonical_action: canonicalAction,
+          // Display-material parameters for the approval surface.
+          amount: typeof body.amount === 'number' ? body.amount : null,
+          currency: body.currency || null,
+          risk_flags: body.risk_flags || [],
+          target_resource_id: body.target_resource_id,
         },
       });
     } catch (e) {

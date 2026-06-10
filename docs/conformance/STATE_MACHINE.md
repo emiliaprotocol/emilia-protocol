@@ -300,4 +300,4 @@ The signoff lifecycle is a sub-state-machine that activates after a handshake re
 ## Formal Model References
 
 - **TLA+ state machine**: `formal/ep_handshake.tla` (19 safety theorems, 23 actions)
-- **Alloy relational model**: `formal/ep_relations.als` (32 facts, 15 assertions)
+- **Alloy relational model**: `formal/ep_relations.als` (35 facts, 15 assertions)
