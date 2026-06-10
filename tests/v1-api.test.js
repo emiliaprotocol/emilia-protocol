@@ -505,6 +505,22 @@ describe('POST /api/v1/signoffs/:id/approve', () => {
     expect(JSON.stringify(body)).toMatch(/initiator|self/i);
   });
 
+  // Regression for commit 7c5cfcf: in production auth.entity is the full
+  // entity ROW, not an id string. The old `auth.entity === initiatorId`
+  // compared object-to-string — always false — so self-approval was never
+  // blocked on the live path, even though the string-mocked test above
+  // passed. This feeds the production object shape; it fails on the old code
+  // and passes only because authEntityId() now derives the id.
+  it('blocks self-approval when auth.entity is the entity ROW (production shape)', async () => {
+    authedAs({ id: 'uuid-init', entity_id: 'user_initiator', api_key_hash: 'secret_hash', private_key_encrypted: 'secret_pk' });
+    setupSignoffEnv({ initiator: 'user_initiator', actionHash: 'a' });
+    const res = await approveSignoff(req({ approved_action_hash: 'a' }), { params: Promise.resolve({ signoffId: 'sig_1' }) });
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    // And the secret-bearing row must never echo into the response.
+    expect(JSON.stringify(body)).not.toMatch(/secret_hash|secret_pk/);
+  });
+
   it('returns 409 on action_hash mismatch (approval_action_hash != issued)', async () => {
     authedAs('user_approver');
     setupSignoffEnv({ initiator: 'user_initiator', actionHash: 'real_hash' });
