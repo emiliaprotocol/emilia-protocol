@@ -90,7 +90,8 @@ or a fraud loss (treasury/payments, benefits integrity, SOX-scoped controls).
 
 ## Links
 - Repository (Apache-2.0): https://github.com/emiliaprotocol/emilia-protocol
-- Protocol specification draft (authorization receipts): https://github.com/emiliaprotocol/emilia-protocol/blob/main/standards/draft-schrock-ep-authorization-receipts-00.md
+- Protocol specification — IETF Internet-Draft (posted, individual submission, no WG standing): https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/
+- Protocol specification draft (source in repo): https://github.com/emiliaprotocol/emilia-protocol/blob/main/standards/draft-schrock-ep-authorization-receipts-00.md
 - Formal specs + run-it-yourself: https://github.com/emiliaprotocol/emilia-protocol/tree/main/formal
 - Security & threat model: https://www.emiliaprotocol.ai/security
 - For AI companies + benchmark: https://www.emiliaprotocol.ai/for-ai-companies

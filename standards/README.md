@@ -10,30 +10,39 @@ protocol: action-bound approver signatures (approver-held keys via WebAuthn),
 one-time consumption, separation of duties, offline verification, and honest
 conformance classes.
 
-**Status: pre-submission individual draft.** It has not yet been submitted to
-the IETF datatracker and has no standing of any kind. We say this plainly for
-the same reason the draft's Section 9 exists: claiming a stronger status than
-you hold is the category's most common failure, and we hold ourselves to the
-rule first. (The same description applies to other individual drafts in this
-space, e.g. `draft-nelson-agent-delegation-receipts` — an individual
-submission is a proposal, not a standard.)
+**Status: posted individual Internet-Draft (2026-06-09).** Live on the
+datatracker:
+<https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/>.
+"Posted" means accepted and published — it does **not** mean adopted: this is
+an individual submission with no IETF working-group standing, no RFC stream,
+and no endorsement. We say this plainly for the same reason the draft's
+Section 9 exists: claiming a stronger status than you hold is the category's
+most common failure, and we hold ourselves to the rule first. (The same
+description applies to other individual drafts in this space, e.g.
+`draft-nelson-agent-delegation-receipts` — a posted individual submission is a
+proposal, not a standard.)
 
-### Submitting (author checklist)
+The -00 idnits check passed with zero errors; the one warning (non-ASCII
+em-dashes / curly quotes) is queued for the -01 cleanup. -00 is otherwise
+frozen — changes go into -01, driven by reviewer and pilot feedback.
 
-1. Create an account at <https://datatracker.ietf.org> (email confirmation
-   goes to the author address — `team@emiliaprotocol.ai` must be receivable).
-2. The submission-ready artifacts are already in this directory, generated and
-   validated with xml2rfc 3.34.0:
-   - `draft-schrock-ep-authorization-receipts-00.xml` — the file the
-     datatracker requires (xml2rfc v3).
-   - `draft-schrock-ep-authorization-receipts-00.txt` — the rendered I-D.
-   To regenerate after edits: `pip install xml2rfc && xml2rfc <file>.xml --text`.
-3. Upload the `.xml` at <https://datatracker.ietf.org/submit/>, confirm via
-   the email link. The draft posts within minutes and auto-expires in 185 days
-   unless revised (-01, -02, …).
-4. Where to discuss: `secdispatch@ietf.org` is the IETF venue for "where does
-   new security work belong"; a courtesy note to the DRP author (Section 10
-   describes how the two compose) is the collegial move.
+### Source artifacts
+
+Generated and validated with xml2rfc 3.34.0:
+- `draft-schrock-ep-authorization-receipts-00.xml` — the datatracker source (xml2rfc v3).
+- `draft-schrock-ep-authorization-receipts-00.txt` — the rendered I-D.
+
+Regenerate after -01 edits: `pip install xml2rfc && xml2rfc <file>.xml --text`.
+The draft auto-expires 185 days after posting unless revised (-01, -02, …).
+
+### Next (post-submission)
+
+1. **Announce on `secdispatch@ietf.org`** (subscribe before posting) — the IETF
+   venue for "where does new security work belong." Ask for dispatch guidance.
+2. **Courtesy note to the DRP author** (`ryan@authproof.dev`) — Section 10
+   describes how EP and DRP compose; the collegial move is to ask whether that
+   framing is fair to DRP. Convert a potential rival into a peer.
+3. **-01**: fold in reviewer + pilot feedback and the idnits ASCII cleanup.
 
 ### What changed in the 2026-06-09 hardening pass
 
