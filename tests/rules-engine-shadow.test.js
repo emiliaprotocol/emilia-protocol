@@ -20,6 +20,13 @@ vi.mock('@/lib/write-guard', () => ({
 }));
 vi.mock('@/lib/supabase', () => ({
   authenticateRequest: (...args) => mockAuthenticateRequest(...args),
+  // Real implementation, not a stub: routes derive the actor's string id
+  // through this; string-mocked entities pass through unchanged.
+  authEntityId: (auth) => {
+    const e = auth?.entity;
+    if (typeof e === 'string') return e;
+    return e?.entity_id || e?.id || '';
+  },
   getServiceClient: vi.fn(),
 }));
 vi.mock('../lib/logger.js', () => ({

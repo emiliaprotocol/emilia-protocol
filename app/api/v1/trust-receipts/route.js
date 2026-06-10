@@ -18,7 +18,7 @@
 
 import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import {
@@ -66,7 +66,7 @@ export async function POST(request) {
     // Actor identity NEVER comes from the request body alone. The
     // authenticated context is the source of truth; body actor_id must
     // match the auth.entity (or be absent).
-    const actor_id = auth.entity;
+    const actor_id = authEntityId(auth);
     if (body.actor_id && body.actor_id !== actor_id) {
       return epProblem(
         403,

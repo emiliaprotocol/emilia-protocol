@@ -7,7 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
@@ -25,6 +25,9 @@ export async function POST(request) {
   try {
     const auth = await authenticateRequest(request);
     if (auth.error) return epProblem(401, 'unauthorized', auth.error);
+    // String identity, not the entity row — the stored initiator_id is what
+    // the SoD check compares against at approve time.
+    const initiatorEntityId = authEntityId(auth);
 
     const body = await request.json().catch(() => ({}));
     if (!body.receipt_id) return epProblem(400, 'missing_receipt_id', 'receipt_id is required');
@@ -69,7 +72,7 @@ export async function POST(request) {
 
     const { error: insertErr } = await supabase.from('audit_events').insert({
       event_type: 'guard.signoff.requested',
-      actor_id: auth.entity,
+      actor_id: initiatorEntityId,
       actor_type: 'principal',
       target_type: 'trust_receipt',
       target_id: body.receipt_id,
@@ -77,7 +80,7 @@ export async function POST(request) {
       before_state: null,
       after_state: {
         signoff_id: signoffId,
-        initiator_id: auth.entity,
+        initiator_id: initiatorEntityId,
         action_hash: created.after_state.action_hash,
         expires_at: expiresAt,
         comment: typeof body.comment === 'string' ? body.comment.slice(0, 500) : null,
@@ -93,7 +96,7 @@ export async function POST(request) {
       signoff_id: signoffId,
       receipt_id: body.receipt_id,
       action_hash: created.after_state.action_hash,
-      initiator_id: auth.entity,
+      initiator_id: initiatorEntityId,
       expires_at: expiresAt,
       status: 'pending',
     }, { status: 201 });

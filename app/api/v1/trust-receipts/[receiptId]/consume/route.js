@@ -12,7 +12,7 @@
 // inside a single transaction that also checks the prior consume sentinel.
 
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
@@ -89,7 +89,7 @@ export async function POST(request, { params }) {
     const consumedAt = new Date().toISOString();
     const { error: insertErr } = await supabase.from('audit_events').insert({
       event_type: 'guard.trust_receipt.consumed',
-      actor_id: auth.entity,
+      actor_id: authEntityId(auth),
       actor_type: 'system',
       target_type: 'trust_receipt',
       target_id: receiptId,

@@ -135,6 +135,19 @@ describe('verifyWebAuthnSignoff — offline Class A verification', () => {
   });
 });
 
+describe('authEntityId — actor identity is a string, never the entity row', () => {
+  it('derives the same id from a row object and a string mock (SoD comparability)', async () => {
+    const { authEntityId } = await import('../lib/supabase.js');
+    const row = { id: 'uuid-1', entity_id: 'agent-recon-7', api_key_hash: 'x', private_key_encrypted: 'y' };
+    // The bug this guards against: `auth.entity === initiatorId` compared an
+    // OBJECT to a string — always false — so self-approval never 403'd.
+    expect(authEntityId({ entity: row })).toBe('agent-recon-7');
+    expect(authEntityId({ entity: 'agent-recon-7' })).toBe('agent-recon-7');
+    expect(authEntityId({ entity: row })).toBe(authEntityId({ entity: 'agent-recon-7' }));
+    expect(typeof authEntityId({ entity: row })).toBe('string');
+  });
+});
+
 describe('lib/webauthn helpers', () => {
   it('challenge is single-use by construction: nonce inside the hashed context', () => {
     const a = makeContext({ signoffId: `sig_${'1'.repeat(32)}` });

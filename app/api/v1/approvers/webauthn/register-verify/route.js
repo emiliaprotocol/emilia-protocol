@@ -7,7 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import { verifyRegistrationResponse } from '@simplewebauthn/server';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
@@ -86,7 +86,7 @@ export async function POST(request) {
       attestation_fmt: fmt || null,
       // Second-party attestation (draft §5.2): the authenticated entity that
       // confirmed this enrollment. Not the approver's own assertion.
-      attested_by: auth.entity,
+      attested_by: authEntityId(auth),
     });
     if (insertErr) {
       if (insertErr.code === '23505') {
@@ -106,7 +106,7 @@ export async function POST(request) {
       approver_id: body.approver_id,
       credential_id: credential.id,
       key_class: 'A',
-      attested_by: auth.entity,
+      attested_by: authEntityId(auth),
     }, { status: 201 });
   } catch (err) {
     logger.error('[webauthn] POST register-verify error:', err);
