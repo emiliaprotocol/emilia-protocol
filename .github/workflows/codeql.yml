@@ -18,6 +18,13 @@ jobs:
     name: Analyze
     runs-on: ubuntu-latest
     permissions:
+      # An explicit permissions block replaces ALL defaults with only what's
+      # listed, so security-events alone left actions/contents at `none`. The
+      # CodeQL action's feature-enablement check now makes an authenticated
+      # API call that needs actions:read — without it, init fails with
+      # "Requires authentication". This is GitHub's recommended CodeQL set.
+      actions: read
+      contents: read
       security-events: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
