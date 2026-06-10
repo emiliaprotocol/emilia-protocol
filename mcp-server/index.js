@@ -60,6 +60,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   ListResourcesRequestSchema,
+  ListResourceTemplatesRequestSchema,
   ReadResourceRequestSchema,
   ListPromptsRequestSchema,
   GetPromptRequestSchema,
@@ -426,9 +427,11 @@ const TOOLS = [
   {
     name: 'ep_create_delegation',
     description:
-      'Create a delegation record: a human or principal authorizes an agent to act on their behalf. ' +
-      'The delegation is recorded in the EP ledger with scope, expiry, and optional constraints. ' +
-      'Every delegated action can reference this delegation to prove authorization.',
+      'Create a delegation record. WRITE: persists to the EP ledger that a human or ' +
+      'principal authorizes an agent to act on their behalf, with scope, expiry, and ' +
+      'optional constraints. Requires auth. Returns a delegation_id that later actions ' +
+      'reference (via ep_verify_delegation) to prove authorization. Use when a principal ' +
+      'grants an agent standing authority for a bounded set of actions.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -674,8 +677,10 @@ const TOOLS = [
   {
     name: 'ep_verify_commit',
     description:
-      'Verify a commit\'s signature, status, and validity. ' +
-      'Returns valid/invalid, current status, decision, and expiry.',
+      'Verify a pre-action commit — read-only, no side effects. Checks its signature, ' +
+      'status, and validity and returns valid/invalid plus the current status, decision, ' +
+      'and expiry. Use before relying on or consuming a commit to confirm it is genuine ' +
+      'and still active.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -762,9 +767,11 @@ const TOOLS = [
   {
     name: 'ep_add_presentation',
     description:
-      'Add an identity presentation (proof) to an active handshake. ' +
-      'Each party presents their identity claims for evaluation against the handshake policy. ' +
-      'Supports full, selective, or zero-knowledge disclosure modes.',
+      'Add an identity presentation (proof) to an active handshake. WRITE: appends ' +
+      'the party\'s identity claims to the handshake for evaluation against its policy; ' +
+      'supports full, selective, or zero-knowledge disclosure. Requires auth. Returns ' +
+      'the updated presentation count and handshake state. Call after ' +
+      'ep_initiate_handshake and before ep_verify_handshake.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -781,9 +788,11 @@ const TOOLS = [
   {
     name: 'ep_verify_handshake',
     description:
-      'Evaluate all presentations in a handshake against the governing policy. ' +
-      'Returns: accepted (all requirements met), rejected (policy violations), or partial (awaiting presentations). ' +
-      'Includes reason_codes explaining the outcome.',
+      'Evaluate all presentations in a handshake against its governing policy — read-only, ' +
+      'no mutation. Returns accepted (all requirements met), rejected (policy violations), ' +
+      'or partial (awaiting presentations), each with reason_codes explaining the outcome. ' +
+      'Call after the parties have added their presentations to decide whether the ' +
+      'handshake clears.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1611,6 +1620,12 @@ const RESOURCES = [
 ];
 
 server.setRequestHandler(ListResourcesRequestSchema, async () => ({ resources: RESOURCES }));
+
+// Clients (Claude included) probe resources/templates/list on startup whenever
+// a server advertises the `resources` capability. We expose no URI templates,
+// but the method must exist — without it the client gets MCP -32601
+// "Method not found" on every connect.
+server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => ({ resourceTemplates: [] }));
 
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   const { uri } = request.params;
