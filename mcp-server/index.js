@@ -238,7 +238,11 @@ const TOOLS = [
   // SECONDARY
   {
     name: 'ep_search_entities',
-    description: 'Search for entities by name, capability, or category.',
+    description:
+      'Search the EP registry for entities by name, capability, or category. ' +
+      'Read-only, no side effects. Returns a list of matching entities with their ' +
+      'ids, types, and current trust scores — use it to discover an entity before ' +
+      'evaluating or referencing it.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -250,7 +254,11 @@ const TOOLS = [
   },
   {
     name: 'ep_verify_receipt',
-    description: 'Verify a receipt against the on-chain Merkle root.',
+    description:
+      'Verify a trust receipt — its signature and Merkle inclusion against the ' +
+      'anchored root. Read-only. Returns valid/invalid plus the verified claim ' +
+      '(action, approver, outcome) and anchor status; use it to independently ' +
+      'confirm a receipt was issued by EP and has not been tampered with.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -261,7 +269,11 @@ const TOOLS = [
   },
   {
     name: 'ep_register_entity',
-    description: 'Register a new entity. Public — returns the first API key.',
+    description:
+      'Create a new entity in the EP registry. SIDE EFFECT: persists the entity ' +
+      'and returns its API key once — store it, it cannot be retrieved later. ' +
+      'Public, no auth required. Use to onboard an agent or service before it ' +
+      'submits receipts or is evaluated.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -276,7 +288,11 @@ const TOOLS = [
   },
   {
     name: 'ep_leaderboard',
-    description: 'Get top entities ranked by trust confidence.',
+    description:
+      'List the top entities ranked by trust confidence. Read-only. Returns up to ' +
+      'the requested limit (default 10, max 50) with scores, optionally filtered by ' +
+      'entity_type. For discovery and benchmarking — for a go/no-go decision on a ' +
+      'specific action, use ep_guard_action instead.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -305,7 +321,10 @@ const TOOLS = [
   },
   {
     name: 'ep_dispute_status',
-    description: 'Check the status of a dispute. Public — transparency is a protocol value.',
+    description:
+      'Look up the current state of a dispute by id. Read-only, public (no auth) — ' +
+      'transparency is a protocol value. Returns the dispute status (open, ' +
+      'under_review, upheld, rejected), the entity it concerns, and any resolution.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -667,7 +686,10 @@ const TOOLS = [
   },
   {
     name: 'ep_get_commit_status',
-    description: 'Get the current state of a commit (active, revoked, expired, fulfilled).',
+    description:
+      'Get the current state of a pre-action commit by id. Read-only. Returns one ' +
+      'of active, revoked, expired, or fulfilled, plus the bound action hash and ' +
+      'expiry — poll this to learn whether a commit may still be consumed.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -678,7 +700,11 @@ const TOOLS = [
   },
   {
     name: 'ep_revoke_commit',
-    description: 'Revoke an active commit before it is fulfilled or expires.',
+    description:
+      'Revoke an active pre-action commit before it is fulfilled or expires. ' +
+      'SIDE EFFECT: terminally cancels the commit — it can never be consumed after ' +
+      'this, and the change is irreversible. Requires auth. Returns the revoked ' +
+      'status; use when a pending action should be called off.',
     inputSchema: {
       type: 'object',
       properties: {

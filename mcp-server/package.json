@@ -1,7 +1,7 @@
 {
   "name": "@emilia-protocol/mcp-server",
   "mcpName": "io.github.emiliaprotocol/mcp-server",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "EMILIA Protocol MCP Server — trust enforcement for high-risk actions via MCP. Pre-action binding, policy-bound verification, and accountable human signoff.",
   "main": "index.js",
   "type": "module",
