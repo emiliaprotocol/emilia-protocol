@@ -247,7 +247,7 @@ const TOOLS = [
       type: 'object',
       properties: {
         query: { type: 'string', description: 'Search query' },
-        entity_type: { type: 'string', enum: ['agent','merchant','service_provider','github_app','github_action','mcp_server','npm_package','chrome_extension','shopify_app','marketplace_plugin','agent_tool'] },
+        entity_type: { type: 'string', description: 'Optional filter — restrict results to a single entity type.', enum: ['agent','merchant','service_provider','github_app','github_action','mcp_server','npm_package','chrome_extension','shopify_app','marketplace_plugin','agent_tool'] },
       },
       required: ['query'],
     },
@@ -277,11 +277,11 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        entity_id: { type: 'string', description: 'Slug (lowercase, hyphens)' },
-        display_name: { type: 'string' },
-        entity_type: { type: 'string', enum: ['agent','merchant','service_provider','github_app','github_action','mcp_server','npm_package','chrome_extension','shopify_app','marketplace_plugin','agent_tool'] },
-        description: { type: 'string' },
-        capabilities: { type: 'array', items: { type: 'string' } },
+        entity_id: { type: 'string', description: 'Unique slug for the entity (lowercase, hyphens), e.g. "acme-treasury-agent". Becomes its permanent id.' },
+        display_name: { type: 'string', description: 'Human-readable name shown in trust profiles and receipts, e.g. "Acme Treasury Agent".' },
+        entity_type: { type: 'string', description: 'What kind of actor this is — determines which trust policies apply.', enum: ['agent','merchant','service_provider','github_app','github_action','mcp_server','npm_package','chrome_extension','shopify_app','marketplace_plugin','agent_tool'] },
+        description: { type: 'string', description: 'One or two sentences on what the entity does; used for discovery and capability matching.' },
+        capabilities: { type: 'array', items: { type: 'string' }, description: 'Optional list of capability tags, e.g. ["payments","kyc"], used by ep_search_entities.' },
       },
       required: ['entity_id', 'display_name', 'entity_type', 'description'],
     },
@@ -297,7 +297,7 @@ const TOOLS = [
       type: 'object',
       properties: {
         limit: { type: 'number', description: 'Max entities (default 10, max 50)' },
-        entity_type: { type: 'string', enum: ['agent','merchant','service_provider','github_app','github_action','mcp_server','npm_package','chrome_extension','shopify_app','marketplace_plugin','agent_tool'] },
+        entity_type: { type: 'string', description: 'Optional filter — restrict results to a single entity type.', enum: ['agent','merchant','service_provider','github_app','github_action','mcp_server','npm_package','chrome_extension','shopify_app','marketplace_plugin','agent_tool'] },
       },
     },
   },
