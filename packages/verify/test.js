@@ -16,6 +16,7 @@ import {
   verifyReceipt,
   verifyMerkleAnchor,
   verifyCommitmentProof,
+  verifyWebAuthnSignoff,
 } from './index.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
@@ -218,5 +219,73 @@ test('verifyCommitmentProof: rejects expired claim', () => {
     claim: { domain: 'demo' },
     expires_at: '2020-01-01T00:00:00Z',
   });
+  assert.equal(r.valid, false);
+});
+
+// ─── Class A WebAuthn signoff (offline) ─────────────────────────────────────
+
+// Build a real assertion over a context with a local P-256 key — same shape
+// a platform authenticator produces.
+function makeSignoff({ tamperContext = null, flags = 0x05, type = 'webauthn.get', rpId = 'emiliaprotocol.ai' } = {}) {
+  const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  const context = {
+    ep_version: '1.0', context_type: 'ep.signoff.v1',
+    action_hash: 'a'.repeat(64), nonce: 'sig_' + 'c'.repeat(32),
+    approver: 'ep:approver:jchen', initiator: 'ent_agent_7',
+    issued_at: '2026-06-09T17:21:05.000Z', expires_at: '2026-06-09T17:26:05.000Z',
+  };
+  const canon = (v) => {
+    if (v === null || v === undefined) return JSON.stringify(v);
+    if (Array.isArray(v)) return `[${v.map(canon).join(',')}]`;
+    if (typeof v === 'object') return `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canon(v[k])).join(',')}}`;
+    return JSON.stringify(v);
+  };
+  const challenge = crypto.createHash('sha256').update(canon(context), 'utf8').digest().toString('base64url');
+  const clientData = Buffer.from(JSON.stringify({ type, challenge, origin: 'https://www.emiliaprotocol.ai' }), 'utf8');
+  const authData = Buffer.concat([
+    crypto.createHash('sha256').update(rpId, 'utf8').digest(),
+    Buffer.from([flags]),
+    Buffer.from([0, 0, 0, 9]),
+  ]);
+  const signed = Buffer.concat([authData, crypto.createHash('sha256').update(clientData).digest()]);
+  const signature = crypto.sign('sha256', signed, privateKey);
+  return {
+    signoff: {
+      context: tamperContext ? { ...context, ...tamperContext } : context,
+      webauthn: {
+        authenticator_data: authData.toString('base64url'),
+        client_data_json: clientData.toString('base64url'),
+        signature: signature.toString('base64url'),
+      },
+    },
+    spki: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+  };
+}
+
+test('verifyWebAuthnSignoff: accepts a valid device-key assertion', () => {
+  const { signoff, spki } = makeSignoff();
+  const r = verifyWebAuthnSignoff(signoff, spki, { rpId: 'emiliaprotocol.ai' });
+  assert.equal(r.valid, true);
+  assert.equal(r.checks.challenge_binding, true);
+  assert.equal(r.checks.user_verified, true);
+  assert.equal(r.checks.signature, true);
+});
+
+test('verifyWebAuthnSignoff: rejects a tampered action (challenge no longer binds)', () => {
+  const { signoff, spki } = makeSignoff({ tamperContext: { action_hash: 'f'.repeat(64) } });
+  const r = verifyWebAuthnSignoff(signoff, spki);
+  assert.equal(r.checks.challenge_binding, false);
+  assert.equal(r.valid, false);
+});
+
+test('verifyWebAuthnSignoff: rejects when user verification is unset', () => {
+  const { signoff, spki } = makeSignoff({ flags: 0x01 });
+  assert.equal(verifyWebAuthnSignoff(signoff, spki).valid, false);
+});
+
+test('verifyWebAuthnSignoff: rejects the wrong relying party', () => {
+  const { signoff, spki } = makeSignoff({ rpId: 'evil.example' });
+  const r = verifyWebAuthnSignoff(signoff, spki, { rpId: 'emiliaprotocol.ai' });
+  assert.equal(r.checks.rp_id_hash, false);
   assert.equal(r.valid, false);
 });
