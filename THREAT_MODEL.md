@@ -10,24 +10,29 @@ because a trust system that hides its own attack surface should not be trusted.
 
 ---
 
-## 1. Approver authentication — the weakest link  🔶
+## 1. Approver authentication — the weakest link  ✅ Class A shipped · 🔶 not yet default
 **Risk.** The receipt proves "principal X's key signed," *not* that X wasn't phished,
 coerced, or compromised. If X is authenticated weakly, a stolen credential is a valid
 approval.
 
-**Current state.** The signoff layer already models authentication methods — the signoff
-challenge declares `allowedMethods` including `password`, `totp`, `webauthn`, `passkey`
-(`lib/signoff/challenge.js`, `lib/signoff/invariants.js`). But at the API boundary the
-approver is authenticated by a bearer EP API key, and `authStrength` is currently
-hardcoded `'mfa'` rather than verified from a real authenticator
-(`lib/guard-adapter.js`, `app/api/v1/trust-receipts/route.js`).
+**Current state.** Class A signoff is **shipped and accepted on real hardware**: an
+approver enrolls a device-bound passkey (`/approvers/enroll`) and signs the
+WebAuthn challenge = `SHA-256(JCS(AuthorizationContext))` with biometric user
+verification; the assertion is recorded in the receipt and verifies fully offline
+(`@emilia-protocol/verify` `verifyWebAuthnSignoff`, ES256/P-256). EP orchestrates but
+holds no approver key and cannot forge a signoff. First real-device acceptance:
+2026-06-09, a $82,000 release approved by Touch ID, receipt verified offline, forged
+copy rejected. The legacy bearer path remains as Class C (operator-custodied, labeled
+as such on every receipt).
 
-**Fix (highest leverage).** Enforce phishing-resistant, hardware-backed approval — bind
-the signing assertion to WebAuthn / passkey / FIDO2 so a person physically approves and
-*even EP cannot sign for them* — and carry the real `authStrength` into the policy
-decision (the engine already accepts `password | mfa | phishing_resistant_mfa`).
+**Remaining.** Class A is *available* but not yet the *enforced default*: high-value
+policies should **require** `key_class: A` and reject Class C, and the real
+`authStrength` from the assertion should flow into the policy decision (the engine
+already accepts `password | mfa | phishing_resistant_mfa`; the mint path still passes a
+hardcoded `'mfa'`). Making Class A mandatory above a policy threshold is the next step.
 
-**Status.** 🔶 framework present; real authenticator enforcement is the **#1 build**.
+**Status.** ✅ approver-held hardware keys shipped + real-device accepted ·
+🔶 making Class A the required default for high-value policies is the remaining work.
 
 ## 2. Key custody  🔶
 **Risk.** If EP signs receipts server-side, compromising EP (or a user session) forges
