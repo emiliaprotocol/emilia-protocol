@@ -6,7 +6,7 @@ import pytest
 from langchain_core.tools import StructuredTool, tool
 
 from langchain_emilia import (
-    EmiliaClient,
+    EmiliaGateClient,
     EmiliaGuard,
     EmiliaUnreachable,
     GateResult,
@@ -15,7 +15,7 @@ from langchain_emilia import (
 )
 
 
-class FakeGate(EmiliaClient):
+class FakeGate(EmiliaGateClient):
     """Client whose gate() is scripted — exercises guard/tool layers only."""
 
     def __init__(self, results):

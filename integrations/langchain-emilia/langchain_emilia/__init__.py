@@ -7,7 +7,7 @@ offline-verifiable Trust Receipt.
 """
 from .client import (
     ACTION_TYPES,
-    EmiliaClient,
+    EmiliaGateClient,
     EmiliaConfigError,
     EmiliaError,
     EmiliaUnreachable,
@@ -30,7 +30,7 @@ __all__ = [
     "ACTION_TYPES",
     "DEFAULT_MATCH",
     "EmiliaApprovalPending",
-    "EmiliaClient",
+    "EmiliaGateClient",
     "EmiliaConfigError",
     "EmiliaDenied",
     "EmiliaError",

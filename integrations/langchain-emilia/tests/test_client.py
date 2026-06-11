@@ -2,11 +2,11 @@
 """Gate-flow semantics against a scripted transport — no network, fail-closed."""
 import pytest
 
-from langchain_emilia import EmiliaClient, EmiliaConfigError, EmiliaUnreachable
+from langchain_emilia import EmiliaGateClient, EmiliaConfigError, EmiliaUnreachable
 
 
-class ScriptedClient(EmiliaClient):
-    """EmiliaClient whose transport replays a scripted response sequence."""
+class ScriptedClient(EmiliaGateClient):
+    """EmiliaGateClient whose transport replays a scripted response sequence."""
 
     def __init__(self, script, **kwargs):
         kwargs.setdefault("api_key", "ep_test_key")
@@ -93,11 +93,11 @@ def test_transport_failure_raises_unreachable():
 
 
 def test_missing_creds_is_config_error():
-    c = EmiliaClient(api_key="", org_id="")
+    c = EmiliaGateClient(api_key="", org_id="")
     with pytest.raises(EmiliaConfigError):
         c.gate("ai_agent_payment_action", "t#8")
 
 
 def test_unsafe_base_url_falls_back_to_default():
-    c = EmiliaClient(api_key="k", org_id="o", base_url="file:///etc")
+    c = EmiliaGateClient(api_key="k", org_id="o", base_url="file:///etc")
     assert c.base_url == "https://www.emiliaprotocol.ai"

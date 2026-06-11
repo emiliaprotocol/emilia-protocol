@@ -71,7 +71,7 @@ def _safe_base_url(url: str) -> str:
     return DEFAULT_BASE_URL
 
 
-class EmiliaClient:
+class EmiliaGateClient:
     """Thin, blocking client for the EP gate flow. Thread-safe per call."""
 
     def __init__(
@@ -96,7 +96,7 @@ class EmiliaClient:
         if not (self.api_key and self.org_id):
             raise EmiliaConfigError(
                 "EMILIA enforce mode needs credentials: set EP_API_KEY and EP_ORG_ID "
-                "(or pass api_key/org_id to EmiliaClient). Use mode='observe' for a "
+                "(or pass api_key/org_id to EmiliaGateClient). Use mode='observe' for a "
                 "zero-setup local dry run."
             )
 

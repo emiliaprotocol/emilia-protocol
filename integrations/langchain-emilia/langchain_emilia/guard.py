@@ -30,7 +30,7 @@ from typing import Any, Callable, Iterable, Optional
 
 from langchain_core.tools import BaseTool, ToolException
 
-from .client import EmiliaClient, EmiliaConfigError, EmiliaUnreachable, GateResult
+from .client import EmiliaGateClient, EmiliaConfigError, EmiliaUnreachable, GateResult
 from .digest import action_digest
 
 # Same irreversible-action heuristic as the Claude Agent SDK hook.
@@ -65,7 +65,7 @@ class EmiliaGuard:
 
     def __init__(
         self,
-        client: Optional[EmiliaClient] = None,
+        client: Optional[EmiliaGateClient] = None,
         mode: str = "enforce",
         match: Optional[Callable[[str], bool]] = None,
         action_types: Optional[dict[str, str]] = None,
@@ -76,7 +76,7 @@ class EmiliaGuard:
         if mode not in ("enforce", "observe"):
             raise ValueError("mode must be 'enforce' or 'observe'")
         self.mode = mode
-        self.client = client or (EmiliaClient() if mode == "enforce" else None)
+        self.client = client or (EmiliaGateClient() if mode == "enforce" else None)
         self.match = match or (lambda name: bool(DEFAULT_MATCH.search(name)))
         self.action_types = dict(action_types or {})
         self.wait_for_approval = wait_for_approval

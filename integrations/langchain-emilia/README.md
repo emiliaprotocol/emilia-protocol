@@ -65,7 +65,7 @@ for r in guard.records:
 | `return_errors` | `True` | denials become tool output for the model; `False` = raise `EmiliaDenied` / `EmiliaApprovalPending` |
 | `on_event` | `None` | callback for `observed/allowed/denied/pending/unreachable` events (SIEM hook) |
 
-`EmiliaClient(api_key, org_id, base_url, signoff_timeout_s=280, poll_interval_s=3)`
+`EmiliaGateClient(api_key, org_id, base_url, signoff_timeout_s=280, poll_interval_s=3)`
 reads `EP_API_KEY` / `EP_ORG_ID` / `EP_BASE_URL` from the environment by default.
 
 ## Fail-closed semantics
