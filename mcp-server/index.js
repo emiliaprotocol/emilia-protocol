@@ -1562,9 +1562,74 @@ const CORE_TOOL_NAMES = new Set([
   'ep_install_preflight',                         // vet software before install
 ]);
 const INCLUDE_REGISTRY_TOOLS = process.env.EP_INCLUDE_REGISTRY_TOOLS === 'true';
-const ADVERTISED_TOOLS = INCLUDE_REGISTRY_TOOLS
+
+// MCP tool annotations (title + behavior hints) — required by the Anthropic
+// directory review ("All tools must include a title and the applicable
+// readOnlyHint or destructiveHint") and useful to every client for
+// scheduling and gating. Hints describe the EP API call each tool makes.
+const READ_ONLY_TOOLS = new Set([
+  'ep_check_signoff', 'ep_dispute_status', 'ep_domain_score',
+  'ep_get_commit_status', 'ep_get_handshake', 'ep_install_preflight',
+  'ep_leaderboard', 'ep_lineage', 'ep_list_policies', 'ep_principal_lookup',
+  'ep_search_entities', 'ep_trust_evaluate', 'ep_trust_profile',
+  'ep_verify_commit', 'ep_verify_delegation', 'ep_verify_handshake',
+  'ep_verify_receipt', 'ep_verify_zk_proof',
+]);
+const DESTRUCTIVE_TOOLS = new Set(['ep_revoke_commit', 'ep_revoke_handshake']);
+const TOOL_TITLES = {
+  ep_add_presentation: 'Add Entity Presentation',
+  ep_appeal_dispute: 'Appeal Dispute',
+  ep_batch_submit: 'Batch Submit Receipts',
+  ep_bind_receipt_to_commit: 'Bind Receipt to Commit',
+  ep_check_signoff: 'Check Signoff Status',
+  ep_configure_auto_receipt: 'Configure Auto-Receipts',
+  ep_create_delegation: 'Create Delegation',
+  ep_delegation_judgment: 'Record Delegation Judgment',
+  ep_dispute_file: 'File Dispute',
+  ep_dispute_status: 'Get Dispute Status',
+  ep_domain_score: 'Get Domain Trust Score',
+  ep_generate_zk_proof: 'Generate ZK Trust Proof',
+  ep_get_commit_status: 'Get Commit Status',
+  ep_get_handshake: 'Get Handshake',
+  ep_guard_action: 'Guard Irreversible Action (Human Signoff)',
+  ep_initiate_handshake: 'Initiate Trust Handshake',
+  ep_install_preflight: 'Installation Preflight Check',
+  ep_issue_commit: 'Issue Pre-Action Commit',
+  ep_leaderboard: 'Trust Leaderboard',
+  ep_lineage: 'Get Entity Lineage',
+  ep_list_policies: 'List Trust Policies',
+  ep_principal_lookup: 'Look Up Principal',
+  ep_register_entity: 'Register Entity',
+  ep_report_trust_issue: 'Report Trust Issue',
+  ep_revoke_commit: 'Revoke Commit',
+  ep_revoke_handshake: 'Revoke Handshake',
+  ep_search_entities: 'Search Entities',
+  ep_submit_receipt: 'Submit Transaction Receipt',
+  ep_trust_evaluate: 'Evaluate Trust Policy',
+  ep_trust_gate: 'Trust Gate Decision',
+  ep_trust_profile: 'Get Trust Profile',
+  ep_verify_commit: 'Verify Commit',
+  ep_verify_delegation: 'Verify Delegation',
+  ep_verify_handshake: 'Verify Handshake',
+  ep_verify_receipt: 'Verify Trust Receipt',
+  ep_verify_zk_proof: 'Verify ZK Trust Proof',
+};
+function withAnnotations(tool) {
+  return {
+    ...tool,
+    annotations: {
+      title: TOOL_TITLES[tool.name] || tool.name,
+      readOnlyHint: READ_ONLY_TOOLS.has(tool.name),
+      destructiveHint: DESTRUCTIVE_TOOLS.has(tool.name),
+      openWorldHint: false, // every tool talks only to the configured EP API
+    },
+  };
+}
+
+const ADVERTISED_TOOLS = (INCLUDE_REGISTRY_TOOLS
   ? TOOLS
-  : TOOLS.filter((t) => CORE_TOOL_NAMES.has(t.name));
+  : TOOLS.filter((t) => CORE_TOOL_NAMES.has(t.name))
+).map(withAnnotations);
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: ADVERTISED_TOOLS }));
 
