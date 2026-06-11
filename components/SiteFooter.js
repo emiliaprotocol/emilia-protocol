@@ -24,6 +24,8 @@ const COL_RESOURCES = [
   ['/why-emilia', 'Why EMILIA'],
   ['/why-agents-fail', 'Why Agents Fail'],
   ['/compare', 'Comparisons'],
+  ['/auditors', 'For Auditors'],
+  ['/rfp', 'RFP Language'],
   ['/governance', 'Governance'],
   ['/badge', 'Badge'],
   ['https://github.com/emiliaprotocol/emilia-protocol', 'GitHub'],

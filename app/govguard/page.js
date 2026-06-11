@@ -157,6 +157,10 @@ export default function GovGuardPage() {
               <a href="mailto:team@emiliaprotocol.ai?subject=GovGuard%20pilot" style={cta.primary}>
                 Request pilot
               </a>
+              <p style={{ fontSize: 13, color: color.t3, marginTop: 18 }}>
+                For your compliance file: <a href="/compliance/emilia-eu-ai-act-government.pdf" style={{ color: color.blue, textDecoration: 'none' }}>EU AI Act mapping — government programs (PDF)</a>
+                {' '}· <a href="/rfp" style={{ color: color.blue, textDecoration: 'none' }}>RFP language</a>
+              </p>
             </div>
           </div>
         </section>

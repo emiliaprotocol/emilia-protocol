@@ -434,6 +434,17 @@ export default function EuAiActPage() {
             Maps to Art 14 (human oversight), Art 12 (record-keeping), Art 9 (risk management). Not a complete
             compliance program; not legal advice. Full mapping in the <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/eu-ai-act-article-14-kit.md" target="_blank" rel="noopener noreferrer" style={{ color: color.gold }}>Article 14 kit</a>.
           </p>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 16 }}>
+            {[
+              ['/compliance/emilia-eu-ai-act-financial-services.pdf', 'Financial services mapping (PDF)'],
+              ['/compliance/emilia-eu-ai-act-government.pdf', 'Government programs mapping (PDF)'],
+              ['/compliance/emilia-eu-ai-act-healthcare.pdf', 'Healthcare mapping (PDF)'],
+            ].map(([href, label]) => (
+              <a key={href} href={href} style={{ fontFamily: font.mono, fontSize: 12.5, color: color.t1, textDecoration: 'none', border: `1px solid ${color.borderHover}`, borderRadius: radius.sm, padding: '9px 14px' }}>
+                ↓ {label}
+              </a>
+            ))}
+          </div>
         </motion.div>
       </section>
 
