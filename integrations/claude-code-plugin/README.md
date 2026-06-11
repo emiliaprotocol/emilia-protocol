@@ -61,7 +61,15 @@ opened, the hook polled, no human approved, and it returned:
 
 The same protocol's device signoff is accepted on real hardware — a Touch ID
 approval of an $82,000 wire whose receipt verifies offline (all six checks,
-forgery rejected, `key_class: A`, `time_to_sign_ms: 20532`).
+forgery rejected, `key_class: A`, `time_to_sign_ms: 20532`):
+
+| The hold | The signed approval |
+|---|---|
+| ![A named human must sign this exact action before it can proceed — $82,000 large payment release, every field bound](../../docs/media/signoff-hold-82k.png) | ![Signed and approved — key class A; the receipt now verifies offline, no EP server required](../../docs/media/signoff-approved-class-a.png) |
+
+The approved screenshot's context hash (`b68e427d…`) is the same hash the
+offline verifier reproduces from the receipt — screenshot, receipt, and math
+agree on one event.
 
 ## Fail-closed, always
 

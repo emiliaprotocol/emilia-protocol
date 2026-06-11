@@ -153,3 +153,23 @@ approver who isn't us.
 **Estimate:** 2–3 dev-days. **Follow-up (tracked, not this ticket):** extend
 the Alloy model with directory enrollment/attestation + m-of-n (draft §11.5
 names this gap); witness cosigning for checkpoints.
+
+## Accepted on real hardware (2026-06-09)
+
+All five acceptance steps passed with a real Touch ID passkey. Evidence —
+note the approved page's context hash `b68e427d…` is byte-identical to what
+the offline verifier reproduces from the receipt:
+
+![Passkey enrollment — key class A credential created on-device](media/signoff-enroll-passkey.png)
+
+![The hold: $82,000 large payment release, every field bound, a named human must sign this exact action](media/signoff-hold-82k.png)
+
+![Signed and approved — key class A; receipt verifies offline, no EP server required](media/signoff-approved-class-a.png)
+
+```
+$ node scripts/e2e-offline-verify.mjs sig_0d9eb593522b7426cc49eceaed8c3ab3
+checks: challenge_binding ✓ client_data_type ✓ user_present ✓
+        user_verified ✓ rp_id_hash ✓ signature ✓        VALID ✅
+forgery (action_hash swapped): rejected ❌
+telemetry: time_to_sign_ms 20532 · decision approved · key_class A
+```
