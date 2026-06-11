@@ -28,6 +28,7 @@ const handler = createMcpHandler(
       'ep_verify_receipt',
       {
         title: 'Verify Trust Receipt (offline math, in-process)',
+        annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
         description:
           'Verify an EP-RECEIPT-v1 trust receipt with pure public-key math — '
           + 'Ed25519 over canonical JSON plus optional Merkle anchor. Proves the '
@@ -50,6 +51,7 @@ const handler = createMcpHandler(
       'ep_verify_signoff',
       {
         title: 'Verify Class-A Device Signoff (offline math, in-process)',
+        annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
         description:
           'Verify a Class-A human device signoff: a WebAuthn assertion (ECDSA '
           + 'P-256) whose challenge is the SHA-256 of the canonicalized '
@@ -74,6 +76,7 @@ const handler = createMcpHandler(
       'ep_trust_profile',
       {
         title: 'Get Trust Profile',
+        annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
         description: "Fetch an entity's public EP trust profile — composite score, behavioral rates, and receipt-backed history.",
         inputSchema: {
           entity_id: z.string().describe('The EP entity id'),
@@ -89,6 +92,7 @@ const handler = createMcpHandler(
       'ep_trust_evaluate',
       {
         title: 'Evaluate Trust Policy',
+        annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
         description: 'Evaluate an entity against a named EP trust policy (standard, strict, permissive, discovery) and return the allow/review/deny decision with reasons.',
         inputSchema: {
           entity_id: z.string().describe('The EP entity id'),
