@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: Apache-2.0
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "langchain-emilia"
+version = "0.1.0"
+description = "EMILIA Protocol guard for LangChain tools: a named human approves the exact irreversible action (Face ID / passkey) before it executes — fail-closed, with offline-verifiable Trust Receipts."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{ name = "EMILIA Protocol" }]
+keywords = ["langchain", "ai-agents", "human-in-the-loop", "authorization", "trust-receipt", "emilia", "agent-safety", "webauthn"]
+dependencies = ["langchain-core>=0.3,<2"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: Apache Software License",
+  "Topic :: Security",
+  "Framework :: Pytest",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.23"]
+
+[project.urls]
+Homepage = "https://www.emiliaprotocol.ai"
+Documentation = "https://www.emiliaprotocol.ai/docs"
+Repository = "https://github.com/emiliaprotocol/emilia-protocol"
+
+[tool.hatch.build.targets.wheel]
+packages = ["langchain_emilia"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

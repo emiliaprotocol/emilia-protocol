@@ -15,6 +15,12 @@ sdks/python/dist/
 .vercel
 *-results.json
 
+# Python — applies to all integrations/packages
+__pycache__/
+*.egg-info/
+.venv/
+integrations/langchain-emilia/dist/
+
 # Tool-generated directories — local-only, must not be tracked.
 # .aidesigner = AIDesigner CLI workspace; .serena = Serena agent state;
 # coverage/  = vitest --coverage output. All three were appearing as

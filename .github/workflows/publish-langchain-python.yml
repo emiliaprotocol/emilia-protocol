@@ -1,0 +1,55 @@
+name: Publish langchain-emilia to PyPI
+
+# Trusted Publishing (OIDC) — NO API token is stored anywhere. On each run PyPI
+# verifies the OIDC claim (owner / repo / workflow filename) and issues a
+# short-lived upload credential. Configure the matching trusted publisher once at:
+#   pypi.org -> Your projects -> langchain-emilia -> Manage -> Publishing
+#   Owner: emiliaprotocol | Repo: emilia-protocol
+#   Workflow: publish-langchain-python.yml | Environment: (leave blank)
+#
+# Release flow: bump version in integrations/langchain-emilia/pyproject.toml, then
+#   git tag langchain-emilia-v0.1.0 && git push origin langchain-emilia-v0.1.0
+# (PyPI rejects re-publishing an existing version, so always bump first.)
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'langchain-emilia-v*'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Build and publish langchain-emilia
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # REQUIRED for PyPI trusted publishing (OIDC)
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+
+      - name: Setup Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0 (Node 24)
+        with:
+          python-version: '3.12'
+
+      - name: Run tests first — never publish red
+        run: |
+          pip install -e './integrations/langchain-emilia[dev]'
+          pytest -q integrations/langchain-emilia/tests
+
+      - name: Build sdist + wheel
+        working-directory: integrations/langchain-emilia
+        run: |
+          python -m pip install --upgrade build
+          python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # v1.14.0
+        with:
+          packages-dir: integrations/langchain-emilia/dist/
+          print-hash: true
+          skip-existing: true   # re-runs / dispatch on an already-published version exit green
