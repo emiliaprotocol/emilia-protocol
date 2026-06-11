@@ -1,0 +1,16 @@
+{
+  "name": "emilia-protocol",
+  "owner": { "name": "EMILIA Protocol", "url": "https://www.emiliaprotocol.ai" },
+  "metadata": {
+    "description": "Accountability for AI agents — a named human's signed yes before anything irreversible.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "emilia-guard",
+      "source": "./integrations/claude-code-plugin",
+      "description": "Hold irreversible Claude tool calls until a named human approves on their own device; mint an offline-verifiable Trust Receipt. Fail-closed.",
+      "category": "security"
+    }
+  ]
+}

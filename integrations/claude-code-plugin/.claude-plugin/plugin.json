@@ -1,0 +1,21 @@
+{
+  "name": "emilia-guard",
+  "description": "Require a named human's signed approval before Claude does anything irreversible — money movement, destructive shell, external sends. High-risk tool calls are held until a person approves on their own device (Face ID / passkey), producing an offline-verifiable Trust Receipt. Fail-closed.",
+  "version": "0.1.0",
+  "author": { "name": "EMILIA Protocol", "url": "https://www.emiliaprotocol.ai" },
+  "homepage": "https://www.emiliaprotocol.ai",
+  "repository": "https://github.com/emiliaprotocol/emilia-protocol",
+  "license": "Apache-2.0",
+  "keywords": ["security", "human-in-the-loop", "approval", "agent-safety", "irreversible-actions", "webauthn", "audit"],
+  "mcpServers": {
+    "emilia": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@emilia-protocol/mcp-server"],
+      "env": {
+        "EP_BASE_URL": "https://www.emiliaprotocol.ai",
+        "EP_API_KEY": "${EP_API_KEY}"
+      }
+    }
+  }
+}
