@@ -107,7 +107,7 @@ export function setup() {
 
 // ── Test function ────────────────────────────────────────────────────────────
 
-export default function (data) {
+export default function consume(data) {
   const ids = data.signoffIds;
   if (!ids || ids.length === 0) {
     console.error('No signoff IDs available from setup');

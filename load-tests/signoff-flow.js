@@ -61,7 +61,7 @@ export const options = {
 
 // ── Test function ────────────────────────────────────────────────────────────
 
-export default function () {
+export default function signoffFlow() {
   const flowStart = Date.now();
   let failed = false;
 

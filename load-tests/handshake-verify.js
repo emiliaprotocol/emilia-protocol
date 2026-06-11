@@ -70,7 +70,7 @@ export function setup() {
 
 // ── Test function ────────────────────────────────────────────────────────────
 
-export default function (data) {
+export default function handshakeVerify(data) {
   const ids = data.handshakeIds;
   if (!ids || ids.length === 0) {
     console.error('No handshake IDs available from setup');

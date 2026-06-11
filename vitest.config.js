@@ -18,7 +18,12 @@ export default defineConfig({
     // the default exclude only catches top-level node_modules/ and would
     // otherwise pull in third-party tests written for other runners (tape,
     // recheck, etc.) that fail in the vitest environment.
-    exclude: ['e2e/**', '**/node_modules/**', 'dist/**', '.next/**'],
+    // packages/** ship their own standalone suites that run on Node's built-in
+    // runner (`node --test`), not vitest — run separately in CI ("Verify package
+    // suites"). Without this, vitest's default *.test.js glob picks up
+    // packages/verify/web.test.js and fails with "No test suite found" (it has
+    // node:test blocks, not vitest describe/it).
+    exclude: ['e2e/**', '**/node_modules/**', 'dist/**', '.next/**', 'packages/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
@@ -38,6 +43,13 @@ export default defineConfig({
         'lib/logger.js',       // pino transport setup
         // (lib/verify.js removed — duplicate of packages/verify/index.js, kept the
         // canonical packages/verify/ copy and deleted the lib/ duplicate.)
+        // lib/verify-web.js is a byte-identical vendored copy of
+        // packages/verify/web.js (Next bundles it client-side for /verify). Its
+        // real tests are the equivalence suite in packages/verify/web.test.js
+        // (Node verifier vs Web Crypto verifier, byte-for-byte); drift is caught
+        // by tests/verify-web-consistency.test.js. Covering it again under vitest
+        // would only re-test a copy.
+        'lib/verify-web.js',
         'lib/operator-auth.js',// HMAC operator-token loader (init-time, env-driven)
         // ── Commercial / product layers — separate coverage discipline ──────
         // The protocol-kernel coverage bar (95/97%) was set against trust-

@@ -39,7 +39,7 @@ export const options = {
 
 // ── Test function ────────────────────────────────────────────────────────────
 
-export default function () {
+export default function handshakeCreate() {
   const payload = makeHandshakePayload();
   const res = epPost('/api/handshake', payload);
 

@@ -92,7 +92,7 @@ export function setup() {
 
 // ── Test function: all VUs race to consume the same signoff ──────────────────
 
-export default function (data) {
+export default function concurrentAbuse(data) {
   const { signoffId } = data;
 
   const res = epPost(`/api/signoff/${signoffId}/consume`, makeConsumePayload());

@@ -43,7 +43,7 @@ export const options = {
 
 // ── Test function ────────────────────────────────────────────────────────────
 
-export default function () {
+export default function staircase() {
   const payload = makeHandshakePayload();
   const res = epPost('/api/handshake', payload);
 

@@ -7,7 +7,7 @@
 
 import nextCoreWebVitals from 'eslint-config-next/core-web-vitals';
 
-export default [
+const config = [
   // Global ignores — flat config replaces .eslintrc `ignorePatterns`.
   // node_modules/ is implicit in flat config and does not need listing.
   {
@@ -49,3 +49,5 @@ export default [
     },
   },
 ];
+
+export default config;

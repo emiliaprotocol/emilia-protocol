@@ -28,7 +28,7 @@
  */
 
 /** @type {import('@stryker-mutator/core').PartialStrykerOptions} */
-export default {
+const config = {
   testRunner: 'vitest',
   vitest: {
     configFile: 'vitest.config.js',
@@ -97,3 +97,5 @@ export default {
   tempDirName: '.stryker-tmp',
   cleanTempDir: true,
 };
+
+export default config;
