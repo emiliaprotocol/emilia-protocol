@@ -60,8 +60,8 @@ export const metadata = {
     siteName: 'EMILIA Protocol',
     title: 'EMILIA Protocol — The Accountability Layer for AI Agents',
     description:
-      'Open, formally-verified protocol for pre-action authorization in AI agent ' +
-      'systems. 26 TLA+ theorems verified, Apache 2.0, production-ready.',
+      'A named human signs the exact action on their own device before an AI agent ' +
+      'does anything irreversible. Formally verified, Apache 2.0, production-ready.',
     images: [
       {
         url: '/og-default.png',
@@ -75,8 +75,8 @@ export const metadata = {
     card: 'summary_large_image',
     title: 'EMILIA Protocol — The Accountability Layer for AI Agents',
     description:
-      'Open, formally-verified pre-action authorization for AI agent systems. ' +
-      '26 TLA+ theorems verified.',
+      'A named human\'s signed yes — on their own device — before an AI agent ' +
+      'does anything irreversible. Formally verified.',
     images: ['/og-default.png'],
   },
   robots: {
@@ -166,11 +166,11 @@ const SOFTWARE_APPLICATION_JSONLD = {
     availability: 'https://schema.org/InStock',
   },
   featureList: [
+    'Named human signoff with device-held WebAuthn keys (Face ID / passkey)',
     'Pre-action authorization for AI agents',
+    'Formal verification (26 TLA+ theorems, 35 Alloy facts)',
     'Cryptographic action binding (Ed25519 + Merkle)',
     'Self-verifying trust receipts (offline verifiable)',
-    'Named human signoff with device-held WebAuthn keys (Face ID / passkey)',
-    'Formal verification (26 TLA+ theorems, 35 Alloy facts)',
     'NIST AI RMF and EU AI Act compliance mappings',
     'MCP server with 36 trust tools (17 core by default)',
     'LangChain, CrewAI, and AutoGen integrations',

@@ -148,8 +148,9 @@ export default function HomePage() {
                 maxWidth: 460, lineHeight: 1.72, margin: '0 0 40px',
               }}>
                 When an AI agent is about to do something irreversible — move money, change records,
-                take an action — EMILIA stops it at the pre-execution moment and requires a real human
-                to sign off. Cryptographically enforced. Formally proven.
+                take an action — EMILIA stops it pre-execution until a named human signs off on their
+                own device: Touch ID, Face ID, a passkey. An approval neither a compromised agent nor
+                EMILIA itself can forge. Formally proven.
               </p>
 
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
