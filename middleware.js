@@ -140,6 +140,13 @@ const ROUTE_POLICIES = {
   'POST /api/handshake/*/verify':     { rateCategory: 'protocol_write', useAuth: true },
   'POST /api/handshake/*/revoke':     { rateCategory: 'protocol_write', useAuth: true },
 
+  // Remote MCP server (streamable HTTP) — public read-only connector for
+  // claude.ai / MCP Directory. JSON-RPC rides on POST, but every exposed tool
+  // is a read or an in-process offline verification, so read-tier limits fit.
+  'POST /api/mcp/*':                  { rateCategory: 'read', useAuth: false },
+  'GET /api/mcp/*':                   { rateCategory: 'read', useAuth: false },
+  'DELETE /api/mcp/*':                { rateCategory: 'read', useAuth: false },
+
   // Operations / Cron
   // Cron routes skip rate limiting (CRON_SECRET auth is sufficient)
   'POST /api/blockchain/anchor':      { rateCategory: null, useAuth: false },
