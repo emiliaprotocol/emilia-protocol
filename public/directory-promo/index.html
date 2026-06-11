@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>EMILIA Protocol — MCP Directory promotional materials</title>
+<style>
+  body{margin:0;background:#FAFAF9;color:#0C0A09;font-family:'IBM Plex Sans',-apple-system,sans-serif;line-height:1.6}
+  main{max-width:980px;margin:0 auto;padding:48px 24px 96px}
+  .k{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:#B08D35}
+  h1{font-size:30px;letter-spacing:-.5px;margin:10px 0 6px}
+  p.sub{color:#44403C;margin:0 0 36px}
+  figure{margin:0 0 44px}
+  img{width:100%;border:1px solid #E7E5E4;border-radius:8px;display:block}
+  figcaption{font-size:14px;color:#44403C;margin-top:10px}
+  figcaption b{color:#0C0A09}
+  code{font-family:'IBM Plex Mono',monospace;font-size:12.5px;background:#F5F5F4;padding:1px 5px;border-radius:4px}
+  .prompt{font-size:13px;color:#78716C;margin-top:4px}
+  a{color:#3B82F6;text-decoration:none}
+</style>
+</head>
+<body>
+<main>
+  <div class="k">EMILIA Protocol · MCP Server</div>
+  <h1>Directory listing — promotional materials</h1>
+  <p class="sub">Server: <code>https://www.emiliaprotocol.ai/api/mcp/mcp</code> (Streamable HTTP, no auth, read-only).
+  Paired prompts: <a href="/directory-promo/PROMPTS.txt">PROMPTS.txt</a> · Verify a receipt yourself: <a href="/verify">/verify</a></p>
+
+  <figure>
+    <img src="/directory-promo/01-desktop-trust-evaluate.png" alt="Claude Desktop calling ep_trust_profile and ep_trust_evaluate and explaining the deny decision">
+    <figcaption><b>01 — Live trust evaluation in Claude Desktop.</b>
+      <div class="prompt">Prompt: “Get the trust profile for entity perf-test-entity-001, then evaluate it against the standard policy.”</div>
+    </figcaption>
+  </figure>
+
+  <figure>
+    <img src="/directory-promo/02-connector-read-only-tools.png" alt="claude.ai connector settings showing all four tools grouped as read-only">
+    <figcaption><b>02 — Connector on claude.ai.</b> All four tools auto-grouped as “Read-only tools” via MCP annotations (readOnlyHint).</figcaption>
+  </figure>
+
+  <figure>
+    <img src="/directory-promo/03-receipt-hold-82k.png" alt="An $82,000 payment held for a named human's signature, every field bound">
+    <figcaption><b>03 — What the receipts protect.</b> An $82,000 action held pre-execution until a named human signs.
+      <div class="prompt">Pair: “Verify this trust receipt — has it been altered?” → valid: true; change the amount → valid: false.</div>
+    </figcaption>
+  </figure>
+
+  <figure>
+    <img src="/directory-promo/04-signoff-approved-class-a.png" alt="Signed and approved — key class A; receipt verifies offline">
+    <figcaption><b>04 — The artifact ep_verify_signoff verifies.</b> Device-held passkey signed the exact action; verifies offline.
+      <div class="prompt">Pair: “Did a named human approve this exact action on their own device? Verify this signoff.”</div>
+    </figcaption>
+  </figure>
+</main>
+</body>
+</html>
