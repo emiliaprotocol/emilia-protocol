@@ -308,6 +308,8 @@ jobs:
       - run: pip install cryptography
       - name: Cross-language conformance (EP-RECEIPT-v1, JS + Python + Go)
         run: node conformance/run.mjs
+      - name: Class-A signoff conformance (EP-SIGNOFF-v1, Node + Web Crypto)
+        run: node conformance/run-signoffs.mjs
 
   # ── Job 12: OpenAPI spec linting ─────────────────────────────────
   openapi-lint:

@@ -80,14 +80,35 @@ SHA-256 steps to the claimed root. `valid = version ∧ signature ∧ (anchor �
 Conformance is self-certified against the published vectors. An implementation
 that passes all vectors may state: **"EP-RECEIPT-v1 conformant — vectors v1.0.0."**
 
-### Class A (device signoff) conformance
+### Class A (device signoff) conformance — EP-SIGNOFF-v1
 
-The Class-A WebAuthn device-signoff primitive (ECDSA P-256 over a
-canonicalized authorization context) is verified by the JavaScript reference in
-both Node and browser (Web Crypto) builds, proven byte-identical in
-[`packages/verify/web.test.js`](packages/verify/web.test.js). Cross-language
-signoff vectors (Python, Go) are the next conformance milestone; the receipt
-format above is the stable, three-language interop surface today.
+The Class-A human device-signoff primitive (a WebAuthn ECDSA P-256 assertion
+whose challenge is the SHA-256 of the JCS-canonicalized authorization context)
+has its own adversarial vector battery in
+[`conformance/vectors/signoffs.v1.json`](conformance/vectors/signoffs.v1.json),
+verified by the JavaScript reference in both Node and browser (Web Crypto)
+builds:
+
+```bash
+node conformance/run-signoffs.mjs    # or: npm run conformance:signoffs
+```
+
+Each reject vector is tagged with its **failure class**, so the suite doubles as
+a verifier decision table:
+
+| Failure class | Vectors |
+|---|---|
+| structural | ceremony type is a registration, not an assertion |
+| cryptographic | wrong approver key · malformed signature |
+| action-binding | action-hash altered after signing · nonce (consumption key) altered — challenge no longer binds |
+| operation / audience | assertion scoped to the wrong relying party |
+| lifecycle / UV | user-verification absent (no biometric/PIN) · user-presence absent |
+
+Scope note: these exercise the **offline** assertion verifier. Replay /
+one-time consumption (the nonce is the global consumption key) and
+enrollment-active are **server-state** checks, out of scope for offline
+assertion vectors. Cross-language signoff verifiers (Python, Go) are the next
+milestone; the receipt format remains the three-language interop surface today.
 
 ---
 

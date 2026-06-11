@@ -21,7 +21,8 @@
     "test:e2e:ui": "playwright test --ui",
     "setup": "npm install && cp .env.example .env.local 2>/dev/null || true && echo 'Setup complete. Edit .env.local with your credentials.'",
     "prepare": "husky",
-    "conformance": "node conformance/run.mjs"
+    "conformance": "node conformance/run.mjs",
+    "conformance:signoffs": "node conformance/run-signoffs.mjs"
   },
   "lint-staged": {
     "{app,lib,components}/**/*.{js,mjs,ts,tsx}": [
