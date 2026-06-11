@@ -121,6 +121,16 @@ export default function CompareLandscapePage() {
       </section>
 
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
+        <h2 className="ep-reveal" style={styles.h2}>On PSEA — the closest convergence</h2>
+        <p className="ep-reveal" style={styles.body}>
+          The nearest peer to EMILIA is <strong style={{ color: color.t1 }}>PSEA</strong> (<a href="https://datatracker.ietf.org/doc/draft-yossif-psea/" style={{ color: color.blue, textDecoration: 'none' }}>draft-yossif-psea</a>, Yuthent) — an EAT token profile for action-bound, user-verification-gated transaction confirmation. It reached the IETF datatracker before our draft, and we&rsquo;ll say that plainly. It is also the strongest evidence we have that this is a real problem and not one vendor&rsquo;s framing: two efforts arrived at the same core construction — a canonical hash of the exact action, a user-verification-gated signature, and fail-closed verifier rules — without contact. We treat it as convergent, not competing.
+        </p>
+        <p className="ep-reveal" style={styles.body}>
+          The lanes are genuinely different. PSEA explicitly scopes <em>out</em> FIDO2/WebAuthn — its model needs a conforming authenticator and a mobile SDK; EMILIA profiles exactly that excluded path, so the approver signs with a <strong style={{ color: color.t1 }}>commodity passkey</strong> already in their pocket (Face ID / a browser), nothing to install. And where Yuthent&rsquo;s implementation is proprietary and patent-pending, EMILIA is <strong style={{ color: color.t1 }}>Apache-2.0, with public dated history and a verifier anyone can run</strong> — including in their own browser at <a href="/verify" style={{ color: color.blue, textDecoration: 'none' }}>/verify</a>, with nothing uploaded. Different authenticator model, different openness posture, same verifier philosophy. We&rsquo;ve offered, on the public list, to align claim names so the two profiles don&rsquo;t gratuitously diverge for implementers.
+        </p>
+      </section>
+
+      <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
         <h2 className="ep-reveal" style={styles.h2}>The caveat we hold for everyone, including us</h2>
         <p className="ep-reveal" style={styles.body}>
           Any in-process guard is skippable by the operator who controls the process — true of every product here. The differentiator is the evidence that survives outside the runtime, and end-to-end enforcement only when the system of record verifies the receipt before executing. We say this plainly on our <a href="/security" style={{ color: color.blue, textDecoration: 'none' }}>security page</a>.
