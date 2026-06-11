@@ -191,6 +191,9 @@ export default function VerifyPage() {
           <button onClick={() => loadExample(EXAMPLE_RECEIPT)} style={exampleBtn}>↳ Load example receipt ($82,000)</button>
           <button onClick={() => loadExample(EXAMPLE_SIGNOFF)} style={exampleBtn}>↳ Load example device signoff</button>
         </div>
+        <p style={{ fontSize: 13, color: color.t3, margin: '0 0 18px' }}>
+          Want to make your own? <a href="/try" style={{ color: color.blue, textDecoration: 'none' }}>Approve an action with Face&nbsp;ID on /try →</a> then download the signoff and verify it here.
+        </p>
 
         {/* Input */}
         <div

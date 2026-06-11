@@ -155,8 +155,8 @@ export default function HomePage() {
               </p>
 
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <Link href="/demo" className="ep-cta" style={cta.primary}>Watch an agent get stopped →</Link>
-                <Link href="/quickstart" className="ep-cta-secondary" style={cta.secondary}>Add it to your agent in 10 min</Link>
+                <Link href="/try" className="ep-cta" style={cta.primary}>Approve one yourself with Face ID →</Link>
+                <Link href="/demo" className="ep-cta-secondary" style={cta.secondary}>Or just watch one get stopped</Link>
               </div>
 
               {/* Inline proof metrics — editorial data strip */}
