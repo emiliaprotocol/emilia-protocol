@@ -573,5 +573,5 @@ This document has no IANA actions. A future version may register the
 
 Iman Schrock
 EMILIA Protocol, Inc.
-Glendale, California, USA
+United States
 Email: team@emiliaprotocol.ai
