@@ -28,6 +28,27 @@ console.log(result);
 // { valid: true, checks: { version: true, signature: true, anchor: null } }
 ```
 
+## In the browser, edge, or Deno
+
+The default entry uses Node's `crypto`. For any runtime with the W3C Web Crypto
+API — every modern browser, Deno, Cloudflare Workers, Vercel Edge — import the
+`/web` build instead. Same inputs, same `{ valid, checks }` output (proven
+byte-for-byte in `web.test.js`); the functions are `async` because Web Crypto is.
+
+```js
+import { verifyReceipt, verifyWebAuthnSignoff } from '@emilia-protocol/verify/web';
+
+const r = await verifyReceipt(receipt, publicKey);          // Ed25519
+const s = await verifyWebAuthnSignoff(signoff, approverKey, // ECDSA P-256
+  { rpId: 'emiliaprotocol.ai' });
+```
+
+This is what powers [emiliaprotocol.ai/verify](https://www.emiliaprotocol.ai/verify):
+a relying party verifies a receipt entirely in their own tab — nothing uploaded,
+no server trusted. Receipts use Ed25519; Class-A device signoffs use ECDSA P-256
+over a WebAuthn assertion (the `/web` build converts the DER signature to the raw
+form Web Crypto expects). Call `isSupported()` to feature-detect.
+
 ## API
 
 ### `verifyReceipt(doc, publicKeyBase64url)`

@@ -12,6 +12,7 @@ const NAV_LINKS = [
   ['/govguard', 'GovGuard'],
   ['/finguard', 'FinGuard'],
   ['/demo', 'Demo'],
+  ['/verify', 'Verify'],
   ['/pricing', 'Pricing'],
   ['/docs', 'Docs'],
 ];
