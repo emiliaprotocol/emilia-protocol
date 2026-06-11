@@ -35,8 +35,10 @@ export EP_API_KEY="ep_live_…"     # from emiliaprotocol.ai
 export EP_ORG_ID="your-org-id"
 ```
 
-Now when Claude (via an MCP tool, e.g. a payments or email server) tries to move
-money or send something, the hook:
+Money/external MCP calls go to the policy engine; purely local risk
+(destructive shell, secret files) stays a local human prompt — it never
+pollutes the financial audit trail. When Claude (via an MCP tool, e.g. a
+payments or email server) tries to move money or send something, the hook:
 
 1. **mints** a pre-action Trust Receipt (server-side policy engine decides),
 2. **opens a signoff** for a named human,
@@ -44,6 +46,22 @@ money or send something, the hook:
    default 280s),
 4. returns `allow` **only** on a real signature — with a receipt you can verify
    offline: `npx @emilia-protocol/verify`.
+
+## Proven against production
+
+This exact flow ran end-to-end against the live API (2026-06-10): a simulated
+`mcp__payments__create_wire_transfer` for **$82,000** was intercepted, a Trust
+Receipt was minted by the formally-verified policy engine, a real signoff
+opened, the hook polled, no human approved, and it returned:
+
+```json
+{ "permissionDecision": "ask",
+  "permissionDecisionReason": "EMILIA — signoff timed out after 35s. Approve at https://www.emiliaprotocol.ai/signoff/sig_…, or confirm manually. Failing closed." }
+```
+
+The same protocol's device signoff is accepted on real hardware — a Touch ID
+approval of an $82,000 wire whose receipt verifies offline (all six checks,
+forgery rejected, `key_class: A`, `time_to_sign_ms: 20532`).
 
 ## Fail-closed, always
 

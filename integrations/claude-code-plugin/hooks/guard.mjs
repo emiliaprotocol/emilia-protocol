@@ -117,12 +117,16 @@ if (!API_KEY || !ORG_ID) {
 }
 
 // ── EMILIA mode: mint → require device signoff → receipt ─────────────────────
+// Only money/external MCP actions go to the policy engine — its action_type
+// vocabulary is financial. Purely local risk (shell, secret files) stays a
+// local human prompt rather than polluting the financial audit trail.
+if (!flags.includes('external_or_money_action')) {
+  emit('ask', `EMILIA — locally high-risk (${flags.join(', ')}): ${label}. Confirm a human intends this.`);
+}
 function mapActionType() {
   const t = tool.toLowerCase();
   if (/bank|account|payee/.test(t)) return 'vendor_bank_account_change';
-  if (/pay|transfer|wire|payout|charge|refund|withdraw/.test(t)) return 'vendor_payment';
-  if (/send|email|message|post|publish/.test(t)) return 'external_communication';
-  return 'high_risk_action';
+  return 'ai_agent_payment_action';
 }
 function parseAmount() {
   for (const v of [ti.amount, ti.value, ti.total]) {
