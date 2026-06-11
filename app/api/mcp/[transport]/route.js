@@ -17,8 +17,9 @@
 import { createMcpHandler } from 'mcp-handler';
 import { z } from 'zod';
 import { verifyReceipt, verifyWebAuthnSignoff } from '@/lib/verify-web';
+import { getPublicBaseUrl } from '@/lib/env';
 
-const BASE = process.env.EP_PUBLIC_BASE_URL || 'https://www.emiliaprotocol.ai';
+const BASE = getPublicBaseUrl();
 
 const text = (obj) => ({ content: [{ type: 'text', text: JSON.stringify(obj, null, 2) }] });
 

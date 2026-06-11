@@ -114,6 +114,9 @@ const MUTATING_POLICY_EXEMPTIONS = [
  * openapi.yaml because they are internal / not part of the public API.
  */
 const OPENAPI_EXEMPTIONS = [
+  // Remote MCP server (streamable HTTP / JSON-RPC, not a REST resource) — its
+  // tools are described via the MCP tools/list method, not OpenAPI.
+  '/api/mcp/[transport]',
   // Cron jobs are triggered by Vercel cron, not by external callers.
   '/api/cron/expire',
   // Blockchain anchoring is an internal operations endpoint.
