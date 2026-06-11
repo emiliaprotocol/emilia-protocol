@@ -6,6 +6,8 @@
 
 **A named human's signed "yes" before an AI agent does anything irreversible — with a receipt anyone can verify offline.**
 
+Three independent reference verifiers — **JavaScript, Python, and Go** — are proven to agree on the canonical adversarial conformance vectors, on every push (`npm run conformance`). That is the IETF bar for a real standard: multiple independent interoperable implementations. See [CONFORMANCE.md](CONFORMANCE.md), or verify a receipt yourself, in your browser, at [emiliaprotocol.ai/verify](https://www.emiliaprotocol.ai/verify).
+
 ![EMILIA crash test — an autonomous agent tries to wire $82,000; the formally-verified policy engine holds it, a named human signs off, the Trust Receipt verifies offline, and a forged copy fails verification.](docs/media/crash-test.gif)
 
 > Run it yourself: `node examples/crash-test.mjs` — fully offline, no API key.

@@ -169,6 +169,7 @@ const SOFTWARE_APPLICATION_JSONLD = {
     'Named human signoff with device-held WebAuthn keys (Face ID / passkey)',
     'Pre-action authorization for AI agents',
     'Formal verification (26 TLA+ theorems, 35 Alloy facts)',
+    'Cross-language conformance: JS, Python, and Go reference verifiers proven interoperable',
     'Cryptographic action binding (Ed25519 + Merkle)',
     'Self-verifying trust receipts (offline verifiable)',
     'NIST AI RMF and EU AI Act compliance mappings',

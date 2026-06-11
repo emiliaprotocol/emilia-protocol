@@ -26,7 +26,7 @@ const STATS = [
   { value: '3,500',     label: 'Automated Tests',  sub: '134 test files',                accent: color.t1    },
   { value: '26',        label: 'TLA+ Theorems',    sub: 'TLC 2.19, zero errors',         accent: color.blue  },
   { value: '35',        label: 'Alloy Facts',       sub: '15 assertions verified',        accent: color.gold  },
-  { value: '85',        label: 'Red Team Cases',    sub: 'Cataloged in repo',             accent: color.t1    },
+  { value: '3',         label: 'Independent Verifiers', sub: 'JS · Python · Go, proven to agree', accent: color.t1 },
   { value: 'Apache 2.0', label: 'License',          sub: 'Open specification',            accent: color.green },
 ];
 
