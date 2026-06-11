@@ -90,13 +90,24 @@ export default function CompareLandscapePage() {
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
         <h2 className="ep-reveal" style={styles.h2}>What is genuinely EMILIA&rsquo;s</h2>
         <p className="ep-reveal" style={styles.body}>
-          Gates + audit is no longer rare. Three things still are, and they matter most to a buyer who answers to an auditor, a regulator, or a fraud loss:
+          Cryptographic receipts are no longer rare — a fast-growing cluster of projects (below) already signs agent actions with Ed25519 and hash-chains them. So we don&rsquo;t lead with the receipt. We lead with what almost no one else has:
         </p>
         <ul className="ep-reveal" style={styles.list}>
-          <li><strong style={{ color: color.t1 }}>Formal verification.</strong> The policy engine is machine-checked — 26 TLA+ theorems + 35 Alloy facts, run on every push. No one else in this table claims machine-checked proofs.</li>
-          <li><strong style={{ color: color.t1 }}>An offline-verifiable receipt.</strong> <code style={{ fontFamily: font.mono, fontSize: 13 }}>@emilia-protocol/verify</code> checks a receipt with pure Ed25519 + Merkle math — no log, no network, no account. Hash-chains (Tenet) and append-only logs (DRP) prove tamper-evidence, but you need the log to verify; an EMILIA receipt verifies on its own, years later.</li>
+          <li><strong style={{ color: color.t1 }}>A named human signs the exact action on their own device.</strong> Touch ID / passkey, <em>before</em> the irreversible action runs. The signing key belongs to the approver — not the agent, not us — so neither a compromised agent nor a compromised operator can fabricate the approval. This is the line almost every other project doesn&rsquo;t cross.</li>
+          <li><strong style={{ color: color.t1 }}>Formal verification.</strong> The policy engine is machine-checked — 26 TLA+ theorems + 35 Alloy facts, run on every push. The receipt cluster proves tamper-evidence; none claim machine-checked proofs of the protocol itself.</li>
           <li><strong style={{ color: color.t1 }}>Enforced separation of duties + one-time consumption.</strong> The approver cannot be the initiator, checked in protocol, and a signoff is consumed once.</li>
+          <li><strong style={{ color: color.t1 }}>An offline-verifiable receipt</strong> — now table stakes in the receipt cluster, but still ahead of the approval tools (HumanLayer, Tenet): <code style={{ fontFamily: font.mono, fontSize: 13 }}>@emilia-protocol/verify</code> checks it with pure Ed25519 + Merkle math — no log, no network, no account.</li>
         </ul>
+      </section>
+
+      <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
+        <h2 className="ep-reveal" style={styles.h2}>The cryptographic-receipt cluster (and the line we draw)</h2>
+        <p className="ep-reveal" style={styles.body}>
+          A fast-growing set of open-source projects ships cryptographic accountability for agent actions — among them <strong style={{ color: color.t1 }}>nobulex</strong> (Ed25519 + hash-chains, pre-action enforcement, &ldquo;trust capital for machines&rdquo;), <strong style={{ color: color.t1 }}>Agent Receipts</strong> (a signing daemon that mints a W3C Verifiable Credential per tool call), and <strong style={{ color: color.t1 }}>signet</strong>. They are real and genuinely well-built, and we share their conviction: every irreversible agent action should leave tamper-evident, independently verifiable proof. On that, EMILIA is not unique — offline receipts are becoming table stakes, and we&rsquo;d rather say so than pretend otherwise.
+        </p>
+        <p className="ep-reveal" style={styles.body}>
+          The line we draw is <em>who signs</em>. In that cluster the agent signs its own receipts, or an operator-run daemon auto-signs every call — which proves what the software did and that no one edited it afterward, but <em>not</em> that an accountable human authorized that specific action. EMILIA&rsquo;s signature is produced by a named human on their own device, before the action runs — the one thing neither a compromised agent nor an operator can manufacture — backed by separation of duties and a machine-checked protocol the cluster doesn&rsquo;t claim. Receipts are table stakes; a provably accountable human is the wedge.
+        </p>
       </section>
 
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
