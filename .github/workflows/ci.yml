@@ -360,7 +360,8 @@ jobs:
           badge_count=$(grep -oP '\d+(?=\+? tools)' README.md | head -1 || echo "NOT_FOUND")
           echo "README badge claims: $badge_count tools"
           if [ "$badge_count" = "NOT_FOUND" ] || [ -z "$badge_count" ]; then
-            echo "::warning::Could not parse tool count from README badge — skipping match check."
+            # README intentionally no longer states a tool count — nothing to drift.
+            echo "README states no tool count — nothing to check."
           elif [ "$tool_count" != "$badge_count" ]; then
             echo "::error::Mismatch: mcp-server/index.js has $tool_count ep_ tool registrations but README badge says $badge_count"
             exit 1
@@ -475,7 +476,10 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        # AWS Public ECR mirror of the official image — identical bits, but not
+        # subject to Docker Hub's anonymous pull rate limits, which were
+        # intermittently failing this job on shared GitHub runners.
+        image: public.ecr.aws/docker/library/postgres:16-alpine
         env:
           POSTGRES_USER:     ep_test
           POSTGRES_PASSWORD: ep_test
