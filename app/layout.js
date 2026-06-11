@@ -30,8 +30,9 @@ export const metadata = {
     template: '%s | EMILIA Protocol',
   },
   description:
-    'The accountability layer for AI agents — a signed human yes before an agent does '
-    + 'anything irreversible, plus a receipt anyone can verify offline. Formally verified, Apache-2.0.',
+    'Every AI action needs an owner. Before an agent does anything irreversible, EMILIA '
+    + 'assigns a named human who approves the exact action on their own device — so "who '
+    + 'approved this?" always has an answer anyone can verify. Formally verified, Apache-2.0.',
   applicationName: 'EMILIA Protocol',
   keywords: [
     'AI agent authorization',

@@ -31,10 +31,10 @@ const STATS = [
 ];
 
 const PROBLEMS = [
-  { num: '01', title: 'Benefit payment redirection',        body: 'An authorized operator changes a payment destination inside a valid session. No control catches the action itself.' },
-  { num: '02', title: 'Beneficiary and remittance changes',  body: 'A wire transfer beneficiary is swapped through approved channels. The system sees a legitimate update, not fraud.' },
-  { num: '03', title: 'Privileged infrastructure actions',   body: 'A production credential is rotated or a deployment is pushed without action-bound authorization. Access was valid.' },
-  { num: '04', title: 'AI agent destructive execution',      body: 'An agent with broad tool access executes a high-risk action. No human assumed responsibility for the specific operation.' },
+  { num: '01', title: 'The vendor wire that passed',     body: 'A payment destination changed inside a valid session, approved through the normal process, to a vendor whose bank details quietly moved. Business email compromise — not a hack.' },
+  { num: '02', title: 'The beneficiary swap',            body: 'A remittance beneficiary was updated through approved channels. The system saw a legitimate change and let the money go.' },
+  { num: '03', title: 'The production credential',       body: 'An infrastructure credential was rotated and a deploy was pushed without action-bound authorization. Every access was valid; the blast radius was not.' },
+  { num: '04', title: 'The agent that executed',         body: 'An AI agent with broad tool access ran a high-risk, irreversible action. No human assumed responsibility for that specific operation.' },
 ];
 
 const SURFACES = [
@@ -139,18 +139,19 @@ export default function HomePage() {
                 letterSpacing: -3, lineHeight: 0.95,
                 color: color.t1, margin: '0 0 32px',
               }}>
-                Nothing irreversible without a{' '}
-                <em style={{ fontStyle: 'normal', color: color.gold }}>signed human yes.</em>
+                Every AI action needs an{' '}
+                <em style={{ fontStyle: 'normal', color: color.gold }}>owner.</em>
               </h1>
 
               <p style={{
                 fontSize: 17, color: color.t2,
-                maxWidth: 460, lineHeight: 1.72, margin: '0 0 40px',
+                maxWidth: 470, lineHeight: 1.72, margin: '0 0 40px',
               }}>
-                When an AI agent is about to do something irreversible — move money, change records,
-                take an action — EMILIA stops it pre-execution until a named human signs off on their
-                own device: Touch ID, Face ID, a passkey. An approval neither a compromised agent nor
-                EMILIA itself can forge. Formally proven.
+                AI can reason, plan, and execute — but it can&rsquo;t be accountable. Before an agent
+                does anything irreversible, EMILIA assigns a named human owner who approves the exact
+                action on their own device. So when someone asks{' '}
+                <em style={{ fontStyle: 'normal', color: color.t1, fontWeight: 600 }}>who approved this?</em>{' '}
+                — there is always an answer. One neither a compromised agent nor EMILIA itself can forge.
               </p>
 
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -307,19 +308,20 @@ export default function HomePage() {
             {/* Sticky editorial label */}
             <motion.div {...reveal()} style={{ position: 'sticky', top: 96 }}>
               <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>
-                Structural Vulnerabilities
+                The Wall of Regret
               </div>
               <h2 style={{
                 fontFamily: font.sans, fontWeight: 700,
                 fontSize: 'clamp(22px, 2.5vw, 34px)',
                 letterSpacing: -0.75, lineHeight: 1.18, color: color.t1, marginBottom: 20,
               }}>
-                Built for approved-looking workflows where ordinary auth fails
+                Every one of these passed. None of them had an owner.
               </h2>
               <p style={{ fontSize: 15, color: color.t2, lineHeight: 1.72 }}>
-                Fraud is moving inside valid sessions. Authenticated users,
-                legitimate tools, approved channels — the attack surface is
-                the action itself.
+                The actions that drain accounts and break production are rarely
+                &ldquo;hacks.&rdquo; They&rsquo;re authenticated users, legitimate tools, approved
+                channels — and afterward, no one can say <em style={{ fontStyle: 'normal', fontWeight: 600, color: color.t1 }}>who approved this</em>.
+                That unanswered question is the whole problem.
               </p>
             </motion.div>
 
@@ -353,6 +355,15 @@ export default function HomePage() {
                   </div>
                 </div>
               ))}
+              <div style={{ padding: '32px 16px 8px 28px' }}>
+                <p style={{ fontSize: 16, color: color.t1, lineHeight: 1.6, margin: 0, fontWeight: 600 }}>
+                  Who approved this? In every case, no one could say.
+                </p>
+                <p style={{ fontSize: 15, color: color.t2, lineHeight: 1.7, margin: '8px 0 0' }}>
+                  EMILIA assigns a named human owner <em style={{ fontStyle: 'normal', fontWeight: 600, color: color.t1 }}>before</em> the
+                  action runs — so the question always has an answer, on the record, that anyone can verify.
+                </p>
+              </div>
             </motion.div>
           </div>
         </C>
