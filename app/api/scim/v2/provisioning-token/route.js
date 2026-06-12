@@ -1,0 +1,76 @@
+// SPDX-License-Identifier: Apache-2.0
+// /api/scim/v2/provisioning-token — mint/list the bearer token an IdP uses to
+// reach EP's SCIM endpoints. Authenticated with the customer's EP API key; the
+// token is scoped to that entity as the SCIM tenant.
+
+import crypto from 'node:crypto';
+import { getGuardedClient } from '@/lib/write-guard';
+import { authenticateRequest, authEntityId } from '@/lib/supabase';
+import { epProblem } from '@/lib/errors';
+import { logger } from '@/lib/logger.js';
+import { generateScimToken, hashScimToken } from '@/lib/scim/auth';
+
+const BASE = 'https://www.emiliaprotocol.ai';
+
+export async function POST(request) {
+  const auth = await authenticateRequest(request);
+  if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
+  const tenantId = authEntityId(auth);
+
+  let body = {};
+  try { body = await request.json(); } catch { /* label optional */ }
+  const label = (body.label || 'IdP provisioning token').toString().slice(0, 120);
+
+  const token = generateScimToken();
+  const tokenHash = hashScimToken(token);
+  const supabase = getGuardedClient();
+
+  try {
+    const { data, error } = await supabase
+      .from('scim_provisioning_tokens')
+      .insert({ tenant_id: tenantId, token_hash: tokenHash, token_prefix: token.slice(0, 16), label })
+      .select('id, created_at')
+      .single();
+    if (error || !data) {
+      logger.error('[scim/token] mint failed:', error);
+      return epProblem(503, 'mint_failed', 'Could not issue provisioning token');
+    }
+
+    return Response.json({
+      token_id: data.id,
+      token, // shown once — never stored in plaintext
+      tenant_id: tenantId,
+      note: 'Store this token now; it is not retrievable. Configure it as the SCIM bearer token in your IdP.',
+      scim_base_url: `${BASE}/api/scim/v2`,
+      idp_setup: {
+        base_url: `${BASE}/api/scim/v2`,
+        authentication: 'OAuth Bearer Token',
+        service_provider_config: `${BASE}/api/scim/v2/ServiceProviderConfig`,
+        supported: ['Users (CRUD + PATCH)', 'Groups (CRUD + PATCH)', 'filter: eq', 'deprovision via active=false'],
+      },
+    }, { status: 201 });
+  } catch (err) {
+    logger.error('[scim/token] mint error:', err);
+    return epProblem(500, 'internal_error', 'Could not issue provisioning token');
+  }
+}
+
+export async function GET(request) {
+  const auth = await authenticateRequest(request);
+  if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
+  const tenantId = authEntityId(auth);
+  const supabase = getGuardedClient();
+
+  try {
+    const { data, error } = await supabase
+      .from('scim_provisioning_tokens')
+      .select('id, token_prefix, label, created_at, last_used_at, revoked_at')
+      .eq('tenant_id', tenantId)
+      .order('created_at', { ascending: false });
+    if (error) return epProblem(503, 'list_failed', 'Could not list tokens');
+    return Response.json({ tokens: data || [] });
+  } catch (err) {
+    logger.error('[scim/token] list error:', err);
+    return epProblem(500, 'internal_error', 'Could not list tokens');
+  }
+}

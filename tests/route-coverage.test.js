@@ -119,6 +119,15 @@ const OPENAPI_EXEMPTIONS = [
   // Self-serve observe-mode pilot sandbox (provision + report), not a protocol surface.
   '/api/pilot/sandbox/provision',
   '/api/pilot/sandbox/report',
+  // SCIM 2.0 (RFC 7643/7644) — a standardized provisioning surface described by
+  // the RFC and ServiceProviderConfig, not EP's protocol OpenAPI.
+  '/api/scim/v2/ServiceProviderConfig',
+  '/api/scim/v2/ResourceTypes',
+  '/api/scim/v2/Users',
+  '/api/scim/v2/Users/[id]',
+  '/api/scim/v2/Groups',
+  '/api/scim/v2/Groups/[id]',
+  '/api/scim/v2/provisioning-token',
   // Remote MCP server (streamable HTTP / JSON-RPC, not a REST resource) — its
   // tools are described via the MCP tools/list method, not OpenAPI.
   '/api/mcp/[transport]',

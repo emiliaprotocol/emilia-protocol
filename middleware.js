@@ -25,6 +25,20 @@ const ROUTE_POLICIES = {
   'POST /api/pilot/sandbox/provision': { rateCategory: 'submit', useAuth: false },
   'GET /api/pilot/sandbox/report':     { rateCategory: 'read', useAuth: true },
 
+  // SCIM 2.0 provisioning (RFC 7644). The IdP authenticates with an ep_scim_
+  // bearer token; rate-limit per token + IP. Initial directory sync is bursty,
+  // so creates use the write category. The token-mint route is gated by the
+  // customer's EP API key.
+  'POST /api/scim/v2/Users':                 { rateCategory: 'submit', useAuth: true },
+  'PUT /api/scim/v2/Users/*':                { rateCategory: 'submit', useAuth: true },
+  'PATCH /api/scim/v2/Users/*':              { rateCategory: 'submit', useAuth: true },
+  'DELETE /api/scim/v2/Users/*':             { rateCategory: 'submit', useAuth: true },
+  'POST /api/scim/v2/Groups':                { rateCategory: 'submit', useAuth: true },
+  'PUT /api/scim/v2/Groups/*':               { rateCategory: 'submit', useAuth: true },
+  'PATCH /api/scim/v2/Groups/*':             { rateCategory: 'submit', useAuth: true },
+  'DELETE /api/scim/v2/Groups/*':            { rateCategory: 'submit', useAuth: true },
+  'POST /api/scim/v2/provisioning-token':    { rateCategory: 'submit', useAuth: true },
+
   // Trust evaluation (reads)
   'GET /api/trust/profile/*':          { rateCategory: 'read', useAuth: false },
   'POST /api/trust/evaluate':         { rateCategory: 'read', useAuth: false },   // evaluation is a read
