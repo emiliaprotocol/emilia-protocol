@@ -415,9 +415,13 @@ jobs:
       - name: OpenAPI path coverage (core routes must be documented)
         run: |
           spec_paths=$(grep -c '^\s\+/api/' openapi.yaml || echo 0)
-          route_files=$(find app/api -name route.js 2>/dev/null | wc -l | tr -d ' ')
+          # Exclude surfaces that are intentionally documented OUTSIDE EP's
+          # protocol OpenAPI (mirrors the OPENAPI_EXEMPTIONS in
+          # tests/route-coverage.test.js): SCIM is RFC 7643/7644 + its own
+          # ServiceProviderConfig; the pilot sandbox is GTM onboarding tooling.
+          route_files=$(find app/api -name route.js 2>/dev/null | grep -vE '/api/scim/|/api/sso/|/api/pilot/' | wc -l | tr -d ' ')
           echo "openapi.yaml paths: $spec_paths"
-          echo "app/api route.js files: $route_files"
+          echo "core app/api route.js files (excl. scim, sso, pilot): $route_files"
           # Enforce minimum 75% coverage — cloud/operational routes may be documented separately.
           # Full parity target: Q2 2026 (tracked in GOVERNANCE.md).
           min_paths=$(( route_files * 75 / 100 ))

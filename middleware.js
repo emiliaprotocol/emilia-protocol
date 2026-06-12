@@ -39,6 +39,12 @@ const ROUTE_POLICIES = {
   'DELETE /api/scim/v2/Groups/*':            { rateCategory: 'submit', useAuth: true },
   'POST /api/scim/v2/provisioning-token':    { rateCategory: 'submit', useAuth: true },
 
+  // Enterprise SSO (SAML 2.0 SP + OIDC RP). The ACS receives the IdP's signed
+  // assertion (no EP key — the signature IS the authentication, verified
+  // in-route); connection config is gated by the customer's EP API key.
+  'POST /api/sso/saml/acs':                  { rateCategory: 'submit', useAuth: false },
+  'POST /api/sso/connections':               { rateCategory: 'submit', useAuth: true },
+
   // Trust evaluation (reads)
   'GET /api/trust/profile/*':          { rateCategory: 'read', useAuth: false },
   'POST /api/trust/evaluate':         { rateCategory: 'read', useAuth: false },   // evaluation is a read

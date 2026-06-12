@@ -72,6 +72,14 @@ const OPENAPI_EXEMPT_ROUTES = [
   '/api/scim/v2/Groups',
   '/api/scim/v2/Groups/[id]',
   '/api/scim/v2/provisioning-token',
+  // Enterprise SSO (SAML 2.0 / OIDC) — protocol-standard auth surfaces, not
+  // EP's protocol OpenAPI.
+  '/api/sso/saml/metadata',
+  '/api/sso/saml/login',
+  '/api/sso/saml/acs',
+  '/api/sso/oidc/login',
+  '/api/sso/oidc/callback',
+  '/api/sso/connections',
 ];
 
 function countRouteFiles() {

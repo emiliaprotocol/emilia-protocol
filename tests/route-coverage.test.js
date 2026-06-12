@@ -128,6 +128,14 @@ const OPENAPI_EXEMPTIONS = [
   '/api/scim/v2/Groups',
   '/api/scim/v2/Groups/[id]',
   '/api/scim/v2/provisioning-token',
+  // Enterprise SSO (SAML 2.0 / OIDC) — protocol-standard auth surfaces (SAML
+  // metadata/ACS, OIDC authorize/callback), not EP's protocol OpenAPI.
+  '/api/sso/saml/metadata',
+  '/api/sso/saml/login',
+  '/api/sso/saml/acs',
+  '/api/sso/oidc/login',
+  '/api/sso/oidc/callback',
+  '/api/sso/connections',
   // Remote MCP server (streamable HTTP / JSON-RPC, not a REST resource) — its
   // tools are described via the MCP tools/list method, not OpenAPI.
   '/api/mcp/[transport]',

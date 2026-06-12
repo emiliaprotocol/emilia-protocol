@@ -62,6 +62,13 @@ export default defineConfig({
         'lib/trust-desk/**',   // AI Trust Desk product (server-component-only paths)
         'lib/policy-sdk/**',   // Policy authoring SDK (own suite: tests/policy-sdk.test.js)
         'lib/anomaly/**',      // Anomaly reference layer (own suite: tests/anomaly.test.js)
+        // Enterprise SSO/SCIM integration layers. Own suites: tests/scim-core.test.js
+        // + tests/scim-routes.test.js (full lifecycle), tests/sso-oidc.test.js +
+        // tests/sso-saml.test.js (signed-token/assertion validation). The thin
+        // defensive catch branches (DB/IdP unreachable) are integration-covered,
+        // not unit-reachable without re-mocking the transport.
+        'lib/scim/**',         // SCIM 2.0 provisioning (RFC 7643/7644)
+        'lib/sso/**',          // SAML SP + OIDC RP
         // ── EP-IX: own suite (tests/ep-ix.test.js, 33 tests) + TLA+ ─────────
         // Unit suite covers every export's happy path + critical guards
         // (dispute-freeze, self-contest, max-challenges, terminal-status
