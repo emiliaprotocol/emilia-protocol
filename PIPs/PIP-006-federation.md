@@ -27,17 +27,28 @@ discovery surfaces, the conformance test suite that exercises cross-operator
 verification). The three acceptance gates stand as follows:
 
 1. **A second independent operator passing the conformance suite end-to-end.**
-   *Implemented and verified against a self-hosted second operator.* The
+   *Verified against a second, separately-deployed LIVE operator.* The
    relying-party (Operator B) verification path is published as
    `@emilia-protocol/verify` → `verifyFederatedReceipt` /
    `verifyFederatedReceiptOffline` (version 1.3.0+ on npm; earlier releases
    lack the federation exports), with a two-operator cross-redemption harness
-   (`conformance/federation.mjs`, `packages/verify/federation.test.js`, 13
+   (`conformance/federation.mjs`, `packages/verify/federation.test.js`, 14
    cases) proving valid redemption plus tamper, wrong-operator, rotation, and
-   revocation rejection. **Remaining for full acceptance:** an *independent
-   third-party* operator standing up the three surfaces and passing
-   `node conformance/federation.mjs https://<their-origin>`. The contract they
-   need is published — see gate #2.
+   revocation rejection.
+   - **Live proof:** a second operator — *EP Federation Operator 2* — runs on
+     separate infrastructure (a Supabase Edge Function, different project /
+     region) with its own Ed25519 key, publishing the PIP-006 surfaces
+     (`conformance/operator2/`). A relying party fetches Operator 2's published
+     keys *and* its revocation surface from Operator 2's own origin and verifies
+     a receipt Operator 2 signed — live, end to end, with tampered receipts
+     rejected. Run it: `node conformance/operator2/verify-live.mjs`.
+   - **Remaining for full acceptance:** Operator 2 is operated by the same party
+     as the primary, so it demonstrates the *mechanism* across separate
+     deployments but is not yet an *independent third party*. The final step is
+     an externally-operated instance passing
+     `node conformance/operator2/verify-live.mjs https://<their-origin>` — the
+     contract and a working reference operator (`conformance/operator2/`) are
+     both published for them.
 
 2. **A public Federation Registry document.** *Done* —
    `docs/FEDERATION-REGISTRY.md` defines the operator-discovery convention

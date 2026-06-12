@@ -1,0 +1,26 @@
+{
+  "@version": "EP-RECEIPT-v1",
+  "payload": {
+    "receipt_id": "ep_receipt_operator2_demo_001",
+    "@version": "EP-RECEIPT-v1",
+    "entity_id": "ep_entity_operator2_demo_agent",
+    "action": {
+      "type": "fin/payment-release",
+      "amount": 42000,
+      "currency": "USD"
+    },
+    "context": {
+      "risk_signals": [
+        "cross_operator_demo"
+      ]
+    },
+    "issued_at": "2026-06-11T00:00:00Z",
+    "issuer_operator": "ep_operator_2_supabase_edge"
+  },
+  "signature": {
+    "signer": "ep_operator_2_supabase_edge",
+    "key_discovery": "https://kgknhhdqsykxcwzdfeim.supabase.co/functions/v1/operator2/.well-known/ep-keys.json",
+    "algorithm": "Ed25519",
+    "value": "VRPnFqyuuxZQKY3s4MaIy4-4buu0wYfjPXw4LIEmrYhGN-GEX_Aj3uFelOCB_q3k--xk6tNlMZUL4ISw5arpCw"
+  }
+}

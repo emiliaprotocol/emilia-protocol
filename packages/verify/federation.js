@@ -246,10 +246,14 @@ export async function verifyFederatedReceipt(receipt, opts = {}) {
   const revokedReceiptIds = new Set();
   const receiptId = receipt.payload?.receipt_id || receipt.receipt_id;
   if (receiptId) {
-    const verifyBase = opts.verifyUrlBase || deriveVerifyBase(keyDiscoveryUrl);
-    if (verifyBase) {
+    // Prefer the operator's advertised verify_url_template (PIP-006) — it lets
+    // an operator host its verifier-of-record at any path, not just
+    // {origin}/api/verify. Fall back to origin-derivation for operators that
+    // don't advertise it.
+    const verifyUrl = resolveVerifyUrl(discoveryDoc, opts.verifyUrlBase, keyDiscoveryUrl, receiptId);
+    if (verifyUrl) {
       try {
-        const v = await fetchJson(fetchImpl, `${verifyBase}/api/verify/${encodeURIComponent(receiptId)}`, opts.timeoutMs);
+        const v = await fetchJson(fetchImpl, verifyUrl, opts.timeoutMs);
         fetched.revocation = { ok: true, revoked: v?.revoked === true };
         if (v?.revoked === true) revokedReceiptIds.add(receiptId);
       } catch {
@@ -266,6 +270,21 @@ export async function verifyFederatedReceipt(receipt, opts = {}) {
     expectedSigner: opts.expectedSigner,
   });
   return { ...offline, fetched, revocation_confirmed: fetched.revocation?.ok === true };
+}
+
+// Build the verifier-of-record URL for a receipt. Priority:
+//   1. explicit opts.verifyUrlBase override ({base}/api/verify/{id})
+//   2. the operator's advertised verify_url_template ({receipt_id} substituted)
+//   3. origin of the key_discovery URL + /api/verify/{id}
+function resolveVerifyUrl(discoveryDoc, verifyUrlBase, keyDiscoveryUrl, receiptId) {
+  const id = encodeURIComponent(receiptId);
+  if (verifyUrlBase) return `${verifyUrlBase.replace(/\/$/, '')}/api/verify/${id}`;
+  const tmpl = discoveryDoc?.verify_url_template;
+  if (typeof tmpl === 'string' && tmpl.includes('{receipt_id}')) {
+    return tmpl.replace('{receipt_id}', id);
+  }
+  const base = deriveVerifyBase(keyDiscoveryUrl);
+  return base ? `${base}/api/verify/${id}` : null;
 }
 
 async function fetchJson(fetchImpl, url, timeoutMs = 5000) {

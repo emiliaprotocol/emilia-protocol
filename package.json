@@ -23,7 +23,8 @@
     "prepare": "husky",
     "conformance": "node conformance/run.mjs",
     "conformance:signoffs": "node conformance/run-signoffs.mjs",
-    "conformance:federation": "node conformance/federation.mjs"
+    "conformance:federation": "node conformance/federation.mjs",
+    "conformance:operator2": "node conformance/operator2/verify-live.mjs"
   },
   "lint-staged": {
     "{app,lib,components}/**/*.{js,mjs,ts,tsx}": [

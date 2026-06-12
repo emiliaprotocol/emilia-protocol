@@ -254,6 +254,29 @@ test('online verifyFederatedReceipt resolves keys + revocation via injected fetc
   assert.equal(result.fetched.keyDiscoveryUrl, KEY_DISCOVERY(A));
 });
 
+test('online path uses the discovery doc verify_url_template for revocation', async () => {
+  const A = makeOperator('ep_operator_a');
+  const receipt = issueReceipt(A, samplePayload('ep_receipt_008b'));
+  // Operator hosts its verifier-of-record at a NON-standard path and advertises
+  // it via verify_url_template (e.g. a serverless function prefix).
+  const doc = { ...discoveryDoc(A), verify_url_template: 'https://op.example/fn/op/api/verify/{receipt_id}' };
+
+  let revocationUrlHit = null;
+  const fetchImpl = async (url) => {
+    if (url.endsWith('/ep-keys.json')) return { ok: true, status: 200, json: async () => doc };
+    if (url.includes('/fn/op/api/verify/')) {
+      revocationUrlHit = url;
+      return { ok: true, status: 200, json: async () => ({ receipt_id: 'ep_receipt_008b', revoked: false }) };
+    }
+    return { ok: false, status: 404, json: async () => ({}) };
+  };
+
+  const result = await verifyFederatedReceipt(receipt, { fetchImpl });
+  assert.equal(result.accepted, true);
+  assert.equal(result.revocation_confirmed, true);
+  assert.equal(revocationUrlHit, 'https://op.example/fn/op/api/verify/ep_receipt_008b');
+});
+
 test('online path honors an operator revocation verdict', async () => {
   const A = makeOperator('ep_operator_a');
   const receipt = issueReceipt(A, samplePayload('ep_receipt_009'));
