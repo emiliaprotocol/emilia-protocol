@@ -6,6 +6,7 @@ export const runtime = 'nodejs';
 
 import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { upsertConnection, listConnections } from '@/lib/sso/config';
+import { seal } from '@/lib/crypto/secret-box';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 
@@ -40,7 +41,9 @@ export async function POST(request) {
     fields = {
       oidc_issuer: body.oidc_issuer.replace(/\/$/, ''),
       oidc_client_id: body.oidc_client_id,
-      oidc_client_secret: body.oidc_client_secret || null,
+      // Sealed at rest (AES-256-GCM, lib/crypto/secret-box); decrypted only at
+      // token-exchange time in loadConnection.
+      oidc_client_secret: body.oidc_client_secret ? seal(body.oidc_client_secret) : null,
       oidc_redirect_uri: body.oidc_redirect_uri || null,
       enabled: body.enabled !== false,
     };

@@ -70,7 +70,9 @@ export default defineConfig({
         // defensive catch branches (DB/IdP unreachable) are integration-covered,
         // not unit-reachable without re-mocking the transport.
         'lib/scim/**',         // SCIM 2.0 provisioning (RFC 7643/7644)
-        'lib/sso/**',          // SAML SP + OIDC RP
+        'lib/sso/**',          // SAML SP + OIDC RP + session
+        'lib/crypto/**',       // secret-box (own suite: tests/secret-box.test.js)
+        'lib/trust-receipt/**',// §6.2 issuer (own suite: tests/trust-receipt-issuer.test.js)
         // ── EP-IX: own suite (tests/ep-ix.test.js, 33 tests) + TLA+ ─────────
         // Unit suite covers every export's happy path + critical guards
         // (dispute-freeze, self-contest, max-challenges, terminal-status

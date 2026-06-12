@@ -80,6 +80,7 @@ const OPENAPI_EXEMPT_ROUTES = [
   '/api/sso/oidc/login',
   '/api/sso/oidc/callback',
   '/api/sso/connections',
+  '/api/sso/session',
 ];
 
 function countRouteFiles() {

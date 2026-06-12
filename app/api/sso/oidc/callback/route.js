@@ -4,10 +4,12 @@
 
 export const runtime = 'nodejs';
 
+import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { discover, exchangeCode, validateIdToken } from '@/lib/sso/oidc';
 import { loadConnection } from '@/lib/sso/config';
 import { verifyState, SSO_STATE_COOKIE } from '@/lib/sso/state';
+import { mintSession, SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from '@/lib/sso/session';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 
@@ -62,13 +64,29 @@ export async function GET(request) {
   }
 
   const directory = await resolveDirectory(tenant, verdict.email || verdict.subject);
-  return Response.json({
+
+  // Mint the EP session — this is what "logged in" means. The session asserts
+  // the verified identity; signing authority still requires the enrolled
+  // passkey ceremony per action.
+  const token = await mintSession({
+    tenant,
+    subject: verdict.subject,
+    email: verdict.email,
+    protocol: 'oidc',
+    directory,
+  });
+  const res = NextResponse.json({
     authenticated: true,
     protocol: 'oidc',
     tenant,
     identity: { subject: verdict.subject, email: verdict.email },
     directory,
+    session: 'set',
   });
+  res.cookies.set(SESSION_COOKIE, token, SESSION_COOKIE_OPTIONS);
+  // The one-shot login state has served its purpose.
+  res.cookies.delete(SSO_STATE_COOKIE);
+  return res;
 }
 
 async function resolveDirectory(tenant, userName) {

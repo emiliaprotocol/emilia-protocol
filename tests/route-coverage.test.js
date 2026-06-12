@@ -136,6 +136,7 @@ const OPENAPI_EXEMPTIONS = [
   '/api/sso/oidc/login',
   '/api/sso/oidc/callback',
   '/api/sso/connections',
+  '/api/sso/session',
   // Remote MCP server (streamable HTTP / JSON-RPC, not a REST resource) — its
   // tools are described via the MCP tools/list method, not OpenAPI.
   '/api/mcp/[transport]',

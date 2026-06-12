@@ -13,7 +13,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // ── In-memory Supabase mock ──────────────────────────────────────────────────
-const store = { scim_provisioning_tokens: [], scim_users: [], scim_groups: [] };
+const store = { scim_provisioning_tokens: [], scim_users: [], scim_groups: [], approver_credentials: [], audit_events: [] };
 let idSeq = 0;
 const newId = () => `00000000-0000-0000-0000-${String(++idSeq).padStart(12, '0')}`;
 
@@ -54,13 +54,23 @@ class Query {
     return { data: rows[0] ?? null, error: null };
   }
   async maybeSingle() { const rows = this._match(); return { data: rows[0] ?? null, error: null }; }
-  // Awaitable terminal for list selects and deletes.
+  // Awaitable terminal for list selects, deletes, bulk updates, bare inserts.
   then(resolve, reject) {
     try {
       if (this.op === 'delete') {
         const keep = store[this.table].filter((row) => !this.filters.every(([c, v]) => row[c] === v));
         store[this.table] = keep;
         return resolve({ data: null, error: null });
+      }
+      if (this.op === 'insert') {
+        return resolve(this._applyInsert());
+      }
+      if (this.op === 'update') {
+        // Bulk update: apply to every matching row (e.g. credential revocation
+        // across all of an approver's keys).
+        const rows = this._match();
+        for (const row of rows) Object.assign(row, this.payload);
+        return resolve({ data: rows.map((r) => ({ id: r.id })), error: null });
       }
       let rows = this._match();
       const count = rows.length;
@@ -93,6 +103,8 @@ beforeEach(() => {
   store.scim_provisioning_tokens = [{ id: 't1', tenant_id: TENANT, token_hash: hashScimToken(TOKEN), revoked_at: null }];
   store.scim_users = [];
   store.scim_groups = [];
+  store.approver_credentials = [];
+  store.audit_events = [];
   idSeq = 0;
 });
 
@@ -184,5 +196,80 @@ describe('SCIM User lifecycle', () => {
 
     const gone = await UserById.GET(req('GET', `${base}/${id}`, { token: TOKEN }), params);
     expect(gone.status).toBe(404);
+  });
+});
+
+describe('SCIM → approver linkage', () => {
+  const base = 'https://x/api/scim/v2/Users';
+  const provision = async (userName) => {
+    const res = await Users.POST(req('POST', base, { token: TOKEN, body: { userName, active: true } }));
+    return (await res.json()).id;
+  };
+  const enrollCredential = (userName) => {
+    store.approver_credentials.push({
+      id: `cred_${userName}`, approver_id: userName, credential_id: `cid_${userName}`,
+      public_key_spki: 'spki', key_class: 'A', revoked_at: null,
+    });
+  };
+
+  it('provision records the human as enrollment-eligible', async () => {
+    await provision('signer@example.com');
+    const ev = store.audit_events.find((e) => e.event_type === 'scim.approver.provisioned');
+    expect(ev).toBeTruthy();
+    expect(ev.target_id).toBe('signer@example.com');
+    expect(ev.after_state.enrollment_eligible).toBe(true);
+  });
+
+  it('deprovision (PATCH active=false) revokes the approver credentials in the same write', async () => {
+    const id = await provision('leaver@example.com');
+    enrollCredential('leaver@example.com');
+
+    await UserById.PATCH(req('PATCH', `${base}/${id}`, {
+      token: TOKEN,
+      body: { schemas: ['urn:ietf:params:scim:api:messages:2.0:PatchOp'], Operations: [{ op: 'replace', path: 'active', value: false }] },
+    }), { params: Promise.resolve({ id }) });
+
+    const cred = store.approver_credentials.find((c) => c.approver_id === 'leaver@example.com');
+    expect(cred.revoked_at).toBeTruthy();
+    const ev = store.audit_events.find((e) => e.event_type === 'scim.approver.deprovisioned');
+    expect(ev.after_state.credentials_revoked).toBe(1);
+  });
+
+  it('DELETE revokes credentials too (hard offboard)', async () => {
+    const id = await provision('gone@example.com');
+    enrollCredential('gone@example.com');
+
+    await UserById.DELETE(req('DELETE', `${base}/${id}`, { token: TOKEN }), { params: Promise.resolve({ id }) });
+
+    const cred = store.approver_credentials.find((c) => c.approver_id === 'gone@example.com');
+    expect(cred.revoked_at).toBeTruthy();
+  });
+
+  it('re-activation makes the human eligible again but never resurrects revoked keys', async () => {
+    const id = await provision('rejoiner@example.com');
+    enrollCredential('rejoiner@example.com');
+    const params = { params: Promise.resolve({ id }) };
+    const patch = (value) => UserById.PATCH(req('PATCH', `${base}/${id}`, {
+      token: TOKEN, body: { Operations: [{ op: 'replace', path: 'active', value }] },
+    }), params);
+
+    await patch(false);
+    const revokedAt = store.approver_credentials.find((c) => c.approver_id === 'rejoiner@example.com').revoked_at;
+    expect(revokedAt).toBeTruthy();
+
+    await patch(true);
+    const cred = store.approver_credentials.find((c) => c.approver_id === 'rejoiner@example.com');
+    expect(cred.revoked_at).toBe(revokedAt); // still revoked — re-enroll required
+    const eligible = store.audit_events.filter((e) => e.event_type === 'scim.approver.provisioned');
+    expect(eligible.length).toBeGreaterThanOrEqual(2); // initial + re-activation
+  });
+
+  it('deprovision with no enrolled credentials still audits (0 revoked)', async () => {
+    const id = await provision('never-enrolled@example.com');
+    await UserById.PATCH(req('PATCH', `${base}/${id}`, {
+      token: TOKEN, body: { Operations: [{ op: 'replace', path: 'active', value: false }] },
+    }), { params: Promise.resolve({ id }) });
+    const ev = store.audit_events.find((e) => e.event_type === 'scim.approver.deprovisioned');
+    expect(ev.after_state.credentials_revoked).toBe(0);
   });
 });

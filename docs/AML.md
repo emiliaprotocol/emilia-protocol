@@ -25,7 +25,7 @@ Any FinGuard adapter accepts these optional fields (or an explicit `aml` block):
 | `counterparty_name` (`beneficiary_name` / `payee_name`) | screened against the watchlist |
 | `counterparty_country` (`beneficiary_country`) | ISO-3166 alpha-2; checked against embargoes |
 | `amount` | this transaction (USD) |
-| `recent_amounts` | recent transfers to the same counterparty (structuring/velocity window) |
+| `recent_amounts` | recent transfers to the same counterparty (optional — EP looks this up from its own history when omitted) |
 
 ```bash
 curl -s .../api/v1/adapters/fin/payment-release/precheck \
@@ -45,6 +45,16 @@ curl -s .../api/v1/adapters/fin/payment-release/precheck \
   especially repeated; and aggregation of sub-threshold transfers over the window.
 - **Velocity** — an unusual count of transfers in the window.
 
+## Counterparty history
+
+Structuring and velocity must not depend on the monitored system reporting the
+pattern it might be hiding. EP records every financial precheck that names a
+counterparty into `aml_history` (migration 097) and, when the caller supplies no
+`recent_amounts`, looks the 30-day / 20-transfer window up **itself**. A
+caller-supplied window still takes precedence (a core-banking system may have a
+longer view). History lookups and writes are best-effort: a failure degrades to
+"no history" and never blocks the decision.
+
 ## Watchlist
 
 The bundled `lib/aml/watchlist.js` is a small **synthetic snapshot** so the
@@ -58,6 +68,6 @@ which list is loaded.
 
 `tests/aml-screening.test.js` (25) covers normalization, exact/alias/fuzzy
 sanctions matching, embargo, structuring (repeated / single / aggregation),
-velocity, and the aggregate recommendation. `tests/guard-adapter-aml.test.js` (6)
+velocity, and the aggregate recommendation. `tests/guard-adapter-aml.test.js` (9, incl. structuring detected purely from EP-persisted history)
 proves the end-to-end adapter flow: sanctions → deny, structuring → signoff,
 clean → allow, and observe-mode never blocks.

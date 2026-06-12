@@ -6,6 +6,25 @@ Versioning model: Protocol spec and reference repo share the root version (1.0.x
 
 ## [Unreleased] — main as of 2026-06-11
 
+### Activation pass — closing the pure-code loose ends
+- **SSO sessions** — a successful SAML ACS / OIDC callback now mints a signed EP
+  session (`ep_session` cookie); `GET/DELETE /api/sso/session`. SSO *logs you in*,
+  not just *verifies you*.
+- **SSO secret at rest** — `oidc_client_secret` is sealed with AES-256-GCM
+  (`lib/crypto/secret-box`, versioned `epenc:v1:`), decrypted only at token
+  exchange.
+- **SCIM → signing authority** — a provisioned human becomes passkey-enrollment
+  eligible; deprovision (`active=false` / `DELETE`) revokes their approver
+  credentials in the same write. Offboarding removes signing authority in the
+  same sync.
+- **AML history** — `aml_history` (migration 097) records each financial precheck;
+  structuring/velocity now fire from EP's own per-counterparty window instead of
+  trusting caller-supplied `recent_amounts`.
+- **§6.2 Trust Receipt issuer** — `lib/trust-receipt/issuer.js` emits the
+  Internet-Draft §6.2 Trust Receipt (action hash, contexts, Class-A/B signoffs,
+  Merkle log + signed checkpoint) that `@emilia-protocol/verify`'s
+  `verifyTrustReceipt` accepts 7/7 — the issuer half of the §6.3 verifier.
+
 ### Highlights — the enterprise/protocol build
 - **PIP-006 Federation, full** — Operator-B cross-operator client in `@emilia-protocol/verify` 1.3.0 (`verifyFederatedReceipt` / `verifyFederatedReceiptOffline`); `ep-keys.json` advertises `historical_keys` (rotation safety, migration 094), `cache_ttl_seconds`, `verify_url_template`; two-operator conformance harness (`conformance/federation.mjs`) passes against production; Federation Registry convention (`docs/FEDERATION-REGISTRY.md`); formal model `formal/ep_federation.als` — 7 safety assertions, 0 counterexamples, in CI. Remaining acceptance gate: an independent third-party operator.
 - **Enterprise SSO** — SAML 2.0 Service Provider + OIDC Relying Party (`app/api/sso/*`, `lib/sso/`, migration 096, `docs/SSO.md`); signature validation via `@node-saml/node-saml` (xml-crypto) and `jose`; fixture-tested including a real signed-SAML-assertion round-trip. Live IdP tenant connected at onboarding.

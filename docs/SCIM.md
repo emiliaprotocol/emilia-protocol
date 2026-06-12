@@ -56,12 +56,27 @@ The token is scoped to your tenant; one tenant never sees another's directory.
 - **ETags** are returned (`meta.version`) and the service advertises
   `etag.supported = true`.
 
+## Signing-authority linkage
+
+The point of SCIM here is signing authority that tracks your directory. The link
+is the identity itself: a user's `userName` IS the `approver_id` the WebAuthn
+enrollment flow uses.
+
+- **Provision (active):** the human becomes eligible to enroll a signing passkey
+  at `/api/v1/approvers/webauthn/register-options` (recorded in the audit trail).
+  No key is minted on their behalf — that would be operator custody (Class C).
+- **Deprovision (`active=false` or `DELETE`):** every live approver credential
+  for that `userName` is revoked **in the same write**. Offboarding in your IdP
+  removes signing authority in the same sync. Re-activation makes the human
+  eligible to *re-enroll*; it never resurrects a revoked key.
+
 ## Conformance
 
 The mapping, filter, and PATCH semantics are covered by `tests/scim-core.test.js`
-(24 cases) and the full create → list → filter → deprovision → delete lifecycle
-plus the auth gate by `tests/scim-routes.test.js` (10 cases). Storage is
-`supabase/migrations/095_scim_provisioning.sql`.
+(24 cases) and the full create → list → filter → deprovision → delete lifecycle,
+the auth gate, and the approver-linkage (provision-eligible / deprovision-revokes /
+re-activation-never-resurrects) by `tests/scim-routes.test.js` (15 cases). Storage
+is `supabase/migrations/095_scim_provisioning.sql`.
 
 > **Live IdP round-trip:** the server is conformance-tested against the SCIM
 > protocol directly (our tests act as the IdP client). A live end-to-end run

@@ -7,6 +7,7 @@ import {
   toScimUser, fromScimUser, listResponse, parseFilter, etag,
 } from '@/lib/scim/core';
 import { scimJson, scimErrorResponse, requireScimAuth, scimBaseUrl } from '@/lib/scim/http';
+import { recordApproverEligible } from '@/lib/scim/approver-link';
 
 // Map SCIM filter attributes to scim_users columns.
 const USER_FILTER_COLUMN = {
@@ -98,6 +99,12 @@ export async function POST(request) {
       }
       logger.error('[scim/Users] create failed:', error);
       return scimErrorResponse(503, 'Directory unavailable');
+    }
+
+    // SCIM → approver linkage: an active provisioned human is now eligible to
+    // enroll a signing passkey under approver_id = userName.
+    if (data.active !== false) {
+      await recordApproverEligible(supabase, auth.tenantId, data.user_name);
     }
 
     const resource = toScimUser(data, base);

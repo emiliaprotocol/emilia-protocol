@@ -49,6 +49,18 @@ exchanges the code (PKCE), and validates the ID token's signature, `iss`, `aud`,
 `exp`, and `nonce`. A token signed by a key not in the provider's JWKS — or any
 mismatch — is **rejected** (401).
 
+## Session + secret handling
+
+- **Session.** A successful SAML ACS or OIDC callback mints a signed EP session
+  (HS256 JWT, `ep_session` httpOnly cookie, 8h). `GET /api/sso/session` returns
+  the verified identity + the SCIM-directory verdict; `DELETE /api/sso/session`
+  logs out. The session asserts *who authenticated*; Class-A signoff still
+  requires the approver's passkey ceremony per action.
+- **Client secret at rest.** A tenant's `oidc_client_secret` is sealed with
+  AES-256-GCM (`lib/crypto/secret-box`) before storage and decrypted only at
+  token-exchange time. The stored format is versioned (`epenc:v1:`) so moving
+  the key into a dedicated KMS is a rolling re-encryption, not a migration.
+
 ## Conformance
 
 The security-critical validation is unit-tested against fixture IdPs (no live
@@ -61,6 +73,8 @@ provider needed):
   unsigned/garbage, and (where openssl is present) signs a real SAML assertion
   and proves the ACS accepts it and rejects a different-key signature.
 - `tests/sso-state.test.js` (5) — the HMAC state token: tamper + expiry + wrong-secret rejection.
+- `tests/sso-session.test.js` (6) — EP session mint/verify, tamper + wrong-secret + cookie parsing.
+- `tests/secret-box.test.js` (7) — AES-256-GCM round-trip, tamper rejection, plaintext-passthrough rollout.
 
 > **Live IdP round-trip:** the validators are exercised against fixture
 > providers here; connecting a specific Okta/Entra tenant (its real signing

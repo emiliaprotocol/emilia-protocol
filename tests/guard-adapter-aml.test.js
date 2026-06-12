@@ -10,17 +10,36 @@
 
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
-const inserted = [];
+const store = { aml_history: [], audit_events: [] };
+const inserted = []; // every inserted row, in order (back-compat assertions)
 vi.mock('@/lib/supabase', () => ({
   authenticateRequest: async () => ({ entity: 'ep_entity_acme' }),
   authEntityId: (auth) => (typeof auth?.entity === 'string' ? auth.entity : auth?.entity?.entity_id || ''),
   getServiceClient: vi.fn(),
 }));
-vi.mock('@/lib/write-guard', () => ({
-  getGuardedClient: () => ({
-    from: () => ({ insert: async (row) => { inserted.push(row); return { error: null }; } }),
-  }),
-}));
+
+// In-memory client: supports the aml_history window query chain + inserts.
+class Q {
+  constructor(table) { this.table = table; this.filters = []; this._limit = null; }
+  select() { return this; }
+  eq(c, v) { this.filters.push((r) => r[c] === v); return this; }
+  gte(c, v) { this.filters.push((r) => r[c] >= v); return this; }
+  order() { return this; }
+  limit(n) { this._limit = n; return this; }
+  async insert(row) {
+    const r = { occurred_at: new Date().toISOString(), ...row };
+    (store[this.table] ||= []).push(r);
+    inserted.push(r);
+    return { error: null };
+  }
+  then(resolve) {
+    let rows = (store[this.table] || []).filter((r) => this.filters.every((f) => f(r)));
+    rows = rows.slice().reverse(); // newest-first (insert order ascending)
+    if (this._limit) rows = rows.slice(0, this._limit);
+    return resolve({ data: rows, error: null });
+  }
+}
+vi.mock('@/lib/write-guard', () => ({ getGuardedClient: () => ({ from: (t) => new Q(t) }) }));
 
 const { runGuardPrecheck } = await import('../lib/guard-adapter.js');
 const { GUARD_ACTION_TYPES, GUARD_DECISIONS } = await import('../lib/guard-policies.js');
@@ -53,7 +72,7 @@ const baseBody = (extra = {}) => ({
   ...extra,
 });
 
-beforeEach(() => { inserted.length = 0; });
+beforeEach(() => { inserted.length = 0; store.aml_history = []; store.audit_events = []; });
 
 describe('guard adapter + AML', () => {
   it('allows a clean financial action (no AML signals)', async () => {
@@ -97,5 +116,44 @@ describe('guard adapter + AML', () => {
   it('rejects a body missing organization_id (400)', async () => {
     const res = await precheck({ payment_instruction_id: 'pi_1', before_state: {}, after_state: {} });
     expect(res.status).toBe(400);
+  });
+});
+
+describe('guard adapter + AML history (self-lookup)', () => {
+  // Three near-threshold transfers to the same counterparty. None passes
+  // recent_amounts; the adapter persists each and looks the window up itself.
+  it('detects structuring from EP-persisted history (caller passes no recent_amounts)', async () => {
+    const body = (amount) => baseBody({ counterparty_name: 'Smurf Trading', amount });
+
+    // First near-threshold transfer, no priors: a SOFT signal (near_threshold)
+    // — escalates to signoff but is not yet "structuring".
+    const r1 = await (await precheck(body(9400))).json();
+    expect(r1.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+    expect(r1.aml_signals.some((s) => s.startsWith('structuring'))).toBe(false);
+    expect(r1.aml_signals).toContain('near_threshold_amount');
+    expect(store.aml_history.filter((h) => h.counterparty === 'smurf trading').length).toBe(1);
+
+    await precheck(body(9600)); // second near-threshold, recorded
+    // Third: the two priors are now in EP's own history → hard structuring,
+    // detected without the caller ever supplying recent_amounts.
+    const r3 = await (await precheck(body(9500))).json();
+    expect(r3.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+    expect(r3.aml_signals.some((s) => s.startsWith('structuring'))).toBe(true);
+    expect(store.aml_history.filter((h) => h.counterparty === 'smurf trading').length).toBe(3);
+  });
+
+  it('a first-ever transfer to a counterparty (clean amount) allows and records history', async () => {
+    const res = await precheck(baseBody({ counterparty_name: 'Acme Widgets', amount: 2000 }));
+    const json = await res.json();
+    expect(json.decision).toBe(GUARD_DECISIONS.ALLOW);
+    expect(store.aml_history.some((h) => h.counterparty === 'acme widgets' && Number(h.amount) === 2000)).toBe(true);
+  });
+
+  it('caller-supplied recent_amounts still take precedence over history', async () => {
+    // History is empty, but the caller reports a structuring window directly.
+    const res = await precheck(baseBody({ counterparty_name: 'Reported Co', amount: 9500, recent_amounts: [9400, 9600] }));
+    const json = await res.json();
+    expect(json.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+    expect(json.aml_signals.some((s) => s.startsWith('structuring'))).toBe(true);
   });
 });

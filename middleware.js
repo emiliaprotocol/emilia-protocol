@@ -44,6 +44,7 @@ const ROUTE_POLICIES = {
   // in-route); connection config is gated by the customer's EP API key.
   'POST /api/sso/saml/acs':                  { rateCategory: 'submit', useAuth: false },
   'POST /api/sso/connections':               { rateCategory: 'submit', useAuth: true },
+  'DELETE /api/sso/session':                 { rateCategory: 'read', useAuth: false }, // logout — clears the session cookie
 
   // Trust evaluation (reads)
   'GET /api/trust/profile/*':          { rateCategory: 'read', useAuth: false },

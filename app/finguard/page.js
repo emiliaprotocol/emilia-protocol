@@ -16,7 +16,7 @@ const PROTECTED_ACTIONS = [
 
 const STAGES = [
   { n: '1', title: 'Precheck', body: 'Treasury system POSTs the proposed change to FinGuard with before/after state and risk flags.' },
-  { n: '2', title: 'Policy decision', body: 'Money-destination changes, large amounts, AI-initiated actions — deterministic rules plus AML screening: a sanctions or embargo match fails closed; structuring and velocity patterns escalate to signoff.' },
+  { n: '2', title: 'Policy decision', body: 'Money-destination changes, large amounts, AI-initiated actions — deterministic rules plus AML screening: a sanctions or embargo match fails closed; structuring and velocity patterns escalate to signoff, detected from EP\'s own per-counterparty history (not the caller\'s self-report).' },
   { n: '3', title: 'Accountable signoff', body: 'Treasury approver must be different from initiator. Approval binds to exact action hash.' },
   { n: '4', title: 'Trust receipt', body: 'One-time receipt with action hash, policy hash, nonce, expiry. SOX-ready.' },
   { n: '5', title: 'One-time consume', body: 'SWIFT/ACH/Fedwire connector consumes the receipt at release. Reuse fails.' },

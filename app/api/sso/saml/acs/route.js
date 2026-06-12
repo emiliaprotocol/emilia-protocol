@@ -6,9 +6,11 @@
 
 export const runtime = 'nodejs';
 
+import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { buildSamlSp, validateSamlResponse } from '@/lib/sso/saml';
 import { loadConnection, spOrigin } from '@/lib/sso/config';
+import { mintSession, SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from '@/lib/sso/session';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 
@@ -46,14 +48,28 @@ export async function POST(request) {
     return epProblem(401, 'saml_validation_failed', result.error || 'SAML assertion did not validate');
   }
 
-  const identity = await resolveDirectory(tenant, result.profile);
-  return Response.json({
+  const directory = await resolveDirectory(tenant, result.profile);
+
+  // Mint the EP session — this is what "logged in" means. The session asserts
+  // the verified identity; signing authority still requires the enrolled
+  // passkey ceremony per action.
+  const token = await mintSession({
+    tenant,
+    subject: result.profile.nameID,
+    email: result.profile.email,
+    protocol: 'saml',
+    directory,
+  });
+  const res = NextResponse.json({
     authenticated: true,
     protocol: 'saml',
     tenant,
     identity: { nameID: result.profile.nameID, email: result.profile.email },
-    directory: identity,
+    directory,
+    session: 'set',
   });
+  res.cookies.set(SESSION_COOKIE, token, SESSION_COOKIE_OPTIONS);
+  return res;
 }
 
 // Link the asserted identity to the SCIM-provisioned directory: is this a known,
