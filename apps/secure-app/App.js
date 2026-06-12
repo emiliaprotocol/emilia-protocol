@@ -40,17 +40,17 @@ export default function App() {
   const [pending, setPending] = useState(DEMO_PENDING);
   const [busy, setBusy] = useState(null);
 
-  const load = useCallback(async () => {
-    if (!TOKEN) { setPending(DEMO_PENDING); return; }
-    try {
-      const data = await fetchPendingSignoffs({ baseUrl: BASE_URL, token: TOKEN });
-      setPending(data.signoffs || data || []);
-    } catch (e) {
-      Alert.alert('Could not load', e.message);
-    }
+  // Load pending signoffs on mount when a live token is configured. No token →
+  // demo mode; state already initializes to DEMO_PENDING. setState happens in
+  // the promise callbacks (external-system subscription), never synchronously.
+  React.useEffect(() => {
+    if (!TOKEN) return undefined;
+    let cancelled = false;
+    fetchPendingSignoffs({ baseUrl: BASE_URL, token: TOKEN })
+      .then((data) => { if (!cancelled) setPending(data.signoffs || data || []); })
+      .catch((e) => { if (!cancelled) Alert.alert('Could not load', e.message); });
+    return () => { cancelled = true; };
   }, []);
-
-  React.useEffect(() => { load(); }, [load]);
 
   const approve = useCallback(async (item) => {
     setBusy(item.challenge_id);
