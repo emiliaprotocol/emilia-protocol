@@ -45,7 +45,7 @@ export default function GovGuardPage() {
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
               <a href="#how-it-works" style={cta.primary}>How it works</a>
               <a href="#api" style={cta.secondary}>API reference</a>
-              <a href="mailto:team@emiliaprotocol.ai?subject=GovGuard%20pilot" style={cta.secondary}>Request pilot</a>
+              <a href="/pilot?v=gov" style={cta.secondary}>Request pilot</a>
             </div>
           </div>
         </section>
@@ -154,7 +154,7 @@ export default function GovGuardPage() {
                 or operator override) into observe mode. You get the audit trail of what would
                 have been blocked. Then you decide if you want to flip to enforce.
               </p>
-              <a href="mailto:team@emiliaprotocol.ai?subject=GovGuard%20pilot" style={cta.primary}>
+              <a href="/pilot?v=gov" style={cta.primary}>
                 Request pilot
               </a>
               <p style={{ fontSize: 13, color: color.t3, marginTop: 18 }}>

@@ -58,7 +58,7 @@ export default function FinGuardPage() {
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
               <a href="#how-it-works" style={cta.primary}>How it works</a>
               <a href="#api" style={cta.secondary}>API reference</a>
-              <a href="mailto:team@emiliaprotocol.ai?subject=FinGuard%20pilot" style={cta.secondary}>Request pilot</a>
+              <a href="/pilot?v=fin" style={cta.secondary}>Request pilot</a>
             </div>
           </div>
         </section>
@@ -162,7 +162,7 @@ export default function FinGuardPage() {
                 remittance update, or treasury release approval. We wire it to observe mode.
                 You get the audit of what would have been blocked. Flip to enforce on your timeline.
               </p>
-              <a href="mailto:team@emiliaprotocol.ai?subject=FinGuard%20pilot" style={cta.primary}>
+              <a href="/pilot?v=fin" style={cta.primary}>
                 Request pilot
               </a>
               <p style={{ fontSize: 13, color: color.t3, marginTop: 18 }}>

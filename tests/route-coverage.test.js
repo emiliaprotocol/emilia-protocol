@@ -114,6 +114,8 @@ const MUTATING_POLICY_EXEMPTIONS = [
  * openapi.yaml because they are internal / not part of the public API.
  */
 const OPENAPI_EXEMPTIONS = [
+  // Public lead form (marketing intake), not a protocol surface.
+  '/api/pilot/request',
   // Remote MCP server (streamable HTTP / JSON-RPC, not a REST resource) — its
   // tools are described via the MCP tools/list method, not OpenAPI.
   '/api/mcp/[transport]',
