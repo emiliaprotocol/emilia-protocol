@@ -27,13 +27,16 @@ export default function EnterprisePage() {
     setSubmitting(false);
   }
 
-  // Honest enterprise feature list. SAML / SCIM / OIDC removed —
-  // not implemented in lib/cloud/auth.js or anywhere else. K8s / VMware /
-  // OpenShift deployments removed from list and from "Deployment models"
-  // section: no Helm charts, no manifests, no operators in repo. These
-  // are pilot-track items; see the explicit roadmap below.
+  // Honest enterprise feature list. SAML 2.0 SP + OIDC RP live at
+  // app/api/sso/* (lib/sso/, docs/SSO.md); SCIM 2.0 at app/api/scim/v2/*
+  // (lib/scim/, docs/SCIM.md); air-gap installer at deploy/airgap/ with a CI
+  // audit job. K8s / VMware / OpenShift packaging remains genuinely roadmap:
+  // no Helm charts, no operators, no OVF templates in repo.
   const FEATURES = [
     { title: 'VPC / private deployment', body: 'EP runs entirely within your infrastructure boundary. No trust data, policy configurations, or signoff records leave your network. Reference AWS CloudFormation template ships in infrastructure/aws/.' },
+    { title: 'SSO — SAML 2.0 + OIDC', body: 'Approvers and admins authenticate through your IdP (Okta, Entra ID, Ping, Google). SAML Service Provider and OIDC Relying Party are built in; signature validation uses vetted libraries, never custom crypto. Your live IdP tenant is connected and validated during onboarding.' },
+    { title: 'SCIM 2.0 provisioning', body: 'Provision — and deprovision — the named humans who can sign off, directly from your directory (RFC 7643/7644: Users, Groups, deactivation, filtering). When someone is offboarded in your IdP, they lose signing authority in the same sync.' },
+    { title: 'Air-gapped deployment', body: 'A self-contained offline installer: build the bundle on a connected machine, transfer one tarball, install with no network. The running stack has no route off the host — enforced by the network driver, not configuration discipline. The full run on your isolated hardware is validated during onboarding.' },
     { title: 'Data residency', body: 'All trust data, event records, and policy configurations reside in your chosen jurisdiction. Meet data sovereignty requirements without architectural compromise.' },
     { title: 'Evidence retention & legal hold', body: 'Receipts are durable, offline-verifiable evidence by construction. Formal retention policies and legal-hold workflows are scoped per engagement (roadmap); today: full event search and audit-report export.' },
     { title: 'Regulator artifact exports', body: 'Generate structured evidence packages for regulatory examination, mapped to control families used in SOX and sector-specific frameworks (full FISMA / PCI-DSS mapping is roadmap).' },
@@ -42,9 +45,8 @@ export default function EnterprisePage() {
   ];
 
   const ROADMAP = [
-    { title: 'SSO / SCIM (SAML 2.0, OIDC, automated provisioning)', body: 'Pilot-track work. EP currently authenticates via API keys + EP-IX identity bindings. SAML / OIDC / SCIM integration is scoped per pilot when an enterprise IdP is in play.' },
-    { title: 'On-prem Kubernetes / VMware / OpenShift packaging', body: 'Container images and AWS CFN templates ship today. Helm charts, OpenShift operators, and VMware OVF templates are roadmap — pilots needing them get them as part of the engagement.' },
-    { title: 'Air-gap installer', body: 'Air-gapped deployment is a pilot-track engagement, not a downloadable installer. The runtime supports offline operation; the packaging is bespoke for now.' },
+    { title: 'On-prem Kubernetes / VMware / OpenShift packaging', body: 'Container images, AWS CFN templates, and the air-gap compose bundle ship today. Helm charts, OpenShift operators, and VMware OVF templates are roadmap — pilots needing them get them as part of the engagement.' },
+    { title: 'PIV / CAC / Login.gov integration', body: 'Government identity rails beyond SAML/OIDC — smart-card (PIV/CAC) authentication and Login.gov (private_key_jwt) — are pilot-track for federal engagements.' },
   ];
 
   return (

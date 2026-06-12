@@ -542,7 +542,7 @@ export default function HomePage() {
             {[
               { kind: 'Developer', accent: color.green, title: 'Start with EP Core', body: 'Free and Apache 2.0. Grab a sandbox API key in 30 seconds — or self-host the SDK, MCP server, and Agent Guard.', label: 'Start free', href: '/signup', btn: { background: '#FAFAF9', color: '#1C1917' } },
               { kind: 'Team', accent: color.blue, title: 'Run it on EP Cloud', body: 'Hosted control plane — managed policy registry, signoff orchestration, and auditor-grade evidence, no infrastructure to run.', label: 'See pricing', href: '/pricing', btn: { background: color.gold, color: '#FAFAF9' } },
-              { kind: 'Enterprise', accent: color.gold, title: 'On-prem + assurance', body: 'VPC deployment today; air-gap and SSO scoped per pilot engagement. Sector packs, compliance mappings, SLA. Procurement-ready paperwork.', label: 'Talk to us', href: '/partners', btn: null },
+              { kind: 'Enterprise', accent: color.gold, title: 'On-prem + assurance', body: 'VPC and air-gapped deployment; SAML/OIDC SSO + SCIM provisioning built in. Sector packs, compliance mappings, SLA. Procurement-ready paperwork.', label: 'Talk to us', href: '/partners', btn: null },
             ].map((d) => (
               <div key={d.kind} style={{ display: 'flex', flexDirection: 'column', border: '1px solid rgba(255,255,255,0.12)', borderTop: `3px solid ${d.accent}`, borderRadius: radius.base, padding: '28px 26px', background: 'rgba(255,255,255,0.02)' }}>
                 <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: d.accent, marginBottom: 12 }}>{d.kind}</div>

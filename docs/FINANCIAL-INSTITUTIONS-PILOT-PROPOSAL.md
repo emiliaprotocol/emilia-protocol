@@ -63,7 +63,10 @@ We will:
 Any change to `bank_account`, `routing_number`, `iban`, `swift_bic`, `beneficiary_name`, or `payment_address` automatically requires accountable signoff. This is enforced in `lib/guard-policies.js` and exercised by the unit suite — not a design-stage feature.
 
 ### Amount-based escalation
-The policy engine supports threshold-based escalation matrices. The shipped default: payments ≥ $50K require accountable signoff. Thresholds are configurable per workflow; pilots commonly set "≥ $1M requires out-of-band verification" as an additional layer.
+The policy engine supports threshold-based escalation matrices. The shipped defaults: payments ≥ $50K require accountable signoff; payments ≥ $1M require dual authorization — a second, senior approver. Thresholds are configurable per workflow; pilots commonly add out-of-band verification as a further layer.
+
+### AML screening
+Sanctions, PEP, and embargo matches fail closed — the payment is denied, not escalated (`lib/aml/` wired into the policy engine; OFAC-blocking is not a discretionary approval). Structuring patterns (repeated just-under-threshold transfers), aggregation, and unusual velocity escalate to accountable signoff. Every signal is surfaced as `aml_signals` on the decision, the API response, and the audit record, so the reason a payment was held is provable. Live sanctions-list feeds (OFAC SDN/consolidated, EU, UN) are connected per deployment; the screening logic ships tested against synthetic watchlist cases.
 
 ### Dual signoff for treasury operations
 Two authorized signers must independently attest before a high-value transaction executes. Each attestation is cryptographically bound to the exact transaction details. The signoff flow enforces self-approval prevention — the initiator cannot also be the approver — and binds approvals to the exact action_hash, so an approval issued for one action cannot be silently applied to another.
@@ -79,10 +82,10 @@ The Financial Reference Pack includes pre-built policy configurations for the hi
 `ai_agent_payment_action` is a recognized action_type that requires accountable signoff regardless of amount. Autonomous agents that initiate transfers cannot consume without a named human signoff bound to the exact action.
 
 ## Proof points
-- 3,483 automated tests across 132 test files (`npx vitest run`)
+- 3,600+ automated tests across 140+ test files (`npx vitest run`)
 - 26 TLA+ safety properties verified (T1–T26, TLC 2.19, 413,137 states, 0 errors) — including the EP-IX identity continuity invariants
 - 85 red team cases cataloged in `docs/conformance/RED_TEAM_CASES.md`
-- 35 Alloy facts + 15 assertions verified (Alloy 6.0.0, 0 counterexamples)
+- 35 Alloy facts + 22 assertions verified across two models (Alloy 6.0.0, 0 counterexamples) — including the 7 cross-operator federation safety assertions in `formal/ep_federation.als`
 - 29 concurrency warfare tests (100-way consumption races)
 - Append-only event store with DB-level immutability triggers
 - One-time consumption enforced at both application and database level

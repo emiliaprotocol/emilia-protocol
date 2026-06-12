@@ -93,6 +93,46 @@ export function verifyWebAuthnSignoff(
   opts?: { rpId?: string }
 ): WebAuthnSignoffResult;
 
+// ── Trust Receipt — full offline verification (I-D Section 6.3) ─────────────
+
+export interface ApproverKeyEntry {
+  public_key: string;
+  key_class?: 'A' | 'B' | 'C';
+  valid_from?: string;
+  valid_to?: string;
+}
+
+export interface TrustReceiptChecks {
+  action_hash: boolean;
+  context_commitments: boolean;
+  signoff_signatures: boolean;
+  sod: boolean;
+  inclusion: boolean;
+  checkpoint_signature: boolean;
+  windows: boolean;
+}
+
+export interface TrustReceiptResult {
+  valid: boolean;
+  checks: TrustReceiptChecks;
+  errors: string[];
+}
+
+/**
+ * Verify a Trust Receipt (I-D Section 6.2) fully offline — the Section 6.3
+ * algorithm: action-hash recomputation, context commitments, signoff
+ * signatures against pinned approver keys (incl. Class-A WebAuthn and key
+ * validity windows), separation of duties, Merkle inclusion + checkpoint
+ * signature against the trusted log key, and temporal windows.
+ */
+export function verifyTrustReceipt(
+  receipt: Record<string, unknown>,
+  opts: {
+    approverKeys: Record<string, ApproverKeyEntry>;
+    logPublicKey: string;
+  }
+): TrustReceiptResult;
+
 // ── Federation (PIP-006) ────────────────────────────────────────────────────
 
 export interface OperatorKeyCandidate {

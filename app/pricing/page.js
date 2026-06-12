@@ -7,7 +7,7 @@ export const metadata = {
   title: 'Pricing — EMILIA Protocol',
   description:
     'Open-core pricing. EP Core is free and Apache 2.0 forever. EP Cloud is the managed '
-    + 'control plane. EP Enterprise adds on-prem/VPC deployment, sector packs, audit support, and SLAs (SSO scoped per engagement).',
+    + 'control plane. EP Enterprise adds on-prem/VPC/air-gapped deployment, SAML/OIDC SSO + SCIM, sector packs, audit support, and SLAs.',
   alternates: { canonical: '/pricing' },
   openGraph: {
     title: 'EMILIA Protocol — Pricing',
@@ -79,8 +79,8 @@ const TIERS = [
     available: true,
     features: [
       'Everything in Cloud',
-      'Self-hosted or VPC deployment (air-gap scoped per engagement)',
-      'SSO / SAML / SCIM — scoped per pilot engagement',
+      'Self-hosted, VPC, or air-gapped deployment (offline installer included)',
+      'SSO (SAML 2.0 / OIDC) + SCIM 2.0 provisioning — live IdP connected at onboarding',
       'Sector packs — GovGuard, FinGuard, Agent Governance',
       'Security-review + procurement support (DPA, sub-processors)',
       'Compliance evidence mapping — NIST AI RMF, EU AI Act',
@@ -95,12 +95,12 @@ const OPEN_CORE = [
   ['Agent Guard middleware + MCP server', true, true, true],
   ['Managed policy registry + simulation', false, true, true],
   ['Hosted signoff orchestration + audit exports', false, true, true],
-  ['On-prem / VPC, sector packs, SLA (SSO per engagement)', false, false, true],
+  ['On-prem / VPC / air-gap, SSO + SCIM, sector packs, SLA', false, false, true],
 ];
 
 const PACKS = [
   { name: 'Government Pack', body: 'Benefit-integrity controls — accountable determinations, due-process receipts, caseworker signoff.', href: '/product/government-pack' },
-  { name: 'Financial Pack', body: 'Money-movement controls — wire release, beneficiary changes, treasury actions, BEC defense.', href: '/product/financial-pack' },
+  { name: 'Financial Pack', body: 'Money-movement controls — wire release, beneficiary changes, treasury actions, BEC defense, AML screening.', href: '/product/financial-pack' },
   { name: 'Agent Governance Pack', body: 'Autonomous-agent controls — gate every irreversible tool call behind a verified ceremony.', href: '/product/agent-governance-pack' },
 ];
 

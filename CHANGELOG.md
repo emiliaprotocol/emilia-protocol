@@ -4,6 +4,18 @@ All notable changes to EMILIA Protocol are documented here.
 
 Versioning model: Protocol spec and reference repo share the root version (1.0.x). SDKs (0.1.x) and MCP server (0.2.x) version independently.
 
+## [Unreleased] — main as of 2026-06-11
+
+### Highlights — the enterprise/protocol build
+- **PIP-006 Federation, full** — Operator-B cross-operator client in `@emilia-protocol/verify` 1.3.0 (`verifyFederatedReceipt` / `verifyFederatedReceiptOffline`); `ep-keys.json` advertises `historical_keys` (rotation safety, migration 094), `cache_ttl_seconds`, `verify_url_template`; two-operator conformance harness (`conformance/federation.mjs`) passes against production; Federation Registry convention (`docs/FEDERATION-REGISTRY.md`); formal model `formal/ep_federation.als` — 7 safety assertions, 0 counterexamples, in CI. Remaining acceptance gate: an independent third-party operator.
+- **Enterprise SSO** — SAML 2.0 Service Provider + OIDC Relying Party (`app/api/sso/*`, `lib/sso/`, migration 096, `docs/SSO.md`); signature validation via `@node-saml/node-saml` (xml-crypto) and `jose`; fixture-tested including a real signed-SAML-assertion round-trip. Live IdP tenant connected at onboarding.
+- **SCIM 2.0 provisioning** — RFC 7643/7644 server (`app/api/scim/v2/*`, `lib/scim/`, migration 095, `docs/SCIM.md`): Users, Groups, filtering, PATCH (both Azure deprovision shapes), per-tenant `ep_scim_` bearer tokens.
+- **AML screening** — sanctions/PEP/embargo fail-closed deny; structuring/velocity/near-threshold escalate to accountable signoff; `aml_signals` surfaced on decisions, responses, and audit records (`lib/aml/`, `docs/AML.md`). Live OFAC/EU/UN feeds connected per deployment.
+- **Air-gapped installer** — self-contained offline bundle (`deploy/airgap/`): no-egress `internal: true` compose, offline install + migrations, verify scripts proving health + zero-egress + offline receipt verification; CI `airgap-audit` job.
+- **Native Secure App** — Expo/React Native signing device (`apps/secure-app/`); its Class-A signoff core is CI-proven to verify under `@emilia-protocol/verify` (tamper + wrong-key rejected). Enclave attestation + app-store publish are the remaining native steps.
+- **Self-serve observe-mode pilot** — `/pilot/sandbox`: provision a scoped key, run your own actions through the live adapters in observe mode, pull an automated would-have-been-held report.
+- **Amount-tiered escalation** — ≥ $50K single accountable signoff, ≥ $1M dual authorization (`lib/guard-policies.js`).
+
 ## [1.1.0] — 2026-04-04
 
 ### Highlights

@@ -15,8 +15,10 @@ const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], weight: ['400', '500', 
 const SPEC_FONT_CLASS = `${jetBrainsMono.className} ${outfit.className} ${spaceGrotesk.className}`;
 
 export const metadata = {
-  title: 'EP Core RFC v1.0 — EMILIA Protocol Specification',
-  description: 'EMILIA Protocol specification — protocol-grade trust infrastructure for high-risk action enforcement.',
+  // This page renders the posted Internet-Draft. "Internet-Draft", not "RFC" —
+  // claiming RFC status for an individual I-D overstates IETF standing.
+  title: 'draft-schrock-ep-authorization-receipts — EMILIA Protocol Specification',
+  description: 'EMILIA Protocol specification (IETF Internet-Draft) — verifiable human-authorization receipts for high-risk agent actions.',
 };
 
 /**

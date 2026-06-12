@@ -38,6 +38,13 @@ GovGuard is the productized surface of EMILIA Protocol — Apache 2.0, formally 
 ### Receipts dashboard
 - `/cloud/guard-receipts` — server-rendered admin view: recent receipts, status badges, drill-down to evidence packet.
 
+### Self-serve observe-mode pilot
+- `/pilot/sandbox` — your engineers provision a scoped sandbox key, run your own action shapes through the live gov adapters in observe mode, and pull an automated "N of M actions would have been held for a named human" report. No sales call required.
+
+### Enterprise deployment & identity
+- **Air-gapped installer** (`deploy/airgap/`) — build the bundle on a connected machine, transfer one tarball, install with no network; the running stack has no route off the host (enforced by the network driver, not configuration discipline). The full run on certified isolated hardware is validated during the pilot.
+- **SSO (SAML 2.0 / OIDC)** — approvers authenticate through your IdP; the live tenant is connected at onboarding. **SCIM 2.0 provisioning** keeps the set of authorized signers in sync with your directory — offboarding in the IdP removes signing authority in the same sync. (PIV/CAC and Login.gov rails are pilot-track.)
+
 ## Recommended pilot scope
 
 Pick one workflow:

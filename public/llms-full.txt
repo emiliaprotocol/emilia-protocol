@@ -74,8 +74,9 @@ NOT covered:
 
 ## Threat model on the human approver (current state + roadmap)
 The receipt proves "a key bound to a named principal signed this exact action, once."
-Its strength depends on: (a) how strongly the approver is authenticated — today via a
-bearer EP API key; the hardening is hardware-backed keys (WebAuthn/passkey); (b) key
+Its strength depends on: (a) how strongly the approver is authenticated — hardware-backed
+WebAuthn/passkey signoff (Face ID / Touch ID, key class A) is live, with EP API keys as
+the legacy class-C path; a native secure app is in early access; (b) key
 custody; (c) WYSIWYS — the approval UI must render exactly what is signed; (d) a real
 authority registry for enrollment/limits/revocation (currently minimal); (e) a deceived
 or colluding real human (EMILIA makes them accountable + evidenced, it does not read

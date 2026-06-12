@@ -16,7 +16,7 @@ const PROTECTED_ACTIONS = [
 
 const STAGES = [
   { n: '1', title: 'Precheck', body: 'Treasury system POSTs the proposed change to FinGuard with before/after state and risk flags.' },
-  { n: '2', title: 'Policy decision', body: 'Money-destination changes, large amounts, AI-initiated actions — all routed through deterministic rules.' },
+  { n: '2', title: 'Policy decision', body: 'Money-destination changes, large amounts, AI-initiated actions — deterministic rules plus AML screening: a sanctions or embargo match fails closed; structuring and velocity patterns escalate to signoff.' },
   { n: '3', title: 'Accountable signoff', body: 'Treasury approver must be different from initiator. Approval binds to exact action hash.' },
   { n: '4', title: 'Trust receipt', body: 'One-time receipt with action hash, policy hash, nonce, expiry. SOX-ready.' },
   { n: '5', title: 'One-time consume', body: 'SWIFT/ACH/Fedwire connector consumes the receipt at release. Reuse fails.' },
@@ -34,7 +34,7 @@ const SCENARIOS = [
   },
   {
     title: 'Large payment escalation',
-    body: 'Threshold-based escalation: > $50K requires signoff today (lib/guard-policies). Higher tiers and out-of-band verification are configured per deployment.',
+    body: 'Amount-tiered escalation is built in: > $50K requires accountable signoff; > $1M requires dual authorization — a second, senior approver (lib/guard-policies). Out-of-band verification is configured per deployment.',
   },
 ];
 

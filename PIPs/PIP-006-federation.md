@@ -28,9 +28,11 @@ verification). The three acceptance gates stand as follows:
 
 1. **A second independent operator passing the conformance suite end-to-end.**
    *Implemented and verified against a self-hosted second operator.* The
-   relying-party (Operator B) verification path is shipped as
+   relying-party (Operator B) verification path is implemented as
    `@emilia-protocol/verify` → `verifyFederatedReceipt` /
-   `verifyFederatedReceiptOffline`, with a two-operator cross-redemption harness
+   `verifyFederatedReceiptOffline` (version 1.3.0 — in `packages/verify/`;
+   npm publish pending, earlier npm releases lack the federation exports),
+   with a two-operator cross-redemption harness
    (`conformance/federation.mjs`, `packages/verify/federation.test.js`, 13
    cases) proving valid redemption plus tamper, wrong-operator, rotation, and
    revocation rejection. **Remaining for full acceptance:** an *independent
@@ -108,9 +110,9 @@ Federation enables receipt portability. It does not enable trust laundering.
 - Cross-operator dispute adjudication (each operator runs its own
   adjudication; reciprocal procedures may be defined in a future PIP).
 - A federation registry as a centralized service. The Federation
-  Registry, when defined, will be a published convention (similar to
-  RFC 7517 JWKS) that any operator can implement, not an endpoint owned
-  by EMILIA.
+  Registry is a published convention (similar to RFC 7517 JWKS) that any
+  operator can implement, not an endpoint owned by EMILIA — see
+  `docs/FEDERATION-REGISTRY.md`.
 
 ## Security considerations
 
@@ -124,17 +126,24 @@ Federation enables receipt portability. It does not enable trust laundering.
   clock skew (NTP-bounded); operators that drift more than 30 seconds
   from UTC SHOULD not issue receipts.
 
+## Resolved questions
+
+1. **Registry: canonical document or ad-hoc discovery?** Resolved — a
+   canonical convention is published as `docs/FEDERATION-REGISTRY.md`
+   (JWKS-style: a documented shape any operator implements; pinning a
+   known origin is a convenience, the receipt's `key_discovery` URL is
+   always authoritative).
+3. **Minimum formal properties before Acceptance?** Resolved — the seven
+   safety assertions in `formal/ep_federation.als` (soundness, tamper
+   rejection, unadvertised-key rejection, rotation safety, revocation,
+   no-trust-laundering, observer-independence), verified with no
+   counterexample and run in CI on every change to `formal/*.als`.
+
 ## Open questions (to resolve before Acceptance)
 
-1. Should there be a canonical Federation Registry document published
-   under the `ep-protocol` GitHub org, or should operator discovery
-   remain ad-hoc?
 2. Should EP-RECEIPT-v1 carry a `federation_version` field separate
    from `@version` so federation semantics can evolve independently
    of the receipt schema?
-3. What is the minimum set of formal properties (TLA+ or Alloy) that
-   federation must verify before this PIP transitions from Draft to
-   Accepted?
 
 ## References
 

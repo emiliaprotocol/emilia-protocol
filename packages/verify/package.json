@@ -1,7 +1,7 @@
 {
   "name": "@emilia-protocol/verify",
   "version": "1.3.0",
-  "description": "Zero-dependency offline verification for EP trust receipts, Merkle anchors, commitment proofs, and Class-A WebAuthn device signoffs. Node build uses built-in crypto; the /web build runs in any browser, edge, or Deno via Web Crypto. No EP infrastructure required.",
+  "description": "Zero-dependency offline verification for EP trust receipts, Merkle anchors, commitment proofs, Class-A WebAuthn device signoffs, and federated cross-operator receipts (PIP-006). Node build uses built-in crypto; the /web build runs in any browser, edge, or Deno via Web Crypto. No EP infrastructure required.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "index.js",
@@ -52,7 +52,7 @@
   },
   "author": "EMILIA Protocol, Inc.",
   "scripts": {
-    "test": "node --test test.js web.test.js federation.test.js"
+    "test": "node --test test.js web.test.js federation.test.js trust-receipt.test.js"
   },
   "bin": {
     "emilia-verify": "./cli.js"

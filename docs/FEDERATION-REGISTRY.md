@@ -82,9 +82,12 @@ alone.
 
 ## 3. How a relying party verifies (Operator B)
 
-This is implemented, tested, and shipped as
+This is implemented and tested as
 `@emilia-protocol/verify` → `verifyFederatedReceipt` (online) /
-`verifyFederatedReceiptOffline` (air-gapped). The algorithm:
+`verifyFederatedReceiptOffline` (air-gapped). **Requires version 1.3.0** —
+available from source in `packages/verify/`; the npm publish of 1.3.0 is
+pending, and earlier npm releases do not carry the federation exports. The
+algorithm:
 
 1. Read `signature.signer` and `signature.key_discovery` from the receipt.
 2. Fetch (or use a cached, un-expired copy of) the operator's `ep-keys.json`.
@@ -98,6 +101,7 @@ This is implemented, tested, and shipped as
    default verdict; a relying party is free to be stricter.
 
 ```js
+// requires @emilia-protocol/verify >= 1.3.0 (from packages/verify/ until the npm publish lands)
 import { verifyFederatedReceipt } from '@emilia-protocol/verify';
 
 const verdict = await verifyFederatedReceipt(receipt);

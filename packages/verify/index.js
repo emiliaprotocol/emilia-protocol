@@ -327,6 +327,251 @@ export function verifyReceiptBundle(bundle, publicKeyBase64url) {
 }
 
 // =============================================================================
+// TRUST RECEIPT — FULL OFFLINE VERIFICATION (I-D Section 6.3)
+// =============================================================================
+
+// draft-schrock-ep-authorization-receipts Section 6.3: a verifier with
+// (receipt, trusted log public key, pinned approver keys) and NO network access
+// MUST be able to establish six properties. verifyTrustReceipt() is that
+// algorithm — the reference profile for the byte-level choices the I-D leaves
+// to the implementation:
+//   - Hashes are "sha256:<hex>" strings; comparisons strip the prefix.
+//   - Canonicalization is the recursive sorted-key JSON above (JCS-equivalent
+//     for these value shapes).
+//   - The signed material for a Class B/C signoff is the raw 32-byte SHA-256
+//     context digest. For Class A, the WebAuthn challenge is base64url(digest).
+//   - The receipt leaf is SHA-256 of the canonical receipt WITHOUT log_proof
+//     and approver_key_proofs (a leaf cannot contain its own inclusion proof).
+//   - inclusion_path is positioned steps [{hash, position:'left'|'right'}].
+//   - The checkpoint signature is Ed25519 over the canonical checkpoint
+//     WITHOUT log_signature (i.e. {log_key_id, root_hash, tree_size}).
+
+const HASH_PREFIX = /^sha256:/;
+
+function hexOf(h) {
+  return String(h || '').replace(HASH_PREFIX, '').toLowerCase();
+}
+
+function sha256Bytes(input) {
+  return crypto.createHash('sha256').update(input, 'utf8').digest();
+}
+
+function withinWindow(t, from, to) {
+  const ts = Date.parse(t);
+  if (Number.isNaN(ts)) return false;
+  if (from && ts < Date.parse(from)) return false;
+  if (to && ts > Date.parse(to)) return false;
+  return true;
+}
+
+// WebAuthn Class-A assertion bound to a context digest (challenge = b64u(digest)).
+function verifyClassAOverDigest(webauthn, digestBytes, publicKeySpkiB64u) {
+  try {
+    const clientDataBytes = Buffer.from(webauthn.client_data_json, 'base64url');
+    const clientData = JSON.parse(clientDataBytes.toString('utf8'));
+    if (clientData.type !== 'webauthn.get') return false;
+    if (clientData.challenge !== Buffer.from(digestBytes).toString('base64url')) return false;
+
+    const authData = Buffer.from(webauthn.authenticator_data, 'base64url');
+    if (authData.length < 37) return false;
+    if ((authData[32] & FLAG_UV) !== FLAG_UV) return false; // user verification required
+
+    const signedData = Buffer.concat([authData, crypto.createHash('sha256').update(clientDataBytes).digest()]);
+    const keyObject = crypto.createPublicKey({
+      key: Buffer.from(publicKeySpkiB64u, 'base64url'), format: 'der', type: 'spki',
+    });
+    return crypto.verify('sha256', signedData, keyObject, Buffer.from(webauthn.signature, 'base64url'));
+  } catch {
+    return false;
+  }
+}
+
+function verifyEd25519OverDigest(signatureB64u, digestBytes, publicKeySpkiB64u) {
+  try {
+    const keyObject = crypto.createPublicKey({
+      key: Buffer.from(publicKeySpkiB64u, 'base64url'), format: 'der', type: 'spki',
+    });
+    return crypto.verify(null, digestBytes, keyObject, Buffer.from(signatureB64u, 'base64url'));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Verify a Trust Receipt (I-D Section 6.2) fully offline — the Section 6.3
+ * algorithm. All six steps; fails closed on any missing input.
+ *
+ * @param {object} receipt - Section 6.2 Trust Receipt
+ * @param {object} opts
+ * @param {Record<string, {public_key:string, key_class?:string, valid_from?:string, valid_to?:string}>} opts.approverKeys
+ *   - pinned approver key entries by approver_key_id (or a directory extract)
+ * @param {string} opts.logPublicKey - trusted log Ed25519 key (base64url SPKI DER)
+ * @returns {{ valid:boolean, checks:object, errors:string[] }}
+ */
+export function verifyTrustReceipt(receipt, opts = {}) {
+  const checks = {
+    action_hash: false,        // step 1
+    context_commitments: false, // step 2
+    signoff_signatures: false, // step 3
+    sod: false,                // step 4
+    inclusion: false,          // step 5a
+    checkpoint_signature: false, // step 5b
+    windows: false,            // step 6
+  };
+  const errors = [];
+  const fail = (msg) => { errors.push(msg); return { valid: false, checks, errors }; };
+
+  if (!receipt || typeof receipt !== 'object') return fail('Missing receipt');
+  const { approverKeys = {}, logPublicKey } = opts;
+  const contexts = Array.isArray(receipt.contexts) ? receipt.contexts : [];
+  const signoffs = Array.isArray(receipt.signoffs) ? receipt.signoffs : [];
+  if (!receipt.action || !receipt.action_hash) return fail('Missing action or action_hash');
+  if (contexts.length === 0 || signoffs.length === 0) return fail('Missing contexts or signoffs');
+
+  // ── Step 1: recompute the action hash from the canonical Action Object ────
+  const actionHashHex = sha256(canonicalize(receipt.action));
+  checks.action_hash = actionHashHex === hexOf(receipt.action_hash);
+  if (!checks.action_hash) errors.push('action_hash does not match the canonical Action Object');
+
+  // ── Step 2: per context — recompute the context hash; confirm commitments ─
+  const contextByHash = new Map(); // hex digest -> context
+  let commitmentsOk = true;
+  const policyHashes = new Set();
+  for (const ctx of contexts) {
+    const digestHex = sha256(canonicalize(ctx));
+    contextByHash.set(digestHex, ctx);
+    if (hexOf(ctx.action_hash) !== actionHashHex) {
+      commitmentsOk = false;
+      errors.push(`context for ${ctx.approver || 'unknown approver'} does not commit to the action hash`);
+    }
+    if (!ctx.policy_hash) {
+      commitmentsOk = false;
+      errors.push('context is missing policy_hash');
+    } else {
+      policyHashes.add(hexOf(ctx.policy_hash));
+    }
+    if (!ctx.approver) {
+      commitmentsOk = false;
+      errors.push('context is missing approver');
+    }
+  }
+  // All contexts in one receipt must commit to the same evaluated policy.
+  if (policyHashes.size > 1) {
+    commitmentsOk = false;
+    errors.push('contexts commit to different policy hashes');
+  }
+  checks.context_commitments = commitmentsOk;
+
+  // ── Step 3: per signoff — signature over the context hash vs approver key ─
+  const validApprovals = []; // { approver, signedAt, ctx }
+  let signaturesOk = signoffs.length > 0;
+  for (const s of signoffs) {
+    const digestHex = hexOf(s.context_hash);
+    const ctx = contextByHash.get(digestHex);
+    if (!ctx) {
+      signaturesOk = false;
+      errors.push('signoff references a context hash not present in this receipt');
+      continue;
+    }
+    const keyEntry = approverKeys[s.approver_key_id];
+    if (!keyEntry?.public_key) {
+      signaturesOk = false;
+      errors.push(`no pinned key entry for ${s.approver_key_id}`);
+      continue;
+    }
+    // Key validity window must contain the context's issued_at (Section 5.2).
+    if (!withinWindow(ctx.issued_at, keyEntry.valid_from, keyEntry.valid_to)) {
+      signaturesOk = false;
+      errors.push(`approver key ${s.approver_key_id} was not valid at issued_at`);
+      continue;
+    }
+    const digestBytes = Buffer.from(digestHex, 'hex');
+    const keyClass = s.key_class || keyEntry.key_class || 'B';
+    const sigOk = keyClass === 'A'
+      ? Boolean(s.webauthn) && verifyClassAOverDigest(s.webauthn, digestBytes, keyEntry.public_key)
+      : verifyEd25519OverDigest(s.signature, digestBytes, keyEntry.public_key);
+    if (!sigOk) {
+      signaturesOk = false;
+      errors.push(`signoff by ${ctx.approver} does not verify`);
+      continue;
+    }
+    validApprovals.push({ approver: ctx.approver, signedAt: s.signed_at, ctx });
+  }
+  checks.signoff_signatures = signaturesOk;
+
+  // ── Step 4: separation of duties ──────────────────────────────────────────
+  const initiator = receipt.action.initiator;
+  const approvers = validApprovals.map((a) => a.approver);
+  const requiredApprovals = Math.max(1, ...contexts.map((c) => Number(c.required_approvals) || 1));
+  let sodOk = true;
+  if (initiator && approvers.includes(initiator)) {
+    sodOk = false;
+    errors.push('initiator appears in an approver slot (SoD violation)');
+  }
+  if (new Set(approvers).size !== approvers.length) {
+    sodOk = false;
+    errors.push('approvers are not pairwise distinct');
+  }
+  if (validApprovals.length < requiredApprovals) {
+    sodOk = false;
+    errors.push(`approval count ${validApprovals.length} < required_approvals ${requiredApprovals}`);
+  }
+  checks.sod = sodOk;
+
+  // ── Step 5: inclusion proof + checkpoint signature ────────────────────────
+  const lp = receipt.log_proof;
+  if (lp?.checkpoint && Array.isArray(lp.inclusion_path)) {
+    const leafContent = { ...receipt };
+    delete leafContent.log_proof;
+    delete leafContent.approver_key_proofs;
+    const leafHash = sha256(canonicalize(leafContent));
+    checks.inclusion = verifyMerkleAnchor(leafHash, lp.inclusion_path, hexOf(lp.checkpoint.root_hash));
+    if (!checks.inclusion) errors.push('Merkle inclusion proof does not reconstruct the checkpoint root');
+
+    if (logPublicKey && lp.checkpoint.log_signature) {
+      const signedCheckpoint = { ...lp.checkpoint };
+      delete signedCheckpoint.log_signature;
+      checks.checkpoint_signature = verifyEd25519OverDigest(
+        String(lp.checkpoint.log_signature).replace(/^b64u:/, ''),
+        sha256Bytes(canonicalize(signedCheckpoint)),
+        logPublicKey,
+      );
+      if (!checks.checkpoint_signature) errors.push('checkpoint signature does not verify against the log key');
+    } else {
+      errors.push('missing log public key or checkpoint signature');
+    }
+  } else {
+    errors.push('missing log_proof (inclusion path + checkpoint)');
+  }
+
+  // ── Step 6: temporal windows ──────────────────────────────────────────────
+  let windowsOk = validApprovals.length > 0;
+  for (const a of validApprovals) {
+    if (!withinWindow(a.signedAt, a.ctx.issued_at, a.ctx.expires_at)) {
+      windowsOk = false;
+      errors.push(`signed_at for ${a.approver} falls outside [issued_at, expires_at]`);
+    }
+  }
+  const committedAt = receipt.consumption?.committed_at;
+  if (!committedAt) {
+    windowsOk = false;
+    errors.push('missing consumption.committed_at');
+  } else {
+    for (const ctx of contexts) {
+      if (!withinWindow(committedAt, ctx.issued_at, ctx.expires_at)) {
+        windowsOk = false;
+        errors.push('committed_at falls outside a context validity window');
+        break;
+      }
+    }
+  }
+  checks.windows = windowsOk;
+
+  const valid = Object.values(checks).every(Boolean);
+  return { valid, checks, errors };
+}
+
+// =============================================================================
 // FEDERATION (PIP-006)
 // =============================================================================
 

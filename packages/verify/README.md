@@ -79,12 +79,57 @@ Verify all receipts in an EP-BUNDLE-v1 document.
 
 Returns `{ valid, total, verified, failed }`.
 
+### `verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, { rpId? })`
+
+Verify a Class-A (device-bound key) signoff fully offline: the WebAuthn
+challenge equals SHA-256(JCS(context)) for the exact signed context, the
+authenticator asserted user presence + verification, and the ECDSA P-256
+signature verifies against the enrolled approver key.
+
+Returns `{ valid, checks, error? }`.
+
+### `verifyTrustReceipt(receipt, { approverKeys, logPublicKey })` — *requires 1.3.0*
+
+The full offline verification algorithm from the Internet-Draft
+(draft-schrock-ep-authorization-receipts, Section 6.3) over a Section 6.2
+Trust Receipt — all six steps, no network:
+
+1. Recompute the action hash from the canonical Action Object
+2. Recompute each context hash; confirm it commits to the action hash, the policy hash, and a distinct approver
+3. Verify each signoff signature (Class-A WebAuthn or Class-B Ed25519) against the pinned approver key, checking the key's validity window
+4. Separation of duties — initiator in no approver slot, approvers pairwise distinct, approval count ≥ `required_approvals`
+5. Merkle inclusion of the receipt leaf against the checkpoint root, and the checkpoint signature against the trusted log key
+6. `signed_at` / `committed_at` within `[issued_at, expires_at]`
+
+Returns `{ valid, checks, errors }` and fails closed on any missing input.
+
+### Federation (PIP-006) — *requires 1.3.0*
+
+Cross-operator verification: accept a receipt issued by a different EP
+operator using only its published discovery surfaces.
+
+```js
+import { verifyFederatedReceipt, verifyFederatedReceiptOffline } from '@emilia-protocol/verify';
+
+// Online: resolves the issuer's keys from signature.key_discovery and
+// checks its revocation surface.
+const verdict = await verifyFederatedReceipt(receipt);
+// { accepted, verified, revoked, signer, keyMatched: 'current'|'historical', checks }
+
+// Air-gapped: supply the issuer's ep-keys.json + revocation set yourself.
+const offline = verifyFederatedReceiptOffline(receipt, discoveryDoc, { revokedReceiptIds });
+```
+
+`resolveOperatorKeys(discoveryDoc, signerId)` is also exported (current keys
+first, then `historical_keys` for rotation safety). See
+`docs/FEDERATION-REGISTRY.md` for the operator discovery convention.
+
 ## Design Principles
 
 - **Zero dependencies** — Only `node:crypto`. No supply chain risk.
-- **Offline-first** — No network calls. No EP server needed.
+- **Offline-first** — No network calls (the federation online path takes an injectable `fetch`). No EP server needed.
 - **Deterministic** — Canonical JSON serialization for reproducible signatures.
-- **Auditable** — Single file, ~170 lines. Read the entire thing in 5 minutes.
+- **Auditable** — A few small files, ~1,000 lines total. Read the entire thing in an hour.
 
 ## How It Works
 

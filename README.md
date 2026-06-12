@@ -58,9 +58,9 @@ The protocol is open. Managed policy, verification, signoff orchestration, monit
 
 | Metric | Value |
 |---|---|
-| Automated tests | 3,500 across 134 files (npx vitest run, 2026-06-09) |
+| Automated tests | 3,672 across 142 files (npx vitest run, 2026-06-11) |
 | TLA+ safety properties | 26 verified (T1-T26) - TLC 2.19, latest full run 2026-04-30, 0 errors - see [formal/PROOF_STATUS.md](formal/PROOF_STATUS.md) |
-| Alloy relational assertions | 35 facts, 15 assertions - verified in CI (Alloy 6.0.0, 2026-04-30) |
+| Alloy relational assertions | 35 facts, 22 assertions across two models (ep_relations + ep_federation/PIP-006) - verified in CI (Alloy 6.0.0, 2026-06-11) |
 | Red team cases | 85 cataloged in [docs/conformance/RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |
 | Security findings remediated | 31 |
 | CI quality gates | See `.github/workflows/` (~13 workflows) |

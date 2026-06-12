@@ -162,7 +162,7 @@ PIPs (Protocol Improvement Proposals):
 ├── PIP-001: Handshake ceremony (accepted, extension layer)
 ├── PIP-002: Accountable Signoff (accepted, extension layer)
 ├── PIP-003: Commitment Proofs (accepted, extension layer)
-├── PIP-004: Federation Registry (draft)
+├── PIP-006: Federation (draft — implemented; acceptance gated on an independent operator)
 ├── PIP-005: LLM Function-Calling Schema (draft)
 ```
 
@@ -301,11 +301,12 @@ PHASE 3: Make EP Native to AI (2 months)
     call an API. This makes EP the default choice for any
     AI system that needs trust.
 
-PHASE 4: Make EP Federated (6 months)
-├── EP Operator Spec v1.0
-├── Federation registry (public, decentralized)
-├── Cross-operator receipt verification
-├── Reference implementation for a second operator
+PHASE 4: Make EP Federated — BUILT (2026-06-11)
+├── EP Operator Spec v1.0 ✅ (FEDERATION-SPEC.md / PIP-006)
+├── Federation registry ✅ (docs/FEDERATION-REGISTRY.md — JWKS-style convention)
+├── Cross-operator receipt verification ✅ (@emilia-protocol/verify federation client + formal model)
+├── Reference implementation for a second operator ✅ (conformance/federation.mjs two-operator harness)
+├── REMAINING: an independent third-party operator passing the harness (the acceptance gate)
 └── WHY: Federation eliminates the single point of failure.
     It also proves EP is a real protocol, not just your API.
 
