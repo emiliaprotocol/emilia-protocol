@@ -32,11 +32,14 @@ jobs:
       - name: Run test suite with coverage (vitest)
         run: npx vitest run --coverage
       - name: Verify package suites (node:test)
-        # packages/verify ships zero-dependency standalone suites on Node's
-        # built-in runner (excluded from vitest). This runs the Node verifier
-        # tests AND the Web Crypto equivalence suite (browser verifier proven
-        # byte-identical to the audited Node build).
-        run: node --test packages/verify/test.js packages/verify/web.test.js
+        # packages/verify and packages/issue ship zero-dependency standalone
+        # suites on Node's built-in runner (excluded from vitest). This runs the
+        # Node verifier tests AND the Web Crypto equivalence suite (browser
+        # verifier proven byte-identical to the audited Node build), then the
+        # issuer round-trip suite (a locally-issued receipt proven to pass all
+        # seven §6.3 checks under @emilia-protocol/verify, plus negative and CLI
+        # smoke tests). "issue locally, verify anywhere", enforced every push.
+        run: node --test packages/verify/test.js packages/verify/web.test.js packages/issue/test.js
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1

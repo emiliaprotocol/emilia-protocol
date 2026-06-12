@@ -1,0 +1,55 @@
+{
+  "name": "@emilia-protocol/issue",
+  "version": "0.1.0",
+  "description": "Zero-dependency local issuance of EP authorization receipts (EP-RECEIPT-v1; I-D draft-schrock-ep-authorization-receipts §6.2), signed locally with your own keys. The signing-side companion to @emilia-protocol/verify: issue locally, verify anywhere. Node built-in crypto only; no EP infrastructure required.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    }
+  },
+  "bin": {
+    "ep-issue": "./cli.js",
+    "emilia-issue": "./cli.js"
+  },
+  "files": [
+    "index.js",
+    "cli.js",
+    "index.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "emilia-protocol",
+    "authorization-receipts",
+    "receipts",
+    "ai-agent",
+    "ed25519",
+    "merkle",
+    "offline-verification",
+    "zero-dependency"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
+    "directory": "packages/issue"
+  },
+  "homepage": "https://www.emiliaprotocol.ai/adopt",
+  "bugs": {
+    "url": "https://github.com/emiliaprotocol/emilia-protocol/issues"
+  },
+  "author": "EMILIA Protocol, Inc.",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "node --test test.js"
+  }
+}

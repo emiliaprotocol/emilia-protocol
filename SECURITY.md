@@ -2,12 +2,16 @@
 
 ## Supported Versions
 
-| Version | Supported |
-|---------|-----------|
-| 1.x     | Yes       |
-| < 1.0   | No        |
+Security patches apply to the latest release on the `main` branch and to the latest published version of each package. Older versions are not backported.
 
-Only the latest release on the `main` branch receives security patches. Older versions are not backported.
+| Component | Supported |
+|---|---|
+| Protocol spec (`EP-CORE-v1.0`, `EP-RECEIPT-v1`) | Current draft |
+| `@emilia-protocol/verify` (npm) | 1.x |
+| `@emilia-protocol/issue` (npm) | Latest |
+| `packages/python-verify`, `packages/go-verify` | Latest |
+| Hosted service (`emiliaprotocol.ai`) | Always — current production |
+| < 1.0 / pre-release | No |
 
 ## Reporting Vulnerabilities
 
@@ -32,6 +36,27 @@ We will acknowledge within **48 hours** and provide an initial assessment within
 6. **90-day disclosure window** — if we have not addressed the issue within 90 days, the reporter may disclose publicly.
 
 We follow the principle of coordinated disclosure. Please do not disclose vulnerabilities publicly before a fix is available.
+
+## Scope
+
+In scope:
+
+- **The protocol.** Flaws in `EP-RECEIPT-v1` / `EP-CORE-v1.0` that allow forging, replaying, or bypassing an authorization receipt; weaknesses in the offline verification algorithm; federation (PIP-006) cross-verification flaws.
+- **The packages.** `@emilia-protocol/verify`, `@emilia-protocol/issue`, `packages/python-verify`, `packages/go-verify`, the MCP server, and the published SDKs.
+- **The site and hosted service.** `emiliaprotocol.ai` and its APIs — authentication, authorization, rate limiting, write-discipline bypass, data exposure.
+
+Out of scope (report only if you can show concrete impact): findings against third-party dependencies without an EP-specific exploit path, volumetric DoS, social-engineering of staff, and reports generated solely by automated scanners with no demonstrated impact.
+
+## Safe Harbor
+
+We will not pursue or support legal action against researchers who, in good faith:
+
+- Make a sincere effort to avoid privacy violations, data destruction, and service degradation.
+- Access only the minimum data necessary to demonstrate a vulnerability, and do not exfiltrate, retain, or share it.
+- Report promptly and privately via the contact below, and give us a reasonable window to remediate before public disclosure.
+- Do not exploit a finding beyond what is needed to prove it (no pivoting, no lateral movement, no persistence).
+
+Activity conducted consistently with this policy is considered authorized, and we will work with you rather than against you. If legal action is initiated by a third party against you for activity that complied with this policy, we will make this authorization known. This safe harbor does not extend to actions that violate applicable law or harm third parties.
 
 ## Security Contact
 
@@ -188,7 +213,13 @@ We follow the principle of coordinated disclosure. Please do not disclose vulner
 - **31 findings identified and remediated** (5 critical, 12 high, 8 medium, 6 low)
 - **CI pipeline includes 16 automated quality gates** including secret scanning (gitleaks), write discipline enforcement, invariant coverage, and language governance
 - **Security checklist** maintained at `docs/conformance/SECURITY_CHECKLIST.md`
-- **Threat model** at `docs/security/THREAT_MODEL.md`
+
+### Threat model and adversarial testing
+
+- **Threat model** — `docs/security/THREAT_MODEL.md` and `THREAT_MODEL.md` (root).
+- **Red-team case catalog** — `docs/conformance/RED_TEAM_CASES.md` (85 cataloged adversarial cases, RT-001 through RT-085).
+- **Protocol-level security considerations** — the Internet-Draft, `standards/draft-schrock-ep-authorization-receipts-00.md` §11 (operator compromise, presentation attacks, log equivocation, directory authority, separation-of-duties limits, approver fatigue), stated plainly rather than claimed away.
+- **What a receipt proves and does not prove** — `docs/RECEIPT-CLAIMS.md`.
 
 ## Conformance
 

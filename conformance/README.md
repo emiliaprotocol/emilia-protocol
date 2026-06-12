@@ -47,6 +47,14 @@ All fixtures are generated from the reference implementation. To add a new fixtu
 3. Add the expected hash to the fixture
 4. Add a corresponding test in `conformance.test.js`
 
+## Federation
+
+A live two-operator cross-verification (PIP-006) runs from `operator2/` — a
+second, separately-deployed operator whose receipts are verified against its own
+published keys and revocation surface (`node operator2/verify-live.mjs`). The
+write-up, including the honest limitation that both operators are EMILIA-run, is
+in [`docs/conformance/FEDERATION-PROOF.md`](../docs/conformance/FEDERATION-PROOF.md).
+
 ## License
 
 Apache 2.0 — same as EMILIA Protocol.

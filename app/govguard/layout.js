@@ -1,19 +1,23 @@
 export const metadata = {
-  title: 'GovGuard — Pre-Action Authorization for Government Workflows',
+  title: 'GovGuard - Who Approved the Disbursement?',
   description:
-    'Pre-action authorization for benefit disbursements, caseworker overrides, and '
-    + 'payment-destination changes. SNAP, Medicaid, and UI fraud prevention with audit proof.',
+    'When AI drafts or triggers disbursements, vendor bank-account changes, or '
+    + 'benefit changes, every irreversible action gets a named human approval and a '
+    + 'verifiable audit record - an authorization receipt that proves who approved, '
+    + 'provable later even offline. Start in observe mode; nothing is blocked.',
   alternates: { canonical: '/govguard' },
   openGraph: {
     title: 'EMILIA GovGuard',
     description:
-      'Pre-action authorization for government benefit workflows. ' +
-      'Stops benefit redirection, payment-destination fraud, and ' +
-      'operator overrides before execution.',
+      'Authorization receipts for government payment integrity. Observe one workflow, '
+      + 'prove which irreversible actions would have required named signoff.',
     url: 'https://www.emiliaprotocol.ai/govguard',
     type: 'article',
   },
   keywords: [
+    'county treasurer payment integrity',
+    'vendor bank account change control',
+    'disbursement approval audit',
     'benefit redirection fraud',
     'SNAP fraud prevention',
     'Medicaid fraud',
