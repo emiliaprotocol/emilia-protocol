@@ -43,9 +43,9 @@ export default function GovGuardPage() {
               authenticated actor, an exact policy hash, and an evidence trail before it executes.
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
-              <a href="#how-it-works" style={cta.primary}>How it works</a>
-              <a href="#api" style={cta.secondary}>API reference</a>
-              <a href="/pilot?v=gov" style={cta.secondary}>Request pilot</a>
+              <a href="/pilot/sandbox" style={cta.primary}>Run an observe-mode pilot yourself</a>
+              <a href="#how-it-works" style={cta.secondary}>How it works</a>
+              <a href="/pilot?v=gov" style={cta.secondary}>Request a guided pilot</a>
             </div>
           </div>
         </section>

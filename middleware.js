@@ -22,6 +22,8 @@ import { siemEvent } from '@/lib/siem';
 const ROUTE_POLICIES = {
   // Pilot-request intake (public lead form; honeypot + validation in route)
   'POST /api/pilot/request':          { rateCategory: 'submit', useAuth: false },
+  'POST /api/pilot/sandbox/provision': { rateCategory: 'submit', useAuth: false },
+  'GET /api/pilot/sandbox/report':     { rateCategory: 'read', useAuth: true },
 
   // Trust evaluation (reads)
   'GET /api/trust/profile/*':          { rateCategory: 'read', useAuth: false },

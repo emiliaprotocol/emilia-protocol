@@ -116,6 +116,9 @@ const MUTATING_POLICY_EXEMPTIONS = [
 const OPENAPI_EXEMPTIONS = [
   // Public lead form (marketing intake), not a protocol surface.
   '/api/pilot/request',
+  // Self-serve observe-mode pilot sandbox (provision + report), not a protocol surface.
+  '/api/pilot/sandbox/provision',
+  '/api/pilot/sandbox/report',
   // Remote MCP server (streamable HTTP / JSON-RPC, not a REST resource) — its
   // tools are described via the MCP tools/list method, not OpenAPI.
   '/api/mcp/[transport]',

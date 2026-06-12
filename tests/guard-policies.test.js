@@ -176,6 +176,26 @@ describe('evaluateGuardPolicy: large-payment threshold', () => {
     expect(r.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
   });
 
+  it('tiers $50K–$1M as a single accountable signoff', () => {
+    const r = evaluateGuardPolicy({
+      organizationId: 'org_1', actorId: 'user_1', actorRole: 'ap',
+      actionType: GUARD_ACTION_TYPES.LARGE_PAYMENT_RELEASE,
+      targetChangedFields: [], amount: 250_000, riskFlags: [], authStrength: 'mfa',
+    });
+    expect(r.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+    expect(r.signoffTier).toBe('single');
+  });
+
+  it('escalates >= $1,000,000 to dual authorization', () => {
+    const r = evaluateGuardPolicy({
+      organizationId: 'org_1', actorId: 'user_1', actorRole: 'ap',
+      actionType: GUARD_ACTION_TYPES.LARGE_PAYMENT_RELEASE,
+      targetChangedFields: [], amount: 1_400_000, riskFlags: [], authStrength: 'mfa',
+    });
+    expect(r.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+    expect(r.signoffTier).toBe('dual');
+  });
+
   it('does NOT require signoff on payment < $50,000', () => {
     const r = evaluateGuardPolicy({
       organizationId: 'org_1',
