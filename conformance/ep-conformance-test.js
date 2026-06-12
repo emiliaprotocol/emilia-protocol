@@ -118,9 +118,15 @@ try {
       const entity2 = entity2Res.ok ? await entity2Res.json() : null;
 
       if (entity2) {
+        // /api/receipt is authenticated by design — the issuer is derived from
+        // the API key, never trusted from the body (forgery prevention). A
+        // conformant client signs as itself, so present testEntity's key.
         const receiptRes = await fetch(new URL('/api/receipt', baseUrl).toString(), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(testEntity.api_key ? { Authorization: `Bearer ${testEntity.api_key}` } : {}),
+          },
           body: JSON.stringify({ issuer: testEntity.entity_id, subject: entity2.entity_id, outcome: 'positive', action_type: 'conformance_test' }),
           signal: AbortSignal.timeout(10_000),
         });

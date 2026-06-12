@@ -1,6 +1,7 @@
 {
   "protocol": "emilia-protocol",
   "version": "1.1",
+  "protocol_version": "EP-CORE-v1.0",
   "trust_profile_url": "https://emiliaprotocol.ai/api/trust/profile/{entity_id}",
   "trust_evaluate_url": "https://emiliaprotocol.ai/api/trust/evaluate",
   "receipt_submit_url": "https://emiliaprotocol.ai/api/receipts/submit",
@@ -10,7 +11,7 @@
   "appeal_page_url": "https://emiliaprotocol.ai/appeal",
   "trust_profile_url_legacy": "https://emiliaprotocol.ai/api/score/{entity_id}",
   "_trust_profile_url_legacy_note": "DEPRECATED: Returns legacy compat_score on 0-100 scale. Use trust_profile_url for trust decisions. See PROTOCOL-STANDARD.md §20.",
-  "spec_url": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/EP-CORE-RFC.md",
+  "spec_url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
   "conformance_url": "https://github.com/emiliaprotocol/emilia-protocol/tree/main/conformance",
   "mcp_package": "@emilia-protocol/mcp-server",
   "supported_policies": [

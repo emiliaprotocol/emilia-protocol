@@ -48,8 +48,9 @@ export async function POST(request) {
 
     const supabase = getGuardedClient();
 
-    // Insert entity
-    const { error: entityError } = await supabase
+    // Insert entity (capture the UUID id — api_keys references it, not the
+    // string entity_id).
+    const { data: insertedEntity, error: entityError } = await supabase
       .from('entities')
       .insert({
         entity_id: entityId,
@@ -60,11 +61,28 @@ export async function POST(request) {
         api_key_hash: keyHash,
         public_key: publicKeyB64,
         private_key_encrypted: privateKeyB64,
-      });
+      })
+      .select('id')
+      .single();
 
-    if (entityError) {
+    if (entityError || !insertedEntity) {
       logger.error('[entity/route] Registration failed:', entityError);
-      return epProblem(500, 'registration_failed', entityError.message || JSON.stringify(entityError));
+      return epProblem(500, 'registration_failed', entityError?.message || JSON.stringify(entityError));
+    }
+
+    // Register the key in api_keys so it authenticates protocol-standard routes
+    // (POST /api/receipt et al). resolve_authenticated_actor reads api_keys, not
+    // entities.api_key_hash — without this row the caller cannot use the key it
+    // was just issued. Mirrors POST /api/entities/register.
+    const { error: keyError } = await supabase.from('api_keys').insert({
+      entity_id: insertedEntity.id,
+      key_hash: keyHash,
+      key_prefix: apiKey.slice(0, 16),
+      label: 'Default key',
+    });
+    if (keyError) {
+      logger.error('[entity/route] api_keys insert failed:', keyError);
+      return epProblem(500, 'registration_failed', 'Entity created but key registration failed');
     }
 
     return NextResponse.json({

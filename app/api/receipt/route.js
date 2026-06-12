@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
@@ -32,7 +32,10 @@ export async function POST(request) {
     // ── ISSUER COMES FROM AUTH (per safety invariant) ────────────────────
     // Body issuer is optional; if present, must match auth. Never trust
     // a body-supplied issuer alone.
-    const authedIssuer = auth.entity;
+    // auth.entity is the resolved entity object; the string entity_id is what
+    // issuer comparisons + lookups use. authEntityId() unwraps it (same fix as
+    // the v1 identity sites in 7c5cfcf — this protocol-standard route was missed).
+    const authedIssuer = authEntityId(auth);
     if (body.issuer && body.issuer.trim() && body.issuer.trim() !== authedIssuer) {
       return epProblem(
         403,
