@@ -145,7 +145,7 @@ All six adoption primitives are now **BUILT AND DEPLOYED:**
 - Gradient of commitment ✅ → `/adopt` (7 adoption levels, L0→L6)
 
 **Plus adoption infrastructure not in the original list:**
-- `@emilia-protocol/verify` ✅ → standalone zero-dep verification (published on npm; 1.3.0 with the PIP-006 federation client is in `packages/verify/`, publish pending)
+- `@emilia-protocol/verify` ✅ → standalone zero-dep verification, published on npm (1.3.0 ships the PIP-006 federation client + the full I-D §6.3 Trust Receipt verifier)
 - AWS CloudFormation template ✅ → one-click second operator at `infrastructure/aws/template.yaml`
 - Per-operator HMAC-SHA256 auth ✅ → `lib/operator-auth.js` (replaces shared CRON_SECRET)
 - Protocol-standard routes ✅ → `/api/entity`, `/api/receipt`, `/api/trust`, `/.well-known/ep-keys.json`
@@ -153,7 +153,7 @@ All six adoption primitives are now **BUILT AND DEPLOYED:**
 **Next: external adoption.**
 
 ```
-NOW:       Publish @emilia-protocol/verify 1.3.0 (federation client) → external relying parties
+NOW:       @emilia-protocol/verify 1.3.0 live on npm (federation client) → external relying parties can verify today
 MONTH 1:   Deploy second operator on AWS → first federation peer
 MONTH 2:   First external operator passes conformance → network effect begins
 MONTH 3:   Government pilot → institutional credibility

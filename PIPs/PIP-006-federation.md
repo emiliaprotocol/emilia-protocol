@@ -28,11 +28,10 @@ verification). The three acceptance gates stand as follows:
 
 1. **A second independent operator passing the conformance suite end-to-end.**
    *Implemented and verified against a self-hosted second operator.* The
-   relying-party (Operator B) verification path is implemented as
+   relying-party (Operator B) verification path is published as
    `@emilia-protocol/verify` → `verifyFederatedReceipt` /
-   `verifyFederatedReceiptOffline` (version 1.3.0 — in `packages/verify/`;
-   npm publish pending, earlier npm releases lack the federation exports),
-   with a two-operator cross-redemption harness
+   `verifyFederatedReceiptOffline` (version 1.3.0+ on npm; earlier releases
+   lack the federation exports), with a two-operator cross-redemption harness
    (`conformance/federation.mjs`, `packages/verify/federation.test.js`, 13
    cases) proving valid redemption plus tamper, wrong-operator, rotation, and
    revocation rejection. **Remaining for full acceptance:** an *independent
