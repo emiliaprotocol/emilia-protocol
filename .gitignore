@@ -28,6 +28,7 @@ integrations/langchain-emilia/dist/
 .aidesigner/
 .serena/
 coverage/
+test-results/
 
 # Supabase CLI local cache — these change per-developer and per-link
 supabase/.temp/

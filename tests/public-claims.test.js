@@ -58,6 +58,11 @@ const OPENAPI_EXEMPT_ROUTES = [
   '/api/keys/rotate',
   // Cloud scoring calibration — cloud control-plane.
   '/api/cloud/scoring/recommendations',
+  // Public lead form (marketing intake), not a protocol surface.
+  '/api/pilot/request',
+  // Self-serve observe-mode pilot sandbox (provision + report), not a protocol surface.
+  '/api/pilot/sandbox/provision',
+  '/api/pilot/sandbox/report',
 ];
 
 function countRouteFiles() {
