@@ -126,7 +126,7 @@ export default function GovGuardPage() {
         <section id="api" style={styles.section}>
           <div style={styles.container}>
             <div style={styles.eyebrow}>API</div>
-            <h2 style={{ ...styles.h2, marginTop: 12 }}>One v1 surface. Six endpoints.</h2>
+            <h2 style={{ ...styles.h2, marginTop: 12 }}>One v1 surface. Seven endpoints.</h2>
             <div style={{ marginTop: 24, padding: 24, background: color.bgCard, border: `1px solid ${color.brd}`, borderRadius: radius.md, fontFamily: font.mono, fontSize: 13, lineHeight: 1.9 }}>
               <div><span style={{ color: color.gold }}>POST</span>   /api/v1/trust-receipts</div>
               <div><span style={{ color: color.gold }}>GET</span>    /api/v1/trust-receipts/&#123;receiptId&#125;</div>

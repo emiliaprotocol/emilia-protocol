@@ -42,12 +42,12 @@ export default function CloudPage() {
           <div style={s.card}>
             <div style={s.label}>Signoff</div>
             <div style={s.cardTitle}>Signoff orchestration</div>
-            <div style={s.cardBody}>Challenge routing, notification delivery, approval queues, escalation timers, and SLA monitoring for accountable signoff workflows.</div>
+            <div style={s.cardBody}>Challenge routing, notification delivery, approval queues, manual escalation, and webhook delivery with retry for accountable signoff workflows.</div>
           </div>
           <div style={s.card}>
             <div style={s.label}>Events</div>
             <div style={s.cardTitle}>Event explorer</div>
-            <div style={s.cardBody}>Search, filter, and timeline every protocol event. Full-text search across handshakes, signoffs, and decisions with real-time streaming.</div>
+            <div style={s.cardBody}>Search, filter, and timeline every protocol event. Full-text search across handshakes, signoffs, and decisions .</div>
           </div>
           <div style={s.card}>
             <div style={s.label}>Audit</div>

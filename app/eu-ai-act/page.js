@@ -38,7 +38,7 @@ const ARTICLES = [
     num: 'Art. 9',
     title: 'Risk management system',
     burden: 'Continuous risk identification, evaluation, and mitigation across the AI lifecycle.',
-    ep: 'Every receipt carries the policy version that authorized it. Risk register and policy graph are queryable through the Trust Explorer.',
+    ep: 'Every receipt carries the policy version that authorized it. Receipts and entity trust profiles are queryable through the Trust Explorer.',
   },
   {
     num: 'Art. 10',
@@ -50,7 +50,7 @@ const ARTICLES = [
     num: 'Art. 11',
     title: 'Technical documentation',
     burden: 'Documentation kept current and available to authorities on request.',
-    ep: 'TLA+ spec, Alloy facts, and 3,500 automated tests are public. Apache 2.0 — auditors read source, not vendor PDFs.',
+    ep: 'TLA+ spec, Alloy facts, and 3,200+ automated tests are public. Apache 2.0 — auditors read source, not vendor PDFs.',
   },
   {
     num: 'Art. 12',
@@ -94,23 +94,23 @@ const HIGH_RISK_DOMAINS = [
 const PARALLEL_FORCING_FUNCTIONS = [
   {
     region: 'United States',
-    rule: 'Executive Order 14110',
-    detail: 'Federal procurement requires NIST AI RMF alignment. EP maps 38 RMF subcategories.',
+    rule: 'NIST AI RMF + OMB M-25-21',
+    detail: 'Federal AI use-case inventories flag high-impact uses; NIST AI RMF alignment shapes procurement. EP publishes its RMF mapping.',
   },
   {
     region: 'California',
-    rule: 'SB 1047 successor (2026 session)',
-    detail: 'Audit logging requirements for frontier model deployments.',
+    rule: 'EO N-5-26 + TL 24-03',
+    detail: 'Trusted-AI procurement standards and GenAI risk assessments for state entities.',
   },
   {
     region: 'Colorado',
     rule: 'Colorado AI Act',
-    detail: 'Effective Feb 2026. Impact assessments and consumer notification.',
+    detail: 'Effective June 30, 2026. Impact assessments and consumer notification.',
   },
   {
-    region: 'New York',
-    rule: 'AI Accountability Act',
-    detail: 'Algorithmic decision impact assessments for high-risk uses.',
+    region: 'Texas',
+    rule: 'TRAIGA (HB 149)',
+    detail: 'Effective Jan 1, 2026. Agency AI governance and disclosure obligations.',
   },
 ];
 
@@ -610,11 +610,11 @@ export default function EuAiActPage() {
           <motion.div {...reveal()}>
             <div style={styles.eyebrow}>Next step</div>
             <h2 style={{ ...styles.h2, fontSize: 32, marginBottom: 16 }}>
-              74 days is enough — if you start this week.
+              Eighteen months is enough — if you start this week.
             </h2>
             <p style={{ ...styles.body, maxWidth: 540, margin: '0 auto 28px' }}>
               We integrate in under a day. Apache 2.0, no vendor lock-in.
-              Reference deployments at federal and fintech pilots underway.
+              Reference verifiers deployed publicly; first pilot slots open.
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <a href="/contact" className="ep-cta" style={cta.primary}>

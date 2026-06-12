@@ -64,7 +64,7 @@ const ADDS = [
   'Requires a named, accountable human signoff where policy demands it — not a standing grant.',
   'Emits a signed, Merkle-anchored Trust Receipt: portable, offline-verifiable evidence of who approved what.',
   'Vendor-neutral — it doesn’t matter whose model your agent runs on, or whose IdP you use.',
-  'Formally verified — 26 TLA+ theorems and 35 Alloy facts machine-checked in CI on every change.',
+  'Formally verified — 26 TLA+ theorems and 35 Alloy facts machine-checked in CI on every change to the formal models.',
 ];
 
 export default function WhyEmiliaPage() {

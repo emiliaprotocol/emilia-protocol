@@ -33,43 +33,45 @@ const C = ({ children, style }) => (
   <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 32px', ...style }}>{children}</div>
 );
 
-// Real, copy-pasteable: a live decision call against the policy gate. The gate
-// returns one of allow / allow_with_signoff / deny — the same engine the demo runs on.
+// Real, copy-pasteable, and honest about auth: this is the gate's actual
+// request and response shape (decision: allow | deny + reasons[]). The
+// three-way allow / allow_with_signoff / deny ceremony lives in the v1
+// precheck adapters documented on /finguard and /govguard.
 const HTTP_SNIPPET = `# Ask EMILIA whether this exact action may proceed — before it runs.
 curl -s https://www.emiliaprotocol.ai/api/trust/gate \\
+  -H 'authorization: Bearer ep_live_…' \\
   -H 'content-type: application/json' \\
   -d '{
-    "actor":   "agent_invoice_bot",
-    "action":  "payment.release",
-    "context": { "amount": 50000, "destination": "acct_9f12" }
+    "entity_id": "agent_invoice_bot",
+    "action":    "payment.release",
+    "context":   { "amount": 50000, "destination": "acct_9f12" }
   }'
 
-# → { "decision": "allow_with_signoff",
-#     "reason": "ai_agent_payment_action",
-#     "signoff_required": true }`;
+# → { "decision": "allow" | "deny", "reasons": [ … ] }
+# Signoff-grade decisions (allow_with_signoff) come from the
+# /api/v1 precheck adapters — the full ceremony is on /finguard.`;
 
-// The ergonomic SDK wrapper — the "Stripe moment" one-liner.
-const GUARD_SNIPPET = `import { guard } from '@emilia-protocol/sdk';
+// The ergonomic wrapper — shipped today in @emilia-protocol/langchain (npm)
+// and langchain-emilia (pip). This is the package's real API, verbatim.
+const GUARD_SNIPPET = `import { withGuard } from '@emilia-protocol/langchain';
 
-// Wrap anything irreversible. One line.
-const decision = await guard({
-  actor:   agent.id,
+// Wrap anything irreversible. One wrapper.
+const guarded = withGuard(wireMoney, {
   action:  'payment.release',
-  context: { amount: 50_000, destination: invoice.account },
+  context: (input) => ({ amount: input.amount, destination: input.to }),
+  // Resolve once a named human approves — otherwise signoff throws:
+  onSignoff: async (decision) => waitForApproval(decision.raw),
 });
 
-if (decision.deny) throw new Error('Blocked by policy');
-if (decision.signoffRequired) {
-  await decision.waitForHuman();   // blocks until a named human approves
-}
-
-// Proceeds only with a signed, verifiable Trust Receipt:
-await bank.wire(invoice);          // decision.receipt is your audit evidence`;
+// Give \`guarded\` to your agent instead of \`wireMoney\`.
+await guarded.invoke({ amount: 50000, to: 'acct_9f12' });
+// → throws "EMILIA requires human signoff" until a human approves.
+// Python: pip install langchain-emilia → guard_tools([…]) does the same.`;
 
 const FLOW = [
   {
     step: '01', accent: color.green, label: 'Intercept',
-    body: 'Your agent is about to do something it can’t take back. One guard() call routes the exact action — actor, intent, parameters — to EMILIA before it touches the real world.',
+    body: 'Your agent is about to do something it can’t take back. One withGuard() wrapper routes the exact action — actor, intent, parameters — to EMILIA before it touches the real world.',
   },
   {
     step: '02', accent: color.blue, label: 'Decide',
@@ -87,7 +89,7 @@ const FRAMEWORKS = [
   { name: 'AutoGPT', note: 'Guard the action execution step' },
   { name: 'LlamaIndex', note: 'Approve tool-calling agents' },
   { name: 'Vercel AI SDK', note: 'Guard inside tool() handlers' },
-  { name: 'Model Context Protocol', note: 'Native MCP server · 34 tools' },
+  { name: 'Model Context Protocol', note: 'Native MCP server · 36 tools' },
 ];
 
 const SCENARIOS = [
@@ -155,7 +157,7 @@ export default function AgentGuardPage() {
                 policy engine with 26 machine-checked safety theorems behind it.
               </p>
               <p style={{ fontSize: 14, color: color.t3, lineHeight: 1.7, margin: 0 }}>
-                The HTTP call below is live. The SDK wrapper is the ergonomic version of the same thing.
+                The HTTP call below is live with your API key (signup is free). The wrapper below it ships today on npm and PyPI.
                 Exact signatures in the <Link href="/docs" style={{ color: color.gold, textDecoration: 'underline', textUnderlineOffset: 3 }}>docs</Link>.
               </p>
             </div>

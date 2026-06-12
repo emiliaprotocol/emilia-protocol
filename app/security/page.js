@@ -124,10 +124,10 @@ export default function SecurityPage() {
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
         <h2 className="ep-reveal" style={styles.h2}>Formal verification</h2>
         <p className="ep-reveal" style={styles.body}>
-          The protocol is mathematically modeled in TLA+ and Alloy. The TLA+ specification declares 26 theorems covering safety and liveness — handshake binding integrity, replay resistance, signoff accountability, receipt integrity, federation consistency. The Alloy model declares 35 facts and 15 assertions covering structural invariants the TLA+ time-domain doesn't reach.
+          The protocol is mathematically modeled in TLA+ and Alloy. The TLA+ specification declares 26 machine-checked safety invariants — handshake binding integrity, replay resistance, signoff accountability, handshake binding, replay resistance, signoff accountability, delegation, and identity continuity. The Alloy model declares 35 facts and 15 assertions covering structural invariants the TLA+ time-domain doesn't reach.
         </p>
         <p className="ep-reveal" style={styles.body}>
-          Both run on every push in CI. A counterexample fails the build. The model is part of the codebase, not a paper attached to it.
+          Both run in CI on every change to the formal models. A counterexample fails the build. The model is part of the codebase, not a paper attached to it.
         </p>
         <div className="ep-reveal" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <a href="/spec" className="ep-cta-secondary" style={cta.secondary}>Read the spec</a>
@@ -179,9 +179,9 @@ export default function SecurityPage() {
         <h2 className="ep-reveal" style={styles.h2}>Operational practices</h2>
         <ul className="ep-reveal" style={styles.list}>
           <li>Source control: GitHub with required code review + signed commits on the reference runtime.</li>
-          <li>CI gating: lint, type-check, unit tests, integration tests against Postgres, semgrep, CodeQL, npm audit, secret scanning, formal-verification suite, and conformance suite — all required for merge.</li>
+          <li>CI gating: lint, type-check, unit tests, integration tests against Postgres, semgrep, CodeQL, npm audit, secret scanning, formal-verification suite, and conformance suite — all wired in CI.</li>
           <li>Dependencies: Dependabot enabled with auto-merge for vetted minor + patch upgrades.</li>
-          <li>Cryptography: Ed25519 for signoff signatures, BLAKE3 for action-context hashing, Merkle batching for trust-receipt anchoring. No custom crypto primitives.</li>
+          <li>Cryptography: Ed25519 for receipt signatures, ECDSA P-256 (WebAuthn) for device signoffs, SHA-256 over RFC 8785 canonical JSON for action hashing, Merkle batching for trust-receipt anchoring. No custom crypto primitives.</li>
           <li>Secrets handling: no production secrets in source; secrets stored in Vercel + Supabase secret managers with least-privilege scoped roles.</li>
           <li>Data minimization: trust receipts contain only the bound action context and signatures; no PII unless an integrator's policy explicitly includes it (and that integrator's DPA governs that data).</li>
         </ul>

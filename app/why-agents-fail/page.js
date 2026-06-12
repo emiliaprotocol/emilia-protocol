@@ -125,9 +125,9 @@ export default async function WhyAgentsFailPage() {
             Because it checks trust <em>before</em> action, deterministically, every time.
           </p>
           <p style={{ fontSize: 15, color: color.t2, lineHeight: 1.7, maxWidth: 660, margin: '0 0 28px' }}>
-            We crash-tested it: four frontier models acting as autonomous treasury agents executed
+            We crash-tested it (12-case public harness — reproduce with bench/run.mjs): in our runs, frontier models acting as autonomous treasury agents executed
             <strong style={{ color: color.t1 }}> 50&ndash;83% </strong> of high-stakes actions unguarded. With EMILIA in front:
-            <strong style={{ color: color.gold }}> 0% </strong>, every model, with zero false friction.
+            <strong style={{ color: color.gold }}> 0% </strong>, every model we ran, with zero false friction. Don't take our word — run it.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <Link href="/for-ai-companies" className="ep-cta" style={cta.primary}>See the benchmark &rarr;</Link>

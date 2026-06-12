@@ -17,13 +17,13 @@ import { styles, cta, color, font, radius } from '@/lib/tokens';
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Stats — independently verifiable in the repo:
-//   3,500 tests / 134 files — `npx vitest run` summary
+//   3,200+ tests (static it/test count; parameterized runs exceed it) — `npx vitest run`
 //   26 TLA+ invariants verified — formal/PROOF_STATUS.md (T1–T26)
 //   35 Alloy facts — formal/Alloy/EP.als
 //   85 red team cases — docs/conformance/RED_TEAM_CASES.md
 //   Apache 2.0 — LICENSE
 const STATS = [
-  { value: '3,500',     label: 'Automated Tests',  sub: '134 test files',                accent: color.t1    },
+  { value: '3,200+',    label: 'Automated Tests',  sub: 'static count — runs expand it', accent: color.t1    },
   { value: '26',        label: 'TLA+ Theorems',    sub: 'TLC 2.19, zero errors',         accent: color.blue  },
   { value: '35',        label: 'Alloy Facts',       sub: '15 assertions verified',        accent: color.gold  },
   { value: '3',         label: 'Independent Verifiers', sub: 'JS · Python · Go, proven to agree', accent: color.t1 },
@@ -542,7 +542,7 @@ export default function HomePage() {
             {[
               { kind: 'Developer', accent: color.green, title: 'Start with EP Core', body: 'Free and Apache 2.0. Grab a sandbox API key in 30 seconds — or self-host the SDK, MCP server, and Agent Guard.', label: 'Start free', href: '/signup', btn: { background: '#FAFAF9', color: '#1C1917' } },
               { kind: 'Team', accent: color.blue, title: 'Run it on EP Cloud', body: 'Hosted control plane — managed policy registry, signoff orchestration, and auditor-grade evidence, no infrastructure to run.', label: 'See pricing', href: '/pricing', btn: { background: color.gold, color: '#FAFAF9' } },
-              { kind: 'Enterprise', accent: color.gold, title: 'On-prem + assurance', body: 'VPC or air-gapped, SSO, sector packs, compliance mappings, and an SLA. Procurement-ready.', label: 'Talk to us', href: '/partners', btn: null },
+              { kind: 'Enterprise', accent: color.gold, title: 'On-prem + assurance', body: 'VPC deployment today; air-gap and SSO scoped per pilot engagement. Sector packs, compliance mappings, SLA. Procurement-ready paperwork.', label: 'Talk to us', href: '/partners', btn: null },
             ].map((d) => (
               <div key={d.kind} style={{ display: 'flex', flexDirection: 'column', border: '1px solid rgba(255,255,255,0.12)', borderTop: `3px solid ${d.accent}`, borderRadius: radius.base, padding: '28px 26px', background: 'rgba(255,255,255,0.02)' }}>
                 <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: d.accent, marginBottom: 12 }}>{d.kind}</div>

@@ -35,9 +35,9 @@ export default function EnterprisePage() {
   const FEATURES = [
     { title: 'VPC / private deployment', body: 'EP runs entirely within your infrastructure boundary. No trust data, policy configurations, or signoff records leave your network. Reference AWS CloudFormation template ships in infrastructure/aws/.' },
     { title: 'Data residency', body: 'All trust data, event records, and policy configurations reside in your chosen jurisdiction. Meet data sovereignty requirements without architectural compromise.' },
-    { title: 'Evidence retention & legal hold', body: 'Configurable retention policies for all trust events. Legal hold capability preserves evidence across retention boundaries for litigation, investigation, or regulatory response.' },
+    { title: 'Evidence retention & legal hold', body: 'Receipts are durable, offline-verifiable evidence by construction. Formal retention policies and legal-hold workflows are scoped per engagement (roadmap); today: full event search and audit-report export.' },
     { title: 'Regulator artifact exports', body: 'Generate structured evidence packages for regulatory examination, mapped to control families used in SOX and sector-specific frameworks (full FISMA / PCI-DSS mapping is roadmap).' },
-    { title: 'Investigation tooling', body: 'Query and reconstruct action sequences across time, principals, and trust surfaces. Investigation mode provides forensic-grade evidence chains for incident response and internal audit.' },
+    { title: 'Investigation tooling', body: 'Query and reconstruct action sequences across time, principals, and trust surfaces via the events API and audit reports. A dedicated forensic investigation mode is engagement-scoped (roadmap).' },
     { title: 'Delegated administration', body: 'Hierarchical administration with scoped permissions. Delegate policy management, signoff configuration, and evidence access to business units without granting global control.' },
   ];
 

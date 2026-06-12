@@ -23,6 +23,9 @@ export default function AppealPage() {
   // Appeal form state
   const [appealDisputeId, setAppealDisputeId] = useState('');
   const [appealReason, setAppealReason] = useState('');
+  // Appeals and withdrawals are entity-authenticated server-side; the page
+  // must send the filer's API key or every submission 401s.
+  const [apiKey, setApiKey] = useState('');
   const [appealSubmitted, setAppealSubmitted] = useState(false);
 
   const lookupProfile = async () => {
@@ -78,7 +81,7 @@ export default function AppealPage() {
     try {
       const res = await fetch('/api/disputes/appeal', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(apiKey.trim() ? { Authorization: `Bearer ${apiKey.trim()}` } : {}) },
         body: JSON.stringify({
           dispute_id: appealDisputeId,
           reason: appealReason,
@@ -98,7 +101,7 @@ export default function AppealPage() {
     try {
       const res = await fetch('/api/disputes/withdraw', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(apiKey.trim() ? { Authorization: `Bearer ${apiKey.trim()}` } : {}) },
         body: JSON.stringify({ dispute_id: id }),
       });
       const data = await res.json();
@@ -269,9 +272,10 @@ export default function AppealPage() {
         {mode === 'appeal' && !appealSubmitted && (
           <div>
             <div style={{ fontSize: 13, color: color.t3, lineHeight: 1.7, marginBottom: 20, padding: 16, background: 'rgba(34,197,94,0.05)', borderRadius: radius.base, border: '1px solid rgba(34,197,94,0.15)' }}>
-              <strong style={{ color: color.green }}>When to appeal:</strong> If a dispute was resolved as upheld, reversed, or dismissed and you believe the resolution was wrong, you can appeal. Appeals are reviewed by a senior operator. The appeal decision is final.
+              <strong style={{ color: color.green }}>When to appeal:</strong> If a dispute was resolved as upheld, reversed, or dismissed and you believe the resolution was wrong, you can appeal. Appeals are reviewed by a designated operator. The appeal decision is final.
             </div>
             <input className="ep-input" style={{ ...styles.input, marginBottom: 12 }} placeholder="Dispute ID to appeal (ep_disp_...)" value={appealDisputeId} onChange={e => setAppealDisputeId(e.target.value)} />
+            <input className="ep-input" type="password" style={{ ...styles.input, marginBottom: 12 }} placeholder="Your entity API key (ep_live_…) — appeals are entity-authenticated" value={apiKey} onChange={e => setApiKey(e.target.value)} />
             <textarea className="ep-input" style={{ ...styles.input, marginBottom: 12, minHeight: 120, resize: 'vertical', fontFamily: 'inherit' }} placeholder="Explain why the resolution was wrong. Be specific — what was overlooked, what evidence was misinterpreted, what new information exists. Minimum 10 characters." value={appealReason} onChange={e => setAppealReason(e.target.value)} />
             <button className="ep-cta" style={cta.primaryBlue} onClick={submitAppeal} disabled={loading}>{loading ? 'Filing appeal...' : 'File Appeal'}</button>
             <div style={{ marginTop: 12, fontSize: 12, color: color.t3 }}>

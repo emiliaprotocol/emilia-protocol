@@ -77,7 +77,7 @@ export default function GovernancePage() {
           <div className="ep-reveal" style={{ marginBottom: 40 }}>
             <h2 style={styles.h2}>Trust-graph dispute adjudication</h2>
             <p style={styles.body}>
-              Dispute resolution is no longer purely operator-managed. High-confidence vouchers in the trust graph now vote on contested receipts. Voting weight is proportional to accumulated evidence — it cannot be purchased or injected. This makes the adjudication process Sybil-resistant by design and structurally harder to capture by any single operator.
+              Dispute resolution now has a structural community check. High-confidence vouchers in the trust graph now vote on contested receipts. Voting weight is proportional to accumulated evidence — it cannot be purchased or injected. The vote is a Sybil-resistant recommendation — human operators retain final authority, and the weighting cannot be purchased or injected.
             </p>
             <p style={styles.body}>
               The 48-hour procedural window before graph adjudication is enforced in code, not just policy. The dispute lifecycle — submission, operator response window, escalation to graph vote — is executed by the protocol itself. No manual override is needed; no human can short-circuit the window.
@@ -104,7 +104,7 @@ export default function GovernancePage() {
         <div className="ep-reveal" style={{ marginBottom: 24 }}>
           <h2 style={styles.h2}>Attribution chain and human accountability</h2>
           <p style={styles.body}>
-            Every receipt now carries an attribution chain: <code style={styles.mono}>Principal → Agent → Tool</code>. This creates a verifiable record of which human authorized which agent action, executed through which tool. Accountability for agent behavior is not diffused — it traces back to a specific human delegation decision.
+            Every receipt now carries an attribution chain: <code style={styles.mono}>Principal → Agent</code>. This creates a verifiable record of which human authorized which agent action. Accountability for agent behavior is not diffused — it traces back to a specific human delegation decision.
           </p>
           <p style={styles.body}>
             Delegation Authority extends this further: EMILIA now scores the quality of human delegation decisions, not just agent outcomes. Principals who consistently authorize well-scoped, low-risk delegations build positive reputation. Principals who authorize reckless or disputed actions accumulate negative signal. Human accountability for machine behavior becomes legible and contestable.

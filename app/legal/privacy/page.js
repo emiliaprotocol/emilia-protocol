@@ -65,7 +65,7 @@ export default function PrivacyPage() {
 
         <h2 style={styles.h2}>5. International transfers</h2>
         <p style={styles.body}>
-          Our primary processing region is the United States. For customers in the EU/EEA, UK, or Switzerland, we rely on the EU Standard Contractual Clauses (SCCs) and equivalent UK addendum where required. Customer-data residency is configurable on EP Cloud Enterprise tiers.
+          Our primary processing region is the United States. For customers in the EU/EEA, UK, or Switzerland, we rely on the EU Standard Contractual Clauses (SCCs) and equivalent UK addendum where required. Customer-data residency is available by arrangement on EP Enterprise engagements.
         </p>
 
         <h2 style={styles.h2}>6. Retention</h2>

@@ -15,5 +15,5 @@ export const metadata = {
  * This redirect ensures old links and bookmarks still work.
  */
 export default function ScorePage() {
-  redirect('/#score');
+  redirect('/explorer');
 }

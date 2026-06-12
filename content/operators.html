@@ -599,7 +599,7 @@
           <div class="mechanic-icon green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
           Public performance records
         </h3>
-        <p>Every operator's decision history is queryable via <code style="font-family:var(--mono);font-size:12px;color:var(--accent-light)">GET /api/operators/:id</code>. Reversal rate, median SLA, agreement with protocol baseline, and appeal volume are all public.</p>
+        <p>Operator performance records — reversal rate, median SLA, agreement with protocol baseline, appeal volume — are designed to be public. The query API for them ships with the operator program's first cohort (v1.1 spec below).</p>
       </div>
 
       <div class="mechanic-card">
@@ -615,7 +615,7 @@
           <div class="mechanic-icon yellow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
           SLA enforcement
         </h3>
-        <p>The <code style="font-family:var(--mono);font-size:12px;color:var(--accent-light)">cron/expire</code> job escalates overdue appeals at 72h. Escalated appeals show in the public queue and count against the assigned operator's SLA score.</p>
+        <p>The <code style="font-family:var(--mono);font-size:12px;color:var(--accent-light)">cron/expire</code> job escalates overdue dispute responses at the 7-day deadline today; the 72h appeal SLA applies when the operator cohort goes live. Escalations count against the assigned operator's SLA score.</p>
       </div>
 
       <div class="mechanic-card">
@@ -701,7 +701,7 @@
     <div class="section-header">
       <div class="section-label">API Reference</div>
       <h2>Operator API endpoints</h2>
-      <p>All operator actions are API-first. The dashboard is a thin wrapper over these endpoints.</p>
+      <p>All operator actions are API-first. Implemented today: <code style="font-family:var(--mono);font-size:12px;color:var(--accent-light)">POST /api/operators/apply</code> and <code style="font-family:var(--mono);font-size:12px;color:var(--accent-light)">POST /api/disputes/report</code>. The remaining endpoints below are the v1.1 operator-program spec — they go live with the first operator cohort.</p>
     </div>
 
     <div class="api-list">

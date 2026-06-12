@@ -29,7 +29,7 @@ export default function AccountableSignoffPage() {
 
   const METHODS = [
     { title: 'Passkey', body: 'FIDO2/WebAuthn credential bound to device hardware. Phishing-resistant, biometric-gated. The strongest available consumer-grade signoff method.' },
-    { title: 'Secure App', body: 'Dedicated mobile application that displays the exact action context and requires explicit confirmation. Action details are rendered on the device, not in the requesting session.' },
+    { title: 'Secure App', body: 'Reserved signoff channel in the protocol (secure_app): a dedicated mobile app rendering the exact action context on-device. Roadmap — today the device-bound path is WebAuthn (Face ID / Touch ID / passkey).' },
     { title: 'Platform Authenticator', body: 'OS-level biometric or PIN challenge (Touch ID, Windows Hello, Android biometric). Uses the platform\'s trusted execution environment for key operations.' },
     { title: 'Out-of-band', body: 'Signoff delivered through a separate channel from the requesting session. SMS, email, or push notification with action-bound one-time code. Weakest method, used only where stronger methods are unavailable.' },
     { title: 'Dual Signoff', body: 'Two named principals must independently attest to the same action before execution proceeds. Each signoff is cryptographically bound to the exact action parameters. Used for the highest-risk operations.' },

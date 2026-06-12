@@ -258,7 +258,7 @@ export default function UploadPage() {
               />
               <p style={{ fontSize: 12, color: color.t3, marginTop: 8, lineHeight: 1.5 }}>
                 If you cannot share the file now, paste a description below. File storage is via
-                signed URL to an S3-compatible bucket — you can request deletion any time.
+                in-memory processing — the file itself is never written to disk; only extracted answers and metadata persist — you can request deletion any time.
               </p>
             </Field>
             <Field label="Notes (optional)">

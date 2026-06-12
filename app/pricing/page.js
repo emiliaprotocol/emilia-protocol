@@ -7,7 +7,7 @@ export const metadata = {
   title: 'Pricing — EMILIA Protocol',
   description:
     'Open-core pricing. EP Core is free and Apache 2.0 forever. EP Cloud is the managed '
-    + 'control plane. EP Enterprise adds on-prem, SSO, audit support, and SLAs.',
+    + 'control plane. EP Enterprise adds on-prem/VPC deployment, sector packs, audit support, and SLAs (SSO scoped per engagement).',
   alternates: { canonical: '/pricing' },
   openGraph: {
     title: 'EMILIA Protocol — Pricing',
@@ -39,7 +39,7 @@ const TIERS = [
     features: [
       'Full trust ceremony — Eye, Handshake, Signoff, Commit',
       '@emilia-protocol/sdk + @emilia-protocol/verify (npm)',
-      'Native MCP server — 34 tools',
+      'Native MCP server — 36 tools',
       'Trust Receipts — signed, Merkle-anchored, verifiable offline',
       'Agent Guard middleware — framework-agnostic',
       '26 TLA+ theorems · 35 Alloy facts · 85 red-team cases',
@@ -79,8 +79,8 @@ const TIERS = [
     available: true,
     features: [
       'Everything in Cloud',
-      'Self-hosted, VPC, or air-gapped deployment',
-      'SSO / SAML / SCIM',
+      'Self-hosted or VPC deployment (air-gap scoped per engagement)',
+      'SSO / SAML / SCIM — scoped per pilot engagement',
       'Sector packs — GovGuard, FinGuard, Agent Governance',
       'Security-review + procurement support (DPA, sub-processors)',
       'Compliance evidence mapping — NIST AI RMF, EU AI Act',
@@ -95,7 +95,7 @@ const OPEN_CORE = [
   ['Agent Guard middleware + MCP server', true, true, true],
   ['Managed policy registry + simulation', false, true, true],
   ['Hosted signoff orchestration + audit exports', false, true, true],
-  ['On-prem / VPC, SSO, sector packs, SLA', false, false, true],
+  ['On-prem / VPC, sector packs, SLA (SSO per engagement)', false, false, true],
 ];
 
 const PACKS = [

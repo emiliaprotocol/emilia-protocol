@@ -136,7 +136,7 @@ export default function PlaygroundPage() {
     { num: '03', title: 'View Profile', desc: 'See how the trust profile updates from receipt evidence.', action: 'Get Profile', enabled: entities.length >= 1 },
     { num: '04', title: 'Run Handshake', desc: 'Initiate a pre-action authorization ceremony.', action: 'Start Handshake', enabled: entities.length >= 1 },
     { num: '05', title: 'Consume Handshake', desc: 'Verify and consume — replay is structurally impossible.', action: 'Consume', enabled: handshakes.length >= 1 },
-    { num: '06', title: 'Verify Receipt', desc: 'Verify the receipt signature — no EP server required.', action: 'Verify', enabled: receipts.length >= 1 },
+    { num: '06', title: 'Verify Receipt', desc: 'Verify the receipt signature (this button uses the hosted verifier; the same check runs fully offline with @emilia-protocol/verify).', action: 'Verify', enabled: receipts.length >= 1 },
   ];
 
   const actions = [

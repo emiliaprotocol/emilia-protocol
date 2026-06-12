@@ -32,7 +32,7 @@ export default function FinancialPackPage() {
     { title: 'Treasury dual authorization', body: 'High-value treasury operations require two named principals to independently sign off on the exact action. Each signoff is cryptographically bound to the action parameters. Both must be satisfied before execution proceeds.' },
     { title: 'SOX-ready payment-action evidence', body: 'Every handshake, signoff, and execution event produces structured evidence records. Evidence packages satisfy SOX segregation-of-duties requirements and provide tamper-evident audit trails for financial controls.' },
     { title: 'Wire transfer protection', body: 'Wire instruction changes, new wire destinations, and wire amount modifications above policy thresholds require accountable signoff. The signoff binds the exact wire parameters to named authorizers.' },
-    { title: 'Amount-based escalation', body: 'Policy-defined amount thresholds trigger escalating signoff requirements. Low-value actions may proceed with single signoff. High-value actions require dual authorization. Critical-value actions require dual authorization plus senior officer attestation.' },
+    { title: 'Amount-based escalation', body: 'Policy-defined amount thresholds trigger escalating signoff requirements. Low-value actions may proceed with single signoff. High-value actions require dual authorization. Critical-value tiers (e.g. senior-officer attestation) are configured per engagement; dual authorization and the $50K signoff threshold ship today.' },
   ];
 
   return (

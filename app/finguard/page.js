@@ -34,7 +34,7 @@ const SCENARIOS = [
   },
   {
     title: 'Large payment escalation',
-    body: 'Threshold-based escalation: > $50K requires single signoff, > $1M requires out-of-band verification (configurable per workflow).',
+    body: 'Threshold-based escalation: > $50K requires signoff today (lib/guard-policies). Higher tiers and out-of-band verification are configured per deployment.',
   },
 ];
 

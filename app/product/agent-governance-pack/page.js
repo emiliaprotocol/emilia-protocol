@@ -35,8 +35,8 @@ export default function AgentGovernancePackPage() {
   ];
 
   const FEATURES = [
-    { title: 'Action risk classes', body: 'Every agent action is classified into a risk level: low, medium, high, or critical. Risk classification is policy-defined and can be customized per agent, per tool, or per action type.' },
-    { title: 'Signoff thresholds per risk class', body: 'Each risk class has a configurable signoff requirement. Low-risk actions proceed without signoff. Higher risk classes require progressively stronger attestation from named human principals.' },
+    { title: 'Action risk classes', body: 'A pilot-configured taxonomy: agent actions are classified low / medium / high / critical, customized per agent, tool, or action type during the engagement (the shipped engine enforces action-type policies and hard-deny flags today).' },
+    { title: 'Signoff thresholds per risk class', body: 'Configured during the pilot: each risk class maps to a signoff requirement — low-risk proceeds, higher classes require named-human attestation (dual control and Class-A device signoff ship today).' },
     { title: 'Tool-use control', body: 'Policy defines which tools an agent can invoke, under what conditions, and with what signoff requirements. Tool invocations outside policy are blocked before execution, not logged after the fact.' },
     { title: 'Principal-to-agent attribution', body: 'Every agent action is attributed to the human principal who authorized it. The attribution chain is cryptographically bound: principal authorized agent, agent requested action, named human signed off on exact parameters.' },
     { title: 'EU AI Act / NIST AI RMF mapping', body: 'Pre-mapped controls for EU AI Act high-risk system requirements and NIST AI Risk Management Framework. EP trust enforcement satisfies human oversight, transparency, and accountability requirements across both frameworks.' },

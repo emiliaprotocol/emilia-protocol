@@ -51,7 +51,7 @@ const LEVELS = [
   },
   {
     level: 5, name: 'Operator', tag: 'Run your own node',
-    desc: 'Run your own EP operator in the federation. Full sovereignty over your trust data.',
+    desc: 'Run your own EP operator (federation spec: PIP-006, draft). Full sovereignty over your trust data.',
     how: 'Deploy EP Core, publish /.well-known/ep-trust.json',
     effort: '1 month', risk: 'Medium',
     color: '#B08D35',

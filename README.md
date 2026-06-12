@@ -74,7 +74,7 @@ See [Performance Proof](docs/operations/PERFORMANCE_PROOF.md) | [Operating Envel
 | Metric | Value |
 |---|---|
 | Spec version | EP-CORE-v1.0 |
-| Conformance test | **7/7 required checks PASS** |
+| Conformance test | **run it yourself: `node conformance/ep-conformance-test.js https://www.emiliaprotocol.ai` (known drift between the test's expected discovery fields and the live surface is being reconciled)** |
 | Standalone verify | `npm install @emilia-protocol/verify` — zero deps, Apache-2.0 ([npmjs.com](https://www.npmjs.com/package/@emilia-protocol/verify)) |
 | Embed widget | `<ep-trust-badge entity-id="...">` |
 | Discovery | `/.well-known/ep-trust.json` + `/.well-known/ep-keys.json` |

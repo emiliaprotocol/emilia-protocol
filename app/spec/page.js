@@ -88,7 +88,7 @@ function inlineFormat(text) {
 }
 
 export default function SpecPage() {
-  const mdPath = join(process.cwd(), 'docs', 'EP-CORE-RFC.md');
+  const mdPath = join(process.cwd(), 'standards', 'draft-schrock-ep-authorization-receipts-00.md');
   const md = readFileSync(mdPath, 'utf8');
   const html = mdToHtml(md);
 
@@ -121,10 +121,11 @@ export default function SpecPage() {
       `}} />
       <SiteNav activePage="Spec" />
       <div className="spec-content">
-        <div className="spec-badge">EP CORE RFC v1.0 · APACHE 2.0</div>
+        <div className="spec-badge">DRAFT-SCHROCK-EP-AUTHORIZATION-RECEIPTS-00 · IETF INDIVIDUAL SUBMISSION · APACHE 2.0</div>
+        <p style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: '#7a809a', marginBottom: 8 }}>Canonical copy on the <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/" target="_blank" rel="noopener noreferrer">IETF datatracker</a>. Conformance vectors: <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/CONFORMANCE.md" target="_blank" rel="noopener noreferrer">CONFORMANCE.md</a>.</p>
         <div dangerouslySetInnerHTML={{ __html: html }} />
         <div className="spec-footer">
-          EMILIA Protocol — EP Core RFC v1.0 — Apache 2.0 License
+          EMILIA Protocol — draft-schrock-ep-authorization-receipts-00 — Apache 2.0 License
         </div>
       </div>
       <SiteFooter />

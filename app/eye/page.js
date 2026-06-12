@@ -242,7 +242,7 @@ export default function EmiliaEyePage() {
       <section style={styles.section}>
         <div className="ep-reveal" style={{ marginBottom: 40 }}>
           <h2 style={styles.h2}>Packaging</h2>
-          <p style={styles.body}>Eye ships as both open-source and managed cloud.</p>
+          <p style={styles.body}>Eye is in pilot as open-source and managed cloud (PIP-005, accepted spec).</p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
           <div className="ep-card-lift ep-reveal ep-stagger-1" style={cardStyle(color.green)}>

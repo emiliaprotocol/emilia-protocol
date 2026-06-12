@@ -75,7 +75,7 @@ export async function POST(request) {
       return epProblem(400, 'invalid_email', 'Valid email address required');
     }
 
-    if (!['partner', 'investor'].includes(type)) {
+    if (!['partner', 'investor', 'pilot-eye'].includes(type)) {
       return epProblem(400, 'invalid_type', 'type must be partner or investor');
     }
 
