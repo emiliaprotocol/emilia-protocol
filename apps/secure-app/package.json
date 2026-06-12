@@ -1,0 +1,24 @@
+{
+  "name": "@emilia-protocol/secure-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "EMILIA Protocol Secure App — the named human's signing device. Holds the approver key in the secure enclave and produces Class-A signoffs for high-risk actions.",
+  "license": "Apache-2.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "test": "node --test lib/ep-signoff.test.mjs"
+  },
+  "dependencies": {
+    "@noble/curves": "^1.6.0",
+    "@noble/hashes": "^1.5.0",
+    "expo": "~52.0.0",
+    "expo-local-authentication": "~15.0.0",
+    "expo-secure-store": "~14.0.0",
+    "expo-status-bar": "~2.0.0",
+    "react": "18.3.1",
+    "react-native": "0.76.5"
+  }
+}

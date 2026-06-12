@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "EMILIA Secure",
+    "slug": "emilia-secure-app",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "scheme": "emiliasecure",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "ai.emiliaprotocol.secure",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "EMILIA Secure uses Face ID to approve and sign high-risk actions on your behalf."
+      }
+    },
+    "android": {
+      "package": "ai.emiliaprotocol.secure"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-local-authentication"
+    ]
+  }
+}

@@ -23,7 +23,9 @@ export default defineConfig({
     // suites"). Without this, vitest's default *.test.js glob picks up
     // packages/verify/web.test.js and fails with "No test suite found" (it has
     // node:test blocks, not vitest describe/it).
-    exclude: ['e2e/**', '**/node_modules/**', 'dist/**', '.next/**', 'packages/**'],
+    // apps/** are standalone apps (e.g. the Expo Secure App) with their own
+    // node:test suites + React Native code vitest must not collect.
+    exclude: ['e2e/**', '**/node_modules/**', 'dist/**', '.next/**', 'packages/**', 'apps/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],

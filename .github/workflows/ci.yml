@@ -144,6 +144,19 @@ jobs:
       - name: Offline verification proof
         run: bash deploy/airgap/verify-offline.sh
 
+  # ── Job 5d: Secure App signoff round-trip ───────────────────────
+  # Proves the native Secure App produces a Class-A signoff that verifies
+  # offline under @emilia-protocol/verify. Needs no install (node + repo only).
+  secure-app-signoff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: 20
+      - name: Secure App signoff verifies under @emilia-protocol/verify
+        run: node --test apps/secure-app/lib/ep-signoff.test.mjs
+
   # ── Job 6b: Type check (conditional — only if tsconfig exists) ───
   type-check:
     runs-on: ubuntu-latest
