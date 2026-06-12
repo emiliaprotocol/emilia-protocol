@@ -1,9 +1,9 @@
 /**
  * EU AI Act landing page.
- * SEO + procurement-officer surface for the August 2, 2026 enforcement cliff.
+ * SEO + procurement-officer surface for EU AI Act high-risk readiness (Annex III deferred to Dec 2, 2027 by the Digital Omnibus).
  *
  * Maps EP's pre-execution receipt architecture directly to Articles 9–15
- * (the high-risk system obligations that turn on at Aug 2). Includes a live
+ * (the Annex III high-risk obligations, now due Dec 2, 2027). Includes a live
  * countdown — clientside so it ticks without server work.
  *
  * @license Apache-2.0
@@ -18,10 +18,13 @@ import { styles, cta, color, font, radius } from '@/lib/tokens';
 
 const EASE = [0.23, 1, 0.32, 1];
 
-// Article 113 enforcement begins 2026-08-02 00:00 UTC.
-// Using ISO 8601 Z anchor so the countdown is identical for every visitor
-// regardless of local time zone — penalty exposure starts at UTC midnight.
-const DEADLINE = new Date('2026-08-02T00:00:00Z');
+// Annex III high-risk obligations: originally 2026-08-02 (Article 113), then
+// provisionally deferred to 2027-12-02 by the Digital Omnibus agreement
+// (Council/Parliament/Commission, 2026-05-07; formal adoption pending, plenary
+// expected June 2026). We count down to the deferred date and say so — the
+// obligations are unchanged, only the clock moved. ISO 8601 Z anchor so the
+// countdown is identical for every visitor regardless of local time zone.
+const DEADLINE = new Date('2027-12-02T00:00:00Z');
 
 const reveal = (delay = 0) => ({
   initial: { opacity: 0, y: 18 },
@@ -175,16 +178,18 @@ export default function EuAiActPage() {
           transition={{ duration: 0.6, ease: EASE }}
         >
           <div style={{ ...styles.eyebrow, color: color.gold }}>
-            EU AI Act · Article 113 · Enforcement begins August 2, 2026
+            EU AI Act · Annex III high-risk · provisionally deferred to Dec 2, 2027 (Digital Omnibus, May 7, 2026)
           </div>
           <h1 style={styles.h1Large}>
-            74 days until every<br />high-risk AI system<br />needs a receipt.
+            The deadline moved.<br />The obligations didn&apos;t.<br />High-risk AI still needs a receipt.
           </h1>
           <p style={{ ...styles.body, maxWidth: 580, fontSize: 18, color: color.t2 }}>
-            On August 2, 2026, the EU AI Act&apos;s high-risk obligations turn on.
-            Logging, human oversight, transparency, traceability — mandatory.
-            Penalties up to <strong>€35M or 7% of global turnover</strong>, whichever is higher.
-            EMILIA Protocol is the only formally verified, open-standard answer.
+            The Digital Omnibus agreement (May 7, 2026, formal adoption pending) defers stand-alone
+            Annex III high-risk obligations from August 2, 2026 to <strong>December 2, 2027</strong>.
+            Everything the law requires is unchanged: logging, human oversight, transparency,
+            traceability — with penalties up to <strong>€35M or 7% of global turnover</strong>.
+            The extension is time to build the evidence layer properly instead of in a panic.
+            EMILIA Protocol is the formally verified, open-standard way to do that.
           </p>
         </motion.div>
 
@@ -231,7 +236,7 @@ export default function EuAiActPage() {
                   letterSpacing: 1,
                 }}
               >
-                Article 113 in force as of 2026-08-02 00:00 UTC
+                Annex III high-risk obligations in force as of 2027-12-02 00:00 UTC
               </div>
             </div>
           ) : (

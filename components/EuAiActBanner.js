@@ -3,30 +3,29 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-// EU AI Act milestone. Aug 2, 2026 is a real enforcement date for parts of the
-// Act (incl. GPAI / governance provisions). We state the date and link to our
-// mapping — we do NOT claim the law literally mandates "a receipt".
-const DEADLINE = Date.UTC(2026, 7, 2); // month is 0-indexed → 7 = August
-const DISMISS_KEY = 'ep_euaiact_banner_dismissed_v1';
+// EU AI Act status, kept honest and current. The Digital Omnibus provisional
+// agreement (Council/Parliament/Commission, May 7, 2026) defers stand-alone
+// Annex III high-risk obligations from Aug 2, 2026 to Dec 2, 2027 (Annex I
+// embedded systems to Aug 2, 2028). Formal adoption is pending (plenary vote
+// expected June 2026; publication before Aug 2). We state the deferral rather
+// than counting down to a date the legislator has already moved — and we do
+// NOT claim the law literally mandates "a receipt".
+// Dismiss key bumped to v2 so users who dismissed the countdown see the
+// corrected status once.
+const DISMISS_KEY = 'ep_euaiact_banner_dismissed_v2';
 
 export default function EuAiActBanner() {
   const [show, setShow] = useState(false);
-  const [days, setDays] = useState(null);
 
-  // Compute on the client only — avoids SSR/hydration mismatch and lets us
-  // read the per-browser dismissal flag without flashing for dismissed users.
+  // Client-only — avoids SSR/hydration mismatch and lets us read the
+  // per-browser dismissal flag without flashing for dismissed users.
   useEffect(() => {
     let cancelled = false;
-    // Defer to a microtask so the update isn't synchronous in the effect body
-    // (satisfies react-hooks/set-state-in-effect); still runs immediately.
     Promise.resolve().then(() => {
       if (cancelled) return;
       try {
         if (localStorage.getItem(DISMISS_KEY) === '1') return;
       } catch { /* private mode — show anyway */ }
-      const remaining = Math.ceil((DEADLINE - Date.now()) / 86_400_000);
-      if (remaining <= 0) return; // past the date — retire the banner
-      setDays(remaining);
       setShow(true);
     });
     return () => { cancelled = true; };
@@ -52,7 +51,7 @@ export default function EuAiActBanner() {
       <Link href="/eu-ai-act" style={{ color: '#FAFAF9', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
         <span style={{ color: '#B08D35', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>EU AI Act</span>
         <span style={{ color: 'rgba(250,250,249,0.85)' }}>
-          obligations take effect Aug 2, 2026 — <strong style={{ color: '#FAFAF9' }}>{days} days</strong>. See how EMILIA maps to them
+          high-risk obligations provisionally deferred to <strong style={{ color: '#FAFAF9' }}>Dec 2, 2027</strong> — the requirements stand; only the clock moved
         </span>
         <span style={{ color: '#B08D35' }}>&rarr;</span>
       </Link>
