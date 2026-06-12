@@ -59,12 +59,26 @@ export async function GET(request, { params }) {
 
     const hashValid = recomputedHash === receipt.receipt_hash;
 
+    // Revocation status (PIP-006 §"Federation contract" item 3 — the
+    // verifier-of-record reports whether this operator has revoked the
+    // receipt). Receipts here are not individually revocable today, so the
+    // honest answer is always false; the field exists so a federation relying
+    // party can consult it uniformly. Operators that maintain a revocation feed
+    // populate `revoked` from their own list.
+    const revoked = false;
+
     // Build response
     const response = {
       receipt_id: receipt.receipt_id,
       receipt_hash: receipt.receipt_hash,
       hash_valid: hashValid,
       recomputed_hash: recomputedHash,
+      revoked,
+      revocation: {
+        revoked,
+        checked: true,
+        basis: 'operator revocation list (empty — receipts are short-lived and not individually revocable)',
+      },
       created_at: receipt.created_at,
 
       // Receipt data (for independent verification)

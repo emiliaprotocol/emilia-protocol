@@ -91,12 +91,13 @@ EP bets on option 2. The protocol that wins will be the one that was ready when 
 ### Phase 4: Federation (Q4 2026 - Q1 2027)
 **Goal:** Eliminate single point of failure
 
-- [x] Federation specification v1.0 (FEDERATION-SPEC.md)
-- [ ] Operator conformance test suite
-- [ ] Federation registry (GitHub-based Phase 1)
-- [ ] Cross-operator receipt verification reference implementation
+- [x] Federation specification v1.0 (FEDERATION-SPEC.md; PIP-006)
+- [x] Operator conformance test suite (`conformance/federation.mjs`, `packages/verify/federation.test.js` — 13 cases)
+- [x] Federation registry (GitHub-based Phase 1) — `docs/FEDERATION-REGISTRY.md` (JWKS-style convention + known-operator list)
+- [x] Cross-operator receipt verification reference implementation (`@emilia-protocol/verify` → `verifyFederatedReceipt`)
+- [x] Formal model of the cross-operator path (`formal/ep_federation.als`, 7 assertions verified, in CI)
 - [ ] Trust profile portability (composite profiles from multi-operator receipts)
-- [ ] Second independent EP operator running on AWS
+- [ ] Second **independent third-party** EP operator (self-hosted second operator verified via the harness; independent operator is the remaining acceptance gate)
 - [ ] DNS-based discovery (Phase 3 federation)
 
 **Why this matters:** No government will bet infrastructure on a single-operator system. Federation is not optional — it's required for the mission.

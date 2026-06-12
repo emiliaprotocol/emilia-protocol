@@ -22,17 +22,33 @@ defines is the minimal cross-operator verification contract.
 ## Status note
 
 This PIP is a Draft. The core mechanisms below are implemented in EP today
-(`packages/verify/`, the `/.well-known/ep-trust.json` discovery surface,
-the conformance test suite that exercises cross-operator verification).
-Acceptance is gated on:
+(`packages/verify/`, the `/.well-known/ep-trust.json` and `/.well-known/ep-keys.json`
+discovery surfaces, the conformance test suite that exercises cross-operator
+verification). The three acceptance gates stand as follows:
 
-1. A second independent operator running EP and passing the conformance
-   suite end-to-end against the primary operator's published artifacts.
-2. A public Federation Registry document describing the operator-discovery
-   convention.
-3. A formal model (TLA+ or Alloy) of the cross-operator verification path
-   that proves the same safety properties already verified for the
-   single-operator case (see `formal/PROOF_STATUS.md`).
+1. **A second independent operator passing the conformance suite end-to-end.**
+   *Implemented and verified against a self-hosted second operator.* The
+   relying-party (Operator B) verification path is shipped as
+   `@emilia-protocol/verify` → `verifyFederatedReceipt` /
+   `verifyFederatedReceiptOffline`, with a two-operator cross-redemption harness
+   (`conformance/federation.mjs`, `packages/verify/federation.test.js`, 13
+   cases) proving valid redemption plus tamper, wrong-operator, rotation, and
+   revocation rejection. **Remaining for full acceptance:** an *independent
+   third-party* operator standing up the three surfaces and passing
+   `node conformance/federation.mjs https://<their-origin>`. The contract they
+   need is published — see gate #2.
+
+2. **A public Federation Registry document.** *Done* —
+   `docs/FEDERATION-REGISTRY.md` defines the operator-discovery convention
+   (JWKS-style, no central registrar), the `ep-keys.json` shape, the
+   self-locating receipt fields, and the join procedure.
+
+3. **A formal model of the cross-operator verification path.** *Done and
+   verified* — `formal/ep_federation.als` models the path and proves seven
+   safety assertions (soundness, tamper rejection, unadvertised-key rejection,
+   rotation safety, revocation, no-trust-laundering, observer-independence) with
+   **no counterexample** under the Alloy model checker. Run in CI on every
+   change to `formal/*.als` (see `formal/PROOF_STATUS.md`).
 
 ## Federation contract
 

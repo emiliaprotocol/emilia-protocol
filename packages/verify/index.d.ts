@@ -92,3 +92,64 @@ export function verifyWebAuthnSignoff(
   approverPublicKeySpkiB64u: string,
   opts?: { rpId?: string }
 ): WebAuthnSignoffResult;
+
+// ── Federation (PIP-006) ────────────────────────────────────────────────────
+
+export interface OperatorKeyCandidate {
+  public_key: string;
+  status: 'current' | 'historical';
+  algorithm: string;
+  retired_at?: string;
+}
+
+export interface FederatedVerificationResult {
+  accepted: boolean;
+  verified: boolean;
+  revoked: boolean;
+  signer: string | null;
+  keyMatched: 'current' | 'historical' | null;
+  checks: {
+    version: boolean;
+    signer_present: boolean;
+    signature: boolean;
+    not_revoked: boolean;
+  };
+  error?: string;
+}
+
+/**
+ * Resolve the candidate verification keys an operator advertises for a signer
+ * from its parsed /.well-known/ep-keys.json (current first, then historical).
+ */
+export function resolveOperatorKeys(
+  discoveryDoc: Record<string, unknown>,
+  signerId: string
+): OperatorKeyCandidate[];
+
+/**
+ * Verify a federated EP-RECEIPT-v1 fully offline (PIP-006 Operator-B semantics):
+ * resolve the issuing operator's key from the supplied discovery doc, verify the
+ * Ed25519 signature (trying historical keys for rotation safety), and check the
+ * operator's revocation set. `accepted` is verified-and-not-revoked; local trust
+ * policy remains the caller's.
+ */
+export function verifyFederatedReceiptOffline(
+  receipt: Record<string, unknown>,
+  discoveryDoc: Record<string, unknown>,
+  opts?: { revokedReceiptIds?: Set<string> | string[]; expectedSigner?: string }
+): FederatedVerificationResult;
+
+/**
+ * Verify a federated receipt against a live operator, fetching its ep-keys.json
+ * (from `signature.key_discovery`) and revocation surface. Injectable fetch.
+ */
+export function verifyFederatedReceipt(
+  receipt: Record<string, unknown>,
+  opts?: {
+    fetchImpl?: typeof fetch;
+    timeoutMs?: number;
+    keyDiscoveryUrl?: string;
+    verifyUrlBase?: string;
+    expectedSigner?: string;
+  }
+): Promise<FederatedVerificationResult & { fetched: Record<string, unknown>; revocation_confirmed?: boolean }>;

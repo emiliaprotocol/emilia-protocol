@@ -123,12 +123,20 @@ jobs:
         run: javac -cp alloy.jar AlloyCheck.java
 
       - name: Run Alloy checks
-        run: java -cp .:alloy.jar AlloyCheck formal/ep_relations.als
+        run: |
+          # Check every model in formal/. A counterexample in any one fails CI.
+          rc=0
+          for model in formal/*.als; do
+            echo "::group::Alloy — $model"
+            java -cp .:alloy.jar AlloyCheck "$model" || rc=1
+            echo "::endgroup::"
+          done
+          exit $rc
 
       - name: Upload Alloy output
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: alloy-output
-          path: formal/ep_relations.als
+          path: formal/*.als
           retention-days: 30

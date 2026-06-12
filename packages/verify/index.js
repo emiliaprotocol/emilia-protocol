@@ -325,3 +325,16 @@ export function verifyReceiptBundle(bundle, publicKeyBase64url) {
 
   return { valid: failed.length === 0, total: bundle.documents.length, verified, failed };
 }
+
+// =============================================================================
+// FEDERATION (PIP-006)
+// =============================================================================
+
+// Operator-B cross-operator verification. Re-exported from the main entry so a
+// relying party can `import { verifyFederatedReceipt } from '@emilia-protocol/verify'`
+// alongside the single-operator primitives above. See ./federation.js.
+export {
+  resolveOperatorKeys,
+  verifyFederatedReceiptOffline,
+  verifyFederatedReceipt,
+} from './federation.js';

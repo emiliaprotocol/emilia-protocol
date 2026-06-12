@@ -106,6 +106,32 @@ were fixed in this commit.
 
 ---
 
+## Alloy — `ep_federation.als` (PIP-006 Federation)
+
+**Model checker:** Alloy 6.0.0 (SAT4J solver)
+**CI workflow:** `.github/workflows/alloy.yml` — runs on every push to `formal/*.als`
+**Scope:** `for 8` (all checks)
+**Local instructions:** see `formal/RUN_ALLOY.md`
+
+Models the cross-operator verification path (PIP-006): an EP-RECEIPT-v1 issued
+by Operator A, verified by an independent relying party using only A's published
+discovery surfaces. Ed25519 unforgeability is abstracted as fact C1
+(`verifiesUnder` = the signing key for an untampered receipt; the empty set once
+tampered). Maps to `packages/verify/federation.js`. All 7 assertions verified
+with no counterexample.
+
+| ID | Property | Asserts | Facts relied on | Status |
+|----|----------|---------|-----------------|--------|
+| S1 | AcceptedIsAuthentic | accepted ⇒ signed by an advertised key over an untampered payload | C1, C2 | **Verified (Alloy 6.0.0, 2026-06-11)** |
+| S2 | TamperedNeverAccepted | a tampered receipt is never accepted | C1 | **Verified (Alloy 6.0.0, 2026-06-11)** |
+| S3 | UnadvertisedKeyRejected | a receipt signed by a key the operator does not advertise is rejected | C1 | **Verified (Alloy 6.0.0, 2026-06-11)** |
+| S4 | HistoricalKeyStillVerifies | a pre-rotation receipt (advertised historical key) is still accepted | C1, C3 | **Verified (Alloy 6.0.0, 2026-06-11)** |
+| S5 | RevokedNeverAccepted | a receipt the issuer revoked is never accepted | C4 | **Verified (Alloy 6.0.0, 2026-06-11)** |
+| S6 | NoTrustLaundering | acceptance routes only through a key owned by the receipt's own signer | C1, C2 | **Verified (Alloy 6.0.0, 2026-06-11)** |
+| S7 | PortabilityIsObserverIndependent | acceptance depends only on the receipt + its signer's surfaces, not on who verifies | C1 | **Verified (Alloy 6.0.0, 2026-06-11)** |
+
+---
+
 ## How to Update This Document
 
 When a property is verified by a model checker:
@@ -115,4 +141,4 @@ When a property is verified by a model checker:
 
 ---
 
-*Last updated: 2026-04-30 — 26 TLA+ properties verified: T1–T20 (2026-04-02) and T21–T26 EP-IX continuity (2026-04-30) all verified by TLC 2.19 across 413,137 states with 0 errors; all 15 Alloy assertions and 35 facts verified by Alloy 6.0.0 with 0 counterexamples*
+*Last updated: 2026-06-11 — 26 TLA+ properties verified: T1–T20 (2026-04-02) and T21–T26 EP-IX continuity (2026-04-30) all verified by TLC 2.19 across 413,137 states with 0 errors; all 15 `ep_relations.als` assertions + 35 facts, and all 7 `ep_federation.als` (PIP-006) assertions, verified by Alloy 6.0.0 with 0 counterexamples*
