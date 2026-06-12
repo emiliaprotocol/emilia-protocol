@@ -1,0 +1,75 @@
+# EMILIA Protocol — air-gapped deployment stack.
+#
+# Every image is loaded from the offline bundle (docker load); nothing is pulled.
+# The `epnet` network is marked `internal: true` — containers can talk to each
+# other but have NO route off the host. That is the air-gap guarantee enforced
+# by Docker itself, not by configuration discipline.
+#
+# Minimal self-host of the data plane EP needs:
+#   db   — Postgres with the EP migrations applied
+#   rest — PostgREST, the REST/RPC surface @supabase/supabase-js talks to
+#   app  — the EP Next.js server (offline-verifiable receipts, guard, conformance)
+#
+# Brought up by install.sh on the isolated host.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - ep_pgdata:/var/lib/postgresql/data
+    networks: [epnet]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  rest:
+    image: postgrest/postgrest:v12.2.3
+    restart: unless-stopped
+    environment:
+      PGRST_DB_URI: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: ${POSTGRES_USER}
+      PGRST_JWT_SECRET: ${SUPABASE_JWT_SECRET}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [epnet]
+
+  app:
+    image: emilia-protocol:airgap
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # Point the EP runtime at the in-cluster PostgREST instead of cloud Supabase.
+      SUPABASE_URL: http://rest:3000
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      NEXT_PUBLIC_SUPABASE_URL: http://rest:3000
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      # Air-gap: no external observability, no outbound webhooks.
+      EP_AIRGAP: "1"
+    depends_on:
+      rest:
+        condition: service_started
+    ports:
+      - "127.0.0.1:8080:3000"   # bound to loopback on the host; no external exposure
+    networks: [epnet]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  ep_pgdata:
+
+networks:
+  epnet:
+    driver: bridge
+    internal: true   # ← no egress. The air-gap, enforced by Docker.
