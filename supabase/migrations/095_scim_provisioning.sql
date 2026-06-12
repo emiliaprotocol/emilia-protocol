@@ -73,3 +73,10 @@ COMMENT ON TABLE scim_users IS
   'SCIM 2.0 (RFC 7643) User resources — the named humans an IdP provisions for signoff. active=false is a deprovision.';
 COMMENT ON TABLE scim_provisioning_tokens IS
   'Bearer tokens an IdP uses to authenticate to EP SCIM endpoints, scoped per tenant. Stored as sha256 hashes.';
+
+-- Service-role-only tables (token hashes + directory PII): enable RLS with no
+-- policy so anon/authenticated are denied by default. The SCIM routes reach
+-- these exclusively via getGuardedClient() (service role), which bypasses RLS.
+ALTER TABLE scim_provisioning_tokens ENABLE ROW LEVEL SECURITY;
+ALTER TABLE scim_users  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE scim_groups ENABLE ROW LEVEL SECURITY;

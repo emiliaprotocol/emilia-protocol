@@ -39,3 +39,8 @@ CREATE INDEX IF NOT EXISTS idx_entity_signing_key_history_entity
 
 COMMENT ON TABLE entity_signing_key_history IS
   'PIP-006: retired Ed25519 signing keys, advertised as historical_keys in /.well-known/ep-keys.json so pre-rotation receipts remain verifiable.';
+
+-- Service-role-only table: enable RLS with no policy so anon/authenticated are
+-- denied by default. The app reaches this exclusively via getGuardedClient()
+-- (service role), which bypasses RLS.
+ALTER TABLE entity_signing_key_history ENABLE ROW LEVEL SECURITY;

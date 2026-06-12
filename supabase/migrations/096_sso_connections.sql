@@ -34,3 +34,8 @@ CREATE INDEX IF NOT EXISTS idx_sso_connections_tenant ON sso_connections (tenant
 
 COMMENT ON TABLE sso_connections IS
   'Per-tenant enterprise SSO config (SAML 2.0 / OIDC). Drives lib/sso. Service-role write only.';
+
+-- Holds the OIDC client secret — service-role-only. Enable RLS with no policy
+-- so anon/authenticated are denied by default; the SSO routes reach this only
+-- via getGuardedClient() (service role), which bypasses RLS.
+ALTER TABLE sso_connections ENABLE ROW LEVEL SECURITY;
