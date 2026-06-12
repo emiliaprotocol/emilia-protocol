@@ -3,6 +3,7 @@
 **Date:** 2026-04-28
 **Question this answers:** Why does a CFO buy EMILIA GovGuard instead
 of Trustpair, Eftsure, Validis, Onyxia, or Creditsafe?
+**Companion:** For AI-agent / standards-layer efforts (DRP, AgentOAuth, CHEQ, AuthZEN, Sigstore), see [`docs/positioning/DIFFERENTIATION.md`](../positioning/DIFFERENTIATION.md).
 
 ---
 

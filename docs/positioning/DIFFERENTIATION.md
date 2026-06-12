@@ -2,6 +2,7 @@
 
 **Date:** 2026-06-12
 **Audience:** Buyers, auditors, standards reviewers, and anyone comparing EP to an adjacent effort.
+**Companion:** For private-sector vendor-payment-fraud competitors (Trustpair, Eftsure, Validis, Onyxia, Creditsafe), see [`docs/strategy/DIFFERENTIATION.md`](../strategy/DIFFERENTIATION.md). This page covers AI-agent and standards-layer efforts.
 **Category phrase:** EP is **the open standard for authorization receipts**. The category is not empty — several efforts are converging on it, and that is good for everyone. This page states EP's specific, verifiable position within it.
 
 ---
