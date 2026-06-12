@@ -134,4 +134,8 @@ title = "emilia-protocol gitleaks config"
       '''placeholder''',
       '''username:password''',
       '''user:pass''',
+      # Env-var interpolation (e.g. ${POSTGRES_USER}:${POSTGRES_PASSWORD}@host)
+      # is a config TEMPLATE, not a hardcoded credential. Used by the air-gap
+      # compose (deploy/airgap/docker-compose.airgap.yml).
+      '''\$\{''',
     ]
