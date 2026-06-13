@@ -101,7 +101,22 @@ Trust Receipt — all six steps, no network:
 5. Merkle inclusion of the receipt leaf against the checkpoint root, and the checkpoint signature against the trusted log key
 6. `signed_at` / `committed_at` within `[issued_at, expires_at]`
 
-Returns `{ valid, checks, errors }` and fails closed on any missing input.
+Returns `{ valid, checks, errors, attestation }` and fails closed on any missing input.
+
+#### Advisory: the PIP-007 initiator escalation attestation — *requires 1.4.0*
+
+When the contexts carry a [PIP-007](https://github.com/emiliaprotocol/emilia-protocol/blob/main/PIPs/PIP-007-initiator-attestation.md) `initiator_attestation`, the result includes an **advisory** report:
+
+```js
+const r = verifyTrustReceipt(receipt, { approverKeys, logPublicKey });
+r.attestation; // { present, consistent, issues: [] }
+```
+
+- `present` — a context carries an attestation.
+- `consistent` — it is present in **every** context with an **identical** canonical form (the cross-context identity rule the protocol flags to catch a divide-and-misinform orchestrator showing different approvers different reasons).
+- `issues` — any PIP-007 §1 malformations: unknown members, a `statement` over 280 characters, `escalation_trigger` of `policy_rule` without a `policy_basis`, or a bad enum value.
+
+The advisory **never affects `valid` or any member of `checks`** — by design (PIP-007 §2): a receipt carrying a malformed attestation still verifies cryptographically, exactly as it does on a verifier that predates this PIP. The attestation is **a claim by the initiator** — identified but never trusted — so a policy engine MUST NOT use it to relax any check or raise any trust score.
 
 ### Federation (PIP-006) — *requires 1.3.0*
 

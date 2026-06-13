@@ -157,3 +157,42 @@ describe('guard adapter + AML history (self-lookup)', () => {
     expect(json.aml_signals.some((s) => s.startsWith('structuring'))).toBe(true);
   });
 });
+
+describe('guard adapter + PIP-007 initiator attestation', () => {
+  it('carries an AML-uncertainty attestation in the response and audit row on a structuring escalation', async () => {
+    const res = await precheck(baseBody({ amount: 9500, recent_amounts: [9400, 9600] }));
+    const json = await res.json();
+    expect(json.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+    expect(json.initiator_attestation).toBeTruthy();
+    expect(json.initiator_attestation.escalation_trigger).toBe('uncertainty');
+    expect(json.initiator_attestation.policy_basis).toContain('/rule:aml-screening');
+    expect(json.initiator_attestation.statement.length).toBeLessThanOrEqual(280);
+    // The attestation is recorded in the audit trail.
+    expect(inserted.at(-1).after_state.initiator_attestation).toBeTruthy();
+  });
+
+  it('carries a magnitude attestation on a large-payment escalation', async () => {
+    const res = await precheck(baseBody({ amount: 250_000 }));
+    const json = await res.json();
+    expect(json.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+    expect(json.initiator_attestation.escalation_trigger).toBe('magnitude');
+    expect(json.initiator_attestation.policy_basis).toContain('/rule:payment-threshold-single');
+  });
+
+  it('omits the attestation (null) on a clean ALLOW', async () => {
+    const res = await precheck(baseBody());
+    const json = await res.json();
+    expect(json.decision).toBe(GUARD_DECISIONS.ALLOW);
+    expect(json.initiator_attestation).toBeNull();
+  });
+
+  it('observe mode still records the would-be attestation (signoffRequired preserved)', async () => {
+    const res = await precheck(baseBody({ amount: 250_000, enforcement_mode: 'observe' }));
+    const json = await res.json();
+    expect(json.decision).toBe(GUARD_DECISIONS.OBSERVE);
+    expect(json.observed_decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+    // The attestation is built from the base decision, so observe mode keeps it.
+    expect(json.initiator_attestation).toBeTruthy();
+    expect(json.initiator_attestation.escalation_trigger).toBe('magnitude');
+  });
+});

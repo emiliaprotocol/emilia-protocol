@@ -13,6 +13,30 @@ export interface ActionObject {
   [key: string]: unknown;
 }
 
+/**
+ * PIP-007 §1 initiator escalation attestation. The initiator's own stated
+ * reason for escalating to a human. Exactly the three members below, no others.
+ */
+export type EscalationTrigger =
+  | 'irreversibility'
+  | 'magnitude'
+  | 'uncertainty'
+  | 'novelty'
+  | 'authority_gap'
+  | 'policy_rule';
+
+export interface InitiatorAttestation {
+  /** Why the initiator escalated (REQUIRED). */
+  escalation_trigger: EscalationTrigger;
+  /**
+   * Identifier of the policy/rule that fired. REQUIRED whenever a deterministic
+   * rule fired, and always when escalation_trigger is `policy_rule`.
+   */
+  policy_basis?: string;
+  /** Short free-text reason for the approver. MUST NOT exceed 280 characters. */
+  statement?: string;
+}
+
 export interface AuthorizationContext {
   ep_version: string;
   context_type: string;
@@ -27,6 +51,8 @@ export interface AuthorizationContext {
   issued_at: string;
   expires_at: string;
   prev_receipt_hash?: string;
+  /** PIP-007 §1: identical across every context of a receipt when present. */
+  initiator_attestation?: InitiatorAttestation;
 }
 
 export interface Signoff {
@@ -102,6 +128,18 @@ export function canonicalize(value: unknown): string;
 export function actionHash(action: ActionObject): string;
 export function policyHash(policy: Record<string, unknown>): string;
 
+/** The six PIP-007 §1 escalation triggers, in spec order. */
+export const ESCALATION_TRIGGERS: readonly EscalationTrigger[];
+/** PIP-007 §1: the `statement` member's character cap (280). */
+export const ATTESTATION_STATEMENT_MAX: number;
+
+/**
+ * Validate an initiator_attestation against PIP-007 §1, returning a frozen,
+ * canonicalized copy. Throws on any violation (unknown member, bad enum,
+ * over-cap statement, or `policy_rule` without `policy_basis`).
+ */
+export function validateInitiatorAttestation(attestation: InitiatorAttestation): Readonly<InitiatorAttestation>;
+
 export function publicKeyToSpkiB64u(publicKey: KeyObject): string;
 export function privateKeyToPkcs8B64u(privateKey: KeyObject): string;
 export function privateKeyFromPkcs8B64u(privateKeyB64u: string): KeyObject;
@@ -124,6 +162,7 @@ export function buildContexts(args: {
   issuedAt: string;
   expiresAt: string;
   prevReceiptHash?: string;
+  initiatorAttestation?: InitiatorAttestation;
 }): AuthorizationContext[];
 
 export function contextDigest(context: AuthorizationContext): Buffer;
@@ -163,6 +202,7 @@ export function issueAuthorizationReceipt(args: {
   expiresAt?: string;
   expiresInSeconds?: number;
   prevReceiptHash?: string;
+  initiatorAttestation?: InitiatorAttestation;
   signers: Signer[];
   committedAt?: string;
   log: LogConfig;
@@ -177,6 +217,7 @@ export function issueFromKeyBundle(args: {
   issuedAt?: string;
   expiresAt?: string;
   expiresInSeconds?: number;
+  initiatorAttestation?: InitiatorAttestation;
 }): Promise<{ receipt: AuthorizationReceipt; verification: VerificationMaterial }>;
 
 export function verificationMaterialFromKeyBundle(keys: IssuerKeyBundle): VerificationMaterial;

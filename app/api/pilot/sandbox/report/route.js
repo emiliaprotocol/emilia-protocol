@@ -77,6 +77,9 @@ export async function GET(request) {
           amount: a.amount ?? null,
           currency: a.currency ?? null,
           action_hash: a.action_hash || null,
+          // PIP-007: the initiator's stated escalation reason for the action the
+          // gate would have held for a named human (null when none was minted).
+          initiator_attestation: a.initiator_attestation || null,
           at: ev.created_at,
         });
       }

@@ -292,16 +292,47 @@ Purely additive; no migration required.
 
 ## Reference Implementation
 
-None yet — this PIP is a Draft, and a reference implementation is
-required before Final status. The touchpoints are small:
+A reference implementation exists across the issuer, verifier, and the
+production escalation path. The PIP remains a Draft; this section records
+the implemented touchpoints and their tests. Versions:
+`@emilia-protocol/issue` 0.2.0, `@emilia-protocol/verify` 1.4.0.
 
-- `packages/issue/index.js` — `buildContexts()` gains the optional,
-  validated `initiatorAttestation` argument (Specification Section 3).
-- `packages/verify/index.js` — no change required for signature
-  validity; the cross-context identity check and report surfacing of
-  Specification Section 2 for verifiers implementing this PIP.
-- `lib/guard-policies.js` / `lib/guard-adapter.js` — population mapping
-  per Deployment guidance below.
+- **Issuance — `packages/issue/index.js`.** `buildContexts()` (and the
+  `issueTrustReceipt()` / `issueFromKeyBundle()` paths that call it) accept
+  an optional `initiatorAttestation`. `validateInitiatorAttestation()`
+  enforces Specification Section 1: enum membership for
+  `escalation_trigger`, the 280-character `statement` cap, `policy_basis`
+  required when `escalation_trigger` is `policy_rule`, and rejection of any
+  member beyond the three defined. The validated object is copied verbatim
+  into every context, so `canonicalize(initiator_attestation)` is identical
+  across all of them. The `ep-issue issue` CLI gains an optional
+  `--attestation <file.json>`; the `ep-issue demo` subcommand issues a
+  receipt carrying a realistic attestation. Tests: `packages/issue/test.js`
+  (round-trip with attestation, dual-context canonical-identity,
+  no-attestation regression, Section 1 validation, issuer fail-closed).
+- **Verification — `packages/verify/index.js`.** `verifyTrustReceipt()`
+  returns an ADVISORY `attestation` report — `{ present, consistent,
+  issues }` — built by `buildAttestationReport()`. It MUST-flags the
+  cross-context identity violation (Specification Section 1) and SHOULD-flags
+  malformed attestations (unknown members, over-cap `statement`,
+  `policy_rule` without `policy_basis`, bad enum). Per Specification
+  Section 2 the report never affects `result.valid` or any member of the
+  existing `checks` object: a malformed attestation still verifies
+  cryptographically. The CLI prints the advisory for a §6.2 receipt. Tests:
+  `packages/verify/trust-receipt.test.js` (advisory present/consistent,
+  cross-context mismatch flagged, partial-presence flagged, over-cap and
+  malformed SHOULD-flags, no-attestation regression — every existing check
+  unchanged).
+- **Production escalation path — `lib/guard-policies.js` /
+  `lib/guard-adapter.js`.** `buildInitiatorAttestation()` maps a guard
+  decision to a Section 1 attestation per the Deployment-guidance table
+  below; the adapter carries it on signoff-required decisions into the
+  response and audit row (preserved in observe mode), where a caller minting
+  §6.2 contexts passes it to the issuer's `initiatorAttestation`. The pilot
+  observe-mode report (`app/api/pilot/sandbox/report/route.js`) includes it
+  in flagged sample rows. Tests: `tests/guard-policies.test.js` (the full
+  trigger map) and `tests/guard-adapter-aml.test.js` (response + audit
+  carriage, observe-mode preservation).
 
 ## Deployment guidance (non-normative)
 

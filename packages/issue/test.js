@@ -33,6 +33,10 @@ import {
   generateEd25519KeyPair,
   formatLogKeyId,
   publicKeyToSpkiB64u,
+  validateInitiatorAttestation,
+  canonicalize,
+  ESCALATION_TRIGGERS,
+  ATTESTATION_STATEMENT_MAX,
 } from './index.js';
 import { verifyTrustReceipt } from '../verify/index.js';
 
@@ -252,4 +256,115 @@ test('CLI demo subcommand issues and verifies end-to-end (smoke)', () => {
   for (const check of ['action_hash', 'context_commitments', 'signoff_signatures', 'sod', 'inclusion', 'checkpoint_signature', 'windows']) {
     assert.match(out, new RegExp(`✓ ${check}`), `demo output should show ✓ ${check}`);
   }
+});
+
+// ── PIP-007: initiator escalation attestation ────────────────────────────────
+
+test('PIP-007 — issue WITH attestation round-trips; verifier reports it present + consistent', async () => {
+  const keys = generateIssuerKeyBundle({ approverId: 'ep:approver:finance-lead' });
+  const initiatorAttestation = {
+    escalation_trigger: 'irreversibility',
+    policy_basis: action.policy_id,
+    statement: 'Wire is irreversible; policy requires a named human approval.',
+  };
+  const { receipt, verification } = await issueFromKeyBundle({ keys, action, initiatorAttestation });
+
+  // The IDENTICAL object is in the (single) context.
+  assert.deepEqual(receipt.contexts[0].initiator_attestation, initiatorAttestation);
+
+  const r = verifyTrustReceipt(receipt, {
+    approverKeys: verification.approver_keys,
+    logPublicKey: verification.log_public_key,
+  });
+  // All original checks still pass.
+  assert.equal(r.valid, true);
+  assert.deepEqual(r.errors, []);
+  assert.ok(Object.values(r.checks).every(Boolean));
+  // And the advisory reports the attestation.
+  assert.equal(r.attestation.present, true);
+  assert.equal(r.attestation.consistent, true);
+  assert.deepEqual(r.attestation.issues, []);
+});
+
+test('PIP-007 — a dual-approval receipt carries the IDENTICAL attestation in every context (canonical-identical)', async () => {
+  const a = classBSigner('ep:key:k1', '2026-06-09T17:24:40Z');
+  const b = classBSigner('ep:key:k2', '2026-06-09T17:24:55Z');
+  const initiatorAttestation = { escalation_trigger: 'magnitude', policy_basis: 'ep:policy:wires-over-100k@v12/rule:dual-auth' };
+  const contexts = buildContexts({
+    action, policyHash: 'sha256:aa', approvers: ['ep:approver:cfo', 'ep:approver:controller'], requiredApprovals: 2,
+    issuedAt: '2026-06-09T17:21:05Z', expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+    initiatorAttestation,
+  });
+  assert.equal(contexts.length, 2);
+  const c0 = canonicalize(contexts[0].initiator_attestation);
+  const c1 = canonicalize(contexts[1].initiator_attestation);
+  assert.equal(c0, c1, 'canonicalize(initiator_attestation) must be identical across contexts');
+
+  const signoffs = await collectSignoffs(contexts, [a.signer, b.signer]);
+  const receipt = assembleAuthorizationReceipt({
+    receiptId: 'ep:receipt:dual-att', action, contexts, signoffs,
+    committedAt: new Date().toISOString(), log,
+  });
+  const r = verifyTrustReceipt(receipt, {
+    approverKeys: { 'ep:key:k1': a.keyEntry, 'ep:key:k2': b.keyEntry }, logPublicKey: log.pub,
+  });
+  assert.equal(r.valid, true);
+  assert.equal(r.attestation.present, true);
+  assert.equal(r.attestation.consistent, true);
+});
+
+test('PIP-007 — receipts WITHOUT attestation behave exactly as before (no member added; advisory absent)', async () => {
+  const keys = generateIssuerKeyBundle({ approverId: 'ep:approver:finance-lead' });
+  const { receipt, verification } = await issueFromKeyBundle({ keys, action });
+  assert.equal('initiator_attestation' in receipt.contexts[0], false);
+  const r = verifyTrustReceipt(receipt, {
+    approverKeys: verification.approver_keys, logPublicKey: verification.log_public_key,
+  });
+  assert.equal(r.valid, true);
+  assert.equal(r.attestation.present, false);
+  assert.equal(r.attestation.consistent, true);
+  assert.deepEqual(r.attestation.issues, []);
+});
+
+test('PIP-007 — validateInitiatorAttestation enforces §1 (enum, cap, members, policy_rule basis)', () => {
+  // Valid: all six enum members accepted.
+  for (const trigger of ESCALATION_TRIGGERS) {
+    const att = trigger === 'policy_rule'
+      ? { escalation_trigger: trigger, policy_basis: 'ep:policy:x/rule:y' }
+      : { escalation_trigger: trigger };
+    assert.deepEqual(validateInitiatorAttestation(att), att);
+  }
+  // Missing/bad enum.
+  assert.throws(() => validateInitiatorAttestation({ escalation_trigger: 'because' }), /escalation_trigger/);
+  assert.throws(() => validateInitiatorAttestation({}), /escalation_trigger/);
+  // Unknown member rejected.
+  assert.throws(() => validateInitiatorAttestation({ escalation_trigger: 'magnitude', confidence: 0.9 }), /unknown member/);
+  // Over-cap statement rejected.
+  assert.throws(
+    () => validateInitiatorAttestation({ escalation_trigger: 'magnitude', statement: 'x'.repeat(ATTESTATION_STATEMENT_MAX + 1) }),
+    /character cap/,
+  );
+  // A statement exactly at the cap is allowed.
+  assert.ok(validateInitiatorAttestation({ escalation_trigger: 'magnitude', statement: 'x'.repeat(ATTESTATION_STATEMENT_MAX) }));
+  // policy_rule REQUIRES policy_basis.
+  assert.throws(() => validateInitiatorAttestation({ escalation_trigger: 'policy_rule' }), /policy_basis is required/);
+});
+
+test('PIP-007 — buildContexts rejects a malformed attestation (fail closed)', () => {
+  assert.throws(() => buildContexts({
+    action, policyHash: 'sha256:aa', approvers: ['ep:approver:solo'], requiredApprovals: 1,
+    issuedAt: '2026-06-09T17:21:05Z', expiresAt: '2026-06-09T17:36:05Z',
+    initiatorAttestation: { escalation_trigger: 'magnitude', extra: 'nope' },
+  }), /unknown member/);
+});
+
+test('PIP-007 — an over-cap statement passed via issueFromKeyBundle throws (issuer fails closed)', async () => {
+  const keys = generateIssuerKeyBundle({ approverId: 'ep:approver:finance-lead' });
+  await assert.rejects(
+    () => issueFromKeyBundle({
+      keys, action,
+      initiatorAttestation: { escalation_trigger: 'magnitude', statement: 'x'.repeat(ATTESTATION_STATEMENT_MAX + 1) },
+    }),
+    /character cap/,
+  );
 });

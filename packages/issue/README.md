@@ -53,6 +53,32 @@ console.log(r.checks, r.valid ? "VERIFIED" : "NOT VERIFIED");
 
 Want it in one shot? `npx @emilia-protocol/issue demo` generates throwaway keys, issues a sample receipt for a sample irreversible action, and verifies it — printing all 7 checks.
 
+### Optional: attach an initiator escalation attestation (PIP-007)
+
+One optional extra step. The initiator can attach its own **stated reason** for asking a human — a structured `escalation_trigger`, an optional `policy_basis` rule id, and an optional ≤280-char `statement`. Because the context is canonicalized whole, the approver's signature automatically covers it: the receipt then proves the stated reason was part of what the approver signed.
+
+```bash
+# Describe why the initiator escalated (one of: irreversibility, magnitude,
+# uncertainty, novelty, authority_gap, policy_rule). policy_basis is required
+# whenever a deterministic rule fired (always for policy_rule).
+cat > attestation.json <<'JSON'
+{
+  "escalation_trigger": "irreversibility",
+  "policy_basis": "ep:policy:vendor-bank-change@v1",
+  "statement": "Vendor bank-account change is irreversible; policy requires a named human approval."
+}
+JSON
+
+# Pass it to the same issue command — the attestation is copied verbatim into
+# every context (identical across all of them for m-of-n approvals).
+npx @emilia-protocol/issue issue \
+  --keys issuer-keys.json --action action.json --out receipt.json \
+  --verification verification.json \
+  --attestation attestation.json
+```
+
+The attestation is **a claim by the initiator** — identified but never trusted. It does not relax any check or raise any trust score; `@emilia-protocol/verify`'s `verifyTrustReceipt()` surfaces it as an advisory (`result.attestation`) and flags malformed or cross-context-inconsistent attestations, but never changes signature validity. See [PIP-007](https://github.com/emiliaprotocol/emilia-protocol/blob/main/PIPs/PIP-007-initiator-attestation.md).
+
 > The receipt is an I-D §6.2 authorization receipt, so it's verified with `@emilia-protocol/verify`'s `verifyTrustReceipt(receipt, { approverKeys, logPublicKey })` — the full §6.3 algorithm. (The `npx @emilia-protocol/verify <file>` CLI is for the single-signature EP-RECEIPT-v1 wire format.) `verification.json` supplies both the approver keys and the log public key, all public.
 
 `receipt.json` is the portable evidence artifact. `verification.json` carries the public approver key entry and the log public key a verifier needs. **Keep `issuer-keys.json` secret** — it holds private keys.
@@ -106,11 +132,11 @@ In short: **issue locally to get the cryptographic crank turning — mint a rece
 
 ```
 ep-issue keygen --out issuer-keys.json [--approver-id …] [--approver-key-id …] [--log-name acme | --log-key-id ep:log:acme#1]
-ep-issue issue  --keys issuer-keys.json --action action.json --out receipt.json [--verification …] [--policy …] [--policy-hash sha256:…] [--receipt-id …] [--expires-in 3600]
+ep-issue issue  --keys issuer-keys.json --action action.json --out receipt.json [--verification …] [--policy …] [--policy-hash sha256:…] [--receipt-id …] [--expires-in 3600] [--attestation attestation.json]
 ep-issue demo
 ```
 
-`keygen` prints the log key id in the canonical `ep:log:<name>#1` form. `issue` writes a complete signed receipt including the Merkle `log_proof`.
+`keygen` prints the log key id in the canonical `ep:log:<name>#1` form. `issue` writes a complete signed receipt including the Merkle `log_proof`. `--attestation` attaches the optional PIP-007 initiator escalation attestation (see above); it is validated against PIP-007 §1 (enum, ≤280-char `statement`, only the three defined members) and copied verbatim into every context.
 
 ## Design principles
 

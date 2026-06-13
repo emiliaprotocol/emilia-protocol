@@ -98,6 +98,11 @@ function buildReceipt(mutate = {}) {
   };
   const ctx1 = { ...baseCtx, approver: 'ep:approver:jchen-controller', approver_index: 1, nonce: 'n-1', ...(mutate.ctx1 || {}) };
   const ctx2 = { ...baseCtx, approver: 'ep:approver:mrios-cfo', approver_index: 2, nonce: 'n-2', ...(mutate.ctx2 || {}) };
+  // PIP-007: an `attestation` shorthand puts the SAME object into both contexts.
+  if (mutate.attestation !== undefined && !('initiator_attestation' in (mutate.ctx1 || {})) && !('initiator_attestation' in (mutate.ctx2 || {}))) {
+    ctx1.initiator_attestation = mutate.attestation;
+    ctx2.initiator_attestation = mutate.attestation;
+  }
   const d1 = sha256hex(canonicalize(ctx1));
   const d2 = sha256hex(canonicalize(ctx2));
 
@@ -282,4 +287,74 @@ test('step 6 — committed_at outside the context window fails', () => {
 test('fails closed on a receipt with no contexts/signoffs', () => {
   const r = verifyTrustReceipt({ action: {}, action_hash: 'sha256:00' }, OPTS);
   assert.equal(r.valid, false);
+});
+
+// ── PIP-007: initiator escalation attestation — ADVISORY only ────────────────
+
+test('PIP-007 — no attestation: advisory absent; all six checks unchanged (regression)', () => {
+  const r = verifyTrustReceipt(buildReceipt(), OPTS);
+  assert.equal(r.valid, true);
+  // The frozen checks object is byte-for-byte what it was before this PIP.
+  assert.deepEqual(Object.keys(r.checks), [
+    'action_hash', 'context_commitments', 'signoff_signatures', 'sod', 'inclusion', 'checkpoint_signature', 'windows',
+  ]);
+  assert.deepEqual(r.attestation, { present: false, consistent: true, issues: [] });
+});
+
+test('PIP-007 — a well-formed attestation in every context: present + consistent, signature still valid', () => {
+  const att = { escalation_trigger: 'magnitude', policy_basis: 'ep:policy:wires-over-100k@v12/rule:dual-auth', statement: 'Wire exceeds my single-action limit.' };
+  const r = verifyTrustReceipt(buildReceipt({ attestation: att }), OPTS);
+  assert.equal(r.valid, true, JSON.stringify(r.errors));
+  assert.ok(Object.values(r.checks).every(Boolean));
+  assert.equal(r.attestation.present, true);
+  assert.equal(r.attestation.consistent, true);
+  assert.deepEqual(r.attestation.issues, []);
+});
+
+test('PIP-007 — cross-context MISMATCH is flagged (MUST), but signature validity is unaffected', () => {
+  // Different attestation per context — every individual signature stays valid.
+  const r = verifyTrustReceipt(buildReceipt({
+    ctx1: { initiator_attestation: { escalation_trigger: 'magnitude' } },
+    ctx2: { initiator_attestation: { escalation_trigger: 'irreversibility' } },
+  }), OPTS);
+  // Cryptography is unaffected: the receipt still verifies 7/7.
+  assert.equal(r.valid, true, JSON.stringify(r.errors));
+  assert.equal(r.checks.signoff_signatures, true);
+  // The advisory MUST flag the mismatch.
+  assert.equal(r.attestation.present, true);
+  assert.equal(r.attestation.consistent, false);
+  assert.match(r.attestation.issues.join(' '), /differs across contexts/);
+});
+
+test('PIP-007 — attestation present in only one context is flagged inconsistent (signature unaffected)', () => {
+  const r = verifyTrustReceipt(buildReceipt({
+    ctx1: { initiator_attestation: { escalation_trigger: 'magnitude' } },
+  }), OPTS);
+  assert.equal(r.valid, true);
+  assert.equal(r.attestation.consistent, false);
+  assert.match(r.attestation.issues.join(' '), /present in some contexts but not all/);
+});
+
+test('PIP-007 — an over-cap statement is SHOULD-flagged; the receipt still verifies cryptographically', () => {
+  const att = { escalation_trigger: 'magnitude', statement: 'x'.repeat(281) };
+  const r = verifyTrustReceipt(buildReceipt({ attestation: att }), OPTS);
+  assert.equal(r.valid, true);
+  assert.equal(r.checks.signoff_signatures, true);
+  assert.match(r.attestation.issues.join(' '), /character cap/);
+});
+
+test('PIP-007 — unknown members and policy_rule-without-basis are SHOULD-flagged; signature unaffected', () => {
+  const att = { escalation_trigger: 'policy_rule', confidence: 0.9 }; // missing policy_basis + extra member
+  const r = verifyTrustReceipt(buildReceipt({ attestation: att }), OPTS);
+  assert.equal(r.valid, true);
+  assert.equal(r.checks.signoff_signatures, true);
+  const joined = r.attestation.issues.join(' ');
+  assert.match(joined, /unknown member "confidence"/);
+  assert.match(joined, /policy_rule.*without policy_basis/);
+});
+
+test('PIP-007 — a bad escalation_trigger enum is SHOULD-flagged; signature unaffected', () => {
+  const r = verifyTrustReceipt(buildReceipt({ attestation: { escalation_trigger: 'because' } }), OPTS);
+  assert.equal(r.valid, true);
+  assert.match(r.attestation.issues.join(' '), /invalid escalation_trigger/);
 });

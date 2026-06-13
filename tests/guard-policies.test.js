@@ -12,7 +12,9 @@ import { describe, it, expect } from 'vitest';
 import {
   evaluateGuardPolicy,
   applyEnforcementMode,
+  buildInitiatorAttestation,
   hashCanonicalAction,
+  ATTESTATION_STATEMENT_MAX,
   GUARD_DECISIONS,
   GUARD_ACTION_TYPES,
   ENFORCEMENT_MODES,
@@ -346,5 +348,117 @@ describe('hashCanonicalAction', () => {
   it('handles null and undefined consistently', () => {
     expect(() => hashCanonicalAction({ a: null })).not.toThrow();
     expect(() => hashCanonicalAction({ a: undefined })).not.toThrow();
+  });
+});
+
+// ─── buildInitiatorAttestation (PIP-007) ──────────────────────────────────
+
+describe('buildInitiatorAttestation: trigger mapping (PIP-007 §1 + deployment table)', () => {
+  const POLICY = 'ep:policy:fin@v1';
+
+  it('returns undefined for a non-escalating decision (ALLOW)', () => {
+    const dec = { decision: GUARD_DECISIONS.ALLOW, signoffRequired: false, reasons: ['Policy satisfied.'] };
+    expect(buildInitiatorAttestation(dec, { actionType: GUARD_ACTION_TYPES.LARGE_PAYMENT_RELEASE, policyId: POLICY })).toBeUndefined();
+  });
+
+  it('returns undefined for a DENY decision (no context, no attestation)', () => {
+    const dec = { decision: GUARD_DECISIONS.DENY, signoffRequired: false, reasons: ['Impossible travel detected.'] };
+    expect(buildInitiatorAttestation(dec, { actionType: GUARD_ACTION_TYPES.LARGE_PAYMENT_RELEASE, policyId: POLICY })).toBeUndefined();
+  });
+
+  it('maps a money-destination field change → policy_rule + destination rule id', () => {
+    const dec = evaluateGuardPolicy({
+      organizationId: 'o', actorId: 'u', actorRole: 'ap',
+      actionType: GUARD_ACTION_TYPES.VENDOR_BANK_ACCOUNT_CHANGE,
+      targetChangedFields: ['bank_account'], riskFlags: [], authStrength: 'mfa',
+    });
+    const att = buildInitiatorAttestation(dec, {
+      actionType: GUARD_ACTION_TYPES.VENDOR_BANK_ACCOUNT_CHANGE, policyId: POLICY, targetChangedFields: ['bank_account'],
+    });
+    expect(att.escalation_trigger).toBe('policy_rule');
+    expect(att.policy_basis).toBe(`${POLICY}/rule:money-destination-change`);
+    expect(att.statement).toMatch(/Money destination change/);
+  });
+
+  it('maps a LARGE_PAYMENT_RELEASE single tier → magnitude + threshold rule id', () => {
+    const dec = evaluateGuardPolicy({
+      organizationId: 'o', actorId: 'u', actorRole: 'ap',
+      actionType: GUARD_ACTION_TYPES.LARGE_PAYMENT_RELEASE,
+      targetChangedFields: [], amount: 250_000, riskFlags: [], authStrength: 'mfa',
+    });
+    const att = buildInitiatorAttestation(dec, { actionType: GUARD_ACTION_TYPES.LARGE_PAYMENT_RELEASE, policyId: POLICY });
+    expect(att.escalation_trigger).toBe('magnitude');
+    expect(att.policy_basis).toBe(`${POLICY}/rule:payment-threshold-single`);
+  });
+
+  it('maps a LARGE_PAYMENT_RELEASE dual tier → magnitude + dual threshold rule id', () => {
+    const dec = evaluateGuardPolicy({
+      organizationId: 'o', actorId: 'u', actorRole: 'ap',
+      actionType: GUARD_ACTION_TYPES.LARGE_PAYMENT_RELEASE,
+      targetChangedFields: [], amount: 1_400_000, riskFlags: [], authStrength: 'mfa',
+    });
+    const att = buildInitiatorAttestation(dec, { actionType: GUARD_ACTION_TYPES.LARGE_PAYMENT_RELEASE, policyId: POLICY });
+    expect(att.escalation_trigger).toBe('magnitude');
+    expect(att.policy_basis).toBe(`${POLICY}/rule:payment-threshold-dual`);
+  });
+
+  it('maps an AI_AGENT_PAYMENT_ACTION gate → authority_gap + agent-action rule id', () => {
+    const dec = evaluateGuardPolicy({
+      organizationId: 'o', actorId: 'agent', actorRole: 'agent',
+      actionType: GUARD_ACTION_TYPES.AI_AGENT_PAYMENT_ACTION,
+      targetChangedFields: [], amount: 100, riskFlags: [], authStrength: 'service_account',
+    });
+    const att = buildInitiatorAttestation(dec, { actionType: GUARD_ACTION_TYPES.AI_AGENT_PAYMENT_ACTION, policyId: POLICY });
+    expect(att.escalation_trigger).toBe('authority_gap');
+    expect(att.policy_basis).toBe(`${POLICY}/rule:ai-agent-action`);
+  });
+
+  it('maps an AML structuring escalation → uncertainty + AML rule id', () => {
+    const dec = evaluateGuardPolicy({
+      organizationId: 'o', actorId: 'u', actorRole: 'ap',
+      actionType: GUARD_ACTION_TYPES.LARGE_PAYMENT_RELEASE,
+      targetChangedFields: [], amount: 2000, riskFlags: [], authStrength: 'mfa',
+      aml: { counterpartyName: 'Smurf Co', amount: 9500, recentAmounts: [9400, 9600] },
+    });
+    const att = buildInitiatorAttestation(dec, { actionType: GUARD_ACTION_TYPES.LARGE_PAYMENT_RELEASE, policyId: POLICY });
+    expect(att.escalation_trigger).toBe('uncertainty');
+    expect(att.policy_basis).toBe(`${POLICY}/rule:aml-screening`);
+  });
+
+  it('maps a caseworker_override → policy_rule + override rule id', () => {
+    const dec = evaluateGuardPolicy({
+      organizationId: 'o', actorId: 'u', actorRole: 'caseworker',
+      actionType: GUARD_ACTION_TYPES.CASEWORKER_OVERRIDE,
+      targetChangedFields: [], riskFlags: [], authStrength: 'mfa',
+    });
+    const att = buildInitiatorAttestation(dec, { actionType: GUARD_ACTION_TYPES.CASEWORKER_OVERRIDE, policyId: POLICY });
+    expect(att.escalation_trigger).toBe('policy_rule');
+    expect(att.policy_basis).toBe(`${POLICY}/rule:caseworker-override`);
+  });
+
+  it('falls back to policy_rule for any other signoff-required escalation', () => {
+    // A hand-built signoff decision that matches no actionType branch.
+    const dec = { decision: GUARD_DECISIONS.ALLOW_WITH_SIGNOFF, signoffRequired: true, reasons: ['Some rule fired.'] };
+    const att = buildInitiatorAttestation(dec, { actionType: 'some_other_type', policyId: POLICY, targetChangedFields: [] });
+    expect(att.escalation_trigger).toBe('policy_rule');
+    expect(att.policy_basis).toBe(`${POLICY}/rule:signoff-required`);
+  });
+
+  it('uses a default policy id when none is supplied', () => {
+    const dec = { decision: GUARD_DECISIONS.ALLOW_WITH_SIGNOFF, signoffRequired: true, reasons: ['x'] };
+    const att = buildInitiatorAttestation(dec, { actionType: 'x', targetChangedFields: [] });
+    expect(att.policy_basis).toBe('ep:policy:guard/rule:signoff-required');
+  });
+
+  it('caps the statement at 280 characters (PIP-007 §1)', () => {
+    const long = 'word '.repeat(100); // ~500 chars
+    const dec = { decision: GUARD_DECISIONS.ALLOW_WITH_SIGNOFF, signoffRequired: true, reasons: [long] };
+    const att = buildInitiatorAttestation(dec, { actionType: 'x', policyId: POLICY, targetChangedFields: [] });
+    expect(att.statement.length).toBeLessThanOrEqual(ATTESTATION_STATEMENT_MAX);
+    expect(att.statement.endsWith('…')).toBe(true);
+  });
+
+  it('returns undefined when the decision object is missing', () => {
+    expect(buildInitiatorAttestation(undefined, { actionType: 'x' })).toBeUndefined();
   });
 });

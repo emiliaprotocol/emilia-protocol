@@ -142,6 +142,84 @@ export function generateIssuerKeyBundle({
   };
 }
 
+// ── initiator attestation (PIP-007) ───────────────────────────────────────────
+
+/**
+ * The six escalation triggers defined by PIP-007 §1. Exactly one is REQUIRED.
+ * The first five are substantive reasons; `policy_rule` is the residual used
+ * only when no substantive category fits (see the precedence rule).
+ */
+export const ESCALATION_TRIGGERS = Object.freeze([
+  'irreversibility',
+  'magnitude',
+  'uncertainty',
+  'novelty',
+  'authority_gap',
+  'policy_rule',
+]);
+
+/** PIP-007 §1: the free-text `statement` MUST NOT exceed 280 characters. */
+export const ATTESTATION_STATEMENT_MAX = 280;
+
+// The only members a v1 attestation may carry (PIP-007 §1: "no others").
+const ATTESTATION_MEMBERS = Object.freeze(['escalation_trigger', 'policy_basis', 'statement']);
+
+/**
+ * Validate an `initiator_attestation` object against PIP-007 §1, returning a
+ * frozen copy of the validated object. Throws on any violation — the issuer
+ * fails closed, so a malformed attestation never reaches a context.
+ *
+ * Rules enforced (PIP-007 §1):
+ *   - it is a plain object with ONLY the three defined members (reject extras);
+ *   - `escalation_trigger` is REQUIRED and one of the six enum values;
+ *   - `statement`, if present, is a string at most 280 characters;
+ *   - `policy_basis`, if present, is a non-empty string;
+ *   - whenever `escalation_trigger` is `policy_rule`, `policy_basis` is REQUIRED
+ *     (the always-case of the deterministic-rule precedence rule).
+ *
+ * Note: the broader "REQUIRED whenever a deterministic rule fired" obligation is
+ * a producer responsibility — the issuer cannot see whether a rule fired beyond
+ * the `policy_rule` trigger, so it enforces only the unconditional sub-case
+ * here. The verifier SHOULD-flags the `policy_rule`-without-`policy_basis` case
+ * symmetrically (PIP-007 §2).
+ *
+ * @param {object} attestation
+ * @returns {Readonly<object>} the validated attestation
+ */
+export function validateInitiatorAttestation(attestation) {
+  if (!attestation || typeof attestation !== 'object' || Array.isArray(attestation)) {
+    throw new Error('initiatorAttestation must be an object');
+  }
+  for (const key of Object.keys(attestation)) {
+    if (!ATTESTATION_MEMBERS.includes(key)) {
+      throw new Error(`initiatorAttestation has an unknown member "${key}" (PIP-007 §1 allows only ${ATTESTATION_MEMBERS.join(', ')})`);
+    }
+  }
+  const { escalation_trigger: trigger, policy_basis: policyBasis, statement } = attestation;
+  if (!ESCALATION_TRIGGERS.includes(trigger)) {
+    throw new Error(`initiatorAttestation.escalation_trigger must be one of ${ESCALATION_TRIGGERS.join(', ')}`);
+  }
+  if (policyBasis !== undefined && (typeof policyBasis !== 'string' || policyBasis.length === 0)) {
+    throw new Error('initiatorAttestation.policy_basis must be a non-empty string when present');
+  }
+  if (trigger === 'policy_rule' && !policyBasis) {
+    throw new Error('initiatorAttestation.policy_basis is required when escalation_trigger is "policy_rule" (PIP-007 §1)');
+  }
+  if (statement !== undefined) {
+    if (typeof statement !== 'string') throw new Error('initiatorAttestation.statement must be a string');
+    if (statement.length > ATTESTATION_STATEMENT_MAX) {
+      throw new Error(`initiatorAttestation.statement exceeds the ${ATTESTATION_STATEMENT_MAX}-character cap (PIP-007 §1)`);
+    }
+  }
+  // Re-build in the canonical member order so every context carries the
+  // identical object; canonicalize() sorts keys, but we keep the source object
+  // stable too. Only defined members are copied through.
+  const validated = { escalation_trigger: trigger };
+  if (policyBasis !== undefined) validated.policy_basis = policyBasis;
+  if (statement !== undefined) validated.statement = statement;
+  return Object.freeze(validated);
+}
+
 // ── contexts (I-D §4) ─────────────────────────────────────────────────────────
 
 /**
@@ -155,14 +233,22 @@ export function generateIssuerKeyBundle({
  * @param {string} args.issuedAt - ISO-8601
  * @param {string} args.expiresAt - ISO-8601
  * @param {string} [args.prevReceiptHash] - chains to the log's latest receipt
+ * @param {object} [args.initiatorAttestation] - PIP-007 §1 attestation. When
+ *   present it is validated and copied verbatim — the IDENTICAL object — into
+ *   every context, so its canonical form is identical across all of them.
  * @returns {object[]} contexts
  */
-export function buildContexts({ action, policyHash, approvers, requiredApprovals, issuedAt, expiresAt, prevReceiptHash }) {
+export function buildContexts({ action, policyHash, approvers, requiredApprovals, issuedAt, expiresAt, prevReceiptHash, initiatorAttestation }) {
   if (!action || typeof action !== 'object') throw new Error('buildContexts requires an action');
   if (!action.policy_id) throw new Error('action.policy_id is required');
   if (!Array.isArray(approvers) || approvers.length === 0) {
     throw new Error('buildContexts requires at least one approver');
   }
+  // PIP-007 §1: validate once, then copy the SAME object into every context so
+  // canonicalize(initiator_attestation) is identical across all of them.
+  const attestation = initiatorAttestation === undefined
+    ? undefined
+    : validateInitiatorAttestation(initiatorAttestation);
   const aHash = actionHash(action);
   return approvers.map((approver, i) => {
     const ctx = {
@@ -180,6 +266,7 @@ export function buildContexts({ action, policyHash, approvers, requiredApprovals
       expires_at: expiresAt,
     };
     if (prevReceiptHash) ctx.prev_receipt_hash = prevReceiptHash;
+    if (attestation !== undefined) ctx.initiator_attestation = attestation;
     return ctx;
   });
 }
@@ -361,6 +448,7 @@ export async function issueAuthorizationReceipt({
   expiresAt,
   expiresInSeconds = 3600,
   prevReceiptHash,
+  initiatorAttestation,
   signers,
   committedAt,
   log,
@@ -378,6 +466,7 @@ export async function issueAuthorizationReceipt({
     issuedAt,
     expiresAt: finalExpiresAt,
     prevReceiptHash,
+    initiatorAttestation,
   });
   const signoffs = await collectSignoffs(contexts, signers);
 
@@ -405,6 +494,8 @@ export async function issueAuthorizationReceipt({
  * @param {string} [args.issuedAt]
  * @param {string} [args.expiresAt]
  * @param {number} [args.expiresInSeconds=3600]
+ * @param {object} [args.initiatorAttestation] - PIP-007 §1 attestation, copied
+ *   into the (single) context.
  * @returns {Promise<{ receipt: object, verification: object }>}
  */
 export async function issueFromKeyBundle({
@@ -416,6 +507,7 @@ export async function issueFromKeyBundle({
   issuedAt = new Date().toISOString(),
   expiresAt,
   expiresInSeconds = 3600,
+  initiatorAttestation,
 }) {
   if (!keys?.approver?.private_key || !keys?.log?.private_key) {
     throw new Error('keys must be an EP-ISSUER-KEYS-v1 bundle (approver + log private keys)');
@@ -438,6 +530,7 @@ export async function issueFromKeyBundle({
     issuedAt,
     expiresAt,
     expiresInSeconds,
+    initiatorAttestation,
     signers: [signer],
     committedAt: issuedAt,
     log: {

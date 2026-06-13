@@ -60,6 +60,13 @@ export default function sitemap() {
     { path: '/blog/ai-voice-cloning-fraud-defense',               priority: 0.75, changeFrequency: 'monthly' },
   ];
 
+  // Long-form essays — agent-accountability arguments.
+  const essays = [
+    { path: '/essays',                               priority: 0.75, changeFrequency: 'monthly' },
+    { path: '/essays/the-model-is-the-crumple-zone',  priority: 0.8,  changeFrequency: 'monthly' },
+    { path: '/essays/why-authorization-is-not-proof', priority: 0.8,  changeFrequency: 'monthly' },
+  ];
+
   // Product detail pages — packaged offerings.
   const product = [
     { path: '/product/government-pack',       priority: 0.8, changeFrequency: 'monthly' },
@@ -117,7 +124,7 @@ export default function sitemap() {
     { path: '/legal/sub-processors',   priority: 0.5, changeFrequency: 'monthly' },
   ];
 
-  return [...marketing, ...comparison, ...blog, ...product, ...functional, ...corporate, ...legal].map((entry) => ({
+  return [...marketing, ...comparison, ...blog, ...essays, ...product, ...functional, ...corporate, ...legal].map((entry) => ({
     url: `${BASE}${entry.path}`,
     lastModified: NOW,
     changeFrequency: entry.changeFrequency,

@@ -397,6 +397,84 @@ function verifyEd25519OverDigest(signatureB64u, digestBytes, publicKeySpkiB64u) 
   }
 }
 
+// ── Initiator escalation attestation (PIP-007) — ADVISORY only ────────────────
+//
+// PIP-007 §2: "None of these checks affects signature validity." This report is
+// advisory: it never sets result.valid or any check in the frozen checks object.
+// verifyTrustReceipt() surfaces it as result.attestation so consumers can act on
+// it (or ignore it). A verifier that predates this PIP verifies the same receipt
+// cryptographically unchanged — the attestation is just additional context.
+
+const ATTESTATION_TRIGGERS = new Set([
+  'irreversibility', 'magnitude', 'uncertainty', 'novelty', 'authority_gap', 'policy_rule',
+]);
+const ATTESTATION_MEMBERS = new Set(['escalation_trigger', 'policy_basis', 'statement']);
+const ATTESTATION_STATEMENT_MAX = 280;
+
+/**
+ * Build the advisory attestation report (PIP-007 §2) for a receipt's contexts.
+ * Returns { present, consistent, issues } and NEVER influences signature
+ * validity:
+ *   - present:    any context carries an initiator_attestation.
+ *   - consistent: per §1, if present in any context it is present in EVERY
+ *     context AND canonicalize(attestation) is identical across all of them.
+ *     MUST be flagged on mismatch (the divide-and-misinform vector, §Security
+ *     Considerations (a)).
+ *   - issues:     SHOULD-flagged §1 malformations — unknown members, a
+ *     `statement` over 280 chars, `policy_rule` without `policy_basis`, a bad
+ *     `escalation_trigger`, and the cross-context-identity violations above.
+ *
+ * @param {object[]} contexts
+ * @returns {{ present: boolean, consistent: boolean, issues: string[] }}
+ */
+function buildAttestationReport(contexts) {
+  const withAtt = contexts.filter((c) => c && c.initiator_attestation !== undefined);
+  if (withAtt.length === 0) {
+    return { present: false, consistent: true, issues: [] };
+  }
+
+  const issues = [];
+  let consistent = true;
+
+  // Cross-context identity (PIP-007 §1): present in any → present in every, and
+  // identical canonical form across all.
+  if (withAtt.length !== contexts.length) {
+    consistent = false;
+    issues.push('initiator_attestation is present in some contexts but not all (PIP-007 §1 requires it in every context)');
+  }
+  const canonForms = new Set(withAtt.map((c) => canonicalize(c.initiator_attestation)));
+  if (canonForms.size > 1) {
+    consistent = false;
+    issues.push('initiator_attestation differs across contexts (PIP-007 §1 requires an identical canonical form in every context)');
+  }
+
+  // Per-attestation §1 malformations (SHOULD-flag).
+  for (const ctx of withAtt) {
+    const att = ctx.initiator_attestation;
+    const who = ctx.approver || 'unknown approver';
+    if (!att || typeof att !== 'object' || Array.isArray(att)) {
+      issues.push(`initiator_attestation for ${who} is not an object`);
+      continue;
+    }
+    for (const key of Object.keys(att)) {
+      if (!ATTESTATION_MEMBERS.has(key)) {
+        issues.push(`initiator_attestation for ${who} has an unknown member "${key}" (PIP-007 §1 allows only escalation_trigger, policy_basis, statement)`);
+      }
+    }
+    if (!ATTESTATION_TRIGGERS.has(att.escalation_trigger)) {
+      issues.push(`initiator_attestation for ${who} has an invalid escalation_trigger "${att.escalation_trigger}"`);
+    }
+    if (att.escalation_trigger === 'policy_rule' && !att.policy_basis) {
+      issues.push(`initiator_attestation for ${who} uses escalation_trigger "policy_rule" without policy_basis (PIP-007 §1)`);
+    }
+    if (typeof att.statement === 'string' && att.statement.length > ATTESTATION_STATEMENT_MAX) {
+      issues.push(`initiator_attestation statement for ${who} exceeds the ${ATTESTATION_STATEMENT_MAX}-character cap (PIP-007 §1)`);
+    }
+  }
+
+  return { present: true, consistent, issues };
+}
+
 /**
  * Verify a Trust Receipt (I-D Section 6.2) fully offline — the Section 6.3
  * algorithm. All six steps; fails closed on any missing input.
@@ -406,7 +484,10 @@ function verifyEd25519OverDigest(signatureB64u, digestBytes, publicKeySpkiB64u) 
  * @param {Record<string, {public_key:string, key_class?:string, valid_from?:string, valid_to?:string}>} opts.approverKeys
  *   - pinned approver key entries by approver_key_id (or a directory extract)
  * @param {string} opts.logPublicKey - trusted log Ed25519 key (base64url SPKI DER)
- * @returns {{ valid:boolean, checks:object, errors:string[] }}
+ * @returns {{ valid:boolean, checks:object, errors:string[], attestation:{ present:boolean, consistent:boolean, issues:string[] } }}
+ *   `attestation` is the PIP-007 §2 ADVISORY report. It never affects `valid` or
+ *   any member of `checks`: a receipt with a malformed or inconsistent
+ *   attestation still verifies (or fails) on its cryptographic checks alone.
  */
 export function verifyTrustReceipt(receipt, opts = {}) {
   const checks = {
@@ -419,7 +500,11 @@ export function verifyTrustReceipt(receipt, opts = {}) {
     windows: false,            // step 6
   };
   const errors = [];
-  const fail = (msg) => { errors.push(msg); return { valid: false, checks, errors }; };
+  // PIP-007 §2 advisory report — built from contexts as presented, independent
+  // of every cryptographic check. fail() carries it through early returns too.
+  const attestationContexts = Array.isArray(receipt?.contexts) ? receipt.contexts : [];
+  const attestation = buildAttestationReport(attestationContexts);
+  const fail = (msg) => { errors.push(msg); return { valid: false, checks, errors, attestation }; };
 
   if (!receipt || typeof receipt !== 'object') return fail('Missing receipt');
   const { approverKeys = {}, logPublicKey } = opts;
@@ -567,8 +652,10 @@ export function verifyTrustReceipt(receipt, opts = {}) {
   }
   checks.windows = windowsOk;
 
+  // `attestation` is advisory (PIP-007 §2): it is deliberately excluded from the
+  // `valid` computation, which remains exactly the conjunction of `checks`.
   const valid = Object.values(checks).every(Boolean);
-  return { valid, checks, errors };
+  return { valid, checks, errors, attestation };
 }
 
 // =============================================================================

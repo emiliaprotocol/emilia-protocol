@@ -112,10 +112,27 @@ export interface TrustReceiptChecks {
   windows: boolean;
 }
 
+/**
+ * PIP-007 §2 ADVISORY attestation report. Never affects `valid` or `checks`.
+ *   - present:    a context carries an initiator_attestation.
+ *   - consistent: present in every context with an identical canonical form
+ *     (PIP-007 §1; MUST be flagged on mismatch).
+ *   - issues:     SHOULD-flagged §1 malformations (unknown members, over-cap
+ *     statement, `policy_rule` without `policy_basis`, bad enum) and the
+ *     cross-context-identity violations.
+ */
+export interface AttestationReport {
+  present: boolean;
+  consistent: boolean;
+  issues: string[];
+}
+
 export interface TrustReceiptResult {
   valid: boolean;
   checks: TrustReceiptChecks;
   errors: string[];
+  /** PIP-007 §2 advisory report — independent of `valid` and `checks`. */
+  attestation: AttestationReport;
 }
 
 /**
@@ -124,6 +141,11 @@ export interface TrustReceiptResult {
  * signatures against pinned approver keys (incl. Class-A WebAuthn and key
  * validity windows), separation of duties, Merkle inclusion + checkpoint
  * signature against the trusted log key, and temporal windows.
+ *
+ * Additionally surfaces a PIP-007 §2 ADVISORY `attestation` report when the
+ * contexts carry an initiator escalation attestation. The advisory flags
+ * cross-context inconsistency and §1 malformations but NEVER changes
+ * signature validity or any member of `checks`.
  */
 export function verifyTrustReceipt(
   receipt: Record<string, unknown>,
