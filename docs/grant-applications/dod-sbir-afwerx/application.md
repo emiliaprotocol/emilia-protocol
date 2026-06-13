@@ -53,7 +53,7 @@ here is procurement-vehicle-specific.
 > human approved this *exact* action *before* execution — it does **not**
 > prove the decision was wise/lawful, nor biometric real-world identity
 > beyond the key↔approver enrollment binding; **22 Alloy** assertions;
-> **no customers**; no "EmiliaClient"; **no EIN** stated.
+> **no customers**; no deprecated SDK class name; **no EIN** stated.
 
 ---
 

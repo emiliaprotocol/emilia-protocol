@@ -261,7 +261,7 @@ Public, in-repo, citable in either proposal:
 
 - "Irreversible," not "consequential" (except where quoting the NIST RMF's own
   wording).
-- "The receipt proves," never "EMILIA proves" / no `EmiliaClient`.
+- "The receipt proves," never "EMILIA proves" / no deprecated SDK class name.
 - 26 TLA+ properties; **22 Alloy assertions** (15 core + 7 federation), 0
   counterexamples — not inflated.
 - No customers — pilots are offers in outreach only.
