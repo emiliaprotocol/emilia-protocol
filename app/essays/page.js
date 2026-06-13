@@ -4,6 +4,7 @@
 
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
+import EmailCapture from '@/components/EmailCapture';
 import { styles, color, font, radius } from '@/lib/tokens';
 import { ESSAYS } from '@/lib/essays';
 
@@ -74,6 +75,12 @@ export default function EssaysIndexPage() {
           })}
         </div>
       </section>
+
+      <EmailCapture
+        eyebrow="Follow the build"
+        heading="New essays, in your inbox."
+        sub="Long-form arguments on agent accountability — sent when a new one ships, and nothing else."
+      />
 
       <SiteFooter />
     </div>

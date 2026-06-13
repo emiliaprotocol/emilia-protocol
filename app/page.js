@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { motion } from 'motion/react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
+import EmailCapture from '@/components/EmailCapture';
 import CrashTestDemo from '@/components/CrashTestDemo';
 import ProofBlock from '@/components/ProofBlock';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
@@ -576,6 +577,12 @@ export default function HomePage() {
           <span>Formal verification: 26 theorems · 0 errors</span>
         </div>
       </section>
+
+      <EmailCapture
+        eyebrow="Stay in the loop"
+        heading="Follow the protocol as it ships."
+        sub="Updates on the standard, the verifier, and pilots — sent only when there’s something worth your time. No spam."
+      />
 
       <SiteFooter />
     </div>
