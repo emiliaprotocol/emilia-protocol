@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
+import EmailCapture from '@/components/EmailCapture';
 import { cta, color, font, radius } from '@/lib/tokens';
 
 export const metadata = {
@@ -155,6 +156,12 @@ export default function WhyEmiliaPage() {
           </div>
         </C>
       </section>
+
+      <EmailCapture
+        eyebrow="Stay close"
+        heading="Get the story as it unfolds."
+        sub="Where agent accountability is heading, and what we ship next — only when it’s worth your inbox."
+      />
 
       <SiteFooter />
     </div>

@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
+import EmailCapture from '@/components/EmailCapture';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
 
 const ENDPOINTS = [
@@ -332,6 +333,12 @@ export default function ProtocolPage() {
           </div>
         </div>
       </section>
+
+      <EmailCapture
+        eyebrow="Track the standard"
+        heading="Follow the protocol as it develops."
+        sub="New drafts, conformance releases, and reference updates — sent only when there’s something worth your time."
+      />
 
       <SiteFooter />
     </div>
