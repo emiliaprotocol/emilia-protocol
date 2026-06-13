@@ -47,11 +47,11 @@ RESIDUAL / THREAT MODEL — be precise about what each defense covers:
     FULLY compromised EMILIA server cannot make the agent proceed: it cannot
     produce a signature under a pinned key, and the agent ignores any pubkey the
     server serves.
-  - The optional `/.well-known/ep-keys.json` bootstrap (off by default; the app
-    does not serve that route yet — publishing it is the recommended follow-up)
-    resists wire-tampering and receipt substitution, but a server that controls
-    BOTH `/.well-known` and `/evidence` is OUT OF SCOPE for it — only the
-    explicitly configured pinned set defends against that.
+  - The optional `/.well-known/ep-keys.json` bootstrap (off by default; fetch it
+    with `fetch_well_known_signer_keys(base_url)` and pass the result to
+    `trusted_signer_keys=`) resists wire-tampering and receipt substitution, but
+    a server that controls BOTH `/.well-known` and `/evidence` is OUT OF SCOPE
+    for it — only the explicitly configured pinned set defends against that.
 
 KNOWN-ISSUES (tracked, not a bypass):
   - emilia_verify.canonicalize() is NOT yet RFC 8785 / JCS-strict (it sorts
@@ -240,12 +240,16 @@ _DEFAULT_REPLAY_STORE = InMemoryReplayStore()
 # key material and/or its SHA-256 fingerprint (hex). Env EP_TRUSTED_SIGNER_KEYS
 # is a comma-separated list of either form.
 #
-# NOTE: an optional `/.well-known/ep-keys.json` bootstrap is supported by
-# load_trusted_signer_keys(base_url=...), but the app does NOT serve that route
-# today (only /.well-known/{security.txt,ep-protocol.json,ep-trust.json} exist).
-# Publishing /.well-known/ep-keys.json is the recommended follow-up; until then
-# the CONFIGURED set is the required, real defense and the guard fails closed
-# without it.
+# NOTE: EMILIA serves `/.well-known/ep-keys.json` (rewritten to
+# /api/discovery/keys); it advertises the operator commit signing key under
+# `operator_signing_keys` (ep-signing-key-1, key_class C) plus any federation
+# `keys`. `fetch_well_known_signer_keys(base_url)` below bootstraps the pinned
+# set from it. That bootstrap is a CONVENIENCE, not a full trust root: it is
+# fetched over https from the SAME operator, so a server controlling BOTH
+# `/.well-known` and `/evidence` could pair a forged key with a forged receipt.
+# For defense against a fully-compromised server, supply EP_TRUSTED_SIGNER_KEYS
+# from a channel the operator does not control. With no pinned set at all the
+# guard fails closed (untrusted_signer).
 def _normalize_b64url(s: str) -> str:
     """Strip '=' padding and whitespace so equal keys compare equal regardless
     of how they were padded/encoded."""
@@ -303,6 +307,47 @@ def load_trusted_signer_keys(
         if len(it) == 64 and all(c in "0123456789abcdefABCDEF" for c in it):
             normalized.add(it.lower())
     return frozenset(normalized)
+
+
+def fetch_well_known_signer_keys(base_url: str, timeout: int = 10) -> "list[str]":
+    """Bootstrap a pinned signer set from `{base_url}/.well-known/ep-keys.json`.
+
+    Returns the base64url SPKI public keys the operator advertises — the operator
+    commit signing key(s) under `operator_signing_keys` (ep-signing-key-1) plus
+    any federation `keys`. Seed the pinned set with it:
+
+        keys = fetch_well_known_signer_keys("https://www.emiliaprotocol.ai")
+        guard = EmiliaGuard(trusted_signer_keys=keys)
+
+    CONVENIENCE, NOT a full trust root: it is fetched over https from the SAME
+    operator, so a server that controls BOTH `/.well-known` and `/evidence` can
+    pair a forged key with a forged receipt. For defense against a fully
+    compromised server, provide EP_TRUSTED_SIGNER_KEYS from a channel the
+    operator does not control (config management, a pinned SPKI fingerprint).
+    https-only; raises EmiliaAPIError on a transport failure.
+    """
+    url = f"{base_url.rstrip('/')}/.well-known/ep-keys.json"
+    # SECURITY: https only — never fetch a trust document over cleartext.
+    if not url.lower().startswith("https://"):
+        raise ValueError(f"refusing non-https URL: {url!r}")
+    req = urllib.request.Request(url, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310  # nosemgrep
+            doc = json.loads(resp.read() or b"{}")
+    except urllib.error.URLError as e:
+        raise EmiliaAPIError(f"cannot fetch {url}: {e.reason}") from e
+    out: list[str] = []
+    # Operator commit signing key(s) — the ones that sign /evidence receipts.
+    for _kid, entry in (doc.get("operator_signing_keys") or {}).items():
+        pk = (entry or {}).get("public_key")
+        if isinstance(pk, str) and pk:
+            out.append(pk)
+    # Federation entity keys (operators that issue receipts on this surface).
+    for _entity_id, entry in (doc.get("keys") or {}).items():
+        pk = (entry or {}).get("public_key")
+        if isinstance(pk, str) and pk:
+            out.append(pk)
+    return out
 
 
 # ── Minimal HTTP (stdlib). Replace with requests/httpx in your backend. ──────
