@@ -12,9 +12,11 @@ project proposals through a GitHub issue form, reviewed by the Technical Committ
 
 ## Strategy (read before clicking submit)
 
-AAIF's lowest entry rung is **Growth**, which requires a **TC sponsor**, *production
-use at wide scale*, and diverse maintainership. EP does not clear all of that today,
-and a declined proposal carries a **3-month reapplication lockout** on a public board.
+AAIF's lowest entry rung is **Growth**, which requires a **TC sponsor**, a growth
+plan toward diverse maintainership, and evidence of successful production use at
+wide scale. EP does not clear all of that today, and a premature proposal would
+create a public review trail before the strongest sponsor and pilot evidence is
+ready.
 
 Recommended sequence:
 1. **Join the working group now** (form above). Engage for 2-4 weeks; EP's receipts
@@ -29,10 +31,9 @@ possible posture for an early submission — but the sponsor-first path converts
 
 ## Pre-submission checklist
 
-- [ ] `@emilia-protocol/verify` **1.4.0** and `@emilia-protocol/issue` **0.2.0**
-      published to npm (the proposal cites 0.2.0 + PIP-007 support — must be live first)
-- [ ] Datatracker -01 **confirmed** (click the link in team@emiliaprotocol.ai;
-      submission #164385 is awaiting that click)
+- [x] `@emilia-protocol/verify` **1.4.0** and `@emilia-protocol/issue` **0.2.0**
+      published to npm (verified 2026-06-13)
+- [x] Datatracker -01 **confirmed** (verified 2026-06-13)
 - [ ] PDF regenerated: `pandoc docs/AAIF-PROPOSAL-v3.md -o aaif-proposal-v3.pdf`
 
 ## Issue-form body (paste-ready)

@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EMILIA Protocol — DIU Project Spectrum Strike — Pitch Deck</title>
+<style>
+  /* EP brand palette: ink #0C0A09, gold #B08D35 (hover #8A6D28), stone #F5F5F4 / #FAFAF9,
+     muted #78716C / #57534E, borders #E7E5E4 / #D6D3D1, red #DC2626. Dark variant for a
+     DoD-appropriate deck. Self-contained: no external assets, no CDNs, no network fetches. */
+  :root {
+    --ink: #0C0A09;
+    --panel: #16130F;
+    --panel-2: #1E1A14;
+    --line: #2A251D;
+    --gold: #B08D35;
+    --gold-soft: #C9A961;
+    --paper: #FAFAF9;
+    --muted: #B7AE9E;
+    --muted-2: #8E8676;
+    --red: #E0584F;
+    --green: #6FB07A;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #0a0907;
+    color: var(--paper);
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: "SF Mono", ui-monospace, "Menlo", "Consolas", monospace; }
+  .sans { font-family: -apple-system, "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+
+  /* 16:9 slide framing */
+  section.slide {
+    position: relative;
+    width: 100%;
+    max-width: 1280px;
+    margin: 24px auto;
+    aspect-ratio: 16 / 9;
+    background: linear-gradient(160deg, var(--panel) 0%, var(--ink) 100%);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    padding: 56px 64px 52px;
+    display: flex;
+    flex-direction: column;
+  }
+  .kicker {
+    font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin: 0 0 10px;
+  }
+  h1 { font-size: 40px; line-height: 1.08; margin: 0 0 8px; font-weight: 600; }
+  h2 { font-size: 30px; line-height: 1.12; margin: 0 0 18px; font-weight: 600; }
+  .gold-rule { height: 3px; width: 96px; background: var(--gold); border: 0; margin: 14px 0 22px; border-radius: 2px; }
+  ul { margin: 0; padding: 0 0 0 0; list-style: none; }
+  li { position: relative; padding-left: 22px; margin: 0 0 12px; font-size: 19px; line-height: 1.4; color: #ECE6DA; }
+  li::before { content: ""; position: absolute; left: 2px; top: 11px; width: 7px; height: 7px; background: var(--gold); border-radius: 50%; }
+  li b, li strong { color: #FFF7E8; font-weight: 600; }
+  .muted { color: var(--muted); }
+  .small { font-size: 15px; }
+  .visual {
+    font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+    font-size: 12.5px; color: var(--muted-2); font-style: italic;
+    border-top: 1px solid var(--line); padding-top: 10px; margin-top: auto;
+  }
+  .visual b { color: var(--muted); font-style: normal; }
+  .footer-meta {
+    position: absolute; bottom: 16px; right: 24px;
+    font-family: -apple-system, Arial, sans-serif; font-size: 11px; color: var(--muted-2);
+    letter-spacing: 0.04em;
+  }
+  .pagenum { position: absolute; bottom: 16px; left: 24px; font-family: -apple-system, Arial, sans-serif; font-size: 11px; color: var(--muted-2); }
+
+  /* Title slide */
+  .title-slide { justify-content: center; }
+  .title-slide .wordmark { font-size: 15px; letter-spacing: 0.32em; text-transform: uppercase; color: var(--gold); font-family: -apple-system, Arial, sans-serif; margin-bottom: 18px; }
+  .title-slide h1 { font-size: 46px; max-width: 980px; }
+  .pipeline { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 15px; color: var(--muted); margin-top: 18px; }
+  .pipeline .g { color: var(--gold-soft); }
+
+  /* Quad cards */
+  .quad { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 4px; }
+  .card { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; }
+  .card.hot { border-color: var(--gold); }
+  .card .ct { font-family: -apple-system, Arial, sans-serif; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+  .card .cb { font-size: 17px; color: #ECE6DA; line-height: 1.3; }
+
+  /* Gap two-column */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+  .boundary { border: 1px dashed var(--muted-2); border-radius: 8px; padding: 16px 18px; background: rgba(255,255,255,0.015); }
+  .boundary .lbl { font-family: -apple-system, Arial, sans-serif; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-2); margin-bottom: 8px; }
+  .receipt-box { border: 1px solid var(--gold); border-radius: 8px; padding: 16px 18px; background: rgba(176,141,53,0.06); }
+  .receipt-box .lbl { color: var(--gold); }
+
+  /* Pipeline of 4 nodes */
+  .nodes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 6px 0 4px; }
+  .node { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 12px 12px 14px; }
+  .node .n { font-family: -apple-system, Arial, sans-serif; font-size: 11px; color: var(--gold); letter-spacing: 0.08em; }
+  .node .h { font-size: 15px; font-weight: 600; color: #FFF7E8; margin: 4px 0 5px; }
+  .node .d { font-size: 13px; color: var(--muted); line-height: 1.32; }
+  .node.last { border-color: var(--gold); }
+  .arrow { color: var(--gold); }
+
+  /* Table */
+  table.map { width: 100%; border-collapse: collapse; font-size: 15.5px; }
+  table.map th, table.map td { text-align: left; padding: 9px 12px; vertical-align: top; border-bottom: 1px solid var(--line); }
+  table.map th { font-family: -apple-system, Arial, sans-serif; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gold); border-bottom: 1px solid var(--gold); }
+  table.map td.ask { color: var(--muted); width: 30%; }
+  table.map td.prim { color: #FFF7E8; font-weight: 600; width: 32%; }
+  table.map td.proves { color: #D9D2C4; }
+
+  /* Pillars */
+  .pillars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 8px 0; }
+  .pillar { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
+  .pillar h3 { margin: 0 0 8px; color: var(--gold); font-family: -apple-system, Arial, sans-serif; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .pillar p { margin: 0; font-size: 15px; color: var(--muted); line-height: 1.4; }
+
+  /* Stat strip */
+  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 14px 0 18px; }
+  .stat { text-align: center; background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 16px 8px; }
+  .stat .v { font-size: 30px; font-weight: 700; color: var(--gold); font-family: -apple-system, Arial, sans-serif; }
+  .stat .l { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.25; }
+
+  /* Terminal split */
+  .term-split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 6px 0; }
+  .term { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 13px; background: #0b0a08; border: 1px solid var(--line); border-radius: 8px; padding: 14px; line-height: 1.5; }
+  .term.ok { border-color: rgba(111,176,122,0.5); }
+  .term.bad { border-color: rgba(224,88,79,0.5); }
+  .term .ok-l { color: var(--green); }
+  .term .bad-l { color: var(--red); }
+  .term .dim { color: var(--muted-2); }
+  .term .pass { color: var(--green); }
+  .term .fail { color: var(--red); }
+
+  /* Scope bands */
+  .bands .band { border-radius: 8px; padding: 14px 18px; margin-bottom: 10px; }
+  .bands .top { background: rgba(176,141,53,0.1); border: 1px solid var(--gold); }
+  .bands .bot { background: var(--panel-2); border: 1px solid var(--line); }
+  .bands .bt { font-family: -apple-system, Arial, sans-serif; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); margin-bottom: 5px; }
+  .bands .bot .bt { color: var(--muted-2); }
+  .bands .bb { font-size: 15px; color: #ECE6DA; line-height: 1.35; }
+  .mcp-arrow { text-align: center; color: var(--gold); font-family: -apple-system, Arial, sans-serif; font-size: 12px; letter-spacing: 0.1em; margin: 2px 0 8px; }
+
+  /* Timeline */
+  .timeline { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 10px 0 16px; }
+  .stop { background: var(--panel-2); border: 1px solid var(--line); border-radius: 8px; padding: 16px; border-top: 3px solid var(--gold); }
+  .stop .when { font-family: -apple-system, Arial, sans-serif; color: var(--gold); font-size: 15px; font-weight: 700; }
+  .stop .what { font-size: 14px; color: var(--muted); margin-top: 6px; line-height: 1.35; }
+  .contact { font-family: -apple-system, Arial, sans-serif; font-size: 15px; color: #ECE6DA; margin-top: 4px; }
+  .contact .g { color: var(--gold); }
+
+  .lead { font-size: 19px; color: #ECE6DA; line-height: 1.4; margin: 0 0 14px; max-width: 980px; }
+  .note-line { font-size: 14px; color: var(--muted-2); font-style: italic; margin-top: 10px; }
+
+  /* Print: one slide per page, 16:9 landscape, no shadows/rounding */
+  @media print {
+    @page { size: 1280px 720px; margin: 0; }
+    html, body { background: #ffffff; }
+    section.slide {
+      width: 1280px; height: 720px; max-width: none; aspect-ratio: auto;
+      margin: 0; border-radius: 0; border: none;
+      page-break-after: always; break-after: page;
+    }
+    section.slide:last-child { page-break-after: auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SLIDE 1 — TITLE -->
+<section class="slide title-slide">
+  <div class="wordmark">EMILIA Protocol</div>
+  <h1>Authorization &amp; Audit Module for Autonomous Spectrum Coordination</h1>
+  <hr class="gold-rule">
+  <p class="lead">A named human's signed "yes" before an AI agent does anything irreversible — with a receipt anyone verifies offline.</p>
+  <ul>
+    <li>For Spectrum Strike: the <b>governance &amp; audit layer</b> under your triage agent.</li>
+    <li>Open <b>Apache-2.0</b> standard + reference implementation. IETF Internet-Draft live on datatracker.</li>
+  </ul>
+  <div class="pipeline">agent <span class="g">→</span> escalation decision <span class="g">→</span> named-human signoff <span class="g">→</span> authorization receipt <span class="g">→</span> offline-verifiable</div>
+  <div class="visual"><b>Visual:</b> EP wordmark on dark field; pipeline line beneath; gold rule under the title.</div>
+  <div class="footer-meta sans">EMILIA Protocol, Inc. · Iman Schrock, Founder/PI · team@emiliaprotocol.ai</div>
+  <div class="pagenum">1 / 10</div>
+</section>
+
+<!-- SLIDE 2 — THE DIU PROBLEM -->
+<section class="slide">
+  <div class="kicker">The problem, in DIU's words</div>
+  <h2>What Spectrum Strike Is Asking For</h2>
+  <div class="quad">
+    <div class="card">
+      <div class="ct">Speed</div>
+      <div class="cb">Collapse spectrum coordination &amp; authorization from <b>90+ days → under 5 days</b> with AI agents.</div>
+    </div>
+    <div class="card hot">
+      <div class="ct">Human-on-the-loop</div>
+      <div class="cb">Triage <b>without persistent human-in-the-loop bottlenecking</b>, while keeping <b>human-on-the-loop</b> for flagged high-risk packets.</div>
+    </div>
+    <div class="card hot">
+      <div class="ct">Auditable governance</div>
+      <div class="cb"><b>Auditable governance as policies change</b> — the rules will move; the audit must hold.</div>
+    </div>
+    <div class="card">
+      <div class="ct">Safety bar</div>
+      <div class="cb">A hard <b>0% false-negative</b> bar on safety-critical packets.</div>
+    </div>
+  </div>
+  <div class="visual"><b>Visual:</b> four-quadrant card; the two gold-bordered cards are EP's lane.</div>
+  <div class="footer-meta sans">Requirements as captured in application.md §1/§4a — re-confirm on the live portal.</div>
+  <div class="pagenum">2 / 10</div>
+</section>
+
+<!-- SLIDE 3 — THE GAP -->
+<section class="slide">
+  <div class="kicker">The gap today</div>
+  <h2>Control &amp; Accountability Are a Runtime Promise, Not a Verifiable Invariant</h2>
+  <div class="two-col">
+    <div class="boundary">
+      <div class="lbl">Today — inside the operator's trust boundary</div>
+      <ul>
+        <li class="small">"A human approved this" lives in a log the operator controls — <b>testimony, not evidence</b>.</li>
+        <li class="small">Logs can be edited, reconstructed, or lost; you trust the system that produced them.</li>
+        <li class="small">When policy changes mid-mission, nothing ties an old approval to the exact policy in force then.</li>
+      </ul>
+    </div>
+    <div class="receipt-box">
+      <div class="lbl">What a 0%-false-negative bar actually needs</div>
+      <ul>
+        <li class="small">An artifact that proves a <b>named</b> human approved that <b>exact</b> emission.</li>
+        <li class="small">Bound to the <b>exact policy</b> in force, <b>before</b> it executed.</li>
+        <li class="small">Checkable by a third party <b>without trusting the operator's runtime</b>.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="visual"><b>Visual:</b> left, an editable "audit log" inside a dashed operator trust boundary; right (gold), a self-contained receipt that verifies outside it.</div>
+  <div class="pagenum">3 / 10</div>
+</section>
+
+<!-- SLIDE 4 — EP IN ONE DIAGRAM -->
+<section class="slide">
+  <div class="kicker">EP in one diagram</div>
+  <h2>From Agent Judgment to Offline-Verifiable Proof</h2>
+  <div class="nodes">
+    <div class="node">
+      <div class="n">1 · PIP-007</div>
+      <div class="h">Escalation decision</div>
+      <div class="d">The agent's own signed record — "I judged this required human authorization." A claim by a party EP <b>identifies but never trusts</b>.</div>
+    </div>
+    <div class="node">
+      <div class="n">2 · SIGNOFF</div>
+      <div class="h">Named-human signoff</div>
+      <div class="d">WebAuthn device-bound approval over the exact action hash + pinned policy. The operator never holds the key.</div>
+    </div>
+    <div class="node">
+      <div class="n">3 · RECEIPT</div>
+      <div class="h">Authorization receipt</div>
+      <div class="d">Signoff + hash-pinned policy + append-only Merkle-anchored log, composed into one self-verifying document.</div>
+    </div>
+    <div class="node last">
+      <div class="n">4 · VERIFY</div>
+      <div class="h">Offline verification</div>
+      <div class="d">Any third party validates with only the approver's public key — <b>no network</b>, no trust in the operator.</div>
+    </div>
+  </div>
+  <p class="lead small" style="margin-top:14px">PIP-007 is the agent's <b>claim</b> that it escalated — bound into what the human signs, never a trust input, and never model introspection.</p>
+  <div class="visual"><b>Visual:</b> left-to-right pipeline of four nodes with gold connectors; "no network required" tag under node 4.</div>
+  <div class="pagenum">4 / 10</div>
+</section>
+
+<!-- SLIDE 5 — REQUIREMENT → PRIMITIVE MAP -->
+<section class="slide">
+  <div class="kicker">Requirement → primitive map</div>
+  <h2>Each Ask, Mapped to the Exact EP Primitive</h2>
+  <table class="map">
+    <thead>
+      <tr><th>DIU requirement (re-confirm on portal)</th><th>EP primitive</th><th>What the receipt proves</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="ask">Human-on-the-loop for flagged high-risk packets</td>
+        <td class="prim">WebAuthn device-bound named-human signoff over the exact action hash</td>
+        <td class="proves">A <i>named</i> human approved this <i>exact</i> spectrum release <i>before</i> it executed</td>
+      </tr>
+      <tr>
+        <td class="ask">Auditable governance <i>as policies change</i></td>
+        <td class="prim">Hash-pinned policy binding in every signoff</td>
+        <td class="proves">Each approval is bound to the exact policy version — tamper-evident, replay-proof</td>
+      </tr>
+      <tr>
+        <td class="ask">Audit teeth for the 0% false-negative bar</td>
+        <td class="prim">Offline-verifiable receipt + append-only Merkle-anchored log</td>
+        <td class="proves">Any third party re-checks every release with only a public key, no operator trust</td>
+      </tr>
+      <tr>
+        <td class="ask">Why the agent asked for a human at all</td>
+        <td class="prim">PIP-007 escalation attestation (signed, never trusted)</td>
+        <td class="proves">The agent's stated escalation reason is bound into what the human signed</td>
+      </tr>
+      <tr>
+        <td class="ask">Disconnected / classified operation</td>
+        <td class="prim">Air-gap installer (deploy/airgap/)</td>
+        <td class="proves">Issue and verify with no network, forever</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="visual"><b>Visual:</b> the map itself — DIU asks in muted ink, EP primitives in gold.</div>
+  <div class="pagenum">5 / 10</div>
+</section>
+
+<!-- SLIDE 6 — WHY DECISIVE FOR DOD -->
+<section class="slide">
+  <div class="kicker">Why decisive for DoD</div>
+  <h2>Built for Disconnected, Contested, Accountable Operations</h2>
+  <div class="pillars">
+    <div class="pillar">
+      <h3>Disconnected</h3>
+      <p>Receipts verify with <b>no network, forever</b>. The air-gap installer ships today (<span class="mono">deploy/airgap/</span>). No trust in, and no connection to, the operator's runtime — only the approver's public key.</p>
+    </div>
+    <div class="pillar">
+      <h3>Tamper-evident</h3>
+      <p>Hash-pinned policy means an old approval <b>can't be silently re-attributed</b> to a new rule. "Governance as policies change" stays honest — you can always show which rule authorized which release.</p>
+    </div>
+    <div class="pillar">
+      <h3>Attributable</h3>
+      <p>Every release <b>names the human</b> and carries the agent's stated escalation reason — discoverable in an after-action review, not buried in an operator-controlled log.</p>
+    </div>
+  </div>
+  <ul style="margin-top:14px">
+    <li>This is what separates EP from a SaaS audit dashboard: offline by construction, in exactly the environments where connectivity and operator trust can't be assumed.</li>
+  </ul>
+  <div class="visual"><b>Visual:</b> three pillars — Disconnected · Tamper-evident · Attributable — over a faint "no network" globe.</div>
+  <div class="pagenum">6 / 10</div>
+</section>
+
+<!-- SLIDE 7 — PROOF IT'S REAL -->
+<section class="slide">
+  <div class="kicker">Proof it's real</div>
+  <h2>Formally Assured, Independently Verifiable, Installable Today</h2>
+  <div class="stats">
+    <div class="stat"><div class="v">26</div><div class="l">TLA+ safety properties machine-checked</div></div>
+    <div class="stat"><div class="v">413,137</div><div class="l">states explored</div></div>
+    <div class="stat"><div class="v">22</div><div class="l">Alloy assertions, 0 counterexamples</div></div>
+    <div class="stat"><div class="v">85</div><div class="l">red-team cases cataloged</div></div>
+    <div class="stat"><div class="v">-01</div><div class="l">IETF I-D revision, live on datatracker</div></div>
+  </div>
+  <ul>
+    <li>Independent <b>JS, Python, Go</b> verifiers + conformance suite — proven to agree on the adversarial vectors, every push.</li>
+    <li><span class="mono">npm i @emilia-protocol/verify</span> and check a real receipt in under a minute, offline.</li>
+    <li>Scope honestly: the formal models prove the <b>authorization state machine</b>, not an AI model's behavior or a host's integrity.</li>
+  </ul>
+  <div class="visual"><b>Visual:</b> five-stat strip in gold (26 / 413,137 / 22 / 85 / -01), npm + datatracker line beneath.</div>
+  <div class="pagenum">7 / 10</div>
+</section>
+
+<!-- SLIDE 8 — LIVE DEMO -->
+<section class="slide">
+  <div class="kicker">Live 60-second demo</div>
+  <h2>Issue a Receipt. Mutate One Field. Watch It Fail.</h2>
+  <div class="term-split">
+    <div class="term ok">
+      <div class="dim"># issue a mock spectrum release (2401 MHz, AOR-7)</div>
+      <div class="dim">$ ep-issue issue --action action.json …</div>
+      <div class="dim">$ verify receipt.json --verification …</div>
+      <br>
+      <div class="ok-l">✅ VERIFIED — authorization receipt</div>
+      <div class="pass">  ✓ action_hash</div>
+      <div class="pass">  ✓ context_commitments</div>
+      <div class="pass">  ✓ signoff_signatures &nbsp; ✓ sod</div>
+      <div class="pass">  ✓ inclusion &nbsp; ✓ checkpoint_signature</div>
+      <div class="pass">  ✓ windows</div>
+      <div class="dim">  attestation: present, consistent</div>
+    </div>
+    <div class="term bad">
+      <div class="dim"># mutate ONE field: 2401 → 2455 MHz</div>
+      <div class="dim"># (adversary retargets the emission)</div>
+      <div class="dim">$ verify receipt-tampered.json …</div>
+      <br>
+      <div class="bad-l">⛔ NOT VERIFIED — authorization receipt</div>
+      <div class="fail">  ✕ action_hash</div>
+      <div class="fail">  ✕ context_commitments</div>
+      <div class="pass">  ✓ signoff_signatures &nbsp; ✓ sod</div>
+      <div class="fail">  ✕ inclusion</div>
+      <div class="pass">  ✓ checkpoint_signature &nbsp; ✓ windows</div>
+      <div class="dim">  exit code 0 → 1</div>
+    </div>
+  </div>
+  <ul style="margin-top:10px">
+    <li>The signature was over the <b>exact</b> action. Change the target, and the proof collapses — offline, with only a public key.</li>
+  </ul>
+  <div class="visual"><b>Visual:</b> split terminal, green "VERIFIED 7/7" vs. red "NOT VERIFIED ✕ action_hash". Full script in DEMO-SCRIPT.md; browser fallback at emiliaprotocol.ai/verify.</div>
+  <div class="pagenum">8 / 10</div>
+</section>
+
+<!-- SLIDE 9 — HONEST SCOPE & TEAMING -->
+<section class="slide">
+  <div class="kicker">Honest scope &amp; teaming</div>
+  <h2>What EP Is — and What It Needs From a Prime</h2>
+  <div class="bands">
+    <div class="band top">
+      <div class="bt">EP — authorization &amp; audit layer</div>
+      <div class="bb">Signed escalation (PIP-007) · named-human signoff · hash-pinned policy · offline-verifiable receipts.</div>
+    </div>
+    <div class="mcp-arrow">▲ MCP: triage agent calls EP before any irreversible release ▲</div>
+    <div class="band bot">
+      <div class="bt">Prime — spectrum triage / RF modeling / deconfliction</div>
+      <div class="bb">EP is <b>not</b> the spectrum-parsing/triage engine. Best fit: teaming/sub as the "governance &amp; audit module" under a spectrum-AI prime — or a standalone audit-module bid.</div>
+    </div>
+  </div>
+  <ul style="margin-top:6px">
+    <li class="small"><b>What EP needs from a prime:</b> the agent's escalation hook, the policy definitions to hash-pin, and named-approver enrollment.</li>
+    <li class="small"><b>A receipt does NOT prove:</b> the decision was wise/lawful; real-world biometric identity beyond key↔approver enrollment; or rendering faithfulness (crypto proves a key signed a hash — narrowed by structured rendering + signed display attestation, not eliminated).</li>
+  </ul>
+  <div class="visual"><b>Visual:</b> two stacked bands — gold "EP: authorization &amp; audit" over muted "Prime: spectrum triage / RF / deconfliction" — MCP arrow between.</div>
+  <div class="pagenum">9 / 10</div>
+</section>
+
+<!-- SLIDE 10 — ASK & ROADMAP -->
+<section class="slide">
+  <div class="kicker">Ask &amp; roadmap</div>
+  <h2>The Ask, the Timeline, and How to Reach Us</h2>
+  <p class="lead">Advance EP as the governance/audit module for Spectrum Strike — as a sub to a spectrum-AI prime, or as a standalone audit-module evaluation.</p>
+  <div class="timeline">
+    <div class="stop">
+      <div class="when">Pitch · 2026-06-15</div>
+      <div class="what">This deck + the 60-second offline issue→mutate→fail demo.</div>
+    </div>
+    <div class="stop">
+      <div class="when">MVP · 2026-07-10</div>
+      <div class="what">EP wired to a reference triage agent via MCP; receipts for every simulated high-risk release; offline audit bundle.</div>
+    </div>
+    <div class="stop">
+      <div class="when">Live demo · 2026-08-25</div>
+      <div class="what">End-to-end: agent escalates → named human signs off → receipts verify offline → a mutated release fails.</div>
+    </div>
+  </div>
+  <ul>
+    <li class="small"><b>What we bring today:</b> TRL ~6 receipt/verify core · IETF I-D -01 · 3-language verifiers · air-gap installer. Pre-revenue, no customers, solo founder — stated plainly.</li>
+  </ul>
+  <div class="contact"><span class="g">Contact:</span> Iman Schrock · team@emiliaprotocol.ai · emiliaprotocol.ai · github.com/emiliaprotocol/emilia-protocol</div>
+  <div class="visual"><b>Visual:</b> three-stop timeline (06-15 → 07-10 → 08-25) in gold with the contact line beneath.</div>
+  <div class="pagenum">10 / 10</div>
+</section>
+
+</body>
+</html>
