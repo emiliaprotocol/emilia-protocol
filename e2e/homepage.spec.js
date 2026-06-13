@@ -38,8 +38,8 @@ test.describe('Homepage', () => {
 
     // Homepage now lives in the buyer-facing GTM frame (commit 75c3414) — the
     // technical "Self-verifying" copy moved to /protocol. The homepage's
-    // receipt story is in HOW_IT_WORKS step 03 ("Generate Trust Receipt").
-    const trustReceipt = page.locator('text=Generate Trust Receipt');
+    // receipt story is in HOW_IT_WORKS step 03 ("Generate Authorization Receipt").
+    const trustReceipt = page.locator('text=Generate Authorization Receipt');
     await expect(trustReceipt.first()).toBeVisible({ timeout: 10_000 });
   });
 
