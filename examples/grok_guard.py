@@ -50,11 +50,20 @@ Without it, the guard still works but marks the receipt
 "unverified — install emilia-verify to verify offline" and refuses to claim a
 cryptographic guarantee it did not check.
 
-Stdlib only for HTTP (no `requests`/`httpx` dependency). Swap the `_http`
-helper for your client of choice; the request/response shapes are identical.
+Stdlib only for HTTP (no `requests`/`httpx` dependency) on the sync path. Swap
+the `_http` helper for your client of choice; the request/response shapes are
+identical.
+
+ASYNC: `AsyncEmiliaGuard` mirrors `EmiliaGuard` exactly — same offline
+verification, same https-only enforcement, same Idempotency-Key, same
+approver-in-body-not-URL — over `httpx`. It is the only part of this file that
+needs a third-party dependency; `import httpx` is guarded so the sync path keeps
+importing with stdlib only, and `AsyncEmiliaGuard` raises a clear ImportError if
+constructed without httpx installed.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -85,6 +94,19 @@ try:
 except Exception:  # noqa: BLE001 - any import failure means "verify offline" is unavailable
     _verify_receipt = None  # type: ignore
     _HAVE_VERIFIER = False
+
+# ── Optional async HTTP client ───────────────────────────────────────────────
+# httpx is the ONLY third-party dependency in this file, and only AsyncEmiliaGuard
+# uses it. Guard the import so the whole module — and the stdlib-only sync
+# EmiliaGuard that claude_guard.py depends on — still imports when httpx is
+# absent. AsyncEmiliaGuard raises a clear ImportError at construction in that case.
+try:
+    import httpx  # type: ignore
+
+    _HAVE_HTTPX = True
+except Exception:  # noqa: BLE001 - httpx missing means only the async path is unavailable
+    httpx = None  # type: ignore
+    _HAVE_HTTPX = False
 
 
 class EmiliaAPIError(Exception):
@@ -427,6 +449,285 @@ def _verify_evidence_offline(evidence: dict) -> VerifiedReceipt:
     )
 
 
+# ── Async mirror (httpx) ─────────────────────────────────────────────────────
+# A faithful async twin of EmiliaGuard for async backends (FastAPI, aiohttp,
+# async agent loops). EVERY security property of the sync class is preserved:
+#   - https-only (the token is never sent in cleartext; non-https is rejected)
+#   - Idempotency-Key on mint (a retried mint returns the same receipt)
+#   - approver bound in the POST body, never in the approval URL (no PII in URLs)
+#   - offline Ed25519 verification on approval — `verified=True` ONLY if the
+#     signature checks out locally; the server's "approved" string is never
+#     trusted on its own, and it degrades exactly as the sync path does
+#     (unsigned_evidence / verifier_unavailable / signature_invalid).
+# The offline check reuses the SAME pure function (_verify_evidence_offline), so
+# the two paths cannot drift apart.
+
+
+async def _ahttp(
+    client: "httpx.AsyncClient",
+    method: str,
+    url: str,
+    api_key: str,
+    body: Optional[dict] = None,
+    timeout: int = 15,
+    idempotency_key: Optional[str] = None,
+) -> tuple[int, dict]:
+    """Async sibling of `_http`. Same contract: HTTP status codes come back as
+    data (a 4xx policy `deny` is a normal outcome, not an exception); only a
+    genuine transport failure raises EmiliaAPIError."""
+    # SECURITY: pin to https, exactly like the sync path. A plain http base_url
+    # would leak the Bearer token in cleartext (CWE-319); anything but https is
+    # refused before a byte goes on the wire.
+    if not url.lower().startswith("https://"):
+        raise ValueError(f"refusing non-https URL (token would be exposed): {url!r}")
+    headers = {"Authorization": f"Bearer {api_key}"}
+    if body is not None:
+        headers["Content-Type"] = "application/json"
+    # SECURITY: an Idempotency-Key makes a retried mint return the SAME receipt
+    # instead of creating a duplicate (and a duplicate audit trail / signoff).
+    if idempotency_key is not None:
+        headers["Idempotency-Key"] = idempotency_key
+    try:
+        resp = await client.request(
+            method,
+            url,
+            content=(json.dumps(body).encode("utf-8") if body is not None else None),
+            headers=headers,
+            timeout=timeout,
+        )
+    except httpx.HTTPError as e:  # type: ignore[union-attr]  # no response at all (network/DNS/TLS)
+        raise EmiliaAPIError(f"cannot reach EMILIA at {url}: {e}") from e
+    # A 4xx/5xx is a normal outcome the caller interprets (e.g. a policy deny).
+    # Return it as data, never raise — the agent gets a structured "blocked".
+    try:
+        return resp.status_code, (resp.json() if resp.content else {})
+    except Exception:  # noqa: BLE001
+        return resp.status_code, {"error": "http_error"}
+
+
+class AsyncEmiliaGuard:
+    """Async (httpx) twin of EmiliaGuard. Identical behaviour and guarantees.
+
+    Use as an async context manager so the underlying httpx client is closed:
+
+        async with AsyncEmiliaGuard() as guard:
+            res = await guard.guard(action_type=..., ...)
+
+    or construct directly and call `await guard.aclose()` when done. Requires
+    `httpx`; constructing without it raises a clear ImportError.
+    """
+
+    def __init__(
+        self,
+        base_url: Optional[str] = None,
+        api_key: Optional[str] = None,
+        client: Optional["httpx.AsyncClient"] = None,
+    ):
+        if not _HAVE_HTTPX:
+            raise ImportError(
+                "AsyncEmiliaGuard requires httpx (pip install httpx). "
+                "The synchronous EmiliaGuard is stdlib-only and needs nothing extra."
+            )
+        # Use the www host: the apex 307-redirects, and a redirect would drop the
+        # Authorization header on the cross-origin hop.
+        self.base_url = (
+            base_url or os.environ.get("EMILIA_BASE_URL", "https://www.emiliaprotocol.ai")
+        ).rstrip("/")
+        # SECURITY: the key is NEVER hardcoded — env (EP_API_KEY) or constructor.
+        self.api_key = api_key or os.environ.get("EP_API_KEY", "")
+        if not self.api_key:
+            raise ValueError("AsyncEmiliaGuard: set EP_API_KEY (env) or pass api_key=...")
+        # SECURITY: https only. Fail loudly at construction, not mid-flight.
+        if not self.base_url.lower().startswith("https://"):
+            raise ValueError(
+                f"AsyncEmiliaGuard: base_url must be https (got {self.base_url!r})"
+            )
+        # An injectable client lets tests supply a mock transport; otherwise we
+        # own the client and close it in aclose()/__aexit__.
+        self._client = client or httpx.AsyncClient()
+        self._owns_client = client is None
+
+    async def aclose(self) -> None:
+        """Close the underlying httpx client (only if this guard created it)."""
+        if self._owns_client:
+            await self._client.aclose()
+
+    async def __aenter__(self) -> "AsyncEmiliaGuard":
+        return self
+
+    async def __aexit__(self, *exc) -> None:
+        await self.aclose()
+
+    # 1+2: mint a pre-action receipt and, if the policy demands it, open a signoff.
+    async def guard(
+        self,
+        action_type: str,
+        target_resource_id: str,
+        organization_id: str,
+        amount: Optional[float] = None,
+        currency: str = "USD",
+        risk_flags: Optional[list[str]] = None,
+        target_changed_fields: Optional[list[str]] = None,
+        enforcement_mode: Optional[str] = None,
+        actor_role: Optional[str] = None,
+        approver_id: Optional[str] = None,
+    ) -> GuardResult:
+        # One idempotency key per logical guard call: a network retry of the
+        # mint POST returns the same receipt instead of minting a duplicate.
+        idem = f"grok-guard-{uuid.uuid4()}"
+
+        mint_body: dict[str, Any] = {
+            "organization_id": organization_id,
+            "action_type": action_type,
+            "target_resource_id": target_resource_id,
+            "currency": currency,
+            "risk_flags": risk_flags or [],
+            "target_changed_fields": target_changed_fields or [],
+        }
+        if amount is not None:
+            mint_body["amount"] = amount
+        if enforcement_mode is not None:
+            mint_body["enforcement_mode"] = enforcement_mode
+        if actor_role is not None:
+            mint_body["actor_role"] = actor_role
+
+        status, mint = await _ahttp(
+            self._client,
+            "POST",
+            f"{self.base_url}/api/v1/trust-receipts",
+            self.api_key,
+            mint_body,
+            idempotency_key=idem,
+        )
+        # Real success signal: a receipt_id on a 2xx. The MINT endpoint returns
+        # 201, but presence of receipt_id — not a hardcoded 201 — is what tells
+        # us a receipt was created.
+        receipt_id = mint.get("receipt_id")
+        if status not in (200, 201) or not receipt_id:
+            return GuardResult(
+                False,
+                "deny",
+                reason=f"mint failed ({status}): {mint.get('detail') or mint.get('error')}",
+                raw=mint,
+            )
+
+        # Decision enum is lowercase: allow | observe | allow_with_signoff | deny.
+        decision = mint.get("decision", "deny")
+        signoff_required = bool(mint.get("signoff_required"))
+        logger.info(
+            "emilia: minted %s decision=%s signoff_required=%s status=%s",
+            receipt_id, decision, signoff_required, mint.get("receipt_status"),
+        )
+
+        if not signoff_required:
+            # No human needed. allow -> proceed; deny/observe -> do not.
+            return GuardResult(
+                decision == "allow",
+                decision,
+                receipt_id=receipt_id,
+                reason=("denied by policy" if decision == "deny" else None),
+                raw=mint,
+            )
+
+        # Signoff required: open the request.
+        status, sreq = await _ahttp(
+            self._client,
+            "POST",
+            f"{self.base_url}/api/v1/signoffs/request",
+            self.api_key,
+            {
+                "receipt_id": receipt_id,
+                # SECURITY: bind the approver in the POST BODY, never in a URL
+                # query string, so the approval URL stays free of PII.
+                **({"approver_id": approver_id} if approver_id else {}),
+            },
+        )
+        signoff_id = sreq.get("signoff_id")
+        if status not in (200, 201) or not signoff_id:
+            return GuardResult(
+                False,
+                decision,
+                receipt_id=receipt_id,
+                reason=f"signoff request failed ({status}): {sreq.get('detail') or sreq.get('error')}",
+                raw=sreq,
+            )
+
+        # SECURITY: the approval URL carries the OPAQUE signoff_id only — no
+        # approver email, no query-string PII. The server already knows which
+        # human this signoff is bound to (from the POST body above).
+        url = f"{self.base_url}/signoff/{signoff_id}"
+        logger.info("emilia: signoff %s opened for %s", signoff_id, receipt_id)
+        return GuardResult(
+            False,
+            decision,
+            receipt_id=receipt_id,
+            signoff_id=signoff_id,
+            approval_url=url,
+            reason="human signoff required",
+            raw={"mint": mint, "request": sreq},
+        )
+
+    # 4: poll until a named human decides (or the window closes).
+    #
+    # ⚠ BLOCKS (asynchronously). Use this only in a worker / batch coroutine,
+    # NEVER inside a live tool call — a tool call must return promptly. For the
+    # tool-calling pattern, return approval_url and resume later (see
+    # release_large_payment, the default non-blocking pattern).
+    async def wait_for_approval(
+        self,
+        receipt_id: str,
+        timeout_s: int = 600,
+        interval_s: int = 3,
+    ) -> VerifiedReceipt:
+        """Async poll to a terminal state, then — on approval — FETCH and VERIFY
+        the signed evidence OFFLINE. `.verified` is True only when the Ed25519
+        signature checked out in this process. Timeout, rejection, or a failed
+        signature all yield verified=False."""
+        loop = asyncio.get_event_loop()
+        deadline = loop.time() + timeout_s
+        while loop.time() < deadline:
+            status, rec = await _ahttp(
+                self._client,
+                "GET",
+                f"{self.base_url}/api/v1/trust-receipts/{receipt_id}",
+                self.api_key,
+            )
+            st = rec.get("receipt_status")
+            if status == 200 and st in TERMINAL_STATUSES:
+                if st in APPROVED_STATUSES:
+                    logger.info(
+                        "emilia: %s approved (status=%s key_class=%s) — verifying offline",
+                        receipt_id, st, rec.get("signoff_key_class"),
+                    )
+                    # DO NOT trust the "approved" string. Verify the signature.
+                    return await self.verify_receipt_offline(receipt_id)
+                logger.info("emilia: %s resolved without approval (status=%s)", receipt_id, st)
+                return VerifiedReceipt(
+                    verified=False, status="rejected", detail=f"signoff {st}", raw=rec
+                )
+            await asyncio.sleep(interval_s)
+        logger.info("emilia: signoff for %s timed out after %ss", receipt_id, timeout_s)
+        return VerifiedReceipt(verified=False, status="timeout", detail=f"no decision in {timeout_s}s")
+
+    # 5: the headline feature — fetch signed evidence and verify it OFFLINE.
+    async def verify_receipt_offline(self, receipt_id: str) -> VerifiedReceipt:
+        """Async fetch of the evidence packet; the OFFLINE Ed25519 check itself
+        is the SAME pure function the sync path uses (_verify_evidence_offline),
+        so the async and sync guards cannot diverge on what counts as verified."""
+        status, ev = await _ahttp(
+            self._client,
+            "GET",
+            f"{self.base_url}/api/v1/trust-receipts/{receipt_id}/evidence",
+            self.api_key,
+        )
+        if status != 200 or not ev:
+            return VerifiedReceipt(
+                verified=False, status="no_evidence",
+                detail=f"evidence fetch failed ({status})", raw=ev or {},
+            )
+        return _verify_evidence_offline(ev)
+
+
 # ── xAI / OpenAI-compatible tool schema. Register this with Grok. ────────────
 # Grok calls this tool *instead of* executing the irreversible action directly;
 # your dispatcher (below) runs EmiliaGuard and only returns proceed=true on a
@@ -549,6 +850,119 @@ def dispatch_emilia_tool(
         "signoff_id": res.signoff_id,
         "offline_verified": verified.verified,
         "verifier_checks": verified.checks or None,
+    }
+
+
+# ── Async tool pattern (the headline) — return the URL, don't block ──────────
+# This is the shape an async agent/orchestrator actually wants: the tool mints
+# the receipt, opens the signoff, and RETURNS the approval_url instead of
+# blocking on a human. The orchestrator notifies the approver (Slack/SMS/email)
+# and moves on. A SEPARATE resume step — a signoff webhook, or a later tool call
+# that runs resume_release_large_payment() / guard.wait_for_approval() — does
+# the offline Ed25519 verification and only then executes the irreversible
+# action. The blocking wait_for_approval() poll below is for synchronous
+# batch/worker coroutines only, never inside a live tool call.
+async def release_large_payment(
+    args: dict,
+    guard: Optional[AsyncEmiliaGuard] = None,
+    execute=None,
+) -> dict:
+    """Async tool the orchestrator calls *instead of* moving money directly.
+
+    Returns one of:
+      {"status": "executed", ...}            — policy allowed it outright (no human)
+      {"status": "denied", ...}              — policy denied it
+      {"status": "approval_required", "approval_url": ..., "receipt_id": ...}
+                                             — a named human must sign on-device;
+                                               resume later and verify offline
+    On `allow`, runs `execute(args)` if provided (your real money-movement call).
+    It never executes on `approval_required` — the receipt is not yet a verified
+    signature over this exact action.
+    """
+    owns = guard is None
+    guard = guard or AsyncEmiliaGuard()
+    try:
+        res = await guard.guard(
+            action_type=args["action_type"],
+            target_resource_id=args["target_resource_id"],
+            organization_id=args["organization_id"],
+            amount=args.get("amount"),
+            currency=args.get("currency", "USD"),
+            risk_flags=args.get("risk_flags"),
+            target_changed_fields=args.get("target_changed_fields"),
+            enforcement_mode=args.get("enforcement_mode"),
+            actor_role=args.get("actor_role"),
+            approver_id=args.get("approver_id"),
+        )
+
+        if res.allowed:
+            # Allowed by policy with no human in the loop. Execute now.
+            result = None
+            if execute is not None:
+                result = execute(args)
+                if asyncio.iscoroutine(result):
+                    result = await result
+            return {
+                "status": "executed",
+                "reason": "allowed by policy (no signoff needed)",
+                "receipt_id": res.receipt_id,
+                "result": result,
+            }
+
+        if res.decision == "deny":
+            return {
+                "status": "denied",
+                "reason": res.reason,
+                "receipt_id": res.receipt_id,
+            }
+
+        # Signoff required — the headline path. Hand the OPAQUE approval URL back
+        # to the orchestrator and return immediately. A separate resume step
+        # (webhook or later tool call) re-checks status and runs the OFFLINE
+        # signature verification before any money moves.
+        return {
+            "status": "approval_required",
+            "reason": "named human signoff required — awaiting device signature",
+            "approval_url": res.approval_url,
+            "receipt_id": res.receipt_id,
+            "signoff_id": res.signoff_id,
+        }
+    finally:
+        if owns:
+            await guard.aclose()
+
+
+async def resume_release_large_payment(
+    receipt_id: str,
+    guard: AsyncEmiliaGuard,
+    execute=None,
+    timeout_s: int = 600,
+) -> dict:
+    """The resume step a webhook or follow-up tool call invokes once a human has
+    (or hasn't) approved. Verifies the signature OFFLINE and executes ONLY if
+    that check passes — a server that merely *says* "approved" is not enough."""
+    verified = await guard.wait_for_approval(receipt_id, timeout_s=timeout_s)
+    if not verified.verified:
+        return {
+            "status": verified.status,        # rejected | timeout | unsigned_evidence | ...
+            "executed": False,
+            "reason": verified.detail or f"signoff {verified.status}",
+            "receipt_id": receipt_id,
+            "offline_verified": False,
+        }
+    result = None
+    if execute is not None:
+        result = execute(receipt_id)
+        if asyncio.iscoroutine(result):
+            result = await result
+    return {
+        "status": "executed",
+        "executed": True,
+        "reason": "device signature VERIFIED offline",
+        "receipt_id": receipt_id,
+        "offline_verified": True,
+        "verifier_checks": verified.checks or None,
+        "result": result,
     }
 
 
