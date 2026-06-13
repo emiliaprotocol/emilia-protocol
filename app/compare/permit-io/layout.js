@@ -9,7 +9,7 @@ export const metadata = {
   openGraph: {
     title: 'EMILIA Protocol vs Permit.io',
     description:
-      'Authorization decides what an agent may do. EMILIA proves a named human ' +
+      'Authorization decides what an agent may do. EMILIA’s receipt proves a named human ' +
       'approved the exact irreversible action, with an offline-verifiable receipt.',
     url: 'https://www.emiliaprotocol.ai/compare/permit-io',
     type: 'article',

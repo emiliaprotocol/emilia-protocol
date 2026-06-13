@@ -35,7 +35,7 @@ export default function ComparePermitPage() {
         <div className="ep-tag ep-hero-badge" style={{ color: color.blue }}>Comparison / Permit.io</div>
         <h1 className="ep-hero-text" style={styles.h1}>EMILIA Protocol vs Permit.io</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 640 }}>
-          Permit.io decides what an AI agent is allowed to do. EMILIA proves a named human approved the specific irreversible action — and mints a receipt anyone can verify offline. They solve different problems, and they are strongest together.
+          Permit.io decides what an AI agent is allowed to do. EMILIA’s receipt proves a named human approved the specific irreversible action — and mints a receipt anyone can verify offline. They solve different problems, and they are strongest together.
         </p>
       </section>
 
