@@ -20,20 +20,10 @@ Everything prepared, sequenced by urgency. Each step says **where**, **what to p
 - **What's ready:** full pitch package in `dod-sbir-afwerx/spectrum-strike/` (deck.html → print-to-PDF, demo script, checklist).
 - **Honest call:** a solo standalone bid is a stretch. **Send the deck as a teaming overture to a spectrum-AI prime** already bidding the engine — EP is the authorization/audit module, not the triage engine. Decide go-vs-teaming by 06-15.
 
-## 🟡 STEP 2 — Manifund  *(best fit, fastest money, rolling)*
-- **Where:** manifund.org → "Create project" (open call).
-- **Why first:** for-profit eligible (Manifund fiscally sponsors a charitable/public-benefit deliverable); decisions in **days**; sized for a solo founder.
-- **Paste from:** `ai-safety-philanthropy/application.md` (the EP project description + the "open red-team benchmark" deliverable).
-- **Time:** ~30 min.
-
-## 🟡 STEP 3 — LTFF (Long-Term Future Fund)  *(submit in parallel with Manifund)*
-- **Where:** funds.effectivealtruism.org/funds/far-future → application (Paperform).
-- **Why:** rolling, ~29-day median response, x-risk mandate squarely covers agent accountability; has funded for-profits.
-- **Paste from:** `ai-safety-philanthropy/application.md`. **Time:** ~30 min.
-
-## 🟡 STEP 4 — NIST AI Consortium letter  *(1-click — it's already written)*
-- **Where:** your Gmail **Drafts** — letter to `aiconsortium@nist.gov` is ready.
-- **Do:** review → **send**. No hard deadline; earlier = better (rolling intake). Source: `nist-aisic/`.
+## ✅ STEP 2 — Manifund — DONE (submitted)
+## ✅ STEP 3 — LTFF (Long-Term Future Fund) — DONE (submitted)
+## ✅ STEP 4 — NIST AI Consortium letter — DONE (sent to aiconsortium@nist.gov)
+*(All three submitted as of 2026-06-13. Manifund decides in days; LTFF ~29-day median reply; NIST consortium intake is rolling. Just await responses.)*
 
 ## 🟢 STEP 5 — Enable GitHub Sponsors (one setup → unlocks two grants)
 - **Where:** github.com/sponsors → onboard the **emiliaprotocol** org.
@@ -49,12 +39,19 @@ Everything prepared, sequenced by urgency. Each step says **where**, **what to p
 
 ---
 
-## ⚪ Monitor only — no action
-- **Schmidt Sciences** — not eligible (academic-only; 2026 RFP closed). Watch 2027.
-- **DoD SBIR / AFWERX** — abstract held; no matching topic. Watch DSIP each release.
-- **DHS + NIST SBIR** — post-reauthorization gap; windows ~mid-2026. Watch sbir2.st.dhs.gov + SAM.gov.
-- **DARPA** — no open BAA (DICE pending). Watch SAM.gov.
-- **Sovereign Tech Standards Network** — cohort closed; reapply next call.
+## ⚪ Monitor only — nothing submittable *today* (here's why + the trigger to watch)
+None of these has an open, EP-fitting call you could submit to right now. The only
+proactive move is the prep in the next section (SAM.gov) so you're ready the day one opens.
+
+| Program | Why no action now | Trigger to watch | Prep |
+|---|---|---|---|
+| **DoD SBIR / AFWERX** | The DoD FY26 R2 BAA is *open* (rolling closes 6/24, 7/22, 8/19, 9/23, 10/21) but **no current topic names** AI assurance / human-oversight / zero-trust authorization; AFWERX's open call is manufacturing-only. The held abstract is paste-ready. | A DSIP topic naming "authorization / human oversight / agent accountability / zero-trust," **or** the broad AFWERX Open Topic (no-end-user) returning. Check `dodsbirsttr.mil/topics-app` each release. | SAM.gov + SBIR Company Registry + DSIP account |
+| **DHS + NIST SBIR** | Post-reauthorization gap — no open solicitation (FY25 DHS 25.1 closed Jan 2025). | Next FY26 topics, est. **~May–Jul 2026**. Watch `sbir2.st.dhs.gov` + SAM.gov + `nist.gov/oam`. | SAM.gov (same registration) |
+| **DARPA** | No open BAA that fits — DICE pending, I2O paused; there is no "SAFE-AI" program. White-paper template is held. | The **DICE** BAA or any AI-verification BAA on SAM.gov (one tracked window shows abstracts ~**2026-11-01** — confirm on SAM.gov). | SAM.gov |
+| **Sovereign Tech — Standards Network** | The pilot cohort call **closed 2026-05-19**; the cohort runs mid-2026 → mid-2027. EP's IETF I-D is a near-ideal fit. | The **next cohort call** (likely ~2027). Reapply then. (Sovereign Tech *Fund* = continuous but EP is too young for its critical-dependency bar.) | none — just reapply |
+| **Schmidt Sciences** | Not eligible (academic-only; 2026 RFP closed 5/17). | A 2027 cycle (none published). | none |
+
+**Bottom line:** all five are genuinely watch-only. The single thing that converts the federal ones (DoD/AFWERX, DHS+NIST, DARPA — and NSF's full proposal) from "can't" to "ready" is **SAM.gov registration** below.
 
 ## The two cross-cutting unlocks (worth more than any single app)
 1. **Start SAM.gov registration now** (financial-assistance authority; up to **3 weeks** — the long pole for every "if invited / full proposal" path: NSF, future SBIRs).
