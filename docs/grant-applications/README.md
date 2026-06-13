@@ -14,7 +14,7 @@ programs. Each subdirectory has:
 | NSF SBIR Phase I — Topic CT | [`nsf-sbir-phase-1/`](./nsf-sbir-phase-1/) | DRAFT | Submit Project Pitch at https://seedfund.nsf.gov | Iman |
 | NIST AISI Consortium | [`nist-aisic/`](./nist-aisic/) | DRAFT | Email aiconsortium@nist.gov + sign CRADA | Iman |
 | DARPA SAFE-AI BAA | [`darpa-safe-ai/`](./darpa-safe-ai/) | TEMPLATE | Watch SAM.gov for next AI-verification BAA | Iman |
-| AAIF Proposal v3 | [`aaif/`](./aaif/) | READY | Send cover email + `docs/AAIF-PROPOSAL-v3.md` | Iman |
+| AAIF Proposal v3 | [`aaif/`](./aaif/) | REFRESHED | Verify current recipient, then send refreshed cover email + `docs/AAIF-PROPOSAL-v3.md` | Iman |
 | OpenAI Cybersecurity Grant | [`openai-cybersecurity/`](./openai-cybersecurity/) | DRAFT | Fill form at https://openai.com/form/cybersecurity-grant-program | Iman |
 | Anthropic Research Grants | [`anthropic-research/`](./anthropic-research/) | DRAFT | Submit via Anthropic researcher access program | Iman |
 
@@ -23,7 +23,7 @@ programs. Each subdirectory has:
 Lowest friction first — get the easy ones in the inbox before tackling the
 heavyweights.
 
-1. **AAIF v3** (10 min) — already drafted, just send.
+1. **AAIF v3** (10 min) — refreshed for June 2026 receipts, issuer, essays, and federation proof; verify the recipient, then send.
 2. **OpenAI Cybersecurity Grant** (30 min) — short web form, real money, fast review.
 3. **Anthropic Research Grants** (30 min) — short form, formal-verification fit is excellent.
 4. **NIST AISIC** (1 hr) — credibility play; CRADA paperwork takes longest.
@@ -40,5 +40,14 @@ Already in the repo:
 - `docs/security/AUDIT_METHODOLOGY.md` — internal audit methodology
 - `docs/compliance/NIST-AI-RMF-MAPPING.md` — 38 subcategories
 - `docs/compliance/EU-AI-ACT-MAPPING.md` — Articles 9–15 + 26
-- `docs/AAIF-PROPOSAL-v3.md` — the v3 AAIF proposal
+- `docs/AAIF-PROPOSAL-v3.md` — refreshed v3.1 AAIF proposal
+- `standards/draft-schrock-ep-authorization-receipts-01.md` — current authorization-receipt protocol draft
+- `docs/RECEIPT-CLAIMS.md` — exact authorization-receipt claims and non-claims
+- `docs/positioning/DIFFERENTIATION.md` — adjacent-work and category map
+- `docs/conformance/FEDERATION-PROOF.md` — two-operator federation proof and open independent-operator milestone
+- `packages/issue/README.md` — local issuance package and CLI
+- `packages/verify/README.md` — offline verification package
+- `docs/essays/why-authorization-is-not-proof.md` — authorization vs proof narrative
+- `docs/essays/the-model-is-the-crumple-zone.md` — accountability narrative
+- `docs/pilots/GOVGUARD-PILOT-OFFER.md` — observe-mode pilot wedge
 - `docs/AWS-GRANT-APPLICATION.md` — historical AWS proposal (source for content reuse)

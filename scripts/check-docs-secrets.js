@@ -215,6 +215,17 @@ const SAFE_HOSTS = new Set([
   "nist.gov",
   "ietf.org", // datatracker.ietf.org — the EP Internet-Draft lives there
   "aaif.io", // Agentic AI Foundation — proposal + working-group docs
+  // Grant programs / solicitation portals cited in docs/grant-applications/.
+  "federalregister.gov", // NIST AI Consortium Federal Register notice
+  "grants.gov",
+  "sam.gov",
+  "darpa.mil",
+  "afwerx.com",
+  "dodsbirsttr.mil",
+  "diu.mil",
+  "iarpa.gov",
+  "forms.gle", // Anthropic External Researcher Access application form
+  "fedscoop.com", // cited news source on the NIST consortium relaunch
   "treasury.gov",
   "cms.gov",
   "hhs.gov",

@@ -1,63 +1,101 @@
-# NIST AISIC — Submission Instructions
+# NIST AI Consortium — Submission Instructions
 
-## Step 1 — Send letter of interest
+<!--
+VERIFIED JUNE 2026. The program formerly called AISIC is now the
+"NIST Artificial Intelligence Consortium," reopened for new members on
+May 29, 2026 (Fed. Reg. 2026-10779). The submission email is UNCHANGED
+(aiconsortium@nist.gov) and the CRADA is still the join mechanism. The
+old "working groups" are now six published TASK GROUPS. Sources are
+listed at the bottom of application.md.
+-->
 
-**To**: aiconsortium@nist.gov
-**Subject**: AISIC membership inquiry — EMILIA Protocol (formal-verified pre-action authorization for AI agents)
+## Step 1 — Send the letter of interest
 
-Body: paste section 1 of `application.md`, then attach the full
-`application.md` as PDF or include the rest as inline text. Keep the
-email under 300 words; lead with the formal-verification numbers
-(26 TLA+ theorems, 38 NIST AI RMF subcategory mappings).
+**To:** `aiconsortium@nist.gov`
+(or the official webform linked from
+https://www.nist.gov/artificial-intelligence/nist-ai-consortium/submit-letter-interest-join-nist-ai-consortium ;
+hardcopy also accepted at NIST, 100 Bureau Drive, Mail Stop 8900,
+Gaithersburg, MD 20899.)
 
-## Step 2 — CRADA negotiation
+**Subject:** NIST AI Consortium — Letter of Interest — EMILIA Protocol
+(open authorization-receipt evidence for AI agents)
 
-When NIST replies, they'll send a Cooperative Research and Development
-Agreement template. Standard terms:
-- Apache 2.0 work product is fully compatible
+**Body:** paste the "Letter of interest" section of `application.md`
+verbatim. The Federal Register notice requires the letter to state, at
+minimum:
+
+1. the role(s) the organization will play in the consortium efforts;
+2. the specific expertise it intends to bring;
+3. the products, services, data, or other technical capabilities it
+   will use in consortium activities;
+
+plus the organization's address and point of contact. The current
+`application.md` letter is written to cover all three. **Do not include
+proprietary information** — the notice prohibits it.
+
+Keep it to one page. Lead with the two load-bearing facts: the IETF
+draft is at -01, and the protocol carries machine-checked safety
+(26 TLA+ properties, 22 Alloy assertions, 0 errors/counterexamples,
+all in CI).
+
+## Step 2 — CRADA
+
+Selection is first-come, first-served on complete letters. When NIST
+selects EP, they send the consortium CRADA template. Standard posture:
+
+- Apache-2.0 work product is fully compatible.
 - IP retention by EP for protocol-specification work; non-exclusive
-  license to NIST for any NIST-funded extensions
-- Public attribution permitted (and expected) for AISIC artifacts
+  license to NIST for any NIST-funded extensions.
+- Public attribution permitted and expected for consortium artifacts.
 
-Have your incorporation paperwork (Delaware C-corp) ready before the
-CRADA is signed — NIST prefers a signed legal entity vs sole
-proprietorship for the agreement.
+The first review period begins June 2026, then roughly biannually. There
+is no hard deadline for THIS letter — earlier is better because review
+is first-come, first-served.
 
-## Step 3 — Working group participation
+## Step 3 — Task-group participation
 
-After CRADA signature, NIST adds you to working group rosters. Active
-WGs (verify current list) include:
-- AI Risk Management Profiles
-- Model Evaluation & Red-Teaming
-- Pre-Deployment Testing
-- Agentic Systems / Autonomous AI Risk
-- Generative AI
+Membership lands you in the consortium's six task groups (these replaced
+the old "working group" framing):
 
-Recommend joining 1–2 WGs deeply rather than 5 shallowly. Best fit for
-EP: **Agentic Systems** + **Pre-Deployment Testing**.
+- **AI TEVV** (Testing, Evaluation, Verification & Validation) Zero Draft
+- AI Evaluation and Measurement Methods
+- AI Documentation Cards
+- Annotation for AI Risks & Validity
+- BENGAL (Bias Effects & Notable Generative AI Limitations)
+- Chemical and Biological Security
+
+Recommend going deep in **AI TEVV** + **AI Evaluation and Measurement
+Methods**, with the RMF mapping offered to **AI Documentation Cards**.
+EP's receipt is a natural fit for TEVV: it is a verifiable artifact that
+an evaluator can produce and an independent party can check.
+
+## What to do BEFORE sending
+
+- [ ] Confirm the latest submission webform URL on the NIST page above
+      (the email `aiconsortium@nist.gov` is verified current as of
+      June 2026, but NIST may prefer the webform).
+- [ ] Confirm `@emilia-protocol/verify` 1.4.0 and
+      `@emilia-protocol/issue` 0.2.0 are live on npm (the letter cites
+      them).
+- [ ] Confirm `draft-schrock-ep-authorization-receipts-01` is posted on
+      the IETF datatracker (the letter cites -01).
+- [ ] Confirm github.com/emiliaprotocol/emilia-protocol is publicly accessible without
+      auth.
+- [ ] Confirm no proprietary content slipped into the letter.
+
+## Why this is worth doing
+
+Consortium membership is a credibility surface: a NIST-acknowledged
+contribution improves the read on every other submission (SBIR, AAIF,
+foundation grants). The cost is one CRADA and modest task-group time;
+the asymmetry is favorable. EP's specific edge is that it brings the one
+thing the measurement program is short on — a concrete, open, verifiable
+artifact — rather than another framework opinion.
 
 ## Timeline
 
-- LOI sent → NIST acknowledgment: 1–2 weeks
+- LOI sent -> NIST acknowledgment: typically 1–2 weeks
+- Selection (first-come, first-served): within the June 2026 review
+  window, then biannually
 - CRADA negotiation: 4–8 weeks
-- WG onboarding: 1–2 weeks after CRADA signed
-
-Total from email to first WG meeting: ~8–12 weeks.
-
-## What to do BEFORE sending the LOI
-
-- [ ] Have a Delaware C-corp signed and registered (or letter of intent
-      to incorporate before CRADA signature). Single-founder LLCs and
-      sole proprietorships are accepted but slow the CRADA process.
-- [ ] Have iman@emiliaprotocol.ai on a custom domain (already done).
-- [ ] Have github.com/emiliaprotocol publicly accessible without auth (verify).
-- [ ] Convert `application.md` to PDF for clean attachment.
-
-## Why this matters even though it pays $0
-
-AISIC membership is the credibility stamp that unlocks every other
-submission on this list. NSF SBIR reviewers favor projects with
-NIST-acknowledged technical merit. AAIF and DARPA reviewers do too.
-Anthropic and OpenAI grant reviewers do too. The non-monetary value
-is asymmetric: low cost of participation, dramatic increase in
-conversion rate elsewhere.
+- Task-group onboarding: 1–2 weeks after CRADA signed
