@@ -149,4 +149,4 @@ EMILIA Protocol, Inc. is a for-profit Delaware C-corporation. A government obser
 - FLI grantmaking: https://futureoflife.org/our-work/grantmaking-work/
 - Coefficient Giving (formerly Open Philanthropy) Technical AI Safety RFP: https://coefficientgiving.org/funds/navigating-transformative-ai/request-for-proposals-technical-ai-safety-research/
 - BlueDot Rapid Grants: https://bluedot.org/programs/rapid-grants
-- Anthropic AI-espionage disclosure: https://www.anthropic.com/news/disrupting-AI-espionage · Senate (Hassan/Ernst) letter: https://www.hassan.senate.gov/news/press-releases/senators-hassan-ernst-sound-alarm-on-chinese-ai-enabled-hackers
+- Anthropic AI-espionage disclosure: https://www.anthropic.com/news/disrupting-AI-espionage · Senate (Hassan/Ernst) oversight letter, Nov 2025 (search hassan.senate.gov press releases)
