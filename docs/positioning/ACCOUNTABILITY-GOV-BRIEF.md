@@ -60,39 +60,43 @@ EMILIA Protocol is the open standard for authorization receipts (Apache 2.0), wi
 
 ## Prepared IETF note (send when timing is right)
 
-*Timing: send after the CHEQ author replies, or after roughly a week of silence — whichever comes first. The note refers to the three-author survey as already with the chairs — confirm that is still accurate before sending.*
+*Timing — all four must be true before sending: (1) -01 is confirmed on datatracker (the note cites §4.1); (2) verify 1.4.0 + issue 0.2.0 are live on npm (the note says "published packages"); (3) the Songbo layering reply has been sent and has breathed for a day or two — never three EP posts on the list in one day; (4) the CHEQ author has replied to the private compare-notes email, or roughly a week has passed — posting his draft's framing on-list before he answers would read as going around him. Send as a reply inside the live survey thread, not a new thread.*
 
 ```text
-Subject: Authorization receipts for agent actions — how CHEQ, DRP, and EP compose
+Subject: Re: [Secdispatch] Re: Authorization Evidence for High-Risk Actions —
+survey of independent efforts (PSEA, EP, DRP, ScopeBlind) and a narrow
+dispatch question
 
-Following the three-author cross-draft survey sent to the chairs, one framing
-that has clarified the landscape for us: the agent asks; the receipt proves.
+One more composition point for this thread, bringing in a draft the survey
+did not cover: CHEQ (draft-rosenberg-cheq), which is circling the same
+problem from the confirmation side. The framing that has clarified the
+landscape for us: the agent asks; the receipt proves.
 
-Three individual drafts are circling one problem from different layers. CHEQ
-(draft-rosenberg-cheq) specifies the confirmation interaction — how a resource
-server interrupts an agent's call and reaches a human. DRP
-(draft-nelson-agent-delegation-receipts) covers delegation scope — what a user
-authorized an operator to do on their behalf. EP
-(draft-schrock-ep-authorization-receipts) specifies the portable evidence the
-interaction leaves behind — a named approver's device-bound signature over the
-exact action, verifiable offline, without querying any of the operators
-involved.
+CHEQ specifies the confirmation interaction — how a resource server
+interrupts an agent's call and reaches a human. DRP
+(draft-nelson-agent-delegation-receipts) covers delegation scope — what a
+user authorized an operator to do on their behalf. EP
+(draft-schrock-ep-authorization-receipts) specifies the portable evidence
+the interaction leaves behind — a named approver's device-bound signature
+over the exact action, verifiable offline, without querying any of the
+operators involved.
 
 These read less like competitors than drafts that could converge on a shared
-verifier core: canonical serialization, an action hash, a signature an outside
-party can check. If dispatch lands this work anywhere, converging on that core
-seems like the highest-value outcome for all three.
+verifier core: canonical serialization, an action hash, a signature an
+outside party can check. If dispatch lands this work anywhere, converging on
+that core seems like the highest-value outcome.
 
-One possible convergence point, sketched as a draft extension on the EP side:
-the agent's own escalation decision, recorded as a field inside the signed
-authorization context — "I judged this action exceeds what I should do alone,
-because X." The ask is CHEQ's domain; recording it inside the evidence is
-EP's. The human's signature then covers not just the action but the agent's
-stated reason for escalating. To be precise about what that proves: it is a
-claim by an identified-but-never-trusted initiator, not a window into the
-model — but it makes the escalation itself part of the verifiable record,
-which neither the confirmation interaction nor the delegation alone captures
-today.
+One concrete convergence point, now specified in -01 of the EP draft
+(Section 4.1): the agent's own escalation decision, recorded as a field
+inside the signed authorization context — "I judged this action exceeds what
+I should do alone, because X." The ask is CHEQ's domain; recording it inside
+the evidence is EP's. The human's signature then covers not just the action
+but the agent's stated reason for escalating. To be precise about what that
+proves: it is a claim by an identified-but-never-trusted initiator, not a
+window into the model — but it makes the escalation itself part of the
+verifiable record, which neither the confirmation interaction nor the
+delegation alone captures today. A reference implementation ships in the
+published issuer and verifier packages.
 
 Happy to be told this composition is wrong — that is what the list is for.
 
