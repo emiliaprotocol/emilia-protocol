@@ -370,6 +370,109 @@ describe('GET /api/v1/trust-receipts/:id/evidence', () => {
     expect(body.timeline.length).toBe(4);
     expect(body.schema_version).toBe('ep-guard-evidence-v1');
   });
+
+  it('does NOT sign a receipt with no canonical_action (honest fallback, backward compat)', async () => {
+    authedAs('user_1');
+    const events = [
+      {
+        event_type: 'guard.trust_receipt.created',
+        actor_id: 'user_1',
+        actor_type: 'principal',
+        after_state: {
+          organization_id: 'org_1',
+          action_type: 'benefit_bank_account_change',
+          decision: 'allow_with_signoff',
+          signoff_required: true,
+          // No canonical_action — an older receipt. Must not be signed.
+          expires_at: new Date(Date.now() + 1e6).toISOString(),
+          receipt_status: 'pending_signoff',
+        },
+        created_at: '2026-04-26T00:00:00Z',
+      },
+      { event_type: 'guard.signoff.approved', actor_id: 'user_2', after_state: { signoff_id: 'sig_1' }, created_at: '2026-04-26T00:01:00Z' },
+    ];
+    mockGetGuardedClient.mockReturnValue(makeSupabase({
+      audit_events: { resolve: { data: events, error: null } },
+    }));
+    const res = await readEvidence(req(), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    const body = await res.json();
+    expect(body.signed).toBe(false);
+    expect(body.document).toBeNull();
+    expect(body.public_key).toBeNull();
+    // Unsigned packet still fully present (backward compat).
+    expect(body.schema_version).toBe('ep-guard-evidence-v1');
+  });
+
+  it('serves a signed EP-RECEIPT-v1 document that verifies offline under @emilia-protocol/verify', async () => {
+    authedAs('user_1');
+    const canonicalAction = {
+      organization_id: 'org_treasury',
+      actor_id: 'user_1',
+      action_type: 'vendor_bank_account_change',
+      target_resource_id: 'vendor:VEND-9821',
+      before_state_hash: 'sha256:aaa',
+      after_state_hash: 'sha256:bbb',
+      policy_id: 'policy_default_vendor_bank_account_change',
+      policy_hash: 'sha256:ccc',
+      nonce: 'nonce_deadbeef',
+      expires_at: new Date(Date.now() + 1e6).toISOString(),
+      requested_at: '2026-04-26T00:00:00Z',
+    };
+    const events = [
+      {
+        event_type: 'guard.trust_receipt.created',
+        actor_id: 'user_1',
+        actor_type: 'principal',
+        after_state: {
+          organization_id: 'org_treasury',
+          action_type: 'vendor_bank_account_change',
+          decision: 'allow_with_signoff',
+          enforcement_mode: 'enforce',
+          policy_id: 'policy_default_vendor_bank_account_change',
+          policy_hash: 'sha256:ccc',
+          action_hash: 'sha256:ddd',
+          before_state_hash: 'sha256:aaa',
+          after_state_hash: 'sha256:bbb',
+          signoff_required: true,
+          expires_at: canonicalAction.expires_at,
+          receipt_status: 'pending_signoff',
+          canonical_action: canonicalAction,
+        },
+        created_at: '2026-04-26T00:00:00Z',
+      },
+      { event_type: 'guard.signoff.requested', actor_id: 'user_1', after_state: { signoff_id: 'sig_1' }, created_at: '2026-04-26T00:00:30Z' },
+      { event_type: 'guard.signoff.approved', actor_id: 'ap_controller_jane', after_state: { signoff_id: 'sig_1', approver_id: 'ap_controller_jane', decided_at: '2026-04-26T00:01:00Z', key_class: 'C' }, created_at: '2026-04-26T00:01:00Z' },
+      { event_type: 'guard.trust_receipt.consumed', actor_id: 'user_1', after_state: { consumed_at: '2026-04-26T00:02:00Z', consumed_by_system: 'vendor_master_data_svc', execution_reference_id: 'exec_9' }, created_at: '2026-04-26T00:02:00Z' },
+    ];
+    mockGetGuardedClient.mockReturnValue(makeSupabase({
+      audit_events: { resolve: { data: events, error: null } },
+    }));
+    const res = await readEvidence(req(), { params: Promise.resolve({ receiptId: 'tr_signed' }) });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    // The headline: a signed, offline-verifiable receipt is present.
+    expect(body.signed).toBe(true);
+    expect(body.document['@version']).toBe('EP-RECEIPT-v1');
+    expect(typeof body.public_key).toBe('string');
+    expect(body.document.payload.claim.canonical_action).toEqual(canonicalAction);
+    expect(body.document.payload.authorization.approver_id).toBe('ap_controller_jane');
+    expect(body.document.payload.authorization.status).toBe('consumed');
+
+    // ROUND-TRIP: the offline verifier (the EXACT module grok_guard.py's
+    // emilia_verify is a port of) accepts the document + public key.
+    const { verifyReceipt } = await import('../packages/verify/index.js');
+    const result = verifyReceipt(body.document, body.public_key);
+    expect(result.valid).toBe(true);
+    expect(result.checks.version).toBe(true);
+    expect(result.checks.signature).toBe(true);
+
+    // TAMPER: flip a deeply-nested field in the signed payload and the
+    // signature MUST break — proving the whole canonical action is bound.
+    const tampered = JSON.parse(JSON.stringify(body.document));
+    tampered.payload.claim.canonical_action.after_state_hash = 'sha256:tampered';
+    expect(verifyReceipt(tampered, body.public_key).valid).toBe(false);
+  });
 });
 
 // ─── POST /api/v1/signoffs/request ────────────────────────────────────────

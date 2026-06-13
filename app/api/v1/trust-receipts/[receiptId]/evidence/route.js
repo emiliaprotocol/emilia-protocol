@@ -16,6 +16,7 @@ import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
+import { signEvidenceReceipt } from '@/lib/guard-evidence-receipt.js';
 
 export async function GET(request, { params }) {
   try {
@@ -52,7 +53,43 @@ export async function GET(request, { params }) {
     const rejected = events.find((e) => e.event_type === 'guard.signoff.rejected');
     const replays = events.filter((e) => e.event_type === 'guard.trust_receipt.replay_attempt');
 
+    // ── Signed, offline-verifiable receipt (EP-RECEIPT-v1) ───────────────
+    // When the receipt has reached a terminal positive state (approved /
+    // consumed) AND carries the canonical action it must sign over, mint a
+    // signed { document, public_key } pair — the SAME shape the public demo
+    // endpoint serves, consumable by @emilia-protocol/verify's verifyReceipt()
+    // / examples/grok_guard.py with NO trust in this server. signEvidenceReceipt
+    // returns null for any receipt it cannot honestly sign (pending, denied,
+    // rejected, expired, or missing signed material); in that case we keep
+    // returning the existing unsigned ep-guard-evidence-v1 packet below and
+    // fabricate nothing.
+    let signed = null;
+    try {
+      signed = signEvidenceReceipt({
+        receiptId,
+        base,
+        approved: approved || null,
+        rejected: rejected || null,
+        consumed: consumed || null,
+        issuedAt: created.created_at,
+      });
+    } catch (e) {
+      // Never let signing failure break evidence retrieval — degrade to the
+      // unsigned packet. Log so SIEM sees a key/material problem.
+      logger.warn('[guard] evidence signing failed:', e?.message);
+      signed = null;
+    }
+
     return NextResponse.json({
+      // When present, these two fields let a relying party verify the receipt
+      // OFFLINE — Ed25519 over the canonical EP-RECEIPT-v1 payload — without
+      // trusting this endpoint. Absent (null) when the receipt is not yet in a
+      // signable state; the rest of the packet remains the tamper-evident
+      // audit-log view it has always been.
+      document: signed?.document ?? null,
+      public_key: signed?.public_key ?? null,
+      signed: Boolean(signed),
+      verify_with: '@emilia-protocol/verify',
       receipt_id: receiptId,
       organization_id: base.organization_id,
       actor: {
