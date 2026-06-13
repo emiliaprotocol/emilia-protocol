@@ -116,7 +116,7 @@ EP is no longer only a proposal. It is a working open-source protocol package wi
 | Receipt format | `EP-RECEIPT-v1`, versioned and offline-verifiable |
 | Internet-Draft | `draft-schrock-ep-authorization-receipts-01` |
 | Offline verifier | `@emilia-protocol/verify`, with JavaScript, Python, and Go verification work in-repo |
-| Local issuer | `@emilia-protocol/issue` v0.2.0, `ep-issue`, zero runtime dependencies |
+| Local issuer | `@emilia-protocol/issue` 0.2.0, `ep-issue`, zero runtime dependencies |
 | Issuer tests | 16 Node tests covering verifier round-trip, dual approval, anchoring, tamper rejection, wrong-key rejection, forged checkpoint rejection, fail-closed log-key handling, Class-A refusal for software signers, CLI keygen/issue/demo, and PIP-007 attestation validation/fail-closed behavior |
 | Red-team cases | 85 adversarial cases in `docs/conformance/RED_TEAM_CASES.md` |
 | Formal verification | 26 TLA+ properties verified by TLC 2.19, 413,137 states generated, 45,342 distinct states, 0 errors |

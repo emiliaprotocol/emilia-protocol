@@ -213,6 +213,8 @@ const SAFE_HOSTS = new Set([
   "railway.app",
   // Government / standards bodies cited in proposals.
   "nist.gov",
+  "ietf.org", // datatracker.ietf.org — the EP Internet-Draft lives there
+  "aaif.io", // Agentic AI Foundation — proposal + working-group docs
   "treasury.gov",
   "cms.gov",
   "hhs.gov",
