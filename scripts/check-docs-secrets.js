@@ -128,6 +128,7 @@ const SAFE_HOSTS = new Set([
   "myapp.com",
   // Common legitimate public references
   "github.com",
+  "github.blog", // GitHub's official blog (announcement URLs cited in docs)
   "npmjs.com",
   "npmjs.org",
   "nodejs.org",
@@ -226,6 +227,10 @@ const SAFE_HOSTS = new Set([
   "iarpa.gov",
   "forms.gle", // Anthropic External Researcher Access application form
   "fedscoop.com", // cited news source on the NIST consortium relaunch
+  // Schmidt Sciences funder domains cited in docs/grant-applications/schmidt-sciences/
+  "schmidtsciences.org",
+  "schmidtsciencefellows.org",
+  "albany.edu", // University at Albany OCFR — academic-channel example for the Schmidt RFP
   // AI-safety / philanthropic funders cited in docs/grant-applications/ai-safety-philanthropy/
   "manifund.org",
   "effectivealtruism.org", // funds.effectivealtruism.org (LTFF), forum.effectivealtruism.org
@@ -234,7 +239,19 @@ const SAFE_HOSTS = new Set([
   "futureoflife.org",
   "coefficientgiving.org",
   "bluedot.org",
+  // Open-source-infrastructure funders cited in
+  // docs/grant-applications/oss-infra-funders/.
+  "sovereign.tech",   // Sovereign Tech Agency (Fund / Standards / Fellowship)
+  "opentech.fund",    // Open Technology Fund (FOSS Sustainability Fund)
+  "floss.fund",       // FLOSS/fund (Zerodha-backed OSS funding)
+  "alpha-omega.dev",  // Alpha-Omega (Linux Foundation / OpenSSF)
+  "openssf.org",      // Open Source Security Foundation
   "senate.gov", // public oversight-letter citation in the crumple-zone framing
+  // Agency SBIR portals cited in docs/grant-applications/ (DHS + NIST + DoD).
+  "sbir.gov",
+  "dhs.gov", // sbir2.st.dhs.gov, st.dhs.gov
+  "st.dhs.gov",
+  "af.mil", // afrl.af.mil reauthorization announcement (AFWERX/DoD)
   "treasury.gov",
   "cms.gov",
   "hhs.gov",

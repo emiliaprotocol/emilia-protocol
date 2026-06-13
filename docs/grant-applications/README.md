@@ -1,7 +1,7 @@
 # Grant Applications — EMILIA Protocol (2026 Q2)
 
-This directory contains application packages for six grant / partnership
-programs. Each subdirectory has:
+This directory contains grant / partnership program packages. Each subdirectory
+has:
 
 - `application.md` — the submission content, tailored to that program's format
 - `submission.md` — exactly how to submit (URL, form fields, attachments, contact)
@@ -14,7 +14,9 @@ programs. Each subdirectory has:
 | NSF SBIR Phase I — Topic CT | [`nsf-sbir-phase-1/`](./nsf-sbir-phase-1/) | DRAFT | Submit Project Pitch at https://seedfund.nsf.gov | Iman |
 | NIST AISI Consortium | [`nist-aisic/`](./nist-aisic/) | DRAFT | Email aiconsortium@nist.gov + sign CRADA | Iman |
 | DARPA SAFE-AI BAA | [`darpa-safe-ai/`](./darpa-safe-ai/) | TEMPLATE | Watch SAM.gov for next AI-verification BAA | Iman |
-| AAIF Proposal v3 | [`aaif/`](./aaif/) | REFRESHED | Verify current recipient, then send refreshed cover email + `docs/AAIF-PROPOSAL-v3.md` | Iman |
+| DHS S&T SBIR (FY26) | [`agency-sbir-dhs-nist/`](./agency-sbir-dhs-nist/) | WATCH | Monitor sbir2.st.dhs.gov + SAM.gov for FY26 topics (est. May–Jul 2026); pre-register SAM.gov | Iman |
+| NIST SBIR (FY26) | [`agency-sbir-dhs-nist/`](./agency-sbir-dhs-nist/) | WATCH | Monitor nist.gov/oam/funding-opportunities + grants.gov for FY26 NOFO | Iman |
+| AAIF Proposal v3 | [`aaif/`](./aaif/) | CHANNEL-CORRECTED | Join AAIF working group, find TC sponsor, then submit GitHub issue form with `docs/AAIF-PROPOSAL-v3.md` | Iman |
 | OpenAI Cybersecurity Grant | [`openai-cybersecurity/`](./openai-cybersecurity/) | DRAFT | Fill form at https://openai.com/form/cybersecurity-grant-program | Iman |
 | Anthropic Research Grants | [`anthropic-research/`](./anthropic-research/) | DRAFT | Submit via Anthropic researcher access program | Iman |
 
@@ -23,7 +25,7 @@ programs. Each subdirectory has:
 Lowest friction first — get the easy ones in the inbox before tackling the
 heavyweights.
 
-1. **AAIF v3** (10 min) — refreshed for June 2026 receipts, issuer, essays, and federation proof; verify the recipient, then send.
+1. **AAIF working group** (15 min) — do not email intake; join the AAIF working group first, find a TC sponsor, then submit the GitHub project-proposal issue when sponsor/pilot evidence is ready.
 2. **OpenAI Cybersecurity Grant** (30 min) — short web form, real money, fast review.
 3. **Anthropic Research Grants** (30 min) — short form, formal-verification fit is excellent.
 4. **NIST AISIC** (1 hr) — credibility play; CRADA paperwork takes longest.
@@ -40,7 +42,7 @@ Already in the repo:
 - `docs/security/AUDIT_METHODOLOGY.md` — internal audit methodology
 - `docs/compliance/NIST-AI-RMF-MAPPING.md` — 38 subcategories
 - `docs/compliance/EU-AI-ACT-MAPPING.md` — Articles 9–15 + 26
-- `docs/AAIF-PROPOSAL-v3.md` — refreshed v3.1 AAIF proposal
+- `docs/AAIF-PROPOSAL-v3.md` — refreshed v3.2 AAIF proposal
 - `standards/draft-schrock-ep-authorization-receipts-01.md` — current authorization-receipt protocol draft
 - `docs/RECEIPT-CLAIMS.md` — exact authorization-receipt claims and non-claims
 - `docs/positioning/DIFFERENTIATION.md` — adjacent-work and category map
