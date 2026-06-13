@@ -3058,8 +3058,10 @@ paths:
       tags: [Cloud]
       summary: Diff two policy versions
       description: |
-        Compare two versions of a policy to see what changed.
-        Requires read permission.
+        Compare two versions of a policy to see what changed. Versions are the
+        handshake_policies rows sharing the policy's policy_key; their `rules`
+        are compared with the policy-sdk semantic diff (loosening / tightening
+        / neutral classification). Requires read permission.
       security:
         - BearerAuth: []
       parameters:
@@ -3091,10 +3093,35 @@ paths:
                 properties:
                   policy_id:
                     type: string
+                  policy_key:
+                    type: string
                   v1:
                     type: object
+                    description: The lower-numbered handshake_policies version row.
                   v2:
                     type: object
+                    description: The higher-numbered handshake_policies version row.
+                  diff:
+                    type: object
+                    description: |
+                      Semantic diff of v1.rules vs v2.rules.
+                    properties:
+                      changes:
+                        type: array
+                        items:
+                          type: object
+                      risk:
+                        type: string
+                        enum: [loosening, tightening, neutral]
+                      summary:
+                        type: object
+                        properties:
+                          loosening:
+                            type: integer
+                          tightening:
+                            type: integer
+                          neutral:
+                            type: integer
                   tenant_id:
                     type: string
         '400':
@@ -3103,6 +3130,8 @@ paths:
           description: Cloud API authentication required
         '403':
           description: Read permission required
+        '404':
+          description: Policy not found, or one or both versions not found
         '500':
           description: Policy diff query failed
 
@@ -3112,7 +3141,10 @@ paths:
       summary: Initiate a policy version rollout
       description: |
         Initiate a rollout of a policy version to the specified environment.
-        Requires admin permission (deployment-level action).
+        The version is resolved against handshake_policies by the policy's
+        policy_key and the requested version number; the rollout record's
+        policy_id points at that specific version row. Requires admin
+        permission (deployment-level action).
       security:
         - BearerAuth: []
       parameters:
@@ -3148,7 +3180,12 @@ paths:
               schema:
                 type: object
                 properties:
+                  rollout_id:
+                    type: string
                   policy_id:
+                    type: string
+                    description: The handshake_policies policy_id of the rolled-out version row.
+                  policy_key:
                     type: string
                   version:
                     type: integer
@@ -3158,17 +3195,22 @@ paths:
                     type: string
                   status:
                     type: string
+                  canary_pct:
+                    type: integer
+                    nullable: true
                   initiated_at:
                     type: string
                     format: date-time
                   tenant_id:
                     type: string
         '400':
-          description: version and environment are required
+          description: version and environment are required, or invalid strategy / canary_pct
         '401':
           description: Cloud API authentication required
         '403':
           description: Admin permission required
+        '404':
+          description: Policy not found, or the requested version does not exist
         '500':
           description: Rollout failed
 
@@ -3177,8 +3219,9 @@ paths:
       tags: [Cloud]
       summary: List policy versions
       description: |
-        List all versions of a policy, ordered newest first.
-        Requires read permission.
+        List all versions of a policy, ordered newest first. A policy's
+        versions are every handshake_policies row sharing the same policy_key
+        as the row identified by policyId. Requires read permission.
       security:
         - BearerAuth: []
       parameters:
@@ -3198,10 +3241,34 @@ paths:
                 properties:
                   policy_id:
                     type: string
+                  policy_key:
+                    type: string
                   versions:
                     type: array
+                    description: handshake_policies rows sharing the policy_key, newest first.
                     items:
                       type: object
+                      properties:
+                        policy_id:
+                          type: string
+                        policy_key:
+                          type: string
+                        version:
+                          type: integer
+                        name:
+                          type: string
+                        mode:
+                          type: string
+                        status:
+                          type: string
+                        rules:
+                          type: object
+                        created_at:
+                          type: string
+                          format: date-time
+                        updated_at:
+                          type: string
+                          format: date-time
                   count:
                     type: integer
                   tenant_id:
@@ -3210,6 +3277,8 @@ paths:
           description: Cloud API authentication required
         '403':
           description: Read permission required
+        '404':
+          description: Policy not found
         '500':
           description: Policy versions query failed
 

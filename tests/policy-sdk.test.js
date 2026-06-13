@@ -327,4 +327,20 @@ describe('policy-sdk/diff — classifications', () => {
     const d = diffPolicy(a, b);
     expect(d.changes.some(c => c.path.endsWith('.required_claims') && c.risk === 'loosening')).toBe(true);
   });
+
+  // The cloud diff route (/api/cloud/policies/[policyId]/diff) returns this exact
+  // diffPolicy() envelope as its `diff` field, computed over the `rules` of two
+  // handshake_policies version rows. Lock the contract the route depends on.
+  it('returns the { changes, risk, summary } envelope the cloud diff route relies on', () => {
+    const a = { ...GOOD_POLICY_RULES, binding: { ...GOOD_POLICY_RULES.binding, expiry_minutes: 5 } };
+    const b = { ...GOOD_POLICY_RULES, binding: { ...GOOD_POLICY_RULES.binding, expiry_minutes: 30 } };
+    const d = diffPolicy(a, b);
+    expect(Array.isArray(d.changes)).toBe(true);
+    expect(['loosening', 'tightening', 'neutral']).toContain(d.risk);
+    expect(d.summary).toMatchObject({
+      loosening: expect.any(Number),
+      tightening: expect.any(Number),
+      neutral: expect.any(Number),
+    });
+  });
 });

@@ -81,7 +81,7 @@ Use two lanes:
 | ☐ | Time | Action | Notes |
 |---|---|---|---|
 | ☐ | 30 min | Delete `perf-test-probe-noop` entity from prod Supabase via Studio SQL editor. | Benign artifact from an earlier schema probe; no DELETE API exists for entities so this is the only way. |
-| ☐ | 1 hr | Investigate origin of `policy_versions` table referenced in migration 072 — is it from an old removed migration, or should it be created? Decide and either add a fresh migration or remove the reference. | Currently no-op via the defensive guard in 087, but this is real schema drift to clean up. |
+| ✅ | 1 hr | Investigate origin of `policy_versions` table referenced in migration 072 — is it from an old removed migration, or should it be created? Decide and either add a fresh migration or remove the reference. | Resolved: `policy_versions` was redundant with `handshake_policies` (versioned by `policy_key` + `version`). The three cloud routes that read it (`/api/cloud/policies/[policyId]/{versions,diff,rollout}`) were repointed at `handshake_policies`; no table was created. The guarded `policy_versions` ALTER branches in 072/087 remain as harmless no-ops. |
 | ☐ | 2 hrs | Audit which RLS policies from migration 076 actually exist on prod via Studio. The defensive 088 made it idempotent, but ground-truth verification is worth doing once. | Service role bypasses RLS anyway, so this is defense-in-depth not runtime risk. |
 | ☐ | 1 hr | When prod p95 server-time stays below 600ms for a full week, tighten the k6 thresholds in `tests/k6/baseline.js` from 900ms back toward 400–500ms. | The ratchet history is in the file's threshold comment block. |
 

@@ -3,6 +3,7 @@ import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { loadPolicyById } from '@/lib/handshake/policy';
 import { logger } from '../../../../../../lib/logger.js';
 
 /**
@@ -12,14 +13,19 @@ import { logger } from '../../../../../../lib/logger.js';
  * Requires: admin permission (deployment-level action).
  *
  * Body:
- *   version     {number}  — policy version number (must exist in policy_versions)
+ *   version     {number}  — policy version number (must exist in handshake_policies
+ *                           for this policy's policy_key)
  *   environment {string}  — target environment (e.g. "production", "staging")
  *   strategy    {'immediate'|'canary'}  — default: 'immediate'
  *   canary_pct  {number}  — traffic % for canary rollouts (1–99, required if canary)
  *   metadata    {object}  — optional operator-supplied context
  *
+ * Versions live in handshake_policies (UNIQUE(policy_key, version)); each version
+ * is its own row with its own policy_id. The rollout's policy_id FK points at the
+ * specific version row being rolled out so the FK to handshake_policies is satisfied.
+ *
  * Immediate rollouts supersede any prior active rollout for the same
- * (policy_id, environment) pair. Canary rollouts coexist with the active rollout.
+ * (policy_key, environment) pair. Canary rollouts coexist with the active rollout.
  */
 export async function POST(request, { params }) {
   try {
@@ -48,12 +54,18 @@ export async function POST(request, { params }) {
 
     const supabase = getGuardedClient();
 
-    // Verify the policy and version exist.
-    const { data: version, error: vErr } = await supabase
-      .from('policy_versions')
-      .select('*')
+    // Resolve the route policyId to its policy_key; the version to roll out is
+    // the handshake_policies row with this key and body.version.
+    const policy = await loadPolicyById(supabase, policyId);
+    if (!policy) {
+      return EP_ERRORS.NOT_FOUND('Policy');
+    }
+
+    const { data: versionRow, error: vErr } = await supabase
+      .from('handshake_policies')
+      .select('policy_id, policy_key, version')
       .eq('tenant_id', auth.tenantId)
-      .eq('policy_id', policyId)
+      .eq('policy_key', policy.policy_key)
       .eq('version', body.version)
       .maybeSingle();
 
@@ -62,20 +74,36 @@ export async function POST(request, { params }) {
       return epProblem(500, 'rollout_query_failed', vErr.message);
     }
 
-    if (!version) {
+    if (!versionRow) {
       return epProblem(404, 'version_not_found', `Policy version ${body.version} not found`);
     }
 
     const now = new Date().toISOString();
 
     // For immediate rollouts, supersede any currently active rollout for this
-    // (policy_id, environment) combination. Canary rollouts coexist.
+    // (policy_key, environment) combination. Because each version is its own
+    // handshake_policies row (its own policy_id), an "active rollout for this
+    // policy" spans every version row sharing the policy_key — so we collect
+    // those IDs and supersede across all of them. Canary rollouts coexist.
     if (strategy === 'immediate') {
+      const { data: keyVersions, error: keyErr } = await supabase
+        .from('handshake_policies')
+        .select('policy_id')
+        .eq('tenant_id', auth.tenantId)
+        .eq('policy_key', policy.policy_key);
+
+      if (keyErr) {
+        logger.error('[cloud/policies/rollout] Key version query error:', keyErr);
+        return epProblem(500, 'rollout_query_failed', keyErr.message);
+      }
+
+      const keyPolicyIds = (keyVersions || []).map((r) => r.policy_id);
+
       await supabase
         .from('policy_rollouts')
         .update({ status: 'superseded', completed_at: now })
         .eq('tenant_id', auth.tenantId)
-        .eq('policy_id', policyId)
+        .in('policy_id', keyPolicyIds)
         .eq('environment', body.environment)
         .eq('status', 'active');
     }
@@ -83,7 +111,7 @@ export async function POST(request, { params }) {
     const { data: rollout, error: insertErr } = await supabase
       .from('policy_rollouts')
       .insert({
-        policy_id: policyId,
+        policy_id: versionRow.policy_id,
         version: body.version,
         environment: body.environment,
         strategy,
@@ -104,7 +132,8 @@ export async function POST(request, { params }) {
 
     return NextResponse.json({
       rollout_id: rollout.rollout_id,
-      policy_id: policyId,
+      policy_id: versionRow.policy_id,
+      policy_key: policy.policy_key,
       version: body.version,
       environment: body.environment,
       strategy,

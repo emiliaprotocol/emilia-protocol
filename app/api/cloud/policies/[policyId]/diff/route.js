@@ -3,12 +3,17 @@ import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { loadPolicyById } from '@/lib/handshake/policy';
+import { diffPolicy } from '@/lib/policy-sdk/diff.js';
 import { logger } from '../../../../../../lib/logger.js';
 
 /**
  * GET /api/cloud/policies/[policyId]/diff?v1=...&v2=...
  *
- * Compare two versions of a policy to see what changed.
+ * Compare two versions of a policy to see what changed. Versions are the
+ * handshake_policies rows sharing the policy_key of the row identified by
+ * policyId; their `rules` are diffed with the policy-sdk semantic diff.
+ *
  * Requires: read permission.
  */
 export async function GET(request, { params }) {
@@ -28,16 +33,22 @@ export async function GET(request, { params }) {
 
     const supabase = getGuardedClient();
 
+    // Resolve the route policyId to its policy_key; versions are keyed by it.
+    const policy = await loadPolicyById(supabase, policyId);
+    if (!policy) {
+      return EP_ERRORS.NOT_FOUND('Policy');
+    }
+
     const { data: versions, error } = await supabase
-      .from('policy_versions')
-      .select('*')
+      .from('handshake_policies')
+      .select('policy_id, policy_key, version, name, mode, status, rules, created_at, updated_at')
       .eq('tenant_id', auth.tenantId)
-      .eq('policy_id', policyId)
+      .eq('policy_key', policy.policy_key)
       .in('version', (() => {
         const n1 = parseInt(v1, 10);
         const n2 = parseInt(v2, 10);
         if (!Number.isInteger(n1) || !Number.isInteger(n2) || n1 < 1 || n2 < 1) {
-          return [-1]; // guaranteed no-match — validation error handled below
+          return [-1]; // guaranteed no-match — handled by the < 2 check below
         }
         return [n1, n2];
       })());
@@ -53,10 +64,15 @@ export async function GET(request, { params }) {
 
     const [version1, version2] = versions.sort((a, b) => a.version - b.version);
 
+    // Semantic diff of the two versions' rules (loosening / tightening / neutral).
+    const diff = diffPolicy(version1.rules, version2.rules);
+
     return NextResponse.json({
       policy_id: policyId,
+      policy_key: policy.policy_key,
       v1: version1,
       v2: version2,
+      diff,
       tenant_id: auth.tenantId,
     });
   } catch (err) {

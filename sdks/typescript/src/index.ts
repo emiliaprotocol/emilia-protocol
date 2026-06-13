@@ -198,14 +198,21 @@ export interface SimulatePolicyParams {
 
 export interface RolloutPolicyParams {
   policyId: string;
-  strategy: 'canary' | 'blue-green' | 'linear' | string;
-  percentage?: number;
+  /** Policy version number to roll out (resolved against handshake_policies). */
+  version: number;
+  /** Target environment, e.g. "production" or "staging". */
+  environment: string;
+  strategy?: 'immediate' | 'canary';
+  /** Traffic percentage (1–99) for canary rollouts. */
+  canaryPct?: number;
 }
 
 export interface DiffPolicyVersionsParams {
   policyId: string;
-  versionA: string;
-  versionB: string;
+  /** First version number to compare. */
+  v1: number;
+  /** Second version number to compare. */
+  v2: number;
 }
 
 // -- Responses --------------------------------------------------------------
@@ -463,34 +470,72 @@ export interface PolicySimulationResult {
 }
 
 export interface PolicyRolloutResult {
-  policyId: string;
+  rollout_id: string;
+  /** handshake_policies policy_id of the rolled-out version row. */
+  policy_id: string;
+  policy_key: string;
+  version: number;
+  environment: string;
   strategy: string;
-  percentage: number;
   status: string;
-  startedAt: string;
+  canary_pct: number | null;
+  initiated_at: string;
+  tenant_id: string;
 }
 
+/**
+ * A policy version is a handshake_policies row. Versions sharing a policy_key
+ * form the version history of a single policy.
+ */
 export interface PolicyVersion {
-  versionId: string;
-  policyId: string;
+  policy_id: string;
+  policy_key: string;
   version: number;
-  createdAt: string;
-  createdBy: string;
-  changelog?: string;
+  name: string;
+  mode: string;
+  status: string;
+  rules: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PolicyVersionsResult {
+  policy_id: string;
+  policy_key: string;
+  versions: PolicyVersion[];
+  count: number;
+  tenant_id: string;
+}
+
+/** A single classified field change between two policy versions' rules. */
+export interface PolicyChange {
+  path: string;
+  before: unknown;
+  after: unknown;
+  risk: 'loosening' | 'tightening' | 'neutral';
+  rationale: string;
+}
+
+/** Semantic diff of v1.rules vs v2.rules. */
+export interface PolicyRulesDiff {
+  changes: PolicyChange[];
+  risk: 'loosening' | 'tightening' | 'neutral';
+  summary: {
+    loosening: number;
+    tightening: number;
+    neutral: number;
+  };
 }
 
 export interface PolicyDiff {
-  policyId: string;
-  versionA: string;
-  versionB: string;
-  changes: PolicyChange[];
-}
-
-export interface PolicyChange {
-  field: string;
-  oldValue: unknown;
-  newValue: unknown;
-  type: 'added' | 'removed' | 'modified';
+  policy_id: string;
+  policy_key: string;
+  /** The lower-numbered handshake_policies version row. */
+  v1: PolicyVersion;
+  /** The higher-numbered handshake_policies version row. */
+  v2: PolicyVersion;
+  diff: PolicyRulesDiff;
+  tenant_id: string;
 }
 
 // -- Error ------------------------------------------------------------------
@@ -594,25 +639,43 @@ export class EPCloudClient {
     }, true);
   }
 
-  /** Begin a rollout of a policy using the specified strategy. */
-  async rolloutPolicy(policyId: string, strategy: string, percentage?: number): Promise<PolicyRolloutResult> {
+  /**
+   * Roll out a specific policy version to an environment. The version is
+   * resolved against handshake_policies by the policy's policy_key. Immediate
+   * rollouts supersede the prior active rollout for that (policy_key,
+   * environment); canary rollouts coexist (canaryPct in 1–99).
+   */
+  async rolloutPolicy(
+    policyId: string,
+    version: number,
+    environment: string,
+    strategy: 'immediate' | 'canary' = 'immediate',
+    canaryPct?: number,
+  ): Promise<PolicyRolloutResult> {
     return this._request<PolicyRolloutResult>('POST', `/api/cloud/policies/${encodeURIComponent(policyId)}/rollout`, {
+      version,
+      environment,
       strategy,
-      percentage,
+      ...(strategy === 'canary' && canaryPct !== undefined ? { canary_pct: canaryPct } : {}),
     }, true);
   }
 
-  /** List all versions of a policy. */
-  async getPolicyVersions(policyId: string): Promise<PolicyVersion[]> {
-    return this._request<PolicyVersion[]>('GET', `/api/cloud/policies/${encodeURIComponent(policyId)}/versions`, undefined, true);
+  /**
+   * List all versions of a policy. Versions are the handshake_policies rows
+   * sharing the policy's policy_key, returned newest-first inside an envelope.
+   */
+  async getPolicyVersions(policyId: string): Promise<PolicyVersionsResult> {
+    return this._request<PolicyVersionsResult>('GET', `/api/cloud/policies/${encodeURIComponent(policyId)}/versions`, undefined, true);
   }
 
-  /** Diff two versions of a policy to see what changed. */
-  async diffPolicyVersions(policyId: string, versionA: string, versionB: string): Promise<PolicyDiff> {
-    return this._request<PolicyDiff>('POST', `/api/cloud/policies/${encodeURIComponent(policyId)}/diff`, {
-      versionA,
-      versionB,
-    }, true);
+  /**
+   * Diff two versions of a policy to see what changed between their rules.
+   * v1 and v2 are version numbers; the response includes both version rows and
+   * a semantic diff classified as loosening / tightening / neutral.
+   */
+  async diffPolicyVersions(policyId: string, v1: number, v2: number): Promise<PolicyDiff> {
+    const qs = this._toQs({ v1: String(v1), v2: String(v2) });
+    return this._request<PolicyDiff>('GET', `/api/cloud/policies/${encodeURIComponent(policyId)}/diff${qs}`, undefined, true);
   }
 
   /** @internal Build query string from SignoffFilters. */
