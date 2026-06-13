@@ -28,7 +28,7 @@ const handler = createMcpHandler(
     server.registerTool(
       'ep_verify_receipt',
       {
-        title: 'Verify Trust Receipt (offline math, in-process)',
+        title: 'Verify authorization receipt (offline math, in-process)',
         annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
         description:
           'Verify an EP-RECEIPT-v1 trust receipt with pure public-key math — '

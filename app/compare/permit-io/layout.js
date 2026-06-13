@@ -3,7 +3,7 @@ export const metadata = {
   description:
     'Permit.io enforces fine-grained authorization (RBAC/ABAC/ReBAC) for AI ' +
     'agents. EMILIA adds a named human’s signoff before an irreversible ' +
-    'action plus an offline-verifiable Trust Receipt. How they differ, and ' +
+    'action plus an offline-verifiable authorization receipt. How they differ, and ' +
     'why they are strongest together.',
   alternates: { canonical: '/compare/permit-io' },
   openGraph: {

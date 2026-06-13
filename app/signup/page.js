@@ -97,7 +97,7 @@ export default function SignupPage() {
             <h1 style={{ ...styles.h1, marginBottom: 12 }}>Get a sandbox API key in 30 seconds.</h1>
             <p style={{ ...styles.body, maxWidth: 560 }}>
               Register an entity on the live network and get a real EMILIA API key &mdash; no credit
-              card, no sales call. Free sandbox tier. Use it to issue Trust Receipts, run handshakes,
+              card, no sales call. Free sandbox tier. Use it to issue authorization receipts, run handshakes,
               and call the gate from your agent.
             </p>
 

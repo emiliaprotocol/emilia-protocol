@@ -19,7 +19,7 @@ export default function CompareHumanInTheLoopPage() {
   const ROWS = [
     { dim: 'What gets approved', them: 'An action, often coarse — approve once, broad scope', ep: 'The exact action — bound to actor, authority, policy, and parameters' },
     { dim: 'Replay resistance', them: 'Usually none — an approval can be reused', ep: 'One-time consumable handshake' },
-    { dim: 'Evidence', them: 'A log line in your own system — trust us', ep: 'Trust Receipt — Ed25519 + Merkle, verifiable offline' },
+    { dim: 'Evidence', them: 'A log line in your own system — trust us', ep: 'Authorization receipt — Ed25519 + Merkle, verifiable offline' },
     { dim: 'Approver identity', them: 'Whoever clicked the button', ep: 'A named principal bound into the signoff' },
     { dim: 'Assurance', them: 'Your own glue code', ep: 'Formally verified policy engine — 26 TLA+ theorems + 35 Alloy facts' },
     { dim: 'What you maintain', them: 'Channels, state, retries, audit storage', ep: 'A drop-in gate (MCP / SDK); receipts included' },
@@ -51,7 +51,7 @@ export default function CompareHumanInTheLoopPage() {
           A button press approves &ldquo;an action.&rdquo; It is usually not cryptographically bound to the exact parameters — the amount, the destination, the beneficiary — so the same approval can authorize a different action than the one the human saw. It can often be replayed. And the evidence it leaves is a row in a database you control, which is precisely what a regulator or an insurer will not take at face value.
         </p>
         <p className="ep-reveal" style={styles.body}>
-          EMILIA binds the signoff to the exact action, makes it one-time consumable, and mints a Trust Receipt anyone can verify offline (Ed25519 + Merkle, no account, no call home). The policy engine underneath is formally verified, not glue code you have to trust.
+          EMILIA binds the signoff to the exact action, makes it one-time consumable, and mints an authorization receipt (formerly Trust Receipt) anyone can verify offline (Ed25519 + Merkle, no account, no call home). The policy engine underneath is formally verified, not glue code you have to trust.
         </p>
       </section>
 

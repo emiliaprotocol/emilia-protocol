@@ -32,7 +32,7 @@ const MCP_SOFTWARE_JSONLD = {
   applicationCategory: 'DeveloperApplication',
   operatingSystem: 'Cross-platform (Node.js 18+)',
   description:
-    'MCP server that adds trust and human sign-off to AI agents: verify Trust Receipts, '
+    'MCP server that adds trust and human sign-off to AI agents: verify authorization receipts, '
     + 'check entity trust profiles, and require a named human approval before an irreversible agent action.',
   url: 'https://www.emiliaprotocol.ai/mcp',
   downloadUrl: 'https://www.npmjs.com/package/@emilia-protocol/mcp-server',
@@ -43,7 +43,7 @@ const MCP_SOFTWARE_JSONLD = {
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', availability: 'https://schema.org/InStock' },
   featureList: [
     'Human sign-off before irreversible agent actions',
-    'Offline-verifiable Trust Receipts (Ed25519)',
+    'Offline-verifiable authorization receipts (Ed25519)',
     'Entity trust profiles',
     'Receipt verification',
     'Model Context Protocol (MCP) stdio server',
@@ -53,7 +53,7 @@ const MCP_SOFTWARE_JSONLD = {
 const FAQ = [
   {
     q: 'What does the EMILIA MCP server do?',
-    a: 'It adds a trust and accountability layer to AI agents over the Model Context Protocol: agents can verify Trust Receipts, check an entity’s trust profile before transacting, and — the flagship — require a named human to sign off before any irreversible action (releasing a payment, changing a record, deploying).',
+    a: 'It adds a trust and accountability layer to AI agents over the Model Context Protocol: agents can verify authorization receipts, check an entity’s trust profile before transacting, and — the flagship — require a named human to sign off before any irreversible action (releasing a payment, changing a record, deploying).',
   },
   {
     q: 'How do I install it?',
@@ -61,7 +61,7 @@ const FAQ = [
   },
   {
     q: 'How is this different from permissions or OAuth?',
-    a: 'Permissions gate access locally and leave no portable proof. EMILIA mints a signed, offline-verifiable Trust Receipt bound to the exact action and the named human who approved it — a credential a counterparty can verify without calling home.',
+    a: 'Permissions gate access locally and leave no portable proof. EMILIA mints a signed, offline-verifiable authorization receipt bound to the exact action and the named human who approved it — a credential a counterparty can verify without calling home.',
   },
   {
     q: 'Is it open source?',
@@ -94,7 +94,7 @@ const INSTALL = `// Claude Desktop / any MCP client — add to your config:
 }`;
 
 const TOOLS = [
-  { name: 'ep_verify_receipt', what: 'Verify any EMILIA Trust Receipt offline — signature + Merkle anchor.' },
+  { name: 'ep_verify_receipt', what: 'Verify any EMILIA authorization receipt offline — signature + Merkle anchor.' },
   { name: 'ep_trust_profile', what: 'Pull an entity’s full trust profile before transacting with it.' },
   { name: 'ep_trust_evaluate', what: 'Evaluate a counterparty/agent’s trust for a specific action.' },
   { name: 'ep_submit_receipt', what: 'Record a signed receipt of an action your agent took.' },
@@ -209,7 +209,7 @@ export default async function McpPage() {
               </div>
             ))}
           </div>
-          <p style={{ fontSize: 13, color: color.t3, marginTop: 14 }}>36 tools total (17 core advertised by default) &mdash; trust profiles, receipts, disputes, delegation, identity continuity, and more. Full list in the <a href="https://www.npmjs.com/package/@emilia-protocol/mcp-server" target="_blank" rel="noopener noreferrer" style={{ color: color.gold }}>npm package</a>.</p>
+          <p style={{ fontSize: 13, color: color.t3, marginTop: 14 }}>34 tools total (17 core advertised by default) &mdash; trust profiles, receipts, disputes, delegation, identity continuity, and more. Full list in the <a href="https://www.npmjs.com/package/@emilia-protocol/mcp-server" target="_blank" rel="noopener noreferrer" style={{ color: color.gold }}>npm package</a>.</p>
         </C>
       </section>
 
@@ -233,7 +233,7 @@ export default async function McpPage() {
             ))}
           </div>
           <p style={{ fontSize: 13, color: color.t3, marginTop: 14 }}>
-            Trust Receipts verify offline in JavaScript <em style={{ fontStyle: 'normal' }}>and</em> Python &mdash; minted anywhere, checked anywhere. See the <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/QUICKSTART.md" target="_blank" rel="noopener noreferrer" style={{ color: color.gold }}>5-minute quickstart</a>.
+            Authorization receipts verify offline in JavaScript <em style={{ fontStyle: 'normal' }}>and</em> Python &mdash; minted anywhere, checked anywhere. See the <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/QUICKSTART.md" target="_blank" rel="noopener noreferrer" style={{ color: color.gold }}>5-minute quickstart</a>.
           </p>
         </C>
       </section>

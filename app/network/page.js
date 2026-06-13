@@ -23,7 +23,7 @@ const C = ({ children, style }) => (
 );
 
 const COMPOUND = [
-  { num: '01', title: 'One vendor issues a receipt', body: 'A company publishes a signed Trust Receipt for a high-risk action. It is portable, offline-verifiable evidence — not a logo on a slide.' },
+  { num: '01', title: 'One vendor issues a receipt', body: 'A company publishes a signed authorization receipt for a high-risk action. It is portable, offline-verifiable evidence — not a logo on a slide.' },
   { num: '02', title: 'The next party verifies it', body: 'Their counterparty checks the receipt with @emilia-protocol/verify. No account, no API key, no trust in us required — just Ed25519 and a Merkle proof.' },
   { num: '03', title: 'Verification becomes the expectation', body: 'Once one side demands receipts, the other supplies them. Agent A checks Agent B before collaborating. The network — not any vendor — becomes the standard.' },
 ];

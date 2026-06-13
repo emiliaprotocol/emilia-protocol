@@ -141,7 +141,7 @@ export default function RfpPage() {
 
         <div style={{ marginTop: 48, paddingTop: 24, borderTop: `1px solid ${color.border}`, fontSize: 13, color: color.t3, lineHeight: 1.7 }}>
           Auditing a vendor that claims conformance? See the{' '}
-          <a href="/auditors" style={lnk}>auditor&rsquo;s guide to verifying Trust Receipts</a> — verification takes
+          <a href="/auditors" style={lnk}>auditor&rsquo;s guide to verifying authorization receipts</a> — verification takes
           about two minutes and requires nothing from us. This page supports your procurement program; it is not legal advice.
         </div>
       </main>

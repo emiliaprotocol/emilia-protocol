@@ -6,7 +6,7 @@ import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
 
 /**
- * /explorer — Trust Receipt Explorer
+ * /explorer — Authorization Receipt Explorer
  *
  * The "Etherscan for trust." Anyone can:
  *   - Look up a receipt by receipt_id

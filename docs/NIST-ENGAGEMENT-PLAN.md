@@ -34,7 +34,7 @@ The four composable protocol components, each with a distinct trust responsibili
 ### EP Core (candidate for standardization)
 Three interoperable objects that define the minimal trust evaluation interface:
 
-1. **Trust Receipt** — a portable, append-only behavioral event record with cryptographic integrity, provenance tier, and context keys
+1. **Authorization receipt** (formerly Trust Receipt) — a portable, append-only behavioral event record with cryptographic integrity, provenance tier, and context keys
 2. **Trust Profile** — a standardized read object summarizing observed trust state: confidence level, evidence depth, behavioral rates, provenance composition, anomaly flags, dispute summary
 3. **Trust Decision** — a policy-evaluated result for a specific action and context, returning `allow`/`review`/`deny` with reasons, evidence sufficiency, policy reference, and appeal path
 
@@ -62,7 +62,7 @@ These three objects are what EP proposes as its contribution to agent identity a
 EP's contribution is organized around five control objectives that address gaps the AI Agent Standards Initiative has identified:
 
 ### 1. Auditability — a portable record of trust-relevant events with integrity protection
-Trust Receipts form an append-only record of trust-relevant events. Each receipt carries provenance classification and cryptographic integrity protection. The record is portable across systems and resistant to retroactive modification, supporting the audit trail requirements NIST has identified for accountable agent systems.
+Authorization receipts form an append-only record of trust-relevant events. Each receipt carries provenance classification and cryptographic integrity protection. The record is portable across systems and resistant to retroactive modification, supporting the audit trail requirements NIST has identified for accountable agent systems.
 
 ### 2. Explainability — trust decisions return reasons, policy references, and evidence sufficiency state
 Trust Decisions are not opaque scores. Each decision returns the specific reasons for its outcome, the policy that was applied, and the evidence sufficiency state at evaluation time. This enables receiving parties and oversight bodies to understand why a trust outcome was reached.
@@ -154,7 +154,7 @@ Action items:
 
 EMILIA Protocol (EP) offers a trust evaluation contribution to the agent identity and authorization conversation. Identity frameworks answer "who is this agent?" and authorization frameworks answer "what is it allowed to do?" EP addresses a question that identity and authorization alone do not resolve: "given this agent's observed evidence and this action context, should it be trusted to proceed?"
 
-EP proposes three interoperable objects — Trust Receipt, Trust Profile, and Trust Decision — as a minimal trust evaluation layer adjacent to identity and authorization in agent systems. The core ask: **treat trust evaluation as a missing layer adjacent to identity and authorization.**
+EP proposes three interoperable objects — authorization receipt, Trust Profile, and Trust Decision — as a minimal trust evaluation layer adjacent to identity and authorization in agent systems. The core ask: **treat trust evaluation as a missing layer adjacent to identity and authorization.**
 
 ### Key Points
 
@@ -163,7 +163,7 @@ EP proposes three interoperable objects — Trust Receipt, Trust Profile, and Tr
 An AI agent can be properly authenticated and authorized yet still be unreliable, inconsistent, or poorly suited for a specific context. Identity establishes who is transacting. Authorization establishes what is permitted. Trust evaluation assesses whether to proceed, based on observed behavioral evidence.
 
 EP's three core objects address this gap:
-- **Trust Receipt**: a portable behavioral event record with provenance classification and cryptographic integrity
+- **Authorization receipt**: a portable behavioral event record with provenance classification and cryptographic integrity
 - **Trust Profile**: a standardized summary of observed trust state, computed from receipt evidence
 - **Trust Decision**: a policy-evaluated result with reasons, evidence sufficiency, and appeal path
 
@@ -187,7 +187,7 @@ EP layers on top of existing identity and authorization infrastructure. It does 
 
 EP can support privacy-sensitive environments when implemented with appropriate controls:
 
-- Trust Receipts record behavioral metadata (delivery timing, accuracy, dispute outcomes) — not transaction contents or personally identifiable information
+- Authorization receipts record behavioral metadata (delivery timing, accuracy, dispute outcomes) — not transaction contents or personally identifiable information
 - The privacy-preserving commitment proof extension enables entities to demonstrate trust thresholds without revealing counterparty identities or interaction history
 - This can enable agent participation in workflows where trust verification is needed but counterparty disclosure is not permitted
 
@@ -201,7 +201,7 @@ EP's constitutional requirement ensures that trust evaluation does not become un
 
 ### Closing
 
-The core ask: **Treat trust evaluation as a missing layer adjacent to identity and authorization.** EP's three core objects — Trust Receipt, Trust Profile, and Trust Decision — demonstrate a minimal interoperable approach to this layer.
+The core ask: **Treat trust evaluation as a missing layer adjacent to identity and authorization.** EP's three core objects — authorization receipt, Trust Profile, and Trust Decision — demonstrate a minimal interoperable approach to this layer.
 
 We welcome NIST's guidance on how EP can participate in the AI Agent Standards Initiative's future convenings, working groups, and standards development processes.
 

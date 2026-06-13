@@ -7,7 +7,7 @@ export const metadata = {
     'available via @emilia-protocol/verify on npm.',
   alternates: { canonical: '/explorer' },
   openGraph: {
-    title: 'Trust Receipt Explorer — Verify AI Action Authorization',
+    title: 'Authorization Receipt Explorer — Verify AI Action Authorization',
     description:
       'Public, transparent, cryptographically verified receipts. Like ' +
       'Etherscan for trust.',

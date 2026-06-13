@@ -7,16 +7,16 @@ EMILIA GovGuard — pre-execution control for government benefit, payment, and o
 
 Government programs lose money inside workflows that already pass authentication. The session is valid. The role has the right permissions. The action — a benefit redirect, a caseworker override, a payment destination change — was never bound to an action-level policy and was never owned by a named accountable human. EMILIA GovGuard fills that gap.
 
-GovGuard sits between the agency's existing identity layer and the benefits or payments core system. Before a high-risk change executes, GovGuard binds the actor, the exact action context, the active policy, and the expiry into a one-time trust receipt; if policy requires it, an accountable supervisor must approve the exact action hash before consume. Receipts cannot be replayed, cannot outlive their expiry, and cannot be consumed without the action they authorize.
+GovGuard sits between the agency's existing identity layer and the benefits or payments core system. Before a high-risk change executes, GovGuard binds the actor, the exact action context, the active policy, and the expiry into a one-time authorization receipt (formerly trust receipt); if policy requires it, an accountable supervisor must approve the exact action hash before consume. Receipts cannot be replayed, cannot outlive their expiry, and cannot be consumed without the action they authorize.
 
 GovGuard is the productized surface of EMILIA Protocol — Apache 2.0, formally verified, with an internal audit score of 100/100 (self-administered; see `docs/security/AUDIT_METHODOLOGY.md`).
 
 ## What ships today (verifiable in `github.com/emiliaprotocol/emilia-protocol`)
 
-### v1 Trust Receipts API — the GovGuard product surface
+### v1 Authorization receipts API — the GovGuard product surface
 | Endpoint | Purpose |
 |---|---|
-| `POST /api/v1/trust-receipts` | Create a trust receipt (precheck + policy eval + audit emit) |
+| `POST /api/v1/trust-receipts` | Create an authorization receipt (precheck + policy eval + audit emit) |
 | `GET /api/v1/trust-receipts/{id}` | Read receipt state (replays event log) |
 | `POST /api/v1/trust-receipts/{id}/consume` | One-time consume bound to action_hash |
 | `GET /api/v1/trust-receipts/{id}/evidence` | Full evidence packet (timeline, signoff trail, consume record) |

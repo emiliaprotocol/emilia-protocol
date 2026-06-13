@@ -21,7 +21,7 @@ export default function CompareHumanLayerPage() {
     { dim: 'Where approval lives', them: 'Your application layer — your code decides to honor it', ep: 'Bound into the protocol — action hash, nonce, separation of duty' },
     { dim: 'Binding to the action', them: 'Approves a request; not cryptographically bound to the exact parameters', ep: 'Signoff bound to the exact action hash — amount, destination, beneficiary' },
     { dim: 'Replay', them: 'Reusable unless you prevent it', ep: 'One-time consumable (nonce)' },
-    { dim: 'Evidence', them: 'A record in your own system — trust us', ep: 'Trust Receipt — Ed25519 + Merkle, verifiable offline, no account, no call home' },
+    { dim: 'Evidence', them: 'A record in your own system — trust us', ep: 'Authorization receipt — Ed25519 + Merkle, verifiable offline, no account, no call home' },
     { dim: 'Assurance', them: 'A well-built product; trust the implementation', ep: 'Formally verified policy engine — 26 TLA+ theorems + 35 Alloy facts, run the checker yourself' },
     { dim: 'Best for', them: 'Fast, friendly approval UX — developer velocity', ep: 'Provable authorization for auditors, regulators, fraud & treasury controls' },
   ];
@@ -51,7 +51,7 @@ export default function CompareHumanLayerPage() {
           Approval plumbing answers &ldquo;did a human click approve?&rdquo; The approval lives in your application layer, and your code decides whether to honor it. EMILIA answers the harder question auditors, regulators, and fraud teams actually ask: <em>can anyone prove, later, that this exact irreversible action was authorized by an accountable, named human?</em>
         </p>
         <p className="ep-reveal" style={styles.body}>
-          It does that by binding the signoff to the exact action hash, consuming it once via nonce, enforcing separation of duty in the protocol, and minting a Trust Receipt that verifies offline with pure math (Ed25519 + Merkle) &mdash; no account, no call home. The policy engine underneath is formally verified, and you can run the model checker yourself.
+          It does that by binding the signoff to the exact action hash, consuming it once via nonce, enforcing separation of duty in the protocol, and minting an authorization receipt (formerly Trust Receipt) that verifies offline with pure math (Ed25519 + Merkle) &mdash; no account, no call home. The policy engine underneath is formally verified, and you can run the model checker yourself.
         </p>
       </section>
 

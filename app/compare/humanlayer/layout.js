@@ -3,7 +3,7 @@ export const metadata = {
   description:
     'HumanLayer routes agent approvals to Slack or email — great for human-in-the-loop UX. ' +
     'EMILIA binds the signoff to the exact action, consumes it once, and mints an ' +
-    'offline-verifiable Trust Receipt. Approval convenience vs cryptographic evidence — which you need, and when.',
+    'offline-verifiable authorization receipt. Approval convenience vs cryptographic evidence — which you need, and when.',
   alternates: { canonical: '/compare/humanlayer' },
   openGraph: {
     title: 'EMILIA Protocol vs HumanLayer',

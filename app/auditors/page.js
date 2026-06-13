@@ -1,9 +1,9 @@
 /**
- * /auditors — Verify a Trust Receipt: a guide for auditors.
+ * /auditors — Verify an authorization receipt: a guide for auditors.
  * @license Apache-2.0
  *
  * The audit-firm channel (the SOC 2 playbook): auditors who learn to verify
- * Trust Receipts independently become distribution — every engagement where a
+ * authorization receipts independently become distribution — every engagement where a
  * receipt is re-verified in workpapers normalizes the evidence format. Written
  * for assurance professionals, not engineers: what the artifact is, how to
  * re-verify it without trusting the auditee (or us), what to record, and the
@@ -15,9 +15,9 @@ import SiteFooter from '@/components/SiteFooter';
 import { color, font, radius, styles } from '@/lib/tokens';
 
 export const metadata = {
-  title: 'Verify a Trust Receipt — A Guide for Auditors — EMILIA Protocol',
+  title: 'Verify an Authorization Receipt — A Guide for Auditors — EMILIA Protocol',
   description:
-    'How SOC 2, ISO 42001, and EU AI Act assessors independently verify EMILIA Trust Receipts and Class-A device signoffs: two minutes, offline, no reliance on the auditee or on EMILIA.',
+    'How SOC 2, ISO 42001, and EU AI Act assessors independently verify EMILIA authorization receipts and Class-A device signoffs: two minutes, offline, no reliance on the auditee or on EMILIA.',
   alternates: { canonical: '/auditors' },
 };
 
@@ -65,9 +65,9 @@ export default function AuditorsPage() {
         <div style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 500, letterSpacing: 2.5, textTransform: 'uppercase', color: color.gold, marginBottom: 18 }}>
           For auditors &amp; compliance reviewers
         </div>
-        <h1 style={{ ...styles.h1, maxWidth: 740 }}>Verify a Trust Receipt yourself. Two minutes, offline, no one&rsquo;s word for it.</h1>
+        <h1 style={{ ...styles.h1, maxWidth: 740 }}>Verify an authorization receipt yourself. Two minutes, offline, no one&rsquo;s word for it.</h1>
         <p style={{ ...styles.body, maxWidth: 700 }}>
-          A <strong>Trust Receipt</strong> is a signed, machine-verifiable evidence packet proving that a named human
+          An <strong>authorization receipt</strong> (formerly Trust Receipt) is a signed, machine-verifiable evidence packet proving that a named human
           approved a specific AI-agent action before it executed. Unlike an audit log — which <em>asserts</em> what
           happened inside a system you cannot inspect — a receipt is something you <strong>re-verify yourself</strong>,
           with public-key cryptography, without relying on the auditee&rsquo;s systems or on EMILIA.

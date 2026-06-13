@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * /verify — Verify a Trust Receipt in your own browser.
+ * /verify — Verify an authorization receipt in your own browser.
  * @license Apache-2.0
  *
  * The open, zero-trust answer to a proprietary "control plane": a receipt or a
@@ -63,7 +63,7 @@ function present(kind, result) {
     ];
     if (c.anchor !== null && c.anchor !== undefined) rows.push(['anchor', c.anchor]);
     return {
-      title: 'Trust Receipt',
+      title: 'Authorization Receipt',
       labels: RECEIPT_LABELS,
       rows,
       meaning: 'This receipt was signed by its issuer and has not been altered. Anyone can re-verify it offline, years from now.',
@@ -172,7 +172,7 @@ export default function VerifyPage() {
           Verify it yourself
         </div>
         <h1 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(34px, 5vw, 52px)', letterSpacing: -1.5, lineHeight: 1.02, margin: '0 0 20px' }}>
-          Verify a Trust Receipt in your own browser.
+          Verify an authorization receipt in your own browser.
         </h1>
         <p style={{ fontSize: 17, color: color.t2, lineHeight: 1.7, maxWidth: 640, margin: '0 0 36px' }}>
           Paste a receipt or a device signoff below. It is checked <strong style={{ color: color.t1 }}>entirely on this page</strong> with

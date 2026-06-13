@@ -4,7 +4,7 @@ export const metadata = {
     'A Slack or email approval step for your AI agent is a good instinct, but a ' +
     'click and a log line is not accountable. EMILIA binds the signoff to the ' +
     'exact action, makes it one-time consumable, and mints an offline-verifiable ' +
-    'Trust Receipt.',
+    'authorization receipt.',
   alternates: { canonical: '/compare/human-in-the-loop' },
   openGraph: {
     title: 'EMILIA Protocol vs DIY Human-in-the-Loop',

@@ -16,7 +16,7 @@ export const metadata = {
     url: 'https://www.emiliaprotocol.ai/quickstart',
     type: 'article',
   },
-  keywords: ['EMILIA quickstart', 'MCP human in the loop', 'LangChain guard', 'CrewAI AutoGen', 'agent authorization', 'trust receipt'],
+  keywords: ['EMILIA quickstart', 'MCP human in the loop', 'LangChain guard', 'CrewAI AutoGen', 'agent authorization', 'authorization receipt'],
 };
 
 const HOWTO_JSONLD = {
@@ -28,7 +28,7 @@ const HOWTO_JSONLD = {
   step: [
     { '@type': 'HowToStep', name: 'Install', text: 'Add EMILIA to your stack — MCP server (npx), LangChain (npm), CrewAI/AutoGen (the guard decorator), or require-receipt for any Node service.' },
     { '@type': 'HowToStep', name: 'Gate the action', text: 'Route each irreversible action through the trust gate: allow → run, deny → throw, signoff_required → wait for a named human, then run.' },
-    { '@type': 'HowToStep', name: 'Verify', text: 'Every approval mints a Trust Receipt you can verify offline with @emilia-protocol/verify (JS) or emilia-verify (Python).' },
+    { '@type': 'HowToStep', name: 'Verify', text: 'Every approval mints an authorization receipt you can verify offline with @emilia-protocol/verify (JS) or emilia-verify (Python).' },
   ],
 };
 
@@ -52,7 +52,7 @@ const PATHS = [
 const PATTERN = `const d = await guardAction({ action: 'payment.release', context });
 if (d.deny)            throw new Error(d.reason);   // blocked outright
 if (d.signoffRequired) await waitForHuman(d);       // a NAMED human approves
-// ...otherwise proceed. Every approval mints a Trust Receipt.`;
+// ...otherwise proceed. Every approval mints an authorization receipt.`;
 
 export default async function QuickstartPage() {
   const nonce = (await headers()).get('x-nonce') ?? '';

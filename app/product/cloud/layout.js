@@ -1,5 +1,5 @@
 export const metadata = {
-  title: 'EP Cloud — Hosted Trust Receipts + Signoff Workflow',
+  title: 'EP Cloud — Hosted authorization receipts + Signoff Workflow',
   description:
     'Managed deployment of the EMILIA Protocol runtime. Hosted handshake ' +
     'service, trust desk for named signoff, receipt explorer, and ' +
@@ -8,7 +8,7 @@ export const metadata = {
   openGraph: {
     title: 'EMILIA Cloud',
     description:
-      'Hosted EP runtime with managed trust receipts, named-signoff ' +
+      'Hosted EP runtime with managed authorization receipts, named-signoff ' +
       'workflow, and receipt explorer.',
     url: 'https://www.emiliaprotocol.ai/product/cloud',
     type: 'article',
@@ -16,7 +16,7 @@ export const metadata = {
   keywords: [
     'EP Cloud',
     'hosted AI authorization',
-    'managed trust receipts',
+    'managed authorization receipts',
     'signoff workflow as a service',
   ],
 };

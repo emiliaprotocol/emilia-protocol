@@ -70,7 +70,7 @@ A public web page where anyone can:
 - See the entity's public trust profile
 - Verify a commitment proof
 
-Like Etherscan for trust receipts. Transparency as a feature. "Don't trust EP — verify it yourself, right here."
+Like Etherscan for authorization receipts. Transparency as a feature. "Don't trust EP — verify it yourself, right here."
 
 **Status: BUILT.** `app/explorer/page.js` — live at `/explorer`. Three tabs (Verify Receipt, Verify Proof, Trust Profile), search input, VERIFIED/INVALID badges, Basescan anchor links, "How verification works" explainer.
 
@@ -145,7 +145,7 @@ All six adoption primitives are now **BUILT AND DEPLOYED:**
 - Gradient of commitment ✅ → `/adopt` (7 adoption levels, L0→L6)
 
 **Plus adoption infrastructure not in the original list:**
-- `@emilia-protocol/verify` ✅ → standalone zero-dep verification, published on npm (1.3.0 ships the PIP-006 federation client + the full I-D §6.3 Trust Receipt verifier)
+- `@emilia-protocol/verify` ✅ → standalone zero-dep verification, published on npm (1.3.0 ships the PIP-006 federation client + the full I-D §6.3 authorization receipt verifier)
 - AWS CloudFormation template ✅ → one-click second operator at `infrastructure/aws/template.yaml`
 - Per-operator HMAC-SHA256 auth ✅ → `lib/operator-auth.js` (replaces shared CRON_SECRET)
 - Protocol-standard routes ✅ → `/api/entity`, `/api/receipt`, `/api/trust`, `/.well-known/ep-keys.json`

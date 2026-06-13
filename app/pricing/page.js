@@ -40,7 +40,7 @@ const TIERS = [
       'Full trust ceremony — Eye, Handshake, Signoff, Commit',
       '@emilia-protocol/sdk + @emilia-protocol/verify (npm)',
       'Native MCP server — 36 tools',
-      'Trust Receipts — signed, Merkle-anchored, verifiable offline',
+      'Authorization receipts — signed, Merkle-anchored, verifiable offline',
       'Agent Guard middleware — framework-agnostic',
       '26 TLA+ theorems · 35 Alloy facts · 85 red-team cases',
       'Self-hosted; your keys, your infrastructure',

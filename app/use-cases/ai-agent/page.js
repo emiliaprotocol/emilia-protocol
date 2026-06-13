@@ -59,7 +59,7 @@ export default function AIAgentUseCasePage() {
   const GATE_PATTERN = `const d = await guardAction({ action: 'payment.release', context });
 if (d.deny)            throw new Error(d.reason);   // blocked outright
 if (d.signoffRequired) await waitForHuman(d);       // a NAMED human approves
-// ...otherwise proceed. Every approval mints a Trust Receipt.`;
+// ...otherwise proceed. Every approval mints an authorization receipt.`;
 
   const SNIPPETS = [
     { k: 'MCP server', sub: 'Claude Desktop, Cursor, Cline', code: '{ "command": "npx",\n  "args": ["-y", "@emilia-protocol/mcp-server"] }' },

@@ -44,7 +44,7 @@ Anyone can install `@emilia-protocol/verify` and re-check the signature without 
 |---|---|---|
 | Week 0 | 5 days | Workflow selected, source systems identified, risk thresholds set, approval rules configured, success metrics agreed |
 | Week 1 | 7 days | Shadow mode — GovGuard observes, never blocks. Daily report: high-risk actions, missing-authority signals, after-hours actions, new-destination changes |
-| Week 2 | 7 days | Shadow + receipt mode — every high-risk action gets a Trust Receipt preview |
+| Week 2 | 7 days | Shadow + receipt mode — every high-risk action gets an authorization receipt preview |
 | Week 3 | 7 days | Limited enforcement on one class (e.g., vendor bank-account changes ≥$10K) |
 | Week 4 | 4 days | Final report — high-risk actions found, approvals required, evidence packets generated, expansion proposal |
 

@@ -13,7 +13,7 @@ export const metadata = {
     title: 'EMILIA Agent Guard — the kill switch and accountability layer for AI agents',
     description:
       'Wrap any high-risk agent action in one call. Blocked until a named human signs off. '
-      + 'Every decision produces a cryptographically verifiable Trust Receipt.',
+      + 'Every decision produces a cryptographically verifiable authorization receipt.',
     url: 'https://www.emiliaprotocol.ai/agent-guard',
     type: 'website',
   },
@@ -79,7 +79,7 @@ const FLOW = [
   },
   {
     step: '03', accent: color.gold, label: 'Prove',
-    body: 'Every decision emits a signed, Merkle-anchored Trust Receipt — who approved what, when, bound to the action hash. Auditor-grade evidence, verifiable offline with @emilia-protocol/verify. No EMILIA server required to check it.',
+    body: 'Every decision emits a signed, Merkle-anchored authorization receipt (formerly Trust Receipt) — who approved what, when, bound to the action hash. Auditor-grade evidence, verifiable offline with @emilia-protocol/verify. No EMILIA server required to check it.',
   },
 ];
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// EP — Public Trust Receipt page (the "[See Live Example]" target).
+// EP — Public authorization receipt page (the "[See Live Example]" target).
 //
 // /r/{receiptId} renders a public-facing trust-receipt evidence packet:
 //   - a buyer-readable "what happened" narrative
@@ -33,9 +33,9 @@ import { logger } from '@/lib/logger.js';
 import { getDemoReceipt, isDemoReceiptId } from '@/lib/demo-receipt.js';
 
 export const metadata = {
-  title: 'Trust Receipt — EMILIA Protocol',
+  title: 'Authorization Receipt — EMILIA Protocol',
   description:
-    'Publicly verifiable trust receipt: who approved this action, under what authority, when, and with what cryptographic proof. Verify yourself with @emilia-protocol/verify.',
+    'Publicly verifiable authorization receipt: who approved this action, under what authority, when, and with what cryptographic proof. Verify yourself with @emilia-protocol/verify.',
 };
 
 // Demo receipt is built once in lib/demo-receipt.js with a STABLE Ed25519
@@ -192,7 +192,7 @@ export default async function ReceiptPage({ params }) {
         {/* ── Header ────────────────────────────────────────────── */}
         <div style={{ marginBottom: 32 }}>
           <div style={{ fontFamily: font.mono, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 8 }}>
-            EP-RECEIPT-v1 · TRUST RECEIPT
+            EP-RECEIPT-v1 · AUTHORIZATION RECEIPT
           </div>
           <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: -1, marginBottom: 12, color: color.t1 }}>
             {r.action_type || 'trust_receipt'}

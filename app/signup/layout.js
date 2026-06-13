@@ -2,7 +2,7 @@ export const metadata = {
   title: 'Start Free — Get a Sandbox API Key',
   description:
     'Register an entity and get a real EMILIA Protocol API key in 30 seconds — no credit card, '
-    + 'no sales call. Free sandbox tier to issue Trust Receipts, run handshakes, and guard agent actions.',
+    + 'no sales call. Free sandbox tier to issue authorization receipts (formerly Trust Receipts), run handshakes, and guard agent actions.',
   alternates: { canonical: '/signup' },
   openGraph: {
     title: 'Start free with EMILIA Protocol — instant sandbox API key',
@@ -10,7 +10,7 @@ export const metadata = {
     url: 'https://www.emiliaprotocol.ai/signup',
     type: 'website',
   },
-  keywords: ['EMILIA Protocol API key', 'free AI agent authorization', 'trust receipt sandbox', 'get started'],
+  keywords: ['EMILIA Protocol API key', 'free AI agent authorization', 'authorization receipt sandbox', 'get started'],
 };
 
 export default function SignupLayout({ children }) {

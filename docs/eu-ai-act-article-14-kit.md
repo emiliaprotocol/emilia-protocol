@@ -15,7 +15,7 @@ irreversible action, with an auditable record of who decided what.*
 | Obligation | What it asks for | EP capability |
 |---|---|---|
 | **Art 14 — Human oversight** | Humans can oversee, intervene, and stop the system | **Accountable Signoff** — an irreversible action is gated until a *named* human approves the exact action; `deny` stops it outright |
-| **Art 12 — Record-keeping / logging** | Automatic logging of events over the system's lifetime | **Trust Receipts** — Ed25519-signed, Merkle-anchored, offline-verifiable records of every gated decision (who, what, policy, outcome, time) |
+| **Art 12 — Record-keeping / logging** | Automatic logging of events over the system's lifetime | **Authorization receipts** — Ed25519-signed, Merkle-anchored, offline-verifiable records of every gated decision (who, what, policy, outcome, time) |
 | **Art 9 — Risk management** | Identify and mitigate risks of high-risk actions | **Policy evaluation** — actions classified by risk; high-risk classes routed to signoff or denied (formally verified engine: 26 TLA+ theorems) |
 | **Governance evidence** (NIST AI RMF / ISO 42001 adjacent) | Demonstrable, documented controls | **Receipt export** — an auditor-ready evidence bundle (`EP-BUNDLE-v1`) anyone can verify without trusting EP |
 

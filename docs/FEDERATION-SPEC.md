@@ -8,7 +8,7 @@
 
 ## Abstract
 
-This specification defines how multiple independent EP operators can issue, verify, and cross-reference trust receipts without trusting each other. Federation makes EP a protocol that survives any single operator's failure — the same property that makes TCP/IP survive any single router's failure.
+This specification defines how multiple independent EP operators can issue, verify, and cross-reference authorization receipts without trusting each other. Federation makes EP a protocol that survives any single operator's failure — the same property that makes TCP/IP survive any single router's failure.
 
 ---
 

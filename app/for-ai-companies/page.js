@@ -8,7 +8,7 @@ export const metadata = {
   title: 'For AI Companies — Accountability for Agent Actions',
   description:
     'OAuth solved login. EMILIA solves accountability for AI agents. How OpenAI, Anthropic, Google, '
-    + 'and xAI can prove who approved every irreversible agent action — Accountable Signoff, Trust Receipt, Policy Hash, Authority Chain.',
+    + 'and xAI can prove who approved every irreversible agent action — Accountable Signoff, authorization receipt, Policy Hash, Authority Chain.',
   alternates: { canonical: '/for-ai-companies' },
   openGraph: {
     title: 'OAuth solved login. EMILIA solves accountability for AI agents.',
@@ -35,7 +35,7 @@ const LABS = ['OpenAI Operators', 'Anthropic Computer Use', 'Google Agents', 'Mi
 
 const CONCEPTS = [
   ['Accountable Signoff', 'A named human cryptographically assumes responsibility for the exact action — not a role, not a token, a person. This is the answer to "who owns this decision?"'],
-  ['Trust Receipt', 'A signed, offline-verifiable record of the decision: action, policy, approver, outcome. Anyone verifies it with no account and no call home (Ed25519 + Merkle).'],
+  ['Authorization receipt', 'A signed, offline-verifiable record of the decision (formerly Trust Receipt): action, policy, approver, outcome. Anyone verifies it with no account and no call home (Ed25519 + Merkle).'],
   ['Policy Hash', 'The exact policy version that authorized the action, pinned into the receipt. The rules that applied are provable after the fact, not reconstructed.'],
   ['Authority Chain', 'The delegation path — who was allowed to authorize whom — bound to the action. Permission isn’t assumed; it’s carried and checked.'],
 ];

@@ -20,7 +20,7 @@ export default function ComparePermitPage() {
     { dim: 'Primary job', them: 'Real-time fine-grained authorization — is this agent allowed to do X?', ep: 'Accountable human signoff before an irreversible action — did a named human approve THIS action?' },
     { dim: 'Authorization models', them: 'RBAC, ABAC, ReBAC; policy-as-code — broad and mature', ep: 'Action risk classes + signoff thresholds, focused on the gate' },
     { dim: 'Human in the loop', them: 'Consent collection, just-in-time access requests', ep: 'Named signoff bound to the exact action parameters, one-time consumable' },
-    { dim: 'Evidence', them: 'Audit logs and decision traces, inside the platform', ep: 'Trust Receipt — Ed25519 + Merkle, verifiable offline with no account or network' },
+    { dim: 'Evidence', them: 'Audit logs and decision traces, inside the platform', ep: 'Authorization receipt — Ed25519 + Merkle, verifiable offline with no account or network' },
     { dim: 'Assurance', them: 'Open-source policy engine (OPA / OPAL)', ep: 'Formally verified policy engine — 26 TLA+ theorems + 35 Alloy facts in CI' },
     { dim: 'Replay resistance', them: 'Per-request policy decisions', ep: 'One-time consumable handshake bound to the exact action' },
     { dim: 'MCP', them: 'MCP Gateway — authenticate humans, identify agents, gate tokens, collect consent', ep: 'MCP server that gates the action and mints the receipt' },
@@ -83,12 +83,12 @@ export default function ComparePermitPage() {
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 72 }}>
         <h2 className="ep-reveal" style={styles.h2}>Use them together</h2>
         <p className="ep-reveal" style={styles.body}>
-          The clean division of labor: let Permit.io decide whether an agent may attempt an action, and let EMILIA secure the irreversible ones. Permit evaluates the policy; EMILIA captures a named human&rsquo;s signoff bound to the exact parameters and returns a Trust Receipt your auditor, your insurer, or a counterparty can verify offline. Fine-grained authorization and accountable signoff are complementary controls, not substitutes.
+          The clean division of labor: let Permit.io decide whether an agent may attempt an action, and let EMILIA secure the irreversible ones. Permit evaluates the policy; EMILIA captures a named human&rsquo;s signoff bound to the exact parameters and returns an authorization receipt (formerly Trust Receipt) your auditor, your insurer, or a counterparty can verify offline. Fine-grained authorization and accountable signoff are complementary controls, not substitutes.
         </p>
         <ul className="ep-reveal" style={styles.list}>
           <li>Authorize the agent and the resource with Permit.io (RBAC/ABAC/ReBAC, policy-as-code).</li>
           <li>Gate the irreversible action with EMILIA — named signoff bound to the exact parameters, one-time consumable.</li>
-          <li>Keep the Trust Receipt as offline-verifiable evidence that this exact action was approved by this named human under this policy.</li>
+          <li>Keep the authorization receipt as offline-verifiable evidence that this exact action was approved by this named human under this policy.</li>
         </ul>
       </section>
 

@@ -32,15 +32,15 @@ Bitcoin didn't win because it had the best technology. It won because it had fiv
 
 ## The Seven Things the Winner Has
 
-### 1. A Self-Contained Trust Receipt (the "Transaction")
+### 1. A Self-Contained Authorization Receipt (the "Transaction")
 
 **What Bitcoin has:** A transaction is a self-contained, signed, verifiable document. You can put it on a USB stick, carry it across the world, and anyone with the blockchain can verify it.
 
-**What EP has:** Trust receipts are rows in a Supabase database. They have hashes and Merkle proofs, but they can only be verified by calling EP's API.
+**What EP has:** Authorization receipts (formerly Trust Receipts) are rows in a Supabase database. They have hashes and Merkle proofs, but they can only be verified by calling EP's API.
 
 **What the winner has:**
 
-A **Trust Receipt Document** — a self-contained, signed, portable artifact:
+An **authorization receipt document** — a self-contained, signed, portable artifact:
 
 ```
 EP-RECEIPT-v1
@@ -127,7 +127,7 @@ Trust primitives that are **native to model context**, not just accessible via t
    - Issue receipts after acting: `{"tool": "ep_submit_receipt", ...}`
    - Generate and verify proofs inline
 
-3. **Context-window-friendly format:** Trust receipts and proofs formatted to be parseable by models within their context window — no external API call needed for basic verification.
+3. **Context-window-friendly format:** Authorization receipts and proofs formatted to be parseable by models within their context window — no external API call needed for basic verification.
 
 4. **Training data:** Open-source datasets of trust interactions that model providers can use to make their models trust-aware.
 
@@ -255,7 +255,7 @@ Or:
 
 Or the sharpest version:
 
-> "Trust receipts for AI. Verified. Immutable. Open."
+> "Authorization receipts for AI. Verified. Immutable. Open."
 
 **The narrative stack:**
 - For senators: "EP ensures AI systems can't act without verified authorization. It's the seatbelt for AI."

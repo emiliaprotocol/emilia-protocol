@@ -3,7 +3,7 @@
 EMILIA Protocol is an open protocol for trust decisions and pre-action trust enforcement in machine-mediated systems.
 
 EP Core defines interoperable objects for trust-relevant evidence, trust state, and trust decisions:
-- Trust Receipt
+- Authorization receipt
 - Trust Profile
 - Trust Decision
 

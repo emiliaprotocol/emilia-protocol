@@ -13,7 +13,7 @@ FinGuard is the productized surface of EMILIA Protocol — Apache 2.0, formally 
 
 ## What ships today (verifiable in `github.com/emiliaprotocol/emilia-protocol`)
 
-### v1 Trust Receipts API — same surface as GovGuard
+### v1 authorization receipts API — same surface as GovGuard
 | Endpoint | Purpose |
 |---|---|
 | `POST /api/v1/trust-receipts` | Create receipt (precheck + policy eval + audit emit) |

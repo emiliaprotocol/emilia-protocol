@@ -1,7 +1,7 @@
 export const metadata = {
   title: 'The EMILIA Trust Network — verify any entity, any receipt',
   description:
-    'A public, cryptographically verifiable network of entities and Trust Receipts. '
+    'A public, cryptographically verifiable network of entities and authorization receipts. '
     + 'Verify any receipt offline, embed a live trust badge, and join the network that '
     + 'turns "we say we are safe" into "here is the proof".',
   alternates: { canonical: '/network' },

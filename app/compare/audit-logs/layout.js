@@ -1,21 +1,21 @@
 export const metadata = {
-  title: 'Audit Logs vs Trust Receipts — Why Logs Aren\'t Enough for AI Agents',
+  title: 'Audit Logs vs Authorization Receipts — Why Logs Aren\'t Enough for AI Agents',
   description:
-    'Audit logs record what happened after the fact. EP trust receipts ' +
+    'Audit logs record what happened after the fact. EP authorization receipts ' +
     'prove what was authorized before the action executed — cryptographically, ' +
     'offline-verifiable, and bound to the exact action context. Why high-risk ' +
     'AI agent actions need pre-action evidence, not post-action logs.',
   alternates: { canonical: '/compare/audit-logs' },
   openGraph: {
-    title: 'Trust Receipts vs Audit Logs — Pre-Action Evidence for AI Agents',
+    title: 'Authorization Receipts vs Audit Logs — Pre-Action Evidence for AI Agents',
     description:
-      'Audit logs detect after the breach. EP trust receipts prove ' +
+      'Audit logs detect after the breach. EP authorization receipts prove ' +
       'authorization before the action executes. Self-verifying, offline.',
     url: 'https://www.emiliaprotocol.ai/compare/audit-logs',
     type: 'article',
   },
   keywords: [
-    'audit logs vs trust receipts',
+    'audit logs vs authorization receipts',
     'AI agent audit trail',
     'pre-action evidence',
     'cryptographic audit AI',

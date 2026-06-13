@@ -62,7 +62,7 @@ const ROWS = [
 const ADDS = [
   'Binds authorization to the exact action — actor, authority, policy, action context, nonce, expiry, one-time consumption.',
   'Requires a named, accountable human signoff where policy demands it — not a standing grant.',
-  'Emits a signed, Merkle-anchored Trust Receipt: portable, offline-verifiable evidence of who approved what.',
+  'Emits a signed, Merkle-anchored authorization receipt: portable, offline-verifiable evidence of who approved what.',
   'Vendor-neutral — it doesn’t matter whose model your agent runs on, or whose IdP you use.',
   'Formally verified — 26 TLA+ theorems and 35 Alloy facts machine-checked in CI on every change to the formal models.',
 ];

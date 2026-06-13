@@ -5,13 +5,13 @@ import SiteFooter from '@/components/SiteFooter';
 import { cta, color, font, radius } from '@/lib/tokens';
 
 export const metadata = {
-  title: 'Trust Receipt Format (EP-RECEIPT-v1) — EMILIA Protocol',
+  title: 'Authorization Receipt Format (EP-RECEIPT-v1) — EMILIA Protocol',
   description:
     'The EP-RECEIPT-v1 specification: recursive canonical JSON, Ed25519 signatures, and '
     + 'sorted-pair Merkle anchors. Implementable in any language; verifiable offline in JS and Python.',
   alternates: { canonical: '/spec/trust-receipt' },
   openGraph: {
-    title: 'Trust Receipt Format — EP-RECEIPT-v1',
+    title: 'Authorization Receipt Format — EP-RECEIPT-v1',
     description: 'A signed, offline-verifiable record that an action was authorized. Implementable in any language.',
     url: 'https://www.emiliaprotocol.ai/spec/trust-receipt',
     type: 'article',
@@ -22,9 +22,9 @@ export const metadata = {
 const ARTICLE_JSONLD = {
   '@context': 'https://schema.org',
   '@type': 'TechArticle',
-  headline: 'Trust Receipt Format (EP-RECEIPT-v1)',
+  headline: 'Authorization Receipt Format (EP-RECEIPT-v1)',
   description:
-    'Specification for EMILIA Protocol Trust Receipts: recursive canonical JSON, Ed25519 signatures over the '
+    'Specification for EMILIA Protocol authorization receipts: recursive canonical JSON, Ed25519 signatures over the '
     + 'canonical payload, and sorted-pair Merkle anchors. Two interoperating reference implementations (JS, Python).',
   about: 'Cryptographic authorization receipts for AI agent actions',
   url: 'https://www.emiliaprotocol.ai/spec/trust-receipt',
@@ -83,10 +83,10 @@ export default async function TrustReceiptSpecPage() {
         <C>
           <div style={{ fontFamily: font.mono, fontSize: 11, letterSpacing: 2.5, textTransform: 'uppercase', color: color.gold, marginBottom: 20 }}>Specification · EP-RECEIPT-v1</div>
           <h1 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(34px, 4.6vw, 52px)', letterSpacing: -2, lineHeight: 1.05, color: color.t1, margin: '0 0 20px', maxWidth: 760 }}>
-            The Trust Receipt format
+            The authorization receipt format
           </h1>
           <p style={{ fontSize: 18, color: color.t2, maxWidth: 640, lineHeight: 1.7, margin: 0 }}>
-            A <strong>Trust Receipt</strong> is a signed, offline-verifiable record that a specific action
+            An <strong>authorization receipt</strong> (formerly Trust Receipt) is a signed, offline-verifiable record that a specific action
             was authorized — by whom, under what policy, with what outcome. Anyone with the signer&rsquo;s
             public key can verify one with no account, no API, no network. This page specifies it precisely
             enough to implement a verifier in any language.

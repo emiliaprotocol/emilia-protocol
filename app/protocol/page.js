@@ -218,7 +218,7 @@ export default function ProtocolPage() {
           <div style={styles.eyebrow}>Protocol Governance</div>
           <h2 style={styles.h2}>Immutable core, extensible edges</h2>
           <p style={styles.body}>
-            EP Core v1.0 (Trust Receipt, Trust Profile, Trust Decision) is frozen. Changes require a Protocol Improvement Proposal, 90-day review, and major version bump with 24-month deprecation. Extensions are added without touching Core.
+            EP Core v1.0 (authorization receipt, Trust Profile, Trust Decision) is frozen. Changes require a Protocol Improvement Proposal, 90-day review, and major version bump with 24-month deprecation. Extensions are added without touching Core.
           </p>
         </div>
         <div className="ep-reveal" style={{
