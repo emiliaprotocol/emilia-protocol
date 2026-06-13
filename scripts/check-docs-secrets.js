@@ -226,6 +226,15 @@ const SAFE_HOSTS = new Set([
   "iarpa.gov",
   "forms.gle", // Anthropic External Researcher Access application form
   "fedscoop.com", // cited news source on the NIST consortium relaunch
+  // AI-safety / philanthropic funders cited in docs/grant-applications/ai-safety-philanthropy/
+  "manifund.org",
+  "effectivealtruism.org", // funds.effectivealtruism.org (LTFF), forum.effectivealtruism.org
+  "foresight.org",
+  "survivalandflourishing.fund",
+  "futureoflife.org",
+  "coefficientgiving.org",
+  "bluedot.org",
+  "senate.gov", // public oversight-letter citation in the crumple-zone framing
   "treasury.gov",
   "cms.gov",
   "hhs.gov",
