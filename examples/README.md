@@ -29,6 +29,46 @@ a $30 refund flows freely. Point `XAI_BASE_URL` / `XAI_MODEL` at any OpenAI-comp
 > self-approval, no replay, money-destination + $50k+ always gated). They do **not** verify
 > Grok. This example is honest glue around a verified core.
 
+### What the Python guard (`grok_guard.py`) verifies — and what it does not
+
+`grok_guard.py` returns `proceed=true` for a signoff action **only** when every one of
+these offline checks passes in-process (each fails closed):
+
+1. **Signature** — the Ed25519 signature over the canonical EP-RECEIPT-v1 payload verifies
+   (`emilia_verify`, the same check anyone runs with `pip install emilia-verify`).
+2. **Signer pinning** — the signing key is a member of a **server-independent** trusted set
+   (`EP_TRUSTED_SIGNER_KEYS` / `trusted_signer_keys=`). The guard does **not** trust the
+   `public_key` the `/evidence` response served. With **no** pinned set it fails closed
+   (`untrusted_signer`) — it never falls back to the inline key.
+3. **Request binding** — the signed `receipt_id` / amount / currency / destination / approver
+   equal what the agent actually requested. A genuinely-signed $1 receipt cannot approve an
+   $82k wire (`claim_mismatch`).
+4. **Single-use** — a `receipt_id` is redeemable at most once via an injectable `replay_store`
+   (`replay`); `receipt_status: consumed` is treated as already-spent (`already_consumed`).
+5. **Anchor** (opt-in, `require_anchor=True`) — the Merkle inclusion proof must be present and
+   valid (`anchor_required`).
+
+It does **not** prove the approver is wise or the action good — only that a *named, pinned key*
+signed the *exact* canonical action this agent requested.
+
+**Honest residuals.** With `EP_TRUSTED_SIGNER_KEYS` configured, a fully compromised EMILIA
+server cannot make the agent proceed. The optional `/.well-known/ep-keys.json` bootstrap is a
+recommended **follow-up** — the app does not serve that route yet, so the configured set is the
+required defense today. The default in-memory `replay_store` is **per-process only**; production
+MUST inject a persistent, atomic store (the executor's DB) for a real single-use guarantee.
+Canonicalization is not yet RFC 8785 / JCS-strict; it currently fails **closed** (Python may
+reject some valid JS receipts, never the reverse), so it is a false-negative risk, not a bypass.
+For a production-grade verifier that fails closed on a missing inclusion proof, see
+`@emilia-protocol/verify`'s `verifyTrustReceipt()` and the EP Internet-Draft §6.3.
+
+The six red-team vectors are re-run permanently by
+[`tests/test_grok_guard_redteam.py`](tests/test_grok_guard_redteam.py):
+
+```
+PYTHONPATH=packages/python-verify python3 examples/tests/test_grok_guard_redteam.py
+# or:  PYTHONPATH=packages/python-verify pytest examples/tests/test_grok_guard_redteam.py
+```
+
 ## "Works with EMILIA" badge
 
 [![works with EMILIA](https://www.emiliaprotocol.ai/badge/works-with-emilia.svg)](https://www.emiliaprotocol.ai/mcp)

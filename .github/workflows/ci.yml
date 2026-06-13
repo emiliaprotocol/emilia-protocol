@@ -356,6 +356,27 @@ jobs:
       - name: Tests (digest parity, gate semantics, fail-closed tool wrapping)
         run: pytest -q integrations/langchain-emilia/tests
 
+  # ── examples/grok_guard red-team regression ─────────────────────
+  # Re-runs all six adversarial vectors against the grok_guard offline gate
+  # (request-binding, signer-pinning, replay, anchor, defense-in-depth) plus the
+  # genuine-fixture control. Uses the local JS-signed fixture + locally generated
+  # attacker keys — NO network, NO prod. Also exercises the pure-Python verifier.
+  examples-grok-guard-redteam:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: "3.12"
+      - name: Install verifier deps (cryptography)
+        run: pip install cryptography
+      - name: Compile grok_guard.py
+        run: python -m py_compile examples/grok_guard.py
+      - name: Red-team regression suite (six vectors + control)
+        env:
+          PYTHONPATH: packages/python-verify
+        run: python examples/tests/test_grok_guard_redteam.py
+
   # ── Job 12: OpenAPI spec linting ─────────────────────────────────
   openapi-lint:
     runs-on: ubuntu-latest
