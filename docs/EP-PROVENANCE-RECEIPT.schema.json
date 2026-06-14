@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/EP-PROVENANCE-CHAIN-v1.schema.json",
+  "title": "EP-PROVENANCE-CHAIN-v1 — Chained Provenance Receipt",
+  "description": "SPDX-License-Identifier: Apache-2.0. Experimental additive composite over EP-RECEIPT-v1 (PIP-001 Core is frozen and NOT modified). Bundles a root human signoff (EP-RECEIPT-v1) -> an ordered, scope-narrowing delegation chain (DRP references) -> a per-action approval (EP-RECEIPT-v1) -> an execution reference; plus optional scoped agent_identity claim and a named-owner liability attestation. Verifying the composite = verify each linked v1 receipt + check chain/scope-containment, with NO new trust. This schema validates SHAPE only; security obligations are enforced by verifyProvenanceOffline() (see EP-PROVENANCE-RECEIPT-SPEC.md).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["@version", "root_signoff", "execution"],
+  "properties": {
+    "@version": {
+      "type": "string",
+      "const": "EP-PROVENANCE-CHAIN-v1"
+    },
+    "root_signoff": {
+      "$ref": "#/$defs/embeddedReceipt",
+      "description": "Root of authority: a full EP-RECEIPT-v1 receipt whose human signoff anchors the bundle. Verified verbatim by verifyTrustReceipt()."
+    },
+    "delegation_chain": {
+      "type": "array",
+      "description": "Ordered root->leaf delegation chain. Each child MUST be scope-contained within its parent. MAY be empty.",
+      "items": { "$ref": "#/$defs/delegationLink" }
+    },
+    "action_approval": {
+      "$ref": "#/$defs/embeddedReceipt",
+      "description": "Per-action approval: a full EP-RECEIPT-v1 receipt authorizing the exact executed action. REQUIRED at verify time when execution.irreversible is true."
+    },
+    "execution": { "$ref": "#/$defs/execution" },
+    "agent_identity": { "$ref": "#/$defs/agentIdentity" },
+    "liability": { "$ref": "#/$defs/liability" },
+    "provenance_metadata": {
+      "type": "object",
+      "description": "Untrusted metadata. Never part of a security decision.",
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "hash": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-fA-F]{64}$",
+      "description": "EP hash form 'sha256:<hex>'."
+    },
+    "embeddedReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["receipt", "verification"],
+      "properties": {
+        "receipt": {
+          "type": "object",
+          "description": "A full EP-RECEIPT-v1 §6.2 receipt. Shape is intentionally open here (its own schema is the I-D); verifyTrustReceipt() is the source of truth.",
+          "required": ["action", "action_hash", "contexts", "signoffs"],
+          "properties": {
+            "action": { "type": "object" },
+            "action_hash": { "$ref": "#/$defs/hash" },
+            "contexts": { "type": "array", "minItems": 1 },
+            "signoffs": { "type": "array", "minItems": 1 },
+            "consumption": { "type": "object" },
+            "log_proof": { "type": "object" }
+          }
+        },
+        "verification": {
+          "type": "object",
+          "description": "Pinned offline verification material; mirrors verifyTrustReceipt()'s opts.",
+          "additionalProperties": false,
+          "required": ["approver_keys", "log_public_key"],
+          "properties": {
+            "approver_keys": {
+              "type": "object",
+              "description": "Map of approver_key_id -> pinned key entry.",
+              "minProperties": 1,
+              "additionalProperties": {
+                "type": "object",
+                "required": ["public_key"],
+                "properties": {
+                  "public_key": { "type": "string" },
+                  "key_class": { "type": "string", "enum": ["A", "B", "C"] },
+                  "valid_from": { "type": "string", "format": "date-time" },
+                  "valid_to": { "type": "string", "format": "date-time" }
+                }
+              }
+            },
+            "log_public_key": {
+              "type": "string",
+              "description": "Trusted log Ed25519 public key (base64url SPKI DER)."
+            }
+          }
+        },
+        "human_key_classes": {
+          "type": "array",
+          "description": "Which key_class values count as a human signoff for THIS receipt. Default verifier requires Class A (WebAuthn UV).",
+          "items": { "type": "string", "enum": ["A", "B", "C"] }
+        }
+      }
+    },
+    "signedAttestation": {
+      "type": "object",
+      "description": "An optional offline-verifiable signature over canonical bytes. Evidence, not a trust anchor.",
+      "additionalProperties": false,
+      "required": ["signed_payload_b64u", "signature_b64u", "algorithm", "public_key"],
+      "properties": {
+        "signed_payload_b64u": { "type": "string" },
+        "signature_b64u": { "type": "string" },
+        "algorithm": { "type": "string", "enum": ["Ed25519"] },
+        "public_key": { "type": "string", "description": "base64url SPKI DER." },
+        "method": { "type": "string" }
+      }
+    },
+    "delegationLink": {
+      "type": "object",
+      "description": "One DRP delegation reference. Field names mirror lib/delegation.js (delegator<-principal_id, delegatee<-agent_entity_id, scope, max_value_usd, expires_at, constraints).",
+      "additionalProperties": false,
+      "required": ["sequence", "delegation_id", "delegator", "delegatee", "scope", "expires_at", "parent_ref"],
+      "properties": {
+        "sequence": { "type": "integer", "minimum": 0 },
+        "delegation_id": { "type": "string", "pattern": "^ep_dlg_" },
+        "delegator": { "type": "string", "description": "Parent authority: an ep:approver:/ep:key: id." },
+        "delegatee": { "type": "string", "description": "Recipient of authority: an ep:agent:/ep:entity: id." },
+        "scope": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" },
+          "description": "Granted action types. '*' or 'x.*' globs permitted."
+        },
+        "max_value_usd": {
+          "type": ["number", "null"],
+          "description": "Optional value cap. null inherits the parent cap (NOT 'uncapped')."
+        },
+        "expires_at": { "type": "string", "format": "date-time" },
+        "constraints": {
+          "type": ["object", "null"],
+          "description": "Opaque to this verifier."
+        },
+        "parent_ref": {
+          "type": "string",
+          "description": "Binds this link to its parent. sequence 0 MUST name a root_signoff approver/approver_key_id; later links name the prior delegatee."
+        },
+        "proof": { "$ref": "#/$defs/signedAttestation" }
+      }
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action_hash", "irreversible"],
+      "properties": {
+        "execution_id": { "type": "string" },
+        "action_hash": {
+          "$ref": "#/$defs/hash",
+          "description": "MUST equal action_approval.receipt.action_hash (the per-action approval authorized THIS execution)."
+        },
+        "irreversible": {
+          "type": "boolean",
+          "description": "When true, a valid action_approval binding a human signoff is REQUIRED (fail-closed)."
+        },
+        "executed_at": { "type": "string", "format": "date-time" },
+        "target": { "type": "object" }
+      }
+    },
+    "agentIdentity": {
+      "type": "object",
+      "description": "OPTIONAL. Agent identity is a SCOPED CLAIM, identified and attestable, never proof of strong agent identity. Reported by the verifier, never trusted as identity proof.",
+      "additionalProperties": false,
+      "required": ["agent_id", "claimed_by"],
+      "properties": {
+        "agent_id": { "type": "string" },
+        "claimed_by": { "type": "string" },
+        "attestation": { "$ref": "#/$defs/signedAttestation" },
+        "scope_note": { "type": "string" }
+      }
+    },
+    "liability": {
+      "type": "object",
+      "description": "OPTIONAL. Assigns a NAMED owner accepting accountability. EVIDENCE, not a legal determination. The verifier reports the owner and checks any signature; it never adjudicates liability.",
+      "additionalProperties": false,
+      "required": ["owner"],
+      "properties": {
+        "owner": { "type": "string" },
+        "owner_name": { "type": "string" },
+        "statement": { "type": "string" },
+        "attestation": { "$ref": "#/$defs/signedAttestation" }
+      }
+    }
+  }
+}

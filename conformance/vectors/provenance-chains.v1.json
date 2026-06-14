@@ -1,0 +1,69 @@
+{
+  "@version": "EP-PROVENANCE-CHAIN-VECTORS-v1",
+  "wire_tag": "EP-PROVENANCE-CHAIN-v1",
+  "description": "Negative + positive conformance vectors for verifyProvenanceOffline() (lib/provenance/chain.js). The cryptographic bundles themselves are minted live in tests/provenance-chain.test.js because the proofs must be real Ed25519 signatures over canonical bytes; this file is the AUTHORITATIVE catalogue of the attacks every conformant verifier MUST reject (valid:false) and the one well-formed bundle it MUST accept (valid:true). Each id here is asserted by name in the test.",
+  "must_reject": [
+    {
+      "id": "a_broken_inter_hop_link",
+      "title": "Broken inter-hop link",
+      "attack": "delegation_chain[i].parent_ref / delegator does not equal delegation_chain[i-1].delegatee. Authority is spliced across two unrelated delegations.",
+      "expected": { "valid": false, "failing_check": "chain_links_bound" }
+    },
+    {
+      "id": "b_tampered_delegation_fields",
+      "title": "Tampered delegation (scope/cap/expiry not the signed bytes)",
+      "attack": "The delegation proof signature is valid over some bytes, but the link's scope/max_value_usd/expires_at JSON fields were widened AFTER signing, so the visible fields are not the canonical bytes the proof covers.",
+      "expected": { "valid": false, "failing_check": "delegations_signed" }
+    },
+    {
+      "id": "c_key_substituted_proof",
+      "title": "Key-substituted delegation proof",
+      "attack": "The proof verifies under an attacker key (att.public_key) that is NOT the key bound to the named delegator. Signature math passes; key binding fails.",
+      "expected": { "valid": false, "failing_check": "proof_key_bound" }
+    },
+    {
+      "id": "d_out_of_root_scope_action",
+      "title": "Out-of-root-scope action (root scope must be DERIVED)",
+      "attack": "Executed action_type is outside what the ROOT receipt actually authorized. A verifier that hardcodes root scope to '*' would accept it.",
+      "expected": { "valid": false, "failing_check": "leaf_permits_action" }
+    },
+    {
+      "id": "e_empty_chain_out_of_root_authority",
+      "title": "Empty delegation_chain, action outside root authority",
+      "attack": "delegation_chain is empty (direct human-to-action), but the executed action_type is not within the root receipt's authority. A verifier that only constrains the action when a chain exists would accept it.",
+      "expected": { "valid": false, "failing_check": "leaf_permits_action" }
+    },
+    {
+      "id": "f_irreversible_mislabeled_false",
+      "title": "Irreversible action mislabeled execution.irreversible:false",
+      "attack": "An irreversible action sets execution.irreversible=false to drop the per-action approval requirement. Reversibility is not independently asserted, so the verifier must default to requiring approval.",
+      "expected": { "valid": false, "failing_check": "per_action_required" }
+    },
+    {
+      "id": "g_human_class_override_widening",
+      "title": "Per-document human-class override widening 'human'",
+      "attack": "root_signoff.human_key_classes is set by the producer to include the non-human software class (e.g. 'B') so a non-human signoff counts as the root human. The verifier must use its own humanKeyClasses only.",
+      "expected": { "valid": false, "failing_check": "root_human_signoff" }
+    },
+    {
+      "id": "h_expired_delegation_link",
+      "title": "Expired delegation link",
+      "attack": "A delegation link's expires_at is in the past relative to the verification reference time.",
+      "expected": { "valid": false, "failing_check": "delegations_not_expired" }
+    },
+    {
+      "id": "i_value_cap_escalation_null_mid_chain",
+      "title": "Value-cap escalation via null cap on a middle hop (depth>=2)",
+      "attack": "A middle delegation sets max_value_usd:null, which must INHERIT the parent's effective cap, never re-open an unbounded cap. A deeper hop then grants a value far above the original cap. A verifier that carries the raw null forward instead of the effective inherited cap accepts the escalation (DelegateCannotExceedPrincipal / spec 4.2).",
+      "expected": { "valid": false, "failing_check": "scope_containment" }
+    }
+  ],
+  "must_accept": [
+    {
+      "id": "z_well_formed_positive",
+      "title": "Well-formed provenance chain",
+      "shape": "Root human (Class A) signoff -> one scope-narrowing delegation whose proof signs its own canonical fields under the delegator key -> per-action human (Class A) approval -> execution hash-bound to the approval. Executed action is within both the leaf and the derived root scope.",
+      "expected": { "valid": true }
+    }
+  ]
+}
