@@ -50,6 +50,25 @@ export async function GET(request, { params }) {
       return EP_ERRORS.NOT_FOUND('Entity');
     }
 
+    // Leak-free capability projection (powers /api/badge). Boolean capability
+    // ONLY — no compat_score, no receipt_count, no unique_submitters — so the
+    // capability badge's "no score, no volume" guarantee holds end-to-end.
+    if (request.nextUrl.searchParams.get('view') === 'capability') {
+      const capabilityOn =
+        (result.receiptCount || 0) > 0 ||
+        result.establishment?.established === true ||
+        (result.establishment?.total_receipts || 0) > 0;
+      return NextResponse.json({
+        entity_id: result.entity_id,
+        display_name: result.display_name,
+        capability: 'authorization_receipts',
+        capability_on: Boolean(capabilityOn),
+        member_since: result._entity.created_at,
+        _note: 'Capability projection: boolean only — no score, no counts, no volume. Verify a real receipt at /verify.',
+        _protocol_version: 'EP/1.1-v2',
+      });
+    }
+
     return NextResponse.json({
       entity_id: result.entity_id,
       display_name: result.display_name,
