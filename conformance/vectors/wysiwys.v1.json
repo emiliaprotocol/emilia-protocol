@@ -1,0 +1,61 @@
+{
+  "@version": "EP-WYSIWYS-DISPLAY-ATTESTATION-VECTORS-v1",
+  "wire_tag": "EP-DISPLAY-ATTESTATION-v1",
+  "spdx": "Apache-2.0",
+  "spec": "docs/EP-WYSIWYS-SPEC.md",
+  "implementation": "lib/wysiwys/render.js (renderAction, verifyDisplayAttestation, buildDisplayAttestation)",
+  "description": "Negative + positive conformance vectors for the WYSIWYS structured-rendering + display-attestation profile. renderAction() is a PURE, DETERMINISTIC function of the SIGNED canonical action; verifyDisplayAttestation() re-derives that rendering and FAILS CLOSED when the presented rendering is not the deterministic function of the signed action, when a REQUIRED display attestation is missing for a high-stakes action, or when a present attestation is forged (signature over unrelated bytes, or under a key that is not the pinned signing-client key). The cryptographic material is minted LIVE in tests/wysiwys.test.js because the attestation proofs must be genuine Ed25519 signatures over canonical bytes; this file is the AUTHORITATIVE catalogue of the attacks every conformant verifier MUST reject (valid:false) and the well-formed cases it MUST accept (valid:true). Each id here is asserted by name in the test.",
+  "residual_risk": "WYSIWYS is NOT solved in software. A fully compromised signing client/device can render one thing to the human, hash and attest another, and sign whatever it wants — the display attestation proves only what the client CLAIMED it rendered, never what a trustworthy surface actually showed a human. This profile REDUCES the presentation-attack surface (an offline verifier re-derives the rendering byte-for-byte from the signed action and rejects any rendering that is not its deterministic function, and requires a valid display attestation for high-stakes actions); it does NOT eliminate it. The residual (compromised signing client/device) is OUT OF SCOPE and is addressed only by device/TEE attestation (Apple App Attest, Android Play Integrity, WebAuthn device binding), a layer ABOVE this profile. Do not read valid:true as 'the human saw the truth'.",
+  "must_reject": [
+    {
+      "id": "a_rendering_inconsistent_with_action_hash",
+      "title": "Rendering inconsistent with the signed action (shows $1, action is $82k)",
+      "attack": "The display attestation carries the rendering (and display_hash) of a CHEAP action that shows Amount: 1, while the signed action the verifier is handed commits to Amount: 82000. The attacker even forces the attestation's action_hash to look like the signed one. The verifier re-derives the rendering from the SIGNED action; the attested display_hash no longer matches the re-derived hash.",
+      "expected": { "valid": false, "failing_check": "display_hash_match" }
+    },
+    {
+      "id": "b_missing_display_attestation_high_stakes",
+      "title": "Missing display attestation for a high-stakes action",
+      "attack": "A high-stakes action is verified with opts.requireDisplayAttestation set (the verifier-side high-stakes policy) but NO attestation is supplied. Fail closed: a required attestation that is absent rejects the bundle.",
+      "expected": { "valid": false, "failing_check": "attestation_present" }
+    },
+    {
+      "id": "c_forged_display_attestation_unrelated_bytes",
+      "title": "Forged display attestation — signature over unrelated bytes",
+      "attack": "The attestation's proof is a valid Ed25519 signature, but over unrelated bytes — NOT the canonical {version, render_profile, action_hash, display_hash} payload the verifier independently recomputes. The verifier re-derives the expected payload and rejects.",
+      "expected": { "valid": false, "failing_check": "proof_signed" }
+    },
+    {
+      "id": "c2_forged_display_attestation_wrong_key",
+      "title": "Forged display attestation — signed by the wrong key",
+      "attack": "The rendering is honest and the signature verifies under the key embedded in the proof, but that key is NOT the signing-client key pinned for this signer_key_id. Signature math passes; key binding fails.",
+      "expected": { "valid": false, "failing_check": "proof_signed" }
+    },
+    {
+      "id": "c3_unpinned_display_signer_key",
+      "title": "Display attestation whose signer is not pinned by the verifier",
+      "attack": "The rendering is honest and the proof is a valid Ed25519 signature over the correct canonical payload, but the attestation's signer_key_id is NOT pinned by the verifier (opts.displaySignerKeys has no key for it, or no registry is supplied). The signature can therefore be checked only against the producer's OWN self-asserted public_key — which proves nothing, since anyone can mint a keypair plus a correct rendering. Fail closed: an unpinned signer confers no attribution. Mirrors the execution-integrity twin's f_unpinned_executor_key.",
+      "expected": { "valid": false, "failing_check": "proof_signed" }
+    },
+    {
+      "id": "d_attestation_binds_wrong_action_hash",
+      "title": "Display attestation binds a different action_hash than the signed action",
+      "attack": "The attestation is built over an honest rendering of one action, but its action_hash is swapped to point at a DIFFERENT action than the one the verifier is handed. The attestation is being replayed/stapled onto another action; the re-derived action hash does not match.",
+      "expected": { "valid": false, "failing_check": "display_hash_match" }
+    }
+  ],
+  "must_accept": [
+    {
+      "id": "z_well_formed_high_stakes_signed",
+      "title": "Well-formed, signed high-stakes display attestation",
+      "shape": "A high-stakes action ($82,000 wire). renderAction() produces the deterministic rendering from the EXACT signed canonical action; buildDisplayAttestation() binds display_hash + action_hash and signs with the pinned signing-client key. With requireDisplayAttestation + requireSignedAttestation + the pinned displaySignerKeys, the verifier re-renders the signed action, confirms display_hash and action_hash match, and confirms the signature under the pinned key.",
+      "expected": { "valid": true }
+    },
+    {
+      "id": "z2_well_formed_low_stakes_no_attestation",
+      "title": "Well-formed low-stakes action, no attestation required",
+      "shape": "A low-stakes action verified WITHOUT requireDisplayAttestation and with no attestation supplied. The rendering is still a deterministic function of the action (control 1), but no signed display claim is required; the verifier accepts. Absence on a non-required action is not a failure.",
+      "expected": { "valid": true }
+    }
+  ]
+}

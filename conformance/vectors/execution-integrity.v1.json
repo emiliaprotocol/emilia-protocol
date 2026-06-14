@@ -1,0 +1,52 @@
+{
+  "@version": "EP-EXECUTION-INTEGRITY-VECTORS-v1",
+  "wire_tag": "EP-EXECUTION-INTEGRITY-v1",
+  "description": "Negative + positive conformance vectors for verifyExecutionIntegrity() (lib/execution/integrity.js). An EP-EXECUTION-INTEGRITY-v1 attestation is an ADDITIVE signed claim binding the canonical hash of the call that ACTUALLY executed to the approved action_hash, signed by the EXECUTOR. The executor is a party EP IDENTIFIES BUT NEVER TRUSTS (mirrors PIP-007): its signature attributes the executed-action claim to a named key; it grants no authority. The attestation does NOT modify EP-RECEIPT-v1 (frozen Core); it composes the same canonicalize() / actionHash() as @emilia-protocol/issue. The cryptographic attestations are minted LIVE in tests/execution-integrity.test.js because the executor signatures must be real Ed25519 over canonical bytes; this file is the AUTHORITATIVE catalogue of the attacks every conformant verifier MUST reject (valid:false) and the well-formed case it MUST accept (valid:true). Each id here is asserted by name in the test.",
+  "scope_note": "FAIL CLOSED on execution drift. What this PROVES: a named executor key attested that the call it ran canonicalizes to exactly the approved action_hash. What it does NOT prove (honest residual): that the executor actually ran that call. A fully compromised executor can sign a truthful-looking attestation for a call it did not run — the attestation makes the executor's claim ATTRIBUTABLE (named, signed, evidenced), raising the cost of an undetectable swap; it does not make it impossible. That residual is addressed by executor TEE / host attestation, a layer ABOVE this binding, not by this binding's mathematics. EXPERIMENTAL; governed by an Extension PIP; no production or customer claim; reports no metrics.",
+  "must_reject": [
+    {
+      "id": "a_execution_drift",
+      "title": "Execution drift — executed canonical hash != approved action_hash",
+      "attack": "The attestation carries an executed_action object whose canonicalize()/actionHash() does NOT equal the approved action_hash. The approver signed action A (hash H_A); the executor ran action B (hash H_B). A passive verifier that only checks attestation.executed_action_hash == receipt.action_hash (two claimed strings) without RE-DERIVING the hash from executed_action would accept it.",
+      "expected": { "valid": false, "failing_check": "executed_hash_matches_approved" }
+    },
+    {
+      "id": "b_claimed_hash_not_recomputed",
+      "title": "Lying executed_action_hash field (claimed != recomputed)",
+      "attack": "executed_action_hash is set to the approved H_A, but the executed_action object actually hashes to H_B. The verifier MUST recompute the hash from executed_action and reject when the recomputed hash != the self-declared executed_action_hash field. A verifier that trusts the executor's self-declared hash string would accept it.",
+      "expected": { "valid": false, "failing_check": "executed_hash_self_consistent" }
+    },
+    {
+      "id": "c_missing_attestation_irreversible",
+      "title": "Missing execution attestation for an irreversible action",
+      "attack": "An irreversible action is presented with NO execution-integrity attestation. Fail-closed: an irreversible execution with no attestation binding what-ran to what-was-approved MUST be rejected. The producer's own irreversible:false flag can never DROP this requirement (mirrors PIP-009 reversibility handling).",
+      "expected": { "valid": false, "failing_check": "attestation_present" }
+    },
+    {
+      "id": "d_forged_executor_signature",
+      "title": "Forged / broken executor signature",
+      "attack": "executed_action matches the approved hash, but the executor signature does not verify under the pinned executor key (forged signature, or signed by an unpinned attacker key). The only added trust is the executor's attested signature; if it does not verify under a pinned key, the attestation is rejected.",
+      "expected": { "valid": false, "failing_check": "executor_signature_valid" }
+    },
+    {
+      "id": "e_signature_over_other_bytes",
+      "title": "Executor signature over different bytes than the presented attestation",
+      "attack": "The signature verifies under the pinned executor key, but over a DIFFERENT canonical payload than the one reconstructed from the presented attestation fields (executed_action / approved_action_hash were swapped after signing). The verifier independently recomputes the signed bytes; a verifier that trusts a producer-supplied signed_payload blob would accept it.",
+      "expected": { "valid": false, "failing_check": "signature_binds_attestation" }
+    },
+    {
+      "id": "f_unpinned_executor_key",
+      "title": "Executor key not pinned (identified-but-not-trusted gate)",
+      "attack": "A structurally valid attestation signed by a key that verifies the bytes, but the executor key is not in the verifier's pinned executorKeys map. The executor is identified but NOT trusted: a self-asserted key the verifier never pinned confers nothing. Fail-closed.",
+      "expected": { "valid": false, "failing_check": "executor_key_pinned" }
+    }
+  ],
+  "must_accept": [
+    {
+      "id": "g_well_formed_match",
+      "title": "Well-formed execution-integrity attestation (executed == approved)",
+      "note": "executed_action canonicalizes to exactly the approved action_hash; executed_action_hash is self-consistent; the executor signature verifies under the pinned executor key over the independently-recomputed canonical attestation bytes. Accept (valid:true). This proves a NAMED executor attested it ran exactly the approved call; it does not prove the executor was honest about having run it (residual: executor host/TEE attestation).",
+      "expected": { "valid": true }
+    }
+  ]
+}
