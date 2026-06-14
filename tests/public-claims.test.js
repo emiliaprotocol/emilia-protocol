@@ -63,6 +63,10 @@ const OPENAPI_EXEMPT_ROUTES = [
   // Self-serve observe-mode pilot sandbox (provision + report), not a protocol surface.
   '/api/pilot/sandbox/provision',
   '/api/pilot/sandbox/report',
+  // Embeddable capability badge + require-receipt demand demo — public demo/badge
+  // surfaces, not core protocol API.
+  '/api/badge/[entity]',
+  '/api/demo/require-receipt',
   // SCIM 2.0 (RFC 7643/7644) — standardized provisioning surface, described by
   // the RFC + ServiceProviderConfig, not EP's protocol OpenAPI.
   '/api/scim/v2/ServiceProviderConfig',
