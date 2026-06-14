@@ -187,7 +187,7 @@
   <div class="pipeline">agent <span class="g">→</span> escalation decision <span class="g">→</span> named-human signoff <span class="g">→</span> authorization receipt <span class="g">→</span> offline-verifiable</div>
   <div class="visual"><b>Visual:</b> EP wordmark on dark field; pipeline line beneath; gold rule under the title.</div>
   <div class="footer-meta sans">EMILIA Protocol, Inc. · Iman Schrock, Founder/PI · team@emiliaprotocol.ai</div>
-  <div class="pagenum">1 / 10</div>
+  <div class="pagenum">1 / 13</div>
 </section>
 
 <!-- SLIDE 2 — THE DIU PROBLEM -->
@@ -214,7 +214,7 @@
   </div>
   <div class="visual"><b>Visual:</b> four-quadrant card; the two gold-bordered cards are EP's lane.</div>
   <div class="footer-meta sans">Requirements as captured in application.md §1/§4a — re-confirm on the live portal.</div>
-  <div class="pagenum">2 / 10</div>
+  <div class="pagenum">2 / 13</div>
 </section>
 
 <!-- SLIDE 3 — THE GAP -->
@@ -240,7 +240,7 @@
     </div>
   </div>
   <div class="visual"><b>Visual:</b> left, an editable "audit log" inside a dashed operator trust boundary; right (gold), a self-contained receipt that verifies outside it.</div>
-  <div class="pagenum">3 / 10</div>
+  <div class="pagenum">3 / 13</div>
 </section>
 
 <!-- SLIDE 4 — EP IN ONE DIAGRAM -->
@@ -271,7 +271,7 @@
   </div>
   <p class="lead small" style="margin-top:14px">PIP-007 is the agent's <b>claim</b> that it escalated — bound into what the human signs, never a trust input, and never model introspection.</p>
   <div class="visual"><b>Visual:</b> left-to-right pipeline of four nodes with gold connectors; "no network required" tag under node 4.</div>
-  <div class="pagenum">4 / 10</div>
+  <div class="pagenum">4 / 13</div>
 </section>
 
 <!-- SLIDE 5 — REQUIREMENT → PRIMITIVE MAP -->
@@ -311,7 +311,7 @@
     </tbody>
   </table>
   <div class="visual"><b>Visual:</b> the map itself — DIU asks in muted ink, EP primitives in gold.</div>
-  <div class="pagenum">5 / 10</div>
+  <div class="pagenum">5 / 13</div>
 </section>
 
 <!-- SLIDE 6 — WHY DECISIVE FOR DOD -->
@@ -336,7 +336,7 @@
     <li>This is what separates EP from a SaaS audit dashboard: offline by construction, in exactly the environments where connectivity and operator trust can't be assumed.</li>
   </ul>
   <div class="visual"><b>Visual:</b> three pillars — Disconnected · Tamper-evident · Attributable — over a faint "no network" globe.</div>
-  <div class="pagenum">6 / 10</div>
+  <div class="pagenum">6 / 13</div>
 </section>
 
 <!-- SLIDE 7 — PROOF IT'S REAL -->
@@ -356,7 +356,7 @@
     <li>Scope honestly: the formal models prove the <b>authorization state machine</b>, not an AI model's behavior or a host's integrity.</li>
   </ul>
   <div class="visual"><b>Visual:</b> five-stat strip in gold (26 / 413,137 / 22 / 85 / -01), npm + datatracker line beneath.</div>
-  <div class="pagenum">7 / 10</div>
+  <div class="pagenum">7 / 13</div>
 </section>
 
 <!-- SLIDE 8 — LIVE DEMO -->
@@ -395,10 +395,65 @@
     <li>The signature was over the <b>exact</b> action. Change the target, and the proof collapses — offline, with only a public key.</li>
   </ul>
   <div class="visual"><b>Visual:</b> split terminal, green "VERIFIED 7/7" vs. red "NOT VERIFIED ✕ action_hash". Full script in DEMO-SCRIPT.md; browser fallback at emiliaprotocol.ai/verify.</div>
-  <div class="pagenum">8 / 10</div>
+  <div class="pagenum">8 / 13</div>
 </section>
 
-<!-- SLIDE 9 — HONEST SCOPE & TEAMING -->
+<!-- SLIDE 9 — TEAM & COMPANY -->
+<section class="slide">
+  <div class="kicker">Team &amp; company</div>
+  <h2>A Non-Traditional Vendor, Built in the Open</h2>
+  <ul>
+    <li><b>EMILIA Protocol, Inc.</b> — Delaware C-corporation. Founder &amp; PI: <b>Iman Schrock</b> (ORCID 0009-0004-0290-5433) · team@emiliaprotocol.ai.</li>
+    <li><b>Solo founder, pre-revenue, no outside capital</b> — stated plainly. DIU explicitly encourages small and non-traditional defense vendors; that is exactly who we are.</li>
+    <li>Built in the open: Apache-2.0, a public PIP governance process, and a <b>three-author IETF collaboration</b> (EMILIA + PSEA / Yuthent + an independent verifier-model reviewer) coordinating the standard on the IETF secdispatch list.</li>
+    <li><b>Depth over headcount:</b> a formally-verified protocol, a three-language verifier suite, and a live reference deployment — shipped by a focused team-of-one with open-source contributors.</li>
+  </ul>
+  <p class="note-line">The mitigation for our size is structural: an open standard others can implement independently, and a teaming posture as the governance/audit module under a spectrum-AI prime.</p>
+  <div class="visual"><b>Visual:</b> company + founder line; the three-author standards collaboration; "the team scales by adoption, not headcount."</div>
+  <div class="footer-meta sans">EMILIA Protocol, Inc. · Delaware C-corp · Iman Schrock, Founder/PI</div>
+  <div class="pagenum">9 / 13</div>
+</section>
+
+<!-- SLIDE 10 — SOFTWARE MATURITY & PAST PERFORMANCE -->
+<section class="slide">
+  <div class="kicker">Software maturity &amp; past performance</div>
+  <h2>Deployed and Independently Verifiable — TRL 6 Today, TRL 7 at MVP</h2>
+  <div class="pillars">
+    <div class="pillar">
+      <h3>Deployed today · TRL 6</h3>
+      <p>npm-published verifiers, a live in-browser verifier, an MCP server, and a Class-A device-bound signoff exercised end-to-end on real hardware — the audit module validated in a relevant environment.</p>
+    </div>
+    <div class="pillar">
+      <h3>Path to TRL 7</h3>
+      <p>The 07-10 MVP wires EP to a reference triage agent over MCP, issuing a receipt for every simulated high-risk release — demonstration in an operationally relevant Spectrum Strike context.</p>
+    </div>
+    <div class="pillar">
+      <h3>Track record = the artifact</h3>
+      <p>No prior government contracts. Our past performance is <b>public and checkable</b>: IETF I-D -01, a formally-verified open-source protocol, npm packages, and a cross-language conformance suite proven to agree in CI.</p>
+    </div>
+  </div>
+  <ul style="margin-top:12px">
+    <li class="small">Stated honestly: <b>no production deployment at relying-party scale yet, and no DoD past performance.</b> The mitigation is verifiability — anyone can install the toolkit and confirm every claim in minutes.</li>
+  </ul>
+  <div class="visual"><b>Visual:</b> three pillars — Deployed (TRL 6) · Path to TRL 7 · Verifiable track record.</div>
+  <div class="pagenum">10 / 13</div>
+</section>
+
+<!-- SLIDE 11 — INTEGRATION WITH LEGACY FEDERAL SYSTEMS -->
+<section class="slide">
+  <div class="kicker">Integration with legacy federal systems</div>
+  <h2>A Thin Evidence Layer — Augments Systems of Record, Replaces Nothing</h2>
+  <ul>
+    <li><b>No migration.</b> The triage agent calls EP over a standard interface (REST API or MCP) at the moment of an irreversible release; EP returns a receipt keyed by <span class="mono">action_hash</span> + <span class="mono">receipt_id</span>, stored as a reference field alongside the existing record — a foreign key, not a rip-and-replace.</li>
+    <li><b>Three integration modes:</b> (1) inline API/MCP call before the write; (2) a sidecar that <i>refuses</i> an irreversible action without a valid receipt (<span class="mono">require-receipt</span>); (3) air-gapped issuance for disconnected or classified enclaves.</li>
+    <li><b>Open, documented interfaces</b> — Apache-2.0, OpenAPI, MCP. No proprietary connector and <b>no data egress</b>: the receipt verifies offline, so legacy federal data never leaves its enclave.</li>
+    <li><b>High-side ready:</b> stateless verification + the air-gap installer fit an IL5/IL6 enclave; the offline-verifiable receipt is the only artifact that needs to cross a boundary.</li>
+  </ul>
+  <div class="visual"><b>Visual:</b> a legacy system-of-record box with EP attached as a thin reference field; the receipt as the only artifact crossing the enclave boundary.</div>
+  <div class="pagenum">11 / 13</div>
+</section>
+
+<!-- SLIDE 12 — HONEST SCOPE & TEAMING -->
 <section class="slide">
   <div class="kicker">Honest scope &amp; teaming</div>
   <h2>What EP Is — and What It Needs From a Prime</h2>
@@ -418,10 +473,10 @@
     <li class="small"><b>A receipt does NOT prove:</b> the decision was wise/lawful; real-world biometric identity beyond key↔approver enrollment; or rendering faithfulness (crypto proves a key signed a hash — narrowed by structured rendering + signed display attestation, not eliminated).</li>
   </ul>
   <div class="visual"><b>Visual:</b> two stacked bands — gold "EP: authorization &amp; audit" over muted "Prime: spectrum triage / RF / deconfliction" — MCP arrow between.</div>
-  <div class="pagenum">9 / 10</div>
+  <div class="pagenum">12 / 13</div>
 </section>
 
-<!-- SLIDE 10 — ASK & ROADMAP -->
+<!-- SLIDE 13 — ASK & ROADMAP -->
 <section class="slide">
   <div class="kicker">Ask &amp; roadmap</div>
   <h2>The Ask, the Timeline, and How to Reach Us</h2>
@@ -445,7 +500,7 @@
   </ul>
   <div class="contact"><span class="g">Contact:</span> Iman Schrock · team@emiliaprotocol.ai · emiliaprotocol.ai · github.com/emiliaprotocol/emilia-protocol</div>
   <div class="visual"><b>Visual:</b> three-stop timeline (06-15 → 07-10 → 08-25) in gold with the contact line beneath.</div>
-  <div class="pagenum">10 / 10</div>
+  <div class="pagenum">13 / 13</div>
 </section>
 
 </body>
