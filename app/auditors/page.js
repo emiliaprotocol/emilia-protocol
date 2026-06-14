@@ -161,11 +161,12 @@ export default function AuditorsPage() {
         </p>
 
         {/* Sector mappings + CTA */}
-        <h2 style={styles.h2}>Sector compliance mappings</h2>
+        <h2 style={styles.h2}>Compliance and control mappings</h2>
         <ul style={{ ...styles.list, marginBottom: 40 }}>
           <li><a href="/compliance/emilia-eu-ai-act-financial-services.pdf" style={lnk}>EU AI Act mapping — financial services</a></li>
           <li><a href="/compliance/emilia-eu-ai-act-government.pdf" style={lnk}>EU AI Act mapping — government programs</a></li>
           <li><a href="/compliance/emilia-eu-ai-act-healthcare.pdf" style={lnk}>EU AI Act mapping — healthcare</a></li>
+          <li><a href="/compliance/emilia-soc2-evidence-map.pdf" style={lnk}>SOC 2 evidence map — authorization receipts → CC6.1 / CC6.2 / CC7.2 / CC7.3</a></li>
         </ul>
 
         <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '22px 24px' }}>

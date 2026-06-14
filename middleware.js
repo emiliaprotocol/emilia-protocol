@@ -107,6 +107,7 @@ const ROUTE_POLICIES = {
   // /r/example for cold buyers — this gives them a working URL without
   // opening up real tenant evidence.
   'GET /api/demo/trust-receipts/*/evidence':       { rateCategory: 'read', useAuth: false },
+  'POST /api/demo/require-receipt':                { rateCategory: 'read', useAuth: false },
 
   // Disputes (writes)
   'POST /api/disputes/file':          { rateCategory: 'dispute_write', useAuth: true },
