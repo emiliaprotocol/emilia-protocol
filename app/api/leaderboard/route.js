@@ -12,7 +12,8 @@ import { logger } from '../../../lib/logger.js';
  *   type           - filter by entity_type (see canonical types in register route / OpenAPI)
  *   category       - filter by category
  *   include_new    - include unestablished entities (default false)
- *   rank_by        - "score" (default, legacy), "confidence", or "evidence"
+ *   rank_by        - "confidence" (default) or "evidence". A directory ordered by
+ *                    verifiable evidence — NOT a 0-100 reputation score or rating.
  *   min_confidence - minimum confidence level: pending, insufficient, provisional, emerging, confident
  *   limit          - max results (default 50, max 100)
  *   offset         - pagination offset
@@ -23,7 +24,10 @@ export async function GET(request) {
     const type = searchParams.get('type');
     const category = searchParams.get('category');
     const includeNew = searchParams.get('include_new') === 'true';
-    const rankBy = searchParams.get('rank_by') || 'score';
+    // Ordered by verifiable evidence/confidence, never by a reputation score.
+    // A legacy ?rank_by=score request degrades to confidence (the score is retired).
+    const rawRankBy = searchParams.get('rank_by') || 'confidence';
+    const rankBy = rawRankBy === 'evidence' ? 'evidence' : 'confidence';
     const minConfidence = searchParams.get('min_confidence') || null;
     const limit = Math.min(Math.max(0, parseInt(searchParams.get('limit'), 10) || 50), 100);
     const rawOffset = parseInt(searchParams.get('offset'), 10);
@@ -41,7 +45,7 @@ export async function GET(request) {
         verified, created_at, trust_snapshot
       `, { count: 'exact' })
       .eq('status', 'active')
-      .order('emilia_score', { ascending: false })
+      .order('total_receipts', { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (!includeNew) query = query.gte('total_receipts', 5);
@@ -65,7 +69,6 @@ export async function GET(request) {
         display_name: e.display_name,
         entity_type: e.entity_type,
         category: e.category,
-        compat_score: e.emilia_score,
         confidence: snap.confidence || 'pending',
         effective_evidence: effectiveEvidence,
         unique_submitters: uniqueSubmitters,
@@ -84,15 +87,14 @@ export async function GET(request) {
 
     if (rankBy === 'evidence') {
       leaderboard.sort((a, b) => b.effective_evidence - a.effective_evidence);
-    } else if (rankBy === 'confidence') {
+    } else {
+      // default: confidence tier, evidence as the tie-breaker. No score sort.
       leaderboard.sort((a, b) => {
         const ca = confLevels.indexOf(a.confidence);
         const cb = confLevels.indexOf(b.confidence);
         if (cb !== ca) return cb - ca;
         return b.effective_evidence - a.effective_evidence;
       });
-    } else {
-      leaderboard.sort((a, b) => b.compat_score - a.compat_score);
     }
 
     leaderboard = leaderboard.map((e, i) => ({ ...e, rank: offset + i + 1 }));

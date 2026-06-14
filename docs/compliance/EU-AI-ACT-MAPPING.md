@@ -19,7 +19,7 @@ This mapping covers EP's ability to help operators satisfy obligations under the
 |-------------|-------------------|
 | 9(1): Establish a risk management system | EP provides a structured, auditable trust evaluation pipeline (`protocolWrite()`) through which every high-risk action passes. System is continuous, documented, and versioned. |
 | 9(2)(a): Identify and analyze known risks | EP Eye observation layer classifies risk patterns by domain. Trust profiles track anomaly flags, negative outcome rates, and provenance quality. |
-| 9(2)(b): Estimate and evaluate risks | EP Trust Decisions produce `allow`/`review`/`deny` with evidence sufficiency metrics, domain scores, and confidence levels. |
+| 9(2)(b): Estimate and evaluate risks | EP Trust Decisions produce `allow` / `allow_with_signoff` / `deny` with evidence sufficiency metrics, domain scores, and confidence levels. |
 | 9(2)(c): Evaluate risks from reasonably foreseeable misuse | EP adversarial test suite: 85 red team cases including Sybil attacks, trust farming, collusion detection, and replay attempts. |
 | 9(2)(d): Adopt risk management measures | EP four-layer enforcement: Eye → Handshake → Signoff → Commit. Each layer has independent controls, audit trails, and enforcement capabilities. |
 | 9(4): Testing to identify appropriate measures | EP: 3,483 automated tests across 132 files, TLA+ model checking (413,137 states), Alloy relational verification, property-based testing with fast-check. |

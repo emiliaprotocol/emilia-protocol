@@ -154,7 +154,7 @@ export default function AgentGuardPage() {
               <p style={{ fontSize: 16, color: color.t2, lineHeight: 1.7, marginBottom: 18 }}>
                 No proxy to deploy. No data path to reroute. You call the gate at the decision point;
                 EMILIA answers <strong style={{ color: color.t1 }}>allow</strong>, <strong style={{ color: color.t1 }}>require&nbsp;signoff</strong>, or <strong style={{ color: color.t1 }}>deny</strong> &mdash; decided by a
-                policy engine with 26 machine-checked safety theorems behind it.
+                policy engine with 26 machine-checked theorems behind it.
               </p>
               <p style={{ fontSize: 14, color: color.t3, lineHeight: 1.7, margin: 0 }}>
                 The HTTP call below is live with your API key (signup is free). The wrapper below it ships today on npm and PyPI.

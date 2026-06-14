@@ -3,7 +3,7 @@ export const metadata = {
   description:
     'The team and advisors behind EMILIA Protocol — the open standard for ' +
     'verifiable pre-action authorization in AI agent and high-risk-action ' +
-    'workflows. Apache 2.0, formally verified, in production.',
+    'workflows. Apache 2.0, formally verified, reference runtime.',
   alternates: { canonical: '/about' },
   openGraph: {
     title: 'About EMILIA Protocol',

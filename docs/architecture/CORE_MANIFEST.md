@@ -122,7 +122,7 @@ These routes expose the kernel operations over HTTP. They are thin wrappers that
 | `app/api/delegations/[delegationId]/verify/route.js` | POST: verify delegation |
 | `app/api/policies/route.js` | GET: list policies |
 | `app/api/trust/evaluate/route.js` | POST: canonical trust evaluation |
-| `app/api/trust/gate/route.js` | POST: trust gate (pass/fail decision) |
+| `app/api/trust/gate/route.js` | POST: trust gate (allow / allow_with_signoff / deny decision) |
 | `app/api/verify/[receiptId]/route.js` | GET: verify receipt |
 | `app/api/receipts/submit/route.js` | POST: submit receipt |
 | `app/api/receipts/confirm/route.js` | POST: bilateral confirmation |

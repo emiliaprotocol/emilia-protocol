@@ -168,7 +168,6 @@ export default function AppealPage() {
                 <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>{result.data.display_name}</div>
                 <div style={rowStyle}><span style={{ color: color.t3 }}>Confidence</span><span style={{ color: result.data.current_confidence === 'confident' ? color.green : color.green }}>{result.data.current_confidence}</span></div>
                 <div style={rowStyle}><span style={{ color: color.t3 }}>Established</span><span>{result.data.historical_establishment ? 'Yes' : 'No'}</span></div>
-                <div style={rowStyle}><span style={{ color: color.t3 }}>Compatibility Score</span><span>{result.data.compat_score}/100</span></div>
                 <div style={rowStyle}><span style={{ color: color.t3 }}>Effective Evidence</span><span>{result.data.effective_evidence_current}</span></div>
                 {result.data.quality_gated_evidence_current != null && (
                   <div style={rowStyle}><span style={{ color: color.t3 }}>Quality-Gated Evidence</span><span>{result.data.quality_gated_evidence_current}</span></div>

@@ -22,6 +22,18 @@ const GH = 'https://github.com/emiliaprotocol/emilia-protocol';
 
 const RELEASES = [
   {
+    version: 'Unreleased',
+    date: 'In progress',
+    tag: 'Experimental profiles',
+    points: [
+      'EP-PROVENANCE-CHAIN-v1 — chained provenance receipt. EXPERIMENTAL, additive over the frozen EP-RECEIPT-v1; governed by a Draft PIP (PIP-009).',
+      'EP-DISPLAY-ATTESTATION-v1 — display attestation for WYSIWYS rendering. EXPERIMENTAL, additive over frozen EP-RECEIPT-v1; governed by a Draft PIP (PIP-010).',
+      'EP-EXECUTION-INTEGRITY-v1 — execution binding between approved bytes and executed action. EXPERIMENTAL, additive over frozen EP-RECEIPT-v1; governed by a Draft PIP (PIP-010).',
+      'EP-REVOCATION-v1 — portable, offline-verifiable revocation statement. EXPERIMENTAL, additive over frozen EP-RECEIPT-v1; governed by a Draft PIP (PIP-011).',
+      'EP-EYE-SET-v1 — Eye continuous-eval advisory as a signed Security Event Token. EXPERIMENTAL, additive over frozen EP-RECEIPT-v1; governed by a Draft PIP (PIP-011).',
+    ],
+  },
+  {
     version: '1.1.0',
     date: '2026-04-04',
     tag: 'Protocol hardening',
@@ -29,7 +41,7 @@ const RELEASES = [
       'EP-IX Identity Continuity — full state machine (pending → under-challenge → frozen → terminal) with rate-limit and self-contest guards.',
       'Protocol Hardening v2 — 9 Supabase migrations (065–073) closing every L99/L90/L75 finding: binding FOR UPDATE, policy-version pin, DB-clock expiry, tenant isolation, issuer-authority TOCTOU.',
       'Formal verification extended to 26 TLA+ properties (20 verified by TLC 2.19, 6 EP-IX specified).',
-      '3,277 tests across 125 files — 100/100 internal audit score.',
+      '3,277 tests across 125 files — passed full internal adversarial audit.',
       'New docs: audit methodology, 1.x API compatibility policy, migration runbook.',
     ],
   },

@@ -293,12 +293,14 @@ describe('Anomaly detection', () => {
 describe('Leaderboard response contract', () => {
   it('leaderboard entities should have confidence-aware fields', () => {
     const expectedFields = [
-      'entity_id', 'display_name', 'compat_score', 'confidence',
+      'entity_id', 'display_name', 'confidence',
       'effective_evidence', 'established', 'rank',
     ];
     expect(expectedFields).toContain('confidence');
     expect(expectedFields).toContain('effective_evidence');
-    expect(expectedFields).toContain('compat_score');
+    // The leaderboard is evidence/confidence-ordered — it MUST NOT expose a
+    // 0-100 reputation score (compat_score retired; emilia_score never public).
+    expect(expectedFields).not.toContain('compat_score');
     expect(expectedFields).not.toContain('emilia_score');
   });
 });

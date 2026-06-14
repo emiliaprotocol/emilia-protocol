@@ -274,8 +274,8 @@ export default function EuAiActPage() {
             <p style={styles.body}>
               The EU AI Act defines high-risk systems by domain. If your AI agent
               touches any of these, Article 113 obligations apply on day one of
-              enforcement — regardless of whether the agent is autonomous or
-              human-assisted.
+              enforcement (Dec 2, 2027) — regardless of whether the agent is
+              autonomous or human-assisted.
             </p>
           </motion.div>
 
@@ -530,10 +530,10 @@ export default function EuAiActPage() {
                     color: color.t1,
                   }}
                 >
-                  Day 1
+                  Dec 2, 2027
                 </div>
                 <div style={{ fontFamily: font.mono, fontSize: 11, color: color.t3, marginTop: 8 }}>
-                  No grace period for high-risk systems
+                  Day 1 — no grace period for high-risk systems
                 </div>
               </div>
             </div>

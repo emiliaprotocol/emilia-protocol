@@ -129,6 +129,26 @@ export default function EmiliaEyePage() {
         <div className="ep-reveal" style={{ textAlign: 'center', fontFamily: font.mono, fontSize: 14, color: color.t1, letterSpacing: 0.5, padding: '16px 0' }}>
           Eye observes. Handshake verifies. Signoff owns. Commit seals.
         </div>
+        <div className="ep-reveal" style={{
+          marginTop: 24,
+          border: `1px solid ${color.border}`,
+          borderLeft: `2px solid ${color.gold}`,
+          borderRadius: radius.base,
+          padding: '24px',
+          background: '#FAFAF9',
+        }}>
+          <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 1.5, textTransform: 'uppercase', color: color.gold, marginBottom: 10 }}>
+            Experimental · continuous-eval loop
+          </div>
+          <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.65, margin: 0 }}>
+            An additive, advisory-only extension is in draft. Eye can emit its advisory as a signed
+            Security Event Token (EP-EYE-SET-v1, RFC 8417) so a relying party can re-evaluate posture
+            continuously — but the advisory is <strong>never the sole gate</strong> on an action; it can
+            only tighten posture. Paired with it, an instant-revocation statement (EP-REVOCATION-v1) lets
+            a relying party cut off a long-lived authorization. Both are additive over the frozen core,
+            advisory-only, and governed by PIP-011 (Draft). Not yet production-ready.
+          </p>
+        </div>
       </section>
 
       {/* How Eye differs */}

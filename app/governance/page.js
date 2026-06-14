@@ -107,7 +107,7 @@ export default function GovernancePage() {
             Every receipt now carries an attribution chain: <code style={styles.mono}>Principal → Agent</code>. This creates a verifiable record of which human authorized which agent action. Accountability for agent behavior is not diffused — it traces back to a specific human delegation decision.
           </p>
           <p style={styles.body}>
-            Delegation Authority extends this further: EMILIA now scores the quality of human delegation decisions, not just agent outcomes. Principals who consistently authorize well-scoped, low-risk delegations build positive reputation. Principals who authorize reckless or disputed actions accumulate negative signal. Human accountability for machine behavior becomes legible and contestable.
+            Delegation Authority extends this further: EMILIA produces verifiable receipts for human delegation decisions, not just agent outcomes. Each well-scoped delegation and each reckless or disputed one leaves portable evidence bound to a named principal. EMILIA does not rank or rate principals — it makes the authorizing decision provable, so human accountability for machine behavior becomes legible and contestable.
           </p>
         </div>
       </section>

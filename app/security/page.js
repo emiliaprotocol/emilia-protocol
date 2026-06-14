@@ -181,7 +181,7 @@ export default function SecurityPage() {
           <li>Source control: GitHub with required code review + signed commits on the reference runtime.</li>
           <li>CI gating: lint, type-check, unit tests, integration tests against Postgres, semgrep, CodeQL, npm audit, secret scanning, formal-verification suite, and conformance suite — all wired in CI.</li>
           <li>Dependencies: Dependabot enabled with auto-merge for vetted minor + patch upgrades.</li>
-          <li>Cryptography: Ed25519 for receipt signatures, ECDSA P-256 (WebAuthn) for device signoffs, SHA-256 over RFC 8785 canonical JSON for action hashing, Merkle batching for trust-receipt anchoring. No custom crypto primitives.</li>
+          <li>Cryptography: Ed25519 for receipt signatures, ECDSA P-256 (WebAuthn) for device signoffs, SHA-256 over deterministic (sorted-key) canonical JSON for action hashing, Merkle batching for trust-receipt anchoring. No custom crypto primitives.</li>
           <li>Secrets handling: no production secrets in source; secrets stored in Vercel + Supabase secret managers with least-privilege scoped roles.</li>
           <li>Data minimization: trust receipts contain only the bound action context and signatures; no PII unless an integrator's policy explicitly includes it (and that integrator's DPA governs that data).</li>
         </ul>

@@ -126,7 +126,6 @@ export async function POST(request) {
         return {
           entity_id: m.entity_id,
           display_name: m.display_name,
-          compat_score: evaluation.score ?? m.emilia_score,
           match_score: m.match_score,
           decision,
           trust_pass: decision === 'allow', // DEPRECATED: derived from decision for backward compat
@@ -147,11 +146,10 @@ export async function POST(request) {
         })
         .slice(0, 10);
     } else {
-      // Legacy fallback: ranked by relevance x compatibility score
+      // Fallback: ranked by match relevance (no reputation score exposed).
       suggestions = matches.slice(0, 10).map(m => ({
         entity_id: m.entity_id,
         display_name: m.display_name,
-        compat_score: m.emilia_score,
         match_score: m.match_score,
       }));
     }

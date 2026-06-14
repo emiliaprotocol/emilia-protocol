@@ -67,6 +67,10 @@ const OPENAPI_EXEMPT_ROUTES = [
   // surfaces, not core protocol API.
   '/api/badge/[entity]',
   '/api/demo/require-receipt',
+  // Retired (HTTP 410): legacy compatibility-score endpoints, removed from the
+  // public API (verifiable evidence, not a score). Route files return 410 only.
+  '/api/score/[entityId]',
+  '/api/score/[entityId]/history',
   // SCIM 2.0 (RFC 7643/7644) — standardized provisioning surface, described by
   // the RFC + ServiceProviderConfig, not EP's protocol OpenAPI.
   '/api/scim/v2/ServiceProviderConfig',
