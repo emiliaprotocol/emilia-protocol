@@ -1,0 +1,86 @@
+{
+  "@version": "EP-EYE-SET-VECTORS-v1",
+  "wire_tag": "EP-EYE-SET-v1",
+  "spdx": "Apache-2.0",
+  "spec": "docs/EP-EYE-SET-SPEC.md",
+  "implementation": "lib/eye/set.js (buildEyeSet, verifyEyeSet)",
+  "description": "Negative + positive conformance vectors for the EP-EYE-SET-v1 profile: an Eye continuous-eval advisory carried as an RFC 8417 Security Event Token (CAEP-style) in JWS-COMPACT serialization (header.payload.signature). buildEyeSet(advisory, { signer, audience }) emits a secevent+jwt with header { alg:'EdDSA', typ:'secevent+jwt', kid }, payload { iss, iat, jti, aud, sub_id (the scope-bound scope_binding_hash, NEVER a raw subject/actor/target identifier — same redaction posture as lib/eye/webhook-notify.js), events: { '<CAEP-style event URI>': { status, reason_codes, recommended_policy_action, advisory_hash, expires_at, never_sole_gate:true } } }, signed EdDSA via node:crypto over the JWS signing input. verifyEyeSet(setCompact, opts) FAILS CLOSED: it validates the JWS signature under the key PINNED for the kid/iss (an unpinned/self-asserted kid confers nothing), rejects 'alg':'none' and algorithm confusion, requires typ='secevent+jwt' and the required SET claims, enforces audience match when opts.audience is set, enforces freshness (exp not past / iat not too old) when required, and requires the in-band never_sole_gate:true marker. verifyEyeSet NEVER returns allow/deny and NEVER authorizes — it returns the advisory POSTURE for a relying party to ACT on (tighten/revoke). A 'clear' status is not an actionable posture-change event and MUST NOT be emitted as one. The cryptographic material is minted LIVE in tests/eye-set.test.js (real Ed25519 keys, real EdDSA signatures over the real JWS signing input) so every negative is a genuine forgery / tamper / confusion attempt, not hand-edited JSON that fails for an unrelated reason. This file is the AUTHORITATIVE catalogue: each id is asserted by name in the test.",
+  "prior_art_note": "HONEST BOUNDARY. SET (RFC 8417), JWS (RFC 7515), and OpenID SSF/CAEP — including continuous evaluation and the 'a signal is never the sole authorization gate' posture — are PRIOR ART. This profile does NOT claim continuous-eval, the SET envelope, or the never-sole-gate invariant itself as novel; they are documented prior art (see docs/EMILIA-EYE-ADVISORY-SPEC.md Section 9.1 / Section 11). The only contribution here is the verifiable, scope-bound SET that carries the never-sole-gate invariant IN-BAND (events[...].never_sole_gate:true, re-checked by the verifier) together with the redaction posture (sub_id is the re-derivable scope_binding_hash, never a raw identifier).",
+  "residual_risk": "An Eye SET INFORMS a relying party; it is NEVER the sole gate and NEVER authorizes. verifyEyeSet returns a POSTURE (tighten / revoke / hold) for the relying party to combine, tighten-only, with its own base decision — it never returns allow/deny. What this profile PROVES: a SET that verifies under the PINNED emitter key carries an attributable, scope-bound, fresh advisory posture that has not been tampered with since signing, and that explicitly marks itself never_sole_gate. What it does NOT prove, and is OUT OF SCOPE: (1) A FULLY COMPROMISED EMITTER. A compromised Eye operator holding the pinned signing key can emit a truthful-looking SET for a posture it did not actually compute (over- or under-tightening). Pinning bounds this to a NAMED key whose claims are attributable; it does not make a compromised emitter's claims true. The residual is addressed only by emitter host/TEE attestation and key-management hygiene, a layer ABOVE this envelope. (2) SOLE-GATE MISUSE BY THE RELYING PARTY. The never_sole_gate marker is carried and re-checked in-band, but a relying party that ignores its own base policy and reads the posture AS authorization defeats the invariant; that is an integration error this envelope cannot prevent by mathematics. (3) Under-tightening from a WITHHELD or stale SET. A missing SET is treated by a conformant relying party as 'no posture change' (fail-open as an input, never as a relax of the base gate); staleness never relaxes. Do not read valid:true as 'allow'.",
+  "must_reject": [
+    {
+      "id": "a_forged_jws_signature",
+      "title": "Forged JWS signature over the signing input",
+      "attack": "header.payload are a well-formed elevated SET, but the signature segment is a real Ed25519 signature over UNRELATED bytes (or random bytes), not over the ASCII signing input b64u(header)+'.'+b64u(payload). The verifier reconstructs the signing input from the presented header.payload and verifies under the pinned key; the signature does not verify. A verifier that trusts the segment without recomputing the signing input would accept it.",
+      "expected": { "valid": false, "failing_check": "jws_signature_valid" }
+    },
+    {
+      "id": "b_unpinned_emitter_kid",
+      "title": "SET signed by an UNPINNED emitter key (self-asserted kid)",
+      "attack": "A structurally valid elevated SET whose signature genuinely verifies under the keypair the producer minted, but the header.kid / payload.iss pair is NOT in the verifier's pinned key map (opts.pinnedKeys has no key for it). A self-asserted kid confers nothing: anyone can mint a keypair and a correct-looking SET. Fail closed on the unpinned emitter. Mirrors execution-integrity f_unpinned_executor_key and wysiwys c3_unpinned_display_signer_key.",
+      "expected": { "valid": false, "failing_check": "emitter_key_pinned" }
+    },
+    {
+      "id": "c_wrong_pinned_key_substitution",
+      "title": "Wrong pinned key — emitter-key substitution",
+      "attack": "The kid/iss IS pinned, but the SET was signed by a DIFFERENT private key than the one pinned for that kid/iss. The signature math is internally consistent against the producer's own public key, yet fails under the key the verifier PINNED for this kid. Key substitution does not pass. The verifier verifies only under the pinned key, never under a producer-supplied public key.",
+      "expected": { "valid": false, "failing_check": "jws_signature_valid" }
+    },
+    {
+      "id": "d_alg_none_confusion",
+      "title": "'alg':'none' / algorithm confusion",
+      "attack": "The JOSE header advertises alg:'none' (unsecured JWS) with an empty signature segment, or advertises a non-EdDSA alg to provoke confusion. The verifier MUST reject any alg other than the pinned 'EdDSA' BEFORE attempting verification and MUST never treat an unsecured token as signed. A verifier that branched on the attacker-controlled alg would accept an unsigned token.",
+      "expected": { "valid": false, "failing_check": "alg_is_eddsa" }
+    },
+    {
+      "id": "e_tampered_payload_status_downgrade",
+      "title": "Tampered payload — status downgraded after signing",
+      "attack": "A genuine elevated/review_required SET is signed by the pinned key, then the payload segment is re-encoded with events[...].status downgraded (e.g. review_required -> caution, or elevated -> clear) to relax the posture a relying party would take. Because the signature covers the signing input over the ORIGINAL payload, re-deriving the signing input from the TAMPERED payload makes the signature fail. The downgrade is detected as a signature failure, not silently honored.",
+      "expected": { "valid": false, "failing_check": "jws_signature_valid" }
+    },
+    {
+      "id": "f_audience_mismatch",
+      "title": "Audience mismatch when opts.audience is set",
+      "attack": "A correctly signed, fresh elevated SET whose payload.aud is 'rp:bank-a', presented to a verifier that pins opts.audience='rp:bank-b'. The SET was minted for a different relying party; replaying it at the wrong audience MUST be rejected when an expected audience is supplied. (When opts.audience is unset the audience is not gated — see z2.)",
+      "expected": { "valid": false, "failing_check": "audience_match" }
+    },
+    {
+      "id": "g_expired_set_exp_past",
+      "title": "Expired SET — exp in the past when freshness required",
+      "attack": "A correctly signed elevated SET whose events[...].expires_at (and/or a payload exp) is in the PAST, verified with opts.requireFresh (or opts.now beyond exp). A stale advisory MUST NOT carry a live posture: an expired SET is rejected on freshness, never used to tighten OR relax. Mirrors the advisory freshness MUST in the Eye spec (consumers treat a past-expires_at advisory as stale).",
+      "expected": { "valid": false, "failing_check": "fresh" }
+    },
+    {
+      "id": "h_iat_too_old",
+      "title": "Stale issuance — iat older than the allowed window when freshness required",
+      "attack": "A correctly signed elevated SET whose iat is far in the past (older than opts.maxAgeSec) even though exp parsing alone might pass, verified with freshness required. An ancient issuance is treated as stale and rejected so an attacker cannot replay a long-lived old SET to drive posture. Freshness is enforced on BOTH iat age and exp.",
+      "expected": { "valid": false, "failing_check": "fresh" }
+    },
+    {
+      "id": "i_missing_never_sole_gate_marker",
+      "title": "Missing the never_sole_gate marker",
+      "attack": "A correctly signed, fresh elevated SET under the pinned key whose event object OMITS never_sole_gate (or sets it to a non-true value). The in-band invariant is load-bearing: a posture-change event that does not carry never_sole_gate:true is malformed for this profile and MUST be rejected, so a relying party can never be handed a posture that fails to assert it is not the sole gate.",
+      "expected": { "valid": false, "failing_check": "never_sole_gate_present" }
+    },
+    {
+      "id": "j_clear_status_emitted_as_event",
+      "title": "'clear' status emitted as an actionable posture-change event",
+      "attack": "A correctly signed, fresh SET under the pinned key whose event carries status:'clear'. 'clear' is the default-path, no-change posture (Eye spec Section 6: clear -> allow_normal_flow, no requirement change); it is NOT a posture-CHANGE event and MUST NOT be emitted as one. Permitting a signed 'clear' event would let a replayed/forged 'clear' be read as an affirmative 'authorized' signal — exactly the sole-gate misuse the profile refuses. buildEyeSet MUST refuse to emit it and verifyEyeSet MUST reject it.",
+      "expected": { "valid": false, "failing_check": "status_is_actionable" }
+    }
+  ],
+  "must_accept": [
+    {
+      "id": "z_well_formed_elevated_set_pinned_fresh",
+      "title": "Well-formed elevated SET — verifies under the pinned key, returns the posture",
+      "shape": "A well-formed 'elevated' advisory (reason_codes non-empty, recommended_policy_action present, scope_binding_hash present, fresh expires_at). buildEyeSet(advisory, { signer, audience:'rp:bank-a' }) emits a secevent+jwt: header { alg:'EdDSA', typ:'secevent+jwt', kid }, payload { iss, iat, jti, aud:'rp:bank-a', sub_id = the scope_binding_hash (NOT a raw identifier), events:{ '<event-uri>': { status:'elevated', reason_codes, recommended_policy_action, advisory_hash, expires_at, never_sole_gate:true } } }, signed EdDSA over the JWS signing input via node:crypto. verifyEyeSet(setCompact, { pinnedKeys, audience:'rp:bank-a', requireFresh:true }) verifies under the PINNED key, confirms typ + required claims + audience + freshness + never_sole_gate:true, and returns the advisory POSTURE (status, reason_codes, recommended_policy_action) for the relying party to ACT on — NOT allow/deny and NOT an authorization.",
+      "expected": { "valid": true }
+    },
+    {
+      "id": "z2_well_formed_review_required_no_audience_pin",
+      "title": "Well-formed review_required SET — accepted with no audience pin",
+      "shape": "A well-formed 'review_required' advisory emitted as a SET and verified with opts.audience UNSET (audience not gated) but with the pinned key, required claims, freshness, and never_sole_gate:true all satisfied. The verifier accepts and returns the review_required posture (the most-tightening recommended_policy_action, e.g. require_signoff/escalate). Not gating the audience is a deliberate verifier choice; everything else still fails closed. The returned value is a posture for the relying party to combine tighten-only with its base decision — never allow/deny.",
+      "expected": { "valid": true }
+    }
+  ]
+}
