@@ -208,7 +208,7 @@ The repo now has the pieces of the loop. The remaining work is adoption evidence
 | **Independent crypto/security review** | The claim is evidence infrastructure; outside review is table stakes. | Commission a focused audit of receipt canonicalization, WebAuthn signoff binding, log proofs, PIP-006 federation, and Guard fail-closed behavior. |
 | **Class-A ceremony polish** | The strongest claim depends on device-bound user verification being easy and trusted. | Ship the native secure app / hosted signoff ceremony path with public screenshots, WebAuthn verification fixtures, and clear enrollment/offboarding docs. |
 | **Real receipt gallery** | Reviewers need to see receipts from real actions, not only synthetic examples. | Publish a small gallery: one local issued receipt, one GovGuard observe receipt, one OpenAI Guard tool-call receipt, one federated receipt. |
-| **Profile conformance for Guard and Eye** | The receipt core has conformance; the surrounding profiles need their own pass/fail gates. | Add enforcement-point conformance vectors and Eye advisory vectors beside the existing receipt/federation suite. |
+| **Profile conformance for Guard and Eye** | The receipt core has conformance; the surrounding profiles need their own conformant/non-conformant gates. | Add enforcement-point conformance vectors and Eye advisory vectors beside the existing receipt/federation suite. |
 | **One crisp category demand** | "Trust infrastructure" is too broad until buyers can repeat the requirement. | Make the line everywhere: "No receipt, no irreversible action." |
 
 ---
