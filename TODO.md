@@ -36,7 +36,7 @@ Use two lanes:
 | ☐ | 10 min | Decide pricing on Pro / Team / Enterprise tiers. My recommendation: **Free / Pro $299/mo / Team $999/mo / Enterprise custom**. Confirm or counter. | Unlocks the same Stripe wire-up. Pricing is a one-time decision; can be A/B-tested later. |
 | ☐ | 5 min | Decide Compliance Pack price (NIST AI RMF + EU AI Act mappings + 30-min consult). My recommendation: **$5K each, $7.5K combined**. Confirm or counter. | Unlocks the highest-margin product (zero engineering, pure asset assembly). |
 | ☐ | 5 min | Apply to **AWS Activate Builders** at https://aws.amazon.com/activate/. No proposal needed. | $5K AWS credits in 24h. Free. Lowest-friction grant on the list. |
-| ☐ | 15 min | Start the **AAIF v3** path. See [`docs/grant-applications/aaif/cover-email.md`](docs/grant-applications/aaif/cover-email.md) for the channel-correct submission package. Join the AAIF working group first; do **not** email intake cold or submit the GitHub issue until a TC sponsor is identified. | Updated for the June receipts thesis, essays, `@emilia-protocol/issue`, federation proof, GovGuard pilot wedge, and AAIF's sponsor-first process. |
+| ☐ | 15 min | Put **AAIF v3** on hold or use informal technical outreach only. See [`docs/grant-applications/aaif/cover-email.md`](docs/grant-applications/aaif/cover-email.md). Do **not** submit EMILIA as an AAIF project proposal unless counsel approves the asset/trademark transfer terms. | AAIF project acceptance requires transfer of project trademarks/assets to LF. Keep EMILIA's brand, repo, packages, and commercial products unless there is a deliberate carve-out. |
 
 ## 🚀 This week (3–6 hours total)
 
