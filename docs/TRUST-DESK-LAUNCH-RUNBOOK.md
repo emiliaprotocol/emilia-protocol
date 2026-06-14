@@ -212,7 +212,7 @@ The product is for **AI vendors selling into financial services** who have a
 
 ### 7.3 Channels
 - Direct outreach (the 3 email buckets) — highest signal for B2B at this price.
-- Post the "what changes Aug 2 (EU AI Act)" angle — you already have `/eu-ai-act`.
+- Post the "what changes Dec 2, 2027 (EU AI Act Annex III, deferred by the Digital Omnibus)" angle — you already have `/eu-ai-act`.
 - Founder network / warm intros to AI startups with financial customers.
 
 ---

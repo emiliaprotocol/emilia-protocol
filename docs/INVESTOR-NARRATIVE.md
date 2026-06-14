@@ -22,7 +22,7 @@ In all of these environments, the missing control is the same: action-level trus
 
 ## What EP has now accomplished
 
-EP is no longer a broad trust idea. It is now a production-grade, independently audited protocol system with:
+EP is no longer a broad trust idea. It is now a reference protocol implementation with an internal adversarial code review and open formal-verification models with:
 - canonical action binding
 - policy-bound decisions
 - actor and authority enforcement
@@ -31,15 +31,15 @@ EP is no longer a broad trust idea. It is now a production-grade, independently 
 - immutable events
 - formal conformance surfaces
 - Accountable Signoff when policy requires named human ownership
-- MCP-native implementation (34 tools, TypeScript + Python SDKs)
+- MCP-native implementation (36 tools, 17 core by default; TypeScript + Python SDKs)
 - production observability stack (structured JSON logging, Sentry on 3 runtimes, graceful shutdown)
 - supply chain security (SHA-pinned Actions, SBOM, provenance attestation on every release)
 
 **Internal adversarial code audit: 100/100** (2026-04-02) — all 10 categories scored at maximum: formal verification, test quality, documentation, security, CI/CD, developer experience, MCP server, performance, licensing, and production readiness.
 
 Reconciliation proof:
-- 3,483 automated tests across 132 files
-- 26 TLA+ safety properties verified (TLC 2.19, 413,137 states, 0 errors); 35 Alloy facts + 15 assertions verified (Alloy 6.0.0, 0 counterexamples) — both run in CI on every change
+- 3,672 automated tests across 142 files
+- 26 TLA+ safety properties verified (TLC 2.19, 413,137 states, 0 errors); 35 Alloy facts + 22 assertions verified (Alloy 6.0.0, 0 counterexamples) — both run in CI on every change
 - 85 red team cases documented; 31 security findings identified and remediated
 - Stryker.js mutation testing — ≥80% kill threshold on protocol core
 - 19 fast-check property-based tests covering protocol invariants generatively
@@ -49,8 +49,8 @@ Reconciliation proof:
 - Zero duplicate consumptions, zero orphaned bindings, zero missing events
 - All endpoints use single-roundtrip atomic RPCs
 - Database: 46 EP-only tables, zero foreign artifacts
-- Staircase load tested: 10 → 50 → 100 → 200 → 500 concurrent users; handshake create p95 87ms
-- 27 CI quality gates across 12 automated workflows, all Actions SHA-pinned
+- Staircase load tested: 10 → 50 → 100 → 200 → 500 concurrent users; handshake create p95 575ms at 50 VUs
+- CI quality gates across ~13 automated workflows, all Actions SHA-pinned
 
 ## Why now
 

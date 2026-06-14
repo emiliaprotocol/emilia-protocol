@@ -67,7 +67,7 @@ export async function GET(request) {
               budget_cents, deadline_ms, min_emilia_score,
               trust_policy, status, created_at, updated_at, expires_at,
               from_entity_id,
-              from_entity:entities!needs_from_entity_id_fkey(entity_id, display_name, emilia_score, trust_snapshot)
+              from_entity:entities!needs_from_entity_id_fkey(entity_id, display_name, trust_snapshot)
             `)
             .eq('status', 'open')
             .gt('expires_at', new Date().toISOString())

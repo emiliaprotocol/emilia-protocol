@@ -107,6 +107,11 @@ All protocol changes go through the PIP process (PIP-000):
 | PIP-004 | EP Commit | Accepted |
 | PIP-005 | Emilia Eye | Accepted |
 | PIP-006 | Federation | Draft |
+| PIP-007 | Initiator Escalation Attestation | Draft |
+| PIP-008 | Authorization Receipt Rename | Draft |
+| PIP-009 | Provenance Chain | Draft |
+| PIP-010 | WYSIWYS / Execution-Integrity | Draft |
+| PIP-011 | Instant Revocation + Continuous-Eval | Draft |
 
 ### Decision Authority
 

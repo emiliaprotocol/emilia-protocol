@@ -209,7 +209,7 @@ export default async function McpPage() {
               </div>
             ))}
           </div>
-          <p style={{ fontSize: 13, color: color.t3, marginTop: 14 }}>34 tools total (17 core advertised by default) &mdash; trust profiles, receipts, disputes, delegation, identity continuity, and more. Full list in the <a href="https://www.npmjs.com/package/@emilia-protocol/mcp-server" target="_blank" rel="noopener noreferrer" style={{ color: color.gold }}>npm package</a>.</p>
+          <p style={{ fontSize: 13, color: color.t3, marginTop: 14 }}>36 tools total (17 core advertised by default) &mdash; trust profiles, receipts, disputes, delegation, identity continuity, and more. Full list in the <a href="https://www.npmjs.com/package/@emilia-protocol/mcp-server" target="_blank" rel="noopener noreferrer" style={{ color: color.gold }}>npm package</a>.</p>
         </C>
       </section>
 

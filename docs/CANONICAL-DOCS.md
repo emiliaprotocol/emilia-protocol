@@ -8,7 +8,7 @@
 | `README.md` | Public project overview | Developers, evaluators |
 | `docs/EP-CORE-RFC.md` | Technical specification | Implementers |
 | `docs/THE-EROSION-OF-TRUST.md` | Manifesto — why trust needs a protocol | Everyone |
-| `docs/AAIF-PROPOSAL-v2.md` | Standards working group proposal | AAIF / Linux Foundation |
+| `docs/AAIF-PROPOSAL-v3.md` | Standards working group proposal | AAIF / Linux Foundation |
 | `docs/NIST-ENGAGEMENT-PLAN.md` | Government/standards engagement | NIST AI Safety Institute |
 | `docs/EP-SX-SOFTWARE-TRUST.md` | Software trust extension spec | Implementers |
 | `docs/EP-IX-IDENTITY-CONTINUITY.md` | Identity continuity extension (working draft) | Implementers, architects |
@@ -25,14 +25,14 @@
 | `docs/OUTREACH-EMAILS.md` | AAIF and NIST cover emails | Internal — send when ready |
 | `GOVERNANCE.md` | Project governance | Contributors |
 | `CONTRIBUTING.md` | Contribution guide | Contributors |
-| `public/landing.html` | Marketing website | Everyone |
+| `app/` (Next.js App Router) | Marketing website — homepage `app/page.js`, marketing routes under `app/` | Everyone |
 | `mcp-server/README.md` | MCP server documentation | Agent developers |
 
 ## Send to...
 
 | Target | Document |
 |---|---|
-| AAIF (pr@aaif.org) | `docs/AAIF-PROPOSAL-v2.md` + `docs/THE-EROSION-OF-TRUST.md` |
+| AAIF (pr@aaif.org) | `docs/AAIF-PROPOSAL-v3.md` + `docs/THE-EROSION-OF-TRUST.md` |
 | NIST | `docs/NIST-ENGAGEMENT-PLAN.md` |
 | Developers | `README.md` → `docs/EP-CORE-RFC.md` |
 | Press/public | `docs/THE-EROSION-OF-TRUST.md` |

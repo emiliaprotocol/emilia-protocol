@@ -147,7 +147,6 @@ export async function POST(request) {
         entity_id: entity.entity_id,
         display_name: entity.display_name,
         entity_type: entity.entity_type,
-        compat_score: entity.emilia_score,
         confidence: 'pending',
         status: entity.status,
         created_at: entity.created_at,
@@ -155,7 +154,7 @@ export async function POST(request) {
       api_key: apiKey,
       owner_id: ownerId,
       message: 'Store this API key and owner_id securely. They will not be shown again. Use POST /api/identity/bind to establish durable principal binding.',
-      _note: 'Query /api/trust/profile/:entityId for full trust profile. compat_score is for sorting only.',
+      _note: 'Query /api/trust/profile/:entityId for the full trust profile (confidence + verifiable evidence). New entities start at confidence: pending.',
     }, { status: 201 });
   } catch (err) {
     logger.error('Registration error:', err);

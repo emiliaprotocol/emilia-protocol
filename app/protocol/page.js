@@ -35,6 +35,11 @@ const PIPS = [
   { pip: 'PIP-004', title: 'EP Commit',             status: 'Accepted' },
   { pip: 'PIP-005', title: 'Emilia Eye',            status: 'Accepted' },
   { pip: 'PIP-006', title: 'Federation',            status: 'Draft'    },
+  { pip: 'PIP-007', title: 'Initiator Escalation Attestation', status: 'Draft' },
+  { pip: 'PIP-008', title: 'Authorization Receipt rename',     status: 'Draft' },
+  { pip: 'PIP-009', title: 'Provenance Chain',                 status: 'Draft' },
+  { pip: 'PIP-010', title: 'WYSIWYS / Execution Integrity',    status: 'Draft' },
+  { pip: 'PIP-011', title: 'Instant Revocation + Continuous-Eval', status: 'Draft' },
 ];
 
 // Compliance numbers must match the underlying mapping documents exactly.

@@ -1,23 +1,23 @@
 export const metadata = {
-  title: 'Trust Score — Quality-Gated Reputation from Verified Receipts',
+  title: 'Trust Profile Explorer — Verifiable Authorization Evidence',
   description:
-    'EP\'s trust scoring composes quality-gated evidence, behavioral ' +
-    'history, and verified receipts into a procurement-grade entity ' +
-    'score. Sybil-resistant; conformance-tested.',
-  alternates: { canonical: '/score' },
+    'Look up an entity\'s verifiable authorization evidence: confidence ' +
+    'tier, established status, effective evidence, and receipts you can ' +
+    'verify offline. Portable evidence, not a reputation score.',
+  alternates: { canonical: '/explorer' },
   openGraph: {
-    title: 'EMILIA Trust Score',
+    title: 'EMILIA Trust Profile Explorer',
     description:
-      'Quality-gated reputation from cryptographically verified ' +
-      'receipts. Sybil-resistant scoring for AI agents and entities.',
-    url: 'https://www.emiliaprotocol.ai/score',
+      'Confidence and verifiable receipt evidence for AI agents and ' +
+      'entities — portable evidence anyone can check, not a score or ranking.',
+    url: 'https://www.emiliaprotocol.ai/explorer',
     type: 'article',
   },
   keywords: [
-    'AI trust score',
-    'verified reputation',
-    'Sybil-resistant scoring',
-    'entity trust profile',
+    'authorization evidence',
+    'verifiable receipts',
+    'trust profile',
+    'agent accountability',
   ],
 };
 

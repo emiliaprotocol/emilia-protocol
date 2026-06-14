@@ -549,89 +549,6 @@ paths:
           description: Can only update your own configuration
 
   # ===========================================================================
-  # Score (legacy)
-  # ===========================================================================
-
-  /api/score/{entityId}:
-    get:
-      tags: [Trust]
-      summary: Get compatibility score (legacy)
-      description: |
-        Returns the 0-100 compatibility score. This is a legacy endpoint for
-        backward compatibility. Use /api/trust/profile for trust decisions.
-      parameters:
-        - name: entityId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Compatibility score
-
-  /api/score/{entityId}/history:
-    get:
-      tags: [Trust]
-      summary: Get score history (legacy)
-      description: |
-        Returns compatibility score history over time. Legacy endpoint —
-        for current trust state, use GET /api/trust/profile/{entityId}.
-      parameters:
-        - name: entityId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            default: 50
-            maximum: 200
-        - name: after
-          in: query
-          schema:
-            type: string
-            format: date-time
-          description: Only return history after this date
-        - name: before
-          in: query
-          schema:
-            type: string
-            format: date-time
-          description: Only return history before this date
-      responses:
-        '200':
-          description: Score history
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  entity_id:
-                    type: string
-                  display_name:
-                    type: string
-                  current_score:
-                    type: number
-                  current_receipts:
-                    type: integer
-                  history:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        score:
-                          type: number
-                        total_receipts:
-                          type: integer
-                        created_at:
-                          type: string
-                          format: date-time
-        '404':
-          description: Entity not found
-
-  # ===========================================================================
   # Disputes
   # ===========================================================================
 
@@ -4055,9 +3972,6 @@ components:
           type: number
         historical_establishment:
           type: boolean
-        compat_score:
-          type: number
-          description: Legacy 0-100 compatibility score
 
     PolicyEvaluationResponse:
       type: object
@@ -4419,8 +4333,6 @@ components:
                 type: string
               display_name:
                 type: string
-              compat_score:
-                type: number
               match_score:
                 type: number
               decision:

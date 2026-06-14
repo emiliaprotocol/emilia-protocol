@@ -18,13 +18,13 @@ import { styles, cta, color, font, radius } from '@/lib/tokens';
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Stats — independently verifiable in the repo:
-//   3,200+ tests (static it/test count; parameterized runs exceed it) — `npx vitest run`
+//   3,500 tests passing (per lib/proof-stats.json: 3,500 passed / 29 skipped) — `npx vitest run`
 //   26 TLA+ invariants verified — formal/PROOF_STATUS.md (T1–T26)
 //   35 Alloy facts — formal/Alloy/EP.als
 //   85 red team cases — docs/conformance/RED_TEAM_CASES.md
 //   Apache 2.0 — LICENSE
 const STATS = [
-  { value: '3,200+',    label: 'Automated Tests',  sub: 'static count — runs expand it', accent: color.t1    },
+  { value: '3,500',     label: 'Automated Tests',  sub: 'passing — per proof-stats.json', accent: color.t1    },
   { value: '26',        label: 'TLA+ Theorems',    sub: 'TLC 2.19, zero errors',         accent: color.blue  },
   { value: '35',        label: 'Alloy Facts',       sub: '15 assertions verified',        accent: color.gold  },
   { value: '3',         label: 'Independent Verifiers', sub: 'JS · Python · Go, proven to agree', accent: color.t1 },

@@ -70,3 +70,47 @@ first-hour reviewer would raise:
 
 Also fixed: CIBA was mis-cited as RFC 9126 (that's OAuth PAR); CIBA is an
 OpenID Foundation specification, not an RFC.
+
+## draft-schrock-emilia-eye-00
+
+**Verifiable, Scope-Bound Advisories for Authorization Posture (EMILIA Eye)**
+— a scope-bound statement that an authorization posture for a named scope has
+changed, designed to be signed and offline-verifiable, carrying a
+scope-binding hash that prevents replay or re-targeting to a different scope.
+The central normative invariant: an advisory MUST NEVER be the sole gate on an
+action — a signal may only TIGHTEN posture, never itself constitute the
+authorization.
+
+**Status: posted individual Internet-Draft (intended status: Informational).**
+As with every draft in this directory, "posted" means accepted and published —
+it does **not** mean adopted: this is an individual submission with no IETF
+working-group standing, no RFC stream, and no endorsement. We say this plainly
+because claiming a stronger status than you hold is the category's most common
+failure, and we hold ourselves to the rule first.
+
+### Source artifacts
+
+- `draft-schrock-emilia-eye-00.xml` — the xml2rfc v3 source.
+- `draft-schrock-emilia-eye-00.txt` — the rendered I-D.
+
+## draft-schrock-ep-enforcement-point-00
+
+**An Enforcement-Point Profile for Authorization Receipts (EP)** — a Policy
+Enforcement Point (PEP) profile that composes on the shared verifier core in
+`draft-schrock-ep-authorization-receipts`. It gives an enforcement point a
+small, stable contract: a registered decision vocabulary (`allow` /
+`allow_with_signoff` / `deny`, with an out-of-band `observe` mode), a
+decision-request/response schema bound to the exact action under evaluation,
+and a requirement that every decision be bound to an offline-verifiable
+EP-RECEIPT-v1. Conformance requires fail-closed behavior on uncertainty,
+honoring of one-time consumption, and receipt emission.
+
+**Status: posted individual Internet-Draft (intended status: Informational).**
+Same honest caveat applies as above: "posted" is not "adopted" — this is an
+individual submission with no IETF working-group standing, no RFC stream, and
+no endorsement.
+
+### Source artifacts
+
+- `draft-schrock-ep-enforcement-point-00.xml` — the xml2rfc v3 source.
+- `draft-schrock-ep-enforcement-point-00.txt` — the rendered I-D.

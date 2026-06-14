@@ -123,6 +123,11 @@ const OPENAPI_EXEMPTIONS = [
   // surfaces, not core protocol API.
   '/api/badge/[entity]',
   '/api/demo/require-receipt',
+  // Retired (HTTP 410): the legacy 0-100 compatibility-score endpoints were
+  // removed from the public API — EMILIA publishes verifiable evidence, not a
+  // score. The route files remain only to return 410 + a migration pointer.
+  '/api/score/[entityId]',
+  '/api/score/[entityId]/history',
   // SCIM 2.0 (RFC 7643/7644) — a standardized provisioning surface described by
   // the RFC and ServiceProviderConfig, not EP's protocol OpenAPI.
   '/api/scim/v2/ServiceProviderConfig',

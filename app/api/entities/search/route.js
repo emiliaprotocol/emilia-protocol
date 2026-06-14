@@ -41,7 +41,8 @@ export async function GET(request) {
     // New consumers should use min_confidence or rank_by=confidence instead.
     const minScore = parseFloat(searchParams.get('min_score')) || 0;
     const minConfidence = searchParams.get('min_confidence') || null;
-    const rankBy = searchParams.get('rank_by') || 'score';
+    // Default to confidence ordering — results are not ranked by a reputation score.
+    const rankBy = searchParams.get('rank_by') || 'confidence';
     const limit = Math.min(parseInt(searchParams.get('limit')) || 20, 50);
 
     const supabase = getGuardedClient();
@@ -103,7 +104,6 @@ export async function GET(request) {
               description: r.description,
               category: r.category,
               capabilities: r.capabilities,
-              emilia_score: r.emilia_score,
               total_receipts: r.total_receipts,
               similarity: r.similarity,
               verified: r.verified,

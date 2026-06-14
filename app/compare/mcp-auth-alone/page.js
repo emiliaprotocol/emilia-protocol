@@ -81,7 +81,7 @@ export default function CompareMcpPage() {
           A high-risk MCP tool wraps its handler with the EP SDK. When the agent invokes the tool, the MCP server first verifies the client's OAuth token (MCP authorization), then asks EP whether a valid handshake exists for these exact arguments. If the handshake is missing or doesn't match, the tool refuses to execute — and the client surfaces a request for human signoff before retrying.
         </p>
         <p className="ep-reveal" style={styles.body}>
-          The EP MCP server itself ships 34 tools for protocol operations and reference workflows; the SDK pattern is a 3-line wrap of any other tool you want to gate.
+          The EP MCP server itself ships 36 tools for protocol operations and reference workflows; the SDK pattern is a 3-line wrap of any other tool you want to gate.
         </p>
       </section>
 

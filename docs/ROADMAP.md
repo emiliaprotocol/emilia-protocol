@@ -353,7 +353,7 @@ All items below were built and merged in the second sprint wave. They are live, 
 - [ ] npm/GitHub package safety policies
 
 ### Policy Explanations
-- [ ] For every result: pass/review/fail + reasons + failed controls + missing evidence + continuity concerns + dispute burden
+- [ ] For every result: allow / allow_with_signoff / deny + reasons + failed controls + missing evidence + continuity concerns + dispute burden
 
 **Success condition:** EP becomes a system people make decisions with, not just inspect.
 
