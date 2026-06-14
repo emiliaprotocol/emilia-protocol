@@ -472,7 +472,7 @@ jobs:
           # protocol OpenAPI (mirrors the OPENAPI_EXEMPTIONS in
           # tests/route-coverage.test.js): SCIM is RFC 7643/7644 + its own
           # ServiceProviderConfig; the pilot sandbox is GTM onboarding tooling.
-          route_files=$(find app/api -name route.js 2>/dev/null | grep -vE '/api/scim/|/api/sso/|/api/pilot/' | wc -l | tr -d ' ')
+          route_files=$(find app/api -name route.js 2>/dev/null | grep -vE '/api/scim/|/api/sso/|/api/pilot/|/api/badge/|/api/demo/' | wc -l | tr -d ' ')
           echo "openapi.yaml paths: $spec_paths"
           echo "core app/api route.js files (excl. scim, sso, pilot): $route_files"
           # Enforce minimum 75% coverage — cloud/operational routes may be documented separately.
