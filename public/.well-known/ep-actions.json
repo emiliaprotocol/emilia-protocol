@@ -1,0 +1,42 @@
+{
+  "@version": "EP-REGISTRY-v1",
+  "wire_tag": "EP-ACTION-VOCABULARY-v1",
+  "note": "Offline-resolvable vocabulary of consequential action types an EP profile can cover. New action types are new rows, not core changes.",
+  "actions": [
+    {
+      "action_type": "benefit_bank_account_change",
+      "domain": "government",
+      "risk": "high"
+    },
+    {
+      "action_type": "benefit_address_change",
+      "domain": "government",
+      "risk": "medium"
+    },
+    {
+      "action_type": "caseworker_override",
+      "domain": "government",
+      "risk": "high"
+    },
+    {
+      "action_type": "vendor_bank_account_change",
+      "domain": "financial",
+      "risk": "high"
+    },
+    {
+      "action_type": "beneficiary_creation",
+      "domain": "financial",
+      "risk": "high"
+    },
+    {
+      "action_type": "large_payment_release",
+      "domain": "financial",
+      "risk": "high"
+    },
+    {
+      "action_type": "ai_agent_payment_action",
+      "domain": "agentic",
+      "risk": "high"
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "@version": "EP-REGISTRY-v1",
+  "wire_tag": "EP-PROFILE-REGISTRY-v1",
+  "envelope": "EP-ENVELOPE-v1",
+  "note": "Content-addressed profile registry for the EP statement envelope. EMILIA hosts a mirror; profiles are self-published. Reserved private-use namespace: urn:ep:profile:x-<vendor>:*",
+  "spec": "docs/EP-ENVELOPE-SPEC.md",
+  "registry_hash": "sha256:185bce17092193c2d47992ff6ad591843d1e167b437db94e356ca74bbe664476",
+  "profiles": [
+    {
+      "profile": "urn:ep:profile:revocation:v1",
+      "wire_tag": "EP-REVOCATION-v1",
+      "spec": "docs/EP-REVOCATION-SPEC.md",
+      "vectors": "conformance/vectors/revocation.v1.json",
+      "summary": "Portable, offline-verifiable revocation of a prior authorization.",
+      "content_hash": "sha256:ff9912f5bb72cfcd38f5300dcf2c6ec7a5666b41d149f9a0f6db090281578f52"
+    },
+    {
+      "profile": "urn:ep:profile:eye-set:v1",
+      "wire_tag": "EP-EYE-SET-v1",
+      "spec": "docs/EP-EYE-SET-SPEC.md",
+      "vectors": "conformance/vectors/eye-set.v1.json",
+      "summary": "Eye continuous-eval posture as a signed RFC 8417 Security Event Token (never a gate).",
+      "content_hash": "sha256:fc2f6fd7458286ccc3340887e26bfafea5d14b2dccdb299647620362823b648c"
+    },
+    {
+      "profile": "urn:ep:profile:execution-integrity:v1",
+      "wire_tag": "EP-EXECUTION-INTEGRITY-v1",
+      "spec": "docs/EP-WYSIWYS-SPEC.md",
+      "vectors": "conformance/vectors/execution-integrity.v1.json",
+      "summary": "What executed == what was approved (drift detection).",
+      "content_hash": "sha256:2d975b8a826030c3bb28da26d40068e885299b1768e590a35ed8127635abddd7"
+    },
+    {
+      "profile": "urn:ep:profile:wysiwys:v1",
+      "wire_tag": "EP-DISPLAY-ATTESTATION-v1",
+      "spec": "docs/EP-WYSIWYS-SPEC.md",
+      "vectors": "conformance/vectors/wysiwys.v1.json",
+      "summary": "What the approver saw == what they signed (display attestation).",
+      "content_hash": "sha256:9d7704af578ba33096e9dcd1c63871c356f61229df0e0d8c75f474d55611e17d"
+    },
+    {
+      "profile": "urn:ep:profile:provenance-chain:v1",
+      "wire_tag": "EP-PROVENANCE-CHAIN-v1",
+      "spec": "docs/EP-PROVENANCE-RECEIPT-SPEC.md",
+      "vectors": "conformance/vectors/provenance-chains.v1.json",
+      "summary": "Root human signoff → bound delegation chain → per-action approval → execution.",
+      "content_hash": "sha256:f3f12c46da6a79a49d670f05c0ac4ba34b9df7ed28c70cd2d70c4790ea52175b"
+    }
+  ]
+}
