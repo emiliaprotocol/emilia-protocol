@@ -76,6 +76,20 @@ const ROLLOUT = [
   { step: '04', accent: color.t2,    label: 'Seal with Commit',       body: 'Atomic write to the immutable audit chain. Handshake consumed, signoff consumed, event chain sealed. Execution released. Cannot be undone.',                  filled: false },
 ];
 
+// The protocol family — every consequential-action check is the same shape (a
+// signed receipt over one envelope, EP-ENVELOPE-v1) dispatched by a profile URN.
+// Mirrors lib/envelope/descriptors.js (PROFILE_DESCRIPTORS) and the published
+// registry at public/.well-known/ep-profiles.json. A profile is data + a small
+// validateBody bridge; a third party ships one in the reserved
+// urn:ep:profile:x-<vendor>:* space without asking permission.
+const PROFILES = [
+  { tag: 'EP-REVOCATION-v1',          urn: 'revocation:v1',          desc: 'Portable, offline-verifiable revocation of a prior authorization.' },
+  { tag: 'EP-EYE-SET-v1',             urn: 'eye-set:v1',             desc: 'Continuous-eval posture as a signed RFC 8417 Security Event Token — never a gate.' },
+  { tag: 'EP-EXECUTION-INTEGRITY-v1', urn: 'execution-integrity:v1', desc: 'What executed equals what was approved — drift detection.' },
+  { tag: 'EP-DISPLAY-ATTESTATION-v1', urn: 'wysiwys:v1',             desc: 'What the approver saw equals what they signed — display attestation.' },
+  { tag: 'EP-PROVENANCE-CHAIN-v1',    urn: 'provenance-chain:v1',    desc: 'Root human signoff → bound delegation chain → per-action approval → execution.' },
+];
+
 export default function ProtocolPage() {
   useEffect(() => {
     const els = document.querySelectorAll('.ep-reveal');
@@ -244,6 +258,48 @@ export default function ProtocolPage() {
             </div>
           ))}
         </div>
+      </section>
+
+      {/* The protocol family — one envelope, a registry of profiles */}
+      <section style={styles.section}>
+        <div className="ep-reveal" style={{ marginBottom: 40 }}>
+          <div style={styles.eyebrow}>The Protocol Family</div>
+          <h2 style={styles.h2}>One envelope. A registry of profiles.</h2>
+          <p style={styles.body}>
+            Every consequential-action check EP makes is the <strong>same shape</strong>: a signed,
+            offline-verifiable receipt carried in one envelope (<code style={{ fontFamily: font.mono, fontSize: 13 }}>EP-ENVELOPE-v1</code>),
+            dispatched by a <strong>profile</strong>. A single verifier handles them all — and a profile
+            can only <em>add</em> a rejection, never weaken a shared check. Adding a new high-stakes action
+            isn&rsquo;t a new product; it&rsquo;s a new row in the registry.
+          </p>
+        </div>
+
+        <div className="ep-reveal" style={{
+          borderTop: `1px solid ${color.border}`,
+          borderLeft: `1px solid ${color.border}`,
+          marginBottom: 28,
+        }}>
+          {PROFILES.map((p, i) => (
+            <div key={i} className="ep-row-hover" style={{
+              display: 'flex', gap: 24, alignItems: 'flex-start',
+              padding: '16px 24px',
+              borderRight: `1px solid ${color.border}`,
+              borderBottom: `1px solid ${color.border}`,
+            }}>
+              <span style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 600, color: color.blue, minWidth: 210, flexShrink: 0, letterSpacing: 0.3, paddingTop: 1 }}>{p.tag}</span>
+              <span style={{ fontSize: 14, color: color.t2, lineHeight: 1.6 }}>{p.desc}</span>
+            </div>
+          ))}
+        </div>
+
+        <p className="ep-reveal" style={{ ...styles.body, maxWidth: 720 }}>
+          The registry is content-addressed and published at{' '}
+          <code style={{ fontFamily: font.mono, fontSize: 13 }}>/.well-known/ep-profiles.json</code> — verifiable
+          offline, no call home. EMILIA hosts a <strong>mirror</strong>, not a trust root: the reserved
+          private-use namespace <code style={{ fontFamily: font.mono, fontSize: 13 }}>urn:ep:profile:x-&lt;vendor&gt;:*</code>{' '}
+          lets anyone publish a profile without asking permission. That is how a toolbox becomes a
+          standard — COSE did it for signing, MIME for content, Sigstore for trust.
+        </p>
       </section>
 
       {/* Phased rollout — Eye → Handshake → Signoff → Commit */}
