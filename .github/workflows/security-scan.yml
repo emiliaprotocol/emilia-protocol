@@ -23,5 +23,16 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
-      - name: Check for known vulnerabilities
+      - name: Check for known vulnerabilities (root)
         run: npm audit --audit-level=moderate
+      # mcp-server ships its own committed lockfile (a separate npm package with
+      # the MCP SDK + its transitive HTTP-transport deps), so its advisories are
+      # invisible to the root audit above. Audit it here so they can't silently
+      # regress. (sdks/typescript is intentionally NOT audited: its lockfile is
+      # gitignored and the package has zero runtime dependencies — vite is a
+      # dev-only transitive of vitest and is never shipped to consumers.)
+      - name: Check for known vulnerabilities (mcp-server)
+        working-directory: mcp-server
+        run: |
+          npm ci
+          npm audit --audit-level=moderate
