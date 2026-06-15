@@ -67,6 +67,7 @@ const OPENAPI_EXEMPT_ROUTES = [
   // surfaces, not core protocol API.
   '/api/badge/[entity]',
   '/api/demo/require-receipt',
+  '/api/demo/x402',
   // Retired (HTTP 410): legacy compatibility-score endpoints, removed from the
   // public API (verifiable evidence, not a score). Route files return 410 only.
   '/api/score/[entityId]',

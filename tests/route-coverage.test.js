@@ -123,6 +123,7 @@ const OPENAPI_EXEMPTIONS = [
   // surfaces, not core protocol API.
   '/api/badge/[entity]',
   '/api/demo/require-receipt',
+  '/api/demo/x402',
   // Retired (HTTP 410): the legacy 0-100 compatibility-score endpoints were
   // removed from the public API — EMILIA publishes verifiable evidence, not a
   // score. The route files remain only to return 410 + a migration pointer.
