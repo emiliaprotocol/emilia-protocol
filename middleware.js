@@ -108,6 +108,7 @@ const ROUTE_POLICIES = {
   // opening up real tenant evidence.
   'GET /api/demo/trust-receipts/*/evidence':       { rateCategory: 'read', useAuth: false },
   'POST /api/demo/require-receipt':                { rateCategory: 'read', useAuth: false },
+  'POST /api/demo/x402':                           { rateCategory: 'read', useAuth: false },
 
   // Disputes (writes)
   'POST /api/disputes/file':          { rateCategory: 'dispute_write', useAuth: true },
