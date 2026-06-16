@@ -1,0 +1,19 @@
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+# Lists @emilia-protocol/mcp-server (npm, stdio) on smithery.ai.
+
+startCommand:
+  type: stdio
+  configSchema:
+    # JSON Schema for user-supplied config. EP_API_KEY is optional — public
+    # read tools work without it; it's only needed for authenticated writes.
+    type: object
+    required: []
+    properties:
+      EP_API_KEY:
+        type: string
+        description: "Optional Emilia Protocol API key for authenticated write operations (registering entities, submitting receipts)."
+  commandFunction:
+    # Produces the CLI command to start the MCP server over stdio.
+    |-
+    (config) => ({ command: 'npx', args: ['-y', '@emilia-protocol/mcp-server'], env: config.EP_API_KEY ? { EP_API_KEY: config.EP_API_KEY } : {} })
+exampleConfig: {}
