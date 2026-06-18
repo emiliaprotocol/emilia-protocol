@@ -4,19 +4,37 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![MCP](https://img.shields.io/badge/protocol-MCP-5a5aff)](https://modelcontextprotocol.io)
 
-**Trust enforcement for high-risk actions via MCP. Pre-action binding, policy-bound verification, one-time consumption, and accountable human signoff.**
+**Stop your AI agent before it does something irreversible.** A named human approves the exact action — a payment, a deletion, an account change — and you get a cryptographic receipt anyone can verify offline. The seatbelt for agent tool calls, over MCP.
 
 ---
 
 ## What This Is
 
-EMILIA Protocol enforces trust before a high-risk action. This MCP server gives any Claude conversation or agent pipeline EP's gate: call **`ep_guard_action`** before any irreversible action — a payment, deletion, or account change — to require a named human's signoff and get a verifiable receipt, then poll **`ep_check_signoff`** until it's approved. 36 tools in all, but by default the server advertises a **focused 17** — the trust gate plus the pre-action protocol (handshake + commit binding, signoff orchestration, policy evaluation, offline receipt verification, delegation, install preflight). Set `EP_INCLUDE_REGISTRY_TOOLS=true` to also expose the legacy registry and reputation tools. Add it to Claude Desktop in 60 seconds. No self-hosted EP backend required.
+Your agent can call powerful tools. This server makes sure it can't take an irreversible action without a named human's signed approval — and leaves proof.
+
+The hero tool is **`ep_guard_action`**: call it before any irreversible action and EMILIA holds execution until a named human signs off, then returns a verifiable receipt (poll **`ep_check_signoff`** until approved). That's the whole loop — gate the action, get the receipt.
+
+The receipt is **offline-verifiable**: anyone can check it with open-source code, no backend, no vendor trust. Tamper with it and verification fails by construction.
+
+36 tools in all; by default the server advertises a **focused 17** — the trust gate plus the pre-action protocol (handshake + commit binding, signoff orchestration, policy evaluation, offline receipt verification, delegation). Set `EP_INCLUDE_REGISTRY_TOOLS=true` to also expose the registry and reputation tools.
+
+---
+
+## Try it in 60 seconds (no key, no backend)
+
+The server runs with **no API key** — the verification and read tools (verify a receipt, verify a proof, look up a trust profile, register an entity) work out of the box, no signup, nothing self-hosted:
+
+```bash
+npx -y @emilia-protocol/mcp-server
+```
+
+Add an `EP_API_KEY` only when you want the authenticated path — issuing live signoffs and writing receipts.
 
 ---
 
 ## Installation
 
-Add the following to your MCP client config. No local install required — `npx` handles it.
+Add the following to your MCP client config. No local install required — `npx` handles it. The `env` block is **optional** — omit it for the keyless read/verify tools; add `EP_API_KEY` to unlock guarded signoffs and writes.
 
 ### Claude Desktop
 
@@ -29,7 +47,7 @@ Config file: `~/Library/Application Support/Claude/claude_desktop_config.json`
       "command": "npx",
       "args": ["-y", "@emilia-protocol/mcp-server"],
       "env": {
-        "EP_API_KEY": "ep_live_your_key_here",
+        "EP_API_KEY": "ep_live_your_key_here (optional — only for signoffs/writes)",
         "EP_BASE_URL": "https://emiliaprotocol.ai"
       }
     }
@@ -39,28 +57,7 @@ Config file: `~/Library/Application Support/Claude/claude_desktop_config.json`
 
 ### Cursor
 
-Config file: `.cursor/mcp.json`
-
-```json
-{
-  "mcpServers": {
-    "emilia-protocol": {
-      "command": "npx",
-      "args": ["-y", "@emilia-protocol/mcp-server"],
-      "env": {
-        "EP_API_KEY": "ep_live_your_key_here",
-        "EP_BASE_URL": "https://emiliaprotocol.ai"
-      }
-    }
-  }
-}
-```
-
-### npx (zero install, test immediately)
-
-```bash
-EP_API_KEY=ep_live_your_key_here npx @emilia-protocol/mcp-server
-```
+Config file: `.cursor/mcp.json` — same block as above; drop the `env` entirely to run keyless.
 
 Use EP Commit when a relying system wants proof that a high-stakes action was evaluated before it proceeded.
 
