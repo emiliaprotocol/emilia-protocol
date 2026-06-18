@@ -1,56 +1,130 @@
 # EMILIA Protocol
 
 [![CI](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@emilia-protocol/verify)](https://www.npmjs.com/package/@emilia-protocol/verify)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+[![IETF Internet-Draft](https://img.shields.io/badge/IETF-draft--schrock--ep--authorization--receipts--01-blue)](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/)
 [![Discord](https://img.shields.io/badge/Discord-join%20the%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/MSJXjEtD4)
 
-**A named human's signed "yes" before an AI agent does anything irreversible — with a receipt anyone can verify offline.**
+---
 
-Three independent reference verifiers — **JavaScript, Python, and Go** — are proven to agree on the canonical adversarial conformance vectors, on every push (`npm run conformance`). That is the IETF bar for a real standard: multiple independent interoperable implementations. See [CONFORMANCE.md](CONFORMANCE.md), or verify a receipt yourself, in your browser, at [emiliaprotocol.ai/verify](https://www.emiliaprotocol.ai/verify).
+## The engine without brakes
 
-![EMILIA crash test — an autonomous agent tries to wire $82,000; the formally-verified policy engine holds it, a named human signs off, the Trust Receipt verifies offline, and a forged copy fails verification.](docs/media/crash-test.gif)
+For fifty years, software security answered one question: *who is allowed in?* Firewalls, OAuth, and passwords — all built to verify a human identity at the door.
 
-> Run it yourself: `node examples/crash-test.mjs` — fully offline, no API key.
+That era is ending. The dominant users of software are no longer humans; they're autonomous AI agents. Agents don't just log in — they write code, call tools, and change reality on the fly. Every CISO knows a single bad prompt can make an agent wipe a production database or wire money to the wrong account. So they're **blocking deployment** — sitting on billions in AI budget they can't spend because their compliance teams can't answer one question:
 
-Try it in one line (Claude / Cursor / Cline):
+**Who approved that action?**
+
+The crisis of our generation isn't authentication. It's **authorization at the moment of action**: how do you prove that *what an agent is about to do* is *exactly what a named human authorized* — before it executes?
+
+**EMILIA is the seatbelt for the agentic era.**
+
+> *Decision logs are testimony. EMILIA produces receipts.*
+
+---
+
+## Try it in 30 seconds
 
 ```bash
+# Issue a receipt offline — no API key, no backend needed
+npx @emilia-protocol/issue demo
+```
+
+```bash
+# Add EMILIA to Claude / Cursor / Cline
 npx -y @emilia-protocol/mcp-server
 ```
 
-**[90-second demo](https://www.emiliaprotocol.ai/mcp)** · **[Quickstart](https://www.emiliaprotocol.ai/quickstart)** · **[Agent code walkthrough](https://www.emiliaprotocol.ai/use-cases/ai-agent)** · **[Discord](https://discord.gg/MSJXjEtD4)**
+**[Try a real Face ID signoff →](https://www.emiliaprotocol.ai/try)** Approve an $82,000 wire with your own passkey. See what VERIFIED looks like. Forge the receipt. See it fail.
 
-## What is EP?
+[Verify any receipt in your browser](https://www.emiliaprotocol.ai/verify) — paste it in, nothing is uploaded.
 
-**EMILIA Protocol (EP) is a protocol-grade trust substrate for high-risk action enforcement.**
+---
 
-**EP does not stop at identity. It verifies whether a specific actor, operating under a specific authority context, should be allowed to perform a specific high-risk action under a specific policy, exactly once, with replay resistance and durable event traceability.**
+## How it works — four acts
 
-**EP enforces trust before high-risk action.**
+![EMILIA crash test — an autonomous agent tries to wire $82,000; the policy engine holds it, a named human signs off on their own device, the receipt verifies offline, and a forged copy fails.](docs/media/crash-test.gif)
 
-EP is not a generic identity platform, not a wallet, and not a social reputation layer. It is protocol infrastructure for binding actor identity, authority, policy, and exact action context before execution.
+> Run it yourself: `node examples/crash-test.mjs` — fully offline, no API key.
 
-**EP Core** consists of three interoperable objects:
-- Trust Receipt
-- Trust Profile
-- Trust Decision
+```
+  [ INTENT ]          [ DECISION ]           [ CEREMONY ]           [ RECEIPT ]
+  Agent calls a     Policy-bound, hash-    Named human signs     Signed, offline-
+  tool via MCP   →  pinned: allow /     →  the EXACT action  →  verifiable proof.
+                    allow-with-signoff /   on their own          Tamper it:
+                    deny  (+observe        device (passkey).      fails by design.
+                    mode: zero change      What they saw =
+                    to production)         what they signed.
+```
 
-**EP Extensions** add stronger enforcement for high-risk workflows. The most important extension is **Handshake**, which binds actor identity, authority, policy, exact action context, nonce, expiry, and one-time consumption into a pre-action authorization flow.
+**Act I — Interception (MCP-native).** No rewrites. EMILIA hooks the tool call at the Model Context Protocol boundary — the moment an agent tries to delete a file or move capital, the action is caught mid-air.
 
-When policy requires named human ownership, EP can also require **Accountable Signoff** before execution.
+**Act II — Decision (policy-bound, deterministic).** The action is checked against a hash-pinned policy: `allow`, `allow-with-signoff`, or `deny`. Plus an **observe mode** that changes nothing in production and reports what *would* have been held. Deterministic, auditable — not a black-box risk score.
 
-The protocol is open. Managed policy, verification, signoff orchestration, monitoring, evidence tooling, and sector-specific packs are optional product layers built on top.
+**Act III — The ceremony (device-bound human signoff).** When policy requires a human, EMILIA runs a **WebAuthn / passkey signoff bound to the exact action** — Face ID / Touch ID on the operator's own device. *What the human saw is what they signed.* No script can forge it; no autonomous loop can skip it.
+
+**Act IV — The receipt (the evidence).** The result is a **signed authorization receipt** that anyone can verify **offline, with open-source code, no backend, no vendor trust.** Tamper it and verification fails by construction. Optionally anchor it for public timestamping — the core needs no blockchain.
+
+---
+
+## Why developers use it
+
+You want agents that actually *do things* — but you're paralyzed by runaway loops, API over-spend, and accidental data destruction. EMILIA gives you a **plug-and-play MCP server + a thin SDK wrapper**. Apply a policy hash, and irreversible tool calls gain a cryptographically hardened, NIST-AI-RMF-mapped approval-and-evidence layer — without building approval workflows or audit infrastructure from scratch.
+
+```python
+# langchain-emilia — wrap any LangChain tool with an EP gate
+from langchain_emilia import EmiliaGateClient
+
+gate = EmiliaGateClient(base_url="https://www.emiliaprotocol.ai", api_key="...")
+safe_tool = gate.wrap(your_destructive_tool)
+```
+
+```bash
+pip install langchain-emilia   # PyPI
+npm install @emilia-protocol/verify  # npm
+```
+
+*Your agent can't outrun its leash.*
+
+---
+
+## Why enterprises need it
+
+Every platform shift mints a new security primitive: the web got **SSL**, the cloud got **Okta / IAM**, the agent economy needs **action-level trust**. Enterprises are sitting on AI budgets that compliance won't let them spend — EMILIA is the key that unlocks them, by turning unpredictable agents into audit-ready infrastructure that maps primitive-by-primitive to NIST AI RMF, EU AI Act, and SOC 2 CC6/7 controls.
+
+The managed layer (**GovGuard / FinGuard**) extends the open standard with sector-specific policy packs, observe-mode pilots, and audit-ready evidence packages — with no procurement required to start.
+
+---
+
+## The standard
+
+EMILIA is an open standard, not a product moat. The core is Apache-2.0 and tracked as an IETF Internet-Draft.
+
+| | |
+|---|---|
+| **IETF Internet-Draft** | [draft-schrock-ep-authorization-receipts-01](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/) |
+| **Cross-language verifiers** | JavaScript · Python · Go — all three proven to agree on adversarial conformance vectors, every push (`npm run conformance`). That is the IETF bar for a real standard: multiple independent interoperable implementations. |
+| **Formal verification** | 26 TLA+ safety properties (0 errors) · 35 Alloy facts, 22 assertions — both run in CI |
+| **MCP registries** | Official MCP registry · Glama (Grade A, Official badge) · Smithery |
+| **License** | Apache-2.0 |
+
+Three independent implementations proven to agree — see [CONFORMANCE.md](CONFORMANCE.md), or verify a receipt yourself at [emiliaprotocol.ai/verify](https://www.emiliaprotocol.ai/verify).
 
 ---
 
 ## The EP stack
 
-- **EP Eye** — observes and classifies agent behavior (OBSERVE → SHADOW → ENFORCE)
-- **EP Handshake** — cryptographic consent ceremony with 7-property binding
-- **EP Signoff** — named human ownership of outcomes
-- **EP Commit** — atomic, immutable action close
+```
+Eye observes. Handshake verifies. Signoff owns. Commit seals.
+```
 
-> **Eye observes. Handshake verifies. Signoff owns. Commit seals.**
+| Layer | What it does |
+|---|---|
+| **EP Eye** | Observes and classifies agent behavior (OBSERVE → SHADOW → ENFORCE) |
+| **EP Handshake** | Cryptographic consent ceremony with 7-property binding |
+| **EP Signoff** | Named human ownership — WebAuthn / passkey Class A, device-bound |
+| **EP Commit** | Atomic, immutable action close with Merkle-chained receipts |
 
 ---
 
@@ -58,98 +132,49 @@ The protocol is open. Managed policy, verification, signoff orchestration, monit
 
 | Metric | Value |
 |---|---|
-| Automated tests | 3,672 across 142 files (npx vitest run, 2026-06-11) |
-| TLA+ safety properties | 26 verified (T1-T26) - TLC 2.19, latest full run 2026-04-30, 0 errors - see [formal/PROOF_STATUS.md](formal/PROOF_STATUS.md) |
-| Alloy relational assertions | 35 facts, 22 assertions across two models (ep_relations + ep_federation/PIP-006) - verified in CI (Alloy 6.0.0, 2026-06-11) |
-| Red team cases | 85 cataloged in [docs/conformance/RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |
+| Automated tests | 3,672+ across 142 files |
+| TLA+ safety properties | 26 verified (T1–T26), 0 errors — see [PROOF_STATUS.md](formal/PROOF_STATUS.md) |
+| Alloy relational assertions | 35 facts + 22 assertions across two models — verified in CI |
+| Red-team cases cataloged | 85 — [RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |
 | Security findings remediated | 31 |
-| CI quality gates | See `.github/workflows/` (~13 workflows) |
-| Full 7-step signoff chain | Proven end-to-end under load |
-| Handshake create p95 | 575ms at 50 VUs (per [docs/operations/PERFORMANCE_PROOF.md](docs/operations/PERFORMANCE_PROOF.md)) |
+| Conformance (7/7) | `node conformance/ep-conformance-test.js https://www.emiliaprotocol.ai` |
+| Handshake create p95 | 575ms at 50 VUs — [PERFORMANCE_PROOF.md](docs/operations/PERFORMANCE_PROOF.md) |
 
-See [Performance Proof](docs/operations/PERFORMANCE_PROOF.md) | [Operating Envelope](docs/operations/OPERATING_ENVELOPE.md) | [Security Policy](SECURITY.md) | [Audit Methodology](docs/security/AUDIT_METHODOLOGY.md) | [API Compatibility Policy](docs/api/COMPATIBILITY.md)
+---
 
-## Conformance status
+## EP Core objects
 
-| Metric | Value |
+EP standardizes three interoperable objects that any conforming implementation can produce and verify:
+
+| Object | What it is |
 |---|---|
-| Spec version | EP-CORE-v1.0 |
-| Conformance test | **7/7 required checks pass against production** (verified 2026-06-12) — run it yourself: `node conformance/ep-conformance-test.js https://www.emiliaprotocol.ai` (discovery · key publication · entity registration · EP-RECEIPT-v1 format · Ed25519 signature · trust profile · trust decision) |
-| Standalone verify | `npm install @emilia-protocol/verify` — zero deps, Apache-2.0 ([npmjs.com](https://www.npmjs.com/package/@emilia-protocol/verify)) |
-| Embed widget | `<ep-trust-badge entity-id="...">` |
-| Discovery | `/.well-known/ep-trust.json` + `/.well-known/ep-keys.json` |
-| Formal models | TLA+ + Alloy |
-| CodeQL | Active |
-| SBOM / Provenance | Active |
+| **Trust Receipt** | A portable, signed record of an authorization event — *what happened* |
+| **Trust Profile** | A standardized summary of observable trust state — *what is known* |
+| **Trust Decision** | A policy-evaluated result with reasons and appeal path — *what to do now* |
 
----
-
-## EP Core / EP Extensions / EP Product Surfaces
-
-EP is a three-layer system. The core is deliberately small. Everything else is either an optional extension or a product surface built on top.
-
-- **EP Core** — the interoperable standard: **Trust Receipt**, **Trust Profile**, and **Trust Decision**.
-- **EP Extensions** — stronger enforcement where systems must constrain execution:
-  - Handshake
-  - Accountable Signoff
-  - Commit
-  - Delegation and attribution
-  - Disputes and appeals where governance requires them
-- **EP Product Surfaces** — reference implementations and commercial layers:
-  - Open runtime
-  - Cloud control plane
-  - Enterprise deployment layer
-  - Government, financial, and agent-governance packs
-
-A skeptical reader should be able to answer in 30 seconds:
-Core = the minimum interoperable standard.
-Extensions = stronger enforcement you opt into.
-Product Surfaces = tools built on top, not the protocol itself.
-
----
-
-## Four canonical high-risk action contexts
-
-EP is decision infrastructure. Every serious deployment should anchor to a concrete action surface such as:
-
-| Context | Example |
-|---|---|
-| Government | payment destination change, benefit redirect, operator override |
-| Financial | beneficiary change, payout destination change, treasury approval |
-| Enterprise | privileged production change, secrets rotation, permission escalation |
-| AI / Agent | destructive tool use, autonomous irreversible action |
-
----
-
-## Three core objects
-
-EP standardizes three interoperable objects:
-
-| Object | What it is | One-line |
-|---|---|---|
-| Trust Receipt | A portable record of an observed event relevant to trust | What happened |
-| Trust Profile | A standardized summary of observable trust state | What is known |
-| Trust Decision | A policy-evaluated result with reasons and appeal path | What to do now |
-
-If a third party can implement these three objects and interoperate, EP has a real standard.
+EP Extensions (Handshake, Signoff, Commit, Delegation) add stronger enforcement where systems must constrain execution. The product layers (GovGuard / FinGuard) are built on top — not the protocol itself.
 
 ---
 
 ## Quickstart in five calls
 
-1. create policy
-2. initiate handshake
-3. present evidence
-4. verify
-5. signoff and consume
+1. Create policy
+2. Initiate handshake
+3. Present evidence
+4. Verify
+5. Signoff and consume
 
-That is the irreducible EP story.
+**[90-second demo](https://www.emiliaprotocol.ai/mcp)** · **[Quickstart](https://www.emiliaprotocol.ai/quickstart)** · **[Agent walkthrough](https://www.emiliaprotocol.ai/use-cases/ai-agent)** · **[IETF Draft](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/)** · **[Discord](https://discord.gg/MSJXjEtD4)**
 
 ---
 
-## Why EP exists
+## What EP is — and is not
 
-Most systems verify who is acting.
-Very few verify whether **this exact high-risk action** should be allowed to proceed **under this exact policy** by **this exact actor** right now.
+EP is authorization at the moment of action, not an identity system, not a wallet, not a reputation score.
 
-That is the gap EP closes.
+- **Is**: a trust standard for binding actor identity, authority, policy, and exact action context *before* execution
+- **Is not**: a replacement for OAuth / OIDC (those answer *who are you* — EP answers *who approved this exact action*)
+- **Is not**: a proprietary product (the core is Apache-2.0 and IETF-tracked)
+- **Is not**: a blockchain (the receipt is the hero; optional public timestamping is a footnote)
+
+See [CONFORMANCE.md](CONFORMANCE.md) · [SECURITY.md](SECURITY.md) · [THREAT_MODEL.md](THREAT_MODEL.md) · [GOVERNANCE.md](GOVERNANCE.md)
