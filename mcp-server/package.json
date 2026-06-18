@@ -2,7 +2,7 @@
   "name": "@emilia-protocol/mcp-server",
   "mcpName": "io.github.emiliaprotocol/mcp-server",
   "version": "1.0.4",
-  "description": "EMILIA Protocol MCP Server — trust enforcement for high-risk actions via MCP. Pre-action binding, policy-bound verification, and accountable human signoff.",
+  "description": "Stop your AI agent before it does something irreversible. ep_guard_action holds a payment, deletion, or account change until a named human signs off — and returns a receipt anyone can verify offline. The seatbelt for agent tool calls, over MCP.",
   "main": "index.js",
   "type": "module",
   "bin": {
