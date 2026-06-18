@@ -37,3 +37,11 @@ supabase/.temp/
 # Engagement store + uploaded questionnaires are per-deployment data, like a DB.
 data/trust-desk/engagements/
 data/trust-desk/uploads/
+
+# Editor / local vaults
+.obsidian/
+
+# Load-test scratch output (regenerated on run)
+handshake-create-results.json
+signoff-flow-results.json
+staircase-results.json

@@ -7,6 +7,16 @@ and revenue-multiplier-per-hour**, not by technical importance.
 Update this file as you go — check items off, add notes inline, move
 deferred items to the bottom.
 
+> **Status refresh 2026-06-18:** The grant tranche below is largely SENT
+> (OpenAI Cybersecurity, Anthropic Research, NSF SBIR pitch, NIST AISIC all
+> submitted; AWS Activate applied; SAM.gov registration underway). The
+> **highest-EV live thread is now California CDT** — its GenAI program invited
+> a vendor submittal and CDT's Office of Information Security has been pitched
+> on the human-oversight control. See `~/Documents/emilia-sizzle/EXECUTION-NOW.md`
+> and `CALIFORNIA-REFERENCED-CONTROL-STRATEGY.md` (local) for the active plan.
+> Remaining founder-only items here: Stripe/pricing, C-corp, advisors, SEO
+> submission, and the GovGuard/CDT outbound follow-through.
+
 ## Current north star
 
 Read first: [`docs/strategy/FUTURE_OF_TRUST_ADOPTION_PLAN.md`](docs/strategy/FUTURE_OF_TRUST_ADOPTION_PLAN.md)
@@ -35,18 +45,18 @@ Use two lanes:
 | ☐ | 5 min | Create a Stripe account at https://dashboard.stripe.com/register. Share the **test publishable key** + **test secret key** with me in the next session. | Unlocks: I can wire up `/pricing`, Stripe Checkout, customer portal, and the tenant-plan webhook in ~3 hours of one session. Without this, no self-serve revenue. |
 | ☐ | 10 min | Decide pricing on Pro / Team / Enterprise tiers. My recommendation: **Free / Pro $299/mo / Team $999/mo / Enterprise custom**. Confirm or counter. | Unlocks the same Stripe wire-up. Pricing is a one-time decision; can be A/B-tested later. |
 | ☐ | 5 min | Decide Compliance Pack price (NIST AI RMF + EU AI Act mappings + 30-min consult). My recommendation: **$5K each, $7.5K combined**. Confirm or counter. | Unlocks the highest-margin product (zero engineering, pure asset assembly). |
-| ☐ | 5 min | Apply to **AWS Activate Builders** at https://aws.amazon.com/activate/. No proposal needed. | $5K AWS credits in 24h. Free. Lowest-friction grant on the list. |
+| ✅ | 5 min | Apply to **AWS Activate Builders** at https://aws.amazon.com/activate/. No proposal needed. | DONE — applied 2026-06-15, credits processing. |
 | ☐ | 15 min | Put **AAIF v3** on hold or use informal technical outreach only. See [`docs/grant-applications/aaif/cover-email.md`](docs/grant-applications/aaif/cover-email.md). Do **not** submit EMILIA as an AAIF project proposal unless counsel approves the asset/trademark transfer terms. | AAIF project acceptance requires transfer of project trademarks/assets to LF. Keep EMILIA's brand, repo, packages, and commercial products unless there is a deliberate carve-out. |
 
 ## 🚀 This week (3–6 hours total)
 
 | ☐ | Time | Action | Why it matters |
 |---|---|---|---|
-| ☐ | 30 min | Submit **OpenAI Cybersecurity Grant** at https://openai.com/index/cybersecurity-grant-program/. Content drafted at [`docs/grant-applications/openai-cybersecurity/application.md`](docs/grant-applications/openai-cybersecurity/application.md). | $10K–$1M cash + API credits, quarterly review. Real money. |
-| ☐ | 30 min | Send **Anthropic Research** direct outreach. See [`docs/grant-applications/anthropic-research/`](docs/grant-applications/anthropic-research/) for the email and target inboxes. | Even without grants, gets EP onto the radar of Anthropic's safety team — unlocks every future engagement. |
-| ☐ | 15 min | Email **NIST AISIC** at aiconsortium@nist.gov using [`docs/grant-applications/nist-aisic/application.md`](docs/grant-applications/nist-aisic/application.md). | Free; non-monetary; **credibility multiplier for every other grant on this list**. |
-| ☐ | 1 hr | Register at **SAM.gov** (https://sam.gov/) + **research.gov** for NSF SBIR. Takes 1–2 weeks for SAM approval — start in parallel. | Required for NSF SBIR full Phase I. Does not block the Project Pitch step below. |
-| ☐ | 2 hrs | Submit **NSF SBIR Project Pitch** at https://seedfund.nsf.gov/applications/. Content drafted at [`docs/grant-applications/nsf-sbir-phase-1/application.md`](docs/grant-applications/nsf-sbir-phase-1/application.md). | $305K Phase I award. Highest-dollar program on the list. Pitch is 3 pages, free, fast review. |
+| ✅ | 30 min | Submit **OpenAI Cybersecurity Grant** at https://openai.com/index/cybersecurity-grant-program/. Content drafted at [`docs/grant-applications/openai-cybersecurity/application.md`](docs/grant-applications/openai-cybersecurity/application.md). | DONE — submitted at $250K (credits-weighted). Revision playbook prepped. |
+| ✅ | 30 min | Send **Anthropic Research** direct outreach. See [`docs/grant-applications/anthropic-research/`](docs/grant-applications/anthropic-research/) for the email and target inboxes. | DONE — External Researcher Access submitted ($10K credits, crumple-zone angle). |
+| ◐ | 15 min | Email **NIST AISIC** at aiconsortium@nist.gov using [`docs/grant-applications/nist-aisic/application.md`](docs/grant-applications/nist-aisic/application.md). | Emailed + they replied: consortium relaunched, now requires the official LOI form (FRN 2026-10779). Form-ready LOI built (`~/Documents/emilia-sizzle/NIST-LOI-FORM-READY.md`) — only the business mailing address left to fill + submit. |
+| ◐ | 1 hr | Register at **SAM.gov** (https://sam.gov/) + **research.gov** for NSF SBIR. Takes 1–2 weeks for SAM approval — start in parallel. | In progress — SAM.gov registration underway (incident open at GSA FSD); research.gov/NSF account created. Use ORCID 0009-0004-0290-5433. |
+| ✅ | 2 hrs | Submit **NSF SBIR Project Pitch** at https://seedfund.nsf.gov/applications/. Content drafted at [`docs/grant-applications/nsf-sbir-phase-1/application.md`](docs/grant-applications/nsf-sbir-phase-1/application.md). | DONE — Project Pitch submitted (topic AI7 Trustworthy AI, NSF 26-510). |
 | ☐ | 30 min | Flip the GitHub org-level setting **"Allow GitHub Actions to create and approve pull requests"** at https://github.com/organizations/futureenterprises/settings/actions (or wherever your org settings live). Also bump default workflow permissions to "Read and write." | Unlocks fully-silent dependabot auto-merge. Without it, the workflow merges but can't approve, and you may need to click approve once per PR. |
 
 ## 📈 This week — GovGuard outbound (the critical one)
