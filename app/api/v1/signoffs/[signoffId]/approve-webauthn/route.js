@@ -23,6 +23,8 @@ import {
   SIGNOFF_ID_PATTERN,
 } from '@/lib/webauthn';
 import { loadSignoffForSigning } from '@/lib/webauthn-signoff';
+import { canAccept } from '@/lib/signoff/quorum-session.js';
+import { decisionToMember, decisionsToMembers } from '@/lib/signoff/attestation-members.js';
 
 export async function POST(request, { params }) {
   try {
@@ -139,6 +141,54 @@ export async function POST(request, { params }) {
     }
     if (!verification.verified) {
       return epProblem(400, 'assertion_invalid', 'Assertion did not verify');
+    }
+
+    // ── EP-QUORUM-v1 early gate (defense-in-depth) ─────────────────────────
+    // If this receipt carries a multi-party quorum policy, reject a signer who
+    // cannot be admitted to the trail (ineligible / duplicate human / out of
+    // order / outside the window) BEFORE recording their approval — early,
+    // actionable feedback. The consume gate re-verifies the full quorum through
+    // the same predicate regardless, so this is not the security boundary.
+    if (decision === 'approved') {
+      const { data: rcEvents } = await supabase
+        .from('audit_events')
+        .select('event_type, after_state, created_at')
+        .eq('target_type', 'trust_receipt')
+        .eq('target_id', loaded.receiptId)
+        .order('created_at', { ascending: true });
+      const createdEv = (rcEvents || []).find((e) => e.event_type === 'guard.trust_receipt.created');
+      const quorumPolicy = createdEv && createdEv.after_state && createdEv.after_state.quorum_policy;
+      if (quorumPolicy) {
+        const priorApproved = (rcEvents || [])
+          .filter((e) => e.event_type === 'guard.signoff.approved')
+          .map((e) => e.after_state)
+          .filter(Boolean);
+        const credMap = { [credential.credential_id]: { public_key_spki: credential.public_key_spki } };
+        const priorCredIds = priorApproved.map((d) => d.webauthn && d.webauthn.credential_id).filter(Boolean);
+        if (priorCredIds.length > 0) {
+          const { data: pc } = await supabase
+            .from('approver_credentials')
+            .select('credential_id, public_key_spki')
+            .in('credential_id', priorCredIds);
+          for (const c of pc || []) credMap[c.credential_id] = c;
+        }
+        const existingMembers = decisionsToMembers(quorumPolicy, priorApproved, credMap);
+        const roster = quorumPolicy.approvers || [];
+        const incoming = decisionToMember({
+          role: (roster.find((a) => a.approver === body.approver_id) || {}).role || null,
+          approver_public_key: credential.public_key_spki,
+          context: challengeRow.context,
+          webauthn: {
+            authenticator_data: body.assertion.response.authenticatorData,
+            client_data_json: body.assertion.response.clientDataJSON,
+            signature: body.assertion.response.signature,
+          },
+        });
+        const verdict = canAccept(quorumPolicy, loaded.actionHash, existingMembers, incoming, { rpId: rpID });
+        if (!verdict.ok) {
+          return epProblem(409, 'quorum_signer_rejected', `Signer cannot be admitted to the quorum: ${verdict.reason}`);
+        }
+      }
     }
 
     // ── Record the decision (race-safe via the decided-once unique index).
