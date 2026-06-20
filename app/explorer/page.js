@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
@@ -27,21 +27,21 @@ export default function ExplorerPage() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
-  async function handleLookup(e) {
-    e.preventDefault();
-    if (!query.trim()) return;
+  async function runLookup(rawQuery, tab) {
+    const q = (rawQuery ?? '').trim();
+    if (!q) return;
     setLoading(true);
     setError(null);
     setResult(null);
 
     try {
       let res;
-      if (activeTab === 'receipt') {
-        res = await fetch(`/api/verify/${encodeURIComponent(query.trim())}`);
-      } else if (activeTab === 'proof') {
-        res = await fetch(`/api/trust/zk-proof?proof_id=${encodeURIComponent(query.trim())}`);
+      if (tab === 'receipt') {
+        res = await fetch(`/api/verify/${encodeURIComponent(q)}`);
+      } else if (tab === 'proof') {
+        res = await fetch(`/api/trust/zk-proof?proof_id=${encodeURIComponent(q)}`);
       } else {
-        res = await fetch(`/api/trust/profile/${encodeURIComponent(query.trim())}`);
+        res = await fetch(`/api/trust/profile/${encodeURIComponent(q)}`);
       }
 
       const data = await res.json();
@@ -55,6 +55,33 @@ export default function ExplorerPage() {
     }
     setLoading(false);
   }
+
+  function handleLookup(e) {
+    e.preventDefault();
+    runLookup(query, activeTab);
+  }
+
+  // Deep-linkable search: honor /explorer?q=<term>&tab=<receipt|proof|entity>.
+  // This is exactly what the homepage SearchAction structured data points at,
+  // so the sitelinks searchbox and shared links resolve to a real, executed
+  // lookup instead of an empty box (and the crawled ?q={search_term_string}
+  // placeholder stops being a dead end).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('q');
+    const t = params.get('tab');
+    const tab = TABS.includes(t) ? t : 'receipt';
+    /* eslint-disable react-hooks/set-state-in-effect --
+       Syncing client-only URL params into state on mount is a legitimate
+       external-state read (per React docs). Doing it here rather than via a
+       lazy useState initializer avoids a server/client hydration mismatch. */
+    if (TABS.includes(t)) setActiveTab(tab);
+    if (q) {
+      setQuery(q);
+      runLookup(q, tab);
+    }
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, []);
 
   const placeholders = {
     receipt: 'ep_r_abc123...',
