@@ -269,6 +269,16 @@ export default async function McpPage() {
         </C>
       </section>
 
+      <section style={{ padding: '64px 0', borderTop: `1px solid ${color.border}` }}>
+        <C style={{ maxWidth: 820 }}>
+          <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>FURTHER READING</div>
+          <p style={{ fontSize: 15, color: color.t2, lineHeight: 1.7, margin: 0 }}>
+            <Link href="/blog/mcp-authorization-best-practices" style={{ color: color.t1, textDecoration: 'underline' }}>MCP Authorization Best Practices in 2026</Link>
+            {' '}&mdash; why scope-level OAuth stops short for tools that move money or trigger irreversible state, and what the next authorization layer adds.
+          </p>
+        </C>
+      </section>
+
       <SiteFooter />
     </div>
   );
