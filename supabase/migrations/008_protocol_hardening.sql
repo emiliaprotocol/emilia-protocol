@@ -79,6 +79,7 @@ CREATE TRIGGER trg_receipts_immutable
 -- (recent performance is poor). That is correct behavior — the confidence state
 -- system communicates this: established + low score = "real entity, declining."
 --
+DROP FUNCTION IF EXISTS is_entity_established(uuid);
 CREATE OR REPLACE FUNCTION is_entity_established(p_entity_id uuid)
 RETURNS TABLE(
   total_receipts integer,

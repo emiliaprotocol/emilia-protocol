@@ -12,6 +12,7 @@
 -- After:  submitter × time × graph × provenance
 -- ============================================================================
 
+DROP FUNCTION IF EXISTS compute_emilia_score(uuid);
 CREATE OR REPLACE FUNCTION compute_emilia_score(p_entity_id uuid)
 RETURNS float AS
 $fn$
@@ -94,6 +95,7 @@ $fn$
 LANGUAGE plpgsql;
 
 -- Update is_entity_established to use four-factor evidence
+DROP FUNCTION IF EXISTS is_entity_established(uuid);
 CREATE OR REPLACE FUNCTION is_entity_established(p_entity_id uuid)
 RETURNS TABLE(established boolean, unique_submitters bigint, effective_evidence float, total_receipts bigint) AS
 $fn$
