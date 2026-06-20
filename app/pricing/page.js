@@ -81,7 +81,7 @@ const TIERS = [
       'Everything in Cloud',
       'Self-hosted, VPC, or air-gapped deployment (offline installer included)',
       'SSO (SAML 2.0 / OIDC) + SCIM 2.0 provisioning — live IdP connected at onboarding',
-      'Sector packs — GovGuard, FinGuard, Agent Governance',
+      'Sector packs — GovGuard, FinGuard, Quorum (multi-party), Agent Governance',
       'Security-review + procurement support (DPA, sub-processors)',
       'Compliance evidence mapping — NIST AI RMF, EU AI Act',
       'Priority support + SLA',
@@ -102,6 +102,7 @@ const PACKS = [
   { name: 'Government Pack', body: 'Benefit-integrity controls — accountable determinations, due-process receipts, caseworker signoff.', href: '/product/government-pack' },
   { name: 'Financial Pack', body: 'Money-movement controls — wire release, beneficiary changes, treasury actions, BEC defense, AML screening.', href: '/product/financial-pack' },
   { name: 'Agent Governance Pack', body: 'Autonomous-agent controls — gate every irreversible tool call behind a verified ceremony.', href: '/product/agent-governance-pack' },
+  { name: 'Quorum (multi-party)', body: 'The two-person rule for the highest-stakes actions — M-of-N / ordered human signoff, each bound to the exact action, for defense, national security, and treasury dual-control.', href: '/quorum' },
 ];
 
 function Check({ on, accent }) {
