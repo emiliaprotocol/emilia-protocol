@@ -55,7 +55,10 @@ export async function POST(request) {
     const created = events.find((e) => e.event_type === 'guard.trust_receipt.created');
     if (!created) return epProblem(500, 'corrupted_receipt', 'Receipt missing creation event');
 
-    if (!created.after_state.signoff_required) {
+    // A quorum policy implies a signoff is required, even if the policy decision
+    // didn't set signoff_required.
+    const quorumPolicy = created.after_state.quorum_policy || null;
+    if (!created.after_state.signoff_required && !quorumPolicy) {
       return epProblem(409, 'signoff_not_required', 'Receipt does not require signoff');
     }
 
@@ -67,8 +70,55 @@ export async function POST(request) {
     const ttl = Number.isFinite(body.expires_in_minutes)
       ? Math.max(1, Math.min(body.expires_in_minutes, 1440)) * 60 * 1000
       : DEFAULT_APPROVAL_TTL_MS;
-    const signoffId = `sig_${crypto.randomBytes(16).toString('hex')}`;
     const expiresAt = new Date(Date.now() + ttl).toISOString();
+    const comment = typeof body.comment === 'string' ? body.comment.slice(0, 500) : null;
+
+    // ── Quorum fan-out (EP-QUORUM-v1) ────────────────────────────────────────
+    // For a quorum-gated receipt, issue ONE signoff request per roster approver.
+    // Each gets its own signoff_id, so the existing one-decision-per-signoff
+    // invariant (guard_signoff_decided_once) holds per approver; the consume
+    // gate aggregates the resulting guard.signoff.approved events by receipt.
+    if (quorumPolicy) {
+      const roster = Array.isArray(quorumPolicy.approvers) ? quorumPolicy.approvers : [];
+      if (roster.length === 0) {
+        return epProblem(422, 'invalid_quorum_policy', 'quorum_policy.approvers must be a non-empty roster');
+      }
+      const signoffs = roster.map((a) => ({ signoff_id: `sig_${crypto.randomBytes(16).toString('hex')}`, role: a.role, approver_id: a.approver }));
+      const rows = signoffs.map((s) => ({
+        event_type: 'guard.signoff.requested',
+        actor_id: initiatorEntityId,
+        actor_type: 'principal',
+        target_type: 'trust_receipt',
+        target_id: body.receipt_id,
+        action: 'request_signoff',
+        before_state: null,
+        after_state: {
+          signoff_id: s.signoff_id,
+          initiator_id: initiatorEntityId,
+          action_hash: created.after_state.action_hash,
+          expires_at: expiresAt,
+          comment,
+          // Quorum context — which seat this signoff fills.
+          quorum: { role: s.role, approver_id: s.approver_id, mode: quorumPolicy.mode || 'threshold', required: quorumPolicy.required },
+        },
+      }));
+      const { error: insertErr } = await supabase.from('audit_events').insert(rows);
+      if (insertErr) {
+        logger.error('[guard] signoff request (quorum): audit insert failed:', insertErr);
+        return epProblem(500, 'internal_error', 'Failed to record quorum signoff requests');
+      }
+      return NextResponse.json({
+        receipt_id: body.receipt_id,
+        action_hash: created.after_state.action_hash,
+        initiator_id: initiatorEntityId,
+        expires_at: expiresAt,
+        quorum: { mode: quorumPolicy.mode || 'threshold', required: quorumPolicy.required, count: signoffs.length },
+        signoffs,
+        status: 'pending',
+      }, { status: 201 });
+    }
+
+    const signoffId = `sig_${crypto.randomBytes(16).toString('hex')}`;
 
     const { error: insertErr } = await supabase.from('audit_events').insert({
       event_type: 'guard.signoff.requested',
@@ -83,7 +133,7 @@ export async function POST(request) {
         initiator_id: initiatorEntityId,
         action_hash: created.after_state.action_hash,
         expires_at: expiresAt,
-        comment: typeof body.comment === 'string' ? body.comment.slice(0, 500) : null,
+        comment,
       },
     });
 
