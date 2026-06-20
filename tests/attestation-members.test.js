@@ -7,7 +7,7 @@
 // it back via attestationsToMembers, and confirm quorumGate ACCEPTS the result
 // — i.e. the gate verifies exactly what was stored, through the real verifier.
 import { describe, it, expect } from 'vitest';
-import { attestationsToMembers, decisionToMember } from '../lib/signoff/attestation-members.js';
+import { attestationsToMembers, decisionToMember, decisionsToMembers } from '../lib/signoff/attestation-members.js';
 import { quorumGate } from '../lib/signoff/quorum-session.js';
 
 const HOST = 'emiliaprotocol.ai';
@@ -69,5 +69,29 @@ describe('lib/signoff/attestation-members.js — stored evidence → verifiable 
     const d = await mkDecision(...AO, 5, 'b'.repeat(64));
     const m = decisionToMember(d);
     expect(Object.keys(m.signoff.webauthn).sort()).toEqual(['authenticator_data', 'client_data_json', 'signature']);
+  });
+
+  // decisionsToMembers joins raw guard.signoff.approved payloads (which carry
+  // approver_id + credential_id but NOT role/key) with the policy roster and the
+  // approver_credentials key map — the exact join the consume gate performs.
+  it('decisionsToMembers joins audit-event payloads + creds → members quorumGate accepts', async () => {
+    const action = Array.from(await sha(utf8(canon({ a: 'wire' }))), (x) => x.toString(16).padStart(2, '0')).join('');
+    const raw = [await mkDecision(...PO, 1, action), await mkDecision(...AO, 2, action), await mkDecision(...IG, 3, action)];
+    // Reshape into the audit-event after_state shape: approver_id + credential_id, key lives in creds.
+    const credsByCredentialId = {};
+    const decisions = raw.map((d) => {
+      credsByCredentialId[d.webauthn.credential_id] = { public_key_spki: d.approver_public_key };
+      return { context: d.context, approver_id: d.context.approver, webauthn: d.webauthn };
+    });
+    const members = decisionsToMembers(POLICY, decisions, credsByCredentialId);
+    expect(members).toHaveLength(3);
+    expect(quorumGate(POLICY, action, members, OPTS).satisfied).toBe(true);
+  });
+
+  it('decisionsToMembers drops a decision whose approver is not on the roster', async () => {
+    const action = 'c'.repeat(64);
+    const d = await mkDecision('program_officer', 'ep:stranger', 1, action); // not in POLICY roster
+    const decisions = [{ context: d.context, approver_id: 'ep:stranger', webauthn: d.webauthn }];
+    expect(decisionsToMembers(POLICY, decisions, { [d.webauthn.credential_id]: { public_key_spki: d.approver_public_key } })).toHaveLength(0);
   });
 });

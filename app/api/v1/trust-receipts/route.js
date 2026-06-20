@@ -157,6 +157,11 @@ export async function POST(request) {
           decision: decision.decision,
           enforcement_mode: mode,
           signoff_required: decision.signoffRequired,
+          // EP-QUORUM-v1: an optional multi-party policy. When present, consume
+          // requires a SATISFIED quorum of Class-A signoffs (not just one
+          // approval). NULL = single-signoff, unchanged. The quorum implies a
+          // signoff is required regardless of the policy decision.
+          quorum_policy: body.quorum_policy || null,
           receipt_status,
           action_hash: actionHash,
           before_state_hash: beforeHash,

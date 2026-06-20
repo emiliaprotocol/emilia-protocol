@@ -16,6 +16,9 @@ import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
+import { quorumGate } from '@/lib/signoff/quorum-session.js';
+import { decisionsToMembers } from '@/lib/signoff/attestation-members.js';
+import { getRpConfig } from '@/lib/webauthn.js';
 
 export async function POST(request, { params }) {
   try {
@@ -74,14 +77,59 @@ export async function POST(request, { params }) {
       );
     }
 
-    if (base.signoff_required) {
-      const approved = events.some((e) => e.event_type === 'guard.signoff.approved');
-      if (!approved) {
-        return epProblem(403, 'signoff_required', 'Receipt requires signoff before consume');
-      }
+    // A quorum policy always implies a signoff is required, even if the policy
+    // decision didn't set signoff_required.
+    if (base.signoff_required || base.quorum_policy) {
       const rejected = events.some((e) => e.event_type === 'guard.signoff.rejected');
       if (rejected) {
         return epProblem(403, 'signoff_rejected', 'Receipt signoff was rejected');
+      }
+
+      if (base.quorum_policy) {
+        // ── Multi-party (EP-QUORUM-v1): require a SATISFIED quorum ──────────
+        // Re-verify ALL approvals through the same fail-closed predicate the
+        // cross-language conformance suite covers (distinct humans, roles,
+        // order, window, action-binding, signatures). The approve route already
+        // recorded each assertion; we reconstitute members and gate on them.
+        const approvedDecisions = events
+          .filter((e) => e.event_type === 'guard.signoff.approved')
+          .map((e) => e.after_state)
+          .filter(Boolean);
+        const credentialIds = approvedDecisions
+          .map((d) => d.webauthn && d.webauthn.credential_id)
+          .filter(Boolean);
+        let credsByCredentialId = {};
+        if (credentialIds.length > 0) {
+          const { data: creds, error: credErr } = await supabase
+            .from('approver_credentials')
+            .select('credential_id, public_key_spki')
+            .in('credential_id', credentialIds);
+          if (credErr) {
+            logger.error('[guard] consume: credential load failed:', credErr);
+            return epProblem(500, 'internal_error', 'Failed to load approver credentials');
+          }
+          credsByCredentialId = Object.fromEntries(
+            (creds || []).map((c) => [c.credential_id, c]),
+          );
+        }
+        const members = decisionsToMembers(base.quorum_policy, approvedDecisions, credsByCredentialId);
+        const { rpID } = getRpConfig();
+        const gate = quorumGate(base.quorum_policy, base.action_hash, members, { rpId: rpID });
+        if (!gate.satisfied) {
+          const failed = Object.entries(gate.checks || {})
+            .filter(([, v]) => v === false)
+            .map(([k]) => k);
+          return epProblem(
+            403,
+            'quorum_not_satisfied',
+            `Receipt requires a satisfied multi-party quorum before consume${failed.length ? ` (failing: ${failed.join(', ')})` : ''}`,
+          );
+        }
+      } else {
+        const approved = events.some((e) => e.event_type === 'guard.signoff.approved');
+        if (!approved) {
+          return epProblem(403, 'signoff_required', 'Receipt requires signoff before consume');
+        }
       }
     }
 
