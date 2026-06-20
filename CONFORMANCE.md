@@ -41,21 +41,26 @@ node conformance/run.mjs
 ```
 
 ```
-EP-RECEIPT-v1 conformance — vectors v1.0.0 (10 vectors)
+EP-RECEIPT-v1 — 10 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-SIGNOFF-v1 —  9 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-QUORUM-v1  —  9 vectors   JavaScript ✓   Python ✓   Go ✓
 
-  vector                          expect  JavaScript  Python      Go
-  ────────────────────────────────────────────────────────────────────
-  accept_minimal                  valid   ✓           ✓           ✓
-  …
-  reject_tampered_anchor          reject  ✓           ✓           ✓
-  ────────────────────────────────────────────────────────────────────
-  ✅ 10 vectors · 3 independent implementations agree (JavaScript, Python, Go)
+✅ receipts · signoffs · quorum — three independent implementations agree.
 ```
 
-This is the IETF bar for a real standard — **multiple independent interoperable
-implementations** — and it runs on every push (CI job `conformance`). The
-companion Internet-Draft is
+The three verifiers now agree not only on Ed25519 authorization **receipts**, but
+on Class-A WebAuthn device **signoffs** and **EP-QUORUM-v1 multi-party approval**
+(M-of-N / ordered — the "two-person rule," each named human bound to the exact
+action, fail-closed). That is the IETF bar for a real standard — **multiple
+independent interoperable implementations** — and it runs on every push (CI job
+`conformance`). The companion Internet-Draft is
 [`draft-schrock-ep-authorization-receipts`](standards/).
+
+> **Scope, stated honestly.** Multi-party quorum is a *verifiable protocol
+> capability* with cross-language reference verifiers and a live in-browser demo
+> ([`/try/multi-party`](https://www.emiliaprotocol.ai/try/multi-party)) — not yet
+> a fielded N-party signoff product. The verifier proves a quorum is satisfiable
+> and checkable offline; production approval orchestration is on the roadmap.
 
 ### The format, in one paragraph
 
