@@ -123,7 +123,7 @@ Eye observes. Handshake verifies. Signoff owns. Commit seals.
 |---|---|
 | **EP Eye** | Observes and classifies agent behavior (OBSERVE → SHADOW → ENFORCE) |
 | **EP Handshake** | Cryptographic consent ceremony with 7-property binding |
-| **EP Signoff** | Named human ownership — WebAuthn / passkey Class A, device-bound |
+| **EP Signoff** | Named human ownership — WebAuthn / passkey Class A, device-bound; **multi-party quorum** (M-of-N / ordered — the two-person rule) for the highest-stakes actions |
 | **EP Commit** | Atomic, immutable action close with Merkle-chained receipts |
 
 ---
@@ -138,6 +138,7 @@ Eye observes. Handshake verifies. Signoff owns. Commit seals.
 | Red-team cases cataloged | 85 — [RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |
 | Security findings remediated | 31 |
 | Conformance (7/7) | `node conformance/ep-conformance-test.js https://www.emiliaprotocol.ai` |
+| Cross-language conformance | receipts · device signoffs · multi-party quorum — JS / Python / Go verifiers agree (`node conformance/run.mjs`) |
 | Handshake create p95 | 575ms at 50 VUs — [PERFORMANCE_PROOF.md](docs/operations/PERFORMANCE_PROOF.md) |
 
 ---

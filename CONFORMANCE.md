@@ -58,9 +58,15 @@ independent interoperable implementations** — and it runs on every push (CI jo
 
 > **Scope, stated honestly.** Multi-party quorum is a *verifiable protocol
 > capability* with cross-language reference verifiers and a live in-browser demo
-> ([`/try/multi-party`](https://www.emiliaprotocol.ai/try/multi-party)) — not yet
-> a fielded N-party signoff product. The verifier proves a quorum is satisfiable
-> and checkable offline; production approval orchestration is on the roadmap.
+> ([`/try/multi-party`](https://www.emiliaprotocol.ai/try/multi-party)). The
+> server-side enforcement is now **wired into the live authorization path** — a
+> quorum-gated trust receipt cannot be consumed until a satisfied quorum is
+> re-verified through the same fail-closed predicate (distinct humans, roles,
+> order, window, action-binding, signatures), with an early-reject gate at
+> signoff time. What remains before calling it *fielded*: live multi-device
+> end-to-end validation in production and (for defense) an accredited
+> deployment. The orchestration is built and merged; the verifier proves a
+> quorum is satisfiable and checkable offline.
 
 ### The format, in one paragraph
 
