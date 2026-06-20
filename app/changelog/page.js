@@ -26,6 +26,7 @@ const RELEASES = [
     date: 'In progress',
     tag: 'Experimental profiles',
     points: [
+      'EP-QUORUM-v1 — multi-party signoff (the two-person rule): M-of-N / ordered approval, each named human bound to the exact action, fail-closed. Three reference verifiers (JS / Python / Go) agree on it in cross-language conformance; live in-browser demo at /try/multi-party; server-side enforcement merged into the authorization path, pending production end-to-end validation.',
       'EP-PROVENANCE-CHAIN-v1 — chained provenance receipt. EXPERIMENTAL, additive over the frozen EP-RECEIPT-v1; governed by a Draft PIP (PIP-009).',
       'EP-DISPLAY-ATTESTATION-v1 — display attestation for WYSIWYS rendering. EXPERIMENTAL, additive over frozen EP-RECEIPT-v1; governed by a Draft PIP (PIP-010).',
       'EP-EXECUTION-INTEGRITY-v1 — execution binding between approved bytes and executed action. EXPERIMENTAL, additive over frozen EP-RECEIPT-v1; governed by a Draft PIP (PIP-010).',
