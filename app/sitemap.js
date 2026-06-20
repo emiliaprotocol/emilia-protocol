@@ -87,7 +87,6 @@ export default function sitemap() {
     { path: '/playground',  priority: 0.6, changeFrequency: 'weekly' },
     { path: '/network',     priority: 0.75, changeFrequency: 'weekly' },
     { path: '/explorer',    priority: 0.6, changeFrequency: 'daily' },
-    { path: '/score',       priority: 0.5, changeFrequency: 'weekly' },
     { path: '/eye',         priority: 0.7, changeFrequency: 'monthly' },
     { path: '/trust-desk',  priority: 0.6, changeFrequency: 'weekly' },
     { path: '/governance',  priority: 0.7, changeFrequency: 'monthly' },
@@ -112,7 +111,6 @@ export default function sitemap() {
     { path: '/contact',    priority: 0.4, changeFrequency: 'yearly' },
     { path: '/partners',   priority: 0.5, changeFrequency: 'monthly' },
     { path: '/badge',      priority: 0.5, changeFrequency: 'monthly' },
-    { path: '/enterprise', priority: 0.7, changeFrequency: 'monthly' },
     { path: '/docs',       priority: 0.7, changeFrequency: 'weekly' },
     { path: '/appeal',     priority: 0.3, changeFrequency: 'yearly' },
   ];

@@ -41,7 +41,11 @@ const nextConfig = {
   async redirects() {
     return [
       // /api is not a page — the API lives under /api/*. Send humans to the docs.
-      { source: '/api', destination: '/docs', permanent: false },
+      { source: '/api', destination: '/docs', permanent: true },
+      // Permanent moves (308). These run before routing, so Google consolidates the
+      // old URL into the destination instead of indexing it as "Page with redirect".
+      { source: '/score', destination: '/explorer', permanent: true },
+      { source: '/enterprise', destination: '/product/enterprise', permanent: true },
     ];
   },
   async headers() {
