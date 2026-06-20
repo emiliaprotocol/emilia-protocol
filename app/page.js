@@ -131,7 +131,7 @@ export default function HomePage() {
                 letterSpacing: 2.5, textTransform: 'uppercase',
                 color: color.gold, marginBottom: 28,
               }}>
-                The Accountability Layer for AI Agents
+                Pre-Execution Accountability for AI Agents
               </div>
 
               <h1 style={{
