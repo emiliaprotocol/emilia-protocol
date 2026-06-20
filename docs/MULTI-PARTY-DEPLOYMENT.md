@@ -105,15 +105,31 @@ The **`attestationsToMembers()` bridge is built and tested**
 (`lib/signoff/attestation-members.js`) against this exact stored shape, and the
 round-trip test proves the mapped members pass the real `quorumGate`.
 
-## Status (honest)
+## Status (honest) — SHIPPED on the Class-A path (updated 2026-06-20)
 - **Built + tested**: the enforcement core (`quorum-session.js`, `verifyQuorum`
   in JS/Python/Go), the `/try/multi-party` demo, the `attestationsToMembers`
   bridge (round-trip-tested), and migration 094 (additive, but see the
   correction above re subsystem).
-- **Remaining to field (Class-A path)**: persist the quorum policy at signoff
-  issuance; the `canAccept()` hook in `approve-webauthn`; the `quorumGate()` hook
-  in `trust-receipts/[receiptId]/consume`; and live multi-device E2E. These are
-  deliberate, reviewed changes to the live action-authorization path — not
-  claimed as shipped until wired against the correct subsystem and verified
-  end-to-end. The earlier `attest.js`/`consume.js` plan above is retained only as
-  the bearer-subsystem reference; the corrected target supersedes it.
+- **Fielded on the Class-A path (done + verified)**:
+  - Quorum policy persisted at issuance — `quorum_policy` written on the
+    `guard.trust_receipt.created` after_state (`app/api/v1/trust-receipts/route.js`).
+  - `canAccept()` early-reject gate in
+    `app/api/v1/signoffs/[signoffId]/approve-webauthn/route.js`
+    (409 `quorum_signer_rejected` for a bad/duplicate/out-of-order signer).
+  - `quorumGate()` consume gate in
+    `app/api/v1/trust-receipts/[receiptId]/consume/route.js`
+    (403 `quorum_not_satisfied` until the full trail holds; single-signoff
+    challenges, `quorum_policy IS NULL`, skip the gate unchanged).
+  - Quorum fan-out at `app/api/v1/signoffs/request/route.js` (one signoff per
+    roster approver when a `quorum_policy` is present).
+  - **Live multi-device E2E**: `e2e/multi-party-quorum.spec.js` — three virtual
+    WebAuthn authenticators sign PO→AO→IG; consume returns 403 until all three
+    sign, then 200. **PASSED.**
+  - **Cross-language conformance**: 9 `EP-QUORUM-v1` vectors
+    (`conformance/vectors/quorum.v1.json`) agree across JS / Python / Go
+    (`node conformance/run.mjs`).
+- The earlier `attest.js`/`consume.js` plan above is retained only as the
+  bearer-subsystem reference; the Class-A wiring listed here is the shipped path.
+- **Standards record**: the multi-party predicate is written up as the IETF
+  companion draft `standards/draft-schrock-ep-quorum-00.md` and the preprint
+  `docs/papers/ep-quorum-preprint.md`.

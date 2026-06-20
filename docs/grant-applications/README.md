@@ -19,6 +19,19 @@ has:
 | AAIF Proposal v3 | [`aaif/`](./aaif/) | HOLD — IP TRANSFER | Do not submit EMILIA as-is; AAIF acceptance requires transfer of project trademarks/assets to LF | Iman |
 | OpenAI Cybersecurity Grant | [`openai-cybersecurity/`](./openai-cybersecurity/) | DRAFT | Fill form at https://openai.com/form/cybersecurity-grant-program | Iman |
 | Anthropic Research Grants | [`anthropic-research/`](./anthropic-research/) | DRAFT | Submit via Anthropic researcher access program | Iman |
+| Emergent Ventures (EV AI) | [`emergent-ventures/`](./emergent-ventures/) | DRAFT — quorum-led | Apply (~30 min) at https://www.mercatus.org/emergent-ventures, note EV AI | Iman |
+| SFF Speculation Grant | [`sff-speculation/`](./sff-speculation/) | DRAFT — quorum-led | Apply (rolling) at https://survivalandflourishing.fund/ → Speculation Grants; prereq for the S-Process round | Iman |
+
+**Net-new since the two-person-rule (EP-QUORUM-v1) shipped 2026-06-20** — the
+multi-party quorum is now the lead differentiator across applications. Standards
+artifacts to cite/attach: `standards/draft-schrock-ep-quorum-00.md` (IETF
+companion draft) and `docs/papers/ep-quorum-preprint.md` (arXiv preprint, cs.CR).
+Fast new targets surfaced: **Emergent Ventures** and **SFF Speculation** (above);
+also watch **NSF Safe-OSE 2026**, **Sovereign Tech Standards Network** (next
+cohort — perfect IETF fit), and the **Frontier Model Forum AI Safety Fund**
+Round 3 (submit research-interest form now). Note: Manifund and LTFF already
+submitted (see SUBMISSION-PLAYBOOK.md) — for those, post a project *update*
+citing the shipped quorum rather than re-applying.
 
 ## Recommended submission order
 
