@@ -51,7 +51,7 @@ const SURFACES = [
 const HOW_IT_WORKS = [
   { step: '01', accent: color.green, label: 'Observe',  body: 'Start in observe mode: see every irreversible action that would require stronger approval — payments, overrides, vendor changes, autonomous AI actions — with zero blocking. The safe on-ramp before you enforce anything.' },
   { step: '02', accent: color.blue,  label: 'Verify',   body: 'EMILIA Gate sits between approval and execution. Before a high-risk write reaches the system of record, it binds verified actor identity, authority chain, policy-pinned action context, and a one-time nonce.' },
-  { step: '03', accent: color.gold,  label: 'Own',      body: 'Where policy requires it, a named, accountable human signs off on the exact action — on their own device, bound to the exact action hash. Self-approval fails by construction.' },
+  { step: '03', accent: color.gold,  label: 'Own',      body: 'Where policy requires it, a named, accountable human signs off on the exact action — on their own device, bound to the exact action hash. Self-approval fails by construction. For the highest-stakes actions, a multi-party quorum — the two-person rule, in order, each human bound to the exact action — is enforced before execution.' },
   { step: '04', accent: color.t2,    label: 'Seal',     body: 'A signed, Merkle-anchored authorization receipt is produced — an auditor-grade evidence packet, publicly verifiable offline with `npm install @emilia-protocol/verify`.' },
 ];
 
