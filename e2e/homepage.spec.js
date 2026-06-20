@@ -36,10 +36,10 @@ test.describe('Homepage', () => {
   test('Protocol Properties section is visible', async ({ page }) => {
     await page.goto('/');
 
-    // Homepage now lives in the buyer-facing GTM frame (commit 75c3414) — the
-    // technical "Self-verifying" copy moved to /protocol. The homepage's
-    // receipt story is in HOW_IT_WORKS step 03 ("Generate Authorization Receipt").
-    const trustReceipt = page.locator('text=Generate Authorization Receipt');
+    // Homepage uses the buyer-facing Observe -> Verify -> Own -> Seal model;
+    // the receipt story is HOW_IT_WORKS step 04 ("Seal"), whose body produces a
+    // "Merkle-anchored authorization receipt".
+    const trustReceipt = page.locator('text=Merkle-anchored authorization receipt');
     await expect(trustReceipt.first()).toBeVisible({ timeout: 10_000 });
   });
 
