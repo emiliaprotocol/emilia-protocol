@@ -52,7 +52,7 @@
   },
   "author": "EMILIA Protocol, Inc.",
   "scripts": {
-    "test": "node --test test.js web.test.js federation.test.js trust-receipt.test.js"
+    "test": "node --test test.js web.test.js federation.test.js trust-receipt.test.js quorum.test.js"
   },
   "bin": {
     "emilia-verify": "./cli.js"
