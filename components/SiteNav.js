@@ -11,6 +11,7 @@ const NAV_LINKS = [
   ['/mcp', 'MCP'],
   ['/govguard', 'GovGuard'],
   ['/finguard', 'FinGuard'],
+  ['/quorum', 'Quorum'],
   ['/demo', 'Demo'],
   ['/try', 'Try it'],
   ['/verify', 'Verify'],
