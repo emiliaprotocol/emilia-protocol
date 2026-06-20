@@ -115,8 +115,10 @@ export default function QuorumPage() {
             an ordered three-party signoff and rejects a duplicate signer in front of you.
           </p>
           <p style={{ ...styles.body, maxWidth: 760 }}>
-            What is deliberately still ahead: end-to-end validation in production with real multi-device
-            ceremonies, and — for defense — an accredited deployment. We would rather state that plainly
+            It is also <strong>verified end-to-end</strong>: an automated test drives three independent
+            devices through an ordered signoff and proves a quorum-gated action cannot be consumed until
+            every required human has signed. What is deliberately still ahead: a production deployment of
+            that flow and — for defense — an accredited environment. We would rather state that plainly
             than overclaim a control this consequential. We are taking design partners now.
           </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 22, flexWrap: 'wrap' }}>

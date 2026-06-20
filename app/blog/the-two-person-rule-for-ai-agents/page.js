@@ -82,7 +82,7 @@ export default function BlogTwoPersonRulePage() {
       <section className="ep-reveal" style={{ ...styles.section, paddingTop: 0, paddingBottom: 32 }}>
         <h2 style={styles.h2}>Honest status</h2>
         <p style={styles.body}>
-          Multi-party quorum in EMILIA is a verifiable protocol capability today: the three-language reference verifiers agree on it, and a live in-browser demo runs an ordered three-party signoff and rejects a duplicate signer in front of you. The server-side enforcement that holds a high-stakes action until the full quorum is satisfied is built and merged into the authorization path; end-to-end validation in production — and, for defense, an accredited deployment — is deliberately still ahead of us. We would rather state that plainly than overclaim a control this consequential.
+          Multi-party quorum in EMILIA is a verifiable protocol capability today: the three-language reference verifiers agree on it, and a live in-browser demo runs an ordered three-party signoff and rejects a duplicate signer in front of you. The server-side enforcement that holds a high-stakes action until the full quorum is satisfied is built, merged, and verified end-to-end — an automated test drives three independent devices through an ordered signoff and proves the action cannot be consumed until every required human has signed. What is deliberately still ahead: a production deployment of that flow and, for defense, an accredited environment. We would rather state that plainly than overclaim a control this consequential.
         </p>
       </section>
 
