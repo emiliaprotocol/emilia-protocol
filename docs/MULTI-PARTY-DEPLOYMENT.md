@@ -77,10 +77,43 @@ already-built core.
    that consume is blocked until the trail is satisfied. Mirror the `/try/multi-party`
    demo flow against the live API.
 
+## ⚠️ Corrected target: the LIVE Class-A path is the `audit_events` subsystem
+Tracing the deployed code (2026-06-20) surfaced that there are **two signoff
+subsystems**, and the one that matters for multi-party device approval is **not**
+the one this doc first assumed:
+
+| Subsystem | Storage | Verifier | Status |
+|---|---|---|---|
+| **Class-A WebAuthn** (the live, multi-party-relevant path; what `/try/multi-party` mirrors) | decisions in `audit_events.after_state` (`guard.signoff.approved`, with `context` + `webauthn` + `approved_action_hash`); approver keys in `approver_credentials` | `@simplewebauthn/server` at decision time | **this is where the quorum gate belongs** |
+| **Bearer attestation** (older) | `signoff_attestations` / `signoff_consumptions` (`lib/signoff/consume.js`) | n/a | migration 094 + the `consume.js` hook above target THIS — the wrong subsystem for Class-A |
+
+**So the correct fielding for the real path is:**
+1. **Persist the quorum policy at issuance** in the Class-A subsystem (on the
+   signoff request / receipt), *not* on `signoff_challenges`. (Migration 094's
+   column is harmless but aimed at the bearer subsystem.)
+2. **`canAccept()` hook** goes in `app/api/v1/signoffs/[signoffId]/approve-webauthn/route.js`
+   — before inserting the `guard.signoff.approved` decision, map the already-
+   recorded decisions for this receipt via `attestationsToMembers()` and reject
+   a bad/duplicate/out-of-order signer.
+3. **`quorumGate()` hook** goes in the Class-A authorization-before-action path —
+   **`app/api/v1/trust-receipts/[receiptId]/consume/route.js`** (which reads the
+   `guard.signoff` decisions from `audit_events`), not `lib/signoff/consume.js`.
+   Load all `guard.signoff.approved` decisions for the receipt →
+   `attestationsToMembers()` → `quorumGate()`; block consume unless satisfied.
+
+The **`attestationsToMembers()` bridge is built and tested**
+(`lib/signoff/attestation-members.js`) against this exact stored shape, and the
+round-trip test proves the mapped members pass the real `quorumGate`.
+
 ## Status (honest)
 - **Built + tested**: the enforcement core (`quorum-session.js`, `verifyQuorum`
-  in JS/Python/Go), the `/try/multi-party` demo, and migration 094 (additive).
-- **Remaining to field**: the `attestationsToMembers` helper + the two hooks in
-  `attest.js`/`consume.js`, applying migration 094 to prod, and live E2E. This
-  is a deliberate, reviewed step because `consume.js` gates real actions —
-  not a capability to claim as shipped until it is wired and verified end-to-end.
+  in JS/Python/Go), the `/try/multi-party` demo, the `attestationsToMembers`
+  bridge (round-trip-tested), and migration 094 (additive, but see the
+  correction above re subsystem).
+- **Remaining to field (Class-A path)**: persist the quorum policy at signoff
+  issuance; the `canAccept()` hook in `approve-webauthn`; the `quorumGate()` hook
+  in `trust-receipts/[receiptId]/consume`; and live multi-device E2E. These are
+  deliberate, reviewed changes to the live action-authorization path — not
+  claimed as shipped until wired against the correct subsystem and verified
+  end-to-end. The earlier `attest.js`/`consume.js` plan above is retained only as
+  the bearer-subsystem reference; the corrected target supersedes it.
