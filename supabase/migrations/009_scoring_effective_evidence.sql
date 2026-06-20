@@ -10,6 +10,7 @@
 -- Add graph_weight column (fraud graph analysis result per receipt)
 ALTER TABLE receipts ADD COLUMN IF NOT EXISTS graph_weight FLOAT DEFAULT 1.0;
 
+DROP FUNCTION IF EXISTS compute_emilia_score(uuid);
 CREATE OR REPLACE FUNCTION compute_emilia_score(p_entity_id uuid)
 RETURNS float AS
 $body$

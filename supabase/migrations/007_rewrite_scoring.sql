@@ -11,6 +11,7 @@
 --   3. Both factors multiply together for combined weight
 -- ============================================================================
 
+DROP FUNCTION IF EXISTS compute_emilia_score(uuid);
 CREATE OR REPLACE FUNCTION compute_emilia_score(p_entity_id uuid)
 RETURNS float AS $$
 DECLARE

@@ -33,8 +33,11 @@ CREATE POLICY "service_role_bypass" ON public.delegations
 CREATE POLICY "service_role_bypass" ON public.disputes
   TO service_role USING (true) WITH CHECK (true);
 
-CREATE POLICY "service_role_bypass" ON public.fraud_flags
-  TO service_role USING (true) WITH CHECK (true);
+DO $$ BEGIN
+  IF to_regclass('public.fraud_flags') IS NOT NULL THEN
+    EXECUTE 'CREATE POLICY "service_role_bypass" ON public.fraud_flags TO service_role USING (true) WITH CHECK (true)';
+  END IF;
+END $$;
 
 CREATE POLICY "service_role_bypass" ON public.handshake_bindings
   TO service_role USING (true) WITH CHECK (true);
@@ -63,8 +66,14 @@ CREATE POLICY "service_role_bypass" ON public.handshakes
 CREATE POLICY "service_role_bypass" ON public.identity_bindings
   TO service_role USING (true) WITH CHECK (true);
 
-CREATE POLICY "service_role_bypass" ON public.merkle_batches
-  TO service_role USING (true) WITH CHECK (true);
+-- Replay-safe: merkle_batches is created later (089). Guard on presence so a
+-- from-scratch replay doesn't fail here; the policy applies where the table exists.
+DO $$
+BEGIN
+  IF to_regclass('public.merkle_batches') IS NOT NULL THEN
+    EXECUTE 'CREATE POLICY "service_role_bypass" ON public.merkle_batches TO service_role USING (true) WITH CHECK (true)';
+  END IF;
+END $$;
 
 CREATE POLICY "service_role_bypass" ON public.principal_delegation_signals
   TO service_role USING (true) WITH CHECK (true);
@@ -136,17 +145,19 @@ CREATE POLICY "service_role_bypass" ON public.webhook_deliveries
 -- Anon can INSERT but never SELECT (no USING clause on anon policy)
 -- ============================================================================
 
-CREATE POLICY "service_role_bypass" ON public.partner_inquiries
-  TO service_role USING (true) WITH CHECK (true);
-
-CREATE POLICY "anon_insert" ON public.partner_inquiries
-  FOR INSERT TO anon WITH CHECK (true);
-
-CREATE POLICY "service_role_bypass" ON public.investor_inquiries
-  TO service_role USING (true) WITH CHECK (true);
-
-CREATE POLICY "anon_insert" ON public.investor_inquiries
-  FOR INSERT TO anon WITH CHECK (true);
+-- Replay-safe: the lead-capture form tables have no creating migration in this
+-- repo (provisioned out-of-band where present). Guard so a from-scratch replay
+-- doesn't fail; policies apply where the tables exist.
+DO $$ BEGIN
+  IF to_regclass('public.partner_inquiries') IS NOT NULL THEN
+    EXECUTE 'CREATE POLICY "service_role_bypass" ON public.partner_inquiries TO service_role USING (true) WITH CHECK (true)';
+    EXECUTE 'CREATE POLICY "anon_insert" ON public.partner_inquiries FOR INSERT TO anon WITH CHECK (true)';
+  END IF;
+  IF to_regclass('public.investor_inquiries') IS NOT NULL THEN
+    EXECUTE 'CREATE POLICY "service_role_bypass" ON public.investor_inquiries TO service_role USING (true) WITH CHECK (true)';
+    EXECUTE 'CREATE POLICY "anon_insert" ON public.investor_inquiries FOR INSERT TO anon WITH CHECK (true)';
+  END IF;
+END $$;
 
 COMMENT ON POLICY "service_role_bypass" ON public.handshakes IS
   'All EP API access uses service_role via getServiceClient()/getGuardedClient(). '

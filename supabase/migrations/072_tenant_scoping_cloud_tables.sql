@@ -32,9 +32,12 @@ CREATE INDEX IF NOT EXISTS idx_handshake_policies_tenant
 
 -- 4. policy_versions (scoped to the tenant that owns the policy)
 -- Check if policy_versions has tenant_id already
+-- Replay-safe: policy_versions has no creating migration in this repo (it exists
+-- on environments where it was provisioned out-of-band). Guard on table presence
+-- so a from-scratch replay doesn't fail; the scoping applies where the table exists.
 DO $$
 BEGIN
-  IF NOT EXISTS (
+  IF to_regclass('public.policy_versions') IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'policy_versions' AND column_name = 'tenant_id'
   ) THEN
