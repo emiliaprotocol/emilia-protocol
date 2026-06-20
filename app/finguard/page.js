@@ -55,6 +55,11 @@ export default function FinGuardPage() {
               cannot outlive its expiry, and cannot be consumed without the exact action it
               authorizes.
             </p>
+            <p style={{ ...styles.body, maxWidth: 720, marginTop: 12, fontSize: 15, color: color.t2 }}>
+              FinGuard binds each action to a single accountable approver. For the largest
+              transfers — where dual control is required — escalate to a multi-party quorum with{' '}
+              <a href="/quorum" style={{ color: color.t1, textDecoration: 'underline' }}>EMILIA Quorum</a>.
+            </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
               <a href="#how-it-works" style={cta.primary}>How it works</a>
               <a href="#api" style={cta.secondary}>API reference</a>

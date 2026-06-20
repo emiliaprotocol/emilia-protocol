@@ -126,6 +126,11 @@ export default function GovGuardPage() {
             to you. The receipt proves it to everyone else - auditors, regulators,
             acquirers - without anyone having to trust your logs, your vendor, or EMILIA.
           </p>
+          <p style={{ ...styles.body, maxWidth: 740, marginTop: 8, fontSize: 15, color: color.t2 }}>
+            GovGuard binds each action to one accountable approver. Where statute or policy
+            requires dual approval — the two-person rule — escalate to a multi-party quorum
+            with <a href="/quorum" style={{ color: color.t1, textDecoration: 'underline' }}>EMILIA Quorum</a>.
+          </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 30, flexWrap: 'wrap' }}>
             <a href="/pilot?v=gov" style={cta.primary}>Scope a 60-day observe-mode pilot</a>
             <a href="/pilot/sandbox" style={cta.secondary}>Run observe-mode sandbox</a>
