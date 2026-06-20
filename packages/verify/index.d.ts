@@ -215,3 +215,21 @@ export function verifyFederatedReceipt(
     expectedSigner?: string;
   }
 ): Promise<FederatedVerificationResult & { fetched: Record<string, unknown>; revocation_confirmed?: boolean }>;
+
+/** EP-QUORUM-v1 multi-party (M-of-N / ordered) approval verification result. */
+export interface QuorumResult {
+  valid: boolean;
+  checks: {
+    all_signatures_valid: boolean;
+    action_binding: boolean;
+    distinct_humans: boolean;
+    roles_admitted: boolean;
+    threshold_met: boolean;
+    order_satisfied: boolean;
+    within_window: boolean;
+  };
+  members: Array<{ approver: string | null; role: string | null; valid: boolean }>;
+}
+
+/** Verify an EP-QUORUM-v1 multi-party approval (composes verifyWebAuthnSignoff; fail-closed). */
+export function verifyQuorum(quorum: object, opts?: { rpId?: string }): QuorumResult;

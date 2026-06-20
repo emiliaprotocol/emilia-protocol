@@ -670,3 +670,6 @@ export {
   verifyFederatedReceiptOffline,
   verifyFederatedReceipt,
 } from './federation.js';
+
+// EP-QUORUM-v1 — multi-party (M-of-N / ordered) approval, additive over EP-SIGNOFF-v1.
+export { verifyQuorum } from './quorum.js';

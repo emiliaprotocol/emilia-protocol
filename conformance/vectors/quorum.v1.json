@@ -1,0 +1,867 @@
+{
+  "suite": "EP-QUORUM-v1",
+  "profile": "Multi-party (M-of-N / ordered) human approval over EP-SIGNOFF-v1 members",
+  "vectors_version": "1.0.0",
+  "description": "Adversarial conformance vectors for EP multi-party quorum approval. Each member is a real Class-A WebAuthn assertion; the quorum predicate (all-signatures-valid, action-binding, distinct-humans, roles-admitted, threshold, order, window) is fail-closed. A conformant verifier MUST return expect.valid for every vector.",
+  "count": 9,
+  "vectors": [
+    {
+      "id": "accept_ordered_3of3",
+      "description": "Ordered quorum: Program Officer -> Authorizing Official -> Inspector General, distinct humans, increasing time, all bound to the action",
+      "failure_class": "accept",
+      "expect": {
+        "valid": true
+      },
+      "quorum": {
+        "@type": "ep.quorum",
+        "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+        "policy": {
+          "mode": "ordered",
+          "required": 3,
+          "approvers": [
+            {
+              "role": "program_officer",
+              "approver": "ep:approver:po_rivera"
+            },
+            {
+              "role": "authorizing_official",
+              "approver": "ep:approver:ao_chen"
+            },
+            {
+              "role": "inspector_general",
+              "approver": "ep:approver:ig_okafor"
+            }
+          ],
+          "distinct_humans": true,
+          "window_sec": 900
+        },
+        "members": [
+          {
+            "role": "program_officer",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFOKtTlXlKBcbod43q8TiNpkVaojWaTVhb7dSX_pzw92WzbMaW9_IkwxedgHXPzXLKfPH_Wjsj8Hg45w9lGhyqQ",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_47aa9303fa37216139860ce68d39a2bb",
+                "approver": "ep:approver:po_rivera",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:01:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiRVJ3RzNPeFU5Z2lXR1FyQUgzUDdhbHQtRThtdUl5M3gyZlVUYUllYThjOCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEUCIQDtTT7DUp6SYaXdvCDJCA_6SRrZ7-lkJuovcP5VFF4TYgIgULHDnyWcuVbRuCkYMoIw-lxgkT5hydbSNFcIeHe0lAU"
+              }
+            }
+          },
+          {
+            "role": "authorizing_official",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3gfHbFGxQagpHaUi3VDzLaLEP084XXT5BaC05fpDCRwIzKArA9W-XPxTwcuz6jnT6vYxNI5DbvQRLCucOam07g",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_6d3fe794ef97ffaff22374e81ded05a1",
+                "approver": "ep:approver:ao_chen",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:02:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNHNsVnc3QW1rWVluQnlBZ0FVT3JUalBDZVR2M2J6RmlPeFJKM2U0RVVIayIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEYCIQDskDB8il-MeM9f2hoqd0ho-HMD6wq2qST8qx7fLw5tYQIhALqrN40yCo90ZXalULeTCQLR7RKpxpSKPg-He9txnY9T"
+              }
+            }
+          },
+          {
+            "role": "inspector_general",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE7pI3vBNb740UgG_w3nmBY4rxiGBRhrTJpcoZ2mqEQR86xXn_Xs4vWtdQ_-7xPLxZleDPtcmAa7Y6gmKRXjoWCw",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_86257d2f1a5d15808832a20d1b695a6b",
+                "approver": "ep:approver:ig_okafor",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:03:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNkNNVWQwZWNWVWZQVHJpcXBOZDBzYlppbGtoVmlIWW1hX1VLSWFBSFZXMCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEQCIArOeJRT18Jz0jVVUT5cZVKEUVxK3LXzRKSmaHDU4g8mAiAIqoiHyyEYrMvbjRbhekvyPIB6DQMo466F0GjaAP7jzw"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "accept_threshold_2of3",
+      "description": "Threshold quorum: 2 of 3 eligible approvers sign the exact action",
+      "failure_class": "accept",
+      "expect": {
+        "valid": true
+      },
+      "quorum": {
+        "@type": "ep.quorum",
+        "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+        "policy": {
+          "mode": "threshold",
+          "required": 2,
+          "approvers": [
+            {
+              "role": "program_officer",
+              "approver": "ep:approver:po_rivera"
+            },
+            {
+              "role": "authorizing_official",
+              "approver": "ep:approver:ao_chen"
+            },
+            {
+              "role": "inspector_general",
+              "approver": "ep:approver:ig_okafor"
+            }
+          ],
+          "distinct_humans": true,
+          "window_sec": 900
+        },
+        "members": [
+          {
+            "role": "program_officer",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEAz_AmAnmsBUxv-7gqhB47nSG5eByZt4OUi9AChGpaWv9rWYLWnY06JpBmSJuHSb5zWdlIlq7S-uinrbgqm1mBw",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_a0b433e1848a54f3253afdcfefca4226",
+                "approver": "ep:approver:po_rivera",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:01:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoibV9kZnNDb3NSbThFR3NzMW95M0QzWG84eDJ4X2d5dkM4RHNia240dWVFTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEUCIGa7YrWcNRL8plE8vyv4w6p9pAD1acxVY_bTBUgYrBq3AiEAmdg_yiT3pzxWEkKFrGrv8x0abpTn5m9kdMhno6BZmns"
+              }
+            }
+          },
+          {
+            "role": "inspector_general",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEArXe6ZcS6NenZkl7qdhr3KrG_N5-tNEy87qAEpUQr-DatZ1k4uh31-ral85rZXhiWbQ2omPuwCuiB3a3lc9tYg",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_e3f0975d9b1ad2ccababd5315cce2480",
+                "approver": "ep:approver:ig_okafor",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:02:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSXNUcEx4dG9GN1dSWU9pMmpVeUtXcElWQ1dSWW50MVQ1TnRmUkdqS2VINCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEUCIQCRqktIuNsRTS7DI7UJTfffsn6eNzOD8Dv9iQQkElSQXgIgYZlEXv5YwWBJgg4B3HEwQUi9TkFYc32KJ8ytz6SuIzA"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject_under_threshold",
+      "description": "Only 2 of a required 3 approvers signed",
+      "failure_class": "threshold",
+      "expect": {
+        "valid": false
+      },
+      "quorum": {
+        "@type": "ep.quorum",
+        "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+        "policy": {
+          "mode": "ordered",
+          "required": 3,
+          "approvers": [
+            {
+              "role": "program_officer",
+              "approver": "ep:approver:po_rivera"
+            },
+            {
+              "role": "authorizing_official",
+              "approver": "ep:approver:ao_chen"
+            },
+            {
+              "role": "inspector_general",
+              "approver": "ep:approver:ig_okafor"
+            }
+          ],
+          "distinct_humans": true,
+          "window_sec": 900
+        },
+        "members": [
+          {
+            "role": "program_officer",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEnnih12fn4VRAdR-jAttBDwkcR4xyTAuZBbwsyloCvAA0IPVhrLgws8ONpb-33nEJ3WbwZt-zciyIYKExMZmLmw",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_5a6cc4bbcf3f0a6bc57d53b958c3dbc4",
+                "approver": "ep:approver:po_rivera",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:01:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiT1lZT0xUS3NOejZjY1g2Wjc4TGJ1Skt5OFViM0JwZno3M3JfZ1dBUnJDTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEQCIEdkmsbwEizH5HUeR5UqOn0EXBv35caCx9OOj6ECndtRAiAkgKT8u44FPN1ZMXgYllHXFd577H7K-kWRxOhrloge8A"
+              }
+            }
+          },
+          {
+            "role": "authorizing_official",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEjTtqzKcHgsyTEKiA8bQpuD-HI7ATpmKIk9UTIekYgSUxwzI4jSa4Obohq9BpjZjbuX27t2qhESidUipS7mM5Ig",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_0d07b3c50a909bc0ec8b60ae8bcf9561",
+                "approver": "ep:approver:ao_chen",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:02:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiS3FHWGxRU1RqMFZSZmRlZXJWeHFZMkhtSnVDendTMlVIa0JOb0V6TVZyQSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEQCIBAN7xTG-d4Qa1vmAHZcaAdYQTsrHZooGzls_5AZq4wBAiATK36KRpcd5xrJSCNr_RZx9UNWqSbwoW8suTDPM8z00Q"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject_duplicate_human",
+      "description": "The Program Officer also signs the Inspector General slot — one human, two slots",
+      "failure_class": "distinct-humans",
+      "expect": {
+        "valid": false
+      },
+      "quorum": {
+        "@type": "ep.quorum",
+        "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+        "policy": {
+          "mode": "ordered",
+          "required": 3,
+          "approvers": [
+            {
+              "role": "program_officer",
+              "approver": "ep:approver:po_rivera"
+            },
+            {
+              "role": "authorizing_official",
+              "approver": "ep:approver:ao_chen"
+            },
+            {
+              "role": "inspector_general",
+              "approver": "ep:approver:ig_okafor"
+            }
+          ],
+          "distinct_humans": true,
+          "window_sec": 900
+        },
+        "members": [
+          {
+            "role": "program_officer",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEtQxJ1cyIkp_L9MtkwvrJFqa6MD3NcS3m3sO4NBkN7Mez6U33BDI-dBUQDecOCgKI9EAzKKQ2L4TtQhOcW7oAUg",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_b3d036effd0224cdd05720d4f23ca18c",
+                "approver": "ep:approver:po_rivera",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:01:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiMm05V2RzVXU2VTYwY2F0ZWU4N01xclRienRLLWEzc2JTaG5HTW1mbDdYTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEYCIQDqp2R3vfefAiMQco31Nx4sixMNpMiWQ09496lKh_QScAIhALu3V4CmIH1OmJnaxlZQHFdjU0z7LBAsLJnhsnWIRIvH"
+              }
+            }
+          },
+          {
+            "role": "authorizing_official",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEIaApY6d8mi8TGrKGQpZjjcJhA6KwcYqg0yecR5riwvIWbp8CLaG6ELgZh7MR1-KGpjRt6YZmlTGly98IhvcSOQ",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_fc6d2076119f946b8375798ddc2de2f2",
+                "approver": "ep:approver:ao_chen",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:02:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiWGh5X0ZCWEl2UjBXMzkxeDVDSHJvYzItYVU4SkVzRXNkeEh1MGdWZjdwbyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEUCIQCRGmwVbPEPkxBBhE_1lXZ8CaR8Gh4f5U5przbL-t_HaQIgUTEqgoIDNAMNDo_ni2mcjOF7lbRTWBPzFQcyrIKG5j4"
+              }
+            }
+          },
+          {
+            "role": "inspector_general",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEtC6NewuuOFvIpmUf4XJStmx153FYg3OhONY_Ik44rk7O-ibYdp5dkxYpg09FZcOyPkScP6PwQKCCWU590-aPdg",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_88bb9e6d9284279b4b491e29b0f1e345",
+                "approver": "ep:approver:po_rivera",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:03:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiYTJNMVEtNlRlTGZDcE9Yc3ZWQXdrX2plWVp4LVhIQW9wOXhoRUh0dFZjMCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEYCIQCqf5C5AsiQeCslj1BZSwUYwNqAiKTI0ntIZL0UCb5dRwIhAOiatY-hdG0EO7VtVbpl7FKJP4DjuKCc8phRJwRp3I0r"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject_out_of_order",
+      "description": "Ordered quorum signed out of sequence (times not strictly increasing in role order)",
+      "failure_class": "order",
+      "expect": {
+        "valid": false
+      },
+      "quorum": {
+        "@type": "ep.quorum",
+        "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+        "policy": {
+          "mode": "ordered",
+          "required": 3,
+          "approvers": [
+            {
+              "role": "program_officer",
+              "approver": "ep:approver:po_rivera"
+            },
+            {
+              "role": "authorizing_official",
+              "approver": "ep:approver:ao_chen"
+            },
+            {
+              "role": "inspector_general",
+              "approver": "ep:approver:ig_okafor"
+            }
+          ],
+          "distinct_humans": true,
+          "window_sec": 900
+        },
+        "members": [
+          {
+            "role": "program_officer",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEdZBMumj0fP-9VMFyxza1BGcd6y38FEVH5byp5OfCUJI6PjyrCyzEFB-ojrveLBpVkSeVEGW_8m_kwH7vX9UvKQ",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_132c49dc4fbaf8c19e64bdaaf7cc39a3",
+                "approver": "ep:approver:po_rivera",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:03:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib21IelhBSl9PZmdheThWcU1wVVVRMVdHYW1paFAycUVzU3Zlaml3N1A4SSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEQCIH_oBT5BKmHX0RoWxNqIlQYFWJw3-JlVvAqSPyN1cBcHAiBFOPu8mQnha8ky7SS8tMMHvzMGoNT7z08S3fP3M2Hc3w"
+              }
+            }
+          },
+          {
+            "role": "authorizing_official",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZUKaLtM3bo8bthUXSDFNNrvW4-Af3kZu8OUucWi6NFayY87JT_Qe-kwbQ8a4vB6sWtAm3Er_qsMsTqhNP19zyw",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_e3edd59485ec620ab7655e3e23f5a26b",
+                "approver": "ep:approver:ao_chen",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:02:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiZ3h3S0xlVTFDZUUyTjRXamgwUU9HdEpVOVk3NGdBOGFMS2htclRrRmcyUSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEQCIF7Emyx0IvfWXnoLAYcI5--UPICE0z_fF_ZxBemMQBh6AiBB1M1vhZHUmojmCe8mPy6f6toO2bKm4AAuc5uB7ofPpQ"
+              }
+            }
+          },
+          {
+            "role": "inspector_general",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEAUG7b0H5tzeo4yr-yf0memjcubp65urHnfz4kzpHAdAGciblp1IVZkSQV8_aubPrKC6_axMO9_f8hSMc8u8Owg",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_7c9cca367db9ad8ee6f14a97a958b5f3",
+                "approver": "ep:approver:ig_okafor",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:04:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoidkRYYTFwWGR4RW8yQXhGeTM5eF9MWmZaYTJrOFJMNVlYa005UGtienRLRSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEQCIBloJMnKHKXMy5VO9pRYphxJ_dT9kAGKGIFdMcvScQMXAiAKTKbAHFwmcP0n9ZKd7KTFO2u3-7xapn2gar2J6lbtgw"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject_action_mismatch",
+      "description": "One approver signed a different action_hash than the quorum authorizes",
+      "failure_class": "action-binding",
+      "expect": {
+        "valid": false
+      },
+      "quorum": {
+        "@type": "ep.quorum",
+        "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+        "policy": {
+          "mode": "ordered",
+          "required": 3,
+          "approvers": [
+            {
+              "role": "program_officer",
+              "approver": "ep:approver:po_rivera"
+            },
+            {
+              "role": "authorizing_official",
+              "approver": "ep:approver:ao_chen"
+            },
+            {
+              "role": "inspector_general",
+              "approver": "ep:approver:ig_okafor"
+            }
+          ],
+          "distinct_humans": true,
+          "window_sec": 900
+        },
+        "members": [
+          {
+            "role": "program_officer",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE0dhYtnJVWIu3A3XmtAIouZulJI2OBurcPqs4mu0nlZHuoI9O28FQJsoRt7Ze6KdckDSnh04oq6mjnQI8grKN-A",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_de1c056d92f9c85ffde127215d23a008",
+                "approver": "ep:approver:po_rivera",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:01:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiemttZ2poRzNJVkRUdktZOURVaUxkQmsxbUtzRHpscU10WTdMQnkwNlJOYyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEYCIQDYUp_LmFl9_hK5O43CdpUkLV7aIb_QTC0Irlhyr19OxwIhAKM5CmgZtdVEYtcDxwcxg_PtVZYqM-0lTRyYSZ8PVeJA"
+              }
+            }
+          },
+          {
+            "role": "authorizing_official",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEGHQXKVf0vWoa576VMRzMatuNrgJ3pxG09DGx7aS0jub36rg81TEHr48MsalnHBpqZm4J0XwbVZ8xCpdTC_hdng",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_1b9840357417dd0fb78b9956a3fe063c",
+                "approver": "ep:approver:ao_chen",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:02:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiVVAzcGFXQmFURmxTeGM3Z1h5dHhmaXZhUGZiZVhHcUVyazVnZ0ZITEZlTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEUCIQCacjGri0I6KLIgov5Ymbh61V0ApGWRZsAQ6LzihhoXFAIgCMsaScQekU8JWsJzQVFbP6C0hTbazyvac2aqbyDrcIk"
+              }
+            }
+          },
+          {
+            "role": "inspector_general",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAErqEpf6duiCUEWX5RBrr-KdAXd5u_FdOLWVursquO9fncGGY_zMNDsjKg6snYLbquvmDVUy5DdUOWHRO22K-iqQ",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_eb411343b52f95e7d49c461ee7bd070c",
+                "approver": "ep:approver:ig_okafor",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:03:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoicXBVeW1kODRfYXpGTm5KNHRfeHp6LTBZOFl0U3F1RVBVX2c3N2RPOEdsSSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEUCIEl4TPrWRFJx2bZm_ssyNh2pDuO3-e25kxY4Ykrlq-rbAiEAj6zPodG3T_QYsd1SCIvYB44YH0raAMlkuYLaiAyisH0"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject_expired_window",
+      "description": "Signatures span longer than the policy window_sec",
+      "failure_class": "window",
+      "expect": {
+        "valid": false
+      },
+      "quorum": {
+        "@type": "ep.quorum",
+        "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+        "policy": {
+          "mode": "ordered",
+          "required": 3,
+          "approvers": [
+            {
+              "role": "program_officer",
+              "approver": "ep:approver:po_rivera"
+            },
+            {
+              "role": "authorizing_official",
+              "approver": "ep:approver:ao_chen"
+            },
+            {
+              "role": "inspector_general",
+              "approver": "ep:approver:ig_okafor"
+            }
+          ],
+          "distinct_humans": true,
+          "window_sec": 60
+        },
+        "members": [
+          {
+            "role": "program_officer",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAECQtPft8FTDkXpkvraCBpNjSW2DHyt3E30UzndVKu50jjpbkUZ_VTNcnD1G8OULeJTajAzb1YtP7RBIxVQTjRWA",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_9da055829408282b7f03653df3194986",
+                "approver": "ep:approver:po_rivera",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:01:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiUTNucVp6N2hhR2gtMDV1MEFiemJjN0ZrdmNlNXgxS2ZUSDNMZnFKb0dBUSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEQCIB4bKCA_-DoTPzUkFA90zJfohT0H8MJbnJ8afVCqMBwxAiAEuQ6HOvJAH_0nt_RFng-WjYvaK7ANSQy-_V_QbzmWVw"
+              }
+            }
+          },
+          {
+            "role": "authorizing_official",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoTNq6R1x_VTZuOpdNsoqC6h0NCLycb_6Pbs8XHurh2iBLEkLm2PkDGFNp9qBYaydEf4yYoyejaFNk1p2_i1Gyg",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_85d63f51be3c8e42b272408c6d2540ed",
+                "approver": "ep:approver:ao_chen",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:02:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoicWpjNE5SV0pEQ0pwRzY1U2dlR3FZWEgteldZOGJrdXVZT2JRblRQYzRkSSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEYCIQDzjcTtz_RmYusj2iAMh90_34FZaur9Buw6u8JZrhMKdQIhAJW1P_KR9-wBlbHDm5azCtEd67IIla4954-pOFNcKLQ-"
+              }
+            }
+          },
+          {
+            "role": "inspector_general",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEBdM9fuhpIYOnIEsrXhIGlhO80fQ-du-jFqtMKqDS7HPlSSYJfGJ1RRc0UchDYp6i5Boa1rYqsQVs1Xu5-N1_9g",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_edad07bb2b258e77d1fe481db367dc76",
+                "approver": "ep:approver:ig_okafor",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:05:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiVFVNZjlfc2RaTmtYUlJqcUx6dlM4R190TzdKUVdzN2VIZVJwWEpCZ1cxdyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEUCIQDetw2SucoVLK1ubLSr1TBuG7AOJxAaPmSXdwXPZLJrOAIgRfab6POLvxCRJPMHDs88-jerIVq8pV8STHf4FY4j0PY"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject_one_bad_signature",
+      "description": "One member assertion verifies against the wrong key",
+      "failure_class": "cryptographic",
+      "expect": {
+        "valid": false
+      },
+      "quorum": {
+        "@type": "ep.quorum",
+        "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+        "policy": {
+          "mode": "ordered",
+          "required": 3,
+          "approvers": [
+            {
+              "role": "program_officer",
+              "approver": "ep:approver:po_rivera"
+            },
+            {
+              "role": "authorizing_official",
+              "approver": "ep:approver:ao_chen"
+            },
+            {
+              "role": "inspector_general",
+              "approver": "ep:approver:ig_okafor"
+            }
+          ],
+          "distinct_humans": true,
+          "window_sec": 900
+        },
+        "members": [
+          {
+            "role": "program_officer",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEAX8KMy-84BxOTM6zS_fuYC3BAu-1-Q-Epm1EMpibVPZGxEd7HTe1YczZ6DVFobnzdG4m0ytDqd7NaVNZWXaHKA",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_a73a6c8eb64e9fa7eff44adceaef6ecc",
+                "approver": "ep:approver:po_rivera",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:01:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiTXhmcnVQZWx6RzFuMEM1OFhGMThSY0lfTFlLVmNpWk9wRXV3ekpYM3FqZyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEYCIQDvxBJsk7GnnIWD5Rpjq45yuZJBVU94wGZWUUHT_E7GCQIhAPp7wqlk8L0zr_UiK9v3--PDHrBBxdXWdBaE8weTQaGF"
+              }
+            }
+          },
+          {
+            "role": "authorizing_official",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE9CvkZTeAAn8jw2X4aIQlhlDPUhZhcQDv6d_dZ12qQ3hgqCa45AOWeARq4UkEihCBRr340blkRya25WBF52QdPw",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_e834d0cc8918e89edc18c4b6134d73af",
+                "approver": "ep:approver:ao_chen",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:02:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiMFU1dHJCOVpxb1E5aG5CLXhUd3NpaG5uNkNoWWV4THJ5NmpSUWxqdmplYyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEYCIQD_bITd9Hm5TWhDXPGx1HbUPsOl8gzL4dEENooOshAw9wIhAMMPHAJo3xJ7yGveSkbDnCFydQ3ZOfvzRRSTBao8rghm"
+              }
+            }
+          },
+          {
+            "role": "inspector_general",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEG74RyMECl_YK4ZVLejLbh10A3JpKC-VCk1WwpoEh_SAVa4y6wPk8Id3CtqIS5K8CS6d9H7UCblJ7J670--F_qQ",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_5228c929a9c45f87ca3fca5bb956874e",
+                "approver": "ep:approver:ig_okafor",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:03:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiOGdsckZIdlR4dFpvTHJsYndRVFo3QTFQMDhRU0w5V2g2b29aamZwQkhsRSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEYCIQCbtU3UrbzGB949qE9mVGfQiXOyFAT9653Z5iu2fV3fsAIhAN7-TRNoQDn_SKhqp0ZlEQtrej8dUapFnuN8ILaASxN6"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject_wrong_role",
+      "description": "A signer whose (role, approver) is not an eligible quorum slot",
+      "failure_class": "role",
+      "expect": {
+        "valid": false
+      },
+      "quorum": {
+        "@type": "ep.quorum",
+        "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+        "policy": {
+          "mode": "threshold",
+          "required": 2,
+          "approvers": [
+            {
+              "role": "program_officer",
+              "approver": "ep:approver:po_rivera"
+            },
+            {
+              "role": "authorizing_official",
+              "approver": "ep:approver:ao_chen"
+            },
+            {
+              "role": "inspector_general",
+              "approver": "ep:approver:ig_okafor"
+            }
+          ],
+          "distinct_humans": true,
+          "window_sec": 900
+        },
+        "members": [
+          {
+            "role": "program_officer",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE67pbxL0eQNzMFPQzk1oggh7n2lJdM2cdfTVrCay4wC7Dh3_LvkykOoSMp_JhmZPWUqfhOwZ3pj4mC7yO1D5lmw",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_10f1b4e25b6f929c0b1af4b2ce4dbadb",
+                "approver": "ep:approver:po_rivera",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:01:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSXJVYVpLUTc2UTdPLVFVcUxRZWpCU1d2S0E4NzVoUDlaaGVSUDlzQmtvRSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEUCIQDLIMj6GgcwGhd8OJTojX3MYdXTzZt9UpvqEgVCxmMQ5QIgP3KfU550sj_7G1dE-HZ9NszPaUXLYZjeLAchP5TZLK8"
+              }
+            }
+          },
+          {
+            "role": "intern",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEXLSw_CjvwBnnY2Ckn_pFAAfWmZEvMXqgeOq_y0LYTinDxGkSfqJ_-56QxF5MeaGqnbK3dFPnXRzdXdxj-ivS6Q",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_5d7a5af435c348bada2aac1a0b216363",
+                "approver": "ep:approver:not_on_roster",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:02:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoibF9RZTc4S2pXWmZVT0p3dERDUmxwTXpWdFF0d0tlcTlxYVREVXBULXlkbyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEUCIQDPQoV5Hd1YMvdVOide36Ql3ctKCaN09ByfYNQvbhEA1AIgfRqP565bp_MhCg-ivpQ2wBgSikKlakEhC8dHQFm3tpc"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
