@@ -45,13 +45,14 @@ const SURFACES = [
   { title: 'Enterprise Privileged Actions',      body: 'Require bound authorization for infrastructure changes, data exports, permission escalations, and production deployments.', href: '/use-cases/enterprise', accent: color.gold,  tags: ['ZERO TRUST', 'PAM LAYER']        },
 ];
 
-// Three-step product story. The four-layer technical model (Eye → Handshake →
-// Signoff → Commit) lives on /protocol; the homepage shows the customer-facing
-// version: a high-risk action arrives, EP demands proof, EP issues a receipt.
+// The customer-facing model: Observe → Verify → Own → Seal. The underlying
+// technical layers (Eye → Handshake → Signoff → Commit) live on /protocol; the
+// enforcement bundle (Verify + Own + Seal) is packaged for buyers as EMILIA Gate.
 const HOW_IT_WORKS = [
-  { step: '01', accent: color.green, label: 'Intercept',           body: 'EP sits between approval and execution. Payments, overrides, vendor changes, autonomous AI actions — every high-risk write is gated before it reaches the system of record.' },
-  { step: '02', accent: color.blue,  label: 'Require Proof',       body: 'Verified actor identity. Verified authority chain. Policy-pinned action context. One-time nonce. Where policy requires it: a named, accountable human signoff bound to the exact action hash.' },
-  { step: '03', accent: color.gold,  label: 'Generate Authorization Receipt', body: 'A signed, Merkle-anchored receipt is produced. Auditor-grade evidence packet at /api/v1/trust-receipts/{id}/evidence. Publicly verifiable with `npm install @emilia-protocol/verify`.' },
+  { step: '01', accent: color.green, label: 'Observe',  body: 'Start in observe mode: see every irreversible action that would require stronger approval — payments, overrides, vendor changes, autonomous AI actions — with zero blocking. The safe on-ramp before you enforce anything.' },
+  { step: '02', accent: color.blue,  label: 'Verify',   body: 'EMILIA Gate sits between approval and execution. Before a high-risk write reaches the system of record, it binds verified actor identity, authority chain, policy-pinned action context, and a one-time nonce.' },
+  { step: '03', accent: color.gold,  label: 'Own',      body: 'Where policy requires it, a named, accountable human signs off on the exact action — on their own device, bound to the exact action hash. Self-approval fails by construction.' },
+  { step: '04', accent: color.t2,    label: 'Seal',     body: 'A signed, Merkle-anchored authorization receipt is produced — an auditor-grade evidence packet, publicly verifiable offline with `npm install @emilia-protocol/verify`.' },
 ];
 
 const DEV_TOOLS = [
