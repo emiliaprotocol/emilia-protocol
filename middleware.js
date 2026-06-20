@@ -321,6 +321,19 @@ function buildCSP(nonce) {
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
+  // Phantom URLs that crawlers mis-extract from the rendered HTML and that were
+  // never real links: /$ comes from React's streaming-SSR Suspense comment
+  // markers (<!--/$-->), /& from an escaped inline code snippet
+  // (<ep-trust-badge /&gt;). They correctly 404, but 410 Gone tells search
+  // engines the URL is permanently gone so they drop it from coverage instead
+  // of re-crawling. Exact match only — everything else falls through.
+  if (pathname === '/$' || pathname === '/&') {
+    return new NextResponse('410 Gone', {
+      status: 410,
+      headers: { 'content-type': 'text/plain', 'x-robots-tag': 'noindex' },
+    });
+  }
+
   // Non-API page requests: inject per-request nonce and CSP header.
   // The nonce is forwarded via x-nonce request header so server components
   // can read it (e.g. in app/layout.js) and pass it to <Script> tags.
