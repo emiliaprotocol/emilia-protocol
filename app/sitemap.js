@@ -54,6 +54,7 @@ export default function sitemap() {
   // Top-of-funnel blog posts — educational content for keyword breadth.
   const blog = [
     { path: '/blog',                                              priority: 0.7,  changeFrequency: 'weekly' },
+    { path: '/blog/the-two-person-rule-for-ai-agents',            priority: 0.8,  changeFrequency: 'monthly' },
     { path: '/blog/mcp-authorization-best-practices',             priority: 0.75, changeFrequency: 'monthly' },
     { path: '/blog/what-is-pre-action-authorization',             priority: 0.75, changeFrequency: 'monthly' },
     { path: '/blog/how-formal-verification-works-for-protocols',  priority: 0.7,  changeFrequency: 'monthly' },

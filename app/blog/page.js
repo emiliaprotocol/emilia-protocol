@@ -7,6 +7,14 @@ import { styles, color, font, radius } from '@/lib/tokens';
 
 const POSTS = [
   {
+    title: 'The two-person rule for AI agents',
+    desc: 'Some actions are too consequential for one signature. M-of-N or ordered human approval, each signer bound to the exact action — the two-person rule made cryptographic, offline-verifiable, and fail-closed.',
+    href: '/blog/the-two-person-rule-for-ai-agents',
+    date: '2026-06',
+    tag: 'Concepts',
+    accent: color.gold,
+  },
+  {
     title: 'AI voice cloning fraud — defense by action binding',
     desc: 'Voice authentication broke. The fix isn\'t a better voice model — it\'s moving the trust check off the voice channel entirely. Field guide for treasury, wire desks, and fraud ops.',
     href: '/blog/ai-voice-cloning-fraud-defense',
