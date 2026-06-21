@@ -239,6 +239,13 @@ const SAFE_HOSTS = new Set([
   "futureoflife.org",
   "coefficientgiving.org",
   "bluedot.org",
+  "mercatus.org", // Emergent Ventures (Mercatus Center) — EV AI grant program
+  // Preprint / open-science venues cited in docs/papers/ and grant collateral.
+  "zenodo.org",
+  "arxiv.org",
+  "iacr.org", // eprint.iacr.org — IACR Cryptology ePrint Archive
+  "orcid.org",
+  "doi.org",
   // Open-source-infrastructure funders cited in
   // docs/grant-applications/oss-infra-funders/.
   "sovereign.tech",   // Sovereign Tech Agency (Fund / Standards / Fellowship)
