@@ -52,7 +52,7 @@ Venture capital wants a SaaS revenue curve, not a neutral open standard whose en
 
 Working code, not slideware:
 
-- **IETF Internet-Draft** — `draft-schrock-ep-authorization-receipts-01`, posted, with the device-bound single-signoff fully specified.
+- **Two posted IETF Internet-Drafts** — `draft-schrock-ep-authorization-receipts-01` (device-bound single-signoff) and the companion `draft-schrock-ep-quorum-00` (the multi-party two-person rule), both live on the IETF datatracker; plus a peer-citable preprint, *The Two-Person Rule for AI Agents* (Zenodo, DOI [10.5281/zenodo.20780638](https://doi.org/10.5281/zenodo.20780638), CC BY).
 - **EP-QUORUM-v1 shipped and verified** — multi-party M-of-N and ordered modes, fail-closed gate (`lib/signoff/quorum-session.js`), wired into the live Class-A path, verified by a multi-device virtual-authenticator end-to-end test and by **cross-language conformance: 9 quorum vectors agree across JavaScript, Python, and Go**.
 - **Three interoperable verifiers** (JS / Python / Go) — the IETF bar of multiple independent implementations — plus a public conformance suite (`node conformance/run.mjs`).
 - **Formal evidence** — 26 machine-checked TLA+ theorems, 0 counterexamples, re-run in CI; Alloy models alongside.

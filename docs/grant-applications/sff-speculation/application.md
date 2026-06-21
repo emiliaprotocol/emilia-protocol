@@ -44,7 +44,7 @@ The distinguishing feature for SFF is that this already works:
 - **Tri-language conformance.** Three independent verifiers (JavaScript, Python, Go) agree on canonical adversarial vectors — including **9 EP-QUORUM-v1 vectors that agree across all three languages** (`conformance/vectors/quorum.v1.json`, run via `node conformance/run.mjs`). Multiple interoperable implementations is the IETF standard bar.
 - **Multi-device end-to-end verification.** A virtual-authenticator E2E test drives multiple devices through the ordered oversight chain and confirms duplicate / out-of-order / late signers are rejected and consume is blocked until the trail is satisfied (`e2e/multi-party-quorum.spec.js`, passing).
 - **Formal models.** 26 machine-checked TLA+ theorems (0 counterexamples, re-run in CI) plus Alloy models prove safety of the authorization state machine: no replay, no self-approval, no bypass within the modeled system.
-- **IETF engagement.** Posted Internet-Draft `draft-schrock-ep-authorization-receipts-01`.
+- **IETF engagement + peer-citable preprint.** Two posted Internet-Drafts — `draft-schrock-ep-authorization-receipts-01` and the companion `draft-schrock-ep-quorum-00` (the multi-party predicate) — plus a preprint, *The Two-Person Rule for AI Agents* (Zenodo, DOI [10.5281/zenodo.20780638](https://doi.org/10.5281/zenodo.20780638), CC BY).
 
 This is a shippable, verifiable safety control today — exactly the kind of concrete intervention SFF's mandate values over open-ended research promises.
 

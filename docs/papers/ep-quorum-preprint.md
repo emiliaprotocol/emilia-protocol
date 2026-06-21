@@ -12,7 +12,7 @@ submitters may require an endorsement.
 **Iman Schrock**
 EMILIA Protocol, Inc. — team@emiliaprotocol.ai
 
-*Draft preprint — 20 June 2026*
+*Preprint — 20 June 2026.* Published: Zenodo, DOI [10.5281/zenodo.20780638](https://doi.org/10.5281/zenodo.20780638) (CC BY 4.0). Companion to IETF Internet-Draft [draft-schrock-ep-quorum](https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/).
 
 ## Abstract
 

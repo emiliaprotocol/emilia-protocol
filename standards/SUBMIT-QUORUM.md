@@ -46,7 +46,13 @@ xml2rfc v3 format as your `-authorization-receipts-01` submission.
 > with no gate. The dated, public **priority claim is already staked** by the
 > posted IETF I-D (`draft-schrock-ep-quorum`); the preprint is bonus credibility.
 
-### B1. Zenodo (recommended — instant DOI, no endorsement, ~10 min)
+### B1. Zenodo — ✅ DONE (2026-06-21)
+**Published: DOI [10.5281/zenodo.20780638](https://doi.org/10.5281/zenodo.20780638)** ·
+record https://zenodo.org/records/20780638 · CC BY 4.0 · PDF attached. This is the
+citable academic artifact; cite it in grant applications and the paper's references.
+Steps below retained for reference / future versions.
+
+### B1 (reference). Zenodo (instant DOI, no endorsement, ~10 min)
 1. Log in at https://zenodo.org → **New upload**.
 2. Upload `docs/papers/ep-quorum-arxiv.pdf`.
 3. Fields:
