@@ -265,6 +265,14 @@ This is what an auditor, lawyer, insurer, or board member sees when authorizatio
 
 **Does not prove:** that the approvers were not jointly colluding or coerced; that the displayed action matched the underlying intent (presentation integrity); the real-world identity behind each enrolled approver. Those are stated, not claimed solved.
 
+## For the auditor — how this maps to your standards
+
+Under **GAGAS (Government Auditing Standards / the GAO "Yellow Book")**, audit evidence must be **sufficient and appropriate** — where *appropriateness* turns on **relevance and reliability**, and evidence the auditor can **independently test**, that does **not depend on the auditee's own systems or representations**, is the most reliable kind. An EP authorization receipt is exactly that: verified here offline, with open-source code, without trusting the county, EMILIA, or any internal log.
+
+Concretely, this determination supports a **test of the authorization control** over a high-risk disbursement — both that the control *existed* for this exact action and that the *required approvers operated it* (separation of duties, order, threshold) — with evidence that is tamper-evident by construction. For federal-funds programs it speaks to internal control over compliance for **allowability/approval** expectations under **2 CFR 200 (Uniform Guidance)**; in a financial audit it supports the transaction's **authorization / occurrence** assertion.
+
+**Bound (stated, not glossed):** the receipt is reliable evidence that the required humans *authorized* this exact action — it is **not** a test of the *propriety* of their decision, of the real-world *identity* behind each enrolled approver (an enrollment-layer control), or a substitute for the auditor's own risk assessment.
+
 ## Reproduce this determination yourself
 
 \`\`\`
