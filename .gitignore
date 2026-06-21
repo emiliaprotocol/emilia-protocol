@@ -45,3 +45,6 @@ data/trust-desk/uploads/
 handshake-create-results.json
 signoff-flow-results.json
 staircase-results.json
+
+# crash-test runtime output
+emilia-workpaper/
