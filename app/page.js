@@ -186,6 +186,9 @@ export default function HomePage() {
             {/* Right — live crash test */}
             <motion.div {...heroIn(0.12)} style={{ paddingTop: 12 }}>
               <CrashTestDemo />
+              <div style={{ marginTop: 12, fontFamily: font.mono, fontSize: 12, color: color.t3, letterSpacing: 0.3 }}>
+                Or run it yourself, offline: <span style={{ color: color.t1 }}>npx -y @emilia-protocol/crash-test</span>
+              </div>
             </motion.div>
           </div>
         </C>
