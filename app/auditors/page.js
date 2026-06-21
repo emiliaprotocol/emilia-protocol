@@ -73,8 +73,9 @@ export default function AuditorsPage() {
           with public-key cryptography, without relying on the auditee&rsquo;s systems or on EMILIA.
         </p>
         <p style={{ fontSize: 14, color: color.t3, lineHeight: 1.7, maxWidth: 700, marginBottom: 44 }}>
-          Written for SOC 2 and ISO/IEC 42001 assessors, EU AI Act conformity reviewers, internal audit, and
-          third-party-risk teams. No cryptography background required.
+          Written for U.S. government auditors (GAGAS / the GAO Yellow Book), single-audit practitioners and state
+          auditors, SOC 2 and ISO/IEC 42001 assessors, EU AI Act conformity reviewers, and internal audit. No
+          cryptography background required.
         </p>
 
         {/* The 4 steps */}
@@ -163,6 +164,7 @@ export default function AuditorsPage() {
         {/* Sector mappings + CTA */}
         <h2 style={styles.h2}>Compliance and control mappings</h2>
         <ul style={{ ...styles.list, marginBottom: 40 }}>
+          <li><a href="/compliance/emilia-gagas-greenbook-government.pdf" style={lnk}>U.S. government audit mapping — GAGAS / GAO Green Book / Uniform Guidance (2 CFR 200)</a></li>
           <li><a href="/compliance/emilia-eu-ai-act-financial-services.pdf" style={lnk}>EU AI Act mapping — financial services</a></li>
           <li><a href="/compliance/emilia-eu-ai-act-government.pdf" style={lnk}>EU AI Act mapping — government programs</a></li>
           <li><a href="/compliance/emilia-eu-ai-act-healthcare.pdf" style={lnk}>EU AI Act mapping — healthcare</a></li>
