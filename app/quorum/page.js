@@ -98,9 +98,16 @@ export default function QuorumPage() {
             EMILIA ships three reference verifiers (JavaScript, Python, Go) that pass the same
             adversarial quorum vectors identically, on every change.
           </p>
+          <p style={{ ...styles.body, maxWidth: 760, marginTop: 16 }}>
+            See it without trusting us. One command issues a dual-approval receipt, then verifies
+            it offline — with EMILIA disconnected — and rejects a forged copy:
+          </p>
+          <pre style={{ fontFamily: font.mono, fontSize: 14, background: color.card, border: `1px solid ${color.border}`, borderRadius: 8, padding: '14px 18px', maxWidth: 760, overflowX: 'auto', marginTop: 8 }}>npx -y @emilia-protocol/crash-test</pre>
           <div style={{ display: 'flex', gap: 12, marginTop: 22, flexWrap: 'wrap' }}>
             <a href="/try/multi-party" style={cta.secondary}>Run the demo</a>
             <a href="/blog/the-two-person-rule-for-ai-agents" style={cta.secondary}>Read the primer</a>
+            <a href="https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/" target="_blank" rel="noopener noreferrer" style={cta.secondary}>IETF spec (EP-QUORUM)</a>
+            <a href="https://doi.org/10.5281/zenodo.20780638" target="_blank" rel="noopener noreferrer" style={cta.secondary}>Read the paper</a>
           </div>
         </section>
 
