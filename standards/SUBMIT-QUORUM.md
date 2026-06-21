@@ -38,7 +38,35 @@ xml2rfc v3 format as your `-authorization-receipts-01` submission.
 
 ---
 
-## B. arXiv preprint (cs.CR)
+## B. Preprint — Zenodo first (no endorsement gate), arXiv only if endorsed
+
+> **2026-06-20 update:** arXiv `cs.CR` requires an endorsement for a first-time
+> submitter, and we have no academic endorser. arXiv is therefore **deprioritized**
+> — it was only ever for academic citability, which a **Zenodo DOI** fully provides
+> with no gate. The dated, public **priority claim is already staked** by the
+> posted IETF I-D (`draft-schrock-ep-quorum`); the preprint is bonus credibility.
+
+### B1. Zenodo (recommended — instant DOI, no endorsement, ~10 min)
+1. Log in at https://zenodo.org → **New upload**.
+2. Upload `docs/papers/ep-quorum-arxiv.pdf`.
+3. Fields:
+   - **Upload type:** Publication → Preprint
+   - **Title:** The Two-Person Rule for AI Agents: Fail-Closed Multi-Party Authorization with Offline-Verifiable Receipts
+   - **Authors:** Schrock, Iman — EMILIA Protocol, Inc. — ORCID 0009-0004-0290-5433
+   - **Description:** the abstract below (§B3)
+   - **License:** Creative Commons Attribution 4.0 International (CC BY 4.0)
+   - **Keywords:** authorization, AI agents, two-person rule, quorum, WebAuthn, offline verification, separation of duties
+   - **Related identifiers:** "is supplement to" →
+     https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/ and the GitHub repo
+4. Publish → you get a permanent DOI to cite in grant applications.
+
+### B2. IACR ePrint (optional, better crypto audience, light ~1-day screen)
+Submit the PDF at https://eprint.iacr.org/submit . No endorsement; editors screen
+for cryptology relevance (small chance of a "more protocol than crypto" bounce —
+which is why Zenodo is the no-risk primary).
+
+### B3. arXiv (only if an endorser ever materializes)
+Needs a `cs.CR` endorsement (3+ recent cs submitters). Skip unless one appears.
 
 **Artifacts (both compile-verified):**
 - `docs/papers/ep-quorum-arxiv.tex` — standalone LaTeX, **fully ASCII**
