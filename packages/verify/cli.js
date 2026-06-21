@@ -17,6 +17,7 @@ import {
   verifyCommitmentProof,
   verifyWebAuthnSignoff,
   verifyTrustReceipt,
+  verifyQuorum,
 } from './index.js';
 
 const args = process.argv.slice(2);
@@ -27,8 +28,9 @@ Usage:
   npx @emilia-protocol/verify <file.json> [more.json…]
 
 Accepts: EP-RECEIPT-v1 receipts, EP-BUNDLE-v1 bundles, EP-PROOF-v1 commitment
-proofs, Class-A WebAuthn device signoffs ({ context, webauthn, … }), and I-D
-§6.2 authorization receipts ({ contexts, signoffs, log_proof, … }).
+proofs, Class-A WebAuthn device signoffs ({ context, webauthn, … }), I-D
+§6.2 authorization receipts ({ contexts, signoffs, log_proof, … }), and
+EP-QUORUM-v1 multi-party documents ({ "@type": "ep.quorum", policy, members, … }).
 Self-contained evidence packets embed their public key; otherwise pass
 --key <base64url-spki> to supply it. For §6.2 receipts, pass the issuer's
 public material with --verification <verification.json>.
@@ -91,7 +93,14 @@ for (const file of files) {
   let kind = null;
   let result = null;
 
-  if (doc?.['@version'] === 'EP-BUNDLE-v1') {
+  if (doc?.['@type'] === 'ep.quorum' || (doc?.policy && Array.isArray(doc?.members) && typeof doc?.action_hash === 'string')) {
+    // EP-QUORUM-v1 multi-party (two-person rule). Composes the frozen
+    // single-signoff verifier once per member, then the fail-closed quorum
+    // predicate — same offline guarantee, no EP server.
+    kind = 'multi-party quorum (EP-QUORUM-v1)';
+    const rpId = doc.rp_id || doc.rpId || undefined;
+    result = verifyQuorum(doc, rpId ? { rpId } : {});
+  } else if (doc?.['@version'] === 'EP-BUNDLE-v1') {
     kind = 'bundle';
     const key = findKey(doc, ['issuer_public_key', 'public_key', 'publicKey']);
     result = key
@@ -145,6 +154,11 @@ for (const file of files) {
   console.log(`${ok ? '✅ VERIFIED' : '⛔ NOT VERIFIED'} — ${kind} — ${file}`);
   printChecks(result.checks);
   printAttestationAdvisory(result.attestation);
+  if (Array.isArray(result.members)) {
+    for (const m of result.members) {
+      console.log(`  ${m.valid ? '✓' : '✕'} signer${m.role ? ` [${m.role}]` : ''} ${m.approver || ''}`.trimEnd());
+    }
+  }
   if (!ok && result.error) console.log(`  reason: ${result.error}`);
   if (kind === 'bundle' && typeof result.verified === 'number') {
     console.log(`  ${result.verified}/${result.total} documents verified`);

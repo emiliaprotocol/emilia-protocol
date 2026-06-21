@@ -82,3 +82,22 @@ The protocol remains open while the company builds monetizable layers around it:
 - sector-specific policy packs
 - audit and evidence tooling
 - enterprise deployment and support
+
+## The long-term arc — why EP becomes inevitable, not just useful
+
+The near-term wedge and the long-term moat are different things, and both are now evidenced from the field.
+
+**The wedge that's converting: the verifiability gap.** The strongest signal is not "buyers want receipts" — it is that the people who *write oversight requirements* recognize, in one sentence, a problem they already have: **human oversight is easy to require and almost impossible to verify after the fact.** A California legislative committee consultant called this "very interesting" on first contact; a Joint Legislative Audit Committee staffer engaged against a $500M state fraud finding. EP turns "a human was in the loop" from an unfalsifiable claim into checkable evidence.
+
+**The moat: bounded claims, in the one market where honesty compounds.** Stating precisely what a receipt proves and does *not* prove is not a weakness — it is the entry credential into the only buyers that matter here (auditors, insurers, regulators), for whom an overselling competitor is disqualified the first time a claim fails under review, in a small community that talks. Honesty is the wedge into the skeptics; the durable moat underneath is open-core: the **format and verifier are free and permissionless** (that creates ubiquity), while the **operated trust root** — enrollment/approver directory, federated transparency log, revocation, compliance-grade evidence pipelines — is the revenue layer an organization cannot casually self-host.
+
+**The 5-year object: one verifiable receipt that carries everything that matters about an irreversible action —**
+- *who/what acted* — the agent's identity and its delegated authority (EP composed with a delegation layer such as DRP): the action carries a checkable "this agent was authorized to attempt this at all";
+- *who approved* — one or a quorum of named humans, device- and biometric-bound (the two-person rule, shipped today);
+- *bound to exactly what* — the canonical action hash, offline-verifiable forever;
+- *provably unaltered* — tamper-**evident** custody in an append-only transparency log (a public anchor of the log *root* is optional; the data never goes on-chain);
+- *with anomalies surfaced* — an advisory layer flagging velocity, rubber-stamping, structuring, and off-pattern approvals to **escalate** scrutiny, never to relax the deterministic gate.
+
+**Why inevitable.** Capability does not make a standard inevitable — public-key cryptography existed two decades before the browser padlock made its absence unacceptable. EP becomes obvious the same way: when a party with leverage makes the *absence* of a receipt unacceptable — an insurer's coverage condition on wire/benefit fraud, an auditor's controls framework, or a government AI-auditor registry (e.g., California AB-1405, which stands up an enrolled AI-auditor profession that needs something verifiable to audit against). The path is **precedent → recommendation → requirement.**
+
+**Design principles that keep this defensible:** EP binds, records, and verifies — it does not own the workflow, mint the identities, or become the dashboard. It composes with whatever agent-identity and policy standards win. It claims tamper-**evidence**, never tamper-proof. It is offline-verifiable, so a receipt stays valid even if EMILIA disappears — which is exactly why third parties can build on it without permission.
