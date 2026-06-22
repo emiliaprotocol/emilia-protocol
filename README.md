@@ -139,7 +139,7 @@ Eye observes. Handshake verifies. Signoff owns. Commit seals.
 | Red-team cases cataloged | 85 — [RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |
 | Security findings remediated | 31 |
 | Conformance (7/7) | `node conformance/ep-conformance-test.js https://www.emiliaprotocol.ai` |
-| Cross-language conformance | receipts · device signoffs · multi-party quorum — JS / Python / Go verifiers agree (`node conformance/run.mjs`) |
+| Cross-language conformance | 8 suites — receipts · device signoffs · multi-party quorum · revocation · time-attestation · trust-receipt · provenance · evidence-record — JS / Python / Go verifiers agree (`node conformance/run.mjs`) |
 | Handshake create p95 | 575ms at 50 VUs — [PERFORMANCE_PROOF.md](docs/operations/PERFORMANCE_PROOF.md) |
 
 ---
