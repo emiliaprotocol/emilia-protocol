@@ -706,3 +706,8 @@ export {
 
 // EP-QUORUM-v1 — multi-party (M-of-N / ordered) approval, additive over EP-SIGNOFF-v1.
 export { verifyQuorum } from './quorum.js';
+
+// EP-AEC-v1 (Authorization Evidence Chain) is an EXPERIMENTAL reference verifier in
+// ./evidence-chain.js. It is intentionally NOT re-exported here and NOT in package
+// "files" — it must not ship in the published SDK until its draft is posted. Import
+// it directly from './evidence-chain.js' for local/reference use.
