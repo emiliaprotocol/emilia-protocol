@@ -67,6 +67,30 @@ function canonicalize(value) {
 }
 
 /**
+ * EP canonicalization profile (RFC 8785 / JCS over an I-JSON profile).
+ *
+ * canonicalize() is byte-identical to RFC 8785 JCS for the value subset EP signs:
+ * strings, booleans, null, arrays, objects, and SAFE INTEGERS. It deliberately
+ * does NOT support non-integer reals: ECMAScript and Python/Go serialize floats
+ * differently (e.g. 2400000.0 -> "2400000" vs "2400000.0"), so a raw JSON float
+ * in signed material would canonicalize to different bytes across implementations
+ * and break cross-language verification. EP therefore requires non-integer
+ * quantities to be STRING-encoded (financial amounts already are), eliminating the
+ * floating-point canonicalization hazard entirely.
+ *
+ * isCanonicalizable() lets an issuer assert a value is within the profile BEFORE
+ * signing. It is a pure predicate (no throw), so it is safe to call anywhere.
+ * Returns true iff every scalar is a string, boolean, null, or safe integer.
+ */
+export function isCanonicalizable(value) {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return true;
+  if (typeof value === 'number') return Number.isInteger(value) && Number.isSafeInteger(value);
+  if (Array.isArray(value)) return value.every(isCanonicalizable);
+  if (typeof value === 'object') return Object.values(value).every(isCanonicalizable);
+  return false; // undefined, bigint, symbol, function — out of profile
+}
+
+/**
  * EP-QUORUM-v1 ordered-chain hash: the hex SHA-256 of the canonical signoff
  * context. Used to cryptographically link each ordered signoff to its
  * predecessor (context.prev_context_hash), so approval ORDER is proven by the

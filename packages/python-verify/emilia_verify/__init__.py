@@ -46,6 +46,32 @@ def canonicalize(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
+_SAFE_INT = 2 ** 53 - 1
+
+
+def is_canonicalizable(value: Any) -> bool:
+    """EP canonicalization I-JSON profile predicate (mirrors JS isCanonicalizable).
+
+    True iff every scalar is a string, bool, None, or safe integer. Non-integer
+    reals (Python float) are OUT of profile: json.dumps emits "2400000.0" where
+    ECMAScript emits "2400000", breaking byte-identical cross-language
+    canonicalization. Encode non-integer quantities as strings before signing.
+    """
+    if value is None or isinstance(value, str):
+        return True
+    if isinstance(value, bool):  # bool is a subclass of int — check before int
+        return True
+    if isinstance(value, float):
+        return False
+    if isinstance(value, int):
+        return -_SAFE_INT <= value <= _SAFE_INT
+    if isinstance(value, (list, tuple)):
+        return all(is_canonicalizable(v) for v in value)
+    if isinstance(value, dict):
+        return all(is_canonicalizable(v) for v in value.values())
+    return False
+
+
 def _b64url_decode(s: str) -> bytes:
     return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
 

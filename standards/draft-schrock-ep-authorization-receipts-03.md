@@ -195,6 +195,22 @@ salted hashes (as `beneficiary_account_hash` above) provided the
 executing system can recompute them; the binding property is preserved
 because the hash commits to the committed values.
 
+**I-JSON profile (normative).** To guarantee byte-identical canonicalization
+across independent implementations and languages, every value in signed
+material (the Action Object, the Authorization Context, and any other
+canonicalized object) MUST be a string, boolean, null, array, object, or an
+integer in the I-JSON safe range [-(2^53-1), 2^53-1] [RFC7493]. Non-integer
+real numbers MUST NOT appear; they MUST be carried as strings (monetary and
+decimal quantities are already string-encoded, e.g. `"amount": "2400000.00"`).
+This restriction exists because ECMAScript, Python, and Go serialize JSON
+floating-point values differently (e.g. `2400000.0` canonicalizes to
+`"2400000"` under ECMAScript number rules but `"2400000.0"` under a naive
+encoder), which would yield divergent canonical bytes and break cross-language
+verification. Within this profile, JCS canonicalization is deterministic and
+identical across implementations. Issuers SHOULD verify an object is within the
+profile before signing (reference verifiers expose an `isCanonicalizable`
+predicate); verifiers MAY reject out-of-profile material as malformed.
+
 ## 4. The Authorization Context
 
 For each required approver, the orchestrator constructs an

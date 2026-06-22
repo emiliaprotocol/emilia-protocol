@@ -202,6 +202,42 @@ func Canonicalize(v any) string {
 	}
 }
 
+// IsCanonicalizable reports whether v is within EP's I-JSON canonicalization
+// profile (mirrors JS isCanonicalizable / Python is_canonicalizable): every
+// scalar must be a string, bool, nil, or an integer. Non-integer reals are out of
+// profile because float serialization differs across implementations (Go's
+// json.Number preserves the source token, ECMAScript re-serializes), which would
+// break byte-identical cross-language canonicalization. Encode non-integer
+// quantities as strings before signing.
+func IsCanonicalizable(v any) bool {
+	switch val := v.(type) {
+	case nil, string, bool:
+		return true
+	case json.Number:
+		return !strings.ContainsAny(string(val), ".eE")
+	case float64:
+		return val == float64(int64(val))
+	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+		return true
+	case map[string]any:
+		for _, e := range val {
+			if !IsCanonicalizable(e) {
+				return false
+			}
+		}
+		return true
+	case []any:
+		for _, e := range val {
+			if !IsCanonicalizable(e) {
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
+}
+
 // encodeString serializes a string exactly as ECMAScript JSON.stringify does:
 // escape the seven shorthand controls and every other code point below U+0020,
 // and emit everything else (including non-ASCII and < > &) raw.
