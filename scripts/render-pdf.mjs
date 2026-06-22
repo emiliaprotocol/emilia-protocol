@@ -21,10 +21,11 @@ await page.emulateMedia({ media: 'print' });
 await page.pdf({
   path: resolve(outPath),
   printBackground: true,
-  landscape,
+  // Honor any CSS @page size (the deck declares @page { size: 1280px 720px }),
+  // so slide pages are exactly the slide size — no cutoff, no trailing black space.
+  // One-pagers declare no @page size, so they fall back to A4 portrait.
+  preferCSSPageSize: true,
   format: landscape ? undefined : 'A4',
-  width: landscape ? '1280px' : undefined,
-  height: landscape ? '720px' : undefined,
   margin: landscape ? { top: '0', bottom: '0', left: '0', right: '0' } : { top: '0.5in', bottom: '0.5in', left: '0.5in', right: '0.5in' },
 });
 await browser.close();

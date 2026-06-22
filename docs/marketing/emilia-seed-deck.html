@@ -9,17 +9,19 @@
     --gold:#B08D35; --gold-soft:#C9A961; --paper:#FAFAF9; --muted:#B7AE9E; --muted-2:#8E8676;
     --red:#E0584F; --green:#6FB07A;
   }
+  @page { size: 1280px 720px; margin: 0; }
   *{ box-sizing:border-box; margin:0; padding:0; }
-  html,body{ background:#0a0907; color:var(--paper);
+  html,body{ background:#0a0907; color:var(--paper); width:1280px;
     font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif; }
   .mono{ font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace; }
   .sans{ font-family:-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif; }
   section.slide{
     width:1280px; height:720px; position:relative; overflow:hidden;
     background:linear-gradient(160deg,var(--panel) 0%,var(--ink) 100%);
-    border:1px solid var(--line); padding:84px 96px; page-break-after:always;
+    border:1px solid var(--line); padding:84px 96px;
     display:flex; flex-direction:column;
   }
+  section.slide:not(:last-child){ page-break-after:always; break-after:page; }
   .kicker{ font-family:-apple-system,"Segoe UI",sans-serif; text-transform:uppercase;
     letter-spacing:0.22em; font-size:15px; color:var(--gold); margin-bottom:26px; }
   h1{ font-size:72px; line-height:1.04; letter-spacing:-0.01em; font-weight:600; }
