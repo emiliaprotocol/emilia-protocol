@@ -1,9 +1,10 @@
 # EMILIA Protocol
 
 [![CI](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml/badge.svg)](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/ci.yml)
+[![Verify Sample Receipt](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/verify-receipt-example.yml/badge.svg)](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/verify-receipt-example.yml)
 [![npm](https://img.shields.io/npm/v/@emilia-protocol/verify)](https://www.npmjs.com/package/@emilia-protocol/verify)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
-[![IETF Internet-Draft](https://img.shields.io/badge/IETF-draft--schrock--ep--authorization--receipts--01-blue)](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/)
+[![IETF Internet-Draft](https://img.shields.io/badge/IETF-draft--schrock--ep--authorization--receipts--02-blue)](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/)
 [![Discord](https://img.shields.io/badge/Discord-join%20the%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/MSJXjEtD4)
 
 ---
