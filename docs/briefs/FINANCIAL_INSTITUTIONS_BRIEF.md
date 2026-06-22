@@ -1,5 +1,10 @@
 # Financial Institutions Brief
 
+## What's new (June 2026)
+- **3 languages / 8 conformance suites:** JavaScript, Python, and Go verifiers agree on a public adversarial conformance suite — independently re-run and confirmed by an outside implementer this month (the first external reliance event).
+- **Payment-redirect / BEC defense, demonstrably:** the payee account is *inside* the signed action, so swapping it after approval breaks verification rather than sailing through. Run `npx -y @emilia-protocol/crash-test --scenario procurement` to watch it reject a post-approval account swap, offline.
+- **Composition (EP-AEC):** EP now composes with delegation and policy-permit receipts from the broader IETF cluster into one offline ALLOW/DENY — a relying party can require *both* a policy check *and* a named human's authorization, bound to the same action.
+
 ## Problem
 Many of the most expensive failures in finance happen inside approved-looking workflows. EP strengthens the final mile of authorization before execution.
 

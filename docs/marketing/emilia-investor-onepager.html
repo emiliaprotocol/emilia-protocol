@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EMILIA Protocol — Investor One-Pager</title>
+<style>
+html { font-size: 10pt; color: #1a1a1a; background-color: #fdfdfd; }
+body { margin: 0 auto; max-width: 40em; padding: 44px 50px; hyphens: auto; overflow-wrap: break-word;
+  text-rendering: optimizeLegibility; font-kerning: normal; line-height: 1.45;
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif; }
+@media print { html { background-color: white; } body { background-color: transparent; color: black; font-size: 10.5pt; }
+  p, h2 { orphans: 3; widows: 3; } h2 { page-break-after: avoid; } }
+header { margin-bottom: 1.4em; }
+.kicker { font-family: -apple-system,"Segoe UI",sans-serif; text-transform: uppercase; letter-spacing: 0.16em; font-size: 0.72em; color: #9a7a22; margin: 0 0 0.5em; }
+h1.title { font-size: 1.55em; line-height: 1.15; margin: 0 0 0.2em; letter-spacing: -0.01em; }
+p.subtitle { font-size: 1em; color: #4a4a4a; margin: 0; font-style: italic; }
+h2 { font-size: 0.95em; text-transform: uppercase; letter-spacing: 0.06em; margin: 1.5em 0 0.35em;
+  font-family: -apple-system,"Segoe UI",sans-serif; color: #1a1a1a; }
+p { margin: 0.55em 0; }
+strong { font-weight: 600; }
+hr { border: none; border-top: 1px solid #1a1a1a; margin: 1em 0; }
+ul { padding-left: 1.2em; margin: 0.5em 0; }
+li { margin: 0.28em 0; }
+.lede { font-size: 1.08em; line-height: 1.4; }
+.gold { color: #9a7a22; }
+.proof { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 0.78em; color: #333;
+  border-top: 1px solid #cfcfcf; border-bottom: 1px solid #cfcfcf; padding: 0.7em 0; margin: 1.2em 0; }
+.contact { font-family: -apple-system,"Segoe UI",sans-serif; font-size: 0.86em; color: #333; margin-top: 1.4em; }
+.cols { display: flex; gap: 2em; }
+.cols > div { flex: 1; }
+</style>
+</head>
+<body>
+<header>
+  <p class="kicker">Seed · 2026 · Confidential</p>
+  <h1 class="title">EMILIA Protocol — the seatbelt for the agentic era</h1>
+  <p class="subtitle">Verifiable human authorization for the irreversible actions AI agents are starting to take.</p>
+</header>
+
+<p class="lede">For fifty years, security answered <em>"who is allowed in?"</em> The dominant users of software are now AI agents that move money, change records, and delete data on the fly. The unanswered question is <strong>authorization at the moment of action: who approved <span class="gold">that exact action</span>, before it executed?</strong> "A human was in the loop" is, today, an unfalsifiable claim — and regulators (EU AI Act Art. 14) now require oversight no one can verify after the fact.</p>
+
+<h2>What EP is</h2>
+<p>Before a high-risk action runs, a <strong>named human</strong> approves the exact action on their own device (WebAuthn / Face ID). EP emits a signed <strong>authorization receipt</strong> anyone can verify <strong>offline, no account, without trusting our servers</strong> — and it stays valid even if EP disappears. <em>Decision logs are testimony; EP produces receipts.</em></p>
+
+<h2>Why it's real, and checkable</h2>
+<ul>
+<li><strong>3 languages / 8 suites:</strong> JS, Python, Go verifiers agree on 8 adversarial cross-language conformance suites — the IETF bar for a standard.</li>
+<li><strong>Independently verified (2026):</strong> an outside implementer ran the crash-test + conformance on their own machine and confirmed it — the first external reliance event.</li>
+<li><strong>Formal + standardized:</strong> machine-checked TLA+ &amp; Alloy in CI; authorization-receipt and quorum Internet-Drafts posted at the IETF.</li>
+</ul>
+
+<h2>The position — convergence, not competition</h2>
+<p>A dozen-plus efforts now define "a receipt for an agent's action." EP authored the <strong>Authorization Evidence Chain</strong> that composes them into one offline decision — and supplies the one leg none of the others do: <strong>a named human's authorization.</strong> EP is the convergence point of the field.</p>
+
+<div class="cols">
+<div>
+<h2>Wedge: healthcare</h2>
+<p>The two-person rule is <strong>already mandated</strong> there (the high-alert-med double-check). EP makes it verifiable, PHI-free, and Article-14-aligned. B2B2H via healthcare-AI vendors + procurement platforms.</p>
+</div>
+<div>
+<h2>Model: open core</h2>
+<p>Format &amp; verifier are free (ubiquity); the <strong>operated trust root</strong> — directory, transparency log, revocation, evidence pipelines — is the revenue layer an org can't casually self-host.</p>
+</div>
+</div>
+
+<h2>Why inevitable</h2>
+<p>Public-key crypto existed two decades before the browser padlock made its <em>absence</em> unacceptable. EP becomes obvious the same way — an insurer's coverage condition, an auditor's framework, or a government AI-auditor registry making the <strong>absence of a receipt</strong> unacceptable. Precedent → recommendation → requirement.</p>
+
+<div class="proof">
+Open standard (Apache-2.0) · IETF Internet-Drafts · 3 verifiers / 8 conformance suites · independently re-verified · TLA+ &amp; Alloy in CI · NIST AI RMF + EU AI Act mappings · try it offline: npx&nbsp;@emilia-protocol/crash-test
+</div>
+
+<p class="contact"><strong>Iman Schrock</strong> — Founder, EMILIA Protocol · team@emiliaprotocol.ai · emiliaprotocol.ai · github.com/emiliaprotocol</p>
+</body>
+</html>

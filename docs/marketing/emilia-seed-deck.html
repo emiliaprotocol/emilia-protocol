@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>EMILIA Protocol — Seed Deck</title>
+<style>
+  :root{
+    --ink:#0C0A09; --panel:#16130F; --panel-2:#1E1A14; --line:#2A251D;
+    --gold:#B08D35; --gold-soft:#C9A961; --paper:#FAFAF9; --muted:#B7AE9E; --muted-2:#8E8676;
+    --red:#E0584F; --green:#6FB07A;
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ background:#0a0907; color:var(--paper);
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif; }
+  .mono{ font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace; }
+  .sans{ font-family:-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif; }
+  section.slide{
+    width:1280px; height:720px; position:relative; overflow:hidden;
+    background:linear-gradient(160deg,var(--panel) 0%,var(--ink) 100%);
+    border:1px solid var(--line); padding:84px 96px; page-break-after:always;
+    display:flex; flex-direction:column;
+  }
+  .kicker{ font-family:-apple-system,"Segoe UI",sans-serif; text-transform:uppercase;
+    letter-spacing:0.22em; font-size:15px; color:var(--gold); margin-bottom:26px; }
+  h1{ font-size:72px; line-height:1.04; letter-spacing:-0.01em; font-weight:600; }
+  h2{ font-size:46px; line-height:1.1; letter-spacing:-0.01em; font-weight:600; margin-bottom:28px; }
+  p.lede{ font-size:27px; line-height:1.4; color:var(--paper); max-width:30em; }
+  p.sub{ font-size:24px; line-height:1.4; color:var(--muted); margin-top:18px; max-width:32em; }
+  ul{ list-style:none; margin-top:14px; }
+  li{ font-size:25px; line-height:1.5; color:var(--paper); margin:14px 0; padding-left:30px; position:relative; }
+  li::before{ content:"—"; position:absolute; left:0; color:var(--gold); }
+  .muted{ color:var(--muted); } .gold{ color:var(--gold-soft); } .red{ color:var(--red); } .green{ color:var(--green); }
+  .foot{ position:absolute; bottom:40px; left:96px; right:96px; display:flex; justify-content:space-between;
+    font-family:-apple-system,"Segoe UI",sans-serif; font-size:14px; color:var(--muted-2); letter-spacing:0.04em; }
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:26px 56px; margin-top:10px; }
+  .cell .n{ font-size:40px; color:var(--gold-soft); font-weight:600; }
+  .cell .l{ font-size:20px; color:var(--muted); margin-top:4px; line-height:1.35; }
+  .big{ font-size:40px; line-height:1.18; max-width:24em; }
+  .center{ justify-content:center; }
+  .quote{ font-size:34px; line-height:1.3; font-style:italic; max-width:26em; }
+  .tag{ display:inline-block; font-family:-apple-system,sans-serif; font-size:15px; letter-spacing:0.08em;
+    color:var(--ink); background:var(--gold-soft); padding:5px 12px; border-radius:3px; margin-bottom:24px; text-transform:uppercase; }
+</style>
+</head>
+<body>
+
+<section class="slide center">
+  <p class="kicker">EMILIA Protocol</p>
+  <h1>The seatbelt for<br/>the agentic era.</h1>
+  <p class="sub" style="margin-top:34px;">Verifiable human authorization for the irreversible actions AI agents are starting to take — an open standard, verifiable offline by anyone.</p>
+  <div class="foot"><span>Seed — 2026</span><span class="mono">team@emiliaprotocol.ai</span></div>
+</section>
+
+<section class="slide">
+  <p class="kicker">The problem</p>
+  <h2>Fifty years of security asked <span class="muted">"who is allowed in?"</span></h2>
+  <p class="lede">The dominant users of software are no longer humans — they're AI agents that move money, change records, and delete data on the fly. The unanswered question is no longer authentication. It's <span class="gold">authorization at the moment of action:</span></p>
+  <p class="big" style="margin-top:34px;"><strong>Who approved <span class="gold">that exact action</span> — before it executed?</strong></p>
+  <div class="foot"><span>01 · Problem</span><span>EMILIA Protocol</span></div>
+</section>
+
+<section class="slide">
+  <p class="kicker">Why now</p>
+  <h2>"A human was in the loop" is <span class="red">unfalsifiable.</span></h2>
+  <ul>
+    <li>CISOs are <strong>blocking agent deployment</strong> — sitting on AI budget they can't spend because compliance can't answer "who authorized that?"</li>
+    <li>Regulators now <strong>require</strong> human oversight (EU AI Act Art. 14) — but no one can <strong>verify</strong> it after the fact.</li>
+    <li>Decision logs are <span class="muted">testimony</span> — what the operator says happened, in a database the operator controls.</li>
+  </ul>
+  <div class="foot"><span>02 · Why now</span><span>EMILIA Protocol</span></div>
+</section>
+
+<section class="slide">
+  <p class="kicker">What EP is</p>
+  <h2>Authorization receipts.</h2>
+  <p class="lede">Before a high-risk action runs, a <strong>named human</strong> approves the <em>exact</em> action on their own device (WebAuthn / Face ID). EP emits a signed evidence packet anyone can verify <span class="gold">offline, with no account, without trusting our servers.</span></p>
+  <p class="sub">Alter one byte and verification fails. The receipt stays valid even if EMILIA disappears. <span class="mono gold">npx @emilia-protocol/crash-test</span></p>
+  <div class="foot"><span>03 · Product</span><span>Decision logs are testimony. EP produces receipts.</span></div>
+</section>
+
+<section class="slide">
+  <p class="kicker">The proof — this is real, and checkable</p>
+  <h2>Not a pitch. A protocol.</h2>
+  <div class="grid">
+    <div class="cell"><div class="n">3 langs · 8 suites</div><div class="l">JavaScript / Python / Go verifiers agree on 8 adversarial cross-language conformance suites — the IETF bar for a standard.</div></div>
+    <div class="cell"><div class="n">Independently verified</div><div class="l">An outside implementer ran the crash-test + conformance on their own machine and confirmed it (2026). First external reliance event.</div></div>
+    <div class="cell"><div class="n">Machine-checked</div><div class="l">TLA+ safety properties + Alloy relational models, verified in CI on every change.</div></div>
+    <div class="cell"><div class="n">IETF drafts</div><div class="l">Authorization receipts + multi-party quorum posted as Internet-Drafts; evidence-chain forthcoming.</div></div>
+  </div>
+  <div class="foot"><span>04 · Proof</span><span>EMILIA Protocol</span></div>
+</section>
+
+<section class="slide">
+  <p class="kicker">The position</p>
+  <h2>We didn't enter a crowded field.<br/>We became its center.</h2>
+  <p class="lede">A dozen-plus efforts now define "a receipt for an agent's action" — delegation, policy-permit, decision, compliance. They all converged on the same substrate. <strong>None composes them, and only EP binds an accountable human.</strong></p>
+  <p class="sub">EP authored the <span class="gold">Authorization Evidence Chain</span> — the thin layer that verifies the whole chain for one action, offline. EP is the convergence point, and the only one with the human leg.</p>
+  <div class="foot"><span>05 · Moat</span><span>EMILIA Protocol</span></div>
+</section>
+
+<section class="slide">
+  <p class="kicker">Wedge — a market where the two-person rule is already law</p>
+  <h2>Healthcare.</h2>
+  <p class="lede">EP's two-person rule is <strong>already mandated practice</strong>: the ISMP / Joint Commission <em>independent double-check</em> for high-alert medications. EP turns that attestation into tamper-evident, offline-verifiable evidence — <span class="gold">PHI-free by construction.</span></p>
+  <p class="sub">Same primitive covers capital procurement (kills payment-redirect fraud) and answers Article 14 for medical AI. Go-to-market: healthcare-AI vendors + procurement platforms embed EP (B2B2H), not direct hospital sales.</p>
+  <div class="foot"><span>06 · Healthcare</span><span>npx @emilia-protocol/crash-test --scenario clinical</span></div>
+</section>
+
+<section class="slide">
+  <p class="kicker">Market</p>
+  <h2>Where high-risk actions live.</h2>
+  <div class="grid">
+    <div class="cell"><div class="n">Government</div><div class="l">Fraud, benefit routing, operator overrides. A $500M state fraud finding engaged.</div></div>
+    <div class="cell"><div class="n">Finance</div><div class="l">Payment-change / beneficiary fraud, treasury disbursements, privileged approvals.</div></div>
+    <div class="cell"><div class="n">Healthcare</div><div class="l">High-alert med double-check, capital procurement, Article 14 medical AI.</div></div>
+    <div class="cell"><div class="n">Agents</div><div class="l">Execution controls for autonomous and agentic systems across all of the above.</div></div>
+  </div>
+  <div class="foot"><span>07 · Market</span><span>EMILIA Protocol</span></div>
+</section>
+
+<section class="slide">
+  <p class="kicker">Business model — open core</p>
+  <h2>The standard is free.<br/>The trust root is the business.</h2>
+  <ul>
+    <li><strong>Free &amp; permissionless:</strong> the format and verifier — that creates ubiquity.</li>
+    <li><strong>Revenue layer:</strong> the operated trust root — enrollment / approver directory, federated transparency log, revocation, compliance-grade evidence pipelines — that an organization cannot casually self-host.</li>
+    <li><strong>Plus:</strong> hosted verification, sector policy packs, audit &amp; evidence tooling, enterprise support.</li>
+  </ul>
+  <div class="foot"><span>08 · Model</span><span>EMILIA Protocol</span></div>
+</section>
+
+<section class="slide">
+  <p class="kicker">Why inevitable</p>
+  <h2>Precedent → recommendation → requirement.</h2>
+  <p class="lede">Public-key crypto existed two decades before the browser padlock made its <em>absence</em> unacceptable. EP becomes obvious the same way: when a party with leverage makes the <strong>absence of a receipt</strong> unacceptable —</p>
+  <ul>
+    <li>an insurer's coverage condition on wire / benefit fraud,</li>
+    <li>an auditor's controls framework,</li>
+    <li>a government AI-auditor registry that needs something verifiable to audit against.</li>
+  </ul>
+  <div class="foot"><span>09 · Inevitability</span><span>EMILIA Protocol</span></div>
+</section>
+
+<section class="slide center">
+  <p class="tag">The ask</p>
+  <p class="quote">"The required human approvals existed for this exact action before it executed — and I verified that myself, without trusting the vendor, the operator, or any log."</p>
+  <p class="sub" style="margin-top:36px;">EMILIA Protocol · open standard, IETF-track, independently verified · <span class="mono gold">team@emiliaprotocol.ai</span> · emiliaprotocol.ai</p>
+  <div class="foot"><span>Seed — 2026</span><span>github.com/emiliaprotocol</span></div>
+</section>
+
+</body>
+</html>

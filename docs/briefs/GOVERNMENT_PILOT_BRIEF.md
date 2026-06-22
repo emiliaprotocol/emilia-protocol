@@ -1,5 +1,10 @@
 # Government Pilot Brief
 
+## What's new (June 2026)
+- **3 languages / 8 conformance suites**, independently re-run and confirmed by an outside implementer this month — audit evidence a relying party can check without trusting the vendor.
+- **Composition (EP-AEC):** EP composes delegation + policy-permit + human-authorization receipts into one offline ALLOW/DENY — the convergence layer for the emerging IETF agent-authorization standards, not one of a dozen competing formats.
+- **Regulated-domain reach:** EU AI Act Article 14 alignment plus a healthcare profile (the mandated independent double-check, PHI-free receipts) extend the same primitive across oversight regimes.
+
 ## Problem
 Government fraud and unauthorized action often occur inside approved-looking workflows. Authentication alone is not enough.
 
