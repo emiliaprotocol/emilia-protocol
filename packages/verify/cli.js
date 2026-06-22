@@ -19,6 +19,7 @@ import {
   verifyTrustReceipt,
   verifyQuorum,
   verifyRevocation,
+  verifyProvenanceOffline,
 } from './index.js';
 
 const args = process.argv.slice(2);
@@ -86,11 +87,19 @@ if (args[0] === 'revocation') {
 
 let suppliedKey = null;
 let verificationPath = null;
+let delegationKeysPath = null;
 const files = [];
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--key') suppliedKey = args[++i];
   else if (args[i] === '--verification') verificationPath = args[++i];
+  else if (args[i] === '--delegation-keys') delegationKeysPath = args[++i];
   else files.push(args[i]);
+}
+
+let delegationKeys = {};
+if (delegationKeysPath) {
+  try { delegationKeys = JSON.parse(readFileSync(delegationKeysPath, 'utf8')); }
+  catch (err) { console.error(`✕ --delegation-keys not readable JSON (${err.message})`); process.exit(1); }
 }
 
 // PIP-007 §2 advisory: print the attestation report when a result carries one.
@@ -133,7 +142,13 @@ for (const file of files) {
   let kind = null;
   let result = null;
 
-  if (doc?.['@type'] === 'ep.quorum' || (doc?.policy && Array.isArray(doc?.members) && typeof doc?.action_hash === 'string')) {
+  if (doc?.['@version'] === 'EP-PROVENANCE-CHAIN-v1') {
+    // EP-PROVENANCE-CHAIN-v1: human-authority root → delegation chain → action.
+    // Embedded receipts carry their own verification material; pinned delegator
+    // proof keys come from --delegation-keys.
+    kind = 'provenance chain (EP-PROVENANCE-CHAIN-v1)';
+    result = verifyProvenanceOffline(doc, { delegationKeys });
+  } else if (doc?.['@type'] === 'ep.quorum' || (doc?.policy && Array.isArray(doc?.members) && typeof doc?.action_hash === 'string')) {
     // EP-QUORUM-v1 multi-party (two-person rule). Composes the frozen
     // single-signoff verifier once per member, then the fail-closed quorum
     // predicate — same offline guarantee, no EP server.

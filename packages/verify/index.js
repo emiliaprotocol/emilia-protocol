@@ -87,6 +87,10 @@ export { canonicalize };
 // can answer "has this authorization been revoked by a statement I hold?".
 export { verifyRevocation, isRevoked, REVOCATION_VERSION } from './revocation.js';
 
+// EP-PROVENANCE-CHAIN-v1: the human-authority root for downstream machine
+// delegation/execution — composes verifyTrustReceipt + scope-containment checks.
+export { verifyProvenanceOffline, PROVENANCE_VERSION } from './provenance.js';
+
 function hashPair(a, b) {
   const sorted = [a, b].sort();
   return sha256(sorted[0] + sorted[1]);
