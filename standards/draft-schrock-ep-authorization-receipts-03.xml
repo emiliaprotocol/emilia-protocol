@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rfc xmlns:xi="http://www.w3.org/2001/XInclude"
-     docName="draft-schrock-ep-authorization-receipts-02"
+     docName="draft-schrock-ep-authorization-receipts-03"
      category="info" ipr="trust200902" submissionType="IETF"
      version="3" tocInclude="true" sortRefs="true" symRefs="true">
   <front>
     <title abbrev="EP Authorization Receipts">Authorization Receipts for High-Risk Agent Actions</title>
-    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-02"/>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-03"/>
     <author fullname="Iman Schrock">
       <organization>EMILIA Protocol, Inc.</organization>
       <address>
@@ -241,7 +241,13 @@
       <ul>
         <li><tt>nonce</tt> <bcp14>MUST</bcp14> be at least 128 bits of
         CSPRNG output and <bcp14>MUST</bcp14> be globally unique per
-        authorization attempt. It is the consumption key for G3.</li>
+        authorization attempt. It is the consumption key for G3, and is
+        the receipt's freshness mechanism in the sense of the Entity
+        Attestation Token (RFC 9711): a verifier-relevant nonce, here held
+        to a 128-bit floor (twice the EAT minimum). EP does not treat a
+        timestamp alone as freshness; absolute time, where a relying party
+        requires it, is asserted by an independent authority rather than by
+        the operator.</li>
         <li><tt>policy_hash</tt> commits to the exact policy version
         evaluated. A signature over a context with policy_hash X
         <bcp14>MUST NOT</bcp14> satisfy a requirement evaluated under
@@ -670,6 +676,31 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
       pre-execution authorization. A complete deployment benefits from
       both: EP proves the action was authorized; receiver attestation
       proves what then actually occurred.</t>
+      <t><strong>AgentROA (draft-nivalto-agentroa-route-authorization),
+      AIIP, and CIRP</strong> define machine-side, per-hop execution and
+      route receipts for agent actions under delegated authority; none
+      binds a named, accountable <em>human</em> to the action. EP supplies
+      that human-authority root, and its delegation chain shares AgentROA's
+      monotonic ("tighten-only") scope-narrowing discipline.</t>
+      <t><strong>The Entity Attestation Token (RFC 9711, RATS)</strong>
+      attests the <em>agent or platform</em> -- model, keys, posture; EP
+      attests the <em>human authorization</em>. The two are orthogonal and
+      composable: an EAT says the machine is what it claims; an EP receipt
+      says a named person approved the exact action.</t>
+      <t><strong>OAuth Rich Authorization Requests (RFC 9396)</strong>
+      standardizes structured, fine-grained authorization detail; an EP
+      Action Object <bcp14>MAY</bcp14> be expressed as an
+      <tt>authorization_details</tt> element, so a receipt records exactly
+      the RAR-described action a human approved. <strong>Transaction Tokens
+      (draft-ietf-oauth-transaction-tokens)</strong> propagate workload and
+      agent authorization context across a machine call chain; EP is the
+      human-authority root from which such a chain descends.</t>
+      <t><strong>Evidence Record Syntax (RFC 4998)</strong> preserves
+      signed evidence across algorithm aging by periodic re-timestamping.
+      EP applies the same approach to long-lived receipts via an
+      evidence-record renewal chain, so a receipt verifiable today remains
+      verifiable after its original algorithms weaken -- a property the
+      10-25+ year retention schedules of government records require.</t>
     </section>
     <section>
       <name>Security Considerations</name>

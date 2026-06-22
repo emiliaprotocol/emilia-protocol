@@ -1,5 +1,5 @@
 # Authorization Receipts for High-Risk Agent Actions (EP)
-## draft-schrock-ep-authorization-receipts-02
+## draft-schrock-ep-authorization-receipts-03
 
 ```
 Network Working Group                                         I. Schrock
@@ -222,7 +222,12 @@ Rules:
 
 - `nonce` MUST be at least 128 bits of CSPRNG output and MUST be
   globally unique per authorization attempt. It is the consumption key
-  for G3.
+  for G3, and is the receipt's freshness mechanism in the sense of the
+  Entity Attestation Token (RFC 9711): a verifier-relevant nonce, here
+  held to a 128-bit floor (twice the EAT minimum). EP does not treat a
+  timestamp alone as freshness; absolute time, where a relying party
+  requires it, is asserted by an independent authority rather than by
+  the operator.
 - `policy_hash` commits to the exact policy version evaluated. A
   signature over a context with policy_hash X MUST NOT satisfy a
   requirement evaluated under policy_hash Y, even for the same
@@ -584,6 +589,33 @@ authorizes the action. Complementary layers.
 sign what it observed, post-hoc. EP is pre-execution authorization.
 A complete deployment benefits from both: EP proves the action was
 authorized; receiver attestation proves what then actually occurred.
+
+**AgentROA (draft-nivalto-agentroa-route-authorization), AIIP, and
+CIRP** define machine-side, per-hop execution and route receipts for
+agent actions under delegated authority; none binds a named, accountable
+*human* to the action. EP supplies that human-authority root, and its
+delegation chain shares AgentROA's monotonic ("tighten-only")
+scope-narrowing discipline.
+
+**The Entity Attestation Token (RFC 9711, RATS)** attests the *agent or
+platform* — model, keys, posture; EP attests the *human authorization*.
+The two are orthogonal and composable: an EAT says the machine is what
+it claims; an EP receipt says a named person approved the exact action.
+
+**OAuth Rich Authorization Requests (RFC 9396)** standardizes
+structured, fine-grained authorization detail; an EP Action Object MAY
+be expressed as an `authorization_details` element, so a receipt records
+exactly the RAR-described action a human approved. **Transaction Tokens
+(draft-ietf-oauth-transaction-tokens)** propagate workload and agent
+authorization context across a machine call chain; EP is the
+human-authority root from which such a chain descends.
+
+**Evidence Record Syntax (RFC 4998)** preserves signed evidence across
+algorithm aging by periodic re-timestamping. EP applies the same
+approach to long-lived receipts via an evidence-record renewal chain, so
+a receipt verifiable today remains verifiable after its original
+algorithms weaken — a property the 10-25+ year retention schedules of
+government records require.
 
 ## 11. Security Considerations
 

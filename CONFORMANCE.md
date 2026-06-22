@@ -47,7 +47,8 @@ EP-QUORUM-v1             — 11 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-REVOCATION-v1         —  6 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-TIME-ATTESTATION-v1   —  6 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-TRUST-RECEIPT (§6.2)  —  4 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-PROVENANCE-CHAIN-v1   —  4 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-PROVENANCE-CHAIN-v1   —  6 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-EVIDENCE-RECORD-v1    —  5 vectors   JavaScript ✓   Python ✓   Go ✓
 
 ✅ all suites — three independent implementations agree.
 ```
