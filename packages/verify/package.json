@@ -1,7 +1,7 @@
 {
   "name": "@emilia-protocol/verify",
-  "version": "1.4.0",
-  "description": "Zero-dependency offline verification for EP trust receipts, Merkle anchors, commitment proofs, Class-A WebAuthn device signoffs, and federated cross-operator receipts (PIP-006). Node build uses built-in crypto; the /web build runs in any browser, edge, or Deno via Web Crypto. No EP infrastructure required.",
+  "version": "1.5.0",
+  "description": "Zero-dependency offline verification for EP authorization receipts: Ed25519 receipts, Merkle anchors, commitment proofs, Class-A WebAuthn device signoffs, multi-party quorum (M-of-N / ordered, two-person rule), portable revocation, trusted-time attestation, provenance chains, long-term evidence records, and federated cross-operator receipts (PIP-006). Node uses built-in crypto; the /web build runs in any browser, edge, or Deno via Web Crypto. No EP infrastructure required.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "index.js",
@@ -22,6 +22,11 @@
     "index.js",
     "web.js",
     "federation.js",
+    "quorum.js",
+    "revocation.js",
+    "provenance.js",
+    "time-attestation.js",
+    "evidence-record.js",
     "cli.js",
     "index.d.ts",
     "README.md",
@@ -52,7 +57,7 @@
   },
   "author": "EMILIA Protocol, Inc.",
   "scripts": {
-    "test": "node --test test.js web.test.js federation.test.js trust-receipt.test.js quorum.test.js cli.test.js"
+    "test": "node --test test.js web.test.js federation.test.js trust-receipt.test.js quorum.test.js revocation.test.js time-attestation.test.js no-symmetric.test.js cli.test.js"
   },
   "bin": {
     "emilia-verify": "./cli.js"

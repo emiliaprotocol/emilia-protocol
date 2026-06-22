@@ -35,6 +35,44 @@ Versioning model: Protocol spec and reference repo share the root version (1.0.x
 - **Self-serve observe-mode pilot** — `/pilot/sandbox`: provision a scoped key, run your own actions through the live adapters in observe mode, pull an automated would-have-been-held report.
 - **Amount-tiered escalation** — ≥ $50K single accountable signoff, ≥ $1M dual authorization (`lib/guard-policies.js`).
 
+## [@emilia-protocol/verify 1.5.0] — 2026-06-21
+
+The offline verifier grows from receipts/signoffs/quorum to the full EP artifact
+surface — and, critically, every artifact type now verifies identically across
+**three independent implementations (JavaScript, Python, Go)** over a shared
+cross-language conformance suite (8 suites, 58 vectors, all green in CI). This is
+the interoperability bar for a real standard.
+
+### Added (all offline, asymmetric, fail-closed)
+- **Multi-party quorum hardening** — `distinct_keys` (no single device key fills
+  two slots) and a **strong cryptographic ordering chain** (`ordered_chain` /
+  `prev_context_hash`): in ordered quorums the sequence is proven by the
+  signatures, not by operator-asserted timestamps.
+- **Portable revocation** (`verifyRevocation`, `isRevoked`) + a
+  `verify revocation` CLI subcommand — checks a signed EP-REVOCATION-v1 statement
+  offline, fail-closed, honest about the absence-of-statement boundary.
+- **Trusted-time attestation** (`verifyTimeAttestation`, EP-TIME-ATTESTATION-v1) —
+  an independent, key-pinned proof of *when*.
+- **Provenance chain** (`verifyProvenanceOffline`, EP-PROVENANCE-CHAIN-v1) —
+  human-authority root → delegation chain → action, with scope containment AND
+  **monotonic constraint narrowing** (a child delegation cannot relax a parent's
+  constraint).
+- **Long-term evidence record** (`verifyEvidenceRecord`, EP-EVIDENCE-RECORD-v1) —
+  RFC 4998-style renewal chain so a receipt's non-repudiation survives algorithm
+  aging (re-timestamp under a stronger hash before the old one weakens).
+- CLI auto-detects provenance chains; `--delegation-keys` / `--revocations` options.
+
+### Security
+- **No-symmetric-key invariant**, enforced in CI: no HMAC / shared-secret /
+  symmetric primitive appears anywhere on the verification trust path — the
+  property that distinguishes an EP receipt from a forgeable HMAC-chained log.
+
+### Fixed
+- **Packaging** — the published `files` list now includes `quorum.js`,
+  `revocation.js`, `provenance.js`, `time-attestation.js`, and
+  `evidence-record.js`, which `index.js` re-exports. (Prior packaging omitted
+  `quorum.js`; installing and importing the package now resolves cleanly.)
+
 ## [1.1.0] — 2026-04-04
 
 ### Highlights
