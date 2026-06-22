@@ -17,8 +17,9 @@ const AUDIENCES = [
 const PREDICATE = [
   ['Threshold or order', 'M-of-N (any two of three controllers) or a strict sequence (program officer → authorizing official → inspector general). The policy names which.'],
   ['Each signer bound to the exact action', 'Every approval covers the same action hash — the same destination, amount, and parameters. No one signs a summary; everyone signs the bytes.'],
-  ['Distinct humans', 'Separation of duties is enforced, not assumed: one person cannot fill two seats, and the initiator cannot approve their own request.'],
+  ['Distinct humans — and distinct keys', 'Separation of duties is enforced, not assumed: one person cannot fill two seats, the initiator cannot approve their own request, and no single device key can fill two seats under two names.'],
   ['Bounded window', 'Signatures must land close enough in time to describe one decision, not a stale collection.'],
+  ['Provable order, not just timestamps', 'In strong ordered mode each approval is cryptographically chained to the one before it — so the sequence is proven by the signatures themselves, and no one, including the operator, can reorder or backdate an approval undetected.'],
   ['Fail-closed', 'If any element is missing, mismatched, or unverifiable, the quorum is not satisfied — and the action does not proceed.'],
 ];
 

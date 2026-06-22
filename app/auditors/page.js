@@ -119,10 +119,13 @@ export default function AuditorsPage() {
           <div style={{ fontWeight: 700, fontSize: 14.5, color: color.t1, marginBottom: 6 }}>The honest boundary: what offline verification does not prove</div>
           <p style={{ fontSize: 13.5, color: color.t2, lineHeight: 1.65, margin: 0 }}>
             Offline verification proves the artifact is <strong>authentic, intact, and bound to the exact action</strong>.
-            Two properties are server-state by nature and live with the auditee: <strong>one-time use</strong> (that a
-            signoff was consumed exactly once) and <strong>revocation</strong> (that authority was current at execution).
-            The question to ask the auditee: <em>&ldquo;Show me your consumption and revocation records for this
-            signoff_id.&rdquo;</em> A conformant deployment rejects replays before any state changes.
+            A revocation can also be evidenced offline: a <strong>portable, signed revocation statement</strong>
+            (EP-REVOCATION-v1) is checkable with <code>npx @emilia-protocol/verify revocation</code>, fail-closed, with no
+            EP server. What offline checking cannot prove is a <strong>negative</strong> — the <em>absence</em> of a
+            revocation you were never handed (a liveness/transparency problem), and <strong>one-time use</strong> (that a
+            signoff was consumed exactly once) remains server-state. The question to ask the auditee:
+            <em>&ldquo;Show me your consumption record and any revocation statement for this signoff_id.&rdquo;</em> A
+            conformant deployment rejects replays before any state changes.
           </p>
         </div>
 

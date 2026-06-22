@@ -157,8 +157,9 @@ Members:
 | `mode` | REQUIRED | string (enum) | `threshold` or `ordered` (Section 4). |
 | `required` | REQUIRED | integer ≥ 1 | The quorum size *k*. |
 | `approvers` | REQUIRED | array | The roster of eligible `{ role, approver }` slots. MUST be non-empty. |
-| `distinct_humans` | OPTIONAL (default `true`) | boolean | When true, no approver identifier may fill more than one slot. Implementations MUST treat a missing value as `true`. |
+| `distinct_humans` | OPTIONAL (default `true`) | boolean | When true, no approver identifier may fill more than one slot, AND no single device key may fill more than one slot (Section 5, checks 5 and 5a). Implementations MUST treat a missing value as `true`. |
 | `window_sec` | OPTIONAL (default `900`) | integer > 0 | Maximum span, in seconds, between the first and any later admitted signature. |
+| `ordered_chain` | OPTIONAL (default `false`) | boolean | Strong ordered mode (Section 4). When true (ordered mode only), each signoff after the first MUST commit, inside its own signed context, to the hash of its predecessor's context (`prev_context_hash`), so approval order is proven by the signatures rather than by `issued_at` timestamps. |
 
 Rules:
 
@@ -200,6 +201,19 @@ The window bounds the lifetime of a partial quorum so that a long-dormant
 partial trail cannot be completed much later by an attacker who has since
 compromised a remaining approver.
 
+**Strong ordered mode (`"ordered_chain": true`).** Ordering by `issued_at`
+alone is asserted by whoever stamps the time. To prove order by the
+signatures themselves, a policy MAY require a cryptographic chain: each
+signoff after the first carries, INSIDE its signed Authorization Context, a
+`prev_context_hash` equal to the SHA-256 of the canonical context of its
+predecessor in the trail; the first signoff carries none. Because each
+approver's device signs over its own context, the *i*-th approver thereby
+attests to having signed *after* the exact (*i*-1)-th approval, and no party
+— including the operator — can reorder, insert, or backdate a signoff
+without invalidating a signature (`broken_chain`). This is RECOMMENDED for
+the highest-consequence ordered actions. Implementations that do not set
+`ordered_chain` retain timestamp ordering and remain conformant.
+
 ## 5. The Quorum Gate (fail-closed predicate)
 
 A trail is a **satisfied quorum** for an action with hash `H` under policy
@@ -225,11 +239,21 @@ unrecognized condition (Q2):
 5. **Distinct humans.** When `distinct_humans` is true (the default),
    approvers are pairwise distinct and (per the base draft's
    SelfApprovalImpossible) distinct from the initiator (`duplicate_human`).
+5a. **Distinct keys.** When `distinct_humans` is true, the admitted members'
+   `approver_public_key` values are pairwise distinct (`duplicate_key`).
+   This defends against a single device key enrolled under two approver
+   identifiers, which would otherwise pass check 5 by name while being one
+   signer.
 6. **Threshold.** At least `required` admitted members exist
    (`under_threshold`).
 7. **Order (ordered mode only).** The *i*-th admitted member matches
    `approvers[i-1]`; signature times are strictly increasing
    (`out_of_order`, `non_increasing_time`).
+7a. **Ordering chain (strong ordered mode only).** When
+   `ordered_chain` is true, the first admitted member carries no
+   `prev_context_hash` and every later member's `prev_context_hash` equals
+   the SHA-256 of the canonical context of its predecessor (`broken_chain`).
+   When `ordered_chain` is false this check is not applicable.
 8. **Window.** Every admitted member's `issued_at` is within `window_sec` of
    the first member's `issued_at` (`window_exceeded`).
 
