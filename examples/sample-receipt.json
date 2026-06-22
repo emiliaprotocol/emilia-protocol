@@ -1,0 +1,21 @@
+{
+  "@version": "EP-RECEIPT-v1",
+  "payload": {
+    "receipt_id": "rcpt_demo_0001",
+    "subject": "agent:finance-bot",
+    "issuer": "ep:org:emilia-demo",
+    "created_at": "2026-06-22T00:00:00.000Z",
+    "claim": {
+      "action_type": "payment.release",
+      "outcome": "allow_with_signoff",
+      "approver": "ep:approver:cfo",
+      "amount_usd": 2400000,
+      "destination": "vendor/acme-bank"
+    }
+  },
+  "signature": {
+    "algorithm": "Ed25519",
+    "value": "5NjLB5sCiwyrUGvGDMLu91KQSuaNm2FboL0sF-PXVeTUcgOF8gQby18ltchLVF304gzYrjgiqJdHHm6s4Tg_CA"
+  },
+  "public_key": "MCowBQYDK2VwAyEAcg7JEcz9OAtJQAljN7UMtx-SpTdLnczkjt0rd6PPvSg"
+}
