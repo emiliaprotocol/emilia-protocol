@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: Apache-2.0
+// Generator for executable EP-PROVENANCE-CHAIN-v1 conformance vectors. Mints REAL
+// bundles (Class-A receipts + Ed25519 delegation proofs) via packages/issue +
+// lib/provenance, so JS, Python, and Go verify the SAME bytes identically.
+// Run: node generate-provenance.mjs
+import crypto from 'node:crypto';
+import { writeFileSync } from 'node:fs';
+import { assembleProvenance } from '../../lib/provenance/chain.js';
+import {
+  canonicalize, buildContexts, collectSignoffs, assembleAuthorizationReceipt,
+  policyHash as computePolicyHash, generateEd25519KeyPair,
+} from '../../packages/issue/index.js';
+
+const NOW = Date.parse('2026-06-13T12:00:00.000Z');
+const ISSUED_AT = '2026-06-13T11:00:00.000Z';
+const EXPIRES_AT = '2026-06-13T18:00:00.000Z';
+const FLAG_UP = 0x01; const FLAG_UV = 0x04;
+
+function newP256() {
+  const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  return { privateKey, publicKeyB64u: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url') };
+}
+function classASigner({ approverKeyId, privateKey, signedAt }) {
+  return {
+    approverKeyId, keyClass: 'A', signedAt,
+    signWebAuthn: (digest) => {
+      const cd = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge: Buffer.from(digest).toString('base64url'), origin: 'https://test.emilia', crossOrigin: false }), 'utf8');
+      const ad = Buffer.concat([crypto.createHash('sha256').update('rp').digest(), Buffer.from([FLAG_UP | FLAG_UV]), Buffer.from([0, 0, 0, 1])]);
+      const signed = Buffer.concat([ad, crypto.createHash('sha256').update(cd).digest()]);
+      return { authenticator_data: ad.toString('base64url'), client_data_json: cd.toString('base64url'), signature: crypto.sign('sha256', signed, privateKey).toString('base64url') };
+    },
+  };
+}
+async function mintReceipt(approver, approverKeyId) {
+  const action = { action_type: 'payment.release', policy_id: 'pol:test', initiator: 'ep:agent:1', params: { amount: 100 } };
+  const kp = newP256(); const logKp = generateEd25519KeyPair();
+  const contexts = buildContexts({ action, policyHash: computePolicyHash({ policy_id: action.policy_id }), approvers: [approver], requiredApprovals: 1, issuedAt: ISSUED_AT, expiresAt: EXPIRES_AT });
+  const signoffs = await collectSignoffs(contexts, [classASigner({ approverKeyId, signedAt: ISSUED_AT, privateKey: kp.privateKey })]);
+  const receipt = assembleAuthorizationReceipt({ receiptId: `ep:receipt:${crypto.randomBytes(8).toString('base64url')}`, action, contexts, signoffs, committedAt: '2026-06-13T11:30:00.000Z', log: { privateKey: logKp.privateKey, logKeyId: 'ep:log:test#1' } });
+  return { receipt, verification: { approver_keys: { [approverKeyId]: { public_key: kp.publicKeyB64u, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2036-01-01T00:00:00Z' } }, log_public_key: logKp.publicKeyB64u } };
+}
+const PROOF_FIELDS = ['delegation_id', 'delegator', 'delegatee', 'scope', 'max_value_usd', 'expires_at', 'constraints'];
+function signedLink(link, kp) {
+  const subset = {}; for (const f of PROOF_FIELDS) subset[f] = link[f] ?? null;
+  const payload = Buffer.from(canonicalize(subset), 'utf8');
+  return { ...link, proof: { algorithm: 'Ed25519', signed_payload_b64u: payload.toString('base64url'), signature_b64u: crypto.sign(null, payload, kp.privateKey).toString('base64url'), public_key: kp.publicKeyB64u } };
+}
+
+async function buildBundle() {
+  const root = await mintReceipt('ep:approver:dir', 'ep:key:dir#1');
+  const approval = await mintReceipt('ep:approver:dir', 'ep:key:dir#1');
+  const dk = generateEd25519KeyPair();
+  const link = signedLink({ delegation_id: 'dlg:1', parent_ref: 'ep:approver:dir', delegator: 'ep:approver:dir', delegatee: 'ep:agent:1', scope: ['payment.release'], max_value_usd: 1000, expires_at: EXPIRES_AT, constraints: {} }, dk);
+  const doc = assembleProvenance({ rootSignoff: root, delegationChain: [link], actionApproval: approval, execution: { action_hash: approval.receipt.action_hash, irreversible: true, executed_at: ISSUED_AT } });
+  return { doc, delegation_keys: { 'ep:approver:dir': { public_key: dk.publicKeyB64u } } };
+}
+
+const V = [];
+const add = (id, expectValid, b) => V.push({ id, expect: { valid: expectValid }, provenance_chain: b.doc, delegation_keys: b.delegation_keys, now_ms: NOW });
+
+add('accept_valid_chain', true, await buildBundle());
+{ const b = await buildBundle(); b.doc.delegation_chain[0].scope = ['treasury.wire']; add('reject_scope_violation', false, b); }
+{ const b = await buildBundle(); b.doc.delegation_chain[0].max_value_usd = 999999; add('reject_tampered_proof', false, b); }
+{ const b = await buildBundle(); b.delegation_keys = {}; add('reject_unpinned_delegator', false, b); }
+
+const suite = {
+  suite: 'EP-PROVENANCE-CHAIN-v1',
+  profile: 'Executable provenance-chain vectors (real receipts + delegation proofs). verifyProvenanceOffline(doc, {delegationKeys, now}) must return expect.valid.',
+  vectors_version: '1.0.0',
+  count: V.length,
+  vectors: V,
+};
+writeFileSync(new URL('./provenance.exec.v1.json', import.meta.url), JSON.stringify(suite, null, 2) + '\n');
+console.log(`wrote provenance.exec.v1.json — ${V.length} vectors`);

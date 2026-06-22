@@ -31,6 +31,9 @@ type vec struct {
 	NotAfter          string         `json:"not_after"`
 	TrustReceipt      map[string]any `json:"trust_receipt"`
 	Verification      map[string]any `json:"verification"`
+	ProvenanceChain   map[string]any `json:"provenance_chain"`
+	DelegationKeys    map[string]any `json:"delegation_keys"`
+	NowMs             *float64       `json:"now_ms"`
 }
 
 func main() {
@@ -75,6 +78,12 @@ func main() {
 				opts["logPublicKey"] = v.Verification["log_public_key"]
 			}
 			valid = emiliaverify.VerifyTrustReceipt(v.TrustReceipt, opts).Valid
+		case v.ProvenanceChain != nil:
+			opts := map[string]any{"delegationKeys": v.DelegationKeys}
+			if v.NowMs != nil {
+				opts["now"] = *v.NowMs
+			}
+			valid = emiliaverify.VerifyProvenanceOffline(v.ProvenanceChain, opts).Valid
 		}
 		out = append(out, map[string]any{"id": v.ID, "valid": valid})
 	}

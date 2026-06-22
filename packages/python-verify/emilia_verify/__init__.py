@@ -603,3 +603,192 @@ def verify_trust_receipt(receipt: Any, opts: Optional[dict] = None) -> dict:
     checks["windows"] = windows_ok
 
     return {"valid": all(checks.values()), "checks": checks, "errors": errors}
+
+
+# ── EP-PROVENANCE-CHAIN-v1 offline verifier — mirror packages/verify/provenance.js
+
+PROVENANCE_VERSION = "EP-PROVENANCE-CHAIN-v1"
+_DEFAULT_HUMAN_KEY_CLASSES = ["A"]
+_DELEGATION_PROOF_FIELDS = ["delegation_id", "delegator", "delegatee", "scope", "max_value_usd", "expires_at", "constraints"]
+
+
+def _has_human_signoff(receipt, human_classes):
+    s = set(human_classes)
+    return any((so or {}).get("key_class") in s for so in (receipt or {}).get("signoffs") or [])
+
+
+def _receipt_approvers(receipt):
+    ids = set()
+    for ctx in (receipt or {}).get("contexts") or []:
+        if ctx.get("approver"):
+            ids.add(ctx["approver"])
+    for so in (receipt or {}).get("signoffs") or []:
+        if so.get("approver_key_id"):
+            ids.add(so["approver_key_id"])
+    return ids
+
+
+def _latest_context_expiry(receipt):
+    mx = None
+    for ctx in (receipt or {}).get("contexts") or []:
+        t = _instant_ms(ctx.get("expires_at"))
+        if t is not None and (mx is None or t > mx):
+            mx = t
+    return mx
+
+
+def _scope_permits(scope, action_type):
+    if not isinstance(scope, list) or not action_type:
+        return False
+    for grant in scope:
+        if grant == "*" or grant == action_type:
+            return True
+        if isinstance(grant, str) and grant.endswith(".*"):
+            prefix = grant[:-2]
+            if action_type == prefix or action_type.startswith(prefix + "."):
+                return True
+    return False
+
+
+def _scope_containment_violations(parent, child):
+    viol = []
+    for token in child.get("scope") or []:
+        probe = token[:-2] if isinstance(token, str) and token.endswith(".*") else token
+        if not _scope_permits(parent.get("scope"), probe):
+            viol.append("scope exceeds parent")
+    parent_cap = parent.get("max_value_usd")
+    child_cap = child.get("max_value_usd")
+    if child_cap is None:
+        child_cap = parent_cap
+    if parent_cap is not None:
+        if child_cap is None or float(child_cap) > float(parent_cap):
+            viol.append("cap exceeds parent")
+    p_exp = _instant_ms(parent.get("expires_at"))
+    c_exp = _instant_ms(child.get("expires_at"))
+    if p_exp is not None and c_exp is not None and c_exp > p_exp:
+        viol.append("expiry after parent")
+    return viol
+
+
+def _verify_detached_signature(att):
+    try:
+        if not att or not att.get("signed_payload_b64u") or not att.get("signature_b64u") or not att.get("public_key"):
+            return False
+        if att.get("algorithm") and att["algorithm"] != "Ed25519":
+            return False
+        return _ed25519_verify(_b64url_decode(att["signed_payload_b64u"]), att["public_key"], att["signature_b64u"])
+    except Exception:
+        return False
+
+
+def _delegation_proof_bytes(link):
+    return canonicalize({f: link.get(f) for f in _DELEGATION_PROOF_FIELDS}).encode("utf-8")
+
+
+def verify_provenance_offline(doc, opts=None):
+    """Mirror of packages/verify/provenance.js verifyProvenanceOffline. Fail-closed."""
+    opts = opts or {}
+    human_classes = opts.get("humanKeyClasses") or _DEFAULT_HUMAN_KEY_CLASSES
+    allow_unsigned = opts.get("allowUnsignedDelegations") is True
+    import time as _time
+    now = opts.get("now") if isinstance(opts.get("now"), (int, float)) else _time.time() * 1000
+    require_always = opts.get("requireActionApprovalAlways") is True
+    checks = {"version": False, "root_receipt_valid": False, "root_human_signoff": False,
+              "per_action_required": True, "action_receipt_valid": True, "action_human_signoff": True,
+              "execution_binding": True, "chain_anchored": True, "chain_links_bound": True,
+              "delegations_signed": True, "proof_key_bound": True, "delegations_not_expired": True,
+              "scope_containment": True, "leaf_permits_action": True, "temporal_containment": True}
+    errors = []
+
+    def fail(k, m):
+        checks[k] = False
+        errors.append(m)
+
+    if not isinstance(doc, dict) or doc.get("@version") != PROVENANCE_VERSION:
+        return {"valid": False, "checks": checks, "errors": [f"unsupported version: {doc.get('@version') if isinstance(doc, dict) else None}"],
+                "links": [], "agent_identity": None, "liability": None}
+    checks["version"] = True
+
+    root = doc.get("root_signoff")
+    if not root or not root.get("receipt") or not root.get("verification"):
+        fail("root_receipt_valid", "missing root_signoff")
+    else:
+        r0 = verify_trust_receipt(root["receipt"], {"approverKeys": root["verification"].get("approver_keys"), "logPublicKey": root["verification"].get("log_public_key")})
+        checks["root_receipt_valid"] = r0["valid"]
+        checks["root_human_signoff"] = _has_human_signoff(root["receipt"], human_classes)
+
+    exec_ = doc.get("execution") or {}
+    reversibility_asserted = False  # opts.reversibilityAsserted is a predicate; absent in serialized vectors
+    need_approval = require_always or not reversibility_asserted
+    approval = doc.get("action_approval")
+    if need_approval and not (approval or {}).get("receipt"):
+        fail("per_action_required", "no action_approval present")
+    if (approval or {}).get("receipt"):
+        ra = verify_trust_receipt(approval["receipt"], {"approverKeys": (approval.get("verification") or {}).get("approver_keys"), "logPublicKey": (approval.get("verification") or {}).get("log_public_key")})
+        checks["action_receipt_valid"] = ra["valid"]
+        if exec_.get("irreversible") is True:
+            checks["action_human_signoff"] = _has_human_signoff(approval["receipt"], human_classes)
+        checks["execution_binding"] = _hex_of(exec_.get("action_hash")) == _hex_of(approval["receipt"].get("action_hash"))
+
+    chain = sorted(list(doc.get("delegation_chain") or []), key=lambda x: x.get("sequence") or 0)
+    delegation_keys = opts.get("delegationKeys") or {}
+    root_approvers = _receipt_approvers((doc.get("root_signoff") or {}).get("receipt")) if doc.get("root_signoff") else set()
+    root_expiry = _latest_context_expiry((doc.get("root_signoff") or {}).get("receipt"))
+    root_at = (((doc.get("root_signoff") or {}).get("receipt") or {}).get("action") or {}).get("action_type")
+    root_scope = [root_at] if isinstance(root_at, str) and root_at else []
+    from datetime import datetime, timezone
+    parent = {"scope": root_scope, "max_value_usd": None,
+              "expires_at": (datetime.fromtimestamp(root_expiry / 1000, timezone.utc).isoformat().replace("+00:00", "Z") if root_expiry is not None else None)}
+
+    if chain:
+        head = chain[0]
+        checks["chain_anchored"] = head.get("parent_ref") in root_approvers or head.get("delegator") in root_approvers
+        if not checks["chain_anchored"]:
+            errors.append("chain head not anchored to a root approver")
+
+    prev_delegatee = None
+    for link in chain:
+        if prev_delegatee is not None:
+            if link.get("parent_ref") != prev_delegatee or link.get("delegator") != prev_delegatee:
+                fail("chain_links_bound", "inter-hop link broken")
+        exp = _instant_ms(link.get("expires_at"))
+        if exp is None or exp < now:
+            fail("delegations_not_expired", "delegation expired")
+        if link.get("proof"):
+            sig_ok = _verify_detached_signature(link["proof"])
+            try:
+                presented = _b64url_decode(link["proof"].get("signed_payload_b64u") or "")
+            except Exception:
+                presented = b""
+            if not sig_ok or presented != _delegation_proof_bytes(link):
+                fail("delegations_signed", "delegation proof invalid or not over own fields")
+            bound_key = (delegation_keys.get(link.get("delegator")) or {}).get("public_key")
+            if not bound_key:
+                fail("proof_key_bound", "no pinned delegator key")
+            elif bound_key != link["proof"].get("public_key"):
+                fail("proof_key_bound", "proof key not bound to delegator")
+        elif not allow_unsigned:
+            fail("delegations_signed", "unsigned delegation (fail-closed)")
+        if _scope_containment_violations(parent, link):
+            fail("scope_containment", "scope containment violation")
+        if link.get("max_value_usd") is None:
+            eff = parent.get("max_value_usd")
+        elif parent.get("max_value_usd") is None:
+            eff = link.get("max_value_usd")
+        else:
+            eff = min(float(link["max_value_usd"]), float(parent["max_value_usd"]))
+        parent = {**link, "max_value_usd": eff}
+        prev_delegatee = link.get("delegatee")
+
+    action_type = (((doc.get("action_approval") or {}).get("receipt") or {}).get("action") or {}).get("action_type")
+    if not action_type:
+        fail("leaf_permits_action", "cannot determine executed action_type")
+    elif not _scope_permits(parent.get("scope"), action_type):
+        fail("leaf_permits_action", "leaf/root scope does not permit executed action")
+
+    commit = _instant_ms((((doc.get("action_approval") or {}).get("receipt") or {}).get("consumption") or {}).get("committed_at")) if (doc.get("action_approval") or {}).get("receipt") else None
+    leaf_exp = _instant_ms(parent.get("expires_at"))
+    if commit is not None and leaf_exp is not None and commit > leaf_exp:
+        fail("temporal_containment", "approval committed after leaf expiry")
+
+    return {"valid": all(checks.values()), "checks": checks, "errors": errors, "links": [], "agent_identity": None, "liability": None}

@@ -8,8 +8,8 @@ Purpose: a single source of truth for what EP can do, where it lives in code, an
 |---|---|---|---|
 | Offline verification (receipts; transparency-log inclusion proof + Ed25519-signed checkpoint for non-equivocation, SCITT-aligned) | shipped | `packages/verify`, `packages/python-verify`, `packages/go-verify` (checkpoint path: `verifyTrustReceipt`) | `/verify`, `/auditors`, npm |
 | Verifier CLI (auto-detects receipt / bundle / proof / signoff / quorum / provenance chain; `revocation` subcommand) | shipped | `packages/verify/cli.js` | `npx @emilia-protocol/verify` |
-| Provenance chain (human-authority root → delegation chain → action) offline verifier | shipped in the published verifier | `packages/verify/provenance.js`, `lib/provenance/chain.js` | CLI auto-detect (`--delegation-keys`) |
-| Trusted-time attestation (EP-TIME-ATTESTATION-v1; pinned-TSA, offline proof of *when*) | shipped | `packages/verify/time-attestation.js` | npm |
+| Provenance chain (human-authority root → delegation chain → action) offline verifier | shipped — **JS/Python/Go agree (conformance-verified)** | `packages/verify/provenance.js` + `python-verify`/`go-verify`, `lib/provenance/chain.js`, `conformance/vectors/provenance.exec.v1.json` | CLI auto-detect (`--delegation-keys`) |
+| Trusted-time attestation (EP-TIME-ATTESTATION-v1; pinned-TSA, offline proof of *when*) | shipped — **JS/Python/Go agree** | `packages/verify/time-attestation.js` + `python-verify`/`go-verify`, `conformance/vectors/time-attestation.v1.json` | npm |
 | Multi-party quorum (M-of-N / ordered, two-person rule) | shipped + E2E-verified | `lib/signoff/quorum-session.js`, `packages/verify/quorum.js`, `app/api/v1/trust-receipts/[receiptId]/consume` | `/quorum`, `/try/multi-party` |
 | Quorum: distinct device keys + strong cryptographic ordering chain (`ordered_chain`, `prev_context_hash`) | shipped (JS/Python/Go agree; 11 conformance vectors) | `packages/verify/quorum.js` + `python-verify`/`go-verify`, `conformance/vectors/quorum.v1.json` | `/quorum` |
 | No-symmetric-key invariant on the verification trust path (CI-enforced) | shipped | `packages/verify/no-symmetric.test.js` | `/spec` §11.10 |
@@ -17,7 +17,7 @@ Purpose: a single source of truth for what EP can do, where it lives in code, an
 | Observe-mode "accountability-gap" report (N-of-M would-have-held) | shipped | `app/api/pilot/sandbox/report/route.js`, `app/pilot/sandbox` | `/govguard`, `/pilot/sandbox` |
 | Class-A WebAuthn device signoff (biometric, user-verification-gated) | shipped | `app/api/v1/approvers/webauthn/*`, `packages/verify` | `/try` |
 | Enrollment + SSO (SAML / OIDC); second-party attestation on enroll | shipped | `app/api/sso/*`, `app/api/v1/approvers/webauthn/register-*` | — |
-| Revocation (portable offline statement + server-state) | shipped in the published verifier | `lib/revocation/`, `lib/signoff/revoke.js`, `packages/verify/revocation.js`, `docs/EP-REVOCATION-SPEC.md` | `npx @emilia-protocol/verify revocation …` |
+| Revocation (portable offline statement + server-state) | shipped — **JS/Python/Go agree** | `lib/revocation/`, `lib/signoff/revoke.js`, `packages/verify/revocation.js` + `python-verify`/`go-verify`, `conformance/vectors/revocation.exec.v1.json` | `npx @emilia-protocol/verify revocation …` |
 | Federation / cross-operator verification (PIP-006) | mechanism shipped; **both operators EMILIA-run** | `packages/verify/federation.js`, `conformance/operator2/` | `docs/conformance/FEDERATION-PROOF.md` |
 | Compliance mappings — NIST AI RMF (38/38), EU AI Act, SOC 2, **GAGAS / GAO Green Book / Uniform Guidance** | shipped (docs + PDFs) | `docs/compliance/` | `/auditors`, `/eu-ai-act`, `/compliance/*.pdf` |
 | Standards — I-D authorization-receipts (**-02**) + quorum (**-01**); Zenodo DOI | -02/-01 prepared (xml2rfc-rendered, ready to submit) | `standards/` | `/spec`, datatracker |
