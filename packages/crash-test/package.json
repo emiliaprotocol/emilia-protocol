@@ -5,6 +5,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "bin": {
+    "crash-test": "./crash-test.mjs",
     "ep-crash-test": "./crash-test.mjs",
     "emilia-crash-test": "./crash-test.mjs"
   },
@@ -17,7 +18,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@emilia-protocol/verify": "^1.4.0"
+    "@emilia-protocol/verify": "^1.5.0"
   },
   "keywords": [
     "emilia-protocol",
