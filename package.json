@@ -34,8 +34,8 @@
   },
   "dependencies": {
     "@node-saml/node-saml": "^5.1.0",
-    "@remotion/player": "^4.0.477",
-    "@sentry/nextjs": "10.57.0",
+    "@remotion/player": "^4.0.481",
+    "@sentry/nextjs": "10.59.0",
     "@simplewebauthn/browser": "^13.3.0",
     "@simplewebauthn/server": "^13.3.1",
     "@supabase/supabase-js": "^2.108.2",
@@ -49,8 +49,8 @@
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "remotion": "^4.0.452",
-    "stripe": "^22.2.1",
-    "viem": "^2.52.2",
+    "stripe": "^22.2.2",
+    "viem": "^2.53.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^4.4.3"
   },
@@ -61,7 +61,7 @@
     "ws": "^8.21.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.60.0",
+    "@playwright/test": "^1.61.0",
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/vitest-runner": "^9.6.1",
     "@types/node": "^25.9.3",
@@ -71,8 +71,8 @@
     "eslint-config-next": "^16.2.9",
     "fast-check": "^4.8.0",
     "husky": "^9.0.0",
-    "lint-staged": "^17.0.7",
-    "pg": "^8.21.0",
+    "lint-staged": "^17.0.8",
+    "pg": "^8.22.0",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0"
   }
