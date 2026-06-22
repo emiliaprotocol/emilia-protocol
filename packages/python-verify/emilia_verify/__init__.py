@@ -910,3 +910,134 @@ def verify_evidence_record(record, opts=None):
                 "protected_since": first_time, "last_renewed": (ats[-1].get("time_attestation") or {}).get("time")}
     except Exception:
         return {"valid": False, "checks": checks, "errors": errors}
+
+
+# ── EP-AEC-v1 — Authorization Evidence Chain (composition verifier) ──────────
+AEC_VERSION = "EP-AEC-v1"
+
+
+def action_digest(action: Any) -> str:
+    """Canonical action digest (hex) — sha256 of JCS(action). Mirrors JS actionDigest()."""
+    return hashlib.sha256(canonicalize(action).encode("utf-8")).hexdigest()
+
+
+def _norm_digest(d: Any) -> Optional[str]:
+    if not isinstance(d, str):
+        return None
+    return d[7:].lower() if d.lower().startswith("sha256:") else d.lower()
+
+
+def _builtin_aec_verifiers() -> dict:
+    def ep_quorum(ev, ctx):
+        r = verify_quorum(ev) or {}
+        return {"valid": bool(r.get("valid")), "action_digest": (ev or {}).get("action_hash")}
+
+    def ep_receipt(ev, ctx):
+        key = (ctx.get("keys") or {}).get((ev or {}).get("operator_public_key")) or (ev or {}).get("operator_public_key")
+        try:
+            r = verify_receipt(ev, key)
+            valid = bool(r.get("valid") if isinstance(r, dict) else getattr(r, "valid", False))
+        except Exception:
+            valid = False
+        return {"valid": valid, "action_digest": (ev or {}).get("action_hash")}
+
+    return {"ep-quorum": ep_quorum, "ep-receipt": ep_receipt}
+
+
+def _eval_requirement(expr: str, satisfied: set) -> bool:
+    import re as _re
+    toks = _re.findall(r"\(|\)|[A-Za-z0-9_.:-]+", str(expr))
+    pos = {"i": 0}
+
+    def peek():
+        return toks[pos["i"]] if pos["i"] < len(toks) else None
+
+    def eat():
+        t = peek()
+        pos["i"] += 1
+        return t
+
+    def parse_expr():
+        v = parse_term()
+        while peek() in ("AND", "OR", "&&", "||"):
+            op = eat()
+            r = parse_term()
+            v = (v and r) if op in ("AND", "&&") else (v or r)
+        return v
+
+    def parse_term():
+        if peek() == "(":
+            eat()
+            v = parse_expr()
+            if peek() == ")":
+                eat()
+            return v
+        ident = eat()
+        return False if ident is None else (ident in satisfied)
+
+    try:
+        v = parse_expr()
+        return bool(v) if pos["i"] == len(toks) else False
+    except Exception:
+        return False
+
+
+def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None, keys: Optional[dict] = None) -> dict:
+    """Verify an EP-AEC chain offline. Fail-closed. Mirrors JS verifyAuthorizationChain()."""
+    reasons: list = []
+
+    def fail(why):
+        reasons.append(why)
+        return {"allow": False, "action_digest": None, "components": [], "reasons": reasons}
+
+    if not isinstance(aec, dict):
+        return fail("chain is not an object")
+    if aec.get("@version") != AEC_VERSION:
+        return fail("unexpected @version")
+    if not isinstance(aec.get("action"), dict):
+        return fail("missing action object")
+    comps_in = aec.get("components")
+    if not isinstance(comps_in, list) or not comps_in:
+        return fail("no components")
+    req = aec.get("requirement")
+    if not isinstance(req, str) or not req.strip():
+        return fail("missing requirement expression")
+
+    chain_digest = action_digest(aec["action"])
+    if aec.get("action_digest") is not None and _norm_digest(aec.get("action_digest")) != chain_digest:
+        return fail("declared action_digest does not match canonical digest of the action")
+
+    vmap = dict(_builtin_aec_verifiers())
+    vmap.update(verifiers or {})
+    satisfied: set = set()
+    components = []
+    for idx, c in enumerate(comps_in):
+        label = c.get("label") or c.get("type") or f"#{idx}"
+        row = {"type": c.get("type"), "label": label, "valid": False, "bound": False, "reason": None}
+        v = vmap.get(c.get("type"))
+        if not callable(v):
+            row["reason"] = f'no verifier registered for type "{c.get("type")}"'
+            components.append(row)
+            continue
+        try:
+            res = v(c.get("evidence"), {"keys": keys, "action": aec["action"]}) or {}
+        except Exception as e:
+            row["reason"] = f"verifier raised: {e}"
+            components.append(row)
+            continue
+        row["valid"] = bool(res.get("valid"))
+        row["bound"] = _norm_digest(res.get("action_digest")) == chain_digest
+        if not row["valid"]:
+            row["reason"] = "component evidence did not verify"
+        elif not row["bound"]:
+            row["reason"] = "component binds a DIFFERENT action than the chain"
+        if row["valid"] and row["bound"]:
+            satisfied.add(c.get("type"))
+            if c.get("label"):
+                satisfied.add(c.get("label"))
+        components.append(row)
+
+    allow = _eval_requirement(req, satisfied)
+    if not allow:
+        reasons.append(f'requirement not satisfied: "{req}"')
+    return {"allow": allow, "action_digest": chain_digest, "components": components, "reasons": reasons}
