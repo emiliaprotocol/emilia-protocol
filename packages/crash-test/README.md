@@ -19,6 +19,29 @@ and a **forged copy is rejected**. The auditor gets a workpaper.
 
 > Act 2 is the product. Act 1 is the setup.
 
+## Scenarios — same engine, different high-risk action
+
+The default tells the county-finance story. Two more show the same EP-QUORUM-v1
+predicate gating high-risk actions in healthcare:
+
+```
+npx -y @emilia-protocol/crash-test --scenario clinical
+```
+A **high-alert IV medication** (heparin infusion). The agent proposes administration;
+an **independent double-check** by a second qualified clinician is required (the
+ISMP / Joint Commission control); the order is signed, then a forged copy with the
+infusion **rate altered 10×** is rejected. The receipt carries **only hashed patient
+and encounter identifiers — no PHI** — so the evidence can be shared without a HIPAA
+disclosure.
+
+```
+npx -y @emilia-protocol/crash-test --scenario procurement
+```
+A **hospital capital purchase** (a $1.85M 3T MRI from a new, off-contract vendor).
+Dual control — **Department Director, then CFO** — and a forged copy with the **vendor
+bank account swapped after approval** (textbook payment-redirect / BEC fraud) is
+rejected, because the payee account is inside the signed action.
+
 ## What you get
 
 The run writes an **Auditor Workpaper Package** to `./emilia-workpaper/`:
