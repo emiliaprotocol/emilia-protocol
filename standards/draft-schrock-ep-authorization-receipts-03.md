@@ -602,13 +602,9 @@ platform* — model, keys, posture; EP attests the *human authorization*.
 The two are orthogonal and composable: an EAT says the machine is what
 it claims; an EP receipt says a named person approved the exact action.
 
-**OAuth Rich Authorization Requests (RFC 9396)** standardizes
-structured, fine-grained authorization detail; an EP Action Object MAY
-be expressed as an `authorization_details` element, so a receipt records
-exactly the RAR-described action a human approved. **Transaction Tokens
-(draft-ietf-oauth-transaction-tokens)** propagate workload and agent
-authorization context across a machine call chain; EP is the
-human-authority root from which such a chain descends.
+**Transaction Tokens (draft-ietf-oauth-transaction-tokens)** propagate
+workload and agent authorization context across a machine call chain; EP
+is the human-authority root from which such a chain descends.
 
 **Evidence Record Syntax (RFC 4998)** preserves signed evidence across
 algorithm aging by periodic re-timestamping. EP applies the same

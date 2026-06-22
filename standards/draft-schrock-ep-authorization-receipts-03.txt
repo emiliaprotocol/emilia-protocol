@@ -94,7 +94,7 @@ Table of Contents
    9.  Conformance Classes and Execution-Side Enforcement  . . . . .  15
    10. Relationship to Other Work  . . . . . . . . . . . . . . . . .  15
    11. Security Considerations . . . . . . . . . . . . . . . . . . .  16
-     11.1.  Operator Compromise  . . . . . . . . . . . . . . . . . .  17
+     11.1.  Operator Compromise  . . . . . . . . . . . . . . . . . .  16
      11.2.  Approver Device Compromise . . . . . . . . . . . . . . .  17
      11.3.  Presentation Attacks . . . . . . . . . . . . . . . . . .  17
      11.4.  Log Equivocation . . . . . . . . . . . . . . . . . . . .  18
@@ -869,10 +869,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    the machine is what it claims; an EP receipt says a named person
    approved the exact action.
 
-   *OAuth Rich Authorization Requests (RFC 9396)* standardizes
-   structured, fine-grained authorization detail; an EP Action Object
-   MAY be expressed as an authorization_details element, so a receipt
-   records exactly the RAR-described action a human approved.
    *Transaction Tokens (draft-ietf-oauth-transaction-tokens)* propagate
    workload and agent authorization context across a machine call chain;
    EP is the human-authority root from which such a chain descends.
@@ -886,18 +882,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 11.  Security Considerations
 
-
-
-
-
-
-
-
-Schrock                 Expires 23 December 2026               [Page 16]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
-
 11.1.  Operator Compromise
 
    Under key classes A/B, a compromised EP operator can deny service and
@@ -906,6 +890,14 @@ Internet-Draft          EP Authorization Receipts              June 2026
    are single-consumption and receipts chain).  Two operator-compromise
    paths remain and are stated plainly rather than claimed away.  First,
    an operator that controls the signing client's rendering can harvest
+
+
+
+Schrock                 Expires 23 December 2026               [Page 16]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
    a _genuine_ signature over an action the approver misunderstood -- a
    presentation attack (Section 11.3); for this reason an independently-
    authored rendering surface is REQUIRED for high-value policies.
@@ -946,6 +938,14 @@ Internet-Draft          EP Authorization Receipts              June 2026
    trusted display path (hardware the operator does not author),
    rendering fidelity is enforced by controls (2)-(3), by audit, and by
    consented mismatch drills (Section 11.8) -- not by mathematics.  What
+   the cryptography does guarantee is exactness of evidence: the receipt
+   contains the full Action Object actually signed, so any divergence
+   between what was displayed and what was executed is detectable after
+   the fact with proof rather than testimony.
+
+
+
+
 
 
 
@@ -953,11 +953,6 @@ Schrock                 Expires 23 December 2026               [Page 17]
 
 Internet-Draft          EP Authorization Receipts              June 2026
 
-
-   the cryptography does guarantee is exactness of evidence: the receipt
-   contains the full Action Object actually signed, so any divergence
-   between what was displayed and what was executed is detectable after
-   the fact with proof rather than testimony.
 
 11.4.  Log Equivocation
 
@@ -1002,6 +997,11 @@ Internet-Draft          EP Authorization Receipts              June 2026
    named, signed, and evidenced -- which raises the cost of insider
    fraud; they do not make it impossible, and implementations MUST NOT
    claim otherwise.
+
+
+
+
+
 
 
 

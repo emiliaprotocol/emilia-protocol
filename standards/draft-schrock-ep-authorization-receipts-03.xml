@@ -687,11 +687,7 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
       attests the <em>human authorization</em>. The two are orthogonal and
       composable: an EAT says the machine is what it claims; an EP receipt
       says a named person approved the exact action.</t>
-      <t><strong>OAuth Rich Authorization Requests (RFC 9396)</strong>
-      standardizes structured, fine-grained authorization detail; an EP
-      Action Object <bcp14>MAY</bcp14> be expressed as an
-      <tt>authorization_details</tt> element, so a receipt records exactly
-      the RAR-described action a human approved. <strong>Transaction Tokens
+      <t><strong>Transaction Tokens
       (draft-ietf-oauth-transaction-tokens)</strong> propagate workload and
       agent authorization context across a machine call chain; EP is the
       human-authority root from which such a chain descends.</t>
