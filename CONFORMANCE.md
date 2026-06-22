@@ -41,20 +41,30 @@ node conformance/run.mjs
 ```
 
 ```
-EP-RECEIPT-v1 — 10 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-SIGNOFF-v1 —  9 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-QUORUM-v1  —  9 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-RECEIPT-v1            — 11 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-SIGNOFF-v1            —  9 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-QUORUM-v1             — 11 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-REVOCATION-v1         —  6 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-TIME-ATTESTATION-v1   —  6 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-TRUST-RECEIPT (§6.2)  —  4 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-PROVENANCE-CHAIN-v1   —  4 vectors   JavaScript ✓   Python ✓   Go ✓
 
-✅ receipts · signoffs · quorum — three independent implementations agree.
+✅ all suites — three independent implementations agree.
 ```
 
-The three verifiers now agree not only on Ed25519 authorization **receipts**, but
-on Class-A WebAuthn device **signoffs** and **EP-QUORUM-v1 multi-party approval**
-(M-of-N / ordered — the "two-person rule," each named human bound to the exact
-action, fail-closed). That is the IETF bar for a real standard — **multiple
-independent interoperable implementations** — and it runs on every push (CI job
-`conformance`). The companion Internet-Draft is
-[`draft-schrock-ep-authorization-receipts`](standards/).
+The three independent verifiers now agree across the **entire artifact surface** —
+not only Ed25519 authorization **receipts**, but Class-A WebAuthn device
+**signoffs**, **EP-QUORUM-v1 multi-party approval** (M-of-N / ordered — the
+"two-person rule," with a strong cryptographic ordering chain and distinct-key
+checks, fail-closed), portable **revocation** statements, **trusted-time
+attestations**, the full **§6.2 Trust Receipt** (signoff signatures + Merkle
+inclusion + Ed25519-signed checkpoint), and **provenance chains** (human-authority
+root → delegation chain → action, with scope containment). That is the IETF bar
+for a real standard — **multiple independent interoperable implementations across
+every protocol artifact** — and it runs on every push (CI job `conformance`). The
+companion Internet-Drafts are
+[`draft-schrock-ep-authorization-receipts`](standards/) and
+[`draft-schrock-ep-quorum`](standards/).
 
 > **Scope, stated honestly.** Multi-party quorum is a *verifiable protocol
 > capability* with cross-language reference verifiers and a live in-browser demo
