@@ -32,6 +32,8 @@ EP is no longer a broad trust idea. It is now a reference protocol implementatio
 - formal conformance surfaces
 - Accountable Signoff when policy requires named human ownership
 - MCP-native implementation (36 tools, 17 core by default; TypeScript + Python SDKs)
+- three independent verifiers — JavaScript, Python, Go — that agree on 8 adversarial cross-language conformance suites (receipts, device signoffs, multi-party quorum, revocation, time-attestation, trust-receipt, provenance, long-term evidence records): the IETF bar for a real standard
+- an **Authorization Evidence Chain (EP-AEC)** — specified and implemented (tri-language, with conformance vectors) — that composes EP's human-authorization receipt with the machine-side delegation and policy-permit receipts of the broader IETF cluster into one offline ALLOW/DENY, positioning EP as the verifier-side convergence point rather than one of a dozen competing formats
 - production observability stack (structured JSON logging, Sentry on 3 runtimes, graceful shutdown)
 - supply chain security (SHA-pinned Actions, SBOM, provenance attestation on every release)
 
@@ -51,6 +53,7 @@ Reconciliation proof:
 - Database: 46 EP-only tables, zero foreign artifacts
 - Staircase load tested: 10 → 50 → 100 → 200 → 500 concurrent users; handshake create p95 575ms at 50 VUs
 - CI quality gates across ~13 automated workflows, all Actions SHA-pinned
+- **Independently re-verified by an outside implementer (June 2026):** a third party ran the public crash-test and the cross-language conformance harness on their own machine — offline receipt verification, forged-copy rejection, and JS/Python/Go agreement all confirmed. The first external reliance event, and the strongest possible signal for a verifiability claim. *(Private/investor use now; public attribution pending that implementer's own posting.)*
 
 ## Why now
 
@@ -65,6 +68,7 @@ EP should be positioned first around high-risk action enforcement in:
 - financial infrastructure and payment-change fraud
 - high-risk enterprise approvals
 - agent execution controls
+- **healthcare** — the high-alert-medication *independent double-check* and capital procurement, where EP's two-person rule is *already mandated practice* (ISMP / Joint Commission). Receipts are PHI-free by construction, and the same primitive answers EU AI Act Article 14 human-oversight for high-risk medical AI. Entry is via the healthcare-AI vendors and procurement platforms (B2B2H), not direct hospital sales.
 
 ## Investor one-liners
 
@@ -72,6 +76,7 @@ EP should be positioned first around high-risk action enforcement in:
 - The market is moving from access control to action control.
 - EP becomes more valuable as enterprises and governments automate more decisions and more execution.
 - EP is the trust-control layer between authentication and execution.
+- A dozen efforts are racing to define "a receipt for an agent's action." EP defined the layer that **composes them** — and supplies the one leg none of the others do: a named human's authorization.
 
 ## Business model
 
