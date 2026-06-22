@@ -143,7 +143,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
        specific human to a specific action.
 
    3.  *The verification gap.* Auditors, counterparties, and regulators
-       must trust the operator's logs — produced by the party whose
+       must trust the operator's logs -- produced by the party whose
        conduct is under examination.  No artifact exists that a third
        party can verify with mathematics alone.
 
@@ -153,10 +153,10 @@ Internet-Draft          EP Authorization Receipts              June 2026
    once; and the resulting receipt is independently verifiable offline,
    forever.
 
-   The human-approval mechanism this document specifies — a user-
+   The human-approval mechanism this document specifies -- a user-
    verification-gated signature over the exact Authorization Context
-   (Section 5.1, Class A) — is native to EP and self-contained.  It does
-   not depend on, and is not a profile of, any other draft's
+   (Section 5.1, Class A) -- is native to EP and self-contained.  It
+   does not depend on, and is not a profile of, any other draft's
    acquiescence, consent, or confirmation mechanism; a conforming EP
    signoff is produced entirely by the controls defined here.  Where EP
    composes with adjacent work (Section 10), that composition is by
@@ -172,45 +172,45 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 1.1.  Design Goals
 
-   *  *G1 — Action binding.* An approval is cryptographically bound to
+   *  *G1 -- Action binding.* An approval is cryptographically bound to
       one exact action.  It cannot authorize anything else.
 
-   *  *G2 — Approver-held keys.* The approver's signature is produced by
-      a key the EP operator does not possess.  The operator
+   *  *G2 -- Approver-held keys.* The approver's signature is produced
+      by a key the EP operator does not possess.  The operator
       orchestrates; it cannot forge.
 
-   *  *G3 — One-time consumption.* An authorization is consumed at most
+   *  *G3 -- One-time consumption.* An authorization is consumed at most
       once, globally.  Replay across sessions, operators, or time is
       detectable and MUST be rejected.
 
-   *  *G4 — Separation of duties.* The initiator of an action MUST NOT
+   *  *G4 -- Separation of duties.* The initiator of an action MUST NOT
       be an approver of that action.  Policies MAY require m-of-n
       distinct approvers.
 
-   *  *G5 — Offline verifiability.* A receipt is verifiable with no
+   *  *G5 -- Offline verifiability.* A receipt is verifiable with no
       network access, using only the receipt, the approver's public key
       material, and a published log checkpoint.  Offline verification
       establishes authenticity and log inclusion as of commit time, not
       current revocation status (Section 6.3).
 
-   *  *G6 — Execution-side enforcement.* The strongest deployment places
-      verification at the system of record: the executing service
+   *  *G6 -- Execution-side enforcement.* The strongest deployment
+      places verification at the system of record: the executing service
       verifies the receipt before performing the action.  Middleware-
       only deployments are explicitly defined as a weaker conformance
       class (Section 9).
 
-   *  *G7 — Machine-checked safety.* The protocol state machine's safety
-      properties are maintained as formal models (TLA+, Alloy) and
-      checked in continuous integration.  Implementations can be tested
-      against a published conformance suite.
+   *  *G7 -- Machine-checked safety.* The protocol state machine's
+      safety properties are maintained as formal models (TLA+, Alloy)
+      and checked in continuous integration.  Implementations can be
+      tested against a published conformance suite.
 
 1.2.  Scope of Identity
 
    This document binds an approval to an _approver identifier_ whose key
    is enrolled in the Approver Directory (Section 5.2); it does not, by
    itself, prove that the holder of that identifier is a particular
-   natural person.  Proof of a specific real-world identity — that
-   ep:approver:jchen-controller is the human Jordan Chen — is out of
+   natural person.  Proof of a specific real-world identity -- that
+   ep:approver:jchen-controller is the human Jordan Chen -- is out of
    scope.  The Approver Directory trust root (Section 5.2) is the
    explicit slot where an identity-proofing or key-discovery layer binds
    keys to named persons; the strength of any such binding is a property
@@ -354,7 +354,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
       SHA-256 digest.  The approver signs the context hash.
 
    *  The approver MUST be shown, at signing time, a faithful human-
-      readable rendering of the Action Object — not only the hash.
+      readable rendering of the Action Object -- not only the hash.
       Signing interfaces that display a different action than the one
       hashed are a presentation attack; see Section 11.3.
 
@@ -426,18 +426,18 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
    Enum semantics:
 
-   *  irreversibility — the action cannot be undone once executed.
+   *  irreversibility -- the action cannot be undone once executed.
 
-   *  magnitude — the amount or scope exceeds what the initiator should
+   *  magnitude -- the amount or scope exceeds what the initiator should
       act on alone.
 
-   *  uncertainty — the initiator's confidence in its own assessment is
+   *  uncertainty -- the initiator's confidence in its own assessment is
       too low to proceed unaided.
 
-   *  novelty — the action or counterparty has no precedent in the
+   *  novelty -- the action or counterparty has no precedent in the
       initiator's history.
 
-   *  authority_gap — the action requires authority the initiator was
+   *  authority_gap -- the action requires authority the initiator was
       never granted.
 
 
@@ -450,7 +450,7 @@ Schrock                 Expires 23 December 2026                [Page 8]
 Internet-Draft          EP Authorization Receipts              June 2026
 
 
-   *  policy_rule — a deterministic policy rule required signoff and
+   *  policy_rule -- a deterministic policy rule required signoff and
       none of the five substantive categories above captures why;
       policy_basis names the rule.
 
@@ -517,9 +517,9 @@ Internet-Draft          EP Authorization Receipts              June 2026
    *  *Cross-context consistency.* When a receipt contains multiple
       contexts (m-of-n approvals), the initiator_attestation object, if
       present in any context, MUST be present in every context of that
-      receipt, and its canonical form —
-      canonicalize(initiator_attestation) — MUST be identical across all
-      of them.  Every approver signs the same stated reason.
+      receipt, and its canonical form --
+      canonicalize(initiator_attestation) -- MUST be identical across
+      all of them.  Every approver signs the same stated reason.
 
    *  Producers MUST NOT add members beyond the three defined above in
       v1.
@@ -547,7 +547,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 5.1.  Key Classes
 
-   *Class A — Device-bound keys (RECOMMENDED).* The approver's key is
+   *Class A -- Device-bound keys (RECOMMENDED).* The approver's key is
    generated and held in a platform authenticator or security key and
    exercised via WebAuthn [WEBAUTHN].  The signature algorithm is ES256
    (P-256) or Ed25519 where supported.  The WebAuthn challenge MUST be
@@ -567,12 +567,12 @@ Internet-Draft          EP Authorization Receipts              June 2026
    be captured at enrollment so relying parties can establish that the
    key is hardware-bound.
 
-   *Class B — Software keys.* An Ed25519 keypair held in the approver's
+   *Class B -- Software keys.* An Ed25519 keypair held in the approver's
    client environment (CLI keychain, mobile secure enclave via app).
    Acceptable where WebAuthn is impractical (headless approval
    terminals), with the reduced assurance noted in receipts.
 
-   *Class C — Operator-custodied keys (LEGACY).* The EP operator signs
+   *Class C -- Operator-custodied keys (LEGACY).* The EP operator signs
    on the approver's behalf after authenticating them.  This class
    exists only to describe pre-existing deployments.  Receipts produced
    under Class C MUST be labeled key_class: "C" and relying parties
@@ -595,21 +595,21 @@ Internet-Draft          EP Authorization Receipts              June 2026
    controlled directory key (custody options parallel Section 5.1; an
    organization-held hardware key is RECOMMENDED).  Where directory
    _operation_ is delegated to the EP operator, every enrollment entry
-   MUST carry a second-party attestation — a signature over the new
+   MUST carry a second-party attestation -- a signature over the new
    entry by an organization administrator key or by a quorum of already-
-   enrolled approvers — and that attestation MUST be included in the
+   enrolled approvers -- and that attestation MUST be included in the
    receipt's approver_key_proofs.  Verifiers MUST treat a directory head
    signed only by an operator-held key as operator assertion (Class
    C-equivalent assurance), regardless of the key class of the
    individual signoffs.  Rationale: an operator that unilaterally
    controls directory membership cannot forge an enrolled approver's
    signature, but it can enroll a key it controls under a legitimate
-   approver's name — relocating the forgery rather than preventing it.
+   approver's name -- relocating the forgery rather than preventing it.
    See Section 11.6.
 
    This directory is also the binding point between approver identifiers
-   and real-world persons (Section 1.2).  The strength of that binding —
-   how an organization proves that an enrolled identifier is the person
+   and real-world persons (Section 1.2).  The strength of that binding
+   -- how an organization proves that an enrolled identifier is the
 
 
 
@@ -618,9 +618,9 @@ Schrock                 Expires 23 December 2026               [Page 11]
 Internet-Draft          EP Authorization Receipts              June 2026
 
 
-   it names, and how key-discovery layers attach to it — is a property
-   of the directory authority and any identity layer bound to it, not of
-   the receipt format defined here.
+   person it names, and how key-discovery layers attach to it -- is a
+   property of the directory authority and any identity layer bound to
+   it, not of the receipt format defined here.
 
 5.3.  The Signoff
 
@@ -653,8 +653,8 @@ Internet-Draft          EP Authorization Receipts              June 2026
              \-> EXPIRED
 
    COMMITTED, DENIED, and EXPIRED are terminal.  The protocol invariants
-   — maintained as machine-checked models and REQUIRED of conforming
-   implementations — are:
+   -- maintained as machine-checked models and REQUIRED of conforming
+   implementations -- are:
 
    *  *ConsumeOnce.* A nonce transitions to a terminal state at most
       once, globally.  Any second presentation MUST be rejected with a
@@ -752,7 +752,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
    Offline verification establishes authenticity, not currency.  Two
    properties are explicitly NOT established offline: (a) post-issuance
-   revocation — a receipt whose approver key was revoked an hour after
+   revocation -- a receipt whose approver key was revoked an hour after
    commitment still verifies; the artifact is evidence of validity _at
    commit time_; and (b) log honesty against split views (Section 11.4).
    A relying party with freshness or revocation requirements MUST
@@ -826,9 +826,9 @@ Internet-Draft          EP Authorization Receipts              June 2026
 10.  Relationship to Other Work
 
    *DRP* ([I-D.nelson-agent-delegation-receipts]) binds a _user's_
-   delegation to an _operator's_ instructions — upstream consumer
+   delegation to an _operator's_ instructions -- upstream consumer
    delegation.  EP binds an _organizational approver_ to an _exact
-   action_ — downstream authorization with SoD and m-of-n, which DRP
+   action_ -- downstream authorization with SoD and m-of-n, which DRP
    does not formalize, and with offline verification, which DRP's log-
    access model does not provide.  The two compose: a DRP delegation can
    be referenced in an EP Action Object's provenance field.
@@ -866,14 +866,14 @@ Internet-Draft          EP Authorization Receipts              June 2026
    are single-consumption and receipts chain).  Two operator-compromise
    paths remain and are stated plainly rather than claimed away.  First,
    an operator that controls the signing client's rendering can harvest
-   a _genuine_ signature over an action the approver misunderstood — a
+   a _genuine_ signature over an action the approver misunderstood -- a
    presentation attack (Section 11.3); for this reason an independently-
    authored rendering surface is REQUIRED for high-value policies.
    Second, an operator that unilaterally controls the Approver Directory
    can enroll keys it controls (Section 5.2, Section 11.6).
    Accordingly, the accurate claim for classes A/B is: "the operator
-   cannot forge an approver's signature."  The stronger claim — "the
-   operator cannot obtain an unauthorized approval" — additionally
+   cannot forge an approver's signature."  The stronger claim -- "the
+   operator cannot obtain an unauthorized approval" -- additionally
    requires the directory-authority and independent-rendering controls.
    Under class C the operator can fabricate outright; hence the labeling
    requirement.
@@ -906,19 +906,19 @@ Internet-Draft          EP Authorization Receipts              June 2026
    of approval toward _whatever was rendered_; cryptography cannot prove
    the rendering was faithful.  Required mitigations, in increasing
    strength: (1) the signing client MUST render the Action Object from
-   the exact bytes that were hashed — never from a separately supplied
+   the exact bytes that were hashed -- never from a separately supplied
    description; (2) for high-value policies, render templates MUST be
    registered with the policy and committed by policy_hash, so the
    display logic is part of what the approver's signature covers; (3)
    for policies above an organization-designated threshold, the material
    action parameters (amount, beneficiary identifiers) MUST additionally
    be rendered on a second surface not authored by the orchestrating
-   operator — for example, delivered by the verifying executor or an
+   operator -- for example, delivered by the verifying executor or an
    independent operator to the approver's enrolled device over a
    separate channel.  The residual risk is stated honestly: absent a
    trusted display path (hardware the operator does not author),
    rendering fidelity is enforced by controls (2)-(3), by audit, and by
-   consented mismatch drills (Section 11.8) — not by mathematics.  What
+   consented mismatch drills (Section 11.8) -- not by mathematics.  What
    the cryptography does guarantee is exactness of evidence: the receipt
    contains the full Action Object actually signed, so any divergence
    between what was displayed and what was executed is detectable after
@@ -972,9 +972,9 @@ Internet-Draft          EP Authorization Receipts              June 2026
    approval: no initiator can approve its own action, and m-of-n
    approvers are pairwise distinct identities.  It does not defeat
    collusion among distinct enrolled humans, one human who controls
-   multiple enrolled identities (an enrollment control — Section 5.2),
-   or a coerced approver.  Receipts make such events _attributable_ —
-   named, signed, and evidenced — which raises the cost of insider
+   multiple enrolled identities (an enrollment control -- Section 5.2),
+   or a coerced approver.  Receipts make such events _attributable_ --
+   named, signed, and evidenced -- which raises the cost of insider
    fraud; they do not make it impossible, and implementations MUST NOT
    claim otherwise.
 
@@ -1014,7 +1014,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
    The statement member of an Initiator Attestation (Section 4.1) is
    attacker-influenceable free text rendered to a human at the moment of
-   decision — a social-engineering surface aimed at the approver,
+   decision -- a social-engineering surface aimed at the approver,
    adjacent to the presentation attacks of Section 11.3.  A compromised
    or prompt-injected initiator can state any trigger and any reason;
    injection can change what the initiator _proposes_, including this
@@ -1035,27 +1035,27 @@ Internet-Draft          EP Authorization Receipts              June 2026
    remains valid.  The cross-context consistency rule (Section 4.1)
    exists for this; verifiers implementing the member MUST flag
    violations, but on verifiers that predate the member such a receipt
-   still verifies — the rule is a conformance check, not a signature
+   still verifies -- the rule is a conformance check, not a signature
    property.
 
    Privacy: statements written by an agent mid-task can leak sensitive
-   operational context — counterparty details, internal findings,
-   fragments of prompts — into receipts that are long-lived and portable
-   by design.  Deployments SHOULD prefer escalation_trigger plus
-   policy_basis identifiers over free text wherever a rule id captures
-   the reason, SHOULD constrain or template statement generation for
-   regulated data, and MUST apply the same retention and disclosure
-   controls to attestation content as to the rest of the receipt.
+   operational context -- counterparty details, internal findings,
+   fragments of prompts -- into receipts that are long-lived and
+   portable by design.  Deployments SHOULD prefer escalation_trigger
+   plus policy_basis identifiers over free text wherever a rule id
+   captures the reason, SHOULD constrain or template statement
+   generation for regulated data, and MUST apply the same retention and
+   disclosure controls to attestation content as to the rest of the
+   receipt.
 
    Absence is not evidence: a receipt without an attestation means only
-   that the issuer did not populate it — not that the initiator judged
+   that the issuer did not populate it -- not that the initiator judged
    the action routine, and not that no escalation reasoning occurred.
    Verifiers and auditors MUST NOT infer anything from the absence of an
    attestation alone.  (Separately, and unchanged: for an action a
    policy gates on signoff, the absence of any valid receipt at all
-   remains evidence that the control was bypassed — that property comes
+   remains evidence that the control was bypassed -- that property comes
    from the gate, not from this member.)
-
 
 
 
@@ -1150,15 +1150,15 @@ Appendix A.  Changes since -00
        (new Section 4.1): a REQUIRED escalation_trigger enum
        (irreversibility, magnitude, uncertainty, novelty, authority_gap,
        policy_rule), an OPTIONAL policy_basis rule identifier, and an
-       OPTIONAL length-capped (≤ 280 character) statement.  The member
+       OPTIONAL length-capped (<= 280 character) statement.  The member
        is OPTIONAL; it is covered by the context hash via the JCS
        canonicalization already normative in Section 4, so the
        approver's signature covers the stated reason; receipts carrying
        it verify under the existing Section 6.3 verifiers unmodified;
-       and it is a claim by the initiator — identified but never trusted
-       — not proof of the initiator's internal state.  A terminology
-       entry and a step-2 note in Section 6.3 were added accordingly.
-
+       and it is a claim by the initiator -- identified but never
+       trusted -- not proof of the initiator's internal state.  A
+       terminology entry and a step-2 note in Section 6.3 were added
+       accordingly.
 
 
 
@@ -1180,7 +1180,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
    2.  Security Considerations additions (new Section 11.9): the
        statement is attacker-influenceable text presented to a human
-       (prompt-injection → social-engineering surface); conforming
+       (prompt-injection -> social-engineering surface); conforming
        signing clients MUST render it as untrusted content (no markup,
        length cap, distinct styling), consistent with the Section 11.3
        rendering-faithfulness caveat.  Adds privacy guidance for free-
@@ -1196,8 +1196,8 @@ Internet-Draft          EP Authorization Receipts              June 2026
        Section 5.2): makes unmistakable that (a) EP's user-verification-
        gated Class-A signoff is native to this draft and does not depend
        on any other draft's acquiescence/confirmation mechanism, and (b)
-       proof of a specific natural-person identity is out of scope — the
-       Approver Directory trust root is the explicit slot where
+       proof of a specific natural-person identity is out of scope --
+       the Approver Directory trust root is the explicit slot where
        identity/key-discovery layers bind keys to named persons.
 
    4.  Housekeeping: version and date bumped in the header; this
