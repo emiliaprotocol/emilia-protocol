@@ -254,7 +254,7 @@ no network dependency.
 
 ### Author's Address
 
-Iman Schrock, EMILIA Protocol, Inc. — iman@emiliaprotocol.ai
+Iman Schrock, EMILIA Protocol, Inc. — team@emiliaprotocol.ai
 ```
 
 This is the markdown working copy. Before submission it MUST be converted to

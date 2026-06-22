@@ -78,7 +78,7 @@ AWS grant decision arrives
 - No new features.
 - Security patches only, applied within 30 days of disclosure.
 - 1-line README at top: "EMILIA Protocol is in maintenance mode as of
-  YYYY-MM-DD pending revenue. Contact iman@emiliaprotocol.ai for
+  YYYY-MM-DD pending revenue. Contact team@emiliaprotocol.ai for
   pilot inquiries."
 
 ---

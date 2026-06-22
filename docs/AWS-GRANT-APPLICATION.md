@@ -202,5 +202,5 @@ delta.
 ## Contact
 
 Iman Schrock  
-iman@emiliaprotocol.ai  
+team@emiliaprotocol.ai  
 github.com/emilia-protocol

@@ -49,6 +49,6 @@ emiliaprotocol.ai
 
 ### Notes for sending
 - For the first ~20 names, plain Gmail (BCC, or individual where you can) feels more personal than a blast tool — and avoids deliverability flags on a new sending domain.
-- Send from your domain (team@ or iman@emiliaprotocol.ai), not gmail, with SPF/DKIM/DMARC set.
+- Send from your domain (team@emiliaprotocol.ai), not gmail, with SPF/DKIM/DMARC set.
 - Keep one clear link max in the body; more links hurt deliverability on a young domain.
 - Honesty guardrails held: "authorization receipt", "the receipt proves" (never "EMILIA proves"), 26 TLA+ / 22 Alloy, no customers/pre-revenue, solo founder.

@@ -46,7 +46,7 @@ competitors.
 - One-pager: `docs/pilots/GOVGUARD-PILOT-OFFER.md` (export to PDF; attach to every send)
 - Pilot scope doc: send only on reply request
 
-**Send-from:** iman@emiliaprotocol.ai (set up SPF/DKIM if not done — government spam filters are strict)
+**Send-from:** team@emiliaprotocol.ai (set up SPF/DKIM if not done — government spam filters are strict)
 
 **Verification before send:**
 1. Confirm each email address is still active via the agency's contact page (links cited per email).
@@ -75,7 +75,7 @@ EMILIA GovGuard sits between the case-system save and the payment system. Before
 Open to a 20-minute call to walk through what a 60-day observe-mode pilot looks like for one CalWORKs or CalFresh workflow? Pilot fee $25K. Open-source protocol (Apache 2.0) with formal verification — no lock-in.
 
 Iman Schrock
-iman@emiliaprotocol.ai · github.com/emiliaprotocol
+team@emiliaprotocol.ai · github.com/emiliaprotocol
 
 **Hook note:** CDSS Data Stewardship & Integrity Bureau owns CalWORKs/CalFresh/Child Care fraud detection per their public site. No specific recent incident cited (don't fabricate); the page itself confirms they are the right unit.
 **Timing:** Send Tuesday morning. Follow-up at day 7 with a one-line "did this make it through?" + the demo URL.
@@ -96,7 +96,7 @@ EMILIA GovGuard is a pre-execution control layer designed for exactly this contr
 If the right unit is in DPSS at the county level, or in CDSS Program Integrity, I'd appreciate the name and email. Happy to share a 1-page brief.
 
 Thanks,
-Iman Schrock · iman@emiliaprotocol.ai
+Iman Schrock · team@emiliaprotocol.ai
 
 **Hook note:** This is a referral-ask email, not a pitch. The hotline isn't the buyer; the goal is to learn the right contact. Keep it short.
 **Timing:** Send same week as #1. No follow-up — if they don't reply within 14 days, reroute through DGS/SCO.
@@ -118,7 +118,7 @@ Pilot scope: 1 disbursement workflow, 60 days, observe mode, weekly fraud/contro
 
 20 minutes next week to walk you through a sample receipt?
 
-Iman Schrock · iman@emiliaprotocol.ai · github.com/emiliaprotocol
+Iman Schrock · team@emiliaprotocol.ai · github.com/emiliaprotocol
 
 **Hook note:** SCO is the warrant-issuing authority — disbursement integrity is literally their statutory function. This is the highest-leverage CA target.
 **Timing:** Send first. Follow-up at day 7 with a different angle (audit-evidence quality).
@@ -141,7 +141,7 @@ This is a 60-day observe-mode pilot, then optional enforcement, on one workflow 
 Open to a 20-minute scoping call?
 
 Iman Schrock
-iman@emiliaprotocol.ai
+team@emiliaprotocol.ai
 
 **Hook note:** DGS is the natural CA buyer for the exact wedge scenario the demo is built around. Highest demo-fit alignment of any CA contact.
 **Timing:** Send second. Follow-up at day 7.
@@ -163,7 +163,7 @@ I'd value 20 minutes of your time to ask one question: in CA's current vendor pa
 
 Iman Schrock
 Founder, EMILIA Protocol
-iman@emiliaprotocol.ai
+team@emiliaprotocol.ai
 
 **Hook note:** Strategic exec target — keep it short, respect her time, no PDF on first send. The "no deck" framing is a deliberate signal she's not your ICP for slide decks.
 **Timing:** Send AFTER #4 — don't email the CPO before the procurement division. Wait 5 days post-#4, then send. Follow-up at day 14, not day 7.
@@ -185,7 +185,7 @@ A 60-day observe-mode pilot on one workflow (e.g., new-vendor onboarding above $
 
 20-minute call to walk through it?
 
-Iman Schrock · iman@emiliaprotocol.ai · github.com/emiliaprotocol
+Iman Schrock · team@emiliaprotocol.ai · github.com/emiliaprotocol
 
 **Hook note:** FI$Cal is statewide ERP. If they pilot, every CA department benefits without per-department procurement.
 **Timing:** Send Wednesday. Follow-up at day 7 with the one-pager attached if not already.
@@ -207,7 +207,7 @@ LA County is the right size for a meaningful pilot — large enough to surface r
 
 20 minutes next week?
 
-Iman Schrock · iman@emiliaprotocol.ai
+Iman Schrock · team@emiliaprotocol.ai
 
 **Hook note:** LA County DPSS is operationally closer to implementation than statewide CDSS — likely faster to a yes.
 **Timing:** Send same day as #1 (parallel CA tracks). Follow-up at day 7.
@@ -231,7 +231,7 @@ A 60-day observe-mode pilot on one workflow (provider data changes, grant disbur
 
 20 minutes to discuss which workflow has the highest-leverage control gap?
 
-Iman Schrock · iman@emiliaprotocol.ai · github.com/emiliaprotocol
+Iman Schrock · team@emiliaprotocol.ai · github.com/emiliaprotocol
 
 **Hook note:** OLA reports are public and well-known — referencing them is honest and signals research. *Verify* before send: pull one OLA report from 2024–2026 and consider citing the report number directly.
 **Timing:** Send Tuesday. Follow-up at day 7.
@@ -253,7 +253,7 @@ EMILIA GovGuard inserts pre-execution verification at the exact moment the chang
 
 If your office can refer me to whichever DHS division owns *prevention* controls (we're thinking Program Integrity Division or whoever owns the Medicaid provider data masters), I'd appreciate the name. Or if there's value in a 20-minute call directly with OIG, I'm available.
 
-Iman Schrock · iman@emiliaprotocol.ai
+Iman Schrock · team@emiliaprotocol.ai
 
 **Hook note:** OIG is investigative, not preventative — the email respects that and asks for a referral. Higher reply rate than a direct pitch.
 **Timing:** Send Wednesday. No follow-up — if OIG refers, take the referral; if not, reroute via #8 or #11.
@@ -274,7 +274,7 @@ EMILIA GovGuard is a pre-execution control layer that closes this gap. Live exam
 Could you direct me to the right contact for a 20-minute scoping conversation about a 60-day observe-mode pilot on one workflow? Pilot fee $25K. Open-source protocol (Apache 2.0). Formally verified.
 
 Iman Schrock
-iman@emiliaprotocol.ai · github.com/emiliaprotocol
+team@emiliaprotocol.ai · github.com/emiliaprotocol
 
 **Hook note:** info.mmb is general — request a routing to the right person rather than pitching.
 **Timing:** Send Monday so it's at the top of Tuesday's queue. No automatic follow-up — wait for routing.
@@ -298,7 +298,7 @@ Could we set up a 20-minute call?
 
 Iman Schrock
 Founder, EMILIA Protocol
-iman@emiliaprotocol.ai
+team@emiliaprotocol.ai
 
 **Hook note:** This is the most demo-aligned MN target — the `/govguard` now sends this target to the GovGuard pilot page.
 **Timing:** Send Wednesday. Follow-up at day 7 — high priority.
@@ -319,7 +319,7 @@ EMILIA GovGuard is a pre-execution control layer that addresses this gap. Live e
 Would 20 minutes next week work to discuss a 60-day observe-mode pilot focused on 1099 data integrity? Pilot fee $25K, Apache 2.0 protocol.
 
 Iman Schrock
-iman@emiliaprotocol.ai
+team@emiliaprotocol.ai
 
 **Hook note:** Tighter ICP than #11 — only relevant if the W-9 team has its own change-control workflow. May get punted to Syscomp.
 **Timing:** Send same day as #11. If both reply, prioritize #11.
@@ -343,7 +343,7 @@ EMILIA GovGuard is a pre-execution control layer that closes that gap. Live exam
 
 Iman Schrock
 Founder, EMILIA Protocol
-iman@emiliaprotocol.ai · github.com/emiliaprotocol
+team@emiliaprotocol.ai · github.com/emiliaprotocol
 
 **Hook note:** Strategic exec target — short, direct, no deck. Don't bcc anyone else.
 **Timing:** Send AFTER #11 + #12 land (so MMB awareness exists before OSP). Day 5 after MMB sends.
@@ -364,7 +364,7 @@ EMILIA GovGuard intercepts the change pre-execution. Live demo of the exact scen
 20 minutes to discuss whether a 60-day observe-mode pilot fits within OSP's pilot/POC posture? $25K, Apache 2.0.
 
 Iman Schrock
-iman@emiliaprotocol.ai
+team@emiliaprotocol.ai
 
 **Hook note:** Operational-level contact — likely the actual decider for technical pilots.
 **Timing:** Send same day as #13.
@@ -385,7 +385,7 @@ EMILIA GovGuard inserts a pre-execution control at exactly that boundary. Live e
 If a 60-day observe-mode pilot fits OSP's contracting framework, I'd value 20 minutes to scope it. $25K, Apache 2.0.
 
 Iman Schrock
-iman@emiliaprotocol.ai
+team@emiliaprotocol.ai
 
 **Hook note:** Most operational of the three OSP contacts — may have actual authority to scope a small pilot.
 **Timing:** Send same day as #13 + #14.
@@ -409,7 +409,7 @@ EMILIA GovGuard is a pre-execution control layer for high-risk public-sector act
 
 If your division can refer me to whichever LA County unit owns *prevention* controls for the categories you prosecute, I'd appreciate the name and email.
 
-Iman Schrock · iman@emiliaprotocol.ai
+Iman Schrock · team@emiliaprotocol.ai
 
 **Hook note:** Referral-ask, not a pitch. DA office isn't the buyer.
 **Timing:** Send Wednesday. No automatic follow-up.
@@ -430,7 +430,7 @@ EMILIA GovGuard sits between the case-system save and the payment system. Live e
 20-minute scoping call for a 60-day observe-mode county-level pilot? $25K, Apache 2.0, formally verified.
 
 Iman Schrock
-iman@emiliaprotocol.ai
+team@emiliaprotocol.ai
 
 **Hook note:** Same pattern as LA County DPSS (#7) — second-largest county welfare unit in CA.
 **Timing:** Send same day as #7.
@@ -451,7 +451,7 @@ Live example of a vendor bank-change blocked-then-approved scenario: https://emi
 20 minutes to discuss a 60-day observe-mode pilot? $25K. Apache 2.0 — county can self-host.
 
 Iman Schrock
-iman@emiliaprotocol.ai
+team@emiliaprotocol.ai
 
 **Hook note:** Same pattern as LA County / San Diego — county-level operational closer than statewide.
 **Timing:** Send same day as #8 + #9.
@@ -471,7 +471,7 @@ EMILIA GovGuard intercepts high-risk action attempts (refund-destination changes
 
 If your division can refer me to whichever MN DOR unit owns prevention-side controls (or if there's value in a direct conversation), I'd appreciate the routing.
 
-Iman Schrock · iman@emiliaprotocol.ai
+Iman Schrock · team@emiliaprotocol.ai
 
 **Hook note:** Referral-ask. DOR CID is investigative, like DHS OIG (#9).
 **Timing:** Send same week as MN tier-1.
@@ -494,7 +494,7 @@ A 60-day observe-mode pilot on one workflow (UI benefit-routing changes is the n
 20 minutes to discuss?
 
 Iman Schrock
-iman@emiliaprotocol.ai
+team@emiliaprotocol.ai
 
 **Hook note:** EDD's pandemic fraud loss (~$20B reported) is widely public — referencing it is honest and signals research. Avoid naming individuals or current cases.
 **Timing:** Send AFTER all CA tier-1 contacts so the email isn't the first CA touch. Day 7 after #1–#7.
@@ -518,7 +518,7 @@ We're targeting SOC 2 Type I in the next 3–6 months, Type II in 12 months, to 
 
 Iman Schrock
 Founder, EMILIA Protocol
-iman@emiliaprotocol.ai · github.com/emiliaprotocol
+team@emiliaprotocol.ai · github.com/emiliaprotocol
 
 ---
 
