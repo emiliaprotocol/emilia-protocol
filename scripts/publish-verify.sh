@@ -40,4 +40,7 @@ fi
 # 4) Publish. Enter your 2FA one-time code if prompted.
 npm publish --access public
 
-echo "==> Done. Registry latest is now: $(npm view "${NAME}" version)"
+# A first publish can take minutes to appear on registry reads — a transient 404
+# here does NOT mean the publish failed (the PUT 200 above is the source of truth).
+LATEST="$(npm view "${NAME}" version 2>/dev/null || true)"
+echo "==> Published. Registry 'latest' currently reads: ${LATEST:-"(still propagating — recheck npm view ${NAME} in a few minutes)"}"
