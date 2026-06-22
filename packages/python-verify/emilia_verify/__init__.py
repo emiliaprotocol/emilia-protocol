@@ -447,3 +447,159 @@ def verify_time_attestation(att: Any, opts: Optional[dict] = None) -> dict:
             fail("within_bounds", "attested time after notAfter")
 
     return {"valid": all(checks.values()), "checks": checks, "errors": errors}
+
+
+# ── EP §6.2 Trust Receipt offline verifier (I-D §6.3) — mirror packages/verify ─
+
+def _within_window(t: Any, frm: Any, to: Any) -> bool:
+    ms = _instant_ms(t)
+    if ms is None:
+        return False
+    if frm:
+        f = _instant_ms(frm)
+        if f is not None and ms < f:
+            return False
+    if to:
+        tt = _instant_ms(to)
+        if tt is not None and ms > tt:
+            return False
+    return True
+
+
+def _verify_class_a_over_digest(webauthn: dict, digest_bytes: bytes, pub_spki_b64u: str) -> bool:
+    try:
+        cd = _b64url_decode(webauthn["client_data_json"])
+        client = json.loads(cd.decode("utf-8"))
+        if client.get("type") != "webauthn.get":
+            return False
+        if client.get("challenge") != base64.urlsafe_b64encode(digest_bytes).decode().rstrip("="):
+            return False
+        ad = _b64url_decode(webauthn["authenticator_data"])
+        if len(ad) < 37 or (ad[32] & _FLAG_UV) != _FLAG_UV:
+            return False
+        signed = ad + hashlib.sha256(cd).digest()
+        pub = load_der_public_key(_b64url_decode(pub_spki_b64u))
+        pub.verify(_b64url_decode(webauthn["signature"]), signed, _ec.ECDSA(_hashes.SHA256()))
+        return True
+    except Exception:
+        return False
+
+
+def _verify_ed25519_over_digest(sig_b64u: Any, digest_bytes: bytes, pub_spki_b64u: str) -> bool:
+    try:
+        key = load_der_public_key(_b64url_decode(pub_spki_b64u))
+        key.verify(_b64url_decode(sig_b64u), digest_bytes)
+        return True
+    except Exception:
+        return False
+
+
+def verify_trust_receipt(receipt: Any, opts: Optional[dict] = None) -> dict:
+    """Offline EP §6.2 Trust Receipt verifier (I-D §6.3). Mirrors packages/verify
+    verifyTrustReceipt; the PIP-007 attestation report is advisory and omitted
+    (it never affects validity). Fail-closed."""
+    opts = opts or {}
+    checks = {"action_hash": False, "context_commitments": False, "signoff_signatures": False,
+              "sod": False, "inclusion": False, "checkpoint_signature": False, "windows": False}
+    errors = []
+
+    def fail(msg):
+        errors.append(msg)
+        return {"valid": False, "checks": checks, "errors": errors}
+
+    if not isinstance(receipt, dict):
+        return fail("Missing receipt")
+    approver_keys = opts.get("approverKeys") or {}
+    log_public_key = opts.get("logPublicKey")
+    contexts = receipt.get("contexts") if isinstance(receipt.get("contexts"), list) else []
+    signoffs = receipt.get("signoffs") if isinstance(receipt.get("signoffs"), list) else []
+    if not receipt.get("action") or not receipt.get("action_hash"):
+        return fail("Missing action or action_hash")
+    if not contexts or not signoffs:
+        return fail("Missing contexts or signoffs")
+
+    action_hash_hex = _sha256_hex(canonicalize(receipt["action"]))
+    checks["action_hash"] = action_hash_hex == _hex_of(receipt.get("action_hash"))
+
+    context_by_hash = {}
+    commitments_ok = True
+    policy_hashes = set()
+    for ctx in contexts:
+        context_by_hash[_sha256_hex(canonicalize(ctx))] = ctx
+        if _hex_of(ctx.get("action_hash")) != action_hash_hex:
+            commitments_ok = False
+        if not ctx.get("policy_hash"):
+            commitments_ok = False
+        else:
+            policy_hashes.add(_hex_of(ctx.get("policy_hash")))
+        if not ctx.get("approver"):
+            commitments_ok = False
+    if len(policy_hashes) > 1:
+        commitments_ok = False
+    checks["context_commitments"] = commitments_ok
+
+    valid_approvals = []
+    signatures_ok = len(signoffs) > 0
+    for s in signoffs:
+        ctx = context_by_hash.get(_hex_of(s.get("context_hash")))
+        if not ctx:
+            signatures_ok = False
+            continue
+        key_entry = approver_keys.get(s.get("approver_key_id"))
+        if not key_entry or not key_entry.get("public_key"):
+            signatures_ok = False
+            continue
+        if not _within_window(ctx.get("issued_at"), key_entry.get("valid_from"), key_entry.get("valid_to")):
+            signatures_ok = False
+            continue
+        digest_bytes = bytes.fromhex(_hex_of(s.get("context_hash")))
+        key_class = s.get("key_class") or key_entry.get("key_class") or "B"
+        if key_class == "A":
+            sig_ok = bool(s.get("webauthn")) and _verify_class_a_over_digest(s["webauthn"], digest_bytes, key_entry["public_key"])
+        else:
+            sig_ok = _verify_ed25519_over_digest(s.get("signature"), digest_bytes, key_entry["public_key"])
+        if not sig_ok:
+            signatures_ok = False
+            continue
+        valid_approvals.append({"approver": ctx.get("approver"), "signed_at": s.get("signed_at"), "ctx": ctx})
+    checks["signoff_signatures"] = signatures_ok
+
+    initiator = receipt["action"].get("initiator")
+    approvers = [a["approver"] for a in valid_approvals]
+    required = max([1] + [int(c.get("required_approvals") or 1) for c in contexts])
+    sod_ok = True
+    if initiator and initiator in approvers:
+        sod_ok = False
+    if len(set(approvers)) != len(approvers):
+        sod_ok = False
+    if len(valid_approvals) < required:
+        sod_ok = False
+    checks["sod"] = sod_ok
+
+    lp = receipt.get("log_proof")
+    if lp and lp.get("checkpoint") and isinstance(lp.get("inclusion_path"), list):
+        leaf_content = {k: v for k, v in receipt.items() if k not in ("log_proof", "approver_key_proofs")}
+        leaf_hash = _sha256_hex(canonicalize(leaf_content))
+        checks["inclusion"] = verify_merkle_anchor(leaf_hash, lp["inclusion_path"], _hex_of(lp["checkpoint"].get("root_hash")))
+        if log_public_key and lp["checkpoint"].get("log_signature"):
+            signed_cp = {k: v for k, v in lp["checkpoint"].items() if k != "log_signature"}
+            checks["checkpoint_signature"] = _verify_ed25519_over_digest(
+                str(lp["checkpoint"]["log_signature"]).replace("b64u:", ""),
+                hashlib.sha256(canonicalize(signed_cp).encode("utf-8")).digest(),
+                log_public_key)
+
+    windows_ok = len(valid_approvals) > 0
+    for a in valid_approvals:
+        if not _within_window(a["signed_at"], a["ctx"].get("issued_at"), a["ctx"].get("expires_at")):
+            windows_ok = False
+    committed_at = (receipt.get("consumption") or {}).get("committed_at")
+    if not committed_at:
+        windows_ok = False
+    else:
+        for ctx in contexts:
+            if not _within_window(committed_at, ctx.get("issued_at"), ctx.get("expires_at")):
+                windows_ok = False
+                break
+    checks["windows"] = windows_ok
+
+    return {"valid": all(checks.values()), "checks": checks, "errors": errors}

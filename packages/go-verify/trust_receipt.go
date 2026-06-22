@@ -1,0 +1,257 @@
+// SPDX-License-Identifier: Apache-2.0
+// EP §6.2 Trust Receipt offline verifier (I-D §6.3) — Go parity with
+// packages/verify verifyTrustReceipt and python-verify verify_trust_receipt.
+// The PIP-007 attestation report is advisory and omitted (never affects validity).
+package emiliaverify
+
+import (
+	"crypto/ecdsa"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
+	"strings"
+)
+
+// TrustReceiptResult mirrors the JS { valid, checks } shape.
+type TrustReceiptResult struct {
+	Valid  bool            `json:"valid"`
+	Checks map[string]bool `json:"checks"`
+}
+
+func sha256HexOf(v any) string {
+	sum := sha256.Sum256([]byte(Canonicalize(v)))
+	return hex.EncodeToString(sum[:])
+}
+
+func withinWindowGo(t, frm, to string) bool {
+	ts, ok := parseMillis(t)
+	if !ok {
+		return false
+	}
+	if frm != "" {
+		if f, ok2 := parseMillis(frm); ok2 && ts < f {
+			return false
+		}
+	}
+	if to != "" {
+		if tt, ok2 := parseMillis(to); ok2 && ts > tt {
+			return false
+		}
+	}
+	return true
+}
+
+func verifyClassAOverDigestGo(wa map[string]any, digest []byte, pubB64u string) bool {
+	cdBytes, err := b64urlDecode(getStr(wa, "client_data_json"))
+	if err != nil {
+		return false
+	}
+	var client map[string]any
+	if json.Unmarshal(cdBytes, &client) != nil {
+		return false
+	}
+	if getStr(client, "type") != "webauthn.get" {
+		return false
+	}
+	if getStr(client, "challenge") != base64.RawURLEncoding.EncodeToString(digest) {
+		return false
+	}
+	ad, err := b64urlDecode(getStr(wa, "authenticator_data"))
+	if err != nil || len(ad) < 37 || ad[32]&flagUV != flagUV {
+		return false
+	}
+	signed := append(append([]byte{}, ad...), func() []byte { s := sha256.Sum256(cdBytes); return s[:] }()...)
+	der, err := base64.RawURLEncoding.DecodeString(b64urlPad(pubB64u))
+	if err != nil {
+		return false
+	}
+	pubAny, err := x509.ParsePKIXPublicKey(der)
+	if err != nil {
+		return false
+	}
+	pub, ok := pubAny.(*ecdsa.PublicKey)
+	if !ok {
+		return false
+	}
+	sig, err := b64urlDecode(getStr(wa, "signature"))
+	if err != nil {
+		return false
+	}
+	h := sha256.Sum256(signed)
+	return ecdsa.VerifyASN1(pub, h[:], sig)
+}
+
+// VerifyTrustReceipt verifies an EP §6.2 Trust Receipt offline. opts keys:
+// approverKeys (map of approver_key_id -> {public_key,key_class,valid_from,valid_to}),
+// logPublicKey (string).
+func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceiptResult {
+	checks := map[string]bool{
+		"action_hash": false, "context_commitments": false, "signoff_signatures": false,
+		"sod": false, "inclusion": false, "checkpoint_signature": false, "windows": false,
+	}
+	if receipt == nil {
+		return TrustReceiptResult{false, checks}
+	}
+	approverKeys := getMap(opts["approverKeys"])
+	logPublicKey := getStr(opts, "logPublicKey")
+	contexts, _ := receipt["contexts"].([]any)
+	signoffs, _ := receipt["signoffs"].([]any)
+	if receipt["action"] == nil || getStr(receipt, "action_hash") == "" {
+		return TrustReceiptResult{false, checks}
+	}
+	if len(contexts) == 0 || len(signoffs) == 0 {
+		return TrustReceiptResult{false, checks}
+	}
+
+	actionHashHex := sha256HexOf(receipt["action"])
+	checks["action_hash"] = actionHashHex == hexStrip(receipt["action_hash"])
+
+	contextByHash := map[string]map[string]any{}
+	commitmentsOK := true
+	policyHashes := map[string]bool{}
+	for _, c := range contexts {
+		ctx := getMap(c)
+		contextByHash[sha256HexOf(ctx)] = ctx
+		if hexStrip(ctx["action_hash"]) != actionHashHex {
+			commitmentsOK = false
+		}
+		if getStr(ctx, "policy_hash") == "" {
+			commitmentsOK = false
+		} else {
+			policyHashes[hexStrip(ctx["policy_hash"])] = true
+		}
+		if getStr(ctx, "approver") == "" {
+			commitmentsOK = false
+		}
+	}
+	if len(policyHashes) > 1 {
+		commitmentsOK = false
+	}
+	checks["context_commitments"] = commitmentsOK
+
+	type approval struct {
+		approver, signedAt string
+		ctx                map[string]any
+	}
+	validApprovals := []approval{}
+	signaturesOK := len(signoffs) > 0
+	for _, so := range signoffs {
+		s := getMap(so)
+		ctx, found := contextByHash[hexStrip(s["context_hash"])]
+		if !found {
+			signaturesOK = false
+			continue
+		}
+		keyEntry := getMap(approverKeys[getStr(s, "approver_key_id")])
+		pub := getStr(keyEntry, "public_key")
+		if pub == "" {
+			signaturesOK = false
+			continue
+		}
+		if !withinWindowGo(getStr(ctx, "issued_at"), getStr(keyEntry, "valid_from"), getStr(keyEntry, "valid_to")) {
+			signaturesOK = false
+			continue
+		}
+		digest, err := hex.DecodeString(hexStrip(s["context_hash"]))
+		if err != nil {
+			signaturesOK = false
+			continue
+		}
+		keyClass := getStr(s, "key_class")
+		if keyClass == "" {
+			keyClass = getStr(keyEntry, "key_class")
+		}
+		if keyClass == "" {
+			keyClass = "B"
+		}
+		var sigOK bool
+		if keyClass == "A" {
+			sigOK = getMap(s["webauthn"]) != nil && verifyClassAOverDigestGo(getMap(s["webauthn"]), digest, pub)
+		} else {
+			sigOK = ed25519VerifyBytes(digest, pub, getStr(s, "signature"))
+		}
+		if !sigOK {
+			signaturesOK = false
+			continue
+		}
+		validApprovals = append(validApprovals, approval{getStr(ctx, "approver"), getStr(s, "signed_at"), ctx})
+	}
+	checks["signoff_signatures"] = signaturesOK
+
+	action := getMap(receipt["action"])
+	initiator := getStr(action, "initiator")
+	approvers := make([]string, 0, len(validApprovals))
+	for _, a := range validApprovals {
+		approvers = append(approvers, a.approver)
+	}
+	required := 1
+	for _, c := range contexts {
+		if ra, ok := getMap(c)["required_approvals"].(float64); ok && int(ra) > required {
+			required = int(ra)
+		}
+	}
+	sodOK := true
+	if initiator != "" && contains(approvers, initiator) {
+		sodOK = false
+	}
+	seen := map[string]bool{}
+	for _, a := range approvers {
+		seen[a] = true
+	}
+	if len(seen) != len(approvers) {
+		sodOK = false
+	}
+	if len(validApprovals) < required {
+		sodOK = false
+	}
+	checks["sod"] = sodOK
+
+	if lp := getMap(receipt["log_proof"]); lp != nil {
+		cp := getMap(lp["checkpoint"])
+		ipath, hasPath := lp["inclusion_path"].([]any)
+		if cp != nil && hasPath {
+			leaf := map[string]any{}
+			for k, v := range receipt {
+				if k != "log_proof" && k != "approver_key_proofs" {
+					leaf[k] = v
+				}
+			}
+			checks["inclusion"] = VerifyMerkleAnchor(sha256HexOf(leaf), ipath, hexStrip(cp["root_hash"]))
+			logSig := getStr(cp, "log_signature")
+			if logPublicKey != "" && logSig != "" {
+				signedCP := map[string]any{}
+				for k, v := range cp {
+					if k != "log_signature" {
+						signedCP[k] = v
+					}
+				}
+				sum := sha256.Sum256([]byte(Canonicalize(signedCP)))
+				checks["checkpoint_signature"] = ed25519VerifyBytes(sum[:], logPublicKey, strings.Replace(logSig, "b64u:", "", 1))
+			}
+		}
+	}
+
+	windowsOK := len(validApprovals) > 0
+	for _, a := range validApprovals {
+		if !withinWindowGo(a.signedAt, getStr(a.ctx, "issued_at"), getStr(a.ctx, "expires_at")) {
+			windowsOK = false
+		}
+	}
+	committedAt := getStr(getMap(receipt["consumption"]), "committed_at")
+	if committedAt == "" {
+		windowsOK = false
+	} else {
+		for _, c := range contexts {
+			ctx := getMap(c)
+			if !withinWindowGo(committedAt, getStr(ctx, "issued_at"), getStr(ctx, "expires_at")) {
+				windowsOK = false
+				break
+			}
+		}
+	}
+	checks["windows"] = windowsOK
+
+	return TrustReceiptResult{allTrue(checks), checks}
+}

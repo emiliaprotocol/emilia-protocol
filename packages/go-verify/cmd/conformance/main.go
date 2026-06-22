@@ -29,6 +29,8 @@ type vec struct {
 	ExpectedHash      string         `json:"expected_hash"`
 	NotBefore         string         `json:"not_before"`
 	NotAfter          string         `json:"not_after"`
+	TrustReceipt      map[string]any `json:"trust_receipt"`
+	Verification      map[string]any `json:"verification"`
 }
 
 func main() {
@@ -66,6 +68,13 @@ func main() {
 				opts["expectedHash"] = v.ExpectedHash
 			}
 			valid = emiliaverify.VerifyTimeAttestation(v.TimeAttestation, opts).Valid
+		case v.TrustReceipt != nil:
+			opts := map[string]any{}
+			if v.Verification != nil {
+				opts["approverKeys"] = v.Verification["approver_keys"]
+				opts["logPublicKey"] = v.Verification["log_public_key"]
+			}
+			valid = emiliaverify.VerifyTrustReceipt(v.TrustReceipt, opts).Valid
 		}
 		out = append(out, map[string]any{"id": v.ID, "valid": valid})
 	}
