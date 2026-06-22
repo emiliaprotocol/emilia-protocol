@@ -1,5 +1,5 @@
 # Multi-Party Quorum Authorization for High-Risk Agent Actions (EP-QUORUM)
-## draft-schrock-ep-quorum-00
+## draft-schrock-ep-quorum-01
 
 ```
 Network Working Group                                         I. Schrock

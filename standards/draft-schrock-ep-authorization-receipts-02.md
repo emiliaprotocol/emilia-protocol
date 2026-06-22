@@ -1,5 +1,5 @@
 # Authorization Receipts for High-Risk Agent Actions (EP)
-## draft-schrock-ep-authorization-receipts-01
+## draft-schrock-ep-authorization-receipts-02
 
 ```
 Network Working Group                                         I. Schrock

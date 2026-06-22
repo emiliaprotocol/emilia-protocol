@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rfc xmlns:xi="http://www.w3.org/2001/XInclude"
-     docName="draft-schrock-ep-quorum-00"
+     docName="draft-schrock-ep-quorum-01"
      category="info" ipr="trust200902" submissionType="IETF"
      version="3" tocInclude="true" sortRefs="true" symRefs="true">
   <front>
     <title abbrev="EP Multi-Party Quorum">Multi-Party Quorum Authorization for High-Risk Agent Actions (EP-QUORUM)</title>
-    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-quorum-00"/>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-quorum-01"/>
     <author fullname="Iman Schrock">
       <organization>EMILIA Protocol, Inc.</organization>
       <address>
@@ -15,7 +15,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="June" day="20"/>
+    <date year="2026" month="June" day="21"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>authorization</keyword>
@@ -211,8 +211,9 @@
             <td><bcp14>OPTIONAL</bcp14> (default true)</td>
             <td>boolean</td>
             <td>When true, no approver identifier may fill more than one
-            slot. Implementations <bcp14>MUST</bcp14> treat a missing value
-            as true.</td>
+            slot, AND no single device key may fill more than one slot
+            (<xref target="quorum-gate"/>, checks 5 and 5a). Implementations
+            <bcp14>MUST</bcp14> treat a missing value as true.</td>
           </tr>
           <tr>
             <td><tt>window_sec</tt></td>
@@ -220,6 +221,17 @@
             <td>integer &gt; 0</td>
             <td>Maximum span, in seconds, between the first and any later
             admitted signature.</td>
+          </tr>
+          <tr>
+            <td><tt>ordered_chain</tt></td>
+            <td><bcp14>OPTIONAL</bcp14> (default false)</td>
+            <td>boolean</td>
+            <td>Strong ordered mode (<xref target="approval-modes"/>). When
+            true (ordered mode only), each signoff after the first
+            <bcp14>MUST</bcp14> commit, inside its own signed context, to the
+            hash of its predecessor's context (<tt>prev_context_hash</tt>), so
+            approval order is proven by the signatures rather than by
+            <tt>issued_at</tt> timestamps.</td>
           </tr>
         </tbody>
       </table>
@@ -270,6 +282,21 @@
       window bounds the lifetime of a partial quorum so that a long-dormant
       partial trail cannot be completed much later by an attacker who has
       since compromised a remaining approver.</t>
+      <t><strong>Strong ordered mode (<tt>"ordered_chain": true</tt>).</strong>
+      Ordering by <tt>issued_at</tt> alone is asserted by whoever stamps the
+      time. To prove order by the signatures themselves, a policy
+      <bcp14>MAY</bcp14> require a cryptographic chain: each signoff after the
+      first carries, inside its signed Authorization Context, a
+      <tt>prev_context_hash</tt> equal to the SHA-256 of the canonical context
+      of its predecessor in the trail; the first signoff carries none. Because
+      each approver's device signs over its own context, the i-th approver
+      thereby attests to having signed <em>after</em> the exact (i-1)-th
+      approval, and no party -- including the operator -- can reorder, insert,
+      or backdate a signoff without invalidating a signature
+      (<tt>broken_chain</tt>). This is <bcp14>RECOMMENDED</bcp14> for the
+      highest-consequence ordered actions. Implementations that do not set
+      <tt>ordered_chain</tt> retain timestamp ordering and remain
+      conformant.</t>
     </section>
 
     <section anchor="quorum-gate">
@@ -303,12 +330,24 @@
         is true (the default), approvers are pairwise distinct and (per the
         base draft's SelfApprovalImpossible) distinct from the initiator
         (<tt>duplicate_human</tt>).</li>
+        <li><strong>Distinct keys (check 5a).</strong> When
+        <tt>distinct_humans</tt> is true, the admitted members'
+        <tt>approver_public_key</tt> values are pairwise distinct
+        (<tt>duplicate_key</tt>). This defends against a single device key
+        enrolled under two approver identifiers, which would otherwise pass
+        the distinct-humans check by name while being one signer.</li>
         <li><strong>Threshold.</strong> At least <tt>required</tt> admitted
         members exist (<tt>under_threshold</tt>).</li>
         <li><strong>Order (ordered mode only).</strong> The i-th admitted
         member matches <tt>approvers[i-1]</tt>; signature times are strictly
         increasing (<tt>out_of_order</tt>,
         <tt>non_increasing_time</tt>).</li>
+        <li><strong>Ordering chain (strong ordered mode only, check 7a).</strong>
+        When <tt>ordered_chain</tt> is true, the first admitted member carries
+        no <tt>prev_context_hash</tt> and every later member's
+        <tt>prev_context_hash</tt> equals the SHA-256 of the canonical context
+        of its predecessor (<tt>broken_chain</tt>). When <tt>ordered_chain</tt>
+        is false this check is not applicable.</li>
         <li><strong>Window.</strong> Every admitted member's
         <tt>issued_at</tt> is within <tt>window_sec</tt> of the first
         member's <tt>issued_at</tt> (<tt>window_exceeded</tt>).</li>
@@ -318,7 +357,7 @@
       auditor offline (Q5): it is a pure function of (P, H, members).
       Because each member is an unmodified EP signoff, check 2 is exactly
       the base draft's verifier invoked per member; EP-QUORUM adds the
-      set-level checks 1, 3-8 on top.</t>
+      set-level checks 1, 3-10 on top.</t>
     </section>
 
     <section anchor="incremental-admission">

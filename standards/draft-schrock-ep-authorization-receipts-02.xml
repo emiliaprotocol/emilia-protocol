@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rfc xmlns:xi="http://www.w3.org/2001/XInclude"
-     docName="draft-schrock-ep-authorization-receipts-01"
+     docName="draft-schrock-ep-authorization-receipts-02"
      category="info" ipr="trust200902" submissionType="IETF"
      version="3" tocInclude="true" sortRefs="true" symRefs="true">
   <front>
     <title abbrev="EP Authorization Receipts">Authorization Receipts for High-Risk Agent Actions</title>
-    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-01"/>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-02"/>
     <author fullname="Iman Schrock">
       <organization>EMILIA Protocol, Inc.</organization>
       <address>
@@ -15,7 +15,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="June" day="12"/>
+    <date year="2026" month="June" day="21"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>authorization</keyword>
@@ -859,6 +859,27 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
         nothing by saying the right words; the attestation is a claim by a
         party the protocol identifies but never trusts, not proof of its
         internal state.</t>
+      </section>
+      <section>
+        <name>No symmetric key on the verification trust path</name>
+        <t>Every artifact a relying party verifies offline -- the approver
+        signoff (Class A: ES256/P-256), the operator commit and receipt
+        (Ed25519), the log inclusion proof, and the portable revocation
+        statement (Ed25519) -- is bound by an ASYMMETRIC signature whose
+        verifying key the relying party holds independently of the issuer. No
+        step in offline verification relies on a Message Authentication Code, a
+        shared secret, or any symmetric primitive. This is deliberate and
+        load-bearing: a symmetric construction (for example an HMAC-chained
+        audit log) is verifiable only by a party holding the same secret as the
+        producer, which is precisely the party whose conduct the evidence is
+        meant to constrain -- its keeper can rewrite its own history
+        undetectably. An EP receipt's issuer cannot. Conforming verifier
+        implementations <bcp14>MUST NOT</bcp14> introduce a symmetric primitive
+        on the verification path; an implementation that does so does not
+        provide EP's non-repudiation property. (HMAC <bcp14>MAY</bcp14> appear
+        elsewhere in a deployment -- e.g. authenticating an operator's own cron
+        or webhook calls -- provided it is never a link in the chain a third
+        party verifies.)</t>
       </section>
     </section>
     <section>
