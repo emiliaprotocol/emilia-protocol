@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // JS conformance runner: emits [{id, valid}] per vector. argv[2] = vectors path.
 // Polymorphic: receipt (document) | signoff | quorum.
-import { verifyReceipt, verifyWebAuthnSignoff, verifyQuorum, verifyRevocation, verifyTimeAttestation, verifyTrustReceipt, verifyProvenanceOffline } from '../../packages/verify/index.js';
+import { verifyReceipt, verifyWebAuthnSignoff, verifyQuorum, verifyRevocation, verifyTimeAttestation, verifyTrustReceipt, verifyProvenanceOffline, verifyEvidenceRecord } from '../../packages/verify/index.js';
 import { readFileSync } from 'node:fs';
 const { vectors } = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const out = vectors.map((v) => {
@@ -12,6 +12,7 @@ const out = vectors.map((v) => {
   if (v.time_attestation) return { id: v.id, valid: verifyTimeAttestation(v.time_attestation, { tsaKeys: v.tsa_keys, expectedHash: v.expected_hash, notBefore: v.not_before, notAfter: v.not_after }).valid };
   if (v.trust_receipt) return { id: v.id, valid: verifyTrustReceipt(v.trust_receipt, { approverKeys: v.verification.approver_keys, logPublicKey: v.verification.log_public_key }).valid };
   if (v.provenance_chain) return { id: v.id, valid: verifyProvenanceOffline(v.provenance_chain, { delegationKeys: v.delegation_keys, now: v.now_ms }).valid };
+  if (v.evidence_record) return { id: v.id, valid: verifyEvidenceRecord(v.evidence_record, { tsaKeys: v.tsa_keys, protectedHash: v.protected_hash }).valid };
   return { id: v.id, valid: false };
 });
 process.stdout.write(JSON.stringify(out));

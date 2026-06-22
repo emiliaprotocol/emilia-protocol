@@ -95,6 +95,10 @@ export { verifyProvenanceOffline, PROVENANCE_VERSION } from './provenance.js';
 // (trusted-time anchor; complements the strong ordered chain's proof of order).
 export { verifyTimeAttestation, TIME_ATTESTATION_VERSION } from './time-attestation.js';
 
+// EP-EVIDENCE-RECORD-v1: long-term, crypto-agile preservation (RFC 4998-style
+// renewal chain) so a receipt's non-repudiation survives algorithm aging.
+export { verifyEvidenceRecord, EVIDENCE_RECORD_VERSION } from './evidence-record.js';
+
 function hashPair(a, b) {
   const sorted = [a, b].sort();
   return sha256(sorted[0] + sorted[1]);

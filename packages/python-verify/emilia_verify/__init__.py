@@ -792,3 +792,74 @@ def verify_provenance_offline(doc, opts=None):
         fail("temporal_containment", "approval committed after leaf expiry")
 
     return {"valid": all(checks.values()), "checks": checks, "errors": errors, "links": [], "agent_identity": None, "liability": None}
+
+
+# ── EP-EVIDENCE-RECORD-v1 (RFC 4998-style renewal chain) — mirror packages/verify ─
+
+EVIDENCE_RECORD_VERSION = "EP-EVIDENCE-RECORD-v1"
+_SUPPORTED_HASH = {"sha256", "sha384", "sha512"}
+
+
+def _alg_of(hashed):
+    s = str(hashed if hashed is not None else "")
+    i = s.find(":")
+    if i < 0:
+        return ("sha256", s.lower())
+    return (s[:i].lower(), s[i + 1:].lower())
+
+
+def verify_evidence_record(record, opts=None):
+    """Mirror of packages/verify/evidence-record.js verifyEvidenceRecord. Fail-closed."""
+    opts = opts or {}
+    tsa_keys = opts.get("tsaKeys") or {}
+    checks = {"version": False, "protected_bound": True, "chain_nonempty": False,
+              "all_timestamps_valid": True, "chain_linked": True, "monotonic_time": True}
+    errors = []
+
+    def fail(k, m):
+        checks[k] = False
+        errors.append(m)
+
+    try:
+        if not isinstance(record, dict) or record.get("@version") != EVIDENCE_RECORD_VERSION:
+            return {"valid": False, "checks": checks, "errors": [f"unsupported version: {record.get('@version') if isinstance(record, dict) else None}"]}
+        checks["version"] = True
+        ats = record.get("archive_timestamps") if isinstance(record.get("archive_timestamps"), list) else []
+        checks["chain_nonempty"] = len(ats) > 0
+        if not checks["chain_nonempty"]:
+            return {"valid": False, "checks": checks, "errors": ["no archive timestamps"]}
+
+        if isinstance(opts.get("protectedHash"), str):
+            if _alg_of(record.get("protected_hash"))[1] != _alg_of(opts["protectedHash"])[1]:
+                fail("protected_bound", "record protected_hash does not match the supplied artifact hash")
+
+        prev_time = None
+        first_time = None
+        for i, at in enumerate(ats):
+            ta = (at or {}).get("time_attestation")
+            r = verify_time_attestation(ta, {"tsaKeys": tsa_keys})
+            if not r["valid"]:
+                fail("all_timestamps_valid", f"archive timestamp {i} TSA attestation does not verify")
+            alg, hex_ = _alg_of((ta or {}).get("hashed"))
+            if i == 0:
+                if hex_ != _alg_of(record.get("protected_hash"))[1]:
+                    fail("chain_linked", "first archive timestamp does not cover protected_hash")
+            elif alg not in _SUPPORTED_HASH:
+                fail("chain_linked", f"renewal {i} uses an unsupported hash algorithm {alg}")
+            else:
+                expected = hashlib.new(alg, canonicalize(ats[i - 1].get("time_attestation")).encode("utf-8")).hexdigest()
+                if hex_ != expected:
+                    fail("chain_linked", f"renewal {i} does not cover the previous attestation")
+            t = _instant_ms((ta or {}).get("time"))
+            if t is None:
+                fail("monotonic_time", f"archive timestamp {i} has no parseable time")
+            else:
+                if prev_time is not None and not (t > prev_time):
+                    fail("monotonic_time", f"renewal {i} time is not after the previous")
+                if first_time is None:
+                    first_time = (ta or {}).get("time")
+                prev_time = t
+        return {"valid": all(checks.values()), "checks": checks, "errors": errors,
+                "protected_since": first_time, "last_renewed": (ats[-1].get("time_attestation") or {}).get("time")}
+    except Exception:
+        return {"valid": False, "checks": checks, "errors": errors}

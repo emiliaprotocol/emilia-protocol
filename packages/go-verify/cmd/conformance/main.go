@@ -34,6 +34,8 @@ type vec struct {
 	ProvenanceChain   map[string]any `json:"provenance_chain"`
 	DelegationKeys    map[string]any `json:"delegation_keys"`
 	NowMs             *float64       `json:"now_ms"`
+	EvidenceRecord    map[string]any `json:"evidence_record"`
+	ProtectedHash     string         `json:"protected_hash"`
 }
 
 func main() {
@@ -84,6 +86,12 @@ func main() {
 				opts["now"] = *v.NowMs
 			}
 			valid = emiliaverify.VerifyProvenanceOffline(v.ProvenanceChain, opts).Valid
+		case v.EvidenceRecord != nil:
+			opts := map[string]any{"tsaKeys": v.TSAKeys}
+			if v.ProtectedHash != "" {
+				opts["protectedHash"] = v.ProtectedHash
+			}
+			valid = emiliaverify.VerifyEvidenceRecord(v.EvidenceRecord, opts).Valid
 		}
 		out = append(out, map[string]any{"id": v.ID, "valid": valid})
 	}

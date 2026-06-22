@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const SUITES = ['receipts.v1.json', 'signoffs.v1.json', 'quorum.v1.json', 'revocation.exec.v1.json', 'time-attestation.v1.json', 'trust-receipt.exec.v1.json', 'provenance.exec.v1.json'];
+const SUITES = ['receipts.v1.json', 'signoffs.v1.json', 'quorum.v1.json', 'revocation.exec.v1.json', 'time-attestation.v1.json', 'trust-receipt.exec.v1.json', 'provenance.exec.v1.json', 'evidence-record.v1.json'];
 
 const IMPLS = [
   { lang: 'JavaScript', run: (p) => execFileSync('node', ['conformance/runners/run-js.mjs', p], { cwd: root, encoding: 'utf8' }) },
