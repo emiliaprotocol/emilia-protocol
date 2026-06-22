@@ -269,3 +269,181 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
                  checks["distinct_keys"], checks["roles_admitted"], checks["threshold_met"],
                  checks["order_satisfied"], checks["chain_linked"], checks["within_window"]])
     return {"valid": valid, "checks": checks, "members": members_out}
+
+
+# ── EP-REVOCATION-v1 + EP-TIME-ATTESTATION-v1 (mirror packages/verify) ────────
+
+REVOCATION_VERSION = "EP-REVOCATION-v1"
+TIME_ATTESTATION_VERSION = "EP-TIME-ATTESTATION-v1"
+_TARGET_TYPES = ("receipt", "commit", "delegation")
+
+
+def _hex_of(h: Any) -> str:
+    return str(h if h is not None else "").replace("sha256:", "").lower()
+
+
+def _instant_ms(s: Any):
+    import datetime as _dt
+    if not isinstance(s, str) or not s:
+        return None
+    try:
+        return _dt.datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp() * 1000
+    except Exception:
+        return None
+
+
+def _ed25519_verify(data: bytes, pub_b64u: Any, sig_b64u: Any) -> bool:
+    try:
+        if not data or not pub_b64u or not sig_b64u:
+            return False
+        key = load_der_public_key(_b64url_decode(pub_b64u))
+        key.verify(_b64url_decode(sig_b64u), data)
+        return True
+    except Exception:
+        return False
+
+
+def _revocation_signed_payload(stmt: dict) -> bytes:
+    return canonicalize({
+        "@version": REVOCATION_VERSION,
+        "action_hash": stmt.get("action_hash"),
+        "reason": stmt.get("reason"),
+        "revoked_at": stmt.get("revoked_at"),
+        "revoker_id": stmt.get("revoker_id"),
+        "target_id": stmt.get("target_id"),
+        "target_type": stmt.get("target_type"),
+    }).encode("utf-8")
+
+
+def verify_revocation(target: Any, statement: Any, opts: Optional[dict] = None) -> dict:
+    """Mirror of packages/verify/revocation.js verifyRevocation. Fail-closed."""
+    opts = opts or {}
+    revoker_keys = opts.get("revokerKeys") or {}
+    checks = {"version": True, "target_bound": True, "revoker_key_pinned": True,
+              "revoked_at_present": True, "revoker_signature_valid": True,
+              "signature_binds_statement": True, "freshness": True}
+    errors = []
+
+    def fail(k, m):
+        checks[k] = False
+        errors.append(m)
+
+    if not isinstance(statement, dict):
+        fail("signature_binds_statement", "no revocation statement presented (fail-closed)")
+        fail("revoker_signature_valid", "no revocation statement presented (fail-closed)")
+        return {"valid": False, "checks": checks, "errors": errors}
+
+    if statement.get("@version") != REVOCATION_VERSION:
+        fail("version", f"unsupported version: {statement.get('@version')}")
+
+    if not isinstance(target, dict):
+        fail("target_bound", "no target handed to the verifier (fail-closed)")
+    else:
+        if target.get("target_type") and target.get("target_type") not in _TARGET_TYPES:
+            fail("target_bound", f"unknown target_type {target.get('target_type')}")
+        if statement.get("target_type") != target.get("target_type"):
+            fail("target_bound", "target_type mismatch")
+        if statement.get("target_id") != target.get("target_id"):
+            fail("target_bound", "target_id mismatch")
+        elif _hex_of(statement.get("action_hash")) != _hex_of(target.get("action_hash")):
+            fail("target_bound", "action_hash mismatch (revoke-A-presented-for-B)")
+
+    proof = statement.get("proof") or None
+    revoker_id = statement.get("revoker_id")
+    pinned = (revoker_keys.get(revoker_id) or {}).get("public_key")
+    presented = (proof or {}).get("public_key")
+    if not pinned:
+        fail("revoker_key_pinned", f"no pinned key for revoker {revoker_id}")
+    elif presented and pinned != presented:
+        fail("revoker_key_pinned", "presented revoker key != pinned key")
+
+    revoked_ms = _instant_ms(statement.get("revoked_at"))
+    if revoked_ms is None:
+        fail("revoked_at_present", "revoked_at absent or malformed")
+
+    recomputed = _revocation_signed_payload(statement)
+    sig = (proof or {}).get("signature_b64u")
+    sig_binds_pinned = bool(pinned) and _ed25519_verify(recomputed, pinned, sig)
+    if not sig_binds_pinned:
+        verify_key = pinned or presented
+        sig_over_recomputed = bool(verify_key) and _ed25519_verify(recomputed, verify_key, sig)
+        if not sig or not verify_key:
+            fail("revoker_signature_valid", "revocation proof signature or key missing")
+        elif not sig_over_recomputed:
+            fail("signature_binds_statement", "revoker signature does not bind the presented statement bytes")
+            fail("revoker_signature_valid", "revoker signature does not verify under the pinned key")
+
+    max_age = opts.get("maxAgeSeconds")
+    if isinstance(max_age, (int, float)) and revoked_ms is not None:
+        now = opts.get("now")
+        now_ms = (_instant_ms(now) if isinstance(now, str) else (now if isinstance(now, (int, float)) else None))
+        if now_ms is None:
+            import time as _t
+            now_ms = _t.time() * 1000
+        if (now_ms - revoked_ms) / 1000 > max_age:
+            fail("freshness", "revoked_at older than the freshness window")
+
+    return {"valid": all(checks.values()), "checks": checks, "errors": errors}
+
+
+def is_revoked(target: Any, statements: Any, opts: Optional[dict] = None) -> bool:
+    if not isinstance(statements, list):
+        return False
+    return any(verify_revocation(target, s, opts)["valid"] for s in statements)
+
+
+def _time_signed_payload(att: dict) -> bytes:
+    return canonicalize({
+        "@version": TIME_ATTESTATION_VERSION,
+        "hashed": att.get("hashed"),
+        "time": att.get("time"),
+        "ts_authority_id": att.get("ts_authority_id"),
+    }).encode("utf-8")
+
+
+def verify_time_attestation(att: Any, opts: Optional[dict] = None) -> dict:
+    """Mirror of packages/verify/time-attestation.js verifyTimeAttestation."""
+    opts = opts or {}
+    tsa_keys = opts.get("tsaKeys") or {}
+    checks = {"version": True, "tsa_key_pinned": True, "time_present": True,
+              "signature_valid": True, "hash_bound": True, "within_bounds": True}
+    errors = []
+
+    def fail(k, m):
+        checks[k] = False
+        errors.append(m)
+
+    if not isinstance(att, dict):
+        fail("signature_valid", "no time attestation presented (fail-closed)")
+        return {"valid": False, "checks": checks, "errors": errors}
+    if att.get("@version") != TIME_ATTESTATION_VERSION:
+        fail("version", f"unsupported version: {att.get('@version')}")
+
+    proof = att.get("proof") or None
+    pinned = (tsa_keys.get(att.get("ts_authority_id")) or {}).get("public_key")
+    presented = (proof or {}).get("public_key")
+    if not pinned:
+        fail("tsa_key_pinned", f"no pinned key for ts_authority {att.get('ts_authority_id')}")
+    elif presented and pinned != presented:
+        fail("tsa_key_pinned", "presented TSA key != pinned key")
+
+    ms = _instant_ms(att.get("time"))
+    if ms is None:
+        fail("time_present", "time absent or malformed")
+
+    if not (pinned and _ed25519_verify(_time_signed_payload(att), pinned, (proof or {}).get("signature_b64u"))):
+        fail("signature_valid", "TSA signature does not verify under the pinned key")
+
+    if isinstance(opts.get("expectedHash"), str):
+        if _hex_of(att.get("hashed")) != _hex_of(opts.get("expectedHash")):
+            fail("hash_bound", "attestation hashed != expected")
+
+    if ms is not None:
+        nb = _instant_ms(opts.get("notBefore")) if isinstance(opts.get("notBefore"), str) else None
+        na = _instant_ms(opts.get("notAfter")) if isinstance(opts.get("notAfter"), str) else None
+        if nb is not None and ms < nb:
+            fail("within_bounds", "attested time before notBefore")
+        if na is not None and ms > na:
+            fail("within_bounds", "attested time after notAfter")
+
+    return {"valid": all(checks.values()), "checks": checks, "errors": errors}

@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const SUITES = ['receipts.v1.json', 'signoffs.v1.json', 'quorum.v1.json'];
+const SUITES = ['receipts.v1.json', 'signoffs.v1.json', 'quorum.v1.json', 'revocation.exec.v1.json', 'time-attestation.v1.json'];
 
 const IMPLS = [
   { lang: 'JavaScript', run: (p) => execFileSync('node', ['conformance/runners/run-js.mjs', p], { cwd: root, encoding: 'utf8' }) },
@@ -64,7 +64,7 @@ for (const suiteFile of SUITES) {
 
 if (!anyRan) { console.error('\nNo implementations ran.'); process.exit(1); }
 if (totalFailures === 0) {
-  console.log('\n✅ receipts · signoffs · quorum — three independent implementations agree.');
+  console.log('\n✅ receipts · signoffs · quorum · revocation · time-attestation — three independent implementations agree.');
   process.exit(0);
 }
 console.log(`\n❌ ${totalFailures} divergence(s) across implementations — NOT conformant`);

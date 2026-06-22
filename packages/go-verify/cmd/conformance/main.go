@@ -19,6 +19,16 @@ type vec struct {
 	ApproverPublicKey string         `json:"approver_public_key"`
 	RPID              string         `json:"rp_id"`
 	Quorum            map[string]any `json:"quorum"`
+	Revocation        map[string]any `json:"revocation"`
+	Target            map[string]any `json:"target"`
+	RevokerKeys       map[string]any `json:"revoker_keys"`
+	MaxAgeSeconds     *float64       `json:"max_age_seconds"`
+	Now               string         `json:"now"`
+	TimeAttestation   map[string]any `json:"time_attestation"`
+	TSAKeys           map[string]any `json:"tsa_keys"`
+	ExpectedHash      string         `json:"expected_hash"`
+	NotBefore         string         `json:"not_before"`
+	NotAfter          string         `json:"not_after"`
 }
 
 func main() {
@@ -44,6 +54,18 @@ func main() {
 			valid = emiliaverify.VerifyWebAuthnSignoff(v.Signoff, v.ApproverPublicKey, v.RPID).Valid
 		case v.Quorum != nil:
 			valid = emiliaverify.VerifyQuorum(v.Quorum, "emiliaprotocol.ai").Valid
+		case v.Revocation != nil:
+			opts := map[string]any{"revokerKeys": v.RevokerKeys, "now": v.Now}
+			if v.MaxAgeSeconds != nil {
+				opts["maxAgeSeconds"] = *v.MaxAgeSeconds
+			}
+			valid = emiliaverify.VerifyRevocation(v.Target, v.Revocation, opts).Valid
+		case v.TimeAttestation != nil:
+			opts := map[string]any{"tsaKeys": v.TSAKeys, "notBefore": v.NotBefore, "notAfter": v.NotAfter}
+			if v.ExpectedHash != "" {
+				opts["expectedHash"] = v.ExpectedHash
+			}
+			valid = emiliaverify.VerifyTimeAttestation(v.TimeAttestation, opts).Valid
 		}
 		out = append(out, map[string]any{"id": v.ID, "valid": valid})
 	}
