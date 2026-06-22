@@ -34,11 +34,14 @@ jobs:
           node-version: "20"
           registry-url: https://registry.npmjs.org
 
-      # Zero-dependency package — no install step. The package.json files
-      # array publishes only index.js, index.d.ts, README.md, and LICENSE.
+      # Zero-dependency package — no install step. The package.json "files"
+      # array controls exactly what ships: index.js plus every module it
+      # re-exports (web, federation, quorum, revocation, provenance,
+      # time-attestation, evidence-record, cli) and index.d.ts/README/LICENSE.
+      # `npm pack --dry-run` below prints the authoritative list before publish.
 
       - name: Run tests
-        run: node --test test.js
+        run: npm test
 
       - name: Verify package contents
         run: npm pack --dry-run
