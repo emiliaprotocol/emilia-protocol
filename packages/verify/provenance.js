@@ -116,6 +116,32 @@ function rootAuthorizedScope(rootReceipt) {
   return typeof at === 'string' && at.length > 0 ? [at] : [];
 }
 
+// Monotonic constraint narrowing (AgentROA "tighten-only" algebra): a child
+// delegation may add constraints but never RELAX one its parent set. For each
+// key the parent constrains, the child MUST also carry it; numeric ceilings may
+// only decrease, array allow-lists may only shrink (subset), and any other type
+// must be unchanged. Honest bound: constraint types beyond number/array are only
+// checked for equality — a semantic relaxation inside an opaque object is not
+// interpreted. Returns true when the child is contained.
+function constraintsMonotonic(parentC, childC) {
+  const p = parentC || {};
+  const c = childC || {};
+  for (const k of Object.keys(p)) {
+    if (!(k in c)) return false;
+    const pv = p[k];
+    const cv = c[k];
+    if (typeof pv === 'number' && typeof cv === 'number') {
+      if (cv > pv) return false;
+    } else if (Array.isArray(pv) && Array.isArray(cv)) {
+      const pset = new Set(pv.map((x) => canonicalize(x)));
+      if (!cv.every((x) => pset.has(canonicalize(x)))) return false;
+    } else if (canonicalize(pv) !== canonicalize(cv)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 /**
  * Verify an EP-PROVENANCE-CHAIN-v1 document fully offline. FAIL CLOSED.
  * See lib/provenance/chain.js for the full contract; opts mirror it
@@ -133,7 +159,7 @@ export function verifyProvenanceOffline(doc, opts = {}) {
     per_action_required: true, action_receipt_valid: true, action_human_signoff: true,
     execution_binding: true, chain_anchored: true, chain_links_bound: true,
     delegations_signed: true, proof_key_bound: true, delegations_not_expired: true,
-    scope_containment: true, leaf_permits_action: true, temporal_containment: true,
+    scope_containment: true, constraints_monotonic: true, leaf_permits_action: true, temporal_containment: true,
   };
   const errors = [];
   const links = [];
@@ -239,6 +265,10 @@ export function verifyProvenanceOffline(doc, opts = {}) {
     if (violations.length > 0) {
       checks.scope_containment = false; linkReport.ok = false; linkReport.issues.push(...violations);
       for (const v of violations) errors.push(`delegation ${link.delegation_id}: ${v}`);
+    }
+    if (!constraintsMonotonic(parent.constraints, link.constraints)) {
+      checks.constraints_monotonic = false; linkReport.ok = false; linkReport.issues.push('constraints_relaxed');
+      errors.push(`delegation ${link.delegation_id}: constraints relax a parent restriction (not monotonic)`);
     }
     links.push(linkReport);
     let effectiveCap;

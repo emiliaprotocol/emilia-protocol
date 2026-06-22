@@ -117,6 +117,40 @@ func provScopeContained(parent, child map[string]any) bool {
 	return true
 }
 
+// constraintsMonotonic mirrors packages/verify/provenance.js: a child may add
+// constraints but never relax one its parent set (numeric ceilings tighten-only,
+// array allow-lists subset-only, other types unchanged, no dropping a key).
+func constraintsMonotonic(parentC, childC map[string]any) bool {
+	for k, pv := range parentC {
+		cv, ok := childC[k]
+		if !ok {
+			return false
+		}
+		pf, pn := toFloat(pv)
+		cf, cn := toFloat(cv)
+		pArr, pa := pv.([]any)
+		cArr, ca := cv.([]any)
+		if pn && cn {
+			if cf > pf {
+				return false
+			}
+		} else if pa && ca {
+			pset := map[string]bool{}
+			for _, x := range pArr {
+				pset[Canonicalize(x)] = true
+			}
+			for _, x := range cArr {
+				if !pset[Canonicalize(x)] {
+					return false
+				}
+			}
+		} else if Canonicalize(pv) != Canonicalize(cv) {
+			return false
+		}
+	}
+	return true
+}
+
 func toFloat(v any) (float64, bool) {
 	switch n := v.(type) {
 	case float64:
@@ -165,7 +199,7 @@ func VerifyProvenanceOffline(doc map[string]any, opts map[string]any) Provenance
 		"per_action_required": true, "action_receipt_valid": true, "action_human_signoff": true,
 		"execution_binding": true, "chain_anchored": true, "chain_links_bound": true,
 		"delegations_signed": true, "proof_key_bound": true, "delegations_not_expired": true,
-		"scope_containment": true, "leaf_permits_action": true, "temporal_containment": true,
+		"scope_containment": true, "constraints_monotonic": true, "leaf_permits_action": true, "temporal_containment": true,
 	}
 	fail := func(k string) { checks[k] = false }
 
@@ -274,6 +308,9 @@ func VerifyProvenanceOffline(doc map[string]any, opts map[string]any) Provenance
 		}
 		if !provScopeContained(parent, link) {
 			fail("scope_containment")
+		}
+		if !constraintsMonotonic(getMap(parent["constraints"]), getMap(link["constraints"])) {
+			fail("constraints_monotonic")
 		}
 		// narrow effective cap forward
 		linkCap, linkHas := toFloat(link["max_value_usd"])

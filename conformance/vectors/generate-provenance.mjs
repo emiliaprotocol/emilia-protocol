@@ -55,6 +55,19 @@ async function buildBundle() {
   return { doc, delegation_keys: { 'ep:approver:dir': { public_key: dk.publicKeyB64u } } };
 }
 
+// Two-hop chain: root -> agentA (constraints {max_calls:5}) -> agentB. The leaf
+// either NARROWS (max_calls<=5, accept) or RELAXES (max_calls>5, reject).
+async function buildTwoHop(leafMaxCalls) {
+  const root = await mintReceipt('ep:approver:dir', 'ep:key:dir#1');
+  const approval = await mintReceipt('ep:approver:dir', 'ep:key:dir#1');
+  const dirKp = generateEd25519KeyPair();
+  const agentAKp = generateEd25519KeyPair();
+  const link1 = signedLink({ delegation_id: 'dlg:1', parent_ref: 'ep:approver:dir', delegator: 'ep:approver:dir', delegatee: 'ep:agent:A', scope: ['payment.release'], max_value_usd: 1000, expires_at: EXPIRES_AT, constraints: { max_calls: 5 } }, dirKp);
+  const link2 = signedLink({ delegation_id: 'dlg:2', parent_ref: 'ep:agent:A', delegator: 'ep:agent:A', delegatee: 'ep:agent:1', scope: ['payment.release'], max_value_usd: 500, expires_at: EXPIRES_AT, constraints: { max_calls: leafMaxCalls } }, agentAKp);
+  const doc = assembleProvenance({ rootSignoff: root, delegationChain: [link1, link2], actionApproval: approval, execution: { action_hash: approval.receipt.action_hash, irreversible: true, executed_at: ISSUED_AT } });
+  return { doc, delegation_keys: { 'ep:approver:dir': { public_key: dirKp.publicKeyB64u }, 'ep:agent:A': { public_key: agentAKp.publicKeyB64u } } };
+}
+
 const V = [];
 const add = (id, expectValid, b) => V.push({ id, expect: { valid: expectValid }, provenance_chain: b.doc, delegation_keys: b.delegation_keys, now_ms: NOW });
 
@@ -62,6 +75,8 @@ add('accept_valid_chain', true, await buildBundle());
 { const b = await buildBundle(); b.doc.delegation_chain[0].scope = ['treasury.wire']; add('reject_scope_violation', false, b); }
 { const b = await buildBundle(); b.doc.delegation_chain[0].max_value_usd = 999999; add('reject_tampered_proof', false, b); }
 { const b = await buildBundle(); b.delegation_keys = {}; add('reject_unpinned_delegator', false, b); }
+add('accept_two_hop_constraints_narrowed', true, await buildTwoHop(3));
+add('reject_constraints_relaxed', false, await buildTwoHop(50));
 
 const suite = {
   suite: 'EP-PROVENANCE-CHAIN-v1',

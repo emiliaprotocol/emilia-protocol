@@ -670,6 +670,25 @@ def _scope_containment_violations(parent, child):
     return viol
 
 
+def _constraints_monotonic(parent_c, child_c):
+    p = parent_c or {}
+    c = child_c or {}
+    for k, pv in p.items():
+        if k not in c:
+            return False
+        cv = c[k]
+        if isinstance(pv, (int, float)) and not isinstance(pv, bool) and isinstance(cv, (int, float)) and not isinstance(cv, bool):
+            if cv > pv:
+                return False
+        elif isinstance(pv, list) and isinstance(cv, list):
+            pset = {canonicalize(x) for x in pv}
+            if not all(canonicalize(x) in pset for x in cv):
+                return False
+        elif canonicalize(pv) != canonicalize(cv):
+            return False
+    return True
+
+
 def _verify_detached_signature(att):
     try:
         if not att or not att.get("signed_payload_b64u") or not att.get("signature_b64u") or not att.get("public_key"):
@@ -697,7 +716,7 @@ def verify_provenance_offline(doc, opts=None):
               "per_action_required": True, "action_receipt_valid": True, "action_human_signoff": True,
               "execution_binding": True, "chain_anchored": True, "chain_links_bound": True,
               "delegations_signed": True, "proof_key_bound": True, "delegations_not_expired": True,
-              "scope_containment": True, "leaf_permits_action": True, "temporal_containment": True}
+              "scope_containment": True, "constraints_monotonic": True, "leaf_permits_action": True, "temporal_containment": True}
     errors = []
 
     def fail(k, m):
@@ -771,6 +790,8 @@ def verify_provenance_offline(doc, opts=None):
             fail("delegations_signed", "unsigned delegation (fail-closed)")
         if _scope_containment_violations(parent, link):
             fail("scope_containment", "scope containment violation")
+        if not _constraints_monotonic(parent.get("constraints"), link.get("constraints")):
+            fail("constraints_monotonic", "constraints relax a parent restriction")
         if link.get("max_value_usd") is None:
             eff = parent.get("max_value_usd")
         elif parent.get("max_value_usd") is None:
