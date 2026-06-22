@@ -34,6 +34,8 @@ const predicateFor = {
   reject_expired_window: 'within_window',
   reject_one_bad_signature: 'all_signatures_valid',
   reject_wrong_role: 'roles_admitted',
+  reject_broken_chain: 'chain_linked',
+  reject_duplicate_key: 'distinct_keys',
 };
 test('EP-QUORUM-v1: each negative fails on its targeted predicate', () => {
   for (const [id, predicate] of Object.entries(predicateFor)) {

@@ -183,7 +183,8 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
     fail-closed; composes verify_webauthn_signoff per member."""
     opts = opts or {}
     checks = {"all_signatures_valid": False, "action_binding": False, "distinct_humans": False,
-              "roles_admitted": False, "threshold_met": False, "order_satisfied": False, "within_window": False}
+              "distinct_keys": False, "roles_admitted": False, "threshold_met": False,
+              "order_satisfied": False, "chain_linked": False, "within_window": False}
     members_out = []
     try:
         policy = quorum.get("policy") if isinstance(quorum, dict) else None
@@ -226,6 +227,8 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
                    if members_out[i]["valid"] and ((m.get("signoff") or {}).get("context") or {}).get("action_hash") == action_hash]
         counted_apprs = [((m.get("signoff") or {}).get("context") or {}).get("approver") for _, m in counted]
         checks["distinct_humans"] = (len(set(counted_apprs)) == len(counted_apprs)) if distinct_humans else True
+        counted_keys = [m.get("approver_public_key") for _, m in counted]
+        checks["distinct_keys"] = (len(set(counted_keys)) == len(counted_keys)) if distinct_humans else True
         eligible_set = {f"{e.get('role')} {e.get('approver')}" for e in eligible}
         checks["roles_admitted"] = len(counted) > 0 and all(
             f"{m.get('role')} {((m.get('signoff') or {}).get('context') or {}).get('approver')}" in eligible_set for _, m in counted)
@@ -243,10 +246,26 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
             checks["order_satisfied"] = len(members) >= len(eligible) and seq_ok and times_ok
         else:
             checks["order_satisfied"] = True
+        if mode == "ordered" and policy.get("ordered_chain") is True:
+            seq = members[:len(eligible)]
+            linked = len(seq) == len(eligible)
+            for idx, mem in enumerate(seq):
+                prev = ((mem.get("signoff") or {}).get("context") or {}).get("prev_context_hash")
+                if idx == 0:
+                    if prev is not None:
+                        linked = False
+                else:
+                    prev_ctx = (seq[idx - 1].get("signoff") or {}).get("context") or {}
+                    if prev != _sha256_hex(canonicalize(prev_ctx)):
+                        linked = False
+            checks["chain_linked"] = linked
+        else:
+            checks["chain_linked"] = True
         ts = [issued[i] for i, _ in counted if issued[i] is not None]
         checks["within_window"] = len(ts) == len(counted) and len(counted) > 0 and (max(ts) - min(ts)) <= window_sec * 1000
     except Exception:
         return {"valid": False, "checks": checks, "members": members_out}
     valid = all([checks["all_signatures_valid"], checks["action_binding"], checks["distinct_humans"],
-                 checks["roles_admitted"], checks["threshold_met"], checks["order_satisfied"], checks["within_window"]])
+                 checks["distinct_keys"], checks["roles_admitted"], checks["threshold_met"],
+                 checks["order_satisfied"], checks["chain_linked"], checks["within_window"]])
     return {"valid": valid, "checks": checks, "members": members_out}

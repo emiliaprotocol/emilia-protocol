@@ -2,12 +2,12 @@
   "suite": "EP-QUORUM-v1",
   "profile": "Multi-party (M-of-N / ordered) human approval over EP-SIGNOFF-v1 members",
   "vectors_version": "1.0.0",
-  "description": "Adversarial conformance vectors for EP multi-party quorum approval. Each member is a real Class-A WebAuthn assertion; the quorum predicate (all-signatures-valid, action-binding, distinct-humans, roles-admitted, threshold, order, window) is fail-closed. A conformant verifier MUST return expect.valid for every vector.",
-  "count": 9,
+  "description": "Adversarial conformance vectors for EP multi-party quorum approval. Each member is a real Class-A WebAuthn assertion; the quorum predicate (all-signatures-valid, action-binding, distinct-humans, distinct-keys, roles-admitted, threshold, order, chain-linked, window) is fail-closed. Ordered quorums chain each signoff to its predecessor (prev_context_hash) so order is proven cryptographically, not by timestamps. A conformant verifier MUST return expect.valid for every vector.",
+  "count": 11,
   "vectors": [
     {
       "id": "accept_ordered_3of3",
-      "description": "Ordered quorum: Program Officer -> Authorizing Official -> Inspector General, distinct humans, increasing time, all bound to the action",
+      "description": "Ordered quorum (strong chain): Program Officer -> Authorizing Official -> Inspector General, distinct humans, each signoff cryptographically chained to its predecessor, all bound to the action",
       "failure_class": "accept",
       "expect": {
         "valid": true
@@ -33,12 +33,13 @@
             }
           ],
           "distinct_humans": true,
-          "window_sec": 900
+          "window_sec": 900,
+          "ordered_chain": true
         },
         "members": [
           {
             "role": "program_officer",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEFOKtTlXlKBcbod43q8TiNpkVaojWaTVhb7dSX_pzw92WzbMaW9_IkwxedgHXPzXLKfPH_Wjsj8Hg45w9lGhyqQ",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAERaFOChtvV1a5p9K1S7KGk8ID7AWDOY7p3lMR2NQaMjvNJyxi22FiPxKClNVIwfXoiDjeqsWHTVeDHjqPEEmN5Q",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -46,7 +47,7 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_47aa9303fa37216139860ce68d39a2bb",
+                "nonce": "sig_4c3373f2ba035ef90218787e37b16682",
                 "approver": "ep:approver:po_rivera",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:01:00.000Z",
@@ -54,14 +55,14 @@
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiRVJ3RzNPeFU5Z2lXR1FyQUgzUDdhbHQtRThtdUl5M3gyZlVUYUllYThjOCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEUCIQDtTT7DUp6SYaXdvCDJCA_6SRrZ7-lkJuovcP5VFF4TYgIgULHDnyWcuVbRuCkYMoIw-lxgkT5hydbSNFcIeHe0lAU"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiOVpkdXQyVHgtRFFwUTBRb1Rod3JxQVV5YVpEVE9XcFNSXzJxc1lhRWg5SSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEYCIQDAHYI66AdEC55ALInnqSzN1SwdOXWOqa9-iHXIOiMvjQIhAJQ1EDQA0iVM5G4kF6HgWytdaVSIwBU_I1kT86yOhb9D"
               }
             }
           },
           {
             "role": "authorizing_official",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3gfHbFGxQagpHaUi3VDzLaLEP084XXT5BaC05fpDCRwIzKArA9W-XPxTwcuz6jnT6vYxNI5DbvQRLCucOam07g",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEknWI1zRTGIHftxd9efHBBnhsCr6CeAloko83SR4I2joA_BS0hbGj8F_fBEetpwSiKBLBtCtcJBlfL0TMd4H53g",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -69,22 +70,23 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_6d3fe794ef97ffaff22374e81ded05a1",
+                "nonce": "sig_17c27bbbac4918d9dd1a4ce085f0ad1e",
                 "approver": "ep:approver:ao_chen",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:02:00.000Z",
-                "expires_at": "2026-06-11T01:00:00.000Z"
+                "expires_at": "2026-06-11T01:00:00.000Z",
+                "prev_context_hash": "f5976eb764f1f834294344284e1c2ba805326990d3396a5247fdaab1868487d2"
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNHNsVnc3QW1rWVluQnlBZ0FVT3JUalBDZVR2M2J6RmlPeFJKM2U0RVVIayIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEYCIQDskDB8il-MeM9f2hoqd0ho-HMD6wq2qST8qx7fLw5tYQIhALqrN40yCo90ZXalULeTCQLR7RKpxpSKPg-He9txnY9T"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoidnRTX0IzVkd5eVV2MmtEMHhiZTIzZ0xLMEtRSlUtRnNQa20xSDNiOHhaNCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEQCIGKnq0isSsrbG_igdhJtXBS0m8YrbUro4PVusHMNNzl0AiA8RgAGSzrM6SckN3UsYiKCw_mk9FKg2aSXCt4e8BTFLw"
               }
             }
           },
           {
             "role": "inspector_general",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE7pI3vBNb740UgG_w3nmBY4rxiGBRhrTJpcoZ2mqEQR86xXn_Xs4vWtdQ_-7xPLxZleDPtcmAa7Y6gmKRXjoWCw",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE7NiDesn1W8A2BhE5--k_uNJMXS0Xrna-un4Q9e4Z2X7oZxolFDabBH4k3O7sLD-wCWchM7-ygWIYyK-hYvZRpg",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -92,16 +94,17 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_86257d2f1a5d15808832a20d1b695a6b",
+                "nonce": "sig_ae8cd6b796f28fc0ecae9b31cee9863c",
                 "approver": "ep:approver:ig_okafor",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:03:00.000Z",
-                "expires_at": "2026-06-11T01:00:00.000Z"
+                "expires_at": "2026-06-11T01:00:00.000Z",
+                "prev_context_hash": "bed4bf077546cb252fda40f4c5b7b6de02cad0a40953e16c3e49b51f76fcc59e"
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNkNNVWQwZWNWVWZQVHJpcXBOZDBzYlppbGtoVmlIWW1hX1VLSWFBSFZXMCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEQCIArOeJRT18Jz0jVVUT5cZVKEUVxK3LXzRKSmaHDU4g8mAiAIqoiHyyEYrMvbjRbhekvyPIB6DQMo466F0GjaAP7jzw"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiemV3aE41VWttTEVrdU5nWDNvSXVXaGh5eXhvMDQ2bks3SVpDLURpWFdyUSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEUCIQDvLFmlSjlOkXbMvkdJ4T65hZoc32kzWsK09wndk9Wu8AIgKRYbHqeFoFWZ_AHEc7KrtRAbGNnfG4QlYO6U2cBNXWg"
               }
             }
           }
@@ -141,7 +144,7 @@
         "members": [
           {
             "role": "program_officer",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEAz_AmAnmsBUxv-7gqhB47nSG5eByZt4OUi9AChGpaWv9rWYLWnY06JpBmSJuHSb5zWdlIlq7S-uinrbgqm1mBw",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEI7uZB8cGkJKBQ9tXqGcHkYLNSvZ5n023RrHwasGBHFFWHadoXgpx71a3zLgj40FEXALwU2jAHOtewNvbVO5RcA",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -149,7 +152,7 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_a0b433e1848a54f3253afdcfefca4226",
+                "nonce": "sig_361095766a351fb446242a59eaaf7123",
                 "approver": "ep:approver:po_rivera",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:01:00.000Z",
@@ -157,14 +160,14 @@
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoibV9kZnNDb3NSbThFR3NzMW95M0QzWG84eDJ4X2d5dkM4RHNia240dWVFTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEUCIGa7YrWcNRL8plE8vyv4w6p9pAD1acxVY_bTBUgYrBq3AiEAmdg_yiT3pzxWEkKFrGrv8x0abpTn5m9kdMhno6BZmns"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNkxyRHdzR3NjSW82NWZaNkxCT25RR0IzbTVMSWVIY1pzaVhwMWRQci0xayIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEUCIQDY2H7lczDoIWG77H2tNTHtmXTKYq9SWKGJt08-tt8wLQIgRX0lsJtSLqw7kFxnTGauN3V-KQVhQsrWKnFzV8t_kSc"
               }
             }
           },
           {
             "role": "inspector_general",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEArXe6ZcS6NenZkl7qdhr3KrG_N5-tNEy87qAEpUQr-DatZ1k4uh31-ral85rZXhiWbQ2omPuwCuiB3a3lc9tYg",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEa6O74lzjiJwNVlHrGzuT8vHb1QqRHu0tU0vuryjeXfeS671NXw3ikpBRVn5_HXbTC_hQpdy7-p_D31WqHTQM0Q",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -172,7 +175,7 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_e3f0975d9b1ad2ccababd5315cce2480",
+                "nonce": "sig_d6e49bb7245c2518b9f8815c42b07e5f",
                 "approver": "ep:approver:ig_okafor",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:02:00.000Z",
@@ -180,8 +183,8 @@
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSXNUcEx4dG9GN1dSWU9pMmpVeUtXcElWQ1dSWW50MVQ1TnRmUkdqS2VINCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEUCIQCRqktIuNsRTS7DI7UJTfffsn6eNzOD8Dv9iQQkElSQXgIgYZlEXv5YwWBJgg4B3HEwQUi9TkFYc32KJ8ytz6SuIzA"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiTWQzdHlXcjNQQkRjLXV0YjZwQVBkbWI0bWc2OU1ldXZGMUJmZFBFMk8xNCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEUCIQDm94GNglxPBuHE-qiud8DTPLcsK8IzieisOPrysqX2CgIgZmJfNamxWqAzJbG7_R2MH_TdJug3koyRSb5lg7vv0kE"
               }
             }
           }
@@ -221,7 +224,7 @@
         "members": [
           {
             "role": "program_officer",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEnnih12fn4VRAdR-jAttBDwkcR4xyTAuZBbwsyloCvAA0IPVhrLgws8ONpb-33nEJ3WbwZt-zciyIYKExMZmLmw",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEU9iXbgCTxxE24TiF9SE0QzcPJy91w0WnzMvo-o6EGlYRNdtzvMet352Or2_OF8ngWthFS47x9jsb__kIOgIA9A",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -229,7 +232,7 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_5a6cc4bbcf3f0a6bc57d53b958c3dbc4",
+                "nonce": "sig_7c21c9fd5588680cc3b030e83e5253f7",
                 "approver": "ep:approver:po_rivera",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:01:00.000Z",
@@ -237,14 +240,14 @@
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiT1lZT0xUS3NOejZjY1g2Wjc4TGJ1Skt5OFViM0JwZno3M3JfZ1dBUnJDTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEQCIEdkmsbwEizH5HUeR5UqOn0EXBv35caCx9OOj6ECndtRAiAkgKT8u44FPN1ZMXgYllHXFd577H7K-kWRxOhrloge8A"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoielUyVjVpN0FDRC1iNTI4QkdRSjNSSGdiaUs5MGFSdVI4eVFNZkhIaWVpcyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEQCICV0f6YfbRmRtygeFVXqb-CfR5mGySuQFMMkad_0k_OWAiAKYXSeXiYkyJcQvkKOM0mBZwHCBcuz25COdGvrLFOLYg"
               }
             }
           },
           {
             "role": "authorizing_official",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEjTtqzKcHgsyTEKiA8bQpuD-HI7ATpmKIk9UTIekYgSUxwzI4jSa4Obohq9BpjZjbuX27t2qhESidUipS7mM5Ig",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE-W0xMChfOTpfguL9-BUVgWxslGFtODCQODuMdLhpw-mPDVP-hUisXw7_91IPsPU5KfWvZhflsYI5Nsv8vze9ow",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -252,16 +255,17 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_0d07b3c50a909bc0ec8b60ae8bcf9561",
+                "nonce": "sig_fde429d8e1e362023d8e1d817fe24711",
                 "approver": "ep:approver:ao_chen",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:02:00.000Z",
-                "expires_at": "2026-06-11T01:00:00.000Z"
+                "expires_at": "2026-06-11T01:00:00.000Z",
+                "prev_context_hash": "cd4d95e62ec0083f9be76f0119027744781b88af74691b91f3240c7c71e27a2b"
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiS3FHWGxRU1RqMFZSZmRlZXJWeHFZMkhtSnVDendTMlVIa0JOb0V6TVZyQSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEQCIBAN7xTG-d4Qa1vmAHZcaAdYQTsrHZooGzls_5AZq4wBAiATK36KRpcd5xrJSCNr_RZx9UNWqSbwoW8suTDPM8z00Q"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoidm1mbDFpWGEzd2MyNFM2UGRqWlRqOFJoQ2xDdk45RkFEdmhPV2NIbVo0WSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEQCIGN9S1MCih_ihfk55OLqgBZpHJT_IKELsViUwQeVgjLFAiAU4_bA1o9DDRRdznih4f7BaoFmLxoY6Ph-SDElpFTksA"
               }
             }
           }
@@ -301,7 +305,7 @@
         "members": [
           {
             "role": "program_officer",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEtQxJ1cyIkp_L9MtkwvrJFqa6MD3NcS3m3sO4NBkN7Mez6U33BDI-dBUQDecOCgKI9EAzKKQ2L4TtQhOcW7oAUg",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEuKw6j1Fl2fsjURp4C0fVlATXHv_Qt9d0ZzikdHR0ScsqiLYXUcln0KEdwg5OlDV7iFx4E9Q1JKIhT4vOVXD_1w",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -309,7 +313,7 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_b3d036effd0224cdd05720d4f23ca18c",
+                "nonce": "sig_708b7b9900b95891c382cc084206c387",
                 "approver": "ep:approver:po_rivera",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:01:00.000Z",
@@ -317,14 +321,14 @@
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiMm05V2RzVXU2VTYwY2F0ZWU4N01xclRienRLLWEzc2JTaG5HTW1mbDdYTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEYCIQDqp2R3vfefAiMQco31Nx4sixMNpMiWQ09496lKh_QScAIhALu3V4CmIH1OmJnaxlZQHFdjU0z7LBAsLJnhsnWIRIvH"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiQ01TYXdfYU9yb3hqOXVUOGNZNWdyUHdZTHRpR2ZBWW5Pc0VhNFBfdW5vOCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEQCIGIFAVEr0l6dXhRGuAl-h9-dOepK6gafgfiFQrkSsZP4AiA22uD-leuJybzynXRclkg36XutphNW4Rr3GcSC8N5hpg"
               }
             }
           },
           {
             "role": "authorizing_official",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEIaApY6d8mi8TGrKGQpZjjcJhA6KwcYqg0yecR5riwvIWbp8CLaG6ELgZh7MR1-KGpjRt6YZmlTGly98IhvcSOQ",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWhpfUbkT9pdtsRQZ1lW1I1a8gk9A7djKqyHXoayR08suzvDpVv_yWBKbP3ptjT-wp-ZXnpu5mQeVOl_n5uCEIw",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -332,22 +336,23 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_fc6d2076119f946b8375798ddc2de2f2",
+                "nonce": "sig_518ce3dd6c5b36c2a7e5d3e7bf670657",
                 "approver": "ep:approver:ao_chen",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:02:00.000Z",
-                "expires_at": "2026-06-11T01:00:00.000Z"
+                "expires_at": "2026-06-11T01:00:00.000Z",
+                "prev_context_hash": "08c49ac3f68eae8c63f6e4fc718e60acfc182ed8867c06273ac11ae0ffee9e8f"
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiWGh5X0ZCWEl2UjBXMzkxeDVDSHJvYzItYVU4SkVzRXNkeEh1MGdWZjdwbyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEUCIQCRGmwVbPEPkxBBhE_1lXZ8CaR8Gh4f5U5przbL-t_HaQIgUTEqgoIDNAMNDo_ni2mcjOF7lbRTWBPzFQcyrIKG5j4"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiMk9ZdER5RHo5T3IyWEhXYVJSOE1SV1gzcnY0VnhBMmZkSTR3ZmtvdlpBUSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEYCIQDf5_tsRXNGuc4E7fV1FtueeWed3Gcah6oUwHfWG6Xt4gIhAMX53lrys49zG31hRGkJw9wIYmbrxOg7jlVP243MMQ4v"
               }
             }
           },
           {
             "role": "inspector_general",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEtC6NewuuOFvIpmUf4XJStmx153FYg3OhONY_Ik44rk7O-ibYdp5dkxYpg09FZcOyPkScP6PwQKCCWU590-aPdg",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOdftYHjIEJSsICrmvH8jHngj4XmFzOZHpWjOx5IizLR1TloitKtKwiK-HMXwmmin8-4jher9OEDuHWhBcRIS3Q",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -355,16 +360,17 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_88bb9e6d9284279b4b491e29b0f1e345",
+                "nonce": "sig_4e79ab1604605706350f6c2e0dcd966f",
                 "approver": "ep:approver:po_rivera",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:03:00.000Z",
-                "expires_at": "2026-06-11T01:00:00.000Z"
+                "expires_at": "2026-06-11T01:00:00.000Z",
+                "prev_context_hash": "d8e62d0f20f3f4eaf65c759a451f0c4565f7aefe15c40d9f748e307e4a2f6404"
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiYTJNMVEtNlRlTGZDcE9Yc3ZWQXdrX2plWVp4LVhIQW9wOXhoRUh0dFZjMCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEYCIQCqf5C5AsiQeCslj1BZSwUYwNqAiKTI0ntIZL0UCb5dRwIhAOiatY-hdG0EO7VtVbpl7FKJP4DjuKCc8phRJwRp3I0r"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiajZRaVFwQV96a2s0Y1lyMkFQSTAtU3ZtWWFsaThBb3J6QndtM1hKWUU2cyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEQCICSB9gjg2SxDtVNDFQg1KuB8ihXAmSAQV4aoK12ZavldAiB1y9ATEKDmVRbtJOq6m6jxl0OdYnbAp63U1kx2Pmixdw"
               }
             }
           }
@@ -404,7 +410,7 @@
         "members": [
           {
             "role": "program_officer",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEdZBMumj0fP-9VMFyxza1BGcd6y38FEVH5byp5OfCUJI6PjyrCyzEFB-ojrveLBpVkSeVEGW_8m_kwH7vX9UvKQ",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEnlQsy3M8afpPXgSjQXZTffRey3I64g-n8Iv14mgZ-gBGlNAjVgWiNVdkpOvz2GX6LlHY2vLzKriDtt9cqyA1og",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -412,7 +418,7 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_132c49dc4fbaf8c19e64bdaaf7cc39a3",
+                "nonce": "sig_829e840d5b7bf8baec632f7a7803d3cd",
                 "approver": "ep:approver:po_rivera",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:03:00.000Z",
@@ -420,14 +426,14 @@
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib21IelhBSl9PZmdheThWcU1wVVVRMVdHYW1paFAycUVzU3Zlaml3N1A4SSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEQCIH_oBT5BKmHX0RoWxNqIlQYFWJw3-JlVvAqSPyN1cBcHAiBFOPu8mQnha8ky7SS8tMMHvzMGoNT7z08S3fP3M2Hc3w"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiZ3o1UVJlSTJTaGdZTnVESTI3WWpUajI1Q0ZIaXVtVDhLRWtKSE0zajdyYyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEUCIQCavD1Mii3p0NhjNyrOsHVikEts5Kxoo1HcPpLCNecjRwIgIHcG4gis1azYB7SvSA0J9Km4weXZoyetYP7TXuGLDEY"
               }
             }
           },
           {
             "role": "authorizing_official",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEZUKaLtM3bo8bthUXSDFNNrvW4-Af3kZu8OUucWi6NFayY87JT_Qe-kwbQ8a4vB6sWtAm3Er_qsMsTqhNP19zyw",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEkZuPbl8Lt_BjEMBQKLm50O_pJdPPuN67mueGP79vcb1Ug9tMAlIGHivl-RV93Xfs9fOdluCsqsywZQE2Kji6jA",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -435,22 +441,23 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_e3edd59485ec620ab7655e3e23f5a26b",
+                "nonce": "sig_37d9f96ea71e614584587a269be3fea0",
                 "approver": "ep:approver:ao_chen",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:02:00.000Z",
-                "expires_at": "2026-06-11T01:00:00.000Z"
+                "expires_at": "2026-06-11T01:00:00.000Z",
+                "prev_context_hash": "833e5045e2364a181836e0c8dbb6234e3db90851e2ba64fc2849091ccde3eeb7"
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiZ3h3S0xlVTFDZUUyTjRXamgwUU9HdEpVOVk3NGdBOGFMS2htclRrRmcyUSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEQCIF7Emyx0IvfWXnoLAYcI5--UPICE0z_fF_ZxBemMQBh6AiBB1M1vhZHUmojmCe8mPy6f6toO2bKm4AAuc5uB7ofPpQ"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNmx0cF9ZMVhWTk9Ta2MtSkIyMVJGbmxFX2NvSGFHblBXeXZHTmp2Nk1kSSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEUCIQDpxtJjxNYzaWYJKZM9XzukvQy7202i9SgiyMBrHpWKPQIgNxY36RGHOJ7hLisFpWEUYf9aJ4G_UJcdMBjXKAZKpt8"
               }
             }
           },
           {
             "role": "inspector_general",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEAUG7b0H5tzeo4yr-yf0memjcubp65urHnfz4kzpHAdAGciblp1IVZkSQV8_aubPrKC6_axMO9_f8hSMc8u8Owg",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEy1BFYCVkgAK5ybpi1Au2v2-uw25AkXt5ZeWcyu62tioWGCbsBnWrlvCXDVTPnYmHUqmlxdDrOAVtg0Y25dge6A",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -458,16 +465,17 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_7c9cca367db9ad8ee6f14a97a958b5f3",
+                "nonce": "sig_2d6c0030e9e5614bb1ce6293a7a6168b",
                 "approver": "ep:approver:ig_okafor",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:04:00.000Z",
-                "expires_at": "2026-06-11T01:00:00.000Z"
+                "expires_at": "2026-06-11T01:00:00.000Z",
+                "prev_context_hash": "ea5b69fd8d5754d39291cf89076d51167944fdca076869cf5b2bc6363bfa31d2"
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoidkRYYTFwWGR4RW8yQXhGeTM5eF9MWmZaYTJrOFJMNVlYa005UGtienRLRSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEQCIBloJMnKHKXMy5VO9pRYphxJ_dT9kAGKGIFdMcvScQMXAiAKTKbAHFwmcP0n9ZKd7KTFO2u3-7xapn2gar2J6lbtgw"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoibXRUZlN4T0lwWWhVZTZUblVicE9GOVdBc1NHX0FTaFR5a2dGLUw3ZkFwMCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEYCIQDcjYh9BeyyPDPF9iCnA27t8IlzbthuT219gqCTEt35wgIhAJQ_f4wETgDbuTaoLSHR7d8jehwYk7nhJ8sjnMdk7iom"
               }
             }
           }
@@ -507,7 +515,7 @@
         "members": [
           {
             "role": "program_officer",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE0dhYtnJVWIu3A3XmtAIouZulJI2OBurcPqs4mu0nlZHuoI9O28FQJsoRt7Ze6KdckDSnh04oq6mjnQI8grKN-A",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEjeqViHGd4lhmYwvS9ssaepC49j1xnjOx5G-yQ4dAHM3HlWsB9_ihEoP0r2yKAIR8GmwmCpNRF9O9siQ7OL60YQ",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -515,7 +523,7 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_de1c056d92f9c85ffde127215d23a008",
+                "nonce": "sig_5b1168cd5c59d595502b988070a1d027",
                 "approver": "ep:approver:po_rivera",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:01:00.000Z",
@@ -523,14 +531,14 @@
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiemttZ2poRzNJVkRUdktZOURVaUxkQmsxbUtzRHpscU10WTdMQnkwNlJOYyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEYCIQDYUp_LmFl9_hK5O43CdpUkLV7aIb_QTC0Irlhyr19OxwIhAKM5CmgZtdVEYtcDxwcxg_PtVZYqM-0lTRyYSZ8PVeJA"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib3dtMHlHaU5pWjVNdzlteXB0RDFzVVNSOVE1SVRhOUl5WHhJdmNlMkZoRSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEYCIQCXPDLv6ih_aKbyU9DFZYmCHQSa-VxaACr5qMxkWUz4OwIhAIhXFrAufxSh6YM8jjC0ETqFDU2DVn3S6DP2c75vmZup"
               }
             }
           },
           {
             "role": "authorizing_official",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEGHQXKVf0vWoa576VMRzMatuNrgJ3pxG09DGx7aS0jub36rg81TEHr48MsalnHBpqZm4J0XwbVZ8xCpdTC_hdng",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE5rtWANS3jusONEeO2IpF1iSiQilRb60PIbW_e57SWyJ-UA7t8Dj_5B1-g4fNXEEpPDURQ3t9cwc2mAuLexalYQ",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -538,22 +546,23 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_1b9840357417dd0fb78b9956a3fe063c",
+                "nonce": "sig_a733c99435e685f533f773324c49515a",
                 "approver": "ep:approver:ao_chen",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:02:00.000Z",
-                "expires_at": "2026-06-11T01:00:00.000Z"
+                "expires_at": "2026-06-11T01:00:00.000Z",
+                "prev_context_hash": "a309b4c8688d899e4cc3d9b2a6d0f5b14491f50e484daf48c97c48bdc7b61611"
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiVVAzcGFXQmFURmxTeGM3Z1h5dHhmaXZhUGZiZVhHcUVyazVnZ0ZITEZlTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEUCIQCacjGri0I6KLIgov5Ymbh61V0ApGWRZsAQ6LzihhoXFAIgCMsaScQekU8JWsJzQVFbP6C0hTbazyvac2aqbyDrcIk"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiRlVMYnRrN0hpWlVzZnRwVWQxNzhra3QyTDk3dEx5T2w3SEZta3JQR2ZJayIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEQCICtI5BLvKxhzUw2v3QlTUBdEq6zbYXBsoquaNrxaIHqxAiBfYCGZhSfw-wvGZ0InDf7_i-A5Z3eNSbY3MBrQj0Qi2w"
               }
             }
           },
           {
             "role": "inspector_general",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAErqEpf6duiCUEWX5RBrr-KdAXd5u_FdOLWVursquO9fncGGY_zMNDsjKg6snYLbquvmDVUy5DdUOWHRO22K-iqQ",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE3XKjWHpHkjQYIueXcC0wB0aIfLBR9ODeRazlMXoT1P7aM3GlGGRYwI841WAW4sfnZaUNfig_PiiFGuzH9RVZxQ",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -561,16 +570,17 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_eb411343b52f95e7d49c461ee7bd070c",
+                "nonce": "sig_e73055769164678bd87417dc4f4875d2",
                 "approver": "ep:approver:ig_okafor",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:03:00.000Z",
-                "expires_at": "2026-06-11T01:00:00.000Z"
+                "expires_at": "2026-06-11T01:00:00.000Z",
+                "prev_context_hash": "1542dbb64ec789952c7eda54775efc924b762fdeed2f23a5ec716692b3c67c89"
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoicXBVeW1kODRfYXpGTm5KNHRfeHp6LTBZOFl0U3F1RVBVX2c3N2RPOEdsSSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEUCIEl4TPrWRFJx2bZm_ssyNh2pDuO3-e25kxY4Ykrlq-rbAiEAj6zPodG3T_QYsd1SCIvYB44YH0raAMlkuYLaiAyisH0"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiM3VCQ0IwVU1DbVc4djdvNUNEanRVTk1JMEZPU3Z4bHdLLXhBT3B0ejE0USIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEUCIBRJtD8RIIrbrKZTqzCmE7xp7OfX25_LoiIFjJxsBMtPAiEAyoPsqRKNk9FZtHDwHiX8nFcAbtZlZQJLPc6Cn_vyhdw"
               }
             }
           }
@@ -610,7 +620,7 @@
         "members": [
           {
             "role": "program_officer",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAECQtPft8FTDkXpkvraCBpNjSW2DHyt3E30UzndVKu50jjpbkUZ_VTNcnD1G8OULeJTajAzb1YtP7RBIxVQTjRWA",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEXHnQCwIYfdd7noZAf8G5MCDyW4jCGLktUknK-xqRNCbC-atVz3EEYtXinuvOe2M17SY00rzPooVhLDP7rvB5lQ",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -618,7 +628,7 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_9da055829408282b7f03653df3194986",
+                "nonce": "sig_9b8850f6e3265c7162b9c37710ad60ed",
                 "approver": "ep:approver:po_rivera",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:01:00.000Z",
@@ -626,14 +636,14 @@
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiUTNucVp6N2hhR2gtMDV1MEFiemJjN0ZrdmNlNXgxS2ZUSDNMZnFKb0dBUSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEQCIB4bKCA_-DoTPzUkFA90zJfohT0H8MJbnJ8afVCqMBwxAiAEuQ6HOvJAH_0nt_RFng-WjYvaK7ANSQy-_V_QbzmWVw"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNnAxS2xZNnhBTzh3MWdkd01WeXNvbHNfUnluS3dqaFZfRFptcDNyYkN1ayIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEUCIQD65pPOtlwsNZYqrKMsvhgMU-0ZdfwX_LHhwcJRLPOCCAIgNgz6Ztf4ynnGdzKRN0ourHgXq7B7g3xPN8mn9RyEL8E"
               }
             }
           },
           {
             "role": "authorizing_official",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEoTNq6R1x_VTZuOpdNsoqC6h0NCLycb_6Pbs8XHurh2iBLEkLm2PkDGFNp9qBYaydEf4yYoyejaFNk1p2_i1Gyg",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEQQrS_tJWrY4uNqWDeE8by8Oj-dikj2WF_TgQcg_lvW_Umls6p6NXECLbRUF5151VR9_gbvjjsfAL_1qYVjC51Q",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -641,22 +651,23 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_85d63f51be3c8e42b272408c6d2540ed",
+                "nonce": "sig_dff02ba598fa0fdf2ce2ce6db9cfae49",
                 "approver": "ep:approver:ao_chen",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:02:00.000Z",
-                "expires_at": "2026-06-11T01:00:00.000Z"
+                "expires_at": "2026-06-11T01:00:00.000Z",
+                "prev_context_hash": "ea9d4a958eb100ef30d60770315caca25b3f4729cac23855fc3666a77adb0ae9"
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoicWpjNE5SV0pEQ0pwRzY1U2dlR3FZWEgteldZOGJrdXVZT2JRblRQYzRkSSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEYCIQDzjcTtz_RmYusj2iAMh90_34FZaur9Buw6u8JZrhMKdQIhAJW1P_KR9-wBlbHDm5azCtEd67IIla4954-pOFNcKLQ-"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoibXBJcDRIeFBsMFl5YmtXb3NyOUc1RzlyWW5ZUjNubG93cnAwV1FBU1R3cyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEQCIErF1lywU-2b0CE6wq1tLBh_23WrTbPs0PYDeKe8MQFuAiBnegUhDy2jOwnLVFZm1p0W5gJ8ea0kZl6S0kdtJfMqoQ"
               }
             }
           },
           {
             "role": "inspector_general",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEBdM9fuhpIYOnIEsrXhIGlhO80fQ-du-jFqtMKqDS7HPlSSYJfGJ1RRc0UchDYp6i5Boa1rYqsQVs1Xu5-N1_9g",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAESnqhmOHd58bnYYjqZ6TdMdQe0_9llhzCTgRc8LRP9_qz0-f0wrxdYqm7h6Kifd6Sn6PVWKCJhAu_pn0UJFAozA",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -664,16 +675,17 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_edad07bb2b258e77d1fe481db367dc76",
+                "nonce": "sig_c6f6382b8d4e13ca5c7d762974f07786",
                 "approver": "ep:approver:ig_okafor",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:05:00.000Z",
-                "expires_at": "2026-06-11T01:00:00.000Z"
+                "expires_at": "2026-06-11T01:00:00.000Z",
+                "prev_context_hash": "9a9229e07c4f9746326e45a8b2bf46e46f6b627611de7968c2ba745900124f0b"
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiVFVNZjlfc2RaTmtYUlJqcUx6dlM4R190TzdKUVdzN2VIZVJwWEpCZ1cxdyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEUCIQDetw2SucoVLK1ubLSr1TBuG7AOJxAaPmSXdwXPZLJrOAIgRfab6POLvxCRJPMHDs88-jerIVq8pV8STHf4FY4j0PY"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib3ZOX1dVSDN6YkVpcTllcVAyOE9FdzFkWnk2aDc3MzRvZV9mUkg3aXgzMCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEQCIAd3G09DWn1aCoxwKVSg05SRI8N578_4U7uuMqPUsH7HAiAwP2LWlq0T3Ev4KIqgjejuTw4z6ydiGeM6sGLhv7pbBQ"
               }
             }
           }
@@ -713,7 +725,7 @@
         "members": [
           {
             "role": "program_officer",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEAX8KMy-84BxOTM6zS_fuYC3BAu-1-Q-Epm1EMpibVPZGxEd7HTe1YczZ6DVFobnzdG4m0ytDqd7NaVNZWXaHKA",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEpozS2I6uyTAB1YeDJfjf2sPBn6wcWl2YITSrc8-WtqG75j-7gtjP2ig6J6Bmjdqcm5jHirvtp9SyRVtOWebr0g",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -721,7 +733,7 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_a73a6c8eb64e9fa7eff44adceaef6ecc",
+                "nonce": "sig_570a205763daa19de951e6626f643fe4",
                 "approver": "ep:approver:po_rivera",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:01:00.000Z",
@@ -729,14 +741,14 @@
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiTXhmcnVQZWx6RzFuMEM1OFhGMThSY0lfTFlLVmNpWk9wRXV3ekpYM3FqZyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEYCIQDvxBJsk7GnnIWD5Rpjq45yuZJBVU94wGZWUUHT_E7GCQIhAPp7wqlk8L0zr_UiK9v3--PDHrBBxdXWdBaE8weTQaGF"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiYkc0WnFJWUNvZkQ5MFgxSGRKS3RJTTZPamlnV3g2NEZidjIwZE9LbERvVSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEYCIQDx-fKXnOx3jqeN1qPWwvgrPRjtGhA5L6ZrBA-Q2miEEwIhAMWW7wZ0JofFZ4ooZOmNwWxuxQKtRO4kTynwVqKpPndC"
               }
             }
           },
           {
             "role": "authorizing_official",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE9CvkZTeAAn8jw2X4aIQlhlDPUhZhcQDv6d_dZ12qQ3hgqCa45AOWeARq4UkEihCBRr340blkRya25WBF52QdPw",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAECr9ZqCHfPjH29T3hsfXlJshFsdH8ppQlUeUDCUDC71nSnUWOMfqfAEIb4Plu3JIVat5mk7fLoVO5SwyZ_H7idw",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -744,22 +756,23 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_e834d0cc8918e89edc18c4b6134d73af",
+                "nonce": "sig_a353929d121847493e47cdb4eda16bb1",
                 "approver": "ep:approver:ao_chen",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:02:00.000Z",
-                "expires_at": "2026-06-11T01:00:00.000Z"
+                "expires_at": "2026-06-11T01:00:00.000Z",
+                "prev_context_hash": "6c6e19a88602a1f0fdd17d477492ad20ce8e8e2816c7ae056efdb474e2a50e85"
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiMFU1dHJCOVpxb1E5aG5CLXhUd3NpaG5uNkNoWWV4THJ5NmpSUWxqdmplYyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEYCIQD_bITd9Hm5TWhDXPGx1HbUPsOl8gzL4dEENooOshAw9wIhAMMPHAJo3xJ7yGveSkbDnCFydQ3ZOfvzRRSTBao8rghm"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiel9EOGVmcFpJazgyazUxSkJjOXVrcWVwN0l0WTJfc2VtaEhHSG9JVk1GOCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEUCIQDLmFzKwE4an1Al090b6P3a8JTTw8D9PPoJr5xCy3S7oAIgW4ekbLIhHobuByLaTxB2d1Fx0ij7M2Hl8M2K64VSbQQ"
               }
             }
           },
           {
             "role": "inspector_general",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEG74RyMECl_YK4ZVLejLbh10A3JpKC-VCk1WwpoEh_SAVa4y6wPk8Id3CtqIS5K8CS6d9H7UCblJ7J670--F_qQ",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEzsAQnE4vrYpDVB5cND51P86g7kjrAslobVJy0vnxmDXPjTpJtyl8NCDsS1FPQTbZwhLhHwpZv_-MoVfxjP3Uxw",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -767,16 +780,17 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_5228c929a9c45f87ca3fca5bb956874e",
+                "nonce": "sig_15ad0ab78552540e4fc55faf60e5c0cb",
                 "approver": "ep:approver:ig_okafor",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:03:00.000Z",
-                "expires_at": "2026-06-11T01:00:00.000Z"
+                "expires_at": "2026-06-11T01:00:00.000Z",
+                "prev_context_hash": "cff0fc79fa59224f36939d4905cf6e92a7a9ec8b58dbfb1e9a11c61e8215305f"
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiOGdsckZIdlR4dFpvTHJsYndRVFo3QTFQMDhRU0w5V2g2b29aamZwQkhsRSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEYCIQCbtU3UrbzGB949qE9mVGfQiXOyFAT9653Z5iu2fV3fsAIhAN7-TRNoQDn_SKhqp0ZlEQtrej8dUapFnuN8ILaASxN6"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiN3RhS2hGNFhQS3A4eGR2djNfS1Y3WTF4ZUJJLXd0R0NQUzJaa0t2R1pzNCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEYCIQDXMT47W5hupk5jJvRhVpGBEAejW0fQ8TvhxDnZlwHINwIhAPFXgT_v52V3y0tk0QrgOzUdOankhbZnb3hX5mV6VKrV"
               }
             }
           }
@@ -816,7 +830,7 @@
         "members": [
           {
             "role": "program_officer",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE67pbxL0eQNzMFPQzk1oggh7n2lJdM2cdfTVrCay4wC7Dh3_LvkykOoSMp_JhmZPWUqfhOwZ3pj4mC7yO1D5lmw",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE6WNVwyC9-S862X3JjR6eOuV_Hl1cCYgteBVn_u49arawxevOpsRDiIL78zMK0KUW1FMNjStsXkzBGPdbVQr2Ww",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -824,7 +838,7 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_10f1b4e25b6f929c0b1af4b2ce4dbadb",
+                "nonce": "sig_5446a4939317934366321828df72c2b9",
                 "approver": "ep:approver:po_rivera",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:01:00.000Z",
@@ -832,14 +846,14 @@
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSXJVYVpLUTc2UTdPLVFVcUxRZWpCU1d2S0E4NzVoUDlaaGVSUDlzQmtvRSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEUCIQDLIMj6GgcwGhd8OJTojX3MYdXTzZt9UpvqEgVCxmMQ5QIgP3KfU550sj_7G1dE-HZ9NszPaUXLYZjeLAchP5TZLK8"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiNlMxNzEzWGV6OFZWbFN3blgzeVdicTlTaXhpOW1Uclp5ZGVaUXAtbUlJRSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEQCIFUm9QmIJmV90ez9fDwCJhv-X9TQ-MKdCd_-o-WsPF_zAiA--sRaZbiYdHNle2kGEw2cPnfzvT9iYloSeJZBkZtDPw"
               }
             }
           },
           {
             "role": "intern",
-            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEXLSw_CjvwBnnY2Ckn_pFAAfWmZEvMXqgeOq_y0LYTinDxGkSfqJ_-56QxF5MeaGqnbK3dFPnXRzdXdxj-ivS6Q",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEJz2hs9QgMwjnV-AH8mi6gMCZ9DTPC33si97jzgo59fVTx_1Iq8PZyyOGjvVj3DxPx9S5XHUkW5QTuginwYjuTQ",
             "signoff": {
               "@type": "ep.signoff",
               "context": {
@@ -847,7 +861,7 @@
                 "context_type": "ep.signoff.v1",
                 "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
                 "policy": "policy_aegis_quorum",
-                "nonce": "sig_5d7a5af435c348bada2aac1a0b216363",
+                "nonce": "sig_2471b74cf5985f773b51c0161e280013",
                 "approver": "ep:approver:not_on_roster",
                 "initiator": "ent_agent_7",
                 "issued_at": "2026-06-11T00:02:00.000Z",
@@ -855,8 +869,194 @@
               },
               "webauthn": {
                 "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
-                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoibF9RZTc4S2pXWmZVT0p3dERDUmxwTXpWdFF0d0tlcTlxYVREVXBULXlkbyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-                "signature": "MEUCIQDPQoV5Hd1YMvdVOide36Ql3ctKCaN09ByfYNQvbhEA1AIgfRqP565bp_MhCg-ivpQ2wBgSikKlakEhC8dHQFm3tpc"
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiR0hHamoxSHo1ZjMtLXJROXZPdGswekVZZ24yOUthS3FNTHd3QjlSdl9XVSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEQCIEDmDytHbHIrwWDrmQktkWNecqpGe3oGnIAYZvFcxy_fAiA8Dot4Euvam1aaFul-mlvJ4PrvQg4M2h4aDoHX47sksA"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject_broken_chain",
+      "description": "Strong-chain ordered quorum where the final signoff commits to the wrong predecessor hash — chain_linked fails though every signature is valid",
+      "failure_class": "chain",
+      "expect": {
+        "valid": false
+      },
+      "quorum": {
+        "@type": "ep.quorum",
+        "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+        "policy": {
+          "mode": "ordered",
+          "required": 3,
+          "approvers": [
+            {
+              "role": "program_officer",
+              "approver": "ep:approver:po_rivera"
+            },
+            {
+              "role": "authorizing_official",
+              "approver": "ep:approver:ao_chen"
+            },
+            {
+              "role": "inspector_general",
+              "approver": "ep:approver:ig_okafor"
+            }
+          ],
+          "distinct_humans": true,
+          "window_sec": 900,
+          "ordered_chain": true
+        },
+        "members": [
+          {
+            "role": "program_officer",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE4y5gMcahHcdkEQg_yAIbQLzZXwZu5WU9VCQCbavQfdnYctmrmjKO6OICBBsUX2ikSwgULX-ubZnhA3pR37lneQ",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_a2dcc477e07d1f8c2735f3036424e942",
+                "approver": "ep:approver:po_rivera",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:01:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiaGNrS3lOLTQzZEhJNUplbDhjUnJrak8xNW9Ibm1YTllNbF9uMlM3VnEtVSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEYCIQCaXVPfhnykVeVteSMhlRHQLqvpcmTQ8TkUf8TOGiZtDAIhAK4jdDD4g2mq50TyjW0EJmZDJ67wEfQTpPWGs5aqll__"
+              }
+            }
+          },
+          {
+            "role": "authorizing_official",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEp7-ePebIsRGE1_dEvgFtnSIBdnF5smsI2z6zyLibtzDScQRXr2y-5sIBOSpuaBNU65HJ-MH1rgcXVaKU0AGb_Q",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_0feb9cbd10a94a7d247a0cd60c5962ed",
+                "approver": "ep:approver:ao_chen",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:02:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z",
+                "prev_context_hash": "85c90ac8dfb8ddd1c8e497a5f1c46b9233b5e681e7997358325fe7d92ed5abe5"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiRVJDQmxNQnlveGZXUVI2ejg2MmhtM1hEcW1CalJhanVIYnBkcFkxOHhyTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEQCIDB6Aq1mQRgkx2oBQlp2ch8EqWKObn7xnV92nnLbGYxkAiB4PTz92jPAL-_MCahry2Q2cnwIOR6oEnFDnnb2ZNkDNA"
+              }
+            }
+          },
+          {
+            "role": "inspector_general",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEsyU7BpkKyv1WQQ5MFW6DCJ8a4fX_HBZ3W_95hS3wAizhDtg5c0C4xIyOSLjDOThX1pAh03jKeZ0Rs5-fp4ZXTw",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_c031ac47e266bcc758134cf8f1579db0",
+                "approver": "ep:approver:ig_okafor",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:03:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z",
+                "prev_context_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiMWNkTlQzNnJzVHIxajVKMXlVeWd5eTZIZ3BBU0Yyal9WMEd0YlZlb1M0VSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEQCIHa2vDCfniyviI4l1SfCBPP0zHvGOL8aSLYvJu7B2nCkAiA5emhsAjbfzP2ShAACYrIdtRlkMe46H9BR-YXe3CDdhw"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "reject_duplicate_key",
+      "description": "Two distinct approver identities sign with the same device key — distinct_keys fails",
+      "failure_class": "distinct-keys",
+      "expect": {
+        "valid": false
+      },
+      "quorum": {
+        "@type": "ep.quorum",
+        "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+        "policy": {
+          "mode": "threshold",
+          "required": 2,
+          "approvers": [
+            {
+              "role": "program_officer",
+              "approver": "ep:approver:po_rivera"
+            },
+            {
+              "role": "authorizing_official",
+              "approver": "ep:approver:ao_chen"
+            },
+            {
+              "role": "inspector_general",
+              "approver": "ep:approver:ig_okafor"
+            }
+          ],
+          "distinct_humans": true,
+          "window_sec": 900
+        },
+        "members": [
+          {
+            "role": "program_officer",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEll9SFTb4z4vjQC8uVykaYZGlwEeWQv6t8ZQoFKItb9PTubFaTkO2VDxTILP5c85oR35ffL522s-oYrhMRlIkyw",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_27f6c55809fe9d7edcc50b04653b9c2f",
+                "approver": "ep:approver:po_rivera",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:01:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoicjFWU29iX3U1bUJBcUVUcVRrZ0tmTGZPc1ZicVdTeTJaRzRGc25pRzUzVSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEUCIQDvoM01dH78lEKQevWaax_Qs9pvI3mRi2wTScKld-nFMAIgXZrNow8IHbl4dQZobwMZhAyBvfjhL2WpMilwyb9xWV8"
+              }
+            }
+          },
+          {
+            "role": "inspector_general",
+            "approver_public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEll9SFTb4z4vjQC8uVykaYZGlwEeWQv6t8ZQoFKItb9PTubFaTkO2VDxTILP5c85oR35ffL522s-oYrhMRlIkyw",
+            "signoff": {
+              "@type": "ep.signoff",
+              "context": {
+                "ep_version": "1.0",
+                "context_type": "ep.signoff.v1",
+                "action_hash": "91cb3692ad26ad9c5af65863af146ebfbf4e31678f1a3875d431cbdc658dad8f",
+                "policy": "policy_aegis_quorum",
+                "nonce": "sig_98ebca1a3ca570b5940299aae44c7f6a",
+                "approver": "ep:approver:ig_okafor",
+                "initiator": "ent_agent_7",
+                "issued_at": "2026-06-11T00:02:00.000Z",
+                "expires_at": "2026-06-11T01:00:00.000Z"
+              },
+              "webauthn": {
+                "authenticator_data": "4OsNEivxwEn2vZAs6g8sWNWPuNWuq1bZWRCDs968rCUFAAAACQ",
+                "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSGE5Uk0yTlNDUlZFUW9fOHIzMW5HRWc0MlppNTZWQ3hmMUlwR2gteHBPTSIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+                "signature": "MEUCIQD9f5-kB5qtY9gkaGlykWuDoiu9QpTx6-pJG-eJU-5xWAIgY9SHnngW664jG2BqZQagsLyZGYr5526dCs4Yw_6aWZ4"
               }
             }
           }

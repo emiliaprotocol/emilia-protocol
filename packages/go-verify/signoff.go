@@ -11,6 +11,7 @@ import (
 	"crypto/subtle"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"time"
 )
@@ -126,7 +127,8 @@ func parseMillis(ts string) (int64, bool) {
 func VerifyQuorum(quorum map[string]any, rpID string) QuorumResult {
 	checks := map[string]bool{
 		"all_signatures_valid": false, "action_binding": false, "distinct_humans": false,
-		"roles_admitted": false, "threshold_met": false, "order_satisfied": false, "within_window": false,
+		"distinct_keys": false, "roles_admitted": false, "threshold_met": false,
+		"order_satisfied": false, "chain_linked": false, "within_window": false,
 	}
 	if quorum == nil {
 		return QuorumResult{false, checks}
@@ -204,6 +206,12 @@ func VerifyQuorum(quorum map[string]any, rpID string) QuorumResult {
 	dh := len(seen) == len(counted)
 	checks["distinct_humans"] = !distinctHumans || dh
 
+	countedKeys := map[string]int{}
+	for _, c := range counted {
+		countedKeys[getStr(c.m, "approver_public_key")]++
+	}
+	checks["distinct_keys"] = !distinctHumans || len(countedKeys) == len(counted)
+
 	eligibleSet := map[string]bool{}
 	for _, e := range eligible {
 		eligibleSet[getStr(e, "role")+" "+getStr(e, "approver")] = true
@@ -243,6 +251,27 @@ func VerifyQuorum(quorum map[string]any, rpID string) QuorumResult {
 		checks["order_satisfied"] = true
 	}
 
+	orderedChain, _ := policy["ordered_chain"].(bool)
+	if mode == "ordered" && orderedChain {
+		linked := len(members) >= len(eligible)
+		for idx := 0; idx < len(eligible) && idx < len(members); idx++ {
+			prev := getStr(ctxOf(members[idx]), "prev_context_hash")
+			if idx == 0 {
+				if prev != "" {
+					linked = false
+				}
+			} else {
+				sum := sha256.Sum256([]byte(Canonicalize(ctxOf(members[idx-1]))))
+				if prev != hex.EncodeToString(sum[:]) {
+					linked = false
+				}
+			}
+		}
+		checks["chain_linked"] = linked
+	} else {
+		checks["chain_linked"] = true
+	}
+
 	if len(counted) > 0 {
 		var mn, mx int64
 		first := true
@@ -266,6 +295,7 @@ func VerifyQuorum(quorum map[string]any, rpID string) QuorumResult {
 	}
 
 	valid := checks["all_signatures_valid"] && checks["action_binding"] && checks["distinct_humans"] &&
-		checks["roles_admitted"] && checks["threshold_met"] && checks["order_satisfied"] && checks["within_window"]
+		checks["distinct_keys"] && checks["roles_admitted"] && checks["threshold_met"] &&
+		checks["order_satisfied"] && checks["chain_linked"] && checks["within_window"]
 	return QuorumResult{valid, checks}
 }

@@ -66,6 +66,27 @@ function canonicalize(value) {
   return JSON.stringify(value);
 }
 
+/**
+ * EP-QUORUM-v1 ordered-chain hash: the hex SHA-256 of the canonical signoff
+ * context. Used to cryptographically link each ordered signoff to its
+ * predecessor (context.prev_context_hash), so approval ORDER is proven by the
+ * signatures themselves rather than by operator-asserted timestamps. Exported
+ * for the quorum verifier; uses the same canonicalize()/sha256() as every other
+ * signed-material computation in this file.
+ */
+export function contextChainHash(context) {
+  return sha256(canonicalize(context));
+}
+
+// Exported so the portable revocation verifier (revocation.js) signs/recomputes
+// over byte-identical canonical material — the single canonicalization source of
+// truth for the whole offline package.
+export { canonicalize };
+
+// Portable EP-REVOCATION-v1 offline check, re-exported so the published verifier
+// can answer "has this authorization been revoked by a statement I hold?".
+export { verifyRevocation, isRevoked, REVOCATION_VERSION } from './revocation.js';
+
 function hashPair(a, b) {
   const sorted = [a, b].sort();
   return sha256(sorted[0] + sorted[1]);

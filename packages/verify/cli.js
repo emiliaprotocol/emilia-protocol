@@ -18,6 +18,7 @@ import {
   verifyWebAuthnSignoff,
   verifyTrustReceipt,
   verifyQuorum,
+  verifyRevocation,
 } from './index.js';
 
 const args = process.argv.slice(2);
@@ -42,6 +43,45 @@ verifies.
 
 Exit code 0 = every document verified; 1 = any failure.`);
   process.exit(args.length === 0 ? 1 : 0);
+}
+
+// Subcommand: offline revocation check. Answers "do these statements revoke the
+// authorization I hold?" — FAIL-CLOSED, no EP server. Honest boundary: it cannot
+// prove the ABSENCE of a revocation you were never handed (see EP-REVOCATION-SPEC §7).
+//   verify revocation <statement.json> --target <target.json> --revoker-keys <keys.json> [--max-age <sec>]
+if (args[0] === 'revocation') {
+  const sub = args.slice(1);
+  let statementPath = null; let targetPath = null; let keysPath = null; let maxAge = null;
+  for (let i = 0; i < sub.length; i++) {
+    if (sub[i] === '--target') targetPath = sub[++i];
+    else if (sub[i] === '--revoker-keys') keysPath = sub[++i];
+    else if (sub[i] === '--max-age') maxAge = Number(sub[++i]);
+    else statementPath = sub[i];
+  }
+  if (!statementPath || !targetPath) {
+    console.error('usage: verify revocation <statement.json> --target <target.json> --revoker-keys <keys.json> [--max-age <sec>]');
+    process.exit(1);
+  }
+  const load = (p) => JSON.parse(readFileSync(p, 'utf8'));
+  let statement; let target; let revokerKeys = {};
+  try {
+    statement = load(statementPath);
+    target = load(targetPath);
+    if (keysPath) revokerKeys = load(keysPath);
+  } catch (err) {
+    console.error(`✕ ${err.message}`);
+    process.exit(1);
+  }
+  const opts = { revokerKeys };
+  if (Number.isFinite(maxAge)) opts.maxAgeSeconds = maxAge;
+  const r = verifyRevocation(target, statement, opts);
+  // A VALID revocation means the held authorization is REVOKED — exit non-zero.
+  console.log(`${r.valid ? '⛔ REVOKED' : '○ NOT REVOKED BY THIS STATEMENT'} — target ${target.target_type || ''} ${target.target_id || ''}`.trimEnd());
+  printChecks(r.checks);
+  for (const e of r.errors || []) console.log(`  reason: ${e}`);
+  if (!keysPath) console.log('  note: no --revoker-keys supplied; a revocation from an unpinned key confers nothing.');
+  console.log('  note: a NOT-REVOKED result only means THESE statements do not revoke it — not that no revocation exists.');
+  process.exit(r.valid ? 1 : 0);
 }
 
 let suppliedKey = null;
