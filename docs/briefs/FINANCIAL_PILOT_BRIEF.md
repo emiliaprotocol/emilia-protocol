@@ -1,5 +1,10 @@
 # Financial Institutions Pilot Brief: Emilia Protocol
 
+## What's new (June 2026)
+- **3 languages / 8 conformance suites**, independently re-run and confirmed by an outside implementer this month — audit evidence a relying party can check without trusting the vendor.
+- **Payment-redirect / BEC defense, demonstrably:** the payee account is *inside* the signed action, so swapping it after approval breaks verification. Run `npx -y @emilia-protocol/crash-test --scenario procurement` to watch it reject a post-approval account swap, offline.
+- **Composition (EP-AEC):** EP composes policy-permit and human-authorization receipts into one offline ALLOW/DENY — require both a policy check and a named human on the same action.
+
 ## Problem
 
 Wire transfer fraud, beneficiary changes, and payout redirects execute through
