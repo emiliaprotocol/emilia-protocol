@@ -3,6 +3,8 @@
 # Provable approval for high-risk public payments
 ### The accountability control several of the committee's recommendations imply
 
+> **June 2026 update:** EP is now independently re-verified by an outside implementer, with 3-language / 8-suite cross-language conformance. It composes the broader IETF agent-authorization cluster (delegation, policy-permit) via the new Authorization Evidence Chain (EP-AEC), and the same primitive carries an EU AI Act Article 14 alignment and a PHI-free healthcare profile.
+
 *Leave-behind for the Minnesota House fraud-committee's technology evaluators · EMILIA Protocol, Inc. · team@emiliaprotocol.ai*
 
 ---

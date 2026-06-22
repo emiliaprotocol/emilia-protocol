@@ -61,4 +61,4 @@ Anyone can install `@emilia-protocol/verify` and re-check the signature without 
 ## Contact
 
 **Iman Schrock** — Founder, EMILIA Protocol
-iman@emiliaprotocol.ai · github.com/emiliaprotocol · emiliaprotocol.ai/govguard
+team@emiliaprotocol.ai · github.com/emiliaprotocol · emiliaprotocol.ai/govguard

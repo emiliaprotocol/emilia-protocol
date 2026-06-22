@@ -1,5 +1,7 @@
 # Who Answers for the AI? — The Two-Way Protection Brief
 
+> **June 2026 update:** EP is now independently re-verified by an outside implementer, with 3-language / 8-suite cross-language conformance. It composes the broader IETF agent-authorization cluster (delegation, policy-permit) via the new Authorization Evidence Chain (EP-AEC), and the same primitive carries an EU AI Act Article 14 alignment and a PHI-free healthcare profile.
+
 **Date:** 2026-06-12
 **Audience:** Government finance, treasury, and CIO conversations — pilot calls, NASCIO briefings, ACFE webinars.
 **Companion:** [`docs/pilots/GOVGUARD-PILOT-OFFER.md`](../pilots/GOVGUARD-PILOT-OFFER.md) — the 60-day observe-mode pilot this brief points to.

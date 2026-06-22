@@ -1,7 +1,9 @@
 # EP ROI Narratives
 
 **Status: Canonical**
-**Last updated: March 2026**
+**Last updated: June 2026**
+
+> **June 2026 update:** EP is now independently re-verified by an outside implementer, with 3-language / 8-suite cross-language conformance. It composes the broader IETF agent-authorization cluster (delegation, policy-permit) via the new Authorization Evidence Chain (EP-AEC), and the same primitive carries an EU AI Act Article 14 alignment and a PHI-free healthcare profile.
 **Owner: Core team**
 
 This document quantifies the financial case for EMILIA Protocol adoption across three verticals. All cost figures cite published sources. EP mechanism references map to shipped code in `lib/handshake/` and `lib/protocol-write.js`.
