@@ -7,7 +7,7 @@
     "canonicalization": "recursive key-sorted JSON (RFC 8785-style)",
     "anchor": "SHA-256 sorted-pair Merkle"
   },
-  "count": 10,
+  "count": 11,
   "vectors": [
     {
       "id": "accept_minimal",
@@ -173,6 +173,37 @@
         "signature": {
           "algorithm": "Ed25519",
           "value": "QRgQnvFjoVYlpcmjJ7uRf2TXSvINGZkdCS5FIY5EfcA5xRVT5NmE88iswicqlYYNvf553fnojJjYKyIxXpBzAA"
+        }
+      }
+    },
+    {
+      "id": "reject_tampered_nested_param",
+      "description": "A nested action parameter (destination bank) was swapped after signing — recursive canonicalization binds every parameter, so the signature no longer matches",
+      "expect": {
+        "valid": false
+      },
+      "reason": "tampered_payload",
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "document": {
+        "@version": "EP-RECEIPT-v1",
+        "payload": {
+          "receipt_id": "tr_param",
+          "action_type": "large_payment_release",
+          "context": {
+            "amount": 82000,
+            "currency": "USD",
+            "change": {
+              "after_bank_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+              "fields": [
+                "routing",
+                "account"
+              ]
+            }
+          }
+        },
+        "signature": {
+          "algorithm": "Ed25519",
+          "value": "325QngVhsqYvI1jgYRDFwTlSGuJNt3hSjThErMRy5X4Ne0jOvsVOnH9GZFd9c_ysz58M1nkFpGs26ci0O-aBBw"
         }
       }
     },

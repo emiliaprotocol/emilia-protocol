@@ -71,6 +71,20 @@ add('reject_missing_signature', 'Missing signature value is refused', false, 'mi
   add('reject_tampered_payload', 'Payload mutated after signing — signature no longer matches', false, 'tampered_payload', KEY.pub, doc);
 }
 
+{
+  // Parameter binding, deep: approve a payment to bank A, then present the SAME
+  // receipt with the destination bank swapped. Because canonicalization is
+  // recursive, mutating a NESTED action parameter (the payee bank hash) breaks
+  // the signature — you cannot approve one destination and execute another.
+  const payload = {
+    receipt_id: 'tr_param', action_type: 'large_payment_release',
+    context: { amount: 82000, currency: 'USD', change: { after_bank_hash: 'a'.repeat(64), fields: ['routing', 'account'] } },
+  };
+  const doc = receipt(payload);
+  doc.payload = { ...payload, context: { ...payload.context, change: { after_bank_hash: 'e'.repeat(64), fields: ['routing', 'account'] } } };
+  add('reject_tampered_nested_param', 'A nested action parameter (destination bank) was swapped after signing — recursive canonicalization binds every parameter, so the signature no longer matches', false, 'tampered_payload', KEY.pub, doc);
+}
+
 add('reject_wrong_key', 'Valid signature, but verified against an unrelated public key', false, 'wrong_key', OTHER.pub,
   receipt({ receipt_id: 'tr_wrongkey', issuer: 'ep:demo' }));
 

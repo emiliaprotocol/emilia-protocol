@@ -91,6 +91,10 @@ export { verifyRevocation, isRevoked, REVOCATION_VERSION } from './revocation.js
 // delegation/execution — composes verifyTrustReceipt + scope-containment checks.
 export { verifyProvenanceOffline, PROVENANCE_VERSION } from './provenance.js';
 
+// EP-TIME-ATTESTATION-v1: independent, pinned, offline-verifiable proof of WHEN
+// (trusted-time anchor; complements the strong ordered chain's proof of order).
+export { verifyTimeAttestation, TIME_ATTESTATION_VERSION } from './time-attestation.js';
+
 function hashPair(a, b) {
   const sorted = [a, b].sort();
   return sha256(sorted[0] + sorted[1]);
