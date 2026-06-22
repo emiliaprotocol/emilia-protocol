@@ -42,6 +42,14 @@
   .quote{ font-size:34px; line-height:1.3; font-style:italic; max-width:26em; }
   .tag{ display:inline-block; font-family:-apple-system,sans-serif; font-size:15px; letter-spacing:0.08em;
     color:var(--ink); background:var(--gold-soft); padding:5px 12px; border-radius:3px; margin-bottom:24px; text-transform:uppercase; }
+  /* compact variant for content-dense slides (6-cell grids etc.) */
+  section.slide.dense{ padding:58px 96px; }
+  .dense h2{ font-size:40px; margin-bottom:16px; }
+  .dense .grid{ gap:14px 52px; margin-top:6px; }
+  .dense .cell .n{ font-size:27px; }
+  .dense .cell .l{ font-size:17px; line-height:1.3; }
+  .dense .sub{ font-size:17px; margin-top:12px; }
+  .dense .kicker{ margin-bottom:18px; }
 </style>
 </head>
 <body>
@@ -62,12 +70,12 @@
 </section>
 
 <section class="slide">
-  <p class="kicker">Why now</p>
-  <h2>"A human was in the loop" is <span class="red">unfalsifiable.</span></h2>
+  <p class="kicker">Why now — the real discontinuity</p>
+  <h2>AI now creates actions <span class="gold">faster than humans can audit them.</span></h2>
   <ul>
-    <li>CISOs are <strong>blocking agent deployment</strong> — sitting on AI budget they can't spend because compliance can't answer "who authorized that?"</li>
-    <li>Regulators now <strong>require</strong> human oversight (EU AI Act Art. 14) — but no one can <strong>verify</strong> it after the fact.</li>
-    <li>Decision logs are <span class="muted">testimony</span> — what the operator says happened, in a database the operator controls.</li>
+    <li>An agent approves a vendor · swaps a bank account · routes benefits · rewrites a record · triggers procurement — in milliseconds, unattended, at scale.</li>
+    <li>Every evidence system we have — logs, approvals, audit trails — was built for the speed of <em>humans</em> taking those actions.</li>
+    <li>Machine-speed action, human-speed audit: that mismatch is the discontinuity. "A human was in the loop" is now an <span class="red">unfalsifiable claim</span> with no artifact behind it.</li>
   </ul>
   <div class="foot"><span>02 · Why now</span><span>EMILIA Protocol</span></div>
 </section>
@@ -80,32 +88,40 @@
   <div class="foot"><span>03 · Product</span><span>Decision logs are testimony. EP produces receipts.</span></div>
 </section>
 
-<section class="slide">
-  <p class="kicker">The proof — this is real, and checkable</p>
-  <h2>Not a pitch. A protocol.</h2>
+<section class="slide dense">
+  <p class="kicker">Signals of external validation</p>
+  <h2>People outside the project have started to engage.</h2>
   <div class="grid">
-    <div class="cell"><div class="n">3 langs · 8 suites</div><div class="l">JavaScript / Python / Go verifiers agree on 8 adversarial cross-language conformance suites — the IETF bar for a standard.</div></div>
-    <div class="cell"><div class="n">Independently verified</div><div class="l">An outside implementer ran the crash-test + conformance on their own machine and confirmed it (2026). First external reliance event.</div></div>
-    <div class="cell"><div class="n">Machine-checked</div><div class="l">TLA+ safety properties + Alloy relational models, verified in CI on every change.</div></div>
-    <div class="cell"><div class="n">IETF drafts</div><div class="l">Authorization receipts + multi-party quorum posted as Internet-Drafts; evidence-chain forthcoming.</div></div>
+    <div class="cell"><div class="n">California Dept. of Technology</div><div class="l">EP is in the state's GenAI vendor-evaluation process for human-oversight controls.</div></div>
+    <div class="cell"><div class="n">CA legislative committee</div><div class="l">Staff engaged on verifiable-oversight requirements; follow-up set.</div></div>
+    <div class="cell"><div class="n">First independent implementer</div><div class="l">An outside engineer re-ran the verifier + conformance and confirmed it — the first external reliance event.</div></div>
+    <div class="cell"><div class="n">On the record</div><div class="l">Authorization-receipt + quorum IETF drafts posted; MCP server live on the official registry, Glama &amp; Smithery.</div></div>
   </div>
-  <div class="foot"><span>04 · Proof</span><span>EMILIA Protocol</span></div>
+  <p class="sub" style="font-size:18px; margin-top:18px;">Under the hood it is real — 3 independent verifiers (JS/Python/Go) over 8 conformance suites, machine-checked TLA+/Alloy. But the headline is that the market has started to respond.</p>
+  <div class="foot"><span>04 · Validation</span><span>EMILIA Protocol</span></div>
+</section>
+
+<section class="slide dense">
+  <p class="kicker">How it becomes inevitable</p>
+  <h2>The reliance ladder.</h2>
+  <div class="grid" style="gap:18px 56px;">
+    <div class="cell"><div class="n">Legislative engagement <span class="green">✓</span></div><div class="l">CA committee staff + Dept. of Technology evaluation — engaged now.</div></div>
+    <div class="cell"><div class="n">Technical validation <span class="green">✓</span></div><div class="l">First independent implementer verified the receipts — done (2026).</div></div>
+    <div class="cell"><div class="n">Design partner <span class="gold">→ now</span></div><div class="l">First org runs gated actions on the verifiers. This round funds it.</div></div>
+    <div class="cell"><div class="n">Auditor reliance <span class="muted">→ 2026</span></div><div class="l">An auditor relies on an EP receipt as evidence — the venture-grade milestone.</div></div>
+    <div class="cell"><div class="n">Insurer acceptance <span class="muted">→ 2027</span></div><div class="l">Coverage conditioned on receipts for wire / benefit fraud.</div></div>
+    <div class="cell"><div class="n">Ecosystem standard <span class="muted">→ 2027+</span></div><div class="l">Receipt expected by default; its absence is the anomaly.</div></div>
+  </div>
+  <p class="sub" style="font-size:18px; margin-top:16px;">Each rung makes the next cheaper. We're two rungs in — the round buys the third.</p>
+  <div class="foot"><span>05 · Adoption</span><span>EMILIA Protocol</span></div>
 </section>
 
 <section class="slide">
-  <p class="kicker">The position</p>
-  <h2>We didn't enter a crowded field.<br/>We became its center.</h2>
-  <p class="lede">A dozen-plus efforts now define "a receipt for an agent's action" — delegation, policy-permit, decision, compliance. They all converged on the same substrate. <strong>None composes them, and only EP binds an accountable human.</strong></p>
-  <p class="sub">EP authored the <span class="gold">Authorization Evidence Chain</span> — the thin layer that verifies the whole chain for one action, offline. EP is the convergence point, and the only one with the human leg.</p>
-  <div class="foot"><span>05 · Moat</span><span>EMILIA Protocol</span></div>
-</section>
-
-<section class="slide">
-  <p class="kicker">Wedge — a market where the two-person rule is already law</p>
-  <h2>Healthcare.</h2>
-  <p class="lede">EP's two-person rule is <strong>already mandated practice</strong>: the ISMP / Joint Commission <em>independent double-check</em> for high-alert medications. EP turns that attestation into tamper-evident, offline-verifiable evidence — <span class="gold">PHI-free by construction.</span></p>
-  <p class="sub">Same primitive covers capital procurement (kills payment-redirect fraud) and answers Article 14 for medical AI. Go-to-market: healthcare-AI vendors + procurement platforms embed EP (B2B2H), not direct hospital sales.</p>
-  <div class="foot"><span>06 · Healthcare</span><span>npx @emilia-protocol/crash-test --scenario clinical</span></div>
+  <p class="kicker">First wedge — not the whole company</p>
+  <h2>We enter where the rule already exists.</h2>
+  <p class="lede">EP is horizontal (gov, finance, healthcare). We <strong>lead with healthcare</strong> because the two-person rule is <em>already mandated practice</em> there — the ISMP / Joint Commission independent double-check. So we change no behavior; we just <span class="gold">digitize the evidence.</span> PHI-free by construction.</p>
+  <p class="sub">Entry via healthcare-AI vendors + procurement platforms (B2B2H). The same receipt then carries into finance and government — the wedge, not the ceiling.</p>
+  <div class="foot"><span>06 · First wedge</span><span>EMILIA Protocol</span></div>
 </section>
 
 <section class="slide">
