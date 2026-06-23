@@ -124,12 +124,13 @@ export default function PricingPage() {
           <div style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 500, letterSpacing: 2.5, textTransform: 'uppercase', color: color.gold, marginBottom: 24 }}>
             Pricing
           </div>
-          <h1 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(38px, 5vw, 64px)', letterSpacing: -2.2, lineHeight: 1.0, color: color.t1, margin: '0 0 24px', maxWidth: 760 }}>
-            Trust infrastructure, priced like infrastructure.
+          <h1 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(38px, 5vw, 64px)', letterSpacing: -2.2, lineHeight: 1.0, color: color.t1, margin: '0 0 24px', maxWidth: 780 }}>
+            The protocol is free forever. You pay to rely on it.
           </h1>
-          <p style={{ fontSize: 18, color: color.t2, maxWidth: 600, lineHeight: 1.7, margin: 0 }}>
-            Open core. The protocol is free and self-hostable forever &mdash; that&rsquo;s how a standard
-            wins. You pay for the hosted control plane and the assurance enterprises require.
+          <p style={{ fontSize: 18, color: color.t2, maxWidth: 620, lineHeight: 1.7, margin: 0 }}>
+            Open core: the receipt format and the verifier are free and self-hostable &mdash; that&rsquo;s how a
+            standard wins. You pay when you need it <em>provable in production</em> &mdash; most teams start with a
+            scoped pilot, then add the hosted control plane or enterprise assurance.
           </p>
         </C>
       </section>
@@ -153,7 +154,7 @@ export default function PricingPage() {
                   <span style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 28, letterSpacing: -1, color: color.t1 }}>{t.price}</span>
                 </div>
                 <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase', color: color.t3, marginBottom: 16 }}>{t.priceNote}</div>
-                <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.6, marginBottom: 22, minHeight: 64 }}>{t.tagline}</p>
+                <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.6, marginBottom: 22, minHeight: 88 }}>{t.tagline}</p>
                 {t.cta.href.startsWith('http') ? (
                   <a
                     href={t.cta.href}
@@ -189,6 +190,37 @@ export default function PricingPage() {
             our first cohort; request access and we&rsquo;ll onboard you. Enterprise terms are annual and sales-led.
             {' '}<Link href="/signup" style={{ color: color.gold }}>Or grab a free sandbox key &rarr;</Link>
           </p>
+        </C>
+      </section>
+
+      {/* START WITH A PILOT — the commercial front door */}
+      <section style={{ padding: '76px 0', background: '#1C1917', borderTop: `3px solid ${color.gold}` }}>
+        <C>
+          <div style={{ maxWidth: 720 }}>
+            <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>
+              Start here &middot; observe-mode pilot
+            </div>
+            <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(26px, 3.2vw, 42px)', letterSpacing: -1.4, lineHeight: 1.08, color: '#FAFAF9', marginBottom: 18 }}>
+              Most teams start with a pilot, not a plan.
+            </h2>
+            <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.72)', lineHeight: 1.7, marginBottom: 30, maxWidth: 620 }}>
+              One high-risk workflow, 60 days, nothing blocked. EMILIA runs in observe mode and hands you the
+              evidence packet &mdash; the receipts that would have been required, and the actions that had no
+              verifiable human behind them. It&rsquo;s the fastest way to put a real receipt in front of your own auditor.
+            </p>
+            <div style={{ display: 'flex', gap: 36, flexWrap: 'wrap', marginBottom: 32 }}>
+              {[['$25K', 'scoped departmental pilot'], ['60 days', 'observe mode, zero blocking'], ['1 workflow', 'you pick the riskiest one']].map(([n, l]) => (
+                <div key={n}>
+                  <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 26, letterSpacing: -1, color: '#FAFAF9' }}>{n}</div>
+                  <div style={{ fontFamily: font.mono, fontSize: 11, letterSpacing: 0.4, color: 'rgba(250,250,249,0.55)' }}>{l}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <Link href="/pilot" className="ep-cta" style={{ ...cta.primary, background: color.gold, color: '#1C1917' }}>Scope a 60-day pilot &rarr;</Link>
+              <Link href="/pilot/sandbox" className="ep-cta-secondary" style={{ ...cta.secondary, color: 'rgba(250,250,249,0.8)', borderColor: 'rgba(255,255,255,0.15)' }}>Run the sandbox yourself</Link>
+            </div>
+          </div>
         </C>
       </section>
 
