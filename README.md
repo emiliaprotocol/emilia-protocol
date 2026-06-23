@@ -104,7 +104,7 @@ EMILIA is an open standard, not a product moat. The core is Apache-2.0 and track
 
 | | |
 |---|---|
-| **IETF Internet-Draft** | [draft-schrock-ep-authorization-receipts-01](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/) |
+| **IETF Internet-Drafts** | Posted: [authorization-receipts](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/) · [quorum](https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/). Staged in [`standards/`](standards/): authorization-evidence-chain (EP-AEC, composition) · evidence-record (EP-EVIDENCE-RECORD, long-term retention). Field map: [landscape survey](docs/strategy/AGENT-AUTHORIZATION-LANDSCAPE-2026.md). |
 | **Cross-language verifiers** | JavaScript · Python · Go — all three proven to agree on adversarial conformance vectors, every push (`npm run conformance`). That is the IETF bar for a real standard: multiple independent interoperable implementations. |
 | **Formal verification** | 26 TLA+ safety properties (0 errors) · 35 Alloy facts, 22 assertions — both run in CI |
 | **MCP registries** | Official MCP registry · Glama (Grade A, Official badge) · Smithery |

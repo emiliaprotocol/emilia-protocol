@@ -71,6 +71,41 @@ first-hour reviewer would raise:
 Also fixed: CIBA was mis-cited as RFC 9126 (that's OAuth PAR); CIBA is an
 OpenID Foundation specification, not an RFC.
 
+## draft-schrock-ep-quorum-01
+
+**Multi-Party Quorum Authorization (EP-QUORUM)** — M-of-N / ordered approval over
+*distinct* humans (the two-person rule) binding a quorum to one exact action;
+purely additive over the base receipt. **Status: posted individual Internet-Draft
+(2026-06-21).** Source: `draft-schrock-ep-quorum-01.{xml,txt}`.
+
+## draft-schrock-ep-authorization-evidence-chain-00
+
+**Authorization Evidence Chains (EP-AEC)** — the composition layer. Verifies that,
+for ONE action, heterogeneous receipts (delegation, policy-permit, human
+authorization) all bind the same canonical action digest and each verify, yielding
+a single offline ALLOW/DENY. Introduces no new receipt type; composes the cluster
+(DRP, Permit Receipts, ACTA, AgentROA) as pluggable component types and supplies
+the human-authorization leg none of the others do. Fills the composition gap the
+2026-06 landscape survey (`docs/strategy/AGENT-AUTHORIZATION-LANDSCAPE-2026.md`)
+identified as the most-validated unowned slot.
+
+**Status: written + idnits-clean (0 non-ASCII, 0 lines >72), NOT yet filed —
+target post ~2026-06-26.** Reference verifier `packages/verify/evidence-chain.js`;
+conformance vectors `conformance/vectors/aec.json` (JS/Python/Go agree). Source:
+`draft-schrock-ep-authorization-evidence-chain-00.{xml,txt}`.
+
+## draft-schrock-ep-evidence-record-00
+
+**Long-Term, Crypto-Agile Preservation of Authorization Evidence
+(EP-EVIDENCE-RECORD)** — an RFC 4998 (ERS)-style renewal chain that keeps EP
+receipts verifiable across algorithm aging (sha256 → sha384 → …) for multi-year
+retention obligations (DORA, HIPAA, SEC 17a-4). Offline, fail-closed. Fills the
+long-term-preservation gap the landscape survey found unowned.
+
+**Status: written + idnits-clean, NOT yet filed (batch-file with EP-AEC).**
+Tri-language verifier `packages/verify/evidence-record.js`. Source:
+`draft-schrock-ep-evidence-record-00.{xml,txt}`.
+
 ## draft-schrock-emilia-eye-00
 
 **Verifiable, Scope-Bound Advisories for Authorization Posture (EMILIA Eye)**
