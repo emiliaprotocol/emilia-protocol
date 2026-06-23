@@ -53,7 +53,7 @@ Reconciliation proof:
 - Database: 46 EP-only tables, zero foreign artifacts
 - Staircase load tested: 10 → 50 → 100 → 200 → 500 concurrent users; handshake create p95 575ms at 50 VUs
 - CI quality gates across ~13 automated workflows, all Actions SHA-pinned
-- **Independently re-verified by an outside implementer (June 2026):** a third party ran the public crash-test and the cross-language conformance harness on their own machine — offline receipt verification, forged-copy rejection, and JS/Python/Go agreement all confirmed. The first external reliance event, and the strongest possible signal for a verifiability claim. *(Private/investor use now; public attribution pending that implementer's own posting.)*
+- **Independently re-verified by an outside implementer (June 2026):** a third party ran the public crash-test and the cross-language conformance harness on their own machine — offline receipt verification, forged-copy rejection, and JS/Python/Go agreement all confirmed. The first external reliance event, and the strongest possible signal for a verifiability claim. *(Now public: the implementer posted the verification to the IETF authorization-evidence survey thread — on the record, independently runnable.)*
 
 ## Why now
 
