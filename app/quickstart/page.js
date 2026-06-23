@@ -43,7 +43,7 @@ const H2 = ({ children }) => (
 );
 
 const PATHS = [
-  { k: 'SDK — requireReceipt', sub: 'wrap the irreversible write (strongest)', code: "import { EPClient } from '@emilia-protocol/sdk';\nconst ep = new EPClient({ apiKey: process.env.EP_API_KEY });\n// the write only runs after the receipt is consumed:\nawait ep.requireReceipt({ action: 'payment.release', amount: 82000 },\n  async ({ receipt }) => releasePayment(receipt));" },
+  { k: 'SDK — requireReceipt', sub: 'wrap the irreversible write (strongest)', code: "import { EPClient } from '@emilia-protocol/sdk';\nconst ep = new EPClient({ apiKey });   // EP_API_KEY from your env\n// the write only runs after the receipt is consumed:\nawait ep.requireReceipt({ action: 'payment.release', amount: 82000 },\n  async ({ receipt }) => releasePayment(receipt));" },
   { k: 'MCP & tool-calls', sub: 'wrap a dangerous MCP tool — fail closed', code: "import { withMcpGuard } from '@emilia-protocol/mcp-guard';\nconst guarded = withMcpGuard(handleTool, {\n  annotations: { release_payment: { irreversible: true, action: 'payment.release' } },\n});" },
   { k: 'MCP client', sub: 'Claude Desktop, Cursor, Cline, Continue', code: '{ "command": "npx", "args": ["-y", "@emilia-protocol/mcp-server"] }' },
   { k: 'LangChain.js', sub: 'wrap any irreversible tool', code: "import { withGuard } from '@emilia-protocol/langchain';\nconst safe = withGuard(tool, { action: 'payment.release' });" },
