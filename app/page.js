@@ -141,19 +141,18 @@ export default function HomePage() {
                 letterSpacing: -3, lineHeight: 0.95,
                 color: color.t1, margin: '0 0 32px',
               }}>
-                Every AI action needs an{' '}
-                <em style={{ fontStyle: 'normal', color: color.gold }}>owner.</em>
+                No receipt, no{' '}
+                <em style={{ fontStyle: 'normal', color: color.gold }}>execution.</em>
               </h1>
 
               <p style={{
                 fontSize: 17, color: color.t2,
-                maxWidth: 470, lineHeight: 1.72, margin: '0 0 40px',
+                maxWidth: 490, lineHeight: 1.72, margin: '0 0 40px',
               }}>
-                AI can reason, plan, and execute — but it can&rsquo;t be accountable. Before an agent
-                does anything irreversible, EMILIA assigns a named human owner who approves the exact
-                action on their own device. So when someone asks{' '}
-                <em style={{ fontStyle: 'normal', color: color.t1, fontWeight: 600 }}>who approved this?</em>{' '}
-                — there is always an answer. One neither a compromised agent nor EMILIA itself can forge.
+                EMILIA is the authorization-receipt layer for irreversible AI-agent actions. Before an
+                agent moves money, changes a record, deploys code, or deletes data, a named human signs
+                the <em style={{ fontStyle: 'normal', color: color.t1, fontWeight: 600 }}>exact</em> action on their own device — and afterward, anyone can verify who approved
+                exactly what, offline, without trusting EMILIA or a compromised agent.
               </p>
 
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
