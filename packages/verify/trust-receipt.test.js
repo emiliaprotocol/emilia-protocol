@@ -57,11 +57,11 @@ function signB(digestHex) {
   return crypto.sign(null, Buffer.from(digestHex, 'hex'), approverB.privateKey).toString('base64url');
 }
 // Class A: WebAuthn assertion whose challenge is b64u(digest).
-function signA(digestHex) {
+function signA(digestHex, { rpId = 'www.emiliaprotocol.ai', flags = 0x05 } = {}) {
   const challenge = Buffer.from(digestHex, 'hex').toString('base64url');
   const clientDataJSON = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge, origin: 'https://www.emiliaprotocol.ai' }), 'utf8');
-  const rpIdHash = crypto.createHash('sha256').update('www.emiliaprotocol.ai').digest();
-  const authData = Buffer.concat([rpIdHash, Buffer.from([0x05]), Buffer.from([0, 0, 0, 0])]);
+  const rpIdHash = crypto.createHash('sha256').update(rpId).digest();
+  const authData = Buffer.concat([rpIdHash, Buffer.from([flags]), Buffer.from([0, 0, 0, 0])]);
   const signedData = Buffer.concat([authData, crypto.createHash('sha256').update(clientDataJSON).digest()]);
   const signature = crypto.sign('sha256', signedData, approverA.privateKey);
   return {
@@ -145,6 +145,12 @@ function buildReceipt(mutate = {}) {
 }
 
 const OPTS = { approverKeys: KEYS, logPublicKey: logKey.pub };
+const STRICT_OPTS = {
+  ...OPTS,
+  strict: true,
+  rpId: 'www.emiliaprotocol.ai',
+  expectedPolicyHash: 'sha256:77ab1234',
+};
 
 // ── happy path ───────────────────────────────────────────────────────────────
 
@@ -357,4 +363,77 @@ test('PIP-007 — a bad escalation_trigger enum is SHOULD-flagged; signature una
   const r = verifyTrustReceipt(buildReceipt({ attestation: { escalation_trigger: 'because' } }), OPTS);
   assert.equal(r.valid, true);
   assert.match(r.attestation.issues.join(' '), /invalid escalation_trigger/);
+});
+
+// ── strict verifier: additive deployment-grade gate ─────────────────────────
+
+test('strict verifier — complete receipt passes strict deployment gate', () => {
+  const r = verifyTrustReceipt(buildReceipt(), STRICT_OPTS);
+  assert.equal(r.valid, true, JSON.stringify(r.errors));
+  assert.equal(r.strict.enabled, true);
+  assert.equal(r.strict.valid, true, JSON.stringify(r.strict.errors));
+  assert.deepEqual(r.strict.checks, {
+    pinned_keys: true,
+    rp_id: true,
+    user_presence: true,
+    user_verification: true,
+    key_windows: true,
+    policy_hash: true,
+    no_unsigned: true,
+  });
+});
+
+test('strict verifier — default mode still does not evaluate the strict gate', () => {
+  const r = verifyTrustReceipt(buildReceipt(), OPTS);
+  assert.equal(r.valid, true, JSON.stringify(r.errors));
+  assert.deepEqual(r.strict, { enabled: false, valid: true, checks: {}, errors: [] });
+});
+
+test('strict verifier — requires caller-pinned expected policy hash', () => {
+  const r = verifyTrustReceipt(buildReceipt(), { ...OPTS, strict: true, rpId: 'www.emiliaprotocol.ai' });
+  assert.equal(r.checks.context_commitments, true, JSON.stringify(r.errors));
+  assert.equal(r.strict.checks.policy_hash, false);
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(' '), /strict policy_hash requires opts\.expectedPolicyHash/);
+});
+
+test('strict verifier — rejects Class-A WebAuthn assertions for the wrong RP ID', () => {
+  const r = verifyTrustReceipt(buildReceipt(), { ...STRICT_OPTS, rpId: 'login.evil.example' });
+  assert.equal(r.checks.signoff_signatures, true, JSON.stringify(r.errors));
+  assert.equal(r.strict.checks.rp_id, false);
+  assert.equal(r.valid, false);
+  assert.match(r.strict.errors.join(' '), /rpIdHash/);
+});
+
+test('strict verifier — requires Class-A WebAuthn user presence as well as UV', () => {
+  const receipt = buildReceipt();
+  const d2 = receipt.signoffs[1].context_hash.replace('sha256:', '');
+  receipt.signoffs[1].webauthn = signA(d2, { flags: 0x04 }); // UV without UP
+  const r = verifyTrustReceipt(receipt, STRICT_OPTS);
+  assert.equal(r.checks.signoff_signatures, true, JSON.stringify(r.errors));
+  assert.equal(r.strict.checks.user_verification, true);
+  assert.equal(r.strict.checks.user_presence, false);
+  assert.equal(r.valid, false);
+});
+
+test('strict verifier — requires explicit approver key validity windows', () => {
+  const keys = {
+    'ep:key:controller#1': { public_key: approverB.pub, key_class: 'B' },
+    'ep:key:cfo#1': { public_key: approverA.pub, key_class: 'A' },
+  };
+  const r = verifyTrustReceipt(buildReceipt(), { ...STRICT_OPTS, approverKeys: keys });
+  assert.equal(r.checks.signoff_signatures, true, JSON.stringify(r.errors));
+  assert.equal(r.strict.checks.key_windows, false);
+  assert.equal(r.valid, false);
+  assert.match(r.strict.errors.join(' '), /valid_from and valid_to/);
+});
+
+test('strict verifier — rejects unsigned critical signoff fields', () => {
+  const receipt = buildReceipt();
+  delete receipt.signoffs[0].signature;
+  const r = verifyTrustReceipt(receipt, STRICT_OPTS);
+  assert.equal(r.checks.signoff_signatures, false);
+  assert.equal(r.strict.checks.no_unsigned, false);
+  assert.equal(r.valid, false);
+  assert.match(r.strict.errors.join(' '), /Ed25519 signoff signature/);
 });

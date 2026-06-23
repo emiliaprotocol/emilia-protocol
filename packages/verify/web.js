@@ -276,25 +276,39 @@ export async function verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, 
 // =============================================================================
 
 /** @returns {Promise<{valid:boolean, claim:object|null, error?:string}>} */
-export async function verifyCommitmentProof(proof, publicKeyBase64url) {
+export async function verifyCommitmentProof(proof, publicKeyBase64url, options = {}) {
   if (!proof?.['@version'] || !SUPPORTED_PROOF_VERSIONS.includes(proof['@version'])) {
     return { valid: false, claim: null, error: `Unsupported version: ${proof?.['@version']}` };
   }
   if (proof.expires_at && new Date(proof.expires_at) < new Date()) {
     return { valid: false, claim: proof.claim, error: 'Proof has expired' };
   }
-  if (publicKeyBase64url && proof.signature) {
-    try {
-      const key = await subtle.importKey(
-        'spki', b64uToBytes(publicKeyBase64url), { name: 'Ed25519' }, false, ['verify'],
-      );
-      const ok = await subtle.verify(
-        { name: 'Ed25519' }, key, b64uToBytes(proof.signature.value), utf8(canonicalize(proof.commitment)),
-      );
-      if (!ok) return { valid: false, claim: proof.claim, error: 'Invalid signature' };
-    } catch (e) {
-      return { valid: false, claim: proof.claim, error: `Signature check failed: ${e.message}` };
+
+  const hasPublicKey = !!publicKeyBase64url;
+  const hasSignature = !!proof.signature?.value;
+
+  if (!hasPublicKey || !hasSignature) {
+    if (options.allowUnsigned === true && !hasPublicKey && !hasSignature) {
+      return { valid: true, claim: proof.claim };
     }
+    const error = !hasPublicKey && !hasSignature
+      ? 'Signature and public key are required'
+      : !hasPublicKey
+        ? 'Public key is required to verify signature'
+        : 'Signature is required';
+    return { valid: false, claim: proof.claim, error };
+  }
+
+  try {
+    const key = await subtle.importKey(
+      'spki', b64uToBytes(publicKeyBase64url), { name: 'Ed25519' }, false, ['verify'],
+    );
+    const ok = await subtle.verify(
+      { name: 'Ed25519' }, key, b64uToBytes(proof.signature.value), utf8(canonicalize(proof.commitment)),
+    );
+    if (!ok) return { valid: false, claim: proof.claim, error: 'Invalid signature' };
+  } catch (e) {
+    return { valid: false, claim: proof.claim, error: `Signature check failed: ${e.message}` };
   }
   return { valid: true, claim: proof.claim };
 }

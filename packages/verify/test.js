@@ -204,12 +204,42 @@ test('verifyMerkleAnchor: rejects oversize proofs', () => {
 
 // ─── Commitment proof ─────────────────────────────────────────────────────
 
-test('verifyCommitmentProof: accepts well-formed unexpired claim', () => {
+test('verifyCommitmentProof: rejects unsigned proof by default', () => {
   const r = verifyCommitmentProof({
     '@version': 'EP-PROOF-v1',
     claim: { domain: 'demo' },
     expires_at: new Date(Date.now() + 60_000).toISOString(),
   });
+  assert.equal(r.valid, false);
+  assert.equal(r.error, 'Signature and public key are required');
+});
+
+test('verifyCommitmentProof: accepts unsigned proof only when explicitly allowed', () => {
+  const r = verifyCommitmentProof({
+    '@version': 'EP-PROOF-v1',
+    claim: { domain: 'demo' },
+    expires_at: new Date(Date.now() + 60_000).toISOString(),
+  }, null, { allowUnsigned: true });
+  assert.equal(r.valid, true);
+});
+
+test('verifyCommitmentProof: accepts signed commitment with pinned public key', () => {
+  const { privateKey, publicKeyBase64url } = makeKeypair();
+  const commitment = {
+    domain: 'demo',
+    subject: 'vendor:VEND-9821',
+    claim_hash: 'a'.repeat(64),
+  };
+  const r = verifyCommitmentProof({
+    '@version': 'EP-PROOF-v1',
+    claim: { domain: 'demo' },
+    commitment,
+    expires_at: new Date(Date.now() + 60_000).toISOString(),
+    signature: {
+      algorithm: 'Ed25519',
+      value: signWithRecursiveCanonical(commitment, privateKey),
+    },
+  }, publicKeyBase64url);
   assert.equal(r.valid, true);
 });
 

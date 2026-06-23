@@ -327,9 +327,10 @@ export function verifyWebAuthnSignoff(signoff, approverPublicKeySpkiB64u, opts =
  *
  * @param {object} proof - EP commitment proof document (EP-PROOF-v1)
  * @param {string} publicKeyBase64url - Entity's Ed25519 public key
+ * @param {{ allowUnsigned?: boolean }} options - Set allowUnsigned only for structure/expiry checks.
  * @returns {{ valid: boolean, claim: object, error?: string }}
  */
-export function verifyCommitmentProof(proof, publicKeyBase64url) {
+export function verifyCommitmentProof(proof, publicKeyBase64url, options = {}) {
   if (!proof?.['@version'] || !SUPPORTED_PROOF_VERSIONS.includes(proof['@version'])) {
     return { valid: false, claim: null, error: `Unsupported version: ${proof?.['@version']}` };
   }
@@ -338,18 +339,31 @@ export function verifyCommitmentProof(proof, publicKeyBase64url) {
     return { valid: false, claim: proof.claim, error: 'Proof has expired' };
   }
 
-  if (publicKeyBase64url && proof.signature) {
-    try {
-      const commitmentBytes = Buffer.from(canonicalize(proof.commitment), 'utf8');
-      const publicKeyDer = Buffer.from(publicKeyBase64url, 'base64url');
-      const keyObject = crypto.createPublicKey({ key: publicKeyDer, format: 'der', type: 'spki' });
-      const sigBytes = Buffer.from(proof.signature.value, 'base64url');
-      if (!crypto.verify(null, commitmentBytes, keyObject, sigBytes)) {
-        return { valid: false, claim: proof.claim, error: 'Invalid signature' };
-      }
-    } catch (e) {
-      return { valid: false, claim: proof.claim, error: `Signature check failed: ${e.message}` };
+  const hasPublicKey = !!publicKeyBase64url;
+  const hasSignature = !!proof.signature?.value;
+
+  if (!hasPublicKey || !hasSignature) {
+    if (options.allowUnsigned === true && !hasPublicKey && !hasSignature) {
+      return { valid: true, claim: proof.claim };
     }
+    const error = !hasPublicKey && !hasSignature
+      ? 'Signature and public key are required'
+      : !hasPublicKey
+        ? 'Public key is required to verify signature'
+        : 'Signature is required';
+    return { valid: false, claim: proof.claim, error };
+  }
+
+  try {
+    const commitmentBytes = Buffer.from(canonicalize(proof.commitment), 'utf8');
+    const publicKeyDer = Buffer.from(publicKeyBase64url, 'base64url');
+    const keyObject = crypto.createPublicKey({ key: publicKeyDer, format: 'der', type: 'spki' });
+    const sigBytes = Buffer.from(proof.signature.value, 'base64url');
+    if (!crypto.verify(null, commitmentBytes, keyObject, sigBytes)) {
+      return { valid: false, claim: proof.claim, error: 'Invalid signature' };
+    }
+  } catch (e) {
+    return { valid: false, claim: proof.claim, error: `Signature check failed: ${e.message}` };
   }
 
   return { valid: true, claim: proof.claim };
@@ -421,16 +435,27 @@ function withinWindow(t, from, to) {
   return true;
 }
 
-// WebAuthn Class-A assertion bound to a context digest (challenge = b64u(digest)).
-function verifyClassAOverDigest(webauthn, digestBytes, publicKeySpkiB64u) {
+function parseClassAAssertion(webauthn) {
   try {
     const clientDataBytes = Buffer.from(webauthn.client_data_json, 'base64url');
     const clientData = JSON.parse(clientDataBytes.toString('utf8'));
+    const authData = Buffer.from(webauthn.authenticator_data, 'base64url');
+    if (authData.length < 37) return null;
+    return { authData, clientData, clientDataBytes };
+  } catch {
+    return null;
+  }
+}
+
+// WebAuthn Class-A assertion bound to a context digest (challenge = b64u(digest)).
+function verifyClassAOverDigest(webauthn, digestBytes, publicKeySpkiB64u) {
+  try {
+    const parsed = parseClassAAssertion(webauthn);
+    if (!parsed) return false;
+    const { authData, clientData, clientDataBytes } = parsed;
     if (clientData.type !== 'webauthn.get') return false;
     if (clientData.challenge !== Buffer.from(digestBytes).toString('base64url')) return false;
 
-    const authData = Buffer.from(webauthn.authenticator_data, 'base64url');
-    if (authData.length < 37) return false;
     if ((authData[32] & FLAG_UV) !== FLAG_UV) return false; // user verification required
 
     const signedData = Buffer.concat([authData, crypto.createHash('sha256').update(clientDataBytes).digest()]);
@@ -452,6 +477,177 @@ function verifyEd25519OverDigest(signatureB64u, digestBytes, publicKeySpkiB64u) 
   } catch {
     return false;
   }
+}
+
+const STRICT_CHECK_NAMES = [
+  'pinned_keys',
+  'rp_id',
+  'user_presence',
+  'user_verification',
+  'key_windows',
+  'policy_hash',
+  'no_unsigned',
+];
+
+function createStrictReport(enabled) {
+  return {
+    enabled,
+    valid: !enabled,
+    checks: enabled ? Object.fromEntries(STRICT_CHECK_NAMES.map((name) => [name, false])) : {},
+    errors: [],
+  };
+}
+
+function parseableTimestamp(value) {
+  return typeof value === 'string' && !Number.isNaN(Date.parse(value));
+}
+
+function markStrict(report, name, ok, message) {
+  report.checks[name] = Boolean(ok);
+  if (!ok && message) report.errors.push(message);
+}
+
+function evaluateTrustReceiptStrict(report, receipt, contexts, signoffs, contextByHash, approverKeys, logPublicKey, opts) {
+  const classASignoffs = [];
+
+  let pinnedKeysOk = Boolean(logPublicKey);
+  if (!logPublicKey) {
+    report.errors.push('strict pinned_keys requires a trusted logPublicKey');
+  }
+  for (const s of signoffs) {
+    if (!s?.approver_key_id) {
+      pinnedKeysOk = false;
+      report.errors.push('strict pinned_keys requires every signoff to name approver_key_id');
+      continue;
+    }
+    const keyEntry = approverKeys[s.approver_key_id];
+    if (!keyEntry?.public_key) {
+      pinnedKeysOk = false;
+      report.errors.push(`strict pinned_keys has no pinned public key for ${s.approver_key_id}`);
+    }
+    const keyClass = s.key_class || keyEntry?.key_class || 'B';
+    if (keyClass === 'A') classASignoffs.push({ signoff: s, keyEntry });
+  }
+  markStrict(report, 'pinned_keys', pinnedKeysOk);
+
+  let rpOk = true;
+  if (classASignoffs.length > 0 && !opts.rpId) {
+    rpOk = false;
+    report.errors.push('strict rp_id requires opts.rpId for Class-A WebAuthn signoffs');
+  }
+  for (const { signoff } of classASignoffs) {
+    const parsed = parseClassAAssertion(signoff.webauthn);
+    if (!parsed) {
+      rpOk = false;
+      report.errors.push('strict rp_id could not parse Class-A WebAuthn authenticator data');
+      continue;
+    }
+    if (opts.rpId) {
+      const expectedRpHash = sha256Bytes(opts.rpId);
+      if (!parsed.authData.subarray(0, 32).equals(expectedRpHash)) {
+        rpOk = false;
+        report.errors.push('strict rp_id WebAuthn rpIdHash does not match opts.rpId');
+      }
+    }
+  }
+  markStrict(report, 'rp_id', rpOk);
+
+  let upOk = true;
+  let uvOk = true;
+  for (const { signoff } of classASignoffs) {
+    const parsed = parseClassAAssertion(signoff.webauthn);
+    const flags = parsed?.authData?.[32] || 0;
+    if (!parsed || (flags & FLAG_UP) !== FLAG_UP) {
+      upOk = false;
+      report.errors.push('strict user_presence requires Class-A WebAuthn UP');
+    }
+    if (!parsed || (flags & FLAG_UV) !== FLAG_UV) {
+      uvOk = false;
+      report.errors.push('strict user_verification requires Class-A WebAuthn UV');
+    }
+  }
+  markStrict(report, 'user_presence', upOk);
+  markStrict(report, 'user_verification', uvOk);
+
+  let keyWindowsOk = true;
+  for (const s of signoffs) {
+    const digestHex = hexOf(s?.context_hash);
+    const ctx = contextByHash.get(digestHex);
+    const keyEntry = approverKeys[s?.approver_key_id];
+    if (!ctx || !keyEntry?.public_key) {
+      keyWindowsOk = false;
+      report.errors.push('strict key_windows cannot bind a signoff to both context and pinned key');
+      continue;
+    }
+    if (!parseableTimestamp(keyEntry.valid_from) || !parseableTimestamp(keyEntry.valid_to)) {
+      keyWindowsOk = false;
+      report.errors.push(`strict key_windows requires valid_from and valid_to for ${s.approver_key_id}`);
+      continue;
+    }
+    if (!withinWindow(ctx.issued_at, keyEntry.valid_from, keyEntry.valid_to)) {
+      keyWindowsOk = false;
+      report.errors.push(`strict key_windows rejects ${s.approver_key_id} at context issued_at`);
+    }
+  }
+  markStrict(report, 'key_windows', keyWindowsOk);
+
+  let policyHashOk = true;
+  const expectedPolicyHash = opts.expectedPolicyHash ? hexOf(opts.expectedPolicyHash) : null;
+  if (!expectedPolicyHash) {
+    policyHashOk = false;
+    report.errors.push('strict policy_hash requires opts.expectedPolicyHash');
+  }
+  for (const ctx of contexts) {
+    if (!ctx?.policy_hash) {
+      policyHashOk = false;
+      report.errors.push('strict policy_hash requires every context to carry policy_hash');
+      continue;
+    }
+    if (expectedPolicyHash && hexOf(ctx.policy_hash) !== expectedPolicyHash) {
+      policyHashOk = false;
+      report.errors.push('strict policy_hash context policy_hash does not match opts.expectedPolicyHash');
+    }
+  }
+  markStrict(report, 'policy_hash', policyHashOk);
+
+  let noUnsignedOk = true;
+  const requireField = (value, message) => {
+    if (value === undefined || value === null || value === '') {
+      noUnsignedOk = false;
+      report.errors.push(message);
+    }
+  };
+  requireField(receipt.action_hash, 'strict no_unsigned requires action_hash');
+  requireField(receipt.consumption?.committed_at, 'strict no_unsigned requires consumption.committed_at');
+  requireField(receipt.log_proof?.checkpoint?.log_signature, 'strict no_unsigned requires checkpoint.log_signature');
+  if (!Array.isArray(receipt.log_proof?.inclusion_path)) {
+    noUnsignedOk = false;
+    report.errors.push('strict no_unsigned requires log_proof.inclusion_path');
+  }
+  for (const ctx of contexts) {
+    requireField(ctx?.action_hash, 'strict no_unsigned requires every context to carry action_hash');
+    requireField(ctx?.policy_hash, 'strict no_unsigned requires every context to carry policy_hash');
+    requireField(ctx?.approver, 'strict no_unsigned requires every context to name approver');
+    requireField(ctx?.issued_at, 'strict no_unsigned requires every context to carry issued_at');
+    requireField(ctx?.expires_at, 'strict no_unsigned requires every context to carry expires_at');
+  }
+  for (const s of signoffs) {
+    requireField(s?.context_hash, 'strict no_unsigned requires every signoff to carry context_hash');
+    requireField(s?.approver_key_id, 'strict no_unsigned requires every signoff to carry approver_key_id');
+    requireField(s?.key_class, 'strict no_unsigned requires every signoff to carry key_class');
+    requireField(s?.signed_at, 'strict no_unsigned requires every signoff to carry signed_at');
+    const keyClass = s?.key_class || approverKeys[s?.approver_key_id]?.key_class || 'B';
+    if (keyClass === 'A') {
+      requireField(s?.webauthn?.authenticator_data, 'strict no_unsigned requires Class-A authenticator_data');
+      requireField(s?.webauthn?.client_data_json, 'strict no_unsigned requires Class-A client_data_json');
+      requireField(s?.webauthn?.signature, 'strict no_unsigned requires Class-A WebAuthn signature');
+    } else {
+      requireField(s?.signature, 'strict no_unsigned requires Ed25519 signoff signature');
+    }
+  }
+  markStrict(report, 'no_unsigned', noUnsignedOk);
+
+  report.valid = STRICT_CHECK_NAMES.every((name) => report.checks[name] === true);
 }
 
 // ── Initiator escalation attestation (PIP-007) — ADVISORY only ────────────────
@@ -541,7 +737,10 @@ function buildAttestationReport(contexts) {
  * @param {Record<string, {public_key:string, key_class?:string, valid_from?:string, valid_to?:string}>} opts.approverKeys
  *   - pinned approver key entries by approver_key_id (or a directory extract)
  * @param {string} opts.logPublicKey - trusted log Ed25519 key (base64url SPKI DER)
- * @returns {{ valid:boolean, checks:object, errors:string[], attestation:{ present:boolean, consistent:boolean, issues:string[] } }}
+ * @param {boolean} [opts.strict=false] - require deployment-grade strict checks
+ * @param {string} [opts.rpId] - expected WebAuthn RP ID when strict mode sees Class-A signoffs
+ * @param {string} [opts.expectedPolicyHash] - expected policy hash when strict mode is enabled
+ * @returns {{ valid:boolean, checks:object, errors:string[], attestation:{ present:boolean, consistent:boolean, issues:string[] }, strict:{ enabled:boolean, valid:boolean, checks:object, errors:string[] } }}
  *   `attestation` is the PIP-007 §2 ADVISORY report. It never affects `valid` or
  *   any member of `checks`: a receipt with a malformed or inconsistent
  *   attestation still verifies (or fails) on its cryptographic checks alone.
@@ -561,7 +760,8 @@ export function verifyTrustReceipt(receipt, opts = {}) {
   // of every cryptographic check. fail() carries it through early returns too.
   const attestationContexts = Array.isArray(receipt?.contexts) ? receipt.contexts : [];
   const attestation = buildAttestationReport(attestationContexts);
-  const fail = (msg) => { errors.push(msg); return { valid: false, checks, errors, attestation }; };
+  const strict = createStrictReport(opts.strict === true);
+  const fail = (msg) => { errors.push(msg); return { valid: false, checks, errors, attestation, strict }; };
 
   if (!receipt || typeof receipt !== 'object') return fail('Missing receipt');
   const { approverKeys = {}, logPublicKey } = opts;
@@ -710,9 +910,17 @@ export function verifyTrustReceipt(receipt, opts = {}) {
   checks.windows = windowsOk;
 
   // `attestation` is advisory (PIP-007 §2): it is deliberately excluded from the
-  // `valid` computation, which remains exactly the conjunction of `checks`.
-  const valid = Object.values(checks).every(Boolean);
-  return { valid, checks, errors, attestation };
+  // `valid` computation. `strict` is opt-in: default verification remains exactly
+  // the conjunction of the frozen Section 6.3 `checks`; strict mode adds a second
+  // deployment-grade gate without renaming or reinterpreting those checks.
+  if (strict.enabled) {
+    evaluateTrustReceiptStrict(strict, receipt, contexts, signoffs, contextByHash, approverKeys, logPublicKey, opts);
+    if (!strict.valid) {
+      errors.push(...strict.errors);
+    }
+  }
+  const valid = Object.values(checks).every(Boolean) && strict.valid;
+  return { valid, checks, errors, attestation, strict };
 }
 
 // =============================================================================

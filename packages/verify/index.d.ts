@@ -19,6 +19,14 @@ export interface ProofVerificationResult {
   error?: string;
 }
 
+export interface CommitmentProofVerificationOptions {
+  /**
+   * Opt into structure/expiry-only checks. Default verification requires both
+   * a commitment proof signature and the entity public key.
+   */
+  allowUnsigned?: boolean;
+}
+
 export interface BundleVerificationResult {
   valid: boolean;
   total: number;
@@ -49,7 +57,8 @@ export function verifyMerkleAnchor(
  */
 export function verifyCommitmentProof(
   proof: Record<string, unknown>,
-  publicKeyBase64url: string
+  publicKeyBase64url?: string | null,
+  options?: CommitmentProofVerificationOptions
 ): ProofVerificationResult;
 
 /**
@@ -112,6 +121,27 @@ export interface TrustReceiptChecks {
   windows: boolean;
 }
 
+export type TrustReceiptStrictCheckName =
+  | 'pinned_keys'
+  | 'rp_id'
+  | 'user_presence'
+  | 'user_verification'
+  | 'key_windows'
+  | 'policy_hash'
+  | 'no_unsigned';
+
+export type TrustReceiptStrictChecks = Partial<Record<TrustReceiptStrictCheckName, boolean>>;
+
+export interface TrustReceiptStrictReport {
+  /** True only when `verifyTrustReceipt(..., { strict: true })` is requested. */
+  enabled: boolean;
+  /** Conjunction of all strict checks when enabled; true when disabled. */
+  valid: boolean;
+  /** Empty when disabled; otherwise one boolean per strict check. */
+  checks: TrustReceiptStrictChecks;
+  errors: string[];
+}
+
 /**
  * PIP-007 §2 ADVISORY attestation report. Never affects `valid` or `checks`.
  *   - present:    a context carries an initiator_attestation.
@@ -133,6 +163,19 @@ export interface TrustReceiptResult {
   errors: string[];
   /** PIP-007 §2 advisory report — independent of `valid` and `checks`. */
   attestation: AttestationReport;
+  /** Optional deployment-grade gate; affects `valid` only when enabled. */
+  strict: TrustReceiptStrictReport;
+}
+
+export interface TrustReceiptVerificationOptions {
+  approverKeys: Record<string, ApproverKeyEntry>;
+  logPublicKey: string;
+  /** Opt into deployment-grade verification beyond the frozen Section 6.3 checks. */
+  strict?: boolean;
+  /** Expected WebAuthn RP ID for Class-A signoffs in strict mode. */
+  rpId?: string;
+  /** Expected policy hash all contexts must carry in strict mode. */
+  expectedPolicyHash?: string;
 }
 
 /**
@@ -149,10 +192,7 @@ export interface TrustReceiptResult {
  */
 export function verifyTrustReceipt(
   receipt: Record<string, unknown>,
-  opts: {
-    approverKeys: Record<string, ApproverKeyEntry>;
-    logPublicKey: string;
-  }
+  opts: TrustReceiptVerificationOptions
 ): TrustReceiptResult;
 
 // ── Federation (PIP-006) ────────────────────────────────────────────────────

@@ -101,7 +101,34 @@ Trust Receipt — all six steps, no network:
 5. Merkle inclusion of the receipt leaf against the checkpoint root, and the checkpoint signature against the trusted log key
 6. `signed_at` / `committed_at` within `[issued_at, expires_at]`
 
-Returns `{ valid, checks, errors, attestation }` and fails closed on any missing input.
+Returns `{ valid, checks, errors, attestation, strict }` and fails closed on any missing input.
+
+#### Strict verifier mode — *requires 1.5.0*
+
+For deployment gates and hostile-environment verification, opt into strict mode:
+
+```js
+const r = verifyTrustReceipt(receipt, {
+  approverKeys,
+  logPublicKey,
+  strict: true,
+  rpId: 'www.emiliaprotocol.ai',
+  expectedPolicyHash: 'sha256:...',
+});
+```
+
+Strict mode preserves the frozen Section 6.3 `checks` object, then adds
+`r.strict` as a second gate. When `strict: true`, `valid` requires both the base
+checks and:
+
+- `pinned_keys` — every signer and the log are locally pinned.
+- `rp_id` — Class-A WebAuthn `rpIdHash` matches the caller-pinned RP ID.
+- `user_presence` / `user_verification` — Class-A signoffs asserted UP + UV.
+- `key_windows` — every approver key has parseable `valid_from` / `valid_to` and was valid at `issued_at`.
+- `policy_hash` — every context matches `expectedPolicyHash`.
+- `no_unsigned` — critical action, context, signoff, consumption, and log proof fields are present.
+
+Without `strict: true`, `strict` is `{ enabled: false, valid: true, checks: {}, errors: [] }`, so existing verification and conformance semantics are unchanged.
 
 #### Advisory: the PIP-007 initiator escalation attestation — *requires 1.4.0*
 

@@ -41,6 +41,26 @@ function makeReceipt(payload) {
   };
 }
 
+function makeCommitmentProof() {
+  const { privateKey, publicKey } = crypto.generateKeyPairSync('ed25519');
+  const commitment = {
+    domain: 'demo',
+    subject: 'vendor:VEND-9821',
+    claim_hash: 'a'.repeat(64),
+  };
+  const sig = crypto.sign(null, Buffer.from(canon(commitment), 'utf8'), privateKey);
+  return {
+    proof: {
+      '@version': 'EP-PROOF-v1',
+      claim: { domain: 'demo' },
+      commitment,
+      expires_at: new Date(Date.now() + 60_000).toISOString(),
+      signature: { algorithm: 'Ed25519', value: sig.toString('base64url') },
+    },
+    spki: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+  };
+}
+
 // Mirrors test.js makeSignoff — a real P-256 assertion over an EP context.
 function makeSignoff({ tamperContext = null, flags = 0x05, type = 'webauthn.get', rpId = 'emiliaprotocol.ai' } = {}) {
   const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
@@ -86,6 +106,13 @@ async function assertEquivalentSignoff(signoff, spki, opts, expectValid) {
   const b = await webV.verifyWebAuthnSignoff(signoff, spki, opts);
   assert.deepEqual(b.checks, a.checks, 'signoff checks must match Node');
   assert.equal(b.valid, a.valid, 'signoff validity must match Node');
+  if (expectValid !== undefined) assert.equal(b.valid, expectValid);
+}
+
+async function assertEquivalentProof(proof, spki, opts, expectValid) {
+  const a = nodeV.verifyCommitmentProof(proof, spki, opts);
+  const b = await webV.verifyCommitmentProof(proof, spki, opts);
+  assert.deepEqual(b, a, 'proof result must match Node');
   if (expectValid !== undefined) assert.equal(b.valid, expectValid);
 }
 
@@ -156,6 +183,31 @@ test('merkle anchor: valid inclusion proof — both reconstruct the root', async
   const badProof = [{ hash: sha('evil'), position: 'right' }, { hash: sib2, position: 'right' }];
   assert.equal(nodeV.verifyMerkleAnchor(leaf, badProof, root), false);
   assert.equal(await webV.verifyMerkleAnchor(leaf, badProof, root), false);
+});
+
+// ─── commitment proofs (Ed25519) ───────────────────────────────────────────────
+
+test('commitment proof: signed proof — both accept', async () => {
+  const { proof, spki } = makeCommitmentProof();
+  await assertEquivalentProof(proof, spki, undefined, true);
+});
+
+test('commitment proof: unsigned proof — both reject by default', async () => {
+  const proof = {
+    '@version': 'EP-PROOF-v1',
+    claim: { domain: 'demo' },
+    expires_at: new Date(Date.now() + 60_000).toISOString(),
+  };
+  await assertEquivalentProof(proof, undefined, undefined, false);
+});
+
+test('commitment proof: unsigned proof — explicit structure-only mode matches', async () => {
+  const proof = {
+    '@version': 'EP-PROOF-v1',
+    claim: { domain: 'demo' },
+    expires_at: new Date(Date.now() + 60_000).toISOString(),
+  };
+  await assertEquivalentProof(proof, undefined, { allowUnsigned: true }, true);
 });
 
 // ─── Class A WebAuthn signoff (ECDSA P-256, DER→raw conversion) ──────────────
