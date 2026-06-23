@@ -46,7 +46,7 @@ To keep this grounded rather than aspirational: there are three independent veri
 
     npx -y @emilia-protocol/crash-test
 
-produces the workpaper, the genuine receipt verifies offline, the forged copy is rejected, and the JS/Python/Go conformance vectors agree — and posted that result to the authorization-evidence survey thread. If the WG wants a verifier-side conformance target, the vectors already exist and have been checked independently.
+produces the workpaper, the genuine receipt verifies offline, the forged copy is rejected, and the JS/Python/Go conformance vectors agree — and reported that result on the IETF SecDispatch list, in the authorization-evidence survey thread. If the WG wants a verifier-side conformance target, the vectors already exist and have been checked independently.
 
 We also helped put together a short cross-draft survey that maps the adjacent efforts in this space (DRP/Nelson, PSEA, EP, and others) onto a single verifier-side matrix — useful prior art for triaging what is and isn't already covered, and where the real gaps are. Happy to share it with anyone interested.
 
