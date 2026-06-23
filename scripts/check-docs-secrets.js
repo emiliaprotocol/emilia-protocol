@@ -109,8 +109,13 @@ const PATTERNS = [
 ];
 
 // Real-looking hostnames (not localhost or example domains)
+// Capture the FULL hostname (all dot-separated labels), not just the last
+// three. The previous 3-label cap truncated 4+ level hosts (e.g.
+// www.nccoe.nist.gov -> www.nccoe.nist), which then failed the safe-suffix
+// check against nist.gov. Greedy label run stops at the path '/', port ':',
+// or end; the trailing \.[a-z]{2,} anchors the TLD.
 const HOSTNAME_PATTERN =
-  /(?:https?:\/\/)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.(?:[a-z]{2,})(?:\.[a-z]{2,})?)/gi;
+  /(?:https?:\/\/)([a-z0-9][a-z0-9.-]*\.[a-z]{2,})/gi;
 
 const SAFE_HOSTS = new Set([
   "localhost",
@@ -292,7 +297,7 @@ const PLACEHOLDER_HOST_PATTERNS = [
   /^example\./i,
   /\.invalid$/i,
   // Known sample-only hosts that documentation uses
-  /^signals\.provider$/i,
+  /^signals\.provider/i,  // sample-only host family (signals.provider, signals.provider-alpha.com, ...)
   /^their-server\.com$/i,
   /^my-ep-server\.com$/i,
 ];
