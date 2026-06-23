@@ -34,7 +34,8 @@ const TIERS = [
     tagline: 'Self-host the open protocol. Everything you need to gate, sign, and verify.',
     accent: color.green,
     cta: { label: 'Start free', href: '/docs' },
-    ctaStyle: 'secondary',
+    ctaStyle: 'primary',
+    highlight: true,
     available: true,
     features: [
       'Full trust ceremony — Eye, Handshake, Signoff, Commit',
@@ -55,9 +56,9 @@ const TIERS = [
     cta: CLOUD_CHECKOUT
       ? { label: 'Subscribe', href: CLOUD_CHECKOUT }
       : { label: 'Request early access', href: '/product/cloud#pilot' },
-    ctaStyle: 'primary',
-    highlight: true,
+    ctaStyle: 'secondary',
     available: false,
+    priceIsLabel: true,
     features: [
       'Everything in Core, fully managed',
       'Managed policy registry — version, diff, simulate before deploy',
@@ -151,7 +152,7 @@ export default function PricingPage() {
               }}>
                 <div style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 18, color: color.t1, marginBottom: 8 }}>{t.name}</div>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 28, letterSpacing: -1, color: color.t1 }}>{t.price}</span>
+                  <span style={{ fontFamily: font.sans, fontWeight: 700, fontSize: t.priceIsLabel ? 19 : 28, letterSpacing: t.priceIsLabel ? 0 : -1, color: t.priceIsLabel ? color.t2 : color.t1 }}>{t.price}</span>
                 </div>
                 <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase', color: color.t3, marginBottom: 16 }}>{t.priceNote}</div>
                 <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.6, marginBottom: 22, minHeight: 88 }}>{t.tagline}</p>
