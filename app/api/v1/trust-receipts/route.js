@@ -26,6 +26,7 @@ import {
   evaluateGuardPolicy,
   applyEnforcementMode,
   hashCanonicalAction,
+  computeGuardPolicyHash,
   GUARD_ACTION_TYPES,
   GUARD_DECISIONS,
   ENFORCEMENT_MODES,
@@ -102,7 +103,7 @@ export async function POST(request) {
       : null;
 
     const policyId = body.policy_id || `policy_default_${body.action_type}`;
-    const policyHash = hashCanonicalAction({ policy_id: policyId, version: 1 });
+    const policyHash = computeGuardPolicyHash(policyId); // #4: binds full rule content
 
     const canonicalAction = {
       organization_id: body.organization_id,

@@ -14,6 +14,8 @@ import {
   applyEnforcementMode,
   buildInitiatorAttestation,
   hashCanonicalAction,
+  computeGuardPolicyHash,
+  guardPolicyContentHash,
   ATTESTATION_STATEMENT_MAX,
   GUARD_DECISIONS,
   GUARD_ACTION_TYPES,
@@ -484,5 +486,18 @@ describe('Class A by default — requiredAssurance on high-risk signoff decision
     const d = evaluateGuardPolicy({ actionType: 'benefit_address_change', targetChangedFields: ['mailing_address'] });
     expect(d.signoffRequired).toBe(false);
     expect(d.requiredAssurance).toBeUndefined();
+  });
+});
+
+describe('#4 policy-content hash — receipt binds rule content, not just id+version', () => {
+  it('guardPolicyContentHash is a deterministic hex digest', () => {
+    expect(guardPolicyContentHash()).toMatch(/^[0-9a-f]{64}$/);
+    expect(guardPolicyContentHash()).toBe(guardPolicyContentHash());
+  });
+
+  it('computeGuardPolicyHash binds the content hash, not just {policy_id, version}', () => {
+    const stub = hashCanonicalAction({ policy_id: 'p1', version: 1 });
+    expect(computeGuardPolicyHash('p1')).not.toBe(stub); // no longer the weak label-only hash
+    expect(computeGuardPolicyHash('p1')).not.toBe(computeGuardPolicyHash('p2')); // still distinguishes which policy
   });
 });
