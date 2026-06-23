@@ -19,6 +19,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'node:crypto';
 import { authenticateRequest, authEntityId } from '@/lib/supabase';
+import { resolveAuthorizedOrg } from '@/lib/tenant-binding';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import {
@@ -43,6 +44,18 @@ export async function POST(request) {
     if (auth.error) return epProblem(401, 'unauthorized', auth.error);
 
     const body = await request.json().catch(() => ({}));
+
+    // ── Tenant binding: derive org from the AUTHENTICATED entity, not the body.
+    // An authenticated caller must not be able to scope a receipt to another
+    // org by passing organization_id. (lib/tenant-binding.js + migration 101.)
+    const orgResolution = resolveAuthorizedOrg(auth, body.organization_id);
+    if (orgResolution.error) {
+      return epProblem(orgResolution.error.status, orgResolution.error.code, orgResolution.error.detail);
+    }
+    if (orgResolution.unbound) {
+      logger.warn(`[v1/trust-receipts] entity ${authEntityId(auth)} is not org-bound; trusting body.organization_id (transitional — backfill entities.organization_id)`);
+    }
+    body.organization_id = orgResolution.organizationId;
 
     // ── Required fields (per MD §2.2) ─────────────────────────────────────
     const required = ['organization_id', 'action_type', 'target_resource_id'];
