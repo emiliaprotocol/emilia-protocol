@@ -462,3 +462,27 @@ describe('buildInitiatorAttestation: trigger mapping (PIP-007 §1 + deployment t
     expect(buildInitiatorAttestation(undefined, { actionType: 'x' })).toBeUndefined();
   });
 });
+
+describe('Class A by default — requiredAssurance on high-risk signoff decisions', () => {
+  it('stamps requiredAssurance:A on a money-destination change', () => {
+    const d = evaluateGuardPolicy({ actionType: 'vendor_bank_account_change', targetChangedFields: ['bank_account'] });
+    expect(d.signoffRequired).toBe(true);
+    expect(d.requiredAssurance).toBe('A');
+  });
+
+  it('stamps requiredAssurance:A on a large payment release', () => {
+    const d = evaluateGuardPolicy({ actionType: 'large_payment_release', amount: 60_000, targetChangedFields: [] });
+    expect(d.requiredAssurance).toBe('A');
+  });
+
+  it('stamps requiredAssurance:A on AI-agent payment and caseworker override', () => {
+    expect(evaluateGuardPolicy({ actionType: 'ai_agent_payment_action', targetChangedFields: [] }).requiredAssurance).toBe('A');
+    expect(evaluateGuardPolicy({ actionType: 'caseworker_override', targetChangedFields: [] }).requiredAssurance).toBe('A');
+  });
+
+  it('does NOT require Class A for a low-risk, default-allow action', () => {
+    const d = evaluateGuardPolicy({ actionType: 'benefit_address_change', targetChangedFields: ['mailing_address'] });
+    expect(d.signoffRequired).toBe(false);
+    expect(d.requiredAssurance).toBeUndefined();
+  });
+});
