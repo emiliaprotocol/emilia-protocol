@@ -25,6 +25,7 @@ export default function sitemap() {
     { path: '/finguard',              priority: 0.95, changeFrequency: 'monthly' },
     { path: '/insurance',             priority: 0.9, changeFrequency: 'monthly' },
     { path: '/quorum',                priority: 0.9, changeFrequency: 'monthly' },
+    { path: '/evidence-chain',        priority: 0.9, changeFrequency: 'monthly' },
     { path: '/mcp',                   priority: 0.9, changeFrequency: 'monthly' },
     { path: '/for-ai-companies',      priority: 0.9, changeFrequency: 'monthly' },
     { path: '/quickstart',            priority: 0.85, changeFrequency: 'monthly' },
