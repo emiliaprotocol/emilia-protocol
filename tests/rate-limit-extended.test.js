@@ -139,6 +139,16 @@ describe('checkRateLimit — Redis path (mocked fetch)', async () => {
     expect(result.allowed).toBe(false);
   });
 
+  it('fail-closed for protocol write/admin categories on Redis error', async () => {
+    for (const category of ['protocol_write', 'report_write', 'cloud_write', 'cloud_admin']) {
+      mockFetch.mockResolvedValue(makeRedisError('network error'));
+      const result = await checkRateLimit(`test-ip-${category}`, category);
+      expect(result.allowed, category).toBe(false);
+      expect(result.error, category).toBe('rate_limit_unavailable');
+      mockFetch.mockReset();
+    }
+  });
+
   it('fail-open for "read" on Redis error', async () => {
     mockFetch.mockResolvedValue(makeRedisError('network error'));
     const result = await checkRateLimit('test-ip-read-err', 'read');

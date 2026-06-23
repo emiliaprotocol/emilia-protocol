@@ -47,7 +47,7 @@ npm run dev
 - `EP_COMMIT_SIGNING_KEY` is required (fatal error if absent)
 - `EP_COMMIT_SIGNING_KEYS` must be valid JSON if set (fatal error if malformed)
 - Rate limiting: Upstash Redis (distributed across all serverless instances)
-- Write-sensitive rate limit categories (`submit`, `dispute_write`, `register`, `anchor`) fail-closed if Redis is unavailable (return 503 rather than allowing unthrottled writes)
+- Write-sensitive rate limit categories (`submit`, `protocol_write`, `dispute_write`, `report_write`, `register`, `anchor`, `cloud_write`, `cloud_admin`) fail-closed if Redis is unavailable (return 503 rather than allowing unthrottled writes)
 - Read rate limits fail-open if Redis is unavailable (availability over throttling)
 - Blockchain anchoring: configured to production chain
 - Cron jobs active via `vercel.json`

@@ -120,11 +120,15 @@ Filter application logs by `_ep_telemetry` to isolate protocol write events from
 |---|---|---|---|
 | `register` | 3600s | 10/hr per IP | Fail-closed |
 | `submit` | 60s | 30/min per key | Fail-closed |
+| `protocol_write` | 60s | 60/min per key | Fail-closed |
 | `read` | 60s | 120/min per IP | Fail-open |
 | `anchor` | 21600s | 1/6hr | Fail-closed |
 | `waitlist` | 3600s | 5/hr per IP | Fail-open |
 | `dispute_write` | 3600s | 5/hr per key | Fail-closed |
-| `report_write` | 3600s | 3/hr per IP | Fail-open |
+| `report_write` | 3600s | 3/hr per IP | Fail-closed |
+| `cloud_read` | 60s | 100/min per key | Fail-open |
+| `cloud_write` | 60s | 30/min per key | Fail-closed |
+| `cloud_admin` | 60s | 10/min per key | Fail-closed |
 
 **Alert threshold**:
 - Rate limiter backend unavailable (503 responses with `rate_limit_unavailable`): **S2**

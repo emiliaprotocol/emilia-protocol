@@ -95,7 +95,7 @@ Retry-After: {seconds until window resets}
 | Code | Detail | Cause |
 |---|---|---|
 | `auth_service_unavailable` | Authentication service unavailable | Database error during API key lookup or entity lookup. Returned instead of masquerading as "invalid key" |
-| `rate_limit_unavailable` | Service temporarily unavailable -- rate limiting backend offline | Upstash Redis is unreachable and this endpoint's rate limit category is fail-closed (`submit`, `dispute_write`, `register`, `anchor`) |
+| `rate_limit_unavailable` | Service temporarily unavailable -- rate limiting backend offline | Upstash Redis is unreachable and this endpoint's rate limit category is fail-closed (`submit`, `protocol_write`, `dispute_write`, `report_write`, `register`, `anchor`, `cloud_write`, `cloud_admin`) |
 
 ## Protocol Write Errors
 
