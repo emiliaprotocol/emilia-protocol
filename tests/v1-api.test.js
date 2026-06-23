@@ -53,6 +53,8 @@ import { GET as readEvidence } from '../app/api/v1/trust-receipts/[receiptId]/ev
 import { POST as requestSignoff } from '../app/api/v1/signoffs/request/route.js';
 import { POST as approveSignoff } from '../app/api/v1/signoffs/[signoffId]/approve/route.js';
 import { POST as rejectSignoff } from '../app/api/v1/signoffs/[signoffId]/reject/route.js';
+import { POST as attestExecution } from '../app/api/v1/trust-receipts/[receiptId]/execution/route.js';
+import { executedActionHash } from '../lib/execution/integrity.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -220,8 +222,9 @@ describe('GET /api/v1/trust-receipts/:id', () => {
       expires_at: new Date(Date.now() + 100_000).toISOString(),
     };
     const events = [
-      { event_type: 'guard.trust_receipt.created', after_state: baseState, created_at: '2026-04-26T00:00:00Z' },
-      { event_type: 'guard.signoff.approved', after_state: { signoff_id: 'sig_1' }, created_at: '2026-04-26T00:01:00Z' },
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: baseState, created_at: '2026-04-26T00:00:00Z' },
+      { event_type: 'guard.signoff.requested', actor_id: 'user_1', after_state: { signoff_id: 'sig_1', approver_id: 'user_2' }, created_at: '2026-04-26T00:00:30Z' },
+      { event_type: 'guard.signoff.approved', actor_id: 'user_2', after_state: { signoff_id: 'sig_1', approver_id: 'user_2' }, created_at: '2026-04-26T00:01:00Z' },
     ];
     mockGetGuardedClient.mockReturnValue(makeSupabase({
       audit_events: { resolve: { data: events, error: null } },
@@ -232,7 +235,7 @@ describe('GET /api/v1/trust-receipts/:id', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.receipt_status).toBe('approved_pending_consume');
-    expect(body.timeline_event_count).toBe(2);
+    expect(body.timeline_event_count).toBe(3);
   });
 });
 
@@ -292,7 +295,31 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
   it('returns 403 when signoff_required=true but no approval recorded', async () => {
     authedAs('user_1');
     const events = [
-      { event_type: 'guard.trust_receipt.created', after_state: { action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: true } },
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: true } },
+    ];
+    setupConsume(events);
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 403 when a loose approval is not tied to a creator-bound signoff request', async () => {
+    authedAs('user_1');
+    const events = [
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: true } },
+      { event_type: 'guard.signoff.requested', actor_id: 'attacker', after_state: { signoff_id: 'sig_attacker', initiator_id: 'attacker', approver_id: 'attacker_approver', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString() } },
+      { event_type: 'guard.signoff.approved', actor_id: 'attacker_approver', after_state: { signoff_id: 'sig_attacker', approver_id: 'attacker_approver' } },
+    ];
+    setupConsume(events);
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 403 when approval approver does not match the requested approver', async () => {
+    authedAs('user_1');
+    const events = [
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: true } },
+      { event_type: 'guard.signoff.requested', actor_id: 'user_1', after_state: { signoff_id: 'sig_1', initiator_id: 'user_1', approver_id: 'expected_approver', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString() } },
+      { event_type: 'guard.signoff.approved', actor_id: 'wrong_approver', after_state: { signoff_id: 'sig_1', approver_id: 'wrong_approver' } },
     ];
     setupConsume(events);
     const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
@@ -302,13 +329,54 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
   it('returns 403 when signoff was rejected', async () => {
     authedAs('user_1');
     const events = [
-      { event_type: 'guard.trust_receipt.created', after_state: { action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: true } },
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: true } },
       { event_type: 'guard.signoff.approved', after_state: { signoff_id: 'sig_1' } },
       { event_type: 'guard.signoff.rejected', after_state: { signoff_id: 'sig_2' } },
     ];
     setupConsume(events);
     const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
     expect(res.status).toBe(403);
+  });
+
+  it('does not treat an unbound quorum rejection as the receipt rejection', async () => {
+    authedAs('user_1');
+    const events = [
+      {
+        event_type: 'guard.trust_receipt.created',
+        actor_id: 'user_1',
+        after_state: {
+          action_hash: 'a',
+          expires_at: new Date(Date.now() + 1e6).toISOString(),
+          signoff_required: false,
+          quorum_policy: {
+            mode: 'threshold',
+            required: 1,
+            approvers: [{ role: 'controller', approver: 'real_approver' }],
+          },
+        },
+      },
+      {
+        event_type: 'guard.signoff.requested',
+        actor_id: 'attacker',
+        after_state: {
+          signoff_id: 'sig_attacker',
+          initiator_id: 'attacker',
+          quorum: { role: 'controller', approver_id: 'attacker_approver' },
+          action_hash: 'a',
+          expires_at: new Date(Date.now() + 1e6).toISOString(),
+        },
+      },
+      {
+        event_type: 'guard.signoff.rejected',
+        actor_id: 'attacker_approver',
+        after_state: { signoff_id: 'sig_attacker', approver_id: 'attacker_approver' },
+      },
+    ];
+    setupConsume(events);
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    const body = await res.json();
+    expect(res.status).toBe(403);
+    expect(body.type).toContain('quorum_not_satisfied');
   });
 
   it('records consume on happy path', async () => {
@@ -496,7 +564,7 @@ describe('POST /api/v1/signoffs/request', () => {
   it('returns 409 when receipt does not require signoff', async () => {
     authedAs('user_1');
     const events = [
-      { event_type: 'guard.trust_receipt.created', after_state: { signoff_required: false, action_hash: 'a' } },
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { signoff_required: false, action_hash: 'a' } },
     ];
     mockGetGuardedClient.mockReturnValue(makeSupabase({
       audit_events: { resolve: { data: events, error: null } },
@@ -508,7 +576,7 @@ describe('POST /api/v1/signoffs/request', () => {
   it('returns 409 when signoff already requested', async () => {
     authedAs('user_1');
     const events = [
-      { event_type: 'guard.trust_receipt.created', after_state: { signoff_required: true, action_hash: 'a' } },
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { signoff_required: true, action_hash: 'a' } },
       { event_type: 'guard.signoff.requested', after_state: { signoff_id: 'sig_1' } },
     ];
     mockGetGuardedClient.mockReturnValue(makeSupabase({
@@ -518,20 +586,45 @@ describe('POST /api/v1/signoffs/request', () => {
     expect(res.status).toBe(409);
   });
 
-  it('issues signoff_id on happy path', async () => {
-    authedAs('user_1');
+  it('returns 403 when a different actor requests signoff for someone else’s receipt', async () => {
+    authedAs('attacker');
     const events = [
-      { event_type: 'guard.trust_receipt.created', after_state: { signoff_required: true, action_hash: 'a' } },
+      { event_type: 'guard.trust_receipt.created', actor_id: 'victim_creator', after_state: { signoff_required: true, action_hash: 'a' } },
     ];
     mockGetGuardedClient.mockReturnValue(makeSupabase({
       audit_events: { resolve: { data: events, error: null } },
     }));
-    const res = await requestSignoff(req({ receipt_id: 'tr_' + 'a'.repeat(32), expires_in_minutes: 60 }));
+    const res = await requestSignoff(req({ receipt_id: 'tr_' + 'a'.repeat(32), approver_id: 'attacker_approver' }));
+    expect(res.status).toBe(403);
+  });
+
+  it('returns 400 when single-signoff receipt omits intended approver_id', async () => {
+    authedAs('user_1');
+    const events = [
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { signoff_required: true, action_hash: 'a' } },
+    ];
+    mockGetGuardedClient.mockReturnValue(makeSupabase({
+      audit_events: { resolve: { data: events, error: null } },
+    }));
+    const res = await requestSignoff(req({ receipt_id: 'tr_' + 'a'.repeat(32) }));
+    expect(res.status).toBe(400);
+  });
+
+  it('issues signoff_id on happy path', async () => {
+    authedAs('user_1');
+    const events = [
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { signoff_required: true, action_hash: 'a' } },
+    ];
+    mockGetGuardedClient.mockReturnValue(makeSupabase({
+      audit_events: { resolve: { data: events, error: null } },
+    }));
+    const res = await requestSignoff(req({ receipt_id: 'tr_' + 'a'.repeat(32), approver_id: 'user_approver', expires_in_minutes: 60 }));
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.signoff_id).toMatch(/^sig_[0-9a-f]{32}$/);
     expect(body.action_hash).toBe('a');
     expect(body.initiator_id).toBe('user_1');
+    expect(body.approver_id).toBe('user_approver');
   });
 });
 
@@ -541,6 +634,7 @@ describe('POST /api/v1/signoffs/:id/approve', () => {
   function setupSignoffEnv({
     initiator,
     actionHash,
+    approver = 'user_approver',
     expiresAt = new Date(Date.now() + 1e6).toISOString(),
     priorDecisions = [],
     insertError = null,
@@ -553,7 +647,7 @@ describe('POST /api/v1/signoffs/:id/approve', () => {
           //   2. prior-decisions check — .in('event_type', [approved, rejected])
           // A fresh chain per from() call tracks whether .in() was used, so
           // the resolver returns the right rows regardless of call order.
-          const requestsRow = [{ target_id: 'tr_x', actor_id: initiator, after_state: { signoff_id: 'sig_1', initiator_id: initiator, action_hash: actionHash, expires_at: expiresAt }, created_at: '2026-04-26T00:00:00Z' }];
+          const requestsRow = [{ target_id: 'tr_x', actor_id: initiator, after_state: { signoff_id: 'sig_1', initiator_id: initiator, approver_id: approver, action_hash: actionHash, expires_at: expiresAt }, created_at: '2026-04-26T00:00:00Z' }];
           let usedIn = false;
           const chain = {
             select: vi.fn().mockReturnThis(),
@@ -628,6 +722,13 @@ describe('POST /api/v1/signoffs/:id/approve', () => {
     expect(res.status).toBe(409);
   });
 
+  it('returns 403 when authenticated approver is not the signoff-bound approver', async () => {
+    authedAs('wrong_approver');
+    setupSignoffEnv({ initiator: 'user_initiator', approver: 'user_approver', actionHash: 'a' });
+    const res = await approveSignoff(req({ approved_action_hash: 'a' }), { params: Promise.resolve({ signoffId: 'sig_1' }) });
+    expect(res.status).toBe(403);
+  });
+
   it('returns 410 when signoff approval window expired', async () => {
     authedAs('user_approver');
     setupSignoffEnv({
@@ -698,5 +799,68 @@ describe('POST /api/v1/signoffs/:id/reject', () => {
     authedAs('user_2');
     const res = await rejectSignoff(req({}), { params: Promise.resolve({ signoffId: 'sig_1' }) });
     expect(res.status).toBe(400);
+  });
+});
+
+// ─── POST /api/v1/trust-receipts/:id/execution (#6 enforcement adapter) ──────
+describe('POST /api/v1/trust-receipts/:id/execution', () => {
+  const EXECUTED = { action_type: 'payment.release', target: 'acct_9f12', amount: 50000 };
+  const APPROVED_HASH = executedActionHash(EXECUTED); // 'match' when stored action_hash === this
+  const P = { params: Promise.resolve({ receiptId: 'tr_x' }) };
+
+  function timeline(events) {
+    mockGetGuardedClient.mockReturnValue(makeSupabase({ audit_events: { resolve: { data: events, error: null } } }));
+  }
+
+  it('returns 401 when unauthenticated', async () => {
+    mockAuthenticateRequest.mockResolvedValue({ error: 'no auth' });
+    expect((await attestExecution(req({}), P)).status).toBe(401);
+  });
+
+  it('returns 400 without executed_action', async () => {
+    authedAs('sys');
+    expect((await attestExecution(req({ executing_system: 's' }), P)).status).toBe(400);
+  });
+
+  it('returns 409 when the receipt was never consumed (blocked-until-consume half)', async () => {
+    authedAs('sys');
+    timeline([{ event_type: 'guard.trust_receipt.created', after_state: { action_hash: APPROVED_HASH } }]);
+    const res = await attestExecution(req({ executed_action: EXECUTED, executing_system: 's' }), P);
+    expect(res.status).toBe(409);
+    expect((await res.json()).detail).toMatch(/consumed/i);
+  });
+
+  it('attests a matching execution (binding_status: match)', async () => {
+    authedAs('sys');
+    timeline([
+      { event_type: 'guard.trust_receipt.created', after_state: { action_hash: APPROVED_HASH } },
+      { event_type: 'guard.trust_receipt.consumed', after_state: {} },
+    ]);
+    const res = await attestExecution(req({ executed_action: EXECUTED, executing_system: 's', execution_id: 'ex_1' }), P);
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.binding_status).toBe('match');
+    expect(body.executed_action_hash).toBe(body.approved_action_hash);
+  });
+
+  it('records EXECUTION DRIFT when the executed action differs from approved', async () => {
+    authedAs('sys');
+    timeline([
+      { event_type: 'guard.trust_receipt.created', after_state: { action_hash: 'sha256:not-the-executed-action' } },
+      { event_type: 'guard.trust_receipt.consumed', after_state: {} },
+    ]);
+    const res = await attestExecution(req({ executed_action: EXECUTED, executing_system: 's' }), P);
+    expect(res.status).toBe(201);
+    expect((await res.json()).binding_status).toBe('drift');
+  });
+
+  it('returns 409 when an execution attestation already exists', async () => {
+    authedAs('sys');
+    timeline([
+      { event_type: 'guard.trust_receipt.created', after_state: { action_hash: APPROVED_HASH } },
+      { event_type: 'guard.trust_receipt.consumed', after_state: {} },
+      { event_type: 'guard.trust_receipt.executed', after_state: {} },
+    ]);
+    expect((await attestExecution(req({ executed_action: EXECUTED, executing_system: 's' }), P)).status).toBe(409);
   });
 });
