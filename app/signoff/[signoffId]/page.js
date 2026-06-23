@@ -8,6 +8,7 @@
 
 import { getServiceClient } from '@/lib/supabase';
 import { SIGNOFF_ID_PATTERN } from '@/lib/webauthn';
+import { creatorBoundSignoffRequests, decisionMatchesRequest } from '@/lib/guard-signoff-binding.js';
 import SignoffSigner from './signer';
 
 export const dynamic = 'force-dynamic';
@@ -56,7 +57,7 @@ export default async function SignoffPage({ params, searchParams }) {
   const supabase = getServiceClient();
   const { data: requests } = await supabase
     .from('audit_events')
-    .select('target_id, after_state, created_at')
+    .select('target_id, actor_id, after_state, created_at')
     .eq('event_type', 'guard.signoff.requested')
     .eq('after_state->>signoff_id', signoffId)
     .limit(1);
@@ -74,15 +75,29 @@ export default async function SignoffPage({ params, searchParams }) {
   const receiptId = requestEvent.target_id;
   const { data: events } = await supabase
     .from('audit_events')
-    .select('event_type, after_state')
+    .select('event_type, actor_id, after_state')
     .eq('target_type', 'trust_receipt')
     .eq('target_id', receiptId)
     .in('event_type', ['guard.trust_receipt.created', 'guard.signoff.approved', 'guard.signoff.rejected']);
 
   const created = (events || []).find((e) => e.event_type === 'guard.trust_receipt.created');
-  const decided = (events || []).find(
-    (e) => e.event_type !== 'guard.trust_receipt.created' && e.after_state?.signoff_id === signoffId,
-  );
+  const requestIsCreatorBound = creatorBoundSignoffRequests([requestEvent], created)
+    .some((s) => s.signoff_id === signoffId);
+  if (!created || !requestIsCreatorBound) {
+    return (
+      <div style={wrap}><div style={card}>
+        <h1 style={{ fontSize: 20 }}>Signoff not found</h1>
+        <p style={{ color: '#8A857C' }}>No valid pending signoff matches this link.</p>
+      </div></div>
+    );
+  }
+
+  const decided = requestIsCreatorBound
+    ? (events || []).find(
+        (e) => e.event_type !== 'guard.trust_receipt.created'
+          && decisionMatchesRequest(e, requestEvent.after_state),
+      )
+    : null;
   const base = created?.after_state || {};
   const action = base.canonical_action || null;
   const expired = new Date(requestEvent.after_state.expires_at) < new Date();

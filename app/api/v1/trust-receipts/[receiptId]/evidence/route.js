@@ -17,6 +17,7 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 import { signEvidenceReceipt } from '@/lib/guard-evidence-receipt.js';
+import { findBoundSignoffDecision } from '@/lib/guard-signoff-binding.js';
 
 export async function GET(request, { params }) {
   try {
@@ -49,8 +50,8 @@ export async function GET(request, { params }) {
 
     const signoffEvents = events.filter((e) => e.event_type.startsWith('guard.signoff.'));
     const consumed = events.find((e) => e.event_type === 'guard.trust_receipt.consumed');
-    const approved = events.find((e) => e.event_type === 'guard.signoff.approved');
-    const rejected = events.find((e) => e.event_type === 'guard.signoff.rejected');
+    const approved = findBoundSignoffDecision(events, created, 'guard.signoff.approved');
+    const rejected = findBoundSignoffDecision(events, created, 'guard.signoff.rejected');
     const replays = events.filter((e) => e.event_type === 'guard.trust_receipt.replay_attempt');
 
     // ── Signed, offline-verifiable receipt (EP-RECEIPT-v1) ───────────────

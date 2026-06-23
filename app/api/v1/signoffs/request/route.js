@@ -11,6 +11,7 @@ import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
+import { APPROVER_ID_PATTERN } from '@/lib/webauthn';
 
 // Approval window — per MD §5.2 approvals must expire. 4 hours is a
 // reasonable default for high-risk financial / government workflows;
@@ -54,6 +55,13 @@ export async function POST(request) {
 
     const created = events.find((e) => e.event_type === 'guard.trust_receipt.created');
     if (!created) return epProblem(500, 'corrupted_receipt', 'Receipt missing creation event');
+    if (!created.actor_id || created.actor_id !== initiatorEntityId) {
+      return epProblem(
+        403,
+        'receipt_actor_mismatch',
+        'Only the entity that created this receipt can request signoff for it',
+      );
+    }
 
     // A quorum policy implies a signoff is required, even if the policy decision
     // didn't set signoff_required.
@@ -118,6 +126,10 @@ export async function POST(request) {
       }, { status: 201 });
     }
 
+    if (!body.approver_id || !APPROVER_ID_PATTERN.test(body.approver_id)) {
+      return epProblem(400, 'invalid_approver_id', 'approver_id is required (3-128 chars of [A-Za-z0-9:_.@-])');
+    }
+
     const signoffId = `sig_${crypto.randomBytes(16).toString('hex')}`;
 
     const { error: insertErr } = await supabase.from('audit_events').insert({
@@ -131,6 +143,7 @@ export async function POST(request) {
       after_state: {
         signoff_id: signoffId,
         initiator_id: initiatorEntityId,
+        approver_id: body.approver_id,
         action_hash: created.after_state.action_hash,
         expires_at: expiresAt,
         comment,
@@ -147,6 +160,7 @@ export async function POST(request) {
       receipt_id: body.receipt_id,
       action_hash: created.after_state.action_hash,
       initiator_id: initiatorEntityId,
+      approver_id: body.approver_id,
       expires_at: expiresAt,
       status: 'pending',
     }, { status: 201 });

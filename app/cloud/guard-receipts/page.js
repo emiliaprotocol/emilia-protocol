@@ -17,6 +17,7 @@ import { headers } from 'next/headers';
 import { authenticateRequest } from '@/lib/supabase';
 import { getServiceClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger.js';
+import { findBoundSignoffDecision } from '@/lib/guard-signoff-binding.js';
 
 export const metadata = {
   title: 'Guard Receipts — EMILIA Cloud',
@@ -59,8 +60,8 @@ async function loadRecentReceipts() {
 
       let status = base.receipt_status || 'issued';
       if (eventsAsc.some((e) => e.event_type === 'guard.trust_receipt.consumed')) status = 'consumed';
-      else if (eventsAsc.some((e) => e.event_type === 'guard.signoff.rejected')) status = 'rejected';
-      else if (eventsAsc.some((e) => e.event_type === 'guard.signoff.approved')) status = 'approved_pending_consume';
+      else if (findBoundSignoffDecision(eventsAsc, created, 'guard.signoff.rejected')) status = 'rejected';
+      else if (findBoundSignoffDecision(eventsAsc, created, 'guard.signoff.approved')) status = 'approved_pending_consume';
 
       receipts.push({
         receipt_id: receiptId,

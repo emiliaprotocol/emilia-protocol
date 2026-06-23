@@ -43,6 +43,29 @@ export async function POST(request, { params }) {
 
     const supabase = getGuardedClient();
 
+    // ── Signoff state checks (same invariants as the bearer-key path).
+    const loaded = await loadSignoffForSigning(supabase, signoffId);
+    if (loaded.error) return loaded.error;
+    if (loaded.alreadyDecided) {
+      return epProblem(409, 'signoff_already_decided', 'Signoff has already been decided');
+    }
+    if (new Date(loaded.requestExpiresAt) < new Date()) {
+      return epProblem(410, 'signoff_expired', 'Signoff approval window has expired');
+    }
+    const expectedApproverId = loaded.requestEvent.after_state.approver_id
+      || loaded.requestEvent.after_state.quorum?.approver_id
+      || null;
+    if (!expectedApproverId) {
+      return epProblem(409, 'approver_not_bound', 'Signoff request is missing an intended approver');
+    }
+    if (body.approver_id !== expectedApproverId) {
+      return epProblem(403, 'approver_mismatch', 'Approver does not match the signoff request');
+    }
+    // Separation of duties — approver MUST NOT be the initiator (draft §6.1).
+    if (body.approver_id === loaded.initiatorId) {
+      return epProblem(403, 'self_approval_forbidden', 'Approver cannot be the initiator of the signoff request');
+    }
+
     // ── Atomically claim the newest live challenge for this signoff+approver.
     // The UPDATE ... IS NULL guard makes consumption single-use even under
     // parallel submission: exactly one request wins the row.
@@ -76,19 +99,6 @@ export async function POST(request, { params }) {
       return epProblem(409, 'challenge_replayed', 'Signing challenge already consumed');
     }
 
-    // ── Signoff state checks (same invariants as the bearer-key path).
-    const loaded = await loadSignoffForSigning(supabase, signoffId);
-    if (loaded.error) return loaded.error;
-    if (loaded.alreadyDecided) {
-      return epProblem(409, 'signoff_already_decided', 'Signoff has already been decided');
-    }
-    if (new Date(loaded.requestExpiresAt) < new Date()) {
-      return epProblem(410, 'signoff_expired', 'Signoff approval window has expired');
-    }
-    // Separation of duties — approver MUST NOT be the initiator (draft §6.1).
-    if (body.approver_id === loaded.initiatorId) {
-      return epProblem(403, 'self_approval_forbidden', 'Approver cannot be the initiator of the signoff request');
-    }
     // The signed context must bind this exact action (BindingMatch).
     if (challengeRow.context?.action_hash !== loaded.actionHash) {
       return epProblem(409, 'action_hash_mismatch', 'Signing context does not bind the receipt-issued action_hash');

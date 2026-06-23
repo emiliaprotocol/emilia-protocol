@@ -31,6 +31,7 @@ import { styles, color, font, radius } from '@/lib/tokens';
 import { getServiceClient } from '@/lib/supabase';
 import { logger } from '@/lib/logger.js';
 import { getDemoReceipt, isDemoReceiptId } from '@/lib/demo-receipt.js';
+import { boundSignoffDecisionEvents } from '@/lib/guard-signoff-binding.js';
 
 export const metadata = {
   title: 'Authorization Receipt — EMILIA Protocol',
@@ -74,8 +75,9 @@ async function loadReceipt(receiptId) {
     if (!created) return null;
     const base = created.after_state || {};
 
-    // Real receipts may have one OR many signoff approvals. Collect them all.
-    const approvalEvents = events.filter((e) => e.event_type === 'guard.signoff.approved');
+    // Real receipts may have one OR many signoff approvals. Collect only
+    // approvals tied to creator-issued signoff requests.
+    const approvalEvents = boundSignoffDecisionEvents(events, created, 'guard.signoff.approved');
     const consumeEvent = events.find((e) => e.event_type === 'guard.trust_receipt.consumed');
 
     return {

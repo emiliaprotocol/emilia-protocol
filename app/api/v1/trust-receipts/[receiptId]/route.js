@@ -11,6 +11,7 @@ import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
+import { findBoundSignoffDecision } from '@/lib/guard-signoff-binding.js';
 
 const RECEIPT_ID_PATTERN = /^tr_[a-f0-9]{32}$/;
 
@@ -52,8 +53,8 @@ export async function GET(request, { params }) {
     }
 
     const consumed = events.find((e) => e.event_type === 'guard.trust_receipt.consumed');
-    const signoffApproved = events.find((e) => e.event_type === 'guard.signoff.approved');
-    const signoffRejected = events.find((e) => e.event_type === 'guard.signoff.rejected');
+    const signoffApproved = findBoundSignoffDecision(events, created, 'guard.signoff.approved');
+    const signoffRejected = findBoundSignoffDecision(events, created, 'guard.signoff.rejected');
 
     const base = created.after_state;
     let receipt_status = base.receipt_status;
