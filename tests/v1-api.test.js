@@ -95,7 +95,10 @@ function makeSupabase(tables) {
 
 /** Authenticate as a given entity. */
 function authedAs(entity, extra = {}) {
-  mockAuthenticateRequest.mockResolvedValue({ entity, ...extra });
+  const normalized = typeof entity === 'string'
+    ? { entity_id: entity, organization_id: 'org_1' }
+    : entity;
+  mockAuthenticateRequest.mockResolvedValue({ entity: normalized, ...extra });
 }
 
 beforeEach(() => {
@@ -112,10 +115,22 @@ describe('POST /api/v1/trust-receipts', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns 400 when organization_id is missing', async () => {
+  it('returns 400 when a required action field is missing', async () => {
     authedAs('user_1');
-    const res = await createReceipt(req({ action_type: 'x', target_resource_id: 'y' }));
+    const res = await createReceipt(req({ target_resource_id: 'y' }));
     expect(res.status).toBe(400);
+  });
+
+  it('returns 403 when the authenticated entity is not org-bound', async () => {
+    authedAs({ entity_id: 'user_1' });
+    const res = await createReceipt(req({
+      organization_id: 'org_1',
+      action_type: 'benefit_bank_account_change',
+      target_resource_id: 'recipient_1',
+    }));
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(`${body.code ?? ''} ${body.type ?? ''}`).toMatch(/entity_not_org_bound/);
   });
 
   it('returns 403 when body actor_id mismatches authenticated entity', async () => {
@@ -242,9 +257,10 @@ describe('GET /api/v1/trust-receipts/:id', () => {
 // ─── POST /api/v1/trust-receipts/:id/consume ─────────────────────────────
 
 describe('POST /api/v1/trust-receipts/:id/consume', () => {
-  function setupConsume(events) {
+  function setupConsume(events, authorityRows = []) {
     mockGetGuardedClient.mockReturnValue(makeSupabase({
       audit_events: { resolve: { data: events, error: null } },
+      authorities: { resolve: { data: authorityRows, error: null } },
     }));
   }
 
@@ -336,6 +352,53 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
     setupConsume(events);
     const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
     expect(res.status).toBe(403);
+  });
+
+  it('returns 403 when a Class-A receipt has only a Class-C approval', async () => {
+    authedAs('user_1');
+    const events = [
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { organization_id: 'org_1', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: true, required_assurance: 'A' } },
+      { event_type: 'guard.signoff.requested', actor_id: 'user_1', after_state: { signoff_id: 'sig_1', initiator_id: 'user_1', approver_id: 'ap_controller', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), required_assurance: 'A' } },
+      { event_type: 'guard.signoff.approved', actor_id: 'ap_controller', after_state: { signoff_id: 'sig_1', approver_id: 'ap_controller', key_class: 'C' } },
+    ];
+    setupConsume(events, [{ authority_id: 'auth_1', status: 'active', subject_ref: 'ap_controller', role: null, assurance_class: 'A' }]);
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    expect(res.status).toBe(403);
+    expect((await res.json()).type).toContain('insufficient_assurance');
+  });
+
+  it('returns 403 when an approved signoff has no active authority record', async () => {
+    authedAs('user_1');
+    const events = [
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { organization_id: 'org_1', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: true } },
+      { event_type: 'guard.signoff.requested', actor_id: 'user_1', after_state: { signoff_id: 'sig_1', initiator_id: 'user_1', approver_id: 'ap_controller', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString() } },
+      { event_type: 'guard.signoff.approved', actor_id: 'ap_controller', after_state: { signoff_id: 'sig_1', approver_id: 'ap_controller', key_class: 'C' } },
+    ];
+    setupConsume(events);
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    expect(res.status).toBe(403);
+    expect((await res.json()).type).toContain('authority_invalid');
+  });
+
+  it('records consume when a Class-A approval has an active sufficient authority', async () => {
+    authedAs('user_1');
+    const events = [
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { organization_id: 'org_1', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: true, required_assurance: 'A' } },
+      { event_type: 'guard.signoff.requested', actor_id: 'user_1', after_state: { signoff_id: 'sig_1', initiator_id: 'user_1', approver_id: 'ap_controller', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), required_assurance: 'A' } },
+      { event_type: 'guard.signoff.approved', actor_id: 'ap_controller', after_state: { signoff_id: 'sig_1', approver_id: 'ap_controller', key_class: 'A' } },
+    ];
+    setupConsume(events, [{
+      authority_id: 'auth_1',
+      status: 'active',
+      subject_ref: 'ap_controller',
+      role: null,
+      assurance_class: 'A',
+      valid_from: '2020-01-01T00:00:00.000Z',
+      valid_to: '2999-01-01T00:00:00.000Z',
+      revoked_at: null,
+    }]);
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    expect(res.status).toBe(200);
   });
 
   it('does not treat an unbound quorum rejection as the receipt rejection', async () => {
@@ -638,6 +701,7 @@ describe('POST /api/v1/signoffs/:id/approve', () => {
     expiresAt = new Date(Date.now() + 1e6).toISOString(),
     priorDecisions = [],
     insertError = null,
+    requiredAssurance = null,
   }) {
     mockGetGuardedClient.mockReturnValue({
       from: vi.fn((table) => {
@@ -647,7 +711,7 @@ describe('POST /api/v1/signoffs/:id/approve', () => {
           //   2. prior-decisions check — .in('event_type', [approved, rejected])
           // A fresh chain per from() call tracks whether .in() was used, so
           // the resolver returns the right rows regardless of call order.
-          const requestsRow = [{ target_id: 'tr_x', actor_id: initiator, after_state: { signoff_id: 'sig_1', initiator_id: initiator, approver_id: approver, action_hash: actionHash, expires_at: expiresAt }, created_at: '2026-04-26T00:00:00Z' }];
+          const requestsRow = [{ target_id: 'tr_x', actor_id: initiator, after_state: { signoff_id: 'sig_1', initiator_id: initiator, approver_id: approver, action_hash: actionHash, expires_at: expiresAt, required_assurance: requiredAssurance }, created_at: '2026-04-26T00:00:00Z' }];
           let usedIn = false;
           const chain = {
             select: vi.fn().mockReturnThis(),
@@ -727,6 +791,14 @@ describe('POST /api/v1/signoffs/:id/approve', () => {
     setupSignoffEnv({ initiator: 'user_initiator', approver: 'user_approver', actionHash: 'a' });
     const res = await approveSignoff(req({ approved_action_hash: 'a' }), { params: Promise.resolve({ signoffId: 'sig_1' }) });
     expect(res.status).toBe(403);
+  });
+
+  it('returns 403 when bearer-key approval attempts a Class-A-required receipt', async () => {
+    authedAs('user_approver');
+    setupSignoffEnv({ initiator: 'user_initiator', approver: 'user_approver', actionHash: 'a', requiredAssurance: 'A' });
+    const res = await approveSignoff(req({ approved_action_hash: 'a' }), { params: Promise.resolve({ signoffId: 'sig_1' }) });
+    expect(res.status).toBe(403);
+    expect((await res.json()).type).toContain('insufficient_assurance');
   });
 
   it('returns 410 when signoff approval window expired', async () => {

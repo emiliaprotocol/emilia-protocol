@@ -70,7 +70,10 @@ const VALID_BODY = {
 describe('rules-engine v0 shadow signal — wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockAuthenticateRequest.mockResolvedValue({ entity: 'actor_alice', permissions: [] });
+    mockAuthenticateRequest.mockResolvedValue({
+      entity: { entity_id: 'actor_alice', organization_id: 'org_demo_treasury' },
+      permissions: [],
+    });
   });
 
   afterEach(() => {
@@ -144,7 +147,10 @@ describe('rules-engine v0 shadow signal — wiring', () => {
       process.env.EP_RULES_ENGINE_V0 = candidate;
       const { client, inserts } = makeAuditCapture();
       mockGetGuardedClient.mockReturnValue(client);
-      mockAuthenticateRequest.mockResolvedValue({ entity: 'actor_alice', permissions: [] });
+      mockAuthenticateRequest.mockResolvedValue({
+        entity: { entity_id: 'actor_alice', organization_id: 'org_demo_treasury' },
+        permissions: [],
+      });
 
       const res = await createReceipt(req(VALID_BODY));
       expect(res.status).toBe(201);

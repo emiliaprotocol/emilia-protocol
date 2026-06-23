@@ -106,6 +106,7 @@ export async function POST(request) {
           action_hash: created.after_state.action_hash,
           expires_at: expiresAt,
           comment,
+          required_assurance: created.after_state.required_assurance || null,
           // Quorum context — which seat this signoff fills.
           quorum: { role: s.role, approver_id: s.approver_id, mode: quorumPolicy.mode || 'threshold', required: quorumPolicy.required },
         },
@@ -147,6 +148,7 @@ export async function POST(request) {
         action_hash: created.after_state.action_hash,
         expires_at: expiresAt,
         comment,
+        required_assurance: created.after_state.required_assurance || null,
       },
     });
 

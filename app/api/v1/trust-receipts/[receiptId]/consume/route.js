@@ -133,11 +133,18 @@ export async function POST(request, { params }) {
         if (!approved) {
           return epProblem(403, 'signoff_required', 'Receipt requires signoff before consume');
         }
+        const keyClass = approved.after_state?.key_class || 'C';
+        if (base.required_assurance === 'A' && keyClass !== 'A') {
+          return epProblem(
+            403,
+            'insufficient_assurance',
+            'Receipt requires a Class-A WebAuthn/passkey signoff before consume',
+          );
+        }
         // #5 Authority: credentials prove control; the registry proves permission.
         // The approver must hold a valid authority (in-org, in-role, in-window,
-        // not revoked, sufficient assurance). Fail closed when a record EXISTS
-        // but is invalid; migration guard — allow + log when the approver is not
-        // yet registered (flip to fail-closed once approvers are backfilled).
+        // not revoked, sufficient assurance). Fail closed when no authority is
+        // registered too: a credential proves control, not permission.
         const approverId = approved.after_state?.approver_id || approved.actor_id || null;
         const authority = await resolveGuardAuthority(supabase, {
           organizationId: base.organization_id,
@@ -146,13 +153,8 @@ export async function POST(request, { params }) {
           requiredAssurance: base.required_assurance || undefined,
           at: new Date().toISOString(),
         });
-        if (!authority.authorized
-          && authority.reason !== 'no_active_authority'
-          && authority.reason !== 'missing_authority_subject') {
-          return epProblem(403, 'authority_invalid', `Approver authority check failed: ${authority.reason}`);
-        }
         if (!authority.authorized) {
-          logger.warn(`[guard] consume: approver ${approverId} has no registered authority (migration guard — allowing)`);
+          return epProblem(403, 'authority_invalid', `Approver authority check failed: ${authority.reason}`);
         }
         authorityFacts = {
           authority_id: authority.authority_id || null,

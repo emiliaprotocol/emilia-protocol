@@ -13,7 +13,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 const store = { aml_history: [], audit_events: [] };
 const inserted = []; // every inserted row, in order (back-compat assertions)
 vi.mock('@/lib/supabase', () => ({
-  authenticateRequest: async () => ({ entity: 'ep_entity_acme' }),
+  authenticateRequest: async () => ({ entity: { entity_id: 'ep_entity_acme', organization_id: 'ep_entity_acme' } }),
   authEntityId: (auth) => (typeof auth?.entity === 'string' ? auth.entity : auth?.entity?.entity_id || ''),
   getServiceClient: vi.fn(),
 }));
@@ -113,9 +113,10 @@ describe('guard adapter + AML', () => {
     expect(json.observed_decision).toBe(GUARD_DECISIONS.DENY);
   });
 
-  it('rejects a body missing organization_id (400)', async () => {
+  it('derives organization_id from the authenticated entity when the body omits it', async () => {
     const res = await precheck({ payment_instruction_id: 'pi_1', before_state: {}, after_state: {} });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(201);
+    expect(inserted.at(-1).after_state.organization_id).toBe('ep_entity_acme');
   });
 });
 

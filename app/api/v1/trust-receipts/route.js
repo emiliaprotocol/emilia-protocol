@@ -49,12 +49,9 @@ export async function POST(request) {
     // ── Tenant binding: derive org from the AUTHENTICATED entity, not the body.
     // An authenticated caller must not be able to scope a receipt to another
     // org by passing organization_id. (lib/tenant-binding.js + migration 101.)
-    const orgResolution = resolveAuthorizedOrg(auth, body.organization_id);
+    const orgResolution = resolveAuthorizedOrg(auth, body.organization_id, { requireBound: true });
     if (orgResolution.error) {
       return epProblem(orgResolution.error.status, orgResolution.error.code, orgResolution.error.detail);
-    }
-    if (orgResolution.unbound) {
-      logger.warn(`[v1/trust-receipts] entity ${authEntityId(auth)} is not org-bound; trusting body.organization_id (transitional — backfill entities.organization_id)`);
     }
     body.organization_id = orgResolution.organizationId;
 

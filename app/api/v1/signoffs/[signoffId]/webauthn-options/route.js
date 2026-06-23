@@ -75,17 +75,25 @@ export async function POST(request, { params }) {
     ));
     // WYSIWYS (EP draft §11.3): bind the human-visible rendering of the EXACT
     // action into the signed context, so the approver signs what they saw — not
-    // just the action hash. Best-effort: only when the canonical action is on
-    // the receipt; a render failure never blocks signing (the action_hash bind
-    // still holds).
+    // just the action hash. Class-A/high-risk signoffs require this binding.
     let displayHash = null;
     const canonicalAction = loaded.createdState?.canonical_action;
+    const displayBindingRequired = loaded.createdState?.required_assurance === 'A';
+    if (displayBindingRequired && !canonicalAction) {
+      return epProblem(409, 'display_binding_required', 'Class-A signoff requires canonical_action for WYSIWYS display_hash binding');
+    }
     if (canonicalAction) {
       try {
         displayHash = renderAction(canonicalAction).display_hash;
       } catch (e) {
-        logger.warn('[webauthn] signoff options: renderAction failed; display not bound:', e?.message);
+        logger.warn('[webauthn] signoff options: renderAction failed:', e?.message);
+        if (displayBindingRequired) {
+          return epProblem(500, 'display_render_failed', 'Class-A signoff requires a renderable WYSIWYS display_hash');
+        }
       }
+    }
+    if (displayBindingRequired && !displayHash) {
+      return epProblem(409, 'display_binding_required', 'Class-A signoff requires WYSIWYS display_hash binding');
     }
     const context = buildAuthorizationContext({
       actionHash: loaded.actionHash,
