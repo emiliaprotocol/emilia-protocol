@@ -21,6 +21,7 @@ import {
   CHALLENGE_TTL_MS,
 } from '@/lib/webauthn';
 import { loadSignoffForSigning, loadApproverCredentials } from '@/lib/webauthn-signoff';
+import { renderAction } from '@/lib/wysiwys/render.js';
 
 export async function POST(request, { params }) {
   try {
@@ -43,6 +44,15 @@ export async function POST(request, { params }) {
     if (new Date(loaded.requestExpiresAt) < new Date()) {
       return epProblem(410, 'signoff_expired', 'Signoff approval window has expired');
     }
+    const expectedApproverId = loaded.requestEvent.after_state.approver_id
+      || loaded.requestEvent.after_state.quorum?.approver_id
+      || null;
+    if (!expectedApproverId) {
+      return epProblem(409, 'approver_not_bound', 'Signoff request is missing an intended approver');
+    }
+    if (body.approver_id !== expectedApproverId) {
+      return epProblem(403, 'approver_mismatch', 'Approver does not match the signoff request');
+    }
 
     // SoD pre-check (the authoritative check re-runs at approval): the
     // approver identity must not be the initiator entity.
@@ -63,6 +73,20 @@ export async function POST(request, { params }) {
       new Date(loaded.requestExpiresAt).getTime(),
       issuedAt.getTime() + CHALLENGE_TTL_MS,
     ));
+    // WYSIWYS (EP draft §11.3): bind the human-visible rendering of the EXACT
+    // action into the signed context, so the approver signs what they saw — not
+    // just the action hash. Best-effort: only when the canonical action is on
+    // the receipt; a render failure never blocks signing (the action_hash bind
+    // still holds).
+    let displayHash = null;
+    const canonicalAction = loaded.createdState?.canonical_action;
+    if (canonicalAction) {
+      try {
+        displayHash = renderAction(canonicalAction).display_hash;
+      } catch (e) {
+        logger.warn('[webauthn] signoff options: renderAction failed; display not bound:', e?.message);
+      }
+    }
     const context = buildAuthorizationContext({
       actionHash: loaded.actionHash,
       policyId: loaded.createdState.policy_id,
@@ -72,6 +96,7 @@ export async function POST(request, { params }) {
       signoffId,
       issuedAt: issuedAt.toISOString(),
       expiresAt: ctxExpiry.toISOString(),
+      displayHash,
     });
     const challenge = contextHashBytes(context).toString('base64url');
 

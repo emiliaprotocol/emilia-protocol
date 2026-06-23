@@ -202,3 +202,28 @@ describe('lib/webauthn-signoff — loadApproverCredentials', () => {
     expect(ids).not.toContain('c_expired');
   });
 });
+
+describe('lib/webauthn — WYSIWYS display_hash binding', () => {
+  const baseArgs = {
+    actionHash: 'sha256:abc',
+    policyId: 'p1',
+    policyHash: 'sha256:pol',
+    initiatorId: 'init',
+    approverId: 'appr',
+    signoffId: 'sig_000000000000000000000000000000aa',
+    issuedAt: '2026-01-01T00:00:00.000Z',
+    expiresAt: '2026-01-01T00:05:00.000Z',
+  };
+
+  it('omits display_hash when none is provided (back-compat: byte-identical context)', () => {
+    expect(buildAuthorizationContext(baseArgs).display_hash).toBeUndefined();
+  });
+
+  it('binds display_hash into the signed context and changes the challenge', () => {
+    const withoutHash = contextHashHex(buildAuthorizationContext(baseArgs));
+    const withDisplay = buildAuthorizationContext({ ...baseArgs, displayHash: 'sha256:display' });
+    expect(withDisplay.display_hash).toBe('sha256:display');
+    // The challenge IS the context hash — binding the display changes what the human signs.
+    expect(contextHashHex(withDisplay)).not.toBe(withoutHash);
+  });
+});
