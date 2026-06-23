@@ -39,7 +39,7 @@ const PROBLEMS = [
 ];
 
 const SURFACES = [
-  { title: 'AI Agent Action Governance',        body: 'Gate every autonomous agent action behind a verified trust ceremony before any irreversible real-world execution. One line of code; works with any framework.', href: '/agent-guard',         accent: color.t2,   tags: ['AGENTIC AI', 'HUMAN-IN-LOOP']    },
+  { title: 'MCP & Agent Tool-Calls',            body: 'Wrap a dangerous MCP tool — release_payment, delete_repo, deploy_production — so it refuses to run without a receipt. One wrapper, fail-closed, works with any framework. This is the developer wedge.', href: '/mcp',                accent: color.t2,   tags: ['MCP', 'TOOL-CALL ENFORCEMENT']   },
   { title: 'Financial — Money Movement',         body: 'Ceremony-grade authorization on wire releases, beneficiary changes, account modifications, and privileged treasury actions before funds move.', href: '/finguard',           accent: color.blue,  tags: ['BEC PREVENTION', 'SOX-READY']    },
   { title: 'Government — Benefit Integrity',     body: 'Bind identity, authority, and action context before a benefit determination, redirect, or override. Accountable decisions, due process proven.', href: '/govguard',           accent: color.green, tags: ['NIST AI RMF', 'EU AI ACT']       },
   { title: 'Enterprise Privileged Actions',      body: 'Require bound authorization for infrastructure changes, data exports, permission escalations, and production deployments.', href: '/use-cases/enterprise', accent: color.gold,  tags: ['ZERO TRUST', 'PAM LAYER']        },
@@ -375,6 +375,56 @@ export default function HomePage() {
         </C>
       </section>
 
+      {/* ── DEVELOPER WEDGE — MCP tool-call enforcement (the crank) ─ */}
+      <section style={{ padding: '104px 0', background: '#1C1917', color: '#FAFAF9' }}>
+        <C>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'center' }}>
+            <motion.div {...reveal()}>
+              <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>
+                The developer wedge
+              </div>
+              <h2 style={{
+                fontFamily: font.sans, fontWeight: 700,
+                fontSize: 'clamp(26px, 3vw, 40px)',
+                letterSpacing: -1, lineHeight: 1.12, color: '#FAFAF9', margin: 0,
+              }}>
+                Wrap dangerous tools.<br />Require receipts.<br />Verify forever.
+              </h2>
+              <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.72)', lineHeight: 1.72, marginTop: 22, maxWidth: 460 }}>
+                MCP is already the tool-action layer for agents. EMILIA is one wrapper around the
+                irreversible ones — <em style={{ fontStyle: 'normal', color: '#FAFAF9' }}>release_payment</em>, <em style={{ fontStyle: 'normal', color: '#FAFAF9' }}>delete_repo</em>, <em style={{ fontStyle: 'normal', color: '#FAFAF9' }}>deploy_production</em> — so the
+                tool refuses to run without a receipt. Verticals like FinGuard and GovGuard are where
+                this is already proving out; the tool-call wrapper is how you adopt it.
+              </p>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 28 }}>
+                <Link href="/mcp" className="ep-cta" style={{ ...cta.primary }}>MCP guard →</Link>
+                <Link href="/quickstart" className="ep-cta-secondary" style={{ ...cta.secondary, color: '#FAFAF9', borderColor: 'rgba(250,250,249,0.3)' }}>Quickstart</Link>
+              </div>
+            </motion.div>
+
+            <motion.div {...reveal(0.1)} style={{
+              fontFamily: font.mono, fontSize: 13, lineHeight: 1.7,
+              background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: radius.base, padding: '24px 26px', color: 'rgba(250,250,249,0.92)', overflowX: 'auto',
+            }}>
+              <div style={{ color: 'rgba(250,250,249,0.45)' }}>{'// one wrapper around your tool dispatcher'}</div>
+              <div><span style={{ color: color.gold }}>import</span> {'{ withMcpGuard }'} <span style={{ color: color.gold }}>from</span> <span style={{ color: '#9BE7A0' }}>'@emilia-protocol/mcp-guard'</span></div>
+              <div style={{ height: 12 }} />
+              <div><span style={{ color: color.gold }}>const</span> guarded = <span style={{ color: '#9BE7A0' }}>withMcpGuard</span>(handleTool, {'{'}</div>
+              <div>&nbsp;&nbsp;annotations: {'{'}</div>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;release_payment:&nbsp;&nbsp;{'{'} irreversible: <span style={{ color: '#9BE7A0' }}>true</span>, action: <span style={{ color: '#9BE7A0' }}>'payment.release'</span> {'}'},</div>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;delete_repo:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{'{'} irreversible: <span style={{ color: '#9BE7A0' }}>true</span>, action: <span style={{ color: '#9BE7A0' }}>'github.repo.delete'</span> {'}'},</div>
+              <div>&nbsp;&nbsp;&nbsp;&nbsp;deploy_production: {'{'} irreversible: <span style={{ color: '#9BE7A0' }}>true</span>, action: <span style={{ color: '#9BE7A0' }}>'deploy.production'</span> {'}'},</div>
+              <div>&nbsp;&nbsp;{'}'},</div>
+              <div>{'}'}) <span style={{ color: 'rgba(250,250,249,0.45)' }}>{'// missing receipt → refused, never a silent pass'}</span></div>
+              <div style={{ height: 16 }} />
+              <div style={{ color: 'rgba(250,250,249,0.45)' }}>{'// see it in 60s, fully offline:'}</div>
+              <div>$ node examples/mcp/payment-server.mjs</div>
+            </motion.div>
+          </div>
+        </C>
+      </section>
+
       {/* ── THE PROBLEM ──────────────────────────────────────── */}
       <section style={{ padding: '104px 0', borderBottom: `1px solid ${color.border}` }}>
         <C>
@@ -464,7 +514,7 @@ export default function HomePage() {
                 When an agent acts on money or someone&rsquo;s livelihood, identity isn&rsquo;t enough
               </h2>
               <p style={{ fontSize: 15, color: color.t2, lineHeight: 1.7, maxWidth: 480, marginTop: 16 }}>
-                Identity and access tools check <em style={{ fontStyle: 'normal', color: color.t1 }}>who</em> is acting. EMILIA checks whether <em style={{ fontStyle: 'normal', color: color.t1 }}>this exact action</em> should happen &mdash; and binds a named, accountable human to it.{' '}
+                The same tool-call wrapper, proven where the stakes are highest. Identity and access tools check <em style={{ fontStyle: 'normal', color: color.t1 }}>who</em> is acting. EMILIA checks whether <em style={{ fontStyle: 'normal', color: color.t1 }}>this exact action</em> should happen &mdash; and binds a named, accountable human to it.{' '}
                 <Link href="/why-emilia" style={{ color: color.gold, textDecoration: 'underline', textUnderlineOffset: 3 }}>vs. legacy controls &rarr;</Link>
               </p>
             </div>
