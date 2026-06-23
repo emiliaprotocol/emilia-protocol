@@ -19,6 +19,8 @@ import { logger } from '@/lib/logger.js';
 import { quorumGate } from '@/lib/signoff/quorum-session.js';
 import { decisionsToMembers } from '@/lib/signoff/attestation-members.js';
 import { getRpConfig } from '@/lib/webauthn.js';
+import { boundSignoffDecisionEvents, findBoundSignoffDecision } from '@/lib/guard-signoff-binding.js';
+import { resolveGuardAuthority } from '@/lib/guard-authority.js';
 
 export async function POST(request, { params }) {
   try {
@@ -77,10 +79,12 @@ export async function POST(request, { params }) {
       );
     }
 
+    let authorityFacts = null;
+
     // A quorum policy always implies a signoff is required, even if the policy
     // decision didn't set signoff_required.
     if (base.signoff_required || base.quorum_policy) {
-      const rejected = events.some((e) => e.event_type === 'guard.signoff.rejected');
+      const rejected = findBoundSignoffDecision(events, created, 'guard.signoff.rejected');
       if (rejected) {
         return epProblem(403, 'signoff_rejected', 'Receipt signoff was rejected');
       }
@@ -91,8 +95,7 @@ export async function POST(request, { params }) {
         // cross-language conformance suite covers (distinct humans, roles,
         // order, window, action-binding, signatures). The approve route already
         // recorded each assertion; we reconstitute members and gate on them.
-        const approvedDecisions = events
-          .filter((e) => e.event_type === 'guard.signoff.approved')
+        const approvedDecisions = boundSignoffDecisionEvents(events, created, 'guard.signoff.approved')
           .map((e) => e.after_state)
           .filter(Boolean);
         const credentialIds = approvedDecisions
@@ -126,10 +129,36 @@ export async function POST(request, { params }) {
           );
         }
       } else {
-        const approved = events.some((e) => e.event_type === 'guard.signoff.approved');
+        const approved = findBoundSignoffDecision(events, created, 'guard.signoff.approved');
         if (!approved) {
           return epProblem(403, 'signoff_required', 'Receipt requires signoff before consume');
         }
+        // #5 Authority: credentials prove control; the registry proves permission.
+        // The approver must hold a valid authority (in-org, in-role, in-window,
+        // not revoked, sufficient assurance). Fail closed when a record EXISTS
+        // but is invalid; migration guard — allow + log when the approver is not
+        // yet registered (flip to fail-closed once approvers are backfilled).
+        const approverId = approved.after_state?.approver_id || approved.actor_id || null;
+        const authority = await resolveGuardAuthority(supabase, {
+          organizationId: base.organization_id,
+          approverId,
+          role: approved.after_state?.role,
+          requiredAssurance: base.required_assurance || undefined,
+          at: new Date().toISOString(),
+        });
+        if (!authority.authorized
+          && authority.reason !== 'no_active_authority'
+          && authority.reason !== 'missing_authority_subject') {
+          return epProblem(403, 'authority_invalid', `Approver authority check failed: ${authority.reason}`);
+        }
+        if (!authority.authorized) {
+          logger.warn(`[guard] consume: approver ${approverId} has no registered authority (migration guard — allowing)`);
+        }
+        authorityFacts = {
+          authority_id: authority.authority_id || null,
+          assurance_class: authority.assurance_class || null,
+          authority_check: authority.reason,
+        };
       }
     }
 
@@ -149,6 +178,7 @@ export async function POST(request, { params }) {
         consumed_by_system: body.executing_system,
         execution_reference_id: body.execution_reference_id || null,
         action_hash: body.action_hash,
+        authority: authorityFacts,
       },
     });
 
