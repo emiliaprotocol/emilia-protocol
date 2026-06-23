@@ -82,7 +82,7 @@ The Financial Reference Pack includes pre-built policy configurations for the hi
 `ai_agent_payment_action` is a recognized action_type that requires accountable signoff regardless of amount. Autonomous agents that initiate transfers cannot consume without a named human signoff bound to the exact action.
 
 ## Proof points
-- 3,600+ automated tests across 140+ test files (`npx vitest run`)
+- 4,195 automated tests across 170 test files (`npx vitest run`)
 - 26 TLA+ safety properties verified (T1–T26, TLC 2.19, 413,137 states, 0 errors) — including the EP-IX identity continuity invariants
 - 85 red team cases cataloged in `docs/conformance/RED_TEAM_CASES.md`
 - 35 Alloy facts + 22 assertions verified across two models (Alloy 6.0.0, 0 counterexamples) — including the 7 cross-operator federation safety assertions in `formal/ep_federation.als`

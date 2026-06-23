@@ -26,7 +26,7 @@ import { styles, cta, color, font, radius } from '@/lib/tokens';
 const STATS = [
   { value: '4,195',     label: 'Automated Tests',  sub: 'passing — per proof-stats.json', accent: color.t1    },
   { value: '26',        label: 'TLA+ Theorems',    sub: 'TLC 2.19, zero errors',         accent: color.blue  },
-  { value: '35',        label: 'Alloy Facts',       sub: '15 assertions verified',        accent: color.gold  },
+  { value: '35',        label: 'Alloy Facts',       sub: '22 assertions verified',        accent: color.gold  },
   { value: '3',         label: 'Independent Verifiers', sub: 'JS · Python · Go, proven to agree', accent: color.t1 },
   { value: 'Apache 2.0', label: 'License',          sub: 'Open specification',            accent: color.green },
 ];

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-23T14:05:49.823Z",
+  "generatedAt": "2026-06-23T18:16:17.258Z",
   "tests": {
     "passed": 4195,
     "skipped": 29,
@@ -12,7 +12,7 @@
   },
   "alloy": {
     "facts": 35,
-    "assertions": 15,
+    "assertions": 22,
     "version": "6.0.0 (CI)"
   },
   "redTeamCases": 85

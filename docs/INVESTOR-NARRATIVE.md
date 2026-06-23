@@ -40,7 +40,7 @@ EP is no longer a broad trust idea. It is now a reference protocol implementatio
 **Internal adversarial code audit: 100/100** (2026-04-02) — all 10 categories scored at maximum: formal verification, test quality, documentation, security, CI/CD, developer experience, MCP server, performance, licensing, and production readiness.
 
 Reconciliation proof:
-- 3,672 automated tests across 142 files
+- 4,195 automated tests across 170 files
 - 26 TLA+ safety properties verified (TLC 2.19, 413,137 states, 0 errors); 35 Alloy facts + 22 assertions verified (Alloy 6.0.0, 0 counterexamples) — both run in CI on every change
 - 85 red team cases documented; 31 security findings identified and remediated
 - Stryker.js mutation testing — ≥80% kill threshold on protocol core

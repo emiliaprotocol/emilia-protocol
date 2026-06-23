@@ -24,7 +24,7 @@ The audit uses a 10-category rubric where each category is scored 0–10. A scor
 | 5 | **Issuer authority TOCTOU** | 10 | 10/10 | `present_handshake_writes` re-checks authority under `SELECT ... FOR UPDATE` (migration 073); overrides `verified=false` and sets `issuer_status = 'authority_revoked_at_write'` if race detected |
 | 6 | **Tenant isolation** | 10 | 10/10 | All 8 cloud routes scope queries by `auth.tenantId`; `tenant_id` column added to all cloud-facing tables (migration 072); tested in cloud route test suite |
 | 7 | **EP-IX state machine safety** | 10 | 10/10 | Rate limit (max 5 open challenges), self-contest guard (principal + ownership graph check via entities table), freeze/unfreeze/withdraw lifecycle, expiry excludes frozen; 6 TLA+ safety invariants (T21–T26); 20+ EP-IX test cases |
-| 8 | **Write-bypass prevention** | 10 | 10/10 | `getGuardedClient()` Proxy in `lib/write-guard.js` throws `WRITE_DISCIPLINE_VIOLATION` on direct trust-table mutation; verified by TLA+ `WriteBypassSafety` property; 0 violations in 3,483 tests |
+| 8 | **Write-bypass prevention** | 10 | 10/10 | `getGuardedClient()` Proxy in `lib/write-guard.js` throws `WRITE_DISCIPLINE_VIOLATION` on direct trust-table mutation; verified by TLA+ `WriteBypassSafety` property; 0 violations in 4,195 tests |
 | 9 | **Adjudication determinism** | 10 | 10/10 | `CONFIDENCE_WEIGHT_INT` integer weights used for sort and vote computation; no float comparison; tested in `dispute-adjudication.test.js` |
 | 10 | **Scoring invariants and dampening** | 10 | 10/10 | Named constants (`DAMPENING_THRESHOLD`, `ESTABLISHMENT_EVIDENCE_GATE`, `ESTABLISHMENT_MIN_SUBMITTERS`, `MAX_UNESTABLISHED_AGGREGATE_CONTRIBUTION`, `MAX_SINGLE_SUBMITTER_CONTRIBUTION`); invariant relationship tests verify no single submitter can escape dampening alone |
 
@@ -126,7 +126,7 @@ All findings and their remediations are documented in `docs/security/PENTEST_REM
 ```bash
 # 1. Run the full test suite
 npm test
-# Expected: 3,483 passing, 0 failing
+# Expected: 4,195 passing, 0 failing
 
 # 2. Run TLC formal verification
 cd formal

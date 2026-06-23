@@ -25,6 +25,31 @@ The crisis of our generation isn't authentication. It's **authorization at the m
 
 ---
 
+## No receipt, no irreversible action
+
+> If an agent tries to move money, delete code, deploy production, change permissions, or mutate
+> regulated state **without a valid EMILIA receipt, the tool refuses to run** — and if it runs,
+> **anyone can verify who authorized exactly what**, offline, trusting no one.
+
+That is the whole protocol. The developer wedge is one wrapper around an irreversible MCP tool.
+See it cold, fully offline, no key, no account — each demo runs the entire loop (refused →
+named human signs the exact action → tool runs → forged receipt rejected):
+
+```bash
+node examples/mcp/payment-server.mjs    # release_payment  — refuses without a receipt
+node examples/mcp/github-admin.mjs      # delete_repo      — refuses without a receipt
+node examples/mcp/prod-deploy.mjs       # deploy_production — refuses without a receipt
+```
+
+Wrap your own tool dispatcher in production — see [examples/mcp/](examples/mcp/) and [`/mcp`](https://www.emiliaprotocol.ai/mcp):
+
+```js
+import { withMcpGuard } from '@emilia-protocol/mcp-guard';
+const guarded = withMcpGuard(handleTool, {
+  annotations: { release_payment: { irreversible: true, action: 'payment.release' } },
+}); // missing receipt → refused, never a silent pass
+```
+
 ## Try it in 30 seconds
 
 ```bash
@@ -133,7 +158,7 @@ Eye observes. Handshake verifies. Signoff owns. Commit seals.
 
 | Metric | Value |
 |---|---|
-| Automated tests | 3,672+ across 142 files |
+| Automated tests | 4,195 across 170 files |
 | TLA+ safety properties | 26 verified (T1–T26), 0 errors — see [PROOF_STATUS.md](formal/PROOF_STATUS.md) |
 | Alloy relational assertions | 35 facts + 22 assertions across two models — verified in CI |
 | Red-team cases cataloged | 85 — [RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |

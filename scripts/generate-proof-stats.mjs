@@ -8,6 +8,7 @@ const raw = execSync('npx vitest run --silent --reporter=json', { maxBuffer: 1e9
 const j = JSON.parse(raw.slice(raw.indexOf('{')));
 const cfg = readFileSync('formal/ep_handshake.cfg', 'utf8');
 const als = readFileSync('formal/ep_relations.als', 'utf8');
+const fedAls = readFileSync('formal/ep_federation.als', 'utf8');
 const redTeam = readFileSync('docs/conformance/RED_TEAM_CASES.md', 'utf8');
 
 const stats = {
@@ -23,8 +24,10 @@ const stats = {
     checker: 'TLC 2.19',
   },
   alloy: {
+    // facts: the core relational model (ep_relations); assertions: total across
+    // both models (ep_relations + ep_federation) — the convention used in docs.
     facts: (als.match(/^fact/gm) || []).length,
-    assertions: (als.match(/^assert/gm) || []).length,
+    assertions: (als.match(/^assert/gm) || []).length + (fedAls.match(/^assert/gm) || []).length,
     version: '6.0.0 (CI)',
   },
   redTeamCases: (redTeam.match(/^### /gm) || []).length || 85,

@@ -50,7 +50,7 @@ const ARTICLES = [
     num: 'Art. 11',
     title: 'Technical documentation',
     burden: 'Documentation kept current and available to authorities on request.',
-    ep: 'TLA+ spec, Alloy facts, and 3,200+ automated tests are public. Apache 2.0 — auditors read source, not vendor PDFs.',
+    ep: 'TLA+ spec, Alloy facts, and 4,195 automated tests are public. Apache 2.0 — auditors read source, not vendor PDFs.',
   },
   {
     num: 'Art. 12',

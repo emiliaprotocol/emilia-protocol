@@ -153,6 +153,26 @@ export default async function McpPage() {
         </C>
       </section>
 
+      {/* NO RECEIPT, NO IRREVERSIBLE ACTION — cold-run examples */}
+      <section style={{ padding: '64px 0', background: '#1C1917', color: '#FAFAF9' }}>
+        <C>
+          <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(22px, 2.6vw, 32px)', letterSpacing: -0.8, lineHeight: 1.2, color: '#FAFAF9', margin: 0, maxWidth: 760 }}>
+            No receipt, no irreversible action.
+          </h2>
+          <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.72)', lineHeight: 1.7, margin: '16px 0 28px', maxWidth: 640 }}>
+            Three tiny MCP servers, each with one dangerous tool that refuses to run without a receipt.
+            Run any of them cold &mdash; fully offline, no key, no account. Each shows the whole loop:
+            refused &rarr; a named human signs the exact action &rarr; the tool runs &rarr; a forged receipt is rejected.
+          </p>
+          <pre style={{ fontFamily: font.mono, fontSize: 12.5, lineHeight: 1.9, color: '#D6D3D1', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: radius.base, padding: '20px 22px', margin: 0, overflowX: 'auto', whiteSpace: 'pre' }}>{`node examples/mcp/payment-server.mjs    # release_payment   — refuses without a receipt
+node examples/mcp/github-admin.mjs      # delete_repo       — refuses without a receipt
+node examples/mcp/prod-deploy.mjs       # deploy_production — refuses without a receipt`}</pre>
+          <p style={{ fontSize: 13, color: 'rgba(250,250,249,0.5)', margin: '16px 0 0' }}>
+            Wrap your own dispatcher with <code style={{ fontFamily: font.mono }}>withMcpGuard</code> &mdash; missing receipt → refused, never a silent pass.
+          </p>
+        </C>
+      </section>
+
       {/* INSTALL */}
       <section style={{ padding: '72px 0', background: 'rgba(245,244,240,0.45)', borderTop: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` }}>
         <C>

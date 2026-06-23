@@ -72,7 +72,7 @@ policy binding, and append-only Merkle-anchored logs into a self-verifying
 trust receipt that any third party validates with only the operator's
 public key — no trust in the operator's runtime, patterned on Bitcoin's
 verification model. Safety is formally guaranteed: 26 TLA+ properties
-machine-checked across 413,137 states and 15 Alloy assertions with zero
+machine-checked across 413,137 states and 22 Alloy assertions with zero
 counterexamples, re-run in CI. The protocol is specified in an IETF
 Internet-Draft (now at -01) with three independent language verifiers and
 live npm packages. For assured autonomy, EP converts open-ended agent risk
@@ -109,7 +109,7 @@ verification does not trust the issuer.
 
 **Formal verification status (current).** 26 TLA+ safety properties
 verified by TLC across 413,137 distinct states (T1–T26 in
-`formal/PROOF_STATUS.md`). 35 Alloy relational facts and 15 assertions
+`formal/PROOF_STATUS.md`). 35 Alloy relational facts and 22 assertions
 verified by Alloy 6.0.0 with 0 counterexamples. All re-run on every commit
 in CI.
 
@@ -183,7 +183,7 @@ BAA supports up to $5M). Justification per BAA-specific cost format.
 
 **PI**: Iman Schrock, Founder, EMILIA Protocol.
 - Authored the protocol stack including the formal model.
-- 26 TLA+ theorems verified, 35 Alloy facts, 3,700+ tests.
+- 26 TLA+ theorems verified, 35 Alloy facts, 4,195 tests.
 - IETF Internet-Draft author (`draft-schrock-ep-authorization-receipts-01`),
   submitted to IETF secdispatch.
 - Apache 2.0 published code at github.com/emiliaprotocol/emilia-protocol.
@@ -205,7 +205,7 @@ All technical claims are independently verifiable today:
 - Verify library: `@emilia-protocol/verify` on npm (live)
 - Compliance mappings: `docs/compliance/NIST-AI-RMF-MAPPING.md`
 
-DARPA reviewers can clone the repo, run `npm test` (3,700+ tests pass), run
+DARPA reviewers can clone the repo, run `npm test` (4,195 tests pass), run
 TLC against `formal/ep_handshake.tla` (T1–T26 verify), run Alloy against
 `formal/ep_relations.als` (15/15 assertions hold), and `npm i
 @emilia-protocol/verify` to verify a receipt offline — independently
