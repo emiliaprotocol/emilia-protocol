@@ -6,7 +6,7 @@
 **Status:** Draft / Experimental specification proposal
 **Type:** Extension (additive over EP Core v1.0)
 **Requires:** PIP-001 (EP Core v1.0 Freeze), EP-RECEIPT-v1
-(`standards/draft-schrock-ep-authorization-receipts-01.md` §3, §6.3)
+(`standards/draft-schrock-ep-authorization-receipts-03.md` §3, §6.3)
 **Wire tag:** `EP-REVOCATION-v1`
 **Reference implementation:** `lib/revocation/statement.js`
 **Conformance vectors:** `conformance/vectors/revocation.v1.json`

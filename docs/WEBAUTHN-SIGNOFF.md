@@ -1,7 +1,7 @@
 # Build ticket: Class A signoff — WebAuthn approver-held keys
 
 **Why this build.** Today EP signs receipts server-side — Class C in the
-draft's own taxonomy (`standards/draft-schrock-ep-authorization-receipts-00.md`
+draft's own taxonomy (`standards/draft-schrock-ep-authorization-receipts-03.md`
 §5.1), the tier the spec says new deployments shouldn't use. This ticket makes
 G2 true in production: the named human signs the action hash on their own
 device (Face ID / YubiKey), the server orchestrates but **cannot forge a

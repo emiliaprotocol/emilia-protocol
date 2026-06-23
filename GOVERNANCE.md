@@ -2,9 +2,11 @@
 
 ## Status
 
-EMILIA Protocol is currently maintained by its founding team with the intent to transition to neutral, community-governed stewardship under the Agentic AI Foundation (AAIF) or an equivalent vendor-neutral home.
+EMILIA Protocol is independently stewarded by its founding team (EMILIA Protocol, Inc.) and is open under the Apache-2.0 license. The wire format is standardized in the open through the IETF as individual-submission Internet-Drafts (`draft-schrock-ep-*`) — a path that requires no assignment of the project's trademarks, repositories, or packages.
 
-This document describes the governance model we are building toward.
+The project may adopt a vendor-neutral governance home in the future, but only under terms — reviewed by counsel — that preserve the project's brand, repositories, packages, and commercial products. No such transfer is planned or committed today.
+
+This document describes the open governance model we are building toward.
 
 ## Principles
 
@@ -66,13 +68,13 @@ EP contributors follow the [Contributor Covenant](https://www.contributor-covena
 |-------|--------|
 | Single-maintainer development | Current |
 | Conformance suite published | Current |
-| AAIF working group proposal submitted | Pending |
-| First external implementation | Pending |
-| Working group established | Target Q2 2026 |
-| Governance transfer to neutral home | Target Q3 2026 |
+| IETF Internet-Drafts filed (receipts, quorum, evidence-chain) | Current |
+| First external implementation | Independent verification reported (June 2026) |
+| Open working group established | Future |
+| Vendor-neutral governance home | Future — only on counsel-approved terms |
 
 ## Contact
 
 - **GitHub:** https://github.com/emiliaprotocol/emilia-protocol
 - **Email:** team@emiliaprotocol.ai
-- **AAIF Proposal:** See `docs/AAIF-PROPOSAL-v2.md`
+- **Standards:** IETF datatracker — `draft-schrock-ep-authorization-receipts`, `draft-schrock-ep-quorum`, `draft-schrock-ep-authorization-evidence-chain`

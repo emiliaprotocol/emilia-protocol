@@ -6,7 +6,7 @@
 **Status:** Draft / Experimental specification proposal
 **Type:** Extension (additive composite over EP Core v1.0)
 **Requires:** PIP-001 (EP Core v1.0 Freeze), EP-RECEIPT-v1
-(`standards/draft-schrock-ep-authorization-receipts-01.md` §6.2–6.3)
+(`standards/draft-schrock-ep-authorization-receipts-03.md` §6.2–6.3)
 **Wire tag:** `EP-PROVENANCE-CHAIN-v1`
 
 > This is a **specification proposal** plus a **reference implementation**

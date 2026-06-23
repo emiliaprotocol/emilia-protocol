@@ -2,7 +2,7 @@
 
 # EP Commit ⇄ SCITT — Binding / Applicability Sketch
 
-**Status:** Experimental, non-normative. This is an **applicability/binding sketch**, not an Internet-Draft and not a chartered deliverable. It expresses the EMILIA Commit (seal / anchor) layer in terms of the primitives defined by the IETF **SCITT** Working Group. It claims no SCITT conformance that the code does not already demonstrate, and it claims no IETF adoption. Companion to `EP-ENFORCEMENT-POINT-SPEC.md` (see §4, "Composition with SCITT") and the EP authorization-receipt draft (`standards/draft-schrock-ep-authorization-receipts-01.md`).
+**Status:** Experimental, non-normative. This is an **applicability/binding sketch**, not an Internet-Draft and not a chartered deliverable. It expresses the EMILIA Commit (seal / anchor) layer in terms of the primitives defined by the IETF **SCITT** Working Group. It claims no SCITT conformance that the code does not already demonstrate, and it claims no IETF adoption. Companion to `EP-ENFORCEMENT-POINT-SPEC.md` (see §4, "Composition with SCITT") and the EP authorization-receipt draft (`standards/draft-schrock-ep-authorization-receipts-03.md`).
 
 This document **composes over** SCITT; it does not define a new transparency standard. EMILIA does not own a transparency log format, a Verifiable Data Structure, or a notarization standard. SCITT — **Supply Chain Integrity, Transparency, and Trust**, an active IETF Working Group in the Security Area — already defines those primitives, reusing COSE (RFC 9052) and CWT Claims (RFC 9597) rather than inventing new envelopes. The contribution here is narrow and honest: it shows how an EP Commit seal and its anchor proof **map onto** SCITT's Signed Statement, Transparency Service, and Receipt, what part of that mapping is already true in the EMILIA codebase today, and what a SCITT integration would *add*.
 
@@ -119,5 +119,5 @@ The throughline, one more time: **EMILIA composes over SCITT.** The transparency
 - [RFC9162] Laurie, B., et al., "Certificate Transparency Version 2.0".
 - [RFC8785] Rundgren, A., et al., "JSON Canonicalization Scheme (JCS)".
 - [EP-EP-SPEC] `docs/EP-ENFORCEMENT-POINT-SPEC.md` — EP Enforcement-Point Profile (see §4 binding rule, §4 SCITT composition).
-- [EP-RECEIPT-DRAFT] Schrock, I., "Authorization Receipts for High-Risk Agent Actions" (`standards/draft-schrock-ep-authorization-receipts-01.md`, work in progress).
+- [EP-RECEIPT-DRAFT] Schrock, I., "Authorization Receipts for High-Risk Agent Actions" (`standards/draft-schrock-ep-authorization-receipts-03.md`, work in progress).
 - [RECEIPT-CLAIMS] `docs/RECEIPT-CLAIMS.md` — "What an Authorization Receipt Proves — and What It Doesn't".

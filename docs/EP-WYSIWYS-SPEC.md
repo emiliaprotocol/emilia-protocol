@@ -6,7 +6,7 @@
 **Status:** Draft / Experimental specification proposal
 **Type:** Extension (additive over EP Core v1.0)
 **Requires:** PIP-001 (EP Core v1.0 Freeze), EP-RECEIPT-v1
-(`standards/draft-schrock-ep-authorization-receipts-01.md` §3, §6.2–6.3, §11.3)
+(`standards/draft-schrock-ep-authorization-receipts-03.md` §3, §6.2–6.3, §11.3)
 **Wire tag:** `EP-DISPLAY-ATTESTATION-v1`
 **Render profile:** `EP-WYSIWYS-RENDER-v1`
 **Reference implementation:** `lib/wysiwys/render.js`

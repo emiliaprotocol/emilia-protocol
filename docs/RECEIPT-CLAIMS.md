@@ -49,4 +49,4 @@ If a claim is not in the first list, do not make it.
 
 ---
 
-*References: `standards/draft-schrock-ep-authorization-receipts-00.md` (the I-D), `packages/verify/` (the offline verifier), `docs/POST-QUANTUM-MIGRATION.md` (PQ analysis).*
+*References: `standards/draft-schrock-ep-authorization-receipts-03.md` (the I-D), `packages/verify/` (the offline verifier), `docs/POST-QUANTUM-MIGRATION.md` (PQ analysis).*

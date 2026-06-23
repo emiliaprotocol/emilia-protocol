@@ -2,7 +2,7 @@
 
 # EP Enforcement-Point Profile — Implementer Specification
 
-**Status:** Experimental. Companion to the Guard / PEP Internet-Draft (individual submission, work in progress). This document is implementer-facing and tracks the EP authorization-receipt draft (`standards/draft-schrock-ep-authorization-receipts-01.md`). Where this spec and that draft diverge, the draft is normative.
+**Status:** Experimental. Companion to the Guard / PEP Internet-Draft (individual submission, work in progress). This document is implementer-facing and tracks the EP authorization-receipt draft (`standards/draft-schrock-ep-authorization-receipts-03.md`). Where this spec and that draft diverge, the draft is normative.
 
 This document specifies the **EP Enforcement Point (EP-EP)**: the component that sits in front of a high-risk action, asks for a decision, and refuses to let the action proceed unless the decision permits it. An EP-EP is a **Policy Enforcement Point (PEP)** in the AuthZEN sense — it *consumes* a decision; it does not author policy. The decision is produced by a Policy Decision Point (PDP): in this codebase, the pure function `evaluateGuardPolicy()` in `lib/guard-policies.js`, reached in-process or over HTTP. The authorization receipt (wire-format tag `EP-RECEIPT-v1`) is the verifiable artifact that binds a decision to one exact action.
 
@@ -304,7 +304,7 @@ Advisory invariant:
 - `docs/architecture/EMILIA_EYE.md` — "Eye warns. EP verifies. Signoff owns."
 
 Companion draft:
-- `standards/draft-schrock-ep-authorization-receipts-01.md` / `.xml` — normative where this spec and the draft diverge.
+- `standards/draft-schrock-ep-authorization-receipts-03.md` / `.xml` — normative where this spec and the draft diverge.
 
 ---
 
