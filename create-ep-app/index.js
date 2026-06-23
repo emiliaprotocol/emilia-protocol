@@ -547,9 +547,9 @@ node verify-receipt.js <public-key> < receipt.json
 ## Learn More
 
 - [Protocol Specification](https://emiliaprotocol.ai/spec)
-- [AAIF Proposal](https://github.com/emilia-protocol/docs/AAIF-PROPOSAL-v3.md)
-- [Federation Spec](https://github.com/emilia-protocol/docs/FEDERATION-SPEC.md)
-- [NIST AI RMF Mapping](https://github.com/emilia-protocol/docs/compliance/NIST-AI-RMF-MAPPING.md)
+- [IETF Internet-Drafts](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/)
+- [Federation Spec](https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/FEDERATION-SPEC.md)
+- [NIST AI RMF Mapping](https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/compliance/NIST-AI-RMF-MAPPING.md)
 
 ## License
 
