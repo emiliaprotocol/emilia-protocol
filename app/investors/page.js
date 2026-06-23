@@ -109,7 +109,7 @@ export default function InvestorsPage() {
             borderLeft: `1px solid ${color.border}`,
           }}>
             {[
-              { value: '3,500', label: 'Automated tests across 134 files', accent: color.gold },
+              { value: '4,195', label: 'Automated tests across 170 files', accent: color.gold },
               { value: '26',    label: 'TLA+ theorems machine-verified, 0 errors', accent: color.gold },
               { value: '85',    label: 'Red team cases cataloged in repo', accent: color.gold },
             ].map((s, i) => (

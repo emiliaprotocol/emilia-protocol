@@ -18,13 +18,13 @@ import { styles, cta, color, font, radius } from '@/lib/tokens';
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Stats — independently verifiable in the repo:
-//   3,500 tests passing (per lib/proof-stats.json: 3,500 passed / 29 skipped) — `npx vitest run`
+//   4,195 tests passing (per lib/proof-stats.json: 4,195 passed / 29 skipped) — `npx vitest run`
 //   26 TLA+ invariants verified — formal/PROOF_STATUS.md (T1–T26)
 //   35 Alloy facts — formal/Alloy/EP.als
 //   85 red team cases — docs/conformance/RED_TEAM_CASES.md
 //   Apache 2.0 — LICENSE
 const STATS = [
-  { value: '3,500',     label: 'Automated Tests',  sub: 'passing — per proof-stats.json', accent: color.t1    },
+  { value: '4,195',     label: 'Automated Tests',  sub: 'passing — per proof-stats.json', accent: color.t1    },
   { value: '26',        label: 'TLA+ Theorems',    sub: 'TLC 2.19, zero errors',         accent: color.blue  },
   { value: '35',        label: 'Alloy Facts',       sub: '15 assertions verified',        accent: color.gold  },
   { value: '3',         label: 'Independent Verifiers', sub: 'JS · Python · Go, proven to agree', accent: color.t1 },
@@ -53,6 +53,19 @@ const HOW_IT_WORKS = [
   { step: '02', accent: color.blue,  label: 'Verify',   body: 'EMILIA Gate sits between approval and execution. Before a high-risk write reaches the system of record, it binds verified actor identity, authority chain, policy-pinned action context, and a one-time nonce.' },
   { step: '03', accent: color.gold,  label: 'Own',      body: 'Where policy requires it, a named, accountable human signs off on the exact action — on their own device, bound to the exact action hash. Self-approval fails by construction. For the highest-stakes actions, a multi-party quorum — the two-person rule, in order, each human bound to the exact action — is enforced before execution.' },
   { step: '04', accent: color.t2,    label: 'Seal',     body: 'A signed, Merkle-anchored authorization receipt is produced — an auditor-grade evidence packet, publicly verifiable offline with `npm install @emilia-protocol/verify`.' },
+];
+
+// Eight bindings — the mechanical reasons a high-risk action can't be faked or
+// hidden in an EMILIA-integrated path. Each line names the attack it closes.
+const BINDINGS = [
+  { n: '01', accent: color.green, label: 'Reject before mutation',   body: 'Consume must succeed before the write runs. An unauthorized action is stopped, not logged after the fact.' },
+  { n: '02', accent: color.blue,  label: 'Exact-action binding',     body: 'Action hash plus a WYSIWYS display hash close “signed the wrong thing” — the human signs the exact action they saw.' },
+  { n: '03', accent: color.gold,  label: 'Policy binding',           body: 'The receipt binds the policy content that was in force, not just a policy name or version label.' },
+  { n: '04', accent: color.green, label: 'Authority binding',        body: 'Holding a credential is separate from holding permission to approve. The authority registry proves the signer was allowed to.' },
+  { n: '05', accent: color.blue,  label: 'Class-A enforcement',      body: 'High-risk actions require a passkey / WebAuthn device signoff — or stronger. Weaker assurance fails closed.' },
+  { n: '06', accent: color.gold,  label: 'Execution attestation',    body: 'After approval, an attestation proves what actually ran — and flags drift between the approved and executed action.' },
+  { n: '07', accent: color.green, label: 'Strict offline verifier',  body: 'Outside parties verify pinned keys, RP identity, and policy hash without trusting EMILIA’s server. npm install @emilia-protocol/verify.' },
+  { n: '08', accent: color.blue,  label: 'SDK wrapper',              body: 'Developers adopt the invariant directly around a dangerous write with requireReceipt(...) — no rebuild of the call site.' },
 ];
 
 const DEV_TOOLS = [
@@ -166,7 +179,7 @@ export default function HomePage() {
                 paddingTop: 28, borderTop: `1px solid ${color.border}`,
               }}>
                 {[
-                  { val: '3,500', label: 'Tests Passing' },
+                  { val: '4,195', label: 'Tests Passing' },
                   { val: '26',    label: 'TLA+ Theorems' },
                   { val: '85',    label: 'Red Team Cases' },
                 ].map(({ val, label }) => (
@@ -302,6 +315,63 @@ export default function HomePage() {
               See a real receipt →
             </Link>
           </div>
+        </C>
+      </section>
+
+      {/* ── EIGHT BINDINGS — why it's hard to dismiss ─────────── */}
+      <section style={{ padding: '104px 0', borderBottom: `1px solid ${color.border}` }}>
+        <C>
+          <motion.div {...reveal()} style={{ marginBottom: 56, maxWidth: 640 }}>
+            <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>
+              Why it&rsquo;s hard to dismiss
+            </div>
+            <h2 style={{
+              fontFamily: font.sans, fontWeight: 700,
+              fontSize: 'clamp(26px, 3vw, 40px)',
+              letterSpacing: -1, lineHeight: 1.15, color: color.t1,
+            }}>
+              Eight bindings, one invariant.
+            </h2>
+            <p style={{ fontSize: 16, color: color.t2, lineHeight: 1.72, marginTop: 20 }}>
+              If an agent or system changes money, permissions, code, records, or regulated state through an
+              EMILIA-integrated path, it is either rejected before mutation or it produces an offline-verifiable
+              receipt proving the exact action, policy, authority, signoff strength, and execution binding.
+              Each line below names the attack it closes.
+            </p>
+          </motion.div>
+
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
+            borderTop: `1px solid ${color.border}`, borderLeft: `1px solid ${color.border}`,
+          }}>
+            {BINDINGS.map((b, i) => (
+              <motion.div
+                key={b.n}
+                {...reveal((i % 2) * 0.05)}
+                style={{
+                  display: 'flex', gap: 16, alignItems: 'flex-start',
+                  padding: '30px 28px',
+                  borderRight: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}`,
+                }}
+              >
+                <div style={{ width: 3, alignSelf: 'stretch', background: b.accent, flexShrink: 0, borderRadius: 2 }} />
+                <div>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'baseline', marginBottom: 8 }}>
+                    <span style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 1.5, color: color.t3 }}>{b.n}</span>
+                    <span style={{ fontFamily: font.mono, fontSize: 12, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: color.t1 }}>{b.label}</span>
+                  </div>
+                  <p style={{ fontSize: 14.5, color: color.t2, lineHeight: 1.65, margin: 0 }}>{b.body}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.div {...reveal(0.1)} style={{ marginTop: 40, maxWidth: 640 }}>
+            <p style={{ fontFamily: font.sans, fontSize: 'clamp(18px, 2vw, 22px)', fontWeight: 600, color: color.t1, lineHeight: 1.5, letterSpacing: -0.3, margin: 0 }}>
+              No receipt, no irreversible action.{' '}
+              <span style={{ color: color.t2, fontWeight: 400 }}>If it runs, anyone can verify who authorized exactly what.</span>
+            </p>
+          </motion.div>
         </C>
       </section>
 
@@ -576,7 +646,7 @@ export default function HomePage() {
           color: 'rgba(255,255,255,0.22)', letterSpacing: 1.5, textTransform: 'uppercase',
         }}>
           <span>Compliance: NIST AI RMF · EU AI ACT</span>
-          <span>Tests: 3,500 passing · 0 failing</span>
+          <span>Tests: 4,195 passing · 0 failing</span>
           <span>Formal verification: 26 theorems · 0 errors</span>
         </div>
       </section>
