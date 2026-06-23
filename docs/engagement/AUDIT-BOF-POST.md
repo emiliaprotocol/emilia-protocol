@@ -27,7 +27,7 @@ We have been building exactly this in the open and would be glad to contribute i
 - draft-schrock-ep-authorization-evidence-chain — composition of heterogeneous receipts across hops, which is precisely the "non-OAuth hop" case that falls out of scope once delegation-chain semantics are excluded.
 - draft-schrock-ep-quorum — the multi-party authorization case.
 
-To keep this grounded rather than aspirational: there are three independent verifiers (JavaScript, Python, Go) that agree over a public conformance suite, plus machine-checked TLA+/Alloy models of the core properties. If the WG wants a verifier-side conformance target, the vectors already exist and are usable as-is.
+To keep this grounded rather than aspirational: there are three independent verifiers (JavaScript, Python, Go) that agree over a public conformance suite, plus machine-checked TLA+/Alloy models of the core properties. And it has been independently run: an outside implementer recently verified the artifacts from a clean machine — the public one-liner produces the workpaper, the genuine receipt verifies offline, the forged copy is rejected, and the JS/Python/Go conformance vectors agree — and posted that result to the authorization-evidence survey thread. If the WG wants a verifier-side conformance target, the vectors already exist and have been checked by someone other than the author.
 
 We also helped put together a short cross-draft survey that maps the adjacent efforts in this space (DRP/Nelson, PSEA, EP, and others) onto a single verifier-side matrix. That seems like useful prior art for the group to triage what is and isn't already covered, and where the real gaps are.
 
