@@ -3,7 +3,7 @@
 // -- Params -----------------------------------------------------------------
 
 export interface EPClientOptions {
-  baseUrl: string;
+  baseUrl?: string;
   apiKey?: string;
   timeout?: number;
   retries?: number;
@@ -117,6 +117,155 @@ export interface CreateSuppressionParams {
   reason_code: string;
   justification: string;
   expires_at: string;
+}
+
+// -- v1 Guard Params --------------------------------------------------------
+
+export type GuardActionType =
+  | 'benefit_bank_account_change'
+  | 'benefit_address_change'
+  | 'caseworker_override'
+  | 'vendor_bank_account_change'
+  | 'beneficiary_creation'
+  | 'large_payment_release'
+  | 'ai_agent_payment_action';
+
+export type GuardDecision = 'allow' | 'observe' | 'allow_with_signoff' | 'deny';
+export type GuardEnforcementMode = 'observe' | 'warn' | 'enforce';
+
+export interface GuardQuorumPolicy {
+  mode?: 'threshold' | 'all';
+  required: number;
+  approvers: Array<{ role: string; approver: string }>;
+}
+
+export interface CreateTrustReceiptParams {
+  organizationId?: string;
+  actionType: GuardActionType | string;
+  targetResourceId: string;
+  policyId?: string;
+  enforcementMode?: GuardEnforcementMode;
+  beforeState?: Record<string, unknown>;
+  afterState?: Record<string, unknown>;
+  targetChangedFields?: string[];
+  amount?: number;
+  currency?: string;
+  riskFlags?: string[];
+  actorRole?: string;
+  actorDepartment?: string;
+  businessHours?: boolean;
+  velocitySameActor24h?: number;
+  priorDenialsActor30d?: number;
+  priorChangesTarget30d?: number;
+  destinationAgeDays?: number;
+  quorumPolicy?: GuardQuorumPolicy;
+  metadata?: Record<string, unknown>;
+}
+
+export interface TrustReceipt {
+  receipt_id: string;
+  decision: GuardDecision;
+  observed_decision?: GuardDecision | null;
+  policy_id: string;
+  policy_hash: string;
+  action_hash: string;
+  before_state_hash?: string | null;
+  after_state_hash?: string | null;
+  nonce: string;
+  expires_at: string;
+  signoff_required: boolean;
+  signoff_request_id?: string | null;
+  risk_flags?: string[];
+  receipt_status: string;
+  enforcement_mode: string;
+  reasons?: string[];
+  canonical_action: Record<string, unknown>;
+}
+
+export interface TrustReceiptState {
+  receipt_id: string;
+  organization_id: string;
+  action_type: string;
+  decision: GuardDecision;
+  enforcement_mode: string;
+  policy_id: string;
+  policy_hash: string;
+  action_hash: string;
+  expires_at: string;
+  signoff_required: boolean;
+  receipt_status: string;
+  signoff_key_class?: string | null;
+  timeline_event_count: number;
+}
+
+export interface RequestSignoffParams {
+  receiptId: string;
+  approverId?: string;
+  expiresInMinutes?: number;
+  comment?: string;
+}
+
+export interface SignoffRequest {
+  signoff_id?: string;
+  receipt_id: string;
+  action_hash: string;
+  initiator_id: string;
+  approver_id?: string;
+  expires_at: string;
+  status: string;
+  quorum?: { mode: string; required: number; count: number };
+  signoffs?: Array<{ signoff_id: string; role?: string; approver_id: string }>;
+}
+
+export interface ConsumeTrustReceiptResult {
+  receipt_id: string;
+  status: string;
+  consumed_at: string;
+  consumed_by_system: string;
+  execution_reference_id?: string | null;
+}
+
+export interface ExecutionAttestation {
+  receipt_id: string;
+  status: string;
+  binding_status: string;
+  executed_action_hash: string;
+  approved_action_hash: string;
+  execution_integrity: Record<string, unknown>;
+}
+
+export interface TrustReceiptEvidence {
+  document: Record<string, unknown> | null;
+  public_key: string | null;
+  signed: boolean;
+  verify_with: string;
+  receipt_id: string;
+  organization_id: string;
+  issued_at: string;
+  expires_at: string;
+  schema_version: string;
+  [key: string]: unknown;
+}
+
+export interface RequireReceiptParams extends CreateTrustReceiptParams {
+  executingSystem: string;
+  executionReferenceId?: string;
+  approverId?: string;
+  signoffComment?: string;
+  signoffExpiresInMinutes?: number;
+  onSignoffRequired?: (ctx: { client: EPClient; receipt: TrustReceipt; signoff?: SignoffRequest }) => Promise<void | boolean | { approved?: boolean }>;
+  executedAction?: Record<string, unknown> | ((ctx: { receipt: TrustReceipt; result: unknown }) => Record<string, unknown>);
+  executionId?: string | ((result: unknown) => string | undefined);
+  fetchEvidence?: boolean;
+}
+
+export interface RequireReceiptResult<T> {
+  result: T;
+  receipt: TrustReceipt;
+  signoff?: SignoffRequest;
+  consume: ConsumeTrustReceiptResult;
+  execution: ExecutionAttestation;
+  evidence?: TrustReceiptEvidence;
 }
 
 // -- Eye Responses ----------------------------------------------------------
@@ -709,6 +858,31 @@ export class EPCloudClient {
 
 // -- Client -----------------------------------------------------------------
 
+function trustReceiptBody(params: CreateTrustReceiptParams): Record<string, unknown> {
+  return {
+    organization_id: params.organizationId,
+    action_type: params.actionType,
+    target_resource_id: params.targetResourceId,
+    policy_id: params.policyId,
+    enforcement_mode: params.enforcementMode,
+    before_state: params.beforeState,
+    after_state: params.afterState,
+    target_changed_fields: params.targetChangedFields,
+    amount: params.amount,
+    currency: params.currency,
+    risk_flags: params.riskFlags,
+    actor_role: params.actorRole,
+    actor_department: params.actorDepartment,
+    business_hours: params.businessHours,
+    velocity_same_actor_24h: params.velocitySameActor24h,
+    prior_denials_actor_30d: params.priorDenialsActor30d,
+    prior_changes_target_30d: params.priorChangesTarget30d,
+    destination_age_days: params.destinationAgeDays,
+    quorum_policy: params.quorumPolicy,
+    metadata: params.metadata,
+  };
+}
+
 export class EPClient {
   private readonly baseUrl: string;
   private readonly apiKey: string;
@@ -718,9 +892,10 @@ export class EPClient {
   /** Cloud-specific endpoints (dashboards, analytics, audit, policy management). */
   public readonly cloud: EPCloudClient;
 
-  constructor(options: EPClientOptions) {
-    this.baseUrl = options.baseUrl.replace(/\/+$/, '');
-    this.apiKey = options.apiKey ?? '';
+  constructor(options: EPClientOptions = {}) {
+    const env = typeof process !== 'undefined' && process.env ? process.env : {};
+    this.baseUrl = (options.baseUrl ?? env.EP_BASE_URL ?? 'https://emiliaprotocol.ai').replace(/\/+$/, '');
+    this.apiKey = options.apiKey ?? env.EP_API_KEY ?? '';
     this.timeout = options.timeout ?? 10_000;
     this.retries = options.retries ?? 2;
 
@@ -757,8 +932,18 @@ export class EPClient {
         const data: unknown = await res.json().catch(() => undefined);
         if (!res.ok) {
           const p = data as Record<string, unknown> | undefined;
-          const msg = typeof p?.['error'] === 'string' ? p['error'] : `EP API error: ${res.status}`;
-          const code = typeof p?.['code'] === 'string' ? p['code'] : undefined;
+          const msg = typeof p?.['error'] === 'string'
+            ? p['error']
+            : typeof p?.['detail'] === 'string'
+              ? p['detail']
+              : typeof p?.['title'] === 'string'
+                ? p['title']
+                : `EP API error: ${res.status}`;
+          const code = typeof p?.['code'] === 'string'
+            ? p['code']
+            : typeof p?.['type'] === 'string'
+              ? p['type'].split('/').pop()
+              : undefined;
           throw new EPError(msg, res.status, code);
         }
         return data as T;
@@ -859,6 +1044,153 @@ export class EPClient {
       params,
       true,
     );
+  }
+
+  // ------------------------------------------------------------------
+  // v1 Trust Receipt Enforcement
+  // ------------------------------------------------------------------
+
+  /** Create a v1 pre-action trust receipt for a high-risk mutation. */
+  async createTrustReceipt(params: CreateTrustReceiptParams): Promise<TrustReceipt> {
+    return this.request<TrustReceipt>('POST', '/api/v1/trust-receipts', trustReceiptBody(params), true);
+  }
+
+  /** Read current receipt state from the append-only v1 audit timeline. */
+  async getTrustReceipt(receiptId: string): Promise<TrustReceiptState> {
+    return this.request<TrustReceiptState>(
+      'GET',
+      `/api/v1/trust-receipts/${encodeURIComponent(receiptId)}`,
+      undefined,
+      true,
+    );
+  }
+
+  /** Request human signoff for a receipt that requires approval. */
+  async requestSignoff(params: RequestSignoffParams): Promise<SignoffRequest> {
+    return this.request<SignoffRequest>('POST', '/api/v1/signoffs/request', {
+      receipt_id: params.receiptId,
+      approver_id: params.approverId,
+      expires_in_minutes: params.expiresInMinutes,
+      comment: params.comment,
+    }, true);
+  }
+
+  /** Consume a receipt before mutation. If this fails, do not execute the write. */
+  async consumeTrustReceipt(
+    receiptId: string,
+    params: { actionHash: string; executingSystem: string; executionReferenceId?: string },
+  ): Promise<ConsumeTrustReceiptResult> {
+    return this.request<ConsumeTrustReceiptResult>(
+      'POST',
+      `/api/v1/trust-receipts/${encodeURIComponent(receiptId)}/consume`,
+      {
+        action_hash: params.actionHash,
+        executing_system: params.executingSystem,
+        execution_reference_id: params.executionReferenceId,
+      },
+      true,
+    );
+  }
+
+  /** Emit the post-mutation execution attestation bound to the consumed receipt. */
+  async attestExecution(
+    receiptId: string,
+    params: {
+      executedAction: Record<string, unknown>;
+      executingSystem: string;
+      executionId?: string;
+      executedAt?: string;
+    },
+  ): Promise<ExecutionAttestation> {
+    return this.request<ExecutionAttestation>(
+      'POST',
+      `/api/v1/trust-receipts/${encodeURIComponent(receiptId)}/execution`,
+      {
+        executed_action: params.executedAction,
+        executing_system: params.executingSystem,
+        execution_id: params.executionId,
+        executed_at: params.executedAt,
+      },
+      true,
+    );
+  }
+
+  /** Fetch the signed evidence packet, when the receipt is in a signable state. */
+  async getTrustReceiptEvidence(receiptId: string): Promise<TrustReceiptEvidence> {
+    return this.request<TrustReceiptEvidence>(
+      'GET',
+      `/api/v1/trust-receipts/${encodeURIComponent(receiptId)}/evidence`,
+      undefined,
+      true,
+    );
+  }
+
+  /**
+   * Wrap a dangerous mutation in the v1 receipt lifecycle.
+   * The mutation runs only after create + consume succeed.
+   */
+  async requireReceipt<T>(
+    params: RequireReceiptParams,
+    mutate: (ctx: { receipt: TrustReceipt; consume: ConsumeTrustReceiptResult }) => Promise<T>,
+  ): Promise<RequireReceiptResult<T>> {
+    const receipt = await this.createTrustReceipt(params);
+    if (receipt.decision === 'deny' || receipt.receipt_status === 'denied') {
+      throw new EPError('EMILIA denied the action before execution', 403, 'receipt_denied');
+    }
+
+    let signoff: SignoffRequest | undefined;
+    if (receipt.signoff_required) {
+      if (!params.approverId && !params.quorumPolicy) {
+        throw new EPError('Receipt requires signoff; pass approverId or quorumPolicy', 409, 'missing_approver_id');
+      }
+      signoff = await this.requestSignoff({
+        receiptId: receipt.receipt_id,
+        approverId: params.approverId,
+        expiresInMinutes: params.signoffExpiresInMinutes,
+        comment: params.signoffComment,
+      });
+      if (!params.onSignoffRequired) {
+        throw new EPError('Receipt requires human signoff before the mutation can run', 409, 'signoff_required');
+      }
+      const signoffResult = await params.onSignoffRequired({ client: this, receipt, signoff });
+      if (signoffResult === false || (typeof signoffResult === 'object' && signoffResult?.approved === false)) {
+        throw new EPError('Human signoff was not approved', 403, 'signoff_rejected');
+      }
+    }
+
+    const consume = await this.consumeTrustReceipt(receipt.receipt_id, {
+      actionHash: receipt.action_hash,
+      executingSystem: params.executingSystem,
+      executionReferenceId: params.executionReferenceId,
+    });
+    const result = await mutate({ receipt, consume });
+    const executedAction = typeof params.executedAction === 'function'
+      ? params.executedAction({ receipt, result })
+      : params.executedAction ?? receipt.canonical_action;
+    const executionId = typeof params.executionId === 'function'
+      ? params.executionId(result)
+      : params.executionId;
+    const execution = await this.attestExecution(receipt.receipt_id, {
+      executedAction,
+      executingSystem: params.executingSystem,
+      executionId,
+    });
+    const evidence = params.fetchEvidence
+      ? await this.getTrustReceiptEvidence(receipt.receipt_id)
+      : undefined;
+
+    return { result, receipt, signoff, consume, execution, evidence };
+  }
+
+  /** Wrap an existing async function with requireReceipt(). */
+  withReceipt<TArgs extends unknown[], TResult>(
+    params: RequireReceiptParams | ((...args: TArgs) => RequireReceiptParams),
+    mutate: (...args: TArgs) => Promise<TResult>,
+  ): (...args: TArgs) => Promise<RequireReceiptResult<TResult>> {
+    return async (...args: TArgs) => {
+      const resolved = typeof params === 'function' ? params(...args) : params;
+      return this.requireReceipt(resolved, () => mutate(...args));
+    };
   }
 
   // ------------------------------------------------------------------

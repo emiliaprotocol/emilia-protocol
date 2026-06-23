@@ -61,6 +61,56 @@ const evaluation = await ep.trustEvaluate('merchant-xyz', 'strict');
 if (evaluation.decision !== 'allow') throw new Error(`Trust check failed: ${evaluation.reasons?.join(', ')}`);
 ```
 
+### Wrap a Dangerous Mutation
+
+`requireReceipt()` is the five-minute enforcement path: create a v1 trust
+receipt, require signoff when policy demands it, consume the receipt before the
+write, run the mutation, then emit a post-mutation execution attestation.
+
+```typescript
+const out = await ep.requireReceipt({
+  actionType: 'large_payment_release',
+  targetResourceId: 'payment_123',
+  afterState: { amount: 82000, currency: 'USD' },
+  amount: 82000,
+  currency: 'USD',
+  approverId: 'ap_controller_jane',
+  executingSystem: 'payments-api',
+
+  // Complete approval externally: passkey ceremony, operator queue, or poller.
+  // If omitted when signoff is required, the SDK fails closed and does not run.
+  onSignoffRequired: async ({ signoff }) => {
+    await waitForApprovedSignoff(signoff?.signoff_id);
+  },
+}, async () => {
+  return releasePayment('payment_123');
+});
+
+console.log(out.receipt.receipt_id);
+console.log(out.consume.status);             // "consumed"
+console.log(out.execution.binding_status);   // "match" or "drift"
+```
+
+For existing functions:
+
+```typescript
+const guardedRelease = ep.withReceipt(
+  (payment) => ({
+    actionType: 'large_payment_release',
+    targetResourceId: payment.id,
+    afterState: payment,
+    amount: payment.amount,
+    currency: payment.currency,
+    approverId: 'ap_controller_jane',
+    executingSystem: 'payments-api',
+    onSignoffRequired: ({ signoff }) => waitForApprovedSignoff(signoff?.signoff_id),
+  }),
+  releasePayment,
+);
+
+await guardedRelease({ id: 'payment_123', amount: 82000, currency: 'USD' });
+```
+
 ---
 
 ## Environment Variables

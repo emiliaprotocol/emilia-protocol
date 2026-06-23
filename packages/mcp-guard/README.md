@@ -103,6 +103,48 @@ const result = await guardedHandleTool(name, args, { _meta: request.params._meta
 > (`handleTool(...)` → `guardedHandleTool(...)`) plus constructing the wrapper
 > once at startup. See **"Exact wiring"** at the bottom.
 
+## Live v1 enforcement with the SDK
+
+If you want the system-of-record guarantee, use `withMcpReceiptGuard` with
+`@emilia-protocol/sdk`. The MCP wrapper classifies the tool call; the SDK drives
+the live v1 loop: create receipt → request signoff if required → consume before
+the write → run the tool → emit execution attestation.
+
+```js
+import { EPClient } from '@emilia-protocol/sdk';
+import { withMcpReceiptGuard } from '@emilia-protocol/mcp-guard';
+
+const ep = new EPClient({
+  apiKey: process.env.EP_API_KEY,
+  baseUrl: process.env.EP_BASE_URL,
+});
+
+const guardedHandleTool = withMcpReceiptGuard(handleTool, {
+  client: ep,
+  executingSystem: 'acme-mcp-server',
+  annotations: {
+    release_payment: {
+      irreversible: true,
+      actionType: 'large_payment_release',
+      targetResourceId: (args) => args.payment_id,
+      afterState: (args) => ({ payment_id: args.payment_id, amount: args.amount, currency: args.currency }),
+      amount: (args) => args.amount,
+      currency: (args) => args.currency,
+      approverId: 'ap_controller_jane',
+      onSignoffRequired: async ({ signoff }) => waitForApprovedSignoff(signoff?.signoff_id),
+    },
+    search_payments: { readOnlyHint: true },
+  },
+});
+
+// One-line dispatch swap:
+const result = await guardedHandleTool(name, args, { _meta: request.params._meta });
+```
+
+If consume fails, `handleTool` is never called. If signoff is required and
+`onSignoffRequired` is omitted, the SDK fails closed and the irreversible tool
+does not run.
+
 ## The demand hook on its own
 
 Use it anywhere you can read a tool call. Returns a verified result or a

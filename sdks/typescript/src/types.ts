@@ -425,6 +425,225 @@ export interface InstallPreflightResult {
   score: number;
 }
 
+// ----------------------------------------------------------------------------
+// v1 Trust Receipt enforcement types
+// ----------------------------------------------------------------------------
+
+export type GuardActionType =
+  | 'benefit_bank_account_change'
+  | 'benefit_address_change'
+  | 'caseworker_override'
+  | 'vendor_bank_account_change'
+  | 'beneficiary_creation'
+  | 'large_payment_release'
+  | 'ai_agent_payment_action';
+
+export type GuardDecision = 'allow' | 'observe' | 'allow_with_signoff' | 'deny';
+export type GuardEnforcementMode = 'observe' | 'warn' | 'enforce';
+export type ReceiptStatus =
+  | 'issued'
+  | 'pending_signoff'
+  | 'approved_pending_consume'
+  | 'rejected'
+  | 'consumed'
+  | 'denied';
+
+export interface GuardQuorumApprover {
+  role: string;
+  approver: string;
+}
+
+export interface GuardQuorumPolicy {
+  mode?: 'threshold' | 'all';
+  required: number;
+  approvers: GuardQuorumApprover[];
+}
+
+export interface CreateTrustReceiptParams {
+  /** Optional cross-check; the API derives the authorized organization from the authenticated key. */
+  organizationId?: string;
+  actionType: GuardActionType | string;
+  targetResourceId: string;
+  policyId?: string;
+  enforcementMode?: GuardEnforcementMode;
+  beforeState?: Record<string, unknown>;
+  afterState?: Record<string, unknown>;
+  targetChangedFields?: string[];
+  amount?: number;
+  currency?: string;
+  riskFlags?: string[];
+  actorRole?: string;
+  actorDepartment?: string;
+  businessHours?: boolean;
+  velocitySameActor24h?: number;
+  priorDenialsActor30d?: number;
+  priorChangesTarget30d?: number;
+  destinationAgeDays?: number;
+  quorumPolicy?: GuardQuorumPolicy;
+  metadata?: Record<string, unknown>;
+}
+
+export interface TrustReceipt {
+  receipt_id: string;
+  decision: GuardDecision;
+  observed_decision?: GuardDecision | null;
+  policy_id: string;
+  policy_hash: string;
+  action_hash: string;
+  before_state_hash?: string | null;
+  after_state_hash?: string | null;
+  nonce: string;
+  expires_at: string;
+  signoff_required: boolean;
+  signoff_request_id?: string | null;
+  risk_flags?: string[];
+  receipt_status: ReceiptStatus | string;
+  enforcement_mode: GuardEnforcementMode | string;
+  reasons?: string[];
+  canonical_action: Record<string, unknown>;
+}
+
+export interface TrustReceiptState {
+  receipt_id: string;
+  organization_id: string;
+  action_type: string;
+  decision: GuardDecision;
+  enforcement_mode: GuardEnforcementMode | string;
+  policy_id: string;
+  policy_hash: string;
+  action_hash: string;
+  before_state_hash?: string | null;
+  after_state_hash?: string | null;
+  expires_at: string;
+  signoff_required: boolean;
+  receipt_status: ReceiptStatus | string;
+  signoff_key_class?: 'A' | 'B' | 'C' | string | null;
+  timeline_event_count: number;
+}
+
+export interface RequestSignoffParams {
+  receiptId: string;
+  approverId?: string;
+  expiresInMinutes?: number;
+  comment?: string;
+}
+
+export interface SignoffRequest {
+  signoff_id?: string;
+  receipt_id: string;
+  action_hash: string;
+  initiator_id: string;
+  approver_id?: string;
+  expires_at: string;
+  status: 'pending' | string;
+  quorum?: { mode: string; required: number; count: number };
+  signoffs?: Array<{ signoff_id: string; role?: string; approver_id: string }>;
+}
+
+export interface ConsumeTrustReceiptParams {
+  actionHash: string;
+  executingSystem: string;
+  executionReferenceId?: string;
+}
+
+export interface ConsumeTrustReceiptResult {
+  receipt_id: string;
+  status: 'consumed' | string;
+  consumed_at: string;
+  consumed_by_system: string;
+  execution_reference_id?: string | null;
+}
+
+export interface AttestExecutionParams {
+  executedAction: Record<string, unknown>;
+  executingSystem: string;
+  executionId?: string;
+  executedAt?: string;
+}
+
+export interface ExecutionAttestation {
+  receipt_id: string;
+  status: 'executed' | string;
+  binding_status: 'match' | 'drift' | string;
+  executed_action_hash: string;
+  approved_action_hash: string;
+  execution_integrity: Record<string, unknown>;
+}
+
+export interface TrustReceiptEvidence {
+  document: Record<string, unknown> | null;
+  public_key: string | null;
+  signed: boolean;
+  verify_with: string;
+  receipt_id: string;
+  organization_id: string;
+  action: {
+    type: string;
+    action_hash: string;
+    before_state_hash?: string | null;
+    after_state_hash?: string | null;
+  };
+  policy: {
+    id: string;
+    hash: string;
+    decision: string;
+    enforcement_mode: string;
+  };
+  signoff: {
+    required: boolean;
+    approver_id?: string | null;
+    approved_at?: string | null;
+    rejected_at?: string | null;
+    events: Array<{ event_type: string; actor_id: string; at: string }>;
+  };
+  consume: {
+    consumed_at?: string | null;
+    consumed_by_system?: string | null;
+    execution_reference_id?: string | null;
+  };
+  issued_at: string;
+  expires_at: string;
+  schema_version: string;
+  [key: string]: unknown;
+}
+
+export interface SignoffRequiredContext {
+  client: unknown;
+  receipt: TrustReceipt;
+  signoff?: SignoffRequest;
+}
+
+export interface RequireReceiptParams extends CreateTrustReceiptParams {
+  executingSystem: string;
+  executionReferenceId?: string;
+  approverId?: string;
+  signoffComment?: string;
+  signoffExpiresInMinutes?: number;
+  /**
+   * Called after a signoff request is created. Complete approval externally
+   * (for example a passkey/WebAuthn ceremony or operator workflow) before
+   * returning. If omitted, the SDK fails closed and does not run the mutation.
+   */
+  onSignoffRequired?: (ctx: SignoffRequiredContext) => Promise<void | boolean | { approved?: boolean }>;
+  /**
+   * Canonical action that actually executed. Defaults to the receipt's
+   * canonical_action, which should match when the wrapped mutation followed the
+   * approved plan.
+   */
+  executedAction?: Record<string, unknown> | ((ctx: { receipt: TrustReceipt; result: unknown }) => Record<string, unknown>);
+  executionId?: string | ((result: unknown) => string | undefined);
+  fetchEvidence?: boolean;
+}
+
+export interface RequireReceiptResult<T> {
+  result: T;
+  receipt: TrustReceipt;
+  signoff?: SignoffRequest;
+  consume: ConsumeTrustReceiptResult;
+  execution: ExecutionAttestation;
+  evidence?: TrustReceiptEvidence;
+}
+
 /** A principal — the enduring actor behind one or more entities. */
 export interface Principal {
   principal_id: string;

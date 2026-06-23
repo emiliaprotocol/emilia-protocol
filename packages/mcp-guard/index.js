@@ -483,6 +483,93 @@ export function withMcpGuard(handler, options = {}) {
   return guarded;
 }
 
+/**
+ * Wrap an MCP dispatcher with the live v1 enforcement loop from
+ * @emilia-protocol/sdk's `client.requireReceipt()`.
+ *
+ * This is the tiny adoption path for tool authors who want the system-of-record
+ * guarantee, not just a demand-side 402 proof check: irreversible calls are
+ * classified here, but the SDK performs create → signoff → consume → mutate →
+ * execution-attest. If consume fails, the handler is never called.
+ *
+ * Required option:
+ *   client: an object with `requireReceipt(params, mutate)` (EPClient).
+ *
+ * Per-tool annotations may include:
+ *   actionType, targetResourceId, afterState, beforeState, amount, currency,
+ *   riskFlags, approverId, executingSystem, onSignoffRequired, executionId.
+ * Values may be constants or functions of (args, extra).
+ */
+export function withMcpReceiptGuard(handler, options = {}) {
+  if (typeof handler !== 'function') {
+    throw new TypeError('withMcpReceiptGuard: first argument must be the tool-call handler');
+  }
+  const client = options.client;
+  if (!client || typeof client.requireReceipt !== 'function') {
+    throw new TypeError('withMcpReceiptGuard: options.client must expose requireReceipt(params, mutate)');
+  }
+
+  const {
+    policy,
+    annotations = {},
+    getAnnotations,
+    defaultIrreversible = false,
+    executingSystem = 'mcp-server',
+    receiptParams,
+    returnEnvelope = false,
+  } = options;
+
+  const resolveAnnotations = (name) => {
+    const fromResolver = typeof getAnnotations === 'function' ? getAnnotations(name) : undefined;
+    return { ...(annotations[name] || {}), ...(fromResolver || {}) };
+  };
+
+  const guarded = async function guardedReceiptDispatch(name, args = {}, extra = {}) {
+    const ann = resolveAnnotations(name);
+    const { irreversible } = classifyToolCall(name, args, {
+      annotations: { [name]: ann },
+      policy,
+      defaultIrreversible,
+    });
+
+    if (!irreversible) return handler(name, args, extra);
+
+    const cleanArgs = stripEpFields(args);
+    const rawBase = typeof receiptParams === 'function'
+      ? await receiptParams({ name, args: cleanArgs, extra, annotation: ann })
+      : (receiptParams || {});
+    const base = rawBase && typeof rawBase === 'object' ? rawBase : {};
+    const params = {
+      ...base,
+      actionType: readAnnotation(ann, 'actionType', cleanArgs, extra)
+        || base.actionType
+        || readAnnotation(ann, 'action', cleanArgs, extra)
+        || name,
+      targetResourceId: readAnnotation(ann, 'targetResourceId', cleanArgs, extra) || base.targetResourceId,
+      beforeState: readAnnotation(ann, 'beforeState', cleanArgs, extra) || base.beforeState,
+      afterState: readAnnotation(ann, 'afterState', cleanArgs, extra) || base.afterState || cleanArgs,
+      amount: readAnnotation(ann, 'amount', cleanArgs, extra) ?? base.amount,
+      currency: readAnnotation(ann, 'currency', cleanArgs, extra) || base.currency,
+      riskFlags: readAnnotation(ann, 'riskFlags', cleanArgs, extra) || base.riskFlags,
+      approverId: readAnnotation(ann, 'approverId', cleanArgs, extra) || base.approverId,
+      executingSystem: readAnnotation(ann, 'executingSystem', cleanArgs, extra) || base.executingSystem || executingSystem,
+      executionId: readAnnotation(ann, 'executionId', cleanArgs, extra) || base.executionId,
+      onSignoffRequired: ann.onSignoffRequired || base.onSignoffRequired,
+    };
+
+    if (!params.actionType || !params.targetResourceId || !params.executingSystem) {
+      return refusal(String(params.actionType || name), 'MCP receipt guard is missing actionType, targetResourceId, or executingSystem.', {
+        stage: 'configure',
+      });
+    }
+
+    const lifecycle = await client.requireReceipt(params, () => handler(name, cleanArgs, extra));
+    return returnEnvelope ? lifecycle : lifecycle.result;
+  };
+
+  return guarded;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -513,8 +600,14 @@ async function callAdapter(fn, ctx, fallback) {
   }
 }
 
+function readAnnotation(ann, key, args, extra) {
+  const value = ann && ann[key];
+  return typeof value === 'function' ? value(args, extra) : value;
+}
+
 export default {
   withMcpGuard,
+  withMcpReceiptGuard,
   demandReceipt,
   refusal,
   classifyToolCall,

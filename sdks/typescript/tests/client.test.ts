@@ -37,6 +37,42 @@ function makeClient(payload: unknown, status = 200, extraOpts: Record<string, un
   return { client, mockFetch };
 }
 
+function makeSequenceFetch(responses: Array<{ payload: unknown; status?: number }>): MockFetch {
+  const mockFn = vi.fn();
+  for (const r of responses) {
+    const status = r.status ?? 200;
+    mockFn.mockResolvedValueOnce({
+      ok: status >= 200 && status < 300,
+      status,
+      json: () => Promise.resolve(r.payload),
+    } as unknown as Response);
+  }
+  return mockFn as MockFetch;
+}
+
+const TRUST_RECEIPT = {
+  receipt_id: 'tr_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  decision: 'allow',
+  observed_decision: null,
+  policy_id: 'policy_default_large_payment_release',
+  policy_hash: 'sha256:policy',
+  action_hash: 'sha256:action',
+  before_state_hash: null,
+  after_state_hash: 'sha256:after',
+  nonce: 'nonce_123',
+  expires_at: '2999-01-01T00:00:00.000Z',
+  signoff_required: false,
+  signoff_request_id: null,
+  risk_flags: [],
+  receipt_status: 'issued',
+  enforcement_mode: 'enforce',
+  reasons: [],
+  canonical_action: {
+    action_type: 'large_payment_release',
+    target_resource_id: 'payment_123',
+  },
+};
+
 // ---------------------------------------------------------------------------
 // 1. Constructor
 // ---------------------------------------------------------------------------
@@ -206,6 +242,52 @@ describe('HTTP method and path routing', () => {
     expect(result.policies).toHaveLength(1);
   });
 
+  it('createTrustReceipt — POST /api/v1/trust-receipts with auth and snake_case body', async () => {
+    const { client, mockFetch } = makeClient(TRUST_RECEIPT);
+    await client.createTrustReceipt({
+      organizationId: 'org_1',
+      actionType: 'large_payment_release',
+      targetResourceId: 'payment_123',
+      afterState: { amount: 82000 },
+      targetChangedFields: ['amount'],
+      amount: 82000,
+      currency: 'USD',
+      riskFlags: ['amount_threshold'],
+    });
+
+    const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('https://emiliaprotocol.ai/api/v1/trust-receipts');
+    expect(init.method).toBe('POST');
+    expect((init.headers as Record<string, string>)['Authorization']).toBe('Bearer ep_live_test_key');
+    const body = JSON.parse(init.body as string);
+    expect(body.organization_id).toBe('org_1');
+    expect(body.action_type).toBe('large_payment_release');
+    expect(body.target_resource_id).toBe('payment_123');
+    expect(body.after_state.amount).toBe(82000);
+    expect(body.target_changed_fields).toEqual(['amount']);
+    expect(body.risk_flags).toEqual(['amount_threshold']);
+  });
+
+  it('consumeTrustReceipt — POST /api/v1/trust-receipts/:id/consume with action hash', async () => {
+    const { client, mockFetch } = makeClient({
+      receipt_id: TRUST_RECEIPT.receipt_id,
+      status: 'consumed',
+      consumed_at: '2026-06-23T00:00:00.000Z',
+      consumed_by_system: 'payments-api',
+    });
+    await client.consumeTrustReceipt(TRUST_RECEIPT.receipt_id, {
+      actionHash: 'sha256:action',
+      executingSystem: 'payments-api',
+      executionReferenceId: 'exec_1',
+    });
+    const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`https://emiliaprotocol.ai/api/v1/trust-receipts/${TRUST_RECEIPT.receipt_id}/consume`);
+    const body = JSON.parse(init.body as string);
+    expect(body.action_hash).toBe('sha256:action');
+    expect(body.executing_system).toBe('payments-api');
+    expect(body.execution_reference_id).toBe('exec_1');
+  });
+
   it('issueCommit — POST /api/commit/issue with auth', async () => {
     const commitResult = { decision: 'allow', commit: { commit_id: 'epc_1', action_type: 'transact', entity_id: 'e1', decision: 'allow', status: 'active', expires_at: '2026-01-01', created_at: '2024-01-01' } };
     const { client, mockFetch } = makeClient(commitResult);
@@ -265,6 +347,152 @@ describe('Query-string parameter handling', () => {
     await client.verifyDelegation('d1', 'purchase');
     const [url] = mockFetch.mock.calls[0] as [string, RequestInit];
     expect(url).toContain('action_type=purchase');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// v1 receipt lifecycle helper
+// ---------------------------------------------------------------------------
+
+describe('requireReceipt wrapper', () => {
+  it('creates and consumes a receipt before running the mutation, then attests execution', async () => {
+    const mockFetch = makeSequenceFetch([
+      { payload: TRUST_RECEIPT },
+      {
+        payload: {
+          receipt_id: TRUST_RECEIPT.receipt_id,
+          status: 'consumed',
+          consumed_at: '2026-06-23T00:00:00.000Z',
+          consumed_by_system: 'payments-api',
+          execution_reference_id: 'exec_ref_1',
+        },
+      },
+      {
+        payload: {
+          receipt_id: TRUST_RECEIPT.receipt_id,
+          status: 'executed',
+          binding_status: 'match',
+          executed_action_hash: TRUST_RECEIPT.action_hash,
+          approved_action_hash: TRUST_RECEIPT.action_hash,
+          execution_integrity: { binding_status: 'match' },
+        },
+        status: 201,
+      },
+    ]);
+    const client = new EPClient({
+      apiKey: 'ep_live_test_key',
+      fetchImpl: mockFetch as unknown as typeof fetch,
+    });
+
+    const runMutation = vi.fn().mockImplementation(async () => {
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      return { payment_id: 'payment_123', execution_id: 'exec_1' };
+    });
+
+    const out = await client.requireReceipt({
+      actionType: 'large_payment_release',
+      targetResourceId: 'payment_123',
+      afterState: { amount: 82000 },
+      executingSystem: 'payments-api',
+      executionReferenceId: 'exec_ref_1',
+      executionId: (result) => (result as { execution_id: string }).execution_id,
+    }, runMutation);
+
+    expect(runMutation).toHaveBeenCalledOnce();
+    expect(out.result.payment_id).toBe('payment_123');
+    expect(out.consume.status).toBe('consumed');
+    expect(out.execution.binding_status).toBe('match');
+    const paths = mockFetch.mock.calls.map(([url]) => String(url).replace('https://emiliaprotocol.ai', ''));
+    expect(paths).toEqual([
+      '/api/v1/trust-receipts',
+      `/api/v1/trust-receipts/${TRUST_RECEIPT.receipt_id}/consume`,
+      `/api/v1/trust-receipts/${TRUST_RECEIPT.receipt_id}/execution`,
+    ]);
+    const executionBody = JSON.parse((mockFetch.mock.calls[2]?.[1] as RequestInit).body as string);
+    expect(executionBody.executed_action).toEqual(TRUST_RECEIPT.canonical_action);
+    expect(executionBody.execution_id).toBe('exec_1');
+  });
+
+  it('fails closed after requesting signoff when no completion hook is supplied', async () => {
+    const pendingReceipt = {
+      ...TRUST_RECEIPT,
+      decision: 'allow_with_signoff',
+      signoff_required: true,
+      receipt_status: 'pending_signoff',
+    };
+    const mockFetch = makeSequenceFetch([
+      { payload: pendingReceipt },
+      {
+        payload: {
+          signoff_id: 'sig_1',
+          receipt_id: TRUST_RECEIPT.receipt_id,
+          action_hash: TRUST_RECEIPT.action_hash,
+          initiator_id: 'actor_1',
+          approver_id: 'ap_controller',
+          expires_at: '2999-01-01T00:00:00.000Z',
+          status: 'pending',
+        },
+        status: 201,
+      },
+    ]);
+    const client = new EPClient({
+      apiKey: 'ep_live_test_key',
+      fetchImpl: mockFetch as unknown as typeof fetch,
+    });
+    const runMutation = vi.fn();
+
+    let caught: EPError | undefined;
+    try {
+      await client.requireReceipt({
+        actionType: 'large_payment_release',
+        targetResourceId: 'payment_123',
+        executingSystem: 'payments-api',
+        approverId: 'ap_controller',
+      }, runMutation);
+    } catch (err) {
+      caught = err as EPError;
+    }
+
+    expect(caught).toBeInstanceOf(EPError);
+    expect(caught?.code).toBe('signoff_required');
+    expect(runMutation).not.toHaveBeenCalled();
+    const paths = mockFetch.mock.calls.map(([url]) => String(url).replace('https://emiliaprotocol.ai', ''));
+    expect(paths).toEqual(['/api/v1/trust-receipts', '/api/v1/signoffs/request']);
+  });
+
+  it('does not run the mutation when consume fails', async () => {
+    const mockFetch = makeSequenceFetch([
+      { payload: TRUST_RECEIPT },
+      {
+        payload: {
+          type: 'https://emiliaprotocol.ai/errors/authority_invalid',
+          detail: 'Approver authority check failed: no_active_authority',
+        },
+        status: 403,
+      },
+    ]);
+    const client = new EPClient({
+      apiKey: 'ep_live_test_key',
+      fetchImpl: mockFetch as unknown as typeof fetch,
+    });
+    const runMutation = vi.fn();
+
+    let caught: EPError | undefined;
+    try {
+      await client.requireReceipt({
+        actionType: 'large_payment_release',
+        targetResourceId: 'payment_123',
+        executingSystem: 'payments-api',
+      }, runMutation);
+    } catch (err) {
+      caught = err as EPError;
+    }
+
+    expect(caught).toBeInstanceOf(EPError);
+    expect(caught?.status).toBe(403);
+    expect(caught?.code).toBe('authority_invalid');
+    expect(runMutation).not.toHaveBeenCalled();
+    expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -363,7 +591,7 @@ describe('EPError thrown on non-2xx responses', () => {
   });
 
   it('EPError.message falls back to generic when no error field', async () => {
-    const { client } = makeClient({ detail: 'something' }, 500);
+    const { client } = makeClient({}, 500);
     let caught: EPError | undefined;
     try {
       await client.stats();
@@ -371,6 +599,21 @@ describe('EPError thrown on non-2xx responses', () => {
       caught = err as EPError;
     }
     expect(caught!.message).toMatch(/EP API error: 500/);
+  });
+
+  it('EPError.message and code understand problem-details bodies', async () => {
+    const { client } = makeClient({
+      type: 'https://emiliaprotocol.ai/errors/authority_invalid',
+      detail: 'Approver authority check failed',
+    }, 403);
+    let caught: EPError | undefined;
+    try {
+      await client.stats();
+    } catch (err) {
+      caught = err as EPError;
+    }
+    expect(caught!.message).toBe('Approver authority check failed');
+    expect(caught!.code).toBe('authority_invalid');
   });
 
   it('throws EPError on 403', async () => {
