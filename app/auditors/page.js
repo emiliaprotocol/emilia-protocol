@@ -140,6 +140,10 @@ export default function AuditorsPage() {
           ))}
         </div>
 
+        <a href="/briefs/emilia-auditor-workpaper-sample.pdf" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', fontFamily: font.mono, fontSize: 13, color: color.t1, fontWeight: 600, textDecoration: 'none', border: `1px solid ${color.borderHover}`, borderRadius: radius.sm, padding: '10px 18px', marginBottom: 40 }}>
+          &darr; Download a completed sample workpaper (PDF)
+        </a>
+
         {/* Red flags */}
         <h2 style={styles.h2}>Red flags</h2>
         <ul style={{ ...styles.list, marginBottom: 36 }}>
@@ -175,10 +179,13 @@ export default function AuditorsPage() {
         </ul>
 
         <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '22px 24px' }}>
-          <div style={{ fontWeight: 700, fontSize: 16, color: color.t1, marginBottom: 6 }}>30-minute auditor briefing</div>
+          <div style={{ fontWeight: 700, fontSize: 16, color: color.t1, marginBottom: 6 }}>Bring this to a client&rsquo;s control test</div>
           <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.65, margin: '0 0 14px' }}>
-            We&rsquo;ll walk your team through a live verification on your own laptops — including a forged receipt your
-            team catches themselves. Try it first-hand right now: <a href="/try" style={lnk}>approve an action with Face&nbsp;ID on /try</a>,
+            Auditors are how this evidence format spreads: every engagement where a receipt is re-verified in
+            workpapers normalizes it. Forward the <a href="/briefs/emilia-auditor-workpaper-sample.pdf" style={lnk} target="_blank" rel="noopener noreferrer">sample workpaper</a> to
+            the team running the control test &mdash; it shows exactly what to record. Want a 30-minute briefing?
+            We&rsquo;ll walk your team through a live verification on your own laptops, including a forged receipt your
+            team catches themselves. Try it first-hand now: <a href="/try" style={lnk}>approve an action with Face&nbsp;ID on /try</a>,
             then verify what you signed on <a href="/verify" style={lnk}>/verify</a>.
           </p>
           <a href="mailto:team@emiliaprotocol.ai?subject=Auditor%20briefing" style={{ fontFamily: font.mono, fontSize: 13, color: color.t1, fontWeight: 600, textDecoration: 'none', border: `1px solid ${color.borderHover}`, borderRadius: radius.sm, padding: '10px 18px', display: 'inline-block' }}>

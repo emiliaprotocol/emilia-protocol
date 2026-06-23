@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EMILIA — Authorization Receipt Verification Workpaper (Sample)</title>
+<style>
+html { font-size: 10pt; color: #1a1a1a; background:#fdfdfd; }
+body { margin: 0 auto; max-width: 46em; padding: 40px 46px; line-height: 1.4;
+  font-family: -apple-system,"Segoe UI",Helvetica,Arial,sans-serif; }
+@media print { html { background:#fff; } body { background:transparent; color:#000; }
+  h2 { page-break-after:avoid; } table, .box { page-break-inside:avoid; } }
+header { border-bottom: 2px solid #B08D35; padding-bottom: 12px; margin-bottom: 16px; }
+.kicker { text-transform:uppercase; letter-spacing:0.16em; font-size:0.7em; color:#B08D35; font-weight:700; margin:0 0 4px; }
+h1 { font-size:1.5em; line-height:1.12; margin:0 0 4px; letter-spacing:-0.01em; }
+.sub { font-size:0.92em; color:#555; margin:0; }
+.sample-tag { display:inline-block; font-size:0.62em; font-weight:700; letter-spacing:0.12em; text-transform:uppercase;
+  color:#7a1f2b; border:1px solid #7a1f2b; border-radius:3px; padding:2px 7px; margin-left:8px; vertical-align:middle; }
+h2 { font-size:0.82em; text-transform:uppercase; letter-spacing:0.08em; color:#333; margin:1.5em 0 0.5em;
+  border-bottom:1px solid #ddd; padding-bottom:3px; }
+p { margin:0.5em 0; } strong { font-weight:600; }
+table { width:100%; border-collapse:collapse; font-size:0.86em; margin:0.4em 0; }
+th, td { text-align:left; padding:6px 9px; border:1px solid #d8d8d8; vertical-align:top; }
+th { background:#f4f2ec; font-weight:600; width:38%; }
+.mono { font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace; font-size:0.82em; }
+.grid { display:grid; grid-template-columns:1fr 1fr; gap:0 24px; font-size:0.86em; margin:0.3em 0; }
+.grid div { padding:3px 0; border-bottom:1px dotted #ddd; }
+.lbl { color:#777; }
+.pass { color:#15803d; font-weight:700; }
+.checks td:last-child { width:18%; text-align:center; }
+.concl { background:#f0f7f1; border:1px solid #15803d; border-radius:4px; padding:10px 14px; margin:0.8em 0; font-size:0.9em; }
+.boundary { background:#FFFBEB; border:1px solid #B08D35; border-radius:4px; padding:10px 14px; margin:0.8em 0; font-size:0.82em; color:#444; }
+.repro { font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace; font-size:0.78em; color:#333;
+  border-top:1px solid #cfcfcf; border-bottom:1px solid #cfcfcf; padding:0.6em 0; margin:1em 0; }
+footer { font-size:0.76em; color:#777; margin-top:1.4em; border-top:1px solid #ddd; padding-top:8px; }
+</style>
+</head>
+<body>
+<header>
+  <p class="kicker">Audit Workpaper · Independent Verification of Authorization Evidence</p>
+  <h1>Authorization Receipt Verification <span class="sample-tag">Sample · illustrative data</span></h1>
+  <p class="sub">A completed workpaper for independently re-verifying an EMILIA authorization receipt during a controls review — reproducible by anyone, with no reliance on the auditee or on EMILIA.</p>
+</header>
+
+<div class="grid">
+  <div><span class="lbl">Engagement:</span> [Client] FY26 controls review</div>
+  <div><span class="lbl">Workpaper ref:</span> EP-AR-001</div>
+  <div><span class="lbl">Control objective:</span> Segregation of duties on disbursements</div>
+  <div><span class="lbl">Period:</span> 2026-01-01 – 2026-06-30</div>
+  <div><span class="lbl">Prepared by:</span> [Auditor initials]</div>
+  <div><span class="lbl">Reviewed by:</span> [Manager initials]</div>
+</div>
+
+<h2>Control tested</h2>
+<p>A high-risk disbursement release requires a <strong>named human authorization cryptographically bound to the exact payment</strong> (amount, payee, destination account) before funds move. The auditor independently re-verifies the authorization artifact rather than relying on the auditee's application logs.</p>
+
+<h2>Artifact under test</h2>
+<table>
+  <tr><th>receipt_id</th><td class="mono">rcpt_3f9a2c7e8b14d05a (SAMPLE)</td></tr>
+  <tr><th>action</th><td class="mono">payment.release</td></tr>
+  <tr><th>action context</th><td class="mono">amount=50000.00 USD · payee="Northwind Supply" · account=acct_9f12 (SAMPLE)</td></tr>
+  <tr><th>action_hash (SHA-256)</th><td class="mono">9c1f4b…a07e (canonicalized per RFC 8785)</td></tr>
+  <tr><th>approver</th><td>J. Rivera, Controller — key_class <strong>A</strong> (approver-held device key, ECDSA P-256)</td></tr>
+  <tr><th>issuer signature</th><td>Ed25519 (self-contained; public key carried in the packet)</td></tr>
+  <tr><th>verifier + version</th><td class="mono">@emilia-protocol/verify 1.6.0 (pinned + reviewed)</td></tr>
+</table>
+
+<h2>Procedure performed</h2>
+<p>1. Obtained the self-contained receipt JSON for the sampled disbursement from the auditee. 2. Re-verified it <strong>offline</strong>: <span class="mono">npx @emilia-protocol/verify receipt.json</span> (network panel confirmed nothing uploaded). 3. Recorded each individual check below. 4. Confirmed verification required no access to the auditee's systems and no EMILIA backend.</p>
+
+<h2>Verification results</h2>
+<table class="checks">
+  <tr><th style="width:auto">Check</th><td class="lbl" style="text-align:left;width:auto">What it proves</td><td>Result</td></tr>
+  <tr><td class="mono">challenge_binding</td><td>Approval is bound to this exact action; any altered parameter invalidates it.</td><td class="pass">PASS</td></tr>
+  <tr><td class="mono">user_verified</td><td>Approver passed biometric/PIN verification at the moment of approval.</td><td class="pass">PASS</td></tr>
+  <tr><td class="mono">user_present</td><td>A human was physically present at the signing device.</td><td class="pass">PASS</td></tr>
+  <tr><td class="mono">signature</td><td>Valid signature by the approver's enrolled device key.</td><td class="pass">PASS</td></tr>
+  <tr><td class="mono">client_data_type</td><td>Genuine authenticator assertion, not a replayed enrollment.</td><td class="pass">PASS</td></tr>
+  <tr><td class="mono">rp_id_hash</td><td>Signature scoped to the expected service, not lifted from elsewhere.</td><td class="pass">PASS</td></tr>
+  <tr><td class="mono">anchor</td><td>Included in the published Merkle anchor; history cannot be silently rewritten.</td><td class="pass">PASS</td></tr>
+  <tr><th style="width:auto">Overall</th><td></td><td class="pass">VALID</td></tr>
+</table>
+
+<div class="concl">
+<strong>Conclusion (sample):</strong> The sampled disbursement carries an independently-verifiable authorization receipt binding a named, device-verified human (key_class A) to the exact payment parameters. The control operated for this item. <strong>No exceptions noted.</strong>
+</div>
+<p style="font-size:0.85em;color:#555;"><strong>Exception pattern (for contrast):</strong> had a sampled governed action produced <em>no</em> receipt — or a <span class="mono">key_class C</span> artifact where policy requires Class A, or <span class="mono">challenge_binding: false</span> — that would be recorded here as a control exception. <em>Absence of a verifiable authorization is itself the finding.</em></p>
+
+<div class="boundary">
+<strong>Scope of assurance.</strong> Offline verification proves the artifact is authentic, intact, and bound to the exact action. It does <strong>not</strong> prove the underlying decision was correct, nor establish real-world identity beyond the enrollment layer, nor prove one-time consumption (server-state). Procedure to close those: request the auditee's consumption record and any signed revocation statement (EP-REVOCATION-v1, also offline-verifiable) for this <span class="mono">receipt_id</span>.
+</div>
+
+<div class="repro">
+Reproduce: npx&nbsp;@emilia-protocol/verify receipt.json · open standard (Apache-2.0, IETF drafts) · the receipt does not expire and needs no EMILIA server · re-verifiable by anyone, years later.
+</div>
+
+<footer>
+SAMPLE workpaper with illustrative data — not a real engagement. EMILIA Protocol · team@emiliaprotocol.ai · emiliaprotocol.ai/auditors · Full verification guide and the seven checks: emiliaprotocol.ai/auditors
+</footer>
+</body>
+</html>

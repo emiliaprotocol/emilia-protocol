@@ -192,7 +192,9 @@ export default async function McpPage() {
           </div>
           <p style={{ fontSize: 14, color: color.t3, marginTop: 16 }}>
             Reference server + client harness in the repo (<code style={{ fontFamily: font.mono, fontSize: 12 }}>mcp-server/passport-demo.mjs</code>);
-            demand side via <code style={{ fontFamily: font.mono, fontSize: 12 }}>@emilia-protocol/require-receipt</code>.
+            demand side via <code style={{ fontFamily: font.mono, fontSize: 12 }}>@emilia-protocol/require-receipt</code> and{' '}
+            <code style={{ fontFamily: font.mono, fontSize: 12 }}>@emilia-protocol/mcp-guard</code> &mdash;{' '}
+            <Link href="/guides/require-receipt" style={{ color: color.gold }}>require a receipt in one endpoint &rarr;</Link>
           </p>
         </C>
       </section>
@@ -223,6 +225,7 @@ export default async function McpPage() {
               ['LangChain.js', 'withGuard() · @emilia-protocol/langchain'],
               ['CrewAI / AutoGen', 'guard() decorator · examples/'],
               ['Any Node service', '@emilia-protocol/require-receipt → 402'],
+              ['MCP tool guard', '@emilia-protocol/mcp-guard → signoff + receipt'],
               ['Verify in JS', '@emilia-protocol/verify'],
               ['Verify in Python', 'pip install emilia-verify'],
             ].map(([k, v]) => (
