@@ -307,6 +307,76 @@ paths:
   # Receipts
   # ===========================================================================
 
+  /api/v1/trust-receipts/{receiptId}/execution:
+    post:
+      tags: [Receipts]
+      summary: Record post-mutation execution attestation
+      description: |
+        Records the enforcement adapter's post-mutation execution attestation for
+        a consumed trust receipt. The endpoint refuses to attest execution until
+        the receipt has already passed the consume gate, then binds the action
+        that actually executed to the action hash that was approved.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: receiptId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Trust receipt ID.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [executed_action, executing_system]
+              properties:
+                executed_action:
+                  type: object
+                  description: Canonical action object that actually ran.
+                executing_system:
+                  type: string
+                  description: System or adapter that executed the mutation.
+                execution_id:
+                  type: string
+                  description: Optional external execution reference.
+                executed_at:
+                  type: string
+                  format: date-time
+                  description: Optional execution timestamp. Defaults to server time.
+      responses:
+        '201':
+          description: Execution attestation recorded.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  receipt_id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [executed]
+                  binding_status:
+                    type: string
+                    enum: [match, drift]
+                  executed_action_hash:
+                    type: string
+                  approved_action_hash:
+                    type: string
+                  execution_integrity:
+                    type: object
+        '400':
+          description: Missing executed action or executing system.
+        '401':
+          description: Authentication required.
+        '404':
+          description: Receipt not found.
+        '409':
+          description: Receipt not consumed or execution already attested.
+
   /api/receipts/submit:
     post:
       tags: [Receipts]
