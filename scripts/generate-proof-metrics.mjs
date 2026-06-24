@@ -7,15 +7,16 @@
 import { readFileSync, writeFileSync, rmSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 const reportPath = join(root, 'generated', '.vitest-report.json');
 
-// Run tests with JSON reporter
+// Run tests with JSON reporter. execFileSync with an argv array (no shell) so
+// reportPath can never be interpreted as a shell command.
 try {
-  execSync(`npx vitest run --reporter=json --outputFile=${reportPath}`, {
+  execFileSync('npx', ['vitest', 'run', '--reporter=json', `--outputFile=${reportPath}`], {
     cwd: root, stdio: 'pipe', timeout: 60000,
   });
 } catch (e) {

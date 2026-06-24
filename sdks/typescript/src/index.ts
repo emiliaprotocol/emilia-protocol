@@ -894,7 +894,12 @@ export class EPClient {
 
   constructor(options: EPClientOptions = {}) {
     const env = typeof process !== 'undefined' && process.env ? process.env : {};
-    this.baseUrl = (options.baseUrl ?? env.EP_BASE_URL ?? 'https://emiliaprotocol.ai').replace(/\/+$/, '');
+    // Trim trailing slashes without a regex — avoids the polynomial-backtracking
+    // CodeQL flags on /\/+$/ for long all-slash inputs.
+    const rawBase = options.baseUrl ?? env.EP_BASE_URL ?? 'https://emiliaprotocol.ai';
+    let baseEnd = rawBase.length;
+    while (baseEnd > 0 && rawBase.charCodeAt(baseEnd - 1) === 47 /* '/' */) baseEnd--;
+    this.baseUrl = rawBase.slice(0, baseEnd);
     this.apiKey = options.apiKey ?? env.EP_API_KEY ?? '';
     this.timeout = options.timeout ?? 10_000;
     this.retries = options.retries ?? 2;

@@ -19,7 +19,12 @@ const URL_RE = /^https?:\/\/[^\s/$.?#].[^\s]*$/i;
 /** Strip HTML tags to prevent stored XSS. */
 function stripHtml(str) {
   if (typeof str !== 'string') return str;
-  return str.replace(/<[^>]*>/g, '');
+  // Strip tags repeatedly until stable so recombining sequences (e.g. "<<>>")
+  // cannot reconstruct a tag; [^<>] (not [^>]) keeps each match linear — no ReDoS.
+  let out = str;
+  let prev;
+  do { prev = out; out = out.replace(/<[^<>]*>/g, ''); } while (out !== prev);
+  return out;
 }
 
 /** Trim, strip HTML, and return null for empty strings. */
