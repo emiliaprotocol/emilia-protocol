@@ -24,7 +24,7 @@ Put this at `/.well-known/agent-actions.json`. Start with one dangerous tool.
   "@version": "EP-ACTION-RISK-MANIFEST-v0.1",
   "service": {
     "name": "Acme MCP",
-    "manifest_url": "https://mcp.acme.com/.well-known/agent-actions.json"
+    "manifest_url": "https://mcp.example.com/.well-known/agent-actions.json"
   },
   "receipt_required": {
     "status": 428,
@@ -75,7 +75,7 @@ import {
   verifyEmiliaReceipt,
 } from '@emilia-protocol/require-receipt';
 
-const manifest = await fetch('https://mcp.acme.com/.well-known/agent-actions.json')
+const manifest = await fetch('https://mcp.example.com/.well-known/agent-actions.json')
   .then((r) => r.json());
 const consumed = new Set(); // use a durable consume store in production
 

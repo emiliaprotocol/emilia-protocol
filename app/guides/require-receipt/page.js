@@ -105,7 +105,7 @@ export async function guardedCallTool(name, args, extra = {}) {
 const LIVE_GUARD = `import { EPClient } from '@emilia-protocol/sdk';
 import { withMcpReceiptGuard } from '@emilia-protocol/mcp-guard';
 
-const ep = new EPClient({ apiKey: process.env.EP_API_KEY });
+const ep = new EPClient({ apiKey });   // EP_API_KEY from your env
 
 const guardedHandleTool = withMcpReceiptGuard(handleTool, {
   client: ep,
