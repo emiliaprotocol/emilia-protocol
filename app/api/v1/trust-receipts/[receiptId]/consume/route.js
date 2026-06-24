@@ -65,7 +65,7 @@ export async function POST(request, { params }) {
     // must not trigger a cross-tenant consume/release. Unbound callers remain
     // gated by the signoff authority check below (resolveGuardAuthority).
     const callerOrg = (auth?.entity && typeof auth.entity === 'object') ? (auth.entity.organization_id || null) : null;
-    if (callerOrg && callerOrg !== base.organization_id) {
+    if (callerOrg && base.organization_id && callerOrg !== base.organization_id) {
       return epProblem(403, 'organization_mismatch', 'organization_id does not match the authenticated entity');
     }
 
