@@ -153,6 +153,38 @@ export default async function McpPage() {
         </C>
       </section>
 
+      {/* RR-1 ENFORCED — the credential, at a glance */}
+      <section style={{ padding: '56px 0', borderTop: `1px solid ${color.border}` }}>
+        <C>
+          <div style={{ border: `1px solid ${color.border}`, borderRadius: radius.base, background: color.card, padding: '28px 32px', maxWidth: 720 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+              <span style={{ fontFamily: font.mono, fontWeight: 700, fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: '#fff', background: color.green, padding: '6px 12px', borderRadius: 6 }}>✓ RR-1 Enforced</span>
+              <span style={{ fontFamily: font.sans, fontSize: 15, color: color.t2 }}>Receipt Required conformance &mdash; verified in CI, not asserted.</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px 28px', margin: '22px 0 0' }}>
+              {[
+                ['Missing receipt', '428 Receipt Required'],
+                ['Valid receipt', 'action runs'],
+                ['Same receipt', 'replay refused'],
+                ['Forged receipt', 'refused'],
+              ].map(([a, b]) => (
+                <div key={a} style={{ fontFamily: font.mono, fontSize: 12.5, color: color.t2 }}>
+                  <span style={{ color: color.green, fontWeight: 700 }}>✓</span> {a} <span style={{ color: color.t3 }}>&rarr;</span> <span style={{ color: color.t1 }}>{b}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', margin: '24px 0 0', fontFamily: font.mono, fontSize: 12 }}>
+              <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/RECEIPT-REQUIRED-CONFORMANCE.md" style={{ color: color.gold, textDecoration: 'underline', textUnderlineOffset: 3 }}>Conformance spec &rarr;</a>
+              <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/guides/RECEIPT-REQUIRED-MCP.md" style={{ color: color.gold, textDecoration: 'underline', textUnderlineOffset: 3 }}>10-minute guide &rarr;</a>
+              <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/tests/receipt-required-conformance.test.js" style={{ color: color.gold, textDecoration: 'underline', textUnderlineOffset: 3 }}>CI test &rarr;</a>
+            </div>
+            <p style={{ fontSize: 12.5, color: color.t3, margin: '18px 0 0', fontFamily: font.mono }}>
+              Run the RR-1 gallery locally: <span style={{ color: color.t1 }}>FAST=1 node examples/mcp/payment-server.mjs</span>
+            </p>
+          </div>
+        </C>
+      </section>
+
       {/* NO RECEIPT, NO IRREVERSIBLE ACTION — cold-run examples */}
       <section style={{ padding: '64px 0', background: '#1C1917', color: '#FAFAF9' }}>
         <C>
