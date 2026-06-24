@@ -72,6 +72,38 @@
       }
     },
     {
+      "id": "mcp.run_destructive_sql",
+      "description": "Run destructive SQL (DROP/DELETE/TRUNCATE) against a production database.",
+      "match": {
+        "protocol": "mcp",
+        "tool": "run_destructive_sql"
+      },
+      "action_type": "database.destructive_sql",
+      "risk": "critical",
+      "receipt_required": true,
+      "assurance_class": "class_a",
+      "max_age_sec": 900,
+      "quorum": {
+        "required": false
+      }
+    },
+    {
+      "id": "mcp.export_customer_data",
+      "description": "Bulk export of customer/issue data from a SaaS workspace.",
+      "match": {
+        "protocol": "mcp",
+        "tool": "export_customer_data"
+      },
+      "action_type": "saas.data_export",
+      "risk": "high",
+      "receipt_required": true,
+      "assurance_class": "class_a",
+      "max_age_sec": 900,
+      "quorum": {
+        "required": false
+      }
+    },
+    {
       "id": "http.release_payment",
       "description": "Release a payment through a service API.",
       "match": {

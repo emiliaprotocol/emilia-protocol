@@ -167,7 +167,9 @@ export default async function McpPage() {
           </p>
           <pre style={{ fontFamily: font.mono, fontSize: 12.5, lineHeight: 1.9, color: '#D6D3D1', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: radius.base, padding: '20px 22px', margin: 0, overflowX: 'auto', whiteSpace: 'pre' }}>{`node examples/mcp/payment-server.mjs    # release_payment   — refuses without a receipt
 node examples/mcp/github-admin.mjs      # delete_repo       — refuses without a receipt
-node examples/mcp/prod-deploy.mjs       # deploy_production — refuses without a receipt`}</pre>
+node examples/mcp/prod-deploy.mjs       # deploy_production — refuses without a receipt
+node examples/mcp/supabase-admin.mjs    # run_destructive_sql — refuses without a receipt
+node examples/mcp/linear-export.mjs     # export_customer_data — refuses without a receipt`}</pre>
           <p style={{ fontSize: 13, color: 'rgba(250,250,249,0.5)', margin: '16px 0 0' }}>
             Wrap your own dispatcher with <code style={{ fontFamily: font.mono }}>withMcpGuard</code> or a manifest-driven 428 gate &mdash; missing receipt &rarr; refused, never a silent pass.
           </p>

@@ -19,6 +19,8 @@ const TARGETS = [
   ['release_payment', 'payment.release'],
   ['delete_repo', 'github.repo.delete'],
   ['deploy_production', 'deploy.production'],
+  ['run_destructive_sql', 'database.destructive_sql'],
+  ['export_customer_data', 'saas.data_export'],
 ];
 
 describe('Receipt Required conformance — example servers earn level RR-1', () => {

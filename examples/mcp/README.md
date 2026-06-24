@@ -27,6 +27,8 @@ no API key, no account, no EP server trusted.
 | [`payment-server.mjs`](payment-server.mjs) | `release_payment` | `payment.release` |
 | [`github-admin.mjs`](github-admin.mjs) | `delete_repo` / `change_permissions` | `github.repo.delete` |
 | [`prod-deploy.mjs`](prod-deploy.mjs) | `deploy_production` | `deploy.production` |
+| [`supabase-admin.mjs`](supabase-admin.mjs) | `run_destructive_sql` | `database.destructive_sql` |
+| [`linear-export.mjs`](linear-export.mjs) | `export_customer_data` | `saas.data_export` |
 
 ## Run one
 
@@ -34,6 +36,8 @@ no API key, no account, no EP server trusted.
 node examples/mcp/payment-server.mjs          # paced, for screen-recording
 FAST=1 node examples/mcp/github-admin.mjs      # no pauses
 node examples/mcp/prod-deploy.mjs
+node examples/mcp/supabase-admin.mjs           # DROP TABLE invoices — blocked
+node examples/mcp/linear-export.mjs            # bulk customer-data export — blocked
 ```
 
 ## Wiring this into a real MCP server

@@ -24,6 +24,8 @@ describe('public MCP examples run cold and enforce "no receipt, no irreversible 
     ['examples/mcp/payment-server.mjs', 'release_payment'],
     ['examples/mcp/github-admin.mjs', 'delete_repo'],
     ['examples/mcp/prod-deploy.mjs', 'deploy_production'],
+    ['examples/mcp/supabase-admin.mjs', 'run_destructive_sql'],
+    ['examples/mcp/linear-export.mjs', 'export_customer_data'],
   ]) {
     it(`${tool}: full rail — 428 without receipt, runs, replay refused, forgery refused`, () => {
       const out = run(file);
