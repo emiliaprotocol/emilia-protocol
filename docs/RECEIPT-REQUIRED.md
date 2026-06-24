@@ -95,6 +95,8 @@ server that receives a call for a `receipt_required: true` tool without proof
 returns the same problem object as a tool result or structured error, using
 `status: 428` and the `Receipt-Required` challenge fields.
 
+Implementation guide: [`docs/guides/RECEIPT-REQUIRED-MCP.md`](guides/RECEIPT-REQUIRED-MCP.md).
+
 ## A2A profile
 
 For A2A tasks, the producer can expose the same manifest and put the challenge in

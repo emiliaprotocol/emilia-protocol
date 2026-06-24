@@ -102,7 +102,7 @@ const TOOLS = [
 
 const FLOW = [
   ['Agent attempts an irreversible action', 'release a payment, change a record, deploy'],
-  ['EMILIA holds it', '402 / signoff_required — the agent cannot proceed alone'],
+  ['EMILIA holds it', '428 Receipt Required / signoff_required - the agent cannot proceed alone'],
   ['A named human approves', 'the signed "yes", bound to the exact action'],
   ['Action proceeds + a receipt is minted', 'offline-verifiable proof, forever'],
 ];
@@ -161,14 +161,15 @@ export default async function McpPage() {
           </h2>
           <p style={{ fontSize: 16, color: 'rgba(250,250,249,0.72)', lineHeight: 1.7, margin: '16px 0 28px', maxWidth: 640 }}>
             Three tiny MCP servers, each with one dangerous tool that refuses to run without a receipt.
-            Run any of them cold &mdash; fully offline, no key, no account. Each shows the whole loop:
-            refused &rarr; a named human signs the exact action &rarr; the tool runs &rarr; a forged receipt is rejected.
+            Run any of them cold &mdash; fully offline, no key, no account. Each reads the public
+            Action Risk Manifest and shows the whole loop: 428 refused &rarr; a named human signs
+            the exact action &rarr; the tool runs &rarr; replay refused &rarr; forged receipt rejected.
           </p>
           <pre style={{ fontFamily: font.mono, fontSize: 12.5, lineHeight: 1.9, color: '#D6D3D1', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: radius.base, padding: '20px 22px', margin: 0, overflowX: 'auto', whiteSpace: 'pre' }}>{`node examples/mcp/payment-server.mjs    # release_payment   — refuses without a receipt
 node examples/mcp/github-admin.mjs      # delete_repo       — refuses without a receipt
 node examples/mcp/prod-deploy.mjs       # deploy_production — refuses without a receipt`}</pre>
           <p style={{ fontSize: 13, color: 'rgba(250,250,249,0.5)', margin: '16px 0 0' }}>
-            Wrap your own dispatcher with <code style={{ fontFamily: font.mono }}>withMcpGuard</code> &mdash; missing receipt → refused, never a silent pass.
+            Wrap your own dispatcher with <code style={{ fontFamily: font.mono }}>withMcpGuard</code> or a manifest-driven 428 gate &mdash; missing receipt &rarr; refused, never a silent pass.
           </p>
         </C>
       </section>
@@ -214,7 +215,7 @@ node examples/mcp/prod-deploy.mjs       # deploy_production — refuses without 
             Reference server + client harness in the repo (<code style={{ fontFamily: font.mono, fontSize: 12 }}>mcp-server/passport-demo.mjs</code>);
             demand side via <code style={{ fontFamily: font.mono, fontSize: 12 }}>@emilia-protocol/require-receipt</code> and{' '}
             <code style={{ fontFamily: font.mono, fontSize: 12 }}>@emilia-protocol/mcp-guard</code> &mdash;{' '}
-            <Link href="/guides/require-receipt" style={{ color: color.gold }}>require a receipt in one endpoint &rarr;</Link>
+            <Link href="/guides/require-receipt" style={{ color: color.gold }}>add Receipt Required to an MCP server &rarr;</Link>
           </p>
         </C>
       </section>
@@ -244,7 +245,7 @@ node examples/mcp/prod-deploy.mjs       # deploy_production — refuses without 
               ['MCP client', 'npx -y @emilia-protocol/mcp-server'],
               ['LangChain.js', 'withGuard() · @emilia-protocol/langchain'],
               ['CrewAI / AutoGen', 'guard() decorator · examples/'],
-              ['Any Node service', '@emilia-protocol/require-receipt → 402'],
+              ['Any Node service', '@emilia-protocol/require-receipt -> 428'],
               ['MCP tool guard', '@emilia-protocol/mcp-guard → signoff + receipt'],
               ['Verify in JS', '@emilia-protocol/verify'],
               ['Verify in Python', 'pip install emilia-verify'],

@@ -1,11 +1,15 @@
 # Canonical MCP examples — "no receipt, no irreversible action"
 
 Three tiny MCP servers, each exposing one dangerous tool that **refuses to run
-without an EMILIA authorization receipt**. Each is the same 60-second loop:
+without an EMILIA authorization receipt**. The gate is manifest-driven: it reads
+[`public/.well-known/agent-actions.json`](../../public/.well-known/agent-actions.json)
+to learn which tools require proof and what assurance class they need.
 
-> agent calls the tool → **refused** → a named human signs the exact action →
-> agent retries with the receipt → **tool runs** → the receipt verifies offline →
-> a forged receipt is **rejected**.
+Each server runs the same 60-second loop:
+
+> agent calls the tool -> **428 Receipt Required** -> a named human signs the exact
+> action -> agent retries with the receipt -> **tool runs** -> the same receipt is
+> **replay-refused** -> a forged receipt is **rejected**.
 
 Everything is fully offline — the real verifier from
 [`@emilia-protocol/require-receipt`](https://www.npmjs.com/package/@emilia-protocol/require-receipt),
@@ -27,8 +31,11 @@ node examples/mcp/prod-deploy.mjs
 
 ## Wiring this into a real MCP server
 
-These demos call the verifier directly so they stay self-contained. In a real
-server you wrap your existing tool dispatcher with
+These demos call the verifier directly so they stay self-contained. The
+implementation guide is here:
+[`docs/guides/RECEIPT-REQUIRED-MCP.md`](../../docs/guides/RECEIPT-REQUIRED-MCP.md).
+
+In a real server you wrap your existing tool dispatcher with
 [`@emilia-protocol/mcp-guard`](https://www.npmjs.com/package/@emilia-protocol/mcp-guard) —
 irreversible tools route through consent → Class-A signoff → an emitted
 `EP-RECEIPT-v1`, and a presented receipt is verified offline before the tool runs:

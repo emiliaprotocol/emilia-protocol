@@ -77,12 +77,14 @@ const REQUIRE_SNIPPET = `import { requireEmiliaReceipt } from '@emilia-protocol/
 app.post('/release-payment', requireEmiliaReceipt({
   trustedKeys: [process.env.EMILIA_ISSUER_PUBKEY],
   action:      'payment.release',
+  statusCode:  428,
+  manifestUrl: '/.well-known/agent-actions.json',
   maxAgeSec:   900,
 }), handler);
 
-// No receipt? The caller gets 402 EMILIA Receipt Required with a
+// No receipt? The caller gets 428 Receipt Required with a
 // challenge; a well-behaved agent obtains one and retries. Verified
-// offline — no EMILIA backend. Run the loop: node examples/402-loop.mjs`;
+// offline — no EMILIA backend. Run: FAST=1 node examples/mcp/payment-server.mjs`;
 
 const FLOW = [
   {
@@ -150,11 +152,11 @@ export default function AgentGuardPage() {
             human yes &mdash; or a policy that proves it&rsquo;s safe. Vendor-neutral. Works with any framework.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <Link href="/guides/require-receipt" className="ep-cta" style={cta.primary}>Require a receipt in one endpoint &rarr;</Link>
+            <Link href="/guides/require-receipt" className="ep-cta" style={cta.primary}>Add Receipt Required to MCP &rarr;</Link>
             <Link href="/demo" className="ep-cta-secondary" style={cta.secondary}>Watch an agent get stopped</Link>
           </div>
           <p style={{ fontSize: 13, color: color.t3, marginTop: 16, fontFamily: font.mono }}>
-            Run the loop now: <span style={{ color: color.t2 }}>node examples/402-loop.mjs</span> &nbsp;·&nbsp; no account needed
+            Run the rail now: <span style={{ color: color.t2 }}>FAST=1 node examples/mcp/payment-server.mjs</span> &nbsp;·&nbsp; no account needed
           </p>
         </C>
       </section>
@@ -188,7 +190,7 @@ export default function AgentGuardPage() {
         </C>
       </section>
 
-      {/* THE DEMAND SIDE — 402 */}
+      {/* THE DEMAND SIDE — RECEIPT REQUIRED */}
       <section style={{ padding: '88px 0', borderBottom: `1px solid ${color.border}` }}>
         <C>
           <div style={{ display: 'grid', gridTemplateColumns: '1.15fr 0.85fr', gap: 56, alignItems: 'center' }}>
@@ -202,12 +204,12 @@ export default function AgentGuardPage() {
               </h2>
               <p style={{ fontSize: 16, color: color.t2, lineHeight: 1.7, marginBottom: 18 }}>
                 The flip side of the gate: make your own endpoint <strong style={{ color: color.t1 }}>require</strong> proof.
-                An irreversible call with no valid receipt gets a <strong style={{ color: color.t1 }}>402</strong> describing
+                An irreversible call with no valid receipt gets a <strong style={{ color: color.t1 }}>428</strong> describing
                 exactly what to bring &mdash; a well-behaved agent obtains one and retries, and you verify it offline.
                 The agent self-serves authorization, no human in the support loop.
               </p>
               <Link href="/guides/require-receipt" style={{ fontFamily: font.mono, fontSize: 13, color: color.gold, textDecoration: 'underline', textUnderlineOffset: 3 }}>
-                Require a receipt in one endpoint &rarr;
+                Add Receipt Required to an MCP server &rarr;
               </Link>
             </div>
           </div>

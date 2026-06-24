@@ -48,7 +48,7 @@ const PATHS = [
   { k: 'MCP client', sub: 'Claude Desktop, Cursor, Cline, Continue', code: '{ "command": "npx", "args": ["-y", "@emilia-protocol/mcp-server"] }' },
   { k: 'LangChain.js', sub: 'wrap any irreversible tool', code: "import { withGuard } from '@emilia-protocol/langchain';\nconst safe = withGuard(tool, { action: 'payment.release' });" },
   { k: 'CrewAI / AutoGen', sub: 'Python — the guard() decorator', code: '@guard("payment.release", context_fn=..., fetch=post)\ndef wire_transfer(amount, destination): ...' },
-  { k: 'Any Node service', sub: 'demand side — answer 402', code: "import { requireEmiliaReceipt } from '@emilia-protocol/require-receipt';\napp.post('/release', requireEmiliaReceipt({ action: 'payment.release' }), handler);" },
+  { k: 'Any Node service', sub: 'demand side — answer 428', code: "import { requireEmiliaReceipt } from '@emilia-protocol/require-receipt';\napp.post('/release', requireEmiliaReceipt({\n  action: 'payment.release',\n  statusCode: 428,\n  manifestUrl: '/.well-known/agent-actions.json',\n}), handler);" },
 ];
 
 const PATTERN = `const d = await guardAction({ action: 'payment.release', context });

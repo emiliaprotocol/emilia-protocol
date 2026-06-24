@@ -1,29 +1,29 @@
 export const metadata = {
-  title: 'Require a Receipt in One Endpoint — the 402 loop for agent tools',
+  title: 'Add Receipt Required to an MCP Server in 10 Minutes',
   description:
-    'No receipt, no irreversible action. Make any service refuse an irreversible call unless a '
-    + 'valid authorization receipt rides with it: the caller gets a 402 describing exactly what to '
-    + 'bring, a well-behaved agent obtains a receipt and retries, and you verify it offline — no '
-    + 'EMILIA backend. One middleware (@emilia-protocol/require-receipt), framework-agnostic, '
-    + 'fail-closed.',
+    'No receipt, no irreversible action. Publish an Action Risk Manifest, wrap one dangerous MCP '
+    + 'tool, return 428 Receipt Required until the agent brings an EP-RECEIPT-v1, then verify '
+    + 'offline, consume before mutation, and refuse replay.',
   alternates: { canonical: '/guides/require-receipt' },
   openGraph: {
-    title: 'Require a receipt in one endpoint — the 402 loop',
+    title: 'Add Receipt Required to an MCP server in 10 minutes',
     description:
-      'A tiny demand-side middleware: irreversible action without proof → 402 EMILIA Receipt '
-      + 'Required → agent obtains a receipt, retries → verified offline. No receipt, no irreversible action.',
+      'The adoption rail for agent tools: Action Risk Manifest -> 428 Receipt Required -> signed receipt '
+      + '-> consume before mutation -> replay refused.',
     url: 'https://www.emiliaprotocol.ai/guides/require-receipt',
     type: 'article',
   },
   keywords: [
-    '402 receipt required',
+    '428 receipt required',
     'require a receipt',
+    'Action Risk Manifest',
     'agent authorization middleware',
     'no receipt no irreversible action',
-    'x402 agent commerce',
     'MCP tool authorization',
     'offline receipt verification',
     'agent self-serve authorization',
+    'MCP human signoff',
+    'AI agent receipt',
     'irreversible action guardrail',
     'EMILIA require-receipt',
   ],
