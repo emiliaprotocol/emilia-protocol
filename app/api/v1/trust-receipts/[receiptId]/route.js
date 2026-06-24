@@ -12,6 +12,7 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 import { findBoundSignoffDecision } from '@/lib/guard-signoff-binding.js';
+import { canReadReceipt } from '@/lib/tenant-binding';
 
 const RECEIPT_ID_PATTERN = /^tr_[a-f0-9]{32}$/;
 
@@ -52,11 +53,19 @@ export async function GET(request, { params }) {
       return epProblem(500, 'corrupted_receipt', 'Receipt missing creation event');
     }
 
+    const base = created.after_state;
+
+    // Tenant scoping (IDOR): only the receipt's own org (or, transitionally,
+    // its creator) may read it. Mismatch => 404, not 403, so a cross-tenant
+    // caller cannot even confirm the receipt exists.
+    if (!canReadReceipt(auth, { organizationId: base.organization_id, creatorActorId: created.actor_id })) {
+      return epProblem(404, 'receipt_not_found', `Trust receipt ${receiptId} not found`);
+    }
+
     const consumed = events.find((e) => e.event_type === 'guard.trust_receipt.consumed');
     const signoffApproved = findBoundSignoffDecision(events, created, 'guard.signoff.approved');
     const signoffRejected = findBoundSignoffDecision(events, created, 'guard.signoff.rejected');
 
-    const base = created.after_state;
     let receipt_status = base.receipt_status;
     if (consumed) receipt_status = 'consumed';
     else if (signoffRejected) receipt_status = 'rejected';

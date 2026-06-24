@@ -18,6 +18,7 @@ import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 import { signEvidenceReceipt } from '@/lib/guard-evidence-receipt.js';
 import { findBoundSignoffDecision } from '@/lib/guard-signoff-binding.js';
+import { canReadReceipt } from '@/lib/tenant-binding';
 
 export async function GET(request, { params }) {
   try {
@@ -47,6 +48,13 @@ export async function GET(request, { params }) {
       return epProblem(500, 'corrupted_receipt', 'Receipt missing creation event');
     }
     const base = created.after_state;
+
+    // Tenant scoping (IDOR): the evidence packet exposes approver identity,
+    // amounts, policy, and the full timeline — scope it to the receipt's org
+    // (or, transitionally, its creator). Mismatch => 404.
+    if (!canReadReceipt(auth, { organizationId: base.organization_id, creatorActorId: created.actor_id })) {
+      return epProblem(404, 'receipt_not_found', `Trust receipt ${receiptId} not found`);
+    }
 
     const signoffEvents = events.filter((e) => e.event_type.startsWith('guard.signoff.'));
     const consumed = events.find((e) => e.event_type === 'guard.trust_receipt.consumed');

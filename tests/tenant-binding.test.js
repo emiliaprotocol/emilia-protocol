@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from 'vitest';
-import { resolveAuthorizedOrg } from '../lib/tenant-binding.js';
+import { resolveAuthorizedOrg, canReadReceipt } from '../lib/tenant-binding.js';
 
 const bound = { entity: { entity_id: 'ent_1', organization_id: 'org_real' } };
 const unbound = { entity: { entity_id: 'ent_2' } };           // no organization_id
@@ -38,5 +38,30 @@ describe('resolveAuthorizedOrg — tenant/org binding', () => {
     const r = resolveAuthorizedOrg(unbound, 'org_x', { requireBound: true });
     expect(r.error?.status).toBe(403);
     expect(r.error?.code).toBe('entity_not_org_bound');
+  });
+});
+
+describe('canReadReceipt — read-side tenant scoping (IDOR)', () => {
+  const receipt = { organizationId: 'org_real', creatorActorId: 'ent_1' };
+
+  it('lets an org-bound caller read a receipt in its OWN org', () => {
+    expect(canReadReceipt(bound, receipt)).toBe(true);
+  });
+
+  it('BLOCKS an org-bound caller from reading another org’s receipt (the IDOR)', () => {
+    const attacker = { entity: { entity_id: 'ent_x', organization_id: 'org_attacker' } };
+    expect(canReadReceipt(attacker, receipt)).toBe(false);
+  });
+
+  it('lets an unbound caller read ONLY a receipt it created', () => {
+    expect(canReadReceipt({ entity: { entity_id: 'ent_1' } }, receipt)).toBe(true);   // creator
+    expect(canReadReceipt(unbound, receipt)).toBe(false);                             // ent_2 != creator
+    expect(canReadReceipt(stringEntity, receipt)).toBe(false);                        // ent_3 != creator
+  });
+
+  it('fails closed when identity is absent or the receipt is unscoped', () => {
+    expect(canReadReceipt({}, receipt)).toBe(false);
+    expect(canReadReceipt(bound, {})).toBe(false);                                    // bound org != undefined
+    expect(canReadReceipt({ entity: { entity_id: '' } }, receipt)).toBe(false);
   });
 });

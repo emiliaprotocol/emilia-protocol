@@ -61,6 +61,14 @@ export async function POST(request, { params }) {
     }
     const base = created.after_state;
 
+    // Tenant scoping (defense-in-depth): a bound caller from a different org
+    // must not trigger a cross-tenant consume/release. Unbound callers remain
+    // gated by the signoff authority check below (resolveGuardAuthority).
+    const callerOrg = (auth?.entity && typeof auth.entity === 'object') ? (auth.entity.organization_id || null) : null;
+    if (callerOrg && callerOrg !== base.organization_id) {
+      return epProblem(403, 'organization_mismatch', 'organization_id does not match the authenticated entity');
+    }
+
     // ── Invariant checks (per MD §12.2) ──────────────────────────────────
     const alreadyConsumed = events.some((e) => e.event_type === 'guard.trust_receipt.consumed');
     if (alreadyConsumed) {
