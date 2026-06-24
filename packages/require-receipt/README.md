@@ -22,6 +22,8 @@ app.post(
   requireEmiliaReceipt({
     trustedKeys: [process.env.EMILIA_ISSUER_PUBKEY], // base64url SPKI you trust
     action: 'payment.release',
+    statusCode: 428, // new Receipt Required rail; omit for legacy 402 compatibility
+    manifestUrl: '/.well-known/agent-actions.json',
     maxAgeSec: 900,
   }),
   (req, res) => {
@@ -32,24 +34,59 @@ app.post(
 );
 ```
 
-## The 402 passport loop (why agents self-adopt)
+## Receipt Required loop (why agents self-adopt)
 
-No receipt? The service answers **`402` and tells the agent exactly what to bring** —
-so a well-behaved agent obtains one and retries, no human needed. Like a browser
-handling `401`.
+No receipt? The service answers **`428 Precondition Required`** with a
+`Receipt-Required` challenge telling the agent exactly what to bring — so a
+well-behaved agent obtains one and retries, no support ticket needed. Existing
+callers may omit `statusCode` to keep the original 402/x402-compatible shape.
 
 ```
 → POST /release-payment            (no receipt)
-← 402 EMILIA Receipt Required
-  WWW-Authenticate: EMILIA realm="agent-actions", action="payment.release"
+← 428 EMILIA Receipt Required
+  Receipt-Required: action="payment.release", proof="X-EMILIA-Receipt",
+                    manifest="/.well-known/agent-actions.json", profile="EP-RECEIPT-v1"
   { required: { action: "payment.release", header: "X-EMILIA-Receipt: base64(...)", how: "..." } }
 
 → POST /release-payment            X-EMILIA-Receipt: base64(<receipt>)
 ← 200 { released: true }
 ```
 
-`402` deliberately aligns with the emerging "challenge-to-transact" convention for
-agent commerce (x402 / AP2) — receipts ride the same rail payments do.
+`428` is the clean HTTP precondition rail for "bring an authorization receipt
+before mutation." `402` remains useful when deliberately composing with x402/AP2
+agent-commerce flows.
+
+## Action Risk Manifest
+
+Services can publish the risk contract agents should honor at
+`/.well-known/agent-actions.json`:
+
+```json
+{
+  "@version": "EP-ACTION-RISK-MANIFEST-v0.1",
+  "actions": [
+    {
+      "id": "mcp.release_payment",
+      "match": { "protocol": "mcp", "tool": "release_payment" },
+      "action_type": "payment.release",
+      "risk": "high",
+      "receipt_required": true,
+      "assurance_class": "class_a"
+    }
+  ]
+}
+```
+
+Validate and resolve entries with the package helpers:
+
+```js
+import { validateActionRiskManifest, findActionRequirement } from '@emilia-protocol/require-receipt';
+
+const check = validateActionRiskManifest(manifest);
+if (!check.ok) throw new Error(check.errors.join('\\n'));
+
+const requirement = findActionRequirement(manifest, { protocol: 'mcp', tool: 'release_payment' });
+```
 
 ## Just verify (no framework)
 

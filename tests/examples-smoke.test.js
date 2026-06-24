@@ -25,13 +25,17 @@ describe('public MCP examples run cold and enforce "no receipt, no irreversible 
     ['examples/mcp/github-admin.mjs', 'delete_repo'],
     ['examples/mcp/prod-deploy.mjs', 'deploy_production'],
   ]) {
-    it(`${tool}: refused without a receipt, runs with one, rejects a forgery`, () => {
+    it(`${tool}: full rail — 428 without receipt, runs, replay refused, forgery refused`, () => {
       const out = run(file);
-      // 1. refused without a receipt
-      expect(out).toMatch(/no EMILIA receipt presented|Receipt Required/i);
+      // manifest-driven gate
+      expect(out).toMatch(new RegExp(`manifest: ${tool}`));
+      // 1. refused without a receipt — 428 Receipt Required
+      expect(out).toMatch(/428 .*Receipt Required/i);
       // 2. runs with a valid receipt
       expect(out).toMatch(/OK — tool ran|tool performed/);
-      // 3. forged receipt rejected (fail-closed)
+      // 3. the same receipt replayed is refused (one-time consumption)
+      expect(out).toMatch(/replay_refused/);
+      // 4. forged receipt rejected (fail-closed)
       expect(out).toMatch(/untrusted_or_invalid_signature|Receipt rejected/);
     });
   }

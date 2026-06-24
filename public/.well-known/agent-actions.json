@@ -1,0 +1,104 @@
+{
+  "@version": "EP-ACTION-RISK-MANIFEST-v0.1",
+  "service": {
+    "name": "EMILIA Protocol public examples",
+    "issuer": "https://www.emiliaprotocol.ai",
+    "manifest_url": "https://www.emiliaprotocol.ai/.well-known/agent-actions.json"
+  },
+  "receipt_required": {
+    "status": 428,
+    "status_text": "Precondition Required",
+    "challenge_header": "Receipt-Required",
+    "proof_header": "X-EMILIA-Receipt",
+    "receipt_profile": "EP-RECEIPT-v1",
+    "spec": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/RECEIPT-REQUIRED.md"
+  },
+  "defaults": {
+    "read_only": "allow",
+    "missing_receipt": "refuse",
+    "invalid_receipt": "refuse",
+    "stale_receipt": "refuse"
+  },
+  "actions": [
+    {
+      "id": "mcp.release_payment",
+      "description": "Release a payment or wire from an MCP tool.",
+      "match": {
+        "protocol": "mcp",
+        "tool": "release_payment"
+      },
+      "action_type": "payment.release",
+      "risk": "high",
+      "receipt_required": true,
+      "assurance_class": "class_a",
+      "max_age_sec": 900,
+      "quorum": {
+        "required": false
+      }
+    },
+    {
+      "id": "mcp.delete_repo",
+      "description": "Delete a source-code repository or equivalent durable project namespace.",
+      "match": {
+        "protocol": "mcp",
+        "tool": "delete_repo"
+      },
+      "action_type": "github.repo.delete",
+      "risk": "high",
+      "receipt_required": true,
+      "assurance_class": "class_a",
+      "max_age_sec": 900,
+      "quorum": {
+        "required": false
+      }
+    },
+    {
+      "id": "mcp.deploy_production",
+      "description": "Deploy an artifact to a production environment.",
+      "match": {
+        "protocol": "mcp",
+        "tool": "deploy_production"
+      },
+      "action_type": "deploy.production",
+      "risk": "critical",
+      "receipt_required": true,
+      "assurance_class": "quorum",
+      "max_age_sec": 900,
+      "quorum": {
+        "required": true,
+        "mode": "m_of_n",
+        "m": 2,
+        "distinct_humans": true
+      }
+    },
+    {
+      "id": "http.release_payment",
+      "description": "Release a payment through a service API.",
+      "match": {
+        "protocol": "http",
+        "method": "POST",
+        "path": "/release-payment"
+      },
+      "action_type": "payment.release",
+      "risk": "high",
+      "receipt_required": true,
+      "assurance_class": "class_a",
+      "max_age_sec": 900,
+      "quorum": {
+        "required": false
+      }
+    },
+    {
+      "id": "mcp.search_payments",
+      "description": "Read-only payment search; no receipt required.",
+      "match": {
+        "protocol": "mcp",
+        "tool": "search_payments"
+      },
+      "action_type": "payment.search",
+      "risk": "low",
+      "receipt_required": false,
+      "assurance_class": "software"
+    }
+  ]
+}

@@ -6,6 +6,7 @@
   "trust_evaluate_url": "https://emiliaprotocol.ai/api/trust/evaluate",
   "receipt_submit_url": "https://emiliaprotocol.ai/api/receipts/submit",
   "receipt_confirm_url": "https://emiliaprotocol.ai/api/receipts/confirm",
+  "agent_actions_url": "https://emiliaprotocol.ai/.well-known/agent-actions.json",
   "dispute_file_url": "https://emiliaprotocol.ai/api/disputes/file",
   "dispute_report_url": "https://emiliaprotocol.ai/api/disputes/report",
   "appeal_page_url": "https://emiliaprotocol.ai/appeal",

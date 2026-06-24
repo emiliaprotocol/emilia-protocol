@@ -1,7 +1,7 @@
 {
   "name": "@emilia-protocol/require-receipt",
-  "version": "0.1.0",
-  "description": "Demand a verifiable EMILIA Trust Receipt for any irreversible agent action. The one-line way for a service to require portable, accountable authorization — not auth, not permissions. Answers 402 and tells the agent exactly what to bring.",
+  "version": "0.2.0",
+  "description": "Demand a verifiable EMILIA authorization receipt for any irreversible agent action. Emits Receipt Required challenges (428, with legacy 402 compatibility) and tells the agent exactly what to bring.",
   "type": "module",
   "main": "index.js",
   "exports": {
@@ -17,6 +17,8 @@
     "trust-receipt",
     "agent-authorization",
     "agent-accountability",
+    "receipt-required",
+    "428",
     "402",
     "agent-commerce",
     "verifiable-credential",
