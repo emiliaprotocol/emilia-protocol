@@ -37,6 +37,31 @@ export interface InitiatorAttestation {
   statement?: string;
 }
 
+/** PIP-008: reference to an external delegation receipt/credential (e.g. DRP). */
+export interface AgentDelegationRef {
+  /** Name of the external standard, e.g. "DRP", "WIMSE". */
+  scheme: string;
+  /** The external receipt/credential id. */
+  ref: string;
+  /** Optional content hash of the referenced artifact: "sha256:<64-hex>". */
+  hash?: string;
+}
+
+/**
+ * PIP-008 agent_binding — an identified-never-trusted CLAIM attributing the
+ * authorized action to an external agent identity / delegation. EP composes
+ * with agent-identity standards rather than minting identity; a verifier treats
+ * this as a claim, not proof. Copied verbatim into every context (signature-bound).
+ */
+export interface AgentBinding {
+  /** External agent identity URI / DID / opaque id (REQUIRED). */
+  agent_id: string;
+  /** Optional reference to the external delegation that authorized the agent. */
+  delegation?: AgentDelegationRef;
+  /** Short free-text note. MUST NOT exceed 280 characters. */
+  statement?: string;
+}
+
 export interface AuthorizationContext {
   ep_version: string;
   context_type: string;
@@ -53,6 +78,8 @@ export interface AuthorizationContext {
   prev_receipt_hash?: string;
   /** PIP-007 §1: identical across every context of a receipt when present. */
   initiator_attestation?: InitiatorAttestation;
+  /** PIP-008: identical across every context of a receipt when present. */
+  agent_binding?: AgentBinding;
 }
 
 export interface Signoff {
@@ -140,6 +167,8 @@ export const ATTESTATION_STATEMENT_MAX: number;
  */
 export function validateInitiatorAttestation(attestation: InitiatorAttestation): Readonly<InitiatorAttestation>;
 
+export function validateAgentBinding(binding: AgentBinding): Readonly<AgentBinding>;
+
 export function publicKeyToSpkiB64u(publicKey: KeyObject): string;
 export function privateKeyToPkcs8B64u(privateKey: KeyObject): string;
 export function privateKeyFromPkcs8B64u(privateKeyB64u: string): KeyObject;
@@ -163,6 +192,7 @@ export function buildContexts(args: {
   expiresAt: string;
   prevReceiptHash?: string;
   initiatorAttestation?: InitiatorAttestation;
+  agentBinding?: AgentBinding;
 }): AuthorizationContext[];
 
 export function contextDigest(context: AuthorizationContext): Buffer;
@@ -203,6 +233,7 @@ export function issueAuthorizationReceipt(args: {
   expiresInSeconds?: number;
   prevReceiptHash?: string;
   initiatorAttestation?: InitiatorAttestation;
+  agentBinding?: AgentBinding;
   signers: Signer[];
   committedAt?: string;
   log: LogConfig;
@@ -218,6 +249,7 @@ export function issueFromKeyBundle(args: {
   expiresAt?: string;
   expiresInSeconds?: number;
   initiatorAttestation?: InitiatorAttestation;
+  agentBinding?: AgentBinding;
 }): Promise<{ receipt: AuthorizationReceipt; verification: VerificationMaterial }>;
 
 export function verificationMaterialFromKeyBundle(keys: IssuerKeyBundle): VerificationMaterial;

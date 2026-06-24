@@ -34,6 +34,7 @@ import {
   formatLogKeyId,
   publicKeyToSpkiB64u,
   validateInitiatorAttestation,
+  validateAgentBinding,
   canonicalize,
   ESCALATION_TRIGGERS,
   ATTESTATION_STATEMENT_MAX,
@@ -367,4 +368,54 @@ test('PIP-007 — an over-cap statement passed via issueFromKeyBundle throws (is
     }),
     /character cap/,
   );
+});
+
+// ── PIP-008: agent binding (identity + delegation reference) ─────────────────
+
+test('PIP-008 — issue WITH agent_binding round-trips; receipt still fully verifies (signature covers it)', async () => {
+  const keys = generateIssuerKeyBundle({ approverId: 'ep:approver:finance-lead' });
+  const agentBinding = {
+    agent_id: 'did:web:agents.acme.example:treasury-bot',
+    delegation: { scheme: 'DRP', ref: 'drp:rcpt:abc123', hash: 'sha256:' + 'a'.repeat(64) },
+    statement: 'Acting under the treasury delegation issued to this agent.',
+  };
+  const { receipt, verification } = await issueFromKeyBundle({ keys, action, agentBinding });
+
+  // The IDENTICAL validated object is in the (single) context.
+  assert.deepEqual(receipt.contexts[0].agent_binding, agentBinding);
+
+  const r = verifyTrustReceipt(receipt, {
+    approverKeys: verification.approver_keys,
+    logPublicKey: verification.log_public_key,
+  });
+  // Additive: existing verifier passes unmodified, signature covers the binding.
+  assert.equal(r.valid, true);
+  assert.deepEqual(r.errors, []);
+  assert.ok(Object.values(r.checks).every(Boolean));
+});
+
+test('PIP-008 — a dual-approval receipt carries the IDENTICAL agent_binding in every context', () => {
+  const a = classBSigner('ep:key:k1', '2026-06-09T17:24:40Z');
+  const b = classBSigner('ep:key:k2', '2026-06-09T17:24:55Z');
+  void a; void b;
+  const agentBinding = { agent_id: 'urn:agent:recon-7', delegation: { scheme: 'WIMSE', ref: 'wimse:cred:9' } };
+  const contexts = buildContexts({
+    action, policyHash: 'sha256:aa', approvers: ['ep:approver:cfo', 'ep:approver:controller'], requiredApprovals: 2,
+    issuedAt: '2026-06-09T17:21:05Z', expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+    agentBinding,
+  });
+  assert.equal(contexts.length, 2);
+  assert.equal(canonicalize(contexts[0].agent_binding), canonicalize(contexts[1].agent_binding));
+  assert.deepEqual(contexts[0].agent_binding, agentBinding);
+});
+
+test('PIP-008 — validateAgentBinding fails closed on bad input', () => {
+  assert.throws(() => validateAgentBinding({}), /agent_id is required/);
+  assert.throws(() => validateAgentBinding({ agent_id: '' }), /agent_id is required/);
+  assert.throws(() => validateAgentBinding({ agent_id: 'a', extra: 'x' }), /unknown member/);
+  assert.throws(() => validateAgentBinding({ agent_id: 'a', delegation: { scheme: 'DRP' } }), /delegation\.ref/);
+  assert.throws(() => validateAgentBinding({ agent_id: 'a', delegation: { scheme: 'DRP', ref: 'r', hash: 'sha256:zz' } }), /hash must be/);
+  assert.throws(() => validateAgentBinding({ agent_id: 'a', statement: 'x'.repeat(ATTESTATION_STATEMENT_MAX + 1) }), /character cap/);
+  // Valid: agent_id only, and full delegation.
+  assert.deepEqual(validateAgentBinding({ agent_id: 'urn:agent:1' }), { agent_id: 'urn:agent:1' });
 });

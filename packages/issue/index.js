@@ -222,6 +222,83 @@ export function validateInitiatorAttestation(attestation) {
 
 // ── contexts (I-D §4) ─────────────────────────────────────────────────────────
 
+// PIP-008: the only members an agent_binding may carry.
+const AGENT_BINDING_MEMBERS = Object.freeze(['agent_id', 'delegation', 'statement']);
+const DELEGATION_MEMBERS = Object.freeze(['scheme', 'ref', 'hash']);
+const AGENT_BINDING_SHA256_RE = /^sha256:[0-9a-f]{64}$/;
+
+/**
+ * Validate an `agent_binding` object against PIP-008, returning a frozen copy.
+ *
+ * EP COMPOSES with external agent-identity / delegation standards (e.g. IETF
+ * WIMSE, the Delegated-Receipt Protocol) rather than rebuilding them. The
+ * `agent_binding` is an IDENTIFIED-NEVER-TRUSTED CLAIM, copied verbatim into
+ * every context, so the approver's signature over the JCS-canonical context
+ * already binds it — no verifier change, no new trust. A verifier treats it as
+ * a claim ("this approval was for an action attributed to agent X under
+ * delegation Y"), NOT as proof of agent identity. The issuer fails closed.
+ *
+ * Rules (PIP-008 §1):
+ *   - plain object with ONLY agent_id, delegation, statement (reject extras);
+ *   - `agent_id` REQUIRED, non-empty string (an external identity URI / DID /
+ *     opaque id — EP does not mint or verify it);
+ *   - `delegation` OPTIONAL object {scheme, ref, hash?}: `scheme` + `ref` are
+ *     non-empty strings naming the external standard (e.g. "DRP") and its
+ *     receipt/credential reference; `hash`, if present, is "sha256:<64-hex>";
+ *   - `statement` OPTIONAL string, at most 280 characters.
+ *
+ * @param {object} binding
+ * @returns {Readonly<object>} the validated binding
+ */
+export function validateAgentBinding(binding) {
+  if (!binding || typeof binding !== 'object' || Array.isArray(binding)) {
+    throw new Error('agentBinding must be an object');
+  }
+  for (const key of Object.keys(binding)) {
+    if (!AGENT_BINDING_MEMBERS.includes(key)) {
+      throw new Error(`agentBinding has an unknown member "${key}" (PIP-008 §1 allows only ${AGENT_BINDING_MEMBERS.join(', ')})`);
+    }
+  }
+  const { agent_id: agentId, delegation, statement } = binding;
+  if (typeof agentId !== 'string' || agentId.length === 0) {
+    throw new Error('agentBinding.agent_id is required and must be a non-empty string (PIP-008 §1)');
+  }
+  let validatedDelegation;
+  if (delegation !== undefined) {
+    if (!delegation || typeof delegation !== 'object' || Array.isArray(delegation)) {
+      throw new Error('agentBinding.delegation must be an object when present');
+    }
+    for (const key of Object.keys(delegation)) {
+      if (!DELEGATION_MEMBERS.includes(key)) {
+        throw new Error(`agentBinding.delegation has an unknown member "${key}" (PIP-008 §1 allows only ${DELEGATION_MEMBERS.join(', ')})`);
+      }
+    }
+    const { scheme, ref, hash } = delegation;
+    if (typeof scheme !== 'string' || scheme.length === 0) {
+      throw new Error('agentBinding.delegation.scheme is required and must be a non-empty string');
+    }
+    if (typeof ref !== 'string' || ref.length === 0) {
+      throw new Error('agentBinding.delegation.ref is required and must be a non-empty string');
+    }
+    if (hash !== undefined && (typeof hash !== 'string' || !AGENT_BINDING_SHA256_RE.test(hash))) {
+      throw new Error('agentBinding.delegation.hash must be "sha256:<64-hex>" when present');
+    }
+    validatedDelegation = { scheme, ref };
+    if (hash !== undefined) validatedDelegation.hash = hash;
+    validatedDelegation = Object.freeze(validatedDelegation);
+  }
+  if (statement !== undefined) {
+    if (typeof statement !== 'string') throw new Error('agentBinding.statement must be a string');
+    if (statement.length > ATTESTATION_STATEMENT_MAX) {
+      throw new Error(`agentBinding.statement exceeds the ${ATTESTATION_STATEMENT_MAX}-character cap (PIP-008 §1)`);
+    }
+  }
+  const validated = { agent_id: agentId };
+  if (validatedDelegation !== undefined) validated.delegation = validatedDelegation;
+  if (statement !== undefined) validated.statement = statement;
+  return Object.freeze(validated);
+}
+
 /**
  * Build one Authorization Context per approver.
  *
@@ -238,7 +315,7 @@ export function validateInitiatorAttestation(attestation) {
  *   every context, so its canonical form is identical across all of them.
  * @returns {object[]} contexts
  */
-export function buildContexts({ action, policyHash, approvers, requiredApprovals, issuedAt, expiresAt, prevReceiptHash, initiatorAttestation }) {
+export function buildContexts({ action, policyHash, approvers, requiredApprovals, issuedAt, expiresAt, prevReceiptHash, initiatorAttestation, agentBinding }) {
   if (!action || typeof action !== 'object') throw new Error('buildContexts requires an action');
   if (!action.policy_id) throw new Error('action.policy_id is required');
   if (!Array.isArray(approvers) || approvers.length === 0) {
@@ -249,6 +326,11 @@ export function buildContexts({ action, policyHash, approvers, requiredApprovals
   const attestation = initiatorAttestation === undefined
     ? undefined
     : validateInitiatorAttestation(initiatorAttestation);
+  // PIP-008: same discipline — validate once, copy the identical agent_binding
+  // object into every context so its canonical form matches across all of them.
+  const binding = agentBinding === undefined
+    ? undefined
+    : validateAgentBinding(agentBinding);
   const aHash = actionHash(action);
   return approvers.map((approver, i) => {
     const ctx = {
@@ -267,6 +349,7 @@ export function buildContexts({ action, policyHash, approvers, requiredApprovals
     };
     if (prevReceiptHash) ctx.prev_receipt_hash = prevReceiptHash;
     if (attestation !== undefined) ctx.initiator_attestation = attestation;
+    if (binding !== undefined) ctx.agent_binding = binding;
     return ctx;
   });
 }
@@ -449,6 +532,7 @@ export async function issueAuthorizationReceipt({
   expiresInSeconds = 3600,
   prevReceiptHash,
   initiatorAttestation,
+  agentBinding,
   signers,
   committedAt,
   log,
@@ -467,6 +551,7 @@ export async function issueAuthorizationReceipt({
     expiresAt: finalExpiresAt,
     prevReceiptHash,
     initiatorAttestation,
+    agentBinding,
   });
   const signoffs = await collectSignoffs(contexts, signers);
 
@@ -508,6 +593,7 @@ export async function issueFromKeyBundle({
   expiresAt,
   expiresInSeconds = 3600,
   initiatorAttestation,
+  agentBinding,
 }) {
   if (!keys?.approver?.private_key || !keys?.log?.private_key) {
     throw new Error('keys must be an EP-ISSUER-KEYS-v1 bundle (approver + log private keys)');
@@ -531,6 +617,7 @@ export async function issueFromKeyBundle({
     expiresAt,
     expiresInSeconds,
     initiatorAttestation,
+    agentBinding,
     signers: [signer],
     committedAt: issuedAt,
     log: {
