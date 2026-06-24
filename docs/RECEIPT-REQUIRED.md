@@ -17,6 +17,10 @@ the small protocol moment that lets services say:
 
 > No receipt, no irreversible action.
 
+**Conformance & badge:** the ritual is testable — see
+[RECEIPT-REQUIRED-CONFORMANCE.md](RECEIPT-REQUIRED-CONFORMANCE.md) for the RR-1
+level and the `receiptRequiredConformance()` harness that earns the badge.
+
 ## HTTP profile
 
 New integrations SHOULD use HTTP `428 Precondition Required` when the missing

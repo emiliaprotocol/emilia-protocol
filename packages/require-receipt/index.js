@@ -249,6 +249,63 @@ export function requireEmiliaReceipt(opts = {}) {
   };
 }
 
+/**
+ * Receipt Required conformance harness. Exercises a guarded dispatcher against
+ * the four normative behaviors and returns a structured report. The badge is
+ * EARNED by passing this — never self-asserted. (Don't trust us; run the check.)
+ *
+ * Level RR-1 requires all of: a Receipt-Required challenge on a missing receipt,
+ * the action running on a valid action-bound receipt, replay of the same receipt
+ * refused (one-time consumption), and a forged receipt refused.
+ *
+ * @param {object} p
+ * @param {(name:string, args:object, receipt:object|null)=>Promise<{status:number, body?:object}>} p.dispatch
+ * @param {string} p.tool       receipt-required tool/route name to probe
+ * @param {object} [p.args]     arguments passed to the tool
+ * @param {string} p.action     canonical action_type the receipt must bind
+ * @param {()=>(object|Promise<object>)} p.issueReceipt  mints a FRESH valid
+ *   EP-RECEIPT-v1 bound to `action` that this dispatcher accepts
+ * @param {object} [p.manifest] optional Action Risk Manifest to validate
+ * @returns {Promise<{level:string, passed:boolean, checks:object, detail:object}>}
+ */
+export async function receiptRequiredConformance({ dispatch, tool, args = {}, action, issueReceipt, manifest }) {
+  const checks = {};
+  const detail = {};
+  const RR = RECEIPT_REQUIRED_STATUS;
+
+  if (manifest !== undefined) {
+    const m = validateActionRiskManifest(manifest);
+    checks.manifest_valid = m.ok;
+    if (!m.ok) detail.manifest_errors = m.errors;
+  }
+
+  // 1. missing receipt -> a Receipt Required challenge (428, or legacy 402)
+  const r1 = await dispatch(tool, args, null);
+  checks.challenge_on_missing = (r1.status === RR || r1.status === LEGACY_RECEIPT_REQUIRED_STATUS) && !!r1.body?.required;
+  detail.missing_status = r1.status;
+
+  // 2. valid, action-bound receipt -> the action runs
+  const good = await issueReceipt(action);
+  const r2 = await dispatch(tool, args, good);
+  checks.runs_on_valid = r2.status === 200;
+  detail.valid_status = r2.status;
+
+  // 3. the SAME receipt again -> refused (one-time consumption)
+  const r3 = await dispatch(tool, args, good);
+  checks.replay_refused = r3.status !== 200;
+  detail.replay_status = r3.status;
+
+  // 4. a forged receipt (a signed field altered) -> refused
+  const forged = await issueReceipt(action);
+  if (forged?.payload?.claim) forged.payload.claim.action_type = `${action}.tampered`;
+  const r4 = await dispatch(tool, args, forged);
+  checks.forged_refused = r4.status !== 200;
+  detail.forged_status = r4.status;
+
+  const passed = Object.values(checks).every(Boolean);
+  return { level: passed ? 'RR-1' : 'none', passed, checks, detail };
+}
+
 const requireReceiptExports = {
   verifyEmiliaReceipt,
   requireEmiliaReceipt,
@@ -256,6 +313,7 @@ const requireReceiptExports = {
   receiptRequiredHeader,
   validateActionRiskManifest,
   findActionRequirement,
+  receiptRequiredConformance,
 };
 
 export default requireReceiptExports;

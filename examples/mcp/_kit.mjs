@@ -41,7 +41,7 @@ const canonicalize = (v) => (v === null || v === undefined ? JSON.stringify(v)
 
 // A named human's device signs the EXACT action. Minted locally here so the
 // demo is self-contained; in production it's a real Face ID / passkey signoff.
-function signAction(action, { approver, tamper = false } = {}) {
+export function signAction(action, { approver, tamper = false } = {}) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const pub = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
   const payload = {
