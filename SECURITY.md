@@ -15,7 +15,7 @@ Security patches apply to the latest release on the `main` branch and to the lat
 
 ## Reporting Vulnerabilities
 
-Email **security@emiliaprotocol.ai** with:
+Email **team@emiliaprotocol.ai** with:
 
 - A description of the vulnerability
 - Steps to reproduce
@@ -60,7 +60,7 @@ Activity conducted consistently with this policy is considered authorized, and w
 
 ## Security Contact
 
-- **Email:** security@emiliaprotocol.ai
+- **Email:** team@emiliaprotocol.ai
 - **PGP:** Available on request for encrypted communications.
 - **Response SLA:** 48-hour acknowledgement, 7-day initial assessment.
 

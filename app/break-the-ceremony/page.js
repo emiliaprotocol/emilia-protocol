@@ -254,7 +254,7 @@ export default function BreakTheCeremonyPage() {
               <Link href="/spec" className="ep-cta-secondary" style={cta.secondary}>Read the spec</Link>
             </div>
             <p style={{ fontFamily: font.mono, fontSize: 12, color: color.t3, marginTop: 24 }}>
-              Report a break: <a href="mailto:security@emiliaprotocol.ai" style={{ color: color.gold }}>security@emiliaprotocol.ai</a>
+              Report a break: <a href="mailto:team@emiliaprotocol.ai" style={{ color: color.gold }}>team@emiliaprotocol.ai</a>
             </p>
           </motion.div>
         </div>
