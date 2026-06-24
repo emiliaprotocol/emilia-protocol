@@ -1,0 +1,43 @@
+{
+  "@version": "EP-ACTION-RISK-MANIFEST-v0.1",
+  "service": {
+    "name": "COSA L5 broadcast plane (reference)",
+    "manifest_url": "https://cosa.example/.well-known/agent-actions.json",
+    "spec": "https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/RECEIPT-REQUIRED.md"
+  },
+  "receipt_required": {
+    "status": 428,
+    "status_text": "Precondition Required",
+    "challenge_header": "Receipt-Required",
+    "proof_header": "X-EMILIA-Receipt",
+    "receipt_profile": "EP-RECEIPT-v1"
+  },
+  "defaults": {
+    "read_only": "allow",
+    "missing_receipt": "refuse",
+    "invalid_receipt": "refuse",
+    "stale_receipt": "refuse"
+  },
+  "actions": [
+    {
+      "id": "cosa.l5.broadcast.publish",
+      "description": "Publish a signed broadcast to the L5 plane; N consumers will cache and trust it. Irreversible.",
+      "match": { "protocol": "cosa", "tool": "broadcast_publish" },
+      "action_type": "l5.broadcast.publish",
+      "risk": "high",
+      "receipt_required": true,
+      "assurance_class": "class_a",
+      "max_age_sec": 900,
+      "quorum": { "required": false }
+    },
+    {
+      "id": "cosa.l5.cache.read",
+      "description": "Read a foundational, non-personal answer from the L5 cache. Read-only; free; no receipt.",
+      "match": { "protocol": "cosa", "tool": "cache_read" },
+      "action_type": "l5.cache.read",
+      "risk": "low",
+      "receipt_required": false,
+      "assurance_class": "software"
+    }
+  ]
+}
