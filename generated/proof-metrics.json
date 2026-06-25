@@ -1,10 +1,10 @@
 {
-  "automated_checks": 152,
+  "automated_checks": 4249,
   "test_suites": 7,
-  "mcp_tools": 15,
+  "mcp_tools": 36,
   "trust_policies": 8,
   "trust_surfaces": 10,
   "spec_version": "1.1",
   "repo_version": "1.0.0",
-  "generated_at": "2026-03-16T07:34:05.745Z"
+  "generated_at": "2026-06-25T02:37:49.304Z"
 }

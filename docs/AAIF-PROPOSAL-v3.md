@@ -241,7 +241,7 @@ AAIF's lifecycle policy sets a high bar for Growth entry, and EP does not preten
 | Technical Committee sponsor | **Not yet** — this proposal doubles as the request for one | Working-group participation first; sponsor before formal vote |
 | Diverse maintainership | Single organization (EMILIA Protocol, Inc.); one protocol author | Conformance suite is designed for multi-implementer governance; recruiting 2-3 external conformance maintainers is the named next step |
 | Production use at scale | Not yet — a 60-day government observe-mode pilot is the active wedge | First pilot converts to enforce-mode receipts on one real disbursement workflow |
-| Ongoing flow of commits | Yes — daily commits, 13 CI workflows, 4,195 automated tests | Sustained |
+| Ongoing flow of commits | Yes — daily commits, 13 CI workflows, 4,220 automated tests | Sustained |
 | Open governance | GOVERNANCE.md already states intent to transition to neutral stewardship under AAIF or equivalent; PIP process with core freeze | Formalize under foundation processes on acceptance |
 
 If the Technical Committee judges this proposal early, the productive outcome is still concrete: a named sponsor conversation, working-group participation, and a re-submission once the pilot supplies production evidence. EP would rather be early and honest than padded.

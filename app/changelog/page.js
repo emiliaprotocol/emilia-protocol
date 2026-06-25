@@ -43,7 +43,7 @@ const RELEASES = [
       'EP-IX Identity Continuity — full state machine (pending → under-challenge → frozen → terminal) with rate-limit and self-contest guards.',
       'Protocol Hardening v2 — 9 Supabase migrations (065–073) closing every L99/L90/L75 finding: binding FOR UPDATE, policy-version pin, DB-clock expiry, tenant isolation, issuer-authority TOCTOU.',
       'Formal verification extended to 26 TLA+ properties (20 verified by TLC 2.19, 6 EP-IX specified).',
-      '3,277 tests across 125 files — passed full internal adversarial audit.',
+      '4,220 tests across 173 files — passed full internal adversarial audit.',
       'New docs: audit methodology, 1.x API compatibility policy, migration runbook.',
     ],
   },

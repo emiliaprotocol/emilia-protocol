@@ -92,7 +92,7 @@ additive: a single-approver policy is the degenerate one-member case,
 and the existing offline receipt verifier is reused per member. We give
 the predicate, an incremental server-side admission rule that keeps a
 non-conforming signer out of the trail before it is recorded, and an
-adversarial conformance suite of nine vectors that three independent
+adversarial conformance suite of eleven vectors that three independent
 implementations (JavaScript, Python, Go) are required to agree on. We
 are deliberate about limitations: a quorum raises the cost of unilateral
 action and makes every approval attributable, but it does not defeat
@@ -145,7 +145,7 @@ a cryptographic predicate over EP signoffs. Our contributions are:
   system to nonetheless re-check the full predicate, because it does not
   trust the orchestrator.
 \item
-  \textbf{An adversarial conformance suite} (Section 6) of nine vectors
+  \textbf{An adversarial conformance suite} (Section 6) of eleven vectors
   carrying real WebAuthn assertions, against which three independent
   implementations are required to agree, separating ``too strict''
   failures (denying valid quorums) from the security-critical ``too
@@ -320,7 +320,7 @@ operator asserts.
 Implementation}\label{conformance-and-implementation}
 
 We maintain an adversarial conformance suite, \texttt{EP-QUORUM-v1}, of
-nine vectors that each carry real Class-A WebAuthn (ES256) assertions:
+eleven vectors that each carry real Class-A WebAuthn (ES256) assertions:
 
 {\def\LTcaptype{none} % do not increment counter
 \begin{longtable}[]{@{}

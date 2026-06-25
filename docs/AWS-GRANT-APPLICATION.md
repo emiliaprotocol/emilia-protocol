@@ -102,7 +102,7 @@ delta.
 
 | Metric | Value |
 |--------|-------|
-| Automated tests | 3,483 across 170 files (vitest) |
+| Automated tests | 4,220 across 173 files (vitest) |
 | Adversarial / red-team test cases | 85 cataloged in `docs/conformance/RED_TEAM_CASES.md` |
 | Formal verification | TLA+: 26 properties verified (T1–T26, TLC 2.19, 413,137 states, 0 errors). Alloy: 35 facts, 22 assertions verified (Alloy 6.0.0, 0 counterexamples). |
 | Database tables | ~50, all RLS-hardened (see `supabase/migrations/`) |

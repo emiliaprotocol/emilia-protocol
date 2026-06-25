@@ -179,7 +179,7 @@ export default function HomePage() {
                 paddingTop: 28, borderTop: `1px solid ${color.border}`,
               }}>
                 {[
-                  { val: '4,195', label: 'Tests Passing' },
+                  { val: '4,220', label: 'Tests Passing' },
                   { val: '26',    label: 'TLA+ Theorems' },
                   { val: '85',    label: 'Red Team Cases' },
                 ].map(({ val, label }) => (
@@ -696,7 +696,7 @@ export default function HomePage() {
           color: 'rgba(255,255,255,0.22)', letterSpacing: 1.5, textTransform: 'uppercase',
         }}>
           <span>Compliance: NIST AI RMF · EU AI ACT</span>
-          <span>Tests: 4,195 passing · 0 failing</span>
+          <span>Tests: 4,220 passing · 0 failing</span>
           <span>Formal verification: 26 theorems · 0 errors</span>
         </div>
       </section>

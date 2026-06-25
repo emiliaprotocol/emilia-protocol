@@ -183,7 +183,7 @@ BAA supports up to $5M). Justification per BAA-specific cost format.
 
 **PI**: Iman Schrock, Founder, EMILIA Protocol.
 - Authored the protocol stack including the formal model.
-- 26 TLA+ theorems verified, 35 Alloy facts, 4,195 tests.
+- 26 TLA+ theorems verified, 35 Alloy facts, 4,220 tests.
 - IETF Internet-Draft author (`draft-schrock-ep-authorization-receipts-01`),
   submitted to IETF secdispatch.
 - Apache 2.0 published code at github.com/emiliaprotocol/emilia-protocol.
@@ -205,7 +205,7 @@ All technical claims are independently verifiable today:
 - Verify library: `@emilia-protocol/verify` on npm (live)
 - Compliance mappings: `docs/compliance/NIST-AI-RMF-MAPPING.md`
 
-DARPA reviewers can clone the repo, run `npm test` (4,195 tests pass), run
+DARPA reviewers can clone the repo, run `npm test` (4,220 tests pass), run
 TLC against `formal/ep_handshake.tla` (T1–T26 verify), run Alloy against
 `formal/ep_relations.als` (15/15 assertions hold), and `npm i
 @emilia-protocol/verify` to verify a receipt offline — independently
