@@ -21,6 +21,9 @@ import { decisionsToMembers } from '@/lib/signoff/attestation-members.js';
 import { getRpConfig } from '@/lib/webauthn.js';
 import { boundSignoffDecisionEvents, findBoundSignoffDecision } from '@/lib/guard-signoff-binding.js';
 import { resolveGuardAuthority } from '@/lib/guard-authority.js';
+import { canReadReceipt } from '@/lib/tenant-binding.js';
+
+const RECEIPT_ID_PATTERN = /^tr_[a-f0-9]{32}$/;
 
 export async function POST(request, { params }) {
   try {
@@ -28,6 +31,10 @@ export async function POST(request, { params }) {
     if (auth.error) return epProblem(401, 'unauthorized', auth.error);
 
     const { receiptId } = await params;
+    if (!RECEIPT_ID_PATTERN.test(receiptId || '')) {
+      return epProblem(400, 'invalid_receipt_id', 'receipt_id must match tr_<32-hex>');
+    }
+
     const body = await request.json().catch(() => ({}));
 
     if (!body.action_hash) {
@@ -61,12 +68,12 @@ export async function POST(request, { params }) {
     }
     const base = created.after_state;
 
-    // Tenant scoping (defense-in-depth): a bound caller from a different org
-    // must not trigger a cross-tenant consume/release. Unbound callers remain
-    // gated by the signoff authority check below (resolveGuardAuthority).
-    const callerOrg = (auth?.entity && typeof auth.entity === 'object') ? (auth.entity.organization_id || null) : null;
-    if (callerOrg && base.organization_id && callerOrg !== base.organization_id) {
-      return epProblem(403, 'organization_mismatch', 'organization_id does not match the authenticated entity');
+    // Tenant scoping (IDOR): consume is a mutation and must be at least as
+    // tightly scoped as read/evidence. An org-bound caller may consume only
+    // its own org's receipt; an unbound transitional caller may consume only
+    // its own created receipt. Mismatch => 404 to avoid receipt enumeration.
+    if (!canReadReceipt(auth, { organizationId: base.organization_id, creatorActorId: created.actor_id })) {
+      return epProblem(404, 'receipt_not_found', `Trust receipt ${receiptId} not found`);
     }
 
     // ── Invariant checks (per MD §12.2) ──────────────────────────────────

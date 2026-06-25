@@ -212,6 +212,15 @@ test('step 3 — a Class-A assertion bound to a different context fails', () => 
   assert.equal(r.checks.signoff_signatures, false);
 });
 
+test('step 3 — a Class-A assertion without user presence fails', () => {
+  const receipt = buildReceipt();
+  const d2 = receipt.signoffs[1].context_hash.replace('sha256:', '');
+  receipt.signoffs[1].webauthn = signA(d2, { flags: 0x04 }); // UV only, no UP
+  const r = verifyTrustReceipt(receipt, OPTS);
+  assert.equal(r.checks.signoff_signatures, false);
+  assert.equal(r.valid, false);
+});
+
 test('step 3 — an approver key outside its validity window fails', () => {
   const keys = { ...KEYS, 'ep:key:controller#1': { ...KEYS['ep:key:controller#1'], valid_to: '2026-06-01T00:00:00Z' } }; // expired before issued_at
   const r = verifyTrustReceipt(buildReceipt(), { approverKeys: keys, logPublicKey: logKey.pub });
@@ -410,7 +419,7 @@ test('strict verifier — requires Class-A WebAuthn user presence as well as UV'
   const d2 = receipt.signoffs[1].context_hash.replace('sha256:', '');
   receipt.signoffs[1].webauthn = signA(d2, { flags: 0x04 }); // UV without UP
   const r = verifyTrustReceipt(receipt, STRICT_OPTS);
-  assert.equal(r.checks.signoff_signatures, true, JSON.stringify(r.errors));
+  assert.equal(r.checks.signoff_signatures, false, JSON.stringify(r.errors));
   assert.equal(r.strict.checks.user_verification, true);
   assert.equal(r.strict.checks.user_presence, false);
   assert.equal(r.valid, false);

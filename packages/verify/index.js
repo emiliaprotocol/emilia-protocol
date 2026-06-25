@@ -456,7 +456,8 @@ function verifyClassAOverDigest(webauthn, digestBytes, publicKeySpkiB64u) {
     if (clientData.type !== 'webauthn.get') return false;
     if (clientData.challenge !== Buffer.from(digestBytes).toString('base64url')) return false;
 
-    if ((authData[32] & FLAG_UV) !== FLAG_UV) return false; // user verification required
+    if ((authData[32] & FLAG_UP) !== FLAG_UP) return false; // human presence required
+    if ((authData[32] & FLAG_UV) !== FLAG_UV) return false; // biometric/PIN verification required
 
     const signedData = Buffer.concat([authData, crypto.createHash('sha256').update(clientDataBytes).digest()]);
     const keyObject = crypto.createPublicKey({

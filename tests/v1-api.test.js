@@ -101,6 +101,8 @@ function authedAs(entity, extra = {}) {
   mockAuthenticateRequest.mockResolvedValue({ entity: normalized, ...extra });
 }
 
+const VALID_RECEIPT_ID = 'tr_' + 'c'.repeat(32);
+
 beforeEach(() => {
   mockGetGuardedClient.mockReset();
   mockAuthenticateRequest.mockReset();
@@ -258,22 +260,40 @@ describe('GET /api/v1/trust-receipts/:id', () => {
 
 describe('POST /api/v1/trust-receipts/:id/consume', () => {
   function setupConsume(events, authorityRows = []) {
+    const scopedEvents = events.map((e) => {
+      if (e.event_type !== 'guard.trust_receipt.created') return e;
+      return {
+        actor_id: 'user_1',
+        ...e,
+        after_state: {
+          organization_id: 'org_1',
+          ...(e.after_state || {}),
+        },
+      };
+    });
     mockGetGuardedClient.mockReturnValue(makeSupabase({
-      audit_events: { resolve: { data: events, error: null } },
+      audit_events: { resolve: { data: scopedEvents, error: null } },
       authorities: { resolve: { data: authorityRows, error: null } },
     }));
   }
 
   it('returns 400 when action_hash missing', async () => {
     authedAs('user_1');
-    const res = await consumeReceipt(req({ executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    const res = await consumeReceipt(req({ executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
     expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when receipt_id is malformed', async () => {
+    authedAs('user_1');
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    expect(res.status).toBe(400);
+    expect((await res.json()).type).toContain('invalid_receipt_id');
   });
 
   it('returns 404 when no events exist', async () => {
     authedAs('user_1');
     setupConsume([]);
-    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
     expect(res.status).toBe(404);
   });
 
@@ -284,7 +304,7 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
       { event_type: 'guard.trust_receipt.consumed', after_state: {} },
     ];
     setupConsume(events);
-    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
     expect(res.status).toBe(409);
   });
 
@@ -294,7 +314,7 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
       { event_type: 'guard.trust_receipt.created', after_state: { action_hash: 'a', expires_at: new Date(Date.now() - 1e6).toISOString(), signoff_required: false } },
     ];
     setupConsume(events);
-    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
     expect(res.status).toBe(410);
   });
 
@@ -304,8 +324,46 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
       { event_type: 'guard.trust_receipt.created', after_state: { action_hash: 'real_a', expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: false } },
     ];
     setupConsume(events);
-    const res = await consumeReceipt(req({ action_hash: 'tampered', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    const res = await consumeReceipt(req({ action_hash: 'tampered', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
     expect(res.status).toBe(409);
+  });
+
+  it('returns 404 when an unbound non-creator tries to consume another org receipt', async () => {
+    authedAs({ entity_id: 'attacker_unbound' });
+    const events = [
+      {
+        event_type: 'guard.trust_receipt.created',
+        actor_id: 'victim_creator',
+        after_state: {
+          organization_id: 'org_victim',
+          action_hash: 'a',
+          expires_at: new Date(Date.now() + 1e6).toISOString(),
+          signoff_required: false,
+        },
+      },
+    ];
+    setupConsume(events);
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 404 when an org-bound caller tries to consume another org receipt', async () => {
+    authedAs({ entity_id: 'user_2', organization_id: 'org_2' });
+    const events = [
+      {
+        event_type: 'guard.trust_receipt.created',
+        actor_id: 'victim_creator',
+        after_state: {
+          organization_id: 'org_1',
+          action_hash: 'a',
+          expires_at: new Date(Date.now() + 1e6).toISOString(),
+          signoff_required: false,
+        },
+      },
+    ];
+    setupConsume(events);
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
+    expect(res.status).toBe(404);
   });
 
   it('returns 403 when signoff_required=true but no approval recorded', async () => {
@@ -314,7 +372,7 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
       { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: true } },
     ];
     setupConsume(events);
-    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
     expect(res.status).toBe(403);
   });
 
@@ -326,7 +384,7 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
       { event_type: 'guard.signoff.approved', actor_id: 'attacker_approver', after_state: { signoff_id: 'sig_attacker', approver_id: 'attacker_approver' } },
     ];
     setupConsume(events);
-    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
     expect(res.status).toBe(403);
   });
 
@@ -338,7 +396,7 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
       { event_type: 'guard.signoff.approved', actor_id: 'wrong_approver', after_state: { signoff_id: 'sig_1', approver_id: 'wrong_approver' } },
     ];
     setupConsume(events);
-    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
     expect(res.status).toBe(403);
   });
 
@@ -350,7 +408,7 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
       { event_type: 'guard.signoff.rejected', after_state: { signoff_id: 'sig_2' } },
     ];
     setupConsume(events);
-    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
     expect(res.status).toBe(403);
   });
 
@@ -362,7 +420,7 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
       { event_type: 'guard.signoff.approved', actor_id: 'ap_controller', after_state: { signoff_id: 'sig_1', approver_id: 'ap_controller', key_class: 'C' } },
     ];
     setupConsume(events, [{ authority_id: 'auth_1', status: 'active', subject_ref: 'ap_controller', role: null, assurance_class: 'A' }]);
-    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
     expect(res.status).toBe(403);
     expect((await res.json()).type).toContain('insufficient_assurance');
   });
@@ -375,7 +433,7 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
       { event_type: 'guard.signoff.approved', actor_id: 'ap_controller', after_state: { signoff_id: 'sig_1', approver_id: 'ap_controller', key_class: 'C' } },
     ];
     setupConsume(events);
-    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
     expect(res.status).toBe(403);
     expect((await res.json()).type).toContain('authority_invalid');
   });
@@ -397,7 +455,7 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
       valid_to: '2999-01-01T00:00:00.000Z',
       revoked_at: null,
     }]);
-    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
     expect(res.status).toBe(200);
   });
 
@@ -436,7 +494,7 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
       },
     ];
     setupConsume(events);
-    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
     const body = await res.json();
     expect(res.status).toBe(403);
     expect(body.type).toContain('quorum_not_satisfied');
@@ -448,7 +506,7 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
       { event_type: 'guard.trust_receipt.created', after_state: { action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: false } },
     ];
     setupConsume(events);
-    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'benefits_core' }), { params: Promise.resolve({ receiptId: 'tr_x' }) });
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'benefits_core' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.status).toBe('consumed');
