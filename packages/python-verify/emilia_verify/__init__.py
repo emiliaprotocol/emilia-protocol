@@ -24,7 +24,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import load_der_public_key
 
-__all__ = ["canonicalize", "verify_receipt", "verify_merkle_anchor", "VerifyResult"]
+__all__ = ["canonicalize", "verify_receipt", "verify_merkle_anchor", "VerifyResult", "evaluate_agent_binding"]
 
 SUPPORTED_VERSIONS = ("EP-RECEIPT-v1",)
 
@@ -1041,3 +1041,74 @@ def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None, keys:
     if not allow:
         reasons.append(f'requirement not satisfied: "{req}"')
     return {"allow": allow, "action_digest": chain_digest, "components": components, "reasons": reasons}
+
+
+# =============================================================================
+# PIP-008 §2.1 — L4 -> L7 binding (record relied-on agent evidence + freshness)
+# =============================================================================
+def evaluate_agent_binding(context, max_age_sec=None, at=None):
+    """Surface the external agent-identity / delegation evidence (L4) a decision
+    (L7 PDP) relied on, and OPTIONALLY enforce its freshness. Mirrors
+    @emilia-protocol/verify evaluateAgentBinding byte-for-byte in behavior.
+
+    EP does NOT resolve or trust the L4 identity — ``agent_binding`` is a signed
+    CLAIM (PIP-008). This lets a Policy Decision Point RECORD which upstream
+    evidence backed a human authorization and detect a stale or absent upstream
+    attestation after the fact. Pass a context whose signature has ALREADY been
+    verified.
+
+    Returns a dict: {present, agent_id?, delegation?, evidence_hash, observed_at,
+    fresh (bool|None), age_seconds (int|None), reason}.
+    """
+    from datetime import datetime, timezone
+
+    def _parse(s):
+        return datetime.fromisoformat(s.replace("Z", "+00:00"))
+
+    binding = context.get("agent_binding") if isinstance(context, dict) else None
+    if not isinstance(binding, dict):
+        return {"present": False, "fresh": None, "age_seconds": None, "reason": "no_agent_binding"}
+
+    d = binding.get("delegation") if isinstance(binding.get("delegation"), dict) else None
+    delegation = None
+    if d is not None:
+        delegation = {"scheme": d.get("scheme"), "ref": d.get("ref")}
+        if d.get("hash"):
+            delegation["hash"] = d.get("hash")
+        if d.get("observed_at"):
+            delegation["observed_at"] = d.get("observed_at")
+    observed = d.get("observed_at") if d else None
+    out = {
+        "present": True,
+        "agent_id": binding.get("agent_id"),
+        "delegation": delegation,
+        "evidence_hash": (d.get("hash") if d else None) or None,
+        "observed_at": observed,
+        "fresh": None,
+        "age_seconds": None,
+        "reason": "recorded",
+    }
+    if isinstance(max_age_sec, (int, float)) and not isinstance(max_age_sec, bool) and max_age_sec >= 0:
+        if not observed:
+            out["fresh"] = False
+            out["reason"] = "freshness_required_but_no_observed_at"
+            return out
+        try:
+            obs = _parse(observed)
+            ref = _parse(at) if at else datetime.now(timezone.utc)
+        except Exception:
+            out["fresh"] = False
+            out["reason"] = "unparseable_observed_at"
+            return out
+        age = (ref - obs).total_seconds()
+        out["age_seconds"] = round(age)
+        if age < -60:                       # observed in the future (allow 60s clock skew)
+            out["fresh"] = False
+            out["reason"] = "observed_at_in_future"
+        elif age > max_age_sec:
+            out["fresh"] = False
+            out["reason"] = f"stale: L4 evidence observed {out['age_seconds']}s ago (max {int(max_age_sec)}s)"
+        else:
+            out["fresh"] = True
+            out["reason"] = "fresh"
+    return out
