@@ -3,6 +3,19 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 2.1.0 — 2026-06-25
+
+### Added
+- `evaluateAgentBinding(context, { maxAgeSec, at })` (PIP-008 §2.1, L4→L7
+  binding): surfaces the external agent-identity / delegation evidence a
+  decision relied on (`agent_id`, `delegation {scheme, ref, hash}`,
+  `observed_at`) and, when `maxAgeSec` is set, enforces freshness **fail-closed**
+  — missing, future-dated, or over-age `observed_at` yields `fresh: false` with
+  a reason. With no `maxAgeSec`, evidence is recorded (`fresh: null`) for audit.
+  Lets a PDP record which upstream evidence backed a human authorization and
+  detect a stale/unconstrained upstream claim after the fact. Additive; no
+  change to existing verifier behavior.
+
 ## 2.0.0 — 2026-06-23
 
 ### Breaking
