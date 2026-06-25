@@ -81,31 +81,31 @@ Table of Contents
    3.  The Action Object and Action Hash . . . . . . . . . . . . . .   6
    4.  The Authorization Context . . . . . . . . . . . . . . . . . .   6
      4.1.  Initiator Attestation (OPTIONAL)  . . . . . . . . . . . .   7
-   5.  Approver Keys and the Signoff Signature . . . . . . . . . . .  10
-     5.1.  Key Classes . . . . . . . . . . . . . . . . . . . . . . .  10
-     5.2.  Enrollment and the Approver Directory . . . . . . . . . .  11
-     5.3.  The Signoff . . . . . . . . . . . . . . . . . . . . . . .  12
-   6.  Consumption, Commitment, and the Trust Receipt  . . . . . . .  12
-     6.1.  State Machine . . . . . . . . . . . . . . . . . . . . . .  12
-     6.2.  The Trust Receipt . . . . . . . . . . . . . . . . . . . .  13
-     6.3.  Offline Verification Algorithm  . . . . . . . . . . . . .  13
-   7.  Multi-Approver Policies (m-of-n)  . . . . . . . . . . . . . .  14
-   8.  Delegation Constraints  . . . . . . . . . . . . . . . . . . .  15
-   9.  Conformance Classes and Execution-Side Enforcement  . . . . .  15
-   10. Relationship to Other Work  . . . . . . . . . . . . . . . . .  15
-   11. Security Considerations . . . . . . . . . . . . . . . . . . .  16
-     11.1.  Operator Compromise  . . . . . . . . . . . . . . . . . .  16
-     11.2.  Approver Device Compromise . . . . . . . . . . . . . . .  17
-     11.3.  Presentation Attacks . . . . . . . . . . . . . . . . . .  17
-     11.4.  Log Equivocation . . . . . . . . . . . . . . . . . . . .  18
-     11.5.  What the Formal Models Do and Do Not Prove . . . . . . .  18
-     11.6.  Directory Authority  . . . . . . . . . . . . . . . . . .  18
-     11.7.  What Separation of Duties Does and Does Not Provide  . .  18
-     11.8.  Approver Fatigue . . . . . . . . . . . . . . . . . . . .  19
-     11.9.  Initiator Attestation as an Attack Surface . . . . . . .  19
-     11.10. No symmetric key on the verification trust path  . . . .  20
-   12. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  21
-   13. Normative References  . . . . . . . . . . . . . . . . . . . .  21
+     4.2.  Agent Binding (OPTIONAL)  . . . . . . . . . . . . . . . .  10
+   5.  Approver Keys and the Signoff Signature . . . . . . . . . . .  14
+     5.1.  Key Classes . . . . . . . . . . . . . . . . . . . . . . .  14
+     5.2.  Enrollment and the Approver Directory . . . . . . . . . .  14
+     5.3.  The Signoff . . . . . . . . . . . . . . . . . . . . . . .  15
+   6.  Consumption, Commitment, and the Trust Receipt  . . . . . . .  15
+     6.1.  State Machine . . . . . . . . . . . . . . . . . . . . . .  15
+     6.2.  The Trust Receipt . . . . . . . . . . . . . . . . . . . .  16
+     6.3.  Offline Verification Algorithm  . . . . . . . . . . . . .  17
+   7.  Multi-Approver Policies (m-of-n)  . . . . . . . . . . . . . .  18
+   8.  Delegation Constraints  . . . . . . . . . . . . . . . . . . .  18
+   9.  Conformance Classes and Execution-Side Enforcement  . . . . .  18
+   10. Relationship to Other Work  . . . . . . . . . . . . . . . . .  19
+   11. Security Considerations . . . . . . . . . . . . . . . . . . .  20
+     11.1.  Operator Compromise  . . . . . . . . . . . . . . . . . .  20
+     11.2.  Approver Device Compromise . . . . . . . . . . . . . . .  20
+     11.3.  Presentation Attacks . . . . . . . . . . . . . . . . . .  20
+     11.4.  Log Equivocation . . . . . . . . . . . . . . . . . . . .  21
+     11.5.  What the Formal Models Do and Do Not Prove . . . . . . .  21
+     11.6.  Directory Authority  . . . . . . . . . . . . . . . . . .  21
+     11.7.  What Separation of Duties Does and Does Not Provide  . .  22
+     11.8.  Approver Fatigue . . . . . . . . . . . . . . . . . . . .  22
+     11.9.  Initiator Attestation as an Attack Surface . . . . . . .  22
+     11.10. No symmetric key on the verification trust path  . . . .  23
+   12. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  24
 
 
 
@@ -114,9 +114,10 @@ Schrock                 Expires 23 December 2026                [Page 2]
 Internet-Draft          EP Authorization Receipts              June 2026
 
 
-   14. Informative References  . . . . . . . . . . . . . . . . . . .  21
-   Appendix A.  Changes since -00  . . . . . . . . . . . . . . . . .  21
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  22
+   13. Normative References  . . . . . . . . . . . . . . . . . . . .  24
+   14. Informative References  . . . . . . . . . . . . . . . . . . .  24
+   Appendix A.  Changes since -00  . . . . . . . . . . . . . . . . .  25
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  26
 
 1.  Introduction
 
@@ -161,7 +162,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    signoff is produced entirely by the controls defined here.  Where EP
    composes with adjacent work (Section 10), that composition is by
    reference, not dependency.
-
 
 
 
@@ -541,6 +541,195 @@ Internet-Draft          EP Authorization Receipts              June 2026
    reports; none of these checks affects signature validity, by design,
    so receipts verify on verifiers that predate this member.
 
+4.2.  Agent Binding (OPTIONAL)
+
+   A producer MAY include an agent_binding member in any ep.signoff.v1
+   Authorization Context.  The member attributes the authorized action
+   to an external *agent identity* and, optionally, the external
+   *delegation* under which that agent was authorized to act.  When
+   present it MUST be a JSON object with the following members and no
+   others:
+
+
+
+
+
+
+
+
+Schrock                 Expires 23 December 2026               [Page 10]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
+    +============+==========+========+================================+
+    | Field      | Required | Type   | Description                    |
+    +============+==========+========+================================+
+    | agent_id   | REQUIRED | string | Non-empty external agent-      |
+    |            |          |        | identity reference (URI, DID,  |
+    |            |          |        | or opaque id).  This document  |
+    |            |          |        | does not constrain its scheme. |
+    +------------+----------+--------+--------------------------------+
+    | delegation | OPTIONAL | object | The external delegation that   |
+    |            |          |        | authorized the agent; members  |
+    |            |          |        | below, no others.              |
+    +------------+----------+--------+--------------------------------+
+    | statement  | OPTIONAL | string | Short free-text note for the   |
+    |            |          |        | approver.  MUST NOT exceed 280 |
+    |            |          |        | characters.                    |
+    +------------+----------+--------+--------------------------------+
+
+                                  Table 2
+
+   When delegation is present it MUST be a JSON object with the
+   following members and no others:
+
+    +=============+==========+========+==============================+
+    | Field       | Required | Type   | Description                  |
+    +=============+==========+========+==============================+
+    | scheme      | REQUIRED | string | Non-empty name of the        |
+    |             |          |        | external delegation          |
+    |             |          |        | standard, e.g.  "WIMSE",     |
+    |             |          |        | "DRP".                       |
+    +-------------+----------+--------+------------------------------+
+    | ref         | REQUIRED | string | Non-empty external receipt/  |
+    |             |          |        | credential identifier.       |
+    +-------------+----------+--------+------------------------------+
+    | hash        | OPTIONAL | string | Content hash of the          |
+    |             |          |        | referenced artifact,         |
+    |             |          |        | formatted "sha256:<64-       |
+    |             |          |        | lowercase-hex>".             |
+    +-------------+----------+--------+------------------------------+
+    | observed_at | OPTIONAL | string | RFC 3339 timestamp recording |
+    |             |          |        | when the external delegation |
+    |             |          |        | evidence was observed or     |
+    |             |          |        | known valid.  See L4         |
+    |             |          |        | evidence freshness below.    |
+    +-------------+----------+--------+------------------------------+
+
+                                 Table 3
+
+   Example context (fields as above, with the new member):
+
+
+
+Schrock                 Expires 23 December 2026               [Page 11]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
+   {
+     "ep_version": "1.0",
+     "context_type": "ep.signoff.v1",
+     "action_hash": "sha256:9f2c...",
+     "policy_id": "ep:policy:wires-over-100k@v12",
+     "policy_hash": "sha256:77ab...",
+     "initiator": "ep:entity:agent-recon-7",
+     "agent_binding": {
+       "agent_id": "did:web:agents.example.com:recon-7",
+       "delegation": {
+         "scheme": "WIMSE",
+         "ref": "urn:wimse:cred:9c41ab",
+         "hash": "sha256:2f9a...",
+         "observed_at": "2026-06-09T17:20:48Z"
+       },
+       "statement": "Acting for treasury-ops under wire delegation."
+     },
+     "approver": "ep:approver:jchen-controller",
+     "approver_index": 1,
+     "required_approvals": 2,
+     "nonce": "b64u:R9w1...",
+     "issued_at": "2026-06-09T17:21:05Z",
+     "expires_at": "2026-06-09T17:36:05Z"
+   }
+
+   Rules:
+
+   *  *Status.* The member is OPTIONAL.  Existing issuers remain
+      conformant; the field can be adopted policy-by-policy.
+
+   *  *Claim, not proof.* agent_binding records that the action was
+      _presented_ as being taken by agent_id under delegation ref.  This
+      document identifies but never trusts the binding (Section 2): it
+      is neither proof of the agent's identity nor proof of the
+      delegation's validity, both of which remain the responsibility of
+      the referenced external system.  A verifier MUST NOT treat
+      agent_binding as proof of either; it MAY surface agent_id and
+      delegation to the relying party as part of the verified context,
+      clearly labeled as a reference to an external system.
+
+   *  *Binding.* No new signature, digest, or verification step is
+      introduced.  The context is JCS-canonicalized as already required
+      above; JCS serializes every member present, so agent_binding and
+      everything inside it are part of the signed bytes.  The approver's
+      signature therefore covers the binding.  Receipts carrying this
+      member verify under the existing Section 6.3 verifiers unmodified;
+      a context without it produces byte-identical canonical material to
+      one produced today.
+
+
+
+Schrock                 Expires 23 December 2026               [Page 12]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
+   *  *Cross-context consistency.* When a receipt contains multiple
+      contexts (m-of-n approvals), the agent_binding object, if present
+      in any context, MUST be present in every context of that receipt,
+      and its canonical form -- canonicalize(agent_binding) -- MUST be
+      identical across all of them.  Every approver signs the same
+      attribution.
+
+   *  Producers MUST NOT add members beyond those defined above in v1,
+      in either agent_binding or its delegation.
+
+   *  A signing client implementing this member SHOULD render agent_id
+      (and delegation if present) to the approver alongside the faithful
+      human-readable rendering of the Action Object that this section
+      already requires, subject to the untrusted-content display rules
+      in Section 11.9.  A signing client presented with a context whose
+      statement exceeds 280 characters MUST refuse to render it for
+      signing.
+
+   *L4 evidence freshness (OPTIONAL).* A human authorization decision is
+   only as trustworthy as the upstream agent-identity and delegation
+   evidence it relied on.  If a decision is enforced correctly against a
+   delegation claim that was never constrained or has since expired, the
+   failure surfaces at the authorization layer but originates in the
+   identity/delegation layer beneath it.  This document makes that
+   dependency explicit and recordable without absorbing the identity
+   layer:
+
+   *  A producer MAY populate delegation.observed_at with the RFC 3339
+      time at which the external delegation evidence was observed or
+      known valid.  Like the rest of the binding, it is covered by the
+      approver's signature.
+
+   *  A relying party MAY enforce freshness against observed_at.  When
+      it does, the evaluation MUST fail closed: a missing observed_at, a
+      timestamp later than the evaluation time, or an age exceeding the
+      relying party's configured maximum MUST be treated as not-fresh.
+      When no maximum age is configured, freshness is not evaluated and
+      the evidence is still surfaced for the audit record.
+
+   This keeps the receipt agnostic to which external identity/delegation
+   scheme prevails: the relying party binds to and records whatever
+   evidence was presented rather than requiring that layer to converge,
+   and a stale or unconstrained upstream claim becomes detectable after
+   the fact rather than silently absorbed.  As with the Initiator
+   Attestation, none of these checks affects signature validity, by
+   design, so receipts verify on verifiers that predate this member.
+
+
+
+
+
+Schrock                 Expires 23 December 2026               [Page 13]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
 5.  Approver Keys and the Signoff Signature
 
    This section is the core upgrade over server-side approval systems.
@@ -554,14 +743,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    the context hash.  The authenticator's user-verification flag
    (biometric or PIN) MUST be required for signoff credentials.  This
    user-verification-gated signature is the native EP human-approval
-
-
-
-Schrock                 Expires 23 December 2026               [Page 10]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
-
    act; it is fully defined by this section and does not rely on any
    external acquiescence or confirmation mechanism.  Attestation SHOULD
    be captured at enrollment so relying parties can establish that the
@@ -597,6 +778,14 @@ Internet-Draft          EP Authorization Receipts              June 2026
    _operation_ is delegated to the EP operator, every enrollment entry
    MUST carry a second-party attestation -- a signature over the new
    entry by an organization administrator key or by a quorum of already-
+
+
+
+Schrock                 Expires 23 December 2026               [Page 14]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
    enrolled approvers -- and that attestation MUST be included in the
    receipt's approver_key_proofs.  Verifiers MUST treat a directory head
    signed only by an operator-held key as operator assertion (Class
@@ -610,14 +799,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    This directory is also the binding point between approver identifiers
    and real-world persons (Section 1.2).  The strength of that binding
    -- how an organization proves that an enrolled identifier is the
-
-
-
-Schrock                 Expires 23 December 2026               [Page 11]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
-
    person it names, and how key-discovery layers attach to it -- is a
    property of the directory authority and any identity layer bound to
    it, not of the receipt format defined here.
@@ -652,6 +833,15 @@ Internet-Draft          EP Authorization Receipts              June 2026
              \-> DENIED                          \-> EXPIRED
              \-> EXPIRED
 
+
+
+
+
+Schrock                 Expires 23 December 2026               [Page 15]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
    COMMITTED, DENIED, and EXPIRED are terminal.  The protocol invariants
    -- maintained as machine-checked models and REQUIRED of conforming
    implementations -- are:
@@ -664,15 +854,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
       therefore only the action hash) it signs.
 
    *  *TerminalIrreversibility.* No transition exits a terminal state.
-
-
-
-
-
-Schrock                 Expires 23 December 2026               [Page 12]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
 
    *  *SelfApprovalImpossible.* For every signoff, approver !=
       initiator; for m-of-n policies, approvers are pairwise distinct
@@ -706,6 +887,17 @@ Internet-Draft          EP Authorization Receipts              June 2026
      "approver_key_proofs": [ { "directory_inclusion": "..." } ]
    }
 
+
+
+
+
+
+
+Schrock                 Expires 23 December 2026               [Page 16]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
 6.3.  Offline Verification Algorithm
 
    A verifier with (receipt, trusted log public key, trusted directory
@@ -722,13 +914,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    3.  For each signoff: verify the signature (and WebAuthn assertion
        where present) over the context hash against the approver key
        entry, checking the key's validity window contains issued_at.
-
-
-
-Schrock                 Expires 23 December 2026               [Page 13]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
 
    4.  Confirm SoD: initiator appears in no approver slot; approvers are
        pairwise distinct; the approval count satisfies
@@ -760,6 +945,15 @@ Internet-Draft          EP Authorization Receipts              June 2026
    online.  Implementations MUST NOT describe offline verification as
    establishing that a receipt is "currently valid."
 
+
+
+
+
+Schrock                 Expires 23 December 2026               [Page 17]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
    The Initiator Attestation (Section 4.1), where present, is covered by
    the context hash recomputed in step 2 above; no additional
    verification step is required for it.
@@ -773,18 +967,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    signoffs exist before expires_at.  Partial approval confers no
    authority: a verifying executor presented with fewer than k signoffs
    MUST refuse.
-
-
-
-
-
-
-
-
-Schrock                 Expires 23 December 2026               [Page 14]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
 
 8.  Delegation Constraints
 
@@ -817,6 +999,17 @@ Internet-Draft          EP Authorization Receipts              June 2026
    *EP-Evidence Only (BASIC).* Actions execute independently; receipts
    are produced for audit.  No enforcement claim is made.
 
+
+
+
+
+
+
+Schrock                 Expires 23 December 2026               [Page 18]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
    Implementations MUST declare their class in receipts
    (enforcement_class), and marketing or compliance claims MUST NOT
    state a stronger class than deployed.  This section exists because
@@ -832,15 +1025,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    does not formalize, and with offline verification, which DRP's log-
    access model does not provide.  The two compose: a DRP delegation can
    be referenced in an EP Action Object's provenance field.
-
-
-
-
-
-Schrock                 Expires 23 December 2026               [Page 15]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
 
    *CIBA* ([CIBA]) transports an authentication-time approval to a
    backchannel device; it does not produce an action-bound, offline-
@@ -873,6 +1057,15 @@ Internet-Draft          EP Authorization Receipts              June 2026
    workload and agent authorization context across a machine call chain;
    EP is the human-authority root from which such a chain descends.
 
+
+
+
+
+Schrock                 Expires 23 December 2026               [Page 19]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
    *Evidence Record Syntax (RFC 4998)* preserves signed evidence across
    algorithm aging by periodic re-timestamping.  EP applies the same
    approach to long-lived receipts via an evidence-record renewal chain,
@@ -890,14 +1083,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    are single-consumption and receipts chain).  Two operator-compromise
    paths remain and are stated plainly rather than claimed away.  First,
    an operator that controls the signing client's rendering can harvest
-
-
-
-Schrock                 Expires 23 December 2026               [Page 16]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
-
    a _genuine_ signature over an action the approver misunderstood -- a
    presentation attack (Section 11.3); for this reason an independently-
    authored rendering surface is REQUIRED for high-value policies.
@@ -929,6 +1114,14 @@ Internet-Draft          EP Authorization Receipts              June 2026
    description; (2) for high-value policies, render templates MUST be
    registered with the policy and committed by policy_hash, so the
    display logic is part of what the approver's signature covers; (3)
+
+
+
+Schrock                 Expires 23 December 2026               [Page 20]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
    for policies above an organization-designated threshold, the material
    action parameters (amount, beneficiary identifiers) MUST additionally
    be rendered on a second surface not authored by the orchestrating
@@ -942,17 +1135,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    contains the full Action Object actually signed, so any divergence
    between what was displayed and what was executed is detectable after
    the fact with proof rather than testimony.
-
-
-
-
-
-
-
-Schrock                 Expires 23 December 2026               [Page 17]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
 
 11.4.  Log Equivocation
 
@@ -986,6 +1168,16 @@ Internet-Draft          EP Authorization Receipts              June 2026
    reason.  Auditors SHOULD verify directory key custody as part of any
    assessment that relies on receipts.
 
+
+
+
+
+
+Schrock                 Expires 23 December 2026               [Page 21]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
 11.7.  What Separation of Duties Does and Does Not Provide
 
    SelfApprovalImpossible (Section 6) defeats _unilateral_ self-
@@ -997,18 +1189,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    named, signed, and evidenced -- which raises the cost of insider
    fraud; they do not make it impossible, and implementations MUST NOT
    claim otherwise.
-
-
-
-
-
-
-
-
-Schrock                 Expires 23 December 2026               [Page 18]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
 
 11.8.  Approver Fatigue
 
@@ -1046,6 +1226,14 @@ Internet-Draft          EP Authorization Receipts              June 2026
    rendered Action Object.  This is consistent with the rendering-
    faithfulness discipline of Section 11.3: the approver's decision
    input is the rendered Action Object; the statement is commentary from
+
+
+
+Schrock                 Expires 23 December 2026               [Page 22]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
    a party the protocol never trusts.  A related residual vector is
    divide-and-misinform: because each approver signs their own context,
    a malicious orchestrator can show different approvers of an m-of-n
@@ -1055,16 +1243,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    violations, but on verifiers that predate the member such a receipt
    still verifies -- the rule is a conformance check, not a signature
    property.
-
-
-
-
-
-
-Schrock                 Expires 23 December 2026               [Page 19]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
 
    Privacy: statements written by an agent mid-task can leak sensitive
    operational context -- counterparty details, internal findings,
@@ -1104,6 +1282,14 @@ Internet-Draft          EP Authorization Receipts              June 2026
    HMAC-chained audit log) is verifiable only by a party holding the
    same secret as the producer, which is precisely the party whose
    conduct the evidence is meant to constrain -- its keeper can rewrite
+
+
+
+Schrock                 Expires 23 December 2026               [Page 23]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
    its own history undetectably.  An EP receipt's issuer cannot.
    Conforming verifier implementations MUST NOT introduce a symmetric
    primitive on the verification path; an implementation that does so
@@ -1111,16 +1297,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    elsewhere in a deployment -- e.g. authenticating an operator's own
    cron or webhook calls -- provided it is never a link in the chain a
    third party verifies.)
-
-
-
-
-
-
-Schrock                 Expires 23 December 2026               [Page 20]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
 
 12.  IANA Considerations
 
@@ -1157,9 +1333,18 @@ Internet-Draft          EP Authorization Receipts              June 2026
    [I-D.nelson-agent-delegation-receipts]
               Nelson, R., "Delegation Receipt Protocol for AI Agent
               Authorization", Work in Progress, Internet-Draft, draft-
-              nelson-agent-delegation-receipts-09, 22 May 2026,
+              nelson-agent-delegation-receipts-10, 13 June 2026,
               <https://datatracker.ietf.org/doc/html/draft-nelson-agent-
-              delegation-receipts-09>.
+              delegation-receipts-10>.
+
+
+
+
+
+Schrock                 Expires 23 December 2026               [Page 24]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
 
 Appendix A.  Changes since -00
 
@@ -1170,14 +1355,6 @@ Appendix A.  Changes since -00
    1.  New OPTIONAL Authorization Context member initiator_attestation
        (new Section 4.1): a REQUIRED escalation_trigger enum
        (irreversibility, magnitude, uncertainty, novelty, authority_gap,
-
-
-
-Schrock                 Expires 23 December 2026               [Page 21]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
-
        policy_rule), an OPTIONAL policy_basis rule identifier, and an
        OPTIONAL length-capped (<= 280 character) statement.  The member
        is OPTIONAL; it is covered by the context hash via the JCS
@@ -1211,7 +1388,31 @@ Internet-Draft          EP Authorization Receipts              June 2026
        the Approver Directory trust root is the explicit slot where
        identity/key-discovery layers bind keys to named persons.
 
-   4.  Housekeeping: version and date bumped in the header; this
+   4.  New OPTIONAL Authorization Context member agent_binding (new
+       Section 4.2): an external agent-identity reference (agent_id) and
+       an OPTIONAL delegation (scheme, ref, OPTIONAL hash, OPTIONAL
+       observed_at), plus an OPTIONAL length-capped (<= 280 character)
+       statement.  Like initiator_attestation, it is OPTIONAL, covered
+       by the context hash via the JCS canonicalization already
+
+
+
+Schrock                 Expires 23 December 2026               [Page 25]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
+       normative in Section 4, verifies under the existing Section 6.3
+       verifiers unmodified, and is a claim -- identified but never
+       trusted -- not proof of the agent's identity or the delegation's
+       validity.  The OPTIONAL delegation.observed_at records when the
+       upstream identity/delegation (L4) evidence was observed; a
+       relying party MAY enforce freshness against it fail-closed,
+       keeping the receipt agnostic to which external identity scheme
+       prevails while making a stale or unconstrained upstream claim
+       detectable after the fact.
+
+   5.  Housekeeping: version and date bumped in the header; this
        appendix added; the idnits non-ASCII em-dash / curly-quote
        cleanup from -00 carried forward as a build step.
 
@@ -1229,4 +1430,27 @@ Author's Address
 
 
 
-Schrock                 Expires 23 December 2026               [Page 22]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                 Expires 23 December 2026               [Page 26]

@@ -353,6 +353,122 @@ and flag other Section 4.1 violations in verification reports; none of
 these checks affects signature validity, by design, so receipts verify
 on verifiers that predate this member.
 
+### 4.2. Agent Binding (OPTIONAL)
+
+A producer MAY include an `agent_binding` member in any `ep.signoff.v1`
+Authorization Context. The member attributes the authorized action to an
+external **agent identity** and, optionally, the external **delegation**
+under which that agent was authorized to act. When present it MUST be a
+JSON object with the following members and no others:
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `agent_id` | REQUIRED | string | Non-empty external agent-identity reference (URI, DID, or opaque id). This document does not constrain its scheme. |
+| `delegation` | OPTIONAL | object | The external delegation that authorized the agent; members below, no others. |
+| `statement` | OPTIONAL | string | Short free-text note for the approver. MUST NOT exceed 280 characters. |
+
+When `delegation` is present it MUST be a JSON object with the following
+members and no others:
+
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `scheme` | REQUIRED | string | Non-empty name of the external delegation standard, e.g. `"WIMSE"`, `"DRP"`. |
+| `ref` | REQUIRED | string | Non-empty external receipt/credential identifier. |
+| `hash` | OPTIONAL | string | Content hash of the referenced artifact, formatted `"sha256:<64-lowercase-hex>"`. |
+| `observed_at` | OPTIONAL | string | RFC 3339 timestamp recording when the external delegation evidence was observed or known valid. See "L4 evidence freshness" below. |
+
+Example context (fields as above, with the new member):
+
+```json
+{
+  "ep_version": "1.0",
+  "context_type": "ep.signoff.v1",
+  "action_hash": "sha256:9f2c...",
+  "policy_id": "ep:policy:wires-over-100k@v12",
+  "policy_hash": "sha256:77ab...",
+  "initiator": "ep:entity:agent-recon-7",
+  "agent_binding": {
+    "agent_id": "did:web:agents.example.com:recon-7",
+    "delegation": {
+      "scheme": "WIMSE",
+      "ref": "urn:wimse:cred:9c41ab",
+      "hash": "sha256:2f9a...",
+      "observed_at": "2026-06-09T17:20:48Z"
+    },
+    "statement": "Acting for treasury-ops under wire delegation."
+  },
+  "approver": "ep:approver:jchen-controller",
+  "approver_index": 1,
+  "required_approvals": 2,
+  "nonce": "b64u:R9w1...",
+  "issued_at": "2026-06-09T17:21:05Z",
+  "expires_at": "2026-06-09T17:36:05Z"
+}
+```
+
+Rules:
+
+- **Status.** The member is OPTIONAL. Existing issuers remain conformant;
+  the field can be adopted policy-by-policy.
+- **Claim, not proof.** `agent_binding` records that the action was
+  *presented* as being taken by `agent_id` under delegation `ref`. This
+  document identifies but never trusts the binding (Section 2): it is
+  neither proof of the agent's identity nor proof of the delegation's
+  validity, both of which remain the responsibility of the referenced
+  external system. A verifier MUST NOT treat `agent_binding` as proof of
+  either; it MAY surface `agent_id` and `delegation` to the relying party
+  as part of the verified context, clearly labeled as a reference to an
+  external system.
+- **Binding.** No new signature, digest, or verification step is
+  introduced. The context is JCS-canonicalized as already required above;
+  JCS serializes every member present, so `agent_binding` and everything
+  inside it are part of the signed bytes. The approver's signature
+  therefore covers the binding. Receipts carrying this member verify under
+  the existing Section 6.3 verifiers unmodified; a context without it
+  produces byte-identical canonical material to one produced today.
+- **Cross-context consistency.** When a receipt contains multiple contexts
+  (m-of-n approvals), the `agent_binding` object, if present in any
+  context, MUST be present in every context of that receipt, and its
+  canonical form — `canonicalize(agent_binding)` — MUST be identical
+  across all of them. Every approver signs the same attribution.
+- Producers MUST NOT add members beyond those defined above in v1, in
+  either `agent_binding` or its `delegation`.
+- A signing client implementing this member SHOULD render `agent_id` (and
+  `delegation` if present) to the approver alongside the faithful
+  human-readable rendering of the Action Object that this section already
+  requires, subject to the untrusted-content display rules in Section
+  11.9. A signing client presented with a context whose `statement`
+  exceeds 280 characters MUST refuse to render it for signing.
+
+**L4 evidence freshness (OPTIONAL).** A human authorization decision is
+only as trustworthy as the upstream agent-identity and delegation evidence
+it relied on. If a decision is enforced correctly against a delegation
+claim that was never constrained or has since expired, the failure
+surfaces at the authorization layer but originates in the
+identity/delegation layer beneath it. This document makes that dependency
+explicit and recordable without absorbing the identity layer:
+
+- A producer MAY populate `delegation.observed_at` with the RFC 3339 time
+  at which the external delegation evidence was observed or known valid.
+  Like the rest of the binding, it is covered by the approver's signature.
+- A relying party MAY enforce freshness against `observed_at`. When it
+  does, the evaluation MUST fail closed: a missing `observed_at`, a
+  timestamp later than the evaluation time, or an age exceeding the
+  relying party's configured maximum MUST be treated as not-fresh. When no
+  maximum age is configured, freshness is not evaluated and the evidence is
+  still surfaced for the audit record.
+
+This keeps the receipt agnostic to which external identity/delegation
+scheme prevails: the relying party binds to and records whatever evidence
+was presented rather than requiring that layer to converge, and a stale or
+unconstrained upstream claim becomes detectable after the fact rather than
+silently absorbed. The reference verifier exposes this as
+`evaluateAgentBinding(context, { maxAgeSec, at })`.
+
+As with the Initiator Attestation, none of these checks affects signature
+validity, by design, so receipts verify on verifiers that predate this
+member.
+
 ## 5. Approver Keys and the Signoff Signature
 
 This section is the core upgrade over server-side approval systems.
@@ -858,7 +974,21 @@ stable; all changes are new subsections or in-place additions.
    natural-person identity is out of scope — the Approver Directory
    trust root is the explicit slot where identity/key-discovery layers
    bind keys to named persons.
-4. **Housekeeping.** Version and date bumped in the header; this
+4. **New OPTIONAL Authorization Context member `agent_binding` (new
+   Section 4.2).** Carries an external agent-identity reference
+   (`agent_id`) and an OPTIONAL `delegation` (`scheme`, `ref`, OPTIONAL
+   `hash`, OPTIONAL `observed_at`), plus an OPTIONAL length-capped (≤ 280
+   character) `statement`. Like `initiator_attestation`, it is OPTIONAL,
+   covered by the context hash via the JCS canonicalization already
+   normative in Section 4, verifies under the existing Section 6.3
+   verifiers unmodified, and is a claim — identified but never trusted —
+   not proof of the agent's identity or the delegation's validity. The
+   OPTIONAL `delegation.observed_at` records when the upstream
+   identity/delegation (L4) evidence was observed; a relying party MAY
+   enforce freshness against it fail-closed, keeping the receipt agnostic
+   to which external identity scheme prevails while making a stale or
+   unconstrained upstream claim detectable after the fact.
+5. **Housekeeping.** Version and date bumped in the header; this
    "Changes since -00" appendix added; the idnits non-ASCII em-dash /
    curly-quote cleanup from -00 carried forward as a build step.
 

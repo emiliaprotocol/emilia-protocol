@@ -400,6 +400,182 @@
         checks affects signature validity, by design, so receipts verify
         on verifiers that predate this member.</t>
       </section>
+      <section anchor="agent-binding">
+        <name>Agent Binding (OPTIONAL)</name>
+        <t>A producer <bcp14>MAY</bcp14> include an <tt>agent_binding</tt>
+        member in any <tt>ep.signoff.v1</tt> Authorization Context. The
+        member attributes the authorized action to an external <strong>agent
+        identity</strong> and, optionally, the external
+        <strong>delegation</strong> under which that agent was authorized to
+        act. When present it <bcp14>MUST</bcp14> be a JSON object with the
+        following members and no others:</t>
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Required</th><th>Type</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><tt>agent_id</tt></td>
+              <td><bcp14>REQUIRED</bcp14></td>
+              <td>string</td>
+              <td>Non-empty external agent-identity reference (URI, DID, or
+              opaque id). This document does not constrain its scheme.</td>
+            </tr>
+            <tr>
+              <td><tt>delegation</tt></td>
+              <td><bcp14>OPTIONAL</bcp14></td>
+              <td>object</td>
+              <td>The external delegation that authorized the agent; members
+              below, no others.</td>
+            </tr>
+            <tr>
+              <td><tt>statement</tt></td>
+              <td><bcp14>OPTIONAL</bcp14></td>
+              <td>string</td>
+              <td>Short free-text note for the approver. <bcp14>MUST NOT</bcp14>
+              exceed 280 characters.</td>
+            </tr>
+          </tbody>
+        </table>
+        <t>When <tt>delegation</tt> is present it <bcp14>MUST</bcp14> be a
+        JSON object with the following members and no others:</t>
+        <table>
+          <thead>
+            <tr><th>Field</th><th>Required</th><th>Type</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><tt>scheme</tt></td>
+              <td><bcp14>REQUIRED</bcp14></td>
+              <td>string</td>
+              <td>Non-empty name of the external delegation standard, e.g.
+              <tt>"WIMSE"</tt>, <tt>"DRP"</tt>.</td>
+            </tr>
+            <tr>
+              <td><tt>ref</tt></td>
+              <td><bcp14>REQUIRED</bcp14></td>
+              <td>string</td>
+              <td>Non-empty external receipt/credential identifier.</td>
+            </tr>
+            <tr>
+              <td><tt>hash</tt></td>
+              <td><bcp14>OPTIONAL</bcp14></td>
+              <td>string</td>
+              <td>Content hash of the referenced artifact, formatted
+              <tt>"sha256:&lt;64-lowercase-hex&gt;"</tt>.</td>
+            </tr>
+            <tr>
+              <td><tt>observed_at</tt></td>
+              <td><bcp14>OPTIONAL</bcp14></td>
+              <td>string</td>
+              <td>RFC 3339 timestamp recording when the external delegation
+              evidence was observed or known valid. See L4 evidence freshness
+              below.</td>
+            </tr>
+          </tbody>
+        </table>
+        <t>Example context (fields as above, with the new member):</t>
+        <sourcecode type="json"><![CDATA[
+{
+  "ep_version": "1.0",
+  "context_type": "ep.signoff.v1",
+  "action_hash": "sha256:9f2c...",
+  "policy_id": "ep:policy:wires-over-100k@v12",
+  "policy_hash": "sha256:77ab...",
+  "initiator": "ep:entity:agent-recon-7",
+  "agent_binding": {
+    "agent_id": "did:web:agents.example.com:recon-7",
+    "delegation": {
+      "scheme": "WIMSE",
+      "ref": "urn:wimse:cred:9c41ab",
+      "hash": "sha256:2f9a...",
+      "observed_at": "2026-06-09T17:20:48Z"
+    },
+    "statement": "Acting for treasury-ops under wire delegation."
+  },
+  "approver": "ep:approver:jchen-controller",
+  "approver_index": 1,
+  "required_approvals": 2,
+  "nonce": "b64u:R9w1...",
+  "issued_at": "2026-06-09T17:21:05Z",
+  "expires_at": "2026-06-09T17:36:05Z"
+}
+]]></sourcecode>
+        <t>Rules:</t>
+        <ul>
+          <li><strong>Status.</strong> The member is <bcp14>OPTIONAL</bcp14>.
+          Existing issuers remain conformant; the field can be adopted
+          policy-by-policy.</li>
+          <li><strong>Claim, not proof.</strong> <tt>agent_binding</tt>
+          records that the action was <em>presented</em> as being taken by
+          <tt>agent_id</tt> under delegation <tt>ref</tt>. This document
+          identifies but never trusts the binding
+          (<xref target="terminology"/>): it is neither proof of the agent's
+          identity nor proof of the delegation's validity, both of which
+          remain the responsibility of the referenced external system. A
+          verifier <bcp14>MUST NOT</bcp14> treat <tt>agent_binding</tt> as
+          proof of either; it <bcp14>MAY</bcp14> surface <tt>agent_id</tt> and
+          <tt>delegation</tt> to the relying party as part of the verified
+          context, clearly labeled as a reference to an external system.</li>
+          <li><strong>Binding.</strong> No new signature, digest, or
+          verification step is introduced. The context is JCS-canonicalized as
+          already required above; JCS serializes every member present, so
+          <tt>agent_binding</tt> and everything inside it are part of the
+          signed bytes. The approver's signature therefore covers the binding.
+          Receipts carrying this member verify under the existing
+          <xref target="offline-verification"/> verifiers unmodified; a context
+          without it produces byte-identical canonical material to one produced
+          today.</li>
+          <li><strong>Cross-context consistency.</strong> When a receipt
+          contains multiple contexts (m-of-n approvals), the
+          <tt>agent_binding</tt> object, if present in any context,
+          <bcp14>MUST</bcp14> be present in every context of that receipt, and
+          its canonical form -- <tt>canonicalize(agent_binding)</tt> --
+          <bcp14>MUST</bcp14> be identical across all of them. Every approver
+          signs the same attribution.</li>
+          <li>Producers <bcp14>MUST NOT</bcp14> add members beyond those
+          defined above in v1, in either <tt>agent_binding</tt> or its
+          <tt>delegation</tt>.</li>
+          <li>A signing client implementing this member <bcp14>SHOULD</bcp14>
+          render <tt>agent_id</tt> (and <tt>delegation</tt> if present) to the
+          approver alongside the faithful human-readable rendering of the
+          Action Object that this section already requires, subject to the
+          untrusted-content display rules in
+          <xref target="initiator-attestation-security"/>. A signing client
+          presented with a context whose <tt>statement</tt> exceeds 280
+          characters <bcp14>MUST</bcp14> refuse to render it for signing.</li>
+        </ul>
+        <t><strong>L4 evidence freshness (OPTIONAL).</strong> A human
+        authorization decision is only as trustworthy as the upstream
+        agent-identity and delegation evidence it relied on. If a decision is
+        enforced correctly against a delegation claim that was never
+        constrained or has since expired, the failure surfaces at the
+        authorization layer but originates in the identity/delegation layer
+        beneath it. This document makes that dependency explicit and recordable
+        without absorbing the identity layer:</t>
+        <ul>
+          <li>A producer <bcp14>MAY</bcp14> populate
+          <tt>delegation.observed_at</tt> with the RFC 3339 time at which the
+          external delegation evidence was observed or known valid. Like the
+          rest of the binding, it is covered by the approver's signature.</li>
+          <li>A relying party <bcp14>MAY</bcp14> enforce freshness against
+          <tt>observed_at</tt>. When it does, the evaluation
+          <bcp14>MUST</bcp14> fail closed: a missing <tt>observed_at</tt>, a
+          timestamp later than the evaluation time, or an age exceeding the
+          relying party's configured maximum <bcp14>MUST</bcp14> be treated as
+          not-fresh. When no maximum age is configured, freshness is not
+          evaluated and the evidence is still surfaced for the audit
+          record.</li>
+        </ul>
+        <t>This keeps the receipt agnostic to which external
+        identity/delegation scheme prevails: the relying party binds to and
+        records whatever evidence was presented rather than requiring that
+        layer to converge, and a stale or unconstrained upstream claim becomes
+        detectable after the fact rather than silently absorbed. As with the
+        Initiator Attestation, none of these checks affects signature validity,
+        by design, so receipts verify on verifiers that predate this
+        member.</t>
+      </section>
     </section>
     <section anchor="approver-keys">
       <name>Approver Keys and the Signoff Signature</name>
@@ -989,6 +1165,26 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
         natural-person identity is out of scope -- the Approver Directory
         trust root is the explicit slot where identity/key-discovery
         layers bind keys to named persons.</li>
+        <li>New <bcp14>OPTIONAL</bcp14> Authorization Context member
+        <tt>agent_binding</tt> (new <xref target="agent-binding"/>): an
+        external agent-identity reference (<tt>agent_id</tt>) and an
+        <bcp14>OPTIONAL</bcp14> <tt>delegation</tt> (<tt>scheme</tt>,
+        <tt>ref</tt>, <bcp14>OPTIONAL</bcp14> <tt>hash</tt>,
+        <bcp14>OPTIONAL</bcp14> <tt>observed_at</tt>), plus an
+        <bcp14>OPTIONAL</bcp14> length-capped (&lt;= 280 character)
+        <tt>statement</tt>. Like <tt>initiator_attestation</tt>, it is
+        <bcp14>OPTIONAL</bcp14>, covered by the context hash via the JCS
+        canonicalization already normative in
+        <xref target="authorization-context"/>, verifies under the existing
+        <xref target="offline-verification"/> verifiers unmodified, and is a
+        claim -- identified but never trusted -- not proof of the agent's
+        identity or the delegation's validity. The <bcp14>OPTIONAL</bcp14>
+        <tt>delegation.observed_at</tt> records when the upstream
+        identity/delegation (L4) evidence was observed; a relying party
+        <bcp14>MAY</bcp14> enforce freshness against it fail-closed, keeping
+        the receipt agnostic to which external identity scheme prevails while
+        making a stale or unconstrained upstream claim detectable after the
+        fact.</li>
         <li>Housekeeping: version and date bumped in the header; this
         appendix added; the idnits non-ASCII em-dash / curly-quote cleanup
         from -00 carried forward as a build step.</li>
