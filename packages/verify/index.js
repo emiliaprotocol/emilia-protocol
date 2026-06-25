@@ -925,6 +925,83 @@ export function verifyTrustReceipt(receipt, opts = {}) {
 }
 
 // =============================================================================
+// PIP-008 — L4 -> L7 binding: record relied-on agent identity + freshness
+// =============================================================================
+
+/**
+ * Surface the external agent-identity / delegation evidence (L4) that a
+ * decision (L7 PDP) relied on, and OPTIONALLY enforce its freshness.
+ *
+ * EP does NOT resolve or trust the L4 identity — `agent_binding` is a signed
+ * CLAIM (PIP-008). This lets a Policy Decision Point RECORD which upstream
+ * evidence backed a human authorization and detect a stale or absent upstream
+ * attestation after the fact — the L4->L7 failure mode (a decision enforced
+ * correctly against an unconstrained or expired upstream claim). Call it with
+ * a context whose signature has ALREADY been verified.
+ *
+ * @param {object} context  a signature-verified ep.signoff.v1 Authorization Context
+ * @param {object} [opts]
+ * @param {number} [opts.maxAgeSec]  if set, delegation.observed_at must be within this window (fail-closed)
+ * @param {string} [opts.at]  reference time (ISO-8601); defaults to now
+ * @returns {{present:boolean, agent_id?:string, delegation?:object|null,
+ *   evidence_hash?:string|null, observed_at?:string|null,
+ *   fresh:(boolean|null), age_seconds:(number|null), reason:string}}
+ */
+export function evaluateAgentBinding(context, opts = {}) {
+  const binding = (context && typeof context === 'object') ? context.agent_binding : null;
+  if (!binding || typeof binding !== 'object') {
+    return { present: false, fresh: null, age_seconds: null, reason: 'no_agent_binding' };
+  }
+  const d = (binding.delegation && typeof binding.delegation === 'object') ? binding.delegation : null;
+  const out = {
+    present: true,
+    agent_id: binding.agent_id,
+    delegation: d
+      ? {
+          scheme: d.scheme,
+          ref: d.ref,
+          ...(d.hash ? { hash: d.hash } : {}),
+          ...(d.observed_at ? { observed_at: d.observed_at } : {}),
+        }
+      : null,
+    evidence_hash: (d && d.hash) || null,
+    observed_at: (d && d.observed_at) || null,
+    fresh: null,
+    age_seconds: null,
+    reason: 'recorded',
+  };
+
+  const { maxAgeSec, at } = opts;
+  if (typeof maxAgeSec === 'number' && maxAgeSec >= 0) {
+    if (!out.observed_at) {
+      out.fresh = false;
+      out.reason = 'freshness_required_but_no_observed_at';
+      return out;
+    }
+    const obs = Date.parse(out.observed_at);
+    const ref = at ? Date.parse(at) : Date.now();
+    if (Number.isNaN(obs) || Number.isNaN(ref)) {
+      out.fresh = false;
+      out.reason = 'unparseable_observed_at';
+      return out;
+    }
+    const ageSec = (ref - obs) / 1000;
+    out.age_seconds = Math.round(ageSec);
+    if (ageSec < -60) {                       // observed in the future (allow 60s clock skew)
+      out.fresh = false;
+      out.reason = 'observed_at_in_future';
+    } else if (ageSec > maxAgeSec) {
+      out.fresh = false;
+      out.reason = `stale: L4 evidence observed ${out.age_seconds}s ago (max ${maxAgeSec}s)`;
+    } else {
+      out.fresh = true;
+      out.reason = 'fresh';
+    }
+  }
+  return out;
+}
+
+// =============================================================================
 // FEDERATION (PIP-006)
 // =============================================================================
 

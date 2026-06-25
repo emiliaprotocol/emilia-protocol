@@ -82,6 +82,30 @@ signature fails). A verifier:
   that its content hash matches `delegation.hash` when present. This cross-check
   is out of EP Core scope and lives in the application/composition layer.
 
+### §2.1 — Freshness of L4 evidence (optional, L4→L7 binding)
+
+A governance decision (L7 PDP) is only as trustworthy as the upstream identity
+evidence (L4) it relies on. If a decision is enforced correctly against an
+upstream delegation claim that was never constrained or has since expired, the
+failure surfaces at L7 but originates at L4 (raised by K. Maralla on the IETF
+`agent2agent` list). EP makes that dependency **explicit and recordable**:
+
+- **Producer:** `delegation` MAY carry an OPTIONAL `observed_at` (RFC 3339)
+  recording when the external L4 evidence was observed/valid. It is covered by
+  the approver signature like the rest of the binding.
+- **Verifier (PDP):** `evaluateAgentBinding(context, { maxAgeSec, at })`
+  (`@emilia-protocol/verify`) RECORDS the relied-on evidence
+  (`agent_id`, `delegation {scheme, ref, hash}`, `observed_at`) and, when
+  `maxAgeSec` is supplied, enforces freshness **fail-closed**: a missing
+  `observed_at`, a future timestamp, or an age beyond `maxAgeSec` yields
+  `fresh:false` with a reason. With no `maxAgeSec`, freshness is not evaluated
+  (`fresh:null`) and the evidence is still surfaced for the audit record.
+
+This keeps EP **agnostic to which L4 scheme wins** (WIMSE, OAuth identity
+chaining, AIMS, EAT): the PDP binds to and records whatever evidence was
+presented rather than requiring L4 to converge — and a stale or unconstrained
+upstream claim becomes detectable after the fact rather than silently absorbed.
+
 ### §3 — Client conformance
 
 As with PIP-007, whether the approving human *saw* the agent attribution is a

@@ -195,6 +195,31 @@ export function verifyTrustReceipt(
   opts: TrustReceiptVerificationOptions
 ): TrustReceiptResult;
 
+// ── PIP-008: L4 → L7 binding (record relied-on agent identity + freshness) ──
+
+export interface AgentBindingEvaluation {
+  present: boolean;
+  agent_id?: string;
+  delegation?: { scheme: string; ref: string; hash?: string; observed_at?: string } | null;
+  evidence_hash?: string | null;
+  observed_at?: string | null;
+  /** true/false when freshness is evaluated (maxAgeSec set); null otherwise. */
+  fresh: boolean | null;
+  age_seconds: number | null;
+  reason: string;
+}
+
+/**
+ * Surface the external agent-identity/delegation evidence (L4) a decision
+ * relied on and optionally enforce its freshness (PIP-008 §2.1). The context's
+ * signature must already be verified. With `maxAgeSec`, freshness is
+ * fail-closed (missing/future/over-age observed_at => fresh:false).
+ */
+export function evaluateAgentBinding(
+  context: Record<string, unknown>,
+  opts?: { maxAgeSec?: number; at?: string }
+): AgentBindingEvaluation;
+
 // ── Federation (PIP-006) ────────────────────────────────────────────────────
 
 export interface OperatorKeyCandidate {

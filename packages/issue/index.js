@@ -224,7 +224,7 @@ export function validateInitiatorAttestation(attestation) {
 
 // PIP-008: the only members an agent_binding may carry.
 const AGENT_BINDING_MEMBERS = Object.freeze(['agent_id', 'delegation', 'statement']);
-const DELEGATION_MEMBERS = Object.freeze(['scheme', 'ref', 'hash']);
+const DELEGATION_MEMBERS = Object.freeze(['scheme', 'ref', 'hash', 'observed_at']);
 const AGENT_BINDING_SHA256_RE = /^sha256:[0-9a-f]{64}$/;
 
 /**
@@ -273,7 +273,7 @@ export function validateAgentBinding(binding) {
         throw new Error(`agentBinding.delegation has an unknown member "${key}" (PIP-008 §1 allows only ${DELEGATION_MEMBERS.join(', ')})`);
       }
     }
-    const { scheme, ref, hash } = delegation;
+    const { scheme, ref, hash, observed_at: observedAt } = delegation;
     if (typeof scheme !== 'string' || scheme.length === 0) {
       throw new Error('agentBinding.delegation.scheme is required and must be a non-empty string');
     }
@@ -283,8 +283,16 @@ export function validateAgentBinding(binding) {
     if (hash !== undefined && (typeof hash !== 'string' || !AGENT_BINDING_SHA256_RE.test(hash))) {
       throw new Error('agentBinding.delegation.hash must be "sha256:<64-hex>" when present');
     }
+    // PIP-008 §1.1 (freshness): OPTIONAL observed_at records WHEN the external
+    // L4 evidence was observed/valid, so a verifier (PDP) can enforce a
+    // freshness window on the upstream identity/delegation claim. Still a
+    // claim, not proof — EP records it; it does not resolve the L4 evidence.
+    if (observedAt !== undefined && (typeof observedAt !== 'string' || Number.isNaN(Date.parse(observedAt)))) {
+      throw new Error('agentBinding.delegation.observed_at must be an RFC 3339 timestamp when present');
+    }
     validatedDelegation = { scheme, ref };
     if (hash !== undefined) validatedDelegation.hash = hash;
+    if (observedAt !== undefined) validatedDelegation.observed_at = observedAt;
     validatedDelegation = Object.freeze(validatedDelegation);
   }
   if (statement !== undefined) {

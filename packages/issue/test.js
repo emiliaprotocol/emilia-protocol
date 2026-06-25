@@ -419,3 +419,10 @@ test('PIP-008 — validateAgentBinding fails closed on bad input', () => {
   // Valid: agent_id only, and full delegation.
   assert.deepEqual(validateAgentBinding({ agent_id: 'urn:agent:1' }), { agent_id: 'urn:agent:1' });
 });
+
+test('PIP-008 §1.1 — delegation.observed_at (freshness) accepted and round-trips', () => {
+  const b = validateAgentBinding({ agent_id: 'a', delegation: { scheme: 'DRP', ref: 'r', observed_at: '2026-06-24T18:00:00Z' } });
+  assert.equal(b.delegation.observed_at, '2026-06-24T18:00:00Z');
+  // rejects a non-timestamp
+  assert.throws(() => validateAgentBinding({ agent_id: 'a', delegation: { scheme: 'DRP', ref: 'r', observed_at: 'not-a-date' } }), /observed_at must be an RFC 3339/);
+});
