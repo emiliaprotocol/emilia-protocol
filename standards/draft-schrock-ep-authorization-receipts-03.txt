@@ -4,8 +4,8 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Informational                              21 June 2026
-Expires: 23 December 2026
+Intended status: Informational                              28 June 2026
+Expires: 30 December 2026
 
 
            Authorization Receipts for High-Risk Agent Actions
@@ -32,7 +32,11 @@ Abstract
    to-action trust).  It is complementary to, not a replacement for,
    user-to-operator delegation work (draft-nelson-agent-delegation-
    receipts), service-to-service identity (WIMSE), and authentication-
-   layer approval (CIBA).
+   layer approval (CIBA).  EP is the human-authorization apex of the
+   agent stack: it composes with, and does not replace, the agent
+   identity, delegation, machine-policy, and transparency-log layers,
+   supplying the named-human authorization evidence those layers
+   reference but do not themselves produce.
 
 Status of This Memo
 
@@ -44,19 +48,22 @@ Status of This Memo
    working documents as Internet-Drafts.  The list of current Internet-
    Drafts is at https://datatracker.ietf.org/drafts/current/.
 
+
+
+
+
+
+Schrock                 Expires 30 December 2026                [Page 1]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
    Internet-Drafts are draft documents valid for a maximum of six months
    and may be updated, replaced, or obsoleted by other documents at any
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 23 December 2026.
-
-
-
-Schrock                 Expires 23 December 2026                [Page 1]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
+   This Internet-Draft will expire on 30 December 2026.
 
 Copyright Notice
 
@@ -76,11 +83,11 @@ Table of Contents
 
    1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
      1.1.  Design Goals  . . . . . . . . . . . . . . . . . . . . . .   4
-     1.2.  Scope of Identity . . . . . . . . . . . . . . . . . . . .   4
+     1.2.  Scope of Identity . . . . . . . . . . . . . . . . . . . .   5
    2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   5
    3.  The Action Object and Action Hash . . . . . . . . . . . . . .   6
    4.  The Authorization Context . . . . . . . . . . . . . . . . . .   6
-     4.1.  Initiator Attestation (OPTIONAL)  . . . . . . . . . . . .   7
+     4.1.  Initiator Attestation (OPTIONAL)  . . . . . . . . . . . .   8
      4.2.  Agent Binding (OPTIONAL)  . . . . . . . . . . . . . . . .  10
    5.  Approver Keys and the Signoff Signature . . . . . . . . . . .  14
      5.1.  Key Classes . . . . . . . . . . . . . . . . . . . . . . .  14
@@ -99,6 +106,14 @@ Table of Contents
      11.2.  Approver Device Compromise . . . . . . . . . . . . . . .  20
      11.3.  Presentation Attacks . . . . . . . . . . . . . . . . . .  20
      11.4.  Log Equivocation . . . . . . . . . . . . . . . . . . . .  21
+
+
+
+Schrock                 Expires 30 December 2026                [Page 2]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
      11.5.  What the Formal Models Do and Do Not Prove . . . . . . .  21
      11.6.  Directory Authority  . . . . . . . . . . . . . . . . . .  21
      11.7.  What Separation of Duties Does and Does Not Provide  . .  22
@@ -106,14 +121,6 @@ Table of Contents
      11.9.  Initiator Attestation as an Attack Surface . . . . . . .  22
      11.10. No symmetric key on the verification trust path  . . . .  23
    12. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  24
-
-
-
-Schrock                 Expires 23 December 2026                [Page 2]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
-
    13. Normative References  . . . . . . . . . . . . . . . . . . . .  24
    14. Informative References  . . . . . . . . . . . . . . . . . . .  24
    Appendix A.  Changes since -00  . . . . . . . . . . . . . . . . .  25
@@ -154,6 +161,15 @@ Internet-Draft          EP Authorization Receipts              June 2026
    once; and the resulting receipt is independently verifiable offline,
    forever.
 
+
+
+
+
+Schrock                 Expires 30 December 2026                [Page 3]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
    The human-approval mechanism this document specifies -- a user-
    verification-gated signature over the exact Authorization Context
    (Section 5.1, Class A) -- is native to EP and self-contained.  It
@@ -162,13 +178,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    signoff is produced entirely by the controls defined here.  Where EP
    composes with adjacent work (Section 10), that composition is by
    reference, not dependency.
-
-
-
-Schrock                 Expires 23 December 2026                [Page 3]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
 
 1.1.  Design Goals
 
@@ -204,6 +213,19 @@ Internet-Draft          EP Authorization Receipts              June 2026
       and checked in continuous integration.  Implementations can be
       tested against a published conformance suite.
 
+
+
+
+
+
+
+
+
+Schrock                 Expires 30 December 2026                [Page 4]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
 1.2.  Scope of Identity
 
    This document binds an approval to an _approver identifier_ whose key
@@ -218,13 +240,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    key enrolled under a given approver identifier signed the exact
    action; the mapping from identifier to person is established and
    asserted by the directory authority.
-
-
-
-Schrock                 Expires 23 December 2026                [Page 4]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
 
 2.  Terminology
 
@@ -256,6 +271,17 @@ Internet-Draft          EP Authorization Receipts              June 2026
    action hash, policy reference, initiator identity, nonce, expiry, and
    chain binding (Section 4).
 
+
+
+
+
+
+
+Schrock                 Expires 30 December 2026                [Page 5]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
    *Initiator Attestation.* An OPTIONAL claim by the initiator, carried
    inside the Authorization Context, stating why the initiator escalated
    the action to a human (Section 4.1).  It is a claim, not proof of the
@@ -272,15 +298,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    *EP Operator.* The party running the orchestration service (policy
    registry, signoff routing, log).  Under this protocol the operator is
    _not_ in the signing trust path for approvals (G2).
-
-
-
-
-
-Schrock                 Expires 23 December 2026                [Page 5]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
 
 3.  The Action Object and Action Hash
 
@@ -312,6 +329,15 @@ Internet-Draft          EP Authorization Receipts              June 2026
    For each required approver, the orchestrator constructs an
    Authorization Context:
 
+
+
+
+
+Schrock                 Expires 30 December 2026                [Page 6]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
    {
      "ep_version": "1.0",
      "context_type": "ep.signoff.v1",
@@ -329,14 +355,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    }
 
    Rules:
-
-
-
-
-Schrock                 Expires 23 December 2026                [Page 6]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
 
    *  nonce MUST be at least 128 bits of CSPRNG output and MUST be
       globally unique per authorization attempt.  It is the consumption
@@ -363,6 +381,19 @@ Internet-Draft          EP Authorization Receipts              June 2026
       Signing interfaces that display a different action than the one
       hashed are a presentation attack; see Section 11.3.
 
+
+
+
+
+
+
+
+
+Schrock                 Expires 30 December 2026                [Page 7]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
 4.1.  Initiator Attestation (OPTIONAL)
 
    A producer MAY include an initiator_attestation member in any
@@ -370,29 +401,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    initiator's own stated reason for escalating the action to a human.
    When present it MUST be a JSON object with the following members and
    no others:
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Schrock                 Expires 23 December 2026                [Page 7]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
 
    +==================+==================+======+=====================+
    |Field             |Required          |Type  |Description          |
@@ -434,21 +442,19 @@ Internet-Draft          EP Authorization Receipts              June 2026
    *  uncertainty -- the initiator's confidence in its own assessment is
       too low to proceed unaided.
 
+
+
+
+Schrock                 Expires 30 December 2026                [Page 8]
+
+Internet-Draft          EP Authorization Receipts              June 2026
+
+
    *  novelty -- the action or counterparty has no precedent in the
       initiator's history.
 
    *  authority_gap -- the action requires authority the initiator was
       never granted.
-
-
-
-
-
-
-Schrock                 Expires 23 December 2026                [Page 8]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
 
    *  policy_rule -- a deterministic policy rule required signoff and
       none of the five substantive categories above captures why;
@@ -495,13 +501,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-
-
-
-
-
-
-Schrock                 Expires 23 December 2026                [Page 9]
+Schrock                 Expires 30 December 2026                [Page 9]
 
 Internet-Draft          EP Authorization Receipts              June 2026
 
@@ -557,7 +557,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                 Expires 23 December 2026               [Page 10]
+Schrock                 Expires 30 December 2026               [Page 10]
 
 Internet-Draft          EP Authorization Receipts              June 2026
 
@@ -613,7 +613,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                 Expires 23 December 2026               [Page 11]
+Schrock                 Expires 30 December 2026               [Page 11]
 
 Internet-Draft          EP Authorization Receipts              June 2026
 
@@ -669,7 +669,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                 Expires 23 December 2026               [Page 12]
+Schrock                 Expires 30 December 2026               [Page 12]
 
 Internet-Draft          EP Authorization Receipts              June 2026
 
@@ -725,7 +725,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                 Expires 23 December 2026               [Page 13]
+Schrock                 Expires 30 December 2026               [Page 13]
 
 Internet-Draft          EP Authorization Receipts              June 2026
 
@@ -781,7 +781,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                 Expires 23 December 2026               [Page 14]
+Schrock                 Expires 30 December 2026               [Page 14]
 
 Internet-Draft          EP Authorization Receipts              June 2026
 
@@ -837,7 +837,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                 Expires 23 December 2026               [Page 15]
+Schrock                 Expires 30 December 2026               [Page 15]
 
 Internet-Draft          EP Authorization Receipts              June 2026
 
@@ -893,7 +893,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                 Expires 23 December 2026               [Page 16]
+Schrock                 Expires 30 December 2026               [Page 16]
 
 Internet-Draft          EP Authorization Receipts              June 2026
 
@@ -949,7 +949,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                 Expires 23 December 2026               [Page 17]
+Schrock                 Expires 30 December 2026               [Page 17]
 
 Internet-Draft          EP Authorization Receipts              June 2026
 
@@ -1005,7 +1005,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                 Expires 23 December 2026               [Page 18]
+Schrock                 Expires 30 December 2026               [Page 18]
 
 Internet-Draft          EP Authorization Receipts              June 2026
 
@@ -1061,7 +1061,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                 Expires 23 December 2026               [Page 19]
+Schrock                 Expires 30 December 2026               [Page 19]
 
 Internet-Draft          EP Authorization Receipts              June 2026
 
@@ -1117,7 +1117,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                 Expires 23 December 2026               [Page 20]
+Schrock                 Expires 30 December 2026               [Page 20]
 
 Internet-Draft          EP Authorization Receipts              June 2026
 
@@ -1173,7 +1173,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                 Expires 23 December 2026               [Page 21]
+Schrock                 Expires 30 December 2026               [Page 21]
 
 Internet-Draft          EP Authorization Receipts              June 2026
 
@@ -1229,7 +1229,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                 Expires 23 December 2026               [Page 22]
+Schrock                 Expires 30 December 2026               [Page 22]
 
 Internet-Draft          EP Authorization Receipts              June 2026
 
@@ -1285,7 +1285,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                 Expires 23 December 2026               [Page 23]
+Schrock                 Expires 30 December 2026               [Page 23]
 
 Internet-Draft          EP Authorization Receipts              June 2026
 
@@ -1341,7 +1341,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                 Expires 23 December 2026               [Page 24]
+Schrock                 Expires 30 December 2026               [Page 24]
 
 Internet-Draft          EP Authorization Receipts              June 2026
 
@@ -1397,7 +1397,7 @@ Appendix A.  Changes since -00
 
 
 
-Schrock                 Expires 23 December 2026               [Page 25]
+Schrock                 Expires 30 December 2026               [Page 25]
 
 Internet-Draft          EP Authorization Receipts              June 2026
 
@@ -1453,4 +1453,4 @@ Author's Address
 
 
 
-Schrock                 Expires 23 December 2026               [Page 26]
+Schrock                 Expires 30 December 2026               [Page 26]

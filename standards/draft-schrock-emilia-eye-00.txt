@@ -4,8 +4,8 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Informational                              13 June 2026
-Expires: 15 December 2026
+Intended status: Informational                              28 June 2026
+Expires: 30 December 2026
 
 
   Verifiable, Scope-Bound Advisories for Authorization Posture (EMILIA
@@ -14,20 +14,21 @@ Expires: 15 December 2026
 
 Abstract
 
-   This document defines the EMILIA Eye advisory: a signed, offline-
-   verifiable statement that an authorization posture for a named scope
-   has changed, carrying a scope-binding hash that prevents the advisory
-   from being replayed or re-targeted to a different scope.  An Eye
-   advisory expresses an observation-derived posture (clear, caution,
-   elevated, or review_required) and a recommended action (none, log,
-   step_up_auth, require_signoff, or escalate).  The central safety
-   invariant is normative and, to the authors' knowledge, the genuinely
-   novel contribution of this work: an advisory MUST NEVER be the sole
-   gate on an action.  A signal may only TIGHTEN posture - it may cause
-   an enforcement point to demand stronger authentication, human
-   signoff, or escalation - but it can never itself constitute the
-   authorization.  Eye warns; an enforcement point verifies; an
-   accountable human owns the decision.
+   This document defines the EMILIA Eye advisory: a scope-bound
+   statement that an authorization posture for a named scope has changed
+   (designed to be signed and offline-verifiable; the signing layer is
+   specified here but is not yet present in the reference
+   implementation, see Section 13.6), carrying a scope-binding hash that
+   prevents the advisory from being replayed or re-targeted to a
+   different scope.  An Eye advisory expresses an observation-derived
+   posture (clear, caution, elevated, or review_required) and a
+   recommended action (none, log, step_up_auth, require_signoff, or
+   escalate).  The central safety invariant of this document is
+   normative: an advisory MUST NEVER be the sole gate on an action.  A
+   signal may only TIGHTEN posture - it may cause an enforcement point
+   to demand stronger authentication, human signoff, or escalation - but
+   it can never itself constitute the authorization.  Eye warns; an
+   enforcement point verifies; an accountable human owns the decision.
 
    This work specifies the verifiability, scope-binding, and fail-safe
    advisory semantics that signal-transport frameworks leave undefined.
@@ -46,24 +47,28 @@ Status of This Memo
    This Internet-Draft is submitted in full conformance with the
    provisions of BCP 78 and BCP 79.
 
+
+
+
+
+
+
+Schrock                 Expires 30 December 2026                [Page 1]
+
+Internet-Draft            EMILIA Eye Advisories                June 2026
+
+
    Internet-Drafts are working documents of the Internet Engineering
    Task Force (IETF).  Note that other groups may also distribute
    working documents as Internet-Drafts.  The list of current Internet-
    Drafts is at https://datatracker.ietf.org/drafts/current/.
-
-
-
-Schrock                 Expires 15 December 2026                [Page 1]
-
-Internet-Draft            EMILIA Eye Advisories                June 2026
-
 
    Internet-Drafts are draft documents valid for a maximum of six months
    and may be updated, replaced, or obsoleted by other documents at any
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 15 December 2026.
+   This Internet-Draft will expire on 30 December 2026.
 
 Copyright Notice
 
@@ -89,8 +94,8 @@ Table of Contents
            Gate  . . . . . . . . . . . . . . . . . . . . . . . . . .   6
    4.  The Observation . . . . . . . . . . . . . . . . . . . . . . .   7
    5.  Scope Binding . . . . . . . . . . . . . . . . . . . . . . . .   8
-   6.  The Advisory  . . . . . . . . . . . . . . . . . . . . . . . .   8
-     6.1.  Advisory Payload  . . . . . . . . . . . . . . . . . . . .   8
+   6.  The Advisory  . . . . . . . . . . . . . . . . . . . . . . . .   9
+     6.1.  Advisory Payload  . . . . . . . . . . . . . . . . . . . .   9
      6.2.  Advisory Signature and Offline Verification . . . . . . .  10
        6.2.1.  Offline Verification Algorithm  . . . . . . . . . . .  10
    7.  The Signal Registry . . . . . . . . . . . . . . . . . . . . .  11
@@ -101,19 +106,19 @@ Table of Contents
      8.4.  Bridge into the Enforcement-Point Profile and EP
            Verification  . . . . . . . . . . . . . . . . . . . . . .  14
    9.  Advisory Lifecycle and Supersession . . . . . . . . . . . . .  15
+
+
+
+Schrock                 Expires 30 December 2026                [Page 2]
+
+Internet-Draft            EMILIA Eye Advisories                June 2026
+
+
    10. Composition: SET Envelope and Optional SSF/CAEP Transport . .  15
      10.1.  Security Event Token Envelope  . . . . . . . . . . . . .  15
      10.2.  Optional SSF/CAEP Transport  . . . . . . . . . . . . . .  16
    11. Conformance Classes . . . . . . . . . . . . . . . . . . . . .  16
    12. Relationship to Other Work  . . . . . . . . . . . . . . . . .  17
-
-
-
-Schrock                 Expires 15 December 2026                [Page 2]
-
-Internet-Draft            EMILIA Eye Advisories                June 2026
-
-
    13. Security Considerations . . . . . . . . . . . . . . . . . . .  17
      13.1.  Fail-Safe, Never Fail-Open . . . . . . . . . . . . . . .  17
      13.2.  False and Adversarial Signals  . . . . . . . . . . . . .  18
@@ -157,18 +162,19 @@ Internet-Draft            EMILIA Eye Advisories                June 2026
    1.  *The verifiability gap.* A posture change delivered as plain JSON
        over an authenticated channel is only as trustworthy as the
        channel and the live database behind it.  A relying party that
+
+
+
+Schrock                 Expires 30 December 2026                [Page 3]
+
+Internet-Draft            EMILIA Eye Advisories                June 2026
+
+
        caches, forwards, or audits the signal later cannot reconfirm its
        origin without re-querying the source.  Eye signs the advisory so
        any holder of the issuer's public key can verify it offline,
        mirroring the offline-verifiability property of the EP
        authorization receipt.
-
-
-
-Schrock                 Expires 15 December 2026                [Page 3]
-
-Internet-Draft            EMILIA Eye Advisories                June 2026
-
 
    2.  *The scope-binding gap.* A signal that says "elevated risk" with
        a loosely attached subject reference can be copied and presented
@@ -212,19 +218,18 @@ Internet-Draft            EMILIA Eye Advisories                June 2026
       fail-safe layer; it does not define a new event envelope or a new
       delivery protocol (Section 10, Section 12).
 
+
+
+
+Schrock                 Expires 30 December 2026                [Page 4]
+
+Internet-Draft            EMILIA Eye Advisories                June 2026
+
+
    *  *G6 - Append-only honesty.* Advisories and their underlying
       observations are append-only; a status change is a new advisory
       that supersedes its predecessor, never a mutation of an existing
       one (Section 9).
-
-
-
-
-
-Schrock                 Expires 15 December 2026                [Page 4]
-
-Internet-Draft            EMILIA Eye Advisories                June 2026
-
 
 1.2.  Scope
 
@@ -270,17 +275,16 @@ Internet-Draft            EMILIA Eye Advisories                June 2026
    for one scope, derived from one or more contributing observations
    (Section 6).
 
-   *Scope.* The object an advisory is about, identified by a scope_type
-   (entity, action, resource, or environment) and a scope_ref.  An
-   advisory speaks only about its scope.
 
 
-
-
-Schrock                 Expires 15 December 2026                [Page 5]
+Schrock                 Expires 30 December 2026                [Page 5]
 
 Internet-Draft            EMILIA Eye Advisories                June 2026
 
+
+   *Scope.* The object an advisory is about, identified by a scope_type
+   (entity, action, resource, or environment) and a scope_ref.  An
+   advisory speaks only about its scope.
 
    *Scope-Binding Hash.* A SHA-256 digest over the canonical scope
    identity, carried inside the signed advisory, that binds the advisory
@@ -320,6 +324,20 @@ Internet-Draft            EMILIA Eye Advisories                June 2026
        treated as an authorization, an approval, or a grant.  The
        absence of a warning is not a permission.
 
+
+
+
+
+
+
+
+
+
+Schrock                 Expires 30 December 2026                [Page 6]
+
+Internet-Draft            EMILIA Eye Advisories                June 2026
+
+
    2.  *Necessary-not-sufficient.* An action that the underlying
        authorization policy would deny MUST remain denied regardless of
        any advisory.  An advisory can subtract nothing from the set of
@@ -328,15 +346,6 @@ Internet-Draft            EMILIA Eye Advisories                June 2026
        where the policy requires it, an accountable human (the EP
        signoff); the advisory is one input among those the decision
        considers.
-
-
-
-
-
-Schrock                 Expires 15 December 2026                [Page 6]
-
-Internet-Draft            EMILIA Eye Advisories                June 2026
-
 
    Rationale.  Signals are derived from heuristics, third-party feeds,
    and detectors that fail in both directions.  A false negative (no
@@ -377,6 +386,14 @@ Internet-Draft            EMILIA Eye Advisories                June 2026
       source_type MUST be one of internal, partner, regulatory, or
       infrastructure.
 
+
+
+
+Schrock                 Expires 30 December 2026                [Page 7]
+
+Internet-Draft            EMILIA Eye Advisories                June 2026
+
+
    *  signal_code MUST be drawn from the signal registry (Section 7).
       An observation carrying an unregistered signal_code MUST NOT
       contribute to an advisory's posture; it MAY be logged.
@@ -385,14 +402,6 @@ Internet-Draft            EMILIA Eye Advisories                June 2026
 
    *  scope_binding_hash MUST be computed as in Section 5 over this
       observation's scope_type and scope_ref.
-
-
-
-
-Schrock                 Expires 15 December 2026                [Page 7]
-
-Internet-Draft            EMILIA Eye Advisories                June 2026
-
 
    *  expires_at MUST be present.  Observations are time-bounded inputs;
       an expired observation MUST NOT contribute to a newly issued
@@ -431,24 +440,24 @@ Internet-Draft            EMILIA Eye Advisories                June 2026
       salted scope reference, provided the enforcement point can
       recompute it for the scope under evaluation.
 
-6.  The Advisory
-
-   An advisory is the signed, scope-bound statement Eye issues for a
-   scope.  It is the artifact a relying party verifies and an
-   enforcement point consumes.
-
-6.1.  Advisory Payload
 
 
 
 
 
-
-
-Schrock                 Expires 15 December 2026                [Page 8]
+Schrock                 Expires 30 December 2026                [Page 8]
 
 Internet-Draft            EMILIA Eye Advisories                June 2026
 
+
+6.  The Advisory
+
+   An advisory is the scope-bound statement (signed in the Eye-
+   Verifiable class; see Section 13.6) Eye issues for a scope.  It is
+   the artifact a relying party verifies and an enforcement point
+   consumes.
+
+6.1.  Advisory Payload
 
    {
      "ep_version": "1.0",
@@ -490,21 +499,17 @@ Internet-Draft            EMILIA Eye Advisories                June 2026
    *  scope_binding_hash MUST equal the hash of this advisory's scope
       (Section 5).
 
+
+
+Schrock                 Expires 30 December 2026                [Page 9]
+
+Internet-Draft            EMILIA Eye Advisories                June 2026
+
+
    *  expires_at MUST be present.  An enforcement point MUST treat an
       advisory whose expires_at is in the past as absent and fall back
       to baseline posture (Section 3); it MUST NOT infer a grant from
       expiry.
-
-
-
-
-
-
-
-Schrock                 Expires 15 December 2026                [Page 9]
-
-Internet-Draft            EMILIA Eye Advisories                June 2026
-
 
 6.2.  Advisory Signature and Offline Verification
 
@@ -548,20 +553,21 @@ Internet-Draft            EMILIA Eye Advisories                June 2026
        mapping (Section 8) assigns to status; a divergent advisory MUST
        be rejected as malformed.
 
+
+
+
+
+Schrock                 Expires 30 December 2026               [Page 10]
+
+Internet-Draft            EMILIA Eye Advisories                June 2026
+
+
    4.  Confirm the current time is at or before expires_at.  An expired
        advisory is treated as absent (Section 3).
 
    As with the EP authorization receipt, offline verification
    establishes authenticity and scope binding as of issuance, not
    currency.  Two properties are explicitly NOT established offline: (a)
-
-
-
-Schrock                 Expires 15 December 2026               [Page 10]
-
-Internet-Draft            EMILIA Eye Advisories                June 2026
-
-
    supersession - a later advisory may have replaced this one via
    superseded_by, which a cached holder cannot see; and (b) issuer-key
    revocation after issuance.  A relying party with freshness
@@ -607,13 +613,7 @@ Internet-Draft            EMILIA Eye Advisories                June 2026
 
 
 
-
-
-
-
-
-
-Schrock                 Expires 15 December 2026               [Page 11]
+Schrock                 Expires 30 December 2026               [Page 11]
 
 Internet-Draft            EMILIA Eye Advisories                June 2026
 
@@ -669,7 +669,7 @@ Internet-Draft            EMILIA Eye Advisories                June 2026
 
 
 
-Schrock                 Expires 15 December 2026               [Page 12]
+Schrock                 Expires 30 December 2026               [Page 12]
 
 Internet-Draft            EMILIA Eye Advisories                June 2026
 
@@ -725,7 +725,7 @@ Internet-Draft            EMILIA Eye Advisories                June 2026
 
 
 
-Schrock                 Expires 15 December 2026               [Page 13]
+Schrock                 Expires 30 December 2026               [Page 13]
 
 Internet-Draft            EMILIA Eye Advisories                June 2026
 
@@ -781,7 +781,7 @@ Internet-Draft            EMILIA Eye Advisories                June 2026
 
 
 
-Schrock                 Expires 15 December 2026               [Page 14]
+Schrock                 Expires 30 December 2026               [Page 14]
 
 Internet-Draft            EMILIA Eye Advisories                June 2026
 
@@ -837,7 +837,7 @@ Internet-Draft            EMILIA Eye Advisories                June 2026
 
 
 
-Schrock                 Expires 15 December 2026               [Page 15]
+Schrock                 Expires 30 December 2026               [Page 15]
 
 Internet-Draft            EMILIA Eye Advisories                June 2026
 
@@ -893,7 +893,7 @@ Internet-Draft            EMILIA Eye Advisories                June 2026
 
 
 
-Schrock                 Expires 15 December 2026               [Page 16]
+Schrock                 Expires 30 December 2026               [Page 16]
 
 Internet-Draft            EMILIA Eye Advisories                June 2026
 
@@ -949,7 +949,7 @@ Internet-Draft            EMILIA Eye Advisories                June 2026
 
 
 
-Schrock                 Expires 15 December 2026               [Page 17]
+Schrock                 Expires 30 December 2026               [Page 17]
 
 Internet-Draft            EMILIA Eye Advisories                June 2026
 
@@ -1005,7 +1005,7 @@ Internet-Draft            EMILIA Eye Advisories                June 2026
 
 
 
-Schrock                 Expires 15 December 2026               [Page 18]
+Schrock                 Expires 30 December 2026               [Page 18]
 
 Internet-Draft            EMILIA Eye Advisories                June 2026
 
@@ -1061,7 +1061,7 @@ Internet-Draft            EMILIA Eye Advisories                June 2026
 
 
 
-Schrock                 Expires 15 December 2026               [Page 19]
+Schrock                 Expires 30 December 2026               [Page 19]
 
 Internet-Draft            EMILIA Eye Advisories                June 2026
 
@@ -1117,4 +1117,4 @@ Author's Address
 
 
 
-Schrock                 Expires 15 December 2026               [Page 20]
+Schrock                 Expires 30 December 2026               [Page 20]

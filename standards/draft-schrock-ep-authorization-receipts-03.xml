@@ -15,7 +15,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="June" day="21"/>
+    <date year="2026" month="June" day="28"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>authorization</keyword>
@@ -41,7 +41,11 @@
       (approver-to-action trust). It is complementary to, not a
       replacement for, user-to-operator delegation work
       (draft-nelson-agent-delegation-receipts), service-to-service
-      identity (WIMSE), and authentication-layer approval (CIBA).</t>
+      identity (WIMSE), and authentication-layer approval (CIBA). EP is
+      the human-authorization apex of the agent stack: it composes with,
+      and does not replace, the agent identity, delegation, machine-policy,
+      and transparency-log layers, supplying the named-human authorization
+      evidence those layers reference but do not themselves produce.</t>
     </abstract>
   </front>
   <middle>

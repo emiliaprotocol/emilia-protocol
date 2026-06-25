@@ -4,8 +4,8 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Informational                              13 June 2026
-Expires: 15 December 2026
+Intended status: Informational                              28 June 2026
+Expires: 30 December 2026
 
 
         An Enforcement-Point Profile for Authorization Receipts
@@ -14,8 +14,9 @@ Expires: 15 December 2026
 Abstract
 
    This document defines an Enforcement-Point (PEP) profile that
-   composes on the shared verifier core specified in the EMILIA Protocol
-   (EP) authorization-receipt work.  The profile gives a Policy
+   composes on the shared verifier core specified in the referenced
+   authorization-receipt Internet-Draft
+   [I-D.schrock-ep-authorization-receipts].  The profile gives a Policy
    Enforcement Point a small, stable contract for high-risk agent
    actions: a registered decision vocabulary (allow / allow_with_signoff
    / deny, with an out-of-band observe mode), a decision-request and
@@ -48,12 +49,11 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 15 December 2026.
+   This Internet-Draft will expire on 30 December 2026.
 
 
 
-
-Schrock                 Expires 15 December 2026                [Page 1]
+Schrock                 Expires 30 December 2026                [Page 1]
 
 Internet-Draft            EP Enforcement Point                 June 2026
 
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-Schrock                 Expires 15 December 2026                [Page 2]
+Schrock                 Expires 30 December 2026                [Page 2]
 
 Internet-Draft            EP Enforcement Point                 June 2026
 
@@ -165,7 +165,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
 
 
-Schrock                 Expires 15 December 2026                [Page 3]
+Schrock                 Expires 30 December 2026                [Page 3]
 
 Internet-Draft            EP Enforcement Point                 June 2026
 
@@ -221,7 +221,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
 
 
-Schrock                 Expires 15 December 2026                [Page 4]
+Schrock                 Expires 30 December 2026                [Page 4]
 
 Internet-Draft            EP Enforcement Point                 June 2026
 
@@ -277,7 +277,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
 
 
-Schrock                 Expires 15 December 2026                [Page 5]
+Schrock                 Expires 30 December 2026                [Page 5]
 
 Internet-Draft            EP Enforcement Point                 June 2026
 
@@ -333,7 +333,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
 
 
-Schrock                 Expires 15 December 2026                [Page 6]
+Schrock                 Expires 30 December 2026                [Page 6]
 
 Internet-Draft            EP Enforcement Point                 June 2026
 
@@ -389,7 +389,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
 
 
-Schrock                 Expires 15 December 2026                [Page 7]
+Schrock                 Expires 30 December 2026                [Page 7]
 
 Internet-Draft            EP Enforcement Point                 June 2026
 
@@ -445,7 +445,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
 
 
-Schrock                 Expires 15 December 2026                [Page 8]
+Schrock                 Expires 30 December 2026                [Page 8]
 
 Internet-Draft            EP Enforcement Point                 June 2026
 
@@ -501,7 +501,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
 
 
-Schrock                 Expires 15 December 2026                [Page 9]
+Schrock                 Expires 30 December 2026                [Page 9]
 
 Internet-Draft            EP Enforcement Point                 June 2026
 
@@ -557,7 +557,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
 
 
-Schrock                 Expires 15 December 2026               [Page 10]
+Schrock                 Expires 30 December 2026               [Page 10]
 
 Internet-Draft            EP Enforcement Point                 June 2026
 
@@ -613,7 +613,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
 
 
-Schrock                 Expires 15 December 2026               [Page 11]
+Schrock                 Expires 30 December 2026               [Page 11]
 
 Internet-Draft            EP Enforcement Point                 June 2026
 
@@ -669,7 +669,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
 
 
-Schrock                 Expires 15 December 2026               [Page 12]
+Schrock                 Expires 30 December 2026               [Page 12]
 
 Internet-Draft            EP Enforcement Point                 June 2026
 
@@ -725,7 +725,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
 
 
-Schrock                 Expires 15 December 2026               [Page 13]
+Schrock                 Expires 30 December 2026               [Page 13]
 
 Internet-Draft            EP Enforcement Point                 June 2026
 
@@ -781,7 +781,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
 
 
-Schrock                 Expires 15 December 2026               [Page 14]
+Schrock                 Expires 30 December 2026               [Page 14]
 
 Internet-Draft            EP Enforcement Point                 June 2026
 
@@ -837,7 +837,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
 
 
-Schrock                 Expires 15 December 2026               [Page 15]
+Schrock                 Expires 30 December 2026               [Page 15]
 
 Internet-Draft            EP Enforcement Point                 June 2026
 
@@ -893,7 +893,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
 
 
-Schrock                 Expires 15 December 2026               [Page 16]
+Schrock                 Expires 30 December 2026               [Page 16]
 
 Internet-Draft            EP Enforcement Point                 June 2026
 
@@ -949,7 +949,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
 
 
-Schrock                 Expires 15 December 2026               [Page 17]
+Schrock                 Expires 30 December 2026               [Page 17]
 
 Internet-Draft            EP Enforcement Point                 June 2026
 
@@ -972,9 +972,10 @@ Internet-Draft            EP Enforcement Point                 June 2026
    such signals as presented evidence (Section 4); they are inputs to a
    decision and never the decision itself (Section 12.1).
 
-   *RATS / EAT* ([RFC9334]) produce attestation results about an entity
-   or device's state.  An enforcement point MAY consume such results as
-   posture evidence; this profile does not define attestation.
+   *RATS* ([RFC9334]) / *EAT* ([RFC9711]) produce attestation results
+   about an entity or device's state.  An enforcement point MAY consume
+   such results as posture evidence; this profile does not define
+   attestation.
 
 12.  Security Considerations
 
@@ -1004,8 +1005,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
 
 
-
-Schrock                 Expires 15 December 2026               [Page 18]
+Schrock                 Expires 30 December 2026               [Page 18]
 
 Internet-Draft            EP Enforcement Point                 June 2026
 
@@ -1061,7 +1061,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
 
 
-Schrock                 Expires 15 December 2026               [Page 19]
+Schrock                 Expires 30 December 2026               [Page 19]
 
 Internet-Draft            EP Enforcement Point                 June 2026
 
@@ -1117,7 +1117,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
 
 
-Schrock                 Expires 15 December 2026               [Page 20]
+Schrock                 Expires 30 December 2026               [Page 20]
 
 Internet-Draft            EP Enforcement Point                 June 2026
 
@@ -1126,6 +1126,11 @@ Internet-Draft            EP Enforcement Point                 June 2026
               W. Pan, "Remote ATtestation procedureS (RATS)
               Architecture", RFC 9334, DOI 10.17487/RFC9334, January
               2023, <https://www.rfc-editor.org/info/rfc9334>.
+
+   [RFC9711]  Lundblade, L., Mandyam, G., O'Donoghue, J., and C.
+              Wallace, "The Entity Attestation Token (EAT)", RFC 9711,
+              DOI 10.17487/RFC9711, April 2025,
+              <https://www.rfc-editor.org/info/rfc9711>.
 
 Author's Address
 
@@ -1168,9 +1173,4 @@ Author's Address
 
 
 
-
-
-
-
-
-Schrock                 Expires 15 December 2026               [Page 21]
+Schrock                 Expires 30 December 2026               [Page 21]

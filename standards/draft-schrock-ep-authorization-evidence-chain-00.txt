@@ -4,8 +4,8 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Informational                              22 June 2026
-Expires: 24 December 2026
+Intended status: Informational                              28 June 2026
+Expires: 30 December 2026
 
 
      Authorization Evidence Chains: Composing Heterogeneous Agent-
@@ -53,12 +53,12 @@ Status of This Memo
 
 
 
-Schrock                 Expires 24 December 2026                [Page 1]
+Schrock                 Expires 30 December 2026                [Page 1]
 
 Internet-Draft        Authorization Evidence Chains            June 2026
 
 
-   This Internet-Draft will expire on 24 December 2026.
+   This Internet-Draft will expire on 30 December 2026.
 
 Copyright Notice
 
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-Schrock                 Expires 24 December 2026                [Page 2]
+Schrock                 Expires 30 December 2026                [Page 2]
 
 Internet-Draft        Authorization Evidence Chains            June 2026
 
@@ -165,7 +165,7 @@ Internet-Draft        Authorization Evidence Chains            June 2026
 
 
 
-Schrock                 Expires 24 December 2026                [Page 3]
+Schrock                 Expires 30 December 2026                [Page 3]
 
 Internet-Draft        Authorization Evidence Chains            June 2026
 
@@ -221,7 +221,7 @@ Internet-Draft        Authorization Evidence Chains            June 2026
 
 
 
-Schrock                 Expires 24 December 2026                [Page 4]
+Schrock                 Expires 30 December 2026                [Page 4]
 
 Internet-Draft        Authorization Evidence Chains            June 2026
 
@@ -277,7 +277,7 @@ Internet-Draft        Authorization Evidence Chains            June 2026
 
 
 
-Schrock                 Expires 24 December 2026                [Page 5]
+Schrock                 Expires 30 December 2026                [Page 5]
 
 Internet-Draft        Authorization Evidence Chains            June 2026
 
@@ -333,7 +333,7 @@ Internet-Draft        Authorization Evidence Chains            June 2026
 
 
 
-Schrock                 Expires 24 December 2026                [Page 6]
+Schrock                 Expires 30 December 2026                [Page 6]
 
 Internet-Draft        Authorization Evidence Chains            June 2026
 
@@ -389,7 +389,7 @@ Internet-Draft        Authorization Evidence Chains            June 2026
 
 
 
-Schrock                 Expires 24 December 2026                [Page 7]
+Schrock                 Expires 30 December 2026                [Page 7]
 
 Internet-Draft        Authorization Evidence Chains            June 2026
 
@@ -445,7 +445,7 @@ Internet-Draft        Authorization Evidence Chains            June 2026
 
 
 
-Schrock                 Expires 24 December 2026                [Page 8]
+Schrock                 Expires 30 December 2026                [Page 8]
 
 Internet-Draft        Authorization Evidence Chains            June 2026
 
@@ -501,4 +501,4 @@ Author's Address
 
 
 
-Schrock                 Expires 24 December 2026                [Page 9]
+Schrock                 Expires 30 December 2026                [Page 9]

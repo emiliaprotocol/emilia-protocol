@@ -4,8 +4,8 @@
 ```
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Informational                              12 June 2026
-Expires: 14 December 2026
+Intended status: Informational                              28 June 2026
+Expires: 30 December 2026
 ```
 
 ### Abstract
@@ -28,7 +28,11 @@ EP addresses organizational authorization of agent actions
 (approver-to-action trust). It is complementary to, not a replacement
 for, user-to-operator delegation work
 [draft-nelson-agent-delegation-receipts], service-to-service identity
-(WIMSE), and authentication-layer approval (CIBA [CIBA]).
+(WIMSE), and authentication-layer approval (CIBA [CIBA]). EP is the
+human-authorization apex of the agent stack: it composes with, and does
+not replace, the agent identity, delegation, machine-policy, and
+transparency-log layers, supplying the named-human authorization
+evidence those layers reference but do not themselves produce.
 
 ### Status of This Memo
 
