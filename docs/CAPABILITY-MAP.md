@@ -26,6 +26,7 @@ Purpose: a single source of truth for what EP can do, where it lives in code, an
 | Standards — I-Ds: authorization-receipts (**-02 posted**) + quorum (**-01 posted**); **EP-AEC (authorization-evidence-chain) + EP-EVIDENCE-RECORD written, idnits-clean, staged to file ~2026-06-26**; receipts -03 staged; emilia-eye + enforcement-point posted; Zenodo DOI | mixed — posted vs staged per `standards/README.md`; field map `docs/strategy/AGENT-AUTHORIZATION-LANDSCAPE-2026.md`; engagement drafts `docs/engagement/` (NIST NCCoE, AUDIT-BOF) | `/spec`, datatracker |
 | Formal models (26 TLA+ theorems; Alloy relational + federation + **quorum (`ep_quorum.als`, 6 checks)**) + conformance vectors | shipped, run in CI | `formal/`, `conformance/vectors/` | `/spec`, repo |
 | MCP-native gating + guards (openai / mcp / langchain / require-receipt) | shipped | `packages/openai-guard`, `packages/mcp-guard`, `packages/langchain`, `packages/require-receipt`, `mcp-server/` | `/mcp` |
+| **EMILIA Gate (Trusted Action Firewall)** — unified deny-by-default core over `require-receipt`: assurance-tier enforcement (software/class_a/quorum) + one-time consumption (replay defense) + tamper-evident hash-chained evidence log; `check` / `middleware` / `guard` | **built — 10 tests green, demo runs** | `packages/gate`, `docs/EMILIA-GATE-PRODUCT-BRIEF.md` | npm |
 
 ## Known gaps (per the 2026-06-21 audit, for the government-oversight wedge)
 

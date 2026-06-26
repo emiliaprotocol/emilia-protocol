@@ -1,0 +1,17 @@
+{
+  "name": "@emilia-protocol/gate",
+  "version": "0.1.0",
+  "description": "EMILIA Gate — the Trusted Action Firewall. Deny-by-default enforcement for consequential machine actions: an action runs only with a valid, in-scope, sufficiently-assured, non-replayed EMILIA authorization receipt (proof a named human authorized this exact action). Composes require-receipt + verify; adds assurance-tier enforcement, one-time consumption (replay defense), and a tamper-evident evidence log. Framework-agnostic, fails closed. Reference implementation, experimental.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "index.js",
+  "files": ["index.js", "store.js", "evidence.js", "README.md"],
+  "scripts": {
+    "test": "node --test",
+    "demo": "node demo.mjs"
+  },
+  "dependencies": {
+    "@emilia-protocol/require-receipt": "^0.1.0"
+  },
+  "keywords": ["emilia", "authorization", "receipt", "firewall", "trusted-action-firewall", "agent", "mcp", "gate", "policy-enforcement-point", "ai-safety"]
+}
