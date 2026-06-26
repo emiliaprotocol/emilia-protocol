@@ -1,0 +1,7 @@
+{
+  "name": "emilia-robot-sidecar-example",
+  "private": true,
+  "type": "module",
+  "description": "EMILIA Gate at the actuator boundary: pre-authorize a bounded on-the-loop envelope, verify each motion offline, fail-closed.",
+  "scripts": { "test": "node --test", "demo": "node demo.mjs" }
+}
