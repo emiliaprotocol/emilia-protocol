@@ -126,6 +126,31 @@ test('evidence log is hash-chained and tamper-evident', async () => {
   assert.equal(v.at, 0);
 });
 
+test('execution receipt binds to the authorization decision (full loop)', async () => {
+  const { pub, privateKey } = makeKey();
+  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] });
+  const out = await g.check({ selector: PAY, receipt: receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff' }) });
+  assert.equal(out.allow, true, out.reason);
+  const exec = await g.recordExecution({ authorization: out, outcome: 'executed' });
+  assert.equal(exec.kind, 'execution');
+  assert.equal(exec.outcome, 'executed');
+  assert.equal(exec.authorizes_decision, out.evidence.hash); // cryptographically bound to the decision
+  assert.equal(g.evidence.verify().ok, true);
+});
+
+test('guard() emits an execution receipt after a guarded run', async () => {
+  const { pub, privateKey } = makeKey();
+  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] });
+  const release = g.guard(async (amt) => `sent ${amt}`, { selector: () => PAY, receipt: (amt, r) => r });
+  const r = receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff' });
+  assert.equal(await release(100, r), 'sent 100');
+  const recs = g.evidence.all();
+  const exec = recs.find((x) => x.kind === 'execution');
+  assert.ok(exec, 'execution receipt present');
+  assert.equal(exec.outcome, 'executed');
+  assert.equal(g.evidence.verify().ok, true);
+});
+
 test('receiptAssuranceTier classification', () => {
   assert.equal(receiptAssuranceTier({ payload: { quorum: { m: 2, signers: ['a', 'b'] } } }), 'quorum');
   assert.equal(receiptAssuranceTier({ payload: { claim: { outcome: 'allow_with_signoff' } } }), 'class_a');

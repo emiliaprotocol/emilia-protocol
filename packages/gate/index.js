@@ -92,6 +92,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
 
     async function decide(allow, status, reason, extra = {}) {
       const record = await evidence.record({
+        kind: 'decision',
         at: new Date(typeof now === 'function' ? now() : now).toISOString(),
         action,
         allow,
@@ -164,7 +165,30 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     };
   }
 
-  /** Wrap any function so it runs only behind a passing gate check (framework-agnostic). */
+  /**
+   * Emit a post-execution receipt bound to a prior authorization decision — the
+   * "execution emits proof" half of the loop (maps to the EP Commit seal). It
+   * commits to the exact authorization decision (`authorizes_decision` = that
+   * decision's evidence hash), so authorization and execution are one chain.
+   */
+  async function recordExecution({ authorization, outcome = 'executed', detail } = {}) {
+    const auth = authorization?.evidence || authorization || {};
+    return evidence.record({
+      kind: 'execution',
+      at: new Date(typeof now === 'function' ? now() : now).toISOString(),
+      authorizes_decision: auth.hash ?? null,
+      action: authorization?.action ?? auth.action ?? null,
+      receipt_id: auth.receipt_id ?? null,
+      outcome, // 'executed' | 'failed'
+      ...(detail !== undefined ? { detail } : {}),
+    });
+  }
+
+  /**
+   * Wrap any function so it runs only behind a passing gate check, and (unless
+   * disabled) emits an execution receipt after it runs — the full firewall loop:
+   * request -> check -> execute -> execution receipt. Framework-agnostic.
+   */
   function guard(fn, opts = {}) {
     return async function guarded(...args) {
       const selector = typeof opts.selector === 'function' ? opts.selector(...args) : (opts.selector || {});
@@ -176,11 +200,19 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         e.gate = out;
         throw e;
       }
-      return fn(...args);
+      if (opts.recordExecution === false) return fn(...args);
+      try {
+        const result = await fn(...args);
+        await recordExecution({ authorization: out, outcome: 'executed' });
+        return result;
+      } catch (e) {
+        await recordExecution({ authorization: out, outcome: 'failed', detail: String(e?.message ?? e) });
+        throw e;
+      }
     };
   }
 
-  return { check, middleware, guard, evidence, store: consumption };
+  return { check, recordExecution, middleware, guard, evidence, store: consumption };
 }
 
 export default { createGate, receiptAssuranceTier, MemoryConsumptionStore, createEvidenceLog, ASSURANCE_TIERS };

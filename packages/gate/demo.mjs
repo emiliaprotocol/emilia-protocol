@@ -35,7 +35,10 @@ line(`\n  1. read_balance (not guarded)            -> ${r(await gate.check({ sel
 line(`  2. release_payment, no receipt          -> ${r(await gate.check({ selector: PAY }))}`);
 line(`  3. release_payment, software receipt    -> ${r(await gate.check({ selector: PAY, receipt: receipt('allow') }))}   (needs class_a)`);
 const good = receipt('allow_with_signoff');
-line(`  4. release_payment, class_a signoff      -> ${r(await gate.check({ selector: PAY, receipt: good }))}`);
+const a4 = await gate.check({ selector: PAY, receipt: good });
+line(`  4. release_payment, class_a signoff      -> ${r(a4)}`);
+const exec = await gate.recordExecution({ authorization: a4, outcome: 'executed' });
+line(`     ↳ executed -> execution receipt bound to decision ${exec.authorizes_decision.slice(0, 12)}…`);
 line(`  5. release_payment, SAME receipt again   -> ${r(await gate.check({ selector: PAY, receipt: good }))}`);
 const bad = receipt('allow_with_signoff'); bad.payload.claim.amount_usd = 9_999_999;
 line(`  6. release_payment, tampered amount      -> ${r(await gate.check({ selector: PAY, receipt: bad }))}`);
