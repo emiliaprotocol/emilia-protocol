@@ -20,10 +20,14 @@ compute event was authorized, executed, measured, and settled under a pinned met
 GRACE **complements** existing DERMS / virtual-power-plant orchestration (it is the verifiable
 authorization + settlement layer those systems lack), and is **scheduler-agnostic** on the shed side.
 
+**First mover:** the wedge buyer is an **AI/HPC datacenter or neocloud operator with a DR aggregator
+or utility sponsor** — the party that holds the interconnection/payment incentive *and* has a grid
+counterpart to settle against. That pairing is the minimum unit for a first pilot.
+
 ## The problem
 
-Demand response is a multi-billion-dollar market, and AI datacenters are becoming its largest new
-flexible load. Duke University's Nicholas Institute ("Rethinking Load Growth," 2025) finds the 22
+Demand response is a multi-billion-dollar market, and AI datacenters are becoming one of the largest
+new flexible-load candidates. Duke University's Nicholas Institute ("Rethinking Load Growth," 2025) finds the 22
 largest U.S. balancing areas could absorb **76–126 GW of new load** if it can be curtailed under ~1%
 of hours — **ERCOT alone ≈ 10 GW at 0.5% curtailment**. But that headroom is only bankable if the
 curtailment is *verifiable* enough for a grid operator to count it as capacity. Today the record that
@@ -72,18 +76,21 @@ smart PDU on a live wattage graph: a device-bound approval issues "shed 700 W fo
 controller verifies offline → the scheduler enters curtailment posture → **measured power visibly
 drops** → the window expires and posture auto-reverts → the bundle is emitted and verified offline.
 **Success criteria:** valid order sheds; spoofed order refused; tampered telemetry fails; bundle
-settles; auto-revert. (This stage requires a host facility; see Assumptions.)
+verifies for settlement review; auto-revert. (This stage requires a host facility; see Assumptions.)
 
 ## Maturity & proof
 
 - **Open standard** (Apache-2.0), not slideware — receipts verify even if the vendor disappears.
 - **IETF Internet-Drafts** (authorization receipts; multi-party quorum); the `grid.curtailment`
   profile is specified as PIP-014 on top of the receipts draft.
-- **Formally verified core:** 26 TLA+ invariants (TLC model checker) and 35 Alloy facts with 22
+- **Formal verification:** 26 TLA+ invariants (TLC model checker) and 35 Alloy facts with 22
   assertions; 85 adversarial red-team cases; **4,220 automated tests passing (4,249 total)**.
-- **Three cross-language verifiers** (JavaScript, Python, Go) — independent implementations agreeing
+- **Cross-language verifiers:** three independent implementations (JavaScript, Python, Go) agreeing
   byte-for-byte across the conformance suite, so auditors verify a bundle against source and
   mathematics, not a vendor's word.
+- **Security posture:** GRACE rejects spoofed, stale, and replayed curtailment orders as rigorously
+  as it proves legitimate ones — a forged "throttle" is refused fail-closed against a pinned key, so
+  adopting GRACE does not become a new attack surface on your own cluster.
 - Runnable Proof-of-Curtailment reference implementation; zero new cryptography (Ed25519 over
   RFC-8785 canonical bytes).
 
