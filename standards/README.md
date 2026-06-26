@@ -89,8 +89,7 @@ the human-authorization leg none of the others do. Fills the composition gap the
 2026-06 landscape survey (`docs/strategy/AGENT-AUTHORIZATION-LANDSCAPE-2026.md`)
 identified as the most-validated unowned slot.
 
-**Status: written + idnits-clean (0 non-ASCII, 0 lines >72), NOT yet filed —
-target post ~2026-06-26.** Reference verifier `packages/verify/evidence-chain.js`;
+**Status: POSTED on datatracker as -00 (2026-06-22); verified live 2026-06-26. Content current — only file -01 if a substantive change is made (do NOT re-file -00).** Reference verifier `packages/verify/evidence-chain.js`;
 conformance vectors `conformance/vectors/aec.json` (JS/Python/Go agree). Source:
 `draft-schrock-ep-authorization-evidence-chain-00.{xml,txt}`.
 
@@ -102,7 +101,7 @@ receipts verifiable across algorithm aging (sha256 → sha384 → …) for multi
 retention obligations (DORA, HIPAA, SEC 17a-4). Offline, fail-closed. Fills the
 long-term-preservation gap the landscape survey found unowned.
 
-**Status: written + idnits-clean, NOT yet filed (batch-file with EP-AEC).**
+**Status: written + render-clean, NOT yet filed (file standalone -00; EP-AEC is already posted). Verified 2026-06-26: not on datatracker.**
 Tri-language verifier `packages/verify/evidence-record.js`. Source:
 `draft-schrock-ep-evidence-record-00.{xml,txt}`.
 
