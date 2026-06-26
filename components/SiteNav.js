@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { color, font, radius, cta } from '@/lib/tokens';
 
 const NAV_LINKS = [
+  ['/gate', 'Gate'],
   ['/agent-guard', 'Agent Guard'],
   ['/protocol', 'Protocol'],
   ['/mcp', 'MCP'],
