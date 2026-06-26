@@ -25,7 +25,10 @@ export default defineConfig({
     // node:test blocks, not vitest describe/it).
     // apps/** are standalone apps (e.g. the Expo Secure App) with their own
     // node:test suites + React Native code vitest must not collect.
-    exclude: ['e2e/**', '**/node_modules/**', 'dist/**', '.next/**', 'packages/**', 'apps/**'],
+    // examples/** are reference implementations with their own node:test suites
+    // (e.g. robot-sidecar) — same reason as packages/**: run via `node --test`,
+    // not vitest, which would otherwise fail with "No test suite found".
+    exclude: ['e2e/**', '**/node_modules/**', 'dist/**', '.next/**', 'packages/**', 'apps/**', 'examples/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
