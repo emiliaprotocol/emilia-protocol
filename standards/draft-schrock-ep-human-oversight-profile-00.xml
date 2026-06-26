@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-ep-human-oversight-profile-00"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="EP Human-Oversight Profile">EMILIA Protocol: Human-Oversight Profile for Autonomous and High-Risk AI Systems</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-human-oversight-profile-00"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address><postal><country>US</country></postal><email>team@emiliaprotocol.ai</email></address>
+    </author>
+    <date year="2026" month="June" day="28"/>
+    <area>Security</area>
+    <keyword>human oversight</keyword>
+    <keyword>authorization</keyword>
+    <keyword>autonomy</keyword>
+    <abstract>
+      <t>Governing instruments for high-risk and autonomous AI require a human to
+      remain meaningfully in control of consequential actions, but none specifies
+      an artifact that proves it, after the fact, to a third party, without
+      trusting the operator. This document profiles the EMILIA Protocol (EP)
+      authorization receipt (<xref target="I-D.schrock-ep-authorization-receipts"/>)
+      as that verifiable human-oversight evidence layer. It defines how to apply
+      the receipt primitive at authorization boundaries for both human-in-the-loop
+      and human-on-the-loop control, a small set of OPTIONAL authorization-context
+      conventions, and the relying-party rules that make "a human was meaningfully
+      in control" a verifiable artifact rather than an operator-owned log entry.
+      It introduces no new cryptography. The profile is scoped to evidence, not
+      cognition: it proves the fact, scope, currency, and authority of human
+      authorization; it does not prove the human understood, or that the decision
+      was wise or lawful. It is a necessary, not sufficient, condition, and says so
+      throughout. Primary applicability is civilian high-risk AI; defense and
+      lethal-autonomy regimes are noted as further, secondary applicabilities.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="intro"><name>Introduction and Motivation</name>
+      <t>Every governing instrument for high-risk and autonomous AI requires a
+      human to remain meaningfully in control, yet none specifies an artifact that
+      proves it to a third party without trusting the system operator. The lead
+      applicabilities for this profile are civilian:</t>
+      <ul>
+        <li><strong>EU AI Act Article 14</strong> requires high-risk AI to be
+        effectively overseen by natural persons who can interpret output, decline
+        to act on it, and intervene or halt. (The AI Act, Art. 2(3), excludes
+        systems used exclusively for military, defense, or national-security
+        purposes; treat Art. 14 as a <em>civilian</em> applicability.)</li>
+        <li><strong>NIST AI Risk Management Framework</strong> calls for
+        documented, auditable human oversight.</li>
+      </ul>
+      <t>The same evidence gap recurs in further, secondary applicabilities --
+      DoD Directive 3000.09's "appropriate levels of human judgment over the use of
+      force," and the UN CCW debate on meaningful human control of lethal
+      autonomous systems -- which are noted here only to show the profile's reach,
+      not as its primary framing. Across all of them the unsolved problem is the
+      same: when an autonomous system acts, the record that a named human
+      authorized that exact action -- at the right scope, currently, under the
+      right authority -- is a log the operator controls and could forge, backfill,
+      or rubber-stamp. EP closes that gap; this profile makes the mapping explicit.</t>
+    </section>
+    <section anchor="modes"><name>Control Modes and the Authorization Boundary</name>
+      <t>This profile does NOT require per-machine-cycle human approval
+      (incompatible with machine tempo). EP receipts are issued at <em>authorization
+      boundaries</em> -- the discrete points where a human grants, scopes, or renews
+      autonomous authority:</t>
+      <ul>
+        <li><strong>in_the_loop</strong> -- a human authorizes each discrete
+        consequential action before it executes (one receipt per action; the system
+        fails closed without it).</li>
+        <li><strong>on_the_loop</strong> -- a human authorizes a bounded engagement
+        envelope (action class, target/effect set, geofence, time window) within
+        which the system may act autonomously, retaining a revocation/halt
+        authority. One receipt authorizes the envelope; autonomy operates only
+        inside it and only while unrevoked and unexpired.</li>
+      </ul>
+    </section>
+    <section anchor="context"><name>Authorization-Context Conventions</name>
+      <t>For the autonomy domain the receipt's authorization context
+      <bcp14>MAY</bcp14> carry: <tt>control_mode</tt> (in_the_loop | on_the_loop);
+      and an <tt>authorization_scope</tt> with <tt>effect_class</tt>,
+      <tt>target_set</tt>, <tt>geofence</tt>, and <tt>window</tt>
+      {<tt>not_before</tt>, <tt>not_after</tt>}. These are bounds the relying party
+      enforces; they do not expand the core receipt's guarantees.</t>
+    </section>
+    <section anchor="pep"><name>Relying-Party (Enforcement) Rules</name>
+      <t>A relying party (Policy Enforcement Point) <bcp14>MUST</bcp14> act only on
+      a valid receipt and <bcp14>MUST</bcp14> fail closed otherwise. For
+      on_the_loop, each individual action <bcp14>MUST</bcp14> be checked against the
+      authorized envelope (effect class, target set, geofence, window) offline; an
+      out-of-envelope, expired, or revoked action <bcp14>MUST</bcp14> be refused.
+      Continuous evaluation and revocation apply (the halt authority). Higher
+      assurance regimes (for example a two-person rule) <bcp14>SHOULD</bcp14> use
+      EP-QUORUM (m-of-n distinct humans). Where an action executes, the enforcement
+      point <bcp14>SHOULD</bcp14> emit a post-execution receipt bound to the
+      authorization (<tt>draft-schrock-ep-enforcement-point</tt>).</t>
+    </section>
+    <section anchor="bound"><name>What It Proves, and What It Does Not</name>
+      <t>The profile proves the fact, scope, currency, and authority of a named
+      human's (or quorum's) authorization of an exact action or bounded envelope,
+      offline-verifiable without trusting the operator. It does not
+      prove that the human understood the action, was uncoerced, or that the action
+      was lawful, wise, or proportional. Display-fidelity is a client-conformance
+      concern; comprehension and lawfulness are out of band. Meaningful human
+      control is necessary, not sufficient, and EP supplies the necessary,
+      verifiable part.</t>
+    </section>
+    <section anchor="security"><name>Security Considerations</name>
+      <t>Over-trust is the dominant risk: treating the existence of a receipt as
+      proof an autonomous action was legitimate. A receipt proves authorization at
+      a stated scope, currency, and authority -- nothing more. Coercion of an
+      authorized human and authorization without comprehension are out of scope of
+      the cryptographic guarantees; device-bound user verification and
+      display-fidelity requirements raise but do not eliminate them. Per-component
+      considerations are normative in the referenced documents.</t>
+    </section>
+    <section anchor="iana"><name>IANA Considerations</name>
+      <t>This document registers the <tt>control_mode</tt> values
+      (in_the_loop, on_the_loop) in the EP profile registry. It has no other IANA
+      actions.</t>
+    </section>
+  </middle>
+  <back>
+    <references><name>References</name>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.schrock-ep-authorization-receipts.xml"/>
+    </references>
+  </back>
+</rfc>

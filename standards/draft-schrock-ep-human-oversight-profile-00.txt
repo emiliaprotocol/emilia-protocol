@@ -1,0 +1,224 @@
+
+
+
+
+Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
+Intended status: Informational                              28 June 2026
+Expires: 30 December 2026
+
+
+EMILIA Protocol: Human-Oversight Profile for Autonomous and High-Risk AI
+                                Systems
+              draft-schrock-ep-human-oversight-profile-00
+
+Abstract
+
+   Governing instruments for high-risk and autonomous AI require a human
+   to remain meaningfully in control of consequential actions, but none
+   specifies an artifact that proves it, after the fact, to a third
+   party, without trusting the operator.  This document profiles the
+   EMILIA Protocol (EP) authorization receipt
+   ([I-D.schrock-ep-authorization-receipts]) as that verifiable human-
+   oversight evidence layer.  It defines how to apply the receipt
+   primitive at authorization boundaries for both human-in-the-loop and
+   human-on-the-loop control, a small set of OPTIONAL authorization-
+   context conventions, and the relying-party rules that make "a human
+   was meaningfully in control" a verifiable artifact rather than an
+   operator-owned log entry.  It introduces no new cryptography.  The
+   profile is scoped to evidence, not cognition: it proves the fact,
+   scope, currency, and authority of human authorization; it does not
+   prove the human understood, or that the decision was wise or lawful.
+   It is a necessary, not sufficient, condition, and says so throughout.
+   Primary applicability is civilian high-risk AI; defense and lethal-
+   autonomy regimes are noted as further, secondary applicabilities.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 30 December 2026.
+
+
+
+
+Schrock                 Expires 30 December 2026                [Page 1]
+
+Internet-Draft         EP Human-Oversight Profile              June 2026
+
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction and Motivation . . . . . . . . . . . . . . . . .   2
+   2.  Control Modes and the Authorization Boundary  . . . . . . . .   3
+   3.  Authorization-Context Conventions . . . . . . . . . . . . . .   3
+   4.  Relying-Party (Enforcement) Rules . . . . . . . . . . . . . .   3
+   5.  What It Proves, and What It Does Not  . . . . . . . . . . . .   4
+   6.  Security Considerations . . . . . . . . . . . . . . . . . . .   4
+   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   4
+   8.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   4
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   4
+
+1.  Introduction and Motivation
+
+   Every governing instrument for high-risk and autonomous AI requires a
+   human to remain meaningfully in control, yet none specifies an
+   artifact that proves it to a third party without trusting the system
+   operator.  The lead applicabilities for this profile are civilian:
+
+   *  *EU AI Act Article 14* requires high-risk AI to be effectively
+      overseen by natural persons who can interpret output, decline to
+      act on it, and intervene or halt.  (The AI Act, Art. 2(3),
+      excludes systems used exclusively for military, defense, or
+      national-security purposes; treat Art. 14 as a _civilian_
+      applicability.)
+
+   *  *NIST AI Risk Management Framework* calls for documented,
+      auditable human oversight.
+
+   The same evidence gap recurs in further, secondary applicabilities --
+   DoD Directive 3000.09's "appropriate levels of human judgment over
+   the use of force," and the UN CCW debate on meaningful human control
+   of lethal autonomous systems -- which are noted here only to show the
+   profile's reach, not as its primary framing.  Across all of them the
+
+
+
+Schrock                 Expires 30 December 2026                [Page 2]
+
+Internet-Draft         EP Human-Oversight Profile              June 2026
+
+
+   unsolved problem is the same: when an autonomous system acts, the
+   record that a named human authorized that exact action -- at the
+   right scope, currently, under the right authority -- is a log the
+   operator controls and could forge, backfill, or rubber-stamp.  EP
+   closes that gap; this profile makes the mapping explicit.
+
+2.  Control Modes and the Authorization Boundary
+
+   This profile does NOT require per-machine-cycle human approval
+   (incompatible with machine tempo).  EP receipts are issued at
+   _authorization boundaries_ -- the discrete points where a human
+   grants, scopes, or renews autonomous authority:
+
+   *  *in_the_loop* -- a human authorizes each discrete consequential
+      action before it executes (one receipt per action; the system
+      fails closed without it).
+
+   *  *on_the_loop* -- a human authorizes a bounded engagement envelope
+      (action class, target/effect set, geofence, time window) within
+      which the system may act autonomously, retaining a revocation/halt
+      authority.  One receipt authorizes the envelope; autonomy operates
+      only inside it and only while unrevoked and unexpired.
+
+3.  Authorization-Context Conventions
+
+   For the autonomy domain the receipt's authorization context MAY
+   carry: control_mode (in_the_loop | on_the_loop); and an
+   authorization_scope with effect_class, target_set, geofence, and
+   window {not_before, not_after}. These are bounds the relying party
+   enforces; they do not expand the core receipt's guarantees.
+
+4.  Relying-Party (Enforcement) Rules
+
+   A relying party (Policy Enforcement Point) MUST act only on a valid
+   receipt and MUST fail closed otherwise.  For on_the_loop, each
+   individual action MUST be checked against the authorized envelope
+   (effect class, target set, geofence, window) offline; an out-of-
+   envelope, expired, or revoked action MUST be refused.  Continuous
+   evaluation and revocation apply (the halt authority).  Higher
+   assurance regimes (for example a two-person rule) SHOULD use EP-
+   QUORUM (m-of-n distinct humans).  Where an action executes, the
+   enforcement point SHOULD emit a post-execution receipt bound to the
+   authorization (draft-schrock-ep-enforcement-point).
+
+
+
+
+
+
+
+
+Schrock                 Expires 30 December 2026                [Page 3]
+
+Internet-Draft         EP Human-Oversight Profile              June 2026
+
+
+5.  What It Proves, and What It Does Not
+
+   The profile proves the fact, scope, currency, and authority of a
+   named human's (or quorum's) authorization of an exact action or
+   bounded envelope, offline-verifiable without trusting the operator.
+   It does not prove that the human understood the action, was
+   uncoerced, or that the action was lawful, wise, or proportional.
+   Display-fidelity is a client-conformance concern; comprehension and
+   lawfulness are out of band.  Meaningful human control is necessary,
+   not sufficient, and EP supplies the necessary, verifiable part.
+
+6.  Security Considerations
+
+   Over-trust is the dominant risk: treating the existence of a receipt
+   as proof an autonomous action was legitimate.  A receipt proves
+   authorization at a stated scope, currency, and authority -- nothing
+   more.  Coercion of an authorized human and authorization without
+   comprehension are out of scope of the cryptographic guarantees;
+   device-bound user verification and display-fidelity requirements
+   raise but do not eliminate them.  Per-component considerations are
+   normative in the referenced documents.
+
+7.  IANA Considerations
+
+   This document registers the control_mode values (in_the_loop,
+   on_the_loop) in the EP profile registry.  It has no other IANA
+   actions.
+
+8.  References
+
+   [I-D.schrock-ep-authorization-receipts]
+              Schrock, I., "Authorization Receipts for High-Risk Agent
+              Actions", Work in Progress, Internet-Draft, draft-schrock-
+              ep-authorization-receipts-01, 12 June 2026,
+              <https://datatracker.ietf.org/doc/html/draft-schrock-ep-
+              authorization-receipts-01>.
+
+Author's Address
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+
+
+Schrock                 Expires 30 December 2026                [Page 4]
