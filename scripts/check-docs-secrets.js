@@ -159,6 +159,13 @@ const SAFE_HOSTS = new Set([
   "research.gov",
   "darpa.mil",
   "nist.gov",
+  // Energy / grid reference bodies (cited for macro stats in the GRACE docs)
+  "iea.org",
+  "nerc.com",
+  "pjm.com",
+  "energy.gov",
+  "ferc.gov",
+  "ercot.com",
   "aaif.org",
   "frontiermodelforum.org",
   "json-schema.org",
