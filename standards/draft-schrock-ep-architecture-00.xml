@@ -131,7 +131,9 @@
         <t>The fail-closed gate: a high-risk action is refused (HTTP 428-style)
         unless a valid, in-scope, unrevoked authorization receipt is present.
         "No receipt, no execution," expressed as a manifest-driven policy
-        enforcement point.
+        enforcement point. After a permitted action runs, the same point emits a
+        post-execution receipt bound to the authorization, so authorization and
+        execution form one verifiable chain.
         (<tt>draft-schrock-ep-enforcement-point</tt>.)</t></section>
       <section anchor="c-aec"><name>Authorization Evidence Chain -- the composition seam</name>
         <t>A standard for binding the artifacts of the adjacent layers -- an
@@ -160,7 +162,25 @@
         Framework and, for civilian high-risk systems, EU AI Act Article 14, with
         DoD Directive 3000.09 as a further applicability. It introduces no new
         cryptography; it applies the receipt primitive at authorization
-        boundaries. (Work in progress.)</t></section>
+        boundaries. Primary applicability is civilian; defense (DoD 3000.09) and
+        the UN CCW debate are secondary.
+        (<tt>draft-schrock-ep-human-oversight-profile</tt>.)</t></section>
+      <section anchor="c-stack"><name>Agent Trust Stack -- the composition map</name>
+        <t>An informational map of how the layers compose across efforts --
+        identity, delegation, policy, transparency, and the EP human-authorization
+        apex -- and the binding points between them.
+        (<tt>draft-schrock-ep-agent-trust-stack</tt>.)</t></section>
+      <section anchor="c-pqc"><name>Crypto-Agility and Post-Quantum</name>
+        <t>An explicit algorithm registry and a hybrid (classical plus
+        post-quantum, for example Ed25519 with ML-DSA) signature mode, so
+        long-lived receipts stay verifiable across the post-quantum transition,
+        with a fail-closed verifier policy.
+        (<tt>draft-schrock-ep-pqc</tt>.)</t></section>
+      <section anchor="c-profiles"><name>Vertical action-type profiles</name>
+        <t>Domain profiles that apply the receipt to a specific irreversible
+        action-type, registered in the EP profile registry. The first is grid
+        curtailment / Proof-of-Curtailment for verifiable demand response.
+        (<tt>draft-schrock-ep-grid-curtailment</tt>.)</t></section>
     </section>
 
     <section anchor="related">

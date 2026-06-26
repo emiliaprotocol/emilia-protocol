@@ -91,21 +91,21 @@ Table of Contents
    3.  Components  . . . . . . . . . . . . . . . . . . . . . . . . .   4
      3.1.  Authorization Receipt -- the core primitive . . . . . . .   4
      3.2.  Quorum -- multi-party human authorization . . . . . . . .   4
-     3.3.  Enforcement Point -- the Receipt-Required rail  . . . . .   4
+     3.3.  Enforcement Point -- the Receipt-Required rail  . . . . .   5
      3.4.  Authorization Evidence Chain -- the composition seam  . .   5
      3.5.  Evidence Record -- long-term, crypto-agile
-           preservation  . . . . . . . . . . . . . . . . . . . . . .   5
+            preservation . . . . . . . . . . . . . . . . . . . . . .   5
      3.6.  Authorization-Posture Advisories  . . . . . . . . . . . .   5
      3.7.  Human-Oversight Profile -- oversight of autonomous
-           action  . . . . . . . . . . . . . . . . . . . . . . . . .   5
-   4.  Relationship to Other Work  . . . . . . . . . . . . . . . . .   5
-   5.  Design Invariants . . . . . . . . . . . . . . . . . . . . . .   6
-   6.  Security Considerations . . . . . . . . . . . . . . . . . . .   7
-   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   7
-   8.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   7
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   8
-
-
+            action . . . . . . . . . . . . . . . . . . . . . . . . .   5
+     3.8.  Agent Trust Stack -- the composition map  . . . . . . . .   6
+     3.9.  Crypto-Agility and Post-Quantum . . . . . . . . . . . . .   6
+     3.10. Vertical action-type profiles . . . . . . . . . . . . . .   6
+   4.  Relationship to Other Work  . . . . . . . . . . . . . . . . .   6
+   5.  Design Invariants . . . . . . . . . . . . . . . . . . . . . .   7
+   6.  Security Considerations . . . . . . . . . . . . . . . . . . .   8
+   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   8
+   8.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   8
 
 
 
@@ -113,6 +113,8 @@ Schrock                 Expires 30 December 2026                [Page 2]
 
 Internet-Draft               EP Architecture                   June 2026
 
+
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   9
 
 1.  Introduction
 
@@ -159,8 +161,6 @@ Internet-Draft               EP Architecture                   June 2026
       allowed.  EP's enforcement point consumes such a decision and
       records the human authorization that backed it; EP is not the
       policy engine.
-
-
 
 
 
@@ -212,12 +212,12 @@ Internet-Draft               EP Architecture                   June 2026
    single compromised or coerced approver cannot satisfy alone.  (draft-
    schrock-ep-quorum.)
 
-3.3.  Enforcement Point -- the Receipt-Required rail
 
-   The fail-closed gate: a high-risk action is refused (HTTP 428-style)
-   unless a valid, in-scope, unrevoked authorization receipt is present.
-   "No receipt, no execution," expressed as a manifest-driven policy
-   enforcement point.  (draft-schrock-ep-enforcement-point.)
+
+
+
+
+
 
 
 
@@ -225,6 +225,16 @@ Schrock                 Expires 30 December 2026                [Page 4]
 
 Internet-Draft               EP Architecture                   June 2026
 
+
+3.3.  Enforcement Point -- the Receipt-Required rail
+
+   The fail-closed gate: a high-risk action is refused (HTTP 428-style)
+   unless a valid, in-scope, unrevoked authorization receipt is present.
+   "No receipt, no execution," expressed as a manifest-driven policy
+   enforcement point.  After a permitted action runs, the same point
+   emits a post-execution receipt bound to the authorization, so
+   authorization and execution form one verifiable chain.  (draft-
+   schrock-ep-enforcement-point.)
 
 3.4.  Authorization Evidence Chain -- the composition seam
 
@@ -259,7 +269,39 @@ Internet-Draft               EP Architecture                   June 2026
    Risk Management Framework and, for civilian high-risk systems, EU AI
    Act Article 14, with DoD Directive 3000.09 as a further
    applicability.  It introduces no new cryptography; it applies the
-   receipt primitive at authorization boundaries.  (Work in progress.)
+   receipt primitive at authorization boundaries.  Primary applicability
+   is civilian; defense (DoD 3000.09) and the UN CCW debate are
+   secondary.  (draft-schrock-ep-human-oversight-profile.)
+
+
+
+
+
+Schrock                 Expires 30 December 2026                [Page 5]
+
+Internet-Draft               EP Architecture                   June 2026
+
+
+3.8.  Agent Trust Stack -- the composition map
+
+   An informational map of how the layers compose across efforts --
+   identity, delegation, policy, transparency, and the EP human-
+   authorization apex -- and the binding points between them.  (draft-
+   schrock-ep-agent-trust-stack.)
+
+3.9.  Crypto-Agility and Post-Quantum
+
+   An explicit algorithm registry and a hybrid (classical plus post-
+   quantum, for example Ed25519 with ML-DSA) signature mode, so long-
+   lived receipts stay verifiable across the post-quantum transition,
+   with a fail-closed verifier policy.  (draft-schrock-ep-pqc.)
+
+3.10.  Vertical action-type profiles
+
+   Domain profiles that apply the receipt to a specific irreversible
+   action-type, registered in the EP profile registry.  The first is
+   grid curtailment / Proof-of-Curtailment for verifiable demand
+   response.  (draft-schrock-ep-grid-curtailment.)
 
 4.  Relationship to Other Work
 
@@ -274,14 +316,6 @@ Internet-Draft               EP Architecture                   June 2026
    *  *Delegation receipts (DRP,
       [I-D.nelson-agent-delegation-receipts]).* DRP records a user-
       signed delegation of a bounded _scope_ to an agent.  EP composes
-
-
-
-Schrock                 Expires 30 December 2026                [Page 5]
-
-Internet-Draft               EP Architecture                   June 2026
-
-
       with it and is deliberately different: EP binds a _named_ human to
       the _exact_ irreversible action, per action by default rather than
       per scope, requires a named human rather than a bare key, and
@@ -294,6 +328,15 @@ Internet-Draft               EP Architecture                   June 2026
       artifact.  AAP and EP compose cleanly: AAP (or any policy layer)
       signals that approval is required; the EP receipt is the evidence
       that a named human gave it.
+
+
+
+
+
+Schrock                 Expires 30 December 2026                [Page 6]
+
+Internet-Draft               EP Architecture                   June 2026
+
 
    *  *Agent communication frameworks (for example AIPF, draft-zahed-
       agent-comm-framework).* Such frameworks scope an audit and non-
@@ -330,14 +373,6 @@ Internet-Draft               EP Architecture                   June 2026
    4.  *Fail closed.* Absent a valid authorization, the action does not
        execute; absence of a receipt is the anomaly, not the default.
 
-
-
-
-Schrock                 Expires 30 December 2026                [Page 6]
-
-Internet-Draft               EP Architecture                   June 2026
-
-
    5.  *Non-repudiable and tamper-evident.* Altering any covered byte
        invalidates verification; the record survives the issuer's
        disappearance.
@@ -346,6 +381,18 @@ Internet-Draft               EP Architecture                   June 2026
        action.  It does not prove the human understood it, or that the
        action was lawful, wise, or proportional.  Necessary, not
        sufficient.
+
+
+
+
+
+
+
+
+Schrock                 Expires 30 December 2026                [Page 7]
+
+Internet-Draft               EP Architecture                   June 2026
+
 
 6.  Security Considerations
 
@@ -386,14 +433,6 @@ Internet-Draft               EP Architecture                   June 2026
               <https://datatracker.ietf.org/doc/html/draft-nelson-agent-
               delegation-receipts-10>.
 
-
-
-
-Schrock                 Expires 30 December 2026                [Page 7]
-
-Internet-Draft               EP Architecture                   June 2026
-
-
    [RFC4998]  Gondrom, T., Brandner, R., and U. Pordesch, "Evidence
               Record Syntax (ERS)", RFC 4998, DOI 10.17487/RFC4998,
               August 2007, <https://www.rfc-editor.org/info/rfc4998>.
@@ -402,6 +441,14 @@ Internet-Draft               EP Architecture                   June 2026
               Canonicalization Scheme (JCS)", RFC 8785,
               DOI 10.17487/RFC8785, June 2020,
               <https://www.rfc-editor.org/info/rfc8785>.
+
+
+
+
+Schrock                 Expires 30 December 2026                [Page 8]
+
+Internet-Draft               EP Architecture                   June 2026
+
 
    [RFC9711]  Lundblade, L., Mandyam, G., O'Donoghue, J., and C.
               Wallace, "The Entity Attestation Token (EAT)", RFC 9711,
@@ -445,4 +492,13 @@ Author's Address
 
 
 
-Schrock                 Expires 30 December 2026                [Page 8]
+
+
+
+
+
+
+
+
+
+Schrock                 Expires 30 December 2026                [Page 9]

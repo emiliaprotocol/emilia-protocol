@@ -119,7 +119,9 @@ satisfy alone.
 [I-D.draft-schrock-ep-enforcement-point]. The fail-closed gate: a
 high-risk action is refused (HTTP 428-style) unless a valid, in-scope,
 unrevoked authorization receipt is present. "No receipt, no execution,"
-expressed as a manifest-driven policy enforcement point.
+expressed as a manifest-driven policy enforcement point. After a permitted
+action runs, the same point emits a post-execution receipt bound to the
+authorization, so authorization and execution form one verifiable chain.
 
 ### 3.4. Authorization Evidence Chain — the composition seam
 [I-D.draft-schrock-ep-authorization-evidence-chain]. A standard for
@@ -143,12 +145,30 @@ authorization: it MUST NOT be the sole gate on an action. This component is
 Experimental.
 
 ### 3.7. Human-Oversight Profile — oversight of autonomous action
-[work in progress]. An applicability profile for human-in-the-loop and
-human-on-the-loop oversight of autonomous and cyber-physical systems,
-mapping the components above to the human-oversight requirements of DoD
-Directive 3000.09, NIST AI RMF, and (for civilian high-risk systems) EU AI
-Act Article 14. It introduces no new cryptography; it applies the receipt
-primitive at authorization boundaries.
+[I-D.draft-schrock-ep-human-oversight-profile]. An applicability profile for
+human-in-the-loop and human-on-the-loop oversight of autonomous and
+cyber-physical systems, mapping the components above to the human-oversight
+requirements of EU AI Act Article 14 and the NIST AI RMF (civilian, lead),
+with DoD Directive 3000.09 and the UN CCW debate as secondary applicabilities.
+It introduces no new cryptography; it applies the receipt primitive at
+authorization boundaries.
+
+### 3.8. Agent Trust Stack — the composition map
+[I-D.draft-schrock-ep-agent-trust-stack]. An informational map of how the
+layers compose across efforts — identity, delegation, policy, transparency,
+and the EP human-authorization apex — and the binding points between them.
+
+### 3.9. Crypto-Agility and Post-Quantum
+[I-D.draft-schrock-ep-pqc]. An explicit algorithm registry and a hybrid
+(classical plus post-quantum, e.g. Ed25519 with ML-DSA) signature mode, so
+long-lived receipts stay verifiable across the post-quantum transition, with
+a fail-closed verifier policy.
+
+### 3.10. Vertical action-type profiles
+[I-D.draft-schrock-ep-grid-curtailment]. Domain profiles that apply the
+receipt to a specific irreversible action-type, registered in the EP profile
+registry. The first is grid curtailment / Proof-of-Curtailment for verifiable
+demand response.
 
 ## 4. Relationship to Other Work
 
