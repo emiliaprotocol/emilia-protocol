@@ -56,7 +56,7 @@ export default function SovereigntyPage() {
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
               <a href="#why" style={cta.primary}>Why it matters for Europe</a>
-              <a href="/briefs/emilia-eu-digital-sovereignty-onepager.pdf" style={cta.secondary}>Download the one-page brief</a>
+              <a href="/briefs/emilia-eu-ai-oversight-onepager.pdf" style={cta.secondary}>Download the one-page brief</a>
               <a href="mailto:team@emiliaprotocol.ai" style={cta.secondary}>Request a briefing</a>
             </div>
           </div>
@@ -128,7 +128,7 @@ export default function SovereigntyPage() {
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
               <a href="mailto:team@emiliaprotocol.ai" style={cta.primary}>Request a briefing</a>
-              <a href="/briefs/emilia-eu-digital-sovereignty-onepager.pdf" style={cta.secondary}>Download policymaker brief</a>
+              <a href="/briefs/emilia-eu-ai-oversight-onepager.pdf" style={cta.secondary}>Download policymaker brief</a>
               <a href="/govguard" style={cta.secondary}>For public institutions</a>
               <a href="/verify" style={cta.secondary}>Verify a receipt</a>
             </div>
