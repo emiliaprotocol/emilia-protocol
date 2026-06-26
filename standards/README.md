@@ -116,7 +116,7 @@ The central normative invariant: an advisory MUST NEVER be the sole gate on an
 action — a signal may only TIGHTEN posture, never itself constitute the
 authorization.
 
-**Status: posted individual Internet-Draft (intended status: Informational).**
+**Status: written + render-clean, NOT yet filed (intended status: Experimental). Verified 2026-06-26: not on datatracker.**
 As with every draft in this directory, "posted" means accepted and published —
 it does **not** mean adopted: this is an individual submission with no IETF
 working-group standing, no RFC stream, and no endorsement. We say this plainly
@@ -140,7 +140,7 @@ and a requirement that every decision be bound to an offline-verifiable
 EP-RECEIPT-v1. Conformance requires fail-closed behavior on uncertainty,
 honoring of one-time consumption, and receipt emission.
 
-**Status: posted individual Internet-Draft (intended status: Informational).**
+**Status: written + render-clean, NOT yet filed (intended status: Informational). Verified 2026-06-26: not on datatracker.**
 Same honest caveat applies as above: "posted" is not "adopted" — this is an
 individual submission with no IETF working-group standing, no RFC stream, and
 no endorsement.
