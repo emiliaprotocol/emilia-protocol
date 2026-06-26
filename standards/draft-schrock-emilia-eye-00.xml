@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rfc xmlns:xi="http://www.w3.org/2001/XInclude"
      docName="draft-schrock-emilia-eye-00"
-     category="info" ipr="trust200902" submissionType="IETF"
+     category="exp" ipr="trust200902" submissionType="IETF"
      version="3" tocInclude="true" sortRefs="true" symRefs="true">
   <front>
     <title abbrev="EMILIA Eye Advisories">Verifiable, Scope-Bound Advisories for Authorization Posture (EMILIA Eye)</title>

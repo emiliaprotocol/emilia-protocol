@@ -31,10 +31,10 @@ Abstract
    design invariants; and ties together the component specifications --
    the authorization receipt, multi-party quorum, the enforcement point,
    the authorization evidence chain, long-term evidence-record renewal,
-   identity binding, and the human-oversight profile.  EP composes with
-   the other layers rather than replacing them; its contribution is the
-   human- accountability apex and the composition seam that binds the
-   layers' artifacts into one verifiable record.
+   authorization-posture advisories, and the human-oversight profile.
+   EP composes with the other layers rather than replacing them; its
+   contribution is the human- accountability apex and the composition
+   seam that binds the layers' artifacts into one verifiable record.
 
    EP proves authorization -- that a named human (or quorum) approved
    the exact action.  It does not prove the action was understood,
@@ -95,15 +95,15 @@ Table of Contents
      3.4.  Authorization Evidence Chain -- the composition seam  . .   5
      3.5.  Evidence Record -- long-term, crypto-agile
            preservation  . . . . . . . . . . . . . . . . . . . . . .   5
-     3.6.  Identity Binding -- the named human, not a raw key  . . .   5
+     3.6.  Authorization-Posture Advisories  . . . . . . . . . . . .   5
      3.7.  Human-Oversight Profile -- oversight of autonomous
            action  . . . . . . . . . . . . . . . . . . . . . . . . .   5
    4.  Relationship to Other Work  . . . . . . . . . . . . . . . . .   5
    5.  Design Invariants . . . . . . . . . . . . . . . . . . . . . .   6
-   6.  Security Considerations . . . . . . . . . . . . . . . . . . .   6
+   6.  Security Considerations . . . . . . . . . . . . . . . . . . .   7
    7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   7
    8.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   7
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   7
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   8
 
 
 
@@ -198,8 +198,12 @@ Internet-Draft               EP Architecture                   June 2026
 
    A named human's device-bound signoff over one exact, canonicalized
    action (JCS, [RFC8785]; Ed25519), producing a Trust Receipt that a
-   third party verifies fully offline.  The apex of the layer. (draft-
-   schrock-ep-authorization-receipts.)
+   third party verifies fully offline.  The apex of the layer.  Binding
+   the signing key to a specific, named, accountable person is achieved
+   through device-bound user verification together with an identity-
+   binding profile (work in progress), so the authorizing party is a
+   person rather than an opaque key.  (draft-schrock-ep-authorization-
+   receipts.)
 
 3.2.  Quorum -- multi-party human authorization
 
@@ -214,10 +218,6 @@ Internet-Draft               EP Architecture                   June 2026
    unless a valid, in-scope, unrevoked authorization receipt is present.
    "No receipt, no execution," expressed as a manifest-driven policy
    enforcement point.  (draft-schrock-ep-enforcement-point.)
-
-
-
-
 
 
 
@@ -243,12 +243,13 @@ Internet-Draft               EP Architecture                   June 2026
    year retention schedules that regulation imposes on the records EP
    produces.  (draft-schrock-ep-evidence-record.)
 
-3.6.  Identity Binding -- the named human, not a raw key
+3.6.  Authorization-Posture Advisories
 
-   A profile binding a signing key to a real, named, accountable person
-   (and, where required, a device-bound, user-verified authenticator),
-   closing the gap left by peers that bind only to an opaque public key.
-   (draft-schrock-emilia-eye.)
+   Verifiable, scope-bound advisory signals (for example a risk or
+   posture indication) that inform a human approver or a policy
+   decision.  By construction an advisory is never itself an
+   authorization: it MUST NOT be the sole gate on an action.  This
+   component is Experimental. (draft-schrock-emilia-eye.)
 
 3.7.  Human-Oversight Profile -- oversight of autonomous action
 
@@ -270,10 +271,9 @@ Internet-Draft               EP Architecture                   June 2026
    Record Syntax ([RFC4998]).  Two recent efforts are worth naming at
    the architectural level:
 
-
-
-
-
+   *  *Delegation receipts (DRP,
+      [I-D.nelson-agent-delegation-receipts]).* DRP records a user-
+      signed delegation of a bounded _scope_ to an agent.  EP composes
 
 
 
@@ -282,6 +282,12 @@ Schrock                 Expires 30 December 2026                [Page 5]
 Internet-Draft               EP Architecture                   June 2026
 
 
+      with it and is deliberately different: EP binds a _named_ human to
+      the _exact_ irreversible action, per action by default rather than
+      per scope, requires a named human rather than a bare key, and
+      verifies fully offline.  DRP delegates the scope; the EP receipt
+      proves a named human authorized the specific act inside it.
+
    *  *Agent Authorization Profile for OAuth (AAP).* AAP can express
       that an action requires human approval but states that the
       approval itself is out of scope and is not an offline-verifiable
@@ -289,10 +295,21 @@ Internet-Draft               EP Architecture                   June 2026
       signals that approval is required; the EP receipt is the evidence
       that a named human gave it.
 
+   *  *Agent communication frameworks (for example AIPF, draft-zahed-
+      agent-comm-framework).* Such frameworks scope an audit and non-
+      repudiation requirement but defer the mechanism that records and
+      verifies the authorizing party.  EP is a concrete fill for that
+      deferred slot.
+
    *  *Decoupled authorization models* (an authorization decision point
       with a standardized input contract).  EP's enforcement point
       consumes such a decision; the EP receipt records the human
       authorization that the decision point required.
+
+   Identity, discovery, and capability-advertisement efforts (WIMSE/
+   SPIFFE, [I-D.klrc-aiagent-auth], and DNS- and registry-based agent
+   discovery and capability advertisement) sit below the authorization
+   layer; EP references their outputs and does not duplicate them.
 
 5.  Design Invariants
 
@@ -313,6 +330,14 @@ Internet-Draft               EP Architecture                   June 2026
    4.  *Fail closed.* Absent a valid authorization, the action does not
        execute; absence of a receipt is the anomaly, not the default.
 
+
+
+
+Schrock                 Expires 30 December 2026                [Page 6]
+
+Internet-Draft               EP Architecture                   June 2026
+
+
    5.  *Non-repudiable and tamper-evident.* Altering any covered byte
        invalidates verification; the record survives the issuer's
        disappearance.
@@ -330,23 +355,15 @@ Internet-Draft               EP Architecture                   June 2026
    nothing more.  Deployments and downstream representations MUST NOT
    overstate it.
 
-
-
-
-Schrock                 Expires 30 December 2026                [Page 6]
-
-Internet-Draft               EP Architecture                   June 2026
-
-
    EP proves a key signed; binding that key to the intended natural
-   person is the identity-binding trust root (Section 3.6) and the
-   explicit boundary of the architecture.  Coercion of an authorized
-   human, and a human authorizing an action they did not truly
-   comprehend, are out of scope of the cryptographic guarantees; device-
-   bound user verification and the display-fidelity requirements of the
-   component specifications raise but do not eliminate these.  Per-
-   component security considerations are normative in each component
-   document.
+   person is achieved through device-bound user verification and an
+   identity-binding profile (work in progress), and is the explicit
+   boundary of the architecture.  Coercion of an authorized human, and a
+   human authorizing an action they did not truly comprehend, are out of
+   scope of the cryptographic guarantees; device-bound user verification
+   and the display-fidelity requirements of the component specifications
+   raise but do not eliminate these.  Per-component security
+   considerations are normative in each component document.
 
 7.  IANA Considerations
 
@@ -369,6 +386,14 @@ Internet-Draft               EP Architecture                   June 2026
               <https://datatracker.ietf.org/doc/html/draft-nelson-agent-
               delegation-receipts-10>.
 
+
+
+
+Schrock                 Expires 30 December 2026                [Page 7]
+
+Internet-Draft               EP Architecture                   June 2026
+
+
    [RFC4998]  Gondrom, T., Brandner, R., and U. Pordesch, "Evidence
               Record Syntax (ERS)", RFC 4998, DOI 10.17487/RFC4998,
               August 2007, <https://www.rfc-editor.org/info/rfc4998>.
@@ -385,35 +410,10 @@ Internet-Draft               EP Architecture                   June 2026
 
 Author's Address
 
-
-
-
-
-Schrock                 Expires 30 December 2026                [Page 7]
-
-Internet-Draft               EP Architecture                   June 2026
-
-
    Iman Schrock
    EMILIA Protocol, Inc.
    United States of America
    Email: team@emiliaprotocol.ai
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

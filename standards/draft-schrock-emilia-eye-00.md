@@ -4,7 +4,7 @@
 ```
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Informational                              28 June 2026
+Intended status: Experimental                               28 June 2026
 Expires: 30 December 2026
 ```
 

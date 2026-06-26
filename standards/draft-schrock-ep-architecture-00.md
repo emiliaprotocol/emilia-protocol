@@ -25,8 +25,8 @@ autonomous systems. It defines the layer's position relative to agent
 identity, delegation, policy, and transparency work; states the design
 invariants; and ties together the component specifications — the
 authorization receipt, multi-party quorum, the enforcement point, the
-authorization evidence chain, long-term evidence-record renewal, identity
-binding, and the human-oversight profile. EP composes with the other
+authorization evidence chain, long-term evidence-record renewal,
+authorization-posture advisories, and the human-oversight profile. EP composes with the other
 layers rather than replacing them; its contribution is the human-
 accountability apex and the composition seam that binds the layers'
 artifacts into one verifiable record.
@@ -104,7 +104,10 @@ human-authorization and oversight evidence layer.
 [I-D.draft-schrock-ep-authorization-receipts]. A named human's
 device-bound signoff over one exact, canonicalized action (RFC 8785 / JCS,
 Ed25519), producing a Trust Receipt that a third party verifies fully
-offline. The apex of the layer.
+offline. The apex of the layer. Binding the signing key to a specific,
+named, accountable person is achieved through device-bound user
+verification together with an identity-binding profile (work in progress),
+so the authorizing party is a person rather than an opaque key.
 
 ### 3.2. Quorum — multi-party human authorization
 [I-D.draft-schrock-ep-quorum]. M-of-N approval by *distinct* humans with
@@ -132,11 +135,12 @@ a receipt verifiable today remains verifiable after its original
 algorithms weaken (e.g. sha256 → sha384), meeting the multi-year retention
 schedules that regulation imposes on the records EP produces.
 
-### 3.6. Identity Binding — the named human, not a raw key
-[I-D.draft-schrock-emilia-eye]. A profile binding a signing key to a real,
-named, accountable person (and, where required, a device-bound,
-user-verified authenticator), closing the gap left by peers that bind only
-to an opaque public key.
+### 3.6. Authorization-Posture Advisories
+[I-D.draft-schrock-emilia-eye]. Verifiable, scope-bound advisory signals
+(for example a risk or posture indication) that inform a human approver or
+a policy decision. By construction an advisory is never itself an
+authorization: it MUST NOT be the sole gate on an action. This component is
+Experimental.
 
 ### 3.7. Human-Oversight Profile — oversight of autonomous action
 [work in progress]. An applicability profile for human-in-the-loop and
@@ -155,16 +159,33 @@ AgentROA/AIIP/CIRP, the Entity Attestation Token (RFC 9711), OAuth
 Transaction Tokens, and Evidence Record Syntax (RFC 4998). Two recent
 efforts are worth naming at the architectural level:
 
+- **Delegation receipts (DRP, [draft-nelson-agent-delegation-receipts]).**
+  DRP records a user-signed delegation of a bounded *scope* to an agent. EP
+  composes with it and is deliberately different: EP binds a *named* human
+  to the *exact* irreversible action, per action by default rather than per
+  scope, requires a named human rather than a bare key, and verifies fully
+  offline. DRP delegates the scope; the EP receipt proves a named human
+  authorized the specific act inside it.
 - **Agent Authorization Profile for OAuth (AAP).** AAP can express that an
   action *requires* human approval (an `approval_required`-style signal)
   but states that the approval itself is out of scope and is not an
   offline-verifiable artifact. AAP and EP compose cleanly: AAP (or any
   policy layer) signals that approval is required; the EP receipt is the
   evidence that a named human gave it.
+- **Agent communication frameworks (e.g. AIPF,
+  [draft-zahed-agent-comm-framework]).** Such frameworks scope an audit and
+  non-repudiation requirement but defer the mechanism that records and
+  verifies the authorizing party. EP is a concrete fill for that deferred
+  slot.
 - **Decoupled authorization models** (an authorization decision point with
   a standardized input contract). EP's enforcement point consumes such a
   decision; the EP receipt records the human authorization that the
   decision point required.
+
+Identity, discovery, and capability-advertisement efforts (WIMSE/SPIFFE,
+[draft-klrc-aiagent-auth], and DNS- and registry-based agent discovery and
+capability advertisement) sit below the authorization layer; EP references
+their outputs and does not duplicate them.
 
 ## 5. Design Invariants
 
@@ -195,7 +216,8 @@ occurred at a stated scope, currency, and authority — nothing more.
 Deployments and downstream representations MUST NOT overstate it.
 
 EP proves a *key* signed; binding that key to the intended natural person
-is the identity-binding trust root (Section 3.6) and the explicit boundary
+is achieved through device-bound user verification and an identity-binding
+profile (work in progress), and is the explicit boundary
 of the architecture. Coercion of an authorized human, and a human
 authorizing an action they did not truly comprehend, are out of scope of
 the cryptographic guarantees; device-bound user verification and the
