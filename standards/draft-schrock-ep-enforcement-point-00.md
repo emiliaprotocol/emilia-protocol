@@ -450,6 +450,28 @@ establishes authenticity at decision time, not current revocation
 status; a relying party with freshness requirements consults current
 key and log state online.
 
+### 6.4. The Post-Execution Receipt
+The bound receipt above proves a decision was authorized *before* the action.
+To close the loop, once a permitted action actually executes, the enforcement
+point SHOULD emit a *post-execution receipt* (an execution attestation):
+offline-verifiable proof that the authorized action was carried out, and with
+what outcome.
+
+A post-execution receipt MUST commit to the authorization it discharges — it
+carries the binding key (Section 6.1) of the decision whose action it executed,
+so the authorization and its execution form a single verifiable chain. It
+records an outcome (for example `executed` or `failed`). It conveys no new
+authority: it attests that an authorized action ran, never that an action was
+approved. An enforcement point MUST NOT emit a post-execution receipt for a
+decision that never reached a positive, consumed state (Section 6.2).
+
+The post-execution receipt is verifiable offline on the same terms as the bound
+receipt (Section 6.3), and MAY be anchored for long-term, tamper-evident
+retention (an EP Commit seal; draft-schrock-ep-evidence-record). Together the
+bound receipt and the post-execution receipt give a relying party the whole
+account: a named human authorized this exact action, and it was carried out —
+both checkable without trusting the enforcement point.
+
 ## 7. The Reject-Before-Mutation Invariant
 
 This is the central enforcement-point invariant. A rejecting decision —

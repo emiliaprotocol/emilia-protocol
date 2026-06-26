@@ -85,27 +85,27 @@ Table of Contents
      6.1.  The Binding Key . . . . . . . . . . . . . . . . . . . . .  11
      6.2.  Positive States and the Honesty Gate  . . . . . . . . . .  12
      6.3.  Offline Verifiability of the Bound Receipt  . . . . . . .  13
-   7.  The Reject-Before-Mutation Invariant  . . . . . . . . . . . .  13
-   8.  Enforcement Modes . . . . . . . . . . . . . . . . . . . . . .  14
-   9.  Policy Semantics Are Deferred, Not Defined  . . . . . . . . .  15
-   10. Conformance Requirements and Classes  . . . . . . . . . . . .  15
-     10.1.  Fail-Closed  . . . . . . . . . . . . . . . . . . . . . .  15
-     10.2.  Honoring One-Time Consumption  . . . . . . . . . . . . .  16
-     10.3.  Receipt Emission . . . . . . . . . . . . . . . . . . . .  16
-     10.4.  Vocabulary and Schema Conformance  . . . . . . . . . . .  17
-     10.5.  Enforcement Classes (declared, not implied)  . . . . . .  17
-   11. Relationship to Other Work  . . . . . . . . . . . . . . . . .  17
-   12. Security Considerations . . . . . . . . . . . . . . . . . . .  18
-     12.1.  An Advisory Is Never the Sole Gate . . . . . . . . . . .  18
-     12.2.  Fail-Open Is the Failure Mode That Matters . . . . . . .  18
-     12.3.  Mutation Ordering and Time-of-Check/Time-of-Use  . . . .  19
-     12.4.  Observe-Mode Misrepresentation . . . . . . . . . . . . .  19
-     12.5.  The Enforcement Point Trusts the PDP's Decision, Not Its
-            Inputs . . . . . . . . . . . . . . . . . . . . . . . . .  19
-     12.6.  What This Profile Does and Does Not Establish  . . . . .  19
-   13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  20
-   14. Normative References  . . . . . . . . . . . . . . . . . . . .  20
-   15. Informative References  . . . . . . . . . . . . . . . . . . .  20
+   7.  The Post-Execution Receipt  . . . . . . . . . . . . . . . . .  13
+   8.  The Reject-Before-Mutation Invariant  . . . . . . . . . . . .  14
+   9.  Enforcement Modes . . . . . . . . . . . . . . . . . . . . . .  14
+   10. Policy Semantics Are Deferred, Not Defined  . . . . . . . . .  15
+   11. Conformance Requirements and Classes  . . . . . . . . . . . .  16
+     11.1.  Fail-Closed  . . . . . . . . . . . . . . . . . . . . . .  16
+     11.2.  Honoring One-Time Consumption  . . . . . . . . . . . . .  17
+     11.3.  Receipt Emission . . . . . . . . . . . . . . . . . . . .  17
+     11.4.  Vocabulary and Schema Conformance  . . . . . . . . . . .  17
+     11.5.  Enforcement Classes (declared, not implied)  . . . . . .  17
+   12. Relationship to Other Work  . . . . . . . . . . . . . . . . .  18
+   13. Security Considerations . . . . . . . . . . . . . . . . . . .  19
+     13.1.  An Advisory Is Never the Sole Gate . . . . . . . . . . .  19
+     13.2.  Fail-Open Is the Failure Mode That Matters . . . . . . .  19
+     13.3.  Mutation Ordering and Time-of-Check/Time-of-Use  . . . .  19
+     13.4.  Observe-Mode Misrepresentation . . . . . . . . . . . . .  20
+     13.5.  The Enforcement Point Trusts the PDP's Decision, Not Its
+            Inputs . . . . . . . . . . . . . . . . . . . . . . . . .  20
+     13.6.  What This Profile Does and Does Not Establish  . . . . .  20
+   14. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  20
+   15. Normative References  . . . . . . . . . . . . . . . . . . . .  20
 
 
 
@@ -114,6 +114,7 @@ Schrock                 Expires 30 December 2026                [Page 2]
 Internet-Draft            EP Enforcement Point                 June 2026
 
 
+   16. Informative References  . . . . . . . . . . . . . . . . . . .  21
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  21
 
 1.  Introduction
@@ -164,7 +165,6 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
 
 
-
 Schrock                 Expires 30 December 2026                [Page 3]
 
 Internet-Draft            EP Enforcement Point                 June 2026
@@ -187,7 +187,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
    *  *G4 — Reject-before-mutation.* A rejecting decision MUST take
       effect before any approval-bearing state mutation occurs
-      (Section 7).  The enforcement point sits in front of the write,
+      (Section 8).  The enforcement point sits in front of the write,
       never beside it.
 
    *  *G5 — Receipt-bound.* Every decision that reaches an approval-
@@ -196,11 +196,11 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
    *  *G6 — Consume policy, not author it.* The enforcement point MUST
       NOT embed an authorization-policy language; it consumes a PDP
-      decision (Section 9).
+      decision (Section 10).
 
    *  *G7 — Honest enforcement class.* The deployment topology that
       determines whether the gate is bypassable is declared, not implied
-      (Section 10); claims MUST NOT overstate it.
+      (Section 11); claims MUST NOT overstate it.
 
 1.2.  Scope
 
@@ -228,7 +228,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
    *  The authorization-policy _language_ and decision _semantics_ —
       defined by policy engines and decision interfaces (Cedar, OPA/
-      Rego, AuthZEN), which this profile consumes (Section 9).
+      Rego, AuthZEN), which this profile consumes (Section 10).
 
    *  The human-approval ceremony itself (how a named human is reached
       and how they sign) — defined by the core; the enforcement point
@@ -255,7 +255,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
    *Policy Decision Point (PDP).* The component that evaluates
    authorization policy and returns a decision.  Its policy language and
    evaluation are out of scope; this profile consumes its output.  See
-   Section 9.
+   Section 10.
 
    *Action.* A single proposed operation with concrete parameters,
    represented by the shared core's canonical Action Object and
@@ -295,10 +295,10 @@ Internet-Draft            EP Enforcement Point                 June 2026
    *Approval-bearing state mutation.* Any write that records, or relies
    upon, an authorization having been granted — the state change the
    action exists to make.  The reject-before-mutation invariant
-   (Section 7) governs its ordering relative to the decision.
+   (Section 8) governs its ordering relative to the decision.
 
    *Enforcement mode.* The operational posture of the enforcement point
-   for a given decision — enforce, warn, or observe (Section 8) —
+   for a given decision — enforce, warn, or observe (Section 9) —
    distinct from the decision vocabulary itself.
 
 3.  The Decision Vocabulary
@@ -380,7 +380,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
    mapping is stable.
 
    observe is not a fourth decision but an enforcement _mode_
-   (Section 8).  In observe mode a decision that would otherwise
+   (Section 9).  In observe mode a decision that would otherwise
    withhold or refuse is recorded but not enforced.  To keep the
    recorded decision faithful, an enforcement point in observe mode MUST
    report the decision it would have enforced in a separate field
@@ -400,18 +400,18 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
    The vocabulary is closed for v1.  Future versions MAY register
    additional values only through the registry contemplated in
-   Section 13; an enforcement point that receives an unrecognized value
-   MUST fail closed (Section 10.1) and MUST NOT treat it as allow.
+   Section 14; an enforcement point that receives an unrecognized value
+   MUST fail closed (Section 11.1) and MUST NOT treat it as allow.
 
 4.  The Decision Request
 
    A Decision Request poses one action, in its context, with the
    evidence the enforcement point presents for evaluation.  It is the
    input to the enforcement point; the enforcement point in turn poses
-   the policy-relevant subset to a PDP (Section 9).  The request carries
-   two parts: the *action context* (who is doing what, to what, under
-   which policy) and the *presented evidence* (the risk and posture
-   signals offered for the decision).
+   the policy-relevant subset to a PDP (Section 10).  The request
+   carries two parts: the *action context* (who is doing what, to what,
+   under which policy) and the *presented evidence* (the risk and
+   posture signals offered for the decision).
 
    {
      "ep_version": "1.0",
@@ -472,9 +472,9 @@ Internet-Draft            EP Enforcement Point                 June 2026
    *  evidence OPTIONAL.  Risk flags, advisory references, and posture
       signals offered to the decision.  Presented evidence is an _input_
       to a decision and MUST NOT be treated as a decision: an advisory
-      or risk signal is never the sole gate (Section 12.1).
+      or risk signal is never the sole gate (Section 13.1).
 
-   *  enforcement_mode OPTIONAL, default enforce.  See Section 8.
+   *  enforcement_mode OPTIONAL, default enforce.  See Section 9.
 
    *  before_state_hash / after_state_hash OPTIONAL.  Digests of the
       pre- and post-action state that the receipt records so a relying
@@ -583,7 +583,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
       issued, pending_signoff, or denied).
 
    *  enforcement_class REQUIRED.  The declared conformance class
-      (Section 10); it MUST NOT state a stronger class than deployed.
+      (Section 11); it MUST NOT state a stronger class than deployed.
 
 6.  Binding a Decision to an Authorization Receipt
 
@@ -697,7 +697,40 @@ Internet-Draft            EP Enforcement Point                 June 2026
    decision time, not current revocation status; a relying party with
    freshness requirements consults current key and log state online.
 
-7.  The Reject-Before-Mutation Invariant
+7.  The Post-Execution Receipt
+
+   The bound receipt above proves a decision was authorized _before_ the
+   action.  To close the loop, once a permitted action actually
+   executes, the enforcement point SHOULD emit a _post-execution
+   receipt_ (an execution attestation): offline-verifiable proof that
+   the authorized action was carried out, and with what outcome.
+
+   A post-execution receipt MUST commit to the authorization it
+   discharges — it carries the binding key (Section 6) of the decision
+   whose action it executed, so the authorization and its execution form
+   a single verifiable chain.  It records an outcome (for example
+   executed or failed).  It conveys no new authority: it attests that an
+   authorized action ran, never that an action was approved.  An
+   enforcement point MUST NOT emit a post-execution receipt that
+   references a decision which never reached a positive, consumed state
+   (Section 6.2).
+
+   The post-execution receipt is verifiable offline on the same terms as
+   the bound receipt (Section 6.3), and MAY be anchored for long-term,
+   tamper-evident retention (an EP Commit seal; draft-schrock-ep-
+   evidence-record).  Together the bound receipt and the post-execution
+   receipt give a relying party the whole account: a named human
+   authorized this exact action, and it was carried out — both checkable
+   without trusting the enforcement point.
+
+
+
+Schrock                 Expires 30 December 2026               [Page 13]
+
+Internet-Draft            EP Enforcement Point                 June 2026
+
+
+8.  The Reject-Before-Mutation Invariant
 
    This is the central enforcement-point invariant.  A rejecting
    decision — deny, or allow_with_signoff for which a positive-state
@@ -723,16 +756,9 @@ Internet-Draft            EP Enforcement Point                 June 2026
       attempt under any subsequent approval; deny is terminal
       (Section 3).
 
-
-
-Schrock                 Expires 30 December 2026               [Page 13]
-
-Internet-Draft            EP Enforcement Point                 June 2026
-
-
    *  If the enforcement point cannot determine, at the moment of the
       write, that a permitting decision is in force for the exact
-      action, it MUST fail closed (Section 10.1) and withhold the
+      action, it MUST fail closed (Section 11.1) and withhold the
       mutation.
 
    The invariant is what makes an enforcement point an enforcement point
@@ -740,18 +766,30 @@ Internet-Draft            EP Enforcement Point                 June 2026
    refusing, and the refusal precedes the irreversible step.  The
    strength with which the invariant holds against a party that controls
    the system of record is a function of deployment topology, stated
-   honestly in Section 10.
+   honestly in Section 11.
 
-8.  Enforcement Modes
+9.  Enforcement Modes
 
    Enforcement mode is the enforcement point's posture for a decision
    and is orthogonal to the decision vocabulary.  Three modes are
    defined.
 
+
+
+
+
+
+
+
+Schrock                 Expires 30 December 2026               [Page 14]
+
+Internet-Draft            EP Enforcement Point                 June 2026
+
+
    *enforce (default).* The decision is returned and the enforcement
    point MUST honor it: allow proceeds, allow_with_signoff withholds
    until a positive-state receipt exists, deny refuses.  This is the
-   only mode in which the reject-before-mutation invariant (Section 7)
+   only mode in which the reject-before-mutation invariant (Section 8)
    provides enforcement.
 
    *warn.* The decision is returned verbatim and is advisory: the caller
@@ -772,21 +810,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
    what the decision is: the substantive decision recorded for an action
    is always one of allow, allow_with_signoff, or deny.
 
-
-
-
-
-
-
-
-
-
-Schrock                 Expires 30 December 2026               [Page 14]
-
-Internet-Draft            EP Enforcement Point                 June 2026
-
-
-9.  Policy Semantics Are Deferred, Not Defined
+10.  Policy Semantics Are Deferred, Not Defined
 
    This profile defines the enforcement point's contract.  It does not
    define how authorization policy is written, stored, or evaluated.
@@ -811,12 +835,19 @@ Internet-Draft            EP Enforcement Point                 June 2026
       OPA/Rego.  The choice of engine and the authoring of policy are
       explicitly out of scope.
 
+
+
+Schrock                 Expires 30 December 2026               [Page 15]
+
+Internet-Draft            EP Enforcement Point                 June 2026
+
+
    *  The mapping from a PDP decision to this profile's vocabulary is a
       deployment concern, but it MUST be total and fail-closed: any PDP
       outcome that is not an unambiguous permit MUST map to a non-
       permissive vocabulary value, and a PDP that is unreachable or
       returns an unrecognized result MUST resolve to fail-closed
-      (Section 10.1), never to allow.
+      (Section 11.1), never to allow.
 
    The division of labor is deliberate: the PDP decides _whether_ policy
    permits the action; the enforcement point decides _that the action
@@ -824,23 +855,16 @@ Internet-Draft            EP Enforcement Point                 June 2026
    to verifiable evidence, and orders the refusal ahead of the write.
    Only the latter is profiled here.
 
-10.  Conformance Requirements and Classes
+11.  Conformance Requirements and Classes
 
    An enforcement point is conformant with this profile when it meets
    all of the following requirements.
 
-10.1.  Fail-Closed
+11.1.  Fail-Closed
 
    An enforcement point MUST fail closed.  Any of the following MUST
    resolve to a non-permissive outcome — withholding the action — and
    MUST NOT resolve to allow:
-
-
-
-Schrock                 Expires 30 December 2026               [Page 15]
-
-Internet-Draft            EP Enforcement Point                 June 2026
-
 
    *  a PDP that is unreachable, errors, or times out (transport failure
       to a decision source is not a policy decision and MUST NOT be
@@ -865,7 +889,16 @@ Internet-Draft            EP Enforcement Point                 June 2026
    enforcement point SHOULD distinguish, in its reasons, a fail-closed
    withholding from a policy deny, but both withhold the action.
 
-10.2.  Honoring One-Time Consumption
+
+
+
+
+Schrock                 Expires 30 December 2026               [Page 16]
+
+Internet-Draft            EP Enforcement Point                 June 2026
+
+
+11.2.  Honoring One-Time Consumption
 
    The shared core makes an authorization consumable at most once,
    globally.  An enforcement point MUST honor this: it MUST NOT permit
@@ -879,7 +912,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
    cannot both succeed; an in-memory replay guard is insufficient for a
    production enforcement point.
 
-10.3.  Receipt Emission
+11.3.  Receipt Emission
 
    An enforcement point MUST emit a bound authorization receipt
    (Section 6) for every decision that reaches an approval-bearing
@@ -890,17 +923,9 @@ Internet-Draft            EP Enforcement Point                 June 2026
    that genuinely reached a positive state; otherwise the enforcement
    point emits the unsigned evidence packet.  An enforcement point MUST
    NOT suppress receipt emission for a permitted high-risk action: the
-
-
-
-Schrock                 Expires 30 December 2026               [Page 16]
-
-Internet-Draft            EP Enforcement Point                 June 2026
-
-
    receipt is the evidence the profile exists to produce.
 
-10.4.  Vocabulary and Schema Conformance
+11.4.  Vocabulary and Schema Conformance
 
    An enforcement point MUST emit only the registered decision values
    (Section 3), MUST populate the required fields of the Decision
@@ -909,13 +934,25 @@ Internet-Draft            EP Enforcement Point                 June 2026
    reject a response whose action_hash does not match the request it
    answers.
 
-10.5.  Enforcement Classes (declared, not implied)
+11.5.  Enforcement Classes (declared, not implied)
 
    Whether the gate can be bypassed depends on where it sits.  Honesty
    about deployment topology is a conformance requirement, mirroring the
    shared core.  An enforcement point MUST declare its class in the
    Decision Response (enforcement_class) and in the bound receipt, and
    claims MUST NOT state a stronger class than deployed.
+
+
+
+
+
+
+
+
+Schrock                 Expires 30 December 2026               [Page 17]
+
+Internet-Draft            EP Enforcement Point                 June 2026
+
 
    *EP-Verified Execution (STRONG).* The system of record itself
    evaluates the decision and refuses to perform the approval-bearing
@@ -934,7 +971,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
    enforcement claim is made; the reject-before-mutation invariant is
    not provided.
 
-11.  Relationship to Other Work
+12.  Relationship to Other Work
 
    *The shared verifier core* ([I-D.schrock-ep-authorization-receipts])
    defines the receipt, the canonical action and action hash, the human
@@ -946,14 +983,6 @@ Internet-Draft            EP Enforcement Point                 June 2026
    core is the set of shared properties this and other profiles verify
    against, not an artifact this profile owns.
 
-
-
-
-Schrock                 Expires 30 December 2026               [Page 17]
-
-Internet-Draft            EP Enforcement Point                 June 2026
-
-
    *AuthZEN* ([AUTHZEN]) standardizes the access-evaluation interface
    between a PEP and a PDP — the request/response by which an
    enforcement point asks "is this permitted?"  This profile is a PEP-
@@ -964,22 +993,31 @@ Internet-Draft            EP Enforcement Point                 June 2026
 
    *OPA/Rego* ([OPA]) and *Cedar* ([CEDAR]) are policy-language engines
    that can back the PDP.  This profile consumes a decision from such an
-   engine; it defines no policy language of its own (Section 9).
+   engine; it defines no policy language of its own (Section 10).
 
    *Security Event Token (SET)* ([RFC8417]) and the Shared Signals
    Framework with CAEP define an envelope and transport for security
    events and session/posture signals.  An enforcement point MAY consume
    such signals as presented evidence (Section 4); they are inputs to a
-   decision and never the decision itself (Section 12.1).
+   decision and never the decision itself (Section 13.1).
+
+
+
+
+
+Schrock                 Expires 30 December 2026               [Page 18]
+
+Internet-Draft            EP Enforcement Point                 June 2026
+
 
    *RATS* ([RFC9334]) / *EAT* ([RFC9711]) produce attestation results
    about an entity or device's state.  An enforcement point MAY consume
    such results as posture evidence; this profile does not define
    attestation.
 
-12.  Security Considerations
+13.  Security Considerations
 
-12.1.  An Advisory Is Never the Sole Gate
+13.1.  An Advisory Is Never the Sole Gate
 
    Presented evidence — risk flags, advisories, posture signals —
    informs a decision; it is not a decision.  An enforcement point MUST
@@ -992,48 +1030,53 @@ Internet-Draft            EP Enforcement Point                 June 2026
    and is weighed by policy; the gate remains the decision plus, where
    required, the human signoff.
 
-12.2.  Fail-Open Is the Failure Mode That Matters
+13.2.  Fail-Open Is the Failure Mode That Matters
 
    The most dangerous defect in an enforcement point is treating
    uncertainty as permission.  A PDP timeout, an unparsed response, an
    unknown decision value, or an unverifiable receipt MUST withhold the
-   action (Section 10.1).  Designs that "allow on error to preserve
+   action (Section 11.1).  Designs that "allow on error to preserve
    availability" convert every transient fault into an authorization
    bypass and do not conform.  Where availability genuinely outranks
    safety for a class of actions, that class does not belong behind this
    profile.
 
+13.3.  Mutation Ordering and Time-of-Check/Time-of-Use
 
-
-Schrock                 Expires 30 December 2026               [Page 18]
-
-Internet-Draft            EP Enforcement Point                 June 2026
-
-
-12.3.  Mutation Ordering and Time-of-Check/Time-of-Use
-
-   The reject-before-mutation invariant (Section 7) is only as strong as
+   The reject-before-mutation invariant (Section 8) is only as strong as
    the atomicity between the check and the write.  An enforcement point
    MUST ensure that the permitting decision in force at the moment of
    the write is the decision for the exact action being written — same
    action hash, unexpired, not already consumed.  A gap between checking
    a decision and applying the mutation is a time-of-check/time-of-use
    vulnerability: an attacker who can alter the action between check and
-   write defeats the binding.  Consume-once (Section 10.2) and action-
+   write defeats the binding.  Consume-once (Section 11.2) and action-
    hash binding together close this only if the check-and- consume is
    atomic with respect to the mutation.
 
-12.4.  Observe-Mode Misrepresentation
+
+
+
+
+
+
+
+Schrock                 Expires 30 December 2026               [Page 19]
+
+Internet-Draft            EP Enforcement Point                 June 2026
+
+
+13.4.  Observe-Mode Misrepresentation
 
    Because observe mode records a decision without enforcing it, an
    operator could present an observe-mode deployment as if it enforced.
    An enforcement point in observe or warn mode MUST NOT claim
    enforcement and MUST mark the effective decision honestly
-   (Section 8).  A relying party MUST NOT treat an observe-mode record
+   (Section 9).  A relying party MUST NOT treat an observe-mode record
    as evidence that an action was gated; it is evidence only of what
    would have been decided.
 
-12.5.  The Enforcement Point Trusts the PDP's Decision, Not Its Inputs
+13.5.  The Enforcement Point Trusts the PDP's Decision, Not Its Inputs
 
    This profile binds and orders a decision; it does not vouch for the
    policy that produced it.  A compromised or misconfigured PDP can
@@ -1043,40 +1086,41 @@ Internet-Draft            EP Enforcement Point                 June 2026
    proceeds except under a permitting decision, bound to verifiable
    evidence, with refusal ordered ahead of the write_ — not that the
    decision was correct.  Soundness of policy is the PDP's
-   responsibility (Section 9) and is out of scope.
+   responsibility (Section 10) and is out of scope.
 
-12.6.  What This Profile Does and Does Not Establish
+13.6.  What This Profile Does and Does Not Establish
 
    A bound receipt establishes that a specific decision was made for a
    specific action and, for allow_with_signoff, that a named human
    approved it — verifiable offline.  It does not, by itself, establish
    that the deployment was unbypassable; that depends on the declared
-   enforcement class (Section 10).  It does not establish that the
-   policy was correct (Section 12.5).  And it does not establish
+   enforcement class (Section 11).  It does not establish that the
+   policy was correct (Section 13.5).  And it does not establish
    anything about an AI model's behavior.  Where the shared core's
    safety properties are machine-checked, those proofs cover the core's
    authorization state machine, not this profile's deployment topology
    or the PDP; implementations MUST NOT represent core proofs as
    covering the enforcement point's deployment.  This profile is
-
-
-
-Schrock                 Expires 30 December 2026               [Page 19]
-
-Internet-Draft            EP Enforcement Point                 June 2026
-
-
    experimental and has not been independently audited; conformance
    claims should be stated as such.
 
-13.  IANA Considerations
+14.  IANA Considerations
 
    This document has no IANA actions.  A future version may request a
    registry for the decision vocabulary (Section 3) so that additional
    decision values, if ever needed, are added under a stable, backward-
    compatible policy in which an unrecognized value MUST fail closed.
 
-14.  Normative References
+15.  Normative References
+
+
+
+
+
+Schrock                 Expires 30 December 2026               [Page 20]
+
+Internet-Draft            EP Enforcement Point                 June 2026
+
 
    [I-D.schrock-ep-authorization-receipts]
               Schrock, I., "Authorization Receipts for High-Risk Agent
@@ -1094,7 +1138,7 @@ Internet-Draft            EP Enforcement Point                 June 2026
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://www.rfc-editor.org/info/rfc8174>.
 
-15.  Informative References
+16.  Informative References
 
    [AUTHZEN]  OpenID Foundation (AuthZEN WG), "Authorization API 1.0",
               December 2024,
@@ -1113,15 +1157,6 @@ Internet-Draft            EP Enforcement Point                 June 2026
               DOI 10.17487/RFC8417, July 2018,
               <https://www.rfc-editor.org/info/rfc8417>.
 
-
-
-
-
-Schrock                 Expires 30 December 2026               [Page 20]
-
-Internet-Draft            EP Enforcement Point                 June 2026
-
-
    [RFC9334]  Birkholz, H., Thaler, D., Richardson, M., Smith, N., and
               W. Pan, "Remote ATtestation procedureS (RATS)
               Architecture", RFC 9334, DOI 10.17487/RFC9334, January
@@ -1133,6 +1168,15 @@ Internet-Draft            EP Enforcement Point                 June 2026
               <https://www.rfc-editor.org/info/rfc9711>.
 
 Author's Address
+
+
+
+
+
+Schrock                 Expires 30 December 2026               [Page 21]
+
+Internet-Draft            EP Enforcement Point                 June 2026
+
 
    Iman Schrock
    EMILIA Protocol, Inc.
@@ -1173,4 +1217,16 @@ Author's Address
 
 
 
-Schrock                 Expires 30 December 2026               [Page 21]
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                 Expires 30 December 2026               [Page 22]

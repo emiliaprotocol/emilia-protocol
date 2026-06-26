@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-ep-grid-curtailment-00"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="EP Grid Curtailment">EMILIA Protocol: Grid Curtailment Authorization Profile (Proof-of-Curtailment)</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-grid-curtailment-00"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address><postal><country>US</country></postal><email>team@emiliaprotocol.ai</email></address>
+    </author>
+    <date year="2026" month="June" day="28"/>
+    <area>Security</area>
+    <keyword>authorization</keyword>
+    <keyword>demand response</keyword>
+    <keyword>human oversight</keyword>
+    <abstract>
+      <t>This document defines grid.curtailment, an EMILIA Protocol (EP)
+      action-type profile for authorizing and proving bounded, reversible
+      curtailment of electrical load by autonomous or agentic systems -- the
+      "Proof-of-Curtailment" used by the GRACE (Grid-Responsive Authorized
+      Compute Events) vertical. It rides the EP authorization receipt
+      (<xref target="I-D.schrock-ep-authorization-receipts"/>) and the
+      human-oversight profile, and introduces no new cryptography. A
+      market-authorized party issues a bounded curtailment order that a facility
+      verifies offline and fail-closed; the event emits a settlement-grade,
+      offline-verifiable bundle proving who authorized it, what was allowed,
+      whether the facility complied, and what should be paid. EP proves
+      authorization and evidence integrity -- a necessary, not sufficient,
+      condition; it does not invent the demand-response baseline.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="intro"><name>Introduction</name>
+      <t>Demand-response markets pay large flexible loads (notably AI
+      datacenters) to curtail, but the record that a load actually curtailed when
+      paid is self-reported and trust-based. This profile supplies a portable,
+      tamper-evident, offline-verifiable artifact for that record. It does not
+      move power (a scheduler does) and does not define the baseline methodology
+      (the program/ISO does); it binds the authorizing party to the exact,
+      bounded, reversible event and makes the application of the program's
+      prescribed baseline method un-fudgeable.</t>
+    </section>
+    <section anchor="order"><name>The Curtailment Order</name>
+      <t>An EP-RECEIPT-v1 whose action object carries: <tt>action_type</tt> =
+      "grid.curtailment"; <tt>effect_class</tt> = "power_reduction";
+      <tt>facility</tt>; <tt>target_delta_kw</tt>; <tt>window</tt>
+      {<tt>not_before</tt>, <tt>not_after</tt>}; <tt>expires_at</tt>
+      (<bcp14>SHOULD</bcp14> equal <tt>window.not_after</tt>);
+      <tt>baseline_method_hash</tt> (a sha256 commitment to the program's
+      prescribed baseline method identifier -- it pins, it does not define);
+      <tt>control_mode</tt> (human-oversight profile, typically "on_the_loop");
+      and OPTIONAL <tt>protected_lanes</tt>, <tt>telemetry_sources</tt>,
+      <tt>approver</tt>, <tt>max_duration</tt>. Hard cuts (large
+      <tt>target_delta_kw</tt> or full-site) <bcp14>MUST</bcp14> use EP-QUORUM
+      (m-of-n distinct signers).</t>
+    </section>
+    <section anchor="gate"><name>Gate Predicates (Fail-Closed)</name>
+      <t>A facility controller changes posture only if all hold: the order
+      verifies (Ed25519 over RFC 8785 / JCS, <xref target="RFC8785"/>) against the
+      <em>pinned</em> authority key; <tt>action_type</tt> is "grid.curtailment";
+      the current time is within <tt>window</tt>; and the current time is before
+      <tt>expires_at</tt>. Otherwise the action is refused and no posture change
+      occurs.</t>
+    </section>
+    <section anchor="bundle"><name>Telemetry Attestation and the Proof-of-Curtailment Bundle</name>
+      <t>Power telemetry is signed by an attested meter (an EP-RECEIPT-v1 over
+      {<tt>meter_id</tt>, <tt>unit</tt>, <tt>baseline_method_hash</tt>,
+      <tt>samples</tt>}), so any altered sample breaks verification. The
+      Proof-of-Curtailment Bundle composes the order, the facility
+      acknowledgment, the attested telemetry, and the computed delivered kW*h,
+      with the pinning keys. Verification (all <bcp14>MUST</bcp14> pass): the
+      order verifies against the authority key; the acknowledgment against the
+      facility key; the telemetry against the meter key;
+      <tt>telemetry.baseline_method_hash</tt> equals
+      <tt>order.baseline_method_hash</tt>; and recomputing delivered kW*h from the
+      signed samples equals the claimed value. Anyone can run this offline, with
+      no account.</t>
+    </section>
+    <section anchor="related"><name>Relationship to Other Work</name>
+      <t>This is a profile of
+      <xref target="I-D.schrock-ep-authorization-receipts"/>; human oversight
+      rides the EP human-oversight profile; long-term preservation rides EP
+      Evidence-Record renewal (<xref target="RFC4998"/>-style); optional
+      transparency anchoring composes with SCITT/COSE. It composes with -- does
+      not replace -- energy-market dispatch protocols (for example OpenADR, IEEE
+      2030.5), which carry the dispatch while EP carries the authorization and the
+      proof.</t>
+    </section>
+    <section anchor="security"><name>Security Considerations</name>
+      <t>Over-trust is the dominant risk: a valid bundle proves authorization and
+      telemetry integrity against a pinned method, not that the baseline is
+      physically correct (baseline estimation belongs to the program). Spoofed,
+      stale, and replayed orders are refused fail-closed. EP is a necessary, not
+      sufficient, condition for trustworthy demand response.</t>
+    </section>
+    <section anchor="iana"><name>IANA Considerations</name>
+      <t>This document registers the "grid.curtailment" action-type in the EP
+      action-type profile registry. It has no other IANA actions.</t>
+    </section>
+  </middle>
+  <back>
+    <references><name>References</name>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4998.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.schrock-ep-authorization-receipts.xml"/>
+    </references>
+  </back>
+</rfc>

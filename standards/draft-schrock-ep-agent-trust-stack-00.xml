@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-ep-agent-trust-stack-00"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="Agent Trust Stack">The Agent Trust Stack: Composing Identity, Delegation, Policy, Transparency, and Human Authorization</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-agent-trust-stack-00"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address><postal><country>US</country></postal><email>team@emiliaprotocol.ai</email></address>
+    </author>
+    <date year="2026" month="June" day="28"/>
+    <area>Security</area>
+    <keyword>agents</keyword>
+    <keyword>authorization</keyword>
+    <keyword>composition</keyword>
+    <abstract>
+      <t>Agent authorization spans several layers, each standardized by a
+      different effort. This informational document maps the "agent trust stack"
+      and the binding points between layers, so an agent action can be checked as
+      one verifiable chain: who the agent is (identity), what authority it was
+      delegated (delegation), whether policy permitted the effect (policy), that a
+      named human authorized the specific irreversible action (human
+      authorization), and that the record is durably transparent (transparency).
+      It names the composing efforts and the artifact each contributes, and
+      positions the EMILIA Protocol (EP) human-authorization receipt as the apex
+      the other layers reference but do not themselves produce.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="layers"><name>The Layers and Their Efforts</name>
+      <ul>
+        <li><strong>Identity</strong> -- who the agent/workload is. WIMSE/SPIFFE;
+        agent-identity efforts (for example draft-klrc-aiagent-auth).</li>
+        <li><strong>Delegation</strong> -- the scope an agent was authorized to
+        act within. Delegation receipts (draft-nelson-agent-delegation-receipts,
+        "DRP"); the Agent Authorization Profile for OAuth (AAP); OAuth
+        token-exchange / agent-grant profiles.</li>
+        <li><strong>Policy / permit</strong> -- whether machine policy allows the
+        effect (a decision point with a standardized input contract).</li>
+        <li><strong>Human authorization</strong> -- a named, accountable human
+        (or quorum) authorized the exact irreversible action, offline-verifiable,
+        one-time, with separation of duties. EP
+        (<xref target="I-D.schrock-ep-authorization-receipts"/>, -quorum,
+        -enforcement-point). This layer is thin and largely unfilled; it is
+        EP's.</li>
+        <li><strong>Transparency</strong> -- append-only, tamper-evident logging.
+        SCITT / COSE Receipts.</li>
+      </ul>
+    </section>
+    <section anchor="binding"><name>Binding Points (how they compose)</name>
+      <t>Each layer emits a verifiable artifact. EP's authorization context
+      records, by reference, the upstream evidence a decision relied on (an
+      identity attestation, a delegation receipt, a policy decision) and can
+      enforce its freshness fail-closed (the L4-to-L7 agent-binding). The
+      Authorization-Evidence-Chain (draft-schrock-ep-authorization-evidence-chain)
+      binds these heterogeneous artifacts plus the human authorization into a
+      single, order-preserving record checkable as one chain. Transparency
+      anchoring (SCITT) is optional and additive; EP receipts verify offline
+      without it.</t>
+    </section>
+    <section anchor="cede"><name>Cede the Rest, Claim the Apex</name>
+      <t>EP does not re-solve identity, delegation, policy, or transparency, and
+      composes with whichever standard prevails at each layer. Its contribution
+      is the named-human authorization apex and the composition seam. The Agent
+      Authorization Profile for OAuth and agent-communication frameworks (for
+      example AIPF) state the human-approval/audit requirement but defer the
+      artifact; EP is the concrete fill. DRP delegates a bounded scope; EP proves
+      a named human authorized the specific act inside it -- per action,
+      identity-bound, and fully offline.</t>
+    </section>
+    <section anchor="security"><name>Security Considerations</name>
+      <t>The chain is only as strong as its weakest upstream artifact; EP records
+      and freshness-checks what it relied on rather than asserting upstream
+      correctness. Over-trust (treating any one layer as the whole) is the
+      dominant risk. EP proves authorization, not wisdom -- necessary, not
+      sufficient.</t>
+    </section>
+    <section anchor="iana"><name>IANA Considerations</name>
+      <t>This document has no IANA actions.</t>
+    </section>
+  </middle>
+  <back>
+    <references><name>References</name>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.schrock-ep-authorization-receipts.xml"/>
+    </references>
+  </back>
+</rfc>

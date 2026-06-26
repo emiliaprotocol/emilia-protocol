@@ -541,6 +541,30 @@
         consults current key and log state online.</t>
       </section>
     </section>
+    <section anchor="execution-receipt">
+      <name>The Post-Execution Receipt</name>
+      <t>The bound receipt above proves a decision was authorized <em>before</em>
+      the action. To close the loop, once a permitted action actually executes,
+      the enforcement point <bcp14>SHOULD</bcp14> emit a <em>post-execution
+      receipt</em> (an execution attestation): offline-verifiable proof that the
+      authorized action was carried out, and with what outcome.</t>
+      <t>A post-execution receipt <bcp14>MUST</bcp14> commit to the authorization
+      it discharges — it carries the binding key (<xref target="receipt-binding"/>)
+      of the decision whose action it executed, so the authorization and its
+      execution form a single verifiable chain. It records an outcome (for
+      example <tt>executed</tt> or <tt>failed</tt>). It conveys no new authority:
+      it attests that an authorized action ran, never that an action was approved.
+      An enforcement point <bcp14>MUST NOT</bcp14> emit a post-execution receipt
+      that references a decision which never reached a positive, consumed state
+      (<xref target="positive-states"/>).</t>
+      <t>The post-execution receipt is verifiable offline on the same terms as
+      the bound receipt (<xref target="offline-verification"/>), and
+      <bcp14>MAY</bcp14> be anchored for long-term, tamper-evident retention
+      (an EP Commit seal; <tt>draft-schrock-ep-evidence-record</tt>). Together the
+      bound receipt and the post-execution receipt give a relying party the whole
+      account: a named human authorized this exact action, and it was carried out
+      — both checkable without trusting the enforcement point.</t>
+    </section>
     <section anchor="reject-before-mutation">
       <name>The Reject-Before-Mutation Invariant</name>
       <t>This is the central enforcement-point invariant. A rejecting

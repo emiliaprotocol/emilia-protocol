@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-ep-pqc-00"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="EP Crypto-Agility &amp; PQC">EMILIA Protocol: Crypto-Agility and Post-Quantum Profile</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-pqc-00"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address><postal><country>US</country></postal><email>team@emiliaprotocol.ai</email></address>
+    </author>
+    <date year="2026" month="June" day="28"/>
+    <area>Security</area>
+    <keyword>post-quantum</keyword>
+    <keyword>crypto-agility</keyword>
+    <keyword>authorization</keyword>
+    <abstract>
+      <t>This document defines a crypto-agility framework and post-quantum (PQC)
+      signature profile for EMILIA Protocol (EP) authorization receipts
+      (<xref target="I-D.schrock-ep-authorization-receipts"/>). EP receipts are
+      long-lived (multi-year regulatory retention), so signature and digest
+      algorithms MUST be explicitly identified and migratable. This profile
+      specifies an algorithm registry, a hybrid (classical plus PQC) signature
+      mode for a no-flag-day migration, and a fail-closed verifier
+      accepted-algorithm policy. The hybrid signing path is a forward roadmap;
+      EP today signs Ed25519 over RFC 8785 (JCS) canonical bytes, and EP
+      Evidence-Record already renews digests across algorithm aging.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="registry"><name>Algorithm Registry</name>
+      <t>Receipts and signoffs carry an explicit algorithm identifier. Defined
+      classes: Ed25519 (EdDSA) and ECDSA P-256 (ES256) for classical/device
+      signatures; ML-DSA (FIPS 204) and SLH-DSA (FIPS 205) for post-quantum
+      signatures; and SHA-256 to SHA-384/512 (FIPS 180-4) for digest agility.
+      ML-KEM (FIPS 203) is key encapsulation, not signatures, and is out of scope
+      for the authorization signature.</t>
+    </section>
+    <section anchor="hybrid"><name>Hybrid Mode (the migration path)</name>
+      <t>A hybrid signature carries both a classical (Ed25519) and a PQC (ML-DSA)
+      signature over the same JCS-canonical payload (<xref target="RFC8785"/>);
+      under hybrid policy a receipt verifies only if BOTH verify. This gives
+      backward verifiability (classical-only verifiers still check), forward
+      security (the PQC part carries weight once "harvest-now, decrypt-later"
+      matters), and no flag day (issuers add the PQC signature; verifiers upgrade
+      independently). The signature object names the algorithm, e.g.
+      <tt>hybrid-ed25519+ml-dsa-65</tt>, with separate <tt>classical</tt> and
+      <tt>pqc</tt> values.</t>
+    </section>
+    <section anchor="policy"><name>Verifier Policy</name>
+      <t>A verifier declares an accepted-algorithm policy: classical-only
+      (today), hybrid-required (transition), or pqc-required (post-migration).
+      Fail-closed: an algorithm not in policy is a rejection, never a silent
+      downgrade.</t>
+    </section>
+    <section anchor="related"><name>Relationship to Other Work</name>
+      <t>This profile composes with EP Evidence-Record (long-lived receipts
+      re-anchored under stronger algorithms as they age). National-algorithm
+      jurisdictions (for example SM2/SM3 and their PQC adaptations) register in
+      the same algorithm registry -- same agility mechanism, different
+      identifiers. It aligns in direction with the NIST PQC standards and the NSA
+      CNSA 2.0 migration timeline.</t>
+    </section>
+    <section anchor="security"><name>Security Considerations</name>
+      <t>Algorithm downgrade is the dominant risk; the verifier
+      accepted-algorithm policy is fail-closed by design, and hybrid mode ensures
+      a single broken family does not invalidate a receipt. PQC signing
+      <bcp14>MUST</bcp14> use a vetted implementation; this profile specifies no
+      novel scheme.</t>
+    </section>
+    <section anchor="iana"><name>IANA Considerations</name>
+      <t>This document has no IANA actions; algorithm identifiers register in the
+      EP profile registry.</t>
+    </section>
+  </middle>
+  <back>
+    <references><name>References</name>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.schrock-ep-authorization-receipts.xml"/>
+    </references>
+  </back>
+</rfc>
