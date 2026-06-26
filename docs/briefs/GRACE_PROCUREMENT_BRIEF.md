@@ -23,10 +23,15 @@ authorization + settlement layer those systems lack), and is **scheduler-agnosti
 ## The problem
 
 Demand response is a multi-billion-dollar market, and AI datacenters are becoming its largest new
-flexible load. But the record that a load actually curtailed when paid to is **self-reported and
-trust-based** — baselines can be gamed, telemetry backfilled, sheds over-claimed. There is no
-portable artifact a grid operator, auditor, or counterparty can verify without trusting the party
-under review. That measurement-and-verification gap is the cost center GRACE removes.
+flexible load. Duke University's Nicholas Institute ("Rethinking Load Growth," 2025) finds the 22
+largest U.S. balancing areas could absorb **76–126 GW of new load** if it can be curtailed under ~1%
+of hours — **ERCOT alone ≈ 10 GW at 0.5% curtailment**. But that headroom is only bankable if the
+curtailment is *verifiable* enough for a grid operator to count it as capacity. Today the record that
+a load actually curtailed when paid to is **self-reported and trust-based** — baselines can be gamed,
+telemetry backfilled, sheds over-claimed. No portable artifact lets a grid operator, auditor, or
+counterparty verify delivery without trusting the party under review. **That measurement-and-
+verification gap — the thing standing between ~100 GW of theoretical flexibility and bankable
+capacity — is what GRACE removes.**
 
 ## What it is — the loop
 
@@ -53,27 +58,32 @@ under review. That measurement-and-verification gap is the cost center GRACE rem
   against method swaps, telemetry backfill, and input manipulation. It sits on top of the market's
   own accepted methodology.
 
-## Demonstration (available now)
+## Demonstration
 
-A five-minute reference demonstration on real hardware: one multi-GPU node + a smart PDU on a live
-wattage graph. A market-authorized approval (device-bound) issues a "shed 700 W for 10 minutes"
-order → the controller verifies it offline → the scheduler enters curtailment posture → **measured
-power visibly drops** → the window expires and posture auto-reverts → a Proof-of-Curtailment Bundle
-is emitted and verified offline.
+**Available now — runnable software reference.** The full loop is published and runs today
+(`examples/grace/proof_of_curtailment.py`): it issues a `grid.curtailment` order, gates it
+fail-closed, sheds, signs attested telemetry, computes delivered kW·h, emits the Proof-of-Curtailment
+Bundle, and verifies the bundle under the **production EMILIA verifier** — with the adversarial paths
+all refusing (tampered telemetry → INVALID; forged order → REFUSED; replay after window → REFUSED).
+No new cryptography.
 
-**Success criteria:** a valid order sheds; a spoofed order is refused; tampered telemetry fails
-verification; the bundle settles; posture auto-reverts. A runnable software reference of this loop
-is already published and verifies under the production EMILIA verifier.
+**Planned with a facility partner — the 5-minute hardware demonstration.** One multi-GPU node + a
+smart PDU on a live wattage graph: a device-bound approval issues "shed 700 W for 10 minutes" → the
+controller verifies offline → the scheduler enters curtailment posture → **measured power visibly
+drops** → the window expires and posture auto-reverts → the bundle is emitted and verified offline.
+**Success criteria:** valid order sheds; spoofed order refused; tampered telemetry fails; bundle
+settles; auto-revert. (This stage requires a host facility; see Assumptions.)
 
 ## Maturity & proof
 
 - **Open standard** (Apache-2.0), not slideware — receipts verify even if the vendor disappears.
 - **IETF Internet-Drafts** (authorization receipts; multi-party quorum); the `grid.curtailment`
   profile is specified as PIP-014 on top of the receipts draft.
-- **Formally verified core:** 26 TLA+ safety theorems and 35 machine-checked Alloy facts (0 errors);
-  85 adversarial red-team cases; 4,200+ automated tests.
-- **Three independent, cross-language verifiers** (JavaScript, Python, Go) agreeing across the
-  conformance suite — auditors verify a bundle against source and mathematics, not a vendor's word.
+- **Formally verified core:** 26 TLA+ invariants (TLC model checker) and 35 Alloy facts with 22
+  assertions; 85 adversarial red-team cases; **4,220 automated tests passing (4,249 total)**.
+- **Three cross-language verifiers** (JavaScript, Python, Go) — independent implementations agreeing
+  byte-for-byte across the conformance suite, so auditors verify a bundle against source and
+  mathematics, not a vendor's word.
 - Runnable Proof-of-Curtailment reference implementation; zero new cryptography (Ed25519 over
   RFC-8785 canonical bytes).
 
