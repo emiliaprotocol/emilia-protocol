@@ -64,6 +64,12 @@ Activity conducted consistently with this policy is considered authorized, and w
 - **PGP:** Available on request for encrypted communications.
 - **Response SLA:** 48-hour acknowledgement, 7-day initial assessment.
 
+## Acknowledgments
+
+We thank the security researchers who have responsibly disclosed vulnerabilities and helped harden EMILIA Protocol:
+
+- **Tom Gaillard** — signoff authorization bypass (consume-time authority binding) and cross-tenant receipt read (IDOR); responsibly disclosed June 2026, remediated and re-tested by the reporter against production.
+
 ## Security Measures in Place
 
 ### Write Discipline (Append-Only Architecture)
