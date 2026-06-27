@@ -129,14 +129,26 @@ export function requireReceiptForOpenAIAgent(opts = {}) {
   }
 
   /**
-   * Decide a single interruption against a single receipt. Pure: no side effects
-   * EXCEPT marking a receipt_id consumed when (and only when) it is the valid
-   * receipt that earns an approve.
+   * Decide a single interruption against a single receipt.
+   *
+   * The decision NEVER carries the raw verifier output — only an allowlisted,
+   * sanitized shape ({decision, action, toolName, callId, reason} plus, on the
+   * approve path only, receipt_id + the accountable subject). A rejection never
+   * leaks the signer, the verifier's `detail`, or any other library internals.
+   *
+   * Consume-on-approve: when `decide` returns an `approve`, it marks the
+   * receipt_id consumed (replay defense) — and ONLY then. A reject (including a
+   * replayed or invalid receipt) never consumes anything, so a blocked approval
+   * stays retryable with a fresh, valid receipt. Replay is still checked here,
+   * before any approval, so a receipt can satisfy at most one interruption.
    */
   function decide(interruption, receipt) {
     const toolName = interruptionToolName(interruption);
     const callId = interruptionCallId(interruption);
     const args = interruptionArgs(interruption);
+    // Bind the receipt to THIS tool call. actionFor SHOULD incorporate the
+    // specific call identity (callId or a hash of args) so a single receipt
+    // cannot be reused across distinct tool calls — see the README note.
     const action = toolName != null ? actionFor(toolName, args) : null;
 
     const base = { action, toolName, callId };
@@ -155,14 +167,26 @@ export function requireReceiptForOpenAIAgent(opts = {}) {
       action, // binds the receipt's claim.action_type to THIS tool call
     });
     if (!v.ok) {
+      // Sanitized: only the reason code crosses the boundary — never v.signer,
+      // v.subject, or v.detail.
       return { decision: 'reject', ...base, reason: v.reason || 'invalid_receipt' };
     }
 
     // Replay defense: a receipt_id may earn an approval only once per process.
-    if (v.receipt_id && consumed.has(v.receipt_id)) {
+    // Belt-and-suspenders: also refuse if the SAME receipt has already been used
+    // for a DIFFERENT call (compound key), so one receipt can't satisfy two
+    // distinct interruptions even if actionFor collides.
+    const consumeKey = v.receipt_id;
+    const callKey = v.receipt_id && callId != null ? `${v.receipt_id}#${callId}` : null;
+    if (v.receipt_id && (consumed.has(consumeKey) || (callKey && consumed.has(callKey)))) {
       return { decision: 'reject', ...base, reason: 'receipt_replayed', receipt_id: v.receipt_id };
     }
-    if (v.receipt_id) consumed.add(v.receipt_id);
+    // Consume ONLY on the approve path, below — record both the receipt_id and
+    // the call-scoped key so a later call with the same receipt is refused.
+    if (v.receipt_id) {
+      consumed.add(consumeKey);
+      if (callKey) consumed.add(callKey);
+    }
 
     return {
       decision: 'approve',
@@ -222,13 +246,41 @@ export function requireReceiptForOpenAIAgent(opts = {}) {
     const rejected = [];
     const decisions = [];
 
+    // Undo a consumption recorded by decide() when the approval is not actually
+    // driven (no approve() to call, or approve() threw) — keeps it retryable.
+    const unconsume = (d) => {
+      if (!d.receipt_id) return;
+      consumed.delete(d.receipt_id);
+      if (d.callId != null) consumed.delete(`${d.receipt_id}#${d.callId}`);
+    };
+
     for (const interruption of interruptions) {
       const receipt = lookupReceipt(receipts, interruption);
       const d = decide(interruption, receipt);
       decisions.push(d);
       if (d.decision === 'approve') {
-        approved.push(interruption);
-        if (state && typeof state.approve === 'function') state.approve(interruption);
+        // The receipt was consumed inside decide() ONLY because this is an
+        // approve. Drive the SDK's approval now; if approve() is missing or
+        // throws, roll the consumption back so the (un-driven) approval stays
+        // retryable — a receipt is spent only when it actually drives an approve.
+        if (state && typeof state.approve === 'function') {
+          try {
+            state.approve(interruption);
+            approved.push(interruption);
+          } catch (err) {
+            unconsume(d);
+            d.decision = 'reject';
+            d.reason = 'approve_failed';
+            rejected.push(interruption);
+            if (state && typeof state.reject === 'function') {
+              state.reject(interruption, { message: `EMILIA: approve_failed` });
+            }
+          }
+        } else {
+          // No approve() to drive -> do not spend the receipt.
+          unconsume(d);
+          approved.push(interruption);
+        }
       } else {
         rejected.push(interruption);
         if (state && typeof state.reject === 'function') {

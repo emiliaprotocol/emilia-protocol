@@ -47,11 +47,15 @@ const cancelOrder = tool({
 
 const agent = new Agent({ name: 'Ops', tools: [cancelOrder] });
 
-// One gate, configured once. actionFor maps a tool call -> canonical EP action_type.
+// One gate, configured once. actionFor maps a tool call -> the canonical EP
+// action_type the receipt must be bound to. For real safety, bind to the
+// SPECIFIC target the call acts on (not just the tool name) so a receipt for one
+// resource can't authorize another — and fold in the call identity so the same
+// receipt can't be reused across two different tool calls.
 const gate = requireReceiptForOpenAIAgent({
   trustedKeys: [process.env.EMILIA_ISSUER_KEY], // base64url SPKI-DER issuer key(s) you trust
   maxAgeSec: 900,
-  actionFor: (toolName /*, args */) => `openai.tool.${toolName}`,
+  actionFor: (toolName, args) => `openai.tool.${toolName}:${args?.orderId ?? ''}`,
 });
 
 let result = await run(agent, 'Cancel order 4242');
@@ -102,6 +106,9 @@ For every pending tool-approval interruption:
 ## Production note
 
 - **Pin `trustedKeys`** to your real issuer key(s). **Drop `allowInlineKey`** (it only proves integrity, never trust).
+- **Bind to the target, not just the tool.** Make `actionFor` incorporate the specific resource the call touches (and ideally the `callId` / an args hash), so a receipt minted for one action can't be replayed against a different one.
+- A receipt is **consumed only when it actually drives an `approve`** — never on a reject — so a blocked approval stays retryable with a fresh, valid receipt.
+- **Rejections are sanitized:** a reject decision carries only a machine-readable `reason` code, never the signer, the subject, or verifier internals.
 - The **consumed-receipt set is per-process** (replay defense across restarts/instances needs a shared store — see `@emilia-protocol/gate`).
 - This is **necessary, not sufficient**. It composes with — and never substitutes for — the resource owner's own authorization and policy checks. It makes the human approval that OpenAI already asks for into auditable, portable evidence; it does not decide whether the action *should* be allowed.
 

@@ -36,7 +36,13 @@ export interface RequireReceiptForOpenAIAgentOptions {
   allowInlineKey?: boolean;
   /** Reject receipts older than this many seconds. Default 900. */
   maxAgeSec?: number;
-  /** REQUIRED. Map a tool call to the canonical EP action_type the receipt must bind. */
+  /**
+   * REQUIRED. Map a tool call to the canonical EP action_type the receipt must
+   * bind. For per-target binding, incorporate the SPECIFIC resource the call
+   * acts on (e.g. `payment.release:${args.destination}`); to stop a receipt
+   * being reused across distinct calls, fold in the call identity (the
+   * interruption's callId or a stable hash of args).
+   */
   actionFor: (toolName: string, args: unknown) => string;
 }
 
