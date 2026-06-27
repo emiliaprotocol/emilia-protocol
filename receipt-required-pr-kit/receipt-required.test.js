@@ -47,7 +47,9 @@ test('RR-1: missing -> 428, valid -> runs, replay -> refused, forged -> refused'
     dispatch,
     tool: 'delete_all_records',
     args: { table: 'customers' },
-    action: 'db.records.delete_all',
+    // The receipt is bound to the SPECIFIC target the dispatcher acts on, not
+    // just the action type (see example-dangerous-action.js): <action>:<table>.
+    action: 'db.records.delete_all:customers',
     issueReceipt,
     manifest: MANIFEST,
   });
@@ -57,4 +59,31 @@ test('RR-1: missing -> 428, valid -> runs, replay -> refused, forged -> refused'
   assert.equal(result.checks.replay_refused, true, 'replayed receipt should be refused');
   assert.equal(result.checks.forged_refused, true, 'forged receipt should be refused');
   assert.equal(result.level, 'RR-1', `expected RR-1, got ${result.level} (${JSON.stringify(result.detail)})`);
+});
+
+test('cross-target binding: a receipt for one table cannot wipe another', async () => {
+  // Mint a receipt that authorizes wiping the "customers" table only.
+  const receiptForCustomers = issueReceipt('db.records.delete_all:customers');
+
+  // Sanity: it works on its own target.
+  const onTarget = await dispatch('delete_all_records', { table: 'customers' }, receiptForCustomers);
+  assert.equal(onTarget.status, 200, 'receipt should run against its bound table');
+
+  // Same action type, DIFFERENT table -> must be refused (action_mismatch), and
+  // the rejection must be sanitized to just a reason code.
+  const offTarget = await dispatch('delete_all_records', { table: 'orders' }, issueReceipt('db.records.delete_all:customers'));
+  assert.notEqual(offTarget.status, 200, 'a customers receipt must not wipe orders');
+  assert.equal(offTarget.body.rejected.reason, 'action_mismatch', 'cross-target refusal should be action_mismatch');
+  assert.deepEqual(Object.keys(offTarget.body.rejected), ['reason'], 'rejection must be sanitized to { reason } only');
+});
+
+test('consume-after-success: a failed action leaves the receipt retryable', async () => {
+  const receipt = issueReceipt('db.records.delete_all:inventory');
+  // First call succeeds and consumes the receipt.
+  const first = await dispatch('delete_all_records', { table: 'inventory' }, receipt);
+  assert.equal(first.status, 200);
+  // Replaying the now-consumed receipt is refused.
+  const replay = await dispatch('delete_all_records', { table: 'inventory' }, receipt);
+  assert.notEqual(replay.status, 200, 'consumed receipt should be refused on replay');
+  assert.equal(replay.body.rejected.reason, 'replay_refused');
 });

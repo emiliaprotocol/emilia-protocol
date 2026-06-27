@@ -47,7 +47,12 @@ export async function dispatch(name, args = {}, receipt = null) {
     return { status: 200, body: performDangerousAction(name, args) };
   }
 
-  const action = req.action_type;
+  // Bind the receipt to the SPECIFIC target, not just the action type: a receipt
+  // approving "wipe customers" must not also wipe "orders". We fold the target
+  // arg into the action string the receipt has to be bound to. (Pick whichever
+  // arg identifies your resource; here the dangerous tool's `table`.)
+  const target = args?.table;
+  const action = target != null ? `${req.action_type}:${target}` : req.action_type;
   const opts = { statusCode: RR, manifestUrl: MANIFEST_URL, maxAgeSec: req.max_age_sec, assuranceClass: req.assurance_class };
 
   // 1. No receipt -> 428 Receipt Required, telling the caller exactly what to bring.
@@ -55,7 +60,7 @@ export async function dispatch(name, args = {}, receipt = null) {
     return { status: RR, body: receiptChallenge(action, `"${name}" requires an authorization receipt (per ${MANIFEST_URL}).`, opts) };
   }
 
-  // 2/4. Verify offline: signature, freshness, and action-binding.
+  // 2/4. Verify offline: signature, freshness, and action-binding (now target-bound).
   //
   // SECURITY NOTE: `allowInlineKey: true` trusts the key embedded in the
   // receipt — fine for a self-contained demo, NOT for production. In production
@@ -63,15 +68,27 @@ export async function dispatch(name, args = {}, receipt = null) {
   // self-signed receipt cannot authorize anything.
   const v = verifyEmiliaReceipt(receipt, { allowInlineKey: true, action, maxAgeSec: req.max_age_sec });
   if (!v.ok) {
-    return { status: RR, body: { ...receiptChallenge(action, `Receipt rejected: ${v.reason}.`, opts), rejected: v } };
+    // Sanitized: a rejection never echoes the full verified object (signer /
+    // subject / library detail) — only the reason code.
+    return { status: RR, body: { ...receiptChallenge(action, `Receipt rejected: ${v.reason}.`, opts), rejected: { reason: v.reason } } };
   }
 
-  // 3. Replay -> refused (one-time consumption).
+  // 3. Replay -> refused (one-time consumption). Checked at verify time so a
+  // receipt can never drive two actions, even before it is committed.
   if (consumed.has(v.receipt_id)) {
-    return { status: RR, body: { rejected: { reason: 'replay_refused' }, ...receiptChallenge(action, `Receipt ${v.receipt_id} already consumed.`, opts) } };
+    return { status: RR, body: { ...receiptChallenge(action, `Receipt ${v.receipt_id} already consumed.`, opts), rejected: { reason: 'replay_refused' } } };
+  }
+
+  // Valid, fresh, target-bound, first use -> run the action, and commit-consume
+  // the receipt ONLY after it succeeds. If performDangerousAction throws, the
+  // receipt is never consumed and the approval stays retryable.
+  let outcome;
+  try {
+    outcome = performDangerousAction(name, args);
+  } catch (err) {
+    return { status: 500, body: { error: 'action_failed', detail: String(err?.message ?? err) } };
   }
   consumed.add(v.receipt_id);
 
-  // Valid, fresh, action-bound, first use -> the action runs.
-  return { status: 200, body: { ...performDangerousAction(name, args), evidence: { receipt_id: v.receipt_id, outcome: v.outcome, signer: v.signer } } };
+  return { status: 200, body: { ...outcome, evidence: { receipt_id: v.receipt_id, outcome: v.outcome, signer: v.signer } } };
 }
