@@ -1,0 +1,22 @@
+# Add "Receipt Required" to one dangerous action
+
+This PR puts a **Receipt Required** rail in front of a single irreversible action (`delete_all_records`). It's small, has no backend dependency, and is fully offline.
+
+**What it does** — the action refuses to run unless it arrives with a verifiable authorization receipt (proof a named human approved *this exact action*):
+
+| Check | Behavior |
+|---|---|
+| Missing receipt | `428 Receipt Required` (refused) |
+| Valid receipt | action runs (`200`) |
+| Replayed receipt | refused (one-time consumption) |
+| Forged receipt | refused (signature / action-binding fails) |
+
+**How it's verified** — `receipt-required.test.js` runs the four checks on every push via the published conformance harness and asserts level **RR-1**. The claim can't go stale.
+
+**What it is / isn't** — this is *not* auth ("who are you") or permissions ("are you allowed"). It's portable accountability evidence the service keeps for its own liability: it proves a named human authorized the action — a *necessary, not sufficient*, condition. It does not prove the decision was wise or lawful.
+
+**Dependency** — one package, `@emilia-protocol/require-receipt` (Apache-2.0), which uses the open `@emilia-protocol/verify` reference verifier. No API key, no account, no EMILIA server trusted. Spec: IETF Internet-Drafts `draft-schrock-ep-authorization-receipts` and `draft-schrock-ep-enforcement-point` (individual I-Ds, not RFCs).
+
+**Production note** — the demo verifies with `allowInlineKey: true` for self-containment. In production, pin `trustedKeys: [<issuer SPKI>]` and drop `allowInlineKey` so a self-signed receipt can't authorize anything.
+
+Happy to adjust which action this guards, or the assurance class, before merge.

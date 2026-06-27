@@ -1,0 +1,17 @@
+{
+  "@version": "EP-ACTION-RISK-MANIFEST-v0.1",
+  "service": { "name": "your-service", "manifest_url": "/.well-known/agent-actions.json" },
+  "actions": [
+    {
+      "id": "mcp.delete_all_records",
+      "description": "Irreversible: deletes every record in the table. Requires a named human's authorization receipt.",
+      "match": { "protocol": "mcp", "tool": "delete_all_records" },
+      "action_type": "db.records.delete_all",
+      "risk": "critical",
+      "receipt_required": true,
+      "assurance_class": "class_a",
+      "max_age_sec": 900,
+      "quorum": { "required": false }
+    }
+  ]
+}
