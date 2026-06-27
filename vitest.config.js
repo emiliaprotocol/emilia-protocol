@@ -28,7 +28,7 @@ export default defineConfig({
     // examples/** are reference implementations with their own node:test suites
     // (e.g. robot-sidecar) — same reason as packages/**: run via `node --test`,
     // not vitest, which would otherwise fail with "No test suite found".
-    exclude: ['e2e/**', '**/node_modules/**', 'dist/**', '.next/**', 'packages/**', 'apps/**', 'examples/**'],
+    exclude: ['e2e/**', '**/node_modules/**', 'dist/**', '.next/**', 'packages/**', 'apps/**', 'examples/**', 'receipt-required-pr-kit/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
