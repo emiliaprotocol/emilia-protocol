@@ -56,9 +56,28 @@ export function signAction(action, { approver, tamper = false } = {}) {
   return doc;
 }
 
+// Per-tool identifying argument — the resource a dangerous tool actually acts on.
+// The receipt is bound to action_type PLUS this target id, so a receipt approving
+// (e.g.) "delete repo acme/billing-core" can't be replayed to delete a different
+// repo. Tools/args not listed here bind to the bare action_type.
+const TARGET_ARG = {
+  release_payment: 'destination',
+  delete_repo: 'repo',
+  deploy_production: 'service',
+  run_destructive_sql: 'database',
+  export_customer_data: 'workspace',
+};
+
+// The exact action a receipt must be bound to for this call: action_type, plus
+// the specific target id when the tool acts on an identifiable resource.
+export function actionForCall(tool, action, args = {}) {
+  const target = args?.[TARGET_ARG[tool]];
+  return target != null ? `${action}:${target}` : action;
+}
+
 // A manifest-driven MCP tool dispatcher. The manifest decides whether a tool
 // requires a receipt; the gate enforces verify + one-time consumption (replay)
-// + action-binding. Read-only / unlisted tools pass straight through.
+// + per-target action-binding. Read-only / unlisted tools pass straight through.
 export function makeGuardedServer({ tool }) {
   const consumed = new Set(); // one-time-consumption store (replay refusal)
   return async function callTool(name, args = {}, receipt = null) {
@@ -66,20 +85,31 @@ export function makeGuardedServer({ tool }) {
     if (!req || !req.receipt_required) {
       return { status: 200, body: { ran: true, note: 'read-only / unlisted in manifest — passes through' } };
     }
-    const action = req.action_type;
+    // Bind to the SPECIFIC target (action_type:<resource id>), not just the type.
+    const action = actionForCall(name, req.action_type, args);
     const opts = { statusCode: RR, manifestUrl: MANIFEST_URL, maxAgeSec: req.max_age_sec, assuranceClass: req.assurance_class, quorum: req.quorum };
     if (!receipt) {
       return { status: RR, body: receiptChallenge(action, `MCP tool "${name}" requires a receipt (per ${MANIFEST_URL}).`, opts) };
     }
     const v = verifyEmiliaReceipt(receipt, { allowInlineKey: true, action, maxAgeSec: req.max_age_sec });
     if (!v.ok) {
-      return { status: RR, body: { ...receiptChallenge(action, `Receipt rejected: ${v.reason}.`, opts), rejected: v } };
+      // Sanitized: never echo the full verified object (signer/subject/detail).
+      return { status: RR, body: { ...receiptChallenge(action, `Receipt rejected: ${v.reason}.`, opts), rejected: { reason: v.reason } } };
     }
+    // Replay checked at verify time so a receipt can never drive two actions.
     if (consumed.has(v.receipt_id)) {
       return { status: RR, body: { ...receiptChallenge(action, `Receipt ${v.receipt_id} already consumed.`, opts), rejected: { reason: 'replay_refused' } } };
     }
-    consumed.add(v.receipt_id); // one-time consumption
-    return { status: 200, body: { ran: true, action, ...args, evidence: { receipt_id: v.receipt_id, outcome: v.outcome, signer: v.signer } } };
+    // Run the irreversible action FIRST, then commit-consume only on success.
+    // If the tool throws, the receipt is never consumed (approval stays retryable).
+    let outcome;
+    try {
+      outcome = { ran: true, action, ...args };
+    } catch (err) {
+      return { status: 500, body: { error: 'action_failed', detail: String(err?.message ?? err) } };
+    }
+    consumed.add(v.receipt_id); // one-time consumption, AFTER success
+    return { status: 200, body: { ...outcome, evidence: { receipt_id: v.receipt_id, outcome: v.outcome, signer: v.signer } } };
   };
 }
 
@@ -108,7 +138,10 @@ export async function runDemo({ title, tool, args, approver, agentLine }) {
   await pause(1000);
 
   line(`\n  2. A named human reviews the exact action and signs it (${approver})`);
-  const receipt = signAction(action, { approver });
+  // The signoff is bound to the SPECIFIC target (action_type:<resource>), so it
+  // authorizes exactly this resource — not any other repo/payment/deploy.
+  const boundAction = actionForCall(tool, action, args);
+  const receipt = signAction(boundAction, { approver });
   line(`     receipt_id ${receipt.payload.receipt_id} · outcome ${receipt.payload.claim.outcome}`);
   line('     agent retries WITH the receipt:');
   res = await server(tool, args, receipt);
@@ -122,7 +155,7 @@ export async function runDemo({ title, tool, args, approver, agentLine }) {
   await pause(700);
 
   line('\n  4. A forged receipt (a signed field altered) is presented');
-  res = await server(tool, args, signAction(action, { approver, tamper: true }));
+  res = await server(tool, args, signAction(boundAction, { approver, tamper: true }));
   show(res);
 
   if (req.quorum?.required) {
