@@ -17,11 +17,11 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import {
-  verifyEmiliaReceipt,
   receiptChallenge,
   findActionRequirement,
   RECEIPT_REQUIRED_STATUS,
 } from '../../packages/require-receipt/index.js';
+import { makeReceiptGate } from '../../packages/require-receipt/gate.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MANIFEST = JSON.parse(readFileSync(resolve(HERE, '../../public/.well-known/agent-actions.json'), 'utf8'));
@@ -76,40 +76,48 @@ export function actionForCall(tool, action, args = {}) {
 }
 
 // A manifest-driven MCP tool dispatcher. The manifest decides whether a tool
-// requires a receipt; the gate enforces verify + one-time consumption (replay)
-// + per-target action-binding. Read-only / unlisted tools pass straight through.
+// requires a receipt; the canonical makeReceiptGate enforces verify + per-target
+// action-binding + reserve→run→commit-on-success/release-on-failure (replay-safe,
+// one-time consumption) + sanitized {reason} rejections. Read-only / unlisted
+// tools pass straight through. One gate PER action_type (each keeps its own
+// consumed store) so the binding/replay guarantees are per-resource.
 export function makeGuardedServer({ tool }) {
-  const consumed = new Set(); // one-time-consumption store (replay refusal)
+  const gates = new Map(); // action_type -> makeReceiptGate (own consumed store)
+  const gateFor = (req) => {
+    let gate = gates.get(req.action_type);
+    if (!gate) {
+      gate = makeReceiptGate({
+        action: req.action_type, // gate appends ":<target>" for the bound action
+        allowInlineKey: true,
+        maxAgeSec: req.max_age_sec,
+        statusCode: RR,
+        manifestUrl: MANIFEST_URL,
+        assuranceClass: req.assurance_class,
+      });
+      gates.set(req.action_type, gate);
+    }
+    return gate;
+  };
+
   return async function callTool(name, args = {}, receipt = null) {
     const req = findActionRequirement(MANIFEST, { protocol: 'mcp', tool: name });
     if (!req || !req.receipt_required) {
       return { status: 200, body: { ran: true, note: 'read-only / unlisted in manifest — passes through' } };
     }
-    // Bind to the SPECIFIC target (action_type:<resource id>), not just the type.
-    const action = actionForCall(name, req.action_type, args);
-    const opts = { statusCode: RR, manifestUrl: MANIFEST_URL, maxAgeSec: req.max_age_sec, assuranceClass: req.assurance_class, quorum: req.quorum };
-    if (!receipt) {
-      return { status: RR, body: receiptChallenge(action, `MCP tool "${name}" requires a receipt (per ${MANIFEST_URL}).`, opts) };
-    }
-    const v = verifyEmiliaReceipt(receipt, { allowInlineKey: true, action, maxAgeSec: req.max_age_sec });
-    if (!v.ok) {
-      // Sanitized: never echo the full verified object (signer/subject/detail).
-      return { status: RR, body: { ...receiptChallenge(action, `Receipt rejected: ${v.reason}.`, opts), rejected: { reason: v.reason } } };
-    }
-    // Replay checked at verify time so a receipt can never drive two actions.
-    if (consumed.has(v.receipt_id)) {
-      return { status: RR, body: { ...receiptChallenge(action, `Receipt ${v.receipt_id} already consumed.`, opts), rejected: { reason: 'replay_refused' } } };
-    }
-    // Run the irreversible action FIRST, then commit-consume only on success.
-    // If the tool throws, the receipt is never consumed (approval stays retryable).
-    let outcome;
-    try {
-      outcome = { ran: true, action, ...args };
-    } catch (err) {
-      return { status: 500, body: { error: 'action_failed', detail: String(err?.message ?? err) } };
-    }
-    consumed.add(v.receipt_id); // one-time consumption, AFTER success
-    return { status: 200, body: { ...outcome, evidence: { receipt_id: v.receipt_id, outcome: v.outcome, signer: v.signer } } };
+    // The identifying arg (the resource this dangerous tool acts on); the gate
+    // folds it into the bound action as action_type:<target>, so a receipt for
+    // one resource can't drive another. null -> binds to the bare action_type.
+    const target = args?.[TARGET_ARG[name]] ?? undefined;
+    const gate = gateFor(req);
+    const action = gate.boundActionFor(target);
+
+    // run() = verify+reserve → perform → commit on success / release on failure.
+    const res = await gate.run(receipt, { target }, async () => ({ ran: true, action, ...args }));
+    if (!res.ok) return { status: res.status, body: res.body }; // 428 challenge / {rejected:{reason}}
+    return {
+      status: 200,
+      body: { ...res.result, evidence: { receipt_id: res.receiptId, outcome: res.outcome, signer: res.signer } },
+    };
   };
 }
 

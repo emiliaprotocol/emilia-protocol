@@ -40,10 +40,14 @@
 // by relative path — the same convention @emilia-protocol/gate uses. When this
 // package is installed from npm, the published build resolves the bare
 // "@emilia-protocol/require-receipt" specifier; both point at the same module.
-import { verifyEmiliaReceipt } from '../require-receipt/index.js';
+// The canonical makeReceiptGate encodes verify + target binding + reserve→
+// commit/release replay safety + sanitized {reason} rejections in one place.
+import { makeReceiptGate } from '../require-receipt/gate.js';
 
-/** Process-local set of consumed receipt_ids (replay defense). Per-process only. */
+/** Process-local set of consumed receipt_ids (replay defense). Per-process only.
+ *  Shared across every per-action gate so one receipt is spent at most once. */
 const consumed = new Set();
+const sharedStore = { has: (id) => consumed.has(id), add: (id) => consumed.add(id) };
 
 /** Reset the consumed-receipt set. Test/ops helper — not a production control. */
 export function _resetConsumed() {
@@ -128,6 +132,26 @@ export function requireReceiptForOpenAIAgent(opts = {}) {
     throw new TypeError('requireReceiptForOpenAIAgent: opts.actionFor (toolName, args) => action_type is required');
   }
 
+  // One canonical gate per bound action. The action_type IS the binding (the
+  // verifier matches the receipt's claim.action_type to it), so callId is NOT
+  // folded into the gate's action — doing so would break verification against a
+  // receipt minted for the bare action. All gates share one consumed store so a
+  // receipt is spent at most once across calls; the compound receipt_id#callId
+  // key (below) is the belt-and-suspenders cross-call defense.
+  const gates = new Map();
+  const gateFor = (action) => {
+    let gate = gates.get(action);
+    if (!gate) {
+      gate = makeReceiptGate({ action, trustedKeys, allowInlineKey, maxAgeSec, store: sharedStore });
+      gates.set(action, gate);
+    }
+    return gate;
+  };
+
+  // Track the reservation a decide() approval holds, so resolve() can commit it
+  // (on a driven approve) or release it (rollback) — keyed by receipt_id.
+  const pending = new Map();
+
   /**
    * Decide a single interruption against a single receipt.
    *
@@ -160,40 +184,49 @@ export function requireReceiptForOpenAIAgent(opts = {}) {
       return { decision: 'reject', ...base, reason: 'no_receipt_for_interruption' };
     }
 
-    const v = verifyEmiliaReceipt(receipt, {
-      trustedKeys,
-      allowInlineKey,
-      maxAgeSec,
-      action, // binds the receipt's claim.action_type to THIS tool call
-    });
-    if (!v.ok) {
-      // Sanitized: only the reason code crosses the boundary — never v.signer,
-      // v.subject, or v.detail.
-      return { decision: 'reject', ...base, reason: v.reason || 'invalid_receipt' };
+    // The action_type is the binding — the gate verifies the receipt against it.
+    // callId is NOT passed as a target (that would change the verified binding);
+    // it is only used for the compound cross-call replay key below.
+    const gate = gateFor(action);
+
+    // Belt-and-suspenders cross-call defense: refuse if the SAME receipt was
+    // already used for a DIFFERENT call. We can only check this once we know the
+    // receipt_id, so peek at it from the receipt before the gate runs.
+    const receiptId = receipt?.payload?.receipt_id;
+    const callKey = receiptId && callId != null ? `${receiptId}#${callId}` : null;
+
+    // gate.check verifies (sanitized reason), enforces action binding + trust,
+    // and reserves the receipt (one-time consumption / replay safety).
+    const c = gate.check(receipt);
+    if (!c.ok) {
+      // Map the gate's sanitized refusal to this adapter's decision vocabulary.
+      // The gate uses `replay_refused`; this API has long exposed `receipt_replayed`.
+      const reason = c.body?.rejected?.reason || 'invalid_receipt';
+      if (reason === 'replay_refused') {
+        return { decision: 'reject', ...base, reason: 'receipt_replayed', receipt_id: receiptId };
+      }
+      return { decision: 'reject', ...base, reason };
     }
 
-    // Replay defense: a receipt_id may earn an approval only once per process.
-    // Belt-and-suspenders: also refuse if the SAME receipt has already been used
-    // for a DIFFERENT call (compound key), so one receipt can't satisfy two
-    // distinct interruptions even if actionFor collides.
-    const consumeKey = v.receipt_id;
-    const callKey = v.receipt_id && callId != null ? `${v.receipt_id}#${callId}` : null;
-    if (v.receipt_id && (consumed.has(consumeKey) || (callKey && consumed.has(callKey)))) {
-      return { decision: 'reject', ...base, reason: 'receipt_replayed', receipt_id: v.receipt_id };
+    // The gate cleared verify + bare-receipt_id replay. Now apply the compound
+    // call-scoped guard: if this exact receipt already drove a DIFFERENT call,
+    // refuse and release the reservation the gate just took.
+    if (callKey && consumed.has(callKey)) {
+      gate.release(c.receiptId);
+      return { decision: 'reject', ...base, reason: 'receipt_replayed', receipt_id: c.receiptId };
     }
-    // Consume ONLY on the approve path, below — record both the receipt_id and
-    // the call-scoped key so a later call with the same receipt is refused.
-    if (v.receipt_id) {
-      consumed.add(consumeKey);
-      if (callKey) consumed.add(callKey);
-    }
+
+    // Record the reservation so resolve() can commit (driven approve) or release
+    // (rollback). decide() reserves but does NOT commit — a standalone approve
+    // that is never driven leaves the receipt retryable, matching prior behavior.
+    pending.set(c.receiptId, { gate, callKey });
 
     return {
       decision: 'approve',
       ...base,
       reason: 'valid_action_bound_receipt',
-      receipt_id: v.receipt_id,
-      subject: v.subject,
+      receipt_id: c.receiptId,
+      subject: c.subject,
     };
   }
 
@@ -246,12 +279,27 @@ export function requireReceiptForOpenAIAgent(opts = {}) {
     const rejected = [];
     const decisions = [];
 
-    // Undo a consumption recorded by decide() when the approval is not actually
+    // Release the reservation decide() took when the approval is not actually
     // driven (no approve() to call, or approve() threw) — keeps it retryable.
-    const unconsume = (d) => {
+    const releasePending = (d) => {
       if (!d.receipt_id) return;
-      consumed.delete(d.receipt_id);
-      if (d.callId != null) consumed.delete(`${d.receipt_id}#${d.callId}`);
+      const p = pending.get(d.receipt_id);
+      if (p) {
+        p.gate.release(d.receipt_id);
+        pending.delete(d.receipt_id);
+      }
+    };
+
+    // Finalize one-time consumption for a driven approve: commit in the gate and
+    // also record the compound call-scoped key for the cross-call replay guard.
+    const commitPending = (d) => {
+      if (!d.receipt_id) return;
+      const p = pending.get(d.receipt_id);
+      if (p) {
+        p.gate.commit(d.receipt_id); // moves receipt_id into the shared store
+        if (p.callKey) consumed.add(p.callKey);
+        pending.delete(d.receipt_id);
+      }
     };
 
     for (const interruption of interruptions) {
@@ -259,16 +307,17 @@ export function requireReceiptForOpenAIAgent(opts = {}) {
       const d = decide(interruption, receipt);
       decisions.push(d);
       if (d.decision === 'approve') {
-        // The receipt was consumed inside decide() ONLY because this is an
-        // approve. Drive the SDK's approval now; if approve() is missing or
-        // throws, roll the consumption back so the (un-driven) approval stays
-        // retryable — a receipt is spent only when it actually drives an approve.
+        // decide() RESERVED the receipt for this approve. Drive the SDK's
+        // approval now; commit (spend) only if approve() succeeds. If approve()
+        // is missing or throws, release the reservation so the (un-driven)
+        // approval stays retryable — a receipt is spent only when it drives one.
         if (state && typeof state.approve === 'function') {
           try {
             state.approve(interruption);
+            commitPending(d);
             approved.push(interruption);
           } catch (err) {
-            unconsume(d);
+            releasePending(d);
             d.decision = 'reject';
             d.reason = 'approve_failed';
             rejected.push(interruption);
@@ -278,7 +327,7 @@ export function requireReceiptForOpenAIAgent(opts = {}) {
           }
         } else {
           // No approve() to drive -> do not spend the receipt.
-          unconsume(d);
+          releasePending(d);
           approved.push(interruption);
         }
       } else {
