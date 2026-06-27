@@ -44,7 +44,7 @@ key — DRP and peers bind only a public key) and **conformance + formal verific
 hand-rolling 4–5-primitive "composite proofs," but **no shared composition standard** for the
 JSON/JCS receipt cluster. EAT detached-bundles (CBOR) + SCITT exist but nothing bridges the
 JSON world to them. → **EP-AEC (Authorization Evidence Chain) is aimed exactly here and is
-written but NOT YET FILED.** Filing it claims the single most-validated open slot.
+FILED as an individual I-D (-00, datatracker, 2026-06-22).** It claims the single most-validated open slot.
 
 **Gap C — Crypto-bound human oversight *inside the compliance receipts.*** ACTA / ASQAV /
 AgentROA — the compliance-profile drafts regulators will actually cite — treat human oversight

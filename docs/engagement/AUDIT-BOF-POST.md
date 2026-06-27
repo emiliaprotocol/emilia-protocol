@@ -6,11 +6,10 @@ Communications").
 **Thread:** *"Proposed charter text for AUDIT BOF - Please provide feedback before Friday!"*
 (Scott Courtney). Root: https://mailarchive.ietf.org/arch/msg/agent2agent/rQ5WMw9Bkwa5a1TxMGclM1f3ytw/
 **⚠️ Send checklist (all three required):**
-1. **File AEC first.** The post cites three I-Ds; `draft-schrock-ep-authorization-receipts` (-02)
-   and `draft-schrock-ep-quorum` (-01) are live on datatracker, but
-   `draft-schrock-ep-authorization-evidence-chain` is NOT filed yet — its link 404s until you
-   upload `standards/draft-schrock-ep-authorization-evidence-chain-00.{xml,txt}`. File it, confirm
-   the datatracker URL resolves, THEN send.
+1. **Links live (verified 2026-06-27).** All three cited I-Ds are on datatracker:
+   `draft-schrock-ep-authorization-receipts` (-03), `draft-schrock-ep-quorum` (-01), and
+   `draft-schrock-ep-authorization-evidence-chain` (-00). No pre-send filing needed. (Individual
+   Internet-Drafts — not IETF-endorsed, not RFCs.)
 2. **Subscribe `team@emiliaprotocol.ai`** — IETF lists only accept posts from subscribed addresses.
    Email `agent2agent-join@ietf.org` from team@ (empty subject/body), reply to the confirmation.
    Post from that same address or it bounces.
