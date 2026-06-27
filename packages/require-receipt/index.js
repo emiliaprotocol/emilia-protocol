@@ -317,3 +317,7 @@ const requireReceiptExports = {
 };
 
 export default requireReceiptExports;
+
+// Canonical hardened gate: target binding + consume-after-success + sanitized
+// rejections, in one reviewed place. Prefer this over hand-rolling a guard.
+export { makeReceiptGate } from './gate.js';
