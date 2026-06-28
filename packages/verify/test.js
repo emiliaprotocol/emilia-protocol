@@ -13,6 +13,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import {
+  canonicalize as canonicalizeFromVerifier,
+  isCanonicalizable,
   verifyReceipt,
   verifyMerkleAnchor,
   verifyCommitmentProof,
@@ -63,6 +65,22 @@ test('verifyReceipt: round-trips flat payload', () => {
   const result = verifyReceipt(doc, publicKeyBase64url);
   assert.equal(result.valid, true);
   assert.equal(result.checks.signature, true);
+});
+
+test('canonicalize: consensus-split edge vector is pinned to JS/JCS bytes', () => {
+  const payload = {
+    '@version': 'EP-RECEIPT-v1',
+    action: { action_type: 'payment.release', amount_usd: 1.0, risk_score: -0.0 },
+    context: { '\uFFFD': 'replacement_char', '🙂': 'slight_smile' },
+    entity_id: 'ep_entity_poc_test',
+    signoffs: [],
+  };
+  const canonical = canonicalizeFromVerifier(payload);
+  assert.equal(canonical, '{"@version":"EP-RECEIPT-v1","action":{"action_type":"payment.release","amount_usd":1,"risk_score":0},"context":{"🙂":"slight_smile","�":"replacement_char"},"entity_id":"ep_entity_poc_test","signoffs":[]}');
+  assert.equal(crypto.createHash('sha256').update(canonical, 'utf8').digest('hex'), '49c642930186d4ed0324c6099f077c38a16cac19e327c2f58bb76f19a33351b2');
+  assert.equal(isCanonicalizable(payload), true);
+  assert.equal(isCanonicalizable({ unsafe: 1e20 }), false);
+  assert.equal(isCanonicalizable({ fractional: 1.25 }), false);
 });
 
 // ─── Round-trip on DEEPLY-NESTED payloads (the v1.0.0 regression) ──────────

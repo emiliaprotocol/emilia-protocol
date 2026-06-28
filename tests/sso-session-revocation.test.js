@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-const store = vi.hoisted(() => ({ revokedJtis: new Set(), cutoffs: new Map() }));
+const store = vi.hoisted(() => ({ revokedJtis: new Set(), cutoffs: new Map(), revocationStoreDown: false }));
 
 vi.mock('@/lib/supabase', () => ({
   getServiceClient: () => ({
@@ -17,6 +17,9 @@ vi.mock('@/lib/supabase', () => ({
         select() { return chain; },
         eq(col, val) { filters[col] = val; return chain; },
         async maybeSingle() {
+          if (store.revocationStoreDown) {
+            return { data: null, error: { message: 'revocation store unavailable' } };
+          }
           if (table === 'revoked_sessions') {
             return { data: store.revokedJtis.has(filters.jti) ? { jti: filters.jti } : null, error: null };
           }
@@ -52,6 +55,7 @@ describe('SSO session revocation', () => {
   beforeEach(() => {
     store.revokedJtis.clear();
     store.cutoffs.clear();
+    store.revocationStoreDown = false;
   });
 
   it('mints a session carrying a jti, valid before revocation', async () => {
@@ -83,5 +87,11 @@ describe('SSO session revocation', () => {
     const ok = await revokeAllSessionsForSubject(identity.subject, identity.tenant);
     expect(ok).toBe(true);
     expect(store.cutoffs.has(`${identity.subject}|${identity.tenant}`)).toBe(true);
+  });
+
+  it('fails closed when revocation state cannot be verified', async () => {
+    const token = await mintSession(identity);
+    store.revocationStoreDown = true;
+    expect(await verifySession(token)).toBeNull();
   });
 });

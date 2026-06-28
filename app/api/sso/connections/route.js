@@ -6,6 +6,7 @@ export const runtime = 'nodejs';
 
 import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { upsertConnection, listConnections } from '@/lib/sso/config';
+import { validateSsoProviderUrl } from '@/lib/sso/url-policy';
 import { seal } from '@/lib/crypto/secret-box';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
@@ -28,8 +29,12 @@ export async function POST(request) {
     if (!body.saml_idp_entry_point || !body.saml_idp_cert) {
       return epProblem(400, 'missing_saml_fields', 'saml_idp_entry_point and saml_idp_cert are required');
     }
+    const entryPoint = validateSsoProviderUrl(body.saml_idp_entry_point, 'saml_idp_entry_point');
+    if (!entryPoint.valid) {
+      return epProblem(400, 'unsafe_sso_url', entryPoint.error);
+    }
     fields = {
-      saml_idp_entry_point: body.saml_idp_entry_point,
+      saml_idp_entry_point: entryPoint.url,
       saml_idp_cert: normalizeCert(body.saml_idp_cert),
       saml_audience: body.saml_audience || null,
       enabled: body.enabled !== false,
@@ -38,8 +43,12 @@ export async function POST(request) {
     if (!body.oidc_issuer || !body.oidc_client_id) {
       return epProblem(400, 'missing_oidc_fields', 'oidc_issuer and oidc_client_id are required');
     }
+    const issuer = validateSsoProviderUrl(body.oidc_issuer, 'oidc_issuer');
+    if (!issuer.valid) {
+      return epProblem(400, 'unsafe_sso_url', issuer.error);
+    }
     fields = {
-      oidc_issuer: body.oidc_issuer.replace(/\/$/, ''),
+      oidc_issuer: issuer.url,
       oidc_client_id: body.oidc_client_id,
       // Sealed at rest (AES-256-GCM, lib/crypto/secret-box); decrypted only at
       // token-exchange time in loadConnection.

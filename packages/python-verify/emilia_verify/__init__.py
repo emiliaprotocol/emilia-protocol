@@ -17,6 +17,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import math
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -24,29 +25,54 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import load_der_public_key
 
-__all__ = ["canonicalize", "verify_receipt", "verify_merkle_anchor", "VerifyResult", "evaluate_agent_binding"]
+__all__ = ["canonicalize", "is_canonicalizable", "verify_receipt", "verify_merkle_anchor", "VerifyResult", "evaluate_agent_binding"]
 
 SUPPORTED_VERSIONS = ("EP-RECEIPT-v1",)
+_SAFE_INT = 2 ** 53 - 1
+
+
+def _jcs_key_sort_key(key: str) -> bytes:
+    """Sort object member names by UTF-16 code units, matching ECMAScript/JCS."""
+    return str(key).encode("utf-16-be", "surrogatepass")
+
+
+def _canonical_number(value: int | float) -> str:
+    """Render the JSON-number subset EP signs exactly like JSON.stringify.
+
+    EP allows only safe integers in signed material. Because JSON has one
+    "number" type, Python may decode an integer-valued token such as ``1.0`` as
+    float; normalize that to ``1``. Non-integer or unsafe numbers remain outside
+    the profile and are rejected by verify_receipt before signing bytes are used.
+    """
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, float):
+        if not math.isfinite(value):
+            return "null"
+        if value == 0:
+            return "0"
+        if value.is_integer() and abs(value) <= _SAFE_INT:
+            return str(int(value))
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
 
 def canonicalize(value: Any) -> str:
     """Recursive canonical JSON — depth-first key sort at every level.
 
     Matches @emilia-protocol/verify `canonicalize()` byte-for-byte:
-    objects -> sorted keys, arrays preserved, scalars via JSON.stringify
-    semantics (json.dumps with ensure_ascii=False to mirror JS UTF-8 output).
+    objects -> UTF-16/JCS-sorted keys, arrays preserved, scalars via
+    JSON.stringify semantics.
     """
     if isinstance(value, dict):
         return "{" + ",".join(
-            json.dumps(k, ensure_ascii=False) + ":" + canonicalize(value[k])
-            for k in sorted(value.keys())
+            json.dumps(k, ensure_ascii=False, separators=(",", ":")) + ":" + canonicalize(value[k])
+            for k in sorted(value.keys(), key=_jcs_key_sort_key)
         ) + "}"
     if isinstance(value, (list, tuple)):
         return "[" + ",".join(canonicalize(v) for v in value) + "]"
-    return json.dumps(value, ensure_ascii=False)
-
-
-_SAFE_INT = 2 ** 53 - 1
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return _canonical_number(value)
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
 
 def is_canonicalizable(value: Any) -> bool:
@@ -62,7 +88,7 @@ def is_canonicalizable(value: Any) -> bool:
     if isinstance(value, bool):  # bool is a subclass of int — check before int
         return True
     if isinstance(value, float):
-        return False
+        return math.isfinite(value) and value.is_integer() and abs(value) <= _SAFE_INT
     if isinstance(value, int):
         return -_SAFE_INT <= value <= _SAFE_INT
     if isinstance(value, (list, tuple)):
@@ -148,6 +174,12 @@ def verify_receipt(doc: Any, public_key_base64url: str, strict: bool = False) ->
     sig = doc.get("signature") or {}
     if not doc.get("payload") or not sig.get("value") or not sig.get("algorithm"):
         return VerifyResult(False, checks, "Missing payload or signature")
+    if not is_canonicalizable(doc["payload"]):
+        return VerifyResult(
+            False,
+            checks,
+            "Payload is outside the EP canonicalization profile; use strings or safe integers in signed material",
+        )
 
     try:
         payload_bytes = canonicalize(doc["payload"]).encode("utf-8")

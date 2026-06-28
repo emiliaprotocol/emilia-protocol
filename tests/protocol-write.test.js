@@ -112,6 +112,11 @@ beforeEach(() => {
 
   // Default: abuse checks pass
   mockCheckAbuse.mockResolvedValue({ allowed: true });
+  mockCanonicalFileReport.mockResolvedValue({
+    report_id: 'ep_rpt_mock',
+    entity_id: 'ent_1',
+    display_name: 'Mock Entity',
+  });
 });
 
 // ============================================================================
@@ -194,12 +199,17 @@ describe('command validation', () => {
     })).rejects.toThrow('input.reason is required');
   });
 
-  it('rejects file_report without description', async () => {
-    await expect(protocolWrite({
+  it('accepts file_report without optional description', async () => {
+    const result = await protocolWrite({
       type: COMMAND_TYPES.FILE_REPORT,
-      input: { entity_id: 'ent_1', report_type: 'fraud' },
+      input: { entity_id: 'ent_1', report_type: 'wrongly_downgraded' },
       actor: null,
-    })).rejects.toThrow('input.description is required');
+    });
+    expect(result.report_id).toBe('ep_rpt_mock');
+    expect(mockCanonicalFileReport).toHaveBeenCalledWith(expect.objectContaining({
+      entity_id: 'ent_1',
+      report_type: 'wrongly_downgraded',
+    }));
   });
 });
 

@@ -109,6 +109,12 @@ describe('anonymous recon hardening', () => {
     expect(src).not.toContain('anomaly: result.anomaly');
   });
 
+  it('source guardrail: degraded trust evaluate fallback cannot allow from raw score', () => {
+    const src = source('app/api/trust/evaluate/route.js');
+    expect(src).toContain('degraded: true');
+    expect(src).not.toMatch(/score\s*>=\s*0\.6\)\s*decision\s*=\s*['"]allow['"]/);
+  });
+
   it('source guardrail: public UX surfaces do not fetch full trust profiles', () => {
     const publicSources = [
       source('public/embed.js'),

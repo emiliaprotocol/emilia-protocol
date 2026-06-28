@@ -6,8 +6,10 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -119,6 +121,7 @@ func TestCanonicalizeVectors(t *testing.T) {
 		{`{"z":[3,1,2],"a":{"y":true,"x":null},"s":"hi"}`, `{"a":{"x":null,"y":true},"s":"hi","z":[3,1,2]}`},
 		{`{"amount":50000,"ok":false}`, `{"amount":50000,"ok":false}`},
 		{`{"nested":{"b":1,"a":2}}`, `{"nested":{"a":2,"b":1}}`},
+		{`{"@version":"EP-RECEIPT-v1","action":{"action_type":"payment.release","amount_usd":1.0,"risk_score":-0.0},"context":{"�":"replacement_char","🙂":"slight_smile"},"entity_id":"ep_entity_poc_test","signoffs":[]}`, `{"@version":"EP-RECEIPT-v1","action":{"action_type":"payment.release","amount_usd":1,"risk_score":0},"context":{"🙂":"slight_smile","�":"replacement_char"},"entity_id":"ep_entity_poc_test","signoffs":[]}`},
 	}
 	for _, c := range cases {
 		got := Canonicalize(decodeT(t, []byte(c.in)))
@@ -129,6 +132,17 @@ func TestCanonicalizeVectors(t *testing.T) {
 	// String escaping matches JSON.stringify: quote, backslash, newline, tab.
 	if got := encodeString("a\"b\\c\n\t"); got != `"a\"b\\c\n\t"` {
 		t.Errorf("encodeString escaping wrong: %s", got)
+	}
+	edge := Canonicalize(decodeT(t, []byte(cases[3].in)))
+	sum := sha256.Sum256([]byte(edge))
+	if got := hex.EncodeToString(sum[:]); got != "49c642930186d4ed0324c6099f077c38a16cac19e327c2f58bb76f19a33351b2" {
+		t.Fatalf("edge vector hash mismatch: %s", got)
+	}
+	if IsCanonicalizable(decodeT(t, []byte(`{"unsafe":1e20}`))) {
+		t.Fatal("unsafe non-safe integer must be outside canonicalization profile")
+	}
+	if IsCanonicalizable(decodeT(t, []byte(`{"fractional":1.25}`))) {
+		t.Fatal("fractional number must be outside canonicalization profile")
 	}
 }
 

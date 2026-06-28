@@ -86,7 +86,6 @@ export async function POST(request) {
     // evidence, concentration caps, dispute dampening, or software checks. It
     // can guide manual review, but it must never produce an allow decision.
     else if (score >= 0.3) decision = 'review';
-    else if (score >= 0.3) decision = 'review';
     else decision = 'deny';
 
     return NextResponse.json({
@@ -95,7 +94,6 @@ export async function POST(request) {
       policy_used: body.policy || 'standard',
       confidence: depth === 0 ? 'none' : depth < 5 ? 'low' : depth < 20 ? 'medium' : 'high',
       reasons: decision === 'deny' ? ['policy_not_satisfied'] : [],
-      warnings: depth < 5 ? ['review_recommended'] : [],
       protocol_version: 'EP-CORE-v1.0',
       degraded: true,
       warnings: ['canonical_evaluator_unavailable', ...(depth < 5 ? ['review_recommended'] : [])],

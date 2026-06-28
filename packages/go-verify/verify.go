@@ -23,12 +23,17 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"math"
 	"sort"
+	"strconv"
 	"strings"
+	"unicode/utf16"
 )
 
 // SupportedVersions lists the receipt document versions this verifier accepts.
 var SupportedVersions = []string{"EP-RECEIPT-v1"}
+
+const maxSafeInteger = 9007199254740991
 
 // Checks reports the outcome of each independent verification step. Anchor is
 // nil when the receipt carries no Merkle anchor.
@@ -80,6 +85,9 @@ func VerifyReceipt(doc map[string]any, publicKeyBase64URL string) Result {
 	sigAlg, _ := sig["algorithm"].(string)
 	if !hasPayload || payload == nil || sigValue == "" || sigAlg == "" {
 		return Result{Checks: checks, Error: "Missing payload or signature"}
+	}
+	if !IsCanonicalizable(payload) {
+		return Result{Checks: checks, Error: "Payload is outside the EP canonicalization profile; use strings or safe integers in signed material"}
 	}
 
 	pubDER, err := b64urlDecode(publicKeyBase64URL)
@@ -176,7 +184,7 @@ func Canonicalize(v any) string {
 		for k := range val {
 			keys = append(keys, k)
 		}
-		sort.Strings(keys)
+		sortJCSKeys(keys)
 		var b strings.Builder
 		b.WriteByte('{')
 		for i, k := range keys {
@@ -203,7 +211,7 @@ func Canonicalize(v any) string {
 	case string:
 		return encodeString(val)
 	case json.Number:
-		return val.String()
+		return canonicalNumber(val.String())
 	case bool:
 		if val {
 			return "true"
@@ -215,9 +223,50 @@ func Canonicalize(v any) string {
 		// Fallback for inputs decoded without UseNumber (float64) or other
 		// scalar types. Mirrors JSON.stringify for integers and typical
 		// decimals; prefer UseNumber for exotic numeric tokens.
+		if f, ok := val.(float64); ok {
+			return canonicalFloat(f)
+		}
 		out, _ := json.Marshal(val)
 		return string(out)
 	}
+}
+
+func sortJCSKeys(keys []string) {
+	sort.Slice(keys, func(i, j int) bool {
+		return utf16Less(keys[i], keys[j])
+	})
+}
+
+func utf16Less(a, b string) bool {
+	au := utf16.Encode([]rune(a))
+	bu := utf16.Encode([]rune(b))
+	for i := 0; i < len(au) && i < len(bu); i++ {
+		if au[i] != bu[i] {
+			return au[i] < bu[i]
+		}
+	}
+	return len(au) < len(bu)
+}
+
+func canonicalNumber(raw string) string {
+	f, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return raw
+	}
+	return canonicalFloat(f)
+}
+
+func canonicalFloat(f float64) string {
+	if math.IsNaN(f) || math.IsInf(f, 0) {
+		return "null"
+	}
+	if f == 0 {
+		return "0"
+	}
+	if math.Trunc(f) == f && math.Abs(f) <= maxSafeInteger {
+		return strconv.FormatInt(int64(f), 10)
+	}
+	return strconv.FormatFloat(f, 'g', -1, 64)
 }
 
 // IsCanonicalizable reports whether v is within EP's I-JSON canonicalization
@@ -232,9 +281,10 @@ func IsCanonicalizable(v any) bool {
 	case nil, string, bool:
 		return true
 	case json.Number:
-		return !strings.ContainsAny(string(val), ".eE")
+		f, err := strconv.ParseFloat(string(val), 64)
+		return err == nil && !math.IsNaN(f) && !math.IsInf(f, 0) && math.Trunc(f) == f && math.Abs(f) <= maxSafeInteger
 	case float64:
-		return val == float64(int64(val))
+		return !math.IsNaN(val) && !math.IsInf(val, 0) && math.Trunc(val) == val && math.Abs(val) <= maxSafeInteger
 	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 		return true
 	case map[string]any:

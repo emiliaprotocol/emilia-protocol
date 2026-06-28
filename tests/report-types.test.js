@@ -86,6 +86,15 @@ describe('Canonical report types are accepted', () => {
       expect(data.report_id).toBeDefined();
     });
   }
+
+  it('accepts the public curl shape without optional description', async () => {
+    const req = makeRequest({
+      entity_id: 'test-entity-001',
+      report_type: 'wrongly_downgraded',
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(201);
+  });
 });
 
 // ============================================================================

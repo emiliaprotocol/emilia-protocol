@@ -8,6 +8,7 @@ export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import { discover, buildAuthorizeUrl, randomUrlToken, pkceChallenge } from '@/lib/sso/oidc';
 import { loadConnection, spOrigin } from '@/lib/sso/config';
+import { validateSsoProviderUrl } from '@/lib/sso/url-policy';
 import { signState, SSO_STATE_COOKIE } from '@/lib/sso/state';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
@@ -22,13 +23,15 @@ export async function GET(request) {
   if (!connection?.oidc_issuer || !connection?.oidc_client_id) {
     return epProblem(404, 'sso_not_configured', `No OIDC connection configured for tenant ${tenant}`);
   }
+  const issuer = validateSsoProviderUrl(connection.oidc_issuer, 'oidc_issuer');
+  if (!issuer.valid) return epProblem(400, 'unsafe_sso_url', 'Configured OIDC issuer is not allowed');
 
   const origin = spOrigin(request);
   const redirectUri = connection.oidc_redirect_uri || `${origin}/api/sso/oidc/callback`;
 
   let doc;
   try {
-    doc = await discover(connection.oidc_issuer);
+    doc = await discover(issuer.url);
   } catch (err) {
     logger.error('[sso/oidc/login] discovery failed:', err);
     return epProblem(502, 'oidc_discovery_failed', 'Could not reach the OIDC provider');

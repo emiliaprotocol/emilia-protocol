@@ -176,6 +176,13 @@ export function verifyReceipt(doc, publicKeyBase64url, opts = {}) {
   if (!doc.payload || !doc.signature?.value || !doc.signature?.algorithm) {
     return { valid: false, checks, error: 'Missing payload or signature' };
   }
+  if (!isCanonicalizable(doc.payload)) {
+    return {
+      valid: false,
+      checks,
+      error: 'Payload is outside the EP canonicalization profile; use strings or safe integers in signed material',
+    };
+  }
 
   try {
     const payloadBytes = Buffer.from(canonicalize(doc.payload), 'utf8');

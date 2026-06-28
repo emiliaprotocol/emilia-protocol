@@ -15,7 +15,7 @@ import { logger } from '../../../lib/logger.js';
 export async function POST(request) {
   try {
     const body = await request.json();
-    const email = body.email?.trim();
+    const email = body.email?.trim().toLowerCase();
 
     if (!email || !email.includes('@')) {
       return epProblem(400, 'invalid_email', 'Valid email required');
@@ -37,8 +37,8 @@ export async function POST(request) {
     // Get next entity number
     const { data: lastEntity } = await supabase
       .from('entities')
-      .select('id')
-      .order('id', { ascending: false })
+      .select('entity_number')
+      .order('entity_number', { ascending: false })
       .limit(1)
       .single();
 
@@ -49,9 +49,9 @@ export async function POST(request) {
       .limit(1)
       .single();
 
-    const lastEntityId = lastEntity?.id || 2;
-    const lastClaimedNumber = lastWaitlist?.claimed_number || lastEntityId;
-    const nextNumber = Math.max(lastEntityId, lastClaimedNumber) + 1;
+    const lastEntityNumber = safePositiveInteger(lastEntity?.entity_number, 2);
+    const lastClaimedNumber = safePositiveInteger(lastWaitlist?.claimed_number, lastEntityNumber);
+    const nextNumber = Math.max(lastEntityNumber, lastClaimedNumber) + 1;
 
     // Insert waitlist entry
     const { data: entry, error } = await supabase
@@ -63,7 +63,7 @@ export async function POST(request) {
     if (error) {
       // If waitlist table doesn't exist yet, fall back gracefully
       if (error.code === '42P01') {
-        return NextResponse.json({ id: lastEntityId + 1, email, fallback: true });
+        return NextResponse.json({ id: lastEntityNumber + 1, email, fallback: true });
       }
       logger.error('Waitlist insert error:', error);
       return epProblem(500, 'registration_failed', 'Registration failed');
@@ -78,4 +78,9 @@ export async function POST(request) {
     logger.error('Waitlist error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
+}
+
+function safePositiveInteger(value, fallback) {
+  const n = Number(value);
+  return Number.isSafeInteger(n) && n > 0 ? n : fallback;
 }

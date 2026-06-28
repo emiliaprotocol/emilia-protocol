@@ -4,7 +4,21 @@
  * verified identity + directory verdict. It never grants signing authority.
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
+
+vi.mock('@/lib/supabase', () => ({
+  getServiceClient: () => ({
+    from() {
+      const chain = {
+        select() { return chain; },
+        eq() { return chain; },
+        async maybeSingle() { return { data: null, error: null }; },
+      };
+      return chain;
+    },
+  }),
+}));
+
 import { mintSession, verifySession, readSessionFromRequest, SESSION_COOKIE } from '../lib/sso/session.js';
 
 beforeAll(() => {

@@ -8,6 +8,7 @@ export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import { buildSamlSp, buildLoginUrl } from '@/lib/sso/saml';
 import { loadConnection, spOrigin } from '@/lib/sso/config';
+import { validateSsoProviderUrl } from '@/lib/sso/url-policy';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 
@@ -21,10 +22,12 @@ export async function GET(request) {
   if (!connection?.saml_idp_entry_point || !connection?.saml_idp_cert) {
     return epProblem(404, 'sso_not_configured', `No SAML connection configured for tenant ${tenant}`);
   }
+  const entryPoint = validateSsoProviderUrl(connection.saml_idp_entry_point, 'saml_idp_entry_point');
+  if (!entryPoint.valid) return epProblem(400, 'unsafe_sso_url', 'Configured SAML IdP URL is not allowed');
 
   const origin = spOrigin(request);
   const sp = buildSamlSp({
-    idpEntryPoint: connection.saml_idp_entry_point,
+    idpEntryPoint: entryPoint.url,
     idpCert: connection.saml_idp_cert,
     spEntityId: `${origin}/api/sso/saml/metadata`,
     acsUrl: `${origin}/api/sso/saml/acs`,

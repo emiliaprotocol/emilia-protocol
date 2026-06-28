@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { discover, exchangeCode, validateIdToken } from '@/lib/sso/oidc';
 import { loadConnection } from '@/lib/sso/config';
+import { validateSsoProviderUrl } from '@/lib/sso/url-policy';
 import { verifyState, SSO_STATE_COOKIE } from '@/lib/sso/state';
 import { mintSession, SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from '@/lib/sso/session';
 import { normalizeUserName } from '@/lib/scim/core';
@@ -32,10 +33,12 @@ export async function GET(request) {
   const { connection, error } = await loadConnection(tenant, 'oidc');
   if (error) return epProblem(503, 'config_unavailable', 'Could not load SSO config');
   if (!connection?.oidc_issuer) return epProblem(404, 'sso_not_configured', 'OIDC connection not found');
+  const issuer = validateSsoProviderUrl(connection.oidc_issuer, 'oidc_issuer');
+  if (!issuer.valid) return epProblem(400, 'unsafe_sso_url', 'Configured OIDC issuer is not allowed');
 
   let doc;
   try {
-    doc = await discover(connection.oidc_issuer);
+    doc = await discover(issuer.url);
   } catch {
     return epProblem(502, 'oidc_discovery_failed', 'Could not reach the OIDC provider');
   }
@@ -54,7 +57,7 @@ export async function GET(request) {
   }
 
   const verdict = await validateIdToken(tokens.id_token, {
-    issuer: doc.issuer || connection.oidc_issuer,
+    issuer: doc.issuer || issuer.url,
     clientId: connection.oidc_client_id,
     jwksUri: doc.jwks_uri,
     nonce,
