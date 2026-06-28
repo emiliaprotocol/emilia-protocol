@@ -66,8 +66,8 @@ describe('safeParseUrl / SSRF guard', () => {
     expect(parsed.hostname).toBe('hooks.slack.com');
   });
 
-  it('accepts a normal public http URL', () => {
-    expect(safeParseUrl('http://example.com/hook')).not.toBeNull();
+  it('rejects a normal public http URL', () => {
+    expect(safeParseUrl('http://example.com/hook')).toBeNull();
   });
 
   it.each([
@@ -108,8 +108,8 @@ describe('safeParseUrl / SSRF guard', () => {
 
   it('172.15.x and 172.32.x are public (range boundary)', () => {
     // Just outside the 172.16-31 private block.
-    expect(safeParseUrl('http://172.15.0.1/h')).not.toBeNull();
-    expect(safeParseUrl('http://172.32.0.1/h')).not.toBeNull();
+    expect(safeParseUrl('https://172.15.0.1/h')).not.toBeNull();
+    expect(safeParseUrl('https://172.32.0.1/h')).not.toBeNull();
   });
 
   // ── BUG #1: bracketed IPv6 private addresses bypass the SSRF guard. ──────────
@@ -121,8 +121,9 @@ describe('safeParseUrl / SSRF guard', () => {
   it.each([
     ['ipv6 loopback ::1', 'http://[::1]/h'],
     ['ipv6 ULA fc00', 'http://[fc00::1]/h'],
+    ['ipv6 ULA fd00', 'http://[fd00::1]/h'],
     ['ipv6 link-local fe80', 'http://[fe80::1]/h'],
-  ])('SHOULD reject private IPv6 host %s (currently bypasses guard — BUG)', (_label, url) => {
+  ])('rejects private IPv6 host %s', (_label, url) => {
     expect(safeParseUrl(url)).toBeNull();
   });
 });

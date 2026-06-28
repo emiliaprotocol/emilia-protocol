@@ -2,6 +2,8 @@ import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
+import { open as openSecret } from '@/lib/crypto/secret-box';
+import { canonicalize } from '@/lib/guard-evidence-receipt';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 
@@ -98,13 +100,13 @@ export async function POST(request) {
     }
     let signatureValue;
     try {
-      const privateKeyDer = Buffer.from(issuerEntity.private_key_encrypted, 'base64url');
+      const privateKeyDer = Buffer.from(openSecret(issuerEntity.private_key_encrypted), 'base64url');
       const keyObject = crypto.createPrivateKey({
         key: privateKeyDer,
         format: 'der',
         type: 'pkcs8',
       });
-      const canonicalPayload = JSON.stringify(payload, Object.keys(payload).sort());
+      const canonicalPayload = canonicalize(payload);
       const sig = crypto.sign(null, Buffer.from(canonicalPayload, 'utf8'), keyObject);
       signatureValue = Buffer.from(sig).toString('base64url');
     } catch (sigErr) {

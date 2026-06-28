@@ -32,6 +32,12 @@ CREATE INDEX IF NOT EXISTS idx_security_events_type_time
 CREATE INDEX IF NOT EXISTS idx_security_events_target
   ON security_events (target_type, target_id, created_at DESC);
 
+-- One linear chain per tenant (including the global/null tenant chain). Without
+-- this, concurrent appenders can both read the same latest event and create a
+-- fork with the same previous_hash.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_security_events_single_child_per_parent
+  ON security_events (COALESCE(tenant_id, ''), COALESCE(previous_hash, 'root'));
+
 ALTER TABLE security_events ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "service_role_bypass" ON security_events;

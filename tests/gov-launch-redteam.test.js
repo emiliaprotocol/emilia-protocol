@@ -103,6 +103,7 @@ describe('government-launch red-team regressions', () => {
 
     expect(res.status).toBe(201);
     expect(entityInsert.organization_id).toBe(body.entity_id);
+    expect(entityInsert.private_key_encrypted).toMatch(/^epenc:v1:/);
   });
 
   it('self-serve pilot sandbox keys are born org-bound to the sandbox id', async () => {
@@ -115,6 +116,7 @@ describe('government-launch red-team regressions', () => {
 
     expect(res.status).toBe(201);
     expect(entityInsert.organization_id).toBe(body.sandbox_id);
+    expect(entityInsert.private_key_encrypted).toMatch(/^epenc:v1:/);
     expect(body.try_now.curl).toContain(`"organization_id":"${body.sandbox_id}"`);
   });
 });

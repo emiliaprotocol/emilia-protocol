@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest, generateApiKey, getServiceClient } from '@/lib/supabase';
-import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '../../../../lib/logger.js';
 
@@ -12,7 +11,7 @@ import { logger } from '../../../../lib/logger.js';
  * are preserved — only the credential changes.
  *
  * Auth: Bearer ep_live_... (current key)
- * Returns: { new_key, rotated_at, old_key_invalidated: true }
+ * Returns: { new_key, rotated_at, old_key_invalidated, manual_cleanup_required? }
  *
  * The new key is shown ONCE. Store it securely.
  */
@@ -78,6 +77,7 @@ export async function POST(request) {
       .eq('key_hash', oldKeyHash)
       .eq('entity_id', entity.id);
 
+    const oldKeyInvalidated = !revokeError;
     if (revokeError) {
       // New key is live; the old key just wasn't revoked. Log loudly but do NOT
       // fail the rotation — the caller already has a working new key.
@@ -87,7 +87,8 @@ export async function POST(request) {
     return NextResponse.json({
       new_key: newKey,
       rotated_at: now,
-      old_key_invalidated: true,
+      old_key_invalidated: oldKeyInvalidated,
+      manual_cleanup_required: !oldKeyInvalidated,
     }, { status: 201 });
   } catch (err) {
     logger.error('[key-rotation] Unexpected error:', err);

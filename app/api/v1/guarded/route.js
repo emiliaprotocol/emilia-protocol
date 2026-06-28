@@ -40,7 +40,7 @@ export async function POST(request) {
   const ready = assertGovVerifierReady();
   if (!ready.ok) {
     return NextResponse.json({
-      ...receiptChallenge(action, 'Receipt verifier is not configured with pinned issuer keys.'),
+      ...receiptChallenge(action, 'Receipt verifier is not configured with pinned issuer keys. To try the self-signed flow, use POST /api/demo/require-receipt.'),
       rejected: { ok: false, reason: 'verifier_not_ready', errors: ready.errors },
     }, { status: 503 });
   }

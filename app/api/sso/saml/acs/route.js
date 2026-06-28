@@ -25,9 +25,8 @@ const REPLAY_TTL_MS = 30 * 60 * 1000;
  * Record a consumed SAML Response and detect replays. Returns:
  *   'fresh'     — first time seen, recorded
  *   'replayed'  — this exact response was already consumed (reject!)
- *   'unchecked' — replay table unavailable (not yet migrated / transient DB
- *                 error); caller proceeds since signature + Conditions already
- *                 validated and the cache is defense-in-depth, not the gate.
+ *   'unavailable' — replay table unavailable (not yet migrated / transient DB
+ *                   error); caller must fail closed.
  */
 async function consumeSamlResponse(tenant, replayKey) {
   try {
@@ -42,14 +41,14 @@ async function consumeSamlResponse(tenant, replayKey) {
     if (!error) return 'fresh';
     if (error.code === '23505') return 'replayed';          // unique PK violation
     if (error.code === '42P01') {                            // relation does not exist
-      logger.warn('[sso/saml/acs] replay table missing — apply migration 103; skipping replay check');
-      return 'unchecked';
+      logger.warn('[sso/saml/acs] replay table missing — apply migration 103; failing closed');
+      return 'unavailable';
     }
-    logger.warn('[sso/saml/acs] replay-cache insert failed; proceeding (defense-in-depth only):', error.message);
-    return 'unchecked';
+    logger.warn('[sso/saml/acs] replay-cache insert failed; failing closed:', error.message);
+    return 'unavailable';
   } catch (e) {
-    logger.warn('[sso/saml/acs] replay-cache threw; proceeding:', e?.message);
-    return 'unchecked';
+    logger.warn('[sso/saml/acs] replay-cache threw; failing closed:', e?.message);
+    return 'unavailable';
   }
 }
 
@@ -101,6 +100,10 @@ export async function POST(request) {
   if (consumption === 'replayed') {
     logger.warn('[sso/saml/acs] replay rejected', { tenant });
     return epProblem(401, 'saml_replay', 'This SAML response has already been consumed');
+  }
+  if (consumption !== 'fresh') {
+    logger.warn('[sso/saml/acs] replay cache unavailable; refusing authentication', { tenant });
+    return epProblem(503, 'saml_replay_cache_unavailable', 'SAML replay protection is unavailable');
   }
 
   const directory = await resolveDirectory(tenant, result.profile);

@@ -334,4 +334,19 @@ describe('POST /api/keys/rotate', () => {
     expect(res.status).toBe(500);
     expect(body.type).toContain('rotation_failed');
   });
+
+  it('does not claim the old key was invalidated when final revoke fails', async () => {
+    setupAuthSuccess();
+    mockInsert.mockResolvedValue({ data: null, error: null });
+    mockUpdate
+      .mockResolvedValueOnce({ data: null, error: null })
+      .mockResolvedValueOnce({ data: null, error: { message: 'revoke failed' } });
+
+    const res = await POST(makeRequest());
+    const body = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(body.old_key_invalidated).toBe(false);
+    expect(body.manual_cleanup_required).toBe(true);
+  });
 });

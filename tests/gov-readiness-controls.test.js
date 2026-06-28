@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import {
+  appendSecurityEvent,
   buildSecurityEvent,
   canonicalize,
   verifySecurityEventChain,
@@ -66,6 +67,16 @@ describe('government readiness controls', () => {
     expect(accepted.ok).toBe(true);
   });
 
+  it('non-demo production verifier refuses inline keys even outside gov-strict mode', () => {
+    const { doc } = signedReceipt();
+    const result = verifyReceiptForProduction(doc, {
+      action: 'payment.release',
+      config: { trustedIssuerKeys: [], govStrict: false },
+    });
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe('no_trusted_keys_configured');
+  });
+
   it('security events redact secrets and detect hash-chain tampering', () => {
     const first = buildSecurityEvent({
       eventType: 'receipt.challenge',
@@ -89,6 +100,62 @@ describe('government readiness controls', () => {
     const report = verifySecurityEventChain([first, tampered]);
     expect(report.ok).toBe(false);
     expect(report.errors.join(' ')).toContain('payload_hash mismatch');
+  });
+
+  it('security event appender retries when a concurrent append wins the chain parent', async () => {
+    const rows = [];
+    let inserts = 0;
+    const supabase = {
+      from(table) {
+        expect(table).toBe('security_events');
+        return {
+          select() {
+            const q = {
+              order: () => q,
+              limit: () => q,
+              eq: () => q,
+              is: () => q,
+              then(resolve) {
+                return Promise.resolve({
+                  data: rows.at(-1) ? [{ event_hash: rows.at(-1).event_hash }] : [],
+                  error: null,
+                }).then(resolve);
+              },
+            };
+            return q;
+          },
+          async insert(row) {
+            inserts += 1;
+            if (inserts === 1) {
+              rows.push(buildSecurityEvent({
+                eventType: 'security.concurrent_winner',
+                tenantId: row.tenant_id,
+                payload: { winner: true },
+                previousHash: row.previous_hash,
+                createdAt: '2026-06-28T00:00:00.000Z',
+              }));
+              return { error: { code: '23505', message: 'duplicate chain parent' } };
+            }
+            rows.push(row);
+            return { error: null };
+          },
+        };
+      },
+    };
+
+    const row = await appendSecurityEvent({
+      eventType: 'security.retry_test',
+      tenantId: 'org_retry',
+      payload: { ok: true },
+      createdAt: '2026-06-28T00:01:00.000Z',
+    }, { supabase, forwardSiem: false });
+
+    expect(inserts).toBe(2);
+    expect(row.previous_hash).toBe(rows[0].event_hash);
+    expect(new Date(row.created_at).getTime()).toBeGreaterThanOrEqual(
+      new Date(rows[0].created_at).getTime(),
+    );
+    expect(verifySecurityEventChain(rows).ok).toBe(true);
   });
 
   it('key custody fails closed for local keys in government mode', async () => {

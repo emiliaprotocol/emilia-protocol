@@ -10,6 +10,7 @@ import { buildTrustDecision } from '@/lib/trust-decision';
 import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
+import { canonicalize } from '@/lib/canonical-json';
 import { sha256 } from '@/lib/handshake/invariants';
 import { logger } from '../../../../lib/logger.js';
 
@@ -123,7 +124,7 @@ export async function POST(request) {
           } else if (hs.action_hash) {
             // Verify action_hash: re-compute from current request and compare with initiation snapshot
             const actionIntent = { action_type: action || null, resource_ref: body.resource_ref || null, intent_ref: body.intent_ref || null };
-            const currentActionHash = sha256(JSON.stringify(actionIntent, Object.keys(actionIntent).sort()));
+            const currentActionHash = sha256(canonicalize(actionIntent));
             if (currentActionHash !== hs.action_hash) {
               reasons.push('Handshake action_hash mismatch — action intent tampered');
               handshakeVerified = false;

@@ -21,6 +21,7 @@
  */
 
 import crypto from 'crypto';
+import { canonicalize } from '../lib/canonical-json.js';
 
 // Arg parsing is deferred to main() so imports work without side effects.
 
@@ -30,13 +31,13 @@ import crypto from 'crypto';
 
 /**
  * Compute the SHA-256 hex digest of a JSON payload.
- * The payload is serialized with sorted keys to guarantee deterministic output.
+ * The payload is serialized with recursive sorted keys to guarantee deterministic output.
  */
 export function computePayloadHash(payloadJson) {
   const canonical =
     typeof payloadJson === 'string'
       ? payloadJson
-      : JSON.stringify(payloadJson, Object.keys(payloadJson).sort());
+      : canonicalize(payloadJson);
   return crypto.createHash('sha256').update(canonical).digest('hex');
 }
 
@@ -566,7 +567,7 @@ export function diffProjections(replayedState, currentState) {
 
 function normalizeForDiff(val) {
   if (val === undefined || val === null) return null;
-  if (typeof val === 'object') return JSON.stringify(val, Object.keys(val).sort());
+  if (typeof val === 'object') return canonicalize(val);
   return String(val);
 }
 

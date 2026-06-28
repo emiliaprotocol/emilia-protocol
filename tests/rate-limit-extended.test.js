@@ -34,6 +34,7 @@ describe('rateLimitBackend — redis mode (isolated module)', async () => {
         url: 'https://fake-upstash.io',
         token: 'fake-token',
       })),
+      getRateLimitConfig: vi.fn(() => ({ durableRequired: false })),
     }));
     const { rateLimitBackend } = await import('../lib/rate-limit.js');
     expect(rateLimitBackend()).toBe('upstash-redis');
@@ -56,6 +57,7 @@ describe('checkRateLimit — Redis path (mocked fetch)', async () => {
         url: 'https://fake-upstash.io',
         token: 'fake-token',
       })),
+      getRateLimitConfig: vi.fn(() => ({ durableRequired: false })),
     }));
     const mod = await import('../lib/rate-limit.js');
     checkRateLimit = mod.checkRateLimit;
@@ -201,6 +203,7 @@ describe('checkRateLimit (in-memory) — window expiry', () => {
   it('expired entries do not count toward limit', async () => {
     vi.doMock('@/lib/env', () => ({
       getUpstashConfig: vi.fn(() => null),
+      getRateLimitConfig: vi.fn(() => ({ durableRequired: false })),
     }));
     const { checkRateLimit } = await import('../lib/rate-limit.js');
 
@@ -224,6 +227,28 @@ describe('checkRateLimit (in-memory) — window expiry', () => {
   });
 });
 
+describe('checkRateLimit — durable limiter required mode', () => {
+  afterEach(() => {
+    vi.resetModules();
+  });
+
+  it('fails closed for write/admin categories when no durable backend is configured', async () => {
+    vi.resetModules();
+    vi.doMock('@/lib/env', () => ({
+      getUpstashConfig: vi.fn(() => null),
+      getRateLimitConfig: vi.fn(() => ({ durableRequired: true })),
+    }));
+    const { checkRateLimit } = await import('../lib/rate-limit.js');
+
+    const write = await checkRateLimit('gov-strict-attacker', 'register');
+    const read = await checkRateLimit('gov-strict-reader', 'read');
+
+    expect(write.allowed).toBe(false);
+    expect(write.error).toBe('durable_rate_limit_required');
+    expect(read.allowed).toBe(true);
+  });
+});
+
 // ── 4. Periodic cleanup (line 141–146) ────────────────────────────────────────
 
 describe('in-memory periodic cleanup (line 141–146)', () => {
@@ -232,6 +257,7 @@ describe('in-memory periodic cleanup (line 141–146)', () => {
     const intervalSpy = vi.spyOn(globalThis, 'setInterval');
     vi.doMock('@/lib/env', () => ({
       getUpstashConfig: vi.fn(() => null),
+      getRateLimitConfig: vi.fn(() => ({ durableRequired: false })),
     }));
     await import('../lib/rate-limit.js');
     // The module registers one setInterval for cleanup
@@ -251,6 +277,7 @@ describe('in-memory periodic cleanup (line 141–146)', () => {
 
     vi.doMock('@/lib/env', () => ({
       getUpstashConfig: vi.fn(() => null),
+      getRateLimitConfig: vi.fn(() => ({ durableRequired: false })),
     }));
     const { checkRateLimit } = await import('../lib/rate-limit.js');
 
@@ -278,6 +305,7 @@ describe('addRateLimitHeaders — edge cases (in-memory module)', () => {
     vi.resetModules();
     vi.doMock('@/lib/env', () => ({
       getUpstashConfig: vi.fn(() => null),
+      getRateLimitConfig: vi.fn(() => ({ durableRequired: false })),
     }));
     const mod = await import('../lib/rate-limit.js');
     addRateLimitHeaders = mod.addRateLimitHeaders;
@@ -355,6 +383,7 @@ describe('getClientIP — edge cases (line 164 branch)', () => {
     vi.resetModules();
     vi.doMock('@/lib/env', () => ({
       getUpstashConfig: vi.fn(() => null),
+      getRateLimitConfig: vi.fn(() => ({ durableRequired: false })),
     }));
     const mod = await import('../lib/rate-limit.js');
     getClientIP = mod.getClientIP;

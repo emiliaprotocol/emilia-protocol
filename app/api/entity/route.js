@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { logger } from '@/lib/logger.js';
+import { seal } from '@/lib/crypto/secret-box';
 // API key generated inline — no dependency on lib/supabase internals
 import { epProblem } from '@/lib/errors';
 
@@ -61,7 +62,7 @@ export async function POST(request) {
         description: `Entity: ${name}`,
         api_key_hash: keyHash,
         public_key: publicKeyB64,
-        private_key_encrypted: privateKeyB64,
+        private_key_encrypted: seal(privateKeyB64),
       })
       .select('id')
       .single();

@@ -11,6 +11,7 @@ import { vi } from 'vitest';
 // when the module initialises at the top level.
 vi.mock('@/lib/env', () => ({
   getUpstashConfig: vi.fn(() => null), // force in-memory mode
+  getRateLimitConfig: vi.fn(() => ({ durableRequired: false })),
 }));
 
 import {

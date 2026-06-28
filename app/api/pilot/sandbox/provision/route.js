@@ -15,6 +15,7 @@ import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
+import { seal } from '@/lib/crypto/secret-box';
 
 const BASE = 'https://www.emiliaprotocol.ai';
 
@@ -52,7 +53,7 @@ export async function POST(request) {
         description: `Observe-mode pilot sandbox for ${orgName}`,
         api_key_hash: keyHash,
         public_key: publicKeyB64,
-        private_key_encrypted: privateKeyB64,
+        private_key_encrypted: seal(privateKeyB64),
       })
       .select('id')
       .single();

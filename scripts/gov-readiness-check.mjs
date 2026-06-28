@@ -64,12 +64,13 @@ check('tenant-bound v1 writes require authenticated org binding', () => {
 });
 
 check('strict production verifier refuses inline issuer keys', () => {
-  // Inline-key acceptance is gated to the gov-strict mode: refused when strict
-  // (EP_GOV_STRICT=true), allowed only on the non-strict public playground.
-  requireContains('lib/gov-receipt-verifier.js', 'allowInlineKey: !config.govStrict');
+  // Inline-key acceptance is demo-only. Non-demo guarded endpoints require
+  // pinned issuer keys even outside gov-strict mode.
+  requireContains('lib/gov-receipt-verifier.js', 'allowInlineKey: false');
+  requireContains('lib/gov-receipt-verifier.js', 'trustedIssuerKeys.length === 0');
   requireContains('app/api/v1/guarded/route.js', 'verifyReceiptForProduction');
   requireContains('app/api/v1/guarded/route.js', 'assertGovVerifierReady');
-  return 'production verifier pins trusted issuer keys in gov-strict mode';
+  return 'production verifier pins trusted issuer keys on non-demo guarded endpoints';
 });
 
 check('inline/self-signed receipt acceptance is demo-only', () => {
@@ -88,9 +89,26 @@ check('security event ledger is append-only and hash-chained', () => {
   requireContains('supabase/migrations/110_security_events_hash_chain.sql', 'CREATE TABLE IF NOT EXISTS security_events');
   requireContains('supabase/migrations/110_security_events_hash_chain.sql', 'prevent_security_event_mutation');
   requireContains('supabase/migrations/110_security_events_hash_chain.sql', 'event_hash TEXT NOT NULL UNIQUE');
+  requireContains('supabase/migrations/110_security_events_hash_chain.sql', 'idx_security_events_single_child_per_parent');
+  requireContains('lib/security-events.js', "error.code !== '23505'");
   requireContains('lib/security-events.js', 'verifySecurityEventChain');
   requireContains('lib/write-guard.js', "'security_events'");
   return 'security_events migration + runtime verifier present';
+});
+
+check('gov-strict mode requires durable rate limiting for write surfaces', () => {
+  requireContains('lib/env.js', 'getRateLimitConfig');
+  requireContains('lib/rate-limit.js', 'durable_rate_limit_required');
+  requireContains('lib/rate-limit.js', 'FAIL_CLOSED_CATEGORIES');
+  requireContains('.env.example', 'EP_REQUIRE_DURABLE_RATE_LIMIT');
+  return 'write/admin categories fail closed without durable rate limiter when required';
+});
+
+check('SAML ACS fails closed when replay protection is unavailable', () => {
+  requireContains('app/api/sso/saml/acs/route.js', 'saml_replay_cache_unavailable');
+  requireContains('app/api/sso/saml/acs/route.js', 'failing closed');
+  requireContains('supabase/migrations/103_saml_consumed_assertions.sql', 'saml_consumed_assertions');
+  return 'SAML replay cache is a gate, not best-effort logging';
 });
 
 check('key custody abstraction rejects local keys in gov/prod mode', () => {
@@ -98,6 +116,7 @@ check('key custody abstraction rejects local keys in gov/prod mode', () => {
   requireContains('lib/key-custody.js', "mode === 'local-dev'");
   requireContains('lib/key-custody.js', 'createExternalCustodySigner');
   requireContains('lib/env.js', 'getKeyCustodyConfig');
+  requireContains('.env.example', 'EP_SECRET_KEY');
   return 'KMS/HSM custody interface present';
 });
 

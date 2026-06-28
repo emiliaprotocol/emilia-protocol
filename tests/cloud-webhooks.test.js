@@ -163,6 +163,12 @@ describe('registerEndpoint', () => {
     expect(result.status).toBe(422);
   });
 
+  it('returns 422 for IPv6 unique-local fd00::/8', async () => {
+    const result = await registerEndpoint('tenant-1', 'https://[fd00::1]/hook', []);
+    expect(result.status).toBe(422);
+    expect(result.error).toMatch(/private|internal/i);
+  });
+
   it('returns 422 for .internal hostname', async () => {
     const result = await registerEndpoint('tenant-1', 'http://myservice.internal/hook', []);
     expect(result.status).toBe(422);
@@ -182,6 +188,12 @@ describe('registerEndpoint', () => {
   it('returns 422 for non-http(s) protocol', async () => {
     const result = await registerEndpoint('tenant-1', 'ftp://example.com/hook', []);
     expect(result.status).toBe(422);
+  });
+
+  it('returns 422 for public http webhook URL', async () => {
+    const result = await registerEndpoint('tenant-1', 'http://example.com/hook', []);
+    expect(result.status).toBe(422);
+    expect(result.error).toMatch(/https protocol/i);
   });
 
   it('returns 422 for invalid URL', async () => {
