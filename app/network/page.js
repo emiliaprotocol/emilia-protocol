@@ -12,7 +12,7 @@ async function getStats() {
     const h = await headers();
     const host = h.get('host') || 'www.emiliaprotocol.ai';
     const proto = host.startsWith('localhost') || host.startsWith('127.0.0.1') ? 'http' : 'https';
-    const res = await fetch(`${proto}://${host}/api/stats`, { cache: 'no-store' });
+    const res = await fetch(`${proto}://${host}/api/stats?view=public`, { cache: 'no-store' });
     if (res.ok) return await res.json();
   } catch { /* fall through */ }
   return null;

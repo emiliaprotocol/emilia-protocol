@@ -3,6 +3,7 @@ import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { EP_ERRORS } from '@/lib/errors';
 import { buildTrustDecision } from '@/lib/trust-decision';
 import { authenticateRequest } from '@/lib/supabase';
+import { isDemoEntity } from '@/lib/demo-entities';
 import { logger } from '../../../../lib/logger.js';
 
 /**
@@ -15,13 +16,18 @@ import { logger } from '../../../../lib/logger.js';
  */
 export async function POST(request) {
   try {
-    const auth = await authenticateRequest(request);
-    if (auth.error) return EP_ERRORS.UNAUTHORIZED();
-
     const body = await request.json();
 
     if (!body.entity_id) {
       return EP_ERRORS.BAD_REQUEST('entity_id is required');
+    }
+
+    // Public demo carve-out (see /api/trust/evaluate): the synthetic demo entity
+    // is preflight-checkable without auth so the /demo page works; every other
+    // entity requires authentication.
+    if (!isDemoEntity(body.entity_id)) {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return EP_ERRORS.UNAUTHORIZED();
     }
 
     const result = await canonicalEvaluate(body.entity_id, {

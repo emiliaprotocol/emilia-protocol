@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { EP_ERRORS } from '@/lib/errors';
 import { getGuardedClient } from '@/lib/write-guard';
 import { authenticateRequest } from '@/lib/supabase';
+import { isDemoEntity } from '@/lib/demo-entities';
 import { logger } from '../../../../lib/logger.js';
 
 let canonicalEvaluate, buildTrustDecision, passToDecision;
@@ -21,13 +22,19 @@ try {
  */
 export async function POST(request) {
   try {
-    const auth = await authenticateRequest(request);
-    if (auth.error) return EP_ERRORS.UNAUTHORIZED();
-
     const body = await request.json();
 
     if (!body.entity_id) {
       return EP_ERRORS.BAD_REQUEST('entity_id is required');
+    }
+
+    // Public demo carve-out: the synthetic demo entity is evaluable without auth
+    // so the public /demo page works end-to-end. Every OTHER entity requires
+    // authentication — this allowlist is the recon boundary (a real entity can't
+    // be evaluated anonymously).
+    if (!isDemoEntity(body.entity_id)) {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return EP_ERRORS.UNAUTHORIZED();
     }
 
     // Try full canonical evaluation first
@@ -75,7 +82,10 @@ export async function POST(request) {
     const depth = entity.total_receipts || 0;
     let decision;
     if (depth === 0) decision = 'review';
-    else if (score >= 0.6) decision = 'allow';
+    // Fail conservative: the fallback path does not have v2 quality-gated
+    // evidence, concentration caps, dispute dampening, or software checks. It
+    // can guide manual review, but it must never produce an allow decision.
+    else if (score >= 0.3) decision = 'review';
     else if (score >= 0.3) decision = 'review';
     else decision = 'deny';
 
@@ -87,6 +97,8 @@ export async function POST(request) {
       reasons: decision === 'deny' ? ['policy_not_satisfied'] : [],
       warnings: depth < 5 ? ['review_recommended'] : [],
       protocol_version: 'EP-CORE-v1.0',
+      degraded: true,
+      warnings: ['canonical_evaluator_unavailable', ...(depth < 5 ? ['review_recommended'] : [])],
     });
   } catch (err) {
     logger.error('Trust evaluate error:', err);

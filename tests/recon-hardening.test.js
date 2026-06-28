@@ -155,3 +155,54 @@ describe('anonymous recon hardening', () => {
     }
   });
 });
+
+// #2 — public-safe projections keep the /network + /demo showcases alive for
+// anonymous visitors WITHOUT re-opening the recon surfaces. The leak-free path
+// stays public; the rich/precise path stays gated (covered above).
+describe('public demo + marketing carve-outs', () => {
+  it('GET /api/stats?view=public returns a coarse projection without auth', async () => {
+    const res = await statsGET(new Request('https://example.test/api/stats?view=public'));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.view).toBe('public');
+    expect(body.total_entities_approx).toBe(true);
+    // No precise live counts on the public projection.
+    expect(body).not.toHaveProperty('total_receipts');
+  });
+
+  it('the synthetic demo entity is evaluable without auth; real entities are not', async () => {
+    const demo = await trustEvaluatePOST(
+      new Request('https://example.test/api/trust/evaluate', {
+        method: 'POST',
+        body: JSON.stringify({ entity_id: 'mcp-server-ep-v1', policy: 'strict' }),
+      }),
+    );
+    expect(demo.status).not.toBe(401); // auth skipped for the demo fixture
+
+    const real = await trustEvaluatePOST(
+      new Request('https://example.test/api/trust/evaluate', {
+        method: 'POST',
+        body: JSON.stringify({ entity_id: 'ep_entity_target', policy: 'strict' }),
+      }),
+    );
+    expect(real.status).toBe(401); // every other entity still requires auth
+  });
+
+  it('install-preflight allows the demo entity without auth; real entities 401', async () => {
+    const demo = await installPreflightPOST(
+      new Request('https://example.test/api/trust/install-preflight', {
+        method: 'POST',
+        body: JSON.stringify({ entity_id: 'mcp-server-ep-v1', policy: 'mcp_server_safe_v1' }),
+      }),
+    );
+    expect(demo.status).not.toBe(401);
+
+    const real = await installPreflightPOST(
+      new Request('https://example.test/api/trust/install-preflight', {
+        method: 'POST',
+        body: JSON.stringify({ entity_id: 'ep_entity_target', policy: 'mcp_server_safe_v1' }),
+      }),
+    );
+    expect(real.status).toBe(401);
+  });
+});
