@@ -1,25 +1,18 @@
 import { NextResponse } from 'next/server';
-import { timingSafeEqual } from 'crypto';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { validateTransition, DISPUTE_STATES, recordOperatorAction } from '@/lib/procedural-justice';
 import { getGuardedClient } from '@/lib/write-guard';
-import { getCronSecret } from '@/lib/env';
+import { authenticateOperator } from '@/lib/operator-auth';
 import { logger } from '../../../../lib/logger.js';
-
-function safeCompare(a, b) {
-  if (!a || !b) return false;
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
-}
 
 /**
  * POST /api/disputes/resolve
  *
  * @operator
- * @access operator — requires CRON_SECRET. Not part of the public API.
+ * @access operator — requires a per-operator token (NAMED operator). Once
+ *   EP_OPERATOR_KEYS is configured, the shared CRON_SECRET is refused here so
+ *   every dispute resolution ties to an accountable operator. Not public.
  *
  * Operator resolves a dispute. Routes through protocol write.
  * Validates state transition against formal dispute state machine.
@@ -28,12 +21,10 @@ function safeCompare(a, b) {
  */
 export async function POST(request) {
   try {
-    // Operator auth via CRON_SECRET
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = getCronSecret();
-    if (!cronSecret || !safeCompare(authHeader, `Bearer ${cronSecret}`)) {
-      return EP_ERRORS.UNAUTHORIZED();
-    }
+    // Sensitive operator action — require a named operator identity for audit.
+    const opAuth = authenticateOperator(request, { requireOperatorIdentity: true });
+    if (!opAuth.valid) return EP_ERRORS.UNAUTHORIZED();
+    const operatorId = opAuth.operator_id;
 
     const body = await request.json();
     if (!body.dispute_id || !body.resolution) {
@@ -67,9 +58,9 @@ export async function POST(request) {
         dispute_id: body.dispute_id,
         resolution: body.resolution,
         rationale: body.rationale || null,
-        operator_id: 'operator',
+        operator_id: operatorId,
       },
-      actor: 'operator',
+      actor: operatorId,
     });
 
     if (result.error) {
@@ -78,7 +69,7 @@ export async function POST(request) {
 
     // Record in audit trail
     await recordOperatorAction(supabase, {
-      operatorId: 'operator',
+      operatorId,
       operatorRole: 'operator',
       targetType: 'dispute',
       targetId: body.dispute_id,

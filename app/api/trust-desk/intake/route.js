@@ -26,6 +26,15 @@ const MAX_BYTES = 25 * 1024 * 1024; // 25 MB
 
 export async function POST(request) {
   try {
+    // Reject oversized uploads by declared Content-Length BEFORE buffering the
+    // multipart body into memory (request.formData()). The post-parse file cap
+    // below still enforces the exact 25 MB on the file itself; this is the cheap
+    // pre-buffer guard. +1 MB slack covers multipart field/boundary overhead.
+    const declaredLen = parseInt(request.headers.get('content-length') || '0', 10);
+    if (declaredLen && declaredLen > MAX_BYTES + 1024 * 1024) {
+      return epProblem(413, 'payload_too_large', 'request body exceeds the 25 MB limit');
+    }
+
     const { fields, file } = await readBody(request);
 
     // Required fields.

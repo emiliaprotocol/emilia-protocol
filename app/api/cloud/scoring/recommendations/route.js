@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { authenticateCloudRequest } from '@/lib/cloud/auth';
+import { requirePermission } from '@/lib/cloud/authorize';
 import { collectCalibrationData, computeWeightRecommendation, VERTICAL_PACKS } from '@/lib/cloud/calibration';
 import { epProblem } from '@/lib/errors';
 import { logger } from '../../../../../lib/logger.js';
@@ -31,6 +32,8 @@ export async function GET(request) {
     if (!auth) {
       return epProblem(401, 'unauthorized', 'Valid Cloud API key required');
     }
+    // Authentication is not authorization: the key must hold read scope.
+    requirePermission(auth, 'read');
 
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
@@ -81,6 +84,9 @@ export async function GET(request) {
       _protocol_version: 'EP/1.1-v2',
     });
   } catch (err) {
+    if (err.name === 'CloudAuthorizationError') {
+      return epProblem(403, 'forbidden', err.message);
+    }
     logger.error('Scoring recommendations error:', err);
     return epProblem(500, 'calibration_failed', 'Weight calibration computation failed');
   }

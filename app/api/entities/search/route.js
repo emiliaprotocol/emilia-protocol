@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
+import { authenticateRequest } from '@/lib/supabase';
 import { epProblem } from '@/lib/errors';
 import { generateEmbedding } from '@/lib/providers/embeddings';
 import { logger } from '../../../../lib/logger.js';
@@ -97,8 +98,13 @@ export async function GET(request) {
       return enriched;
     }
 
+    // Semantic (embedding) search costs provider quota, so it is gated to
+    // authenticated callers — an anonymous q falls through to the free filter
+    // (ilike) search below. Stops unauthenticated embedding-quota burn.
+    const semanticAllowed = !(await authenticateRequest(request)).error;
+
     // If semantic query provided, attempt vector search via embedding provider
-    if (q) {
+    if (q && semanticAllowed) {
       try {
         const embedding = await generateEmbedding(q);
 
