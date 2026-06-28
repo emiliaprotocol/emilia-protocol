@@ -4,14 +4,14 @@ import { TRUST_POLICIES } from '@/lib/scoring-v2';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { epProblem } from '@/lib/errors';
+import { authenticateRequest } from '@/lib/supabase';
 
 /**
  * GET /api/stats
  *
- * Public stats for the landing page.
+ * Auth-scoped stats for internal/operator dashboards.
  * Reads proof metrics from generated/proof-metrics.json (single source of truth).
  * Derives entity count live from DB, policy count from code.
- * No auth required.
  */
 
 let proofMetrics = null;
@@ -22,7 +22,10 @@ try {
   proofMetrics = null;
 }
 
-export async function GET() {
+export async function GET(request) {
+  const auth = await authenticateRequest(request);
+  if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
+
   const policyCount = Object.keys(TRUST_POLICIES).length;
 
   try {

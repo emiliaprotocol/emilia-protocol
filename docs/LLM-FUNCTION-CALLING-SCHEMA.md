@@ -171,7 +171,7 @@ This schema defines a standardized set of function/tool definitions that any LLM
 ```json
 {
   "name": "ep_get_trust_profile",
-  "description": "Retrieve the trust profile of any entity. Returns structured trust data: score, confidence, evidence depth, domain scores, anomaly flags.",
+  "description": "Retrieve an authenticated trust profile for an entity. Rich profile data is not exposed to anonymous callers.",
   "parameters": {
     "type": "object",
     "required": ["entity_id"],

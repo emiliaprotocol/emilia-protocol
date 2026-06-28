@@ -28,14 +28,14 @@ export default function AppealPage() {
   const [apiKey, setApiKey] = useState('');
   const [appealSubmitted, setAppealSubmitted] = useState(false);
 
-  const lookupProfile = async () => {
+  const lookupCapability = async () => {
     if (!entityId.trim()) return;
     setLoading(true); setError(null); setResult(null);
     try {
-      const res = await fetch(`/api/trust/profile/${encodeURIComponent(entityId)}`);
+      const res = await fetch(`/api/badge/${encodeURIComponent(entityId)}?format=json`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Not found');
-      setResult({ type: 'profile', data });
+      setResult({ type: 'capability', data });
     } catch (e) { setError(e.message); }
     setLoading(false);
   };
@@ -145,12 +145,12 @@ export default function AppealPage() {
         <div style={{ fontSize: 13, color: color.blue, fontFamily: font.mono, letterSpacing: 1, marginBottom: 24 }}>EP MUST NEVER MAKE TRUST MORE POWERFUL THAN APPEAL</div>
         <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>Trust & Appeal</h1>
         <p style={{ fontSize: 14, color: color.t3, lineHeight: 1.6, marginBottom: 40 }}>
-          Look up any entity's trust profile, report a trust issue, check a dispute, or appeal a resolution.
-          No account required for lookups and reports. Appeals require entity authentication.
+          Check a public authorization-receipt capability, report a trust issue, check a dispute, or appeal a resolution.
+          No account required for capability checks and reports. Full profiles and appeals require entity authentication.
         </p>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 32, flexWrap: 'wrap' }}>
-          <button style={tabStyle(mode === 'lookup')} onClick={() => { setMode('lookup'); setResult(null); setError(null); }}>Look Up Trust</button>
+          <button style={tabStyle(mode === 'lookup')} onClick={() => { setMode('lookup'); setResult(null); setError(null); }}>Check Capability</button>
           <button style={tabStyle(mode === 'report')} onClick={() => { setMode('report'); setResult(null); setError(null); setSubmitted(false); }}>Report an Issue</button>
           <button style={tabStyle(mode === 'status')} onClick={() => { setMode('status'); setResult(null); setError(null); }}>Dispute Status</button>
           <button style={tabStyle(mode === 'appeal')} onClick={() => { setMode('appeal'); setResult(null); setError(null); setAppealSubmitted(false); }}>Appeal a Resolution</button>
@@ -159,37 +159,17 @@ export default function AppealPage() {
         {/* === LOOKUP TAB === */}
         {mode === 'lookup' && (
           <div>
-            <input className="ep-input" style={styles.input} placeholder="Entity ID (e.g. merchant-xyz)" value={entityId} onChange={e => setEntityId(e.target.value)} onKeyDown={e => e.key === 'Enter' && lookupProfile()} />
-            <button className="ep-cta" style={{ ...cta.primaryBlue, marginTop: 4 }} onClick={lookupProfile} disabled={loading}>{loading ? 'Looking up...' : 'Look Up Trust Profile'}</button>
+            <input className="ep-input" style={styles.input} placeholder="Entity ID (e.g. merchant-xyz)" value={entityId} onChange={e => setEntityId(e.target.value)} onKeyDown={e => e.key === 'Enter' && lookupCapability()} />
+            <button className="ep-cta" style={{ ...cta.primaryBlue, marginTop: 4 }} onClick={lookupCapability} disabled={loading}>{loading ? 'Checking...' : 'Check Capability'}</button>
 
-            {result?.type === 'profile' && (
+            {result?.type === 'capability' && (
               <div style={{ ...styles.card, borderRadius: radius.base, marginTop: 24 }}>
-                <div style={labelStyle}>Trust Profile</div>
-                <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>{result.data.display_name}</div>
-                <div style={rowStyle}><span style={{ color: color.t3 }}>Confidence</span><span style={{ color: result.data.current_confidence === 'confident' ? color.green : color.green }}>{result.data.current_confidence}</span></div>
-                <div style={rowStyle}><span style={{ color: color.t3 }}>Established</span><span>{result.data.historical_establishment ? 'Yes' : 'No'}</span></div>
-                <div style={rowStyle}><span style={{ color: color.t3 }}>Effective Evidence</span><span>{result.data.effective_evidence_current}</span></div>
-                {result.data.quality_gated_evidence_current != null && (
-                  <div style={rowStyle}><span style={{ color: color.t3 }}>Quality-Gated Evidence</span><span>{result.data.quality_gated_evidence_current}</span></div>
-                )}
-                <div style={rowStyle}><span style={{ color: color.t3 }}>Receipts</span><span>{result.data.receipt_count}</span></div>
-
-                {result.data.trust_profile?.behavioral && (
-                  <div style={{ marginTop: 16 }}>
-                    <div style={labelStyle}>Behavioral Rates</div>
-                    <div style={rowStyle}><span style={{ color: color.t3 }}>Completion</span><span style={{ color: color.green }}>{result.data.trust_profile.behavioral.completion_rate}%</span></div>
-                    <div style={rowStyle}><span style={{ color: color.t3 }}>Dispute</span><span style={{ color: result.data.trust_profile.behavioral.dispute_rate > 5 ? color.red : color.t3 }}>{result.data.trust_profile.behavioral.dispute_rate}%</span></div>
-                  </div>
-                )}
-
-                {result.data.disputes && (
-                  <div style={{ marginTop: 16 }}>
-                    <div style={labelStyle}>Disputes</div>
-                    <div style={rowStyle}><span style={{ color: color.t3 }}>Total</span><span>{result.data.disputes.total}</span></div>
-                    <div style={rowStyle}><span style={{ color: color.t3 }}>Active</span><span style={{ color: result.data.disputes.active > 0 ? '#ff9f1c' : color.t3 }}>{result.data.disputes.active}</span></div>
-                    <div style={rowStyle}><span style={{ color: color.t3 }}>Reversed</span><span>{result.data.disputes.reversed}</span></div>
-                  </div>
-                )}
+                <div style={labelStyle}>Public Capability</div>
+                <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>{result.data.entity_id}</div>
+                <div style={rowStyle}><span style={{ color: color.t3 }}>Capability</span><span>{result.data.capability}</span></div>
+                <div style={rowStyle}><span style={{ color: color.t3 }}>Authorization receipts</span><span style={{ color: result.data.capability_on ? color.green : color.t3 }}>{result.data.capability_on ? 'ON' : '—'}</span></div>
+                <div style={{ marginTop: 12, fontSize: 13, color: color.t3, lineHeight: 1.6 }}>{result.data.claim}</div>
+                <Link href="/verify" style={{ display: 'inline-block', marginTop: 14, color: color.blue, fontSize: 13 }}>Verify a receipt offline</Link>
               </div>
             )}
           </div>

@@ -75,11 +75,15 @@ paths:
   /api/trust/profile/{entityId}:
     get:
       tags: [Trust]
-      summary: Get trust profile
+      summary: Get authenticated trust profile
       description: |
-        The PRIMARY canonical read surface for EP trust data. Returns the full
-        trust profile including behavioral rates, signal breakdowns, confidence,
-        establishment status, quality-gated evidence, anomaly detection, and disputes.
+        The PRIMARY canonical read surface for EP trust data. Full profiles are
+        authenticated and self-scoped to the requested entity. Anonymous callers
+        may request only the leak-free `?view=capability` projection, which
+        returns a boolean authorization-receipt capability and no scores, counts,
+        volume, confidence, or dispute internals.
+      security:
+        - BearerAuth: []
       parameters:
         - name: entityId
           in: path
@@ -87,13 +91,24 @@ paths:
           schema:
             type: string
           description: Entity ID or slug
+        - name: view
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [capability]
+          description: Anonymous leak-free capability projection.
       responses:
         '200':
-          description: Trust profile
+          description: Authenticated trust profile, or capability projection when `view=capability`.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/TrustProfileResponse'
+        '401':
+          description: Authentication required for full profile
+        '403':
+          description: Authenticated entity does not match requested entity
         '404':
           description: Entity not found
 
@@ -2081,16 +2096,18 @@ paths:
       summary: Health check
       responses:
         '200':
-          description: System health with subsystem status
+          description: Minimal public liveness status
 
   /api/stats:
     get:
       tags: [System]
-      summary: Public proof metrics
-      description: Returns entity count, test count, tool count, and policy count.
+      summary: Operator proof metrics
+      description: Authenticated operator metrics. Not exposed anonymously.
       responses:
+        '401':
+          description: Missing or invalid API key
         '200':
-          description: Public stats
+          description: Authenticated stats
           content:
             application/json:
               schema:
@@ -2099,7 +2116,7 @@ paths:
   /api/leaderboard:
     get:
       tags: [Trust]
-      summary: Entity leaderboard
+      summary: Entity leaderboard (authenticated)
       parameters:
         - name: sort
           in: query
@@ -2112,6 +2129,8 @@ paths:
             type: integer
             default: 20
       responses:
+        '401':
+          description: Missing or invalid API key
         '200':
           description: Ranked entities
 
@@ -2122,7 +2141,7 @@ paths:
       description: |
         Server-Sent Events stream of open needs. Agents connect to this to
         discover work opportunities in real time. Polls every 5 seconds.
-        No authentication required.
+        Authentication required.
       parameters:
         - name: capability
           in: query
@@ -2159,6 +2178,8 @@ paths:
             default: 20
             maximum: 50
       responses:
+        '401':
+          description: Missing or invalid API key
         '200':
           description: SSE stream of open needs
           content:

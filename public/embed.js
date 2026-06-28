@@ -1,16 +1,16 @@
 /**
- * EP Trust Badge — Embeddable Web Component
+ * EP Capability Badge — Embeddable Web Component
  *
- * Drop this on any page to show a cryptographically verified trust badge:
+ * Drop this on any page to show a leak-free capability badge:
  *
  *   <script src="https://ep.emiliaprotocol.ai/embed.js"></script>
  *   <ep-trust-badge entity-id="ep_entity_abc123"></ep-trust-badge>
  *
  * The badge:
- *   - Fetches the entity's trust profile from the EP API
- *   - Displays confidence level, evidence depth, and trust score
- *   - Links to the Trust Explorer for full verification
- *   - Cannot be faked — data comes live from the EP operator
+ *   - Fetches the public capability projection from the EP API
+ *   - Displays a boolean "authorization receipts: ON/—" capability
+ *   - Links to offline receipt verification
+ *   - Never renders scores, counts, volume, confidence, or profile internals
  *
  * Security: All rendering uses safe DOM APIs (createElement + textContent).
  * No innerHTML with user/API data. XSS-safe by construction.
@@ -34,8 +34,8 @@
     '.ep-shield { width: 20px; height: 20px; flex-shrink: 0; }',
     '.ep-info { display: flex; flex-direction: column; gap: 2px; }',
     '.ep-label { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: #78716C; }',
-    '.ep-score { font-size: 13px; font-weight: 600; color: #0C0A09; }',
-    '.ep-confidence { font-size: 10px; color: #44403C; }',
+    '.ep-value { font-size: 13px; font-weight: 600; color: #0C0A09; }',
+    '.ep-detail { font-size: 10px; color: #44403C; }',
     '.ep-verified { display: inline-flex; align-items: center; gap: 4px; font-size: 9px;',
     '  letter-spacing: 1px; text-transform: uppercase; color: #16A34A; font-weight: 600; }',
     '.ep-loading { color: #78716C; font-size: 11px; }',
@@ -130,7 +130,7 @@
         return;
       }
       this._renderMessage('ep-loading', 'Verifying...');
-      this._fetchProfile(entityId);
+      this._fetchCapability(entityId);
     }
 
     static get observedAttributes() {
@@ -140,7 +140,7 @@
     attributeChangedCallback(name, oldVal, newVal) {
       if (name === 'entity-id' && oldVal !== newVal && newVal) {
         this._renderMessage('ep-loading', 'Verifying...');
-        this._fetchProfile(newVal);
+        this._fetchCapability(newVal);
       }
     }
 
@@ -165,11 +165,11 @@
       root.appendChild(badge);
     }
 
-    async _fetchProfile(entityId) {
+    async _fetchCapability(entityId) {
       try {
-        var res = await fetch(EP_BASE + '/api/trust/profile/' + encodeURIComponent(entityId));
+        var res = await fetch(EP_BASE + '/api/badge/' + encodeURIComponent(entityId) + '?format=json');
         if (!res.ok) {
-          this._renderMessage('ep-error', 'Entity not found');
+          this._renderMessage('ep-error', 'Capability unavailable');
           return;
         }
         var data = await res.json();
@@ -180,26 +180,26 @@
     }
 
     /**
-     * Render the full trust badge using safe DOM APIs only.
+     * Render the public capability badge using safe DOM APIs only.
      * All values are set via textContent — never innerHTML.
-     * @param {object} profile
+     * @param {object} capability
      * @param {string} entityId
      */
-    _render(profile, entityId) {
+    _render(capability, entityId) {
       var root = this.shadowRoot;
       resetRoot(root);
 
-      var score = typeof profile.score === 'number' ? profile.score.toFixed(2) : '\u2014';
-      var confidence = safeText(profile.confidence || 'unknown');
-      var depth = Number.isFinite(profile.evidence_depth) ? profile.evidence_depth : 0;
+      var capabilityOn = capability && capability.capability_on === true;
+      var value = capabilityOn ? 'authorization receipts: ON' : 'authorization receipts: \u2014';
+      var detail = capabilityOn ? 'Verify a receipt offline' : 'No receipt found';
 
       // Build link
       var badge = document.createElement('a');
       badge.setAttribute('class', 'ep-badge');
-      badge.setAttribute('href', EP_BASE + '/explorer?tab=entity&q=' + encodeURIComponent(entityId));
+      badge.setAttribute('href', EP_BASE + '/verify');
       badge.setAttribute('target', '_blank');
       badge.setAttribute('rel', 'noopener noreferrer');
-      badge.setAttribute('title', 'Verify on EP Trust Explorer');
+      badge.setAttribute('title', 'Verify an EMILIA receipt offline');
 
       // Shield icon
       badge.appendChild(createShieldSVG());
@@ -210,28 +210,29 @@
 
       var label = document.createElement('span');
       label.setAttribute('class', 'ep-label');
-      label.textContent = 'EP Trust Score';
+      label.textContent = 'EMILIA capability';
       info.appendChild(label);
 
-      var scoreEl = document.createElement('span');
-      scoreEl.setAttribute('class', 'ep-score');
-      scoreEl.textContent = score;
-      info.appendChild(scoreEl);
+      var valueEl = document.createElement('span');
+      valueEl.setAttribute('class', 'ep-value');
+      valueEl.textContent = safeText(value);
+      info.appendChild(valueEl);
 
-      var confEl = document.createElement('span');
-      confEl.setAttribute('class', 'ep-confidence');
-      confEl.textContent = confidence + ' confidence \u00B7 ' + depth + ' receipts';
-      info.appendChild(confEl);
+      var detailEl = document.createElement('span');
+      detailEl.setAttribute('class', 'ep-detail');
+      detailEl.textContent = detail;
+      info.appendChild(detailEl);
 
       badge.appendChild(info);
 
-      // Verified badge
-      var verified = document.createElement('span');
-      verified.setAttribute('class', 'ep-verified');
-      verified.appendChild(createCheckDot());
-      var verText = document.createTextNode('VERIFIED');
-      verified.appendChild(verText);
-      badge.appendChild(verified);
+      if (capabilityOn) {
+        var verified = document.createElement('span');
+        verified.setAttribute('class', 'ep-verified');
+        verified.appendChild(createCheckDot());
+        var verText = document.createTextNode('ON');
+        verified.appendChild(verText);
+        badge.appendChild(verified);
+      }
 
       root.appendChild(badge);
     }

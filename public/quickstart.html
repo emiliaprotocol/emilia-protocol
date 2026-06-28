@@ -393,18 +393,18 @@ code{font-family:var(--mono);font-size:12px;background:var(--cyan-d);color:var(-
       <li><strong>Submit a receipt</strong> after the action completes: <code>POST /api/receipts/submit</code></li>
       <li><strong>Revoke a handshake</strong> if something goes wrong: <code>POST /api/handshake/{id}/revoke</code></li>
       <li><strong>File a dispute</strong> if the counterparty misbehaves: <code>POST /api/disputes/file</code></li>
-      <li><strong>Check trust profile</strong> of any entity: <code>GET /api/trust/profile/{entityId}</code></li>
+      <li><strong>Check your trust profile</strong> with an API key: <code>GET /api/trust/profile/{entityId}</code></li>
     </ul>
 
     <!-- QUICK REFERENCE -->
     <h2 id="api-reference">Quick Reference</h2>
 
-    <div class="api-row"><span class="api-method get">GET</span><div><div class="api-path">/api/policies</div><div class="api-desc">Browse available trust policies</div></div></div>
+    <div class="api-row"><span class="api-method get">GET</span><div><div class="api-path">/api/policies</div><div class="api-desc">Browse policy names; authenticate for thresholds</div></div></div>
     <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/handshake</div><div class="api-desc">Initiate a handshake between two parties</div></div><span class="api-auth">Auth</span></div>
     <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/handshake/{id}/present</div><div class="api-desc">Present credentials for a handshake party</div></div><span class="api-auth">Auth</span></div>
     <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/handshake/{id}/verify</div><div class="api-desc">Verify a handshake against its governing policy</div></div><span class="api-auth">Auth</span></div>
     <div class="api-row"><span class="api-method post">POST</span><div><div class="api-path">/api/trust/gate</div><div class="api-desc">Gate a specific action. Returns allow/deny with commit_ref</div></div><span class="api-auth">Auth</span></div>
-    <div class="api-row"><span class="api-method get">GET</span><div><div class="api-path">/api/trust/profile/{entityId}</div><div class="api-desc">Full trust profile for any entity</div></div></div>
+    <div class="api-row"><span class="api-method get">GET</span><div><div class="api-path">/api/trust/profile/{entityId}</div><div class="api-desc">Authenticated trust profile for your entity</div></div><span class="api-auth">Auth</span></div>
 
     <!-- SDKs -->
     <h2 id="sdks">SDKs</h2>

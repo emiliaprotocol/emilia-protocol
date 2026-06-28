@@ -4,10 +4,14 @@
 import { NextResponse } from 'next/server';
 import { getDomainScores, KNOWN_DOMAINS } from '@/lib/domain-scoring';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { authenticateRequest } from '@/lib/supabase';
 import { logger } from '../../../../../lib/logger.js';
 
 export async function GET(request, { params }) {
   try {
+    const auth = await authenticateRequest(request);
+    if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
+
     const { entityId } = await params;
     const url = new URL(request.url);
     const domainsParam = url.searchParams.get('domains');

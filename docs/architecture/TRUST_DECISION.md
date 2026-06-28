@@ -8,7 +8,7 @@ Formally: `TrustDecision = (decision, entity_id, policy_used, confidence, reason
 
 ## What a Trust Decision Is NOT
 
-- **Not a score.** A Trust Decision is a categorical outcome (`allow`, `deny`, `review`), not a number. The legacy `compat_score` field exists for backward compatibility but MUST NOT be used for trust-critical logic.
+- **Not a score.** A Trust Decision is a categorical outcome (`allow`, `deny`, `review`), not a number. The legacy `compat_score` field is retired from public responses and MUST NOT be used for trust-critical logic.
 - **Not a credential.** A Trust Decision is not carried or presented by the entity. It is computed server-side and returned to the requesting system.
 - **Not permanent.** Decisions are point-in-time evaluations. The same entity may receive `allow` today and `deny` tomorrow if its evidence profile changes.
 - **Not a handshake.** A handshake binds identity and authority before an action. A Trust Decision is the output of evaluating that evidence against a policy. The handshake produces the evidence; the decision consumes it.

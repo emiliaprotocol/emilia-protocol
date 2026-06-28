@@ -67,12 +67,12 @@ A public web page where anyone can:
 - Look up any receipt by `receipt_id`
 - Verify its signature in-browser
 - Check its Merkle anchor on-chain
-- See the entity's public trust profile
+- Check an entity's public authorization-receipt capability
 - Verify a commitment proof
 
 Like Etherscan for authorization receipts. Transparency as a feature. "Don't trust EP — verify it yourself, right here."
 
-**Status: BUILT.** `app/explorer/page.js` — live at `/explorer`. Three tabs (Verify Receipt, Verify Proof, Trust Profile), search input, VERIFIED/INVALID badges, Basescan anchor links, "How verification works" explainer.
+**Status: BUILT.** `app/explorer/page.js` — live at `/explorer`. Three tabs (Verify Receipt, Verify Proof, Capability Check), search input, VERIFIED/INVALID badges, Basescan anchor links, "How verification works" explainer.
 
 ### 4. The Embed (Stripe for Trust)
 

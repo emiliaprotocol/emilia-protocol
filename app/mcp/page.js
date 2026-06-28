@@ -33,7 +33,7 @@ const MCP_SOFTWARE_JSONLD = {
   operatingSystem: 'Cross-platform (Node.js 18+)',
   description:
     'MCP server that adds trust and human sign-off to AI agents: verify authorization receipts, '
-    + 'check entity trust profiles, and require a named human approval before an irreversible agent action.',
+    + 'verify passkey signoffs, and require a named human approval before an irreversible agent action.',
   url: 'https://www.emiliaprotocol.ai/mcp',
   downloadUrl: 'https://www.npmjs.com/package/@emilia-protocol/mcp-server',
   installUrl: 'https://www.npmjs.com/package/@emilia-protocol/mcp-server',
@@ -44,7 +44,7 @@ const MCP_SOFTWARE_JSONLD = {
   featureList: [
     'Human sign-off before irreversible agent actions',
     'Offline-verifiable authorization receipts (Ed25519)',
-    'Entity trust profiles',
+    'Passkey/WebAuthn signoff verification',
     'Receipt verification',
     'Model Context Protocol (MCP) stdio server',
   ],
@@ -53,11 +53,11 @@ const MCP_SOFTWARE_JSONLD = {
 const FAQ = [
   {
     q: 'What does the EMILIA MCP server do?',
-    a: 'It adds a trust and accountability layer to AI agents over the Model Context Protocol: agents can verify authorization receipts, check an entity’s trust profile before transacting, and — the flagship — require a named human to sign off before any irreversible action (releasing a payment, changing a record, deploying).',
+    a: 'It adds a trust and accountability layer to AI agents over the Model Context Protocol: agents can verify authorization receipts and passkey signoffs, and — the flagship — require a named human to sign off before any irreversible action (releasing a payment, changing a record, deploying). Rich trust-profile and policy-evaluation APIs require an authenticated EP API key.',
   },
   {
     q: 'How do I install it?',
-    a: 'Add it to any MCP client (Claude Desktop, Cursor, Cline, Continue) in one line: command "npx" with args ["-y", "@emilia-protocol/mcp-server"]. Public read tools need no key; set EP_API_KEY for write operations.',
+    a: 'Add it to any MCP client (Claude Desktop, Cursor, Cline, Continue) in one line: command "npx" with args ["-y", "@emilia-protocol/mcp-server"]. Public verification tools need no key; set EP_API_KEY for rich trust APIs or write operations.',
   },
   {
     q: 'How is this different from permissions or OAuth?',
@@ -95,9 +95,7 @@ const INSTALL = `// Claude Desktop / any MCP client — add to your config:
 
 const TOOLS = [
   { name: 'ep_verify_receipt', what: 'Verify any EMILIA authorization receipt offline — signature + Merkle anchor.' },
-  { name: 'ep_trust_profile', what: 'Pull an entity’s full trust profile before transacting with it.' },
-  { name: 'ep_trust_evaluate', what: 'Evaluate a counterparty/agent’s trust for a specific action.' },
-  { name: 'ep_submit_receipt', what: 'Record a signed receipt of an action your agent took.' },
+  { name: 'ep_verify_signoff', what: 'Verify WebAuthn/passkey signoff assertions bound to the exact action.' },
 ];
 
 const FLOW = [
@@ -135,7 +133,7 @@ export default async function McpPage() {
           </h1>
           <p style={{ fontSize: 18, color: color.t2, maxWidth: 620, lineHeight: 1.7, margin: '0 0 36px' }}>
             EMILIA is the trust &amp; accountability layer for AI agents, delivered as an MCP server.
-            Verify receipts, check trust profiles, and &mdash; the flagship &mdash; require a named human
+            Verify receipts and passkey signoffs, and &mdash; the flagship &mdash; require a named human
             sign-off before an agent does anything irreversible. Formally verified. Apache-2.0.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -266,7 +264,7 @@ node examples/mcp/linear-export.mjs     # export_customer_data — refuses witho
               </div>
             ))}
           </div>
-          <p style={{ fontSize: 13, color: color.t3, marginTop: 14 }}>36 tools total (17 core advertised by default) &mdash; trust profiles, receipts, disputes, delegation, identity continuity, and more. Full list in the <a href="https://www.npmjs.com/package/@emilia-protocol/mcp-server" target="_blank" rel="noopener noreferrer" style={{ color: color.gold }}>npm package</a>.</p>
+          <p style={{ fontSize: 13, color: color.t3, marginTop: 14 }}>Public connector tools are verification-only. Rich trust profiles, disputes, delegation, identity continuity, and write APIs require an authenticated EP API key.</p>
         </C>
       </section>
 

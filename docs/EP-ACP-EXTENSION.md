@@ -57,18 +57,16 @@ Response:
 }
 ```
 
-Or for full profile inspection:
+Or for the public capability projection:
 
 ```json
-GET /api/trust/profile/merchant-xyz
+GET /api/trust/profile/merchant-xyz?view=capability
 
 Response:
 {
-  "trust_profile": { ... },
-  "current_confidence": "confident",
-  "historical_establishment": true,
-  "effective_evidence_current": 37.6,
-  "compat_score": 87.3
+  "entity_id": "merchant-xyz",
+  "capability": "authorization_receipts",
+  "capability_on": true
 }
 ```
 
@@ -99,7 +97,7 @@ The ACP payment object includes an optional `ep_trust` field:
       "geo": "US-CA"
     },
     "evaluated_at": "2026-03-14T12:00:00Z",
-    "verify_url": "https://emiliaprotocol.ai/api/trust/profile/merchant-xyz"
+    "verify_url": "https://emiliaprotocol.ai/verify"
   }
 }
 ```
@@ -175,7 +173,7 @@ This closes the loop: ACP handles the payment, EP evaluates trust and records th
 
 ## 8. Implementation
 
-The EP MCP server provides `ep_trust_evaluate` as a tool. Any ACP-compatible agent using MCP can evaluate trust today:
+The public EP MCP server exposes offline verification tools only. Rich trust-profile and policy-evaluation APIs are authenticated server APIs, not anonymous MCP tools:
 
 ```json
 {

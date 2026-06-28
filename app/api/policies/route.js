@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { TRUST_POLICIES } from '@/lib/scoring-v2';
 import { epProblem } from '@/lib/errors';
+import { authenticateRequest } from '@/lib/supabase';
 
 /**
  * GET /api/policies — list all available trust policies
@@ -9,24 +10,30 @@ import { epProblem } from '@/lib/errors';
  * Policies are the decision layer of EP. Agents and systems evaluate
  * counterparties against structured policies, not raw numbers.
  */
-export async function GET() {
+export async function GET(request) {
   try {
+    const auth = await authenticateRequest(request);
+    const includeThresholds = !auth.error;
     const policies = Object.entries(TRUST_POLICIES).map(([name, policy]) => ({
       name,
       description: getPolicyDescription(name),
-      min_score: policy.min_score,
-      min_confidence: policy.min_confidence,
-      min_receipts: policy.min_receipts,
-      max_dispute_rate: policy.max_dispute_rate,
-      software_requirements: policy.software_requirements || null,
       family: getPolicyFamily(name),
+      ...(includeThresholds ? {
+        min_score: policy.min_score,
+        min_confidence: policy.min_confidence,
+        min_receipts: policy.min_receipts,
+        max_dispute_rate: policy.max_dispute_rate,
+        software_requirements: policy.software_requirements || null,
+      } : {}),
     }));
 
     return NextResponse.json({
       protocol_version: 'EP/1.1',
       policies,
       families: ['commerce', 'software', 'marketplace', 'custom'],
-      _note: 'Evaluate entities against policies with POST /api/trust/evaluate. Custom policies accepted as JSONB.',
+      _note: includeThresholds
+        ? 'Authenticated policy view includes thresholds. Evaluate entities with POST /api/trust/evaluate.'
+        : 'Public policy catalog omits thresholds. Authenticate to inspect evaluation parameters.',
     });
   } catch (e) {
     return epProblem(500, 'policy_list_failed', 'Failed to retrieve trust policies');

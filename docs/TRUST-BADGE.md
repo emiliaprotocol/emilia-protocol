@@ -41,12 +41,10 @@ or historical establishment), collapsed to a boolean *before* it leaves the
 server. The underlying count never crosses the wire **via the badge**.
 
 > Scope of this guarantee: it is about the *badge* surface (and the
-> `?view=capability` projection it reads), which are boolean-only. EMILIA's trust
-> graph is otherwise **public by design** — the full `GET /api/trust/profile/{entity}`
-> read surface returns confidence, effective evidence, disputes, and counts for
-> anyone who asks. The badge is the deliberately minimal view, not a claim that
-> the protocol hides those signals everywhere. No 0–100 reputation score is
-> emitted on any path.
+> `?view=capability` projection it reads), which are boolean-only. Full
+> `GET /api/trust/profile/{entity}` access is authenticated and self-scoped to
+> the requested entity. Public callers get only the deliberately minimal
+> capability view. No 0–100 reputation score is emitted on any path.
 
 ---
 
@@ -109,13 +107,13 @@ The badge is only worth embedding because you do **not** have to trust it. Each
 element is independently checkable:
 
 1. **Capability presence** — call the leak-free capability projection of the
-   public canonical read surface: `GET /api/trust/profile/{entity}?view=capability`.
+   canonical read surface: `GET /api/trust/profile/{entity}?view=capability`.
    It returns a boolean `capability_on` only — **no score, no counts, no volume**.
-   (The full `GET /api/trust/profile/{entity}` surface is public by design and
-   returns confidence/evidence/disputes; the `?view=capability` projection is the
-   minimal one. No 0–100 `compat_score` is emitted on any path — the legacy score
-   was retired from the wire.) If a receipt exists, the capability is `ON`. (Same
-   trust brain that powers enforcement and MCP.)
+   (The full `GET /api/trust/profile/{entity}` surface requires entity
+   authentication; the `?view=capability` projection is the public minimal one.
+   No 0–100 `compat_score` is emitted on any path — the legacy score was retired
+   from the wire.) If a receipt exists, the capability is `ON`. (Same trust brain
+   that powers enforcement and MCP.)
 2. **Pull a real receipt and check it** — receipts are verified by their
    cryptographic integrity at `GET /api/verify/{receiptId}` (hash + Merkle
    anchor), and an Ed25519 signature can be checked **entirely in your browser**

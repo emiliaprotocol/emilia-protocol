@@ -142,26 +142,26 @@
   <div class="demo-header">
     <div class="tag">Interactive Demo</div>
     <h1><span>Trust Evaluation</span> in 5 Steps</h1>
-    <p>See EMILIA Protocol against live API surfaces. This demo hits the current reference endpoints for trust profiles, policy evaluation, receipts, disputes, and verification. For the full dispute and appeal lifecycle, visit <a href="/appeal" style="color:var(--cyan);text-decoration:underline;">the appeal page</a>.</p>
+    <p>See EMILIA Protocol against live API surfaces. Public calls verify receipts, proofs, and leak-free capability bits; rich trust profiles and policy evaluation require an authenticated EP API key. For the full dispute and appeal lifecycle, visit <a href="/appeal" style="color:var(--cyan);text-decoration:underline;">the appeal page</a>.</p>
   </div>
 
-  <!-- STEP 1: TRUST PROFILE -->
+  <!-- STEP 1: PUBLIC CAPABILITY -->
   <div class="step">
     <div class="step-header">
       <div class="step-num" style="background:rgba(96,165,250,0.1);color:var(--cyan);border:1px solid rgba(0,212,255,0.2);">1</div>
-      <div class="step-title">Query a Trust Profile</div>
+      <div class="step-title">Check Public Capability</div>
     </div>
     <div class="step-desc">
-      The canonical output of EP is a <strong>trust profile</strong> — not a number. It includes behavioral rates, signal breakdowns, provenance composition, confidence level, and dispute history.
+      The public surface exposes a <strong>capability bit</strong> — whether authorization receipts are on for an entity. It does not expose scores, counts, volume, confidence, or profile internals.
     </div>
     <div class="term">
       <div class="term-bar">
         <div class="term-dots"><span></span><span></span><span></span></div>
-        <div class="term-label">GET /api/trust/profile/:entityId</div>
+        <div class="term-label">GET /api/badge/:entityId?format=json</div>
       </div>
       <div class="term-body">
         <div class="code-block"><span class="comment">// Try a registered entity</span>
-<span class="key">GET</span> <span class="str">/api/trust/profile/mcp-server-ep-v1</span></div>
+<span class="key">GET</span> <span class="str">/api/badge/mcp-server-ep-v1?format=json</span></div>
         <div class="run-row">
           <button class="run-btn" onclick="runStep1(this)">Run Live</button>
           <span class="run-hint">Calls the real EP API</span>
@@ -170,7 +170,7 @@
       </div>
     </div>
     <div class="callout">
-      <strong>Why this matters:</strong> Agents and systems don't check "score > 70." They evaluate trust profiles against policies. A trust profile tells you <em>why</em> an entity is trusted, not just <em>how much</em>.
+      <strong>Why this matters:</strong> Public discovery should prove capabilities without becoming an entity-intelligence oracle. The full profile is authenticated; the public bit stays boring.
     </div>
   </div>
 
@@ -183,7 +183,7 @@
       <div class="step-title">Evaluate Against a Policy</div>
     </div>
     <div class="step-desc">
-      EP doesn't use arbitrary thresholds. Agents evaluate counterparties against <strong>structured policies</strong>: strict for high-value, standard for normal, permissive for low-risk, discovery for exploring.
+      EP doesn't use arbitrary thresholds. Authenticated agents evaluate counterparties against <strong>structured policies</strong>: strict for high-value, standard for normal, permissive for low-risk, discovery for exploring.
     </div>
     <div class="term">
       <div class="term-bar">
@@ -217,7 +217,7 @@
       <div class="step-title">Run High-Risk Action Control Demo</div>
     </div>
     <div class="step-desc">
-      MCP tells you what a server can do. <strong>EP tells you whether it should be trusted enough to connect.</strong> Pre-action enforcement evaluates software entities against context-specific safety policies.
+      MCP tells you what a server can do. <strong>EP tells you whether it should be trusted enough to connect.</strong> Authenticated pre-action enforcement evaluates software entities against context-specific safety policies.
     </div>
     <div class="term">
       <div class="term-bar">
@@ -340,26 +340,15 @@ async function runStep1(btn) {
   btn.disabled = true; btn.textContent = 'QUERYING...';
   const res = document.getElementById('result1');
   try {
-    const r = await fetch('/api/trust/profile/mcp-server-ep-v1');
+    const r = await fetch('/api/badge/mcp-server-ep-v1?format=json');
     const d = await r.json();
     if (!r.ok) throw d.error || 'Not found';
-    const tp = d.trust_profile || {};
-    const bh = tp.behavioral || {};
-    const sg = tp.signals || {};
-    const prov = tp.provenance || {};
     res.innerHTML = `<div class="result-card">
-      <div class="label">Trust Profile</div>
-      <div><span class="val" style="font-size:16px;font-weight:700;">${esc(d.display_name || d.entity_id)}</span></div>
-      <div style="margin-top:8px;">Confidence: <span class="val">${esc(String(d.current_confidence || 'pending'))}</span></div>
-      <div>Evidence: <span class="val">${esc(String(d.effective_evidence_current || 0))}</span> (current) / <span class="val">${esc(String(d.effective_evidence_historical || 0))}</span> (historical)</div>
-      <div>Receipts: <span class="val">${esc(String(d.receipt_count || 0))}</span> from <span class="val">${esc(String(d.unique_submitters || 0))}</span> submitters</div>
-      ${bh.completion_rate != null ? `<div style="margin-top:8px;"><span class="label">Behavioral</span></div>
-      <div>Completion: <span class="val">${esc(String(bh.completion_rate))}%</span> · Dispute: <span class="val">${esc(String(bh.dispute_rate || 0))}%</span></div>` : ''}
-      ${sg.delivery_accuracy != null ? `<div style="margin-top:8px;"><span class="label">Signals</span></div>
-      <div>Delivery: <span class="val">${esc(String(sg.delivery_accuracy))}</span> · Product: <span class="val">${esc(String(sg.product_accuracy))}</span> · Price: <span class="val">${esc(String(sg.price_integrity))}</span></div>` : ''}
-      ${prov.breakdown ? `<div style="margin-top:8px;"><span class="label">Provenance</span></div>
-      <div>${Object.entries(prov.breakdown).map(([k,v]) => `${esc(k)}: <span class="val">${esc(String(v))}</span>`).join(' · ')}</div>` : ''}
-      <div style="margin-top:12px;color:var(--t3);font-size:10px;">Legacy compat: ${esc(String(d.compat_score || 'N/A'))}</div>
+      <div class="label">Public Capability</div>
+      <div><span class="val" style="font-size:16px;font-weight:700;">${esc(d.entity_id)}</span></div>
+      <div style="margin-top:8px;">Capability: <span class="val">${esc(String(d.capability || 'authorization_receipts'))}</span></div>
+      <div>Authorization receipts: <span class="val">${d.capability_on ? 'ON' : '\u2014'}</span></div>
+      <div style="margin-top:12px;color:var(--t3);font-size:11px;">${esc(String(d.claim || 'Capability check complete.'))}</div>
     </div>`;
   } catch(e) {
     res.innerHTML = `<div class="result-card"><span class="warn">${esc(String(e))}</span></div>`;
@@ -376,6 +365,7 @@ async function runStep2(btn) {
       body: JSON.stringify({ entity_id: 'mcp-server-ep-v1', policy: 'strict' })
     });
     const d = await r.json();
+    if (r.status === 401) throw 'Authentication required — this demo surface is intentionally not anonymous.';
     if (!r.ok) throw d.error || 'Evaluation failed';
     const icon = d.pass ? '✓ PASS' : '✗ FAIL';
     const cls = d.pass ? 'pass' : 'fail';
@@ -405,6 +395,7 @@ async function runStep3(btn) {
       })
     });
     const d = await r.json();
+    if (r.status === 401) throw 'Authentication required — pre-action enforcement is intentionally not anonymous.';
     if (!r.ok) throw d.error || 'Preflight failed';
     const dc = d.decision === 'allow' ? 'pass' : d.decision === 'deny' ? 'fail' : 'warn';
     const icon = d.decision === 'allow' ? '✓ ALLOW' : d.decision === 'deny' ? '✗ DENY' : '⚠ REVIEW';

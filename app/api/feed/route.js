@@ -1,5 +1,6 @@
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
+import { authenticateRequest } from '@/lib/supabase';
 
 /** Escape LIKE metacharacters to prevent pattern injection. */
 function escapeLike(str) {
@@ -24,9 +25,12 @@ function escapeLike(str) {
  *   Clients may send a Last-Event-ID header on reconnect. The server will
  *   only emit needs that are new or updated since that checkpoint.
  *
- * No auth required for reading the feed.
+ * Auth required. The live feed carries operational demand and budget data.
  */
 export async function GET(request) {
+  const auth = await authenticateRequest(request);
+  if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
+
   const { searchParams } = new URL(request.url);
   const capability = searchParams.get('capability');
   const category = searchParams.get('category');

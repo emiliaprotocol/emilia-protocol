@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
+import { authenticateRequest } from '@/lib/supabase';
 import { logger } from '../../../lib/logger.js';
 
 /**
  * GET /api/leaderboard
  *
- * Public trust rankings.
+ * Auth-scoped trust rankings. Not exposed as an anonymous entity catalog.
  *
  * Query params:
  *   type           - filter by entity_type (see canonical types in register route / OpenAPI)
@@ -20,6 +21,9 @@ import { logger } from '../../../lib/logger.js';
  */
 export async function GET(request) {
   try {
+    const auth = await authenticateRequest(request);
+    if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
+
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
     const category = searchParams.get('category');

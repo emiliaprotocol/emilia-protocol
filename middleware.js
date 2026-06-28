@@ -49,12 +49,14 @@ const ROUTE_POLICIES = {
   // Emergency commit signing-key revocation (T6) — operator-authed in-route.
   'POST /api/commit-keys/revoke':            { rateCategory: 'submit', useAuth: false },
 
-  // Trust evaluation (reads)
-  'GET /api/trust/profile/*':          { rateCategory: 'read', useAuth: false },
-  'POST /api/trust/evaluate':         { rateCategory: 'read', useAuth: false },   // evaluation is a read
-  'POST /api/trust/install-preflight': { rateCategory: 'read', useAuth: false },
+  // Trust evaluation. Rich evaluator/profile surfaces are auth-scoped to avoid
+  // anonymous system mapping; only narrow public verification/capability surfaces
+  // stay unauthenticated.
+  'GET /api/trust/profile/*':          { rateCategory: 'read', useAuth: true },
+  'POST /api/trust/evaluate':         { rateCategory: 'read', useAuth: true },
+  'POST /api/trust/install-preflight': { rateCategory: 'read', useAuth: true },
   'POST /api/trust/gate':             { rateCategory: 'read', useAuth: true },
-  'GET /api/trust/domain-score/*':     { rateCategory: 'read', useAuth: false },
+  'GET /api/trust/domain-score/*':     { rateCategory: 'read', useAuth: true },
   'POST /api/trust/zk-proof':         { rateCategory: 'dispute_write', useAuth: true },  // generates proof
   'GET /api/trust/zk-proof':          { rateCategory: 'read', useAuth: false },           // verify proof
 
@@ -65,14 +67,17 @@ const ROUTE_POLICIES = {
 
   // Entities
   'POST /api/entities/register':      { rateCategory: 'register', useAuth: false },        // no API key yet
-  'GET /api/entities/search':         { rateCategory: 'read', useAuth: false },
+  'GET /api/entities/search':         { rateCategory: 'read', useAuth: true },
   'POST /api/entities/*/auto-receipt': { rateCategory: 'dispute_write', useAuth: true },
 
   // Protocol-standard surfaces (singular, EP-RECEIPT-v1 / EP-IX vocabulary)
   'POST /api/entity':                 { rateCategory: 'register', useAuth: false },        // entity registration
   'POST /api/receipt':                { rateCategory: 'submit',   useAuth: true },         // receipt submission
-  'GET /api/trust':                   { rateCategory: 'read',     useAuth: false },        // trust profile lookup
+  'GET /api/trust':                   { rateCategory: 'read',     useAuth: true },         // auth-scoped trust profile lookup
   'GET /api/discovery/keys':          { rateCategory: 'read',     useAuth: false },        // public well-known keys discovery
+  'GET /api/stats':                   { rateCategory: 'read',     useAuth: true },
+  'GET /api/leaderboard':             { rateCategory: 'read',     useAuth: true },
+  'GET /api/feed':                    { rateCategory: 'read',     useAuth: true },
 
   // GovGuard + FinGuard product API (v1) — pre-execution trust receipts.
   // All v1 endpoints require auth (per MD §12.2.1: actor identity must come

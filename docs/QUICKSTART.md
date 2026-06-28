@@ -13,8 +13,9 @@ rewriting your stack. Pick the path that matches how your agent runs.
   }
 }
 ```
-Your agent can now verify receipts, check trust profiles, and require human sign-off
-before an irreversible action. Public read tools need no key; set `EP_API_KEY` for writes.
+Your agent can now verify receipts and require human sign-off before an irreversible
+action. Public verification tools need no key; set `EP_API_KEY` for rich trust APIs
+or writes.
 
 ## 2. LangChain.js (1 wrapper)
 ```bash

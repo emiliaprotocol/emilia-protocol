@@ -73,42 +73,6 @@ const handler = createMcpHandler(
       },
     );
 
-    server.registerTool(
-      'ep_trust_profile',
-      {
-        title: 'Get Trust Profile',
-        annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-        description: "Fetch an entity's public EP trust profile — composite score, behavioral rates, and receipt-backed history.",
-        inputSchema: {
-          entity_id: z.string().describe('The EP entity id'),
-        },
-      },
-      async ({ entity_id }) => {
-        const res = await fetch(`${BASE}/api/trust/profile/${encodeURIComponent(entity_id)}`);
-        return text(await res.json());
-      },
-    );
-
-    server.registerTool(
-      'ep_trust_evaluate',
-      {
-        title: 'Evaluate Trust Policy',
-        annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
-        description: 'Evaluate an entity against a named EP trust policy (standard, strict, permissive, discovery) and return the allow/review/deny decision with reasons.',
-        inputSchema: {
-          entity_id: z.string().describe('The EP entity id'),
-          policy: z.enum(['standard', 'strict', 'permissive', 'discovery']).default('standard').describe('Policy to evaluate against'),
-        },
-      },
-      async ({ entity_id, policy }) => {
-        const res = await fetch(`${BASE}/api/trust/evaluate`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ entity_id, policy }),
-        });
-        return text(await res.json());
-      },
-    );
   },
   {
     serverInfo: { name: 'emilia-protocol', version: '1.0.0' },

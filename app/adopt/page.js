@@ -30,7 +30,7 @@ const LEVELS = [
   },
   {
     level: 2, name: 'Participant', tag: 'Submit receipts',
-    desc: 'Submit trust receipts and build a public trust profile for your entities.',
+    desc: 'Submit authorization receipts and expose a public capability badge for your entities.',
     how: 'Register entities, submit receipts via API or SDK',
     effort: '1 hour', risk: 'Low',
     color: '#3B82F6',

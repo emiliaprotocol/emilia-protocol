@@ -13,12 +13,13 @@ import { styles, cta, color, font, radius } from '@/lib/tokens';
  *   - Look up a commitment proof by proof_id
  *   - Verify a receipt's signature in-browser
  *   - Check a commitment proof's validity
- *   - See an entity's public trust profile
+ *   - Check an entity's public authorization-receipt capability
  *
- * No authentication required. Transparency as a protocol property.
+ * No authentication required for verification/capability lookups. Full trust
+ * profiles require entity authentication.
  */
 
-const TABS = ['receipt', 'proof', 'entity'];
+const TABS = ['receipt', 'proof', 'capability'];
 
 export default function ExplorerPage() {
   const [activeTab, setActiveTab] = useState('receipt');
@@ -41,7 +42,7 @@ export default function ExplorerPage() {
       } else if (tab === 'proof') {
         res = await fetch(`/api/trust/zk-proof?proof_id=${encodeURIComponent(q)}`);
       } else {
-        res = await fetch(`/api/trust/profile/${encodeURIComponent(q)}`);
+        res = await fetch(`/api/badge/${encodeURIComponent(q)}?format=json`);
       }
 
       const data = await res.json();
@@ -61,7 +62,7 @@ export default function ExplorerPage() {
     runLookup(query, activeTab);
   }
 
-  // Deep-linkable search: honor /explorer?q=<term>&tab=<receipt|proof|entity>.
+  // Deep-linkable search: honor /explorer?q=<term>&tab=<receipt|proof|capability>.
   // This is exactly what the homepage SearchAction structured data points at,
   // so the sitelinks searchbox and shared links resolve to a real, executed
   // lookup instead of an empty box (and the crawled ?q={search_term_string}
@@ -86,13 +87,13 @@ export default function ExplorerPage() {
   const placeholders = {
     receipt: 'ep_r_abc123...',
     proof: 'ep_zkp_abc123...',
-    entity: 'ep_entity_abc123...',
+    capability: 'ep_entity_abc123...',
   };
 
   const labels = {
     receipt: 'Verify Receipt',
     proof: 'Verify Proof',
-    entity: 'Trust Profile',
+    capability: 'Capability Check',
   };
 
   return (
@@ -103,7 +104,7 @@ export default function ExplorerPage() {
         <div style={styles.eyebrow}>Trust Explorer</div>
         <h1 style={styles.h1}>Verify anything. Trust nothing.</h1>
         <p style={{ ...styles.body, maxWidth: 560 }}>
-          Look up any receipt, commitment proof, or entity. Verification is public — no account, no API key. Just the truth.
+          Look up any receipt, commitment proof, or public authorization-receipt capability. Full trust profiles require an authenticated entity API key.
         </p>
       </section>
 
@@ -173,7 +174,7 @@ export default function ExplorerPage() {
                 color: color.t1, letterSpacing: 0.5,
               }}>
                 {activeTab === 'receipt' ? 'Receipt Verification' :
-                 activeTab === 'proof' ? 'Commitment Proof' : 'Trust Profile'}
+                 activeTab === 'proof' ? 'Commitment Proof' : 'Capability Check'}
               </span>
               {result.valid !== undefined && (
                 <span style={{

@@ -456,38 +456,27 @@ On `allow`: a commit is issued via `protocolWrite(ISSUE_COMMIT)` and its ID retu
 
 ### GET /api/trust/profile/{entityId}
 
-Canonical read surface for an entity's trust data.
+Canonical read surface for an entity's trust data. Full profiles are
+authenticated and self-scoped. Anonymous callers may request only
+`?view=capability`, which returns a boolean authorization-receipt capability and
+no scores, counts, volume, confidence, or dispute internals.
 
-**Auth**: None (public)
+**Auth**: Required for full profile. `?view=capability` is public.
 
-**Response** (200):
+**Capability response** (200, public):
 
 ```json
 {
   "entity_id": "...",
   "display_name": "...",
-  "entity_type": "...",
-  "description": "...",
-  "category": "...",
-  "capabilities": [],
-  "trust_profile": { "behavioral": {}, "volume": {}, "quality": {} },
-  "anomaly": {},
-  "current_confidence": "confident",
-  "effective_evidence_current": 45.2,
-  "quality_gated_evidence_current": 42.1,
-  "historical_establishment": true,
-  "effective_evidence_historical": 40,
-  "unique_submitters": 12,
-  "receipt_count": 85,
-  "disputes": [],
-  "disputesDampened": 0,
-  "compat_score": 82,
-  "member_since": "2024-01-01T00:00:00.000Z",
+  "capability": "authorization_receipts",
+  "capability_on": true,
+  "_note": "Capability projection: boolean only — no score, no counts, no volume. Verify a real receipt at /verify.",
   "_protocol_version": "EP/1.1-v2"
 }
 ```
 
-**Error codes**: `not_found` (404)
+**Error codes**: `unauthorized` (401), `forbidden` (403), `not_found` (404)
 
 ---
 

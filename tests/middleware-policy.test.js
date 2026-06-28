@@ -96,10 +96,10 @@ describe('Registration route has useAuth: false', () => {
 });
 
 // =============================================================================
-// 3. Authenticated write routes must be useAuth: true
+// 3. Authenticated routes must be useAuth: true
 // =============================================================================
 
-describe('Authenticated write routes have useAuth: true', () => {
+describe('Authenticated routes have useAuth: true', () => {
   const authenticatedRoutes = [
     'POST /api/receipts/submit',
     'POST /api/receipts/confirm',
@@ -116,6 +116,17 @@ describe('Authenticated write routes have useAuth: true', () => {
     'POST /api/needs/broadcast',
     'POST /api/commit/issue',
     'POST /api/trust/zk-proof',
+    // Rich trust reads are auth-scoped; anonymous callers get only narrow
+    // verification/capability surfaces, not the policy brain or entity catalog.
+    'GET /api/trust/profile/*',
+    'POST /api/trust/evaluate',
+    'POST /api/trust/install-preflight',
+    'GET /api/entities/search',
+    'GET /api/trust',
+    'GET /api/trust/domain-score/*',
+    'GET /api/stats',
+    'GET /api/leaderboard',
+    'GET /api/feed',
   ];
 
   for (const route of authenticatedRoutes) {
@@ -128,18 +139,13 @@ describe('Authenticated write routes have useAuth: true', () => {
 });
 
 // =============================================================================
-// 4. Read-only routes should be useAuth: false
+// 4. Public verification routes should be useAuth: false
 // =============================================================================
 
-describe('Read-only routes have useAuth: false', () => {
+describe('Public verification routes have useAuth: false', () => {
   const readRoutes = [
-    'GET /api/trust/profile/*',
-    'POST /api/trust/evaluate',
-    'POST /api/trust/install-preflight',
     // 'POST /api/trust/gate' — now authenticated (audit finding 12)
-    'GET /api/trust/domain-score/*',
     'GET /api/trust/zk-proof',
-    'GET /api/entities/search',
     'GET /api/delegations/*/verify',
     'POST /api/commit/verify',
   ];

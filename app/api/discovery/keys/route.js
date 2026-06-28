@@ -77,7 +77,7 @@ export async function GET() {
     // Current signing keys.
     const { data: entities, error } = await supabase
       .from('entities')
-      .select('entity_id, display_name, public_key, created_at')
+      .select('entity_id, public_key')
       .limit(1000);
 
     const keys = {};
@@ -87,7 +87,6 @@ export async function GET() {
           keys[e.entity_id] = {
             public_key: e.public_key,
             algorithm: 'Ed25519',
-            created_at: e.created_at,
           };
         }
       }
@@ -100,7 +99,7 @@ export async function GET() {
     try {
       const { data: retired } = await supabase
         .from('entity_signing_key_history')
-        .select('entity_id, public_key, algorithm, retired_at')
+        .select('entity_id, public_key, algorithm')
         .order('retired_at', { ascending: false })
         .limit(1000);
       if (Array.isArray(retired)) {
@@ -109,7 +108,6 @@ export async function GET() {
           (historical_keys[r.entity_id] ||= []).push({
             public_key: r.public_key,
             algorithm: r.algorithm || 'Ed25519',
-            retired_at: r.retired_at,
           });
         }
       }

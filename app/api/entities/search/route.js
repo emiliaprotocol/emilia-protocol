@@ -17,12 +17,56 @@ function sanitizePostgrestInput(str) {
   return str.replace(/[,;.()"'\\%_]/g, '');
 }
 
+const CONF_LEVELS = ['pending', 'insufficient', 'provisional', 'emerging', 'confident'];
+
+// Uses materialized trust data for performance. Live re-evaluation happens on
+// profile/evaluate endpoints. This function whitelists the output shape: DB PKs,
+// raw counts, created_at, and full snapshots are consumed only for derivation.
+function enrichWithMaterializedTrust(results, { minConfidence, rankBy }) {
+  let enriched = (results || []).map((e) => {
+    const snap = e.trust_snapshot || {};
+    return {
+      entity_id: e.entity_id,
+      display_name: e.display_name,
+      entity_type: e.entity_type,
+      description: e.description,
+      category: e.category,
+      capabilities: e.capabilities,
+      verified: e.verified,
+      ...(e.similarity !== undefined ? { similarity: e.similarity } : {}),
+      confidence: snap.confidence || 'pending',
+      effective_evidence: snap.effectiveEvidence || 0,
+      established: (snap.effectiveEvidence || 0) >= 5 && (snap.uniqueSubmitters || 0) >= 2,
+    };
+  });
+
+  if (minConfidence) {
+    const minIdx = CONF_LEVELS.indexOf(minConfidence);
+    if (minIdx >= 0) {
+      enriched = enriched.filter(e => CONF_LEVELS.indexOf(e.confidence) >= minIdx);
+    }
+  }
+
+  if (rankBy === 'evidence') {
+    enriched.sort((a, b) => b.effective_evidence - a.effective_evidence);
+  } else if (rankBy === 'confidence') {
+    enriched.sort((a, b) => {
+      const ca = CONF_LEVELS.indexOf(a.confidence);
+      const cb = CONF_LEVELS.indexOf(b.confidence);
+      if (cb !== ca) return cb - ca;
+      return b.effective_evidence - a.effective_evidence;
+    });
+  }
+
+  return enriched;
+}
+
 /**
  * GET /api/entities/search
  *
  * Search entities by capability, category, type, or semantic query.
  *
- * No auth required — entity directory is public.
+ * Auth required. The rich entity directory is not an anonymous recon surface.
  *
  * Query params:
  *   q              - semantic search query (uses embeddings)
@@ -36,6 +80,9 @@ function sanitizePostgrestInput(str) {
  */
 export async function GET(request) {
   try {
+    const auth = await authenticateRequest(request);
+    if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
+
     const { searchParams } = new URL(request.url);
     const q = searchParams.get('q');
     const type = searchParams.get('type');
@@ -50,61 +97,9 @@ export async function GET(request) {
     const limit = Math.min(parseInt(searchParams.get('limit')) || 20, 50);
 
     const supabase = getGuardedClient();
-    const confLevels = ['pending', 'insufficient', 'provisional', 'emerging', 'confident'];
-
-    // Uses materialized trust data for performance. Live re-evaluation happens on profile/evaluate endpoints.
-    function enrichWithMaterializedTrust(results) {
-      // Whitelist the OUTPUT shape. The select pulls internal columns (db PK `id`,
-      // legacy `emilia_score`, raw `total_receipts`, full `trust_snapshot`,
-      // `created_at`) that are used only for sorting/derivation — they must NOT
-      // cross the wire. We surface only the documented public trust signals
-      // (confidence / effective_evidence / established), consistent with the
-      // badge's "no score, no raw counts" guarantee.
-      let enriched = (results || []).map((e) => {
-        const snap = e.trust_snapshot || {};
-        return {
-          entity_id: e.entity_id,
-          display_name: e.display_name,
-          entity_type: e.entity_type,
-          description: e.description,
-          category: e.category,
-          capabilities: e.capabilities,
-          verified: e.verified,
-          ...(e.similarity !== undefined ? { similarity: e.similarity } : {}),
-          confidence: snap.confidence || 'pending',
-          effective_evidence: snap.effectiveEvidence || 0,
-          established: (snap.effectiveEvidence || 0) >= 5 && (snap.uniqueSubmitters || 0) >= 2,
-        };
-      });
-
-      if (minConfidence) {
-        const minIdx = confLevels.indexOf(minConfidence);
-        if (minIdx >= 0) {
-          enriched = enriched.filter(e => confLevels.indexOf(e.confidence) >= minIdx);
-        }
-      }
-
-      if (rankBy === 'evidence') {
-        enriched.sort((a, b) => b.effective_evidence - a.effective_evidence);
-      } else if (rankBy === 'confidence') {
-        enriched.sort((a, b) => {
-          const ca = confLevels.indexOf(a.confidence);
-          const cb = confLevels.indexOf(b.confidence);
-          if (cb !== ca) return cb - ca;
-          return b.effective_evidence - a.effective_evidence;
-        });
-      }
-
-      return enriched;
-    }
-
-    // Semantic (embedding) search costs provider quota, so it is gated to
-    // authenticated callers — an anonymous q falls through to the free filter
-    // (ilike) search below. Stops unauthenticated embedding-quota burn.
-    const semanticAllowed = !(await authenticateRequest(request)).error;
 
     // If semantic query provided, attempt vector search via embedding provider
-    if (q && semanticAllowed) {
+    if (q) {
       try {
         const embedding = await generateEmbedding(q);
 
@@ -130,8 +125,9 @@ export async function GET(request) {
               similarity: r.similarity,
               verified: r.verified,
             }));
+            semanticResults = semanticResults.filter(r => r.verified === true);
 
-            semanticResults = enrichWithMaterializedTrust(semanticResults);
+            semanticResults = enrichWithMaterializedTrust(semanticResults, { minConfidence, rankBy });
 
             return NextResponse.json({
               entities: semanticResults,
@@ -156,6 +152,7 @@ export async function GET(request) {
         verified, created_at, trust_snapshot
       `)
       .eq('status', 'active')
+      .eq('verified', true)
       .gte('emilia_score', minScore)
       .order('emilia_score', { ascending: false })
       .limit(limit);
@@ -175,7 +172,7 @@ export async function GET(request) {
       return epProblem(500, 'search_failed', 'Search failed');
     }
 
-    const filtered = enrichWithMaterializedTrust(results || []);
+    const filtered = enrichWithMaterializedTrust(results || [], { minConfidence, rankBy });
 
     return NextResponse.json({
       entities: filtered,

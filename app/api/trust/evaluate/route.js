@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { EP_ERRORS } from '@/lib/errors';
 import { getGuardedClient } from '@/lib/write-guard';
+import { authenticateRequest } from '@/lib/supabase';
 import { logger } from '../../../../lib/logger.js';
 
 let canonicalEvaluate, buildTrustDecision, passToDecision;
@@ -20,6 +21,9 @@ try {
  */
 export async function POST(request) {
   try {
+    const auth = await authenticateRequest(request);
+    if (auth.error) return EP_ERRORS.UNAUTHORIZED();
+
     const body = await request.json();
 
     if (!body.entity_id) {
@@ -45,25 +49,11 @@ export async function POST(request) {
             entityId: result.entity_id,
             policyUsed: pr?.policyName || 'standard',
             confidence: result.confidence,
-            reasons: pass === false ? (pr?.failures || []) : [],
-            warnings: pr?.warnings || [],
+            reasons: pass === false ? ['policy_not_satisfied'] : [],
+            warnings: pr?.warnings?.length ? ['review_recommended'] : [],
             contextUsed: result.contextUsed,
-            profileSummary: {
-              confidence: result.confidence,
-              evidence_level: result.effectiveEvidence,
-              dispute_rate: result.profile?.behavioral?.dispute_rate ?? 0,
-            },
-            extensions: {
-              pass,
-              display_name: result.display_name,
-              entity_type: result.entity_type,
-              score: result.score,
-              effective_evidence: result.effectiveEvidence,
-              profile: result.profile,
-              anomaly: result.anomaly,
-              failures: pr?.failures || [],
-              _protocol_version: 'EP/1.1-v2',
-            },
+            profileSummary: null,
+            extensions: { _protocol_version: 'EP/1.1-v2' },
           }));
         }
       } catch { /* fall through to simple evaluation */ }
@@ -94,8 +84,8 @@ export async function POST(request) {
       entity_id: entity.entity_id,
       policy_used: body.policy || 'standard',
       confidence: depth === 0 ? 'none' : depth < 5 ? 'low' : depth < 20 ? 'medium' : 'high',
-      reasons: decision === 'deny' ? ['Trust score below threshold'] : [],
-      warnings: depth < 5 ? ['Insufficient evidence depth'] : [],
+      reasons: decision === 'deny' ? ['policy_not_satisfied'] : [],
+      warnings: depth < 5 ? ['review_recommended'] : [],
       protocol_version: 'EP-CORE-v1.0',
     });
   } catch (err) {

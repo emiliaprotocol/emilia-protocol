@@ -319,7 +319,7 @@ trust must never be more powerful than appeal.
 - **Submit a receipt** after the action completes: `POST /api/receipts/submit`
 - **Revoke a handshake** if something goes wrong: `POST /api/handshake/{id}/revoke`
 - **File a dispute** if the counterparty misbehaves: `POST /api/disputes/file`
-- **Check trust profile** of any entity: `GET /api/trust/profile/{entityId}`
+- **Check your trust profile** with an API key: `GET /api/trust/profile/{entityId}`
 
 ---
 
@@ -332,4 +332,5 @@ trust must never be more powerful than appeal.
 | Present credentials | `/api/handshake/{id}/present` | POST | Yes |
 | Verify handshake | `/api/handshake/{id}/verify` | POST | Yes |
 | Gate action | `/api/trust/gate` | POST | Yes |
-| Get trust profile | `/api/trust/profile/{entityId}` | GET | No |
+| Get your trust profile | `/api/trust/profile/{entityId}` | GET | Yes |
+| Check public capability | `/api/trust/profile/{entityId}?view=capability` | GET | No |

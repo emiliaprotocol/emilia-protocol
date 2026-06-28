@@ -106,12 +106,12 @@ the product useful but are not part of the trust protocol.
 | 6 | `/api/trust/install-preflight` | POST | Software Trust | Software pre-action enforcement (experimental) |
 | 7 | `/api/trust/zk-proof` | POST | Trust | Generate a commitment trust proof |
 | 8 | `/api/trust/zk-proof` | GET | Trust | Verify a commitment trust proof |
-| 9 | `/api/trust/domain-score/{entityId}` | GET | Trust | Domain-specific trust scores |
+| 9 | `/api/trust/domain-score/{entityId}` | GET | Trust | Authenticated domain-specific trust scores |
 | 10 | `/api/needs/broadcast` | POST | Needs | Broadcast a need to the network |
 | 11 | `/api/needs/{id}/claim` | POST | Needs | Claim a need |
 | 12 | `/api/needs/{id}/complete` | POST | Needs | Complete a need |
 | 13 | `/api/needs/{id}/rate` | POST | Needs | Rate a need fulfillment |
-| 14 | `/api/feed` | GET | Needs | Live needs feed (SSE) |
+| 14 | `/api/feed` | GET | Needs | Authenticated live needs feed (SSE) |
 | 15 | `/api/disputes/report` | POST | Disputes | Report an entity (lightweight dispute) |
 | 16 | `/api/disputes/{disputeId}/adjudicate` | POST | Disputes | Operator adjudication of dispute |
 
@@ -126,8 +126,8 @@ forms, or identity subsystem endpoints not required for the core trust loop.
 |---|----------|--------|-----|------|
 | 1 | `/api/score/{entityId}` | GET | Trust | Legacy compatibility score |
 | 2 | `/api/score/{entityId}/history` | GET | Trust | Legacy score history |
-| 3 | `/api/stats` | GET | System | Public proof metrics |
-| 4 | `/api/leaderboard` | GET | Trust | Entity leaderboard |
+| 3 | `/api/stats` | GET | System | Authenticated operator proof metrics |
+| 4 | `/api/leaderboard` | GET | Trust | Authenticated entity leaderboard |
 | 5 | `/api/commit/keys` | GET | Commits | Public signing keys |
 | 6 | `/api/operators/apply` | POST | Operations | Operator application form |
 | 7 | `/api/inquiries` | POST | Operations | Partner/investor inquiry form |
@@ -181,8 +181,8 @@ public surface.
 - `/api/score/{entityId}` and `/api/score/{entityId}/history` are explicitly
   marked as legacy in the OpenAPI spec. They should be removed in a future
   major version.
-- `/api/leaderboard` and `/api/stats` are marketing/dashboard surfaces with
-  no protocol function.
+- `/api/leaderboard` and `/api/stats` are authenticated dashboard surfaces with
+  no protocol function; they must not become anonymous system-inventory APIs.
 
 ---
 

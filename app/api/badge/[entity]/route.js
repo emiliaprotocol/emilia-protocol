@@ -25,10 +25,8 @@
  * ──────────────────────────────────────────────────────────────────────────
  *
  *  These rules scope to THIS badge surface (and the ?view=capability projection
- *  it reads). EMILIA's trust graph is otherwise public by design — the full
- *  /api/trust/profile surface returns confidence, evidence, disputes, and counts.
- *  The badge is the deliberately minimal view, NOT a claim that the protocol
- *  hides those signals everywhere.
+ *  it reads). Full /api/trust/profile access is authenticated and self-scoped;
+ *  public callers get only this deliberately minimal capability view.
  *
  *  • NO score on this surface. No 0–100, no reputation index, no ranking number.
  *    (And no 0–100 score is emitted on ANY path — the legacy compat_score was
@@ -38,7 +36,7 @@
  *    capability is rendered as a boolean ("ON" / "—"), derived from
  *    `receiptCount > 0`, and the count itself never crosses the wire via the badge.
  *  • EVERY factual element is independently re-derivable by the viewer:
- *      1. Capability presence  → GET /api/trust/profile/:entity   (public)
+ *      1. Capability presence  → GET /api/trust/profile/:entity?view=capability
  *      2. A real receipt       → GET /api/verify/:receiptId        (public)
  *      3. Offline crypto check → /verify  (Ed25519, client-side, no server trust)
  *    The verification path is encoded in the SVG (<metadata> + aria-label) and

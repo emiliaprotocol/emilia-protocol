@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { EP_ERRORS } from '@/lib/errors';
 import { buildTrustDecision } from '@/lib/trust-decision';
+import { authenticateRequest } from '@/lib/supabase';
 import { logger } from '../../../../lib/logger.js';
 
 /**
@@ -14,6 +15,9 @@ import { logger } from '../../../../lib/logger.js';
  */
 export async function POST(request) {
   try {
+    const auth = await authenticateRequest(request);
+    if (auth.error) return EP_ERRORS.UNAUTHORIZED();
+
     const body = await request.json();
 
     if (!body.entity_id) {

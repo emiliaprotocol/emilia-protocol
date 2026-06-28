@@ -78,7 +78,7 @@ No network calls are made until a method is called.
 
 ### `listPolicies(): Promise<Policy[]>`
 
-List available trust policies. No authentication required.
+List available trust policy names. Exact thresholds require authentication.
 
 ```typescript
 const policies = await ep.listPolicies();

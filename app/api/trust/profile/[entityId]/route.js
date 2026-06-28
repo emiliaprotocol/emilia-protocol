@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { logger } from '../../../../../lib/logger.js';
 
 /**
@@ -10,7 +11,8 @@ import { logger } from '../../../../../lib/logger.js';
  * Routes through the canonical evaluator — same trust brain
  * used by evaluate, pre-action enforcement, needs/claim, and MCP.
  *
- * No auth required. Public endpoint.
+ * Full profile auth required. Anonymous callers may request only the
+ * leak-free `?view=capability` projection used by public badges.
  *
  * Optional query parameter:
  *   ?weights=<JSON> — Custom scoring weights. When provided, returns both
@@ -21,10 +23,20 @@ import { logger } from '../../../../../lib/logger.js';
 export async function GET(request, { params }) {
   try {
     const { entityId } = await params;
+    const capabilityView = request.nextUrl.searchParams.get('view') === 'capability';
+
+    if (!capabilityView) {
+      const auth = await authenticateRequest(request);
+      if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
+      const actorId = authEntityId(auth);
+      if (actorId !== entityId) {
+        return EP_ERRORS.FORBIDDEN('Trust profiles require authorization for the requested entity');
+      }
+    }
 
     // Parse optional custom scoring weights from query string
     let scoringWeights = null;
-    const weightsParam = request.nextUrl.searchParams.get('weights');
+    const weightsParam = capabilityView ? null : request.nextUrl.searchParams.get('weights');
     if (weightsParam) {
       try {
         // Guard payload size — prevent DoS via deeply nested JSON
@@ -53,7 +65,7 @@ export async function GET(request, { params }) {
     // Leak-free capability projection (powers /api/badge). Boolean capability
     // ONLY — no compat_score, no receipt_count, no unique_submitters — so the
     // capability badge's "no score, no volume" guarantee holds end-to-end.
-    if (request.nextUrl.searchParams.get('view') === 'capability') {
+    if (capabilityView) {
       const capabilityOn =
         (result.receiptCount || 0) > 0 ||
         result.establishment?.established === true ||
@@ -63,7 +75,6 @@ export async function GET(request, { params }) {
         display_name: result.display_name,
         capability: 'authorization_receipts',
         capability_on: Boolean(capabilityOn),
-        member_since: result._entity.created_at,
         _note: 'Capability projection: boolean only — no score, no counts, no volume. Verify a real receipt at /verify.',
         _protocol_version: 'EP/1.1-v2',
       });

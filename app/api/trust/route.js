@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
-import { epProblem } from '@/lib/errors';
+import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { authenticateRequest, authEntityId } from '@/lib/supabase';
 
 /**
  * GET /api/trust?entity_id=ep_entity_...
@@ -10,7 +11,7 @@ import { epProblem } from '@/lib/errors';
  *
  * Conformance-required fields: entity_id, score, confidence, evidence_depth.
  *
- * @public — no authentication required. Trust profiles are public by design.
+ * Auth required. This compatibility endpoint is not an anonymous profile oracle.
  */
 export async function GET(request) {
   try {
@@ -19,6 +20,11 @@ export async function GET(request) {
 
     if (!entityId) {
       return epProblem(400, 'missing_entity_id', 'entity_id query parameter is required');
+    }
+    const auth = await authenticateRequest(request);
+    if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
+    if (authEntityId(auth) !== entityId) {
+      return EP_ERRORS.FORBIDDEN('Trust profile lookup requires authorization for the requested entity');
     }
 
     const supabase = getGuardedClient();
@@ -50,7 +56,6 @@ export async function GET(request) {
       evidence_depth: evidenceDepth,
       successful_interactions: entity.successful_receipts || 0,
       dispute_count: entity.dispute_count || 0,
-      first_seen: entity.created_at,
       protocol_version: 'EP-CORE-v1.0',
     });
   } catch (err) {
