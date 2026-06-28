@@ -110,15 +110,18 @@ export async function GET(request, { params }) {
     if (receipt.anchor_batch_id && receipt.merkle_proof) {
       const { data: batch } = await supabase
         .from('anchor_batches')
-        .select('batch_id, merkle_root, transaction_hash, chain_id, block_number, explorer_url, created_at')
+        .select('batch_id, merkle_root, merkle_alg, transaction_hash, chain_id, block_number, explorer_url, created_at')
         .eq('batch_id', receipt.anchor_batch_id)
         .single();
 
       if (batch) {
+        // Verify under the batch's own Merkle algorithm: EP-MERKLE-v2
+        // (domain-separated) for new batches, legacy sorted-pair v1 for old ones.
         const proofValid = verifyMerkleProof(
           receipt.receipt_hash,
           receipt.merkle_proof,
-          batch.merkle_root
+          batch.merkle_root,
+          { v2: batch.merkle_alg === 'EP-MERKLE-v2' }
         );
 
         response.anchor = {

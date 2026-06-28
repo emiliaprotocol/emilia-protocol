@@ -296,3 +296,40 @@ describe('Merkle root uniqueness', () => {
     }
   });
 });
+
+// =============================================================================
+// EP-MERKLE-v2 (domain separation) — #8
+// =============================================================================
+describe('buildMerkleTree / verifyMerkleProof — EP-MERKLE-v2', () => {
+  const leaves = Array.from({ length: 5 }, (_, i) =>
+    crypto.createHash('sha256').update(`receipt-${i}`).digest('hex'));
+
+  it('v2 round-trips: every leaf proof verifies under {v2:true}', () => {
+    const t = buildMerkleTree(leaves, { v2: true });
+    expect(t.alg).toBe('EP-MERKLE-v2');
+    leaves.forEach((leaf, i) => {
+      const proof = generateMerkleProof(t.layers, i);
+      expect(verifyMerkleProof(leaf, proof, t.root, { v2: true })).toBe(true);
+    });
+  });
+
+  it('v2 root differs from v1 root for the same leaves (domain separation applied)', () => {
+    expect(buildMerkleTree(leaves, { v2: true }).root)
+      .not.toBe(buildMerkleTree(leaves).root);
+  });
+
+  it('a v2 proof does NOT verify under the v1 algorithm (and vice versa)', () => {
+    const t2 = buildMerkleTree(leaves, { v2: true });
+    const p2 = generateMerkleProof(t2.layers, 1);
+    expect(verifyMerkleProof(leaves[1], p2, t2.root)).toBe(false);          // v1 verify of v2 proof
+    const t1 = buildMerkleTree(leaves);
+    const p1 = generateMerkleProof(t1.layers, 1);
+    expect(verifyMerkleProof(leaves[1], p1, t1.root, { v2: true })).toBe(false); // v2 verify of v1 proof
+  });
+
+  it('single-leaf v2 tree round-trips and a tampered leaf fails', () => {
+    const t = buildMerkleTree([leaves[0]], { v2: true });
+    expect(verifyMerkleProof(leaves[0], [], t.root, { v2: true })).toBe(true);
+    expect(verifyMerkleProof(leaves[1], [], t.root, { v2: true })).toBe(false);
+  });
+});
