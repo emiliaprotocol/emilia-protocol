@@ -26,7 +26,7 @@ jobs:
         with:
           node-version: 20
 
-      - run: npm ci
+      - run: npm ci --ignore-scripts
 
       - name: Generate SBOM
         run: npx @cyclonedx/cyclonedx-npm --output-file sbom.json
@@ -41,7 +41,7 @@ jobs:
       - name: Generate MCP server SBOM
         working-directory: mcp-server
         run: |
-          npm ci
+          npm ci --ignore-scripts
           npx @cyclonedx/cyclonedx-npm --output-file sbom.json
 
       - name: Upload MCP SBOM

@@ -21,7 +21,7 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
-      - run: cd mcp-server && npm ci
+      - run: cd mcp-server && npm ci --ignore-scripts
       - run: cd mcp-server && npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

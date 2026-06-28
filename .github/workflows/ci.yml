@@ -7,6 +7,12 @@ name: CI
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+# Least privilege for the default GITHUB_TOKEN (otherwise write-all). No job in
+# this workflow pushes commits, comments on PRs, or cuts releases — read is
+# enough. A job that ever needs more must declare its own job-level permissions.
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]
@@ -28,7 +34,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - name: Run test suite with coverage (vitest)
         run: npx vitest run --coverage
       - name: Verify package suites (node:test)
@@ -64,7 +70,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - name: Next.js production build
         run: npx next build
 
@@ -77,7 +83,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - name: Check write discipline
         run: node scripts/check-write-discipline.js
 
@@ -90,7 +96,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - name: Check invariant coverage
         run: node scripts/check-invariant-coverage.js
 
@@ -103,7 +109,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - name: Check language governance
         run: node scripts/check-language-governance.js
 
@@ -178,7 +184,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
         if: steps.tsconfig.outputs.exists == 'true'
       - name: TypeScript type check
         if: steps.tsconfig.outputs.exists == 'true'
@@ -196,7 +202,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - name: Run ESLint
         # `next lint` is deprecated in Next.js 16 and breaks with a
         # circular-structure error under eslint-config-next v16+. The repo
@@ -215,7 +221,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - name: Run protocol discipline checks
         run: node scripts/check-protocol-discipline.js
 
@@ -258,7 +264,7 @@ jobs:
           cache: npm
       - name: Install dependencies
         working-directory: mcp-server
-        run: npm install
+        run: npm ci --ignore-scripts
       - name: Verify npm pack succeeds
         working-directory: mcp-server
         run: npm pack
@@ -275,7 +281,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - name: Run benchmark tests
         run: npx vitest run tests/benchmark.test.js tests/adversarial-benchmarks.test.js
         env:
@@ -291,7 +297,7 @@ jobs:
           node-version: 20
       - name: Install dependencies
         working-directory: sdks/typescript
-        run: npm install
+        run: npm ci --ignore-scripts
       - name: Build SDK
         working-directory: sdks/typescript
         run: npm run build
@@ -334,7 +340,7 @@ jobs:
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version: "3.11"
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6
         with:
           go-version: "1.22"
       - run: pip install cryptography
@@ -545,7 +551,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Build production bundle
@@ -597,7 +603,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - name: Run Postgres integration tests
         run: npx vitest run tests/postgres-integration.test.js
         env:
