@@ -171,10 +171,16 @@ function renderSvg({ entityId, capabilityOn }) {
 </svg>`;
 }
 
+// Constant-time floor for the capability resolution. Entity existence is already
+// public (profile/search), so this is belt-and-suspenders, but pinning every
+// response to the same minimum latency removes the exists-vs-not timing signal.
+const BADGE_MIN_MS = 60;
+
 export async function GET(request, { params }) {
   const { entity } = await params;
   const format = (request.nextUrl.searchParams.get('format') || 'svg').toLowerCase();
 
+  const startedAt = Date.now();
   let cap;
   try {
     cap = await resolveCapability(entity);
@@ -182,6 +188,10 @@ export async function GET(request, { params }) {
     // Fail closed to a neutral badge — never error a public <img> with private
     // detail, never assert a capability we could not confirm.
     cap = { found: false, capabilityOn: false };
+  }
+  const elapsed = Date.now() - startedAt;
+  if (elapsed < BADGE_MIN_MS) {
+    await new Promise((r) => setTimeout(r, BADGE_MIN_MS - elapsed));
   }
 
   if (format === 'json') {

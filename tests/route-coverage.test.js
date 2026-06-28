@@ -166,6 +166,8 @@ const OPENAPI_EXEMPTIONS = [
   // (and any client that needs to resolve policy_key → policy_id UUID).
   // OpenAPI spec to be added in a follow-up.
   '/api/handshake-policies',
+  // Emergency commit signing-key revocation — internal, operator-authed (T6).
+  '/api/commit-keys/revoke',
   // EP Commit routes — OpenAPI spec to be added in a follow-up.
   '/api/commit/issue',
   '/api/commit/verify',

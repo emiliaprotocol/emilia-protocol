@@ -10,6 +10,7 @@ import { discover, exchangeCode, validateIdToken } from '@/lib/sso/oidc';
 import { loadConnection } from '@/lib/sso/config';
 import { verifyState, SSO_STATE_COOKIE } from '@/lib/sso/state';
 import { mintSession, SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from '@/lib/sso/session';
+import { normalizeUserName } from '@/lib/scim/core';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 
@@ -96,7 +97,7 @@ async function resolveDirectory(tenant, userName) {
       .from('scim_users')
       .select('id, active')
       .eq('tenant_id', tenant)
-      .eq('user_name', userName)
+      .eq('user_name', normalizeUserName(userName))
       .maybeSingle();
     if (!data) return { matched: false, active: false };
     return { matched: true, active: data.active !== false, user_id: data.id };

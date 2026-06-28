@@ -44,7 +44,10 @@ const ROUTE_POLICIES = {
   // in-route); connection config is gated by the customer's EP API key.
   'POST /api/sso/saml/acs':                  { rateCategory: 'submit', useAuth: false },
   'POST /api/sso/connections':               { rateCategory: 'submit', useAuth: true },
-  'DELETE /api/sso/session':                 { rateCategory: 'read', useAuth: false }, // logout — clears the session cookie
+  'DELETE /api/sso/session':                 { rateCategory: 'read', useAuth: false }, // logout — revoke this session's jti + clear cookie
+  'POST /api/sso/session':                   { rateCategory: 'submit', useAuth: false }, // logout-all-devices — subject-wide cutoff
+  // Emergency commit signing-key revocation (T6) — operator-authed in-route.
+  'POST /api/commit-keys/revoke':            { rateCategory: 'submit', useAuth: false },
 
   // Trust evaluation (reads)
   'GET /api/trust/profile/*':          { rateCategory: 'read', useAuth: false },

@@ -37,7 +37,6 @@ export async function GET() {
 
     return NextResponse.json({
       total_entities: total,
-      next_available: total + 1,
       trust_surfaces: proofMetrics?.trust_surfaces ?? null,
       automated_checks: proofMetrics?.automated_checks ?? null,
       trust_policies: policyCount,

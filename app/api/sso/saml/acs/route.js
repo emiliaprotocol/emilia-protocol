@@ -12,6 +12,7 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { buildSamlSp, validateSamlResponse } from '@/lib/sso/saml';
 import { loadConnection, spOrigin } from '@/lib/sso/config';
 import { mintSession, SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from '@/lib/sso/session';
+import { normalizeUserName } from '@/lib/scim/core';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 
@@ -79,6 +80,9 @@ export async function POST(request) {
     spEntityId: `${origin}/api/sso/saml/metadata`,
     acsUrl: `${origin}/api/sso/saml/acs`,
     audience: connection.saml_audience || `${origin}/api/sso/saml/metadata`,
+    // Require a signed Response envelope by default (closes assertion-wrapping);
+    // a tenant may opt out per-connection for unsigned IdP-initiated envelopes.
+    wantAuthnResponseSigned: connection.saml_want_response_signed !== false,
   });
 
   const result = await validateSamlResponse(sp, String(samlResponse));
@@ -133,7 +137,7 @@ async function resolveDirectory(tenant, profile) {
       .from('scim_users')
       .select('id, active, display_name')
       .eq('tenant_id', tenant)
-      .eq('user_name', profile.email || profile.nameID)
+      .eq('user_name', normalizeUserName(profile.email || profile.nameID))
       .maybeSingle();
     if (!data) return { matched: false, active: false };
     return { matched: true, active: data.active !== false, user_id: data.id };
