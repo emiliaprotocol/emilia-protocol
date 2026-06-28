@@ -54,6 +54,7 @@ export async function POST(request) {
       .from('entities')
       .insert({
         entity_id: entityId,
+        organization_id: entityId,
         owner_id: ownerId,
         display_name: name,
         entity_type: 'agent',

@@ -38,21 +38,27 @@ export async function GET(request, { params }) {
       return epProblem(404, 'dispute_not_found', 'Dispute not found');
     }
 
-    // Redact evidence for public view — show field names but not raw values
-    // Full evidence is restricted to dispute participants and operators
+    // Redact evidence for public view — show field names and value types, never
+    // raw values. Government/regulated evidence often contains short secrets
+    // (SSNs, case IDs, bank suffixes, short emails); length-based redaction is
+    // not safe enough for a public transparency endpoint.
     function redactEvidence(evidence) {
       if (!evidence || typeof evidence !== 'object') return null;
       const redacted = {};
       for (const key of Object.keys(evidence)) {
         const val = evidence[key];
-        if (typeof val === 'string' && val.length > 20) {
-          redacted[key] = `[redacted — ${val.length} chars]`;
+        if (Array.isArray(val)) {
+          redacted[key] = `[redacted array — ${val.length} items]`;
+        } else if (val === null) {
+          redacted[key] = null;
         } else if (typeof val === 'string') {
-          redacted[key] = val; // Short values like status codes are safe
-        } else if (typeof val === 'boolean' || typeof val === 'number') {
-          redacted[key] = val;
+          redacted[key] = `[redacted string — ${val.length} chars]`;
+        } else if (typeof val === 'boolean') {
+          redacted[key] = '[redacted boolean]';
+        } else if (typeof val === 'number') {
+          redacted[key] = '[redacted number]';
         } else {
-          redacted[key] = '[redacted]';
+          redacted[key] = '[redacted object]';
         }
       }
       return redacted;
