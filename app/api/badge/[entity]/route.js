@@ -24,11 +24,19 @@
  *  HOUSE RULES THIS ENDPOINT OBEYS
  * ──────────────────────────────────────────────────────────────────────────
  *
- *  • NO score. No 0–100, no reputation index, no ranking number — anywhere.
- *  • NO volume leak. We never render receipt counts, submitter counts, dollar
- *    amounts, or any per-entity transaction volume. The capability is rendered
- *    as a boolean ("ON" / "—"), derived from `receiptCount > 0`, and the count
- *    itself never crosses the wire.
+ *  These rules scope to THIS badge surface (and the ?view=capability projection
+ *  it reads). EMILIA's trust graph is otherwise public by design — the full
+ *  /api/trust/profile surface returns confidence, evidence, disputes, and counts.
+ *  The badge is the deliberately minimal view, NOT a claim that the protocol
+ *  hides those signals everywhere.
+ *
+ *  • NO score on this surface. No 0–100, no reputation index, no ranking number.
+ *    (And no 0–100 score is emitted on ANY path — the legacy compat_score was
+ *    retired from the wire.)
+ *  • NO volume leak via the badge. We never render receipt counts, submitter
+ *    counts, dollar amounts, or any per-entity transaction volume here. The
+ *    capability is rendered as a boolean ("ON" / "—"), derived from
+ *    `receiptCount > 0`, and the count itself never crosses the wire via the badge.
  *  • EVERY factual element is independently re-derivable by the viewer:
  *      1. Capability presence  → GET /api/trust/profile/:entity   (public)
  *      2. A real receipt       → GET /api/verify/:receiptId        (public)
