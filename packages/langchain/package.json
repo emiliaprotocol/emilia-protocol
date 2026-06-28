@@ -1,7 +1,7 @@
 {
   "name": "@emilia-protocol/langchain",
-  "version": "0.1.0",
-  "description": "Guard LangChain.js tools with EMILIA Protocol — block irreversible agent actions until a named human signs off, and get a verifiable Trust Receipt.",
+  "version": "0.2.0",
+  "description": "Guard LangChain.js tools with EMILIA Protocol — require an offline-verifiable authorization receipt (EP-RECEIPT-v1) before an irreversible tool runs: missing -> refused, valid -> runs, replay -> refused, forged -> refused (RR-1). The approval becomes portable evidence an auditor can check without trusting the operator.",
   "type": "module",
   "main": "index.js",
   "exports": {
@@ -9,8 +9,11 @@
       "import": "./index.js"
     }
   },
-  "files": ["index.js", "README.md"],
+  "files": ["index.js", "README.md", "LICENSE"],
   "license": "Apache-2.0",
+  "scripts": {
+    "test": "node --test"
+  },
   "keywords": [
     "langchain",
     "langchainjs",
@@ -21,6 +24,9 @@
     "emilia-protocol",
     "agent-safety"
   ],
+  "dependencies": {
+    "@emilia-protocol/require-receipt": "^0.4.0"
+  },
   "peerDependencies": {
     "@langchain/core": ">=0.1.0"
   },

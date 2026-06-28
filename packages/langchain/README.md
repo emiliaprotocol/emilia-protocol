@@ -1,85 +1,65 @@
 # @emilia-protocol/langchain
 
-**Guard LangChain.js tools with EMILIA Protocol.** Wrap any high-risk tool so the
-agent can't take an irreversible action until EMILIA says it's safe — or a named
-human signs off. Every decision can produce a verifiable
-[Trust Receipt](https://www.emiliaprotocol.ai/spec).
+Guard [LangChain.js](https://js.langchain.com) tools with the **EMILIA Protocol** —
+require an **offline-verifiable authorization receipt** (EP-RECEIPT-v1) before an
+irreversible tool runs.
+
+```
+missing receipt  -> refused
+valid receipt    -> runs
+replayed receipt -> refused   (one-time consumption)
+forged receipt   -> refused
+```
+
+Verification is offline Ed25519 over canonical JSON via
+[`@emilia-protocol/require-receipt`](https://www.npmjs.com/package/@emilia-protocol/require-receipt)'s
+canonical `makeReceiptGate` — **zero network, no vendor in the loop.** The approval
+becomes portable evidence an auditor can check without trusting the operator.
+*Necessary, not sufficient*: it composes with — never replaces — the tool's own checks.
+
+> EMILIA proves **who authorized** a specific action. It is not an access-control
+> runtime; it is the portable authorization receipt any runtime can emit.
+
+## Install
 
 ```bash
-npm install @emilia-protocol/langchain
+npm install @emilia-protocol/langchain   # brings in @emilia-protocol/require-receipt
 ```
 
-## Wrap a tool
+## Recommended: offline receipt gate
 
 ```js
-import { withGuard } from '@emilia-protocol/langchain';
-import { DynamicStructuredTool } from '@langchain/core/tools';
-import { z } from 'zod';
+import { requireReceiptForLangChainTool } from '@emilia-protocol/langchain';
 
-const wireMoney = new DynamicStructuredTool({
-  name: 'wire_money',
-  description: 'Release a wire transfer',
-  schema: z.object({ amount: z.number(), to: z.string() }),
-  func: async ({ amount, to }) => bank.wire(amount, to),
+const guarded = requireReceiptForLangChainTool(wireTransferTool, {
+  action: 'payment.release',           // or actionFor: (input) => `payment.release:${input.to}`
+  trustedKeys: [ISSUER_SPKI_B64URL],   // pin the issuer keys you trust
 });
 
-// One wrap. The tool now refuses to run until EMILIA allows it.
-const guarded = withGuard(wireMoney, {
-  action: 'payment.release',
-  context: (input) => ({ amount: input.amount, destination: input.to }),
-  // Optional: resolve once a human approves (otherwise signoff throws).
-  onSignoff: async (decision) => waitForApproval(decision.raw),
-});
-
-// Give `guarded` to your agent instead of `wireMoney`.
-await guarded.invoke({ amount: 50000, to: 'acct_9f12' });
-// → throws "EMILIA requires human signoff for \"payment.release\"" until approved
+// The human-approved receipt travels as out-of-band call metadata:
+await guarded.invoke(
+  { to: 'acct_1', amount: 100 },
+  { configurable: { emiliaReceipt: receipt } },
+);
+// missing/invalid/replayed/forged -> throws; valid + action-bound -> runs.
 ```
 
-## Try it (offline, ~5 seconds)
+Per-call binding (recommended) means a receipt minted for one target can't drive a
+different one. A transient tool failure does **not** burn the approval — it stays
+retryable.
 
-```bash
-node example.mjs
-```
-Shows all three outcomes — small payment allowed, large payment held for human sign-off,
-blocked destination denied — using a local stand-in for the gate (delete `fetchImpl` to go live).
+## Legacy: hosted policy gate
 
-## Low-level: just ask the gate
+`guardAction` / `withGuard` call a hosted gate for an allow/deny/signoff decision.
+Convenient, but the decision is the operator's word, not offline-verifiable evidence —
+prefer the receipt gate above for anything irreversible.
 
-```js
-import { guardAction } from '@emilia-protocol/langchain';
+## What it is / isn't
 
-const d = await guardAction({
-  actor: 'invoice_bot',
-  action: 'payment.release',
-  context: { amount: 50000 },
-});
-// { allow, deny, signoffRequired, reason, raw }
-if (d.deny) throw new Error('blocked');
-```
+- **Is:** an offline gate that enforces *a named human authorized this exact action*
+  and yields portable, third-party-verifiable evidence.
+- **Isn't:** authentication, access control, or a hosted runtime. It composes on top.
 
-## API
-
-### `withGuard(tool, opts)`
-Returns a proxy of `tool` whose `.invoke()` is gated. Preserves `name`,
-`description`, `schema`, and identity.
-
-| opt | type | required | notes |
-|-----|------|----------|-------|
-| `action` | string | yes | canonical action name, e.g. `payment.release` |
-| `actor` | string | no | defaults to the tool's `name` |
-| `context` | object \| `(input) => object` | no | action context sent to the gate |
-| `onSignoff` | `(decision, input) => Promise<void>` | no | resolve when a human approves; if omitted, signoff throws |
-| `gateUrl` | string | no | defaults to the public EMILIA gate |
-| `fetchImpl` | fetch | no | inject a fetch (tests / non-global environments) |
-
-### `guardAction(opts)`
-Returns `{ allow, deny, signoffRequired, reason, raw }`.
-
-## Other frameworks
-
-`withGuard` works with anything exposing `.invoke(input)`. For CrewAI (Python),
-AutoGPT, or a custom loop, call the same gate directly — see
-[/agent-guard](https://www.emiliaprotocol.ai/agent-guard).
-
-Apache-2.0 · part of [EMILIA Protocol](https://www.emiliaprotocol.ai)
+Apache-2.0. Reference implementation, experimental. Part of the
+[EMILIA Protocol](https://github.com/emiliaprotocol/emilia-protocol) — an open
+IETF-track authorization-receipt standard (`draft-schrock-ep-authorization-receipts`).
