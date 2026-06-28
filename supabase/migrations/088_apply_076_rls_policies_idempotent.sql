@@ -27,6 +27,7 @@ DECLARE
     'handshake_parties', 'handshake_policies', 'handshake_presentations',
     'handshake_results', 'handshakes', 'identity_bindings', 'merkle_batches',
     'principal_delegation_signals', 'principals', 'protocol_events',
+    'security_events',
     'signoff_attestations', 'signoff_challenges', 'signoff_consumptions',
     'signoff_events', 'trust_reports', 'zk_proofs',
     'eye_advisories', 'eye_observations', 'eye_suppressions',

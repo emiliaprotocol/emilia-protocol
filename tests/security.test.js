@@ -113,14 +113,13 @@ describe('TRUST_TABLES list', () => {
     expect(tableMatch).not.toBeNull();
   });
 
-  it('contains the expected number of trust tables (21)', () => {
-    // Bumped from 20 → 21 after adding signoff_attestation_consumed (or
-    // equivalent table introduced in the L99 audit-fix migration series).
+  it('contains the expected number of trust tables (22)', () => {
+    // Bumped when adding trust-bearing tables (latest: security_events).
     // Update both the count and the in-source TRUST_TABLES list together
     // when a new trust-bearing table is introduced.
     const entries = tableMatch[1].match(/'[^']+'/g);
     expect(entries).not.toBeNull();
-    expect(entries.length).toBe(21);
+    expect(entries.length).toBe(22);
   });
 
   const expectedCoreTables = [
@@ -129,6 +128,7 @@ describe('TRUST_TABLES list', () => {
     'disputes',
     'trust_reports',
     'protocol_events',
+    'security_events',
     'handshakes',
     'signoff_challenges',
     'signoff_attestations',

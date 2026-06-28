@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { verifyEmiliaReceipt, receiptChallenge } from '@/packages/require-receipt/index.js';
+import { receiptChallenge } from '@/packages/require-receipt/index.js';
+import { verifyReceiptForProduction, assertGovVerifierReady } from '@/lib/gov-receipt-verifier.js';
 
 export const runtime = 'nodejs';
 
@@ -12,9 +13,8 @@ export const runtime = 'nodejs';
  * one and retries). This is what any counterparty drops in front of an
  * agent-facing action to start *demanding* accountability.
  *
- * Reference semantics: integrity-only trust (allowInlineKey) so anyone can try
- * the flow with a self-signed receipt. In production the verifier PINS trusted
- * issuer keys (from /.well-known/ep-keys.json) — see @emilia-protocol/require-receipt.
+ * Production semantics: trusted issuer keys are pinned and inline/self-asserted
+ * keys are refused. The self-signed try-it flow lives under /api/demo/* only.
  *
  * Present a receipt via header `X-EMILIA-Receipt: base64(<EP-RECEIPT-v1 JSON>)`
  * or body `{ "emilia_receipt": <doc> }`.
@@ -37,7 +37,15 @@ export async function POST(request) {
     });
   }
 
-  const v = verifyEmiliaReceipt(doc, { allowInlineKey: true, action, maxAgeSec: 900 });
+  const ready = assertGovVerifierReady();
+  if (!ready.ok) {
+    return NextResponse.json({
+      ...receiptChallenge(action, 'Receipt verifier is not configured with pinned issuer keys.'),
+      rejected: { ok: false, reason: 'verifier_not_ready', errors: ready.errors },
+    }, { status: 503 });
+  }
+
+  const v = verifyReceiptForProduction(doc, { action, maxAgeSec: 900 });
   if (!v.ok) {
     return NextResponse.json({ ...receiptChallenge(action, `Receipt rejected: ${v.reason}.`), rejected: v }, { status: 402 });
   }
@@ -48,6 +56,6 @@ export async function POST(request) {
     action,
     receipt_id: v.receipt_id,
     subject: v.subject,
-    note: 'Reference endpoint — receipt integrity verified. Production pins trusted issuer keys instead of allowInlineKey.',
+    note: 'Receipt verified against pinned issuer keys; inline/self-asserted keys are refused on this endpoint.',
   });
 }
