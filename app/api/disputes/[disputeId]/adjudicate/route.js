@@ -4,8 +4,8 @@
  * Triggers trust evaluation for a dispute.
  *
  * Authorization:
- *   - CRON_SECRET bearer token (for automated cron-based adjudication after
- *     the 48h response window, or periodic re-adjudication sweeps)
+ *   - operator auth (per-operator HMAC token, or migration-only CRON_SECRET
+ *     when EP_OPERATOR_KEYS is not configured)
  *   - The authenticated entity who filed the dispute (after 48h response window)
  *
  * The 48h window: giving the accused entity time to respond before the trust
@@ -34,7 +34,7 @@ import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { adjudicateDispute } from '@/lib/dispute-adjudication';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
-import { getCronSecret } from '@/lib/env';
+import { authenticateOperator } from '@/lib/operator-auth';
 import { logger } from '../../../../../lib/logger.js';
 
 // Minimum age before a filer can trigger adjudication themselves.
@@ -54,15 +54,14 @@ export async function POST(request, { params }) {
     const supabase = getGuardedClient();
 
     // -------------------------------------------------------------------
-    // Authorization: CRON_SECRET or authenticated filer
+    // Authorization: operator auth or authenticated filer
     // -------------------------------------------------------------------
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = getCronSecret();
-    const isCron = cronSecret && authHeader === `Bearer ${cronSecret}`;
+    const opAuth = authenticateOperator(request, { requireOperatorIdentity: true });
+    const isCron = opAuth.valid;
 
     let callerEntity = null;
     let callerIsFiler = false;
-    let triggeredBy = 'cron';
+    let triggeredBy = isCron ? opAuth.operator_id : 'filer';
 
     if (!isCron) {
       // Try entity auth

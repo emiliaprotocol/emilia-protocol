@@ -26,11 +26,18 @@ const PRICE_ENV = {
 };
 
 function siteOrigin(request) {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL
-    || process.env.NEXT_PUBLIC_SITE_URL
-    || new URL(request.url).origin
-  );
+  const configured = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '';
+  if (configured) {
+    const parsed = new URL(configured);
+    if (process.env.NODE_ENV === 'production' && parsed.protocol !== 'https:') {
+      throw new Error('checkout origin must be HTTPS in production');
+    }
+    return parsed.origin;
+  }
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('checkout origin is not configured');
+  }
+  return new URL(request.url).origin;
 }
 
 export async function POST(request) {
@@ -50,7 +57,13 @@ export async function POST(request) {
 
     const { default: Stripe } = await import('stripe');
     const stripe = new Stripe(secret);
-    const origin = siteOrigin(request);
+    let origin;
+    try {
+      origin = siteOrigin(request);
+    } catch (err) {
+      logger.error?.('checkout: canonical origin unavailable', { error: err.message });
+      return epProblem(503, 'checkout_origin_unconfigured', 'Checkout canonical origin is not configured.');
+    }
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',

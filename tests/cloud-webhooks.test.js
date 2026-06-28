@@ -6,6 +6,18 @@ vi.mock('@/lib/supabase', () => ({
   getServiceClient: vi.fn(),
 }));
 
+vi.mock('node:dns/promises', () => ({
+  lookup: vi.fn(async (hostname) => {
+    if (hostname === 'metadata.example') {
+      return [{ address: '169.254.169.254', family: 4 }];
+    }
+    if (hostname === 'localhost') {
+      return [{ address: '127.0.0.1', family: 4 }];
+    }
+    return [{ address: '93.184.216.34', family: 4 }];
+  }),
+}));
+
 import {
   registerEndpoint,
   disableEndpoint,
@@ -159,6 +171,12 @@ describe('registerEndpoint', () => {
   it('returns 422 for .local hostname', async () => {
     const result = await registerEndpoint('tenant-1', 'http://myhost.local/hook', []);
     expect(result.status).toBe(422);
+  });
+
+  it('returns 422 when a public-looking hostname resolves to metadata/private IP', async () => {
+    const result = await registerEndpoint('tenant-1', 'https://metadata.example/hook', []);
+    expect(result.status).toBe(422);
+    expect(result.error).toMatch(/resolve|private|internal/i);
   });
 
   it('returns 422 for non-http(s) protocol', async () => {

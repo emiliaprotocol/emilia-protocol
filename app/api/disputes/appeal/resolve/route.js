@@ -1,38 +1,28 @@
 import { NextResponse } from 'next/server';
-import { timingSafeEqual } from 'crypto';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { recordOperatorAction } from '@/lib/procedural-justice';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { getGuardedClient } from '@/lib/write-guard';
-import { getCronSecret } from '@/lib/env';
+import { authenticateOperator } from '@/lib/operator-auth';
 import { logger } from '../../../../../lib/logger.js';
-
-function safeCompare(a, b) {
-  if (!a || !b) return false;
-  const bufA = Buffer.from(a);
-  const bufB = Buffer.from(b);
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
-}
 
 /**
  * POST /api/disputes/appeal/resolve
  *
  * @operator
- * @access operator — requires CRON_SECRET. Not part of the public API.
+ * @access operator — requires operator auth. Not part of the public API.
  *
- * Operator resolves an appeal. Requires CRON_SECRET auth.
+ * Operator resolves an appeal. Requires a named operator token once
+ * EP_OPERATOR_KEYS is configured; legacy CRON_SECRET is migration-only.
  * appeal_upheld = original resolution stands
  * appeal_reversed = original resolution overturned, trust recomputed
  * appeal_dismissed = appeal dismissed
  */
 export async function POST(request) {
   try {
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = getCronSecret();
-    if (!cronSecret || !safeCompare(authHeader, `Bearer ${cronSecret}`)) {
-      return EP_ERRORS.UNAUTHORIZED();
-    }
+    const opAuth = authenticateOperator(request, { requireOperatorIdentity: true });
+    if (!opAuth.valid) return EP_ERRORS.UNAUTHORIZED();
+    const operatorId = opAuth.operator_id;
 
     const body = await request.json();
     if (!body.dispute_id || !body.resolution) {
@@ -56,9 +46,9 @@ export async function POST(request) {
         dispute_id: body.dispute_id,
         resolution: body.resolution,
         rationale: body.rationale || null,
-        operator_id: 'appeal_reviewer',
+        operator_id: operatorId,
       },
-      actor: 'appeal_reviewer',
+      actor: operatorId,
     });
 
     if (result.error) {
@@ -67,7 +57,7 @@ export async function POST(request) {
 
     // Audit trail
     await recordOperatorAction(supabase, {
-      operatorId: 'appeal_reviewer',
+      operatorId,
       operatorRole: 'appeal_reviewer',
       targetType: 'dispute',
       targetId: body.dispute_id,

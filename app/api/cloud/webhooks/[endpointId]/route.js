@@ -3,6 +3,7 @@ import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
 import { getServiceClient } from '@/lib/supabase';
+import { validateWebhookUrl } from '@/lib/cloud/webhooks';
 import { epProblem, EP_ERRORS } from '@/lib/errors';
 import { logger } from '../../../../../lib/logger.js';
 
@@ -90,12 +91,9 @@ export async function PUT(request, { params }) {
 
     if (body.url !== undefined) {
       try {
-        const parsed = new URL(body.url);
-        if (!['https:', 'http:'].includes(parsed.protocol)) {
-          return epProblem(400, 'invalid_url', 'Webhook URL must use HTTPS or HTTP');
-        }
-      } catch {
-        return epProblem(400, 'invalid_url', 'Webhook URL is not a valid URL');
+        await validateWebhookUrl(body.url);
+      } catch (err) {
+        return epProblem(422, 'invalid_webhook_url', err.message || 'Webhook URL is not allowed');
       }
       update.url = body.url;
     }

@@ -3,8 +3,8 @@
 // POST /api/commit-keys/revoke — emergency commit SIGNING-KEY revocation (T6).
 //
 // @internal
-// @access operator — per-operator HMAC token or legacy CRON_SECRET
-//         (lib/operator-auth.js). NOT part of the public API.
+// @access operator — named per-operator HMAC token once EP_OPERATOR_KEYS is
+//         configured; legacy CRON_SECRET is migration-only. NOT public.
 //
 // Commit signing keys live in env (EP_COMMIT_SIGNING_KEY + EP_COMMIT_SIGNING_KEYS),
 // so there is no "rotate the env at runtime" call. The emergency response to a
@@ -30,7 +30,7 @@ import { authenticateOperator } from '@/lib/operator-auth';
 import { logger } from '@/lib/logger.js';
 
 export async function POST(request) {
-  const auth = authenticateOperator(request);
+  const auth = authenticateOperator(request, { requireOperatorIdentity: true });
   if (!auth.valid) return epProblem(401, 'unauthorized', auth.error || 'Unauthorized');
 
   let body;
