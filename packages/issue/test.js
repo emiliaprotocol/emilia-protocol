@@ -36,10 +36,11 @@ import {
   validateInitiatorAttestation,
   validateAgentBinding,
   canonicalize,
+  buildReceiptAnchorV2,
   ESCALATION_TRIGGERS,
   ATTESTATION_STATEMENT_MAX,
 } from './index.js';
-import { verifyTrustReceipt } from '../verify/index.js';
+import { verifyTrustReceipt, verifyReceipt } from '../verify/index.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const RP_ID = 'www.emiliaprotocol.ai';
@@ -425,4 +426,40 @@ test('PIP-008 §1.1 — delegation.observed_at (freshness) accepted and round-tr
   assert.equal(b.delegation.observed_at, '2026-06-24T18:00:00Z');
   // rejects a non-timestamp
   assert.throws(() => validateAgentBinding({ agent_id: 'a', delegation: { scheme: 'DRP', ref: 'r', observed_at: 'not-a-date' } }), /observed_at must be an RFC 3339/);
+});
+
+// ── CAT-2: EP-MERKLE-v2 anchor issuance → published-verifier round-trip ──────
+test('buildReceiptAnchorV2: a v2-anchored document verifies under verifyReceipt and binds to its payload', () => {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+  const pub = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+  const payload = {
+    receipt_id: 'r_v2_issue',
+    subject: 'ep:entity:agent-7',
+    claim: { action_type: 'wire.release', outcome: 'allow' },
+  };
+  const sign = (p) => crypto.sign(null, Buffer.from(canonicalize(p), 'utf8'), privateKey).toString('base64url');
+
+  // Real 2-leaf tree (one prior v2 leaf) so the inclusion proof is non-trivial.
+  const anchor = buildReceiptAnchorV2(payload, ['ab'.repeat(32)]);
+  assert.equal(anchor.alg, 'EP-MERKLE-v2');
+  assert.ok(anchor.merkle_proof.length >= 1, 'expected a non-empty inclusion proof');
+
+  const doc = {
+    '@version': 'EP-RECEIPT-v1',
+    payload,
+    signature: { algorithm: 'Ed25519', value: sign(payload) },
+    anchor,
+  };
+  const res = verifyReceipt(doc, pub);
+  assert.equal(res.checks.anchor, true, 'v2 anchor must verify');
+  assert.equal(res.valid, true);
+
+  // Binding: the same anchor cannot be lifted onto a different payload, even with
+  // a freshly valid signature — verifyReceipt recomputes the v2 leaf from payload.
+  const lifted = {
+    ...doc,
+    payload: { ...payload, receipt_id: 'r_other' },
+  };
+  lifted.signature = { algorithm: 'Ed25519', value: sign(lifted.payload) };
+  assert.equal(verifyReceipt(lifted, pub).checks.anchor, false, 'anchor must not bind to a different payload');
 });

@@ -469,6 +469,64 @@ export function merkleProof(leaves, leafIndex) {
   return { root: level[0], path };
 }
 
+// ── EP-MERKLE-v2 anchor (CAT-2) ─────────────────────────────────────────────
+// Domain-separated + positional, with the leaf bound to the receipt payload:
+//   leaf_v2   = SHA-256(0x00 || canonicalJSON(payload))
+//   branch_v2 = SHA-256(0x01 || leftHex || rightHex)   (positional, not sorted)
+// A leaf can never collide with a branch (distinct domain tags), and a verifier
+// recomputes leaf_hash from doc.payload, so a v2 anchor can't be lifted onto a
+// different receipt. New issuance defaults to v2 via buildReceiptAnchorV2();
+// the legacy sorted-pair tree (merkleProof above) remains for already-anchored
+// v1 receipts only.
+const leafHashV2 = (canonicalPayload) =>
+  crypto.createHash('sha256')
+    .update(Buffer.concat([Buffer.from([0x00]), Buffer.from(canonicalPayload, 'utf8')]))
+    .digest('hex');
+const hashPairV2 = (left, right) =>
+  crypto.createHash('sha256')
+    .update(Buffer.concat([Buffer.from([0x01]), Buffer.from(left, 'utf8'), Buffer.from(right, 'utf8')]))
+    .digest('hex');
+
+/** v2 (domain-separated, positional) sibling of merkleProof(). */
+export function merkleProofV2(leaves, leafIndex) {
+  if (!Array.isArray(leaves) || leaves.length === 0) throw new Error('merkleProofV2: no leaves');
+  let level = [...leaves];
+  let index = leafIndex;
+  const path = [];
+  while (level.length > 1) {
+    const next = [];
+    for (let i = 0; i < level.length; i += 2) {
+      const left = level[i];
+      const right = i + 1 < level.length ? level[i + 1] : level[i]; // duplicate last when odd
+      next.push(hashPairV2(left, right));
+      if (i === index || i + 1 === index) {
+        const isLeft = index === i;
+        path.push({ hash: isLeft ? right : left, position: isLeft ? 'right' : 'left' });
+        index = next.length - 1;
+      }
+    }
+    level = next;
+  }
+  return { root: level[0], path };
+}
+
+/**
+ * Build the canonical EP-MERKLE-v2 anchor for a receipt document payload — the
+ * default for all NEW anchored issuance. The returned anchor self-checks under
+ * @emilia-protocol/verify's verifyReceipt (it recomputes leaf_hash from
+ * doc.payload and rejects a mismatch).
+ *
+ * @param {object} payload - the EP-RECEIPT-v1 document payload to anchor
+ * @param {string[]} [priorLeaves=[]] - existing v2 leaf hashes (hex), oldest first
+ * @returns {{alg:'EP-MERKLE-v2', leaf_hash:string, merkle_proof:Array, merkle_root:string}}
+ */
+export function buildReceiptAnchorV2(payload, priorLeaves = []) {
+  const leaf = leafHashV2(canonicalize(payload));
+  const leaves = [...priorLeaves, leaf];
+  const { root, path } = merkleProofV2(leaves, leaves.length - 1);
+  return { alg: 'EP-MERKLE-v2', leaf_hash: leaf, merkle_proof: path, merkle_root: root };
+}
+
 /**
  * Assemble and log-sign the complete authorization receipt.
  *
