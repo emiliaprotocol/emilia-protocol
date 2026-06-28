@@ -190,6 +190,8 @@ const ROUTE_POLICIES = {
   'GET /api/blockchain/anchor':       { rateCategory: null, useAuth: false },
   'POST /api/cron/expire':            { rateCategory: null, useAuth: false },
   'GET /api/cron/expire':             { rateCategory: null, useAuth: false },
+  'POST /api/cron/collusion-scan':    { rateCategory: null, useAuth: false },   // operator-token gated in-route
+  'GET /api/cron/collusion-scan':     { rateCategory: null, useAuth: false },
 
   // Public forms (no auth — open submission endpoints)
   'POST /api/operators/apply':        { rateCategory: 'submit', useAuth: false },
