@@ -19,13 +19,14 @@
     "value": "wB70L1QN445B7bvXR6bhATHxNA8-GJ8QULcwozHSVTcICPyxpYZmER4og8ytj5nF0W7OPVDjhlU-KrF9TsfXBw"
   },
   "anchor": {
-    "leaf_hash": "778cca54937b133e6c71ed13ea953a2579588c641782e0e15ab3339a84560609",
+    "alg": "EP-MERKLE-v2",
+    "leaf_hash": "36434ac0efaa4d635879bfd663db012fdc55ed6bd027db0999b7166232b52f75",
     "merkle_proof": [
       {
         "hash": "c91e40cb06ad90f0a4556fcc54d9489f7f59cca27494ae05ffe411ee9fdaaed7",
         "position": "right"
       }
     ],
-    "merkle_root": "78be6a4b21e0e3280d6bf9f7d0aa2226ba9926f35cf4c298500c545e27ae5ead"
+    "merkle_root": "09f94d928f859a346e6eb18c59b657b7ab9a7338ae79864ca3c2bc2d87ef294e"
   }
 }

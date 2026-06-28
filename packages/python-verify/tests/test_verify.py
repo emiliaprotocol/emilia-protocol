@@ -42,20 +42,12 @@ def _random_pubkey_b64url():
 
 
 def test_valid_receipt_from_js():
-    # The shared cross-language fixture carries a legacy EP-MERKLE-v1 anchor, so
-    # it verifies only with the explicit legacy opt-in — the "receipts verify
-    # forever" path. By default v1 anchors are now refused (see test below).
-    doc, pub = _load()
-    r = verify_receipt(doc, pub, allow_legacy_merkle=True)
-    assert r.valid is True, r
-    assert r.checks["version"] and r.checks["signature"] and r.checks["anchor"] is True
-
-
-def test_legacy_v1_anchor_refused_by_default():
+    # Shared cross-language fixture now carries an EP-MERKLE-v2 (domain-separated,
+    # payload-bound) anchor, so it verifies by default — no legacy opt-in needed.
     doc, pub = _load()
     r = verify_receipt(doc, pub)
-    assert r.valid is False
-    assert r.checks["anchor"] is False
+    assert r.valid is True, r
+    assert r.checks["version"] and r.checks["signature"] and r.checks["anchor"] is True
 
 
 def test_canonicalize_consensus_split_edge_vector_matches_js():

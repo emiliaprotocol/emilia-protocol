@@ -61,10 +61,9 @@ func randomPubKey(t *testing.T) string {
 // TestValidReceiptFromJS verifies a receipt signed on the JavaScript side.
 func TestValidReceiptFromJS(t *testing.T) {
 	data, pub := load(t)
-	// The shared cross-language fixture carries a legacy EP-MERKLE-v1 anchor, so
-	// it verifies only with the explicit legacy opt-in — the "receipts verify
-	// forever" path. By default v1 anchors are now refused (see test below).
-	r := VerifyReceiptJSON(data, pub, WithAllowLegacyMerkle())
+	// Shared cross-language fixture carries an EP-MERKLE-v2 (domain-separated,
+	// payload-bound) anchor, so it verifies by default — no legacy opt-in needed.
+	r := VerifyReceiptJSON(data, pub)
 	if !r.Valid {
 		t.Fatalf("expected valid receipt, got %+v (err=%q)", r.Checks, r.Error)
 	}
@@ -73,19 +72,6 @@ func TestValidReceiptFromJS(t *testing.T) {
 	}
 	if r.Checks.Anchor == nil || !*r.Checks.Anchor {
 		t.Fatalf("anchor check failed: %+v", r.Checks)
-	}
-}
-
-// TestLegacyV1AnchorRefusedByDefault proves the production default: a v1 anchor
-// is refused unless the caller explicitly opts into the dormant legacy path.
-func TestLegacyV1AnchorRefusedByDefault(t *testing.T) {
-	data, pub := load(t)
-	r := VerifyReceiptJSON(data, pub)
-	if r.Valid {
-		t.Fatalf("expected legacy v1 anchor to be refused by default, got valid")
-	}
-	if r.Checks.Anchor == nil || *r.Checks.Anchor {
-		t.Fatalf("expected anchor=false by default, got %+v", r.Checks)
 	}
 }
 
