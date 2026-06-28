@@ -38,6 +38,19 @@ Sentry.init({
       delete event.request.headers['x-api-key'];
       delete event.request.headers['cookie'];
     }
+    // Also scrub sensitive fields from request bodies, extra context, and
+    // captured locals — receipt signatures, signing keys, tokens. (NASTY-7)
+    const SENSITIVE = /(signature|private[_-]?key|signing[_-]?key|secret|token|api[_-]?key|password|x-emilia-receipt)/i;
+    const redact = (o, depth = 0) => {
+      if (!o || typeof o !== 'object' || depth > 6) return;
+      for (const k of Object.keys(o)) {
+        if (SENSITIVE.test(k)) { o[k] = '[redacted]'; continue; }
+        if (o[k] && typeof o[k] === 'object') redact(o[k], depth + 1);
+      }
+    };
+    redact(event.request?.data);
+    redact(event.extra);
+    redact(event.contexts);
     return event;
   },
 });
