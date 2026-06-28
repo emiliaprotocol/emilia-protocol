@@ -3,6 +3,24 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.0.0 — 2026-06-28
+
+### Changed (BREAKING)
+- **Canonicalization is now strict and cross-language byte-identical.** Signed
+  material must be strings or safe integers; `verifyReceipt` fails closed on
+  payloads outside the profile (non-integer/unsafe numbers, etc.). Fixes the
+  JS/Python/Go consensus split — the same payload now hashes identically in all
+  three. (`isCanonicalizable` is exported.)
+- **Legacy EP-MERKLE-v1 anchors are refused by default.** Production verification
+  requires EP-MERKLE-v2 (domain-separated, payload-bound). v1 anchors verify only
+  with the explicit `{ allowLegacyMerkle: true }` opt-in — preserving the
+  "receipts verify forever" promise for old artifacts without carrying live v1
+  risk. New issuance is v2-only.
+
+### Migration
+- If you verify pre-v2 anchored receipts, pass `{ allowLegacyMerkle: true }`.
+- Ensure signed payloads use strings or integers (no floats like `1.5`/`-0.0`).
+
 ## 2.1.0 — 2026-06-25
 
 ### Added

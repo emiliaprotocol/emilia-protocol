@@ -203,11 +203,16 @@ export function verifyReceipt(doc, publicKeyBase64url, opts = {}) {
       const expectedLeaf = leafHashV2(canonicalize(doc.payload));
       checks.anchor = doc.anchor.leaf_hash === expectedLeaf
         && verifyMerkleAnchor(doc.anchor.leaf_hash, doc.anchor.merkle_proof, doc.anchor.merkle_root, { v2: true });
-    } else if (opts.strict) {
-      // Strict mode refuses legacy (unbound) v1 anchors; default keeps them valid.
-      checks.anchor = false;
-    } else {
+    } else if (opts.allowLegacyMerkle === true) {
+      // Dormant legacy path: pre-v2 (sorted-pair, unbound) anchors verify ONLY
+      // when a caller explicitly opts in — old artifacts and compatibility tests.
+      // Never the default, never used by production gates. Preserves the
+      // "receipts verify forever" promise without carrying live v1 risk.
       checks.anchor = verifyMerkleAnchor(doc.anchor.leaf_hash, doc.anchor.merkle_proof, doc.anchor.merkle_root);
+    } else {
+      // Default (and every production gate): require EP-MERKLE-v2. A legacy v1
+      // anchor is refused unless the caller passes { allowLegacyMerkle: true }.
+      checks.anchor = false;
     }
   }
 

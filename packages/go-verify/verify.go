@@ -53,12 +53,12 @@ type Result struct {
 // VerifyReceiptJSON decodes raw EP-RECEIPT-v1 JSON and verifies it. This is the
 // recommended entry point: it decodes with UseNumber so numeric tokens are
 // canonicalized exactly as the signer produced them.
-func VerifyReceiptJSON(data []byte, publicKeyBase64URL string) Result {
+func VerifyReceiptJSON(data []byte, publicKeyBase64URL string, opts ...Option) Result {
 	doc, err := decodeJSON(data)
 	if err != nil {
 		return Result{Error: "invalid JSON: " + err.Error()}
 	}
-	return VerifyReceipt(doc, publicKeyBase64URL)
+	return VerifyReceipt(doc, publicKeyBase64URL, opts...)
 }
 
 // VerifyReceipt verifies an already-decoded EP-RECEIPT-v1 document against a
@@ -70,7 +70,22 @@ func VerifyReceiptJSON(data []byte, publicKeyBase64URL string) Result {
 //
 // It never panics on malformed input; failures are reported as a Result with
 // Valid=false and the relevant check left false.
-func VerifyReceipt(doc map[string]any, publicKeyBase64URL string) Result {
+// Option configures VerifyReceipt. Optional and source-compatible: existing
+// callers pass nothing and get the secure default (EP-MERKLE-v2 required).
+type Option func(*verifyConfig)
+
+type verifyConfig struct{ allowLegacyMerkle bool }
+
+// WithAllowLegacyMerkle verifies pre-v2 (legacy, sorted-pair) Merkle anchors.
+// Use ONLY for old artifacts / compatibility tests — never in production gates.
+// Preserves "receipts verify forever" without making v1 the default.
+func WithAllowLegacyMerkle() Option { return func(c *verifyConfig) { c.allowLegacyMerkle = true } }
+
+func VerifyReceipt(doc map[string]any, publicKeyBase64URL string, opts ...Option) Result {
+	cfg := verifyConfig{}
+	for _, o := range opts {
+		o(&cfg)
+	}
 	checks := Checks{}
 
 	version, _ := doc["@version"].(string)
@@ -119,8 +134,12 @@ func VerifyReceipt(doc map[string]any, publicKeyBase64URL string) Result {
 				// domain-separated proof.
 				expectedLeaf := leafHashV2(Canonicalize(payload))
 				v = leaf == expectedLeaf && verifyMerkleAnchorMode(leaf, proof, root, true)
-			} else {
+			} else if cfg.allowLegacyMerkle {
+				// Dormant legacy path: pre-v2 anchors only on explicit opt-in.
 				v = verifyMerkleAnchorMode(leaf, proof, root, false)
+			} else {
+				// Default (and every production gate): require EP-MERKLE-v2.
+				v = false
 			}
 			checks.Anchor = &v
 		}

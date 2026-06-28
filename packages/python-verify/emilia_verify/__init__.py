@@ -155,14 +155,21 @@ class VerifyResult:
     error: Optional[str] = None
 
 
-def verify_receipt(doc: Any, public_key_base64url: str, strict: bool = False) -> VerifyResult:
+def verify_receipt(
+    doc: Any,
+    public_key_base64url: str,
+    strict: bool = False,
+    allow_legacy_merkle: bool = False,
+) -> VerifyResult:
     """Verify an EP-RECEIPT-v1 document against a signer's Ed25519 public key.
 
     Checks version, Ed25519 signature over the canonical payload, and (if
     present) the Merkle anchor. For a v2 anchor (alg == EP-MERKLE-v2) the leaf is
     required to equal SHA-256(0x00 || canonical(payload)) — the anchor is bound to
-    THIS receipt. ``strict=True`` additionally refuses legacy v1 anchors. Returns
-    a VerifyResult; never raises on bad input.
+    THIS receipt. By default (and in every production gate) a legacy v1 anchor is
+    refused; pass ``allow_legacy_merkle=True`` to verify pre-v2 artifacts
+    ("receipts verify forever" without live v1 risk). Returns a VerifyResult;
+    never raises on bad input.
     """
     checks: dict = {"version": False, "signature": False, "anchor": None}
 
@@ -201,12 +208,14 @@ def verify_receipt(doc: Any, public_key_base64url: str, strict: bool = False) ->
             checks["anchor"] = (anchor["leaf_hash"] == expected_leaf) and verify_merkle_anchor(
                 anchor["leaf_hash"], anchor["merkle_proof"], anchor["merkle_root"], v2=True
             )
-        elif strict:
-            checks["anchor"] = False
-        else:
+        elif allow_legacy_merkle:
+            # Dormant legacy path: pre-v2 anchors verify only on explicit opt-in.
             checks["anchor"] = verify_merkle_anchor(
                 anchor["leaf_hash"], anchor["merkle_proof"], anchor["merkle_root"]
             )
+        else:
+            # Default (and every production gate): require EP-MERKLE-v2.
+            checks["anchor"] = False
 
     valid = checks["version"] and checks["signature"] and checks["anchor"] in (None, True)
     return VerifyResult(valid, checks)
