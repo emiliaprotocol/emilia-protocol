@@ -46,7 +46,7 @@ export async function GET(_request, { params }) {
           type: 'about:blank',
           title: 'demo_receipt_only',
           status: 404,
-          detail: 'This endpoint serves only the public /r/example demo receipt. For real receipts use /api/v1/trust-receipts/{id}/evidence (auth required).',
+          detail: 'This endpoint serves only the public /r/example demo receipt. See the API reference for working with real receipts.',
         },
         { status: 404, headers: HEADERS },
       );

@@ -96,17 +96,11 @@ export async function GET(request, { params }) {
       weights_version: result.weights_version,
       policy_scoring: result.policyScoring,
 
-      // The legacy 0-100 compat_score is NO LONGER emitted by default — EMILIA
-      // publishes verifiable evidence, not a reputation score. It remains a
-      // retained internal sort key and is exposed ONLY on explicit opt-in
-      // (?include=legacy_score) for backward-compatible migration.
-      ...(request.nextUrl.searchParams.get('include') === 'legacy_score'
-        ? {
-            compat_score: result.score,
-            _compat_score_legacy: true,
-            _compat_note: 'DEPRECATED legacy sort key (0-100). Not a trust signal — use trust_profile, policy evaluation, or confidence state. Emitted only because ?include=legacy_score was requested.',
-          }
-        : {}),
+      // The legacy 0-100 compat_score is NO LONGER emitted on any code path —
+      // EMILIA publishes verifiable evidence and confidence state, not a
+      // reputation score. `result.score` is retained ONLY as an internal sort
+      // key; the prior ?include=legacy_score opt-in was retired so the "no
+      // 0-100 score anywhere" positioning holds end-to-end.
 
       member_since: result._entity.created_at,
       _protocol_version: 'EP/1.1-v2',

@@ -10,7 +10,10 @@ import { logger } from '../../../../lib/logger.js';
  */
 function sanitizePostgrestInput(str) {
   if (typeof str !== 'string') return '';
-  return str.replace(/[,;.()"'\\]/g, '');
+  // Strip PostgREST filter-DSL metachars AND the ilike wildcards % and _ — an
+  // unescaped % / _ in q lets a caller widen the ilike match beyond the intended
+  // substring search (wildcard injection).
+  return str.replace(/[,;.()"'\\%_]/g, '');
 }
 
 /**
@@ -50,10 +53,23 @@ export async function GET(request) {
 
     // Uses materialized trust data for performance. Live re-evaluation happens on profile/evaluate endpoints.
     function enrichWithMaterializedTrust(results) {
+      // Whitelist the OUTPUT shape. The select pulls internal columns (db PK `id`,
+      // legacy `emilia_score`, raw `total_receipts`, full `trust_snapshot`,
+      // `created_at`) that are used only for sorting/derivation — they must NOT
+      // cross the wire. We surface only the documented public trust signals
+      // (confidence / effective_evidence / established), consistent with the
+      // badge's "no score, no raw counts" guarantee.
       let enriched = (results || []).map((e) => {
         const snap = e.trust_snapshot || {};
         return {
-          ...e,
+          entity_id: e.entity_id,
+          display_name: e.display_name,
+          entity_type: e.entity_type,
+          description: e.description,
+          category: e.category,
+          capabilities: e.capabilities,
+          verified: e.verified,
+          ...(e.similarity !== undefined ? { similarity: e.similarity } : {}),
           confidence: snap.confidence || 'pending',
           effective_evidence: snap.effectiveEvidence || 0,
           established: (snap.effectiveEvidence || 0) >= 5 && (snap.uniqueSubmitters || 0) >= 2,
