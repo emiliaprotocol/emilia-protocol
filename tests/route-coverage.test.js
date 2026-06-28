@@ -152,6 +152,7 @@ const OPENAPI_EXEMPTIONS = [
   '/api/mcp/[transport]',
   // Cron jobs are triggered by Vercel cron, not by external callers.
   '/api/cron/expire',
+  '/api/cron/collusion-scan',
   // Blockchain anchoring is an internal operations endpoint.
   '/api/blockchain/anchor',
   // Protocol-standard surfaces (singular: /api/entity, /api/receipt, /api/trust,

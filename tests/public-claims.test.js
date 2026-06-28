@@ -56,6 +56,8 @@ const OPENAPI_EXEMPT_ROUTES = [
   '/api/cloud/webhooks/[endpointId]/test',
   // Key management — internal operational endpoint.
   '/api/keys/rotate',
+  // Cron jobs — internal, triggered by Vercel cron, not external callers.
+  '/api/cron/collusion-scan',
   // Cloud scoring calibration — cloud control-plane.
   '/api/cloud/scoring/recommendations',
   // Public lead form (marketing intake), not a protocol surface.
