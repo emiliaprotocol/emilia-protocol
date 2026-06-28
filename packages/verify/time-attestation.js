@@ -33,7 +33,12 @@ import { canonicalize } from './index.js';
 
 export const TIME_ATTESTATION_VERSION = 'EP-TIME-ATTESTATION-v1';
 
-const hexOf = (h) => String(h ?? '').replace(/^sha256:/, '').toLowerCase();
+// Validate to a well-formed 64-char SHA-256; malformed -> '' so comparisons
+// fail closed (never match a real digest) and stay cross-language consistent. (HI-2)
+const hexOf = (h) => {
+  const s = String(h ?? '').replace(/^sha256:/, '').toLowerCase();
+  return /^[0-9a-f]{64}$/.test(s) ? s : '';
+};
 
 function instantMs(s) {
   if (typeof s !== 'string' || s.length === 0) return null;

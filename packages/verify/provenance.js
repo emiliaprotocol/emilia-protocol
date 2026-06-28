@@ -25,7 +25,22 @@ import { verifyTrustReceipt, canonicalize } from './index.js';
 export const PROVENANCE_VERSION = 'EP-PROVENANCE-CHAIN-v1';
 const DEFAULT_HUMAN_KEY_CLASSES = ['A'];
 
-const hexOf = (h) => String(h || '').replace(/^sha256:/, '').toLowerCase();
+// Normalize to a bare lowercase hex digest, but ONLY if it is a well-formed
+// 64-char SHA-256. A malformed value returns '' (which never equals a real
+// digest), so comparisons fail closed instead of matching on a truncated/garbage
+// string — and stay consistent across language implementations. (HI-2)
+const hexOf = (h) => {
+  const s = String(h ?? '').replace(/^sha256:/, '').toLowerCase();
+  return /^[0-9a-f]{64}$/.test(s) ? s : '';
+};
+
+// A concrete action_type is dot-separated non-empty segments. Rejecting empty
+// segments closes the "double-dot" scope-escalation bypass where "a..b"
+// .startsWith("a.") would let an attacker slip past a "a.*" containment. (SEV-1)
+const WELL_FORMED_ACTION_TYPE = /^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$/;
+function isWellFormedActionType(s) {
+  return typeof s === 'string' && WELL_FORMED_ACTION_TYPE.test(s);
+}
 
 function hasHumanSignoff(receipt, humanClasses) {
   const set = new Set(humanClasses);
@@ -57,7 +72,9 @@ function committedAtMs(receipt) {
 }
 
 function scopePermits(scope, actionType) {
-  if (!Array.isArray(scope) || !actionType) return false;
+  // Reject malformed action types (empty/leading/trailing/double-dot segments)
+  // BEFORE any prefix match, so a crafted "a..b" can't bypass "a.*" containment.
+  if (!Array.isArray(scope) || !isWellFormedActionType(actionType)) return false;
   for (const grant of scope) {
     if (grant === '*' || grant === actionType) return true;
     if (typeof grant === 'string' && grant.endsWith('.*')) {
