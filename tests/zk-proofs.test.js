@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createHash } from 'node:crypto';
 import {
   generateReceiptCommitment,
   buildCommitmentTree,
@@ -166,10 +167,14 @@ describe('buildCommitmentTree', () => {
     expect(tree1.root).not.toBe(tree2.root);
   });
 
-  it('single commitment produces a tree with that commitment as root', () => {
+  it('single commitment produces a domain-separated v2 leaf root', () => {
     const commitment = 'abc123'.padEnd(64, 'a');
     const tree = buildCommitmentTree([commitment]);
-    expect(tree.root).toBe(commitment);
+    // EP-MERKLE-v2: a lone leaf is tagged SHA-256(0x00 || leaf), never the raw
+    // leaf — so a leaf can never be presented as an internal node (CAT-1 fix).
+    const expectedRoot = createHash('sha256').update('\x00' + commitment, 'utf8').digest('hex');
+    expect(tree.root).toBe(expectedRoot);
+    expect(tree.root).not.toBe(commitment);
     expect(tree.leafCount).toBe(1);
   });
 
