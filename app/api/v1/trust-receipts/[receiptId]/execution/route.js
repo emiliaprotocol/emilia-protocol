@@ -16,6 +16,7 @@
 
 import { NextResponse } from 'next/server';
 import { authenticateRequest, authEntityId } from '@/lib/supabase';
+import { canReadReceipt } from '@/lib/tenant-binding';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
@@ -27,6 +28,9 @@ export async function POST(request, { params }) {
     if (auth.error) return epProblem(401, 'unauthorized', auth.error);
 
     const { receiptId } = await params;
+    if (!/^tr_[a-f0-9]{32}$/.test(receiptId || '')) {
+      return epProblem(400, 'invalid_receipt_id', 'receipt_id must match tr_<32-hex>');
+    }
     const body = await request.json().catch(() => ({}));
 
     if (!body.executed_action || typeof body.executed_action !== 'object') {
@@ -40,7 +44,7 @@ export async function POST(request, { params }) {
 
     const { data: events, error: eventsErr } = await supabase
       .from('audit_events')
-      .select('event_type, after_state, created_at')
+      .select('event_type, actor_id, after_state, created_at')
       .eq('target_type', 'trust_receipt')
       .eq('target_id', receiptId)
       .order('created_at', { ascending: true });
@@ -55,6 +59,12 @@ export async function POST(request, { params }) {
 
     const created = events.find((e) => e.event_type === 'guard.trust_receipt.created');
     if (!created) return epProblem(500, 'corrupted_receipt', 'Receipt missing creation event');
+    if (!canReadReceipt(auth, {
+      organizationId: created.after_state?.organization_id,
+      creatorActorId: created.actor_id,
+    })) {
+      return epProblem(404, 'receipt_not_found', `Trust receipt ${receiptId} not found`);
+    }
 
     // Half 1 of the contract: you cannot attest execution of an action that was
     // never authorized + consumed. Reject-before-mutation is enforced at consume;

@@ -26,6 +26,17 @@ import { loadSignoffForSigning } from '@/lib/webauthn-signoff';
 import { canAccept } from '@/lib/signoff/quorum-session.js';
 import { decisionToMember, decisionsToMembers } from '@/lib/signoff/attestation-members.js';
 
+function submittedChallenge(assertion) {
+  try {
+    const raw = assertion?.response?.clientDataJSON;
+    if (typeof raw !== 'string') return null;
+    const clientData = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8'));
+    return typeof clientData.challenge === 'string' ? clientData.challenge : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(request, { params }) {
   try {
     const { signoffId } = await params;
@@ -46,6 +57,9 @@ export async function POST(request, { params }) {
     // ── Signoff state checks (same invariants as the bearer-key path).
     const loaded = await loadSignoffForSigning(supabase, signoffId);
     if (loaded.error) return loaded.error;
+    if (!loaded.organizationId) {
+      return epProblem(409, 'receipt_not_org_bound', 'Class-A signoff requires an organization-bound receipt');
+    }
     if (loaded.alreadyDecided) {
       return epProblem(409, 'signoff_already_decided', 'Signoff has already been decided');
     }
@@ -66,15 +80,22 @@ export async function POST(request, { params }) {
       return epProblem(403, 'self_approval_forbidden', 'Approver cannot be the initiator of the signoff request');
     }
 
-    // ── Atomically claim the newest live challenge for this signoff+approver.
-    // The UPDATE ... IS NULL guard makes consumption single-use even under
-    // parallel submission: exactly one request wins the row.
+    const assertionChallenge = submittedChallenge(body.assertion);
+    if (!assertionChallenge) {
+      return epProblem(400, 'assertion_invalid', 'Assertion clientDataJSON is missing a WebAuthn challenge');
+    }
+
+    // ── Load the exact live challenge the authenticator says it signed. Do not
+    // consume it until the assertion verifies; otherwise anyone with the
+    // capability URL could burn the approver's ceremony with junk assertions.
     const { data: challenges, error: chErr } = await supabase
       .from('webauthn_challenges')
       .select('id, challenge, context, context_hash, expires_at')
       .eq('kind', 'signoff')
+      .eq('organization_id', loaded.organizationId)
       .eq('signoff_id', signoffId)
       .eq('approver_id', body.approver_id)
+      .eq('challenge', assertionChallenge)
       .is('consumed_at', null)
       .order('created_at', { ascending: false })
       .limit(1);
@@ -88,15 +109,6 @@ export async function POST(request, { params }) {
     }
     if (new Date(challengeRow.expires_at) < new Date()) {
       return epProblem(410, 'challenge_expired', 'Signing challenge expired — request webauthn-options again');
-    }
-    const { data: claimed } = await supabase
-      .from('webauthn_challenges')
-      .update({ consumed_at: new Date().toISOString() })
-      .eq('id', challengeRow.id)
-      .is('consumed_at', null)
-      .select('id');
-    if (!claimed || claimed.length === 0) {
-      return epProblem(409, 'challenge_replayed', 'Signing challenge already consumed');
     }
 
     // The signed context must bind this exact action (BindingMatch).
@@ -120,8 +132,9 @@ export async function POST(request, { params }) {
     // ── Credential: the assertion's credential must belong to this approver.
     const { data: creds, error: credErr } = await supabase
       .from('approver_credentials')
-      .select('credential_id, public_key_cose, public_key_spki, sign_count, transports, approver_id, approver_name')
+      .select('credential_id, public_key_cose, public_key_spki, sign_count, transports, approver_id, approver_name, organization_id')
       .eq('credential_id', body.assertion.id)
+      .eq('organization_id', loaded.organizationId)
       .is('revoked_at', null)
       .limit(1);
     if (credErr) {
@@ -165,6 +178,17 @@ export async function POST(request, { params }) {
     if (!verification.verified) {
       return epProblem(400, 'assertion_invalid', 'Assertion did not verify');
     }
+    const { data: claimed } = await supabase
+      .from('webauthn_challenges')
+      .update({ consumed_at: new Date().toISOString() })
+      .eq('organization_id', loaded.organizationId)
+      .eq('id', challengeRow.id)
+      .eq('challenge', assertionChallenge)
+      .is('consumed_at', null)
+      .select('id');
+    if (!claimed || claimed.length === 0) {
+      return epProblem(409, 'challenge_replayed', 'Signing challenge already consumed');
+    }
 
     // ── EP-QUORUM-v1 early gate (defense-in-depth) ─────────────────────────
     // If this receipt carries a multi-party quorum policy, reject a signer who
@@ -192,6 +216,7 @@ export async function POST(request, { params }) {
           const { data: pc } = await supabase
             .from('approver_credentials')
             .select('credential_id, public_key_spki')
+            .eq('organization_id', loaded.organizationId)
             .in('credential_id', priorCredIds);
           for (const c of pc || []) credMap[c.credential_id] = c;
         }
@@ -256,6 +281,7 @@ export async function POST(request, { params }) {
     await supabase
       .from('approver_credentials')
       .update({ sign_count: verification.authenticationInfo.newCounter })
+      .eq('organization_id', loaded.organizationId)
       .eq('credential_id', credential.credential_id);
 
     try {

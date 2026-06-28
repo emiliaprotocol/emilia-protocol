@@ -121,6 +121,7 @@ export async function POST(request, { params }) {
           const { data: creds, error: credErr } = await supabase
             .from('approver_credentials')
             .select('credential_id, public_key_spki')
+            .eq('organization_id', base.organization_id)
             .in('credential_id', credentialIds);
           if (credErr) {
             logger.error('[guard] consume: credential load failed:', credErr);

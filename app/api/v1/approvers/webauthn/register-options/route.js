@@ -9,6 +9,7 @@
 import { NextResponse } from 'next/server';
 import { generateRegistrationOptions } from '@simplewebauthn/server';
 import { authenticateRequest } from '@/lib/supabase';
+import { resolveAuthorizedOrg } from '@/lib/tenant-binding';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
@@ -24,6 +25,11 @@ export async function POST(request) {
     if (!APPROVER_ID_PATTERN.test(body.approver_id)) {
       return epProblem(400, 'invalid_approver_id', 'approver_id must be 3-128 chars of [A-Za-z0-9:_.@-]');
     }
+    const orgResolution = resolveAuthorizedOrg(auth, body.organization_id, { requireBound: true });
+    if (orgResolution.error) {
+      return epProblem(orgResolution.error.status, orgResolution.error.code, orgResolution.error.detail);
+    }
+    const organizationId = orgResolution.organizationId;
 
     const { rpName, rpID } = getRpConfig();
     const options = await generateRegistrationOptions({
@@ -45,6 +51,7 @@ export async function POST(request) {
     const supabase = getGuardedClient();
     const { error: insertErr } = await supabase.from('webauthn_challenges').insert({
       kind: 'registration',
+      organization_id: organizationId,
       approver_id: body.approver_id,
       challenge: options.challenge,
       expires_at: new Date(Date.now() + CHALLENGE_TTL_MS).toISOString(),

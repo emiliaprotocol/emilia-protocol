@@ -8,6 +8,7 @@
 import { NextResponse } from 'next/server';
 import { verifyRegistrationResponse } from '@simplewebauthn/server';
 import { authenticateRequest, authEntityId } from '@/lib/supabase';
+import { resolveAuthorizedOrg } from '@/lib/tenant-binding';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
@@ -25,6 +26,12 @@ export async function POST(request) {
     }
     if (!body.attestation) return epProblem(400, 'missing_attestation', 'attestation (registration response) is required');
 
+    const orgResolution = resolveAuthorizedOrg(auth, body.organization_id, { requireBound: true });
+    if (orgResolution.error) {
+      return epProblem(orgResolution.error.status, orgResolution.error.code, orgResolution.error.detail);
+    }
+    const organizationId = orgResolution.organizationId;
+
     const supabase = getGuardedClient();
 
     // Latest unconsumed, unexpired registration challenge for this approver.
@@ -32,6 +39,7 @@ export async function POST(request) {
       .from('webauthn_challenges')
       .select('id, challenge, expires_at')
       .eq('kind', 'registration')
+      .eq('organization_id', organizationId)
       .eq('approver_id', body.approver_id)
       .is('consumed_at', null)
       .order('created_at', { ascending: false })
@@ -75,6 +83,7 @@ export async function POST(request) {
     }
 
     const { error: insertErr } = await supabase.from('approver_credentials').insert({
+      organization_id: organizationId,
       approver_id: body.approver_id,
       approver_name: typeof body.approver_name === 'string' ? body.approver_name.slice(0, 200) : null,
       credential_id: credential.id,
@@ -99,10 +108,12 @@ export async function POST(request) {
     await supabase
       .from('webauthn_challenges')
       .update({ consumed_at: new Date().toISOString() })
+      .eq('organization_id', organizationId)
       .eq('id', challengeRow.id);
 
     return NextResponse.json({
       enrolled: true,
+      organization_id: organizationId,
       approver_id: body.approver_id,
       credential_id: credential.id,
       key_class: 'A',

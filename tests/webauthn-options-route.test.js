@@ -39,6 +39,7 @@ function loaded(createdState) {
     requestExpiresAt: '2999-01-01T00:00:00.000Z',
     initiatorId: 'ep:entity:init',
     actionHash: 'sha256:action',
+    organizationId: createdState?.organization_id || createdState?.canonical_action?.organization_id || 'org_1',
     createdState,
   };
 }
@@ -59,6 +60,7 @@ describe('POST /api/v1/signoffs/:id/webauthn-options — WYSIWYS fail-closed', (
       policy_id: 'p1',
       policy_hash: 'sha256:policy',
       required_assurance: 'A',
+      organization_id: 'org_1',
     }));
 
     const res = await POST(req({ approver_id: 'ap_controller' }), {
@@ -75,6 +77,7 @@ describe('POST /api/v1/signoffs/:id/webauthn-options — WYSIWYS fail-closed', (
       policy_id: 'p1',
       policy_hash: 'sha256:policy',
       required_assurance: 'A',
+      organization_id: 'org_1',
       canonical_action: {
         organization_id: 'org_1',
         actor_id: 'ep:entity:init',

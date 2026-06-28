@@ -212,7 +212,7 @@ describe('SCIM → approver linkage', () => {
   };
   const enrollCredential = (userName) => {
     store.approver_credentials.push({
-      id: `cred_${userName}`, approver_id: userName, credential_id: `cid_${userName}`,
+      id: `cred_${userName}`, organization_id: TENANT, approver_id: userName, credential_id: `cid_${userName}`,
       public_key_spki: 'spki', key_class: 'A', revoked_at: null,
     });
   };
@@ -285,5 +285,27 @@ describe('SCIM → approver linkage', () => {
     }), { params: Promise.resolve({ id }) });
     const ev = store.audit_events.find((e) => e.event_type === 'scim.approver.deprovisioned');
     expect(ev.after_state.credentials_revoked).toBe(0);
+  });
+
+  it('deprovision revokes only credentials scoped to the SCIM tenant', async () => {
+    const id = await provision('shared@example.com');
+    enrollCredential('shared@example.com');
+    store.approver_credentials.push({
+      id: 'cred_other_tenant',
+      organization_id: 'ep_entity_other',
+      approver_id: 'shared@example.com',
+      credential_id: 'cid_other_tenant',
+      public_key_spki: 'spki',
+      key_class: 'A',
+      revoked_at: null,
+    });
+
+    await UserById.PATCH(req('PATCH', `${base}/${id}`, {
+      token: TOKEN,
+      body: { Operations: [{ op: 'replace', path: 'active', value: false }] },
+    }), { params: Promise.resolve({ id }) });
+
+    expect(store.approver_credentials.find((c) => c.id === 'cred_shared@example.com').revoked_at).toBeTruthy();
+    expect(store.approver_credentials.find((c) => c.id === 'cred_other_tenant').revoked_at).toBeNull();
   });
 });

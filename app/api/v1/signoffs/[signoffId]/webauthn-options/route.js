@@ -37,6 +37,9 @@ export async function POST(request, { params }) {
     const supabase = getGuardedClient();
     const loaded = await loadSignoffForSigning(supabase, signoffId);
     if (loaded.error) return loaded.error;
+    if (!loaded.organizationId) {
+      return epProblem(409, 'receipt_not_org_bound', 'Class-A signoff requires an organization-bound receipt');
+    }
 
     if (loaded.alreadyDecided) {
       return epProblem(409, 'signoff_already_decided', 'Signoff has already been decided');
@@ -60,7 +63,7 @@ export async function POST(request, { params }) {
       return epProblem(403, 'self_approval_forbidden', 'Approver cannot be the initiator of the signoff request');
     }
 
-    const credLoad = await loadApproverCredentials(supabase, body.approver_id);
+    const credLoad = await loadApproverCredentials(supabase, body.approver_id, loaded.organizationId);
     if (credLoad.error) return credLoad.error;
     if (credLoad.credentials.length === 0) {
       return epProblem(404, 'approver_not_enrolled', 'No active passkey enrolled for this approver — enroll at /approvers/enroll');
@@ -110,6 +113,7 @@ export async function POST(request, { params }) {
 
     const { error: chErr } = await supabase.from('webauthn_challenges').insert({
       kind: 'signoff',
+      organization_id: loaded.organizationId,
       approver_id: body.approver_id,
       signoff_id: signoffId,
       challenge,

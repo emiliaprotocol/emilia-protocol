@@ -936,10 +936,19 @@ describe('POST /api/v1/signoffs/:id/reject', () => {
 describe('POST /api/v1/trust-receipts/:id/execution', () => {
   const EXECUTED = { action_type: 'payment.release', target: 'acct_9f12', amount: 50000 };
   const APPROVED_HASH = executedActionHash(EXECUTED); // 'match' when stored action_hash === this
-  const P = { params: Promise.resolve({ receiptId: 'tr_x' }) };
+  const RECEIPT_ID = 'tr_' + 'e'.repeat(32);
+  const P = { params: Promise.resolve({ receiptId: RECEIPT_ID }) };
 
   function timeline(events) {
     mockGetGuardedClient.mockReturnValue(makeSupabase({ audit_events: { resolve: { data: events, error: null } } }));
+  }
+
+  function created(overrides = {}) {
+    return {
+      event_type: 'guard.trust_receipt.created',
+      actor_id: overrides.actor_id || 'sys',
+      after_state: { organization_id: 'org_1', action_hash: APPROVED_HASH, ...(overrides.after_state || {}) },
+    };
   }
 
   it('returns 401 when unauthenticated', async () => {
@@ -954,7 +963,7 @@ describe('POST /api/v1/trust-receipts/:id/execution', () => {
 
   it('returns 409 when the receipt was never consumed (blocked-until-consume half)', async () => {
     authedAs('sys');
-    timeline([{ event_type: 'guard.trust_receipt.created', after_state: { action_hash: APPROVED_HASH } }]);
+    timeline([created()]);
     const res = await attestExecution(req({ executed_action: EXECUTED, executing_system: 's' }), P);
     expect(res.status).toBe(409);
     expect((await res.json()).detail).toMatch(/consumed/i);
@@ -963,7 +972,7 @@ describe('POST /api/v1/trust-receipts/:id/execution', () => {
   it('attests a matching execution (binding_status: match)', async () => {
     authedAs('sys');
     timeline([
-      { event_type: 'guard.trust_receipt.created', after_state: { action_hash: APPROVED_HASH } },
+      created(),
       { event_type: 'guard.trust_receipt.consumed', after_state: {} },
     ]);
     const res = await attestExecution(req({ executed_action: EXECUTED, executing_system: 's', execution_id: 'ex_1' }), P);
@@ -976,7 +985,7 @@ describe('POST /api/v1/trust-receipts/:id/execution', () => {
   it('records EXECUTION DRIFT when the executed action differs from approved', async () => {
     authedAs('sys');
     timeline([
-      { event_type: 'guard.trust_receipt.created', after_state: { action_hash: 'sha256:not-the-executed-action' } },
+      created({ after_state: { action_hash: 'sha256:not-the-executed-action' } }),
       { event_type: 'guard.trust_receipt.consumed', after_state: {} },
     ]);
     const res = await attestExecution(req({ executed_action: EXECUTED, executing_system: 's' }), P);
@@ -987,10 +996,20 @@ describe('POST /api/v1/trust-receipts/:id/execution', () => {
   it('returns 409 when an execution attestation already exists', async () => {
     authedAs('sys');
     timeline([
-      { event_type: 'guard.trust_receipt.created', after_state: { action_hash: APPROVED_HASH } },
+      created(),
       { event_type: 'guard.trust_receipt.consumed', after_state: {} },
       { event_type: 'guard.trust_receipt.executed', after_state: {} },
     ]);
     expect((await attestExecution(req({ executed_action: EXECUTED, executing_system: 's' }), P)).status).toBe(409);
+  });
+
+  it('refuses execution attestation from a different organization even when the receipt id is known', async () => {
+    authedAs({ entity_id: 'evil_sys', organization_id: 'org_2' });
+    timeline([
+      created({ actor_id: 'victim_sys' }),
+      { event_type: 'guard.trust_receipt.consumed', after_state: {} },
+    ]);
+    const res = await attestExecution(req({ executed_action: EXECUTED, executing_system: 'evil' }), P);
+    expect(res.status).toBe(404);
   });
 });
