@@ -80,19 +80,37 @@ def _sha256_hex(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
 
+# EP-MERKLE-v1 (legacy): sorted-pair, no domain separation. Kept for already-
+# anchored receipts; never used for new anchors.
 def _hash_pair(a: str, b: str) -> str:
     lo, hi = sorted((a, b))
     return _sha256_hex(lo + hi)
 
 
-def verify_merkle_anchor(leaf_hash: Any, proof: Any, expected_root: Any) -> bool:
-    """Verify a Merkle inclusion proof (hex leaf, sorted-pair SHA-256, hex root)."""
+# EP-MERKLE-v2: domain-separated + positional. Leaf = SHA-256(0x00 || canonical),
+# branch = SHA-256(0x01 || leftHex || rightHex). Selected per-anchor via
+# anchor["alg"] == MERKLE_V2_ALG; the leaf is bound to the receipt payload.
+MERKLE_V2_ALG = "EP-MERKLE-v2"
+
+
+def _leaf_hash_v2(canonical_payload: str) -> str:
+    return hashlib.sha256(b"\x00" + canonical_payload.encode("utf-8")).hexdigest()
+
+
+def _hash_pair_v2(left: str, right: str) -> str:
+    return hashlib.sha256(b"\x01" + left.encode("utf-8") + right.encode("utf-8")).hexdigest()
+
+
+def verify_merkle_anchor(leaf_hash: Any, proof: Any, expected_root: Any, v2: bool = False) -> bool:
+    """Verify a Merkle inclusion proof. v1 (default): sorted-pair SHA-256.
+    v2: domain-separated positional SHA-256 (0x01 branch tag)."""
     if not isinstance(leaf_hash, str) or not leaf_hash:
         return False
     if not isinstance(expected_root, str) or not expected_root:
         return False
     if not isinstance(proof, list) or len(proof) > 20:
         return False
+    pair = _hash_pair_v2 if v2 else _hash_pair
     current = leaf_hash
     for step in proof:
         if not isinstance(step, dict) or not isinstance(step.get("hash"), str):
@@ -100,7 +118,7 @@ def verify_merkle_anchor(leaf_hash: Any, proof: Any, expected_root: Any) -> bool
         pos = step.get("position")
         if pos not in ("left", "right"):
             return False
-        current = _hash_pair(step["hash"], current) if pos == "left" else _hash_pair(current, step["hash"])
+        current = pair(step["hash"], current) if pos == "left" else pair(current, step["hash"])
     return current == expected_root
 
 
@@ -111,11 +129,14 @@ class VerifyResult:
     error: Optional[str] = None
 
 
-def verify_receipt(doc: Any, public_key_base64url: str) -> VerifyResult:
+def verify_receipt(doc: Any, public_key_base64url: str, strict: bool = False) -> VerifyResult:
     """Verify an EP-RECEIPT-v1 document against a signer's Ed25519 public key.
 
     Checks version, Ed25519 signature over the canonical payload, and (if
-    present) the Merkle anchor. Returns a VerifyResult; never raises on bad input.
+    present) the Merkle anchor. For a v2 anchor (alg == EP-MERKLE-v2) the leaf is
+    required to equal SHA-256(0x00 || canonical(payload)) — the anchor is bound to
+    THIS receipt. ``strict=True`` additionally refuses legacy v1 anchors. Returns
+    a VerifyResult; never raises on bad input.
     """
     checks: dict = {"version": False, "signature": False, "anchor": None}
 
@@ -143,9 +164,17 @@ def verify_receipt(doc: Any, public_key_base64url: str) -> VerifyResult:
 
     anchor = doc.get("anchor") or {}
     if anchor.get("merkle_proof") and anchor.get("leaf_hash") and anchor.get("merkle_root"):
-        checks["anchor"] = verify_merkle_anchor(
-            anchor["leaf_hash"], anchor["merkle_proof"], anchor["merkle_root"]
-        )
+        if anchor.get("alg") == MERKLE_V2_ALG:
+            expected_leaf = _leaf_hash_v2(canonicalize(doc["payload"]))
+            checks["anchor"] = (anchor["leaf_hash"] == expected_leaf) and verify_merkle_anchor(
+                anchor["leaf_hash"], anchor["merkle_proof"], anchor["merkle_root"], v2=True
+            )
+        elif strict:
+            checks["anchor"] = False
+        else:
+            checks["anchor"] = verify_merkle_anchor(
+                anchor["leaf_hash"], anchor["merkle_proof"], anchor["merkle_root"]
+            )
 
     valid = checks["version"] and checks["signature"] and checks["anchor"] in (None, True)
     return VerifyResult(valid, checks)

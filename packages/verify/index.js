@@ -123,9 +123,30 @@ export { verifyTimeAttestation, TIME_ATTESTATION_VERSION } from './time-attestat
 // renewal chain) so a receipt's non-repudiation survives algorithm aging.
 export { verifyEvidenceRecord, EVIDENCE_RECORD_VERSION } from './evidence-record.js';
 
+// EP-MERKLE-v1 (legacy): sorted-pair, no domain separation. Kept verifying
+// forever for already-anchored receipts. Do NOT use for new anchors.
 function hashPair(a, b) {
   const sorted = [a, b].sort();
   return sha256(sorted[0] + sorted[1]);
+}
+
+// EP-MERKLE-v2: domain-separated + positional (not sorted). A leaf can never
+// collide with a branch (distinct 0x00 / 0x01 prefixes), closing the leaf/branch
+// second-preimage class. The leaf is bound to the receipt payload (self-check in
+// verifyReceipt). New issuance defaults to v2; selected per-anchor via
+// `anchor.alg === 'EP-MERKLE-v2'`.
+export const MERKLE_V2_ALG = 'EP-MERKLE-v2';
+/** Leaf = SHA-256(0x00 || canonicalJSON(payload)) -> hex. */
+function leafHashV2(canonicalPayload) {
+  return crypto.createHash('sha256')
+    .update(Buffer.concat([Buffer.from([0x00]), Buffer.from(canonicalPayload, 'utf8')]))
+    .digest('hex');
+}
+/** Branch = SHA-256(0x01 || leftHex || rightHex) -> hex. Positional, not sorted. */
+function hashPairV2(left, right) {
+  return crypto.createHash('sha256')
+    .update(Buffer.concat([Buffer.from([0x01]), Buffer.from(left, 'utf8'), Buffer.from(right, 'utf8')]))
+    .digest('hex');
 }
 
 // =============================================================================
@@ -144,7 +165,7 @@ function hashPair(a, b) {
  * @param {string} publicKeyBase64url - Signer's Ed25519 public key (base64url SPKI DER)
  * @returns {{ valid: boolean, checks: { version: boolean, signature: boolean, anchor: boolean|null }, error?: string }}
  */
-export function verifyReceipt(doc, publicKeyBase64url) {
+export function verifyReceipt(doc, publicKeyBase64url, opts = {}) {
   const checks = { version: false, signature: false, anchor: null };
 
   if (!doc?.['@version'] || !SUPPORTED_VERSIONS.includes(doc['@version'])) {
@@ -167,7 +188,20 @@ export function verifyReceipt(doc, publicKeyBase64url) {
   }
 
   if (doc.anchor?.merkle_proof && doc.anchor?.leaf_hash && doc.anchor?.merkle_root) {
-    checks.anchor = verifyMerkleAnchor(doc.anchor.leaf_hash, doc.anchor.merkle_proof, doc.anchor.merkle_root);
+    const isV2 = doc.anchor.alg === MERKLE_V2_ALG;
+    if (isV2) {
+      // v2 REQUIRES the anchor leaf to be bound to THIS receipt's payload — the
+      // anchor can't be lifted from another receipt or forged via leaf/branch
+      // confusion. Self-check first, then verify the domain-separated proof.
+      const expectedLeaf = leafHashV2(canonicalize(doc.payload));
+      checks.anchor = doc.anchor.leaf_hash === expectedLeaf
+        && verifyMerkleAnchor(doc.anchor.leaf_hash, doc.anchor.merkle_proof, doc.anchor.merkle_root, { v2: true });
+    } else if (opts.strict) {
+      // Strict mode refuses legacy (unbound) v1 anchors; default keeps them valid.
+      checks.anchor = false;
+    } else {
+      checks.anchor = verifyMerkleAnchor(doc.anchor.leaf_hash, doc.anchor.merkle_proof, doc.anchor.merkle_root);
+    }
   }
 
   const valid = checks.version && checks.signature && (checks.anchor === null || checks.anchor === true);
@@ -186,17 +220,18 @@ export function verifyReceipt(doc, publicKeyBase64url) {
  * @param {string} expectedRoot - hex expected Merkle root
  * @returns {boolean}
  */
-export function verifyMerkleAnchor(leafHash, proof, expectedRoot) {
+export function verifyMerkleAnchor(leafHash, proof, expectedRoot, opts = {}) {
   if (typeof leafHash !== 'string' || !leafHash) return false;
   if (typeof expectedRoot !== 'string' || !expectedRoot) return false;
   if (!Array.isArray(proof)) return false;
   if (proof.length > 20) return false;
 
+  const pair = opts.v2 === true ? hashPairV2 : hashPair;
   let current = leafHash;
   for (const step of proof) {
     if (!step || typeof step.hash !== 'string') return false;
     if (step.position !== 'left' && step.position !== 'right') return false;
-    current = step.position === 'left' ? hashPair(step.hash, current) : hashPair(current, step.hash);
+    current = step.position === 'left' ? pair(step.hash, current) : pair(current, step.hash);
   }
 
   return current === expectedRoot;

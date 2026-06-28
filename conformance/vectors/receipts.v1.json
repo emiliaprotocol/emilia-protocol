@@ -7,7 +7,7 @@
     "canonicalization": "recursive key-sorted JSON (RFC 8785-style)",
     "anchor": "SHA-256 sorted-pair Merkle"
   },
-  "count": 11,
+  "count": 13,
   "vectors": [
     {
       "id": "accept_minimal",
@@ -114,6 +114,67 @@
             }
           ],
           "merkle_root": "73027e0c013ed6ce34519954ad6250cd62badd5bc5e23e2bcf46b5c92451af62"
+        }
+      }
+    },
+    {
+      "id": "accept_with_merkle_anchor_v2",
+      "description": "Valid receipt with a v2 domain-separated, payload-bound Merkle anchor",
+      "expect": {
+        "valid": true
+      },
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "document": {
+        "@version": "EP-RECEIPT-v1",
+        "payload": {
+          "receipt_id": "tr_anchored_v2",
+          "issuer": "ep:demo"
+        },
+        "signature": {
+          "algorithm": "Ed25519",
+          "value": "AfF4nxdGj4O-Huqj5XCqX1rPOO9MHdZMEviMrqTCMOM6A9RVSrdKTAS_tdG_8HgbT_ZJVIBr2HnE3zd7t8nxBw"
+        },
+        "anchor": {
+          "alg": "EP-MERKLE-v2",
+          "leaf_hash": "49e4fa6eec990de1897dfcdd3b7a7cb6af458bf8d8a2aaddb9c61837bb26f804",
+          "merkle_proof": [
+            {
+              "hash": "52ab2e6d1cf6ebb89e4d01bb94ca71b5df78f609154b2735251abbeb37274038",
+              "position": "right"
+            }
+          ],
+          "merkle_root": "388fbc92013502492595c9092b268c1ec0ab562ae2bec40602e83a9cca0239c3"
+        }
+      }
+    },
+    {
+      "id": "reject_v2_unbound_leaf",
+      "description": "v2 anchor leaf_hash not bound to the receipt payload is refused",
+      "expect": {
+        "valid": false
+      },
+      "reason": "anchor_leaf_unbound",
+      "public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+      "document": {
+        "@version": "EP-RECEIPT-v1",
+        "payload": {
+          "receipt_id": "tr_v2_unbound",
+          "issuer": "ep:demo"
+        },
+        "signature": {
+          "algorithm": "Ed25519",
+          "value": "l0WQYrf-O0SlhvxjZYc6nSPeZT-j19yI-pKz5jqf2Fe6mjZACU92J93HsnmlQLFrZ7FADnR1Byc5vDu3wXABDg"
+        },
+        "anchor": {
+          "alg": "EP-MERKLE-v2",
+          "leaf_hash": "407f447a518bd5dd58e4c17b09934eb0e5041816b9cebf85d2a44b70d3fba0ab",
+          "merkle_proof": [
+            {
+              "hash": "52ab2e6d1cf6ebb89e4d01bb94ca71b5df78f609154b2735251abbeb37274038",
+              "position": "right"
+            }
+          ],
+          "merkle_root": "388fbc92013502492595c9092b268c1ec0ab562ae2bec40602e83a9cca0239c3"
         }
       }
     },

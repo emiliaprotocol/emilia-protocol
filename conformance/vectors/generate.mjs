@@ -30,6 +30,13 @@ const sibling = sha('ep-sibling-0001');
 const root = hashPair(leaf, sibling);
 const goodAnchor = { leaf_hash: leaf, merkle_proof: [{ hash: sibling, position: 'right' }], merkle_root: root };
 
+// EP-MERKLE-v2: domain-separated (0x00 leaf / 0x01 branch) + positional, with the
+// leaf bound to the receipt payload. leafV2 = SHA-256(0x00 || canon(payload)),
+// branchV2 = SHA-256(0x01 || leftHex || rightHex).
+const shaBytes = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
+const leafV2 = (canonStr) => shaBytes(Buffer.concat([Buffer.from([0x00]), Buffer.from(canonStr, 'utf8')]));
+const branchV2 = (l, r) => shaBytes(Buffer.concat([Buffer.from([0x01]), Buffer.from(l, 'utf8'), Buffer.from(r, 'utf8')]));
+
 const V = [];
 const add = (id, description, expectValid, reason, public_key, document) =>
   V.push({ id, description, expect: { valid: expectValid }, ...(reason ? { reason } : {}), public_key, document });
@@ -56,6 +63,21 @@ add('accept_nested_context', 'Deeply nested payload — recursive canonicalizati
 
 add('accept_with_merkle_anchor', 'Valid receipt with a valid Merkle inclusion proof', true, null, KEY.pub,
   receipt({ receipt_id: 'tr_anchored', issuer: 'ep:demo' }, { anchor: goodAnchor }));
+
+// EP-MERKLE-v2 vectors (domain-separated + payload-bound leaf). All three
+// reference verifiers MUST agree on these.
+{
+  const v2Payload = { receipt_id: 'tr_anchored_v2', issuer: 'ep:demo' };
+  const v2Leaf = leafV2(canon(v2Payload));
+  const v2Sibling = sha('ep-sibling-v2-0001');
+  const v2Root = branchV2(v2Leaf, v2Sibling); // this leaf is left, sibling right
+  const goodAnchorV2 = { alg: 'EP-MERKLE-v2', leaf_hash: v2Leaf, merkle_proof: [{ hash: v2Sibling, position: 'right' }], merkle_root: v2Root };
+  add('accept_with_merkle_anchor_v2', 'Valid receipt with a v2 domain-separated, payload-bound Merkle anchor', true, null, KEY.pub,
+    receipt(v2Payload, { anchor: goodAnchorV2 }));
+  // Self-binding: a v2 anchor whose leaf_hash is NOT SHA-256(0x00||canon(payload)) is refused.
+  add('reject_v2_unbound_leaf', 'v2 anchor leaf_hash not bound to the receipt payload is refused', false, 'anchor_leaf_unbound', KEY.pub,
+    receipt({ receipt_id: 'tr_v2_unbound', issuer: 'ep:demo' }, { anchor: { alg: 'EP-MERKLE-v2', leaf_hash: sha('not-the-real-leaf'), merkle_proof: [{ hash: v2Sibling, position: 'right' }], merkle_root: v2Root } }));
+}
 
 // ── REJECT class (each targets one invariant) ────────────────────────────────
 add('reject_unsupported_version', 'Unknown document version is refused', false, 'unsupported_version', KEY.pub,

@@ -105,7 +105,15 @@ func VerifyReceipt(doc map[string]any, publicKeyBase64URL string) Result {
 		leaf, _ := anchor["leaf_hash"].(string)
 		root, _ := anchor["merkle_root"].(string)
 		if hasProof && proof != nil && leaf != "" && root != "" {
-			v := VerifyMerkleAnchor(leaf, proof, root)
+			var v bool
+			if alg, _ := anchor["alg"].(string); alg == MerkleV2Alg {
+				// v2: bind the leaf to THIS receipt's payload, then verify the
+				// domain-separated proof.
+				expectedLeaf := leafHashV2(Canonicalize(payload))
+				v = leaf == expectedLeaf && verifyMerkleAnchorMode(leaf, proof, root, true)
+			} else {
+				v = verifyMerkleAnchorMode(leaf, proof, root, false)
+			}
 			checks.Anchor = &v
 		}
 	}
@@ -114,15 +122,25 @@ func VerifyReceipt(doc map[string]any, publicKeyBase64URL string) Result {
 	return Result{Valid: valid, Checks: checks}
 }
 
-// VerifyMerkleAnchor verifies a Merkle inclusion proof: a hex leaf hash folded
-// through sorted-pair SHA-256 steps must reconstruct the expected hex root.
+// VerifyMerkleAnchor verifies a v1 (legacy, sorted-pair) Merkle inclusion proof.
 func VerifyMerkleAnchor(leafHash string, proof any, expectedRoot string) bool {
+	return verifyMerkleAnchorMode(leafHash, proof, expectedRoot, false)
+}
+
+// verifyMerkleAnchorMode folds a hex leaf through the proof to reconstruct the
+// expected hex root. v1: sorted-pair SHA-256. v2: domain-separated positional
+// SHA-256 (0x01 branch tag).
+func verifyMerkleAnchorMode(leafHash string, proof any, expectedRoot string, v2 bool) bool {
 	if leafHash == "" || expectedRoot == "" {
 		return false
 	}
 	steps, ok := proof.([]any)
 	if !ok || len(steps) > 20 {
 		return false
+	}
+	pair := hashPair
+	if v2 {
+		pair = hashPairV2
 	}
 	current := leafHash
 	for _, s := range steps {
@@ -136,9 +154,9 @@ func VerifyMerkleAnchor(leafHash string, proof any, expectedRoot string) bool {
 		}
 		switch pos, _ := step["position"].(string); pos {
 		case "left":
-			current = hashPair(h, current)
+			current = pair(h, current)
 		case "right":
-			current = hashPair(current, h)
+			current = pair(current, h)
 		default:
 			return false
 		}
@@ -281,6 +299,25 @@ func hashPair(a, b string) string {
 		lo, hi = hi, lo
 	}
 	sum := sha256.Sum256([]byte(lo + hi))
+	return hex.EncodeToString(sum[:])
+}
+
+// MerkleV2Alg marks an EP-MERKLE-v2 anchor: domain-separated + positional.
+const MerkleV2Alg = "EP-MERKLE-v2"
+
+// leafHashV2 = SHA-256(0x00 || canonicalJSON(payload)) -> hex.
+func leafHashV2(canonicalPayload string) string {
+	sum := sha256.Sum256(append([]byte{0x00}, []byte(canonicalPayload)...))
+	return hex.EncodeToString(sum[:])
+}
+
+// hashPairV2 = SHA-256(0x01 || leftHex || rightHex) -> hex. Positional, not sorted.
+func hashPairV2(left, right string) string {
+	buf := make([]byte, 0, 1+len(left)+len(right))
+	buf = append(buf, 0x01)
+	buf = append(buf, left...)
+	buf = append(buf, right...)
+	sum := sha256.Sum256(buf)
 	return hex.EncodeToString(sum[:])
 }
 
