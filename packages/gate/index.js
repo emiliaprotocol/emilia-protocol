@@ -21,7 +21,6 @@
  * adds the three things a firewall needs over a bare verifier: assurance-tier
  * enforcement, replay defense, and the evidence log. Fails closed.
  */
-import crypto from 'node:crypto';
 import {
   verifyEmiliaReceipt,
   receiptChallenge,
@@ -37,17 +36,6 @@ import { createEvidenceLog } from './evidence.js';
 export { MemoryConsumptionStore, createEvidenceLog };
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
-
-function canonicalize(v) {
-  if (v === null || v === undefined) return JSON.stringify(v);
-  if (Array.isArray(v)) return `[${v.map(canonicalize).join(',')}]`;
-  if (typeof v === 'object') return `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonicalize(v[k])).join(',')}}`;
-  return JSON.stringify(v);
-}
-
-function hashReceipt(doc) {
-  return crypto.createHash('sha256').update(canonicalize(doc?.payload ?? doc)).digest('base64url');
-}
 
 /**
  * The assurance tier a receipt demonstrably meets. Conservative / fail-closed:
@@ -77,13 +65,28 @@ export function receiptAssuranceTier(doc) {
  * @param {object} [opts.log]           evidence log (default in-memory, hash-chained)
  * @param {boolean} [opts.allowInlineKey=false] accept the receipt's own key (integrity, NOT trust)
  */
-export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, allowInlineKey = false, now = Date.now } = {}) {
+export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now } = {}) {
   if (manifest) {
     const m = validateActionRiskManifest(manifest);
     if (!m.ok) throw new Error('EMILIA Gate: invalid action-risk manifest: ' + m.errors.join('; '));
   }
-  const consumption = store || new MemoryConsumptionStore();
-  const evidence = log || createEvidenceLog();
+  if (allowInlineKey) {
+    // eslint-disable-next-line no-console
+    console.warn('EMILIA Gate: allowInlineKey=true accepts a receipt\'s OWN key. This proves INTEGRITY (the receipt was not tampered with) but NOT issuer TRUST (anyone can mint a receipt with their own key). Use for demos only; pin trustedKeys in production.');
+  }
+  // Replay defense is only sound if the consumption store is shared across every
+  // instance that can serve the action. The in-memory default is per-process, so
+  // a receipt consumed on one pod/lambda could be replayed on another. Fail
+  // CLOSED in production unless the operator explicitly accepts a single instance.
+  let consumption = store;
+  if (!consumption) {
+    const isProd = typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production';
+    if (isProd && !allowEphemeralStore) {
+      throw new Error('EMILIA Gate: no consumption store provided. The default in-memory store is per-process and is NOT safe for multi-instance or serverless deployments — a receipt consumed on one instance can be replayed on another, defeating one-time consumption. Provide a shared store ({ async consume(key) {...} }, e.g. Redis/DB-backed), or pass allowEphemeralStore:true to acknowledge a single-instance deployment.');
+    }
+    consumption = new MemoryConsumptionStore();
+  }
+  const evidence = log || createEvidenceLog({ strict: strictEvidence });
 
   async function check({ selector = {}, receipt = null } = {}) {
     const requirement = manifest ? findActionRequirement(manifest, selector) : null;
@@ -91,7 +94,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     const requiredTier = requirement?.assurance_class || selector.assurance_class || 'software';
 
     async function decide(allow, status, reason, extra = {}) {
-      const record = await evidence.record({
+      const entry = {
         kind: 'decision',
         at: new Date(typeof now === 'function' ? now() : now).toISOString(),
         action,
@@ -103,7 +106,23 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
         receipt_id: receipt?.payload?.receipt_id ?? null,
         subject: receipt?.payload?.subject ?? null,
         ...extra,
-      });
+      };
+      let record;
+      try {
+        record = await evidence.record(entry);
+      } catch (e) {
+        // The decision could not be durably recorded. Fail CLOSED: never
+        // authorize an action we cannot account for. Downgrade any allow to a
+        // refusal and best-effort note the downgrade (non-fatal if that fails too).
+        allow = false;
+        status = RECEIPT_REQUIRED_STATUS;
+        reason = 'evidence_log_failed';
+        try {
+          record = await evidence.record({ ...entry, allow: false, status, reason, evidence_error: String(e?.message ?? e) });
+        } catch {
+          record = null;
+        }
+      }
       const out = { allow, status, reason, action, requirement, evidence: record };
       if (!allow) {
         out.challenge = receiptChallenge(action, reason, {
@@ -135,11 +154,17 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     if ((TIER_RANK[have] ?? 0) < (TIER_RANK[requiredTier] ?? 0)) {
       return decide(false, RECEIPT_REQUIRED_STATUS, 'assurance_too_low', { have_tier: have, need_tier: requiredTier });
     }
-    // One-time consumption (replay defense).
-    const key = receipt?.payload?.receipt_id || ('h:' + hashReceipt(receipt));
-    const fresh = await consumption.consume(key);
+    // One-time consumption (replay defense). Require a stable, issuer-generated
+    // receipt_id — never fall back to a content hash, whose canonicalization can
+    // differ across language implementations and silently break replay detection
+    // when services of different languages share a store.
+    const receiptId = receipt?.payload?.receipt_id;
+    if (!receiptId) {
+      return decide(false, RECEIPT_REQUIRED_STATUS, 'receipt_rejected:missing_receipt_id');
+    }
+    const fresh = await consumption.consume(receiptId);
     if (!fresh) {
-      return decide(false, RECEIPT_REQUIRED_STATUS, 'replay_refused', { consumption_key: key });
+      return decide(false, RECEIPT_REQUIRED_STATUS, 'replay_refused', { consumption_key: receiptId });
     }
     return decide(true, 200, 'allow', { signer: v.signer, outcome: v.outcome, have_tier: have });
   }

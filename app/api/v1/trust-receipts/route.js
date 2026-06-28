@@ -35,9 +35,19 @@ import { evaluateAction as evaluateRulesEngineV0 } from '@/lib/rules-engine.js';
 import { logger } from '@/lib/logger.js';
 import { isRulesEngineV0Enabled } from '@/lib/env.js';
 
-// Receipt expiry: 24 hours by default. Per MD §2.3, expires_at is required
-// on every receipt. 24h is the EP default for handshake-bound receipts.
+// Receipt expiry: 24 hours by default AND hard maximum. Per MD §2.3, expires_at
+// is required on every receipt. Higher-risk actions should live for minutes, not
+// hours — callers may request a SHORTER ttl via body.expires_in_sec (clamped to
+// [MIN, MAX]). A shorter TTL is strictly more restrictive, so honoring a
+// body-supplied value is safe; a longer one is never allowed.
 const RECEIPT_TTL_MS = 24 * 60 * 60 * 1000;
+const RECEIPT_TTL_MIN_MS = 60 * 1000;
+
+function resolveReceiptTtlMs(expiresInSec) {
+  const n = Number(expiresInSec);
+  if (!Number.isFinite(n) || n <= 0) return RECEIPT_TTL_MS;
+  return Math.min(RECEIPT_TTL_MS, Math.max(RECEIPT_TTL_MIN_MS, Math.floor(n) * 1000));
+}
 
 export async function POST(request) {
   try {
@@ -87,7 +97,7 @@ export async function POST(request) {
     }
 
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + RECEIPT_TTL_MS);
+    const expiresAt = new Date(now.getTime() + resolveReceiptTtlMs(body.expires_in_sec));
     const nonce = `nonce_${crypto.randomBytes(12).toString('hex')}`;
     const receiptId = `tr_${crypto.randomBytes(16).toString('hex')}`;
 
@@ -119,10 +129,12 @@ export async function POST(request) {
 
     // ── Policy evaluation ─────────────────────────────────────────────────
     // authenticateRequest returns { entity, permissions } — actorRole and
-    // authStrength are NOT on the auth shape today. Pass through what the
-    // body supplies (advisory only, not security-relevant — the policy
-    // engine treats these as informational hints) and document the gap.
-    // When the auth layer grows role/strength fields, replace with auth.*.
+    // authStrength are NOT on the auth shape today, and no current policy branches
+    // on authStrength. We therefore pass the WEAKEST credible value ('password')
+    // as a fail-SAFE default: if/when a policy starts gating on auth strength, an
+    // unproven request escalates to signoff rather than being assumed MFA. Never
+    // trust a body-supplied strength (the agent controls it). Replace with the
+    // verified value when the auth layer exposes role/strength.
     const baseDecision = evaluateGuardPolicy({
       organizationId: body.organization_id,
       actorId: actor_id,
@@ -132,7 +144,7 @@ export async function POST(request) {
       amount: body.amount,
       currency: body.currency,
       riskFlags: body.risk_flags || [],
-      authStrength: 'mfa',  // hardcoded until authenticateRequest exposes it
+      authStrength: 'password',  // fail-safe default (weakest); NOT verified MFA
       initiatorId: actor_id,
     });
 

@@ -59,6 +59,7 @@ function makeSupabaseMock({
   unanchored = [],
   fetchErr = null,
   batchInsertErr = null,
+  batchConfirmErr = null,
 } = {}) {
   const updateChain = {
     update: vi.fn().mockReturnThis(),
@@ -83,7 +84,12 @@ function makeSupabaseMock({
       }
       if (table === 'anchor_batches') {
         return {
+          // pre-insert (pending) happens BEFORE the on-chain tx
           insert: vi.fn().mockResolvedValue({ data: null, error: batchInsertErr }),
+          // confirm-update (tx details) happens AFTER the on-chain tx
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ data: null, error: batchConfirmErr }),
+          }),
         };
       }
       return { insert: vi.fn().mockResolvedValue({ data: null, error: null }) };
@@ -342,19 +348,29 @@ describe('runAnchorBatch — happy path (skipped anchor)', () => {
     expect(result.receipts_anchored).toBe(1);
   });
 
-  it('batch insert error throws to surface state divergence', async () => {
-    // Updated assertion: blockchain.js now THROWS when the anchor_batches DB
-    // record insert fails. The previous "non-fatal" behavior silently lost
-    // the linkage between on-chain anchor and DB tracking, requiring manual
-    // reconciliation. The new behavior surfaces the divergence immediately
-    // so ops can intervene before downstream verification depends on the
-    // missing record.
+  it('pre-insert error throws BEFORE any on-chain tx (fail closed, no split-brain)', async () => {
+    // blockchain.js now persists the batch row (pending) BEFORE anchoring on
+    // chain. A DB failure here aborts with nothing on chain — eliminating the
+    // old split-brain where an on-chain tx existed but no DB record did. The
+    // error surfaces immediately.
     const supabase = makeSupabaseMock({
       unanchored: makeReceipts(2),
       batchInsertErr: { message: 'insert failed' },
     });
     await expect(runAnchorBatch(supabase)).rejects.toThrow(
-      /Anchor batch DB record failed/,
+      /Anchor batch DB pre-insert failed/,
+    );
+  });
+
+  it('confirm-update error throws as reconcilable (row exists, tx on chain)', async () => {
+    // If the post-tx confirm UPDATE fails, the batch row still exists (with the
+    // merkle_root) and the tx is on chain — reconcilable, not split-brain.
+    const supabase = makeSupabaseMock({
+      unanchored: makeReceipts(2),
+      batchConfirmErr: { message: 'confirm failed' },
+    });
+    await expect(runAnchorBatch(supabase)).rejects.toThrow(
+      /Anchor batch DB confirm failed/,
     );
   });
 

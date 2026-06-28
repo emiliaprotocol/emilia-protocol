@@ -55,9 +55,17 @@ export async function POST(request) {
       'chrome_extension', 'shopify_app', 'marketplace_plugin', 'agent_tool',
     ];
 
-    // Block reserved entity IDs to prevent privilege escalation
+    // Block reserved entity IDs to prevent privilege escalation. Normalize first
+    // (NFKC + strip whitespace/zero-width + lowercase) so case, spacing, and
+    // unicode-compatibility variants ("SYSTEM", "s y s t e m", full-width) can't
+    // slip a reserved name past the check. (Defense-in-depth: reserved names
+    // grant no privilege by themselves; this just removes the foot-gun.)
     const RESERVED_ENTITY_IDS = ['system', 'admin', 'operator', 'root', 'superuser', 'service'];
-    if (RESERVED_ENTITY_IDS.includes(body.entity_id?.toLowerCase())) {
+    const normalizedEntityId = String(body.entity_id ?? '')
+      .normalize('NFKC')
+      .replace(/[\s​‌‍﻿]/g, '')
+      .toLowerCase();
+    if (RESERVED_ENTITY_IDS.includes(normalizedEntityId)) {
       return epProblem(400, 'reserved_entity_id', 'This entity ID is reserved and cannot be used');
     }
 

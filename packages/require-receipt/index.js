@@ -32,6 +32,27 @@ function canonicalize(v) {
   return JSON.stringify(v);
 }
 
+/**
+ * Parse a base64url SPKI-DER public key into a KeyObject, cached by string so a
+ * given key is parsed once (not once per verification). Beyond the perf win this
+ * removes the per-key DER-parsing work from the verify loop, shrinking the timing
+ * difference between "key matched early" and "key matched late". Trusted keys are
+ * public, so this is defense-in-depth, not a secret-dependent path. Returns null
+ * for an unparseable key (treated as "no match").
+ */
+const _keyCache = new Map();
+function parseSpkiKey(b64) {
+  if (_keyCache.has(b64)) return _keyCache.get(b64);
+  let key = null;
+  try {
+    key = crypto.createPublicKey({ key: Buffer.from(b64, 'base64url'), format: 'der', type: 'spki' });
+  } catch {
+    key = null;
+  }
+  _keyCache.set(b64, key);
+  return key;
+}
+
 function asChallengeOptions(opts) {
   if (!opts) return {};
   if (typeof opts === 'number') return { status: opts };
@@ -100,8 +121,9 @@ export function verifyEmiliaReceipt(doc, opts = {}) {
 
   let signer = null;
   for (const k of candidates) {
+    const pub = parseSpkiKey(k); // cached parse — avoids per-call DER parsing + the timing variance it adds
+    if (!pub) continue;
     try {
-      const pub = crypto.createPublicKey({ key: Buffer.from(k, 'base64url'), format: 'der', type: 'spki' });
       if (crypto.verify(null, data, pub, sig)) { signer = k; break; }
     } catch { /* try next key */ }
   }
