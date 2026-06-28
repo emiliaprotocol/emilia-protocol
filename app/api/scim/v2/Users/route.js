@@ -101,9 +101,12 @@ export async function POST(request) {
       return scimErrorResponse(503, 'Directory unavailable');
     }
 
-    // SCIM → approver linkage: an active provisioned human is now eligible to
-    // enroll a signing passkey under approver_id = userName.
-    if (data.active !== false) {
+    // SCIM → approver linkage. Approver eligibility is NOT granted automatically
+    // from directory provisioning by default: a compromised SCIM token must not
+    // be able to mint an approver who can enroll a signing passkey and approve
+    // actions. Opt in explicitly with EP_SCIM_AUTO_APPROVER=true; otherwise
+    // eligibility is established through the admin approval path. (T3)
+    if (data.active !== false && process.env.EP_SCIM_AUTO_APPROVER === 'true') {
       await recordApproverEligible(supabase, auth.tenantId, data.user_name);
     }
 

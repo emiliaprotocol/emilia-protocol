@@ -37,19 +37,13 @@ export async function POST(request) {
     const serviceClient = getServiceClient();
     const now = new Date().toISOString();
 
-    // ── Revoke old key (sets revoked_at so RPC rejects it) ───────────
-    const { error: revokeError } = await serviceClient
-      .from('api_keys')
-      .update({ revoked_at: now, invalidated_at: now })
-      .eq('key_hash', oldKeyHash)
-      .eq('entity_id', entity.id);
+    // Order matters (T2): create the NEW key and repoint the entity to it BEFORE
+    // revoking the old one, so there is never a window where the entity has zero
+    // valid keys (which would 401 every in-flight request — an auth blackout).
+    // If a later step fails, the old key is still valid, so the worst case is two
+    // valid keys briefly (a soft, safe failure), never an outage.
 
-    if (revokeError) {
-      logger.error('[key-rotation] Failed to revoke old key:', revokeError);
-      return epProblem(500, 'rotation_failed', 'Failed to revoke old key');
-    }
-
-    // ── Insert new key record ────────────────────────────────────────
+    // ── 1. Insert new key record ─────────────────────────────────────
     const { error: insertError } = await serviceClient
       .from('api_keys')
       .insert({
@@ -64,7 +58,7 @@ export async function POST(request) {
       return epProblem(500, 'rotation_failed', 'Failed to create new key');
     }
 
-    // ── Update entity's api_key_hash to the new hash ─────────────────
+    // ── 2. Repoint entity to the new hash (new key now fully live) ────
     const { error: entityUpdateError } = await serviceClient
       .from('entities')
       .update({ api_key_hash: newKeyHash })
@@ -72,7 +66,22 @@ export async function POST(request) {
 
     if (entityUpdateError) {
       logger.error('[key-rotation] Failed to update entity key hash:', entityUpdateError);
+      // New key exists but entity still points at the old (still-valid) key — no
+      // outage. Abort without revoking the old key so the caller stays authable.
       return epProblem(500, 'rotation_failed', 'Failed to update entity key reference');
+    }
+
+    // ── 3. Revoke the old key LAST (new key is already live) ─────────
+    const { error: revokeError } = await serviceClient
+      .from('api_keys')
+      .update({ revoked_at: now, invalidated_at: now })
+      .eq('key_hash', oldKeyHash)
+      .eq('entity_id', entity.id);
+
+    if (revokeError) {
+      // New key is live; the old key just wasn't revoked. Log loudly but do NOT
+      // fail the rotation — the caller already has a working new key.
+      logger.error('[key-rotation] New key live but old key not revoked (manual cleanup needed):', revokeError);
     }
 
     return NextResponse.json({

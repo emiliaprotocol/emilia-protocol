@@ -120,7 +120,11 @@ async function writeUser(supabase, tenantId, id, current, fields, request) {
     const isActive = data.active !== false;
     if (wasActive && !isActive) {
       await revokeApproverCredentials(supabase, tenantId, current.user_name, 'scim_deactivate');
-    } else if (!wasActive && isActive) {
+    } else if (!wasActive && isActive && process.env.EP_SCIM_AUTO_APPROVER === 'true') {
+      // Re-activation grants approver eligibility ONLY when auto-approver is
+      // explicitly enabled; otherwise eligibility goes through admin approval so
+      // a compromised SCIM token can't mint an approver. (T3) Note: deactivation
+      // always revokes, regardless of the flag — fail safe in both directions.
       await recordApproverEligible(supabase, tenantId, data.user_name);
     }
 

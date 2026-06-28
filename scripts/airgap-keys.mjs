@@ -15,12 +15,17 @@ import * as jose from 'jose';
 const secret = process.env.SUPABASE_JWT_SECRET || crypto.randomBytes(32).toString('hex');
 const key = new TextEncoder().encode(secret);
 
+// 90-day expiry (T5): a 10-year token in a leaked .env.airgap is valid for a
+// decade with no rotation path. Short-lived tokens force a documented rotation
+// cadence; re-run this script to mint fresh ones before expiry.
+const TOKEN_TTL = '90d';
+
 async function sign(role) {
   return new jose.SignJWT({ role })
     .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
     .setIssuedAt()
     .setIssuer('supabase')
-    .setExpirationTime('10y')
+    .setExpirationTime(TOKEN_TTL)
     .sign(key);
 }
 
@@ -31,4 +36,5 @@ console.log('# Paste into .env.airgap (air-gap secrets):');
 console.log(`SUPABASE_JWT_SECRET=${secret}`);
 console.log(`SUPABASE_SERVICE_ROLE_KEY=${serviceRole}`);
 console.log(`SUPABASE_ANON_KEY=${anon}`);
-console.error('\nGenerated HS256 service_role + anon JWTs (10y) signed with the JWT secret above.');
+console.error(`\nGenerated HS256 service_role + anon JWTs (${TOKEN_TTL}) signed with the JWT secret above.`);
+console.error('Rotate before expiry by re-running this script; keep .env.airgap off shared/backup media.');

@@ -10,7 +10,7 @@
  * supports exactly the chain the routes use.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // ── In-memory Supabase mock ──────────────────────────────────────────────────
 const store = { scim_provisioning_tokens: [], scim_users: [], scim_groups: [], approver_credentials: [], audit_events: [] };
@@ -200,6 +200,11 @@ describe('SCIM User lifecycle', () => {
 });
 
 describe('SCIM → approver linkage', () => {
+  // The SCIM→approver linkage is opt-in (T3): a compromised SCIM token must not
+  // auto-mint approvers. These tests exercise the feature with it explicitly on.
+  beforeEach(() => { process.env.EP_SCIM_AUTO_APPROVER = 'true'; });
+  afterEach(() => { delete process.env.EP_SCIM_AUTO_APPROVER; });
+
   const base = 'https://x/api/scim/v2/Users';
   const provision = async (userName) => {
     const res = await Users.POST(req('POST', base, { token: TOKEN, body: { userName, active: true } }));
@@ -218,6 +223,15 @@ describe('SCIM → approver linkage', () => {
     expect(ev).toBeTruthy();
     expect(ev.target_id).toBe('signer@example.com');
     expect(ev.after_state.enrollment_eligible).toBe(true);
+  });
+
+  it('does NOT grant approver eligibility by default (T3: auto-approver off)', async () => {
+    delete process.env.EP_SCIM_AUTO_APPROVER; // simulate the secure default
+    await provision('default-off@example.com');
+    const ev = store.audit_events.find(
+      (e) => e.event_type === 'scim.approver.provisioned' && e.target_id === 'default-off@example.com',
+    );
+    expect(ev).toBeFalsy();
   });
 
   it('deprovision (PATCH active=false) revokes the approver credentials in the same write', async () => {

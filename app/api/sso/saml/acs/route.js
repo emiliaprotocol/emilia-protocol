@@ -27,9 +27,11 @@ export async function POST(request) {
   if (!tenant) return epProblem(400, 'missing_tenant', 'RelayState (tenant) is required');
 
   const { connection, error } = await loadConnection(tenant, 'saml');
-  if (error) return epProblem(503, 'config_unavailable', 'Could not load SSO config');
-  if (!connection?.saml_idp_cert) {
-    return epProblem(404, 'sso_not_configured', `No SAML connection configured for tenant ${tenant}`);
+  // Unified response for BOTH "unknown tenant" and "tenant without SAML" so this
+  // unauthenticated endpoint can't be used as an oracle to enumerate the tenant
+  // namespace. Same status + same generic body in both cases. (T4-A)
+  if (error || !connection?.saml_idp_cert) {
+    return epProblem(404, 'sso_not_configured', 'No SAML connection configured');
   }
 
   const origin = spOrigin(request);
