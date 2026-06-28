@@ -8,6 +8,7 @@ import {
 } from '@/lib/scim/core';
 import { scimJson, scimErrorResponse, requireScimAuth, scimBaseUrl } from '@/lib/scim/http';
 import { recordApproverEligible } from '@/lib/scim/approver-link';
+import { isScimAutoApproverEnabled } from '@/lib/env';
 
 // Map SCIM filter attributes to scim_users columns.
 const USER_FILTER_COLUMN = {
@@ -106,7 +107,7 @@ export async function POST(request) {
     // be able to mint an approver who can enroll a signing passkey and approve
     // actions. Opt in explicitly with EP_SCIM_AUTO_APPROVER=true; otherwise
     // eligibility is established through the admin approval path. (T3)
-    if (data.active !== false && process.env.EP_SCIM_AUTO_APPROVER === 'true') {
+    if (data.active !== false && isScimAutoApproverEnabled()) {
       await recordApproverEligible(supabase, auth.tenantId, data.user_name);
     }
 

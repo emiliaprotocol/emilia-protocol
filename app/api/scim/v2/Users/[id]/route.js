@@ -7,6 +7,7 @@ import { logger } from '@/lib/logger.js';
 import { toScimUser, fromScimUser, applyPatch, etag } from '@/lib/scim/core';
 import { scimJson, scimErrorResponse, requireScimAuth, scimBaseUrl } from '@/lib/scim/http';
 import { revokeApproverCredentials, recordApproverEligible } from '@/lib/scim/approver-link';
+import { isScimAutoApproverEnabled } from '@/lib/env';
 
 async function loadUser(supabase, tenantId, id) {
   const { data, error } = await supabase
@@ -120,7 +121,7 @@ async function writeUser(supabase, tenantId, id, current, fields, request) {
     const isActive = data.active !== false;
     if (wasActive && !isActive) {
       await revokeApproverCredentials(supabase, tenantId, current.user_name, 'scim_deactivate');
-    } else if (!wasActive && isActive && process.env.EP_SCIM_AUTO_APPROVER === 'true') {
+    } else if (!wasActive && isActive && isScimAutoApproverEnabled()) {
       // Re-activation grants approver eligibility ONLY when auto-approver is
       // explicitly enabled; otherwise eligibility goes through admin approval so
       // a compromised SCIM token can't mint an approver. (T3) Note: deactivation

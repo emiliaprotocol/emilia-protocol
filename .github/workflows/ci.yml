@@ -297,7 +297,9 @@ jobs:
           node-version: 20
       - name: Install dependencies
         working-directory: sdks/typescript
-        run: npm ci --ignore-scripts
+        # sdks/typescript has no committed package-lock.json, so npm ci can't run
+        # here; keep the --ignore-scripts supply-chain hardening on npm install.
+        run: npm install --ignore-scripts
       - name: Build SDK
         working-directory: sdks/typescript
         run: npm run build
@@ -588,7 +590,9 @@ jobs:
         image: public.ecr.aws/docker/library/postgres:16-alpine
         env:
           POSTGRES_USER:     ep_test
-          POSTGRES_PASSWORD: ep_test
+          # Per-run password (never reused) for this ephemeral, network-isolated
+          # CI service — no static credential in the repo.
+          POSTGRES_PASSWORD: ci-${{ github.run_id }}-${{ github.run_attempt }}
           POSTGRES_DB:       ep_test
         ports:
           - 5433:5432
@@ -611,5 +615,5 @@ jobs:
           PGHOST:     localhost
           PGPORT:     "5433"
           PGUSER:     ep_test
-          PGPASSWORD: ep_test
+          PGPASSWORD: ci-${{ github.run_id }}-${{ github.run_attempt }}
           PGDATABASE: ep_test
