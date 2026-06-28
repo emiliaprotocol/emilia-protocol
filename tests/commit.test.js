@@ -68,7 +68,7 @@ import {
 // Helper: build a mock Supabase client that returns specified data
 // ============================================================================
 
-function buildMockDb(commitRecord = null, { insertError = null, updateError = null } = {}) {
+function buildMockDb(commitRecord = null, { insertError = null, updateError = null, revokedKid = false } = {}) {
   const readChain = makeChain({ data: commitRecord, error: null });
   const writeInsertChain = makeChain({ data: null, error: insertError });
 
@@ -83,16 +83,24 @@ function buildMockDb(commitRecord = null, { insertError = null, updateError = nu
     then: (resolve) => Promise.resolve({ data: null, error: updateError }).then(resolve),
   };
 
-  const fromFn = vi.fn(() => ({
-    select: (...args) => {
-      readChain.select(...args);
-      return readChain;
-    },
-    insert: writeInsertChain.insert,
-    update: (...args) => {
-      return updateChain;
-    },
-  }));
+  const fromFn = vi.fn((table) => {
+    // T6: the emergency commit-key revocation lookup. Default to "not revoked"
+    // so it doesn't shadow the signature/status assertions; revocation behavior
+    // is exercised in its own test below.
+    if (table === 'revoked_commit_keys') {
+      return makeChain({ data: revokedKid ? { kid: 'ep-signing-key-1' } : null, error: null });
+    }
+    return {
+      select: (...args) => {
+        readChain.select(...args);
+        return readChain;
+      },
+      insert: writeInsertChain.insert,
+      update: (...args) => {
+        return updateChain;
+      },
+    };
+  });
 
   return { from: fromFn };
 }
@@ -465,6 +473,22 @@ describe('verifyCommit', () => {
     expect(result.valid).toBe(true);
     expect(result.status).toBe('active');
     expect(result.decision).toBe('allow');
+  });
+
+  it('T6: revoked signing kid returns { valid: false, reasons: ["kid_revoked"] } despite a valid signature', async () => {
+    mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({
+      policyResult: { pass: true, failures: [], warnings: [] },
+    }));
+    mockGetServiceClient.mockReturnValue(buildMockDb());
+    const commit = await issueCommit({ entity_id: 'entity-123', action_type: 'install' });
+
+    // Same valid commit, but its kid is now in revoked_commit_keys.
+    const db = buildMockDb(commit, { revokedKid: true });
+    mockGetServiceClient.mockReturnValue(db);
+
+    const result = await verifyCommit(commit.commit_id);
+    expect(result.valid).toBe(false);
+    expect(result.reasons).toContain('kid_revoked');
   });
 
   it('expired commit returns { valid: false, status: "expired" }', async () => {

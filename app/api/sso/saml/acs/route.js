@@ -6,6 +6,7 @@
 
 export const runtime = 'nodejs';
 
+import crypto from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { buildSamlSp, validateSamlResponse } from '@/lib/sso/saml';
@@ -13,6 +14,43 @@ import { loadConnection, spOrigin } from '@/lib/sso/config';
 import { mintSession, SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from '@/lib/sso/session';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
+
+// T4-B: assertion replay window. node-saml already rejects assertions whose
+// Conditions/NotOnOrAfter have passed, so the cache only needs to span a typical
+// assertion lifetime + clock skew. 30 min is comfortably beyond both.
+const REPLAY_TTL_MS = 30 * 60 * 1000;
+
+/**
+ * Record a consumed SAML Response and detect replays. Returns:
+ *   'fresh'     — first time seen, recorded
+ *   'replayed'  — this exact response was already consumed (reject!)
+ *   'unchecked' — replay table unavailable (not yet migrated / transient DB
+ *                 error); caller proceeds since signature + Conditions already
+ *                 validated and the cache is defense-in-depth, not the gate.
+ */
+async function consumeSamlResponse(tenant, replayKey) {
+  try {
+    const supabase = getGuardedClient();
+    const { error } = await supabase
+      .from('saml_consumed_assertions')
+      .insert({
+        replay_key: replayKey,
+        tenant_id: tenant,
+        expires_at: new Date(Date.now() + REPLAY_TTL_MS).toISOString(),
+      });
+    if (!error) return 'fresh';
+    if (error.code === '23505') return 'replayed';          // unique PK violation
+    if (error.code === '42P01') {                            // relation does not exist
+      logger.warn('[sso/saml/acs] replay table missing — apply migration 103; skipping replay check');
+      return 'unchecked';
+    }
+    logger.warn('[sso/saml/acs] replay-cache insert failed; proceeding (defense-in-depth only):', error.message);
+    return 'unchecked';
+  } catch (e) {
+    logger.warn('[sso/saml/acs] replay-cache threw; proceeding:', e?.message);
+    return 'unchecked';
+  }
+}
 
 export async function POST(request) {
   let form;
@@ -48,6 +86,17 @@ export async function POST(request) {
     // A failed signature/conditions/audience check MUST NOT authenticate.
     logger.warn('[sso/saml/acs] rejected:', result.error);
     return epProblem(401, 'saml_validation_failed', result.error || 'SAML assertion did not validate');
+  }
+
+  // T4-B: one-time consumption. The response is cryptographically valid and
+  // in-window; ensure it can't be replayed (esp. IdP-initiated responses, which
+  // have no InResponseTo for node-saml to dedup on). Key off the exact validated
+  // response bytes — any change would have already failed the signature check.
+  const replayKey = crypto.createHash('sha256').update(String(samlResponse)).digest('hex');
+  const consumption = await consumeSamlResponse(tenant, replayKey);
+  if (consumption === 'replayed') {
+    logger.warn('[sso/saml/acs] replay rejected', { tenant });
+    return epProblem(401, 'saml_replay', 'This SAML response has already been consumed');
   }
 
   const directory = await resolveDirectory(tenant, result.profile);
