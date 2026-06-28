@@ -16,7 +16,7 @@ test.describe('Trust Explorer', () => {
     // Tab bar is present with three tabs
     const receiptTab = page.locator('button', { hasText: 'Verify Receipt' });
     const proofTab = page.locator('button', { hasText: 'Verify Proof' });
-    const entityTab = page.locator('button', { hasText: 'Trust Profile' });
+    const entityTab = page.locator('button', { hasText: 'Capability Check' });
 
     await expect(receiptTab).toBeVisible();
     await expect(proofTab).toBeVisible();
@@ -34,8 +34,8 @@ test.describe('Trust Explorer', () => {
     await page.click('button:has-text("Verify Proof")');
     await expect(input).toHaveAttribute('placeholder', /ep_zkp_/);
 
-    // Switch to entity tab
-    await page.click('button:has-text("Trust Profile")');
+    // Switch to capability tab
+    await page.click('button:has-text("Capability Check")');
     await expect(input).toHaveAttribute('placeholder', /ep_entity_/);
   });
 
