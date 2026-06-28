@@ -104,6 +104,19 @@ export async function POST(request, { params }) {
       return epProblem(409, 'action_hash_mismatch', 'Signing context does not bind the receipt-issued action_hash');
     }
 
+    // WYSIWYS defense-in-depth (NASTY-1): a Class-A (hardware/biometric) signoff
+    // MUST carry a display_hash in the signed context, so the hardware signature
+    // provably covers what the human SAW — not just the opaque action_hash.
+    // Issuance (webauthn-options) already enforces this for required_assurance
+    // 'A'; re-checking here means the verifier never relies solely on issuance,
+    // and any context lacking display_hash for a Class-A signoff is refused.
+    const requiredAssurance = loaded.requestEvent.after_state?.required_assurance
+      || loaded.requestEvent.after_state?.quorum?.required_assurance
+      || null;
+    if (requiredAssurance === 'A' && !challengeRow.context?.display_hash) {
+      return epProblem(409, 'display_binding_required', 'Class-A signoff requires a WYSIWYS display_hash bound into the signed context');
+    }
+
     // ── Credential: the assertion's credential must belong to this approver.
     const { data: creds, error: credErr } = await supabase
       .from('approver_credentials')

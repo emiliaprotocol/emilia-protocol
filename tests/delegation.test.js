@@ -211,8 +211,10 @@ describe('createDelegation', () => {
     let callCount = 0;
     mockSupabase.from = vi.fn(() => {
       callCount++;
-      if (callCount === 1) return agentChain;
-      return { insert: insertFn };
+      if (callCount === 1) return agentChain; // entities lookup
+      // containment read: principal holds no delegations -> no escalation
+      if (callCount === 2) return { select: () => ({ eq: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) }) };
+      return { insert: insertFn }; // delegations insert
     });
 
     await createDelegation({
@@ -228,6 +230,30 @@ describe('createDelegation', () => {
     const diff = expiry - Date.now();
     expect(diff).toBeGreaterThan(23 * 60 * 60 * 1000); // > 23 hrs
     expect(diff).toBeLessThan(25 * 60 * 60 * 1000); // < 25 hrs
+  });
+
+  // NASTY-2: a principal that holds a delegation cannot re-delegate more than it holds.
+  it('rejects scope escalation beyond the principal\'s held authority', async () => {
+    const agentChain = buildQueryChain({ data: { id: 1, entity_id: 'agent-ent-1' }, error: null });
+    const future = new Date(Date.now() + 3600_000).toISOString();
+    let callCount = 0;
+    mockSupabase.from = vi.fn(() => {
+      callCount++;
+      if (callCount === 1) return agentChain; // entity exists
+      // containment read: principal only holds 'read'
+      return { select: () => ({ eq: () => ({ eq: () => Promise.resolve({ data: [{ scope: ['read'], status: 'active', expires_at: future }], error: null }) }) }) };
+    });
+    await expect(createDelegation({
+      principalId: 'p-1', agentEntityId: 'agent-ent-1', scope: ['write'],
+    })).rejects.toThrow(/exceeds the principal/i);
+  });
+
+  it('rejects a malformed scope token (double-dot)', async () => {
+    const agentChain = buildQueryChain({ data: { id: 1, entity_id: 'agent-ent-1' }, error: null });
+    mockSupabase.from = vi.fn(() => agentChain);
+    await expect(createDelegation({
+      principalId: 'p-1', agentEntityId: 'agent-ent-1', scope: ['finance..wire'],
+    })).rejects.toThrow(/invalid scope/i);
   });
 });
 
