@@ -16,6 +16,13 @@ export async function POST(request) {
   const auth = await authenticateRequest(request);
   if (auth.error) return epProblem(auth.status || 401, auth.code || 'unauthorized', auth.error);
   const tenantId = authEntityId(auth);
+  // Confirmed tenant -> protocol-org mapping (#6): the SCIM token provisions into
+  // the minting entity's organization. Approvers enroll under this same org, so
+  // deprovision revokes exactly this tenant's credentials. (Falls back to
+  // tenant_id at revoke time when the entity is not yet org-bound.)
+  const organizationId = (auth.entity && typeof auth.entity === 'object')
+    ? (auth.entity.organization_id || null)
+    : null;
 
   let body = {};
   try { body = await request.json(); } catch { /* label optional */ }
@@ -28,7 +35,7 @@ export async function POST(request) {
   try {
     const { data, error } = await supabase
       .from('scim_provisioning_tokens')
-      .insert({ tenant_id: tenantId, token_hash: tokenHash, token_prefix: token.slice(0, 16), label })
+      .insert({ tenant_id: tenantId, organization_id: organizationId, token_hash: tokenHash, token_prefix: token.slice(0, 16), label })
       .select('id, created_at')
       .single();
     if (error || !data) {

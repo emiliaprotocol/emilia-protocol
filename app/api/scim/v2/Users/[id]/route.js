@@ -49,7 +49,7 @@ export async function PUT(request, { params }) {
   const fields = fromScimUser(body);
   if (!fields.user_name) return scimErrorResponse(400, 'userName is required', 'invalidValue');
 
-  return writeUser(supabase, auth.tenantId, id, current, fields, request);
+  return writeUser(supabase, auth.tenantId, auth.organizationId, id, current, fields, request);
 }
 
 export async function PATCH(request, { params }) {
@@ -71,7 +71,7 @@ export async function PATCH(request, { params }) {
   if (patched.error) return scimErrorResponse(patched.error.status, patched.error.detail, patched.error.scimType);
 
   const fields = fromScimUser(patched.resource);
-  return writeUser(supabase, auth.tenantId, id, current, fields, request);
+  return writeUser(supabase, auth.tenantId, auth.organizationId, id, current, fields, request);
 }
 
 export async function DELETE(request, { params }) {
@@ -89,12 +89,12 @@ export async function DELETE(request, { params }) {
 
   // Hard delete is the strongest deprovision: revoke any live signing
   // credentials for this identity in the same write.
-  await revokeApproverCredentials(supabase, auth.tenantId, current.user_name, 'scim_delete');
+  await revokeApproverCredentials(supabase, auth.tenantId, current.user_name, 'scim_delete', auth.organizationId);
   return new Response(null, { status: 204 });
 }
 
 // Shared write path for PUT/PATCH: bump version, persist, return the resource.
-async function writeUser(supabase, tenantId, id, current, fields, request) {
+async function writeUser(supabase, tenantId, organizationId, id, current, fields, request) {
   const nextVersion = (current.version ?? 1) + 1;
   // Capture the prior active state BEFORE the write — the update mutates the
   // user row, and the linkage decision is about the transition.
@@ -120,7 +120,7 @@ async function writeUser(supabase, tenantId, id, current, fields, request) {
     // makes the human eligible to RE-ENROLL — it never resurrects revoked keys.
     const isActive = data.active !== false;
     if (wasActive && !isActive) {
-      await revokeApproverCredentials(supabase, tenantId, current.user_name, 'scim_deactivate');
+      await revokeApproverCredentials(supabase, tenantId, current.user_name, 'scim_deactivate', organizationId);
     } else if (!wasActive && isActive && isScimAutoApproverEnabled()) {
       // Re-activation grants approver eligibility ONLY when auto-approver is
       // explicitly enabled; otherwise eligibility goes through admin approval so
