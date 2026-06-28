@@ -18,6 +18,10 @@
     {
       "path": "/api/cron/trust-desk-monitor",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/collusion-scan",
+      "schedule": "0 8 * * 1"
     }
   ]
 }
