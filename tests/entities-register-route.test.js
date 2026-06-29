@@ -41,6 +41,19 @@ function makeClient(calls) {
             single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
           };
         }
+        if (entityFromCalls === 2) {
+          return {
+            select() { return this; },
+            eq(_col, value) {
+              calls.displayNameKeyLookup = value;
+              return this;
+            },
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: calls.existingDisplayNameKey ? { id: 'existing-entity' } : null,
+              error: null,
+            }),
+          };
+        }
         return {
           insert(payload) {
             calls.entityInsert = payload;
@@ -97,7 +110,27 @@ describe('POST /api/entities/register hardening', () => {
     expect(res.status).toBe(201);
     expect(body.entity.entity_id).toBe('acme-agent-1');
     expect(calls.entityInsert.organization_id).toBe('acme-agent-1');
+    expect(calls.entityInsert.display_name_key).toBe('acmeagent');
     expect(calls.apiKeyInsert.entity_id).toBe('uuid-entity');
+  });
+
+  it('rejects normalized display-name collisions before key issuance', async () => {
+    const calls = { existingDisplayNameKey: true };
+    mockGetGuardedClient.mockReturnValue(makeClient(calls));
+
+    const res = await POST(request({
+      entity_id: 'acme-agent-2',
+      display_name: ' A.C.M.E.   Agent ',
+      entity_type: 'agent',
+      description: 'Looks too similar',
+      capabilities: ['invoice_approval'],
+    }));
+    const body = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(body.type).toContain('registration_failed');
+    expect(calls.displayNameKeyLookup).toBe('acmeagent');
+    expect(calls.apiKeyInsert).toBeUndefined();
   });
 
   it('rejects invalid entity ids before embedding work', async () => {

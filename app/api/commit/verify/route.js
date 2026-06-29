@@ -42,7 +42,8 @@ export async function POST(request) {
     });
   } catch (err) {
     if (err instanceof ProtocolWriteError) {
-      return epProblem(err.status, err.code.toLowerCase(), err.message);
+      logger.error('[commit-verify] Protocol write failed:', err);
+      return epProblem(err.status || 500, err.code.toLowerCase(), 'Commit verification failed');
     }
     logger.error('Commit verify error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');

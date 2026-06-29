@@ -177,6 +177,19 @@ describe('public demo + marketing carve-outs', () => {
   });
 
   it('the synthetic demo entity is evaluable without auth; real entities are not', async () => {
+    const empty = await trustEvaluatePOST(
+      new Request('https://example.test/api/trust/evaluate', { method: 'POST' }),
+    );
+    expect(empty.status).toBe(401);
+
+    const malformed = await trustEvaluatePOST(
+      new Request('https://example.test/api/trust/evaluate', {
+        method: 'POST',
+        body: '{',
+      }),
+    );
+    expect(malformed.status).toBe(401);
+
     const demo = await trustEvaluatePOST(
       new Request('https://example.test/api/trust/evaluate', {
         method: 'POST',

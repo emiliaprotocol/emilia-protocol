@@ -58,6 +58,7 @@ export async function POST(request) {
 
     const entityId = String(body.entity_id).normalize('NFKC').trim();
     const displayName = String(body.display_name).trim();
+    const displayNameKey = normalizeDisplayNameKey(displayName);
     const description = String(body.description).trim();
 
     const VALID_ENTITY_TYPES = [
@@ -113,6 +114,18 @@ export async function POST(request) {
       return epProblem(400, 'registration_failed', 'Unable to complete registration');
     }
 
+    if (displayNameKey) {
+      const { data: existingName } = await supabase
+        .from('entities')
+        .select('id')
+        .eq('display_name_key', displayNameKey)
+        .maybeSingle();
+
+      if (existingName) {
+        return epProblem(409, 'registration_failed', 'Unable to complete registration');
+      }
+    }
+
     // Rate limiting handled by middleware on all /api/* routes
 
     // Generate embedding from description + capabilities (optional — skipped if no provider configured)
@@ -147,6 +160,7 @@ export async function POST(request) {
         organization_id: entityId,
         owner_id: ownerId,
         display_name: displayName,
+        display_name_key: displayNameKey || null,
         entity_type: body.entity_type,
         description,
         website_url: body.website_url || null,
@@ -167,6 +181,9 @@ export async function POST(request) {
 
     if (insertError) {
       logger.error('Entity insert error:', insertError);
+      if (insertError.code === '23505') {
+        return epProblem(409, 'registration_failed', 'Unable to complete registration');
+      }
       return epProblem(500, 'registration_failed', 'Failed to register entity');
     }
 
@@ -212,4 +229,13 @@ function sanitizeStringArray(value, maxItems, maxChars) {
     values.push(s);
   }
   return { values };
+}
+
+export function normalizeDisplayNameKey(value) {
+  return String(value || '')
+    .normalize('NFKC')
+    .replace(/[\s​‌‍﻿]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '')
+    .slice(0, 200);
 }

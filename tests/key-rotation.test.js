@@ -19,8 +19,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // ============================================================================
 
 const mockRpc = vi.fn();
-const mockUpdate = vi.fn();
-const mockInsert = vi.fn();
 const mockSelect = vi.fn();
 
 // Track revoked hashes so we can simulate auth rejection
@@ -41,27 +39,15 @@ vi.mock('@supabase/supabase-js', () => ({
       if (table === 'api_keys') {
         return {
           select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }),
-          insert: (data) => mockInsert(table, data),
-          update: (data) => ({
-            eq: (col, val) => {
-              // Chain: .update().eq('key_hash', ...).eq('entity_id', ...)
-              if (col === 'key_hash' && data.revoked_at) {
-                revokedHashes.add(val);
-              }
-              return {
-                eq: () => mockUpdate(table, data),
-              };
-            },
-          }),
+          insert: () => Promise.resolve({ data: null, error: null }),
+          update: () => ({ eq: () => ({ eq: () => Promise.resolve({ data: null, error: null }) }) }),
         };
       }
       if (table === 'entities') {
         return {
           select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }) }) }),
           insert: (data) => ({ select: () => ({ single: () => Promise.resolve({ data: { id: 'ent-1', ...data }, error: null }) }) }),
-          update: (data) => ({
-            eq: () => mockUpdate(table, data),
-          }),
+          update: () => ({ eq: () => Promise.resolve({ data: null, error: null }) }),
         };
       }
       return {
@@ -120,6 +106,16 @@ function setupAuthSuccess(entity = VALID_ENTITY) {
         error: null,
       });
     }
+    if (rpcName === 'rotate_api_key_atomic') {
+      revokedHashes.add(params.p_old_key_hash);
+      return Promise.resolve({
+        data: {
+          rotated_at: '2026-06-29T00:00:00.000Z',
+          old_key_invalidated: true,
+        },
+        error: null,
+      });
+    }
     return Promise.resolve({ data: null, error: null });
   });
 }
@@ -139,8 +135,6 @@ describe('POST /api/keys/rotate', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     revokedHashes.clear();
-    mockUpdate.mockResolvedValue({ data: null, error: null });
-    mockInsert.mockResolvedValue({ data: null, error: null });
   });
 
   // ── Successful rotation ────────────────────────────────────────────────
@@ -165,38 +159,32 @@ describe('POST /api/keys/rotate', () => {
 
     await POST(req);
 
-    // Verify update was called on api_keys with revoked_at
-    expect(mockUpdate).toHaveBeenCalledWith('api_keys', expect.objectContaining({
-      revoked_at: expect.any(String),
-      invalidated_at: expect.any(String),
+    expect(mockRpc).toHaveBeenCalledWith('rotate_api_key_atomic', expect.objectContaining({
+      p_old_key_hash: hashApiKey('ep_live_testapikey1234567890abcdef1234567890abcdef1234567890abcdef12345678'),
     }));
   });
 
-  it('inserts a new key record', async () => {
+  it('creates the replacement key through the atomic rotation RPC', async () => {
     setupAuthSuccess();
     const req = makeRequest();
 
     await POST(req);
 
-    // Verify insert was called on api_keys
-    expect(mockInsert).toHaveBeenCalledWith('api_keys', expect.objectContaining({
-      entity_id: VALID_ENTITY.id,
-      key_hash: expect.any(String),
-      key_prefix: expect.any(String),
-      label: 'Rotated key',
+    expect(mockRpc).toHaveBeenCalledWith('rotate_api_key_atomic', expect.objectContaining({
+      p_entity_id: VALID_ENTITY.id,
+      p_new_key_hash: expect.any(String),
+      p_new_key_prefix: expect.any(String),
+      p_label: 'Rotated key',
     }));
   });
 
-  it('updates entity api_key_hash to new hash', async () => {
+  it('does not use non-atomic REST insert/update calls for rotation', async () => {
     setupAuthSuccess();
     const req = makeRequest();
 
     await POST(req);
 
-    // Verify update was called on entities with new hash
-    expect(mockUpdate).toHaveBeenCalledWith('entities', expect.objectContaining({
-      api_key_hash: expect.any(String),
-    }));
+    expect(mockSelect).not.toHaveBeenCalled();
   });
 
   // ── Old key stops working ──────────────────────────────────────────────
@@ -245,14 +233,8 @@ describe('POST /api/keys/rotate', () => {
     const res = await POST(req);
     const body = await res.json();
 
-    // The insert should use the same entity id
-    expect(mockInsert).toHaveBeenCalledWith('api_keys', expect.objectContaining({
-      entity_id: VALID_ENTITY.id,
-    }));
-
-    // The entity update should target the same entity
-    expect(mockUpdate).toHaveBeenCalledWith('entities', expect.objectContaining({
-      api_key_hash: expect.any(String),
+    expect(mockRpc).toHaveBeenCalledWith('rotate_api_key_atomic', expect.objectContaining({
+      p_entity_id: VALID_ENTITY.id,
     }));
   });
 
@@ -309,9 +291,20 @@ describe('POST /api/keys/rotate', () => {
 
   // ── Error handling ─────────────────────────────────────────────────────
 
-  it('returns 500 if revoking old key fails', async () => {
+  it('returns 500 if atomic rotation fails', async () => {
     setupAuthSuccess();
-    mockUpdate.mockResolvedValueOnce({ data: null, error: { message: 'db error' } });
+    mockRpc.mockImplementation((rpcName, params) => {
+      if (rpcName === 'resolve_authenticated_actor') {
+        return Promise.resolve({
+          data: { entity: VALID_ENTITY, permissions: { can_submit_receipts: true } },
+          error: null,
+        });
+      }
+      if (rpcName === 'rotate_api_key_atomic') {
+        return Promise.resolve({ data: null, error: { message: 'db error' } });
+      }
+      return Promise.resolve({ data: null, error: null });
+    });
 
     const req = makeRequest();
     const res = await POST(req);
@@ -321,11 +314,20 @@ describe('POST /api/keys/rotate', () => {
     expect(body.type).toContain('rotation_failed');
   });
 
-  it('returns 500 if inserting new key fails', async () => {
+  it('returns 500 if atomic rotation reports a closed failure', async () => {
     setupAuthSuccess();
-    // First update (revoke) succeeds, insert fails
-    mockUpdate.mockResolvedValue({ data: null, error: null });
-    mockInsert.mockResolvedValueOnce({ data: null, error: { message: 'insert error' } });
+    mockRpc.mockImplementation((rpcName) => {
+      if (rpcName === 'resolve_authenticated_actor') {
+        return Promise.resolve({
+          data: { entity: VALID_ENTITY, permissions: { can_submit_receipts: true } },
+          error: null,
+        });
+      }
+      if (rpcName === 'rotate_api_key_atomic') {
+        return Promise.resolve({ data: { error: 'old_key_not_active' }, error: null });
+      }
+      return Promise.resolve({ data: null, error: null });
+    });
 
     const req = makeRequest();
     const res = await POST(req);
@@ -335,18 +337,14 @@ describe('POST /api/keys/rotate', () => {
     expect(body.type).toContain('rotation_failed');
   });
 
-  it('does not claim the old key was invalidated when final revoke fails', async () => {
+  it('always reports old key invalidated only after the atomic RPC succeeds', async () => {
     setupAuthSuccess();
-    mockInsert.mockResolvedValue({ data: null, error: null });
-    mockUpdate
-      .mockResolvedValueOnce({ data: null, error: null })
-      .mockResolvedValueOnce({ data: null, error: { message: 'revoke failed' } });
 
     const res = await POST(makeRequest());
     const body = await res.json();
 
     expect(res.status).toBe(201);
-    expect(body.old_key_invalidated).toBe(false);
-    expect(body.manual_cleanup_required).toBe(true);
+    expect(body.old_key_invalidated).toBe(true);
+    expect(body.manual_cleanup_required).toBe(false);
   });
 });

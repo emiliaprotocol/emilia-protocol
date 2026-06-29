@@ -34,61 +34,26 @@ export async function POST(request) {
     const { key: newKey, hash: newKeyHash, prefix } = generateApiKey();
 
     const serviceClient = getServiceClient();
-    const now = new Date().toISOString();
+    const { data, error: rotateError } = await serviceClient.rpc('rotate_api_key_atomic', {
+      p_entity_id: entity.id,
+      p_old_key_hash: oldKeyHash,
+      p_new_key_hash: newKeyHash,
+      p_new_key_prefix: prefix,
+      p_label: 'Rotated key',
+    });
 
-    // Order matters (T2): create the NEW key and repoint the entity to it BEFORE
-    // revoking the old one, so there is never a window where the entity has zero
-    // valid keys (which would 401 every in-flight request — an auth blackout).
-    // If a later step fails, the old key is still valid, so the worst case is two
-    // valid keys briefly (a soft, safe failure), never an outage.
-
-    // ── 1. Insert new key record ─────────────────────────────────────
-    const { error: insertError } = await serviceClient
-      .from('api_keys')
-      .insert({
-        entity_id: entity.id,
-        key_hash: newKeyHash,
-        key_prefix: prefix,
-        label: 'Rotated key',
-      });
-
-    if (insertError) {
-      logger.error('[key-rotation] Failed to insert new key:', insertError);
-      return epProblem(500, 'rotation_failed', 'Failed to create new key');
+    if (rotateError || data?.error) {
+      logger.error('[key-rotation] Atomic rotation failed:', rotateError || data);
+      return epProblem(500, 'rotation_failed', 'Failed to rotate key');
     }
 
-    // ── 2. Repoint entity to the new hash (new key now fully live) ────
-    const { error: entityUpdateError } = await serviceClient
-      .from('entities')
-      .update({ api_key_hash: newKeyHash })
-      .eq('id', entity.id);
-
-    if (entityUpdateError) {
-      logger.error('[key-rotation] Failed to update entity key hash:', entityUpdateError);
-      // New key exists but entity still points at the old (still-valid) key — no
-      // outage. Abort without revoking the old key so the caller stays authable.
-      return epProblem(500, 'rotation_failed', 'Failed to update entity key reference');
-    }
-
-    // ── 3. Revoke the old key LAST (new key is already live) ─────────
-    const { error: revokeError } = await serviceClient
-      .from('api_keys')
-      .update({ revoked_at: now, invalidated_at: now })
-      .eq('key_hash', oldKeyHash)
-      .eq('entity_id', entity.id);
-
-    const oldKeyInvalidated = !revokeError;
-    if (revokeError) {
-      // New key is live; the old key just wasn't revoked. Log loudly but do NOT
-      // fail the rotation — the caller already has a working new key.
-      logger.error('[key-rotation] New key live but old key not revoked (manual cleanup needed):', revokeError);
-    }
+    const rotatedAt = data?.rotated_at || new Date().toISOString();
 
     return NextResponse.json({
       new_key: newKey,
-      rotated_at: now,
-      old_key_invalidated: oldKeyInvalidated,
-      manual_cleanup_required: !oldKeyInvalidated,
+      rotated_at: rotatedAt,
+      old_key_invalidated: true,
+      manual_cleanup_required: false,
     }, { status: 201 });
   } catch (err) {
     logger.error('[key-rotation] Unexpected error:', err);

@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
-import { EP_ERRORS } from '@/lib/errors';
+import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { getGuardedClient } from '@/lib/write-guard';
 import { authenticateRequest } from '@/lib/supabase';
 import { isDemoEntity } from '@/lib/demo-entities';
 import { logger } from '../../../../lib/logger.js';
+import { readLimitedJson } from '@/lib/http/body-limit';
+
+const MAX_EVALUATE_BYTES = 64 * 1024;
+const MAX_UNAUTH_DEMO_BYTES = 4096;
 
 let canonicalEvaluate, buildTrustDecision, passToDecision;
 try {
@@ -22,19 +26,33 @@ try {
  */
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const authHeader = request.headers.get('authorization');
+    let auth = null;
 
-    if (!body.entity_id) {
-      return EP_ERRORS.BAD_REQUEST('entity_id is required');
+    if (authHeader) {
+      auth = await authenticateRequest(request);
+      if (auth.error) return EP_ERRORS.UNAUTHORIZED();
     }
 
-    // Public demo carve-out: the synthetic demo entity is evaluable without auth
-    // so the public /demo page works end-to-end. Every OTHER entity requires
-    // authentication — this allowlist is the recon boundary (a real entity can't
-    // be evaluated anonymously).
-    if (!isDemoEntity(body.entity_id)) {
-      const auth = await authenticateRequest(request);
-      if (auth.error) return EP_ERRORS.UNAUTHORIZED();
+    const parsed = await readLimitedJson(
+      request,
+      auth ? MAX_EVALUATE_BYTES : MAX_UNAUTH_DEMO_BYTES,
+    );
+    if (!parsed.ok) {
+      if (!auth) return EP_ERRORS.UNAUTHORIZED();
+      return epProblem(parsed.status, parsed.code, parsed.detail);
+    }
+    const body = parsed.value;
+
+    // Public demo carve-out: only the synthetic demo entity is evaluable
+    // without auth. Unauthenticated requests get a tiny bounded parse solely so
+    // the demo can keep working; real entities and malformed anonymous probes do
+    // not trigger DB-backed evaluation.
+    if (!body.entity_id) {
+      return auth ? EP_ERRORS.BAD_REQUEST('entity_id is required') : EP_ERRORS.UNAUTHORIZED();
+    }
+    if (!auth && !isDemoEntity(body.entity_id)) {
+      return EP_ERRORS.UNAUTHORIZED();
     }
 
     // Try full canonical evaluation first

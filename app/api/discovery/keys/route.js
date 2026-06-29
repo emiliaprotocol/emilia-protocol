@@ -32,9 +32,10 @@ import { getCommitSigningConfig } from '@/lib/env';
 
 const OPERATOR_ID = 'ep_operator_emilia_primary';
 const BASE = 'https://www.emiliaprotocol.ai';
-// Receipts are short-lived; a 5-minute cache bounds key-rotation propagation
-// while keeping the surface cheap to consume.
-const CACHE_TTL_SECONDS = 300;
+// Keep discovery cheap, but bound key-rotation propagation tightly. A stale
+// verifier should not keep using an old registry view for five minutes after a
+// rotation or revocation event.
+const CACHE_TTL_SECONDS = 60;
 
 export async function GET() {
   // The operator commit signing key (key_class C, ep-signing-key-1) signs the
@@ -119,7 +120,7 @@ export async function GET() {
       { ...base, keys, historical_keys },
       {
         headers: {
-          'Cache-Control': `public, max-age=${CACHE_TTL_SECONDS}`,
+          'Cache-Control': `public, max-age=${CACHE_TTL_SECONDS}, must-revalidate`,
           'Content-Type': 'application/json',
         },
       },

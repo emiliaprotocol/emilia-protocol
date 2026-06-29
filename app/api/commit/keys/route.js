@@ -12,6 +12,8 @@
 
 import { NextResponse } from 'next/server';
 import { _internals } from '@/lib/commit';
+import { epProblem } from '@/lib/errors';
+import { logger } from '../../../../lib/logger.js';
 
 export async function GET() {
   try {
@@ -36,9 +38,7 @@ export async function GET() {
       },
     });
   } catch (err) {
-    return NextResponse.json(
-      { error: 'Failed to retrieve signing keys', detail: err.message },
-      { status: 500 }
-    );
+    logger.error('[commit-keys] Failed to retrieve signing keys:', err);
+    return epProblem(500, 'commit_keys_unavailable', 'Commit signing keys are temporarily unavailable');
   }
 }

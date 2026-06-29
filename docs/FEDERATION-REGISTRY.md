@@ -36,7 +36,7 @@ receipt.
   "version": "1.1",
   "operator_id": "ep_operator_emilia_primary",
   "protocol_version": "EP-CORE-v1.0",
-  "cache_ttl_seconds": 300,
+  "cache_ttl_seconds": 60,
   "verify_url_template": "https://www.emiliaprotocol.ai/api/verify/{receipt_id}",
   "keys": {
     "<entity_id>": { "public_key": "<base64url SPKI DER>", "algorithm": "Ed25519" }

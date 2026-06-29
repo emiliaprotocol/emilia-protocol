@@ -77,4 +77,15 @@ describe('GET /api/discovery/keys — operator signing key', () => {
     const body = await res.json();
     expect(body.operator_signing_keys).toEqual({});
   });
+
+  it('limits public key discovery cache to 60 seconds with revalidation', async () => {
+    delete process.env.EP_COMMIT_SIGNING_KEY;
+    _resetForTesting();
+
+    const res = await GET();
+    const body = await res.json();
+
+    expect(body.cache_ttl_seconds).toBe(60);
+    expect(res.headers.get('cache-control')).toBe('public, max-age=60, must-revalidate');
+  });
 });
