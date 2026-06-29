@@ -8,6 +8,10 @@ import { useState } from 'react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font } from '@/lib/tokens';
+// The scanner is pure (zero imports, no node APIs), so it runs entirely in the
+// browser — instant, and the pasted manifest never leaves the page. Same source
+// of truth as `npx @emilia-protocol/fire-drill`.
+import { scan } from '../../packages/fire-drill/index.js';
 
 const EXAMPLE_VULNERABLE = JSON.stringify({
   tools: [
@@ -35,12 +39,17 @@ export default function FireDrillPage() {
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  async function run() {
+  function run() {
     setBusy(true); setError(null); setReport(null);
     try {
-      const res = await fetch('/api/fire-drill', { method: 'POST', body: text });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error || 'scan failed'); } else { setReport(data); }
+      let input;
+      try {
+        input = JSON.parse(text);
+      } catch {
+        setError('Input must be valid JSON (an MCP manifest, OpenAPI spec, or tool array).');
+        return;
+      }
+      setReport(scan(input));
     } catch (e) {
       setError(String(e?.message || e));
     } finally {
