@@ -1,7 +1,9 @@
 # Assurance-Tier Enforcement at Consume (design note)
 
-**Status:** spec — ready to implement behind a feature flag. Scopes two requests
-into one mechanism: (1) value-tier → enforced quorum, (2) revocation-at-execution.
+**Status:** IMPLEMENTED (flag-gated, default off) as of commit 680e822 — see
+`lib/guard-tier.js`, the consume route's dual gate, and `tests/guard-tier.test.js`.
+Enable with `EP_TIER_QUORUM_ENFORCE=true`. Scopes two requests into one mechanism:
+(1) value-tier → enforced quorum, (2) revocation-at-execution.
 
 ## What already exists (do NOT rebuild)
 - **Value tiers** (`lib/guard-policies.js`): payment release ≥ $50k → `single`,
