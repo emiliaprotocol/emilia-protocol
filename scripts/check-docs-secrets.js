@@ -149,6 +149,11 @@ const SAFE_HOSTS = new Set([
   "anthropic.com",
   "resend.com",
   "emiliaprotocol.ai",
+  // MCP ecosystem registries (cited in docs/REGISTRY-LISTINGS.md)
+  "modelcontextprotocol.io", // covers registry.* and static.* via safe-suffix
+  "mcp.so",
+  "smithery.ai",
+  "glama.ai",
   "wikipedia.org",
   "mozilla.org",
   "w3.org",
