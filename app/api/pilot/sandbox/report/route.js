@@ -12,16 +12,10 @@ import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
-
-// The decision an observe-mode event WOULD have produced in enforce mode.
-function effectiveDecision(after) {
-  // In observe mode the adapter records observed_decision (the would-be
-  // outcome); in enforce/warn the decision itself is authoritative.
-  if (after.enforcement_mode === 'observe') {
-    return after.observed_decision || after.decision || 'allow';
-  }
-  return after.decision || 'allow';
-}
+import {
+  buildGovGuardEvidencePacket,
+  effectiveGovGuardDecision,
+} from '@/lib/govguard-evidence-packet';
 
 export async function GET(request) {
   try {
@@ -32,7 +26,7 @@ export async function GET(request) {
     const supabase = getGuardedClient();
     const { data: events, error } = await supabase
       .from('audit_events')
-      .select('after_state, created_at')
+      .select('target_id, after_state, created_at')
       .eq('event_type', 'guard.trust_receipt.created')
       .eq('actor_id', actorId)
       .order('created_at', { ascending: false })
@@ -44,39 +38,33 @@ export async function GET(request) {
     }
 
     const rows = events || [];
-    const summary = {
-      total_actions: rows.length,
-      would_allow: 0,
-      would_require_signoff: 0,
-      would_deny: 0,
-    };
-    const byActionType = {};
+    const packet = buildGovGuardEvidencePacket({
+      pilotId: actorId,
+      events: rows,
+    });
+    const { summary } = packet;
+    const byActionType = packet.by_action_type;
     const samples = []; // the riskiest handful, with reasons + action hash
 
     for (const ev of rows) {
       const a = ev.after_state || {};
-      const decision = effectiveDecision(a);
+      const decision = effectiveGovGuardDecision(a);
       const at = a.action_type || 'unknown';
-      byActionType[at] = byActionType[at] || { total: 0, allow: 0, signoff: 0, deny: 0 };
-      byActionType[at].total += 1;
-
-      if (decision === 'deny') {
-        summary.would_deny += 1; byActionType[at].deny += 1;
-      } else if (decision === 'allow_with_signoff') {
-        summary.would_require_signoff += 1; byActionType[at].signoff += 1;
-      } else {
-        summary.would_allow += 1; byActionType[at].allow += 1;
-      }
 
       if ((decision === 'deny' || decision === 'allow_with_signoff') && samples.length < 20) {
         samples.push({
+          receipt_id: ev.target_id || null,
           action_type: at,
           target_resource_id: a.target_resource_id || null,
           would_have: decision,
           signoff_tier: a.signoff_tier || null,
+          required_assurance: a.required_assurance || null,
           amount: a.amount ?? null,
           currency: a.currency ?? null,
           action_hash: a.action_hash || null,
+          policy_hash: a.policy_hash || null,
+          execution_binding_hash: a.execution_binding?.field_hash || null,
+          reasons: a.reasons || [],
           // PIP-007: the initiator's stated escalation reason for the action the
           // gate would have held for a named human (null when none was minted).
           initiator_attestation: a.initiator_attestation || null,
@@ -99,6 +87,7 @@ export async function GET(request) {
       summary,
       by_action_type: byActionType,
       samples,
+      evidence_packet: packet,
       next_step: gated > 0
         ? 'These are the actions that currently execute with no provable human owner. Turn on enforce mode for one action type to require — and prove — that approval.'
         : 'Send your real high-risk action traffic through the adapters in observe mode to populate this report.',

@@ -1,16 +1,15 @@
 export const metadata = {
-  title: 'Government — Benefit Integrity + Override Control',
+  title: 'Government — Pre-Payment Fraud Control',
   description:
-    'Pre-execution trust enforcement for SNAP, Medicaid, unemployment, and ' +
-    'federal payment systems. Block benefit-redirection fraud and caseworker ' +
-    'override abuse before the change executes. Compliance-mapped to NIST AI ' +
-    'RMF and federal AI executive orders.',
+    'GovGuard pre-execution control for vendor payment destinations, disbursement ' +
+    'releases, benefit routing, provider enrollment, and eligibility overrides. ' +
+    'Start with an observe-mode fire drill.',
   alternates: { canonical: '/use-cases/government' },
   openGraph: {
-    title: 'EMILIA Protocol for Government Benefit Integrity',
+    title: 'EMILIA GovGuard for Government Fraud Control',
     description:
-      'Block benefit-redirection fraud before payment direction can change. ' +
-      'NIST AI RMF mapped, observe-mode rollout, evidence packets for IG/GAO.',
+      'Run a government fraud-control fire drill before money or regulated state moves. '
+      + 'Evidence packets for controllers, Inspectors General, and auditors.',
     url: 'https://www.emiliaprotocol.ai/use-cases/government',
     type: 'article',
   },
@@ -19,6 +18,9 @@ export const metadata = {
     'SNAP fraud prevention',
     'Medicaid fraud prevention',
     'caseworker override control',
+    'government fraud control fire drill',
+    'provider enrollment fraud control',
+    'grant disbursement approval',
     'government AI controls',
     'NIST AI RMF compliance',
     'federal AI executive order',

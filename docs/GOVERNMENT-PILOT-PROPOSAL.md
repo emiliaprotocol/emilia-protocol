@@ -5,7 +5,7 @@ EMILIA GovGuard — pre-execution control for government benefit, payment, and o
 
 ## Executive summary
 
-Government programs lose money inside workflows that already pass authentication. The session is valid. The role has the right permissions. The action — a benefit redirect, a caseworker override, a payment destination change — was never bound to an action-level policy and was never owned by a named accountable human. EMILIA GovGuard fills that gap.
+Government programs lose money inside workflows that already pass authentication. The session is valid. The role has the right permissions. The action — a vendor payment-destination change, disbursement release, benefit redirect, provider enrollment change, eligibility override, or caseworker override — was never bound to an action-level policy and was never owned by a named accountable human. EMILIA GovGuard fills that gap.
 
 GovGuard sits between the agency's existing identity layer and the benefits or payments core system. Before a high-risk change executes, GovGuard binds the actor, the exact action context, the active policy, and the expiry into a one-time authorization receipt (formerly trust receipt); if policy requires it, an accountable supervisor must approve the exact action hash before consume. Receipts cannot be replayed, cannot outlive their expiry, and cannot be consumed without the action they authorize.
 
@@ -27,7 +27,13 @@ GovGuard is the productized surface of EMILIA Protocol — Apache 2.0, formally 
 ### GovGuard demo adapters
 | Endpoint | Workflow |
 |---|---|
+| `POST /api/v1/adapters/gov/vendor-payment-destination-change/precheck` | Vendor/supplier payment destination changes |
+| `POST /api/v1/adapters/gov/disbursement-release/precheck` | Treasury/AP disbursement releases |
+| `POST /api/v1/adapters/gov/grant-disbursement/precheck` | Grant/program/award payment releases |
 | `POST /api/v1/adapters/gov/benefit-bank-change/precheck` | Caseworker changes a claimant's benefit bank account |
+| `POST /api/v1/adapters/gov/benefit-address-change/precheck` | Benefit address/contact/identity-routing changes |
+| `POST /api/v1/adapters/gov/provider-enrollment-change/precheck` | Provider enrollment or payment-address changes |
+| `POST /api/v1/adapters/gov/eligibility-override/precheck` | Eligibility decision overrides |
 | `POST /api/v1/adapters/gov/caseworker-override/precheck` | Operator overrides automatic disqualification |
 
 ### Enforcement modes (per workflow, per organization)
@@ -39,7 +45,7 @@ GovGuard is the productized surface of EMILIA Protocol — Apache 2.0, formally 
 - `/cloud/guard-receipts` — server-rendered admin view: recent receipts, status badges, drill-down to evidence packet.
 
 ### Self-serve observe-mode pilot
-- `/pilot/sandbox` — your engineers provision a scoped sandbox key, run your own action shapes through the live gov adapters in observe mode, and pull an automated "N of M actions would have been held for a named human" report. No sales call required.
+- `/pilot/sandbox?v=gov` — your engineers provision a scoped sandbox key, run your own action shapes through the live gov adapters in observe mode, and pull an automated procurement evidence packet: "N of M actions would have been held for a named human," with policy hashes, action hashes, GG-1 controls, and offline verification instructions. No sales call required.
 
 ### Enterprise deployment & identity
 - **Air-gapped installer** (`deploy/airgap/`) — build the bundle on a connected machine, transfer one tarball, install with no network; the running stack has no route off the host (enforced by the network driver, not configuration discipline). The full run on certified isolated hardware is validated during the pilot.
@@ -48,9 +54,11 @@ GovGuard is the productized surface of EMILIA Protocol — Apache 2.0, formally 
 ## Recommended pilot scope
 
 Pick one workflow:
-- **Benefit bank-account change** (claimant payment redirect prevention)
-- **Caseworker override** (operator action accountability)
-- **Delegated case action** (custom — scope per agency)
+- **Vendor payment-destination change** (fake bank-change email / supplier redirect)
+- **Disbursement or grant release** (public funds leave the treasury/program)
+- **Benefit bank-account or address/contact routing change** (claimant redirect prevention)
+- **Provider enrollment change** (future payment eligibility and routing)
+- **Eligibility or caseworker override** (regulated decision accountability)
 
 We will:
 1. Wire one workflow into observe mode (no behavior change, full evidence trail).
@@ -62,6 +70,7 @@ We will:
 - Named human accountability where policy requires it (signoff cannot be self-approved, cannot bind to a different action than the one approved)
 - Clearer event traceability — Inspector General / GAO inspectable timeline per receipt
 - Policy version pinning — every decision references an immutable policy hash
+- GG-1 conformance — missing receipt, wrong org, wrong approver, Class-C approval, replay, tamper, execution mismatch, and observe-mode export checks
 
 ## Government Reference Pack — what's in it
 

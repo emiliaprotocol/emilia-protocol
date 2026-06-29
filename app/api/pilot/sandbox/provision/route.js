@@ -85,11 +85,11 @@ export async function POST(request) {
     // high-risk action, in OBSERVE mode, pre-filled with this sandbox's org id.
     const EXAMPLES = {
       gov: {
-        adapter: '/api/v1/adapters/gov/benefit-bank-change/precheck',
+        adapter: '/api/v1/adapters/gov/vendor-payment-destination-change/precheck',
         body: {
           organization_id: entityId,
           enforcement_mode: 'observe',
-          recipient_id: 'case_demo_001',
+          vendor_id: 'vendor_demo_001',
           target_changed_fields: ['bank_account'],
           before_state: { bank_account: '****1111' },
           after_state: { bank_account: '****4021' },

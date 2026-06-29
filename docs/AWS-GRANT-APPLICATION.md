@@ -72,8 +72,8 @@ EMILIA Protocol is the open standard. EP GovGuard and EP FinGuard are the
 productized surfaces — the same v1 trust-receipts API pre-filled for two
 high-leverage pilot domains:
 
-- **EP GovGuard** ([/govguard](https://emiliaprotocol.ai/govguard)) — pre-execution control for government benefit/payment changes.
-  Domain adapters: benefit-bank-account changes, caseworker overrides.
+- **EP GovGuard** ([/govguard](https://emiliaprotocol.ai/govguard)) — pre-execution control for government fraud workflows.
+  Domain adapters: vendor payment-destination changes, disbursement releases, grant disbursements, benefit bank/account and address routing changes, provider enrollment changes, eligibility overrides, and caseworker overrides.
 - **EP FinGuard** ([/finguard](https://emiliaprotocol.ai/finguard)) — pre-execution trust for treasury & payment ops.
   Domain adapters: vendor-bank-change, beneficiary creation, large payment release, AI-agent-initiated payment actions.
 

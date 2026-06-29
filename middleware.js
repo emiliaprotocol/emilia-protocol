@@ -107,7 +107,13 @@ const ROUTE_POLICIES = {
   // rate posture as the underlying create endpoint. All implemented via
   // lib/guard-adapter.runGuardPrecheck().
   'POST /api/v1/adapters/gov/benefit-bank-change/precheck':  { rateCategory: 'submit', useAuth: true },
+  'POST /api/v1/adapters/gov/benefit-address-change/precheck': { rateCategory: 'submit', useAuth: true },
   'POST /api/v1/adapters/gov/caseworker-override/precheck':  { rateCategory: 'submit', useAuth: true },
+  'POST /api/v1/adapters/gov/vendor-payment-destination-change/precheck': { rateCategory: 'submit', useAuth: true },
+  'POST /api/v1/adapters/gov/disbursement-release/precheck': { rateCategory: 'submit', useAuth: true },
+  'POST /api/v1/adapters/gov/grant-disbursement/precheck': { rateCategory: 'submit', useAuth: true },
+  'POST /api/v1/adapters/gov/provider-enrollment-change/precheck': { rateCategory: 'submit', useAuth: true },
+  'POST /api/v1/adapters/gov/eligibility-override/precheck': { rateCategory: 'submit', useAuth: true },
   'POST /api/v1/adapters/fin/vendor-bank-change/precheck':   { rateCategory: 'submit', useAuth: true },
   'POST /api/v1/adapters/fin/beneficiary-creation/precheck': { rateCategory: 'submit', useAuth: true },
   'POST /api/v1/adapters/fin/payment-release/precheck':      { rateCategory: 'submit', useAuth: true },

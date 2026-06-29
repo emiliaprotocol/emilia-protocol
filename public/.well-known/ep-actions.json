@@ -11,10 +11,35 @@
     {
       "action_type": "benefit_address_change",
       "domain": "government",
-      "risk": "medium"
+      "risk": "high"
     },
     {
       "action_type": "caseworker_override",
+      "domain": "government",
+      "risk": "high"
+    },
+    {
+      "action_type": "gov.vendor_payment_destination_change",
+      "domain": "government",
+      "risk": "high"
+    },
+    {
+      "action_type": "gov.disbursement_release",
+      "domain": "government",
+      "risk": "high"
+    },
+    {
+      "action_type": "gov.grant_disbursement",
+      "domain": "government",
+      "risk": "high"
+    },
+    {
+      "action_type": "gov.provider_enrollment_change",
+      "domain": "government",
+      "risk": "high"
+    },
+    {
+      "action_type": "gov.eligibility_override",
       "domain": "government",
       "risk": "high"
     },

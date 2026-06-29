@@ -7,24 +7,44 @@ import { styles, cta, color, font, radius } from '@/lib/tokens';
 
 const PROTECTED_ACTIONS = [
   {
-    type: 'vendor_bank_account_change',
-    label: 'Vendor bank-account change',
+    type: 'gov.vendor_payment_destination_change',
+    label: 'Vendor payment-destination change',
     sample: 'A supplier payment destination changes before the next disbursement run.',
   },
   {
-    type: 'disbursement_release',
+    type: 'gov.disbursement_release',
     label: 'Disbursement release',
     sample: 'A high-value payment is ready to leave treasury or accounts payable.',
   },
   {
-    type: 'benefit_change',
-    label: 'Benefit change',
-    sample: 'A benefit amount, routing destination, or claimant record changes.',
+    type: 'gov.grant_disbursement',
+    label: 'Grant disbursement',
+    sample: 'A program payment is released against a grant or award.',
+  },
+  {
+    type: 'benefit_bank_account_change',
+    label: 'Benefit bank-account change',
+    sample: 'A direct-deposit destination changes on a benefits case.',
+  },
+  {
+    type: 'benefit_address_change',
+    label: 'Benefit address/contact change',
+    sample: 'A mailing address or contact route changes in a way that can redirect notices or credentials.',
   },
   {
     type: 'caseworker_override',
     label: 'Caseworker override',
     sample: 'An operator bypasses a system recommendation or eligibility control.',
+  },
+  {
+    type: 'gov.provider_enrollment_change',
+    label: 'Provider enrollment change',
+    sample: 'A provider status or payment address changes before future public funds flow.',
+  },
+  {
+    type: 'gov.eligibility_override',
+    label: 'Eligibility override',
+    sample: 'A regulated benefit decision is manually changed from the system result.',
   },
 ];
 
@@ -57,7 +77,7 @@ const STAGES = [
   {
     n: '6',
     title: 'Evidence packet',
-    body: 'The pilot report shows which actions would have required signoff and gives auditors verification material they can check offline.',
+    body: 'The fire-drill report shows which actions would have required signoff and gives auditors verification material they can check offline.',
   },
 ];
 
@@ -113,18 +133,26 @@ export default function GovGuardPage() {
         <section style={{ ...styles.sectionWide, paddingTop: 80, paddingBottom: 56 }}>
           <div style={styles.eyebrow}>EMILIA GOVGUARD</div>
           <h1 style={{ ...styles.h1Large, maxWidth: 880 }}>
-            Who approved the disbursement?
+            Pre-payment control for government fraud.
           </h1>
           <p style={{ ...styles.body, maxWidth: 780, marginTop: 18, fontSize: 18 }}>
-            When AI drafts or triggers a payment, a vendor bank-account change, or a
-            benefit change, every irreversible action gets a named human approval and a
-            verifiable audit record - an authorization receipt. Provable later, even
-            offline, even if the vendor is gone.
+            GovGuard catches the fraud path authentication misses: vendor payment
+            destinations, disbursements, benefit routing, provider enrollment, and
+            eligibility overrides changing inside valid sessions. High-risk actions
+            get named human approval and a verifiable authorization receipt before
+            money or regulated state moves.
           </p>
           <p style={{ ...styles.body, maxWidth: 740, marginTop: 8 }}>
-            For county treasurers, auditors, and controllers: your decision logs prove it
-            to you. The receipt proves it to everyone else - auditors, regulators,
-            acquirers - without anyone having to trust your logs, your vendor, or EMILIA.
+            For treasurers, controllers, program-integrity teams, and Inspectors
+            General: your logs prove it to you. The receipt proves it to everyone else -
+            auditors, insurers, regulators, and courts - without trusting your logs,
+            your vendor, or EMILIA.
+          </p>
+          <p style={{ ...styles.body, maxWidth: 740, marginTop: 8, fontSize: 15, color: color.t2 }}>
+            The <a href="https://www.gao.gov/products/gao-24-105833" style={{ color: color.t1, textDecoration: 'underline' }}>Government Accountability Office estimated in 2024</a> that federal
+            fraud losses are hundreds of billions of dollars annually. GovGuard does
+            not claim to detect every fraud pattern; it closes the action-level proof
+            gap before high-risk changes execute.
           </p>
           <p style={{ ...styles.body, maxWidth: 740, marginTop: 8, fontSize: 15, color: color.t2 }}>
             GovGuard binds each action to one accountable approver. Where statute or policy
@@ -132,18 +160,23 @@ export default function GovGuardPage() {
             with <a href="/quorum" style={{ color: color.t1, textDecoration: 'underline' }}>EMILIA Quorum</a>.
           </p>
           <div style={{ display: 'flex', gap: 12, marginTop: 30, flexWrap: 'wrap' }}>
-            <a href="/pilot?v=gov" style={cta.primary}>Scope a 60-day observe-mode pilot</a>
-            <a href="/pilot/sandbox" style={cta.secondary}>Run observe-mode sandbox</a>
+            <a href="/pilot/sandbox?v=gov" style={cta.primary}>Run the GovGuard fire drill</a>
+            <a href="/pilot?v=gov" style={cta.secondary}>Scope a 60-day pilot</a>
           </div>
           <p style={{ fontSize: 13, color: color.t3, marginTop: 16, maxWidth: 740, lineHeight: 1.6 }}>
-            We don&rsquo;t block anything at first. You see what would have needed signoff,
-            and you get an audit evidence packet.
+            Start in observe mode. Nothing gets blocked at first. You see what would
+            have needed signoff and get a procurement-grade evidence packet.
           </p>
+          <div style={{ marginTop: 18, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ fontFamily: font.mono, fontWeight: 700, fontSize: 12.5, letterSpacing: 1, textTransform: 'uppercase', color: '#fff', background: color.green, padding: '6px 12px', borderRadius: 6 }}>GG-1 Enforced</span>
+            <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/GOVGUARD-CONFORMANCE.md" style={{ color: color.gold, textDecoration: 'underline', textUnderlineOffset: 3 }}>Conformance spec</a>
+            <a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/tests/govguard-gg1-conformance.test.js" style={{ color: color.gold, textDecoration: 'underline', textUnderlineOffset: 3 }}>CI test</a>
+          </div>
         </section>
 
         <section style={styles.sectionWide}>
           <div style={styles.eyebrow}>PILOT SHAPE</div>
-          <h2 style={{ ...styles.h2, maxWidth: 760 }}>Start by watching one workflow.</h2>
+          <h2 style={{ ...styles.h2, maxWidth: 760 }}>Start with a fire drill on one workflow.</h2>
           <div style={{ marginTop: 28, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 16 }}>
             {PILOT_TERMS.map(([label, body]) => (
               <div key={label} style={{ ...styles.card, padding: 22 }}>
@@ -160,7 +193,7 @@ export default function GovGuardPage() {
             A fake bank-change email is how the money leaves.
           </h2>
           <p style={{ ...styles.body, maxWidth: 720 }}>
-            Vendor bank-account-change fraud doesn&rsquo;t break in. It walks through an
+            Government payment fraud often doesn&rsquo;t break in. It walks through an
             approved-looking workflow:
           </p>
           <div style={{ marginTop: 8 }}>
@@ -205,7 +238,7 @@ export default function GovGuardPage() {
 
         <section style={styles.sectionWide}>
           <div style={styles.eyebrow}>PROTECTED ACTIONS</div>
-          <h2 style={{ ...styles.h2, maxWidth: 760 }}>Initial government payment-integrity pack.</h2>
+          <h2 style={{ ...styles.h2, maxWidth: 760 }}>Government fraud-control action pack.</h2>
           <div style={{ marginTop: 28, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
             {PROTECTED_ACTIONS.map((action) => (
               <div key={action.type} style={{ ...styles.card, padding: 24 }}>
@@ -240,7 +273,7 @@ export default function GovGuardPage() {
           <h2 style={{ ...styles.h2, maxWidth: 760 }}>Observe first. Enforce only after the evidence is trusted.</h2>
           <p style={{ ...styles.body, maxWidth: 680 }}>
             Government programs cannot move from zero to blocking overnight. GovGuard
-            is designed to begin as an evidence layer that shows what would have needed
+            begins as a fire drill: an evidence layer that shows what would have needed
             signoff before it becomes a control layer.
           </p>
           <div style={{ marginTop: 28, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 16 }}>
@@ -264,6 +297,11 @@ export default function GovGuardPage() {
             expiry, and log checkpoint.
           </p>
           <div style={{ marginTop: 24, padding: 24, background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, fontFamily: font.mono, fontSize: 13, lineHeight: 1.9, overflowX: 'auto' }}>
+            <div><span style={{ color: color.gold }}>POST</span> /api/v1/adapters/gov/vendor-payment-destination-change/precheck</div>
+            <div><span style={{ color: color.gold }}>POST</span> /api/v1/adapters/gov/disbursement-release/precheck</div>
+            <div><span style={{ color: color.gold }}>POST</span> /api/v1/adapters/gov/grant-disbursement/precheck</div>
+            <div><span style={{ color: color.gold }}>POST</span> /api/v1/adapters/gov/provider-enrollment-change/precheck</div>
+            <div><span style={{ color: color.gold }}>POST</span> /api/v1/adapters/gov/eligibility-override/precheck</div>
             <div><span style={{ color: color.gold }}>POST</span> /api/v1/trust-receipts</div>
             <div><span style={{ color: color.gold }}>GET</span> /api/v1/trust-receipts/&#123;receiptId&#125;/evidence</div>
             <div><span style={{ color: color.gold }}>POST</span> /api/v1/signoffs/request</div>
@@ -285,15 +323,16 @@ export default function GovGuardPage() {
 
         <section style={{ ...styles.section, paddingBottom: 96 }}>
           <div style={{ ...styles.card, padding: 36, textAlign: 'center' }}>
-            <h2 style={{ ...styles.h2, fontSize: 28 }}>Scope a pilot. Nothing gets blocked.</h2>
+            <h2 style={{ ...styles.h2, fontSize: 28 }}>Run the fire drill. Then scope the pilot.</h2>
             <p style={{ ...styles.body, maxWidth: 560, margin: '16px auto 24px' }}>
-              Pick one workflow: vendor bank-account change, disbursement release,
-              benefit change, or caseworker override. GovGuard observes for 60 days,
-              produces the authorization evidence, and shows what would have required
-              named signoff. Pilot fee: $25K.
+              Pick one workflow: vendor payment destination, disbursement release,
+              grant disbursement, provider enrollment, benefit routing, or eligibility
+              override. GovGuard observes for 60 days, produces the authorization
+              evidence, and shows what would have required named signoff. Pilot fee:
+              $25K.
             </p>
-            <a href="/pilot?v=gov" style={cta.primary}>
-              Scope a 60-day observe-mode pilot
+            <a href="/pilot/sandbox?v=gov" style={cta.primary}>
+              Run the GovGuard fire drill
             </a>
             <p style={{ fontSize: 13, color: color.t3, marginTop: 18 }}>
               For your compliance file: <a href="/compliance/emilia-eu-ai-act-government.pdf" style={{ color: color.blue, textDecoration: 'none' }}>EU AI Act mapping for government programs</a>

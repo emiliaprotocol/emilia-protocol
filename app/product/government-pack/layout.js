@@ -1,21 +1,25 @@
 export const metadata = {
-  title: 'Government Pack — Benefit-Integrity Authorization Bundle',
+  title: 'Government Pack — GovGuard Fraud-Control Bundle',
   description:
-    'Packaged authorization controls for SNAP, Medicaid, UI, and benefit ' +
-    'disbursement workflows. NIST AI RMF mapping, IG-ready evidence, ' +
-    'caseworker override accountability.',
+    'Packaged GovGuard controls for vendor payment destinations, disbursement ' +
+    'releases, benefit routing, provider enrollment, eligibility overrides, ' +
+    'and caseworker accountability.',
   alternates: { canonical: '/product/government-pack' },
   openGraph: {
     title: 'EMILIA Government Pack',
     description:
-      'Authorization controls + compliance mappings + IG-ready evidence ' +
-      'for federal and state benefit-integrity workflows.',
+      'GovGuard fire drills, GG-1 conformance, and IG-ready evidence for ' +
+      'public-sector fraud-control workflows.',
     url: 'https://www.emiliaprotocol.ai/product/government-pack',
     type: 'article',
   },
   keywords: [
     'government AI authorization',
     'benefit integrity pack',
+    'government fraud-control fire drill',
+    'vendor payment destination control',
+    'provider enrollment control',
+    'eligibility override audit',
     'SNAP authorization',
     'Medicaid AI controls',
     'NIST AI RMF',

@@ -2,9 +2,10 @@
 #
 # This is the buyer-facing API surface for GovGuard pilots. It is
 # deliberately narrower than the canonical openapi.yaml — only the
-# 7 endpoints that a pilot integrator actually uses, and only the 4
-# tags that map to the GovGuard pre-execution control flow:
+# adapter endpoints and receipt/signoff endpoints that a pilot integrator
+# actually uses:
 #
+#   Adapter Prechecks — government workflow fire-drill entry points
 #   Trust Receipts — create, read, consume, evidence
 #   Signoffs       — request, approve, reject
 #
@@ -26,17 +27,18 @@ info:
   version: "1.0.0"
   description: |
     GovGuard is the productized surface of EMILIA Protocol focused on
-    payment integrity, vendor data integrity, and operator override
-    control for government, financial, and enterprise workflows.
+    pre-payment control, benefit redirection prevention, provider enrollment
+    integrity, eligibility override accountability, and operator override
+    control for government workflows.
 
     Every request gates a single proposed action. The response is a
     cryptographically signed Trust Receipt that records who authorized
     what, under which policy, with what evidence — verifiable offline
     by anyone via the open-source `@emilia-protocol/verify` npm package.
 
-    This slim API doc covers the 7 endpoints needed for a pilot
-    integration. The full protocol surface (disputes, identity,
-    delegations, federation) is available at
+    This slim API doc covers the GovGuard adapter endpoints plus the
+    receipt/signoff lifecycle needed for a pilot integration. The full
+    protocol surface (disputes, identity, delegations, federation) is available at
     https://github.com/emiliaprotocol/emilia-protocol/blob/main/openapi.yaml
   license:
     name: Apache-2.0
@@ -51,6 +53,11 @@ servers:
     description: Primary operator (production)
 
 tags:
+  - name: Adapter Prechecks
+    description: |
+      GovGuard fire-drill entry points. Each adapter converts a government
+      workflow into a canonical action, evaluates policy, and returns the
+      authorization receipt/precheck response.
   - name: Trust Receipts
     description: |
       Create, read, consume, and audit-evidence pre-action trust
@@ -64,6 +71,208 @@ tags:
       exact action before consume.
 
 paths:
+  /api/v1/adapters/gov/vendor-payment-destination-change/precheck:
+    post:
+      tags: [Adapter Prechecks]
+      summary: Precheck a government vendor payment-destination change
+      description: |
+        Converts a vendor payment destination update into
+        `gov.vendor_payment_destination_change`. This is the primary
+        fake-bank-change-email fire-drill endpoint: the changed destination is
+        bound into the action hash and Class-A signoff is required.
+      operationId: precheckGovVendorPaymentDestinationChange
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GovGuardPrecheckRequest'
+      responses:
+        '201':
+          description: GovGuard precheck result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustReceipt'
+
+  /api/v1/adapters/gov/disbursement-release/precheck:
+    post:
+      tags: [Adapter Prechecks]
+      summary: Precheck a government disbursement release
+      description: |
+        Converts a treasury/AP release into `gov.disbursement_release`.
+        Disbursement release requires Class-A accountable signoff before money
+        moves; >= $1M escalates to the dual-authorization tier.
+      operationId: precheckGovDisbursementRelease
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GovGuardPrecheckRequest'
+      responses:
+        '201':
+          description: GovGuard precheck result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustReceipt'
+
+  /api/v1/adapters/gov/grant-disbursement/precheck:
+    post:
+      tags: [Adapter Prechecks]
+      summary: Precheck a grant disbursement
+      description: |
+        Converts a grant/program payment into `gov.grant_disbursement`.
+        The grant id, program id, amount, policy hash, and execution-binding
+        fields are bound into the authorization receipt.
+      operationId: precheckGovGrantDisbursement
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GovGuardPrecheckRequest'
+      responses:
+        '201':
+          description: GovGuard precheck result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustReceipt'
+
+  /api/v1/adapters/gov/provider-enrollment-change/precheck:
+    post:
+      tags: [Adapter Prechecks]
+      summary: Precheck a provider enrollment change
+      description: |
+        Converts provider enrollment/payment-address changes into
+        `gov.provider_enrollment_change`. Used for Medicaid/SNAP/vendor-like
+        provider files where one record change can redirect future payments.
+      operationId: precheckGovProviderEnrollmentChange
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GovGuardPrecheckRequest'
+      responses:
+        '201':
+          description: GovGuard precheck result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustReceipt'
+
+  /api/v1/adapters/gov/eligibility-override/precheck:
+    post:
+      tags: [Adapter Prechecks]
+      summary: Precheck an eligibility override
+      description: |
+        Converts a regulated eligibility decision override into
+        `gov.eligibility_override`. The case, decision, rule, and override
+        reason are bound so a supervisor signs the exact exception.
+      operationId: precheckGovEligibilityOverride
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GovGuardPrecheckRequest'
+      responses:
+        '201':
+          description: GovGuard precheck result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustReceipt'
+
+  /api/v1/adapters/gov/benefit-bank-change/precheck:
+    post:
+      tags: [Adapter Prechecks]
+      summary: Precheck a benefit bank-account change
+      description: |
+        Converts benefit direct-deposit changes into
+        `benefit_bank_account_change`. Money-destination fields always require
+        Class-A signoff.
+      operationId: precheckGovBenefitBankChange
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GovGuardPrecheckRequest'
+      responses:
+        '201':
+          description: GovGuard precheck result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustReceipt'
+
+  /api/v1/adapters/gov/benefit-address-change/precheck:
+    post:
+      tags: [Adapter Prechecks]
+      summary: Precheck a benefit address/contact routing change
+      description: |
+        Converts benefit mailing/contact/identity-routing changes into
+        `benefit_address_change`. Address/contact fields that can redirect
+        notices, credentials, or downstream disbursement routing require
+        Class-A signoff.
+      operationId: precheckGovBenefitAddressChange
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GovGuardPrecheckRequest'
+      responses:
+        '201':
+          description: GovGuard precheck result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustReceipt'
+
+  /api/v1/adapters/gov/caseworker-override/precheck:
+    post:
+      tags: [Adapter Prechecks]
+      summary: Precheck a caseworker/operator override
+      description: |
+        Converts operator overrides into `caseworker_override`. The override
+        cannot proceed in enforce mode without named signoff bound to the exact
+        case, decision, and reason.
+      operationId: precheckGovCaseworkerOverride
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GovGuardPrecheckRequest'
+      responses:
+        '201':
+          description: GovGuard precheck result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrustReceipt'
+
   /api/v1/trust-receipts:
     post:
       tags: [Trust Receipts]
@@ -315,6 +524,68 @@ components:
       description: Signoff request ID — `sig_` followed by 32 lowercase hex characters
 
   schemas:
+    GovGuardPrecheckRequest:
+      type: object
+      required: [organization_id, before_state, after_state]
+      properties:
+        organization_id:
+          type: string
+          description: Tenant identifier. Cross-checked against the authenticated API key.
+          example: org_demo_treasury
+        enforcement_mode:
+          type: string
+          enum: [observe, warn, enforce]
+          default: enforce
+        strict_evidence:
+          type: boolean
+          description: |
+            When true, fail closed if the evidence event cannot be durably
+            recorded. Enforce mode is strict by default.
+        target_changed_fields:
+          type: array
+          items: { type: string }
+        before_state:
+          type: object
+          description: Pre-change state of the target. Hashed into the receipt.
+        after_state:
+          type: object
+          description: Proposed post-change state. Hashed into the receipt.
+        vendor_id: { type: string }
+        recipient_id: { type: string }
+        case_id: { type: string }
+        payment_instruction_id: { type: string }
+        grant_id: { type: string }
+        award_id: { type: string }
+        agency_id: { type: string }
+        program_id: { type: string }
+        provider_id: { type: string }
+        npi: { type: string }
+        provider_tax_id_hash: { type: string }
+        eligibility_case_id: { type: string }
+        eligibility_rule: { type: string }
+        eligibility_status: { type: string }
+        benefit_amount: { type: number }
+        amount: { type: number }
+        currency:
+          type: string
+          example: USD
+        bank_account:
+          type: string
+          description: Prefer a redacted value or hash; do not send raw account numbers in a pilot.
+        routing_number:
+          type: string
+          description: Prefer a redacted value or hash; do not send raw routing numbers in a pilot.
+        payment_address: { type: string }
+        mailing_address_hash: { type: string }
+        address_hash: { type: string }
+        phone_hash: { type: string }
+        email_hash: { type: string }
+        identity_document_hash: { type: string }
+        override_reason: { type: string }
+        risk_flags:
+          type: array
+          items: { type: string }
+
     CreateTrustReceiptRequest:
       type: object
       required: [organization_id, action_type, target_resource_id]
@@ -329,6 +600,11 @@ components:
             - benefit_bank_account_change
             - benefit_address_change
             - caseworker_override
+            - gov.vendor_payment_destination_change
+            - gov.disbursement_release
+            - gov.grant_disbursement
+            - gov.provider_enrollment_change
+            - gov.eligibility_override
             - vendor_bank_account_change
             - beneficiary_creation
             - large_payment_release
@@ -398,6 +674,18 @@ components:
           type: string
           format: date-time
         signoff_required: { type: boolean }
+        required_assurance:
+          type: string
+          nullable: true
+          enum: [A]
+          description: Class-A means WebAuthn/passkey or quorum; bearer/software approval is insufficient.
+        evidence_status:
+          type: string
+          enum: [durable, degraded]
+          description: |
+            `durable` means the evidence event was recorded. `degraded` can
+            appear only in observe/warn mode; enforce/strict-evidence mode
+            fails closed instead.
         signoff_request_id:
           type: string
           nullable: true

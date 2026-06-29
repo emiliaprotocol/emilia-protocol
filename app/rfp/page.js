@@ -134,7 +134,7 @@ export default function RfpPage() {
           </p>
           <ul style={styles.list}>
             <li><a href="/compliance/emilia-eu-ai-act-financial-services.pdf" style={lnk}>Financial services (FinGuard)</a> — wire release, beneficiary changes, dual authorization</li>
-            <li><a href="/compliance/emilia-eu-ai-act-government.pdf" style={lnk}>Government programs (GovGuard)</a> — benefit account changes, caseworker overrides</li>
+            <li><a href="/compliance/emilia-eu-ai-act-government.pdf" style={lnk}>Government programs (GovGuard)</a> — vendor payment destinations, disbursements, benefit routing, provider enrollment, eligibility overrides</li>
             <li><a href="/compliance/emilia-eu-ai-act-healthcare.pdf" style={lnk}>Healthcare</a> — high-risk clinical and administrative actions</li>
           </ul>
         </section>

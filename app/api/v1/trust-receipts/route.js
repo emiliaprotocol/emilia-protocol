@@ -209,8 +209,9 @@ export async function POST(request) {
     }
 
     const supabase = getGuardedClient();
+    let evidenceStatus = 'durable';
     try {
-      await supabase.from('audit_events').insert({
+      const { error: auditError } = await supabase.from('audit_events').insert({
         event_type: 'guard.trust_receipt.created',
         actor_id,
         actor_type: 'principal',
@@ -224,6 +225,7 @@ export async function POST(request) {
           policy_id: policyId,
           policy_hash: policyHash,
           decision: decision.decision,
+          reasons: decision.reasons,
           enforcement_mode: mode,
           signoff_required: decision.signoffRequired,
           required_assurance: decision.requiredAssurance ?? null,
@@ -252,10 +254,17 @@ export async function POST(request) {
           target_resource_id: body.target_resource_id,
         },
       });
+      if (auditError) throw auditError;
     } catch (e) {
-      // Best-effort — receipt is self-verifying via signature; audit is
-      // observability, not the source of truth. Log so SIEM picks it up.
+      evidenceStatus = 'degraded';
       logger.warn('[guard] audit_events insert failed:', e?.message);
+      if (mode === ENFORCEMENT_MODES.ENFORCE || body.strict_evidence === true) {
+        return epProblem(
+          503,
+          'evidence_write_failed',
+          'Could not durably record the GovGuard evidence event; enforce/strict-evidence mode fails closed.',
+        );
+      }
     }
 
     // ── Rules-engine v0 shadow signal (feature-flagged) ──────────────────
@@ -371,10 +380,12 @@ export async function POST(request) {
         nonce,
         expires_at: expiresAt.toISOString(),
         signoff_required: decision.signoffRequired,
+        required_assurance: decision.requiredAssurance ?? null,
         signoff_request_id: null, // populated when /signoffs/request is called
         risk_flags: body.risk_flags || [],
         receipt_status,
         enforcement_mode: mode,
+        evidence_status: evidenceStatus,
         reasons: decision.reasons,
         // Hint for callers: the canonical action they must use at consume.
         canonical_action: canonicalAction,

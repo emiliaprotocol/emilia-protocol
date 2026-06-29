@@ -1,13 +1,13 @@
 'use client';
 
 /**
- * /pilot/sandbox — self-serve observe-mode pilot, end to end, in the browser.
+ * /pilot/sandbox — self-serve GovGuard/FinGuard fire drill, end to end.
  * @license Apache-2.0
  *
  * Provision a scoped key → send real-shaped high-risk actions through the gate
- * in OBSERVE mode → pull the automated "what would have been blocked" report.
- * No sales call, nothing blocked, nothing uploaded beyond the action metadata
- * the caller chooses to send. This is the GovGuard pilot, automated.
+ * in OBSERVE mode → pull the automated "what would have been blocked" evidence
+ * packet. No sales call, nothing blocked, nothing uploaded beyond the action
+ * metadata the caller chooses to send. This is the GovGuard fire drill.
  */
 
 import { useState, useCallback } from 'react';
@@ -16,7 +16,7 @@ import SiteFooter from '@/components/SiteFooter';
 import { color, font, radius, styles } from '@/lib/tokens';
 
 const VERTICALS = [
-  ['gov', 'Government — benefit bank-account change'],
+  ['gov', 'Government — fraud-control fire drill'],
   ['fin', 'Financial — $82K payment release'],
   ['health', 'Healthcare — caseworker/clinical override'],
 ];
@@ -41,10 +41,18 @@ function samplesFor(vertical, orgId) {
     ];
   }
   return [
+    ['Vendor payment destination change', '/api/v1/adapters/gov/vendor-payment-destination-change/precheck',
+      { organization_id: orgId, enforcement_mode: 'observe', vendor_id: 'vendor_g1', target_changed_fields: ['bank_account'], before_state: { bank_account: '****1111' }, after_state: { bank_account: '****4021' } }],
+    ['Disbursement release', '/api/v1/adapters/gov/disbursement-release/precheck',
+      { organization_id: orgId, enforcement_mode: 'observe', payment_instruction_id: 'pay_g1', amount: 250000, currency: 'USD', before_state: { status: 'queued' }, after_state: { status: 'released' } }],
     ['Benefit bank-account change', '/api/v1/adapters/gov/benefit-bank-change/precheck',
       { organization_id: orgId, enforcement_mode: 'observe', recipient_id: 'case_g1', target_changed_fields: ['bank_account'], before_state: { bank_account: '****1111' }, after_state: { bank_account: '****4021' } }],
+    ['Benefit mailing-address change', '/api/v1/adapters/gov/benefit-address-change/precheck',
+      { organization_id: orgId, enforcement_mode: 'observe', recipient_id: 'case_g4', target_changed_fields: ['mailing_address'], before_state: { mailing_address_hash: 'old' }, after_state: { mailing_address_hash: 'new' } }],
     ['Caseworker override', '/api/v1/adapters/gov/caseworker-override/precheck',
       { organization_id: orgId, enforcement_mode: 'observe', case_id: 'case_g2', before_state: { determination: 'auto_deny' }, after_state: { determination: 'manual_approve' } }],
+    ['Eligibility override', '/api/v1/adapters/gov/eligibility-override/precheck',
+      { organization_id: orgId, enforcement_mode: 'observe', case_id: 'case_g5', eligibility_status: 'approved', before_state: { eligibility_status: 'denied' }, after_state: { eligibility_status: 'approved' } }],
     ['Routine address note (allowed)', '/api/v1/adapters/gov/benefit-bank-change/precheck',
       { organization_id: orgId, enforcement_mode: 'observe', recipient_id: 'case_g3', target_changed_fields: ['note'], before_state: { note: 'a' }, after_state: { note: 'b' } }],
   ];
@@ -105,14 +113,14 @@ export default function SandboxPage() {
       <SiteNav />
       <main style={{ maxWidth: 760, margin: '0 auto', padding: '52px 24px 96px' }}>
         <div style={{ fontFamily: font.mono, fontSize: 11, fontWeight: 500, letterSpacing: 2.5, textTransform: 'uppercase', color: color.gold, marginBottom: 18 }}>
-          Self-serve observe-mode pilot
+          GovGuard fire drill
         </div>
-        <h1 style={{ ...styles.h1, maxWidth: 660 }}>Run a pilot yourself. Nothing gets blocked.</h1>
+        <h1 style={{ ...styles.h1, maxWidth: 660 }}>Run a government fraud-control fire drill. Nothing gets blocked.</h1>
         <p style={{ ...styles.body, maxWidth: 640 }}>
           Provision a scoped key, send your high-risk actions through the gate in <strong>observe mode</strong>,
-          and get the automated report of <strong>what would have required a named human&rsquo;s approval</strong> —
-          the exact &ldquo;what would have been blocked&rdquo; evidence a procurement team asks for. No sales call,
-          no enforcement, no risk. The same engine that runs <a href="/try" style={lnk}>/try</a>.
+          and get the automated evidence packet of <strong>what would have required a named human&rsquo;s approval</strong> —
+          the exact &ldquo;what would have been blocked before money moved&rdquo; artifact a controller, IG, or procurement
+          team asks for. No sales call, no enforcement, no risk. The same engine that runs <a href="/try" style={lnk}>/try</a>.
         </p>
 
         {/* Step 1 — provision */}
@@ -197,6 +205,20 @@ export default function SandboxPage() {
                         </span>
                       </div>
                     ))}
+                  </div>
+                )}
+                {report.evidence_packet && (
+                  <div style={{ marginTop: 16, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: 16, background: color.card }}>
+                    <div style={{ fontFamily: font.mono, fontSize: 12, color: color.green, fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>
+                      {report.evidence_packet.gg1.badge}
+                    </div>
+                    <div style={{ fontSize: 13.5, color: color.t2, lineHeight: 1.6, marginTop: 8 }}>
+                      Procurement evidence packet: high-risk actions, policy hashes, action hashes,
+                      execution-binding hashes, verifier command, and limitations.
+                    </div>
+                    <div style={{ fontFamily: font.mono, fontSize: 12.5, color: color.t1, marginTop: 10 }}>
+                      {report.evidence_packet.verification.offline_command}
+                    </div>
                   </div>
                 )}
                 <p style={{ fontSize: 13.5, color: color.t2, lineHeight: 1.6, marginTop: 14 }}>{report.next_step}</p>

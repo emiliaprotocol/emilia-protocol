@@ -32,10 +32,10 @@ export default function GovernmentPackPage() {
   // claims removed: zero implementation, zero mapping documents. Marked
   // as "roadmap" below where pilots have asked for them.
   const FEATURES = [
-    { title: 'Benefits payment redirect controls', body: 'Cryptographic handshake required before any payment destination change commits. The handshake binds the exact new destination, program, amount, and authorizing principal. No redirect executes without satisfied trust policy.' },
-    { title: 'Operator override constraints', body: 'Every caseworker or system operator override produces a named signoff record. The signoff is bound to the exact action parameters, not a session-level approval. Override without accountability does not proceed.' },
-    { title: 'IG/GAO-ready audit evidence', body: 'Every handshake, signoff, and execution event produces an immutable record. Evidence packages are pre-formatted for Inspector General and GAO examination. Action-level traceability, not session-level logs.' },
-    { title: 'GovGuard pre-execution gate', body: 'New GovGuard product surface (POST /api/v1/trust-receipts) wraps benefit-bank-account changes, address changes, and caseworker overrides in observe / warn / enforce modes. See /govguard.' },
+    { title: 'Payment destination controls', body: 'GovGuard adapters cover vendor payment destinations, benefit direct deposit, and payment-address changes. The receipt binds the exact new destination, program, amount, and named approver before the change can be treated as authorized.' },
+    { title: 'Disbursement and grant release controls', body: 'Government disbursement and grant releases require Class-A accountable signoff before funds move; million-dollar releases escalate to dual authorization.' },
+    { title: 'Provider and eligibility controls', body: 'Provider enrollment changes, eligibility overrides, and caseworker overrides produce named signoff records bound to exact case, provider, decision, and policy fields.' },
+    { title: 'GG-1 evidence packet', body: 'The fire drill exports high-risk actions, policy hashes, action hashes, execution-binding hashes, offline verifier instructions, and GG-1 controls. Action-level traceability, not session-level logs.' },
   ];
 
   // Items pilots have asked for that are NOT yet implemented. Keep the
@@ -54,9 +54,9 @@ export default function GovernmentPackPage() {
         <div style={styles.eyebrowBlue}>Product / Government Control Pack</div>
         <h1 style={styles.h1}>Government Control Pack</h1>
         <p style={{ ...styles.body, maxWidth: 640 }}>
-          Pre-configured EP deployment for government fraud prevention.
+          Pre-configured GovGuard deployment for government fraud-control fire drills and observe-mode pilots.
         </p>
-        <a href="#pilot" className="ep-cta" style={cta.primary}>Request Government Pilot</a>
+        <a href="/pilot/sandbox?v=gov" className="ep-cta" style={cta.primary}>Run GovGuard Fire Drill</a>
       </section>
 
       {/* Features */}
@@ -64,7 +64,7 @@ export default function GovernmentPackPage() {
         <div style={styles.section}>
           <h2 style={styles.h2}>Included controls</h2>
           <p style={styles.body}>
-            The Government Control Pack includes pre-configured policies, signoff workflows, and evidence formats designed for government fraud prevention. Deploy against a single trust surface in weeks, not months.
+            The Government Control Pack includes pre-configured policies, GovGuard adapter endpoints, signoff workflows, and evidence formats designed for government fraud prevention. Start with a fire drill, then deploy against a single trust surface in weeks, not months.
           </p>
           <div style={grid.stack}>
             {FEATURES.map((f, i) => (
@@ -100,19 +100,19 @@ export default function GovernmentPackPage() {
       {/* Best first workflow */}
       <section style={styles.section}>
         <h2 style={styles.h2}>Best first workflow</h2>
-        <p style={styles.body}>Start with the highest-impact trust surface. For most government deployments, that is payment destination change.</p>
+        <p style={styles.body}>Start with the highest-impact trust surface. For most government deployments, that is one payment-destination or release workflow.</p>
         <div className="ep-card-accent" style={{ ...styles.card, border: `1px solid ${color.border}` }}>
-          <div style={{ ...styles.cardTitle, color: color.green, fontSize: 18, marginBottom: 10 }}>Payment destination change</div>
+          <div style={{ ...styles.cardTitle, color: color.green, fontSize: 18, marginBottom: 10 }}>GovGuard Fire Drill</div>
           <div style={styles.cardBody}>
-            A benefits recipient, vendor, or disbursement target updates their bank account, routing number, or payment address. EP generates a cryptographic handshake binding the exact new destination, the requesting identity, the authorizing caseworker, and the applicable policy. If the handshake is not satisfied, the change does not execute. The signoff record is immutable and available to Inspector General auditors in real time.
+            A vendor, benefits recipient, provider, or disbursement target changes a payment route or release state. GovGuard evaluates the action in observe mode, shows what would have required named signoff, and exports a procurement evidence packet before any enforcement decision.
           </div>
           <div style={{ marginTop: 16, display: 'grid', gap: 8 }}>
             {[
-              'Handshake binds exact new destination, amount, and program',
-              'Named caseworker signoff required before change commits',
-              'Signoff is one-time consumable and replay-resistant',
-              'Immutable event record available to IG and GAO auditors',
-              'Policy defines which changes require signoff based on risk class',
+              'Adapters cover vendor destination, disbursement, grant, benefit routing, provider enrollment, eligibility override, and caseworker override workflows',
+              'Class-A signoff required for high-risk government actions',
+              'Receipts are one-time consumable and replay-resistant',
+              'Evidence packet includes policy hash, action hash, execution-binding hash, and verifier command',
+              'GG-1 conformance covers wrong org, wrong approver, self-approval, Class-C approval, replay, tamper, and execution mismatch',
             ].map((item, i) => (
               <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                 <span style={{ color: color.green, fontSize: 14, flexShrink: 0, marginTop: 1 }}>+</span>

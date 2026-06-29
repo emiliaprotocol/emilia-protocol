@@ -149,6 +149,21 @@ describe('evaluateGuardPolicy: money-destination changes', () => {
     expect(r.decision).toBe(GUARD_DECISIONS.ALLOW);
     expect(r.signoffRequired).toBe(false);
   });
+
+  it('requires Class-A signoff on benefit address/contact routing changes', () => {
+    const r = evaluateGuardPolicy({
+      organizationId: 'org_1',
+      actorId: 'user_1',
+      actorRole: 'caseworker',
+      actionType: GUARD_ACTION_TYPES.BENEFIT_ADDRESS_CHANGE,
+      targetChangedFields: ['mailing_address'],
+      riskFlags: [],
+      authStrength: 'mfa',
+    });
+    expect(r.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+    expect(r.signoffRequired).toBe(true);
+    expect(r.requiredAssurance).toBe('A');
+  });
 });
 
 describe('evaluateGuardPolicy: large-payment threshold', () => {
@@ -255,6 +270,67 @@ describe('evaluateGuardPolicy: action-type-specific gates', () => {
       authStrength: 'mfa',
     });
     expect(r.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+  });
+
+  it('requires signoff on GovGuard vendor payment-destination changes even when fields are omitted', () => {
+    const r = evaluateGuardPolicy({
+      organizationId: 'org_1',
+      actorId: 'user_1',
+      actorRole: 'ap',
+      actionType: GUARD_ACTION_TYPES.GOV_VENDOR_PAYMENT_DESTINATION_CHANGE,
+      targetChangedFields: [],
+      riskFlags: [],
+      authStrength: 'mfa',
+    });
+    expect(r.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+    expect(r.requiredAssurance).toBe('A');
+  });
+
+  it('requires signoff on GovGuard disbursement releases and escalates >= $1M to dual', () => {
+    const single = evaluateGuardPolicy({
+      organizationId: 'org_1',
+      actorId: 'user_1',
+      actorRole: 'treasury',
+      actionType: GUARD_ACTION_TYPES.GOV_DISBURSEMENT_RELEASE,
+      targetChangedFields: [],
+      amount: 10_000,
+      riskFlags: [],
+      authStrength: 'mfa',
+    });
+    const dual = evaluateGuardPolicy({
+      organizationId: 'org_1',
+      actorId: 'user_1',
+      actorRole: 'treasury',
+      actionType: GUARD_ACTION_TYPES.GOV_DISBURSEMENT_RELEASE,
+      targetChangedFields: [],
+      amount: 1_000_000,
+      riskFlags: [],
+      authStrength: 'mfa',
+    });
+    expect(single.signoffTier).toBe('single');
+    expect(single.requiredAssurance).toBe('A');
+    expect(dual.signoffTier).toBe('dual');
+  });
+
+  it('requires signoff on grant disbursement, provider enrollment, and eligibility override', () => {
+    for (const actionType of [
+      GUARD_ACTION_TYPES.GOV_GRANT_DISBURSEMENT,
+      GUARD_ACTION_TYPES.GOV_PROVIDER_ENROLLMENT_CHANGE,
+      GUARD_ACTION_TYPES.GOV_ELIGIBILITY_OVERRIDE,
+    ]) {
+      const r = evaluateGuardPolicy({
+        organizationId: 'org_1',
+        actorId: 'user_1',
+        actorRole: 'program_integrity',
+        actionType,
+        targetChangedFields: [],
+        amount: 1,
+        riskFlags: [],
+        authStrength: 'mfa',
+      });
+      expect(r.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+      expect(r.requiredAssurance).toBe('A');
+    }
   });
 });
 
@@ -438,6 +514,17 @@ describe('buildInitiatorAttestation: trigger mapping (PIP-007 §1 + deployment t
     expect(att.policy_basis).toBe(`${POLICY}/rule:caseworker-override`);
   });
 
+  it('maps GovGuard eligibility/provider rules to policy_rule bases', () => {
+    const dec = evaluateGuardPolicy({
+      organizationId: 'o', actorId: 'u', actorRole: 'caseworker',
+      actionType: GUARD_ACTION_TYPES.GOV_ELIGIBILITY_OVERRIDE,
+      targetChangedFields: ['eligibility_status'], riskFlags: [], authStrength: 'mfa',
+    });
+    const att = buildInitiatorAttestation(dec, { actionType: GUARD_ACTION_TYPES.GOV_ELIGIBILITY_OVERRIDE, policyId: POLICY });
+    expect(att.escalation_trigger).toBe('policy_rule');
+    expect(att.policy_basis).toBe(`${POLICY}/rule:gov-eligibility-override`);
+  });
+
   it('falls back to policy_rule for any other signoff-required escalation', () => {
     // A hand-built signoff decision that matches no actionType branch.
     const dec = { decision: GUARD_DECISIONS.ALLOW_WITH_SIGNOFF, signoffRequired: true, reasons: ['Some rule fired.'] };
@@ -483,9 +570,23 @@ describe('Class A by default — requiredAssurance on high-risk signoff decision
   });
 
   it('does NOT require Class A for a low-risk, default-allow action', () => {
-    const d = evaluateGuardPolicy({ actionType: 'benefit_address_change', targetChangedFields: ['mailing_address'] });
+    const d = evaluateGuardPolicy({ actionType: 'benefit_address_change', targetChangedFields: ['display_name'] });
     expect(d.signoffRequired).toBe(false);
     expect(d.requiredAssurance).toBeUndefined();
+  });
+
+  it('stamps requiredAssurance:A on GovGuard-specific high-risk actions', () => {
+    for (const actionType of [
+      'gov.vendor_payment_destination_change',
+      'gov.disbursement_release',
+      'gov.grant_disbursement',
+      'gov.provider_enrollment_change',
+      'gov.eligibility_override',
+    ]) {
+      const d = evaluateGuardPolicy({ actionType, targetChangedFields: [], amount: 1 });
+      expect(d.signoffRequired).toBe(true);
+      expect(d.requiredAssurance).toBe('A');
+    }
   });
 });
 

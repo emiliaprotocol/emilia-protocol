@@ -60,6 +60,8 @@ tags:
     description: Health, stats, audit, and operational endpoints
   - name: Signoff
     description: Accountable Signoff — named human ownership for high-risk actions requiring explicit attestation
+  - name: GovGuard
+    description: GovGuard pre-payment fraud-control adapter prechecks for high-risk government workflows
   - name: Cloud
     description: Cloud tenant API — scoring calibration, policy simulation, and tenant-scoped configuration
   - name: Internal
@@ -321,6 +323,227 @@ paths:
   # ===========================================================================
   # Receipts
   # ===========================================================================
+
+  /api/v1/adapters/gov/vendor-payment-destination-change/precheck:
+    post:
+      tags: [GovGuard]
+      summary: Precheck vendor payment destination change
+      description: |
+        GovGuard adapter precheck for vendor bank-account, routing, or payment
+        destination changes. In enforce mode, missing or degraded evidence fails
+        closed before the system of record mutates state.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GovGuardPrecheckRequest'
+      responses:
+        '201':
+          description: GovGuard precheck recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GovGuardPrecheckResponse'
+        '401':
+          description: Authentication required.
+        '403':
+          description: Tenant or authority binding failed.
+        '503':
+          description: Evidence write failed in enforce or strict-evidence mode.
+
+  /api/v1/adapters/gov/disbursement-release/precheck:
+    post:
+      tags: [GovGuard]
+      summary: Precheck disbursement release
+      description: |
+        GovGuard adapter precheck for releasing a government disbursement or
+        payment instruction before funds move.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GovGuardPrecheckRequest'
+      responses:
+        '201':
+          description: GovGuard precheck recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GovGuardPrecheckResponse'
+        '401':
+          description: Authentication required.
+        '403':
+          description: Tenant or authority binding failed.
+        '503':
+          description: Evidence write failed in enforce or strict-evidence mode.
+
+  /api/v1/adapters/gov/grant-disbursement/precheck:
+    post:
+      tags: [GovGuard]
+      summary: Precheck grant disbursement
+      description: GovGuard adapter precheck for grant award and disbursement release workflows.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GovGuardPrecheckRequest'
+      responses:
+        '201':
+          description: GovGuard precheck recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GovGuardPrecheckResponse'
+        '401':
+          description: Authentication required.
+        '403':
+          description: Tenant or authority binding failed.
+        '503':
+          description: Evidence write failed in enforce or strict-evidence mode.
+
+  /api/v1/adapters/gov/provider-enrollment-change/precheck:
+    post:
+      tags: [GovGuard]
+      summary: Precheck provider enrollment change
+      description: GovGuard adapter precheck for provider enrollment, status, or payment-profile changes.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GovGuardPrecheckRequest'
+      responses:
+        '201':
+          description: GovGuard precheck recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GovGuardPrecheckResponse'
+        '401':
+          description: Authentication required.
+        '403':
+          description: Tenant or authority binding failed.
+        '503':
+          description: Evidence write failed in enforce or strict-evidence mode.
+
+  /api/v1/adapters/gov/eligibility-override/precheck:
+    post:
+      tags: [GovGuard]
+      summary: Precheck eligibility override
+      description: GovGuard adapter precheck for benefit eligibility, caseworker override, and benefit amount changes.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GovGuardPrecheckRequest'
+      responses:
+        '201':
+          description: GovGuard precheck recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GovGuardPrecheckResponse'
+        '401':
+          description: Authentication required.
+        '403':
+          description: Tenant or authority binding failed.
+        '503':
+          description: Evidence write failed in enforce or strict-evidence mode.
+
+  /api/v1/adapters/gov/benefit-bank-change/precheck:
+    post:
+      tags: [GovGuard]
+      summary: Precheck benefit bank-account change
+      description: GovGuard adapter precheck for public-benefit bank-account and routing-number changes.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GovGuardPrecheckRequest'
+      responses:
+        '201':
+          description: GovGuard precheck recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GovGuardPrecheckResponse'
+        '401':
+          description: Authentication required.
+        '403':
+          description: Tenant or authority binding failed.
+        '503':
+          description: Evidence write failed in enforce or strict-evidence mode.
+
+  /api/v1/adapters/gov/benefit-address-change/precheck:
+    post:
+      tags: [GovGuard]
+      summary: Precheck benefit address or contact-routing change
+      description: GovGuard adapter precheck for benefit address, contact, or identity-routing changes.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GovGuardPrecheckRequest'
+      responses:
+        '201':
+          description: GovGuard precheck recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GovGuardPrecheckResponse'
+        '401':
+          description: Authentication required.
+        '403':
+          description: Tenant or authority binding failed.
+        '503':
+          description: Evidence write failed in enforce or strict-evidence mode.
+
+  /api/v1/adapters/gov/caseworker-override/precheck:
+    post:
+      tags: [GovGuard]
+      summary: Precheck caseworker override
+      description: GovGuard adapter precheck for manual caseworker override workflows.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GovGuardPrecheckRequest'
+      responses:
+        '201':
+          description: GovGuard precheck recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GovGuardPrecheckResponse'
+        '401':
+          description: Authentication required.
+        '403':
+          description: Tenant or authority binding failed.
+        '503':
+          description: Evidence write failed in enforce or strict-evidence mode.
 
   /api/v1/trust-receipts/{receiptId}/execution:
     post:
@@ -4111,6 +4334,116 @@ components:
           type: number
         evidence:
           type: object
+
+    GovGuardPrecheckRequest:
+      type: object
+      required: [organization_id]
+      properties:
+        organization_id:
+          type: string
+          description: Authenticated tenant/organization. In bound mode this must match the API key's organization.
+        mode:
+          type: string
+          enum: [observe, enforce]
+          default: observe
+          description: Observe records evidence; enforce fails closed before mutation when approval or evidence is missing.
+        strict_evidence:
+          type: boolean
+          default: false
+          description: When true, evidence/audit write failure returns 503 instead of degraded observe evidence.
+        changed_fields:
+          type: array
+          items:
+            type: string
+          description: System-of-record fields the caller is about to mutate.
+        amount:
+          type: number
+          description: Monetary amount for disbursement or grant release workflows.
+        currency:
+          type: string
+          default: USD
+        vendor_id:
+          type: string
+        recipient_id:
+          type: string
+        payment_instruction_id:
+          type: string
+        grant_id:
+          type: string
+        award_id:
+          type: string
+        provider_id:
+          type: string
+        provider_tax_id_hash:
+          type: string
+        case_id:
+          type: string
+        claimant_id:
+          type: string
+        destination_hash:
+          type: string
+          description: Hash or opaque digest of the proposed destination/account data.
+        bank_account_hash:
+          type: string
+        routing_number_hash:
+          type: string
+        address_hash:
+          type: string
+        mailing_address_hash:
+          type: string
+        phone_hash:
+          type: string
+        email_hash:
+          type: string
+        external_reference:
+          type: string
+        metadata:
+          type: object
+
+    GovGuardPrecheckResponse:
+      type: object
+      properties:
+        receipt_id:
+          type: string
+        receipt_status:
+          type: string
+          enum: [not_required, pending_signoff, issued, consumed]
+        signoff_required:
+          type: boolean
+        signoff_tier:
+          type: string
+          enum: [single, dual]
+          nullable: true
+        required_assurance:
+          type: string
+          enum: [A]
+          nullable: true
+          description: GovGuard high-risk workflows require Class-A approval.
+        evidence_status:
+          type: string
+          enum: [durable, degraded]
+          description: Whether the receipt/audit evidence was durably recorded.
+        decision:
+          type: object
+          properties:
+            allow:
+              type: boolean
+            mode:
+              type: string
+              enum: [observe, enforce]
+            reasons:
+              type: array
+              items:
+                type: string
+        canonical_action:
+          type: object
+          description: Canonical action bound into the receipt, including action_hash inputs.
+        policy_id:
+          type: string
+        policy_hash:
+          type: string
+        execution_binding_hash:
+          type: string
 
     StatsResponse:
       type: object

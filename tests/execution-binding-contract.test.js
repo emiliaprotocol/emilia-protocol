@@ -96,6 +96,39 @@ describe('execution-binding contract', () => {
     expect(check.ok).toBe(true);
   });
 
+  it('binds GovGuard provider enrollment fields into the execution contract', () => {
+    const action = enrichCanonicalActionForExecution({
+      ...BASE,
+      action_type: 'gov.provider_enrollment_change',
+      target_resource_id: 'provider:NPI-123',
+    }, {
+      provider_id: 'provider:NPI-123',
+      npi: '1234567890',
+      provider_tax_id_hash: 'sha256:taxid',
+      program_id: 'medicaid',
+      payment_address: 'hash:new-payment-address',
+    });
+    const contract = buildExecutionBindingContract({
+      canonicalAction: action,
+      decision: { signoffRequired: true, requiredAssurance: 'A' },
+    });
+    expect(contract.required_fields).toEqual(expect.arrayContaining([
+      'provider_id',
+      'npi',
+      'provider_tax_id_hash',
+      'program_id',
+      'payment_address',
+    ]));
+
+    const drift = verifyExecutionBindingContract({
+      contract,
+      executedAction: action,
+      observedAction: { ...action, provider_id: 'provider:attacker' },
+    });
+    expect(drift.ok).toBe(false);
+    expect(drift.mismatched_fields).toContain('provider_id');
+  });
+
   it('fails closed rather than throwing on malformed required field contracts', () => {
     const check = verifyExecutionBindingContract({
       contract: {

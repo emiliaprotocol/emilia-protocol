@@ -38,22 +38,22 @@ export default function GovernmentUseCasePage() {
   }
 
   const PROBLEMS = [
-    { title: 'Benefits redirect inside authorized sessions', body: 'Threat actors change payment destinations within legitimate authenticated workflows. The session looks valid. The action is not.' },
+    { title: 'Benefits redirect inside authorized sessions', body: 'Threat actors change payment destinations, mailing/contact routes, or identity evidence within legitimate authenticated workflows. The session looks valid. The action is not.' },
     { title: 'Operator overrides without action-level accountability', body: 'Caseworkers and system operators can modify records, approve exceptions, and redirect funds. Current audit trails capture who logged in, not who authorized the exact action.' },
     { title: 'Payment destination changes in approved workflows', body: 'Wire destinations, direct deposit targets, and disbursement accounts change inside sessions that pass every existing authentication check.' },
   ];
 
   const HOW_EP_HELPS = [
-    { title: 'Handshake binds exact action', body: 'Every high-risk action generates a cryptographic handshake that binds the actor, the authority chain, the policy, and the exact action parameters before execution proceeds.' },
+    { title: 'Receipt binds exact action', body: 'Every high-risk action generates an authorization receipt that binds the actor, policy, action parameters, nonce, and execution-binding fields before execution proceeds.' },
     { title: 'Signoff ensures named human accountability', body: 'No high-risk action executes without a named principal signing off. The signoff is bound to the exact action context, not a blanket session approval.' },
-    { title: 'Immutable audit trail for IG and GAO', body: 'Every handshake, signoff, and execution produces an immutable event record. Inspector General and GAO auditors get action-level traceability, not session-level logs.' },
+    { title: 'Evidence packet for IG and controller review', body: 'Every receipt, signoff, and execution produces a packet showing which actions would have required approval, which policy fired, and how to verify representative receipts offline.' },
     { title: 'Replay-resistant authorization', body: 'Each authorization is one-time consumable. A captured handshake cannot be replayed to authorize a different payment, amount, or destination.' },
   ];
 
   const WORKFLOWS = [
-    { title: 'Payment destination change', body: 'A benefits recipient or vendor updates their bank account or routing number. EMILIA generates a cryptographic handshake binding the exact new destination, the requesting identity, and the authorizing caseworker before the change commits. If the handshake is not satisfied, the change does not execute.' },
-    { title: 'Benefit redirect', body: 'A disbursement target changes inside an authenticated session. EMILIA requires a named signoff bound to the exact new target, amount, and program. The signoff record is immutable and available to Inspector General auditors in real time.' },
-    { title: 'Operator override', body: 'A caseworker or system operator modifies a record, approves an exception, or escalates privileges. EMILIA enforces action-level accountability: the override does not proceed without a handshake that binds the exact action parameters to the exact operator identity and authority chain.' },
+    { title: 'Vendor payment destination change', body: 'A supplier payment destination changes before the next disbursement run. GovGuard binds the exact new destination, vendor, policy, and named approver before the change can be treated as authorized.' },
+    { title: 'Disbursement or grant release', body: 'A treasury or program payment is ready to leave. GovGuard requires Class-A accountable signoff, and escalates million-dollar releases to dual authorization.' },
+    { title: 'Provider enrollment or eligibility override', body: 'A provider record, payment address, eligibility result, or caseworker override changes inside a valid session. GovGuard binds the exact exception to policy and named ownership.' },
   ];
 
   const cardStyle = (accent) => ({
@@ -71,12 +71,12 @@ export default function GovernmentUseCasePage() {
       {/* Hero */}
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 72 }}>
         <div className="ep-tag ep-hero-badge" style={{ color: color.green }}>Use Case / Government</div>
-        <h1 className="ep-hero-text" style={styles.h1}>Fraud prevention inside authorized government workflows</h1>
+        <h1 className="ep-hero-text" style={styles.h1}>Pre-payment control for government fraud</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 620 }}>
-          The hardest fraud to stop is the fraud that happens inside legitimate sessions. Benefits redirects, payment destination changes, and operator overrides all occur within workflows that pass every existing authentication check. EMILIA enforces trust before the high-risk action, not after the breach.
+          The hardest fraud to stop is the fraud that happens inside legitimate sessions. Vendor payment destinations, disbursements, benefit routing, provider enrollment, and operator overrides can all pass existing authentication. GovGuard enforces trust before the high-risk action, not after the loss.
         </p>
         <div className="ep-hero-text">
-          <a href="#pilot" className="ep-cta" style={cta.primary}>Request Pilot</a>
+          <a href="/pilot/sandbox?v=gov" className="ep-cta" style={cta.primary}>Run GovGuard Fire Drill</a>
         </div>
       </section>
 
@@ -89,9 +89,9 @@ export default function GovernmentUseCasePage() {
             borderLeft: `1px solid ${color.border}`,
           }}>
             {[
-              { value: '$236B', label: 'GAO improper payments estimate, FY2023 (GAO-24-106607)', accent: color.green },
-              { value: '$125K', label: 'Median BEC loss per complaint, IC3 2023 Annual Report', accent: color.green },
-              { value: '0',     label: 'Action-level trust layers in most workflows today', accent: color.t3 },
+              { value: '$233B-$521B', label: 'GAO annual federal fraud loss estimate, 2018-2022 data (GAO-24-105833)', accent: color.green },
+              { value: 'GG-1', label: 'GovGuard conformance: missing receipt, wrong org, wrong approver, replay, tamper, and execution mismatch refused', accent: color.green },
+              { value: '0',     label: 'Action-level authorization receipts in most government workflows today', accent: color.t3 },
             ].map((s, i) => (
               <div key={i} style={{ padding: '28px 24px', borderRight: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` }}>
                 <div style={{ fontFamily: font.sans, fontSize: 28, fontWeight: 700, color: s.accent, marginBottom: 6 }}>{s.value}</div>
@@ -165,7 +165,7 @@ export default function GovernmentUseCasePage() {
         <div style={styles.section}>
           <div className="ep-reveal" style={{ marginBottom: 40 }}>
             <h2 style={styles.h2}>Best first workflow</h2>
-            <p style={styles.body}>Pick one high-risk action surface and deploy EMILIA in enforcement mode. These are the three most common starting points in government environments.</p>
+            <p style={styles.body}>Pick one high-risk action surface and start with an observe-mode fire drill. These are the three most common starting points in government environments.</p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {WORKFLOWS.map((w, i) => (
@@ -191,7 +191,7 @@ export default function GovernmentUseCasePage() {
             EMILIA is selectively working with government agencies, system integrators, and public-sector technology teams to pilot action-level trust enforcement.
           </p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <a href="#pilot" className="ep-cta" style={cta.primary}>Request Fraud-Control Pilot</a>
+            <a href="/pilot/sandbox?v=gov" className="ep-cta" style={cta.primary}>Run GovGuard Fire Drill</a>
             <a href="/docs" className="ep-cta-secondary" style={{ ...cta.secondary, borderColor: 'rgba(255,255,255,0.15)', color: 'rgba(250,250,249,0.7)' }}>See Government Architecture →</a>
           </div>
         </div>
