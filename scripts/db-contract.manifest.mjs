@@ -25,14 +25,14 @@ export const contract = {
     'approver_credentials', 'protocol_events', 'security_events', 'tenants', 'tenant_members',
     'tenant_api_keys', 'tenant_environments', 'operator_applications', 'policy_rollouts',
     'investor_inquiries', 'partner_inquiries', 'fraud_flags', 'zk_proofs',
+    'authorities',
   ],
 
   // Tables that SHOULD exist but are KNOWN-MISSING and tracked for a staged
   // rollout. Reported loudly as KNOWN GAP (non-fatal) so they stay visible
   // without blocking CI — but if one ever appears, remove it from here.
-  knownGapTables: [
-    { name: 'authorities', why: 'authority registry (mig 033/102) missing in prod; guard path dual-mode fail-open. Needs locked-table + approver backfill + enforcement flip, NOT blind create.' },
-  ],
+  // (authorities reconciled 2026-06-29, mig 118/119 — now a requiredTable.)
+  knownGapTables: [],
 
   // Columns that MUST exist on a table. Missing => hard FAIL.
   requiredColumns: {
@@ -40,6 +40,8 @@ export const contract = {
     entities: ['display_name', 'display_name_key', 'organization_id', 'status'],
     signoff_challenges: ['quorum_policy'],
     receipts: ['receipt_id'],
+    authorities: ['key_id', 'public_key', 'role', 'status', 'valid_from', 'valid_to',
+      'revoked_at', 'organization_id', 'subject_type', 'subject_ref', 'assurance_class'],
   },
 
   // Tables that MUST have RLS enabled. RLS off => hard FAIL.
@@ -47,19 +49,19 @@ export const contract = {
     'api_keys', 'entities', 'receipts', 'score_history', 'needs', 'waitlist',
     'anchor_batches', 'disputes', 'handshakes', 'signoff_challenges', 'signoff_attestations',
     'tenants', 'tenant_api_keys', 'operator_applications', 'policy_rollouts',
-    'investor_inquiries', 'partner_inquiries', 'fraud_flags',
+    'investor_inquiries', 'partner_inquiries', 'fraud_flags', 'authorities',
   ],
 
   // No anon/authenticated/PUBLIC may have a SELECT (or ALL) policy on these.
-  // (mig 113: api_keys + waitlist were anon-readable.)
-  noAnonRead: ['api_keys', 'waitlist', 'tenant_api_keys'],
+  // (mig 113: api_keys + waitlist were anon-readable.) authorities = permission root.
+  noAnonRead: ['api_keys', 'waitlist', 'tenant_api_keys', 'authorities'],
 
   // No anon/authenticated/PUBLIC may have a write policy (INSERT/UPDATE/DELETE/ALL)
   // on these. (mig 113: these were anon-writable via mis-scoped USING(true).)
   noAnonWrite: [
     'api_keys', 'entities', 'receipts', 'score_history', 'needs', 'anchor_batches',
     'signoff_challenges', 'signoff_attestations', 'handshakes', 'tenants', 'tenant_api_keys',
-    'operator_applications', 'policy_rollouts',
+    'operator_applications', 'policy_rollouts', 'authorities',
   ],
 
   // SECURITY DEFINER RPCs that MUST exist and MUST NOT be anon/authenticated/
