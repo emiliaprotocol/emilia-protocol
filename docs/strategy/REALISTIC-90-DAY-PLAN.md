@@ -100,7 +100,7 @@ If at day 60:
   (LinkedIn DMs to procurement officers, conference outreach, paid
   webinar) or change segment (mid-market fintech vs government).
 - Zero scheduled first calls → the pitch isn't landing, rewrite it.
-- AWS grant denied → archived Plan B reference lives at `docs/archive/grants-and-applications-2026-06-29/PLAN-B-IF-AWS-DENIED.md`.
+- AWS grant denied → use the archived Plan B reference in the 2026-06-29 grants/applications archive.
 
 If at day 90:
 - Zero late-stage deals → re-evaluate whether to continue the founder-
