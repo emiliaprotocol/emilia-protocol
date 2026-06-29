@@ -36,8 +36,13 @@ import { DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, createDefaultActionRiskM
 import { hashCanonical, verifyExecutionBinding } from './execution-binding.js';
 import { buildReliancePacket } from './reliance-packet.js';
 import { createEg1Harness, makeGateInvoke, runEg1, EG1_DEFAULT_SELECTOR } from './eg1-conformance.js';
+import { createKeyRegistry, asKeyRegistry } from './key-registry.js';
+import { classifyRetention, buildRetentionExport } from './retention.js';
 
 export { MemoryConsumptionStore, createEvidenceLog };
+export { createDurableConsumptionStore, createMemoryBackend } from './store.js';
+export { createKeyRegistry, asKeyRegistry } from './key-registry.js';
+export { classifyRetention, buildRetentionExport, RETENTION_EXPORT_VERSION } from './retention.js';
 export { DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, createDefaultActionRiskManifest };
 export { EXECUTION_BINDING_VERSION, canonicalize, hashCanonical, materialFieldsFor, verifyExecutionBinding } from './execution-binding.js';
 export { RELIANCE_PACKET_VERSION, buildReliancePacket } from './reliance-packet.js';
@@ -75,8 +80,15 @@ export function receiptAssuranceTier(doc) {
  * @param {object} [opts.store]         consumption store (default in-memory)
  * @param {object} [opts.log]           evidence log (default in-memory, hash-chained)
  * @param {boolean} [opts.allowInlineKey=false] accept the receipt's own key (integrity, NOT trust)
+ * @param {object} [opts.keyRegistry] a key registry (createKeyRegistry) for rotation + revocation;
+ *   if given it supersedes trustedKeys — a receipt is verified only against keys valid (and not
+ *   revoked) at its issuance time.
  */
-export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now } = {}) {
+export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null } = {}) {
+  // Production key custody: a registry (rotation + revocation) supersedes a flat
+  // trustedKeys list. A flat list is coerced to an always-valid registry, so
+  // existing callers are unchanged.
+  const registry = keyRegistry ? asKeyRegistry(keyRegistry) : (trustedKeys.length ? asKeyRegistry(trustedKeys) : null);
   if (manifest) {
     const m = validateActionRiskManifest(manifest);
     if (!m.ok) throw new Error('EMILIA Gate: invalid action-risk manifest: ' + m.errors.join('; '));
@@ -157,8 +169,14 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     if (!receipt) {
       return decide(false, RECEIPT_REQUIRED_STATUS, 'receipt_required');
     }
-    // Signature / freshness / action-binding / outcome.
-    const v = verifyEmiliaReceipt(receipt, { trustedKeys, allowInlineKey, action, maxAgeSec });
+    // Signature / freshness / action-binding / outcome. Production key custody:
+    // resolve the issuer keys valid (and not revoked) at THIS receipt's issuance
+    // time. A revoked or out-of-window key is excluded, so its signature does not
+    // verify and the action is refused (fail closed).
+    const effectiveKeys = registry
+      ? registry.keysValidAt(receipt?.payload?.created_at)
+      : trustedKeys;
+    const v = verifyEmiliaReceipt(receipt, { trustedKeys: effectiveKeys, allowInlineKey, action, maxAgeSec });
     if (!v.ok) {
       return decide(false, RECEIPT_REQUIRED_STATUS, `receipt_rejected:${v.reason}`, { rejected: v });
     }
@@ -312,7 +330,19 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     });
   }
 
-  return { check, run, recordExecution, middleware, guard, reliancePacket, evidence, store: consumption };
+  /** Retention classification over this gate's evidence log (hot/cold/expired/legal-hold). */
+  function retention(opts = {}) {
+    return classifyRetention(evidence.all(), opts);
+  }
+  /** The auditor/SIEM export manifest for this gate's evidence log. */
+  function retentionExport(opts = {}) {
+    return buildRetentionExport(evidence.all(), opts);
+  }
+
+  return {
+    check, run, recordExecution, middleware, guard, reliancePacket, evidence,
+    store: consumption, keyRegistry: registry, retention, retentionExport,
+  };
 }
 
 export function createTrustedActionFirewall(opts = {}) {
@@ -365,4 +395,8 @@ export default {
   gateConformanceSelfTest,
   createEg1Harness,
   runEg1,
+  createKeyRegistry,
+  asKeyRegistry,
+  classifyRetention,
+  buildRetentionExport,
 };

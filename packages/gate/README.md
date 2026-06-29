@@ -22,6 +22,7 @@ node --test                       # Gate + red-team + EG-1 + MCP + adapter tests
 node demo.mjs                     # end-to-end: passthrough -> 428 -> too-low -> drift -> allow -> replay -> tamper -> reliance packet
 node eg1.mjs                      # EG-1 conformance: 8/8 -> "EG-1 Enforced"
 node adapters/github-demo.mjs     # an agent tries to delete a prod repo (refused without a receipt)
+node custody-demo.mjs             # rotate, revoke a compromised issuer key live, retention export
 ```
 
 ## Use it
@@ -218,6 +219,47 @@ challenge. The Gate composes that and adds the three things a firewall needs:
   closes "approved harmless X, executed dangerous Y."
 - **Reliance packet** — `gate.reliancePacket()` turns the decision, execution receipt, field binding,
   and evidence head into the compact artifact an auditor, insurer, or investigator can review.
+
+## Production custody
+
+The three things a serious buyer (CISO, auditor, insurer) asks after the demo:
+
+**Issuer key rotation + revocation.** A flat `trustedKeys` list can't revoke a leaked key
+or rotate without downtime. A key registry can — a receipt is verified only against keys
+valid (and not revoked) at its issuance time. Revocation is fail-closed and immediate.
+
+```js
+import { createGate, createKeyRegistry } from '@emilia-protocol/gate';
+
+const registry = createKeyRegistry([
+  { kid: 'issuer-1', key: KEY1 },
+  { kid: 'issuer-2', key: KEY2, not_before: '2026-07-01T00:00:00Z' }, // rotation window
+]);
+const gate = createGate({ manifest, keyRegistry: registry });
+registry.revoke('issuer-1'); // compromised — refused immediately, live, no redeploy
+```
+
+**Fleet-safe replay defense.** The in-memory store is per-process. In production, back the
+consumption store with a shared key-value store whose insert-if-absent is atomic:
+
+```js
+import { createDurableConsumptionStore } from '@emilia-protocol/gate';
+const store = createDurableConsumptionStore(redisBackend); // backend.addIfAbsent MUST be atomic (Redis SET NX)
+const gate = createGate({ manifest, keyRegistry, store });
+// A receipt consumed on one pod cannot be replayed on another.
+```
+
+**Evidence retention.** Classify the evidence log into hot/cold/expired with legal hold, and
+export the auditor/SIEM manifest (tied to the evidence head). `EP_AUDIT_HOT_DAYS` /
+`EP_AUDIT_COLD_DAYS` set the horizons.
+
+```js
+gate.retention({ hotDays: 365, coldDays: 2190, legalHold: ['<evidence-hash>'] });
+gate.retentionExport();  // EP-GATE-RETENTION-EXPORT-v1 manifest
+```
+
+Issuer-side **KMS/HSM signing custody** (production mode refuses dev-local private keys) lives in
+EP core (`lib/key-custody.js`, `assertProductionKeyCustody` / `createExternalCustodySigner`).
 
 ## Boundary
 

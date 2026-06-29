@@ -67,7 +67,7 @@ export const EG1_CHECKS = Object.freeze([
  * Create an EG-1 harness: a throwaway issuer key + a receipt minter for the
  * scenarios. Configure the subject's gate to trust `publicKey` for the run.
  */
-export function createEg1Harness({ now = Date.now, action = EG1_DEFAULT_ACTION } = {}) {
+export function createEg1Harness({ now = Date.now, action = EG1_DEFAULT_ACTION, idPrefix = 'eg1' } = {}) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const pub = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
   let counter = 0;
@@ -82,7 +82,7 @@ export function createEg1Harness({ now = Date.now, action = EG1_DEFAULT_ACTION }
    */
   function mint({ outcome = 'allow_with_signoff', quorum = null, tamper = null, extra = {} } = {}) {
     const payload = {
-      receipt_id: `eg1_${++counter}`,
+      receipt_id: `${idPrefix}_${++counter}`,
       subject: 'agent:eg1-conformance',
       issuer: 'ep:org:eg1',
       created_at: new Date(nowMs()).toISOString(),
