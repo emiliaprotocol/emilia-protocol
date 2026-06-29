@@ -105,6 +105,17 @@ test('badgeSvg renders green for pass, red for fail, score when given', () => {
   assert.ok(badgeSvg({ score: 100 }).includes('#16A34A'));
 });
 
+test('badgeSvg escapes quotes — no attribute breakout / event-handler injection', () => {
+  const svg = badgeSvg({ eg1: 'pass', label: 'x" onload="alert(1)' });
+  assert.ok(!svg.includes('" onload="alert'), 'must not contain a live broken-out attribute');
+  assert.ok(svg.includes('&quot;'), 'the quote must be entity-escaped');
+  // angle brackets are escaped, so no tag can form either
+  const lt = String.fromCharCode(60); // '<'
+  const svg2 = badgeSvg({ eg1: 'fail', label: `${lt}svg onload=1` });
+  assert.ok(!svg2.includes(`${lt}svg onload`), 'raw angle bracket must not survive');
+  assert.ok(svg2.includes('&lt;svg onload'), 'angle bracket must be entity-escaped');
+});
+
 test('generatePullRequest lists failing ops + the gate fix', () => {
   const r = scanMcpManifest({ tools: [{ name: 'delete_records' }, { name: 'release_payment' }] });
   const pr = generatePullRequest(r, { project: 'acme/mcp' });

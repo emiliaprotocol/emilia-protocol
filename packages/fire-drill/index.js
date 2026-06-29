@@ -211,7 +211,13 @@ export function badgeSvg({ eg1, score, label = 'agent action firewall' } = {}) {
   const lw = segWidth(label);
   const mw = segWidth(message);
   const w = lw + mw;
-  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // Escape ALL XML-significant chars — including quotes — because `label`/`message`
+  // are interpolated into a double-quoted SVG attribute (aria-label). Missing the
+  // quote escape allowed attribute breakout / event-handler injection when the SVG
+  // is served as image/svg+xml from a public route.
+  const esc = (s) => String(s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="20" role="img" aria-label="${esc(label)}: ${esc(message)}">`
     + `<linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>`
     + `<rect rx="3" width="${w}" height="20" fill="#555"/>`

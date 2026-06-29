@@ -13,6 +13,14 @@ Or as an MCP server that any MCP client (Claude, Cursor, Cline) can install and 
 
     npx -y @emilia-protocol/mcp-server
 
+Test any MCP server, OpenAPI spec, or tool list for dangerous actions an agent can take WITHOUT an accountable human receipt — money movement, data destruction, deploy, permission change, export, regulated override:
+
+    npx @emilia-protocol/fire-drill ./mcp-manifest.json
+
+EMILIA Gate is the action firewall: drop it in front of a dangerous tool and it will not run without a valid, sufficiently-assured, non-replayed human/quorum receipt — then it proves what executed. 12 system-of-record adapters (GitHub, Stripe, Supabase, AWS, Kubernetes, Terraform, GCP, Vercel, Cloudflare, Linear, Jira, Salesforce):
+
+    npm i @emilia-protocol/gate
+
 ## Start here
 - [For AI companies](https://www.emiliaprotocol.ai/for-ai-companies): the agent-accountability problem and a reproducible cross-model benchmark — unguarded frontier-model agents executed 50–83% of high-stakes actions; with EMILIA in front, 0%, with zero false friction.
 - [Quickstart](https://www.emiliaprotocol.ai/quickstart): add the guard to an agent in a few lines.
@@ -20,7 +28,15 @@ Or as an MCP server that any MCP client (Claude, Cursor, Cline) can install and 
 - [Specification](https://www.emiliaprotocol.ai/spec): the protocol — pre-action binding, policy-bound verification, one-time consumption, accountable human signoff.
 - [Trust Receipt format](https://www.emiliaprotocol.ai/spec/trust-receipt): the offline-verifiable evidence artifact.
 
+## Test & certify
+- [Fire Drill](https://www.emiliaprotocol.ai/fire-drill): the Agent Action Firewall Test — paste an MCP manifest / OpenAPI spec / tool list, get an Agent Action Firewall score and which dangerous actions can run without a receipt. Also `npx @emilia-protocol/fire-drill`.
+- [EMILIA Gate](https://www.emiliaprotocol.ai/gate): the action firewall + EG-1 conformance (the badge a project earns when no dangerous action can run unreceipted).
+- [Agent Action Safety Index](https://www.emiliaprotocol.ai/fire-drill/gallery): projects that refuse dangerous actions without a receipt.
+- [The Agent Action Firewall Report](https://www.emiliaprotocol.ai/fire-drill/report): how many agents can take an irreversible action with no receipt.
+
 ## Packages
+- `@emilia-protocol/gate` (npm): the action firewall — deny-by-default enforcement; assurance tiers, replay defense, execution-field binding, reliance packets, EG-1 conformance, an MCP drop-in (`gateMcpTool`), and 12 system-of-record adapters.
+- `@emilia-protocol/fire-drill` (npm): the Agent Action Firewall Test — zero-dependency scanner/CLI; emits a score, the failing operations, the fix, and EG-1 pass/fail.
 - `@emilia-protocol/openai-guard` (npm): drop-in guard for OpenAI-compatible tool-calling. `guard(action) -> { allowed, reason }`, plus `withGuard(tool)`, `runToolCalls`, and a `/receipt` signoff ceremony.
 - `@emilia-protocol/verify` (npm): verify a Trust Receipt offline — pure Ed25519 + Merkle, no account, no server, no call home.
 - `@emilia-protocol/mcp-server` (npm): MCP server exposing the guard + signoff tools to any MCP client (`npx -y @emilia-protocol/mcp-server`).

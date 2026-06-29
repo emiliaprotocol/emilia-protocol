@@ -17,6 +17,10 @@ export default function sitemap() {
   const marketing = [
     { path: '/',                      priority: 1.0, changeFrequency: 'weekly' },
     { path: '/agent-guard',           priority: 0.95, changeFrequency: 'weekly' },
+    { path: '/fire-drill',            priority: 0.95, changeFrequency: 'weekly' },
+    { path: '/fire-drill/gallery',    priority: 0.8,  changeFrequency: 'weekly' },
+    { path: '/fire-drill/report',     priority: 0.85, changeFrequency: 'weekly' },
+    { path: '/gate',                  priority: 0.95, changeFrequency: 'monthly' },
     { path: '/pricing',               priority: 0.9, changeFrequency: 'monthly' },
     { path: '/protocol',              priority: 0.95, changeFrequency: 'monthly' },
     { path: '/spec',                  priority: 0.9, changeFrequency: 'monthly' },
