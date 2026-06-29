@@ -69,6 +69,7 @@ export const contract = {
     'consume_signoff_atomic', 'approve_attestation_atomic', 'issue_challenge_atomic',
     'present_handshake_writes', 'verify_handshake_writes', 'resolve_authenticated_actor',
     'bulk_update_receipt_anchors', 'create_test_fixtures',
+    'admin_begin_key_rotation', 'admin_complete_key_rotation',
   ],
 
   // Functions that MUST exist (existence only).
