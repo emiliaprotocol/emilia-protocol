@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
-import { verifyMerkleProof } from '@/lib/blockchain';
+import { MERKLE_V2_ALG, verifyMerkleProof } from '@/lib/blockchain';
 import { computeReceiptHash } from '@/lib/scoring';
 import { epProblem } from '@/lib/errors';
 import { logger } from '../../../../lib/logger.js';
@@ -115,21 +115,24 @@ export async function GET(request, { params }) {
         .single();
 
       if (batch) {
-        // Verify under the batch's own Merkle algorithm: EP-MERKLE-v2
-        // (domain-separated) for new batches, legacy sorted-pair v1 for old ones.
-        const proofValid = verifyMerkleProof(
+        // Production verification is strict-v2. Legacy v1 anchors are dormant
+        // compatibility artifacts only; do not verify them from the public API.
+        const isV2 = batch.merkle_alg === MERKLE_V2_ALG;
+        const proofValid = isV2 && verifyMerkleProof(
           receipt.receipt_hash,
           receipt.merkle_proof,
           batch.merkle_root,
-          { v2: batch.merkle_alg === 'EP-MERKLE-v2' }
+          { v2: true }
         );
 
         response.anchor = {
           batch_id: batch.batch_id,
+          merkle_alg: batch.merkle_alg || null,
           merkle_root: batch.merkle_root,
           merkle_proof: receipt.merkle_proof,
           leaf_index: receipt.merkle_leaf_index,
           proof_valid: proofValid,
+          legacy_refused: !isV2,
           transaction_hash: batch.transaction_hash,
           chain_id: batch.chain_id,
           block_number: batch.block_number,

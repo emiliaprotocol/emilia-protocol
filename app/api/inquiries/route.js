@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '../../../lib/logger.js';
+import { readLimitedJson } from '@/lib/http/body-limit';
 
 // ---------------------------------------------------------------------------
 // Input sanitization helpers
@@ -15,6 +16,8 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Basic URL format validation. */
 const URL_RE = /^https?:\/\/[^\s/$.?#].[^\s]*$/i;
+
+const MAX_INQUIRY_BYTES = 16 * 1024;
 
 /** Strip HTML tags to prevent stored XSS. */
 function stripHtml(str) {
@@ -57,7 +60,10 @@ function getSupabase() {
 
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const parsed = await readLimitedJson(request, MAX_INQUIRY_BYTES);
+    if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
+    const body = parsed.value;
+    if (!body || typeof body !== 'object') return epProblem(400, 'invalid_json', 'Body must be valid JSON');
 
     // Honeypot field — bots that auto-fill hidden fields will populate this.
     // Legitimate users will never see or fill this field.

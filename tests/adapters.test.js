@@ -11,6 +11,18 @@ vi.mock('@/lib/env', () => ({
   getGitHubToken: vi.fn(),
 }));
 
+vi.mock('node:dns/promises', () => ({
+  lookup: vi.fn(async (hostname) => {
+    if (hostname === 'metadata.example') {
+      return [{ address: '169.254.169.254', family: 4 }];
+    }
+    if (hostname === 'internal.example') {
+      return [{ address: '10.0.0.5', family: 4 }];
+    }
+    return [{ address: '93.184.216.34', family: 4 }];
+  }),
+}));
+
 import { getGitHubToken } from '@/lib/env';
 import {
   fetchGitHubAppMeta,
@@ -333,6 +345,18 @@ describe('fetchMcpServerMeta', () => {
     expect(result.software_meta._adapter_status).toBe('blocked');
   });
 
+  it('blocks public-looking hostnames that resolve to metadata/private IPs', async () => {
+    const result = await fetchMcpServerMeta('https://metadata.example/mcp');
+    expect(result.software_meta._adapter_status).toBe('blocked');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('blocks URLs with embedded credentials before fetching', async () => {
+    const result = await fetchMcpServerMeta('https://user:pass@mcp.example.com');
+    expect(result.software_meta._adapter_status).toBe('blocked');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it('returns ok status with server card when .well-known/mcp.json responds OK', async () => {
     const serverCard = {
       publisher: { name: 'MCP Corp', verified: true },
@@ -370,7 +394,7 @@ describe('fetchMcpServerMeta', () => {
     await fetchMcpServerMeta('https://mcp.example.com///');
     expect(fetch).toHaveBeenCalledWith(
       'https://mcp.example.com/.well-known/mcp.json',
-      expect.anything()
+      expect.objectContaining({ redirect: 'manual' })
     );
   });
 

@@ -57,6 +57,7 @@ async function run(request) {
         await appendSecurityEvent({
           eventType: 'collusion_suspected',
           severity: f.severity,
+          actorId: auth.operator_id,
           targetType: 'entity_cluster',
           targetId: clusterId,
           correlationId: clusterId,

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { epProblem } from '@/lib/errors';
 import { logger } from '../../../lib/logger.js';
+import { readLimitedJson } from '@/lib/http/body-limit';
 
 export const runtime = 'nodejs';
 
@@ -24,6 +25,7 @@ const PRICE_ENV = {
   team: 'STRIPE_PRICE_CLOUD_TEAM',
   business: 'STRIPE_PRICE_CLOUD_BUSINESS',
 };
+const MAX_CHECKOUT_BYTES = 2 * 1024;
 
 function siteOrigin(request) {
   const configured = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '';
@@ -42,7 +44,9 @@ function siteOrigin(request) {
 
 export async function POST(request) {
   try {
-    const body = await request.json().catch(() => ({}));
+    const parsed = await readLimitedJson(request, MAX_CHECKOUT_BYTES, { invalidValue: {} });
+    if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
+    const body = parsed.value;
     const plan = typeof body.plan === 'string' ? body.plan : '';
     const priceEnv = PRICE_ENV[plan];
     if (!priceEnv) {

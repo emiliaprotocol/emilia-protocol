@@ -16,17 +16,12 @@
   },
   "signature": {
     "algorithm": "ed25519",
-    "value": "wB70L1QN445B7bvXR6bhATHxNA8-GJ8QULcwozHSVTcICPyxpYZmER4og8ytj5nF0W7OPVDjhlU-KrF9TsfXBw"
+    "value": "KJ8EzMJWnjYjp7Aoxnqj8ndNFBkPyDdFqr5L2lN6ExagZN1CGTrIvNlgI25PvDedGBdEP75VfMCTBflZWbZEDQ"
   },
   "anchor": {
     "alg": "EP-MERKLE-v2",
     "leaf_hash": "36434ac0efaa4d635879bfd663db012fdc55ed6bd027db0999b7166232b52f75",
-    "merkle_proof": [
-      {
-        "hash": "c91e40cb06ad90f0a4556fcc54d9489f7f59cca27494ae05ffe411ee9fdaaed7",
-        "position": "right"
-      }
-    ],
-    "merkle_root": "09f94d928f859a346e6eb18c59b657b7ab9a7338ae79864ca3c2bc2d87ef294e"
+    "merkle_proof": [],
+    "merkle_root": "36434ac0efaa4d635879bfd663db012fdc55ed6bd027db0999b7166232b52f75"
   }
 }

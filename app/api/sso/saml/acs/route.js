@@ -15,11 +15,13 @@ import { mintSession, SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from '@/lib/sso/s
 import { normalizeUserName } from '@/lib/scim/core';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
+import { readLimitedText } from '@/lib/http/body-limit';
 
 // T4-B: assertion replay window. node-saml already rejects assertions whose
 // Conditions/NotOnOrAfter have passed, so the cache only needs to span a typical
 // assertion lifetime + clock skew. 30 min is comfortably beyond both.
 const REPLAY_TTL_MS = 30 * 60 * 1000;
+const MAX_SAML_ACS_BYTES = 256 * 1024;
 
 /**
  * Record a consumed SAML Response and detect replays. Returns:
@@ -53,10 +55,12 @@ async function consumeSamlResponse(tenant, replayKey) {
 }
 
 export async function POST(request) {
-  let form;
-  try {
-    form = await request.formData();
-  } catch {
+  const read = await readLimitedText(request, MAX_SAML_ACS_BYTES);
+  if (!read.ok) return epProblem(read.status, read.code, read.detail);
+
+  let form = null;
+  try { form = new URLSearchParams(read.text); } catch { /* fall through */ }
+  if (!form) {
     return epProblem(400, 'invalid_acs_post', 'Expected an application/x-www-form-urlencoded SAML POST');
   }
   const samlResponse = form.get('SAMLResponse');

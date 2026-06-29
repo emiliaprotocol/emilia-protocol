@@ -22,7 +22,7 @@ export async function GET(request) {
   if (!connection?.saml_idp_entry_point || !connection?.saml_idp_cert) {
     return epProblem(404, 'sso_not_configured', `No SAML connection configured for tenant ${tenant}`);
   }
-  const entryPoint = validateSsoProviderUrl(connection.saml_idp_entry_point, 'saml_idp_entry_point');
+  const entryPoint = await validateSsoProviderUrl(connection.saml_idp_entry_point, 'saml_idp_entry_point');
   if (!entryPoint.valid) return epProblem(400, 'unsafe_sso_url', 'Configured SAML IdP URL is not allowed');
 
   const origin = spOrigin(request);

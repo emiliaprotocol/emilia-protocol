@@ -10,6 +10,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { verifyReceipt } from '../packages/verify/index.js';
+import { buildReceiptAnchorV2 } from '../packages/issue/index.js';
 
 // Same recursive canonicalization the verifier uses.
 function canonicalize(value) {
@@ -21,7 +22,6 @@ function canonicalize(value) {
   return JSON.stringify(value);
 }
 const sha256hex = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
-const hashPair = (a, b) => { const [lo, hi] = [a, b].sort(); return sha256hex(lo + hi); };
 
 const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
 const pubB64url = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
@@ -38,16 +38,11 @@ const payload = {
 };
 const sigValue = crypto.sign(null, Buffer.from(canonicalize(payload), 'utf8'), privateKey).toString('base64url');
 
-// A small, real Merkle anchor (2-leaf tree) to exercise the anchor path too.
-const leaf = sha256hex(payload.receipt_id);
-const sibling = sha256hex('sibling-leaf');
-const merkleRoot = hashPair(leaf, sibling);
-
 const doc = {
   '@version': 'EP-RECEIPT-v1',
   payload,
   signature: { algorithm: 'ed25519', value: sigValue },
-  anchor: { leaf_hash: leaf, merkle_proof: [{ hash: sibling, position: 'right' }], merkle_root: merkleRoot },
+  anchor: buildReceiptAnchorV2(payload),
 };
 
 // Confirm the JS verifier accepts it before we hand it to Python.

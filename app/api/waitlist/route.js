@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '../../../lib/logger.js';
+import { readLimitedJson } from '@/lib/http/body-limit';
+
+const MAX_WAITLIST_BYTES = 4 * 1024;
 
 /**
  * POST /api/waitlist
@@ -14,8 +17,11 @@ import { logger } from '../../../lib/logger.js';
  */
 export async function POST(request) {
   try {
-    const body = await request.json();
-    const email = body.email?.trim().toLowerCase();
+    const parsed = await readLimitedJson(request, MAX_WAITLIST_BYTES);
+    if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
+    const body = parsed.value;
+    if (!body || typeof body !== 'object') return epProblem(400, 'invalid_json', 'Body must be valid JSON');
+    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase().slice(0, 254) : '';
 
     if (!email || !email.includes('@')) {
       return epProblem(400, 'invalid_email', 'Valid email required');

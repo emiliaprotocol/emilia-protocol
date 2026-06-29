@@ -16,10 +16,10 @@ const DisputeView = await import('../app/api/disputes/[disputeId]/route.js');
 const EntityRoute = await import('../app/api/entity/route.js');
 const SandboxProvision = await import('../app/api/pilot/sandbox/provision/route.js');
 
-function jsonReq(body) {
+function jsonReq(body, headers = {}) {
   return new Request('https://www.emiliaprotocol.ai/api/test', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...headers },
     body: JSON.stringify(body ?? {}),
   });
 }
@@ -106,6 +106,19 @@ describe('government-launch red-team regressions', () => {
     expect(entityInsert.private_key_encrypted).toMatch(/^epenc:v1:/);
   });
 
+  it('public entity registration rejects oversized anonymous payloads before database work', async () => {
+    const calls = { inserts: [] };
+    mockGetGuardedClient.mockReturnValue(makeInsertClient(calls));
+
+    const res = await EntityRoute.POST(jsonReq({ name: 'x' }, { 'content-length': String(9 * 1024) }));
+    const body = await res.json();
+
+    expect(res.status).toBe(413);
+    expect(body.type).toContain('payload_too_large');
+    expect(calls.inserts).toEqual([]);
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
+  });
+
   it('self-serve pilot sandbox keys are born org-bound to the sandbox id', async () => {
     const calls = { inserts: [] };
     mockGetGuardedClient.mockReturnValue(makeInsertClient(calls));
@@ -118,5 +131,18 @@ describe('government-launch red-team regressions', () => {
     expect(entityInsert.organization_id).toBe(body.sandbox_id);
     expect(entityInsert.private_key_encrypted).toMatch(/^epenc:v1:/);
     expect(body.try_now.curl).toContain(`"organization_id":"${body.sandbox_id}"`);
+  });
+
+  it('self-serve pilot sandbox rejects oversized anonymous payloads before database work', async () => {
+    const calls = { inserts: [] };
+    mockGetGuardedClient.mockReturnValue(makeInsertClient(calls));
+
+    const res = await SandboxProvision.POST(jsonReq({ org: 'x' }, { 'content-length': String(9 * 1024) }));
+    const body = await res.json();
+
+    expect(res.status).toBe(413);
+    expect(body.type).toContain('payload_too_large');
+    expect(calls.inserts).toEqual([]);
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
   });
 });

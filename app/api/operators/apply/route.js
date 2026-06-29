@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '../../../../lib/logger.js';
+import { readLimitedJson } from '@/lib/http/body-limit';
 
 // ---------------------------------------------------------------------------
 // Input sanitization helpers
@@ -9,6 +10,8 @@ import { logger } from '../../../../lib/logger.js';
 
 /** Simple email format regex — intentionally permissive (RFC 5321 § 4.1.2). */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const MAX_OPERATOR_APPLICATION_BYTES = 16 * 1024;
 
 /** Strip HTML tags to prevent stored XSS. */
 function stripHtml(str) {
@@ -39,7 +42,10 @@ function sanitizeText(val) {
  */
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const parsed = await readLimitedJson(request, MAX_OPERATOR_APPLICATION_BYTES);
+    if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
+    const body = parsed.value;
+    if (!body || typeof body !== 'object') return epProblem(400, 'invalid_json', 'Body must be valid JSON');
 
     // Honeypot field — bots that auto-fill hidden fields will populate this.
     // Legitimate users will never see or fill this field.

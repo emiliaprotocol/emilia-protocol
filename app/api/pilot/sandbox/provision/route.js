@@ -16,13 +16,20 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 import { seal } from '@/lib/crypto/secret-box';
+import { readLimitedJson } from '@/lib/http/body-limit';
 
 const BASE = 'https://www.emiliaprotocol.ai';
+const MAX_PROVISION_BYTES = 8 * 1024;
 
 export async function POST(request) {
   try {
-    const body = await request.json().catch(() => ({}));
-    const orgName = (body.org || body.name || 'Pilot organization').slice(0, 160).trim();
+    const parsed = await readLimitedJson(request, MAX_PROVISION_BYTES, { invalidValue: {} });
+    if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
+    const body = parsed.value;
+    const rawOrgName = typeof body.org === 'string'
+      ? body.org
+      : (typeof body.name === 'string' ? body.name : 'Pilot organization');
+    const orgName = rawOrgName.slice(0, 160).trim() || 'Pilot organization';
     // Vertical only selects which example we hand back; the engine is identical.
     const vertical = ['gov', 'fin', 'health'].includes(body.vertical) ? body.vertical : 'gov';
 

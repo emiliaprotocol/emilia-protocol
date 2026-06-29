@@ -6,6 +6,13 @@ import { computeReceiptComposite } from '@/lib/scoring';
 import { epProblem } from '@/lib/errors';
 import { generateEmbedding } from '@/lib/providers/embeddings';
 import { logger } from '../../../../lib/logger.js';
+import { readLimitedJson } from '@/lib/http/body-limit';
+
+const MAX_REGISTER_BYTES = 64 * 1024;
+const ENTITY_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.:-]{2,127}$/;
+const MAX_DESCRIPTION_CHARS = 2000;
+const MAX_CAPABILITIES = 50;
+const MAX_CAPABILITY_CHARS = 100;
 
 /**
  * POST /api/entities/register
@@ -36,16 +43,22 @@ import { logger } from '../../../../lib/logger.js';
  */
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const parsed = await readLimitedJson(request, MAX_REGISTER_BYTES);
+    if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
+    const body = parsed.value;
     const supabase = getGuardedClient();
 
     // Validate required fields
     const required = ['entity_id', 'display_name', 'entity_type', 'description'];
     for (const field of required) {
-      if (!body[field]) {
+      if (typeof body[field] !== 'string' || !body[field].trim()) {
         return epProblem(400, 'missing_field', `Missing required field: ${field}`);
       }
     }
+
+    const entityId = String(body.entity_id).normalize('NFKC').trim();
+    const displayName = String(body.display_name).trim();
+    const description = String(body.description).trim();
 
     const VALID_ENTITY_TYPES = [
       // Commerce entities
@@ -61,7 +74,7 @@ export async function POST(request) {
     // slip a reserved name past the check. (Defense-in-depth: reserved names
     // grant no privilege by themselves; this just removes the foot-gun.)
     const RESERVED_ENTITY_IDS = ['system', 'admin', 'operator', 'root', 'superuser', 'service'];
-    const normalizedEntityId = String(body.entity_id ?? '')
+    const normalizedEntityId = entityId
       .normalize('NFKC')
       .replace(/[\s​‌‍﻿]/g, '')
       .toLowerCase();
@@ -69,19 +82,31 @@ export async function POST(request) {
       return epProblem(400, 'reserved_entity_id', 'This entity ID is reserved and cannot be used');
     }
 
+    if (!ENTITY_ID_PATTERN.test(entityId)) {
+      return epProblem(400, 'invalid_entity_id', 'entity_id must be 3-128 chars of [A-Za-z0-9_.:-] and start with an alphanumeric');
+    }
+
     if (!VALID_ENTITY_TYPES.includes(body.entity_type)) {
       return epProblem(400, 'invalid_entity_type', `entity_type must be one of: ${VALID_ENTITY_TYPES.join(', ')}`);
     }
 
-    if (typeof body.display_name === 'string' && body.display_name.length > 200) {
+    if (displayName.length > 200) {
       return epProblem(400, 'display_name_too_long', 'display_name must not exceed 200 characters');
+    }
+    if (description.length > MAX_DESCRIPTION_CHARS) {
+      return epProblem(400, 'description_too_long', `description must not exceed ${MAX_DESCRIPTION_CHARS} characters`);
+    }
+
+    const capabilities = sanitizeStringArray(body.capabilities, MAX_CAPABILITIES, MAX_CAPABILITY_CHARS);
+    if (body.capabilities !== undefined && capabilities.error) {
+      return epProblem(400, 'invalid_capabilities', capabilities.error);
     }
 
     // Check for duplicate entity_id
     const { data: existing } = await supabase
       .from('entities')
       .select('id')
-      .eq('entity_id', body.entity_id)
+      .eq('entity_id', entityId)
       .single();
 
     if (existing) {
@@ -92,10 +117,10 @@ export async function POST(request) {
 
     // Generate embedding from description + capabilities (optional — skipped if no provider configured)
     const embeddingText = [
-      body.display_name,
-      body.description,
-      ...(body.capabilities || []),
-      body.category,
+      displayName,
+      description,
+      ...capabilities.values,
+      typeof body.category === 'string' ? body.category.slice(0, 100) : null,
     ].filter(Boolean).join('. ');
 
     const embedding = await generateEmbedding(embeddingText);
@@ -114,16 +139,21 @@ export async function POST(request) {
     const { data: entity, error: insertError } = await supabase
       .from('entities')
       .insert({
-        entity_id: body.entity_id,
+        entity_id: entityId,
+        // One organization per key/entity. v1 writes derive organization scope
+        // from the authenticated entity; body.organization_id is only a
+        // cross-check. A public registration path that omits this reopens the
+        // tenant-binding hole for every key born here.
+        organization_id: entityId,
         owner_id: ownerId,
-        display_name: body.display_name,
+        display_name: displayName,
         entity_type: body.entity_type,
-        description: body.description,
+        description,
         website_url: body.website_url || null,
-        capabilities: body.capabilities || [],
+        capabilities: capabilities.values,
         input_schema: body.input_schema || null,
         output_schema: body.output_schema || null,
-        category: body.category || null,
+        category: typeof body.category === 'string' ? body.category.slice(0, 100) : null,
         software_meta: body.software_meta || null,
         service_area: body.service_area || null,
         pricing_model: body.pricing_model || null,
@@ -167,4 +197,19 @@ export async function POST(request) {
     logger.error('Registration error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
   }
+}
+
+function sanitizeStringArray(value, maxItems, maxChars) {
+  if (value === undefined || value === null) return { values: [] };
+  if (!Array.isArray(value)) return { error: 'capabilities must be an array of strings' };
+  if (value.length > maxItems) return { error: `capabilities must contain at most ${maxItems} items` };
+  const values = [];
+  for (const item of value) {
+    if (typeof item !== 'string') return { error: 'capabilities must contain only strings' };
+    const s = item.trim();
+    if (!s) continue;
+    if (s.length > maxChars) return { error: `capability entries must be ${maxChars} characters or fewer` };
+    values.push(s);
+  }
+  return { values };
 }

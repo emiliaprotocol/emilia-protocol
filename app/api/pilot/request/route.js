@@ -13,11 +13,13 @@ import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
+import { readLimitedJson } from '@/lib/http/body-limit';
 
 const RESEND_URL = 'https://api.resend.com/emails';
 // Same verified Resend sender domain the Trust Desk uses.
 const FROM = process.env.PILOT_FROM_EMAIL || 'EMILIA Protocol <trust@emiliaprotocol.ai>';
 const TEAM = 'team@emiliaprotocol.ai';
+const MAX_PILOT_REQUEST_BYTES = 16 * 1024;
 
 const WORKFLOWS = {
   wire_release: { label: 'Wire / payment release', pdf: 'emilia-eu-ai-act-financial-services.pdf' },
@@ -59,7 +61,9 @@ async function sendEmail({ to, subject, body }) {
 
 export async function POST(request) {
   try {
-    const body = await request.json().catch(() => ({}));
+    const parsed = await readLimitedJson(request, MAX_PILOT_REQUEST_BYTES, { invalidValue: {} });
+    if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
+    const body = parsed.value;
 
     // Honeypot: real users never fill the hidden "website" field. Bots do.
     // Return success so the bot learns nothing.

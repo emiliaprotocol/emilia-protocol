@@ -15,11 +15,13 @@
  */
 
 import { createMcpHandler } from 'mcp-handler';
+import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { verifyReceipt, verifyWebAuthnSignoff } from '@/lib/verify-web';
 import { getPublicBaseUrl } from '@/lib/env';
 
 const BASE = getPublicBaseUrl();
+const MAX_MCP_BYTES = 256 * 1024;
 
 const text = (obj) => ({ content: [{ type: 'text', text: JSON.stringify(obj, null, 2) }] });
 
@@ -85,4 +87,21 @@ const handler = createMcpHandler(
   },
 );
 
-export { handler as GET, handler as POST, handler as DELETE };
+function bodyTooLarge(request) {
+  const declaredLen = parseInt(request.headers.get('content-length') || '0', 10);
+  return declaredLen && declaredLen > MAX_MCP_BYTES;
+}
+
+export const GET = handler;
+export const DELETE = handler;
+
+export async function POST(request, context) {
+  if (bodyTooLarge(request)) {
+    return NextResponse.json({
+      jsonrpc: '2.0',
+      error: { code: -32600, message: 'Request body too large' },
+      id: null,
+    }, { status: 413 });
+  }
+  return handler(request, context);
+}

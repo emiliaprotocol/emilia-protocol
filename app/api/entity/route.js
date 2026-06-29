@@ -5,6 +5,9 @@ import { logger } from '@/lib/logger.js';
 import { seal } from '@/lib/crypto/secret-box';
 // API key generated inline — no dependency on lib/supabase internals
 import { epProblem } from '@/lib/errors';
+import { readLimitedJson } from '@/lib/http/body-limit';
+
+const MAX_ENTITY_BYTES = 8 * 1024;
 
 /**
  * POST /api/entity
@@ -22,8 +25,12 @@ import { epProblem } from '@/lib/errors';
  */
 export async function POST(request) {
   try {
-    const body = await request.json();
-    const name = (body.name || '').slice(0, 200).trim();
+    const parsed = await readLimitedJson(request, MAX_ENTITY_BYTES);
+    if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
+    const body = parsed.value;
+    if (!body || typeof body !== 'object') return epProblem(400, 'invalid_json', 'Body must be valid JSON');
+
+    const name = typeof body.name === 'string' ? body.name.slice(0, 200).trim() : '';
 
     if (!name) {
       return epProblem(400, 'missing_name', 'name is required');

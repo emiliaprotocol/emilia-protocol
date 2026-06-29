@@ -43,6 +43,7 @@
 
 import { NextResponse } from 'next/server';
 import { verifyEmiliaReceipt, receiptChallenge } from '@/packages/require-receipt/index.js';
+import { readLimitedJson } from '@/lib/http/body-limit';
 
 export const runtime = 'nodejs';
 
@@ -51,11 +52,23 @@ export const runtime = 'nodejs';
 const SAMPLE_ACTION = 'demo.delete_production_database';
 
 const WWW_AUTH = `EMILIA realm="agent-actions", action="${SAMPLE_ACTION}"`;
+const MAX_RECEIPT_DEMO_BYTES = 256 * 1024;
 
 export async function POST(request) {
+  const parsed = await readLimitedJson(request, MAX_RECEIPT_DEMO_BYTES, { invalidValue: {} });
+  if (!parsed.ok) {
+    return NextResponse.json(
+      {
+        ...receiptChallenge(SAMPLE_ACTION, 'Refusing an irreversible action: request body is too large.'),
+        loop: { rule: 'No receipt, no irreversible action.', sample_action: SAMPLE_ACTION },
+      },
+      { status: 413, headers: { 'WWW-Authenticate': WWW_AUTH } },
+    );
+  }
+
   // 1) Look for a presented receipt — header first, then body.
   let doc = null;
-  const body = await request.json().catch(() => ({}));
+  const body = parsed.value;
   if (body && body.emilia_receipt) doc = body.emilia_receipt;
   if (!doc) {
     const hdr = request.headers.get('x-emilia-receipt');

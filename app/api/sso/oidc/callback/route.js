@@ -7,8 +7,8 @@ export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { discover, exchangeCode, validateIdToken } from '@/lib/sso/oidc';
-import { loadConnection } from '@/lib/sso/config';
-import { validateSsoProviderUrl } from '@/lib/sso/url-policy';
+import { loadConnection, spOrigin } from '@/lib/sso/config';
+import { validateOidcRedirectUri, validateSsoProviderUrl } from '@/lib/sso/url-policy';
 import { verifyState, SSO_STATE_COOKIE } from '@/lib/sso/state';
 import { mintSession, SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from '@/lib/sso/session';
 import { normalizeUserName } from '@/lib/scim/core';
@@ -30,10 +30,13 @@ export async function GET(request) {
   if (stateData.state !== returnedState) return epProblem(400, 'state_mismatch', 'State does not match');
 
   const { tenant, nonce, codeVerifier, redirectUri } = stateData;
+  const redirect = validateOidcRedirectUri(redirectUri, spOrigin(request));
+  if (!redirect.valid) return epProblem(400, 'unsafe_oidc_redirect_uri', 'Login state carried an unsafe redirect URI');
+  const safeRedirectUri = redirect.url;
   const { connection, error } = await loadConnection(tenant, 'oidc');
   if (error) return epProblem(503, 'config_unavailable', 'Could not load SSO config');
   if (!connection?.oidc_issuer) return epProblem(404, 'sso_not_configured', 'OIDC connection not found');
-  const issuer = validateSsoProviderUrl(connection.oidc_issuer, 'oidc_issuer');
+  const issuer = await validateSsoProviderUrl(connection.oidc_issuer, 'oidc_issuer');
   if (!issuer.valid) return epProblem(400, 'unsafe_sso_url', 'Configured OIDC issuer is not allowed');
 
   let doc;
@@ -49,7 +52,7 @@ export async function GET(request) {
       tokenEndpoint: doc.token_endpoint,
       clientId: connection.oidc_client_id,
       clientSecret: connection.oidc_client_secret,
-      code, redirectUri, codeVerifier,
+      code, redirectUri: safeRedirectUri, codeVerifier,
     });
   } catch (err) {
     logger.warn('[sso/oidc/callback] token exchange failed:', err.message);

@@ -603,6 +603,7 @@ describe('notifyEyeAdvisory', () => {
     expect(calledUrl).toContain('hooks.slack.com');
     expect(init.method).toBe('POST');
     expect(init.headers['Content-Type']).toBe('application/json');
+    expect(init.redirect).toBe('manual');
     expect(() => JSON.parse(init.body)).not.toThrow();
     expect(init.signal).toBeInstanceOf(AbortSignal);
   });

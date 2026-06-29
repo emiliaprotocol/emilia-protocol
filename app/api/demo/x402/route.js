@@ -21,10 +21,12 @@
 
 import { NextResponse } from 'next/server';
 import { x402ReceiptChallenge, verifyX402Proof } from '@/lib/require-receipt/x402.js';
+import { readLimitedJson } from '@/lib/http/body-limit';
 
 export const runtime = 'nodejs';
 
 const SAMPLE_ACTION = 'demo.delete_production_database';
+const MAX_X402_DEMO_BYTES = 256 * 1024;
 
 function challenge(request) {
   return x402ReceiptChallenge({
@@ -38,7 +40,14 @@ export async function POST(request) {
   // Proof carried in X-PAYMENT (x402) — fall back to legacy header / body.
   let payment = request.headers.get('x-payment') || request.headers.get('x-emilia-receipt') || null;
   if (!payment) {
-    const body = await request.json().catch(() => ({}));
+    const parsed = await readLimitedJson(request, MAX_X402_DEMO_BYTES, { invalidValue: {} });
+    if (!parsed.ok) {
+      return NextResponse.json(
+        { ...challenge(request), rejected: { reason: 'payload_too_large' } },
+        { status: 413, headers: { 'WWW-Authenticate': `x402 scheme="emilia-receipt", action="${SAMPLE_ACTION}"` } },
+      );
+    }
+    const body = parsed.value;
     if (body?.emilia_receipt) payment = body.emilia_receipt; // already-decoded object
   }
 

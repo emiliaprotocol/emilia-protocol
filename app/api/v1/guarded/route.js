@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { receiptChallenge } from '@/packages/require-receipt/index.js';
 import { verifyReceiptForProduction, assertGovVerifierReady } from '@/lib/gov-receipt-verifier.js';
+import { readLimitedJson } from '@/lib/http/body-limit';
 
 export const runtime = 'nodejs';
+
+const MAX_GUARDED_BYTES = 256 * 1024;
 
 /**
  * POST /api/v1/guarded[?action=payment.release]
@@ -21,9 +24,11 @@ export const runtime = 'nodejs';
  */
 export async function POST(request) {
   const action = new URL(request.url).searchParams.get('action') || 'payment.release';
+  const parsed = await readLimitedJson(request, MAX_GUARDED_BYTES, { invalidValue: {} });
+  if (!parsed.ok) return NextResponse.json(receiptChallenge(action, 'Request body too large.'), { status: parsed.status });
 
   let doc = null;
-  const body = await request.json().catch(() => ({}));
+  const body = parsed.value;
   if (body && body.emilia_receipt) doc = body.emilia_receipt;
   if (!doc) {
     const hdr = request.headers.get('x-emilia-receipt');

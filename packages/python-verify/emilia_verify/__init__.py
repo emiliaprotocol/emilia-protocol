@@ -202,7 +202,15 @@ def verify_receipt(
         return VerifyResult(False, checks, f"Signature verification failed: {e}")
 
     anchor = doc.get("anchor") or {}
-    if anchor.get("merkle_proof") and anchor.get("leaf_hash") and anchor.get("merkle_root"):
+    # Empty proof arrays are valid for a one-leaf Merkle tree. Do not use
+    # truthiness here: JavaScript treats [] as truthy, Python as false, and that
+    # split would silently skip anchor verification for single-leaf receipts.
+    has_anchor = (
+        isinstance(anchor.get("merkle_proof"), list)
+        and isinstance(anchor.get("leaf_hash"), str)
+        and isinstance(anchor.get("merkle_root"), str)
+    )
+    if has_anchor:
         if anchor.get("alg") == MERKLE_V2_ALG:
             expected_leaf = _leaf_hash_v2(canonicalize(doc["payload"]))
             checks["anchor"] = (anchor["leaf_hash"] == expected_leaf) and verify_merkle_anchor(
