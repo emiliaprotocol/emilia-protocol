@@ -109,7 +109,7 @@ Most production incidents and insider risk events share a pattern: someone with 
 
 EMILIA Protocol (EP) is the enforcement layer for that gap. Before a privileged action executes, EP verifies actor identity, authority chain, exact action context, and policy. Accountable Signoff requires a named human to explicitly own the action when policy demands it.
 
-EP is Apache 2.0 open source, internally audited at 100/100 against an adversarial red-team rubric (2026-04-02), and MCP-native with 34 tools and TypeScript + Python SDKs.
+EP is Apache 2.0 open source, internally audited at 100/100 against an adversarial red-team rubric (2026-04-02), and MCP-native with 36 tools and TypeScript + Python SDKs.
 
 A pilot could focus on one action class — production deployments, secrets rotation, emergency override approvals, or delegated admin actions. Happy to send the brief.
 
@@ -130,7 +130,7 @@ MCP defines how agents call tools. It doesn't enforce whether a specific high-ri
 
 EMILIA Protocol (EP) fills that layer. Before an agent action executes, EP verifies the principal's authority, the delegation chain, the exact action context, and the policy — then enforces one-time consumption and produces a human-attributable, immutable event record. Accountable Signoff adds a named human gate for actions that require it.
 
-EP is internally audited at 100/100 against an adversarial red-team rubric and MCP-native with 34 tools.
+EP is internally audited at 100/100 against an adversarial red-team rubric and MCP-native with 36 tools.
 
 If agent action governance is a live problem, I'd be glad to send the brief or talk through a pilot scope.
 

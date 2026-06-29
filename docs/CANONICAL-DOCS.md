@@ -8,7 +8,6 @@
 | `README.md` | Public project overview | Developers, evaluators |
 | `docs/EP-CORE-RFC.md` | Technical specification | Implementers |
 | `docs/THE-EROSION-OF-TRUST.md` | Manifesto — why trust needs a protocol | Everyone |
-| `docs/AAIF-PROPOSAL-v3.md` | Standards working group proposal | AAIF / Linux Foundation |
 | `docs/NIST-ENGAGEMENT-PLAN.md` | Government/standards engagement | NIST AI Safety Institute |
 | `docs/EP-SX-SOFTWARE-TRUST.md` | Software trust extension spec | Implementers |
 | `docs/EP-IX-IDENTITY-CONTINUITY.md` | Identity continuity extension (working draft) | Implementers, architects |
@@ -32,15 +31,14 @@
 
 | Target | Document |
 |---|---|
-| AAIF (pr@aaif.org) | `docs/AAIF-PROPOSAL-v3.md` + `docs/THE-EROSION-OF-TRUST.md` |
 | NIST | `docs/NIST-ENGAGEMENT-PLAN.md` |
 | Developers | `README.md` → `docs/EP-CORE-RFC.md` |
 | Press/public | `docs/THE-EROSION-OF-TRUST.md` |
 
 ## Archived (historical — do not reference as current)
 
-All files in `docs/archive/`:
-- `AAIF-PROPOSAL-v1.md`
+All files in `docs/archive/`, including `docs/archive/grants-and-applications-2026-06-29/`:
+- archived AAIF/AWS/grant/application drafts
 - `EP-SPEC-v1.md`
 - `EP-VISION-v1.md`
 - `competitive-analysis-raw.md`

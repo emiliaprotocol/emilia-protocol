@@ -30,7 +30,7 @@ category vision; "authorization receipt" is the thing people can adopt.
 | County finance / treasury / program integrity | Vendor bank-account changes and disbursements need proof of who approved them before money moved. | Scope a 60-day observe-mode GovGuard pilot. |
 | Internal / external auditors | Verify a receipt offline yourself; absence of a receipt is a finding. | Join a 30-minute auditor verification briefing. |
 | Insurers / brokers | The dual-authorization control already required by policy is not machine-verifiable today. EP makes it provable. | Review one insured workflow as a claims-ready evidence pilot. |
-| Agent / MCP developers | Your service can answer 402 Receipt Required and let agents self-serve proof. | Add `@emilia-protocol/require-receipt` to one irreversible endpoint. |
+| Agent / MCP developers | Your service can answer 428 Receipt Required and let agents self-serve proof. | Add `@emilia-protocol/require-receipt` to one irreversible endpoint. |
 | Standards people | EP supplies the human-authorization leg and conformance baseline for the receipt cluster. | Review AEC / conformance vectors; run the harness. |
 
 ## Adoption loops
@@ -60,7 +60,7 @@ Goal: one public endpoint, MCP server, or agent tool requires a receipt.
 
 Path:
 
-1. Service refuses an irreversible action with `402 EMILIA Receipt Required`.
+1. Service refuses an irreversible action with `428 EMILIA Receipt Required`.
 2. Agent reads the challenge.
 3. Agent obtains or issues an authorization receipt.
 4. Agent retries.
@@ -108,7 +108,7 @@ pass public negative vectors."
 | `/govguard` | Best paid-pilot page | This is the commercial landing page. Keep "Who approved the disbursement?" and the $25K/60-day framing. Add proof of exactly what the auditor receives. |
 | `/insurance` | Strong second wedge | Use after GovGuard, especially for brokers and carriers. The hook is "the control you already require is not provable." |
 | `/auditors` | Distribution channel | Treat auditors as multipliers. Add an explicit "Bring this to a client's control test" CTA and a downloadable workpaper sample. |
-| `/agent-guard` | Developer acquisition | Replace "Start free - get a key" emphasis with "Run the 402 loop" / "Require a receipt in one endpoint." Avoid account creation before proof. |
+| `/agent-guard` | Developer acquisition | Replace "Start free - get a key" emphasis with "Run the 428 Receipt Required loop" / "Require a receipt in one endpoint." Avoid account creation before proof. |
 | `/mcp` | Developer credibility | Keep registry proof, but route serious builders to `@emilia-protocol/mcp-guard` and `require-receipt`, not only the broad MCP server. |
 
 ## Metrics
@@ -128,7 +128,7 @@ Weekly input metrics:
 Developer adoption metrics:
 
 - External repos importing `@emilia-protocol/verify`, `issue`, `require-receipt`, or `mcp-guard`.
-- Public endpoints returning `402 EMILIA Receipt Required`.
+- Public endpoints returning `428 EMILIA Receipt Required` (legacy 402 remains available for x402/AP2-compatible flows).
 - External conformance runners.
 - External receipts issued with non-EMILIA keys.
 
@@ -166,13 +166,13 @@ Developer adoption metrics:
 - Ask 10 MCP/tool maintainers to put `require-receipt` in front of one irreversible
   demo endpoint.
 - Offer to open the PR for them.
-- The target is not a large integration. It is one public `402 Receipt Required`.
+- The target is not a large integration. It is one public `428 Receipt Required`.
 
 ### Days 12-14: publish the proof trail
 
 - Publish one short post:
 
-> "No receipt, no irreversible action: the 402 loop for agent tools"
+> "No receipt, no irreversible action: the Receipt Required loop for agent tools"
 
 - Publish one auditor-facing post:
 
@@ -220,7 +220,7 @@ Subject: Want to make one dangerous tool require proof?
 > `@emilia-protocol/require-receipt`.
 >
 > If a caller tries an irreversible action without proof, your service returns
-> `402 EMILIA Receipt Required`; a well-behaved agent obtains a receipt and
+> `428 EMILIA Receipt Required`; a well-behaved agent obtains a receipt and
 > retries. Offline verifier, no EMILIA backend required.
 >
 > I would be happy to PR this into one demo endpoint or destructive tool so your

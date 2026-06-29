@@ -5,7 +5,7 @@ export const metadata = {
     + 'policy/permit, decision, and human-authorization receipts — all on the same '
     + 'canonical substrate. EP-AEC defines the missing layer: how a relying party verifies '
     + 'that several heterogeneous receipts all bind the same action and each verify under '
-    + 'their own rules, yielding a single offline, fail-closed ALLOW or DENY. Open standard, '
+    + 'their own rules, yielding a single offline, fail-closed ALLOW or DENY. Open protocol, '
     + 'tri-language verifiers, filed Internet-Draft.',
   alternates: { canonical: '/evidence-chain' },
   openGraph: {

@@ -3,7 +3,7 @@
 **Date:** 2026-06-12
 **Audience:** Buyers, auditors, standards reviewers, and anyone comparing EP to an adjacent effort.
 **Companion:** For private-sector vendor-payment-fraud competitors (Trustpair, Eftsure, Validis, Onyxia, Creditsafe), see [`docs/strategy/DIFFERENTIATION.md`](../strategy/DIFFERENTIATION.md). This page covers AI-agent and standards-layer efforts.
-**Category phrase:** EP is **the open standard for authorization receipts**. The category is not empty — several efforts are converging on it, and that is good for everyone. This page states EP's specific, verifiable position within it.
+**Category phrase:** EP is **the open protocol and candidate standard for authorization receipts**. The category is not empty — several efforts are converging on it, and that is good for everyone. This page states EP's specific, verifiable position within it.
 
 ---
 
@@ -45,4 +45,4 @@ One line each. The posture is convergence, not category ownership.
 
 ## The honest summary
 
-EP does not claim the category is empty, that it has no peers, or that its open federation milestone is met by an independent third party (it is not — see `FEDERATION-PROOF.md`). What EP claims is narrow and checkable: it is the open standard for **authorization receipts** — a named human's device-bound signoff over an exact irreversible action, verifiable offline by anyone, in three languages, against a public conformance suite, with formal evidence and compliance mappings behind it. For the buyer who needs audit evidence that outlives the vendor, that is the differentiated answer. For everyone else, the adjacent efforts above are good at what they do.
+EP does not claim the category is empty, that it has no peers, or that its open federation milestone is met by an independent third party (it is not — see `FEDERATION-PROOF.md`). What EP claims is narrow and checkable: it is an open protocol for **authorization receipts** — a named human's device-bound signoff over an exact irreversible action, verifiable offline by anyone, in three languages, against a public conformance suite, with formal evidence and compliance mappings behind it. For the buyer who needs audit evidence that outlives the vendor, that is the differentiated answer. For everyone else, the adjacent efforts above are good at what they do.

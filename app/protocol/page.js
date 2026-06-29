@@ -110,7 +110,7 @@ export default function ProtocolPage() {
         <div className="ep-tag ep-hero-badge">The Protocol</div>
         <h1 className="ep-hero-text" style={styles.h1}>Trust, enforced at the action level</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 600 }}>
-          EMILIA Protocol (EP) is an open standard for binding actor identity, authority, policy,
+          EMILIA Protocol (EP) is an open protocol for binding actor identity, authority, policy,
           and exact action context into a single cryptographic ceremony — before any high-risk
           action is allowed to proceed.
         </p>

@@ -82,4 +82,4 @@ burden: deploy EMILIA in observe-mode on a single human-control boundary, produc
 verifiable evidence trail, and demonstrate the compliance artifact in a tabletop review.
 No production change in observe mode; offline and air-gap ready.
 
-*EMILIA Protocol, Inc. · open standard + managed assurance layer · team@emiliaprotocol.ai*
+*EMILIA Protocol, Inc. · open protocol + managed assurance layer · team@emiliaprotocol.ai*

@@ -22,7 +22,7 @@ New framing:
 - docs/POSITIONING.md
 - docs/PROTOCOL-STANDARD.md
 - docs/INVESTOR-NARRATIVE.md
-- docs/AAIF-PROPOSAL-v2.md
+- docs/archive/grants-and-applications-2026-06-29/AAIF-PROPOSAL-v2.md
 - docs/LAUNCH.md
 - docs/OUTREACH-EMAILS.md
 - docs/PILOT-OUTREACH-EMAILS.md

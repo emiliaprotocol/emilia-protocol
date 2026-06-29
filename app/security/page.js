@@ -124,7 +124,7 @@ export default function SecurityPage() {
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
         <h2 className="ep-reveal" style={styles.h2}>Formal verification</h2>
         <p className="ep-reveal" style={styles.body}>
-          The protocol is mathematically modeled in TLA+ and Alloy. The TLA+ specification declares 26 machine-checked safety invariants — handshake binding integrity, replay resistance, signoff accountability, handshake binding, replay resistance, signoff accountability, delegation, and identity continuity. The Alloy model declares 35 facts and 22 assertions covering structural invariants the TLA+ time-domain doesn't reach.
+          The protocol is mathematically modeled in TLA+ and Alloy. The TLA+ specification declares 26 machine-checked safety invariants — handshake binding integrity, replay resistance, signoff accountability, delegation, and identity continuity. The Alloy model declares 35 facts and 22 assertions covering structural invariants the TLA+ time-domain doesn't reach.
         </p>
         <p className="ep-reveal" style={styles.body}>
           Both run in CI on every change to the formal models. A counterexample fails the build. The model is part of the codebase, not a paper attached to it.

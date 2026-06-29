@@ -36,7 +36,7 @@ Post message ①. If there's interest, reply with ②. Keep them short — Disco
 
 > Reference impl: `@emilia-protocol/mcp-guard` wraps a tool dispatcher — classify
 > reversible vs irreversible (honors `destructiveHint`/`readOnlyHint`) → consent → signoff
-> → receipt, else returns a 402-style "receipt required". Offline verifiers in JS/Python/Go;
+> → receipt, else returns Receipt Required (HTTP 428, with legacy 402 compatibility). Offline verifiers in JS/Python/Go;
 > the receipt format is a published IETF I-D (`draft-schrock-ep-authorization-receipts`),
 > but the SEP fixes just the *hook + semantics* — the format stays swappable.
 > Demo: `npx @emilia-protocol/issue demo` issues a receipt and verifies it offline in ~60s.

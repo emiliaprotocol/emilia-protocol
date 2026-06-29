@@ -22,7 +22,7 @@ const PILLARS = [
   },
   {
     who: 'Lead the standard, don’t import it',
-    val: 'EMILIA is being contributed as an open standard at the IETF, with running code and conformance tests. Europe can be an early author of the accountability standard the world will need — rather than adopting one written elsewhere.',
+    val: 'EMILIA is being contributed through open IETF Internet-Drafts, with running code and conformance tests. Europe can be an early author of the accountability standard the world will need — rather than adopting one written elsewhere.',
   },
 ];
 

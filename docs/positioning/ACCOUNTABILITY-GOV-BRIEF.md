@@ -54,7 +54,7 @@ AI — including agentic AI — is the **#1 priority of US state CIOs for 2026**
 
 **The pilot:** [`docs/pilots/GOVGUARD-PILOT-OFFER.md`](../pilots/GOVGUARD-PILOT-OFFER.md) — 60 days, observe mode, $25,000 fixed, nothing blocked. You get the accountability-surface map and receipts your auditors verify without trusting us.
 
-EMILIA Protocol is the open standard for authorization receipts (Apache 2.0), with a posted IETF Internet-Draft (`draft-schrock-ep-authorization-receipts`).
+EMILIA Protocol is an open protocol for authorization receipts (Apache 2.0), with a posted IETF Internet-Draft (`draft-schrock-ep-authorization-receipts`).
 
 **Sources:** Ohio Rev. Code § 9.39 (codes.ohio.gov/ohio-revised-code/section-9.39) · Wash. Const. art. XI, § 5 & AGO 1953 No. 94 (atg.wa.gov/ago-opinions/county-treasurer-duty-distrain-personal-property-tax-authority-charge-realty-personal) · Minn. Stat. § 385.18 (revisor.mn.gov/statutes/cite/385.18) · NASCIO State CIO Top Ten 2026 (nascio.org/press-releases/theres-a-new-day-in-state-technology).
 

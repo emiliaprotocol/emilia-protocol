@@ -87,7 +87,7 @@ export default function BlogPreActionPage() {
       <section className="ep-reveal" style={{ ...styles.section, paddingTop: 0, paddingBottom: 96 }}>
         <h2 style={styles.h2}>See it work</h2>
         <p style={styles.body}>
-          EMILIA Protocol is the open standard implementation of pre-action authorization. The protocol is formally verified — 26 TLA+ theorems, 35 Alloy facts — and the reference runtime is Apache 2.0.
+          EMILIA Protocol is an open protocol implementation of pre-action authorization. The protocol is formally verified — 26 TLA+ theorems, 35 Alloy facts — and the reference runtime is Apache 2.0.
         </p>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <a href="/protocol" className="ep-cta" style={cta.primary}>Read the protocol</a>

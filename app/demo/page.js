@@ -164,7 +164,7 @@ EMILIA> evaluating action before it runs`}
           <p style={{ ...styles.body, maxWidth: 560, margin: '0 auto 24px' }}>
             Every high-risk action an AI agent takes is evaluated before it runs. If it’s
             irreversible, a real human has to sign off — and there’s a cryptographic receipt either
-            way. Formally verified. Open standard.
+            way. Formally verified. Open protocol.
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/r/example" className="ep-cta" style={cta.primary}>See a real signed receipt →</Link>

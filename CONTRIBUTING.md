@@ -121,7 +121,7 @@ docs/
   EP-CORE-RFC.md          — canonical specification (v1.1)
   EP-SX-SOFTWARE-TRUST.md — software trust extension
   EP-IX-IDENTITY-CONTINUITY.md — identity continuity spec
-  AAIF-PROPOSAL-v2.md     — AAIF working group proposal
+  docs/archive/grants-and-applications-2026-06-29/AAIF-PROPOSAL-v2.md — archived AAIF working group proposal
 ```
 
 ## Style

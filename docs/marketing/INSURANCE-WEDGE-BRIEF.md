@@ -39,14 +39,14 @@ An **authorization receipt**: before a high-risk transfer or instruction change 
 (WebAuthn / passkey / Face ID), producing a signed artifact **anyone can verify offline —
 no account, no trust in the insured's systems**. Alter one byte and it fails.
 
-- **Dual authorization, made cryptographic — and deepfake-proof.** EP-QUORUM binds *two
+- **Dual authorization, made cryptographic — and deepfake-resistant.** EP-QUORUM binds *two
   distinct, device-bound humans* to the exact action. Unlike a callback, it cannot be
   defeated by a cloned voice — the approval is a hardware-held signature over the action,
   not a phone conversation.
 - **Portable, durable evidence.** The receipt is the machine-checkable artifact the carrier
   reconstructs by hand today — verifiable years later (EP-EVIDENCE-RECORD handles multi-year
   retention), without the insured's cooperation.
-- **Open standard.** Apache-2.0, IETF Internet-Drafts, three independent verifiers — no
+- **Open protocol.** Apache-2.0, IETF Internet-Drafts, three independent verifiers — no
   vendor lock-in for carrier or insured.
 
 ## The pilot (and why it's the fast path)

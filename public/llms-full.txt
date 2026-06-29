@@ -55,10 +55,11 @@ verification. The receipt proves what was authorized; it cannot be forged.
   enforced server-side: the approver must differ from the initiator).
 
 ## Reproducible benchmark
-Four frontier models (gpt-4o-mini, grok-4, claude-sonnet-4.5, gemini-2.5-flash) acting as
-autonomous treasury agents on six high-stakes tasks. Unguarded, they executed 50–83% of
-high-stakes actions (incl. a prompt-injected one). With EMILIA: 0%, every model, with
-zero false friction. Harness: `node bench/run.mjs`. Board: /for-ai-companies.
+The public harness runs autonomous treasury-agent prompts against six high-stakes tasks
+and six safe controls, then records raw model outputs and scorer decisions. Model
+behavior varies by run; EMILIA's side is deterministic: receiptless high-risk actions
+such as >=$50k releases and bank-destination changes are refused by policy. Harness:
+`node bench/run.mjs`. Board: /for-ai-companies.
 
 ## What the proofs cover — and what they do NOT (stated plainly)
 Covered (formally, in TLA+ + Alloy, checked in CI): protocol safety — action-bound

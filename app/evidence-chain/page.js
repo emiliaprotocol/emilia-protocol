@@ -240,7 +240,7 @@ export default function EvidenceChainPage() {
             presented bind that action, each verify under their own rules, and a stated composition
             requirement was met — offline and without trust in the operator. It does not establish
             that the decision was correct, nor real-world identity beyond each receipt’s enrollment
-            layer. Open standard (Apache-2.0), IETF Internet-Drafts; no production deployment claim
+            layer. Open protocol (Apache-2.0), IETF Internet-Drafts; no production deployment claim
             implied.
           </p>
         </section>

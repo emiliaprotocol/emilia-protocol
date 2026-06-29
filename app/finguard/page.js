@@ -11,7 +11,7 @@ const PROTECTED_ACTIONS = [
   { type: 'vendor_bank_account_change', label: 'Vendor bank-account change', sample: 'AP user updates routing before $250K release' },
   { type: 'beneficiary_creation', label: 'Beneficiary creation', sample: 'New SWIFT-eligible counterparty added' },
   { type: 'large_payment_release', label: 'Large payment release', sample: 'Treasury releases wire above $50K threshold' },
-  { type: 'ai_agent_payment_action', label: 'AI-agent initiated payment action', sample: 'Autonomous agent triggers a transfer' },
+  { type: 'ai_agent_payment_action', label: 'AI-agent initiated payment action', sample: 'Policy classification used by payment-release and agent-guard paths' },
 ];
 
 const STAGES = [
@@ -30,7 +30,7 @@ const SCENARIOS = [
   },
   {
     title: 'AI agent triggers a transfer',
-    body: 'An autonomous agent attempts to initiate a wire. Policy flags ai_agent_payment_action — human signoff required regardless of amount. The agent\'s receipt is issued in pending_signoff state.',
+    body: 'An autonomous agent attempts to initiate a wire. The payment-release or agent-guard path classifies the action as ai_agent_payment_action — human signoff required regardless of amount. The receipt is issued in pending_signoff state.',
   },
   {
     title: 'Large payment escalation',

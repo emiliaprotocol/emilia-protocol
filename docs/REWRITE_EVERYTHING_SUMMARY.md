@@ -25,7 +25,7 @@ New framing:
 - docs/POSITIONING.md
 - docs/INVESTOR-NARRATIVE.md
 - docs/PROTOCOL-STANDARD.md
-- docs/AAIF-PROPOSAL-v2.md
+- docs/archive/grants-and-applications-2026-06-29/AAIF-PROPOSAL-v2.md
 - docs/THE-EROSION-OF-TRUST.md
 - docs/EP-BEYOND-AGENTS.md
 - docs/EP-CORE-RFC.md

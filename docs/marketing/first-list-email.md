@@ -21,7 +21,7 @@ Hey — thanks for putting your name down. You're one of the first here, so here
 
 **The problem.** AI agents are starting to *act*, not just answer — moving money, changing records, deploying code. When one does something irreversible, there's a question nobody can answer cleanly: *who approved this?* Logs tell you what happened; they don't **prove** a named human authorized this exact action before it ran.
 
-**What EMILIA is.** An open standard for **authorization receipts** — cryptographic, offline-verifiable proof that a named human approved an exact, irreversible agent action *before* it executed. Not another model. Not a guardrail that *might* catch something after the fact. A receipt anyone can verify — forever, with open-source code and a public key — without trusting the system whose conduct is in question. OAuth answered *who are you*; this answers *who approved this*.
+**What EMILIA is.** An open protocol for **authorization receipts** — cryptographic, offline-verifiable proof that a named human approved an exact, irreversible agent action *before* it executed. Not another model. Not a guardrail that *might* catch something after the fact. A receipt anyone can verify — forever, with open-source code and a public key — without trusting the system whose conduct is in question. OAuth answered *who are you*; this answers *who approved this*.
 
 **Where it actually is** — and I'll be straight: I'm one founder, pre-revenue, no customers yet.
 - A published **IETF Internet-Draft** (draft-schrock-ep-authorization-receipts).

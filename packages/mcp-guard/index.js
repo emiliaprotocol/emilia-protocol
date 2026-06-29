@@ -7,7 +7,7 @@
  * straight through untouched.
  *
  *   reversible / read-only tool  → pass through (no overhead)
- *   irreversible tool, no proof  → 402-style refusal (the demand hook)
+ *   irreversible tool, no proof  → legacy refusal object (the demand hook)
  *   irreversible tool, gated     → consent → Class-A signoff → EP-RECEIPT-v1
  *                                  emitted + a provenance entry appended → run
  *
@@ -132,7 +132,7 @@ export function classifyToolCall(name, args = {}, opts = {}) {
 // ---------------------------------------------------------------------------
 // The demand hook — "no irreversible tool call without a valid receipt".
 // Reuses @emilia-protocol/require-receipt for offline verification. NO new
-// trust. Returns a clear 402-style refusal OBJECT (not an HTTP response) so it
+// trust. Returns a clear legacy refusal OBJECT (not an HTTP response) so it
 // works inside any MCP tool-dispatch path. FAILS CLOSED.
 // ---------------------------------------------------------------------------
 
@@ -167,8 +167,8 @@ function extractReceipt(args = {}, meta = {}) {
 }
 
 /**
- * Build the 402-style refusal object an MCP tool can return verbatim. Same
- * problem-details shape as require-receipt's HTTP 402 challenge, framed for a
+ * Build the legacy refusal object an MCP tool can return verbatim. Same
+ * problem-details shape as require-receipt's challenge, framed for a
  * tool result so a well-behaved agent knows exactly what to bring and retry.
  */
 export function refusal(action, reason, extra = {}) {
@@ -196,7 +196,7 @@ export function refusal(action, reason, extra = {}) {
  * Verifies the presented receipt OFFLINE via require-receipt (pinned issuer
  * keys, freshness, action binding, allowed outcomes). Returns either
  * `{ ok: true, verified }` or `{ ok: false, refusal }` — the refusal is the
- * 402-style object. FAILS CLOSED: anything missing/invalid → refusal.
+ * legacy MCP object. FAILS CLOSED: anything missing/invalid → refusal.
  *
  * @param {object} p
  * @param {string} p.action            canonical action bound into the receipt
@@ -389,7 +389,7 @@ export function withMcpGuard(handler, options = {}) {
       const carriesReceipt = !!extractReceipt(args, meta);
       if (carriesReceipt) {
         const d = demandReceipt({ action, args, meta, verifyOpts });
-        if (!d.ok) return d.refusal; // FAIL CLOSED — 402-style object, do not run.
+        if (!d.ok) return d.refusal; // FAIL CLOSED — refusal object, do not run.
         // Verified. Record provenance referencing the (already v1) receipt, run.
         const doc = extractReceipt(args, meta);
         ledger.append({

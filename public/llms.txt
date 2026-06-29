@@ -22,7 +22,7 @@ EMILIA Gate is the action firewall: drop it in front of a dangerous tool and it 
     npm i @emilia-protocol/gate
 
 ## Start here
-- [For AI companies](https://www.emiliaprotocol.ai/for-ai-companies): the agent-accountability problem and a reproducible cross-model benchmark — unguarded frontier-model agents executed 50–83% of high-stakes actions; with EMILIA in front, 0%, with zero false friction.
+- [For AI companies](https://www.emiliaprotocol.ai/for-ai-companies): the agent-accountability problem and a reproducible benchmark harness for autonomous treasury agents — six high-stakes requests, six safe controls, and deterministic refusal of receiptless high-risk actions by EMILIA.
 - [Quickstart](https://www.emiliaprotocol.ai/quickstart): add the guard to an agent in a few lines.
 - [Why agents fail](https://www.emiliaprotocol.ai/why-agents-fail): four failure modes and the missing step.
 - [Specification](https://www.emiliaprotocol.ai/spec): the protocol — pre-action binding, policy-bound verification, one-time consumption, accountable human signoff.

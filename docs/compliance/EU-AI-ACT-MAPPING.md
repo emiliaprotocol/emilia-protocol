@@ -62,7 +62,7 @@ This mapping covers EP's ability to help operators satisfy obligations under the
 | Requirement | EP Implementation |
 |-------------|-------------------|
 | 13(1): Sufficient transparency for interpretation | EP Trust Decisions include `reasons` array (human-readable), `policy_used`, `evidence_sufficient` flag, and `appeal_available` indicator. |
-| 13(2): Accompanying instructions for use | EP: QUICK_START_INTEGRATION.md, SDK documentation, MCP server with 34 self-describing tools. |
+| 13(2): Accompanying instructions for use | EP: QUICK_START_INTEGRATION.md, SDK documentation, MCP server with 36 self-describing tools. |
 | 13(3)(b)(ii): Level of accuracy and limitations | EP Trust Profiles include `confidence` level (5 tiers) and `evidence_depth`. Commitment proofs enable privacy-preserving accuracy attestation. |
 
 ---

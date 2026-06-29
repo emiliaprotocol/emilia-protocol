@@ -14,7 +14,7 @@ EP creates the control layer between authentication and execution. It determines
 - canonical action binding
 - one-time consumption
 - Accountable Signoff
-- MCP-native implementation (34 tools, TypeScript + Python SDKs)
+- MCP-native implementation (36 tools, TypeScript + Python SDKs)
 - production observability stack (structured JSON logging, Sentry on 3 runtimes)
 - supply chain security (SHA-pinned Actions, SBOM, provenance attestation)
 - cloud control plane

@@ -27,7 +27,7 @@ EMILIA Protocol is an attempt to fix that. Before a high-risk action runs, a nam
 
 Try it in ~30 seconds, fully offline, no key:
 - `npx @emilia-protocol/crash-test` — an agent proposes a $2.4M disbursement, self-approval is rejected, two humans sign, a receipt is issued, it verifies offline against nobody's server, and a forged copy is rejected. Emits an auditor workpaper.
-- The demand side: clone the repo, then `node examples/402-loop.mjs` — a service answers `402 Receipt Required`, the agent obtains a receipt and retries, like a browser handling 401.
+- The demand side: clone the repo, then `FAST=1 node examples/mcp/payment-server.mjs` — a service answers `428 Receipt Required`, the agent obtains a receipt and retries, then replay and forgery are refused. The legacy 402 loop remains available for x402/AP2-style compatibility.
 - Paste any receipt at emiliaprotocol.ai/verify; Face ID demo at /try.
 
 Open standard (Apache-2.0), posted as IETF Internet-Drafts, with three independent verifiers (JS / Python / Go) that agree on a cross-language conformance suite, plus TLA+ and Alloy machine-checked models.
@@ -44,7 +44,7 @@ Repo + drafts: github.com/emiliaprotocol/emilia-protocol
 
 The framing: several proposals on this agenda — AIIP, CIRP, AgentROA, and the delegation-receipt work — define machine-side, post-action or per-hop receipts of what an *agent* did under delegated authority. None binds a named, accountable **human** to the action before it executes. A newer individual effort — Permit Receipts (`draft-lee-orprg-permit-receipts`) — authorizes the *effect at the boundary by policy* before commit, and independently converges on the same evidence primitives (canonical action-digest binding, policy epoch, anti-replay, fail-closed) — which I take as a signal the shape is right; EP is precisely the human-authorization layer its own author notes can sit atop it. EP is that missing layer: an offline-verifiable, non-repudiable receipt that a named human — or a quorum of distinct humans, the two-person rule — authorized a specific high-risk action, with separation of duties and a cryptographic ordering chain. They compose into one accountability chain: who authorized it (EP) → that it was carried out (the agent-side drafts). I've been coordinating directly with the DRP author, and three of us published a joint survey mapping the efforts onto one verifier-side matrix.
 
-On maturity: three independent, interoperable implementations — JavaScript, Python, Go — agree on a cross-language conformance suite spanning receipts, multi-party quorum, revocation, provenance, and long-term preservation, plus machine-checked TLA+ and Alloy models, in CI. And the demand-side mechanic is live and runnable today — a service that answers `402 Receipt Required`, an agent that obtains a receipt and retries, verified offline. I can show it in two minutes.
+On maturity: three independent, interoperable implementations — JavaScript, Python, Go — agree on a cross-language conformance suite spanning receipts, multi-party quorum, revocation, provenance, and long-term preservation, plus machine-checked TLA+ and Alloy models, in CI. And the demand-side mechanic is live and runnable today — a service that answers `428 Receipt Required`, an agent that obtains a receipt and retries, verified offline, then replay and forgery are refused. I can show it in two minutes.
 
 The honest gap: no production deployment yet — that's the work in front of me. The ask: dispatch guidance on whether human-authorization receipts belong as a work item here, and the room's view on convergence with the delegation-receipt drafts."
 
@@ -59,7 +59,7 @@ newsletters. Send post-interim.
 
 > Subject: agents are taking irreversible actions with no proof a human authorized them
 >
-> Hi — I ran into a gap building agent tooling: when an AI agent moves money or changes a record, "a human approved it" is an unfalsifiable claim. There's no artifact a court, auditor, or counterparty can check afterward. I ended up writing an IETF draft and building offline-verifiable "authorization receipts" — a named human signs the exact action on their device, and anyone can verify it offline, no server. Three independent implementations (JS/Python/Go) agree on a conformance suite; there's a 30-second offline demo (`npx @emilia-protocol/crash-test`) and a live `402 Receipt Required` loop. Thought it might fit your audience. Happy to send the one-pager or do a short writeup.
+> Hi — I ran into a gap building agent tooling: when an AI agent moves money or changes a record, "a human approved it" is an unfalsifiable claim. There's no artifact a court, auditor, or counterparty can check afterward. I ended up writing an IETF draft and building offline-verifiable "authorization receipts" — a named human signs the exact action on their device, and anyone can verify it offline, no server. Three independent implementations (JS/Python/Go) agree on a conformance suite; there's a 30-second offline demo (`npx @emilia-protocol/crash-test`) and a live `428 Receipt Required` loop. Thought it might fit your audience. Happy to send the one-pager or do a short writeup.
 
 **Console.dev / TLDR (developer tools):**
 
@@ -73,7 +73,7 @@ EP ships an MCP server (36 tools) that gates agent actions behind verifiable
 human authorization — a natural fit for "awesome-mcp-servers" lists. Submit a PR
 to the relevant list(s) with:
 
-> - **[EMILIA Protocol](https://github.com/emiliaprotocol/emilia-protocol)** — Gate irreversible MCP tool calls behind a named human's offline-verifiable authorization receipt (WebAuthn signoff, two-person rule). 36 tools; require-receipt 402 loop; IETF-drafted.
+> - **[EMILIA Protocol](https://github.com/emiliaprotocol/emilia-protocol)** — Gate irreversible MCP tool calls behind a named human's offline-verifiable authorization receipt (WebAuthn signoff, two-person rule). 36 tools; Receipt Required 428 rail with legacy 402 compatibility; IETF-drafted.
 
 Target lists (verify each is active before submitting): `punkpeye/awesome-mcp-servers`, `wong2/awesome-mcp-servers`, and the modelcontextprotocol community list. Keep the entry one line, factual, no superlatives.
 

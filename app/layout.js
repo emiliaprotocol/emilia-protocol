@@ -62,7 +62,7 @@ export const metadata = {
     title: 'EMILIA Protocol — The Accountability Layer for AI Agents',
     description:
       'A named human signs the exact action on their own device before an AI agent ' +
-      'does anything irreversible. Formally verified, Apache 2.0, production-ready.',
+      'does anything irreversible. Formally verified, Apache 2.0, production-oriented reference runtime.',
     images: [
       {
         url: '/og-default.png',
@@ -111,9 +111,9 @@ const ORGANIZATION_JSONLD = {
   url: 'https://www.emiliaprotocol.ai',
   logo: 'https://www.emiliaprotocol.ai/logo.png',
   description:
-    'Open standard and Apache-2.0 reference runtime for verifiable pre-action ' +
+    'Open protocol and Apache-2.0 reference runtime for verifiable pre-action ' +
     'authorization in AI agent systems.',
-  foundingDate: '2026-01-01',
+  foundingDate: '2026-06-03',
   sameAs: [
     'https://github.com/emiliaprotocol',
     'https://www.npmjs.com/package/@emilia-protocol/mcp-server',
@@ -149,9 +149,9 @@ const SOFTWARE_APPLICATION_JSONLD = {
   name: 'EMILIA Protocol',
   applicationCategory: 'SecurityApplication',
   applicationSubCategory: 'AI Authorization Protocol',
-  operatingSystem: 'Cross-platform (Node.js, Python; Cloud)',
+  operatingSystem: 'Cross-platform (Node.js, Python, Go; Cloud)',
   description:
-    'Open standard and Apache-2.0 reference runtime for verifiable ' +
+    'Open protocol and Apache-2.0 reference runtime for verifiable ' +
     'pre-action authorization in AI agent systems. Cryptographically binds ' +
     'actor identity, authority, policy, and action context before execution.',
   url: 'https://www.emiliaprotocol.ai',
@@ -176,7 +176,7 @@ const SOFTWARE_APPLICATION_JSONLD = {
     'NIST AI RMF and EU AI Act compliance mappings',
     'MCP server with 36 trust tools (17 core by default)',
     'LangChain, CrewAI, and AutoGen integrations',
-    'Offline receipt verification in JavaScript and Python',
+    'Offline receipt verification in JavaScript, Python, and Go',
     'TypeScript and Python SDKs',
   ],
 };

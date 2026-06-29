@@ -26,7 +26,7 @@ export default function AboutPage() {
         <div className="ep-tag ep-hero-badge">About</div>
         <h1 className="ep-hero-text" style={styles.h1}>The team behind EMILIA Protocol</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 620 }}>
-          EMILIA Protocol is an open standard for verifiable pre-action authorization. The protocol is formally verified — 26 TLA+ theorems and 35 Alloy facts run in CI on every change — and the reference runtime is Apache 2.0. Below: the people responsible for it, the advisors guiding it, and the entity behind it.
+          EMILIA Protocol is an open protocol for verifiable pre-action authorization, published as active individual IETF Internet-Drafts. The protocol is formally verified — 26 TLA+ theorems and 35 Alloy facts run in CI on every change — and the reference runtime is Apache 2.0. Below: the people responsible for it, the advisors guiding it, and the entity behind it.
         </p>
       </section>
 

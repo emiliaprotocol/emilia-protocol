@@ -24,7 +24,7 @@ EP bets on option 2. The protocol that wins will be the one that was ready when 
 - 670+ automated tests, 116 adversarial cases
 - 50 database tables, all RLS-hardened, all search_path-pinned
 - 45+ API endpoints, all rate-limited, all auth-enforced
-- MCP server with 34 tools — native AI agent integration
+- MCP server with 36 tools — native AI agent integration
 - TypeScript + Python SDKs
 - Base L2 blockchain anchoring (~$0.60/month)
 
@@ -79,7 +79,7 @@ EP bets on option 2. The protocol that wins will be the one that was ready when 
 **Goal:** Make trust reasoning native to AI models
 
 - [x] LLM function-calling schema (8 functions, OpenAI + Anthropic format)
-- [x] MCP server (34 tools, already deployed)
+- [x] MCP server (36 tools, already deployed)
 - [ ] EP Eval benchmark (trust-reasoning evaluation for models)
 - [ ] Training dataset (anonymized, open-source trust interactions)
 - [ ] Model-readable compact receipt format (one-line, context-window-friendly)
@@ -141,7 +141,7 @@ EP bets on option 2. The protocol that wins will be the one that was ready when 
 | Due process / appeals | Yes (dispute lifecycle) | No |
 | Federation spec | Yes (PIP-006) | No |
 | Compliance mappings | NIST + EU AI Act | None |
-| MCP integration | 34 tools | 0 |
+| MCP integration | 36 tools | 0 |
 | Blockchain anchoring | Base L2 | None |
 
 ### Economic Model (No Token)
@@ -169,12 +169,12 @@ Revenue model: Red Hat to Linux. The protocol is free. Operational convenience i
 
 ---
 
-## Active Grant & Standards Engagements
+## Archived Grant & Application Engagements
 
 | Engagement | Status | Document |
 |------------|--------|----------|
-| AAIF working group | Proposal submitted (v3) | docs/AAIF-PROPOSAL-v3.md |
-| AWS Open Source Fund | Application drafted | docs/AWS-GRANT-APPLICATION.md |
+| AAIF working group | Archived; do not submit without counsel review | docs/archive/grants-and-applications-2026-06-29/AAIF-PROPOSAL-v3.md |
+| AWS Open Source Fund | Archived draft | docs/archive/grants-and-applications-2026-06-29/AWS-GRANT-APPLICATION.md |
 | NIST AI Safety | Engagement plan active | docs/NIST-ENGAGEMENT-PLAN.md |
 
 ---

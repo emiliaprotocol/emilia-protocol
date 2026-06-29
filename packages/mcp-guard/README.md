@@ -10,7 +10,7 @@ provenance entry**, then runs the tool. Everything else **passes straight
 through** with no added overhead.
 
 It also ships the **demand hook**: a helper that enforces *"no irreversible tool
-call without a valid receipt"* and returns a clear **402-style refusal object** —
+call without a valid receipt"* and returns a clear legacy MCP refusal object —
 so a well-behaved agent knows exactly what to bring and retries on its own.
 
 ```bash
@@ -19,7 +19,7 @@ npm install @emilia-protocol/mcp-guard @emilia-protocol/require-receipt
 
 ## What this is — and what it is NOT
 
-- **Reference implementation.** It exercises the control flow, the 402 demand
+- **Reference implementation.** It exercises the control flow, the demand
   hook, the EP-RECEIPT-v1 emission *shape*, and an append-only provenance ledger
   — all in-process with pluggable adapters. Status: experimental.
 - **The EP Core is FROZEN.** This package **never** mints, mutates,
@@ -50,11 +50,11 @@ MCP tool call ── classify ─┬─ reversible / read-only ─────�
                            │
                            └─ irreversible
                                ├─ receipt presented ─► demand hook (offline verify)
-                               │                         ├─ invalid ─► 402 refusal (STOP)
+                               │                         ├─ invalid ─► refusal (STOP)
                                │                         └─ valid ──► append provenance ─► run
                                └─ no receipt ─► consent ─► Class-A signoff ─► issueReceipt
                                                   │           │                  │
-                                                  └─ deny ─► 402 refusal (STOP) ◄┘ (any stage)
+                                                  └─ deny ─► refusal (STOP) ◄┘ (any stage)
                                                                                   │
                                        self-verify issued EP-RECEIPT-v1 (fail closed)
                                                                                   │
@@ -148,7 +148,7 @@ does not run.
 ## The demand hook on its own
 
 Use it anywhere you can read a tool call. Returns a verified result or a
-ready-to-return 402-style refusal **object** (not an HTTP response), so it drops
+ready-to-return legacy refusal **object** (not an HTTP response), so it drops
 into any MCP tool-dispatch path.
 
 ```js
@@ -165,7 +165,7 @@ if (!d.ok) return d.refusal;             // FAIL CLOSED — hand this back to th
 // d.verified = { ok, outcome, subject, receipt_id, signer }
 ```
 
-The refusal object (402-style, problem-details shape):
+The refusal object (legacy MCP problem-details shape):
 
 ```json
 {

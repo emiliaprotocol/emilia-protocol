@@ -34,7 +34,7 @@ li { margin: 0.35em 0; }
 <header>
   <p class="kicker">European Digital Sovereignty · AI Act Article 14</p>
   <h1 class="title">Verifiable Human Oversight as European Digital Infrastructure</h1>
-  <p class="subtitle">An open standard for Article&nbsp;14 enforceability — owned by no single vendor, verifiable by anyone, offline.</p>
+  <p class="subtitle">An open protocol for Article&nbsp;14 enforceability — owned by no single vendor, verifiable by anyone, offline.</p>
 </header>
 
 <p class="lede">The AI Act requires <strong>human oversight</strong> of high-risk AI (Article&nbsp;14). But "a human was in the loop" is, today, an <strong>unfalsifiable claim</strong> — there is no artifact a regulator, court, or citizen can independently check that a specific, accountable person authorized a specific high-risk action before it executed. Europe is on course to require oversight it cannot verify — and to depend on US hyperscalers for the verification layer itself.</p>
@@ -45,7 +45,7 @@ li { margin: 0.35em 0; }
 <p>Whoever controls the layer that <em>proves</em> human oversight controls the audit substrate of European AI. If that layer is a proprietary feature inside a non-European cloud, oversight becomes something Europe <em>rents</em> rather than something it can <em>verify</em> for itself. The enforceability of Article&nbsp;14 should not depend on a single vendor's API.</p>
 
 <h2>What EMILIA Protocol is</h2>
-<p>EMILIA Protocol (EP) is an <strong>open standard</strong> (Apache-2.0, on the IETF standards track) for <strong>authorization receipts</strong>: before a high-risk action runs, a named human approves the <em>exact</em> action on their own device, and the system emits a signed evidence packet that <strong>anyone can verify offline — with no account and without trusting the issuer's servers</strong>. Alter one byte and verification fails. The receipt stays valid even if the issuing vendor disappears.</p>
+<p>EMILIA Protocol (EP) is an <strong>open protocol</strong> (Apache-2.0, published as active individual IETF Internet-Drafts) for <strong>authorization receipts</strong>: before a high-risk action runs, a named human approves the <em>exact</em> action on their own device, and the system emits a signed evidence packet that <strong>anyone can verify offline — with no account and without trusting the issuer's servers</strong>. Alter one byte and verification fails. The receipt stays valid even if the issuing vendor disappears.</p>
 
 <h2>Why this is sovereign infrastructure, not a product</h2>
 <ul>
@@ -61,7 +61,7 @@ li { margin: 0.35em 0; }
 <p>Medical AI is classified high-risk and must carry human oversight. EP expresses the clinician's authorization as <strong>tamper-evident, offline-verifiable evidence</strong> — mapping directly onto the independent double-check European hospitals already practice — and the receipt is <strong>PHI-free by construction</strong> (only hashed identifiers), so the evidence can be audited without a data-protection disclosure. The same primitive covers public procurement and benefits administration.</p>
 
 <div class="proof">
-Open standard (Apache-2.0) · IETF Internet-Drafts (authorization receipts; multi-party quorum) · 3 interoperable verifiers (JS/Python/Go) over 8 cross-language conformance suites · independently re-verified by an outside implementer (2026) · machine-checked TLA+ &amp; Alloy models · NIST AI RMF and EU AI Act Art. 9–15 + 26 mappings · try it: <strong>npx&nbsp;@emilia-protocol/crash-test</strong>
+Open protocol (Apache-2.0) · IETF Internet-Drafts (authorization receipts; multi-party quorum) · 3 interoperable verifiers (JS/Python/Go) over 8 cross-language conformance suites · independently re-verified by an outside implementer (2026) · machine-checked TLA+ &amp; Alloy models · NIST AI RMF and EU AI Act Art. 9–15 + 26 mappings · try it: <strong>npx&nbsp;@emilia-protocol/crash-test</strong>
 </div>
 
 <p class="contact"><strong>Iman Schrock</strong> — Founder, EMILIA Protocol · team@emiliaprotocol.ai · emiliaprotocol.ai · github.com/emiliaprotocol</p>

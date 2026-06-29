@@ -15,7 +15,7 @@ OAuth answered *"who are you."* **EMILIA answers *"who approved this."*** As AI 
 - **Defense wants it now.** DIU is actively soliciting human-on-the-loop + auditable governance for autonomous systems; EMILIA submitted to **DIU Project Spectrum Strike** (Round 1, June 2026). This is the American-Dynamism thesis as a single product.
 
 ### Why it's a monopoly-shaped bet
-Trust infrastructure standardizes **once** and the winner owns the category — the SSL / Stripe / Plaid pattern. Whoever owns the **open standard + the reference implementation + the conformance suite** becomes the default rail, then monetizes the managed layer (GovGuard / FinGuard, enterprise compliance, air-gapped/defense deployments). EMILIA is *deliberately* running the standards play — an **IETF Internet-Draft** and a **three-author, cross-vendor coalition** — so the protocol is un-ownable by any single competitor, and the company is the best-positioned operator of it. Open standard = distribution; managed product = revenue.
+Trust infrastructure standardizes **once** and the winner owns the category — the SSL / Stripe / Plaid pattern. Whoever owns the **open protocol + the reference implementation + the conformance suite** becomes the default rail, then monetizes the managed layer (GovGuard / FinGuard, enterprise compliance, air-gapped/defense deployments). EMILIA is *deliberately* running the standards play — an **IETF Internet-Draft** and a **three-author, cross-vendor coalition** — so the protocol is un-ownable by any single competitor, and the company is the best-positioned operator of it. Open protocol = distribution; managed product = revenue.
 
 ### What's real today (stated without inflation)
 - Published **IETF Internet-Draft** (`draft-schrock-ep-authorization-receipts`) + a 3-author cross-draft survey now before the IETF secdispatch chairs.
@@ -28,7 +28,7 @@ Trust infrastructure standardizes **once** and the winner owns the category — 
 **Pre-revenue, no customers yet, solo founder.** The next milestone is a **60-day government observe-mode pilot** — the first place a missing approval is a *statutory* problem, not just a bad day. This is a pre-seed/seed bet on a **category-defining primitive + an open-standard moat + a regulatory tailwind**, not on current traction. The traction risk is real and named; the mitigation is that every claim above is independently verifiable in minutes.
 
 ### Use of capital
-Land the first 2–3 government/finance pilots · convert observe-mode to enforce-mode on one real workflow · ship the demand-side `require-receipt` distribution loop · push the IETF standard to charter · first 2–3 engineering hires.
+Land the first 2–3 government/finance pilots · convert observe-mode to enforce-mode on one real workflow · ship the demand-side `require-receipt` distribution loop · push the IETF work toward charter · first 2–3 engineering hires.
 
 ---
 

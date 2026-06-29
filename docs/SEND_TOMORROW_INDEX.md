@@ -23,7 +23,7 @@
 - docs/conformance/PROOF_STATUS.md
 
 ## Standards / AAIF package
-- docs/AAIF-PROPOSAL-v2.md
+- docs/archive/grants-and-applications-2026-06-29/AAIF-PROPOSAL-v2.md
 - docs/PROTOCOL-STANDARD.md
 - docs/architecture/HANDSHAKE.md
 - docs/conformance/STATE_MACHINE.md

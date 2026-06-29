@@ -3,7 +3,7 @@ export const metadata = {
   description:
     'Field notes on AI agent authorization, MCP best practices, formal ' +
     'verification, fraud defense by action binding, and compliance mapping ' +
-    'for the EMILIA Protocol open standard.',
+    'for the EMILIA Protocol open protocol.',
   alternates: { canonical: '/blog' },
   openGraph: {
     title: 'EMILIA Protocol Blog',

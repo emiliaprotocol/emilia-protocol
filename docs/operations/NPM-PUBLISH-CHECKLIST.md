@@ -107,9 +107,10 @@ is genuinely live for any cold buyer who follows it.
    AAIF working-group thread, the AWS application supplement, the
    /partners design-partner page once that exists).
 
-3. Update `docs/AAIF-PROPOSAL-v3.md` and `docs/AWS-GRANT-APPLICATION.md`
-   to reference `^1.0.1` (or just `latest`) — both currently say
-   `1.0.0`. Mechanical find/replace.
+3. Archived grant/application drafts live under
+   `docs/archive/grants-and-applications-2026-06-29/`. Do not update them as
+   release blockers; create a fresh submission packet from current positioning
+   if a grant or standards application reopens.
 
 ---
 

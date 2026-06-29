@@ -92,7 +92,7 @@ The most expensive infrastructure failures usually follow the same pattern: some
 
 EMILIA Protocol (EP) creates that enforcement layer. Before a privileged action executes, EP verifies the actor, the authority chain, the exact action context, and the policy — and produces a tamper-evident event record tied to a specific human decision. Accountable Signoff enforces named human ownership before execution when policy requires it.
 
-The protocol has been internally audited at 100/100 against an adversarial red-team rubric across all 10 categories and is Apache 2.0 open source. MCP-native with 34 tools and TypeScript + Python SDKs.
+The protocol has been internally audited at 100/100 against an adversarial red-team rubric across all 10 categories and is Apache 2.0 open source. MCP-native with 36 tools and TypeScript + Python SDKs.
 
 If your team is looking at action-level enforcement for production deployments, secrets management, or delegated admin approvals, I can send the technical brief and a proposed pilot scope.
 
@@ -113,7 +113,7 @@ As autonomous agents move from recommendations to real-world execution — API c
 
 EMILIA Protocol (EP) is a trust substrate for that gap. Before an agent action executes, EP verifies the principal's authority, the delegation chain, the exact action context, and the policy — then enforces one-time consumption and produces an immutable, human-attributable event record. Accountable Signoff adds a named human accountability gate for actions that require it.
 
-The protocol has been internally audited at 100/100 against an adversarial red-team rubric across all 10 categories. MCP-native with 34 tools across the full EP surface.
+The protocol has been internally audited at 100/100 against an adversarial red-team rubric across all 10 categories. MCP-native with 36 tools across the full EP surface.
 
 If agent action governance is a live concern for your team, I'd be glad to send the brief or talk through a pilot scope.
 

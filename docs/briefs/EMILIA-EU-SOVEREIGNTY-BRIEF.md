@@ -18,7 +18,7 @@ EMILIA is an open **authorization-receipt layer**: before an AI agent performs a
 
 3. **It protects citizens, not just companies.** When automation touches a citizen's benefits, records, money, or rights, EMILIA guarantees a **named human stands behind that decision** — accountability against opaque, unaccountable machine action. That is a public-interest guarantee, not a vendor feature.
 
-4. **It is a chance for Europe to lead the standard, not import it.** EMILIA is being contributed as an open standard at the IETF (the global standards body), with running code and conformance tests. Europe — and Bulgaria — can be **early authors of the accountability standard** the world will need, rather than adopting one written elsewhere.
+4. **It is a chance for Europe to help shape the standard, not import it.** EMILIA is being contributed through open IETF Internet-Drafts, with running code and conformance tests. Europe — and Bulgaria — can be **early authors of the accountability standard** the world will need, rather than adopting one written elsewhere.
 
 ## What it is *not* (so the claim stays honest)
 
