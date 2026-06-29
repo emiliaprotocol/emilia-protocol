@@ -5,6 +5,8 @@
 // Priority and changeFrequency are hints to crawlers; Google largely
 // ignores them but other engines (Bing, Yandex, DuckDuckBot) still use them.
 
+import { REPRESENTATIVE_CORPUS } from '../packages/fire-drill/corpus.js';
+
 const BASE = 'https://www.emiliaprotocol.ai';
 
 // Last-modified for the whole site set to the build time. For pages with
@@ -132,7 +134,12 @@ export default function sitemap() {
     { path: '/legal/sub-processors',   priority: 0.5, changeFrequency: 'monthly' },
   ];
 
-  return [...marketing, ...comparison, ...blog, ...essays, ...product, ...functional, ...corporate, ...legal].map((entry) => ({
+  // Per-server Agent Action Firewall result pages (backlink + discovery surface).
+  const scans = REPRESENTATIVE_CORPUS.map((c) => ({
+    path: `/fire-drill/scan/${c.slug}`, priority: 0.7, changeFrequency: 'monthly',
+  }));
+
+  return [...marketing, ...comparison, ...blog, ...essays, ...product, ...functional, ...corporate, ...legal, ...scans].map((entry) => ({
     url: `${BASE}${entry.path}`,
     lastModified: NOW,
     changeFrequency: entry.changeFrequency,
