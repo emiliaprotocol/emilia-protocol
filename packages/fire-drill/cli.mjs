@@ -12,7 +12,7 @@
  * @license Apache-2.0
  */
 import fs from 'node:fs';
-import { scan, TAGLINE } from './index.js';
+import { scan, TAGLINE, generatePullRequest } from './index.js';
 
 const argv = process.argv.slice(2);
 const flags = new Set(argv.filter((a) => a.startsWith('--')));
@@ -40,6 +40,12 @@ try {
 
 if (flags.has('--json')) {
   console.log(JSON.stringify(report, null, 2));
+  process.exit(report.eg1 === 'pass' ? 0 : 1);
+}
+
+if (flags.has('--pr')) {
+  const pr = generatePullRequest(report);
+  console.log(`# ${pr.title}\n\n${pr.body}`);
   process.exit(report.eg1 === 'pass' ? 0 : 1);
 }
 

@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/gate",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "EMILIA Gate — the Trusted Action Firewall. Deny-by-default enforcement for consequential machine actions: an action runs only with a valid, in-scope, sufficiently-assured, non-replayed EMILIA authorization receipt (proof a named human authorized this exact action). Composes require-receipt + verify; adds assurance-tier enforcement, one-time consumption (replay defense), a tamper-evident evidence log, default high-risk action packs, execution-field binding, reliance packets, an MCP drop-in, a GitHub system-of-record adapter, and EG-1 conformance. Framework-agnostic, fails closed. Reference implementation, experimental.",
   "license": "Apache-2.0",
   "type": "module",
@@ -15,11 +15,16 @@
     "./adapters/k8s": "./adapters/k8s.js",
     "./adapters/terraform": "./adapters/terraform.js",
     "./adapters/gcp": "./adapters/gcp.js",
+    "./adapters/vercel": "./adapters/vercel.js",
+    "./adapters/cloudflare": "./adapters/cloudflare.js",
+    "./adapters/linear": "./adapters/linear.js",
+    "./adapters/jira": "./adapters/jira.js",
+    "./adapters/salesforce": "./adapters/salesforce.js",
     "./key-registry": "./key-registry.js",
     "./retention": "./retention.js",
     "./package.json": "./package.json"
   },
-  "files": ["index.js", "store.js", "evidence.js", "action-packs.js", "execution-binding.js", "reliance-packet.js", "key-registry.js", "retention.js", "eg1-conformance.js", "eg1.mjs", "mcp.js", "adapters/_kit.js", "adapters/github.js", "adapters/github-demo.mjs", "adapters/stripe.js", "adapters/supabase.js", "adapters/aws.js", "adapters/k8s.js", "adapters/terraform.js", "adapters/gcp.js", "demo.mjs", "custody-demo.mjs", "README.md"],
+  "files": ["index.js", "store.js", "evidence.js", "action-packs.js", "execution-binding.js", "reliance-packet.js", "key-registry.js", "retention.js", "eg1-conformance.js", "eg1.mjs", "mcp.js", "adapters/_kit.js", "adapters/github.js", "adapters/github-demo.mjs", "adapters/stripe.js", "adapters/supabase.js", "adapters/aws.js", "adapters/k8s.js", "adapters/terraform.js", "adapters/gcp.js", "adapters/vercel.js", "adapters/cloudflare.js", "adapters/linear.js", "adapters/jira.js", "adapters/salesforce.js", "demo.mjs", "custody-demo.mjs", "README.md"],
   "scripts": {
     "test": "node --test",
     "demo": "node demo.mjs",
