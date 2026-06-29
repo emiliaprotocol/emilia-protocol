@@ -21,6 +21,7 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 import { buildExecutionIntegrity } from '@/lib/execution/integrity.js';
+import { verifyExecutionBindingContract } from '@/lib/execution/binding-contract';
 import { readLimitedJson } from '@/lib/http/body-limit';
 
 const MAX_EXECUTION_ATTESTATION_BYTES = 256 * 1024;
@@ -78,7 +79,7 @@ export async function POST(request, { params }) {
     if (!consumed) {
       return epProblem(409, 'receipt_not_consumed', 'Receipt must be consumed before an execution can be attested');
     }
-    if (events.some((e) => e.event_type === 'guard.trust_receipt.executed')) {
+    if (events.some((e) => e.event_type === 'guard.trust_receipt.executed' || e.event_type === 'guard.trust_receipt.execution_drift')) {
       return epProblem(409, 'execution_already_attested', 'An execution attestation already exists for this receipt');
     }
 
@@ -91,6 +92,50 @@ export async function POST(request, { params }) {
       executionId: body.execution_id,
       executedAt: body.executed_at || new Date().toISOString(),
     });
+    const executionBinding = created.after_state.execution_binding || null;
+    const bindingCheck = verifyExecutionBindingContract({
+      contract: executionBinding,
+      observedAction: body.observed_action || body.executed_action,
+      executedAction: body.executed_action,
+    });
+
+    if (executionBinding?.required === true && (attestation.binding_status !== 'match' || !bindingCheck.ok)) {
+      const { error: driftErr } = await supabase.from('audit_events').insert({
+        event_type: 'guard.trust_receipt.execution_drift',
+        actor_id: authEntityId(auth),
+        actor_type: 'system',
+        target_type: 'trust_receipt',
+        target_id: receiptId,
+        action: 'reject_execution',
+        before_state: { receipt_status: 'consumed' },
+        after_state: {
+          receipt_status: 'execution_drift',
+          executing_system: body.executing_system,
+          execution_id: attestation.execution_id || null,
+          executed_at: attestation.executed_at || null,
+          executed_action_hash: attestation.executed_action_hash,
+          binding_status: attestation.binding_status,
+          execution_binding_check: bindingCheck,
+          execution_integrity: attestation,
+        },
+      });
+      if (driftErr) {
+        logger.error('[guard] execution: drift audit insert failed:', driftErr);
+        return epProblem(500, 'internal_error', 'Failed to record execution drift');
+      }
+      logger.warn(`[guard] execution: DRIFT on receipt ${receiptId} — observed high-risk fields do not match authorized action`);
+      return epProblem(
+        409,
+        'execution_binding_mismatch',
+        'Observed high-risk execution fields do not match the authorized receipt',
+        {
+          binding_status: attestation.binding_status,
+          execution_binding_check: bindingCheck,
+          executed_action_hash: attestation.executed_action_hash,
+          approved_action_hash: approvedActionHash,
+        },
+      );
+    }
 
     const { error: insertErr } = await supabase.from('audit_events').insert({
       event_type: 'guard.trust_receipt.executed',
@@ -107,6 +152,7 @@ export async function POST(request, { params }) {
         executed_at: attestation.executed_at || null,
         executed_action_hash: attestation.executed_action_hash,
         binding_status: attestation.binding_status,
+        execution_binding_check: bindingCheck,
         execution_integrity: attestation,
       },
     });
@@ -128,6 +174,7 @@ export async function POST(request, { params }) {
       binding_status: attestation.binding_status,
       executed_action_hash: attestation.executed_action_hash,
       approved_action_hash: approvedActionHash,
+      execution_binding_check: bindingCheck,
       execution_integrity: attestation,
     }, { status: 201 });
   } catch (err) {

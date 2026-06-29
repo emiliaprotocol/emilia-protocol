@@ -35,6 +35,10 @@ import { evaluateAction as evaluateRulesEngineV0 } from '@/lib/rules-engine.js';
 import { logger } from '@/lib/logger.js';
 import { isRulesEngineV0Enabled } from '@/lib/env.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
+import {
+  buildExecutionBindingContract,
+  enrichCanonicalActionForExecution,
+} from '@/lib/execution/binding-contract';
 
 // Receipt expiry: 24 hours by default AND hard maximum. Per MD §2.3, expires_at
 // is required on every receipt. Higher-risk actions should live for minutes, not
@@ -116,7 +120,7 @@ export async function POST(request) {
     const policyId = body.policy_id || `policy_default_${body.action_type}`;
     const policyHash = computeGuardPolicyHash(policyId); // #4: binds full rule content
 
-    const canonicalAction = {
+    const canonicalActionBase = {
       organization_id: body.organization_id,
       actor_id,
       action_type: body.action_type,
@@ -129,6 +133,39 @@ export async function POST(request) {
       expires_at: expiresAt.toISOString(),
       requested_at: now.toISOString(),
     };
+    const actionDetails = {
+      amount: body.amount,
+      currency: body.currency,
+      risk_flags: body.risk_flags,
+      target_changed_fields: body.target_changed_fields,
+      counterparty_name: body.counterparty_name,
+      counterparty_country: body.counterparty_country,
+      beneficiary_name: body.beneficiary_name,
+      beneficiary_country: body.beneficiary_country,
+      payee_name: body.payee_name,
+      payment_instruction_id: body.payment_instruction_id,
+      bank_account: body.bank_account,
+      routing_number: body.routing_number,
+      iban: body.iban,
+      swift_bic: body.swift_bic,
+      payment_address: body.payment_address,
+      case_id: body.case_id,
+      decision_id: body.decision_id,
+      subject_id: body.subject_id,
+      record_id: body.record_id,
+      override_reason: body.override_reason,
+      regulated_decision: body.regulated_decision,
+      principal_id: body.principal_id,
+      permission: body.permission,
+      role: body.role,
+      scope: body.scope,
+      repo: body.repo,
+      ref: body.ref,
+      commit_sha: body.commit_sha,
+      artifact_digest: body.artifact_digest,
+      environment: body.environment,
+    };
+    const canonicalAction = enrichCanonicalActionForExecution(canonicalActionBase, actionDetails);
     const actionHash = hashCanonicalAction(canonicalAction);
 
     // ── Policy evaluation ─────────────────────────────────────────────────
@@ -157,6 +194,11 @@ export async function POST(request) {
       return epProblem(400, 'invalid_enforcement_mode', `mode must be one of ${Object.values(ENFORCEMENT_MODES).join(', ')}`);
     }
     const decision = applyEnforcementMode(baseDecision, mode);
+    const executionBinding = buildExecutionBindingContract({
+      canonicalAction,
+      actionDetails,
+      decision,
+    });
 
     // ── Persist (best-effort; receipt is self-describing in response) ────
     let receipt_status = 'issued';
@@ -202,6 +244,7 @@ export async function POST(request) {
           // draw from the exact bytes that were hashed, so the canonical
           // action is persisted with the receipt — not re-described later.
           canonical_action: canonicalAction,
+          execution_binding: executionBinding,
           // Display-material parameters for the approval surface.
           amount: typeof body.amount === 'number' ? body.amount : null,
           currency: body.currency || null,
@@ -335,6 +378,7 @@ export async function POST(request) {
         reasons: decision.reasons,
         // Hint for callers: the canonical action they must use at consume.
         canonical_action: canonicalAction,
+        execution_binding: executionBinding,
       },
       { status: 201 },
     );

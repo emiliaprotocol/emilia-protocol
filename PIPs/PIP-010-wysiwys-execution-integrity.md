@@ -170,6 +170,29 @@ asserts a fact that was actually true. (Adversarial tests therefore forge
 drift attestations by signing tampered bytes directly, to exercise the
 verifier's independent fail-closed checks.)
 
+#### 3.1 High-risk executor-observed field binding
+
+For high-risk actions, hash equality is necessary but not sufficient for a
+system-of-record enforcement point. The executor MUST also verify that the
+fields it observed at mutation time match the fields authorized by the receipt.
+This is not only an amount control. It covers the action's high-risk material:
+money (`amount`, `currency`, destination/counterparty fields), code/deploy
+targets (`repo`, `ref`, `commit_sha`, `artifact_digest`, `environment`),
+permissions (`principal_id`, `role`, `scope`, `permission`), records and
+regulated decisions (`record_id`, `case_id`, `decision_id`, `subject_id`,
+`before_state_hash`, `after_state_hash`), plus common identity and policy
+fields (`organization_id`, `actor_id`, `action_type`, `target_resource_id`,
+`policy_id`, `policy_hash`).
+
+The implementation emits an additive `EP-EXECUTION-BINDING-v1` contract with
+new high-risk receipts. At execution attestation time, the system-of-record
+adapter presents `observed_action` (or equivalent observed fields). The
+enforcement endpoint rejects if any required observed field is missing or
+differs from the contract, even when the old canonical hash path would otherwise
+look clean. In short: EP does not prove a user told the truth about a high-risk
+action; it proves a conforming executor refused to proceed unless the
+system-observed mutation matched what was authorized.
+
 ### 4. Display-attestation verification (additive, fail-closed)
 
 `verifyDisplayAttestation(action, attestation, opts)` re-derives the

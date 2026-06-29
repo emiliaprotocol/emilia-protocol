@@ -57,6 +57,7 @@ import { POST as attestExecution } from '../app/api/v1/trust-receipts/[receiptId
 import { POST as registerApproverOptions } from '../app/api/v1/approvers/webauthn/register-options/route.js';
 import { POST as registerApproverVerify } from '../app/api/v1/approvers/webauthn/register-verify/route.js';
 import { executedActionHash } from '../lib/execution/integrity.js';
+import { buildExecutionBindingContract } from '../lib/execution/binding-contract.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -241,6 +242,35 @@ describe('POST /api/v1/trust-receipts', () => {
     expect(body.receipt_id).toMatch(/^tr_[0-9a-f]{32}$/);
     expect(body.before_state_hash).toMatch(/^[0-9a-f]{64}$/);
     expect(body.after_state_hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(body.canonical_action.target_changed_fields).toEqual(['bank_account']);
+    expect(body.execution_binding.required).toBe(true);
+    expect(body.execution_binding.required_fields).toContain('target_changed_fields');
+    expect(body.execution_binding.required_fields).toContain('after_state_hash');
+  });
+
+  it('binds payment material into the canonical action and execution contract', async () => {
+    authedAs('user_1');
+    mockGetGuardedClient.mockReturnValue(makeSupabase({ audit_events: { resolve: { data: null, error: null } } }));
+    const res = await createReceipt(req({
+      organization_id: 'org_1',
+      action_type: 'large_payment_release',
+      target_resource_id: 'payment_1',
+      amount: 82000,
+      currency: 'USD',
+      counterparty_name: 'Acme Widgets',
+    }));
+
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.canonical_action.amount).toBe(82000);
+    expect(body.canonical_action.currency).toBe('USD');
+    expect(body.execution_binding.required).toBe(true);
+    expect(body.execution_binding.field_values).toMatchObject({
+      amount: 82000,
+      currency: 'USD',
+      counterparty_name: 'Acme Widgets',
+      target_resource_id: 'payment_1',
+    });
   });
 
   it('downgrades to observe in observe mode', async () => {
@@ -1005,6 +1035,21 @@ describe('POST /api/v1/signoffs/:id/reject', () => {
 describe('POST /api/v1/trust-receipts/:id/execution', () => {
   const EXECUTED = { action_type: 'payment.release', target: 'acct_9f12', amount: 50000 };
   const APPROVED_HASH = executedActionHash(EXECUTED); // 'match' when stored action_hash === this
+  const HIGH_RISK_EXECUTED = {
+    organization_id: 'org_1',
+    actor_id: 'sys',
+    action_type: 'large_payment_release',
+    target_resource_id: 'payment_1',
+    policy_id: 'policy_default_large_payment_release',
+    policy_hash: 'sha256:policy',
+    amount: 50000,
+    currency: 'USD',
+  };
+  const HIGH_RISK_HASH = executedActionHash(HIGH_RISK_EXECUTED);
+  const HIGH_RISK_BINDING = buildExecutionBindingContract({
+    canonicalAction: HIGH_RISK_EXECUTED,
+    decision: { signoffRequired: true, requiredAssurance: 'A' },
+  });
   const RECEIPT_ID = 'tr_' + 'e'.repeat(32);
   const P = { params: Promise.resolve({ receiptId: RECEIPT_ID }) };
 
@@ -1049,6 +1094,46 @@ describe('POST /api/v1/trust-receipts/:id/execution', () => {
     const body = await res.json();
     expect(body.binding_status).toBe('match');
     expect(body.executed_action_hash).toBe(body.approved_action_hash);
+  });
+
+  it('attests a high-risk execution only when observed fields match the contract', async () => {
+    authedAs('sys');
+    timeline([
+      created({ after_state: { action_hash: HIGH_RISK_HASH, execution_binding: HIGH_RISK_BINDING } }),
+      { event_type: 'guard.trust_receipt.consumed', after_state: {} },
+    ]);
+    const res = await attestExecution(req({
+      executed_action: HIGH_RISK_EXECUTED,
+      observed_action: HIGH_RISK_EXECUTED,
+      executing_system: 'payments_core',
+      execution_id: 'ex_2',
+    }), P);
+
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.binding_status).toBe('match');
+    expect(body.execution_binding_check.ok).toBe(true);
+    expect(body.execution_binding_check.required).toBe(true);
+  });
+
+  it('rejects high-risk execution when system-observed fields drift from the receipt', async () => {
+    authedAs('sys');
+    timeline([
+      created({ after_state: { action_hash: HIGH_RISK_HASH, execution_binding: HIGH_RISK_BINDING } }),
+      { event_type: 'guard.trust_receipt.consumed', after_state: {} },
+    ]);
+    const res = await attestExecution(req({
+      executed_action: HIGH_RISK_EXECUTED,
+      observed_action: { ...HIGH_RISK_EXECUTED, amount: 75000 },
+      executing_system: 'payments_core',
+      execution_id: 'ex_drift',
+    }), P);
+
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.type).toContain('execution_binding_mismatch');
+    expect(body.execution_binding_check.ok).toBe(false);
+    expect(body.execution_binding_check.mismatched_fields).toContain('amount');
   });
 
   it('records EXECUTION DRIFT when the executed action differs from approved', async () => {
