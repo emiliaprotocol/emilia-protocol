@@ -4342,20 +4342,31 @@ components:
         organization_id:
           type: string
           description: Authenticated tenant/organization. In bound mode this must match the API key's organization.
-        mode:
+        enforcement_mode:
           type: string
-          enum: [observe, enforce]
+          enum: [observe, warn, enforce]
           default: observe
           description: Observe records evidence; enforce fails closed before mutation when approval or evidence is missing.
+        mode:
+          type: string
+          enum: [observe, warn, enforce]
+          deprecated: true
+          description: Backward-compatible alias for enforcement_mode.
         strict_evidence:
           type: boolean
           default: false
           description: When true, evidence/audit write failure returns 503 instead of degraded observe evidence.
-        changed_fields:
+        target_changed_fields:
           type: array
           items:
             type: string
           description: System-of-record fields the caller is about to mutate.
+        changed_fields:
+          type: array
+          items:
+            type: string
+          deprecated: true
+          description: Backward-compatible alias for target_changed_fields.
         amount:
           type: number
           description: Monetary amount for disbursement or grant release workflows.
@@ -4368,6 +4379,10 @@ components:
           type: string
         payment_instruction_id:
           type: string
+        agency_id:
+          type: string
+        program_id:
+          type: string
         grant_id:
           type: string
         award_id:
@@ -4376,13 +4391,27 @@ components:
           type: string
         provider_tax_id_hash:
           type: string
+        provider_status:
+          type: string
+        npi:
+          type: string
         case_id:
           type: string
         claimant_id:
           type: string
+        eligibility_case_id:
+          type: string
+        eligibility_rule:
+          type: string
+        eligibility_status:
+          type: string
+        benefit_amount:
+          type: number
         destination_hash:
           type: string
           description: Hash or opaque digest of the proposed destination/account data.
+        payment_destination_hash:
+          type: string
         bank_account_hash:
           type: string
         routing_number_hash:
@@ -4394,6 +4423,12 @@ components:
         phone_hash:
           type: string
         email_hash:
+          type: string
+        contact_method:
+          type: string
+        identity_document_hash:
+          type: string
+        identity_status:
           type: string
         external_reference:
           type: string

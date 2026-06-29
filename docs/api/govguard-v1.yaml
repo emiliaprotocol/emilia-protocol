@@ -561,6 +561,8 @@ components:
         provider_id: { type: string }
         npi: { type: string }
         provider_tax_id_hash: { type: string }
+        provider_status: { type: string }
+        claimant_id: { type: string }
         eligibility_case_id: { type: string }
         eligibility_rule: { type: string }
         eligibility_status: { type: string }
@@ -572,15 +574,29 @@ components:
         bank_account:
           type: string
           description: Prefer a redacted value or hash; do not send raw account numbers in a pilot.
+        bank_account_hash:
+          type: string
+          description: Hash of the proposed account identifier; preferred over raw account values.
         routing_number:
           type: string
           description: Prefer a redacted value or hash; do not send raw routing numbers in a pilot.
+        routing_number_hash:
+          type: string
+          description: Hash of the proposed routing identifier; preferred over raw routing values.
+        destination_hash:
+          type: string
+          description: Hash of the complete proposed payment destination.
+        payment_destination_hash:
+          type: string
+          description: Alias for a complete proposed payment-destination hash.
         payment_address: { type: string }
         mailing_address_hash: { type: string }
         address_hash: { type: string }
         phone_hash: { type: string }
         email_hash: { type: string }
+        contact_method: { type: string }
         identity_document_hash: { type: string }
+        identity_status: { type: string }
         override_reason: { type: string }
         risk_flags:
           type: array

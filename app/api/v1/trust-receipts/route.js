@@ -39,6 +39,12 @@ import {
   buildExecutionBindingContract,
   enrichCanonicalActionForExecution,
 } from '@/lib/execution/binding-contract';
+import {
+  extractGuardActionDetails,
+  resolveGuardChangedFields,
+  resolveGuardEnforcementMode,
+  validateGuardActionInput,
+} from '@/lib/guard-action-inputs';
 
 // Receipt expiry: 24 hours by default AND hard maximum. Per MD §2.3, expires_at
 // is required on every receipt. Higher-risk actions should live for minutes, not
@@ -103,6 +109,9 @@ export async function POST(request) {
         'actor_id in request body does not match authenticated entity',
       );
     }
+    const changedFields = resolveGuardChangedFields(body, []);
+    const inputError = validateGuardActionInput(body, { actionType: body.action_type, changedFields });
+    if (inputError) return epProblem(inputError.status, inputError.code, inputError.detail);
 
     const now = new Date();
     const expiresAt = new Date(now.getTime() + resolveReceiptTtlMs(body.expires_in_sec));
@@ -133,38 +142,7 @@ export async function POST(request) {
       expires_at: expiresAt.toISOString(),
       requested_at: now.toISOString(),
     };
-    const actionDetails = {
-      amount: body.amount,
-      currency: body.currency,
-      risk_flags: body.risk_flags,
-      target_changed_fields: body.target_changed_fields,
-      counterparty_name: body.counterparty_name,
-      counterparty_country: body.counterparty_country,
-      beneficiary_name: body.beneficiary_name,
-      beneficiary_country: body.beneficiary_country,
-      payee_name: body.payee_name,
-      payment_instruction_id: body.payment_instruction_id,
-      bank_account: body.bank_account,
-      routing_number: body.routing_number,
-      iban: body.iban,
-      swift_bic: body.swift_bic,
-      payment_address: body.payment_address,
-      case_id: body.case_id,
-      decision_id: body.decision_id,
-      subject_id: body.subject_id,
-      record_id: body.record_id,
-      override_reason: body.override_reason,
-      regulated_decision: body.regulated_decision,
-      principal_id: body.principal_id,
-      permission: body.permission,
-      role: body.role,
-      scope: body.scope,
-      repo: body.repo,
-      ref: body.ref,
-      commit_sha: body.commit_sha,
-      artifact_digest: body.artifact_digest,
-      environment: body.environment,
-    };
+    const actionDetails = extractGuardActionDetails(body, changedFields);
     const canonicalAction = enrichCanonicalActionForExecution(canonicalActionBase, actionDetails);
     const actionHash = hashCanonicalAction(canonicalAction);
 
@@ -181,7 +159,7 @@ export async function POST(request) {
       actorId: actor_id,
       actorRole: body.actor_role || 'unknown',
       actionType: body.action_type,
-      targetChangedFields: body.target_changed_fields || [],
+      targetChangedFields: changedFields,
       amount: body.amount,
       currency: body.currency,
       riskFlags: body.risk_flags || [],
@@ -189,7 +167,7 @@ export async function POST(request) {
       initiatorId: actor_id,
     });
 
-    const mode = body.enforcement_mode || ENFORCEMENT_MODES.ENFORCE;
+    const mode = resolveGuardEnforcementMode(body, ENFORCEMENT_MODES.ENFORCE);
     if (!Object.values(ENFORCEMENT_MODES).includes(mode)) {
       return epProblem(400, 'invalid_enforcement_mode', `mode must be one of ${Object.values(ENFORCEMENT_MODES).join(', ')}`);
     }

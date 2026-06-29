@@ -273,6 +273,56 @@ describe('POST /api/v1/trust-receipts', () => {
     });
   });
 
+  it('binds GovGuard destination hashes and program fields on the generic receipt path', async () => {
+    authedAs('user_1');
+    mockGetGuardedClient.mockReturnValue(makeSupabase({ audit_events: { resolve: { data: null, error: null } } }));
+    const res = await createReceipt(req({
+      organization_id: 'org_1',
+      action_type: 'gov.vendor_payment_destination_change',
+      target_resource_id: 'vendor:VEND-1',
+      vendor_id: 'VEND-1',
+      agency_id: 'agency_hhs',
+      program_id: 'medicaid',
+      target_changed_fields: ['bank_account_hash', 'routing_number_hash'],
+      destination_hash: 'sha256:destination',
+      bank_account_hash: 'sha256:bank',
+      routing_number_hash: 'sha256:routing',
+    }));
+
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.canonical_action).toMatchObject({
+      vendor_id: 'VEND-1',
+      agency_id: 'agency_hhs',
+      program_id: 'medicaid',
+      destination_hash: 'sha256:destination',
+      bank_account_hash: 'sha256:bank',
+      routing_number_hash: 'sha256:routing',
+    });
+    expect(body.execution_binding.required_fields).toEqual(expect.arrayContaining([
+      'vendor_id',
+      'agency_id',
+      'program_id',
+      'destination_hash',
+      'bank_account_hash',
+      'routing_number_hash',
+    ]));
+  });
+
+  it('rejects non-numeric amount on amount-tiered government releases', async () => {
+    authedAs('user_1');
+    const res = await createReceipt(req({
+      organization_id: 'org_1',
+      action_type: 'gov.grant_disbursement',
+      target_resource_id: 'grant_1',
+      amount: '1000000',
+      currency: 'USD',
+    }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(`${body.code ?? ''} ${body.type ?? ''}`).toContain('invalid_amount');
+  });
+
   it('downgrades to observe in observe mode', async () => {
     authedAs('user_1');
     mockGetGuardedClient.mockReturnValue(makeSupabase({ audit_events: { resolve: { data: null, error: null } } }));
@@ -285,6 +335,23 @@ describe('POST /api/v1/trust-receipts', () => {
     }));
     expect(res.status).toBe(201);
     const body = await res.json();
+    expect(body.decision).toBe('observe');
+    expect(body.observed_decision).toBe('allow_with_signoff');
+  });
+
+  it('honors the documented mode alias for observe', async () => {
+    authedAs('user_1');
+    mockGetGuardedClient.mockReturnValue(makeSupabase({ audit_events: { resolve: { data: null, error: null } } }));
+    const res = await createReceipt(req({
+      organization_id: 'org_1',
+      action_type: 'benefit_bank_account_change',
+      target_resource_id: 'r',
+      target_changed_fields: ['bank_account'],
+      mode: 'observe',
+    }));
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.enforcement_mode).toBe('observe');
     expect(body.decision).toBe('observe');
     expect(body.observed_decision).toBe('allow_with_signoff');
   });
@@ -1114,6 +1181,22 @@ describe('POST /api/v1/trust-receipts/:id/execution', () => {
     expect(body.binding_status).toBe('match');
     expect(body.execution_binding_check.ok).toBe(true);
     expect(body.execution_binding_check.required).toBe(true);
+  });
+
+  it('requires a system-observed action for high-risk execution binding', async () => {
+    authedAs('sys');
+    timeline([
+      created({ after_state: { action_hash: HIGH_RISK_HASH, execution_binding: HIGH_RISK_BINDING } }),
+      { event_type: 'guard.trust_receipt.consumed', after_state: {} },
+    ]);
+    const res = await attestExecution(req({
+      executed_action: HIGH_RISK_EXECUTED,
+      executing_system: 'payments_core',
+      execution_id: 'ex_missing_observed',
+    }), P);
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).type).toContain('missing_observed_action');
   });
 
   it('rejects high-risk execution when system-observed fields drift from the receipt', async () => {

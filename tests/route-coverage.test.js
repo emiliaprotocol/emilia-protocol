@@ -208,8 +208,9 @@ const OPENAPI_EXEMPTIONS = [
   '/api/keys/rotate',
   // Cloud scoring calibration — cloud control-plane.
   '/api/cloud/scoring/recommendations',
-  // GovGuard + FinGuard product API (v1) — OpenAPI spec to be added in a
-  // follow-up. The endpoints are wired in middleware.js ROUTE_POLICIES.
+  // Remaining v1 product API surfaces not yet in canonical openapi.yaml. The
+  // GovGuard adapter prechecks are now public OpenAPI paths and are therefore
+  // intentionally NOT exempted here.
   '/api/v1/trust-receipts',
   '/api/v1/trust-receipts/[receiptId]',
   '/api/v1/trust-receipts/[receiptId]/consume',
@@ -217,14 +218,6 @@ const OPENAPI_EXEMPTIONS = [
   '/api/v1/signoffs/request',
   '/api/v1/signoffs/[signoffId]/approve',
   '/api/v1/signoffs/[signoffId]/reject',
-  '/api/v1/adapters/gov/benefit-bank-change/precheck',
-  '/api/v1/adapters/gov/benefit-address-change/precheck',
-  '/api/v1/adapters/gov/caseworker-override/precheck',
-  '/api/v1/adapters/gov/vendor-payment-destination-change/precheck',
-  '/api/v1/adapters/gov/disbursement-release/precheck',
-  '/api/v1/adapters/gov/grant-disbursement/precheck',
-  '/api/v1/adapters/gov/provider-enrollment-change/precheck',
-  '/api/v1/adapters/gov/eligibility-override/precheck',
   '/api/v1/adapters/fin/vendor-bank-change/precheck',
   '/api/v1/adapters/fin/beneficiary-creation/precheck',
   '/api/v1/adapters/fin/payment-release/precheck',

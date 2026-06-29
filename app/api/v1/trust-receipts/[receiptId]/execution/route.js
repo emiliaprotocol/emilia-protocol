@@ -39,7 +39,7 @@ export async function POST(request, { params }) {
     if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
     const body = parsed.value;
 
-    if (!body.executed_action || typeof body.executed_action !== 'object') {
+    if (!body.executed_action || typeof body.executed_action !== 'object' || Array.isArray(body.executed_action)) {
       return epProblem(400, 'missing_executed_action', 'executed_action (the canonical action that ran) is required');
     }
     if (!body.executing_system) {
@@ -93,6 +93,14 @@ export async function POST(request, { params }) {
       executedAt: body.executed_at || new Date().toISOString(),
     });
     const executionBinding = created.after_state.execution_binding || null;
+    if (executionBinding?.required === true
+      && (!body.observed_action || typeof body.observed_action !== 'object' || Array.isArray(body.observed_action))) {
+      return epProblem(
+        400,
+        'missing_observed_action',
+        'observed_action is required when the receipt carries a required execution binding',
+      );
+    }
     const bindingCheck = verifyExecutionBindingContract({
       contract: executionBinding,
       observedAction: body.observed_action || body.executed_action,

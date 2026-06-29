@@ -131,4 +131,107 @@ describe('GovGuard adapters', () => {
     expect(body.decision).toBe('observe');
     expect(body.evidence_status).toBe('degraded');
   });
+
+  it('binds hashed destination and government program fields into the receipt', async () => {
+    const res = await vendorPaymentDestinationChange(req({
+      ...BASE,
+      enforcement_mode: undefined,
+      mode: 'observe',
+      vendor_id: 'vendor_9',
+      agency_id: 'agency_hhs',
+      program_id: 'medicaid',
+      target_changed_fields: ['bank_account_hash', 'routing_number_hash'],
+      destination_hash: 'sha256:destination',
+      bank_account_hash: 'sha256:bank',
+      routing_number_hash: 'sha256:routing',
+    }));
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.decision).toBe('observe');
+    expect(body.observed_decision).toBe('allow_with_signoff');
+    expect(body.canonical_action).toMatchObject({
+      vendor_id: 'vendor_9',
+      agency_id: 'agency_hhs',
+      program_id: 'medicaid',
+      destination_hash: 'sha256:destination',
+      bank_account_hash: 'sha256:bank',
+      routing_number_hash: 'sha256:routing',
+    });
+    expect(body.execution_binding.required_fields).toEqual(expect.arrayContaining([
+      'vendor_id',
+      'agency_id',
+      'program_id',
+      'destination_hash',
+      'bank_account_hash',
+      'routing_number_hash',
+    ]));
+  });
+
+  it('binds provider and eligibility fields that a system of record could mutate', async () => {
+    const provider = await providerEnrollmentChange(req({
+      ...BASE,
+      provider_id: 'provider_1',
+      npi: '1234567890',
+      provider_tax_id_hash: 'sha256:tax',
+      provider_status: 'active',
+      payment_address: 'hash:address',
+      program_id: 'medicaid',
+    }));
+    expect(provider.status).toBe(201);
+    const providerBody = await provider.json();
+    expect(providerBody.canonical_action).toMatchObject({
+      provider_id: 'provider_1',
+      npi: '1234567890',
+      provider_tax_id_hash: 'sha256:tax',
+      provider_status: 'active',
+      payment_address: 'hash:address',
+      program_id: 'medicaid',
+    });
+    expect(providerBody.execution_binding.required_fields).toEqual(expect.arrayContaining([
+      'provider_id',
+      'npi',
+      'provider_tax_id_hash',
+      'provider_status',
+      'payment_address',
+      'program_id',
+    ]));
+
+    const eligibility = await eligibilityOverride(req({
+      ...BASE,
+      case_id: 'case_1',
+      claimant_id: 'claimant_1',
+      eligibility_case_id: 'elig_1',
+      eligibility_status: 'approved',
+      benefit_amount: 1250,
+      program_id: 'snap',
+    }));
+    expect(eligibility.status).toBe(201);
+    const eligibilityBody = await eligibility.json();
+    expect(eligibilityBody.canonical_action).toMatchObject({
+      claimant_id: 'claimant_1',
+      eligibility_case_id: 'elig_1',
+      eligibility_status: 'approved',
+      benefit_amount: 1250,
+      program_id: 'snap',
+    });
+    expect(eligibilityBody.execution_binding.required_fields).toEqual(expect.arrayContaining([
+      'claimant_id',
+      'eligibility_case_id',
+      'eligibility_status',
+      'benefit_amount',
+      'program_id',
+    ]));
+  });
+
+  it('rejects amount type confusion that could weaken dual approval classification', async () => {
+    const res = await grantDisbursement(req({
+      ...BASE,
+      grant_id: 'grant_2',
+      amount: '1000000',
+      currency: 'USD',
+    }));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(`${body.code ?? ''} ${body.type ?? ''}`).toContain('invalid_amount');
+  });
 });

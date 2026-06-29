@@ -136,7 +136,9 @@ describe('guard adapter + AML', () => {
   });
 
   it('derives organization_id from the authenticated entity when the body omits it', async () => {
-    const res = await precheck({ payment_instruction_id: 'pi_1', before_state: {}, after_state: {} });
+    const body = baseBody();
+    delete body.organization_id;
+    const res = await precheck(body);
     expect(res.status).toBe(201);
     expect(inserted.at(-1).after_state.organization_id).toBe('ep_entity_acme');
   });
