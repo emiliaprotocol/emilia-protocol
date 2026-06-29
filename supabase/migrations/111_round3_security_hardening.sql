@@ -108,4 +108,8 @@ BEGIN
 END;
 $function$;
 
+-- SECURITY DEFINER + default PUBLIC execute would let anon/authenticated call
+-- this key-mutating RPC directly via PostgREST. Revoke first, then grant only to
+-- the service role the server uses.
+REVOKE EXECUTE ON FUNCTION public.rotate_api_key_atomic(UUID, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.rotate_api_key_atomic(UUID, TEXT, TEXT, TEXT, TEXT) TO service_role;
