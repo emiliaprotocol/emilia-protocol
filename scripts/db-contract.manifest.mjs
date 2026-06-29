@@ -25,7 +25,7 @@ export const contract = {
     'approver_credentials', 'protocol_events', 'security_events', 'tenants', 'tenant_members',
     'tenant_api_keys', 'tenant_environments', 'operator_applications', 'policy_rollouts',
     'investor_inquiries', 'partner_inquiries', 'fraud_flags', 'zk_proofs',
-    'authorities',
+    'authorities', 'commits',
   ],
 
   // Tables that SHOULD exist but are KNOWN-MISSING and tracked for a staged
@@ -49,12 +49,12 @@ export const contract = {
     'api_keys', 'entities', 'receipts', 'score_history', 'needs', 'waitlist',
     'anchor_batches', 'disputes', 'handshakes', 'signoff_challenges', 'signoff_attestations',
     'tenants', 'tenant_api_keys', 'operator_applications', 'policy_rollouts',
-    'investor_inquiries', 'partner_inquiries', 'fraud_flags', 'authorities',
+    'investor_inquiries', 'partner_inquiries', 'fraud_flags', 'authorities', 'commits',
   ],
 
   // No anon/authenticated/PUBLIC may have a SELECT (or ALL) policy on these.
   // (mig 113: api_keys + waitlist were anon-readable.) authorities = permission root.
-  noAnonRead: ['api_keys', 'waitlist', 'tenant_api_keys', 'authorities'],
+  noAnonRead: ['api_keys', 'waitlist', 'tenant_api_keys', 'authorities', 'commits'],
 
   // No anon/authenticated/PUBLIC may have a write policy (INSERT/UPDATE/DELETE/ALL)
   // on these. (mig 113: these were anon-writable via mis-scoped USING(true).)
@@ -74,6 +74,9 @@ export const contract = {
     'admin_begin_key_rotation', 'admin_complete_key_rotation',
   ],
 
-  // Functions that MUST exist (existence only).
-  requiredRpcs: ['gov_schema_contract_introspect', 'load_verify_context'],
+  // Functions that MUST exist (existence only). Includes the append-only
+  // immutability triggers — their absence means tamper-evidence is unenforced.
+  requiredRpcs: ['gov_schema_contract_introspect', 'load_verify_context',
+    'prevent_protocol_event_mutation', 'prevent_handshake_event_mutation',
+    'prevent_consumption_reversal'],
 };
