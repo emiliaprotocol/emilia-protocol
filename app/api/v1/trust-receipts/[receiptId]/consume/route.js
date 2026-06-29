@@ -21,6 +21,8 @@ import { decisionsToMembers } from '@/lib/signoff/attestation-members.js';
 import { getRpConfig } from '@/lib/webauthn.js';
 import { boundSignoffDecisionEvents, findBoundSignoffDecision } from '@/lib/guard-signoff-binding.js';
 import { resolveGuardAuthority } from '@/lib/guard-authority.js';
+import { isTierQuorumEnforced } from '@/lib/env';
+import { countDistinctValidApprovers, requiredApprovalsForTier } from '@/lib/guard-tier.js';
 import { canReadReceipt } from '@/lib/tenant-binding.js';
 
 const RECEIPT_ID_PATTERN = /^tr_[a-f0-9]{32}$/;
@@ -177,6 +179,38 @@ export async function POST(request, { params }) {
           assurance_class: authority.assurance_class || null,
           authority_check: authority.reason,
         };
+
+        // Assurance-tier escalation (flag-gated, default off): a 'dual' value tier
+        // (e.g. payment >= $1M) requires TWO distinct, individually-authorized
+        // Class-A approvers — the single approval above is necessary but not
+        // sufficient for high-value actions. Reuses the same per-approver
+        // authority/revocation check. See ASSURANCE-TIER-ENFORCEMENT.md.
+        if (isTierQuorumEnforced() && base.signoff_tier === 'dual') {
+          const initiatorId = created.actor_id || null;
+          const approvals = boundSignoffDecisionEvents(events, created, 'guard.signoff.approved')
+            .map((e) => e.after_state)
+            .filter(Boolean);
+          const distinct = await countDistinctValidApprovers(approvals, {
+            initiatorId,
+            requiredAssurance: base.required_assurance || null,
+            resolveAuthority: (a) => resolveGuardAuthority(supabase, {
+              organizationId: base.organization_id,
+              approverId: a.approver_id || null,
+              role: a.role,
+              requiredAssurance: base.required_assurance || undefined,
+              at: new Date().toISOString(),
+            }),
+          });
+          const need = requiredApprovalsForTier('dual');
+          if (distinct < need) {
+            return epProblem(
+              403,
+              'dual_authorization_required',
+              `This value tier requires dual authorization: ${distinct} of ${need} distinct valid Class-A approvals present`,
+            );
+          }
+          authorityFacts = { ...authorityFacts, tier: 'dual', distinct_approvers: distinct };
+        }
       }
     }
 
