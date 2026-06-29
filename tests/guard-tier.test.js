@@ -75,4 +75,41 @@ describe('countDistinctValidApprovers (the dual-authorization rule)', () => {
   it('throws if no resolveAuthority is provided (fail closed by construction)', async () => {
     await expect(countDistinctValidApprovers([{ approver_id: 'A1' }], {})).rejects.toThrow(/resolveAuthority/);
   });
+
+  it('skips null/undefined entries in the approvals array', async () => {
+    const n = await countDistinctValidApprovers(
+      [null, { approver_id: 'A1', key_class: 'A' }, undefined],
+      { requiredAssurance: 'A', resolveAuthority: okAuth },
+    );
+    expect(n).toBe(1);
+  });
+
+  it('treats a missing key_class as Class-C (excluded when Class-A is required)', async () => {
+    const n = await countDistinctValidApprovers(
+      [{ approver_id: 'A1' }, { approver_id: 'A2', key_class: 'A' }],
+      { requiredAssurance: 'A', resolveAuthority: okAuth },
+    );
+    expect(n).toBe(1);
+  });
+
+  it('skips an approval with no approver_id', async () => {
+    const n = await countDistinctValidApprovers(
+      [{ key_class: 'A' }, { approver_id: 'A2', key_class: 'A' }],
+      { requiredAssurance: 'A', resolveAuthority: okAuth },
+    );
+    expect(n).toBe(1);
+  });
+
+  it('returns 0 for a null/undefined approvals list', async () => {
+    expect(await countDistinctValidApprovers(null, { resolveAuthority: okAuth })).toBe(0);
+    expect(await countDistinctValidApprovers(undefined, { resolveAuthority: okAuth })).toBe(0);
+  });
+
+  it('counts an authority resolver that returns a falsy verdict as not-authorized', async () => {
+    const n = await countDistinctValidApprovers(
+      [{ approver_id: 'A1', key_class: 'A' }],
+      { requiredAssurance: 'A', resolveAuthority: async () => null },
+    );
+    expect(n).toBe(0);
+  });
 });
