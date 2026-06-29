@@ -137,21 +137,41 @@ server.tool('release_payment', gateMcpTool(
 ## System-of-record adapters
 
 Adoption happens where the mutation happens — *"install this before your agent can touch
-production."* The GitHub adapter guards destructive Octokit calls so the mutation never reaches
-GitHub without a receipt bound to **this** repo:
+production."* Each adapter guards the destructive operations of a real system so the mutation never
+reaches it without a receipt bound to **this** resource (a receipt for resource A cannot authorize
+mutating B). All share one fail-closed contract (`adapters/_kit.js`).
 
 ```js
 import { createGate } from '@emilia-protocol/gate';
 import { createGithubManifest, guardGithubMutation } from '@emilia-protocol/gate/adapters/github';
 
 const gate = createGate({ manifest: createGithubManifest(), trustedKeys: [ISSUER_PUBKEY_B64U] });
-
 await guardGithubMutation(gate, octokit, {
   op: 'repo.delete',                 // | 'permission.change' | 'branch_protection.remove'
   params: { owner: 'acme', repo: 'prod' },
   receipt,                           // throws EMILIA_RECEIPT_REQUIRED if absent/invalid/replayed/drifted
 });
 ```
+
+| Adapter | Import | Guarded ops (assurance) |
+|---|---|---|
+| **GitHub** | `@emilia-protocol/gate/adapters/github` | repo.delete `class_a`, permission.change `quorum`, branch_protection.remove `class_a` |
+| **Stripe** | `@emilia-protocol/gate/adapters/stripe` | payout.create `class_a`, refund.create `class_a`, bank_account.change `quorum` |
+| **Supabase / Postgres** | `@emilia-protocol/gate/adapters/supabase` | sql.destructive `class_a`, data.export `class_a`, rls.change `quorum` |
+| **AWS (IAM + network)** | `@emilia-protocol/gate/adapters/aws` | iam.attach_policy `quorum`, iam.create_access_key `class_a`, iam.delete_user `class_a`, ec2.authorize_ingress `quorum` |
+
+```js
+import { createStripeManifest, guardStripeMutation } from '@emilia-protocol/gate/adapters/stripe';
+const gate = createGate({ manifest: createStripeManifest(), trustedKeys: [ISSUER_PUBKEY_B64U] });
+await guardStripeMutation(gate, stripe, { op: 'payout.create', params: { amount: 40000, currency: 'usd', destination: 'acct_x' }, receipt });
+// Supabase: guardSupabaseMutation(gate, db, { op: 'sql.destructive', params: { sql }, receipt })  // binds the exact statement
+// AWS:      guardAwsMutation(gate, client, { op: 'iam.attach_policy', params: { user, policy_arn }, receipt })
+```
+
+Clients are injected (the real `@octokit/rest`, `stripe`, a `pg`/Supabase client, or the AWS SDK), so
+the adapters are testable without credentials. Adding an adapter is ~40 lines: a frozen action pack
+(selectors + tiers + `execution_binding.required_fields`) and an op map (`selector`, `observed(params)`,
+`perform(client, params)`) passed to `createAdapter()`.
 
 ## Earn EG-1
 

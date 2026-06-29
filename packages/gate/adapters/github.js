@@ -21,6 +21,7 @@
  * The receipt's claim must carry the same owner/repo (and username/permission or
  * branch) as the call — a receipt for repo A cannot authorize deleting repo B.
  */
+import { createAdapter, manifestFromPack } from './_kit.js';
 
 export const GITHUB_ACTION_PACK = Object.freeze([
   Object.freeze({
@@ -81,25 +82,18 @@ const OPS = {
   },
 };
 
-export const GITHUB_OPS = Object.freeze(Object.keys(OPS));
+const adapter = createAdapter({ system: 'github', ops: OPS });
+export const GITHUB_OPS = adapter.OPS;
 
 /** Build an action-risk manifest for the GitHub destructive ops (plus any extras). */
 export function createGithubManifest(extraActions = []) {
-  return {
-    '@version': 'EP-ACTION-RISK-MANIFEST-v0.1',
-    actions: [
-      ...GITHUB_ACTION_PACK.map((a) => ({
-        ...a,
-        match: { ...a.match },
-        execution_binding: { ...a.execution_binding, required_fields: [...a.execution_binding.required_fields] },
-      })),
-      ...extraActions,
-    ],
-  };
+  return manifestFromPack(GITHUB_ACTION_PACK, extraActions);
 }
 
 /**
- * Guard a destructive GitHub mutation behind the gate.
+ * Guard a destructive GitHub mutation behind the gate. The call never reaches
+ * GitHub unless a valid, sufficiently-assured, non-replayed receipt bound to
+ * THIS repo is present.
  * @param {object} gate     a gate built with createGithubManifest()
  * @param {object} octokit  an Octokit-like client (@octokit/rest or compatible)
  * @param {object} o
@@ -109,20 +103,8 @@ export function createGithubManifest(extraActions = []) {
  * @returns {Promise<{ result:any, reliance:object, execution:object }>}
  * @throws  Error{code:'EMILIA_RECEIPT_REQUIRED'} if refused — the call never reaches GitHub
  */
-export async function guardGithubMutation(gate, octokit, { op, params = {}, receipt = null } = {}) {
-  const spec = OPS[op];
-  if (!spec) throw new Error(`guardGithubMutation: unknown op "${op}" (expected one of: ${GITHUB_OPS.join(', ')})`);
-  const observedAction = spec.observed(params);
-  const out = await gate.run({ selector: spec.selector, receipt, observedAction }, () => spec.perform(octokit, params));
-  if (!out.ok) {
-    const e = new Error(`EMILIA Gate refused github:${op} — ${out.authorization.reason}`);
-    e.code = 'EMILIA_RECEIPT_REQUIRED';
-    e.status = out.status;
-    e.gate = out.authorization;
-    e.challenge = out.body;
-    throw e;
-  }
-  return { result: out.result, reliance: out.packet, execution: out.execution };
+export function guardGithubMutation(gate, octokit, args) {
+  return adapter.guard(gate, octokit, args);
 }
 
 export default { GITHUB_ACTION_PACK, GITHUB_OPS, createGithubManifest, guardGithubMutation };

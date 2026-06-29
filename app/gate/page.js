@@ -29,7 +29,7 @@ const SURFACES = [
   { type: 'MCP', label: 'Agent tools', body: 'Wrap any MCP tool in one line (gateMcpTool); a dangerous call without a receipt returns 428.', status: 'Shipped' },
   { type: 'API', label: 'HTTP middleware', body: 'Express / Connect / Next / Go — protect POST / PUT / PATCH / DELETE.', status: 'Shipped' },
   { type: 'FRAMEWORKS', label: 'Agent runtimes', body: 'OpenAI, LangChain, CrewAI, AutoGen — guard tool calls in one wrap().', status: 'Shipped' },
-  { type: 'CLOUD', label: 'Infra & platforms', body: 'GitHub repo-delete / permission / branch-protection adapter shipped. AWS/IAM, k8s, Terraform, Supabase, Stripe next.', status: 'Shipped' },
+  { type: 'CLOUD', label: 'Infra & platforms', body: 'System-of-record adapters shipped for GitHub, Stripe, Supabase/Postgres, and AWS (IAM + network). Kubernetes & Terraform next.', status: 'Shipped' },
   { type: 'ROBOTS', label: 'Actuator sidecar', body: 'A local daemon before motion/tool commands. Pre-authorize a bounded envelope; verify each act offline.', status: 'Reference' },
   { type: 'ATTESTED', label: 'Attested gate', body: 'Prove the gate is actually installed and running via device/workload attestation. Crucial for robots.', status: 'Roadmap' },
 ];
