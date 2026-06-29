@@ -721,6 +721,17 @@ produce when they get there.
 **WIMSE / workload identity** authenticates the agent to services; EP
 authorizes the action. Complementary layers.
 
+**AGTP (draft-hood-independent-agtp-09)** defines an agent-transport
+protocol with a substrate-layer structural enforcement model. AGTP's
+composition profile (draft-hood-agtp-composition-01) defines three
+profile families; the external-IdP family is an opaque human-authorization
+credential slot carried by the AGTP transport and verified independently
+on the receiving end. EP is one concrete realization of that profile: an
+EP receipt placed in the AGTP `authorization.credential` slot carries the
+signed human-authorization proof, verifiable without trusting the AGTP
+transport layer. Both specifications share Ed25519 + RFC 8785 (JCS) as
+their cryptographic substrate, enabling composition with no glue.
+
 **Receiver-attested logging (e.g., Sello)** has the receiving service
 sign what it observed, post-hoc. EP is pre-execution authorization.
 A complete deployment benefits from both: EP proves the action was
