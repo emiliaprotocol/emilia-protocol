@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: Apache-2.0
+# EMILIA Fire Drill — fail CI if an AI agent can take a dangerous action without
+# an accountable human receipt (EG-1). Drop into any repo's workflow:
+#
+#   - uses: emiliaprotocol/emilia-protocol/.github/actions/fire-drill@main
+#     with:
+#       manifest: ./mcp-manifest.json   # MCP manifest, OpenAPI spec, or tool list (JSON)
+#       fail-on: fail                   # 'fail' (default) blocks the build; 'warn' only reports
+#
+# Outputs `score` (0-100) and `eg1` (pass|fail) for downstream steps (e.g. a badge).
+name: 'EMILIA Fire Drill'
+description: 'Fail CI if an agent can take a dangerous action without an accountable human receipt (EG-1).'
+branding:
+  icon: shield
+  color: orange
+inputs:
+  manifest:
+    description: 'Path to the MCP manifest / OpenAPI spec / tool list (JSON) to scan.'
+    required: true
+  fail-on:
+    description: "'fail' to fail the build when EG-1 is not earned (default); 'warn' to report only."
+    required: false
+    default: 'fail'
+outputs:
+  score:
+    description: 'Agent Action Firewall score (0-100).'
+    value: ${{ steps.scan.outputs.score }}
+  eg1:
+    description: 'EG-1 result: pass or fail.'
+    value: ${{ steps.scan.outputs.eg1 }}
+runs:
+  using: composite
+  steps:
+    - id: scan
+      shell: bash
+      env:
+        # Pass action inputs through env (never interpolate ${{ }} into the script
+        # body) so untrusted input can't be injected into the runner shell.
+        MANIFEST: ${{ inputs.manifest }}
+        FAIL_ON: ${{ inputs.fail-on }}
+      run: |
+        set +e
+        OUT=$(npx -y @emilia-protocol/fire-drill@latest "$MANIFEST" --json)
+        echo "$OUT"
+        SCORE=$(printf '%s' "$OUT" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).score)}catch{console.log('')}})")
+        EG1=$(printf '%s' "$OUT" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).eg1)}catch{console.log('')}})")
+        echo "score=$SCORE" >> "$GITHUB_OUTPUT"
+        echo "eg1=$EG1" >> "$GITHUB_OUTPUT"
+        echo "## EMILIA Fire Drill — EG-1 $EG1 (score $SCORE/100)" >> "$GITHUB_STEP_SUMMARY"
+        if [ "$FAIL_ON" = "fail" ] && [ "$EG1" != "pass" ]; then
+          echo "::error::EMILIA Fire Drill: EG-1 not earned — a dangerous action can run without an accountable human receipt. See https://www.emiliaprotocol.ai/fire-drill"
+          exit 1
+        fi
+        exit 0
