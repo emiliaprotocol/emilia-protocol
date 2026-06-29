@@ -1,13 +1,13 @@
 {
   "name": "@emilia-protocol/fire-drill",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "The Agent Action Firewall Test. Scan any MCP server manifest, OpenAPI spec, or tool list for dangerous actions an AI agent can take without an accountable human receipt — money movement, data destruction, production deploy, permission change, bulk export, regulated override. Reports an Agent Action Firewall score, the failing operations, the fix (EMILIA Gate), and EG-1 pass/fail. Static, zero-dependency, CI-friendly.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "index.js",
   "bin": { "fire-drill": "cli.mjs" },
-  "exports": { ".": "./index.js", "./package.json": "./package.json" },
-  "files": ["index.js", "cli.mjs", "README.md"],
+  "exports": { ".": "./index.js", "./corpus.js": "./corpus.js", "./package.json": "./package.json" },
+  "files": ["index.js", "cli.mjs", "corpus.js", "corpus.mjs", "README.md"],
   "scripts": { "test": "node --test" },
   "keywords": ["emilia", "mcp", "mcp-security", "agent", "ai-safety", "ai-agent-security", "firewall", "openapi", "scanner", "fire-drill", "authorization", "receipt", "eg-1"]
 }

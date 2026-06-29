@@ -6,6 +6,12 @@
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font } from '@/lib/tokens';
+import { scan, aggregate } from '../../../packages/fire-drill/index.js';
+import { REPRESENTATIVE_CORPUS } from '../../../packages/fire-drill/corpus.js';
+
+// Computed live over a representative sample of common MCP server tool surfaces.
+// Honest scope: a sample, not the whole ecosystem — run `corpus.mjs <dir>` to expand.
+const INDEX = aggregate(REPRESENTATIVE_CORPUS.map((c) => scan(c.manifest)));
 
 export const metadata = {
   title: 'The Agent Action Firewall Report — EMILIA',
@@ -41,14 +47,17 @@ export default function ReportPage() {
         <section style={{ ...styles.section, background: '#1C1917', color: '#FAFAF9', borderTop: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` }}>
           <div style={styles.container}>
             <div style={{ ...styles.eyebrow, color: color.gold }}>THE HEADLINE</div>
-            <h2 style={{ ...styles.h2, marginTop: 12, color: '#FAFAF9', maxWidth: 820 }}>
-              In every workflow we have tested so far, the dangerous action could run with no receipt
-              at all — until a gate was added.
+            <h2 style={{ ...styles.h2, marginTop: 12, color: '#FAFAF9', maxWidth: 860 }}>
+              <span style={{ color: color.gold }}>{INDEX.pct_servers_with_unguarded_action}%</span> of the {INDEX.servers}
+              {' '}MCP servers in this sample can take a dangerous action — delete data, move money,
+              change permissions — with <span style={{ color: color.gold }}>no receipt required.</span>
             </h2>
-            <p style={{ ...styles.body, maxWidth: 720, marginTop: 16, color: 'rgba(250,250,249,0.72)' }}>
-              The aggregate percentage is computed from real scans as the corpus grows — we publish the
-              methodology here rather than a number we cannot stand behind. Run{' '}
-              <code style={{ fontFamily: font.mono }}>npx @emilia-protocol/fire-drill</code> on your stack to contribute a data point.
+            <p style={{ ...styles.body, maxWidth: 740, marginTop: 16, color: 'rgba(250,250,249,0.72)' }}>
+              Computed live over a representative sample of common MCP server tool surfaces
+              ({INDEX.unguarded_operations} unguarded dangerous operations; mean firewall score{' '}
+              {INDEX.mean_score}/100). It is a <b>sample, not the whole ecosystem</b> — we publish the
+              exact figure we can stand behind and the tool to expand it. Run{' '}
+              <code style={{ fontFamily: font.mono }}>npx @emilia-protocol/fire-drill</code> on your stack to add a data point.
             </p>
           </div>
         </section>

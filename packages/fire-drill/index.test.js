@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { scan, classifyOperation, scanMcpManifest, scanOpenApi, badgeSvg, generatePullRequest } from './index.js';
+import { scan, classifyOperation, scanMcpManifest, scanOpenApi, badgeSvg, generatePullRequest, aggregate } from './index.js';
+import { REPRESENTATIVE_CORPUS } from './corpus.js';
 
 test('classifies the high-risk families', () => {
   assert.equal(classifyOperation({ name: 'release_payment' }).family, 'money_movement');
@@ -116,4 +117,31 @@ test('generatePullRequest confirms a clean pass', () => {
   const pr = generatePullRequest(r);
   assert.match(pr.title, /Confirm EG-1 Enforced/);
   assert.ok(pr.body.includes('EG-1 Enforced'));
+});
+
+test('aggregate summarizes a corpus honestly', () => {
+  const reports = [
+    scanMcpManifest({ tools: [{ name: 'delete_records' }] }),       // 1 ungated
+    scanMcpManifest({ tools: [{ name: 'get_status' }] }),           // clean
+    scanMcpManifest({ tools: [{ name: 'release_payment' }, { name: 'export_data' }] }), // 2 ungated
+  ];
+  const agg = aggregate(reports);
+  assert.equal(agg.servers, 3);
+  assert.equal(agg.servers_with_unguarded_action, 2);
+  assert.equal(agg.pct_servers_with_unguarded_action, 67);
+  assert.equal(agg.unguarded_operations, 3);
+  assert.ok(agg.by_family.money_movement >= 1 && agg.by_family.data_destruction >= 1);
+});
+
+test('aggregate of an empty corpus is a clean 100', () => {
+  const agg = aggregate([]);
+  assert.equal(agg.servers, 0);
+  assert.equal(agg.mean_score, 100);
+  assert.equal(agg.pct_servers_with_unguarded_action, 0);
+});
+
+test('the representative corpus computes a real index (mostly unguarded)', () => {
+  const agg = aggregate(REPRESENTATIVE_CORPUS.map((c) => scan(c.manifest)));
+  assert.equal(agg.servers, REPRESENTATIVE_CORPUS.length);
+  assert.ok(agg.pct_servers_with_unguarded_action >= 80); // the point of the Report
 });

@@ -223,6 +223,40 @@ export function badgeSvg({ eg1, score, label = 'agent action firewall' } = {}) {
     + `</g></svg>`;
 }
 
+// ── Corpus aggregation (the Report) ──────────────────────────────────────────
+
+/**
+ * Aggregate many scan reports into one Agent Action Firewall Index — the figure
+ * behind the Report. Honest by construction: it only summarizes the reports it
+ * was given; the caller decides the corpus.
+ * @param {object[]} reports  buildReport() results
+ */
+export function aggregate(reports = []) {
+  const servers = reports.length;
+  let dangerous = 0;
+  let ungated = 0;
+  let withUnguarded = 0;
+  let scoreSum = 0;
+  const byFamily = {};
+  for (const r of reports) {
+    dangerous += r.summary.dangerous;
+    ungated += r.summary.ungated;
+    if (r.summary.ungated > 0) withUnguarded += 1;
+    scoreSum += r.score;
+    for (const f of (r.findings || [])) byFamily[f.family] = (byFamily[f.family] || 0) + 1;
+  }
+  return {
+    '@version': FIRE_DRILL_VERSION,
+    servers,
+    servers_with_unguarded_action: withUnguarded,
+    pct_servers_with_unguarded_action: servers ? Math.round((withUnguarded / servers) * 100) : 0,
+    dangerous_operations: dangerous,
+    unguarded_operations: ungated,
+    mean_score: servers ? Math.round(scoreSum / servers) : 100,
+    by_family: byFamily,
+  };
+}
+
 // ── Generate-PR ──────────────────────────────────────────────────────────────
 
 /**
@@ -257,5 +291,5 @@ export default {
   FIRE_DRILL_VERSION, TAGLINE,
   classifyOperation, detectReceiptGate, buildReport,
   scan, scanMcpManifest, scanOpenApi, scanToolList,
-  badgeSvg, generatePullRequest,
+  badgeSvg, generatePullRequest, aggregate,
 };
