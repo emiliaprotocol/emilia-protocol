@@ -164,10 +164,10 @@ export default function HomePage() {
                 fontSize: 17, color: color.t2,
                 maxWidth: 490, lineHeight: 1.72, margin: '0 0 40px',
               }}>
-                EMILIA is the authorization-receipt layer for irreversible AI-agent actions. Before an
-                agent moves money, changes a record, deploys code, or deletes data, a named human signs
-                the <em style={{ fontStyle: 'normal', color: color.t1, fontWeight: 600 }}>exact</em> action on their own device — and afterward, anyone can verify who approved
-                exactly what, offline, without trusting EMILIA or a compromised agent.
+                EMILIA makes agent accountability verifiable. Before an agent changes money, code,
+                permissions, records, or regulated state, the system requires a receipt. If the
+                action runs, anyone can verify who approved exactly what, under which policy,
+                without trusting EMILIA&apos;s server.
               </p>
 
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>

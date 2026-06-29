@@ -2,149 +2,263 @@
  * POST /api/demo/require-receipt
  * @license Apache-2.0
  *
- * Public, unauthenticated demo of the DEMAND side of EMILIA — the
- * "No receipt, no irreversible action" loop made runnable.
+ * Public, unauthenticated demo of the DEMAND side of EMILIA: the
+ * "No receipt, no irreversible action" loop made runnable over HTTP.
  *
- * A counterparty drops `requireEmiliaReceipt(...)` in front of an
- * irreversible agent action. The action below ("delete the production
- * customer database") is irreversible by construction, so the endpoint
- * REFUSES to run it unless the caller presents a verifiable EMILIA
- * authorization receipt:
+ * The route guards three consequential actions:
+ *   - release funds
+ *   - delete a repository
+ *   - change a vendor bank account
  *
- *   • No receipt        → 402 "EMILIA Receipt Required" + machine-readable
- *                         challenge telling the agent exactly what to bring
- *                         (so a well-behaved agent self-serves one and
- *                         retries, like a browser handling 401).
- *   • Invalid receipt   → 402 + the verifier's rejection reason
- *                         (expired / action_mismatch / bad_signature / …).
- *   • Valid receipt     → 200. The action is "performed" (this is a demo:
- *                         nothing is actually destroyed) and the endpoint
- *                         echoes back the portable evidence it would retain
- *                         for its own liability.
+ * The sequence is the product:
+ *   - No receipt      -> 428 Receipt Required
+ *   - Valid receipt   -> 200 + evidence packet
+ *   - Same receipt    -> 428 replay_refused
+ *   - Forged receipt  -> 428 verifier rejection
  *
- * This is NOT auth ("who are you") and NOT permissions ("are you allowed").
- * It is *portable accountability evidence the service keeps* — proof that a
- * named human accountably authorized THIS exact action. The receipt is the
- * record; it does not by itself grant access.
+ * This is not auth ("who are you") and not permissions ("are you allowed").
+ * It is portable accountability evidence the service keeps: proof that a named
+ * human accountably authorized this exact action, under this policy.
  *
- * Reference semantics: integrity-only trust (`allowInlineKey: true`) so
- * anyone can try the loop with a self-signed EP-RECEIPT-v1 document — it
- * proves the receipt was not tampered with, NOT that EMILIA vouches for the
- * issuer. In production the verifier PINS the trusted issuer keys it accepts
- * (e.g. from /.well-known/ep-keys.json). See @emilia-protocol/require-receipt.
+ * Reference semantics: integrity-only trust (`allowInlineKey: true`) so anyone
+ * can try the loop with a self-signed EP-RECEIPT-v1 document. Production
+ * integrations pin trusted issuer keys.
  *
  * Present a receipt via header `X-EMILIA-Receipt: base64(<EP-RECEIPT-v1 JSON>)`
  * or body `{ "emilia_receipt": <doc> }`.
- *
- * Privacy: this endpoint never echoes the caller's raw action parameters or
- * the full receipt payload — only the non-sensitive verification facts
- * (receipt_id, subject, outcome, truncated signer) the integrator would log.
  */
 
 import { NextResponse } from 'next/server';
-import { verifyEmiliaReceipt, receiptChallenge } from '@/packages/require-receipt/index.js';
+import {
+  RECEIPT_PROOF_HEADER,
+  RECEIPT_REQUIRED_HEADER,
+  RECEIPT_REQUIRED_STATUS,
+  receiptChallenge,
+  receiptRequiredHeader,
+} from '@/packages/require-receipt/index.js';
+import { makeReceiptGate } from '@/packages/require-receipt/gate.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
 
 export const runtime = 'nodejs';
 
-// The sample irreversible action this demo guards. Fixed so the loop is
-// deterministic: a receipt must be bound to THIS action_type to pass.
-const SAMPLE_ACTION = 'demo.delete_production_database';
-
-const WWW_AUTH = `EMILIA realm="agent-actions", action="${SAMPLE_ACTION}"`;
 const MAX_RECEIPT_DEMO_BYTES = 256 * 1024;
+const MANIFEST_URL = '/.well-known/agent-actions.json';
+const RR = RECEIPT_REQUIRED_STATUS;
+
+const DEMO_ACTIONS = {
+  release_funds: {
+    id: 'release_funds',
+    label: 'Release funds',
+    action_type: 'payment.release',
+    target: 'wire:vendor-acme-250000',
+    assurance_class: 'class_a',
+    policy_id: 'demo.payment-release.class-a.v1',
+    mutation: 'Release a $250,000 vendor payment.',
+    evidence_kind: 'money_movement',
+  },
+  delete_repo: {
+    id: 'delete_repo',
+    label: 'Delete repository',
+    action_type: 'github.repo.delete',
+    target: 'repo:emilia/prod-ledger',
+    assurance_class: 'quorum',
+    policy_id: 'demo.github-repo-delete.quorum.v1',
+    mutation: 'Delete the emilia/prod-ledger repository.',
+    evidence_kind: 'code_state',
+  },
+  change_bank_account: {
+    id: 'change_bank_account',
+    label: 'Change bank account',
+    action_type: 'payment.bank_details.change',
+    target: 'vendor:acme-routing-9124',
+    assurance_class: 'class_a',
+    policy_id: 'demo.vendor-bank-change.class-a.v1',
+    mutation: 'Change ACME vendor payout destination.',
+    evidence_kind: 'payment_destination',
+  },
+};
+
+const DEFAULT_DEMO = 'release_funds';
+const gates = new Map();
+
+function boundActionFor(demo) {
+  return `${demo.action_type}:${demo.target}`;
+}
+
+function selectDemo(body = {}) {
+  const selector = body?.demo || body?.scenario || body?.action || body?.action_type || DEFAULT_DEMO;
+  return Object.values(DEMO_ACTIONS).find((demo) =>
+    selector === demo.id || selector === demo.action_type || selector === boundActionFor(demo),
+  ) || DEMO_ACTIONS[DEFAULT_DEMO];
+}
+
+function gateFor(demo) {
+  if (!gates.has(demo.id)) {
+    gates.set(demo.id, makeReceiptGate({
+      action: demo.action_type,
+      allowInlineKey: true,
+      allowedOutcomes: ['allow', 'allow_with_signoff'],
+      assuranceClass: demo.assurance_class,
+      manifestUrl: MANIFEST_URL,
+      maxAgeSec: 900,
+      statusCode: RR,
+    }));
+  }
+  return gates.get(demo.id);
+}
+
+function challengeHeaders(demo) {
+  return {
+    [RECEIPT_REQUIRED_HEADER]: receiptRequiredHeader({
+      action: boundActionFor(demo),
+      assuranceClass: demo.assurance_class,
+      manifestUrl: MANIFEST_URL,
+      maxAgeSec: 900,
+      proofHeader: RECEIPT_PROOF_HEADER,
+    }),
+    'Cache-Control': 'no-store',
+  };
+}
+
+function bodySummary(demo) {
+  return {
+    id: demo.id,
+    label: demo.label,
+    action: boundActionFor(demo),
+    action_type: demo.action_type,
+    target: demo.target,
+    assurance_class: demo.assurance_class,
+    policy_id: demo.policy_id,
+  };
+}
+
+function refusedResponse(demo, body, status = RR) {
+  return NextResponse.json(
+    {
+      ...body,
+      demo: bodySummary(demo),
+      loop: {
+        invariant: 'No receipt, no irreversible action.',
+        product: 'EMILIA makes agent accountability verifiable.',
+      },
+    },
+    { status, headers: challengeHeaders(demo) },
+  );
+}
+
+function receiptOptions(demo) {
+  return {
+    status: RR,
+    manifestUrl: MANIFEST_URL,
+    assuranceClass: demo.assurance_class,
+    maxAgeSec: 900,
+  };
+}
 
 export async function POST(request) {
   const parsed = await readLimitedJson(request, MAX_RECEIPT_DEMO_BYTES, { invalidValue: {} });
+  const body = parsed.ok ? parsed.value : {};
+  const demo = selectDemo(body);
+
   if (!parsed.ok) {
-    return NextResponse.json(
-      {
-        ...receiptChallenge(SAMPLE_ACTION, 'Refusing an irreversible action: request body is too large.'),
-        loop: { rule: 'No receipt, no irreversible action.', sample_action: SAMPLE_ACTION },
-      },
-      { status: 413, headers: { 'WWW-Authenticate': WWW_AUTH } },
+    return refusedResponse(
+      demo,
+      receiptChallenge(
+        boundActionFor(demo),
+        'Refusing a consequential action: request body is too large.',
+        receiptOptions(demo),
+      ),
+      413,
     );
   }
 
-  // 1) Look for a presented receipt — header first, then body.
   let doc = null;
-  const body = parsed.value;
-  if (body && body.emilia_receipt) doc = body.emilia_receipt;
+  if (body?.emilia_receipt) doc = body.emilia_receipt;
   if (!doc) {
     const hdr = request.headers.get('x-emilia-receipt');
     if (hdr) {
-      try { doc = JSON.parse(Buffer.from(hdr, 'base64').toString('utf8')); } catch { /* fallthrough → no receipt */ }
+      try {
+        doc = JSON.parse(Buffer.from(hdr, 'base64').toString('utf8'));
+      } catch {
+        doc = null;
+      }
     }
   }
 
-  // 2) No receipt → refuse the irreversible action with a 402 challenge.
   if (!doc) {
-    return NextResponse.json(
+    return refusedResponse(
+      demo,
       {
         ...receiptChallenge(
-          SAMPLE_ACTION,
-          'Refusing an irreversible action: no EMILIA authorization receipt was presented.',
+          boundActionFor(demo),
+          'Refusing a consequential action: no EMILIA authorization receipt was presented.',
+          receiptOptions(demo),
         ),
-        loop: {
-          rule: 'No receipt, no irreversible action.',
-          sample_action: SAMPLE_ACTION,
-          why: 'This action cannot be undone. The service requires portable, verifiable proof that a named human accountably authorized THIS exact action before it will run — and keeps that proof as its own accountability evidence. This is not auth and not permissions.',
-          to_proceed: [
-            'Obtain an EP-RECEIPT-v1 authorization receipt bound to action_type "' + SAMPLE_ACTION + '" (run emilia-gate, the SDK, or POST /api/trust/gate).',
-            'Resend this request with header  X-EMILIA-Receipt: base64(<EP-RECEIPT-v1 JSON>)  (or body { "emilia_receipt": <doc> }).',
-          ],
-          verifier: 'Offline Ed25519 over canonical JSON. This demo accepts self-signed receipts (allowInlineKey) to prove integrity; production pins trusted issuer keys.',
-        },
+        to_proceed: [
+          `Sign an EP-RECEIPT-v1 receipt bound to "${boundActionFor(demo)}".`,
+          `Retry with header ${RECEIPT_PROOF_HEADER}: base64(<EP-RECEIPT-v1 JSON>) or body { "emilia_receipt": <doc> }.`,
+        ],
+        verifier: 'Offline Ed25519 over canonical JSON. Demo accepts inline self-signed keys; production pins trusted issuer keys.',
       },
-      { status: 402, headers: { 'WWW-Authenticate': WWW_AUTH } },
     );
   }
 
-  // 3) Receipt present but invalid → 402 with the verifier's reason.
-  const v = verifyEmiliaReceipt(doc, {
-    allowInlineKey: true,           // demo only: integrity, not trust
-    action: SAMPLE_ACTION,          // receipt MUST be bound to this action
-    maxAgeSec: 900,                 // and fresh
-    allowedOutcomes: ['allow', 'allow_with_signoff'],
-  });
-  if (!v.ok) {
-    return NextResponse.json(
-      {
-        ...receiptChallenge(SAMPLE_ACTION, `Refusing an irreversible action: receipt rejected (${v.reason}).`),
-        rejected: v,
-        loop: { rule: 'No receipt, no irreversible action.', sample_action: SAMPLE_ACTION },
-      },
-      { status: 402, headers: { 'WWW-Authenticate': WWW_AUTH } },
-    );
+  const out = await gateFor(demo).run(doc, { target: demo.target }, async (verified) => ({
+    simulated: true,
+    mutation: demo.mutation,
+    authorized_action: verified.boundAction,
+  }));
+  if (!out.ok) {
+    return refusedResponse(demo, out.body, out.status);
   }
 
-  // 4) Valid receipt → the irreversible action is authorized.
-  //    (Demo: nothing is actually destroyed.) We retain only the
-  //    non-sensitive verification facts as our accountability record.
   return NextResponse.json({
     status: 200,
     allowed: true,
-    action: SAMPLE_ACTION,
-    note: 'Demo only — no data was destroyed. With a valid receipt the irreversible action would run, and the service would keep this receipt as its own portable accountability evidence.',
+    demo: bodySummary(demo),
+    action: out.result.authorized_action,
+    note: 'Demo only - no money moved, repo was deleted, or bank account changed.',
+    result: out.result,
     evidence: {
-      receipt_id: v.receipt_id,
-      subject: v.subject,
-      outcome: v.outcome,
-      signer: v.signer,             // already truncated by the verifier
+      receipt_id: out.receiptId,
+      outcome: out.outcome,
+      signer: out.signer,
     },
-  });
+    evidence_packet: {
+      '@version': 'EP-DEMO-EVIDENCE-v1',
+      statement: "EMILIA makes agent accountability verifiable. If the action runs, anyone can verify who approved exactly what, under which policy, without trusting EMILIA's server.",
+      receipt_id: out.receiptId,
+      authorized_action: out.result.authorized_action,
+      policy_id: demo.policy_id,
+      evidence_kind: demo.evidence_kind,
+      checks: [
+        'missing_receipt_refuses_428',
+        'exact_action_receipt_verifies_offline',
+        'receipt_consumed_once',
+        'replay_refused',
+        'tamper_refused',
+      ],
+      verifier: {
+        offline: true,
+        algorithm: 'Ed25519 over canonical JSON',
+        production_note: 'Pin trusted issuer keys; inline keys are accepted here only for a public self-contained demo.',
+      },
+    },
+  }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
-/** Convenience: GET explains the loop and how to drive it. */
 export async function GET() {
   return NextResponse.json({
-    title: 'EMILIA require-receipt demo',
-    rule: 'No receipt, no irreversible action.',
-    sample_action: SAMPLE_ACTION,
+    title: 'EMILIA Receipt Required HTTP demo',
+    invariant: 'No receipt, no irreversible action.',
+    core_message: 'EMILIA makes agent accountability verifiable. Before an agent changes money, code, permissions, records, or regulated state, the system requires a receipt. If the action runs, anyone can verify who approved exactly what, under which policy, without trusting our server.',
+    actions: Object.values(DEMO_ACTIONS).map(bodySummary),
     try_it: {
-      refuse: 'POST here with no receipt → 402 EMILIA Receipt Required.',
-      allow: 'POST here with header X-EMILIA-Receipt: base64(<EP-RECEIPT-v1 JSON>) bound to action "' + SAMPLE_ACTION + '" → 200.',
+      refuse: `POST here with { "demo": "${DEFAULT_DEMO}" } and no receipt -> 428 Receipt Required.`,
+      allow: `POST here with ${RECEIPT_PROOF_HEADER}: base64(<EP-RECEIPT-v1 JSON>) bound to the demo action -> 200 + evidence_packet.`,
+      replay: 'POST the same receipt again -> 428 replay_refused.',
+      forged: 'Tamper with the receipt payload -> 428 untrusted_or_invalid_signature.',
     },
-    docs: 'https://www.emiliaprotocol.ai/agent-guard',
-  });
+    docs: 'https://www.emiliaprotocol.ai/gate',
+  }, { headers: { 'Cache-Control': 'no-store' } });
 }
