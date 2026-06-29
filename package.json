@@ -16,6 +16,8 @@
     "check:protocol": "node scripts/check-protocol-discipline.js",
     "check:demo-key": "node scripts/check-demo-key-isolation.js",
     "gov:check": "node scripts/gov-readiness-check.mjs",
+    "gov:db-contract": "node scripts/db-contract.mjs",
+    "schema:security": "node scripts/db-contract.mjs",
     "gov:drill:key-compromise": "node scripts/drills/key-compromise-drill.mjs",
     "reconstitute": "node scripts/replay-protocol.js --reconstitute",
     "test:mutation": "stryker run",
