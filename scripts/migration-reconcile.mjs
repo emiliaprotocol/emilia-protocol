@@ -18,7 +18,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createClient } from '@supabase/supabase-js';
+import { fetchSchemaSnapshot } from './_schema-introspect.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIG_DIR = path.join(ROOT, 'supabase', 'migrations');
@@ -31,9 +31,12 @@ for (const file of ['.env.local', '.env']) {
     if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
   }
 }
-const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
-if (!URL || !KEY) { console.error('FATAL: need NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY'); process.exit(2); }
+if (!process.env.SCHEMA_GATE_DB_URL && !(process.env.NEXT_PUBLIC_SUPABASE_URL && (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY))) {
+  console.error('FATAL: set SCHEMA_GATE_DB_URL (preferred) or NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY');
+  process.exit(2);
+}
+const PROJECT_LABEL = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SCHEMA_GATE_DB_URL || '')
+  .replace(/^[a-z]+:\/\//, '').replace(/^[^@]*@/, '').split(/[.:]/)[0] || 'prod';
 
 // ── Parse what the repo migrations declare ──────────────────────────────────
 const sql = fs.readdirSync(MIG_DIR).filter((f) => f.endsWith('.sql'))
@@ -51,9 +54,9 @@ const declaredTables = [...createdTables].filter((t) => !droppedTables.has(t));
 const declaredFns = [...createdFns].filter((f) => !droppedFns.has(f));
 
 // ── What actually exists in prod ────────────────────────────────────────────
-const supabase = createClient(URL, KEY, { auth: { persistSession: false } });
-const { data: snap, error } = await supabase.rpc('gov_schema_contract_introspect');
-if (error) { console.error('FATAL: introspection RPC failed (migration 115 applied?):', error.message); process.exit(2); }
+let snap;
+try { snap = await fetchSchemaSnapshot(); }
+catch (e) { console.error('FATAL: introspection failed:', e.message); process.exit(2); }
 
 const prodTables = new Set(snap.tables);
 const prodFns = new Set(snap.functions.map((f) => f.name));
@@ -62,7 +65,7 @@ const missingTables = declaredTables.filter((t) => !prodTables.has(t));
 const missingFns = declaredFns.filter((f) => !prodFns.has(f));
 
 console.log(`\nMigration journal vs reality — ${new Date().toISOString()}`);
-console.log(`Project: ${URL.replace(/^https?:\/\//, '').split('.')[0]}`);
+console.log(`Project: ${PROJECT_LABEL}`);
 console.log(`  declared tables: ${declaredTables.length} | prod tables: ${prodTables.size}`);
 console.log(`  declared funcs:  ${declaredFns.length} | prod funcs: ${prodFns.size}`);
 

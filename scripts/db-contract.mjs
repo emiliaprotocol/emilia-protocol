@@ -15,7 +15,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createClient } from '@supabase/supabase-js';
+import { fetchSchemaSnapshot } from './_schema-introspect.mjs';
 import { contract } from './db-contract.manifest.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -30,12 +30,14 @@ for (const file of ['.env.local', '.env']) {
   }
 }
 
-const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
-if (!URL || !KEY) {
-  console.error('FATAL: NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.');
+// Credential check: least-privilege SCHEMA_GATE_DB_URL (preferred) or, for local
+// dev, the service-role key. The actual fetch + fallback lives in fetchSchemaSnapshot.
+if (!process.env.SCHEMA_GATE_DB_URL && !(process.env.NEXT_PUBLIC_SUPABASE_URL && (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY))) {
+  console.error('FATAL: set SCHEMA_GATE_DB_URL (preferred) or NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY.');
   process.exit(2);
 }
+const PROJECT_LABEL = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SCHEMA_GATE_DB_URL || '')
+  .replace(/^[a-z]+:\/\//, '').replace(/^[^@]*@/, '').split(/[.:]/)[0] || 'prod';
 
 const UNTRUSTED = new Set(['anon', 'authenticated', 'PUBLIC']);
 const WRITE_CMDS = new Set(['INSERT', 'UPDATE', 'DELETE', 'ALL']);
@@ -55,10 +57,11 @@ const pass = (m) => { passCount++; };
 const fail = (m) => fails.push(m);
 
 const main = async () => {
-  const supabase = createClient(URL, KEY, { auth: { persistSession: false } });
-  const { data: snap, error } = await supabase.rpc('gov_schema_contract_introspect');
-  if (error) {
-    console.error('FATAL: introspection RPC failed (is migration 115 applied?):', error.message);
+  let snap;
+  try {
+    snap = await fetchSchemaSnapshot();
+  } catch (e) {
+    console.error('FATAL: introspection failed:', e.message);
     process.exit(2);
   }
 
@@ -143,7 +146,7 @@ const main = async () => {
 
   // ---- report ----
   console.log(`\nEP schema-security contract — ${new Date().toISOString()}`);
-  console.log(`Project: ${URL.replace(/^https?:\/\//, '').split('.')[0]}`);
+  console.log(`Project: ${PROJECT_LABEL}`);
   console.log(`\n  ${passCount} assertions passed`);
   if (gaps.length) {
     console.log(`\n  KNOWN GAPS (${gaps.length}) — tracked, non-fatal:`);

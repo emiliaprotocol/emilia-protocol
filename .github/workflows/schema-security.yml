@@ -11,8 +11,10 @@ name: schema-security
 #   - push to main / nightly schedule: secrets are REQUIRED; their absence or any
 #     drift FAILS the workflow.
 #
-# Required repo secrets (Settings → Secrets → Actions):
-#   NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY  (prod project)
+# Required repo secret (Settings → Secrets → Actions):
+#   SCHEMA_GATE_DB_URL — least-privilege pooler connection string for the
+#   read-only `schema_gate` Postgres role (EXECUTE on gov_schema_contract_introspect
+#   only; cannot read any table rows). The god-mode service-role key is NOT in CI.
 #
 # To make this a true deploy gate: add "schema-security / schema-contract" as a
 # required status check in branch protection for main, and enable Vercel's
@@ -41,8 +43,7 @@ jobs:
   schema-contract:
     runs-on: ubuntu-latest
     env:
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SCHEMA_GATE_DB_URL: ${{ secrets.SCHEMA_GATE_DB_URL }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
@@ -55,15 +56,15 @@ jobs:
       - name: Secret guard (skip neutrally on fork PRs; required on main/schedule)
         id: guard
         run: |
-          if [ -n "$SUPABASE_SERVICE_ROLE_KEY" ] && [ -n "$NEXT_PUBLIC_SUPABASE_URL" ]; then
+          if [ -n "$SCHEMA_GATE_DB_URL" ]; then
             echo "have_secrets=true" >> "$GITHUB_OUTPUT"
-            echo "Supabase secrets present — running schema truth checks."
+            echo "schema_gate credential present — running schema truth checks."
           else
             echo "have_secrets=false" >> "$GITHUB_OUTPUT"
             if [ "${{ github.event_name }}" = "pull_request" ]; then
-              echo "::notice::Supabase secrets unavailable (fork PR or unset) — skipping schema-security neutrally."
+              echo "::notice::SCHEMA_GATE_DB_URL unavailable (fork PR or unset) — skipping schema-security neutrally."
             else
-              echo "::error::Supabase secrets are REQUIRED on '${{ github.event_name }}' but are missing. Prod schema truth cannot be verified — failing."
+              echo "::error::SCHEMA_GATE_DB_URL is REQUIRED on '${{ github.event_name }}' but is missing. Prod schema truth cannot be verified — failing."
               exit 1
             fi
           fi
