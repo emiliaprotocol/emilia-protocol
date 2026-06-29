@@ -8,6 +8,9 @@ import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font } from '@/lib/tokens';
 import { scan, aggregate } from '../../../packages/fire-drill/index.js';
 import { REPRESENTATIVE_CORPUS } from '../../../packages/fire-drill/corpus.js';
+// Registry-wide signal: name+description scan of the public MCP registry
+// (coarser than tool-level). Produced by `node packages/fire-drill/ingest.mjs`.
+import REGISTRY from '../../../packages/fire-drill/registry-index.json';
 
 // Computed live over a representative sample of common MCP server tool surfaces.
 // Honest scope: a sample, not the whole ecosystem — run `corpus.mjs <dir>` to expand.
@@ -47,16 +50,18 @@ export default function ReportPage() {
         <section style={{ ...styles.section, background: '#1C1917', color: '#FAFAF9', borderTop: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` }}>
           <div style={styles.container}>
             <div style={{ ...styles.eyebrow, color: color.gold }}>THE HEADLINE</div>
-            <h2 style={{ ...styles.h2, marginTop: 12, color: '#FAFAF9', maxWidth: 860 }}>
-              <span style={{ color: color.gold }}>{INDEX.pct_servers_with_unguarded_action}%</span> of the {INDEX.servers}
-              {' '}MCP servers in this sample can take a dangerous action — delete data, move money,
-              change permissions — with <span style={{ color: color.gold }}>no receipt required.</span>
+            <h2 style={{ ...styles.h2, marginTop: 12, color: '#FAFAF9', maxWidth: 880 }}>
+              We ran the fire drill across <span style={{ color: color.gold }}>{REGISTRY.servers_scanned.toLocaleString()}</span>
+              {' '}servers in the public MCP registry. At least <span style={{ color: color.gold }}>{REGISTRY.pct_advertise_high_risk}%</span>
+              {' '}advertise a high-risk capability — and in a tool-level sample, <span style={{ color: color.gold }}>{INDEX.pct_servers_with_unguarded_action}%</span>
+              {' '}of servers with dangerous tools require <span style={{ color: color.gold }}>no receipt.</span>
             </h2>
-            <p style={{ ...styles.body, maxWidth: 740, marginTop: 16, color: 'rgba(250,250,249,0.72)' }}>
-              Computed live over a representative sample of common MCP server tool surfaces
-              ({INDEX.unguarded_operations} unguarded dangerous operations; mean firewall score{' '}
-              {INDEX.mean_score}/100). It is a <b>sample, not the whole ecosystem</b> — we publish the
-              exact figure we can stand behind and the tool to expand it. Run{' '}
+            <p style={{ ...styles.body, maxWidth: 760, marginTop: 16, color: 'rgba(250,250,249,0.72)' }}>
+              Two lenses, both honest. <b>Registry-wide</b> ({REGISTRY.servers_scanned.toLocaleString()} servers): a scan of each
+              server's advertised name + description — a conservative floor, since most servers don't name a dangerous verb
+              in their blurb. <b>Tool-level</b> ({INDEX.servers}-server sample, {INDEX.unguarded_operations} unguarded operations,
+              mean score {INDEX.mean_score}/100): the deeper look at what the tools actually expose. Neither is a live
+              deployment scan or a vulnerability claim. Run{' '}
               <code style={{ fontFamily: font.mono }}>npx @emilia-protocol/fire-drill</code> on your stack to add a data point.
             </p>
           </div>

@@ -1,0 +1,118 @@
+{
+  "@version": "EP-FIRE-DRILL-REGISTRY-v1",
+  "source": "registry.modelcontextprotocol.io",
+  "scanned_at_note": "registry-advertised capability scan (server name + description), not a tool-level or deployment scan",
+  "servers_scanned": 12000,
+  "advertise_high_risk": 1171,
+  "pct_advertise_high_risk": 10,
+  "by_family": {
+    "money_movement": 528,
+    "production_deploy": 225,
+    "data_export": 240,
+    "permission_change": 149,
+    "data_destruction": 28,
+    "regulated_override": 1
+  },
+  "examples": [
+    {
+      "name": "ai.agenticterminal/directory",
+      "family": "money_movement"
+    },
+    {
+      "name": "ai.alpic.mcp/alpic-mcp",
+      "family": "production_deploy"
+    },
+    {
+      "name": "ai.appdeploy/deploy-app",
+      "family": "production_deploy"
+    },
+    {
+      "name": "ai.auxen/auxen",
+      "family": "money_movement"
+    },
+    {
+      "name": "ai.auxen/auxen",
+      "family": "money_movement"
+    },
+    {
+      "name": "ai.auxen/auxen",
+      "family": "money_movement"
+    },
+    {
+      "name": "ai.bolthub/registry",
+      "family": "money_movement"
+    },
+    {
+      "name": "ai.bolthub/registry",
+      "family": "money_movement"
+    },
+    {
+      "name": "ai.borealhost/mcp",
+      "family": "production_deploy"
+    },
+    {
+      "name": "ai.borealhost/mcp",
+      "family": "production_deploy"
+    },
+    {
+      "name": "ai.borealhost/mcp",
+      "family": "production_deploy"
+    },
+    {
+      "name": "ai.borealhost/mcp",
+      "family": "production_deploy"
+    },
+    {
+      "name": "ai.canaryusers/canaryusers",
+      "family": "production_deploy"
+    },
+    {
+      "name": "ai.canaryusers/canaryusers",
+      "family": "production_deploy"
+    },
+    {
+      "name": "ai.canaryusers/canaryusers",
+      "family": "production_deploy"
+    },
+    {
+      "name": "ai.com.mcp/contabo",
+      "family": "production_deploy"
+    },
+    {
+      "name": "ai.crestsystems/counterparty-intelligence",
+      "family": "money_movement"
+    },
+    {
+      "name": "ai.filegraph/document-processing",
+      "family": "data_export"
+    },
+    {
+      "name": "ai.filegraph/document-processing",
+      "family": "data_export"
+    },
+    {
+      "name": "ai.filegraph/document-processing",
+      "family": "data_export"
+    },
+    {
+      "name": "ai.gossiper/shopify-admin-mcp",
+      "family": "permission_change"
+    },
+    {
+      "name": "ai.helixar/mcp",
+      "family": "production_deploy"
+    },
+    {
+      "name": "ai.inflowpay.app/inflow",
+      "family": "money_movement"
+    },
+    {
+      "name": "ai.inflowpay.app/inflow",
+      "family": "money_movement"
+    },
+    {
+      "name": "ai.inflowpay.app/inflow",
+      "family": "money_movement"
+    }
+  ]
+}
