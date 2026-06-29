@@ -10,17 +10,38 @@
 export class MemoryConsumptionStore {
   constructor() {
     this.seen = new Set();
+    this.reserved = new Set();
   }
 
   /** Returns true the FIRST time a key is seen, false on every replay. */
   async consume(key) {
-    if (this.seen.has(key)) return false;
+    if (this.seen.has(key) || this.reserved.has(key)) return false;
     this.seen.add(key);
     return true;
   }
 
+  /** Reserve an id while an action is in flight; blocks concurrent replay. */
+  async reserve(key) {
+    if (this.seen.has(key) || this.reserved.has(key)) return false;
+    this.reserved.add(key);
+    return true;
+  }
+
+  /** Commit a reserved id after the action succeeds. */
+  async commit(key) {
+    this.reserved.delete(key);
+    this.seen.add(key);
+    return true;
+  }
+
+  /** Release a reserved id after the action fails; approval stays retryable. */
+  async release(key) {
+    this.reserved.delete(key);
+    return true;
+  }
+
   async has(key) {
-    return this.seen.has(key);
+    return this.seen.has(key) || this.reserved.has(key);
   }
 
   get size() {

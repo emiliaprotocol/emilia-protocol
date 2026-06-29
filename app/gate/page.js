@@ -7,12 +7,13 @@ import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font } from '@/lib/tokens';
 
 const GATED = [
-  { type: 'finance.wire_transfer', label: 'Move money', sample: 'Wire release, beneficiary or bank-detail change' },
-  { type: 'devops.deploy', label: 'Change production', sample: 'Deploy, migration, secret rotation, permission grant' },
-  { type: 'data.export', label: 'Move or delete data', sample: 'Bulk export, destructive query, record deletion' },
-  { type: 'grid.curtailment', label: 'Change energy posture', sample: 'Curtailment / dispatch posture change (GRACE)' },
-  { type: 'physical.actuation', label: 'Actuate the physical world', sample: 'Robot motion, tool use, vehicle maneuver' },
-  { type: 'agent.tool_call', label: 'Any irreversible agent tool', sample: 'Dangerous MCP / framework tool call' },
+  { type: 'payment.release', label: 'Money movement', sample: 'Release payment, wire transfer, treasury disbursement', tier: 'Class A' },
+  { type: 'payment.bank_details.change', label: 'Bank-detail change', sample: 'Vendor, beneficiary, payroll, or payout destination update', tier: 'Class A' },
+  { type: 'deploy.production', label: 'Production deploy', sample: 'Deploy, migration, secret rotation, production config', tier: 'Quorum' },
+  { type: 'permission.admin.change', label: 'Permission change', sample: 'Admin grant, role expansion, privileged scope change', tier: 'Quorum' },
+  { type: 'data.export', label: 'Sensitive data export', sample: 'Bulk customer, claims, patient, citizen, or employee data export', tier: 'Class A' },
+  { type: 'record.delete', label: 'Record deletion', sample: 'Delete or destroy system-of-record state', tier: 'Class A' },
+  { type: 'regulated.decision.override', label: 'Regulated override', sample: 'Benefit, credit, clinical, compliance, or safety decision override', tier: 'Quorum' },
 ];
 
 const LOOP = [
@@ -38,6 +39,42 @@ const TIERS = [
   { tier: 'class_a', body: 'A device-bound human signoff (WebAuthn / passkey).' },
   { tier: 'quorum', body: 'm-of-n distinct humans — the cryptographic two-person rule.' },
 ];
+
+const DEMO = [
+  ['read_status', 'passes through'],
+  ['release_payment, no receipt', '428 Receipt Required'],
+  ['software receipt', 'refused; needs Class A'],
+  ['valid receipt, observed drift', 'refused; field binding failed'],
+  ['Class A + bound fields', 'runs'],
+  ['same receipt again', 'replay refused'],
+  ['tampered amount', 'signature rejected'],
+];
+
+const RUN = `node packages/gate/demo.mjs
+
+# output:
+# release_payment, no receipt       -> REFUSE 428 (receipt_required)
+# release_payment, observed drift   -> REFUSE 428 (execution_binding_failed)
+# release_payment, class_a + bound  -> ALLOW
+# same receipt again                -> REFUSE 428 (replay_refused)
+# reliance packet                   -> RELY`;
+
+const CODE = `import { createTrustedActionFirewall } from '@emilia-protocol/gate';
+
+const gate = createTrustedActionFirewall({
+  trustedKeys: [process.env.EMILIA_ISSUER_PUBKEY],
+});
+
+const observedAction = await paymentSystem.describeRelease('pi_123');
+
+const out = await gate.run({
+  selector: { protocol: 'mcp', tool: 'release_payment' },
+  receipt,
+  observedAction,
+}, () => paymentSystem.release(observedAction));
+
+if (!out.ok) return out.body; // 428 Receipt Required
+return out.packet;            // auditor-ready reliance artifact`;
 
 export default function GatePage() {
   return (
@@ -84,15 +121,46 @@ export default function GatePage() {
           </div>
         </section>
 
+        {/* Run it */}
+        <section style={{ ...styles.section, background: '#1C1917', color: '#FAFAF9', borderTop: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` }}>
+          <div style={styles.container}>
+            <div style={{ ...styles.eyebrow, color: color.gold }}>PROOF IN ONE COMMAND</div>
+            <h2 style={{ ...styles.h2, marginTop: 12, color: '#FAFAF9', maxWidth: 760 }}>The product is the refusal sequence.</h2>
+            <p style={{ ...styles.body, maxWidth: 700, marginTop: 16, color: 'rgba(250,250,249,0.72)' }}>
+              A dangerous action is not argued with. It is challenged, verified, bound to real
+              execution fields, consumed once, and turned into a reliance packet. The demo runs
+              locally with generated keys; no EMILIA server is trusted.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, marginTop: 32, alignItems: 'start' }}>
+              <pre style={{ fontFamily: font.mono, fontSize: 12.5, lineHeight: 1.8, color: '#D6D3D1', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: 22, margin: 0, overflowX: 'auto', whiteSpace: 'pre' }}>{RUN}</pre>
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.14)' }}>
+                {DEMO.map(([a, b]) => (
+                  <div key={a} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 16, padding: '13px 0', borderBottom: '1px solid rgba(255,255,255,0.14)' }}>
+                    <div style={{ fontFamily: font.mono, fontSize: 12, color: 'rgba(250,250,249,0.72)' }}>{a}</div>
+                    <div style={{ fontFamily: font.mono, fontSize: 12, color: color.gold, textAlign: 'right' }}>{b}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* What it gates */}
         <section style={styles.section}>
           <div style={styles.container}>
             <div style={styles.eyebrow}>WHAT IT GATES</div>
-            <h2 style={{ ...styles.h2, marginTop: 12 }}>Consequences, not prompts.</h2>
+            <h2 style={{ ...styles.h2, marginTop: 12 }}>Default packs for high-risk action families.</h2>
+            <p style={{ ...styles.body, maxWidth: 720, marginTop: 16 }}>
+              This is not just an amount threshold. EMILIA Gate treats entire action categories as
+              high risk and binds the material system-of-record fields for each category.
+            </p>
             <div style={{ marginTop: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
               {GATED.map((a) => (
                 <div key={a.type} style={{ ...styles.card, padding: 24 }}>
-                  <div style={{ fontFamily: font.mono, fontSize: 11, color: color.gold, letterSpacing: 1, textTransform: 'uppercase' }}>{a.type}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
+                    <div style={{ fontFamily: font.mono, fontSize: 11, color: color.gold, letterSpacing: 1, textTransform: 'uppercase' }}>{a.type}</div>
+                    <div style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, letterSpacing: 1, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{a.tier}</div>
+                  </div>
                   <div style={{ ...styles.h3, fontSize: 18, marginTop: 8 }}>{a.label}</div>
                   <div style={{ ...styles.body, fontSize: 14, marginTop: 12, color: color.t2 }}>{a.sample}</div>
                 </div>
@@ -108,7 +176,7 @@ export default function GatePage() {
             <h2 style={{ ...styles.h2, marginTop: 12 }}>Request → challenge → sign → verify → execute → proof.</h2>
             <div style={{ marginTop: 32 }}>
               {LOOP.map((s) => (
-                <div key={s.n} style={{ display: 'flex', gap: 24, padding: '20px 0', borderTop: `1px solid ${color.brd}` }}>
+                <div key={s.n} style={{ display: 'flex', gap: 24, padding: '20px 0', borderTop: `1px solid ${color.border}` }}>
                   <div style={{ fontFamily: font.mono, fontSize: 14, color: color.gold, fontWeight: 600, minWidth: 24 }}>{s.n}</div>
                   <div>
                     <div style={{ ...styles.h3, fontSize: 18 }}>{s.title}</div>
@@ -122,6 +190,33 @@ export default function GatePage() {
               <b style={{ color: color.t1 }}>class_a</b> — {TIERS[1].body} {' '}
               <b style={{ color: color.t1 }}>quorum</b> — {TIERS[2].body}
             </p>
+          </div>
+        </section>
+
+        {/* API */}
+        <section style={styles.section}>
+          <div style={styles.container}>
+            <div style={styles.eyebrow}>THE PRODUCT API</div>
+            <h2 style={{ ...styles.h2, marginTop: 12, maxWidth: 780 }}>One safe path: reserve, execute, commit, prove.</h2>
+            <p style={{ ...styles.body, maxWidth: 720, marginTop: 16 }}>
+              `gate.run()` makes the ordering hard to get wrong. It reserves the receipt while the
+              action is in flight, commits one-time consumption only after success, releases on
+              pre-mutation failure, and returns the reliance packet.
+            </p>
+            <pre style={{ fontFamily: font.mono, fontSize: 12.5, lineHeight: 1.75, color: '#D6D3D1', background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: 8, padding: 22, margin: '28px 0 0', overflowX: 'auto', whiteSpace: 'pre' }}>{CODE}</pre>
+            <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+              {[
+                ['428 challenge', 'Missing or bad receipt never reaches the mutation.'],
+                ['Observed fields', 'Executor binds facts from the real system, not the request body.'],
+                ['Execution proof', 'The post-action record commits to the authorization decision hash.'],
+                ['Reliance packet', 'Auditor-ready verdict with checks, evidence head, and limitations.'],
+              ].map(([title, body]) => (
+                <div key={title} style={{ borderTop: `1px solid ${color.border}`, paddingTop: 14 }}>
+                  <div style={{ ...styles.h3, fontSize: 16 }}>{title}</div>
+                  <div style={{ ...styles.body, fontSize: 14, color: color.t2, marginTop: 6 }}>{body}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 

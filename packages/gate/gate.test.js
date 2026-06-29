@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { createGate, receiptAssuranceTier } from './index.js';
+import { createGate, createTrustedActionFirewall, DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, receiptAssuranceTier } from './index.js';
 
 function canon(v) {
   if (v === null || v === undefined) return JSON.stringify(v);
@@ -151,8 +151,106 @@ test('guard() emits an execution receipt after a guarded run', async () => {
   assert.equal(g.evidence.verify().ok, true);
 });
 
+test('run() releases a reserved receipt when the side effect fails before mutation', async () => {
+  const { pub, privateKey } = makeKey();
+  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] });
+  const r = receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff' });
+  await assert.rejects(
+    () => g.run({ selector: PAY, receipt: r }, async () => {
+      throw new Error('bank API unavailable');
+    }),
+    /bank API unavailable/,
+  );
+  assert.equal(g.store.size, 0, 'failed pre-mutation run must not consume approval');
+  const retry = await g.run({ selector: PAY, receipt: r }, async () => 'sent');
+  assert.equal(retry.ok, true);
+  assert.equal(retry.result, 'sent');
+});
+
 test('receiptAssuranceTier classification', () => {
   assert.equal(receiptAssuranceTier({ payload: { quorum: { m: 2, signers: ['a', 'b'] } } }), 'quorum');
   assert.equal(receiptAssuranceTier({ payload: { claim: { outcome: 'allow_with_signoff' } } }), 'class_a');
   assert.equal(receiptAssuranceTier({ payload: { claim: { outcome: 'allow' } } }), 'software');
+});
+
+test('default product pack guards the seven high-risk action families', () => {
+  assert.equal(DEFAULT_GATE_MANIFEST['@version'], 'EP-ACTION-RISK-MANIFEST-v0.1');
+  const guarded = HIGH_RISK_ACTION_PACKS.filter((a) => a.receipt_required);
+  assert.equal(guarded.length, 7);
+  assert.deepEqual(
+    guarded.map((a) => a.action_type).sort(),
+    [
+      'data.export',
+      'deploy.production',
+      'payment.bank_details.change',
+      'payment.release',
+      'permission.admin.change',
+      'record.delete',
+      'regulated.decision.override',
+    ].sort(),
+  );
+  for (const action of guarded) {
+    assert.ok(['class_a', 'quorum'].includes(action.assurance_class), `${action.id} must require human-grade assurance`);
+    assert.ok(action.execution_binding?.required_fields?.length >= 4, `${action.id} must bind material execution fields`);
+  }
+});
+
+test('createTrustedActionFirewall uses default high-risk packs', async () => {
+  const { pub } = makeKey();
+  const g = createTrustedActionFirewall({ trustedKeys: [pub] });
+  const out = await g.check({ selector: { protocol: 'mcp', tool: 'release_payment' } });
+  assert.equal(out.allow, false);
+  assert.equal(out.status, 428);
+  assert.equal(out.challenge.required.assurance_class, 'class_a');
+});
+
+test('execution binding refuses a mismatched system-of-record mutation without consuming the receipt', async () => {
+  const { pub, privateKey } = makeKey();
+  const g = createTrustedActionFirewall({ trustedKeys: [pub] });
+  const selector = { protocol: 'mcp', tool: 'release_payment' };
+  const signedFields = {
+    action_type: 'payment.release',
+    amount_usd: 40000,
+    currency: 'USD',
+    payment_instruction_id: 'pi_123',
+    beneficiary_account_hash: 'bene_hash_123',
+  };
+  const r = receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff', extra: signedFields });
+
+  const mismatch = await g.check({
+    selector,
+    receipt: r,
+    observedAction: { ...signedFields, amount_usd: 999999 },
+  });
+  assert.equal(mismatch.allow, false);
+  assert.equal(mismatch.reason, 'execution_binding_failed');
+  assert.deepEqual(mismatch.evidence.execution_binding.mismatched_fields, ['amount_usd']);
+  assert.equal(g.store.size, 0, 'failed binding must not consume the receipt');
+
+  const allowed = await g.check({ selector, receipt: r, observedAction: signedFields });
+  assert.equal(allowed.allow, true, allowed.reason);
+});
+
+test('reliance packet ties allow decision, execution attestation, field binding, and evidence head', async () => {
+  const { pub, privateKey } = makeKey();
+  const g = createTrustedActionFirewall({ trustedKeys: [pub] });
+  const selector = { protocol: 'mcp', tool: 'release_payment' };
+  const observedAction = {
+    action_type: 'payment.release',
+    amount_usd: 40000,
+    currency: 'USD',
+    payment_instruction_id: 'pi_456',
+    beneficiary_account_hash: 'bene_hash_456',
+  };
+  const r = receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff', extra: observedAction });
+  const authorization = await g.check({ selector, receipt: r, observedAction });
+  const execution = await g.recordExecution({ authorization, observedAction, outcome: 'executed' });
+  const packet = g.reliancePacket({ authorization, execution });
+
+  assert.equal(packet.verdict, 'rely');
+  assert.equal(packet.summary.decision_hash, authorization.evidence.hash);
+  assert.equal(packet.summary.execution_hash, execution.hash);
+  assert.equal(packet.checks.find((c) => c.id === 'execution_fields_bound').ok, true);
+  assert.equal(packet.checks.find((c) => c.id === 'execution_attests_decision').ok, true);
+  assert.equal(packet.checks.find((c) => c.id === 'evidence_log_intact').ok, true);
 });

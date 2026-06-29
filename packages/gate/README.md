@@ -18,30 +18,98 @@ action* before the world is mutated.
 ## Run it
 
 ```bash
-node --test        # 10 tests
-node demo.mjs       # end-to-end: passthrough -> 428 -> too-low -> allow -> replay -> tamper
+node --test        # Gate + red-team tests
+node demo.mjs      # end-to-end: passthrough -> 428 -> too-low -> drift -> allow -> replay -> tamper -> reliance packet
 ```
 
 ## Use it
 
 ```js
-import { createGate } from '@emilia-protocol/gate';
+import { createTrustedActionFirewall } from '@emilia-protocol/gate';
 
-const gate = createGate({
-  manifest,             // EP-ACTION-RISK-MANIFEST-v0.1: which actions are guarded + their tier
-  trustedKeys: [ISSUER_PUBKEY_B64U],   // pin the issuers you trust
+const gate = createTrustedActionFirewall({
+  trustedKeys: [ISSUER_PUBKEY_B64U], // pin the issuers you trust
   maxAgeSec: 900,
 });
 
-// 1) Framework-agnostic check
-const out = await gate.check({ selector: { protocol: 'mcp', tool: 'release_payment' }, receipt });
-if (!out.allow) throw out.challenge;   // 428 Receipt-Required
+// Facts from the system of record, not from attacker-controlled request input.
+const observedAction = {
+  action_type: 'payment.release',
+  amount_usd: 40000,
+  currency: 'USD',
+  payment_instruction_id: 'pi_123',
+  beneficiary_account_hash: 'sha256:...',
+};
 
-// 2) Express / Connect middleware
-app.post('/payments', gate.middleware({ action: 'payment.release' }), handler);
+const out = await gate.run({
+  selector: { protocol: 'mcp', tool: 'release_payment' },
+  receipt,
+  observedAction,
+}, async () => {
+  // Only reached after receipt verification, assurance enforcement, field
+  // binding, and one-time reservation.
+  return releasePayment(observedAction);
+});
 
-// 3) Wrap any function
-const release = gate.guard(reallyRelease, { selector: () => ({ tool: 'release_payment', protocol: 'mcp' }), receipt: (args, r) => r });
+if (!out.ok) throw out.body; // 428 Receipt Required
+console.log(out.packet.verdict); // "rely"
+```
+
+## Default action packs
+
+`createTrustedActionFirewall()` ships with high-risk defaults. These are category-based, not just
+amount-based:
+
+- `payment.release` — money movement, `class_a`
+- `payment.bank_details.change` — bank-detail / beneficiary change, `class_a`
+- `deploy.production` — production deploy, `quorum`
+- `permission.admin.change` — permission / admin change, `quorum`
+- `data.export` — bulk sensitive-data export, `class_a`
+- `record.delete` — destructive record deletion, `class_a`
+- `regulated.decision.override` — regulated decision override, `quorum`
+
+Each pack also defines `execution_binding.required_fields`. The executor must pass those observed
+fields from the real system of record. If the signed claim and observed mutation differ, the gate
+refuses with `execution_binding_failed` before consuming the receipt.
+
+Prefer `gate.run(...)` for mutations: it reserves the receipt, runs the side effect, commits
+one-time consumption only after success, releases the reservation if the action fails before
+mutation, and emits the execution receipt + reliance packet. Use lower-level `gate.check(...)` only
+when your framework has to separate authorization from execution.
+
+Use your own manifest when you need custom policy:
+
+```js
+import { createGate } from '@emilia-protocol/gate';
+
+const gate = createGate({ manifest, trustedKeys: [ISSUER_PUBKEY_B64U] });
+```
+
+## Framework adapters
+
+```js
+// 1) Express / Connect middleware
+app.post(
+  '/payments',
+  gate.middleware({
+    selector: { protocol: 'http', method: 'POST', path: '/payments' },
+    observedAction: (req) => req.paymentFromSystemOfRecord,
+  }),
+  handler,
+);
+
+// 2) Wrap any function
+const release = gate.guard(reallyRelease, {
+  selector: () => ({ tool: 'release_payment', protocol: 'mcp' }),
+  receipt: (_amount, r) => r,
+  observedAction: (amount) => ({
+    action_type: 'payment.release',
+    amount_usd: amount,
+    currency: 'USD',
+    payment_instruction_id: 'pi_123',
+    beneficiary_account_hash: 'sha256:...',
+  }),
+});
 ```
 
 ## What it adds over a bare verifier
@@ -55,6 +123,11 @@ challenge. The Gate composes that and adds the three things a firewall needs:
   (`replay_refused`). Default store is in-memory; swap in Redis/DB for a fleet.
 - **Evidence log** — every decision is hash-chained (`evidence.verify()` detects any alteration).
   This is the compliance / insurance artifact.
+- **Execution-field binding** — for high-risk packs, the signed claim must match the executor's
+  observed mutation fields (`amount_usd`, `commit_sha`, `principal_id`, `record_id`, etc.). This
+  closes "approved harmless X, executed dangerous Y."
+- **Reliance packet** — `gate.reliancePacket()` turns the decision, execution receipt, field binding,
+  and evidence head into the compact artifact an auditor, insurer, or investigator can review.
 
 ## Boundary
 
