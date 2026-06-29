@@ -144,6 +144,47 @@ describe('issueCommit', () => {
     expect(commit.commit_id.length).toBeGreaterThan(4);
   });
 
+  it('signs through a registered KMS/HSM custody signer when EP_KEY_CUSTODY_MODE=kms', async () => {
+    const cryptoMod = await import('node:crypto');
+    const { createExternalCustodySigner, registerCustodySigner, clearCustodySigner } = await import('../lib/key-custody.js');
+    const { publicKey, privateKey } = cryptoMod.generateKeyPairSync('ed25519');
+    const spkiB64u = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+    const prevMode = process.env.EP_KEY_CUSTODY_MODE;
+    const prevKey = process.env.EP_KMS_KEY_ID;
+    process.env.EP_KEY_CUSTODY_MODE = 'kms';
+    process.env.EP_KMS_KEY_ID = 'arn:test-kms';
+    registerCustodySigner(createExternalCustodySigner({
+      mode: 'kms', keyId: 'arn:test-kms',
+      sign: async (bytes) => cryptoMod.sign(null, Buffer.from(bytes), privateKey).toString('base64url'),
+      getPublicKey: () => spkiB64u,
+    }));
+    try {
+      const commit = await issueCommit({ entity_id: 'entity-kms', action_type: 'install' });
+      expect(commit.kid).toBe('arn:test-kms'); // signed through KMS, not the env key
+      expect(typeof commit.signature).toBe('string');
+      const raw = Buffer.from(spkiB64u, 'base64url');
+      expect(commit.public_key).toBe(raw.subarray(raw.length - 32).toString('base64'));
+    } finally {
+      clearCustodySigner();
+      if (prevMode === undefined) delete process.env.EP_KEY_CUSTODY_MODE; else process.env.EP_KEY_CUSTODY_MODE = prevMode;
+      if (prevKey === undefined) delete process.env.EP_KMS_KEY_ID; else process.env.EP_KMS_KEY_ID = prevKey;
+    }
+  });
+
+  it('fails closed when EP_KEY_CUSTODY_MODE=kms but no custody signer is registered', async () => {
+    const { clearCustodySigner } = await import('../lib/key-custody.js');
+    const prevMode = process.env.EP_KEY_CUSTODY_MODE;
+    process.env.EP_KEY_CUSTODY_MODE = 'kms';
+    process.env.EP_KMS_KEY_ID = 'arn:test-kms';
+    clearCustodySigner();
+    try {
+      await expect(issueCommit({ entity_id: 'e', action_type: 'install' })).rejects.toThrow(/custody/i);
+    } finally {
+      if (prevMode === undefined) delete process.env.EP_KEY_CUSTODY_MODE; else process.env.EP_KEY_CUSTODY_MODE = prevMode;
+      delete process.env.EP_KMS_KEY_ID;
+    }
+  });
+
   it('decision is review when no policyResult exists (regardless of high score)', async () => {
     mockCanonicalEvaluate.mockResolvedValue(mockEvaluation({ score: 0.8, policyResult: null }));
 
