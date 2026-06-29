@@ -501,3 +501,48 @@ describe('#4 policy-content hash — receipt binds rule content, not just id+ver
     expect(computeGuardPolicyHash('p1')).not.toBe(computeGuardPolicyHash('p2')); // still distinguishes which policy
   });
 });
+
+// ─── Economic defense (Doc-2): value-tiered escalation is SCORE-INDEPENDENT ──
+// The whole point of value-based escalation is that a farmed/maxed trust score
+// CANNOT buy down the human-authorization requirement for a high-value action.
+// These lock that property: the guard tier depends only on amount/risk, never on
+// any trust/score/establishment context an attacker could farm.
+describe('evaluateGuardPolicy: value tier cannot be bought down by trust score', () => {
+  const base = {
+    organizationId: 'org_1',
+    actorId: 'user_1',
+    actorRole: 'ap',
+    actionType: GUARD_ACTION_TYPES.LARGE_PAYMENT_RELEASE,
+    targetChangedFields: [],
+    riskFlags: [],
+    authStrength: 'phishing_resistant_mfa',
+  };
+
+  it('>= $1M always requires dual authorization', () => {
+    const r = evaluateGuardPolicy({ ...base, amount: 1_000_000 });
+    expect(r.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+    expect(r.signoffTier).toBe('dual');
+  });
+
+  it('>= $50k requires single signoff', () => {
+    const r = evaluateGuardPolicy({ ...base, amount: 50_000 });
+    expect(r.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+    expect(r.signoffTier).toBe('single');
+  });
+
+  it('injecting a maxed trust score / establishment does NOT downgrade the dual tier', () => {
+    // Attacker-controlled "trust" fields must be inert to the value tier.
+    const farmed = evaluateGuardPolicy({
+      ...base,
+      amount: 1_000_000,
+      // none of these are inputs to the guard tier — prove they're ignored:
+      trustScore: 100,
+      score: 100,
+      established: true,
+      emilia_score: 100,
+      submitter_established: true,
+    });
+    expect(farmed.signoffTier).toBe('dual');
+    expect(farmed.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+  });
+});
