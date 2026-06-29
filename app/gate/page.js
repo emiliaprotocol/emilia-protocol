@@ -111,10 +111,10 @@ export default function GatePage() {
             <div style={{ ...styles.eyebrow, color: color.gold }}>EMILIA GATE · THE CONSEQUENCE FIREWALL</div>
             <h1 style={{ ...styles.h1, marginTop: 16 }}>The firewall for machine action.</h1>
             <p style={{ ...styles.lead, maxWidth: 760, marginTop: 16 }}>
-              Antivirus scanned files. Firewalls filtered packets. EMILIA Gate verifies actions
-              before machines change the world. It sits at the actuator boundary and refuses any
-              consequential action unless it carries a valid, non-replayed authorization receipt —
-              proof a named human approved that exact action.
+              EMILIA makes agent accountability verifiable. Before an agent changes money, code,
+              permissions, records, or regulated state, the system requires a receipt. If the
+              action runs, anyone can verify who approved exactly what, under which policy, without
+              trusting EMILIA&apos;s server.
             </p>
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 12, fontSize: 15, color: color.t2 }}>
               Not authentication, not permissions, not anomaly detection. A policy-enforcement point
@@ -124,6 +124,7 @@ export default function GatePage() {
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
               <a href="#loop" style={cta.primary}>How it works</a>
               <a href="#surfaces" style={cta.secondary}>Where it runs</a>
+              <a href="/api/demo/require-receipt" style={cta.secondary}>Open HTTP demo</a>
               <a href="/pilot?v=gate" style={cta.secondary}>Request pilot</a>
             </div>
           </div>
