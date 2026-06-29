@@ -19,6 +19,7 @@
     "gov:db-contract": "node scripts/db-contract.mjs",
     "schema:security": "node scripts/db-contract.mjs",
     "keys:inventory": "node scripts/key-inventory.mjs",
+    "schema:reconcile": "node scripts/migration-reconcile.mjs",
     "gov:drill:key-compromise": "node scripts/drills/key-compromise-drill.mjs",
     "reconstitute": "node scripts/replay-protocol.js --reconstitute",
     "test:mutation": "stryker run",

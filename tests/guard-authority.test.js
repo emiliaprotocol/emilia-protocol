@@ -2,7 +2,15 @@
 // #5 Authority registry — credentials prove control; authorities prove permission.
 
 import { describe, it, expect } from 'vitest';
-import { evaluateAuthority } from '../lib/guard-authority.js';
+import { evaluateAuthority, resolveGuardAuthority } from '../lib/guard-authority.js';
+
+// Chainable mock matching resolveGuardAuthority's query:
+// .from().select().eq().eq().eq().limit() -> Promise<{ data, error }>
+function mockClient({ data = null, error = null } = {}) {
+  const result = Promise.resolve({ data, error });
+  const chain = { select: () => chain, eq: () => chain, limit: () => result };
+  return { from: () => chain };
+}
 
 const NOW = '2026-06-23T12:00:00.000Z';
 const active = {
@@ -54,5 +62,36 @@ describe('evaluateAuthority — fail closed unless a valid authority proves perm
 
   it('rejects a non-active status', () => {
     expect(evaluateAuthority({ ...active, status: 'retired' }, { at: NOW }).reason).toBe('authority_retired');
+  });
+});
+
+describe('resolveGuardAuthority — missing/empty/bad authority never resolves authorized (regression)', () => {
+  const ctx = { organizationId: 'org_1', approverId: 'ep:approver:x', requiredAssurance: 'A', at: NOW };
+
+  it('fails closed when the authorities table is MISSING (SQLSTATE 42P01)', async () => {
+    const r = await resolveGuardAuthority(mockClient({ error: { code: '42P01', message: 'relation "authorities" does not exist' } }), ctx);
+    expect(r.authorized).toBe(false);
+    expect(r.reason).toBe('authority_lookup_failed');
+  });
+
+  it('fails closed when the table is EMPTY (no row for this approver/org)', async () => {
+    const r = await resolveGuardAuthority(mockClient({ data: [] }), ctx);
+    expect(r.authorized).toBe(false);
+    expect(r.reason).toBe('no_active_authority');
+  });
+
+  it('fails closed on a BAD row (revoked)', async () => {
+    const r = await resolveGuardAuthority(mockClient({ data: [{ ...active, revoked_at: '2026-06-01T00:00:00.000Z' }] }), ctx);
+    expect(r.authorized).toBe(false);
+  });
+
+  it('fails closed when org or approver is missing (never queries)', async () => {
+    expect((await resolveGuardAuthority(mockClient(), { approverId: 'x' })).reason).toBe('missing_authority_subject');
+    expect((await resolveGuardAuthority(mockClient(), { organizationId: 'o' })).reason).toBe('missing_authority_subject');
+  });
+
+  it('authorizes a valid, active, in-window, sufficient-assurance row', async () => {
+    const r = await resolveGuardAuthority(mockClient({ data: [active] }), { ...ctx, role: 'controller' });
+    expect(r.authorized).toBe(true);
   });
 });
