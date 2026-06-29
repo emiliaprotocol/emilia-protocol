@@ -141,6 +141,36 @@ describe('anonymous recon hardening', () => {
     expect(docs).toMatch(/\?view=capability/);
   });
 
+  it('source guardrail: badge JSON does not publish internal verifier URL templates', () => {
+    const docs = [
+      source('app/api/badge/[entity]/route.js'),
+      source('docs/TRUST-BADGE.md'),
+    ].join('\n');
+
+    expect(docs).not.toContain('capability_source');
+    expect(docs).not.toContain('verify_a_receipt');
+    expect(docs).not.toContain('verify_receipt_api');
+  });
+
+  it('source guardrail: Cloud demo pages are marked synthetic and noindexed', () => {
+    const middleware = source('middleware.js');
+    const cloudLayout = source('app/cloud/layout.js');
+    const cloudMocks = [
+      source('app/cloud/tenants/page.js'),
+      source('app/cloud/signoffs/page.js'),
+      source('app/cloud/settings/page.js'),
+      source('app/cloud/alerts/page.js'),
+      source('app/cloud/policies/page.js'),
+    ].join('\n');
+
+    expect(middleware).toContain("pathname === '/cloud'");
+    expect(middleware).toContain("pathname.startsWith('/cloud/')");
+    expect(middleware).toContain("X-Robots-Tag', 'noindex, nofollow'");
+    expect(cloudLayout).toContain('Synthetic dashboard preview');
+    expect(cloudLayout).toContain('demo data');
+    expect(cloudMocks).not.toMatch(/Acme|Globex|Initech|Umbrella|Wayne|@acme|@globex|@initech|OFAC|Sanctions Screening/);
+  });
+
   it('source guardrail: middleware does not mark rich recon surfaces anonymous', () => {
     const src = source('middleware.js');
     const richSurfaces = [

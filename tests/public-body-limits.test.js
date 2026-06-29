@@ -76,4 +76,33 @@ describe('public POST body limits', () => {
     expect(res.status).toBe(413);
     expect(mockGetGuardedClient).not.toHaveBeenCalled();
   });
+
+  it('strips HTML from inquiry fields before durable storage', async () => {
+    let inserted;
+    mockGetGuardedClient.mockReturnValue({
+      from: () => ({
+        insert: vi.fn(async (row) => {
+          inserted = row;
+          return { error: null };
+        }),
+      }),
+    });
+
+    const res = await Inquiries.POST(new Request('https://www.emiliaprotocol.ai/api/inquiries', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        type: 'partner',
+        name: '<img src=x onerror=alert(1)>Alice',
+        email: 'alice@example.com',
+        org: '<script>alert(1)</script>Demo Agency',
+        problem: 'Need review <svg onload=alert(1)>before launch</svg>',
+        notes: '<iframe srcdoc="<script>alert(1)</script>"></iframe>internal note',
+      }),
+    }));
+
+    expect(res.status).toBe(200);
+    expect(inserted.name).toBe('Alice');
+    expect(JSON.stringify(inserted)).not.toMatch(/<script|<img|<svg|<iframe|onerror|onload/i);
+  });
 });

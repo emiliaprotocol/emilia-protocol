@@ -91,6 +91,7 @@ describe('POST /api/entities/register hardening', () => {
     mockGetGuardedClient.mockReset();
     mockGenerateEmbedding.mockReset();
     mockLoggerError.mockReset();
+    vi.unstubAllEnvs();
     mockGenerateEmbedding.mockResolvedValue([0.1, 0.2]);
   });
 
@@ -155,6 +156,36 @@ describe('POST /api/entities/register hardening', () => {
 
     expect(res.status).toBe(413);
     expect(body.type).toContain('payload_too_large');
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
+  });
+
+  it('is production-closed unless public entity registration is explicitly enabled', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('EP_ENABLE_PUBLIC_ENTITY_REGISTRATION', '');
+
+    const res = await POST(request({
+      entity_id: 'prod-open-mint',
+      display_name: 'Prod Open Mint',
+      entity_type: 'agent',
+    }));
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body.type).toContain('self_serve_registration_disabled');
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
+  });
+
+  it('rejects text/plain posts before parsing or embedding work', async () => {
+    const res = await POST(new Request('https://x.test/api/entities/register', {
+      method: 'POST',
+      headers: { 'content-type': 'text/plain' },
+      body: '{"entity_id":"plain","display_name":"Plain"}',
+    }));
+    const body = await res.json();
+
+    expect(res.status).toBe(415);
+    expect(body.type).toContain('unsupported_media_type');
+    expect(mockGenerateEmbedding).not.toHaveBeenCalled();
     expect(mockGetGuardedClient).not.toHaveBeenCalled();
   });
 });

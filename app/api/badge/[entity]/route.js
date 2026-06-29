@@ -212,11 +212,11 @@ export async function GET(request, { params }) {
         claim: cap.capabilityOn
           ? 'A verifiable EP-RECEIPT-v1 authorization receipt exists for this entity.'
           : 'No verifiable authorization receipt found for this entity.',
-        // How the viewer re-derives the claim — every fact is checkable:
+        // How the viewer re-derives the claim — no internal URL templates in
+        // this public JSON surface.
         verify: {
-          capability_source: `${PUBLIC_BASE}/api/trust/profile/${encodeURIComponent(entity)}?view=capability`,
-          verify_a_receipt: `${PUBLIC_BASE}/verify`,
-          verify_receipt_api: `${PUBLIC_BASE}/api/verify/{receiptId}`,
+          verifier: `${PUBLIC_BASE}/verify`,
+          receipt_id_required: true,
         },
         _note:
           'Capability, not score. No 0-100, no ranking, no counts, no transaction volume. ' +

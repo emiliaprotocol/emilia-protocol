@@ -25,7 +25,7 @@ const MOCK_POLICIES = [
   { id: 'pol_sox_404', name: 'SOX 404 Controls', version: 'v2.1.0', status: 'active', enforcement: 'strict', handshakes: 2104, lastUpdated: '2026-03-18T14:15:00Z' },
   { id: 'pol_gdpr_consent', name: 'GDPR Consent Management', version: 'v4.0.0', status: 'active', enforcement: 'advisory', handshakes: 3567, lastUpdated: '2026-03-19T09:45:00Z' },
   { id: 'pol_ai_act', name: 'AI Act Compliance Trail', version: 'v1.3.0', status: 'active', enforcement: 'strict', handshakes: 1289, lastUpdated: '2026-03-17T16:20:00Z' },
-  { id: 'pol_sanctions', name: 'Sanctions Screening', version: 'v2.0.0', status: 'active', enforcement: 'strict', handshakes: 890, lastUpdated: '2026-03-16T11:00:00Z' },
+  { id: 'pol_screening_demo', name: 'Screening Demo', version: 'v2.0.0', status: 'active', enforcement: 'strict', handshakes: 890, lastUpdated: '2026-03-16T11:00:00Z' },
   { id: 'pol_data_residency', name: 'Data Residency Rules', version: 'v1.1.0', status: 'draft', enforcement: 'strict', handshakes: 0, lastUpdated: '2026-03-21T08:00:00Z' },
   { id: 'pol_vendor_risk', name: 'Vendor Risk Assessment', version: 'v1.0.0', status: 'inactive', enforcement: 'advisory', handshakes: 412, lastUpdated: '2026-03-10T13:30:00Z' },
 ];

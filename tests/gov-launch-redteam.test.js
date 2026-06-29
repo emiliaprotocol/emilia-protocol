@@ -42,6 +42,7 @@ function makeInsertClient(calls) {
 describe('government-launch red-team regressions', () => {
   beforeEach(() => {
     mockGetGuardedClient.mockReset();
+    vi.unstubAllEnvs();
   });
 
   it('public dispute view never leaks raw evidence values, even short PII-like values', async () => {
@@ -116,6 +117,31 @@ describe('government-launch red-team regressions', () => {
     expect(res.status).toBe(413);
     expect(body.type).toContain('payload_too_large');
     expect(calls.inserts).toEqual([]);
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
+  });
+
+  it('public entity registration is production-closed unless explicitly enabled', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('EP_ENABLE_PUBLIC_ENTITY_REGISTRATION', '');
+
+    const res = await EntityRoute.POST(jsonReq({ name: 'Anonymous Key Mint' }));
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body.type).toContain('self_serve_registration_disabled');
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
+  });
+
+  it('public entity registration rejects text/plain form posts before parsing', async () => {
+    const res = await EntityRoute.POST(new Request('https://x/api/entity', {
+      method: 'POST',
+      headers: { 'content-type': 'text/plain' },
+      body: '{"name":"csrf-style"}',
+    }));
+    const body = await res.json();
+
+    expect(res.status).toBe(415);
+    expect(body.type).toContain('unsupported_media_type');
     expect(mockGetGuardedClient).not.toHaveBeenCalled();
   });
 

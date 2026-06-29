@@ -37,7 +37,7 @@ export async function POST(request) {
       .single();
 
     if (existing) {
-      return NextResponse.json({ id: existing.id, email, already_registered: true });
+      return waitlistAccepted();
     }
 
     // Get next entity number
@@ -60,7 +60,7 @@ export async function POST(request) {
     const nextNumber = Math.max(lastEntityNumber, lastClaimedNumber) + 1;
 
     // Insert waitlist entry
-    const { data: entry, error } = await supabase
+    const { error } = await supabase
       .from('waitlist')
       .insert({ email, claimed_number: nextNumber })
       .select()
@@ -69,17 +69,13 @@ export async function POST(request) {
     if (error) {
       // If waitlist table doesn't exist yet, fall back gracefully
       if (error.code === '42P01') {
-        return NextResponse.json({ id: lastEntityNumber + 1, email, fallback: true });
+        return waitlistAccepted();
       }
       logger.error('Waitlist insert error:', error);
       return epProblem(500, 'registration_failed', 'Registration failed');
     }
 
-    return NextResponse.json({
-      id: entry.claimed_number,
-      email: entry.email,
-      created_at: entry.created_at,
-    }, { status: 201 });
+    return waitlistAccepted();
   } catch (err) {
     logger.error('Waitlist error:', err);
     return epProblem(500, 'internal_error', 'Internal server error');
@@ -89,4 +85,12 @@ export async function POST(request) {
 function safePositiveInteger(value, fallback) {
   const n = Number(value);
   return Number.isSafeInteger(n) && n > 0 ? n : fallback;
+}
+
+function waitlistAccepted() {
+  return NextResponse.json({
+    ok: true,
+    status: 'received',
+    message: 'If this address is eligible, it has been added to the waitlist.',
+  }, { status: 202 });
 }

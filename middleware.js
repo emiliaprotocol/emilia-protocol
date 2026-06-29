@@ -390,6 +390,9 @@ export async function middleware(request) {
     requestHeaders.set('x-nonce', nonce);
     const response = NextResponse.next({ request: { headers: requestHeaders } });
     response.headers.set('Content-Security-Policy', buildCSP(nonce));
+    if (pathname === '/cloud' || pathname.startsWith('/cloud/')) {
+      response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+    }
     return response;
   }
 

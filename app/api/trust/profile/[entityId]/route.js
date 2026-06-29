@@ -72,7 +72,6 @@ export async function GET(request, { params }) {
         (result.establishment?.total_receipts || 0) > 0;
       return NextResponse.json({
         entity_id: result.entity_id,
-        display_name: result.display_name,
         capability: 'authorization_receipts',
         capability_on: Boolean(capabilityOn),
         _note: 'Capability projection: boolean only — no score, no counts, no volume. Verify a real receipt at /verify.',

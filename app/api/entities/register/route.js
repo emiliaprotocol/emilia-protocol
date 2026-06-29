@@ -7,6 +7,7 @@ import { epProblem } from '@/lib/errors';
 import { generateEmbedding } from '@/lib/providers/embeddings';
 import { logger } from '../../../../lib/logger.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
+import { isPublicEntityRegistrationEnabled } from '@/lib/env';
 
 const MAX_REGISTER_BYTES = 64 * 1024;
 const ENTITY_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.:-]{2,127}$/;
@@ -43,6 +44,15 @@ const MAX_CAPABILITY_CHARS = 100;
  */
 export async function POST(request) {
   try {
+    const contentType = request.headers.get('content-type') || '';
+    if (!contentType.toLowerCase().startsWith('application/json')) {
+      return epProblem(415, 'unsupported_media_type', 'Content-Type must be application/json');
+    }
+
+    if (!isPublicEntityRegistrationEnabled()) {
+      return epProblem(403, 'self_serve_registration_disabled', 'Self-serve entity registration is disabled. Use a verified onboarding flow.');
+    }
+
     const parsed = await readLimitedJson(request, MAX_REGISTER_BYTES);
     if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
     const body = parsed.value;

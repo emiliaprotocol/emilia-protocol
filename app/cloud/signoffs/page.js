@@ -27,11 +27,11 @@ const s = {
 const MOCK_SUMMARY = { pending: 18, completed: 1243, expired: 34 };
 
 const MOCK_SIGNOFFS = [
-  { id: 'sig_a9f2c1', handshake: 'hs_9f2a1b3c', policy: 'aml-kyc-v3', signer: 'compliance-officer@acme.com', status: 'pending', created: '2026-03-22T14:30:00Z', expires: '2026-03-23T14:30:00Z' },
-  { id: 'sig_b3e7d4', handshake: 'hs_7e4d2a8f', policy: 'sox-404-controls', signer: 'auditor@globex.com', status: 'pending', created: '2026-03-22T12:15:00Z', expires: '2026-03-23T12:15:00Z' },
-  { id: 'sig_c5a1f8', handshake: 'hs_3c1b9e7d', policy: 'gdpr-consent-v2', signer: 'dpo@initech.eu', status: 'completed', created: '2026-03-21T09:00:00Z', expires: '2026-03-22T09:00:00Z' },
-  { id: 'sig_d8c4b2', handshake: 'hs_5a8f3c2e', policy: 'ai-act-trail', signer: 'legal@acme.com', status: 'completed', created: '2026-03-20T16:45:00Z', expires: '2026-03-21T16:45:00Z' },
-  { id: 'sig_e2f9a6', handshake: 'hs_1d6e4b9a', policy: 'sanctions-screen', signer: 'ops@globex.com', status: 'expired', created: '2026-03-18T10:00:00Z', expires: '2026-03-19T10:00:00Z' },
+  { id: 'sig_a9f2c1', handshake: 'hs_9f2a1b3c', policy: 'aml-kyc-v3', signer: 'approver-1@example.invalid', status: 'pending', created: '2026-03-22T14:30:00Z', expires: '2026-03-23T14:30:00Z' },
+  { id: 'sig_b3e7d4', handshake: 'hs_7e4d2a8f', policy: 'sox-404-controls', signer: 'auditor-1@example.invalid', status: 'pending', created: '2026-03-22T12:15:00Z', expires: '2026-03-23T12:15:00Z' },
+  { id: 'sig_c5a1f8', handshake: 'hs_3c1b9e7d', policy: 'privacy-consent-v2', signer: 'privacy-1@example.invalid', status: 'completed', created: '2026-03-21T09:00:00Z', expires: '2026-03-22T09:00:00Z' },
+  { id: 'sig_d8c4b2', handshake: 'hs_5a8f3c2e', policy: 'ai-act-trail', signer: 'legal-1@example.invalid', status: 'completed', created: '2026-03-20T16:45:00Z', expires: '2026-03-21T16:45:00Z' },
+  { id: 'sig_e2f9a6', handshake: 'hs_1d6e4b9a', policy: 'screening-demo', signer: 'ops-1@example.invalid', status: 'expired', created: '2026-03-18T10:00:00Z', expires: '2026-03-19T10:00:00Z' },
 ];
 
 const statusColor = { pending: '#22C55E', completed: '#22C55E', expired: '#f87171' };

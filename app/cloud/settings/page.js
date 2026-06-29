@@ -66,9 +66,9 @@ export default function SettingsPage() {
         await new Promise(r => setTimeout(r, 500));
         setConfig(prev => ({
           ...prev,
-          orgName: 'Acme Corp',
-          contactEmail: 'admin@acme-corp.com',
-          webhookUrl: 'https://hooks.acme-corp.com/ep-alerts',
+          orgName: 'Demo Tenant',
+          contactEmail: 'admin@example.invalid',
+          webhookUrl: 'https://hooks.example.invalid/ep-alerts',
         }));
       } catch (err) {
         setError('Failed to load settings.');

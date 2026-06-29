@@ -138,14 +138,25 @@ const s = {
     fontSize: 9,
     letterSpacing: 1,
     textTransform: 'uppercase',
-    color: '#22C55E',
-    background: 'rgba(0,255,136,0.06)',
-    border: '1px solid rgba(0,255,136,0.12)',
+    color: '#F59E0B',
+    background: 'rgba(245,158,11,0.08)',
+    border: '1px solid rgba(245,158,11,0.18)',
     borderRadius: 4,
     padding: '3px 8px',
   },
   content: {
     padding: '32px',
+  },
+  demoBanner: {
+    marginBottom: 18,
+    padding: '10px 12px',
+    borderRadius: 6,
+    border: '1px solid rgba(245,158,11,0.22)',
+    background: 'rgba(245,158,11,0.07)',
+    color: '#FCD34D',
+    fontFamily: "'IBM Plex Mono', monospace",
+    fontSize: 11,
+    letterSpacing: 0.4,
   },
 };
 
@@ -200,9 +211,10 @@ export default function CloudLayout({ children }) {
           <span style={s.breadcrumb}>
             EP Cloud {pathname !== '/cloud' ? ` / ${pathname.replace('/cloud/', '').split('/')[0]}` : ''}
           </span>
-          <span style={s.envBadge}>production</span>
+          <span style={s.envBadge}>demo data</span>
         </header>
         <div style={s.content}>
+          <div style={s.demoBanner}>Synthetic dashboard preview. Live tenant data is served only from authenticated Cloud APIs.</div>
           {children}
         </div>
       </div>
