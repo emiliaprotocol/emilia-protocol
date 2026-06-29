@@ -18,8 +18,10 @@ action* before the world is mutated.
 ## Run it
 
 ```bash
-node --test        # Gate + red-team tests
-node demo.mjs      # end-to-end: passthrough -> 428 -> too-low -> drift -> allow -> replay -> tamper -> reliance packet
+node --test                       # Gate + red-team + EG-1 + MCP + adapter tests
+node demo.mjs                     # end-to-end: passthrough -> 428 -> too-low -> drift -> allow -> replay -> tamper -> reliance packet
+node eg1.mjs                      # EG-1 conformance: 8/8 -> "EG-1 Enforced"
+node adapters/github-demo.mjs     # an agent tries to delete a prod repo (refused without a receipt)
 ```
 
 ## Use it
@@ -111,6 +113,74 @@ const release = gate.guard(reallyRelease, {
   }),
 });
 ```
+
+## MCP drop-in
+
+Agents live at the MCP tool-call boundary. One wrapper turns a dangerous tool into a
+receipt-required one:
+
+```js
+import { createTrustedActionFirewall } from '@emilia-protocol/gate';
+import { gateMcpTool } from '@emilia-protocol/gate/mcp';
+
+const gate = createTrustedActionFirewall({ trustedKeys: [ISSUER_PUBKEY_B64U] });
+
+server.tool('release_payment', gateMcpTool(
+  gate,
+  { tool: 'release_payment', observedAction: (args) => paymentSystem.describe(args) },
+  async (args) => paymentSystem.release(args),
+));
+// No valid receipt -> a structured MCP error ({ isError, _emilia.challenge }).
+// On success -> the tool result with { _emilia: { execution, reliance } } attached.
+```
+
+## System-of-record adapters
+
+Adoption happens where the mutation happens — *"install this before your agent can touch
+production."* The GitHub adapter guards destructive Octokit calls so the mutation never reaches
+GitHub without a receipt bound to **this** repo:
+
+```js
+import { createGate } from '@emilia-protocol/gate';
+import { createGithubManifest, guardGithubMutation } from '@emilia-protocol/gate/adapters/github';
+
+const gate = createGate({ manifest: createGithubManifest(), trustedKeys: [ISSUER_PUBKEY_B64U] });
+
+await guardGithubMutation(gate, octokit, {
+  op: 'repo.delete',                 // | 'permission.change' | 'branch_protection.remove'
+  params: { owner: 'acme', repo: 'prod' },
+  receipt,                           // throws EMILIA_RECEIPT_REQUIRED if absent/invalid/replayed/drifted
+});
+```
+
+## Earn EG-1
+
+**EG-1 conformance** answers the only question that matters for adoption: *does your integration
+actually enforce the gate, or are you just claiming it?* An integration earns **EG-1 Enforced** only
+if it demonstrably passes all eight checks:
+
+1. missing receipt → 428
+2. software receipt on a Class-A action → refused
+3. observed execution drift → refused
+4. valid Class-A / quorum receipt → runs
+5. same receipt replay → refused
+6. tampered receipt → refused
+7. execution proof binds to the authorization decision
+8. reliance packet returns verdict `rely`
+
+```js
+import { createTrustedActionFirewall, createEg1Harness, gateConformance } from '@emilia-protocol/gate';
+
+const harness = createEg1Harness();
+const gate = createTrustedActionFirewall({ trustedKeys: [harness.publicKey] });
+const report = await gateConformance({ gate, harness });
+// report.passed === true; report.badge === 'EG-1 Enforced'
+```
+
+For a custom integration (an HTTP service, another language), provide your own `invoke` to
+`runEg1({ invoke, harness })` — it drives the same eight scenarios. `node eg1.mjs` self-certifies the
+reference gate and exits non-zero on any failure, so it drops straight into CI. This turns an open PR
+into a crisp claim: *"this PR makes `delete_row` earn EG-1."*
 
 ## What it adds over a bare verifier
 

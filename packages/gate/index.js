@@ -35,11 +35,16 @@ import { createEvidenceLog } from './evidence.js';
 import { DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, createDefaultActionRiskManifest } from './action-packs.js';
 import { hashCanonical, verifyExecutionBinding } from './execution-binding.js';
 import { buildReliancePacket } from './reliance-packet.js';
+import { createEg1Harness, makeGateInvoke, runEg1, EG1_DEFAULT_SELECTOR } from './eg1-conformance.js';
 
 export { MemoryConsumptionStore, createEvidenceLog };
 export { DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, createDefaultActionRiskManifest };
 export { EXECUTION_BINDING_VERSION, canonicalize, hashCanonical, materialFieldsFor, verifyExecutionBinding } from './execution-binding.js';
 export { RELIANCE_PACKET_VERSION, buildReliancePacket } from './reliance-packet.js';
+export {
+  EG1_VERSION, EG1_CHECKS, EG1_DEFAULT_ACTION, EG1_DEFAULT_SELECTOR,
+  createEg1Harness, makeGateInvoke, runEg1,
+} from './eg1-conformance.js';
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 
@@ -315,6 +320,38 @@ export function createTrustedActionFirewall(opts = {}) {
   return createGate({ ...rest, manifest });
 }
 
+/**
+ * EG-1 conformance for an existing gate. The gate MUST have been built trusting
+ * `harness.publicKey` (otherwise every valid receipt is rejected and the gate
+ * cannot earn EG-1). Returns the EG-1 JSON report.
+ * @param {object} o
+ * @param {object} o.gate     an EMILIA Gate (createGate/createTrustedActionFirewall)
+ * @param {object} o.harness  the harness whose key the gate trusts (createEg1Harness)
+ * @param {object} [o.action] the high-risk action to exercise
+ * @param {object} [o.selector] the manifest selector for that action
+ */
+export async function gateConformance({ gate, harness, action, selector = EG1_DEFAULT_SELECTOR } = {}) {
+  if (!gate || typeof gate.run !== 'function') {
+    throw new Error('gateConformance requires a gate built trusting harness.publicKey');
+  }
+  if (!harness) throw new Error('gateConformance requires the harness whose key the gate trusts');
+  const act = action || harness.action;
+  const invoke = makeGateInvoke(gate, { selector, action: act });
+  return runEg1({ invoke, harness, action: act });
+}
+
+/**
+ * Self-certify the reference gate: build a default Trusted Action Firewall that
+ * trusts a fresh EG-1 harness key, then run all eight checks. This is the
+ * canonical "EMILIA Gate earns EG-1" proof — runnable as a CLI (`eg1.mjs`),
+ * shown on /gate, and the template an adopter copies for their integration.
+ */
+export async function gateConformanceSelfTest({ now } = {}) {
+  const harness = createEg1Harness({ now });
+  const gate = createTrustedActionFirewall({ trustedKeys: [harness.publicKey], now });
+  return gateConformance({ gate, harness });
+}
+
 export default {
   createGate,
   createTrustedActionFirewall,
@@ -324,4 +361,8 @@ export default {
   ASSURANCE_TIERS,
   DEFAULT_GATE_MANIFEST,
   HIGH_RISK_ACTION_PACKS,
+  gateConformance,
+  gateConformanceSelfTest,
+  createEg1Harness,
+  runEg1,
 };

@@ -1,14 +1,21 @@
 {
   "name": "@emilia-protocol/gate",
-  "version": "0.2.0",
-  "description": "EMILIA Gate — the Trusted Action Firewall. Deny-by-default enforcement for consequential machine actions: an action runs only with a valid, in-scope, sufficiently-assured, non-replayed EMILIA authorization receipt (proof a named human authorized this exact action). Composes require-receipt + verify; adds assurance-tier enforcement, one-time consumption (replay defense), and a tamper-evident evidence log. Framework-agnostic, fails closed. Reference implementation, experimental.",
+  "version": "0.3.0",
+  "description": "EMILIA Gate — the Trusted Action Firewall. Deny-by-default enforcement for consequential machine actions: an action runs only with a valid, in-scope, sufficiently-assured, non-replayed EMILIA authorization receipt (proof a named human authorized this exact action). Composes require-receipt + verify; adds assurance-tier enforcement, one-time consumption (replay defense), a tamper-evident evidence log, default high-risk action packs, execution-field binding, reliance packets, an MCP drop-in, a GitHub system-of-record adapter, and EG-1 conformance. Framework-agnostic, fails closed. Reference implementation, experimental.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "index.js",
-  "files": ["index.js", "store.js", "evidence.js", "action-packs.js", "execution-binding.js", "reliance-packet.js", "README.md"],
+  "exports": {
+    ".": "./index.js",
+    "./mcp": "./mcp.js",
+    "./adapters/github": "./adapters/github.js",
+    "./package.json": "./package.json"
+  },
+  "files": ["index.js", "store.js", "evidence.js", "action-packs.js", "execution-binding.js", "reliance-packet.js", "eg1-conformance.js", "eg1.mjs", "mcp.js", "adapters/github.js", "adapters/github-demo.mjs", "demo.mjs", "README.md"],
   "scripts": {
     "test": "node --test",
-    "demo": "node demo.mjs"
+    "demo": "node demo.mjs",
+    "eg1": "node eg1.mjs"
   },
   "dependencies": {
     "@emilia-protocol/require-receipt": "^0.4.1"

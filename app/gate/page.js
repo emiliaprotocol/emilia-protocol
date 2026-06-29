@@ -26,10 +26,10 @@ const LOOP = [
 ];
 
 const SURFACES = [
-  { type: 'MCP', label: 'Agent tools', body: 'Wrap MCP servers; a dangerous tool call without a receipt returns 428.', status: 'Shipped' },
+  { type: 'MCP', label: 'Agent tools', body: 'Wrap any MCP tool in one line (gateMcpTool); a dangerous call without a receipt returns 428.', status: 'Shipped' },
   { type: 'API', label: 'HTTP middleware', body: 'Express / Connect / Next / Go — protect POST / PUT / PATCH / DELETE.', status: 'Shipped' },
   { type: 'FRAMEWORKS', label: 'Agent runtimes', body: 'OpenAI, LangChain, CrewAI, AutoGen — guard tool calls in one wrap().', status: 'Shipped' },
-  { type: 'CLOUD', label: 'Infra & platforms', body: 'GitHub, AWS/IAM, Kubernetes, Terraform, Supabase, Stripe.', status: 'Roadmap' },
+  { type: 'CLOUD', label: 'Infra & platforms', body: 'GitHub repo-delete / permission / branch-protection adapter shipped. AWS/IAM, k8s, Terraform, Supabase, Stripe next.', status: 'Shipped' },
   { type: 'ROBOTS', label: 'Actuator sidecar', body: 'A local daemon before motion/tool commands. Pre-authorize a bounded envelope; verify each act offline.', status: 'Reference' },
   { type: 'ATTESTED', label: 'Attested gate', body: 'Prove the gate is actually installed and running via device/workload attestation. Crucial for robots.', status: 'Roadmap' },
 ];
@@ -58,6 +58,30 @@ const RUN = `node packages/gate/demo.mjs
 # release_payment, class_a + bound  -> ALLOW
 # same receipt again                -> REFUSE 428 (replay_refused)
 # reliance packet                   -> RELY`;
+
+const EG1 = [
+  'missing receipt → 428',
+  'software receipt on a Class-A action → refused',
+  'observed execution drift → refused',
+  'valid Class-A / quorum receipt → runs',
+  'same receipt replay → refused',
+  'tampered receipt → refused',
+  'execution proof binds to the authorization decision',
+  'reliance packet returns verdict: rely',
+];
+
+const EG1_RUN = `node packages/gate/eg1.mjs
+
+# EG-1 Conformance — does this integration ENFORCE EMILIA Gate?
+#   PASS  missing receipt -> 428
+#   PASS  software receipt on Class-A action -> refused
+#   PASS  observed execution drift -> refused
+#   PASS  valid Class-A/quorum receipt -> runs
+#   PASS  same receipt replay -> refused
+#   PASS  tampered receipt -> refused
+#   PASS  execution proof binds to authorization decision
+#   PASS  reliance packet returns verdict "rely"
+#   ✓ EG-1 Enforced  (8/8)`;
 
 const CODE = `import { createTrustedActionFirewall } from '@emilia-protocol/gate';
 
@@ -236,6 +260,38 @@ export default function GatePage() {
                   <div style={{ ...styles.body, fontSize: 14, marginTop: 10, color: color.t2 }}>{s.body}</div>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* EG-1 conformance */}
+        <section id="eg1" style={{ ...styles.section, background: '#1C1917', color: '#FAFAF9', borderTop: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` }}>
+          <div style={styles.container}>
+            <div style={{ ...styles.eyebrow, color: color.gold }}>EG-1 CONFORMANCE</div>
+            <h2 style={{ ...styles.h2, marginTop: 12, color: '#FAFAF9', maxWidth: 820 }}>
+              Does your integration actually enforce the gate — or are you just claiming it?
+            </h2>
+            <p style={{ ...styles.body, maxWidth: 720, marginTop: 16, color: 'rgba(250,250,249,0.72)' }}>
+              EG-1 turns adoption into a binary artifact. Point the harness at your dangerous action;
+              if it passes all eight checks, you earn <b style={{ color: color.gold }}>EG-1 Enforced</b>.
+              It makes an open PR crisp: <i>“this makes <code>delete_row</code> earn EG-1.”</i>
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, marginTop: 32, alignItems: 'start' }}>
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.14)' }}>
+                {EG1.map((c, i) => (
+                  <div key={c} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 14, padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.14)' }}>
+                    <div style={{ fontFamily: font.mono, fontSize: 12, color: color.gold }}>{String(i + 1).padStart(2, '0')}</div>
+                    <div style={{ fontFamily: font.mono, fontSize: 12.5, color: 'rgba(250,250,249,0.82)' }}>{c}</div>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <pre style={{ fontFamily: font.mono, fontSize: 12, lineHeight: 1.7, color: '#D6D3D1', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: 22, margin: 0, overflowX: 'auto', whiteSpace: 'pre' }}>{EG1_RUN}</pre>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10, marginTop: 20, padding: '10px 16px', border: `1px solid ${color.gold}`, borderRadius: 999 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: 999, background: color.green, display: 'inline-block' }} />
+                  <span style={{ fontFamily: font.mono, fontSize: 12, color: color.gold, letterSpacing: 1, textTransform: 'uppercase' }}>EG-1 Enforced</span>
+                </div>
+              </div>
             </div>
           </div>
         </section>
