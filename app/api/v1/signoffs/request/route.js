@@ -12,6 +12,7 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 import { APPROVER_ID_PATTERN } from '@/lib/webauthn';
+import { readLimitedJson } from '@/lib/http/body-limit';
 
 // Approval window — per MD §5.2 approvals must expire. 4 hours is a
 // reasonable default for high-risk financial / government workflows;
@@ -21,6 +22,7 @@ const DEFAULT_APPROVAL_TTL_MS = 4 * 60 * 60 * 1000;
 // Mirror the pattern enforced on GET /api/v1/trust-receipts/{id} so a
 // malformed or path-traversal-shaped receipt_id never reaches the DB.
 const RECEIPT_ID_PATTERN = /^tr_[a-f0-9]{32}$/;
+const MAX_SIGNOFF_REQUEST_BYTES = 64 * 1024;
 
 export async function POST(request) {
   try {
@@ -30,7 +32,9 @@ export async function POST(request) {
     // the SoD check compares against at approve time.
     const initiatorEntityId = authEntityId(auth);
 
-    const body = await request.json().catch(() => ({}));
+    const parsed = await readLimitedJson(request, MAX_SIGNOFF_REQUEST_BYTES, { invalidValue: {} });
+    if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
+    const body = parsed.value;
     if (!body.receipt_id) return epProblem(400, 'missing_receipt_id', 'receipt_id is required');
     if (!RECEIPT_ID_PATTERN.test(body.receipt_id)) {
       return epProblem(400, 'invalid_receipt_id', 'receipt_id must match tr_<32-hex>');

@@ -21,6 +21,9 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 import { buildExecutionIntegrity } from '@/lib/execution/integrity.js';
+import { readLimitedJson } from '@/lib/http/body-limit';
+
+const MAX_EXECUTION_ATTESTATION_BYTES = 256 * 1024;
 
 export async function POST(request, { params }) {
   try {
@@ -31,7 +34,9 @@ export async function POST(request, { params }) {
     if (!/^tr_[a-f0-9]{32}$/.test(receiptId || '')) {
       return epProblem(400, 'invalid_receipt_id', 'receipt_id must match tr_<32-hex>');
     }
-    const body = await request.json().catch(() => ({}));
+    const parsed = await readLimitedJson(request, MAX_EXECUTION_ATTESTATION_BYTES, { invalidValue: {} });
+    if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
+    const body = parsed.value;
 
     if (!body.executed_action || typeof body.executed_action !== 'object') {
       return epProblem(400, 'missing_executed_action', 'executed_action (the canonical action that ran) is required');

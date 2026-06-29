@@ -15,6 +15,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import * as jose from 'jose';
 import {
   buildAuthorizeUrl, pkceChallenge, randomUrlToken, validateIdToken, discover, exchangeCode,
+  assertSafeDiscoveryEndpoints,
 } from '../lib/sso/oidc.js';
 
 const ISSUER = 'https://idp.example.com';
@@ -147,5 +148,87 @@ describe('OIDC discovery + token exchange (injected fetch)', () => {
       code: 'authcode', redirectUri: 'https://x/cb', codeVerifier: 'verifier123', fetchImpl,
     });
     expect(tokens.id_token).toBe('idt');
+  });
+
+  it('discover refuses server-followed redirects (SSRF)', async () => {
+    let sawRedirectOption;
+    const fetchImpl = async (url, init) => {
+      sawRedirectOption = init?.redirect;
+      return { ok: true, json: async () => ({ issuer: ISSUER, authorization_endpoint: `${ISSUER}/authorize`, token_endpoint: `${ISSUER}/token`, jwks_uri: `${ISSUER}/jwks` }) };
+    };
+    await discover(ISSUER, fetchImpl);
+    expect(sawRedirectOption).toBe('error');
+  });
+
+  it('exchangeCode refuses redirects on the secret-bearing POST (SSRF)', async () => {
+    let sawRedirectOption;
+    const fetchImpl = async (url, init) => {
+      sawRedirectOption = init?.redirect;
+      return { ok: true, json: async () => ({ id_token: 'idt' }) };
+    };
+    await exchangeCode({
+      tokenEndpoint: `${ISSUER}/token`, clientId: CLIENT_ID, clientSecret: 'secret',
+      code: 'c', redirectUri: 'https://x/cb', codeVerifier: 'v', fetchImpl,
+    });
+    expect(sawRedirectOption).toBe('error');
+  });
+});
+
+describe('OIDC discovery-endpoint SSRF gate (assertSafeDiscoveryEndpoints)', () => {
+  // Injected DNS: a hostile issuer can return real-looking https endpoints that
+  // resolve to cloud-metadata / loopback. The gate must refuse them even though
+  // the issuer host itself was already validated.
+  // Host-aware injected DNS: every host resolves public EXCEPT the ones named in
+  // `poison`, which resolve to the given attacker/internal address.
+  const lookupMap = (poison = {}) => async (hostname) => {
+    const addr = poison[hostname] || '142.250.80.1';
+    return [{ address: addr, family: addr.includes(':') ? 6 : 4 }];
+  };
+
+  it('accepts public https endpoints on sibling hosts (e.g. Google-style)', async () => {
+    const doc = {
+      authorization_endpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+      token_endpoint: 'https://oauth2.googleapis.com/token',
+      jwks_uri: 'https://www.googleapis.com/oauth2/v3/certs',
+    };
+    const r = await assertSafeDiscoveryEndpoints(doc, { lookup: lookupMap() });
+    expect(r.valid).toBe(true);
+  });
+
+  it('refuses a token_endpoint that resolves to the cloud metadata IP', async () => {
+    const doc = {
+      authorization_endpoint: 'https://idp.example.com/authorize',
+      token_endpoint: 'https://attacker.example.com/token',
+      jwks_uri: 'https://idp.example.com/jwks',
+    };
+    const r = await assertSafeDiscoveryEndpoints(doc, {
+      lookup: lookupMap({ 'attacker.example.com': '169.254.169.254' }),
+    });
+    expect(r.valid).toBe(false);
+    expect(r.field).toBe('token_endpoint');
+  });
+
+  it('refuses a non-https jwks_uri', async () => {
+    const doc = {
+      authorization_endpoint: 'https://idp.example.com/authorize',
+      token_endpoint: 'https://idp.example.com/token',
+      jwks_uri: 'http://idp.example.com/jwks',
+    };
+    const r = await assertSafeDiscoveryEndpoints(doc, { lookup: lookupMap() });
+    expect(r.valid).toBe(false);
+    expect(r.field).toBe('jwks_uri');
+  });
+
+  it('refuses a jwks_uri that resolves to loopback (IPv6)', async () => {
+    const doc = {
+      authorization_endpoint: 'https://idp.example.com/authorize',
+      token_endpoint: 'https://idp.example.com/token',
+      jwks_uri: 'https://internal.example.com/jwks',
+    };
+    const r = await assertSafeDiscoveryEndpoints(doc, {
+      lookup: lookupMap({ 'internal.example.com': '::1' }),
+    });
+    expect(r.valid).toBe(false);
+    expect(r.field).toBe('jwks_uri');
   });
 });

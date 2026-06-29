@@ -19,6 +19,10 @@ import { siemEvent } from '@/lib/siem';
 // `useAuth` means the rate-limit key includes the API key prefix + IP.
 // =============================================================================
 
+const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH']);
+const DEFAULT_API_BODY_LIMIT_BYTES = 1024 * 1024;
+const MULTIPART_API_BODY_LIMIT_BYTES = 26 * 1024 * 1024; // 25 MB file + form overhead
+
 const ROUTE_POLICIES = {
   // Pilot-request intake (public lead form; honeypot + validation in route)
   'POST /api/pilot/request':          { rateCategory: 'submit', useAuth: false },
@@ -291,6 +295,32 @@ function getApiKeyPrefix(request) {
   return token ? token.slice(0, 16) : null;
 }
 
+function declaredApiBodyLimit(request) {
+  const ctype = request.headers.get('content-type') || '';
+  return ctype.includes('multipart/form-data')
+    ? MULTIPART_API_BODY_LIMIT_BYTES
+    : DEFAULT_API_BODY_LIMIT_BYTES;
+}
+
+function rejectOversizedDeclaredApiBody(request) {
+  if (!BODY_METHODS.has(request.method.toUpperCase())) return null;
+  const raw = request.headers.get('content-length');
+  if (!raw) return null;
+  const length = Number(raw);
+  if (!Number.isFinite(length) || length < 0) {
+    return NextResponse.json(
+      { error: 'Invalid Content-Length', code: 'invalid_content_length' },
+      { status: 400 },
+    );
+  }
+  const limit = declaredApiBodyLimit(request);
+  if (length <= limit) return null;
+  return NextResponse.json(
+    { error: 'Request body too large', code: 'payload_too_large', max_bytes: limit },
+    { status: 413 },
+  );
+}
+
 // =============================================================================
 // CSP nonce generator
 // =============================================================================
@@ -356,6 +386,9 @@ export async function middleware(request) {
     response.headers.set('Content-Security-Policy', buildCSP(nonce));
     return response;
   }
+
+  const bodyLimitResponse = rejectOversizedDeclaredApiBody(request);
+  if (bodyLimitResponse) return bodyLimitResponse;
 
   // Cloud routes: enforce origin allowlist to prevent cross-origin reads from
   // arbitrary websites. Public protocol routes intentionally have no CORS restriction.

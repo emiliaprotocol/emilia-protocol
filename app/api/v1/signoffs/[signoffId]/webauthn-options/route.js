@@ -22,6 +22,9 @@ import {
 } from '@/lib/webauthn';
 import { loadSignoffForSigning, loadApproverCredentials } from '@/lib/webauthn-signoff';
 import { renderAction } from '@/lib/wysiwys/render.js';
+import { readLimitedJson } from '@/lib/http/body-limit';
+
+const MAX_WEBAUTHN_SIGNOFF_OPTIONS_BYTES = 32 * 1024;
 
 export async function POST(request, { params }) {
   try {
@@ -29,7 +32,9 @@ export async function POST(request, { params }) {
     if (!SIGNOFF_ID_PATTERN.test(signoffId || '')) {
       return epProblem(400, 'invalid_signoff_id', 'signoff_id must match sig_<32-hex>');
     }
-    const body = await request.json().catch(() => ({}));
+    const parsed = await readLimitedJson(request, MAX_WEBAUTHN_SIGNOFF_OPTIONS_BYTES, { invalidValue: {} });
+    if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
+    const body = parsed.value;
     if (!body.approver_id || !APPROVER_ID_PATTERN.test(body.approver_id)) {
       return epProblem(400, 'invalid_approver_id', 'approver_id is required (3-128 chars of [A-Za-z0-9:_.@-])');
     }

@@ -6,7 +6,7 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
-import { discover, buildAuthorizeUrl, randomUrlToken, pkceChallenge } from '@/lib/sso/oidc';
+import { discover, buildAuthorizeUrl, randomUrlToken, pkceChallenge, assertSafeDiscoveryEndpoints } from '@/lib/sso/oidc';
 import { loadConnection, spOrigin } from '@/lib/sso/config';
 import { validateOidcRedirectUri, validateSsoProviderUrl } from '@/lib/sso/url-policy';
 import { signState, SSO_STATE_COOKIE } from '@/lib/sso/state';
@@ -37,6 +37,13 @@ export async function GET(request) {
   } catch (err) {
     logger.error('[sso/oidc/login] discovery failed:', err);
     return epProblem(502, 'oidc_discovery_failed', 'Could not reach the OIDC provider');
+  }
+
+  // SSRF: only the authorization_endpoint is used here (browser-followed), but a
+  // hostile issuer could still hand back a private/non-https target; gate it.
+  const safeEndpoints = await assertSafeDiscoveryEndpoints(doc, { fields: ['authorization_endpoint'] });
+  if (!safeEndpoints.valid) {
+    return epProblem(400, 'unsafe_sso_url', `OIDC ${safeEndpoints.field} is not allowed`);
   }
 
   const state = randomUrlToken();

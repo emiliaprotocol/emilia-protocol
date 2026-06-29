@@ -13,13 +13,18 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 import { getRpConfig, coseToSpkiP256, APPROVER_ID_PATTERN } from '@/lib/webauthn';
+import { readLimitedJson } from '@/lib/http/body-limit';
+
+const MAX_WEBAUTHN_REGISTER_VERIFY_BYTES = 256 * 1024;
 
 export async function POST(request) {
   try {
     const auth = await authenticateRequest(request);
     if (auth.error) return epProblem(401, 'unauthorized', auth.error);
 
-    const body = await request.json().catch(() => ({}));
+    const parsed = await readLimitedJson(request, MAX_WEBAUTHN_REGISTER_VERIFY_BYTES, { invalidValue: {} });
+    if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
+    const body = parsed.value;
     if (!body.approver_id) return epProblem(400, 'missing_approver_id', 'approver_id is required');
     if (!APPROVER_ID_PATTERN.test(body.approver_id)) {
       return epProblem(400, 'invalid_approver_id', 'approver_id must be 3-128 chars of [A-Za-z0-9:_.@-]');

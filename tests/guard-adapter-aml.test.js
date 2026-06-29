@@ -12,6 +12,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 const store = { aml_history: [], audit_events: [] };
 const inserted = []; // every inserted row, in order (back-compat assertions)
+const mockGetGuardedClient = vi.fn(() => ({ from: (t) => new Q(t) }));
 vi.mock('@/lib/supabase', () => ({
   authenticateRequest: async () => ({ entity: { entity_id: 'ep_entity_acme', organization_id: 'ep_entity_acme' } }),
   authEntityId: (auth) => (typeof auth?.entity === 'string' ? auth.entity : auth?.entity?.entity_id || ''),
@@ -39,7 +40,7 @@ class Q {
     return resolve({ data: rows, error: null });
   }
 }
-vi.mock('@/lib/write-guard', () => ({ getGuardedClient: () => ({ from: (t) => new Q(t) }) }));
+vi.mock('@/lib/write-guard', () => ({ getGuardedClient: (...args) => mockGetGuardedClient(...args) }));
 
 const { runGuardPrecheck } = await import('../lib/guard-adapter.js');
 const { GUARD_ACTION_TYPES, GUARD_DECISIONS } = await import('../lib/guard-policies.js');
@@ -61,6 +62,15 @@ function precheck(body) {
   return runGuardPrecheck(req, FIN_SPEC);
 }
 
+function oversizedPrecheck(bytes) {
+  const req = new Request('https://www.emiliaprotocol.ai/api/v1/adapters/fin/payment-release/precheck', {
+    method: 'POST',
+    headers: { authorization: 'Bearer ep_live_test', 'content-type': 'application/json' },
+    body: JSON.stringify({ blob: 'x'.repeat(bytes) }),
+  });
+  return runGuardPrecheck(req, FIN_SPEC);
+}
+
 const baseBody = (extra = {}) => ({
   organization_id: 'ep_entity_acme',
   payment_instruction_id: 'pi_1',
@@ -72,9 +82,21 @@ const baseBody = (extra = {}) => ({
   ...extra,
 });
 
-beforeEach(() => { inserted.length = 0; store.aml_history = []; store.audit_events = []; });
+beforeEach(() => {
+  inserted.length = 0;
+  store.aml_history = [];
+  store.audit_events = [];
+  mockGetGuardedClient.mockClear();
+});
 
 describe('guard adapter + AML', () => {
+  it('rejects oversized precheck bodies before DB work', async () => {
+    const res = await oversizedPrecheck(257 * 1024);
+    expect(res.status).toBe(413);
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
+    expect(inserted).toHaveLength(0);
+  });
+
   it('allows a clean financial action (no AML signals)', async () => {
     const res = await precheck(baseBody());
     expect(res.status).toBe(201);

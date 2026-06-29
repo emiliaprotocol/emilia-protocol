@@ -34,6 +34,7 @@ import {
 import { evaluateAction as evaluateRulesEngineV0 } from '@/lib/rules-engine.js';
 import { logger } from '@/lib/logger.js';
 import { isRulesEngineV0Enabled } from '@/lib/env.js';
+import { readLimitedJson } from '@/lib/http/body-limit';
 
 // Receipt expiry: 24 hours by default AND hard maximum. Per MD §2.3, expires_at
 // is required on every receipt. Higher-risk actions should live for minutes, not
@@ -42,6 +43,7 @@ import { isRulesEngineV0Enabled } from '@/lib/env.js';
 // body-supplied value is safe; a longer one is never allowed.
 const RECEIPT_TTL_MS = 24 * 60 * 60 * 1000;
 const RECEIPT_TTL_MIN_MS = 60 * 1000;
+const MAX_TRUST_RECEIPT_CREATE_BYTES = 256 * 1024;
 
 function resolveReceiptTtlMs(expiresInSec) {
   const n = Number(expiresInSec);
@@ -54,7 +56,9 @@ export async function POST(request) {
     const auth = await authenticateRequest(request);
     if (auth.error) return epProblem(401, 'unauthorized', auth.error);
 
-    const body = await request.json().catch(() => ({}));
+    const parsed = await readLimitedJson(request, MAX_TRUST_RECEIPT_CREATE_BYTES, { invalidValue: {} });
+    if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
+    const body = parsed.value;
 
     // ── Tenant binding: derive org from the AUTHENTICATED entity, not the body.
     // An authenticated caller must not be able to scope a receipt to another

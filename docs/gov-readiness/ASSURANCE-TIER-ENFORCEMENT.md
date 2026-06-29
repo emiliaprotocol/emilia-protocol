@@ -1,9 +1,13 @@
 # Assurance-Tier Enforcement at Consume (design note)
 
-**Status:** IMPLEMENTED (flag-gated, default off) as of commit 680e822 — see
-`lib/guard-tier.js`, the consume route's dual gate, and `tests/guard-tier.test.js`.
-Enable with `EP_TIER_QUORUM_ENFORCE=true`. Scopes two requests into one mechanism:
-(1) value-tier → enforced quorum, (2) revocation-at-execution.
+**Status:** IMPLEMENTED and **default ON (fail-closed)** — see `lib/guard-tier.js`,
+the consume route's dual gate, and `tests/guard-tier.test.js`. A receipt the policy
+labeled `dual` now requires two distinct Class-A approvers to consume by default;
+set `EP_TIER_QUORUM_ENFORCE=false` to explicitly opt out (permissive dev/demo).
+Scopes two requests into one mechanism: (1) value-tier → enforced quorum,
+(2) revocation-at-execution. Before flipping an already-live deployment, operators
+should audit in-flight `dual` receipts and either complete them under the old
+policy or require the second Class-A approval before consume.
 
 ## What already exists (do NOT rebuild)
 - **Value tiers** (`lib/guard-policies.js`): payment release ≥ $50k → `single`,
@@ -66,7 +70,9 @@ case at the execution gate (not just the approver side).
 - Flag **off** → behavior identical to today (safety net).
 
 ## Rollout
-Flag default-off → enable in a gov/high-assurance deployment first → make default
-once the consume test matrix is green and (ideally) after the third-party pentest
-exercises it. No migration required; `signoff_tier` is already persisted in the
-receipt's `after_state`.
+DONE: default-off → default-on (fail-closed). The consume test matrix is green.
+A deployment that needs the old permissive behavior sets `EP_TIER_QUORUM_ENFORCE=false`
+explicitly after a conscious risk decision. Before flipping an existing production
+environment, audit in-flight `dual` receipts for compatibility. The third-party
+pentest (RFP staged) should exercise the now-default path. No migration required;
+`signoff_tier` is already persisted in the receipt's `after_state`.

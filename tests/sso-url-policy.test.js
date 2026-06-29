@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, it, expect } from 'vitest';
+import fc from 'fast-check';
 import { validateOidcRedirectUri, validateSsoProviderUrl } from '../lib/sso/url-policy.js';
 
 const publicLookup = async () => [{ address: '203.0.113.10', family: 4 }];
@@ -88,5 +89,14 @@ describe('OIDC redirect URI policy', () => {
   ])('rejects unsafe redirect URI: %s', (_label, value) => {
     const result = validateOidcRedirectUri(value, origin);
     expect(result.valid).toBe(false);
+  });
+
+  it('property: any accepted non-empty redirect normalizes to the exact callback', () => {
+    fc.assert(fc.property(fc.string({ maxLength: 300 }), (value) => {
+      const result = validateOidcRedirectUri(value, origin);
+      if (!result.valid || result.url === null) return true;
+      expect(result.url).toBe('https://www.emiliaprotocol.ai/api/sso/oidc/callback');
+      return true;
+    }), { numRuns: 1000 });
   });
 });

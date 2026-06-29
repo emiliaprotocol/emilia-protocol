@@ -47,6 +47,14 @@ function req(body) {
   return { json: () => Promise.resolve(body ?? {}) };
 }
 
+function oversizedReq(bytes) {
+  return new Request('https://www.emiliaprotocol.ai/api/v1/signoffs/sig_x/approve-webauthn', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ blob: 'x'.repeat(bytes) }),
+  });
+}
+
 function clientDataJson(challenge = CHALLENGE) {
   return Buffer.from(JSON.stringify({
     type: 'webauthn.get',
@@ -123,6 +131,16 @@ describe('POST /api/v1/signoffs/:id/approve-webauthn — red-team ceremony harde
       requestExpiresAt: '2999-01-01T00:00:00.000Z',
       alreadyDecided: false,
     });
+  });
+
+  it('rejects oversized approval assertions before DB work', async () => {
+    const res = await POST(oversizedReq(257 * 1024), {
+      params: Promise.resolve({ signoffId: 'sig_' + 'a'.repeat(32) }),
+    });
+
+    expect(res.status).toBe(413);
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
+    expect(mockLoadSignoffForSigning).not.toHaveBeenCalled();
   });
 
   it('does not consume the challenge when an attacker posts a junk assertion for the right challenge', async () => {

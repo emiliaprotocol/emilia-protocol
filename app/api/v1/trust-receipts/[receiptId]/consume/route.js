@@ -24,8 +24,10 @@ import { resolveGuardAuthority } from '@/lib/guard-authority.js';
 import { isTierQuorumEnforced } from '@/lib/env';
 import { countDistinctValidApprovers, requiredApprovalsForTier } from '@/lib/guard-tier.js';
 import { canReadReceipt } from '@/lib/tenant-binding.js';
+import { readLimitedJson } from '@/lib/http/body-limit';
 
 const RECEIPT_ID_PATTERN = /^tr_[a-f0-9]{32}$/;
+const MAX_TRUST_RECEIPT_CONSUME_BYTES = 32 * 1024;
 
 export async function POST(request, { params }) {
   try {
@@ -37,7 +39,9 @@ export async function POST(request, { params }) {
       return epProblem(400, 'invalid_receipt_id', 'receipt_id must match tr_<32-hex>');
     }
 
-    const body = await request.json().catch(() => ({}));
+    const parsed = await readLimitedJson(request, MAX_TRUST_RECEIPT_CONSUME_BYTES, { invalidValue: {} });
+    if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
+    const body = parsed.value;
 
     if (!body.action_hash) {
       return epProblem(400, 'missing_action_hash', 'action_hash is required');
@@ -112,9 +116,20 @@ export async function POST(request, { params }) {
         // cross-language conformance suite covers (distinct humans, roles,
         // order, window, action-binding, signatures). The approve route already
         // recorded each assertion; we reconstitute members and gate on them.
+        // Separation of duties: the initiator can never fill a quorum seat — the
+        // same rule the single-signoff branch enforces. The approve routes already
+        // reject self-approval at write time; dropping it here too keeps the
+        // consume gate fail-closed even if an initiator approval ever reached the
+        // timeline (e.g. a direct DB write): it leaves the quorum unsatisfied
+        // rather than silently counting toward it.
+        const quorumInitiatorId = created.actor_id || null;
         const approvedDecisions = boundSignoffDecisionEvents(events, created, 'guard.signoff.approved')
           .map((e) => e.after_state)
-          .filter(Boolean);
+          .filter(Boolean)
+          .filter((d) => {
+            const approver = d.approver_id || (d.context && d.context.approver) || null;
+            return approver !== quorumInitiatorId;
+          });
         const credentialIds = approvedDecisions
           .map((d) => d.webauthn && d.webauthn.credential_id)
           .filter(Boolean);

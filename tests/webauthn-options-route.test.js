@@ -5,13 +5,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockLoadSignoffForSigning = vi.fn();
 const mockLoadApproverCredentials = vi.fn();
 const mockGenerateAuthenticationOptions = vi.fn();
+const mockGetGuardedClient = vi.fn();
 
 vi.mock('@/lib/write-guard', () => ({
-  getGuardedClient: () => ({
-    from: () => ({
-      insert: vi.fn().mockResolvedValue({ error: null }),
-    }),
-  }),
+  getGuardedClient: (...args) => mockGetGuardedClient(...args),
 }));
 vi.mock('@/lib/logger.js', () => ({
   logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn() },
@@ -32,6 +29,14 @@ function req(body) {
   return { json: () => Promise.resolve(body ?? {}) };
 }
 
+function oversizedReq(bytes) {
+  return new Request('https://www.emiliaprotocol.ai/api/v1/signoffs/sig_x/webauthn-options', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ blob: 'x'.repeat(bytes) }),
+  });
+}
+
 function loaded(createdState) {
   return {
     requestEvent: { after_state: { approver_id: 'ap_controller' } },
@@ -46,13 +51,29 @@ function loaded(createdState) {
 
 describe('POST /api/v1/signoffs/:id/webauthn-options — WYSIWYS fail-closed', () => {
   beforeEach(() => {
+    mockGetGuardedClient.mockReset();
     mockLoadSignoffForSigning.mockReset();
     mockLoadApproverCredentials.mockReset();
     mockGenerateAuthenticationOptions.mockReset();
+    mockGetGuardedClient.mockReturnValue({
+      from: () => ({
+        insert: vi.fn().mockResolvedValue({ error: null }),
+      }),
+    });
     mockLoadApproverCredentials.mockResolvedValue({
       credentials: [{ credential_id: 'cred_1', transports: ['internal'] }],
     });
     mockGenerateAuthenticationOptions.mockResolvedValue({ challenge: 'mock-options' });
+  });
+
+  it('rejects oversized option requests before DB work', async () => {
+    const res = await POST(oversizedReq(33 * 1024), {
+      params: Promise.resolve({ signoffId: SIGNOFF_ID }),
+    });
+
+    expect(res.status).toBe(413);
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
+    expect(mockLoadSignoffForSigning).not.toHaveBeenCalled();
   });
 
   it('rejects a Class-A signoff when canonical_action is unavailable for display_hash binding', async () => {

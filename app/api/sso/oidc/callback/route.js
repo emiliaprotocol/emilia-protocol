@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
-import { discover, exchangeCode, validateIdToken } from '@/lib/sso/oidc';
+import { discover, exchangeCode, validateIdToken, assertSafeDiscoveryEndpoints } from '@/lib/sso/oidc';
 import { loadConnection, spOrigin } from '@/lib/sso/config';
 import { validateOidcRedirectUri, validateSsoProviderUrl } from '@/lib/sso/url-policy';
 import { verifyState, SSO_STATE_COOKIE } from '@/lib/sso/state';
@@ -44,6 +44,14 @@ export async function GET(request) {
     doc = await discover(issuer.url);
   } catch {
     return epProblem(502, 'oidc_discovery_failed', 'Could not reach the OIDC provider');
+  }
+
+  // SSRF: the discovery doc names the token_endpoint (secret-bearing POST) and
+  // jwks_uri (fetched in validateIdToken). A hostile issuer can point these at
+  // internal/metadata hosts, so each must pass the same public-host policy.
+  const safeEndpoints = await assertSafeDiscoveryEndpoints(doc);
+  if (!safeEndpoints.valid) {
+    return epProblem(400, 'unsafe_sso_url', `OIDC ${safeEndpoints.field} is not allowed`);
   }
 
   let tokens;

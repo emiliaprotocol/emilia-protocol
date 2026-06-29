@@ -54,13 +54,28 @@ import { POST as requestSignoff } from '../app/api/v1/signoffs/request/route.js'
 import { POST as approveSignoff } from '../app/api/v1/signoffs/[signoffId]/approve/route.js';
 import { POST as rejectSignoff } from '../app/api/v1/signoffs/[signoffId]/reject/route.js';
 import { POST as attestExecution } from '../app/api/v1/trust-receipts/[receiptId]/execution/route.js';
+import { POST as registerApproverOptions } from '../app/api/v1/approvers/webauthn/register-options/route.js';
+import { POST as registerApproverVerify } from '../app/api/v1/approvers/webauthn/register-verify/route.js';
 import { executedActionHash } from '../lib/execution/integrity.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
-/** Make a NextRequest-shaped object with a .json() method. */
+/** Make a real Request so body-limit defenses are exercised in route tests. */
 function req(body) {
-  return { json: () => Promise.resolve(body ?? {}) };
+  return new Request('https://www.emiliaprotocol.ai/api/v1/test', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body ?? {}),
+  });
+}
+
+function oversizedReq(bytes) {
+  const body = JSON.stringify({ blob: 'x'.repeat(bytes) });
+  return new Request('https://www.emiliaprotocol.ai/api/v1/test', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body,
+  });
 }
 
 /**
@@ -106,6 +121,60 @@ const VALID_RECEIPT_ID = 'tr_' + 'c'.repeat(32);
 beforeEach(() => {
   mockGetGuardedClient.mockReset();
   mockAuthenticateRequest.mockReset();
+});
+
+describe('v1 guard rail body limits', () => {
+  it('rejects oversized trust-receipt create bodies before DB work', async () => {
+    authedAs('user_1');
+    const res = await createReceipt(oversizedReq(257 * 1024));
+    expect(res.status).toBe(413);
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
+  });
+
+  it('rejects oversized consume bodies before DB work', async () => {
+    authedAs('user_1');
+    const res = await consumeReceipt(oversizedReq(33 * 1024), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
+    expect(res.status).toBe(413);
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
+  });
+
+  it('rejects oversized signoff-request bodies before DB work', async () => {
+    authedAs('user_1');
+    const res = await requestSignoff(oversizedReq(65 * 1024));
+    expect(res.status).toBe(413);
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
+  });
+
+  it('rejects oversized bearer signoff decision bodies before DB work', async () => {
+    authedAs('user_1');
+    const approve = await approveSignoff(oversizedReq(33 * 1024), {
+      params: Promise.resolve({ signoffId: 'sig_1' }),
+    });
+    const reject = await rejectSignoff(oversizedReq(33 * 1024), {
+      params: Promise.resolve({ signoffId: 'sig_1' }),
+    });
+
+    expect(approve.status).toBe(413);
+    expect(reject.status).toBe(413);
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
+  });
+
+  it('rejects oversized execution-attestation bodies before DB work', async () => {
+    authedAs('user_1');
+    const res = await attestExecution(oversizedReq(257 * 1024), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
+    expect(res.status).toBe(413);
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
+  });
+
+  it('rejects oversized Class-A enrollment bodies before DB work', async () => {
+    authedAs('user_1');
+    const options = await registerApproverOptions(oversizedReq(33 * 1024));
+    const verify = await registerApproverVerify(oversizedReq(257 * 1024));
+
+    expect(options.status).toBe(413);
+    expect(verify.status).toBe(413);
+    expect(mockGetGuardedClient).not.toHaveBeenCalled();
+  });
 });
 
 // ─── POST /api/v1/trust-receipts ──────────────────────────────────────────
