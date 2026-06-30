@@ -63,12 +63,19 @@ const ACTION_COPY = {
 };
 
 const STRIKES = [
-  { id: 'missing', title: 'Unauthenticated attempt', short: '428 wall' },
-  { id: 'sign', title: 'Human signs exact action', short: 'receipt minted' },
-  { id: 'run', title: 'Receipt reaches actuator', short: 'runs once' },
-  { id: 'replay', title: 'Same receipt replayed', short: 'killed' },
-  { id: 'forge', title: 'Action rewritten after signing', short: 'signature fails' },
-  { id: 'evidence', title: 'Evidence packet exported', short: 'auditable' },
+  { id: 'missing', title: 'No receipt reaches the gate', short: 'will be blocked' },
+  { id: 'sign', title: 'Human signs exact action', short: 'receipt will bind action' },
+  { id: 'run', title: 'Receipt reaches actuator', short: 'allowed once' },
+  { id: 'replay', title: 'Same receipt replayed', short: 'will be blocked' },
+  { id: 'forge', title: 'Signed action rewritten', short: 'will be rejected' },
+  { id: 'evidence', title: 'Evidence packet exported', short: 'auditable proof' },
+];
+
+const ATTACK_PATH = [
+  ['1', 'No receipt', 'BLOCKED'],
+  ['2', 'Exact receipt', 'RUNS ONCE'],
+  ['3', 'Replay', 'BLOCKED'],
+  ['4', 'Forgery', 'REJECTED'],
 ];
 
 const initialStrikes = () =>
@@ -110,12 +117,12 @@ function sceneFrom(strikes, busy, evidence) {
   if (busy === 'run') return { label: 'GATE VERIFYING', tone: 'blue', sub: 'Receipt is checked offline' };
   if (busy === 'replay') return { label: 'REPLAY ATTEMPT', tone: 'warn', sub: 'Same receipt tries to run twice' };
   if (busy === 'forge') return { label: 'FORGERY ATTEMPT', tone: 'danger', sub: 'Signed payload was rewritten' };
-  if (strikes.forge.status === 'pass') return { label: 'FORGERY REFUSED', tone: 'danger', sub: 'Signature no longer verifies' };
-  if (strikes.replay.status === 'pass') return { label: 'REPLAY REFUSED', tone: 'warn', sub: 'Receipt consumed once' };
+  if (strikes.forge.status === 'rejected') return { label: 'FORGERY REJECTED', tone: 'danger', sub: 'Signature no longer verifies' };
+  if (strikes.replay.status === 'blocked') return { label: 'REPLAY BLOCKED', tone: 'warn', sub: 'Receipt consumed once' };
   if (evidence) return { label: 'EXECUTED WITH PROOF', tone: 'safe', sub: 'Evidence packet exported' };
-  if (strikes.run.status === 'pass') return { label: 'EXECUTED ONCE', tone: 'safe', sub: 'Receipt reached the actuator' };
-  if (strikes.sign.status === 'pass') return { label: 'RECEIPT READY', tone: 'blue', sub: 'Bound to the exact action' };
-  if (strikes.missing.status === 'pass') return { label: '428 RECEIPT REQUIRED', tone: 'warn', sub: 'Mutation never reached the system' };
+  if (strikes.run.status === 'allowed') return { label: 'EXECUTED ONCE', tone: 'safe', sub: 'Receipt reached the actuator' };
+  if (strikes.sign.status === 'signed') return { label: 'RECEIPT READY', tone: 'blue', sub: 'Bound to the exact action' };
+  if (strikes.missing.status === 'blocked') return { label: '428 RECEIPT REQUIRED', tone: 'warn', sub: 'Mutation never reached the system' };
   return { label: 'ACTUATOR LOCKED', tone: 'idle', sub: 'No receipt, no execution' };
 }
 
@@ -174,7 +181,7 @@ export default function ReceiptRequiredTryPage() {
     const out = await postDemo({ demo: action.id });
     setChallenge(out.data);
     if (out.status === 428) {
-      mark('missing', 'pass', 'blocked before the write: 428');
+      mark('missing', 'blocked', '428 before the write');
       write('block', `gate.response=${out.status} ${out.data.title}`);
     } else {
       mark('missing', 'fail', `unexpected ${out.status}`);
@@ -195,7 +202,7 @@ export default function ReceiptRequiredTryPage() {
     });
     if (out.status === 200 && out.data?.receipt) {
       setReceipt(out.data.receipt);
-      mark('sign', 'pass', out.data.signed.receipt_id);
+      mark('sign', 'signed', out.data.signed.receipt_id);
       write('ok', `receipt.bound=${out.data.signed.action}`);
       setBusy(null);
       return out.data.receipt;
@@ -214,8 +221,8 @@ export default function ReceiptRequiredTryPage() {
     const out = await postDemo({ demo: action.id, emilia_receipt: doc });
     if (out.status === 200) {
       setEvidence(out.data.evidence_packet);
-      mark('run', 'pass', 'mutation allowed exactly once');
-      mark('evidence', 'pass', out.data.evidence_packet.policy_id);
+      mark('run', 'allowed', 'mutated exactly once');
+      mark('evidence', 'exported', out.data.evidence_packet.policy_id);
       write('ok', `actuator.execute("${action.id}")`);
       write('ok', `evidence.export=${out.data.evidence_packet.receipt_id}`);
     } else {
@@ -233,7 +240,7 @@ export default function ReceiptRequiredTryPage() {
     write('cmd', `attacker.replay(${doc.payload.receipt_id})`);
     const out = await postDemo({ demo: action.id, emilia_receipt: doc });
     if (out.status === 428 && out.data?.rejected?.reason === 'replay_refused') {
-      mark('replay', 'pass', 'same receipt cannot authorize twice');
+      mark('replay', 'blocked', 'same receipt cannot authorize twice');
       write('block', 'gate.reject("replay_refused")');
     } else {
       mark('replay', 'fail', `unexpected ${out.status}`);
@@ -251,7 +258,7 @@ export default function ReceiptRequiredTryPage() {
     write('cmd', `attacker.patch(action="${forged.payload.claim.action_type}")`);
     const out = await postDemo({ demo: action.id, emilia_receipt: forged });
     if (out.status === 428 && out.data?.rejected?.reason === 'untrusted_or_invalid_signature') {
-      mark('forge', 'pass', 'canonical bytes no longer verify');
+      mark('forge', 'rejected', 'canonical bytes no longer verify');
       write('block', 'gate.reject("untrusted_or_invalid_signature")');
     } else {
       mark('forge', 'fail', `unexpected ${out.status}`);
@@ -305,17 +312,26 @@ export default function ReceiptRequiredTryPage() {
               <div style={s.eyebrow}>LIVE ATTACK SIMULATOR</div>
               <h1 style={s.h1}>Break the action layer.</h1>
               <p style={s.lead}>
-                This is not a video. The page calls the real Receipt Required API. The agent tries
-                to mutate money, code, or bank routing. EMILIA either sees a valid receipt or the
-                actuator stays locked.
+                One run shows the invariant: no receipt is blocked, an exact receipt runs once,
+                replay is blocked, and a forged receipt is rejected. The page calls the real
+                Receipt Required API.
               </p>
               <div style={s.heroButtons}>
                 <button type="button" onClick={runSequence} disabled={Boolean(busy)} style={s.primaryBtn}>
-                  {busy ? 'Attack running...' : 'Launch the attack'}
+                  {busy ? 'Attack running...' : 'Launch attack sequence'}
                 </button>
                 <button type="button" onClick={() => reset()} disabled={Boolean(busy)} style={s.darkBtn}>
                   Reset bay
                 </button>
+              </div>
+              <div style={s.attackPath} className="rr-attack-path">
+                {ATTACK_PATH.map(([n, label, result]) => (
+                  <div key={label} style={s.attackPathItem}>
+                    <span style={s.attackPathNum}>{n}</span>
+                    <strong style={s.attackPathLabel}>{label}</strong>
+                    <em style={s.attackPathResult}>{result}</em>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -394,12 +410,12 @@ export default function ReceiptRequiredTryPage() {
                 <Fact label="Target" value={selected.target} />
                 <Fact label="Assurance" value={selected.assurance_class} />
               </div>
-              <div style={{ ...s.actuatorStatus, ...tone(evidence ? 'safe' : strikes.missing.status === 'pass' ? 'warn' : 'idle') }}>
+              <div style={{ ...s.actuatorStatus, ...tone(evidence ? 'safe' : strikes.missing.status === 'blocked' ? 'warn' : 'idle') }}>
                 {evidence
-                  ? strikes.forge.status === 'pass'
+                  ? strikes.forge.status === 'rejected'
                     ? 'EXECUTED ONCE; ATTACKS REFUSED'
                     : 'EXECUTED WITH RECEIPT'
-                  : strikes.missing.status === 'pass' ? 'MUTATION BLOCKED' : 'WAITING'}
+                  : strikes.missing.status === 'blocked' ? 'MUTATION BLOCKED' : 'WAITING'}
               </div>
             </motion.div>
           </div>
@@ -474,6 +490,7 @@ export default function ReceiptRequiredTryPage() {
           .rr-after { gap: 12px !important; }
           .rr-hero { padding: 52px 20px 26px !important; }
           .rr-controls { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+          .rr-attack-path { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
         }
       `}</style>
     </div>
@@ -544,7 +561,10 @@ function ringTone(kind) {
 }
 
 function strikeTone(status) {
-  if (status === 'pass') return { borderColor: '#86EFAC', background: '#F0FDF4' };
+  if (status === 'allowed' || status === 'exported') return { borderColor: '#86EFAC', background: '#F0FDF4' };
+  if (status === 'signed') return { borderColor: '#93C5FD', background: '#EFF6FF' };
+  if (status === 'blocked') return { borderColor: '#FBBF24', background: '#FFFBEB' };
+  if (status === 'rejected') return { borderColor: '#FCA5A5', background: '#FEF2F2' };
   if (status === 'fail') return { borderColor: '#FCA5A5', background: '#FEF2F2' };
   if (status === 'running') return { borderColor: '#93C5FD', background: '#EFF6FF' };
   return { borderColor: color.border, background: '#FFFFFF' };
@@ -612,6 +632,37 @@ const s = {
     flexWrap: 'wrap',
     gap: 12,
     marginTop: 28,
+  },
+  attackPath: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+    gap: 8,
+    marginTop: 18,
+    maxWidth: 720,
+  },
+  attackPathItem: {
+    border: '1px solid rgba(250,250,249,0.16)',
+    borderRadius: radius.sm,
+    padding: '10px 11px',
+    minHeight: 72,
+    display: 'grid',
+    alignContent: 'space-between',
+    background: 'rgba(250,250,249,0.045)',
+    fontFamily: font.mono,
+  },
+  attackPathNum: {
+    fontSize: 10,
+    color: 'rgba(250,250,249,0.46)',
+  },
+  attackPathLabel: {
+    fontSize: 12,
+    color: '#FAFAF9',
+  },
+  attackPathResult: {
+    fontStyle: 'normal',
+    fontSize: 10,
+    color: color.gold,
+    letterSpacing: 1,
   },
   primaryBtn: {
     ...cta.primary,
