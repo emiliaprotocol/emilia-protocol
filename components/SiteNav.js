@@ -9,6 +9,7 @@ const NAV_LINKS = [
   ['/gate', 'Gate'],
   ['/agent-guard', 'Agent Guard'],
   ['/protocol', 'Protocol'],
+  ['/standards', 'Standards'],
   ['/mcp', 'MCP'],
   ['/govguard', 'GovGuard'],
   ['/sovereignty', 'Sovereignty'],
