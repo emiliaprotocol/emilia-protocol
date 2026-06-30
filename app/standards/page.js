@@ -194,6 +194,52 @@ export default function StandardsPage() {
           </div>
         </section>
 
+        {/* RATS + SCITT MAPPING DETAIL */}
+        <section style={{ ...styles.sectionWide, paddingTop: 24, paddingBottom: 18 }}>
+          <div style={styles.container}>
+            <div style={{ ...styles.eyebrow, color: color.gold }}>MAPPING DETAIL · RATS + SCITT PROFILES</div>
+            <h2 style={styles.h2}>How EMILIA expresses as RATS and SCITT profiles</h2>
+            <p style={{ ...styles.body, maxWidth: 760, marginTop: 4 }}>
+              Two narrow profiles on accepted work &mdash; not a new framework. Machine attestation (RATS) and the
+              human-authorization receipt (EMILIA) are orthogonal and meet at the relying party.
+            </p>
+
+            <div style={{ ...styles.h3, marginTop: 22 }}>The attest loop as a RATS profile (RFC&nbsp;9334)</div>
+            {[
+              ['Attester', 'the agent / host — produces Evidence about its compute context'],
+              ['Verifier', 'the “God Terminal” — appraises Evidence into an Attestation Result'],
+              ['Relying Party', 'the gateway / substrate — consumes the Attestation Result AND the EMILIA authorization receipt'],
+            ].map(([k, v]) => (
+              <div key={k} style={{ display: 'flex', gap: 14, padding: '9px 0', borderTop: `1px solid ${color.border}`, flexWrap: 'wrap' }}>
+                <span style={{ flex: '0 0 130px', fontFamily: font.mono, fontSize: 13, color: color.gold }}>{k}</span>
+                <span style={{ flex: 1, ...styles.body, fontSize: 14, margin: 0 }}>{v}</span>
+              </div>
+            ))}
+            <p style={{ ...styles.body, fontSize: 13, color: color.t3, marginTop: 10, maxWidth: 760 }}>
+              The EMILIA receipt is <b>not</b> RATS Evidence &mdash; RATS attests the platform; EMILIA attests the human.
+              Different trust roots (platform root-of-trust vs the human&rsquo;s device key), composed at the relying party.
+            </p>
+
+            <div style={{ ...styles.h3, marginTop: 24 }}>Statements &amp; lineage as SCITT Signed Statements (draft-ietf-scitt)</div>
+            {[
+              ['Signed Statement', 'an EMILIA authorization receipt / a COSA Bill of Lading — COSE_Sign1 over the exact action'],
+              ['Transparency Service', 'the append-only log that registers the statements and orders them non-equivocally'],
+              ['Receipt', 'the inclusion proof that a statement was logged — structural, not an authorization'],
+              ['Lineage chain', 'EMILIA/COSA content: each hop carries a prev-state hash; SCITT logs the order, EMILIA supplies the link'],
+            ].map(([k, v]) => (
+              <div key={k} style={{ display: 'flex', gap: 14, padding: '9px 0', borderTop: `1px solid ${color.border}`, flexWrap: 'wrap' }}>
+                <span style={{ flex: '0 0 130px', fontFamily: font.mono, fontSize: 13, color: color.gold }}>{k}</span>
+                <span style={{ flex: 1, ...styles.body, fontSize: 14, margin: 0 }}>{v}</span>
+              </div>
+            ))}
+            <p style={{ ...styles.body, fontSize: 13, color: color.t3, marginTop: 10, maxWidth: 760 }}>
+              Keep the two &ldquo;receipts&rdquo; distinct: <b>authorization receipt</b> (EMILIA &mdash; who authorized what)
+              vs <b>transparency / inclusion receipt</b> (SCITT &mdash; proof it was logged). EMILIA supplies the lineage
+              link and the human authorization; SCITT supplies the tamper-evident log.
+            </p>
+          </div>
+        </section>
+
         {/* HONEST FRAMING */}
         <section style={{ ...styles.section, paddingTop: 0 }}>
           <div style={styles.container}>
