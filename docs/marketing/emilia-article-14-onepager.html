@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- Source for public/briefs/emilia-article-14-proof-vs-measurement.pdf — render with:
+     node scripts/render-pdf.mjs docs/marketing/emilia-article-14-onepager.html public/briefs/emilia-article-14-proof-vs-measurement.pdf -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>EMILIA — Proof, not measurement (EU AI Act Article 14)</title>
+<style>
+  :root { --ink:#14181f; --mut:#5b6573; --line:#dce1e8; --gold:#9a6a00; --red:#b42318; --green:#1a7f47; }
+  * { box-sizing: border-box; }
+  html { font-size: 10.2pt; }
+  body { margin:0 auto; max-width: 7.5in; padding: 0.45in 0.55in; color:var(--ink);
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.42; }
+  h1 { font-size: 18pt; margin:0 0 2px; letter-spacing:-0.4px; }
+  .sub { color:var(--mut); font-size:10pt; margin:0 0 12px; }
+  h2 { font-size:10.5pt; text-transform:uppercase; letter-spacing:0.6px; color:var(--gold);
+    margin:15px 0 5px; border-bottom:1px solid var(--line); padding-bottom:3px; }
+  p { margin:5px 0; }
+  .lede { font-size:10.6pt; }
+  .mono { font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace; font-size:9pt; background:#f3f5f8;
+    padding:1px 5px; border-radius:4px; }
+  .quote { font-style:italic; color:var(--ink); border-left:3px solid var(--gold); padding-left:9px; margin:9px 0; font-size:11pt; }
+  ul { margin:5px 0; padding-left:18px; }
+  li { margin:2.5px 0; }
+  table { border-collapse:collapse; width:100%; font-size:9.2pt; margin-top:6px; }
+  th, td { text-align:left; vertical-align:top; padding:4px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--mut); font-weight:600; font-size:8.6pt; text-transform:uppercase; letter-spacing:0.4px; }
+  td.ep { color:var(--ink); font-weight:600; }
+  .foot { color:var(--mut); font-size:8.6pt; margin-top:14px; border-top:1px solid var(--line); padding-top:6px; }
+  .tag { display:inline-block; font-size:8pt; font-weight:700; color:var(--green); border:1px solid var(--green);
+    border-radius:10px; padding:0 7px; vertical-align:middle; }
+</style>
+</head>
+<body>
+  <h1>Proof, not measurement</h1>
+  <p class="sub">EMILIA and EU AI Act Article&nbsp;14 — what counts as evidence of human oversight &nbsp;·&nbsp; <span class="tag">Annex III · 2 Aug 2026</span></p>
+
+  <p class="quote">Decision logs are testimony. Scores are opinion. Receipts are evidence.</p>
+
+  <h2>The Article 14 question</h2>
+  <p class="lede">Article&nbsp;14 requires high-risk AI systems to be under <b>effective human oversight</b> — a person must be able to decide not to use an output, <b>override</b> it, and <b>intervene or stop</b> the system. When a regulator, court, or insurer later asks the one question that matters —</p>
+  <p class="quote">&ldquo;Show me that a specific authorized human approved <b>this</b> irreversible action <b>before</b> it ran.&rdquo;</p>
+  <p>— most &ldquo;human oversight&rdquo; tooling produces something that <b>cannot answer it</b>: a <b>decision log</b> (self-reported, mutable — testimony, not evidence), an <b>oversight score / dashboard</b> (a heuristic rating of how attentive the reviewer <i>probably</i> was, computed over self-reported telemetry — an opinion <i>about</i> the human, not a binding <i>of</i> the human to the act), or a <b>&ldquo;human-in-the-loop&rdquo; toggle</b> (proof a step existed, not that a named person authorized <i>this</i> action).</p>
+
+  <h2>The bright line: measurement vs. proof</h2>
+  <p>Evidence of human oversight has to do two things a score cannot: <b>(1) bind</b> a named human to an exact action before it executed, and <b>(2) verify without trust</b> — let an outside party confirm it offline, with a public key, without trusting the vendor or the log.</p>
+  <table>
+    <tr><th>&nbsp;</th><th>Oversight score / dashboard / log</th><th>EMILIA authorization receipt</th></tr>
+    <tr><td class="ep">Artifact</td><td>A number or narrative <i>about</i> the review</td><td>A cryptographic <b>proof</b> of the authorization itself</td></tr>
+    <tr><td class="ep">Evidence</td><td>Statistical / behavioral — an indicator</td><td>Mathematical — Ed25519 over RFC&nbsp;8785 canonical JSON</td></tr>
+    <tr><td class="ep">Binds</td><td>How attentive the reviewer probably was</td><td>A named human → an exact action, pre-execution</td></tr>
+    <tr><td class="ep">Outsider-verifiable?</td><td>Only by trusting the issuer</td><td>Yes — offline, with a public key. No backend, no vendor trust</td></tr>
+    <tr><td class="ep">Enforcement</td><td>Advisory — scores after the fact</td><td>Fail-closed — <span class="mono">no receipt, no execution</span></td></tr>
+    <tr><td class="ep">Gameable?</td><td>Yes — telemetry is self-reported</td><td>No — a forged or altered authorization fails verification</td></tr>
+  </table>
+  <p>A score tells you the oversight was <i>probably</i> real. A receipt <b>proves</b> the authorization happened — and refuses to let the action run without it. For irreversible-action accountability, the binding is load-bearing; the score is, at most, an annotation on top of it.</p>
+
+  <h2>What EMILIA provides for Article 14</h2>
+  <ul>
+    <li><b>The audit artifact a regulator can actually check</b> — deterministic verification with a public key; the receipt <i>is</i> the evidence, reproducible by anyone, years later.</li>
+    <li><b>Override / intervention you can prove</b> — approve, decline, or stop captured as signed, tamper-evident, per-action proof, not a log entry.</li>
+    <li><b>Enforcement, not exhortation</b> — <span class="mono">428 — no receipt, no execution</span>. Oversight that can be bypassed isn&rsquo;t oversight.</li>
+    <li><b>Two-person control where stakes demand it</b> — quorum receipts (a cryptographic two-person rule) + scoped delegation with verify-time constraint enforcement.</li>
+    <li><b>Built on accepted standards</b> — Ed25519 (RFC&nbsp;8032), JCS (RFC&nbsp;8785); expresses as JWS (RFC&nbsp;7515) / COSE for interop; loggable to a transparency service (SCITT). Open IETF Internet-Draft, Apache-2.0, verifiers in JS/Python/Go.</li>
+  </ul>
+
+  <h2>Honest scope</h2>
+  <p>A receipt is <b>necessary, not sufficient</b>. It proves a named human authorized the exact action; it does not prove the decision was wise, lawful, or fully informed — and a quality signal (e.g. a third-party judgment score) can sit <i>inside</i> a receipt as one more claim. EMILIA supplies the load-bearing, verifiable binding the rest of an oversight program builds on.</p>
+
+  <div class="foot">
+    EMILIA Protocol · authorization receipts for irreversible AI-agent actions · <span class="mono">draft-schrock-ep-authorization-receipts</span> · Apache-2.0 · team@emiliaprotocol.ai<br/>
+    Engineering &amp; standards material, not legal advice. Article 14 compliance is a program; the receipt is its evidence backbone.
+  </div>
+</body>
+</html>
