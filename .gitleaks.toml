@@ -27,6 +27,11 @@ title = "emilia-protocol gitleaks config"
     '''tests/.*\.test\.js$''',
     '''mcp-server/tests/.*\.test\.js$''',
     '''sdks/.*/tests?/.*''',
+    '''packages/.*\.test\.js$''',
+    # Conformance vectors are deterministic test signatures over a published
+    # test seed (e.g. compact JWS in jws.json structurally resemble JWTs).
+    # They contain no real key material — only reproducible test-key outputs.
+    '''conformance/vectors/.*''',
   ]
 
 # ── Custom rules ─────────────────────────────────────────────────
