@@ -7,7 +7,6 @@
 
 import { describe, expect, it } from 'vitest';
 import { GET, POST } from '../app/api/demo/require-receipt/route.js';
-import { signAction } from '../examples/mcp/_kit.mjs';
 
 function request(body, headers = {}) {
   return new Request('https://www.emiliaprotocol.ai/api/demo/require-receipt', {
@@ -53,7 +52,16 @@ describe('HTTP/API Receipt Required conformance', () => {
       expect(missingBody.required.action).toBe(action.action);
       expect(missingBody.loop.invariant).toBe('No receipt, no irreversible action.');
 
-      const receipt = signAction(action.action, { approver: `ep:approver:http-${action.id}` });
+      const signed = await POST(request({
+        demo: action.id,
+        sign_demo_receipt: true,
+        approver: `ep:approver:http-${action.id}`,
+      }));
+      expect(signed.status).toBe(200);
+      const signedBody = await signed.json();
+      expect(signedBody.signed.action).toBe(action.action);
+      const receipt = signedBody.receipt;
+
       const valid = await POST(request({ demo: action.id, emilia_receipt: receipt }));
       expect(valid.status).toBe(200);
       const validBody = await valid.json();
@@ -69,7 +77,8 @@ describe('HTTP/API Receipt Required conformance', () => {
       const replayBody = await replay.json();
       expect(replayBody.rejected.reason).toBe('replay_refused');
 
-      const forged = signAction(action.action, { approver: 'ep:approver:forged', tamper: true });
+      const forged = JSON.parse(JSON.stringify(receipt));
+      forged.payload.claim.action_type = 'payment.release:wire:attacker';
       const forgedRes = await POST(request({ demo: action.id, emilia_receipt: forged }));
       expect(forgedRes.status).toBe(428);
       const forgedBody = await forgedRes.json();
@@ -79,7 +88,12 @@ describe('HTTP/API Receipt Required conformance', () => {
 
   it('accepts the standard X-EMILIA-Receipt header and still exports evidence', async () => {
     const [action] = await catalog();
-    const receipt = signAction(action.action, { approver: 'ep:approver:http-header' });
+    const signed = await POST(request({
+      demo: action.id,
+      sign_demo_receipt: true,
+      approver: 'ep:approver:http-header',
+    }));
+    const { receipt } = await signed.json();
     const res = await POST(request(
       { demo: action.id },
       { 'x-emilia-receipt': b64(receipt) },

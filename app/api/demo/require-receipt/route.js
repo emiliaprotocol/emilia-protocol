@@ -29,6 +29,7 @@
  */
 
 import { NextResponse } from 'next/server';
+import crypto from 'node:crypto';
 import {
   RECEIPT_PROOF_HEADER,
   RECEIPT_REQUIRED_HEADER,
@@ -80,6 +81,13 @@ const DEMO_ACTIONS = {
 
 const DEFAULT_DEMO = 'release_funds';
 const gates = new Map();
+
+function canonicalize(v) {
+  if (v === null || v === undefined) return JSON.stringify(v);
+  if (Array.isArray(v)) return `[${v.map(canonicalize).join(',')}]`;
+  if (typeof v === 'object') return `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonicalize(v[k])).join(',')}}`;
+  return JSON.stringify(v);
+}
 
 function boundActionFor(demo) {
   return `${demo.action_type}:${demo.target}`;
@@ -155,6 +163,32 @@ function receiptOptions(demo) {
   };
 }
 
+function signDemoReceipt(demo, approver) {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+  const publicKeyB64u = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+  const payload = {
+    receipt_id: `rcpt_demo_${crypto.randomBytes(8).toString('hex')}`,
+    subject: 'agent:demo-breaker',
+    created_at: new Date().toISOString(),
+    claim: {
+      action_type: boundActionFor(demo),
+      outcome: 'allow_with_signoff',
+      approver: approver || 'ep:approver:demo-human',
+      policy_id: demo.policy_id,
+      assurance_class: demo.assurance_class,
+    },
+  };
+  const value = crypto
+    .sign(null, Buffer.from(canonicalize(payload), 'utf8'), privateKey)
+    .toString('base64url');
+  return {
+    '@version': 'EP-RECEIPT-v1',
+    payload,
+    signature: { algorithm: 'Ed25519', value },
+    public_key: publicKeyB64u,
+  };
+}
+
 export async function POST(request) {
   const parsed = await readLimitedJson(request, MAX_RECEIPT_DEMO_BYTES, { invalidValue: {} });
   const body = parsed.ok ? parsed.value : {};
@@ -170,6 +204,22 @@ export async function POST(request) {
       ),
       413,
     );
+  }
+
+  if (body?.sign_demo_receipt === true || body?.intent === 'sign_demo_receipt') {
+    const receipt = signDemoReceipt(demo, body?.approver);
+    return NextResponse.json({
+      status: 200,
+      demo: bodySummary(demo),
+      receipt,
+      note: 'Demo-only self-signed receipt. Production gates pin trusted issuer keys.',
+      signed: {
+        action: boundActionFor(demo),
+        policy_id: demo.policy_id,
+        assurance_class: demo.assurance_class,
+        receipt_id: receipt.payload.receipt_id,
+      },
+    }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
   let doc = null;
@@ -255,6 +305,7 @@ export async function GET() {
     actions: Object.values(DEMO_ACTIONS).map(bodySummary),
     try_it: {
       refuse: `POST here with { "demo": "${DEFAULT_DEMO}" } and no receipt -> 428 Receipt Required.`,
+      sign: 'POST here with { "demo": "release_funds", "sign_demo_receipt": true } -> demo EP-RECEIPT-v1 bound to the exact action.',
       allow: `POST here with ${RECEIPT_PROOF_HEADER}: base64(<EP-RECEIPT-v1 JSON>) bound to the demo action -> 200 + evidence_packet.`,
       replay: 'POST the same receipt again -> 428 replay_refused.',
       forged: 'Tamper with the receipt payload -> 428 untrusted_or_invalid_signature.',

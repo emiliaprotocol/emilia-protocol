@@ -124,7 +124,7 @@ export default function GatePage() {
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
               <a href="#loop" style={cta.primary}>How it works</a>
               <a href="#surfaces" style={cta.secondary}>Where it runs</a>
-              <a href="/api/demo/require-receipt" style={cta.secondary}>Open HTTP demo</a>
+              <a href="/try/receipt-required" style={cta.secondary}>Try to break it</a>
               <a href="/pilot?v=gate" style={cta.secondary}>Request pilot</a>
             </div>
           </div>
