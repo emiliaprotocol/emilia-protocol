@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-# WIMSE liaison — staged outreach (DO NOT SEND without Iman's approval)
+# WIMSE liaison — outreach record
 
-**Status:** STAGED. Sending to a public IETF mailing list is an outward, irreversible act — hold for explicit approval. Send from `team@emiliaprotocol.ai`, not gmail.
+**Status (2026-06-29): SENT — targeted 1:1, NOT the list.** A reframed, private version went to lead author **Dean H. Saxe (dean@thesax.es)** from `team@emiliaprotocol.ai`. Rationale: a WG first-touch is one-shot, so a cold `wimse@ietf.org` post was held; the targeted author note is lower-risk and more receptive. Note `draft-saxe-wimse-token-exchange-and-translation` is EXPIRED (rev-01, Oct 2024), so the sent note credits the work without leaning on the dead draft. **Do NOT re-send.** The on-list version below remains held for when a live thread gives a hook.
 
 **Why now (the seam):** WIMSE (Workload Identity in Multi-System Environments) standardizes *machine/workload* identity and token exchange/translation across system boundaries — and is explicitly scoped to stop at workload-to-workload. That leaves the human-authorization layer above it unowned. The risk: someone bolts a half-baked "human approved this" claim into a WIMSE token-exchange draft. The move: get EP framed, collegially and early, as the complementary human-authorization layer that composes with WIMSE — without trying to expand WIMSE's scope (stay Switzerland).
 
