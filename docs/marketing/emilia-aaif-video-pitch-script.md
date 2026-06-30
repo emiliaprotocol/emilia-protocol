@@ -3,31 +3,39 @@
 
 Audience: Manik Surtani (AAIF CTO) and the Technical Committee.
 
-Goal: under five minutes. Name the gap, show the live attack sequence, prove the primitive is real and small, and ask for an early non-binding read on fit.
+Goal: under five minutes, ideally around three. Show the space, name the void, prove the live loop, touch the broader surfaces, and ask for an early non-binding read on fit.
 
 Tone: calm, technical, no hype. Present a primitive, not a company pitch.
 
 Recording cockpit:
-- `/aaif-video-pitch` - title card, layer card, proof cards, closing card
+- `/aaif-video-pitch` - landscape gap, stack placement, proof cards, closing card
+- `/standards` - IETF landscape map
 - `/try/receipt-required` - live attack sequence
+- `/quorum` - multi-party / two-person rule surface
+- `/human-control` - defense and public-sector human-control surface
 - `/fire-drill/registry` - MCP registry index
 - `/fire-drill/rr-1` - RR-1 maintainer credential
 
-## Shot List
+## Three-Minute Take
 
 | Time | On screen | Voiceover |
 |---|---|---|
-| 0:00-0:25 | `/aaif-video-pitch` title card | "Hi Manik - thanks again for taking a look. Quick frame: agents are moving past chat into actions that do not have an undo. Moving money. Deleting a repository. Changing a payout account. MCP is how they connect to those tools. But MCP does not answer one question, and neither does the rest of the stack by default." |
-| 0:25-0:55 | Layer card | "MCP governs how an agent connects. goose governs how it executes. AGENTS.md guides local behavior. The open question is: when the action is irreversible, what artifact proves a named human authorized that exact action before it ran? That is the layer we built. Decision logs are testimony. Receipts are evidence." |
-| 0:55-1:10 | Switch to `/try/receipt-required`, actuator locked | "Here is the whole idea in one screen. An agent is about to release 250,000 dollars. Watch what the gate does. I will try to break it." |
-| 1:10-2:35 | Click `Launch attack sequence` and narrate the states | "No receipt - blocked. 428 Receipt Required; the mutation never reaches the system. Now a named human signs the exact action on their device: Ed25519 over canonical JSON, verifiable offline. With that receipt, it runs once. Replay the same receipt - blocked. It is one-time. Now I tamper with the signed action - the signature no longer verifies. Finally it exports a portable evidence packet anyone can verify offline. Blocked, signed, allowed once, blocked, rejected, exported." |
-| 2:35-3:25 | `/aaif-video-pitch` real-and-small card, optionally repo/npm | "This is not a slide. EMILIA is an Apache-2.0 reference implementation with an active individual Internet-Draft, draft-schrock-ep-authorization-receipts. The reference verifiers in JavaScript, Python, and Go agree on shared conformance vectors. The core protocol invariants are modeled in TLA+ and Alloy and checked in CI. And the local check is small: no account, no backend - npx @emilia-protocol/issue demo." |
-| 3:25-4:05 | `/fire-drill/registry`, then `/fire-drill/rr-1` | "We scanned the public MCP registry: about 43,800 servers. Roughly 10 percent advertise a high-risk capability: moving money, deleting or exporting data, deploying infrastructure, or changing permissions. So we made a maintainer credential, RR-1: wrap your most dangerous action, prove missing receipt is blocked, valid receipt runs once, replay is refused, and forgery is refused. It is a path to adoption, not a vulnerability label." |
-| 4:05-4:30 | Closing card | "The ask is deliberately modest: an early, non-binding technical read on fit. This composes with MCP, goose, and AGENTS.md; it is Apache-2.0; and any asset or governance conversation is much later than this. If this is the human-authorization layer the agent ecosystem is missing, I would value your guidance on where it belongs. Thank you." |
+| 0:00-0:25 | `/aaif-video-pitch` hero | "Hi Manik - thanks again for taking a look. The short version is this: the agent stack is filling in around identity, tools, execution, and logs. But when an agent takes an irreversible action, the middle question is still open: who authorized this exact action before it ran?" |
+| 0:25-0:55 | Landscape gap card | "There are many good efforts around the perimeter: MCP for tools, identity and workload drafts, attestation and transparency logs, frameworks and AGENTS.md for execution and guidance. EMILIA is not trying to replace those. It fills the black void in the middle: portable, offline-verifiable proof that a named human authorized the exact irreversible action." |
+| 0:55-1:20 | Stack placement card | "So the shape is simple. MCP connects. goose executes. AGENTS.md guides. EMILIA is the receipt layer between intent and mutation. Decision logs are testimony. Receipts are evidence." |
+| 1:20-2:20 | Switch to `/try/receipt-required`; click `Launch attack sequence` | "Here is that primitive live. No receipt - blocked. A named human signs the exact action. With the receipt, it runs once. Replay the same receipt - blocked. Tamper with the signed action - rejected. Then it exports a portable evidence packet anyone can verify offline. That is the invariant: no receipt, no execution; if it runs, the proof travels." |
+| 2:20-2:50 | Back to `/aaif-video-pitch`, higher-stakes + proof cards | "The same spine extends upward. Single approval for ordinary high-risk actions. Quorum for the two-person rule - M-of-N or ordered approvals. Human-control profiles for defense and public-sector oversight, mapped carefully to DoD 3000.09, EU AI Act Article 14, and NIST AI RMF. And it is built: active individual Internet-Draft, Apache-2.0, JS/Python/Go verifiers, thousands of tests, TLA+ and Alloy checks, and a local no-account demo with npx." |
+| 2:50-3:15 | Ecosystem proof card or `/fire-drill/registry` | "For adoption, we also started the MCP fire-drill path: about 43,800 registry entries scanned, roughly 10 percent advertising high-risk capability, and RR-1 as the maintainer credential. It is not a shame label; it is a path to make dangerous MCP actions safer than the default." |
+| 3:15-3:35 | Closing card | "The ask is modest: an early, non-binding technical read on fit. This composes with MCP, goose, and AGENTS.md. If this is the missing human-authorization layer the agent ecosystem needs, I would value your guidance on where it belongs." |
+
+## Five-Minute Version
+
+If the three-minute take feels rushed, give the live attack sequence another 45 seconds and briefly open `/standards`, `/quorum`, and `/human-control` as proof that the page is not hand-waving. Keep the same order.
 
 ## Recording Notes
 
-- The best moment is the live attack sequence. Let the tamper/signature-fails beat breathe.
+- The best moment is still the live attack sequence. Let the tamper/signature-fails beat breathe.
+- Do not over-explain every surface. Touch them, show they exist, then return to the receipt primitive.
 - Use a small webcam bubble if it helps the relationship feel warmer, but do not let it cover the attack chain or evidence packet.
 - Keep the standards claim precise: active individual Internet-Draft, not IETF standard or endorsement.
 - Keep named-server claims careful: the registry is a high-risk advertising signal, not a vulnerability report.
