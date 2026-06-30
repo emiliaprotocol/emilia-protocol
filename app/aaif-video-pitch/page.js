@@ -6,9 +6,9 @@ import registryIndex from '../../packages/fire-drill/registry-index.json';
 import reports from '../../packages/fire-drill/reports.json';
 
 export const metadata = {
-  title: 'AAIF Video Pitch Recording Kit - EMILIA Protocol',
+  title: 'EMILIA for AAIF - Human Authorization Receipts',
   description:
-    'A recording cockpit for the AAIF technical committee pitch: the gap, the live Receipt Required attack sequence, proof points, ecosystem signal, and the non-binding ask.',
+    'A concise technical overview of EMILIA: offline-verifiable human authorization receipts for irreversible AI agent actions.',
   alternates: { canonical: '/aaif-video-pitch' },
   robots: { index: false, follow: false },
 };
@@ -16,18 +16,16 @@ export const metadata = {
 const repoUrl = 'https://github.com/emiliaprotocol/emilia-protocol';
 const draftUrl = 'https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/';
 
-const shots = [
-  ['0:00-0:25', 'Hook', 'AI agents are starting to take irreversible actions.'],
-  ['0:25-0:55', 'The gap', 'MCP connects. goose executes. AGENTS.md guides. EMILIA proves the human yes.'],
-  ['0:55-2:35', 'Live attack', 'No receipt blocked. Exact receipt runs once. Replay blocked. Forgery rejected.'],
-  ['2:35-3:25', 'Real and small', 'Active individual I-D, Apache-2.0, JS/Python/Go verifiers, offline checks.'],
-  ['3:25-4:05', 'Ecosystem proof', 'Registry scan plus RR-1 maintainer credential.'],
-  ['4:05-4:30', 'Ask', 'Early non-binding read on fit and where this belongs.'],
+const landscapeRings = [
+  ['MCP / tools', 'connection and capability surface'],
+  ['OAuth / WIMSE / identity', 'who or what is calling'],
+  ['RATS / SCITT / logs', 'attestation and transparency'],
+  ['Agent frameworks / AGENTS.md', 'execution and guidance'],
 ];
 
-const layerRows = [
+const stackRows = [
   ['MCP', 'connects agents to tools'],
-  ['goose', 'executes the agent workflow'],
+  ['goose', 'runs the agent workflow'],
   ['AGENTS.md', 'guides local behavior'],
   ['EMILIA', 'proves a named human authorized the exact irreversible action'],
 ];
@@ -39,11 +37,25 @@ const rrChecks = [
   ['Forged receipt', 'signature rejected'],
 ];
 
+const proofStats = [
+  ['4,220', 'automated tests'],
+  ['26', 'TLA+ safety properties'],
+  ['35 / 22', 'Alloy facts / assertions'],
+  ['8', 'cross-language conformance suites'],
+];
+
+const capabilityCards = [
+  ['Authorization receipts', 'Single human signs the exact action before execution.', '/spec'],
+  ['Quorum', 'M-of-N or ordered two-person rule for highest-stakes actions.', '/quorum'],
+  ['Human control', 'Defense and public-sector oversight mapped to verifiable receipts.', '/human-control'],
+];
+
 const links = [
+  ['/standards', 'Standards map'],
   ['/try/receipt-required', 'Live attack demo'],
+  ['/quorum', 'Quorum'],
+  ['/human-control', 'Human control'],
   ['/fire-drill/registry', 'MCP registry index'],
-  ['/fire-drill/rr-1', 'RR-1 badge'],
-  [repoUrl, 'GitHub repo'],
 ];
 
 export default function AaifVideoPitchPage() {
@@ -55,20 +67,22 @@ export default function AaifVideoPitchPage() {
         #ep-eu-ai-act-banner { display: none !important; }
         nextjs-portal { display: none !important; }
         @media (max-width: 900px) {
-          .aaif-deck-grid,
-          .aaif-runbook { grid-template-columns: 1fr !important; }
+          .aaif-deck-grid { grid-template-columns: 1fr !important; }
           .aaif-stats { grid-template-columns: 1fr !important; }
+          .aaif-proof-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+          .aaif-void-map { grid-template-columns: 1fr !important; }
         }
         @media (max-width: 640px) {
           .aaif-hero { padding: 52px 20px 24px !important; }
-          .aaif-layer-row,
-          .aaif-shot { grid-template-columns: 1fr !important; }
+          .aaif-layer-row { grid-template-columns: 1fr !important; }
           .aaif-check-grid { grid-template-columns: 1fr !important; }
+          .aaif-proof-grid { grid-template-columns: 1fr !important; }
+          .aaif-ring-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
       <header style={s.topbar}>
         <Link href="/" style={s.brand}>EMILIA</Link>
-        <div style={s.topMeta}>AAIF recording kit / target runtime 4:30</div>
+        <div style={s.topMeta}>Human authorization receipts for AI agent actions</div>
         <nav style={s.topLinks}>
           {links.map(([href, label]) => (
             <a key={href} href={href} style={s.topLink} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}>
@@ -80,10 +94,10 @@ export default function AaifVideoPitchPage() {
 
       <section style={s.hero} className="aaif-hero">
         <div style={s.heroText}>
-          <div style={s.eyebrow}>TITLE CARD / 0:00</div>
-          <h1 style={s.h1}>AI agents are starting to take irreversible actions.</h1>
+          <div style={s.eyebrow}>EMILIA FOR AAIF</div>
+          <h1 style={s.h1}>The missing human-proof layer for agent actions.</h1>
           <p style={s.lead}>
-            Moving money. Deleting repositories. Changing payout accounts. The open question is what proves a named human authorized the exact action before it ran.
+            The agent stack is filling in around identity, tools, execution, and logs. The void in the middle is portable proof that a named human authorized one exact irreversible action before it ran.
           </p>
         </div>
         <div style={s.lowerThird}>
@@ -95,12 +109,36 @@ export default function AaifVideoPitchPage() {
       </section>
 
       <section style={s.deckGrid} className="aaif-deck-grid">
+        <article style={{ ...s.panel, ...s.widePanel }}>
+          <div style={s.eyebrow}>THE LANDSCAPE GAP</div>
+          <h2 style={s.h2}>Many drafts describe the agent stack. The missing primitive is proof of human authorization.</h2>
+          <div style={s.voidMap} className="aaif-void-map">
+            <div style={s.ringGrid} className="aaif-ring-grid">
+              {landscapeRings.map(([name, job]) => (
+                <div key={name} style={s.ringCard}>
+                  <strong style={s.ringTitle}>{name}</strong>
+                  <span style={s.ringBody}>{job}</span>
+                </div>
+              ))}
+            </div>
+            <div style={s.voidCenter}>
+              <span style={s.voidLabel}>BLACK VOID</span>
+              <strong style={s.voidQuestion}>Who authorized this exact irreversible action before execution?</strong>
+              <p style={s.voidBody}>EMILIA fills this with an offline-verifiable receipt.</p>
+            </div>
+          </div>
+          <div style={s.rowLinks}>
+            <Link href="/standards" style={s.secondaryLink}>Open standards map</Link>
+            <a href={draftUrl} style={s.secondaryLink} target="_blank" rel="noopener noreferrer">Open I-D</a>
+          </div>
+        </article>
+
         <article style={s.panel}>
-          <div style={s.eyebrow}>THE GAP / 0:25</div>
-          <h2 style={s.h2}>The stack guides and connects agents. It does not create portable authorization evidence.</h2>
+          <div style={s.eyebrow}>WHERE IT SITS</div>
+          <h2 style={s.h2}>A small layer between intent and mutation.</h2>
           <div style={s.layerStack}>
-            {layerRows.map(([name, job], index) => (
-              <div key={name} className="aaif-layer-row" style={{ ...s.layerRow, ...(index === layerRows.length - 1 ? s.layerEmilia : null) }}>
+            {stackRows.map(([name, job], index) => (
+              <div key={name} className="aaif-layer-row" style={{ ...s.layerRow, ...(index === stackRows.length - 1 ? s.layerEmilia : null) }}>
                 <strong>{name}</strong>
                 <span>{job}</span>
               </div>
@@ -110,9 +148,9 @@ export default function AaifVideoPitchPage() {
         </article>
 
         <article style={s.panel}>
-          <div style={s.eyebrow}>LIVE DEMO / 0:55</div>
+          <div style={s.eyebrow}>LIVE DEMO</div>
           <h2 style={s.h2}>Try to break the action layer.</h2>
-          <p style={s.body}>Record the live page, then let the six states breathe. This is the moment that should land.</p>
+          <p style={s.body}>An irreversible action is blocked without a receipt, runs once with an exact-action receipt, and rejects replay or tampering.</p>
           <div style={s.checkGrid} className="aaif-check-grid">
             {rrChecks.map(([label, result]) => (
               <div key={label} style={s.check}>
@@ -125,7 +163,7 @@ export default function AaifVideoPitchPage() {
         </article>
 
         <article style={s.panel}>
-          <div style={s.eyebrow}>REAL AND SMALL / 2:35</div>
+          <div style={s.eyebrow}>REAL AND SMALL</div>
           <h2 style={s.h2}>A primitive, not a platform pitch.</h2>
           <ul style={s.bullets}>
             <li>Active individual Internet-Draft, not an IETF endorsement.</li>
@@ -137,7 +175,35 @@ export default function AaifVideoPitchPage() {
         </article>
 
         <article style={s.panel}>
-          <div style={s.eyebrow}>ECOSYSTEM PROOF / 3:25</div>
+          <div style={s.eyebrow}>HIGHER-STAKES SURFACES</div>
+          <h2 style={s.h2}>Single approval, quorum, and human-control profiles use the same receipt spine.</h2>
+          <div style={s.capabilityGrid}>
+            {capabilityCards.map(([name, body, href]) => (
+              <Link key={name} href={href} style={s.capabilityCard}>
+                <strong style={s.capabilityTitle}>{name}</strong>
+                <span style={s.capabilityBody}>{body}</span>
+              </Link>
+            ))}
+          </div>
+          <p style={s.body}>The defense-facing human-control surface maps receipt evidence to DoD Directive 3000.09, EU AI Act Article 14, NIST AI RMF, and the LAWS debate - carefully scoped as authorization proof, not proof of wisdom.</p>
+        </article>
+
+        <article style={s.panel}>
+          <div style={s.eyebrow}>BUILT, TESTED, LIGHTWEIGHT</div>
+          <h2 style={s.h2}>Small enough to try. Serious enough to review.</h2>
+          <div style={s.proofGrid} className="aaif-proof-grid">
+            {proofStats.map(([value, label]) => (
+              <div key={label} style={s.proofStat}>
+                <strong style={s.proofNumber}>{value}</strong>
+                <span style={s.proofLabel}>{label}</span>
+              </div>
+            ))}
+          </div>
+          <pre style={s.command}>npx @emilia-protocol/issue demo</pre>
+        </article>
+
+        <article style={s.panel}>
+          <div style={s.eyebrow}>ECOSYSTEM PROOF</div>
           <h2 style={s.h2}>The maintainer path is a badge, not a scold.</h2>
           <div style={s.stats} className="aaif-stats">
             <div style={s.stat}>
@@ -162,28 +228,12 @@ export default function AaifVideoPitchPage() {
       </section>
 
       <section style={s.closeCard}>
-        <div style={s.eyebrow}>CLOSING CARD / 4:05</div>
+        <div style={s.eyebrow}>THE ASK</div>
         <h2 style={s.closeTitle}>If this is the missing human-authorization layer, where should it belong?</h2>
         <p style={s.closeBody}>Early, non-binding read on fit. Composes with MCP, goose, and AGENTS.md. Apache-2.0 reference implementation.</p>
         <div style={s.closeLinks}>
           <span>team@emiliaprotocol.ai</span>
           <a href={repoUrl} style={s.closeLink} target="_blank" rel="noopener noreferrer">github.com/emiliaprotocol/emilia-protocol</a>
-        </div>
-      </section>
-
-      <section style={s.runbook} className="aaif-runbook">
-        <div>
-          <div style={s.eyebrow}>SHOT LIST</div>
-          <h2 style={s.h2}>Keep the take calm and under five minutes.</h2>
-        </div>
-        <div style={s.shots}>
-          {shots.map(([time, label, line]) => (
-            <div key={time} className="aaif-shot" style={s.shot}>
-              <span>{time}</span>
-              <strong>{label}</strong>
-              <p style={s.shotLine}>{line}</p>
-            </div>
-          ))}
         </div>
       </section>
     </main>
@@ -299,11 +349,71 @@ const s = {
     padding: 26,
     minHeight: 390,
   },
+  widePanel: {
+    gridColumn: '1 / -1',
+    minHeight: 360,
+  },
   h2: {
     margin: 0,
     fontSize: 'clamp(26px, 3vw, 40px)',
     lineHeight: 1.04,
     letterSpacing: 0,
+  },
+  voidMap: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr) minmax(280px, 0.78fr)',
+    gap: 14,
+    marginTop: 26,
+  },
+  ringGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: 10,
+  },
+  ringCard: {
+    minHeight: 92,
+    border: '1px solid rgba(250,250,249,0.14)',
+    borderRadius: radius.sm,
+    padding: 16,
+    display: 'grid',
+    alignContent: 'space-between',
+    gap: 12,
+    fontFamily: font.mono,
+    color: 'rgba(250,250,249,0.7)',
+  },
+  ringTitle: {
+    color: '#FAFAF9',
+    fontSize: 14,
+  },
+  ringBody: {
+    fontSize: 12,
+    lineHeight: 1.45,
+  },
+  voidCenter: {
+    border: `1px solid ${color.gold}`,
+    borderRadius: radius.base,
+    padding: 18,
+    background: 'rgba(176,141,53,0.14)',
+    display: 'grid',
+    alignContent: 'center',
+    gap: 12,
+    minHeight: 194,
+  },
+  voidLabel: {
+    fontFamily: font.mono,
+    color: color.gold,
+    fontSize: 11,
+    letterSpacing: 1.8,
+  },
+  voidQuestion: {
+    color: '#FAFAF9',
+    fontSize: 24,
+    lineHeight: 1.08,
+  },
+  voidBody: {
+    margin: 0,
+    color: 'rgba(250,250,249,0.72)',
+    lineHeight: 1.5,
   },
   body: {
     margin: '18px 0 0',
@@ -399,6 +509,63 @@ const s = {
     gap: 10,
     flexWrap: 'wrap',
   },
+  capabilityGrid: {
+    display: 'grid',
+    gap: 10,
+    marginTop: 22,
+  },
+  capabilityCard: {
+    border: '1px solid rgba(250,250,249,0.14)',
+    borderRadius: radius.sm,
+    padding: 15,
+    display: 'grid',
+    gap: 8,
+    color: '#FAFAF9',
+    textDecoration: 'none',
+  },
+  capabilityTitle: {
+    fontSize: 16,
+  },
+  capabilityBody: {
+    color: 'rgba(250,250,249,0.66)',
+    lineHeight: 1.5,
+  },
+  proofGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+    gap: 10,
+    marginTop: 24,
+  },
+  proofStat: {
+    border: '1px solid rgba(250,250,249,0.14)',
+    borderRadius: radius.sm,
+    padding: 14,
+    display: 'grid',
+    gap: 8,
+    minHeight: 104,
+  },
+  proofNumber: {
+    fontSize: 32,
+    lineHeight: 1,
+    color: '#FAFAF9',
+  },
+  proofLabel: {
+    color: 'rgba(250,250,249,0.62)',
+    fontFamily: font.mono,
+    fontSize: 11,
+    lineHeight: 1.35,
+  },
+  command: {
+    margin: '22px 0 0',
+    border: '1px solid rgba(250,250,249,0.14)',
+    borderRadius: radius.sm,
+    padding: '14px 16px',
+    color: color.gold,
+    background: '#0F0D0B',
+    fontFamily: font.mono,
+    fontSize: 14,
+    overflowX: 'auto',
+  },
   closeCard: {
     maxWidth: 1220,
     margin: '0 auto',
@@ -431,33 +598,5 @@ const s = {
   closeLink: {
     color: color.gold,
     textDecoration: 'none',
-  },
-  runbook: {
-    maxWidth: 1220,
-    margin: '0 auto',
-    padding: '36px 28px 90px',
-    display: 'grid',
-    gridTemplateColumns: 'minmax(240px, 0.6fr) minmax(0, 1fr)',
-    gap: 20,
-    borderTop: '1px solid rgba(250,250,249,0.14)',
-  },
-  shots: {
-    display: 'grid',
-    gap: 8,
-  },
-  shot: {
-    display: 'grid',
-    gridTemplateColumns: '88px 130px minmax(0, 1fr)',
-    gap: 14,
-    alignItems: 'baseline',
-    border: '1px solid rgba(250,250,249,0.12)',
-    borderRadius: radius.sm,
-    padding: '12px 14px',
-    fontFamily: font.mono,
-    color: 'rgba(250,250,249,0.72)',
-  },
-  shotLine: {
-    margin: 0,
-    lineHeight: 1.45,
   },
 };
