@@ -16,7 +16,8 @@
     "README.md"
   ],
   "scripts": {
-    "test": "node --test jws.test.js"
+    "test": "node --test jws.test.js gate.test.js",
+    "build:drop-in": "node build-drop-in.mjs"
   },
   "devDependencies": {
     "jose": "^6.2.3"
