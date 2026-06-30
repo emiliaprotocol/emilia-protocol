@@ -343,3 +343,16 @@ export default requireReceiptExports;
 // Canonical hardened gate: target binding + consume-after-success + sanitized
 // rejections, in one reviewed place. Prefer this over hand-rolling a guard.
 export { makeReceiptGate } from './gate.js';
+
+// EP-RECEIPT-JWS-PROFILE-v1: serialize/verify an EP receipt as a standard
+// compact JWS (RFC 7515, EdDSA per RFC 8037) so any JOSE verifier can consume
+// it. Parallel envelope over the SAME JCS canonical payload — not a replacement
+// for the native EP-RECEIPT-v1 signature.
+export {
+  serializeReceiptJws,
+  verifyReceiptJws,
+  deriveKid,
+  JWS_PROFILE_VERSION,
+  JWS_ALG,
+  JWS_TYP,
+} from './jws.js';

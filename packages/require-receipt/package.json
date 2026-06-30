@@ -12,8 +12,15 @@
   "files": [
     "index.js",
     "gate.js",
+    "jws.js",
     "README.md"
   ],
+  "scripts": {
+    "test": "node --test jws.test.js"
+  },
+  "devDependencies": {
+    "jose": "^6.2.3"
+  },
   "license": "Apache-2.0",
   "keywords": [
     "emilia-protocol",
