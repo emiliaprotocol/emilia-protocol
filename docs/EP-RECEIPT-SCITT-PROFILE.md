@@ -51,8 +51,8 @@ authorization is now both *attributable to a named human* (EMILIA) and *tamper-e
 
 The lineage chain is **EMILIA/COSA content, not a SCITT feature.** Each hop is its own Signed
 Statement whose payload carries a `prev` field = the SHA-256 of the prior hop's canonical receipt
-(EMILIA evidence-chain / AEC). Registering each hop yields tamper-evident *ordering + inclusion* on
-top of EMILIA's *linking*:
+(EMILIA evidence-chain / AEC). Registering each hop yields external log transparency and inclusion
+for every EP-linked hop:
 
 ```
 hop₀ (receipt, prev=∅)  ─register→  Receipt₀
@@ -60,8 +60,9 @@ hop₁ (receipt, prev=H(hop₀)) ─register→ Receipt₁
 hop₂ (receipt, prev=H(hop₁)) ─register→ Receipt₂
 ```
 
-SCITT proves the order and inclusion; EMILIA proves the human authorization and the link. Neither
-needs a monolithic lifecycle protocol — this is two narrow profiles on accepted work.
+EMILIA defines and verifies the lineage link; SCITT proves each linked statement was logged in a
+tamper-evident Transparency Service. Neither needs a monolithic lifecycle protocol — this is two
+narrow profiles on accepted work.
 
 ## 4. Verification
 
@@ -91,4 +92,54 @@ those terms — not as "decay physics."
   the substrate is real). **Not** an endorsement by the SCITT WG; this is a complement profile.
 - **COSE / Ed25519** — RFC 9052 / RFC 9053 / RFC 8032 (published).
 
-A runnable example (zero-dependency, signature-correct) is in `examples/scitt/`.
+Runnable examples (zero-dependency, signature-correct) are in `examples/scitt/`.
+
+Local profile conformance harness:
+
+```
+node examples/scitt/ep-receipt-scitt-conformance.mjs
+```
+
+End-to-end reproducible CI harness:
+
+```
+node examples/scitt/ep-receipt-scitt-end-to-end.mjs
+```
+
+That path builds the EP receipt, wraps it as a `COSE_Sign1` Signed Statement, registers it through
+the SCRAPI `/entries` shape against an in-process mock Transparency Service, returns a mock
+transparency receipt, and verifies the receipt signature + statement hash + Merkle inclusion path.
+The mock exists so the demo can run green forever in CI; it is deliberately **not** a SCITT WG
+Receipt format claim.
+
+Optional external SCRAPI registration target:
+
+```
+SCITT_URL=https://<transparency-service> node examples/scitt/ep-receipt-scitt-end-to-end.mjs
+```
+
+External mode proves EP/COSE construction and registration against the target. It must not be
+described as full SCITT transparency verification until that target's returned Receipt is verified
+against that service's parameters.
+
+HTTP mock server, when a socket-level SCRAPI-shaped endpoint is useful:
+
+```
+node examples/scitt/mock-scrapi-transparency-service.mjs
+```
+
+Historical/community emulator target:
+
+- `scitt-community/scitt-api-emulator` exists and may be useful as an interoperability target, but it
+  is archived; do not call it the current IETF reference emulator unless the SCITT WG says so.
+- The current primary standards target is the `draft-ietf-scitt-scrapi` specification and WG repo.
+
+Legacy live smoke-test alias:
+
+```
+SCITT_TS_URL=https://<transparency-service> node examples/scitt/ep-receipt-scitt-conformance.mjs
+```
+
+The legacy conformance harness posts the generated `COSE_Sign1` to `POST /entries` and reports the
+returned bytes. It still does **not** claim full SCITT Receipt verification until the returned
+transparency / inclusion receipt is independently verified against that service's parameters.
