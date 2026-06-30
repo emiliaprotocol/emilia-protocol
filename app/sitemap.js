@@ -6,6 +6,7 @@
 // ignores them but other engines (Bing, Yandex, DuckDuckBot) still use them.
 
 import { REPRESENTATIVE_CORPUS } from '../packages/fire-drill/corpus.js';
+import { REGISTRY_CORPUS } from '../packages/fire-drill/registry-corpus.js';
 
 const BASE = 'https://www.emiliaprotocol.ai';
 
@@ -139,7 +140,16 @@ export default function sitemap() {
     path: `/fire-drill/scan/${c.slug}`, priority: 0.7, changeFrequency: 'monthly',
   }));
 
-  return [...marketing, ...comparison, ...blog, ...essays, ...product, ...functional, ...corporate, ...legal, ...scans].map((entry) => ({
+  // Registry-level result pages: real MCP-registry servers that advertise a
+  // high-risk capability and publish a repo (backlink surface).
+  const registry = [
+    { path: '/fire-drill/registry', priority: 0.8, changeFrequency: 'weekly' },
+    ...REGISTRY_CORPUS.map((c) => ({
+      path: `/fire-drill/registry/${c.slug}`, priority: 0.6, changeFrequency: 'monthly',
+    })),
+  ];
+
+  return [...marketing, ...comparison, ...blog, ...essays, ...product, ...functional, ...corporate, ...legal, ...scans, ...registry].map((entry) => ({
     url: `${BASE}${entry.path}`,
     lastModified: NOW,
     changeFrequency: entry.changeFrequency,
