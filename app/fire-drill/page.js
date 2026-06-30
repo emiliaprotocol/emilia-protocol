@@ -5,6 +5,7 @@
 // without an accountable human receipt.
 
 import { useState } from 'react';
+import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font } from '@/lib/tokens';
@@ -154,7 +155,7 @@ export default function FireDrillPage() {
               <a href="/gate" style={cta.primary}>Add EMILIA Gate</a>
               <a href="/gate#eg1" style={cta.secondary}>Earn EG-1</a>
               <a href="/fire-drill/gallery" style={cta.secondary}>Safety Index</a>
-              <a href="/fire-drill/report" style={cta.secondary}>The Report</a>
+              <Link href="/fire-drill/report" style={cta.secondary}>The Report</Link>
             </div>
             <div style={{ marginTop: 28 }}>
               <div style={{ ...styles.eyebrow, color: color.t3 }}>EARNED EG-1? EMBED THE BADGE</div>

@@ -78,6 +78,37 @@ only the approver holds; the signed authorization is consumed exactly
 once; and the resulting receipt is independently verifiable offline,
 forever.
 
+**Why existing mechanisms do not close this gap.** Each adjacent layer
+answers a different question, and none produces the artifact above:
+
+- OAuth 2.0 with Rich Authorization Requests (RFC 9396) and GNAP
+  (RFC 9635) authorize a client's *requested scope*; they do not
+  produce a named human's offline-verifiable signature over the exact
+  action that executed.
+- The OAuth Step-Up Authentication Challenge (RFC 9470) can *demand* a
+  fresh human authentication for a sensitive operation, but yields no
+  durable, portable artifact of that approval.
+- Transaction Tokens (draft-ietf-oauth-transaction-tokens) propagate
+  call context across workloads within a trust domain; they are
+  short-lived, online-validated, and assert *workload* identity, not a
+  human's authorization of an action.
+- The Security Event Token (RFC 8417) and CAEP convey, as issuer
+  assertions, that an event *occurred*; they are not a human's
+  pre-execution approval bound to one exact action.
+- RATS (RFC 9334) and the Entity Attestation Token (RFC 9711) attest
+  the trustworthiness of a *platform or workload*, not that a named
+  human authorized an action — a different trust root.
+- SCITT (draft-ietf-scitt-architecture) provides an append-only
+  transparency log and inclusion receipts, but is deliberately agnostic
+  about *who authorized* a statement — which is precisely the question
+  EP answers.
+
+EP is therefore a narrow addition, not a replacement: the
+human-authorization artifact these layers assume but none emit. It
+composes with them (Section 10) and can be carried in their formats —
+for example, an EP receipt expressed as a COSE Signed Statement and
+logged by a SCITT Transparency Service.
+
 The human-approval mechanism this document specifies — a
 user-verification-gated signature over the exact Authorization Context
 (Section 5.1, Class A) — is native to EP and self-contained. It does
