@@ -39,7 +39,7 @@ export default function EuAiActBanner() {
   };
 
   return (
-    <div style={{
+    <div id="ep-eu-ai-act-banner" style={{
       width: '100%', boxSizing: 'border-box',
       background: '#1C1917', color: '#FAFAF9',
       borderBottom: '1px solid rgba(176,141,53,0.35)',
