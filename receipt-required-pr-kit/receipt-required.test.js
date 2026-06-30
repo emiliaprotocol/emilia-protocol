@@ -20,6 +20,13 @@ import { dispatch } from './example-dangerous-action.js';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const MANIFEST = JSON.parse(readFileSync(resolve(HERE, 'agent-actions.json'), 'utf8'));
 
+// These conformance checks are self-contained: each receipt is minted with a
+// fresh key, so we run the gate in explicit NON-PRODUCTION inline mode. In
+// production you pin EMILIA_TRUSTED_KEYS instead (see the fail-closed test below,
+// which proves the secure default refuses a destructive action with no trusted
+// key configured).
+process.env.EMILIA_ALLOW_INLINE_KEY = '1';
+
 // Byte-identical to @emilia-protocol/verify's EP-RECEIPT-v1 canonicalization.
 const canonicalize = (v) => (v === null || v === undefined ? JSON.stringify(v)
   : Array.isArray(v) ? `[${v.map(canonicalize).join(',')}]`
@@ -86,4 +93,24 @@ test('consume-after-success: a failed action leaves the receipt retryable', asyn
   const replay = await dispatch('delete_all_records', { table: 'inventory' }, receipt);
   assert.notEqual(replay.status, 200, 'consumed receipt should be refused on replay');
   assert.equal(replay.body.rejected.reason, 'replay_refused');
+});
+
+test('secure default: enforcement on with NO trusted key fails closed (does not run)', async () => {
+  // Simulate production posture: no inline opt-in, no pinned issuer keys.
+  const prevInline = process.env.EMILIA_ALLOW_INLINE_KEY;
+  const prevKeys = process.env.EMILIA_TRUSTED_KEYS;
+  delete process.env.EMILIA_ALLOW_INLINE_KEY;
+  delete process.env.EMILIA_TRUSTED_KEYS;
+  try {
+    // Even a well-formed receipt must NOT run the destructive action when no
+    // issuer key is trusted — accepting a self-signed receipt here would be the
+    // exact unsafe default we refuse to ship.
+    const res = await dispatch('delete_all_records', { table: 'customers' }, issueReceipt('db.records.delete_all:customers'));
+    assert.notEqual(res.status, 200, 'destructive action must not run without a trusted key');
+    assert.equal(res.body.rejected.reason, 'receipt_enforcement_misconfigured');
+    assert.notEqual(res.body.ran, true, 'the action must not have executed');
+  } finally {
+    if (prevInline === undefined) delete process.env.EMILIA_ALLOW_INLINE_KEY; else process.env.EMILIA_ALLOW_INLINE_KEY = prevInline;
+    if (prevKeys === undefined) delete process.env.EMILIA_TRUSTED_KEYS; else process.env.EMILIA_TRUSTED_KEYS = prevKeys;
+  }
 });

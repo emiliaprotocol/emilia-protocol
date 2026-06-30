@@ -1,6 +1,6 @@
 {
   "name": "receipt-required-pr-kit",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "Drop-in 'Receipt Required' rail for one dangerous action — missing -> 428, valid -> runs, replay -> refused, forged -> refused (RR-1).",
@@ -8,6 +8,6 @@
     "test": "node --test"
   },
   "dependencies": {
-    "@emilia-protocol/require-receipt": "^0.4.0"
+    "@emilia-protocol/require-receipt": "^0.4.1"
   }
 }
