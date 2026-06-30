@@ -155,27 +155,8 @@ export default function PricingPage() {
                   <span style={{ fontFamily: font.sans, fontWeight: 700, fontSize: t.priceIsLabel ? 19 : 28, letterSpacing: t.priceIsLabel ? 0 : -1, color: t.priceIsLabel ? color.t2 : color.t1 }}>{t.price}</span>
                 </div>
                 <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase', color: color.t3, marginBottom: 16 }}>{t.priceNote}</div>
-                <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.6, marginBottom: 22, minHeight: 88 }}>{t.tagline}</p>
-                {t.cta.href.startsWith('http') ? (
-                  <a
-                    href={t.cta.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={t.ctaStyle === 'primary' ? 'ep-cta' : 'ep-cta-secondary'}
-                    style={{ ...(t.ctaStyle === 'primary' ? cta.primary : cta.secondary), justifyContent: 'center', width: '100%', marginBottom: 24 }}
-                  >
-                    {t.cta.label}
-                  </a>
-                ) : (
-                  <Link
-                    href={t.cta.href}
-                    className={t.ctaStyle === 'primary' ? 'ep-cta' : 'ep-cta-secondary'}
-                    style={{ ...(t.ctaStyle === 'primary' ? cta.primary : cta.secondary), justifyContent: 'center', width: '100%', marginBottom: 24 }}
-                  >
-                    {t.cta.label}
-                  </Link>
-                )}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+                <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.6, marginBottom: 22 }}>{t.tagline}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 11, marginBottom: 28 }}>
                   {t.features.map((f) => (
                     <div key={f} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                       <span style={{ color: t.accent, fontSize: 13, marginTop: 1, flexShrink: 0 }}>&#10003;</span>
@@ -183,6 +164,26 @@ export default function PricingPage() {
                     </div>
                   ))}
                 </div>
+                {/* CTA pinned to the card bottom so all three align regardless of tagline/feature length */}
+                {t.cta.href.startsWith('http') ? (
+                  <a
+                    href={t.cta.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={t.ctaStyle === 'primary' ? 'ep-cta' : 'ep-cta-secondary'}
+                    style={{ ...(t.ctaStyle === 'primary' ? cta.primary : cta.secondary), justifyContent: 'center', width: '100%', marginTop: 'auto' }}
+                  >
+                    {t.cta.label}
+                  </a>
+                ) : (
+                  <Link
+                    href={t.cta.href}
+                    className={t.ctaStyle === 'primary' ? 'ep-cta' : 'ep-cta-secondary'}
+                    style={{ ...(t.ctaStyle === 'primary' ? cta.primary : cta.secondary), justifyContent: 'center', width: '100%', marginTop: 'auto' }}
+                  >
+                    {t.cta.label}
+                  </Link>
+                )}
               </div>
             ))}
           </div>
@@ -266,7 +267,7 @@ export default function PricingPage() {
             Pre-built policies, adapters, and compliance mappings for the two places a wrong agent
             action does the most damage. Available with Enterprise.
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
             {PACKS.map((p) => (
               <Link key={p.name} href={p.href} className="ep-card-lift" style={{ display: 'block', background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '24px 26px', textDecoration: 'none' }}>
                 <div style={{ fontFamily: font.sans, fontWeight: 600, fontSize: 15, color: color.t1, marginBottom: 8 }}>{p.name}</div>
