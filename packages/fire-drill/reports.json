@@ -53,8 +53,8 @@
         "replay": "refused — one-time consumption",
         "forged": "refused — signature / action-binding fails"
       },
-      "pr_url": null,
-      "status": "report_ready",
+      "pr_url": "https://github.com/signaltech-org/bolthub-sdk/pull/2",
+      "status": "pr_open",
       "maintainer_note": "Maintainer active (last push 2026-06-26); this report is intended to go live alongside a fix PR.",
       "published": true
     },
@@ -76,8 +76,8 @@
         "replay": "refused — one-time consumption",
         "forged": "refused — signature / action-binding fails"
       },
-      "pr_url": null,
-      "status": "report_ready",
+      "pr_url": "https://github.com/scope-bid/scope-mcp/pull/2",
+      "status": "pr_open",
       "maintainer_note": "Maintainer active (last push 2026-06-10); this report is intended to go live alongside a fix PR.",
       "published": true
     },
@@ -168,10 +168,10 @@
         "replay": "refused — one-time consumption",
         "forged": "refused — signature / action-binding fails"
       },
-      "pr_url": null,
-      "status": "report_ready",
+      "pr_url": "https://github.com/Eveoy/eveoy-mcp/pull/1",
+      "status": "pr_open",
       "maintainer_note": "Maintainer active (last push 2026-06-30); report intended to go live alongside a fix PR.",
-      "published": false
+      "published": true
     },
     {
       "slug": "bvcc-agent-mcp",
@@ -191,10 +191,10 @@
         "replay": "refused — one-time consumption",
         "forged": "refused — signature / action-binding fails"
       },
-      "pr_url": null,
-      "status": "report_ready",
+      "pr_url": "https://github.com/blockventurechaincapital-crypto/bvcc-agent-mcp/pull/1",
+      "status": "pr_open",
       "maintainer_note": "Maintainer active (last push 2026-06-29). Handler bodies live in the external @bvcc/agent-sdk; the in-repo seam is the dispatch closure. Report intended to go live alongside a fix PR.",
-      "published": false
+      "published": true
     },
     {
       "slug": "rippermercs-tensorfeed",
@@ -214,10 +214,10 @@
         "replay": "refused — one-time consumption",
         "forged": "refused — signature / action-binding fails"
       },
-      "pr_url": null,
-      "status": "report_ready",
+      "pr_url": "https://github.com/RipperMercs/tensorfeed/pull/77",
+      "status": "pr_open",
       "maintainer_note": "Maintainer active (last push 2026-06-29); report intended to go live alongside a fix PR.",
-      "published": false
+      "published": true
     },
     {
       "slug": "codeswhat-portkey-admin-mcp",
@@ -237,33 +237,10 @@
         "replay": "refused — one-time consumption",
         "forged": "refused — signature / action-binding fails"
       },
-      "pr_url": null,
-      "status": "report_ready",
+      "pr_url": "https://github.com/CodesWhat/portkey-admin-mcp/pull/15",
+      "status": "pr_open",
       "maintainer_note": "Maintainer active (last push 2026-06-28); report intended to go live alongside a fix PR.",
-      "published": false
-    },
-    {
-      "slug": "mnemopay-sdk",
-      "name": "mnemopay-sdk",
-      "repo": "https://github.com/mnemopay/mnemopay-sdk",
-      "family": "money_movement",
-      "dangerous_tool": "payout_create",
-      "dangerous_summary": "initiates an outbound Paystack bank transfer to a recipient.",
-      "handler_file": "src/mcp/server.ts",
-      "handler_symbol": "executeTool case \"payout_create\"",
-      "handler_quote": "transfer = await rail.initiateTransfer(recipient.recipientCode, args.amount, args.reason, agent.agentId);",
-      "currently": "runs unguarded — payout_create fires the bank transfer immediately; the repo has a HITL approval queue but it is wired for charge/escrow, not for payout_create.",
-      "proposed_fix": "Gate the case \"payout_create\" block (or the dispatcher before executeTool) with @emilia-protocol/require-receipt so the outbound transfer requires a human authorization receipt before initiateTransfer fires.",
-      "after_patch": {
-        "missing": "blocked — 428 Receipt Required",
-        "valid": "pays out once, receipt consumed",
-        "replay": "refused — one-time consumption",
-        "forged": "refused — signature / action-binding fails"
-      },
-      "pr_url": null,
-      "status": "report_ready",
-      "maintainer_note": "Maintainer active (last push 2026-06-26). NOTE: competitor-adjacent (its own trust/identity/HITL framing) — held from outreach pending review.",
-      "published": false
+      "published": true
     }
   ]
 }
