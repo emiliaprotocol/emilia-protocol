@@ -3,6 +3,7 @@
 // servers scored by the Agent Action Firewall Test, plus the EG-1-Enforced
 // reference implementations. Static assessment of documented tool surfaces.
 
+import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font } from '@/lib/tokens';
@@ -50,7 +51,7 @@ export default function GalleryPage() {
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 24, flexWrap: 'wrap' }}>
               <a href="/fire-drill" style={cta.primary}>Run the fire drill</a>
-              <a href="/fire-drill/report" style={cta.secondary}>The Report</a>
+              <Link href="/fire-drill/report" style={cta.secondary}>The Report</Link>
             </div>
           </div>
         </section>
