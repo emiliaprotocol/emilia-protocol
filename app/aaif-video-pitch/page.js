@@ -15,6 +15,8 @@ export const metadata = {
 
 const repoUrl = 'https://github.com/emiliaprotocol/emilia-protocol';
 const draftUrl = 'https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/';
+const scittProfileUrl = `${repoUrl}/blob/main/docs/EP-RECEIPT-SCITT-PROFILE.md`;
+const scittHarnessUrl = `${repoUrl}/blob/main/examples/scitt/ep-receipt-scitt-end-to-end.mjs`;
 
 const landscapeRings = [
   ['MCP / tools', 'connection and capability surface'],
@@ -37,6 +39,13 @@ const rrChecks = [
   ['Forged receipt', 'signature rejected'],
 ];
 
+const scittChecks = [
+  ['Signed Statement', 'COSE_Sign1'],
+  ['Register', 'SCRAPI /entries'],
+  ['Receipt', 'inclusion verified'],
+  ['Boundary', 'SCITT logs; EP authorizes'],
+];
+
 const proofStats = [
   ['4,220', 'automated tests'],
   ['26', 'TLA+ safety properties'],
@@ -51,11 +60,11 @@ const capabilityCards = [
 ];
 
 const links = [
-  ['/standards', 'Standards map'],
-  ['/try/receipt-required', 'Live attack demo'],
-  ['/quorum', 'Quorum'],
-  ['/human-control', 'Human control'],
-  ['/fire-drill/registry', 'MCP registry index'],
+  ['#gap', 'Gap'],
+  ['#demo', 'Demo'],
+  ['#scitt', 'SCITT'],
+  ['#surfaces', 'Surfaces'],
+  ['#ask', 'Ask'],
 ];
 
 export default function AaifVideoPitchPage() {
@@ -64,6 +73,7 @@ export default function AaifVideoPitchPage() {
   return (
     <main style={s.page}>
       <style>{`
+        html { scroll-behavior: smooth; }
         #ep-eu-ai-act-banner { display: none !important; }
         nextjs-portal { display: none !important; }
         @media (max-width: 900px) {
@@ -85,7 +95,7 @@ export default function AaifVideoPitchPage() {
         <div style={s.topMeta}>Human authorization receipts for AI agent actions</div>
         <nav style={s.topLinks}>
           {links.map(([href, label]) => (
-            <a key={href} href={href} style={s.topLink} target={href.startsWith('http') ? '_blank' : undefined} rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}>
+            <a key={href} href={href} style={s.topLink}>
               {label}
             </a>
           ))}
@@ -109,7 +119,7 @@ export default function AaifVideoPitchPage() {
       </section>
 
       <section style={s.deckGrid} className="aaif-deck-grid">
-        <article style={{ ...s.panel, ...s.widePanel }}>
+        <article id="gap" style={{ ...s.panel, ...s.widePanel, ...s.anchor }}>
           <div style={s.eyebrow}>THE LANDSCAPE GAP</div>
           <h2 style={s.h2}>Many drafts describe the agent stack. The missing primitive is proof of human authorization.</h2>
           <div style={s.voidMap} className="aaif-void-map">
@@ -147,7 +157,7 @@ export default function AaifVideoPitchPage() {
           <p style={s.statement}>Decision logs are testimony. Receipts are evidence.</p>
         </article>
 
-        <article style={s.panel}>
+        <article id="demo" style={{ ...s.panel, ...s.anchor }}>
           <div style={s.eyebrow}>LIVE DEMO</div>
           <h2 style={s.h2}>Try to break the action layer.</h2>
           <p style={s.body}>An irreversible action is blocked without a receipt, runs once with an exact-action receipt, and rejects replay or tampering.</p>
@@ -174,7 +184,26 @@ export default function AaifVideoPitchPage() {
           <a href={draftUrl} style={s.secondaryLink} target="_blank" rel="noopener noreferrer">Open datatracker draft</a>
         </article>
 
-        <article style={s.panel}>
+        <article id="scitt" style={{ ...s.panel, ...s.anchor }}>
+          <div style={s.eyebrow}>SCITT COMPOSITION PROOF</div>
+          <h2 style={s.h2}>An authorization receipt can ride as a SCITT Signed Statement.</h2>
+          <p style={s.body}>The end-to-end harness wraps the same canonical EP payload as COSE_Sign1, registers it through the SCRAPI path, and verifies mock transparency evidence in CI. SCITT proves the statement was logged; EMILIA proves who authorized the action.</p>
+          <div style={s.checkGrid} className="aaif-check-grid">
+            {scittChecks.map(([label, result]) => (
+              <div key={label} style={s.check}>
+                <span>{label}</span>
+                <strong>{result}</strong>
+              </div>
+            ))}
+          </div>
+          <pre style={s.command}>node examples/scitt/ep-receipt-scitt-end-to-end.mjs</pre>
+          <div style={s.rowLinks}>
+            <a href={scittProfileUrl} style={s.secondaryLink} target="_blank" rel="noopener noreferrer">SCITT profile</a>
+            <a href={scittHarnessUrl} style={s.secondaryLink} target="_blank" rel="noopener noreferrer">Harness</a>
+          </div>
+        </article>
+
+        <article id="surfaces" style={{ ...s.panel, ...s.anchor }}>
           <div style={s.eyebrow}>HIGHER-STAKES SURFACES</div>
           <h2 style={s.h2}>Single approval, quorum, and human-control profiles use the same receipt spine.</h2>
           <div style={s.capabilityGrid}>
@@ -227,7 +256,7 @@ export default function AaifVideoPitchPage() {
         </article>
       </section>
 
-      <section style={s.closeCard}>
+      <section id="ask" style={{ ...s.closeCard, ...s.anchor }}>
         <div style={s.eyebrow}>THE ASK</div>
         <h2 style={s.closeTitle}>If this is the missing human-authorization layer, where should it belong?</h2>
         <p style={s.closeBody}>Early, non-binding read on fit. Composes with MCP, goose, and AGENTS.md. Apache-2.0 reference implementation.</p>
@@ -248,6 +277,9 @@ const s = {
     fontFamily: font.sans,
   },
   topbar: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 20,
     minHeight: 68,
     display: 'flex',
     alignItems: 'center',
@@ -255,6 +287,8 @@ const s = {
     padding: '0 28px',
     borderBottom: '1px solid rgba(250,250,249,0.14)',
     flexWrap: 'wrap',
+    background: 'rgba(23,20,18,0.94)',
+    backdropFilter: 'blur(16px)',
   },
   brand: {
     color: '#FAFAF9',
@@ -348,6 +382,9 @@ const s = {
     background: '#211D1A',
     padding: 26,
     minHeight: 390,
+  },
+  anchor: {
+    scrollMarginTop: 92,
   },
   widePanel: {
     gridColumn: '1 / -1',
