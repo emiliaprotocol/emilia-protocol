@@ -3,11 +3,13 @@
 // capability and publish a repo. Registry-level signal (name + description), not
 // a tool-level scan. Each row backlinks to the real repo + its result page.
 
+import Link from 'next/link';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font } from '@/lib/tokens';
 import { REGISTRY_CORPUS } from '../../../packages/fire-drill/registry-corpus.js';
 import registryIndex from '../../../packages/fire-drill/registry-index.json';
+import reports from '../../../packages/fire-drill/reports.json';
 
 export const metadata = {
   title: 'Agent Action Firewall — MCP registry index (43,800 servers) | EMILIA',
@@ -43,15 +45,37 @@ export default function RegistryIndexPage() {
             </p>
             <p style={{ ...styles.body, fontSize: 13, color: color.t3, marginTop: 14, maxWidth: 760 }}>
               Registry-level signal (name + description), not a tool-level manifest scan or a deployment scan or a vulnerability
-              report. Listed below: {REGISTRY_CORPUS.length} high-risk-advertising servers that publish a repo. Is one yours?{' '}
-              <a href="/gate#eg1" style={{ color: color.gold }}>Add a gate, earn EG-1.</a>
+              report. Listed below: {REGISTRY_CORPUS.length} high-risk-advertising servers that publish a repo. We&rsquo;re testing
+              the ecosystem for receipt-required dangerous actions — maintainers can <a href="/fire-drill/rr-1" style={{ color: color.gold }}>earn RR-1</a> and
+              make their most dangerous action safer than the default.
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 22, flexWrap: 'wrap' }}>
-              <a href="/fire-drill" style={cta.primary}>Run it on your server</a>
-              <a href="/fire-drill/report" style={cta.secondary}>Full report</a>
+              <Link href="/fire-drill/rr-1" style={cta.primary}>Earn RR-1</Link>
+              <Link href="/fire-drill/report" style={cta.secondary}>Full report</Link>
             </div>
           </div>
         </section>
+
+        {reports.reports.filter((r) => r.published).length > 0 && (
+          <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 18 }}>
+            <div style={styles.container}>
+              <div style={{ ...styles.eyebrow, color: color.gold }}>VERIFIED FIRE DRILL REPORTS · {reports.reports.filter((r) => r.published).length}</div>
+              <p style={{ ...styles.body, fontSize: 13, color: color.t3, marginTop: 8, maxWidth: 760 }}>
+                Where we read the source and confirmed a real dangerous handler, the report cites the exact code and the
+                Receipt Required fix. Each is a path to RR-1, not a callout.
+              </p>
+              <div style={{ marginTop: 8 }}>
+                {reports.reports.filter((r) => r.published).map((r) => (
+                  <div key={r.slug} style={{ display: 'flex', gap: 14, alignItems: 'center', padding: '11px 0', borderTop: `1px solid ${color.border}`, flexWrap: 'wrap' }}>
+                    <Link href={`/fire-drill/report/${r.slug}`} style={{ ...styles.body, fontSize: 14, color: color.t1, minWidth: 260, fontWeight: 600 }}>{r.name}</Link>
+                    <span style={{ fontFamily: font.mono, fontSize: 12, color: '#DC2626' }}>{r.dangerous_tool}</span>
+                    <Link href={`/fire-drill/report/${r.slug}`} style={{ ...styles.body, fontSize: 13, color: color.gold, marginLeft: 'auto' }}>report →</Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         {families.map(([fam, servers]) => (
           <section key={fam} style={{ ...styles.section, paddingTop: 0, paddingBottom: 18 }}>

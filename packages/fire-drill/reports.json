@@ -1,0 +1,269 @@
+{
+  "@version": "EP-FIRE-DRILL-REPORT-v1",
+  "note": "Per-MCP Fire Drill reports for VERIFIED targets only — each cites a real dangerous handler read from the repo source (file + symbol + verbatim quote). This is a static reference-implementation assessment of a missing human-authorization receipt, NOT a vulnerability claim. Distinct from registry-index.json, which is registry-level (name/description) signal across the whole ecosystem.",
+  "rr1": {
+    "name": "RR-1",
+    "title": "Receipt Required, Level 1",
+    "checks": [
+      {
+        "id": "missing",
+        "claim": "Missing receipt is blocked",
+        "expect": "428 Receipt Required"
+      },
+      {
+        "id": "valid",
+        "claim": "Valid receipt runs the action exactly once",
+        "expect": "action runs, receipt consumed"
+      },
+      {
+        "id": "replay",
+        "claim": "Replayed receipt is refused",
+        "expect": "one-time consumption"
+      },
+      {
+        "id": "forged",
+        "claim": "Forged / rewritten receipt is refused",
+        "expect": "signature / action-binding fails"
+      }
+    ],
+    "framing": "RR-1 is a maintainer credential, not a warning. A server at RR-1 makes its most dangerous action safer than the ecosystem default — where 10% of registered MCP servers advertise a high-risk capability and almost none require a verifiable human authorization before it runs."
+  },
+  "after_patch_default": {
+    "missing": "blocked — 428 Receipt Required",
+    "valid": "runs exactly once, receipt consumed",
+    "replay": "refused — one-time consumption",
+    "forged": "refused — signature / action-binding fails"
+  },
+  "reports": [
+    {
+      "slug": "signaltech-bolthub-sdk",
+      "name": "ai.bolthub/registry (bolthub-sdk)",
+      "repo": "https://github.com/signaltech-org/bolthub-sdk",
+      "family": "money_movement",
+      "dangerous_tool": "executeToolCall (per-tool L402 auto-pay)",
+      "dangerous_summary": "every dynamically-registered marketplace tool can auto-pay a real Lightning (L402) invoice from the agent's wallet.",
+      "handler_file": "packages/mcp-bridge/src/tool-handler.ts",
+      "handler_symbol": "executeToolCall() → l402Client.request() → wallet.payInvoice()",
+      "handler_quote": "return await this.wallet.payInvoice(invoice);",
+      "currently": "runs unguarded — the only precondition on a real-sats payment is a numeric budgetSats cap. No named human authorizes the spend before it settles.",
+      "proposed_fix": "Wrap the per-tool handler at packages/mcp-bridge/src/server.ts:70 (`async (args) => executeToolCall(tool, args, l402Client)`) with @emilia-protocol/require-receipt, so a verifiable human-authorization receipt for the exact tool + amount is required before the L402 invoice is paid.",
+      "after_patch": {
+        "missing": "blocked — 428 Receipt Required",
+        "valid": "pays once, receipt consumed",
+        "replay": "refused — one-time consumption",
+        "forged": "refused — signature / action-binding fails"
+      },
+      "pr_url": null,
+      "status": "report_ready",
+      "maintainer_note": "Maintainer active (last push 2026-06-26); this report is intended to go live alongside a fix PR.",
+      "published": true
+    },
+    {
+      "slug": "scope-bid-scope-mcp",
+      "name": "bid.scope (scope-mcp)",
+      "repo": "https://github.com/scope-bid/scope-mcp",
+      "family": "webhook",
+      "dangerous_tool": "scope_dispatch_matter",
+      "dangerous_summary": "irreversibly dispatches a budgeted hiring / procurement matter to external vendors.",
+      "handler_file": "packages/mcp-core/src/tools.ts",
+      "handler_symbol": "scope_dispatch_matter handler (registerCoreTools)",
+      "handler_quote": "return api.post(\"/api/scopes\", { ... });",
+      "currently": "runs unguarded — the handler's only precondition is an `if (!api.hasAuth())` token check at tools.ts:141. No human signs off the external dispatch.",
+      "proposed_fix": "Insert a @emilia-protocol/require-receipt check immediately after the `if (!api.hasAuth())` guard (tools.ts:141), before the `api.post(\"/api/scopes\", ...)` dispatch, so a human authorization receipt for the exact matter is required first.",
+      "after_patch": {
+        "missing": "blocked — 428 Receipt Required",
+        "valid": "dispatches once, receipt consumed",
+        "replay": "refused — one-time consumption",
+        "forged": "refused — signature / action-binding fails"
+      },
+      "pr_url": null,
+      "status": "report_ready",
+      "maintainer_note": "Maintainer active (last push 2026-06-10); this report is intended to go live alongside a fix PR.",
+      "published": true
+    },
+    {
+      "slug": "cuongpo-coti-mcp",
+      "name": "coti-mcp",
+      "repo": "https://github.com/cuongpo/coti-mcp",
+      "family": "money_movement",
+      "dangerous_tool": "transfer_native",
+      "dangerous_summary": "sends native COTI on-chain from the server's wallet to an arbitrary recipient.",
+      "handler_file": "tools/native/transferNative.ts",
+      "handler_symbol": "performTransferNative(recipient_address, amount_wei, gas_limit?)",
+      "handler_quote": "const tx = await wallet.sendTransaction({ to: recipient_address, value: amount_wei, ...txOptions });",
+      "currently": "runs unguarded — the transfer_native tool (index.ts:281) calls performTransferNative with no human authorization in front of an irreversible on-chain transfer.",
+      "proposed_fix": "Wrap transferNativeHandler (registered at index.ts:281) with @emilia-protocol/require-receipt so a human authorization receipt for the exact recipient + amount is required before performTransferNative broadcasts.",
+      "after_patch": {
+        "missing": "blocked — 428 Receipt Required",
+        "valid": "transfers once, receipt consumed",
+        "replay": "refused — one-time consumption",
+        "forged": "refused — signature / action-binding fails"
+      },
+      "pr_url": null,
+      "status": "report_ready",
+      "maintainer_note": "Maintainer currently dormant (last push 2025-10). This report stands as ecosystem evidence; a fix PR is low-priority until the repo shows activity.",
+      "published": false
+    },
+    {
+      "slug": "bigvik193-reddit-ads-mcp",
+      "name": "reddit-ads-mcp",
+      "repo": "https://github.com/BigVik193/reddit-ads-mcp",
+      "family": "money_movement",
+      "dangerous_tool": "createCampaign",
+      "dangerous_summary": "commits live advertising spend by creating a campaign on Reddit's Ads API.",
+      "handler_file": "src/index.ts",
+      "handler_symbol": "createCampaign tool → RedditClient.createCampaign()",
+      "handler_quote": "const response = await this.adsAxiosInstance.post(`/ad_accounts/${adAccountId}/campaigns`, campaignData)",
+      "currently": "runs unguarded — createCampaign (registered at src/index.ts:1133) POSTs a spend-committing ad campaign with no human authorization.",
+      "proposed_fix": "Wrap the createCampaign tool handler (src/index.ts:1133) with @emilia-protocol/require-receipt so a human authorization receipt for the exact account + budget is required before the campaign is created.",
+      "after_patch": {
+        "missing": "blocked — 428 Receipt Required",
+        "valid": "creates once, receipt consumed",
+        "replay": "refused — one-time consumption",
+        "forged": "refused — signature / action-binding fails"
+      },
+      "pr_url": null,
+      "status": "report_ready",
+      "maintainer_note": "Maintainer currently dormant (last push 2025-09). This report stands as ecosystem evidence; a fix PR is low-priority until the repo shows activity.",
+      "published": false
+    },
+    {
+      "slug": "ctaylor86-mcp-video-download-server",
+      "name": "mcp-video-download-server",
+      "repo": "https://github.com/ctaylor86/mcp-video-download-server",
+      "family": "data_export",
+      "dangerous_tool": "download_video_to_cloud",
+      "dangerous_summary": "uploads a downloaded video to an external S3/R2 bucket and returns a public URL.",
+      "handler_file": "src/index.ts",
+      "handler_symbol": "registerTool(\"download_video_to_cloud\") → CloudStorageService.uploadFile (src/storage.ts)",
+      "handler_quote": "const publicUrl = await storage.uploadFile(result.filePath, `video_${Date.now()}_`);",
+      "currently": "runs unguarded — content is exported to an external cloud sink and made publicly reachable with no human authorization.",
+      "proposed_fix": "Wrap the download_video_to_cloud handler with @emilia-protocol/require-receipt so a human authorization receipt for the exact export is required before storage.uploadFile sends data to the external bucket.",
+      "after_patch": {
+        "missing": "blocked — 428 Receipt Required",
+        "valid": "exports once, receipt consumed",
+        "replay": "refused — one-time consumption",
+        "forged": "refused — signature / action-binding fails"
+      },
+      "pr_url": null,
+      "status": "report_ready",
+      "maintainer_note": "Maintainer currently dormant (last push 2025-09). This report stands as ecosystem evidence; a fix PR is low-priority until the repo shows activity.",
+      "published": false
+    },
+    {
+      "slug": "eveoy-eveoy-mcp",
+      "name": "eveoy-mcp",
+      "repo": "https://github.com/eveoy/eveoy-mcp",
+      "family": "money_movement",
+      "dangerous_tool": "start_checkout",
+      "dangerous_summary": "creates a Stripe checkout session and a Zoho CRM deal from an agent call.",
+      "handler_file": "src/mcp/tools/start-checkout.ts",
+      "handler_symbol": "registerStartCheckout",
+      "handler_quote": "data = await callEdge(/create-checkout-session, { ... });",
+      "currently": "runs unguarded — start_checkout calls the create-checkout-session edge function on both the JWT and agent paths with no human authorization.",
+      "proposed_fix": "Wrap the start_checkout handler body just before the callEdge(/create-checkout-session, ...) calls with @emilia-protocol/require-receipt, so a human authorization receipt for the exact checkout is required first.",
+      "after_patch": {
+        "missing": "blocked — 428 Receipt Required",
+        "valid": "checks out once, receipt consumed",
+        "replay": "refused — one-time consumption",
+        "forged": "refused — signature / action-binding fails"
+      },
+      "pr_url": null,
+      "status": "report_ready",
+      "maintainer_note": "Maintainer active (last push 2026-06-30); report intended to go live alongside a fix PR.",
+      "published": false
+    },
+    {
+      "slug": "bvcc-agent-mcp",
+      "name": "bvcc-agent-mcp",
+      "repo": "https://github.com/blockventurechaincapital-crypto/bvcc-agent-mcp",
+      "family": "money_movement",
+      "dangerous_tool": "sendNative / sendToken / swap (write capabilities)",
+      "dangerous_summary": "signs and broadcasts on-chain fund transfers and swaps across multiple chains from the agent wallet.",
+      "handler_file": "src/server.ts",
+      "handler_symbol": "capability dispatch closure (server.tool callback, ~line 141)",
+      "handler_quote": "const result = await cap.invoke(client, rest as never);",
+      "currently": "runs unguarded — write-kind capabilities broadcast irreversible on-chain transactions; the only switch is an all-or-nothing BVCC_MCP_READONLY flag, no per-action human authorization.",
+      "proposed_fix": "Gate the write branch in the dispatch closure (src/server.ts:141): when cap.kind===write, require a @emilia-protocol/require-receipt authorization receipt before cap.invoke — one chokepoint covering every fund-moving tool.",
+      "after_patch": {
+        "missing": "blocked — 428 Receipt Required",
+        "valid": "sends once, receipt consumed",
+        "replay": "refused — one-time consumption",
+        "forged": "refused — signature / action-binding fails"
+      },
+      "pr_url": null,
+      "status": "report_ready",
+      "maintainer_note": "Maintainer active (last push 2026-06-29). Handler bodies live in the external @bvcc/agent-sdk; the in-repo seam is the dispatch closure. Report intended to go live alongside a fix PR.",
+      "published": false
+    },
+    {
+      "slug": "rippermercs-tensorfeed",
+      "name": "tensorfeed",
+      "repo": "https://github.com/RipperMercs/tensorfeed",
+      "family": "webhook",
+      "dangerous_tool": "create_watch",
+      "dangerous_summary": "registers a premium webhook watch and spends a paid credit.",
+      "handler_file": "mcp-server/src/index.ts",
+      "handler_symbol": "registerTool(create_watch) handler (~line 1793)",
+      "handler_quote": "const data = await fetchJSON(/premium/watches, { method: POST, body, auth: true });",
+      "currently": "runs unguarded — create_watch registers a webhook callback and spends a credit with no human authorization over the callback_url + type.",
+      "proposed_fix": "Wrap the top of the create_watch async handler with @emilia-protocol/require-receipt so it refuses to register the webhook + spend the credit without a receipt covering type + callback_url.",
+      "after_patch": {
+        "missing": "blocked — 428 Receipt Required",
+        "valid": "registers once, receipt consumed",
+        "replay": "refused — one-time consumption",
+        "forged": "refused — signature / action-binding fails"
+      },
+      "pr_url": null,
+      "status": "report_ready",
+      "maintainer_note": "Maintainer active (last push 2026-06-29); report intended to go live alongside a fix PR.",
+      "published": false
+    },
+    {
+      "slug": "codeswhat-portkey-admin-mcp",
+      "name": "portkey-admin-mcp",
+      "repo": "https://github.com/CodesWhat/portkey-admin-mcp",
+      "family": "permission_change",
+      "dangerous_tool": "delete_user",
+      "dangerous_summary": "permanently deletes a user — revoking their API keys and ending sessions.",
+      "handler_file": "src/tools/users.tools.ts",
+      "handler_symbol": "delete_user handler (~line 321)",
+      "handler_quote": "await service.users.deleteUser(params.user_id);",
+      "currently": "runs unguarded — delete_user issues the permanent DELETE /admin/users/{id} unconditionally; the only protection is prose warnings (no confirmation/approval/receipt; dry_run exists only for prompt create/update).",
+      "proposed_fix": "Wrap the delete_user handler body at users.tools.ts:321 so a @emilia-protocol/require-receipt check runs before service.users.deleteUser() executes the permanent deletion.",
+      "after_patch": {
+        "missing": "blocked — 428 Receipt Required",
+        "valid": "deletes once, receipt consumed",
+        "replay": "refused — one-time consumption",
+        "forged": "refused — signature / action-binding fails"
+      },
+      "pr_url": null,
+      "status": "report_ready",
+      "maintainer_note": "Maintainer active (last push 2026-06-28); report intended to go live alongside a fix PR.",
+      "published": false
+    },
+    {
+      "slug": "mnemopay-sdk",
+      "name": "mnemopay-sdk",
+      "repo": "https://github.com/mnemopay/mnemopay-sdk",
+      "family": "money_movement",
+      "dangerous_tool": "payout_create",
+      "dangerous_summary": "initiates an outbound Paystack bank transfer to a recipient.",
+      "handler_file": "src/mcp/server.ts",
+      "handler_symbol": "executeTool case \"payout_create\"",
+      "handler_quote": "transfer = await rail.initiateTransfer(recipient.recipientCode, args.amount, args.reason, agent.agentId);",
+      "currently": "runs unguarded — payout_create fires the bank transfer immediately; the repo has a HITL approval queue but it is wired for charge/escrow, not for payout_create.",
+      "proposed_fix": "Gate the case \"payout_create\" block (or the dispatcher before executeTool) with @emilia-protocol/require-receipt so the outbound transfer requires a human authorization receipt before initiateTransfer fires.",
+      "after_patch": {
+        "missing": "blocked — 428 Receipt Required",
+        "valid": "pays out once, receipt consumed",
+        "replay": "refused — one-time consumption",
+        "forged": "refused — signature / action-binding fails"
+      },
+      "pr_url": null,
+      "status": "report_ready",
+      "maintainer_note": "Maintainer active (last push 2026-06-26). NOTE: competitor-adjacent (its own trust/identity/HITL framing) — held from outreach pending review.",
+      "published": false
+    }
+  ]
+}

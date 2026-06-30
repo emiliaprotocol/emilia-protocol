@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="178" height="20" role="img" aria-label="Receipt Required: RR-1">
+  <title>Receipt Required: RR-1 — dangerous actions require a verifiable human authorization receipt</title>
+  <linearGradient id="s" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <clipPath id="r"><rect width="178" height="20" rx="3" fill="#fff"/></clipPath>
+  <g clip-path="url(#r)">
+    <rect width="119" height="20" fill="#3a3f4b"/>
+    <rect x="119" width="59" height="20" fill="#16a34a"/>
+    <rect width="178" height="20" fill="url(#s)"/>
+  </g>
+  <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="110" text-rendering="geometricPrecision">
+    <text x="605" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="1090">Receipt Required</text>
+    <text x="605" y="140" transform="scale(.1)" textLength="1090">Receipt Required</text>
+    <text x="1475" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="490">RR-1</text>
+    <text x="1475" y="140" transform="scale(.1)" textLength="490">RR-1</text>
+  </g>
+</svg>
