@@ -1,0 +1,23 @@
+#!/bin/sh
+# EMILIA Protocol — prepare-commit-msg hook.
+# Appends a DCO "Signed-off-by" trailer when one is absent, so the DCO check
+# (.github/workflows/dco.yml) passes on every PR. The trailer certifies the
+# commit under the Developer Certificate of Origin using the committer's
+# configured git identity. No-op if a Signed-off-by line already exists
+# (e.g. you used `git commit -s`).
+
+msg_file="$1"
+[ -z "$msg_file" ] && exit 0
+
+# Skip merges/squashes/amends where a message source is supplied by git.
+case "$2" in
+  merge|squash) exit 0 ;;
+esac
+
+if ! grep -qiE '^Signed-off-by:' "$msg_file"; then
+  name="$(git config user.name)"
+  email="$(git config user.email)"
+  if [ -n "$name" ] && [ -n "$email" ]; then
+    printf '\nSigned-off-by: %s <%s>\n' "$name" "$email" >> "$msg_file"
+  fi
+fi
