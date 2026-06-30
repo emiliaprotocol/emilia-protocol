@@ -38,42 +38,44 @@ const FALLBACK_ACTIONS = [
   },
 ];
 
-const STEPS = [
-  { id: 'missing', label: 'No receipt', expect: '428 Receipt Required' },
-  { id: 'sign', label: 'Sign exact action', expect: 'EP-RECEIPT-v1' },
-  { id: 'run', label: 'Present receipt', expect: 'Action runs' },
-  { id: 'replay', label: 'Replay same receipt', expect: 'replay_refused' },
-  { id: 'forge', label: 'Forge receipt', expect: 'signature refused' },
-  { id: 'evidence', label: 'Export evidence', expect: 'offline packet' },
-];
-
 const ACTION_COPY = {
   release_funds: {
-    amount: '$250,000',
+    headline: 'Move $250,000',
     target: 'ACME vendor wire',
-    risk: 'money movement',
-    prompt: 'agent> release pending vendor payment now',
+    command: 'release pending vendor payment now',
+    consequence: 'Funds leave treasury',
+    blast: '$250,000 at risk',
   },
   delete_repo: {
-    amount: 'prod-ledger',
-    target: 'repository deletion',
-    risk: 'code state',
-    prompt: 'agent> delete repository to remove leaked data',
+    headline: 'Delete prod-ledger',
+    target: 'emilia/prod-ledger',
+    command: 'delete repository to remove leaked data',
+    consequence: 'Production code state destroyed',
+    blast: 'repo deletion',
   },
   change_bank_account: {
-    amount: 'last4 9124',
-    target: 'vendor payout destination',
-    risk: 'bank detail change',
-    prompt: 'agent> update ACME payment routing',
+    headline: 'Change bank routing',
+    target: 'ACME payout destination',
+    command: 'update vendor payment routing',
+    consequence: 'Future payments redirect',
+    blast: 'bank detail change',
   },
 };
 
-const initialStepState = () =>
-  Object.fromEntries(STEPS.map((step) => [step.id, { status: 'idle', detail: step.expect }]));
+const STRIKES = [
+  { id: 'missing', title: 'Unauthenticated attempt', short: '428 wall' },
+  { id: 'sign', title: 'Human signs exact action', short: 'receipt minted' },
+  { id: 'run', title: 'Receipt reaches actuator', short: 'runs once' },
+  { id: 'replay', title: 'Same receipt replayed', short: 'killed' },
+  { id: 'forge', title: 'Action rewritten after signing', short: 'signature fails' },
+  { id: 'evidence', title: 'Evidence packet exported', short: 'auditable' },
+];
 
-function ts() {
-  return new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-}
+const initialStrikes = () =>
+  Object.fromEntries(STRIKES.map((s) => [s.id, { status: 'idle', detail: s.short }]));
+
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const now = () => new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
 function safeJson(value) {
   try {
@@ -95,73 +97,88 @@ async function postDemo(body) {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
   });
-  const data = await res.json();
   return {
-    ok: res.ok,
     status: res.status,
-    data,
+    data: await res.json(),
     receiptRequired: res.headers.get('receipt-required'),
   };
+}
+
+function sceneFrom(strikes, busy, evidence) {
+  if (busy === 'missing') return { label: 'ATTACK INBOUND', tone: 'warn', sub: 'No receipt attached' };
+  if (busy === 'sign') return { label: 'HUMAN AUTHORIZING', tone: 'blue', sub: 'Exact action is being signed' };
+  if (busy === 'run') return { label: 'GATE VERIFYING', tone: 'blue', sub: 'Receipt is checked offline' };
+  if (busy === 'replay') return { label: 'REPLAY ATTEMPT', tone: 'warn', sub: 'Same receipt tries to run twice' };
+  if (busy === 'forge') return { label: 'FORGERY ATTEMPT', tone: 'danger', sub: 'Signed payload was rewritten' };
+  if (strikes.forge.status === 'pass') return { label: 'FORGERY REFUSED', tone: 'danger', sub: 'Signature no longer verifies' };
+  if (strikes.replay.status === 'pass') return { label: 'REPLAY REFUSED', tone: 'warn', sub: 'Receipt consumed once' };
+  if (evidence) return { label: 'EXECUTED WITH PROOF', tone: 'safe', sub: 'Evidence packet exported' };
+  if (strikes.run.status === 'pass') return { label: 'EXECUTED ONCE', tone: 'safe', sub: 'Receipt reached the actuator' };
+  if (strikes.sign.status === 'pass') return { label: 'RECEIPT READY', tone: 'blue', sub: 'Bound to the exact action' };
+  if (strikes.missing.status === 'pass') return { label: '428 RECEIPT REQUIRED', tone: 'warn', sub: 'Mutation never reached the system' };
+  return { label: 'ACTUATOR LOCKED', tone: 'idle', sub: 'No receipt, no execution' };
 }
 
 export default function ReceiptRequiredTryPage() {
   const [actions, setActions] = useState(FALLBACK_ACTIONS);
   const [selectedId, setSelectedId] = useState('release_funds');
-  const [steps, setSteps] = useState(initialStepState);
-  const [log, setLog] = useState([
-    { at: ts(), tone: 'info', text: 'ready: choose an action, then try to break the gate' },
-  ]);
+  const [strikes, setStrikes] = useState(initialStrikes);
+  const [busy, setBusy] = useState(null);
   const [receipt, setReceipt] = useState(null);
   const [evidence, setEvidence] = useState(null);
-  const [lastChallenge, setLastChallenge] = useState(null);
-  const [busy, setBusy] = useState(null);
+  const [challenge, setChallenge] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [feed, setFeed] = useState([
+    { at: now(), kind: 'idle', text: 'actuator armed; waiting for agent command' },
+  ]);
 
   const selected = useMemo(
-    () => actions.find((action) => action.id === selectedId) || actions[0] || FALLBACK_ACTIONS[0],
+    () => actions.find((a) => a.id === selectedId) || actions[0] || FALLBACK_ACTIONS[0],
     [actions, selectedId],
   );
-  const actionCopy = ACTION_COPY[selected.id] || ACTION_COPY.release_funds;
+  const copy = ACTION_COPY[selected.id] || ACTION_COPY.release_funds;
+  const scene = sceneFrom(strikes, busy, evidence);
 
   useEffect(() => {
     fetch('/api/demo/require-receipt')
-      .then((res) => res.json())
+      .then((r) => r.json())
       .then((body) => {
-        if (Array.isArray(body.actions) && body.actions.length > 0) setActions(body.actions);
+        if (Array.isArray(body.actions) && body.actions.length) setActions(body.actions);
       })
       .catch(() => {});
   }, []);
 
-  function reset(nextId = selectedId) {
-    setSelectedId(nextId);
-    setSteps(initialStepState());
-    setReceipt(null);
-    setEvidence(null);
-    setLastChallenge(null);
-    setCopied(false);
-    setLog([{ at: ts(), tone: 'info', text: `reset: target=${nextId}` }]);
-  }
-
-  function append(tone, text) {
-    setLog((items) => [...items.slice(-10), { at: ts(), tone, text }]);
+  function write(kind, text) {
+    setFeed((old) => [...old.slice(-12), { at: now(), kind, text }]);
   }
 
   function mark(id, status, detail) {
-    setSteps((current) => ({ ...current, [id]: { status, detail } }));
+    setStrikes((old) => ({ ...old, [id]: { status, detail } }));
   }
 
-  async function attemptMissing(action = selected) {
+  function reset(nextId = selectedId) {
+    setSelectedId(nextId);
+    setStrikes(initialStrikes());
+    setBusy(null);
+    setReceipt(null);
+    setEvidence(null);
+    setChallenge(null);
+    setCopied(false);
+    setFeed([{ at: now(), kind: 'idle', text: `actuator reset; selected=${nextId}` }]);
+  }
+
+  async function fireMissing(action = selected) {
     setBusy('missing');
-    mark('missing', 'running', 'calling endpoint without X-EMILIA-Receipt');
-    append('cmd', `${actionCopy.prompt} | receipt=null`);
+    mark('missing', 'running', 'agent is trying to cross the boundary');
+    write('cmd', `agent.command("${copy.command}")`);
     const out = await postDemo({ demo: action.id });
-    setLastChallenge(out.data);
+    setChallenge(out.data);
     if (out.status === 428) {
-      mark('missing', 'pass', 'blocked before mutation: 428');
-      append('block', `gate> ${out.status} ${out.data.title}`);
+      mark('missing', 'pass', 'blocked before the write: 428');
+      write('block', `gate.response=${out.status} ${out.data.title}`);
     } else {
-      mark('missing', 'fail', `unexpected status ${out.status}`);
-      append('bad', `gate> unexpected status ${out.status}`);
+      mark('missing', 'fail', `unexpected ${out.status}`);
+      write('bad', `unexpected status=${out.status}`);
     }
     setBusy(null);
     return out;
@@ -169,8 +186,8 @@ export default function ReceiptRequiredTryPage() {
 
   async function signExact(action = selected) {
     setBusy('sign');
-    mark('sign', 'running', 'minting demo receipt for the exact action');
-    append('cmd', `human> sign ${action.action}`);
+    mark('sign', 'running', 'signing the canonical action digest');
+    write('cmd', `human.sign("${action.action}")`);
     const out = await postDemo({
       demo: action.id,
       sign_demo_receipt: true,
@@ -179,88 +196,92 @@ export default function ReceiptRequiredTryPage() {
     if (out.status === 200 && out.data?.receipt) {
       setReceipt(out.data.receipt);
       mark('sign', 'pass', out.data.signed.receipt_id);
-      append('ok', `receipt> ${out.data.signed.receipt_id} bound=${out.data.signed.action}`);
+      write('ok', `receipt.bound=${out.data.signed.action}`);
       setBusy(null);
       return out.data.receipt;
     }
-    mark('sign', 'fail', `unexpected status ${out.status}`);
-    append('bad', `signer> unexpected status ${out.status}`);
+    mark('sign', 'fail', `unexpected ${out.status}`);
+    write('bad', `signer.status=${out.status}`);
     setBusy(null);
     return null;
   }
 
-  async function presentReceipt(doc = receipt, action = selected) {
+  async function runWithReceipt(doc = receipt, action = selected) {
     if (!doc) return null;
     setBusy('run');
-    mark('run', 'running', 'presenting exact-action receipt');
-    append('cmd', `agent> retry with ${doc.payload.receipt_id}`);
+    mark('run', 'running', 'gate verifies and reserves receipt');
+    write('cmd', `agent.retry(receipt=${doc.payload.receipt_id})`);
     const out = await postDemo({ demo: action.id, emilia_receipt: doc });
     if (out.status === 200) {
       setEvidence(out.data.evidence_packet);
-      mark('run', 'pass', 'mutation reached executor');
+      mark('run', 'pass', 'mutation allowed exactly once');
       mark('evidence', 'pass', out.data.evidence_packet.policy_id);
-      append('ok', `executor> ran simulated ${action.id}`);
-      append('ok', `evidence> ${out.data.evidence_packet.receipt_id}`);
+      write('ok', `actuator.execute("${action.id}")`);
+      write('ok', `evidence.export=${out.data.evidence_packet.receipt_id}`);
     } else {
-      mark('run', 'fail', `unexpected status ${out.status}`);
-      append('bad', `executor> refused status ${out.status}`);
+      mark('run', 'fail', `unexpected ${out.status}`);
+      write('bad', `executor.status=${out.status}`);
     }
     setBusy(null);
     return out;
   }
 
-  async function replayReceipt(doc = receipt, action = selected) {
+  async function replay(doc = receipt, action = selected) {
     if (!doc) return null;
     setBusy('replay');
-    mark('replay', 'running', 'submitting the same receipt again');
-    append('cmd', `attacker> replay ${doc.payload.receipt_id}`);
+    mark('replay', 'running', 'attacker reuses consumed receipt');
+    write('cmd', `attacker.replay(${doc.payload.receipt_id})`);
     const out = await postDemo({ demo: action.id, emilia_receipt: doc });
     if (out.status === 428 && out.data?.rejected?.reason === 'replay_refused') {
-      mark('replay', 'pass', 'same receipt cannot run twice');
-      append('block', 'gate> replay_refused');
+      mark('replay', 'pass', 'same receipt cannot authorize twice');
+      write('block', 'gate.reject("replay_refused")');
     } else {
       mark('replay', 'fail', `unexpected ${out.status}`);
-      append('bad', `gate> replay result ${out.status}`);
+      write('bad', `replay.status=${out.status}`);
     }
     setBusy(null);
     return out;
   }
 
-  async function forgeReceipt(doc = receipt, action = selected) {
+  async function forge(doc = receipt, action = selected) {
     if (!doc) return null;
     setBusy('forge');
-    mark('forge', 'running', 'changing the signed action after signature');
+    mark('forge', 'running', 'payload is changed after signing');
     const forged = tamperReceipt(doc);
-    append('cmd', `attacker> rewrite action_type=${forged.payload.claim.action_type}`);
+    write('cmd', `attacker.patch(action="${forged.payload.claim.action_type}")`);
     const out = await postDemo({ demo: action.id, emilia_receipt: forged });
     if (out.status === 428 && out.data?.rejected?.reason === 'untrusted_or_invalid_signature') {
-      mark('forge', 'pass', 'signature no longer verifies');
-      append('block', 'gate> untrusted_or_invalid_signature');
+      mark('forge', 'pass', 'canonical bytes no longer verify');
+      write('block', 'gate.reject("untrusted_or_invalid_signature")');
     } else {
       mark('forge', 'fail', `unexpected ${out.status}`);
-      append('bad', `gate> forged result ${out.status}`);
+      write('bad', `forge.status=${out.status}`);
     }
     setBusy(null);
     return out;
   }
 
-  async function runFull() {
+  async function runSequence() {
     reset(selected.id);
     const action = selected;
-    await new Promise((resolve) => setTimeout(resolve, 60));
-    await attemptMissing(action);
+    await pause(100);
+    await fireMissing(action);
+    await pause(380);
     const doc = await signExact(action);
     if (!doc) return;
-    await presentReceipt(doc, action);
-    await replayReceipt(doc, action);
-    await forgeReceipt(doc, action);
+    await pause(380);
+    await runWithReceipt(doc, action);
+    await pause(380);
+    await replay(doc, action);
+    await pause(380);
+    await forge(doc, action);
   }
 
   async function copyEvidence() {
     if (!evidence) return;
     await navigator.clipboard?.writeText(safeJson(evidence));
     setCopied(true);
-    setTimeout(() => setCopied(false), 1200);
+    setTimeout(() => setCopied(false), 1100);
   }
 
   function downloadEvidence() {
@@ -277,51 +298,43 @@ export default function ReceiptRequiredTryPage() {
   return (
     <div style={s.page}>
       <SiteNav activePage="Try it" />
-      <main>
-        <section style={s.stage}>
-          <div style={s.stageInner} className="rr-stage-grid">
-            <div style={s.heroCopy}>
-              <div style={s.eyebrow}>RECEIPT REQUIRED · LIVE BREAK TEST</div>
-              <h1 style={s.h1}>Try to make the agent act without a receipt.</h1>
+      <main style={s.main}>
+        <section style={s.hero}>
+          <div style={s.heroInner} className="rr-hero">
+            <div style={s.leftIntro}>
+              <div style={s.eyebrow}>LIVE ATTACK SIMULATOR</div>
+              <h1 style={s.h1}>Break the action layer.</h1>
               <p style={s.lead}>
-                Pick a dangerous action. The gate refuses it, accepts only an exact-action
-                receipt, consumes that receipt once, and exports evidence an auditor can replay.
+                This is not a video. The page calls the real Receipt Required API. The agent tries
+                to mutate money, code, or bank routing. EMILIA either sees a valid receipt or the
+                actuator stays locked.
               </p>
-              <div style={s.heroActions}>
-                <button type="button" onClick={runFull} disabled={Boolean(busy)} style={s.primaryBtn}>
-                  {busy ? 'Running...' : 'Run full break attempt'}
+              <div style={s.heroButtons}>
+                <button type="button" onClick={runSequence} disabled={Boolean(busy)} style={s.primaryBtn}>
+                  {busy ? 'Attack running...' : 'Launch the attack'}
                 </button>
-                <button type="button" onClick={() => reset()} disabled={Boolean(busy)} style={s.darkSecondaryBtn}>
-                  Reset
+                <button type="button" onClick={() => reset()} disabled={Boolean(busy)} style={s.darkBtn}>
+                  Reset bay
                 </button>
               </div>
             </div>
 
-            <div style={s.commandPanel}>
-              <div style={s.panelHeader}>
-                <span>agent action</span>
-                <strong>{selected.action_type}</strong>
-              </div>
-              <div style={s.bigMetric}>{actionCopy.amount}</div>
-              <div style={s.metricGrid}>
-                <Metric label="Target" value={actionCopy.target} />
-                <Metric label="Risk" value={actionCopy.risk} />
-                <Metric label="Policy" value={selected.policy_id} />
-              </div>
-              <div style={s.selector}>
+            <div style={s.selectorCard}>
+              <div style={s.selectorLabel}>choose the blast radius</div>
+              <div style={s.actionTabs}>
                 {actions.map((action) => (
                   <button
-                    type="button"
                     key={action.id}
+                    type="button"
                     onClick={() => reset(action.id)}
                     disabled={Boolean(busy)}
-                    data-active={action.id === selected.id ? 'true' : undefined}
                     style={{
-                      ...s.actionBtn,
-                      ...(action.id === selected.id ? s.actionBtnActive : null),
+                      ...s.actionTab,
+                      ...(selected.id === action.id ? s.actionTabActive : null),
                     }}
                   >
-                    {action.label}
+                    <span>{action.label}</span>
+                    <small>{action.assurance_class}</small>
                   </button>
                 ))}
               </div>
@@ -329,92 +342,119 @@ export default function ReceiptRequiredTryPage() {
           </div>
         </section>
 
-        <section style={s.workbench}>
-          <div style={s.workbenchGrid} className="rr-grid">
-            <div style={s.leftColumn}>
-              <div style={s.rail}>
-                {STEPS.map((step, idx) => (
-                  <StepRow
-                    key={step.id}
-                    index={idx + 1}
-                    step={step}
-                    state={steps[step.id]}
-                    busy={busy === step.id}
-                  />
-                ))}
-              </div>
+        <section style={s.bay}>
+          <div style={s.sceneHeader}>
+            <div>
+              <div style={s.sceneKicker}>ACTUATOR BAY</div>
+              <h2 style={s.sceneTitle}>{scene.label}</h2>
+              <p style={s.sceneSub}>{scene.sub}</p>
+            </div>
+            <div style={{ ...s.sceneBadge, ...tone(scene.tone) }}>{selected.action_type}</div>
+          </div>
 
-              <div style={s.manualControls}>
-                <button type="button" onClick={() => attemptMissing()} disabled={Boolean(busy)} style={s.toolBtn}>
-                  Test missing
-                </button>
-                <button type="button" onClick={() => signExact()} disabled={Boolean(busy)} style={s.toolBtn}>
-                  Sign exact action
-                </button>
-                <button type="button" onClick={() => presentReceipt()} disabled={Boolean(busy) || !receipt} style={s.toolBtn}>
-                  Run with receipt
-                </button>
-                <button type="button" onClick={() => replayReceipt()} disabled={Boolean(busy) || !receipt} style={s.toolBtn}>
-                  Replay
-                </button>
-                <button type="button" onClick={() => forgeReceipt()} disabled={Boolean(busy) || !receipt} style={s.toolBtn}>
-                  Forge
-                </button>
+          <div style={s.arena} className="rr-arena">
+            <motion.div layout style={s.agentPane}>
+              <PanelTop label="agent intent" value={copy.blast} />
+              <div style={s.terminal}>
+                <Line muted>$ autonomous-agent</Line>
+                <Line>intent: {selected.action_type}</Line>
+                <Line>target: {copy.target}</Line>
+                <Line>command: {copy.command}</Line>
+                <Line danger>receipt: null</Line>
               </div>
+              <div style={s.consequence}>
+                <span>Consequence</span>
+                <strong>{copy.consequence}</strong>
+              </div>
+            </motion.div>
+
+            <motion.div layout style={{ ...s.gatePane, ...gateShadow(scene.tone) }}>
+              <PanelTop label="emilia gate" value="fail closed" />
+              <div style={s.gateCore}>
+                <motion.div
+                  animate={{ rotate: busy ? 360 : 0 }}
+                  transition={{ duration: 1.8, repeat: busy ? Infinity : 0, ease: 'linear' }}
+                  style={{ ...s.outerRing, ...ringTone(scene.tone) }}
+                />
+                <div style={s.innerLock}>
+                  <div style={s.lockBar} />
+                  <div style={s.lockBody}>{scene.tone === 'safe' ? 'RUN' : 'LOCK'}</div>
+                </div>
+              </div>
+              <div style={s.gateReadout}>
+                <span>{challenge?.required?.action || selected.action}</span>
+              </div>
+            </motion.div>
+
+            <motion.div layout style={s.systemPane}>
+              <PanelTop label="system of record" value={evidence ? 'mutated once' : 'protected'} />
+              <div style={s.amount}>{copy.headline}</div>
+              <div style={s.systemGrid}>
+                <Fact label="Policy" value={selected.policy_id} />
+                <Fact label="Target" value={selected.target} />
+                <Fact label="Assurance" value={selected.assurance_class} />
+              </div>
+              <div style={{ ...s.actuatorStatus, ...tone(evidence ? 'safe' : strikes.missing.status === 'pass' ? 'warn' : 'idle') }}>
+                {evidence
+                  ? strikes.forge.status === 'pass'
+                    ? 'EXECUTED ONCE; ATTACKS REFUSED'
+                    : 'EXECUTED WITH RECEIPT'
+                  : strikes.missing.status === 'pass' ? 'MUTATION BLOCKED' : 'WAITING'}
+              </div>
+            </motion.div>
+          </div>
+
+          <div style={s.controls} className="rr-controls">
+            <button type="button" onClick={() => fireMissing()} disabled={Boolean(busy)} style={s.controlBtn}>No receipt</button>
+            <button type="button" onClick={() => signExact()} disabled={Boolean(busy)} style={s.controlBtn}>Sign exact</button>
+            <button type="button" onClick={() => runWithReceipt()} disabled={Boolean(busy) || !receipt} style={s.controlBtn}>Run once</button>
+            <button type="button" onClick={() => replay()} disabled={Boolean(busy) || !receipt} style={s.controlBtn}>Replay</button>
+            <button type="button" onClick={() => forge()} disabled={Boolean(busy) || !receipt} style={s.controlBtn}>Forge</button>
+          </div>
+        </section>
+
+        <section style={s.after}>
+          <div style={s.afterGrid} className="rr-after">
+            <div style={s.attackRail}>
+              <div style={s.sectionLabel}>attack chain</div>
+              {STRIKES.map((strike, index) => (
+                <Strike key={strike.id} strike={strike} state={strikes[strike.id]} index={index + 1} active={busy === strike.id} />
+              ))}
             </div>
 
-            <div style={s.consolePanel}>
-              <div style={s.lightPanelHeader}>
-                <span>live console</span>
-                <strong>{busy ? busy : 'idle'}</strong>
-              </div>
-              <div style={s.console}>
-                {log.map((line, idx) => (
+            <div style={s.feedPanel}>
+              <div style={s.sectionLabel}>live trace</div>
+              <div style={s.feedBox}>
+                {feed.map((item, index) => (
                   <motion.div
-                    key={`${line.at}-${idx}-${line.text}`}
+                    key={`${item.at}-${index}-${item.text}`}
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    style={{ ...s.logLine, color: logColor(line.tone) }}
+                    style={{ ...s.feedLine, color: feedColor(item.kind) }}
                   >
-                    <span style={s.logAt}>{line.at}</span>
-                    <span>{line.text}</span>
+                    <span>{item.at}</span>
+                    <code>{item.text}</code>
                   </motion.div>
                 ))}
               </div>
-              <div style={s.challengeStrip}>
-                <div style={s.stripLabel}>last challenge</div>
-                <code style={s.stripCode}>
-                  {lastChallenge?.required?.action || selected.action}
-                </code>
-              </div>
             </div>
 
-            <div style={s.receiptPanel}>
-              <div style={s.lightPanelHeader}>
-                <span>receipt</span>
-                <strong>{receipt?.payload?.receipt_id || 'not signed'}</strong>
+            <div style={s.evidenceVault}>
+              <div style={s.vaultTop}>
+                <div>
+                  <div style={s.sectionLabel}>black-box evidence</div>
+                  <h3 style={s.vaultTitle}>{evidence ? 'Packet exported' : 'Waiting for a valid run'}</h3>
+                </div>
+                <div style={{ ...s.vaultSeal, ...tone(evidence ? 'safe' : 'idle') }}>
+                  {evidence ? 'VERIFY OFFLINE' : 'SEALED'}
+                </div>
               </div>
-              <pre style={s.jsonBox}>{receipt ? safeJson({
-                '@version': receipt['@version'],
-                receipt_id: receipt.payload.receipt_id,
-                action_type: receipt.payload.claim.action_type,
-                policy_id: receipt.payload.claim.policy_id,
-                assurance_class: receipt.payload.claim.assurance_class,
-                signature: `${receipt.signature.value.slice(0, 32)}...`,
-              }) : 'No receipt yet.'}</pre>
-            </div>
-
-            <div style={s.evidencePanel}>
-              <div style={s.panelHeader}>
-                <span>evidence packet</span>
-                <strong>{evidence ? 'exportable' : 'waiting'}</strong>
-              </div>
-              <pre style={s.jsonBox}>{evidence ? safeJson(evidence) : 'Evidence appears only after a valid receipt reaches execution.'}</pre>
-              <div style={s.evidenceActions}>
-                <button type="button" onClick={copyEvidence} disabled={!evidence} style={{ ...s.lightSecondaryBtn, opacity: evidence ? 1 : 0.45, cursor: evidence ? 'pointer' : 'default' }}>
-                  {copied ? 'Copied' : 'Copy evidence'}
+              <pre style={s.json}>{evidence ? safeJson(evidence) : 'A valid receipt creates a packet here. Replay and forgery never do.'}</pre>
+              <div style={s.vaultButtons}>
+                <button type="button" onClick={copyEvidence} disabled={!evidence} style={{ ...s.lightBtn, opacity: evidence ? 1 : 0.45 }}>
+                  {copied ? 'Copied' : 'Copy packet'}
                 </button>
-                <button type="button" onClick={downloadEvidence} disabled={!evidence} style={{ ...s.lightSecondaryBtn, opacity: evidence ? 1 : 0.45, cursor: evidence ? 'pointer' : 'default' }}>
+                <button type="button" onClick={downloadEvidence} disabled={!evidence} style={{ ...s.lightBtn, opacity: evidence ? 1 : 0.45 }}>
                   Download JSON
                 </button>
               </div>
@@ -424,374 +464,534 @@ export default function ReceiptRequiredTryPage() {
       </main>
       <SiteFooter />
       <style>{`
-        @media (max-width: 980px) {
-          .rr-grid,
-          .rr-stage-grid { grid-template-columns: 1fr !important; }
+        @media (max-width: 1050px) {
+          .rr-hero,
+          .rr-arena,
+          .rr-after { grid-template-columns: 1fr !important; }
         }
         @media (max-width: 640px) {
-          .rr-stage-grid { padding-left: 18px !important; padding-right: 18px !important; }
+          .rr-arena,
+          .rr-after { gap: 12px !important; }
+          .rr-hero { padding: 52px 20px 26px !important; }
+          .rr-controls { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
         }
       `}</style>
     </div>
   );
 }
 
-function Metric({ label, value }) {
+function PanelTop({ label, value }) {
   return (
-    <div style={s.metric}>
-      <div style={s.metricLabel}>{label}</div>
-      <div style={s.metricValue}>{value}</div>
+    <div style={s.panelTop}>
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
 }
 
-function StepRow({ index, step, state, busy }) {
-  const status = busy ? 'running' : state.status;
+function Line({ children, muted, danger }) {
   return (
-    <div style={s.stepRow}>
-      <div style={{ ...s.stepIndex, ...stepTone(status) }}>{String(index).padStart(2, '0')}</div>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={s.stepTitle}>{step.label}</div>
-        <div style={s.stepDetail}>{state.detail}</div>
+    <div style={{ color: danger ? '#FCA5A5' : muted ? 'rgba(245,245,244,0.42)' : '#E7E5E4' }}>
+      {children}
+    </div>
+  );
+}
+
+function Fact({ label, value }) {
+  return (
+    <div style={s.fact}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function Strike({ strike, state, index, active }) {
+  const status = active ? 'running' : state.status;
+  return (
+    <div style={{ ...s.strike, ...strikeTone(status) }}>
+      <div style={s.strikeNum}>{String(index).padStart(2, '0')}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={s.strikeTitle}>{strike.title}</div>
+        <div style={s.strikeDetail}>{state.detail}</div>
       </div>
-      <div style={{ ...s.stepStatus, ...stepTone(status) }}>{status}</div>
+      <div style={s.strikeStatus}>{status}</div>
     </div>
   );
 }
 
-function stepTone(status) {
-  if (status === 'pass') return { color: '#86EFAC', borderColor: 'rgba(134,239,172,0.45)', background: 'rgba(22,163,74,0.12)' };
-  if (status === 'fail') return { color: '#FCA5A5', borderColor: 'rgba(252,165,165,0.45)', background: 'rgba(220,38,38,0.12)' };
-  if (status === 'running') return { color: '#93C5FD', borderColor: 'rgba(147,197,253,0.45)', background: 'rgba(59,130,246,0.12)' };
-  return { color: '#A8A29E', borderColor: 'rgba(168,162,158,0.25)', background: 'rgba(255,255,255,0.03)' };
+function tone(kind) {
+  if (kind === 'safe') return { color: '#14532D', borderColor: '#86EFAC', background: '#DCFCE7' };
+  if (kind === 'danger') return { color: '#7F1D1D', borderColor: '#FCA5A5', background: '#FEE2E2' };
+  if (kind === 'warn') return { color: '#713F12', borderColor: '#FBBF24', background: '#FEF3C7' };
+  if (kind === 'blue') return { color: '#1E3A8A', borderColor: '#93C5FD', background: '#DBEAFE' };
+  return { color: '#44403C', borderColor: color.borderHover, background: '#F5F5F4' };
 }
 
-function logColor(tone) {
-  if (tone === 'ok') return '#86EFAC';
-  if (tone === 'block') return '#FBBF24';
-  if (tone === 'bad') return '#FCA5A5';
-  if (tone === 'cmd') return '#93C5FD';
+function gateShadow(kind) {
+  if (kind === 'safe') return { boxShadow: '0 0 0 1px rgba(134,239,172,0.28), 0 30px 80px rgba(22,163,74,0.22)' };
+  if (kind === 'danger') return { boxShadow: '0 0 0 1px rgba(252,165,165,0.32), 0 30px 80px rgba(220,38,38,0.22)' };
+  if (kind === 'warn') return { boxShadow: '0 0 0 1px rgba(251,191,36,0.32), 0 30px 80px rgba(180,83,9,0.22)' };
+  return { boxShadow: '0 24px 70px rgba(0,0,0,0.28)' };
+}
+
+function ringTone(kind) {
+  if (kind === 'safe') return { borderColor: '#86EFAC', borderTopColor: '#16A34A' };
+  if (kind === 'danger') return { borderColor: '#FCA5A5', borderTopColor: '#DC2626' };
+  if (kind === 'warn') return { borderColor: '#FBBF24', borderTopColor: '#B08D35' };
+  if (kind === 'blue') return { borderColor: '#93C5FD', borderTopColor: '#3B82F6' };
+  return { borderColor: '#78716C', borderTopColor: '#E7E5E4' };
+}
+
+function strikeTone(status) {
+  if (status === 'pass') return { borderColor: '#86EFAC', background: '#F0FDF4' };
+  if (status === 'fail') return { borderColor: '#FCA5A5', background: '#FEF2F2' };
+  if (status === 'running') return { borderColor: '#93C5FD', background: '#EFF6FF' };
+  return { borderColor: color.border, background: '#FFFFFF' };
+}
+
+function feedColor(kind) {
+  if (kind === 'ok') return '#86EFAC';
+  if (kind === 'block') return '#FBBF24';
+  if (kind === 'bad') return '#FCA5A5';
+  if (kind === 'cmd') return '#93C5FD';
   return '#D6D3D1';
 }
 
 const s = {
   page: {
     minHeight: '100vh',
-    background: color.bg,
+    background: '#F7F5F0',
     color: color.t1,
     fontFamily: font.sans,
   },
-  stage: {
-    background: '#111827',
+  main: {
+    background: '#F7F5F0',
+  },
+  hero: {
+    background: '#171412',
     color: '#FAFAF9',
     borderBottom: '1px solid rgba(255,255,255,0.12)',
   },
-  stageInner: {
-    maxWidth: 1180,
+  heroInner: {
+    maxWidth: 1220,
     margin: '0 auto',
-    padding: '78px 28px 54px',
+    padding: '72px 28px 30px',
     display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1.05fr) minmax(360px, 0.95fr)',
-    gap: 32,
-    alignItems: 'stretch',
+    gridTemplateColumns: 'minmax(0, 1fr) minmax(320px, 420px)',
+    gap: 28,
+    alignItems: 'end',
   },
-  heroCopy: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'center',
+  leftIntro: {
+    maxWidth: 780,
   },
   eyebrow: {
     fontFamily: font.mono,
     fontSize: 11,
-    letterSpacing: 2,
+    letterSpacing: 2.4,
     textTransform: 'uppercase',
-    color: '#FBBF24',
-    marginBottom: 18,
+    color: color.gold,
+    marginBottom: 16,
   },
   h1: {
-    fontFamily: font.sans,
-    fontSize: 'clamp(42px, 6vw, 76px)',
-    lineHeight: 0.95,
+    margin: 0,
+    fontSize: 'clamp(52px, 8vw, 104px)',
+    lineHeight: 0.88,
     letterSpacing: 0,
-    margin: '0 0 22px',
-    maxWidth: 720,
+    maxWidth: 760,
   },
   lead: {
+    margin: '24px 0 0',
+    maxWidth: 720,
     fontSize: 18,
-    lineHeight: 1.65,
-    color: 'rgba(250,250,249,0.76)',
-    maxWidth: 680,
-    margin: 0,
+    lineHeight: 1.62,
+    color: 'rgba(250,250,249,0.74)',
   },
-  heroActions: {
+  heroButtons: {
     display: 'flex',
     flexWrap: 'wrap',
     gap: 12,
-    marginTop: 30,
+    marginTop: 28,
   },
   primaryBtn: {
     ...cta.primary,
+    minHeight: 48,
     background: '#FAFAF9',
-    color: '#111827',
-    minHeight: 46,
+    color: '#171412',
   },
-  darkSecondaryBtn: {
+  darkBtn: {
     ...cta.secondary,
+    minHeight: 48,
     color: '#FAFAF9',
     border: '1px solid rgba(250,250,249,0.24)',
-    minHeight: 42,
   },
-  lightSecondaryBtn: {
-    ...cta.secondary,
-    color: color.t1,
-    background: '#FFFFFF',
-    border: `1px solid ${color.borderHover}`,
-    minHeight: 42,
-  },
-  commandPanel: {
-    border: '1px solid rgba(255,255,255,0.16)',
+  selectorCard: {
+    border: '1px solid rgba(250,250,249,0.16)',
     borderRadius: radius.base,
-    background: 'rgba(15,23,42,0.72)',
-    padding: 22,
-    minHeight: 360,
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
+    background: 'rgba(250,250,249,0.06)',
+    padding: 16,
   },
-  panelHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: 16,
-    alignItems: 'center',
-    fontFamily: font.mono,
-    fontSize: 11,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: 'rgba(250,250,249,0.55)',
-  },
-  lightPanelHeader: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: 16,
-    alignItems: 'center',
-    fontFamily: font.mono,
-    fontSize: 11,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: color.t3,
-  },
-  bigMetric: {
-    fontFamily: font.sans,
-    fontSize: 'clamp(40px, 5vw, 68px)',
-    fontWeight: 700,
-    lineHeight: 1,
-    letterSpacing: 0,
-    marginTop: 34,
-    color: '#FAFAF9',
-  },
-  metricGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-    gap: 10,
-    marginTop: 26,
-  },
-  metric: {
-    borderTop: '1px solid rgba(255,255,255,0.16)',
-    paddingTop: 12,
-    minWidth: 0,
-  },
-  metricLabel: {
+  selectorLabel: {
     fontFamily: font.mono,
     fontSize: 10,
-    color: 'rgba(250,250,249,0.48)',
+    color: 'rgba(250,250,249,0.5)',
+    letterSpacing: 1.5,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    marginBottom: 12,
   },
-  metricValue: {
-    fontSize: 14,
-    color: 'rgba(250,250,249,0.82)',
-    marginTop: 8,
-    lineHeight: 1.35,
-    overflowWrap: 'anywhere',
-  },
-  selector: {
+  actionTabs: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
     gap: 8,
-    marginTop: 28,
   },
-  actionBtn: {
-    minHeight: 46,
+  actionTab: {
+    minHeight: 54,
     borderRadius: radius.sm,
-    border: '1px solid rgba(255,255,255,0.14)',
-    background: 'rgba(255,255,255,0.04)',
-    color: 'rgba(250,250,249,0.72)',
+    border: '1px solid rgba(250,250,249,0.14)',
+    background: 'rgba(250,250,249,0.04)',
+    color: '#FAFAF9',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
+    padding: '0 14px',
     fontFamily: font.mono,
-    fontSize: 11,
+    fontSize: 12,
     cursor: 'pointer',
   },
-  actionBtnActive: {
-    borderColor: '#FBBF24',
+  actionTabActive: {
+    background: 'rgba(176,141,53,0.18)',
+    borderColor: color.gold,
+  },
+  bay: {
+    background: '#171412',
     color: '#FAFAF9',
-    background: 'rgba(251,191,36,0.14)',
+    padding: '28px 28px 44px',
   },
-  workbench: {
-    maxWidth: 1180,
-    margin: '0 auto',
-    padding: '34px 28px 84px',
-  },
-  workbenchGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(280px, 0.9fr) minmax(320px, 1.1fr)',
-    gap: 18,
-  },
-  leftColumn: {
-    display: 'grid',
-    gap: 18,
-    alignContent: 'start',
-  },
-  rail: {
-    border: `1px solid ${color.border}`,
-    borderRadius: radius.base,
-    background: '#FFFFFF',
-    overflow: 'hidden',
-  },
-  stepRow: {
+  sceneHeader: {
+    maxWidth: 1220,
+    margin: '0 auto 18px',
     display: 'flex',
-    gap: 14,
-    alignItems: 'center',
-    padding: '16px 16px',
-    borderBottom: `1px solid ${color.border}`,
+    alignItems: 'end',
+    justifyContent: 'space-between',
+    gap: 20,
+    flexWrap: 'wrap',
   },
-  stepIndex: {
-    width: 34,
-    height: 34,
-    borderRadius: radius.sm,
+  sceneKicker: {
+    fontFamily: font.mono,
+    fontSize: 10,
+    letterSpacing: 1.7,
+    textTransform: 'uppercase',
+    color: 'rgba(250,250,249,0.48)',
+  },
+  sceneTitle: {
+    margin: '6px 0 0',
+    fontSize: 'clamp(28px, 4vw, 48px)',
+    letterSpacing: 0,
+    lineHeight: 1,
+  },
+  sceneSub: {
+    margin: '8px 0 0',
+    color: 'rgba(250,250,249,0.62)',
+  },
+  sceneBadge: {
     border: '1px solid',
+    borderRadius: radius.sm,
+    padding: '10px 12px',
+    fontFamily: font.mono,
+    fontSize: 11,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  arena: {
+    maxWidth: 1220,
+    margin: '0 auto',
+    display: 'grid',
+    gridTemplateColumns: 'minmax(260px, 0.95fr) minmax(270px, 0.9fr) minmax(300px, 1fr)',
+    gap: 16,
+    alignItems: 'stretch',
+  },
+  agentPane: {
+    borderRadius: radius.base,
+    border: '1px solid rgba(250,250,249,0.14)',
+    background: '#211D1A',
+    padding: 18,
+    minHeight: 390,
+  },
+  gatePane: {
+    borderRadius: radius.base,
+    border: '1px solid rgba(250,250,249,0.16)',
+    background: '#0F0D0B',
+    padding: 18,
+    minHeight: 390,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
+  systemPane: {
+    borderRadius: radius.base,
+    border: '1px solid rgba(250,250,249,0.14)',
+    background: '#FAFAF9',
+    color: color.t1,
+    padding: 18,
+    minHeight: 390,
+  },
+  panelTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: 12,
+    alignItems: 'center',
+    fontFamily: font.mono,
+    fontSize: 10,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: 'rgba(250,250,249,0.5)',
+  },
+  terminal: {
+    marginTop: 28,
+    borderRadius: radius.sm,
+    border: '1px solid rgba(250,250,249,0.12)',
+    background: '#0B0A09',
+    padding: 18,
+    fontFamily: font.mono,
+    fontSize: 12,
+    lineHeight: 1.9,
+    minHeight: 168,
+  },
+  consequence: {
+    borderTop: '1px solid rgba(250,250,249,0.14)',
+    marginTop: 28,
+    paddingTop: 18,
+    display: 'grid',
+    gap: 8,
+  },
+  gateCore: {
+    position: 'relative',
+    width: 190,
+    height: 190,
+    margin: '46px auto 28px',
     display: 'grid',
     placeItems: 'center',
+  },
+  outerRing: {
+    position: 'absolute',
+    inset: 0,
+    borderRadius: '50%',
+    border: '10px solid',
+    borderTopColor: color.gold,
+  },
+  innerLock: {
+    position: 'relative',
+    width: 100,
+    height: 118,
+    display: 'grid',
+    justifyItems: 'center',
+    alignContent: 'end',
+  },
+  lockBar: {
+    width: 58,
+    height: 42,
+    border: '8px solid #FAFAF9',
+    borderBottom: 0,
+    borderRadius: '32px 32px 0 0',
+  },
+  lockBody: {
+    width: 100,
+    height: 72,
+    borderRadius: radius.base,
+    background: '#FAFAF9',
+    color: '#171412',
+    display: 'grid',
+    placeItems: 'center',
+    fontFamily: font.mono,
+    fontWeight: 700,
+    letterSpacing: 1,
+  },
+  gateReadout: {
+    borderTop: '1px solid rgba(250,250,249,0.12)',
+    paddingTop: 14,
+    fontFamily: font.mono,
+    fontSize: 11,
+    color: color.gold,
+    lineHeight: 1.55,
+    overflowWrap: 'anywhere',
+  },
+  amount: {
+    marginTop: 38,
+    fontSize: 'clamp(42px, 5vw, 70px)',
+    fontWeight: 700,
+    letterSpacing: 0,
+    lineHeight: 1,
+  },
+  systemGrid: {
+    display: 'grid',
+    gap: 12,
+    marginTop: 34,
+  },
+  fact: {
+    borderTop: `1px solid ${color.border}`,
+    paddingTop: 12,
+    display: 'grid',
+    gap: 5,
+  },
+  actuatorStatus: {
+    marginTop: 28,
+    border: '1px solid',
+    borderRadius: radius.sm,
+    minHeight: 48,
+    display: 'grid',
+    placeItems: 'center',
+    fontFamily: font.mono,
+    fontWeight: 700,
+    fontSize: 12,
+    letterSpacing: 1,
+  },
+  controls: {
+    maxWidth: 1220,
+    margin: '16px auto 0',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+    gap: 8,
+  },
+  controlBtn: {
+    minHeight: 44,
+    borderRadius: radius.sm,
+    border: '1px solid rgba(250,250,249,0.16)',
+    background: 'rgba(250,250,249,0.07)',
+    color: '#FAFAF9',
+    fontFamily: font.mono,
+    fontSize: 12,
+    cursor: 'pointer',
+  },
+  after: {
+    maxWidth: 1220,
+    margin: '0 auto',
+    padding: '30px 28px 88px',
+  },
+  afterGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'minmax(280px, 0.82fr) minmax(320px, 1fr) minmax(320px, 1fr)',
+    gap: 16,
+    alignItems: 'start',
+  },
+  attackRail: {
+    display: 'grid',
+    gap: 10,
+  },
+  sectionLabel: {
+    fontFamily: font.mono,
+    fontSize: 10,
+    letterSpacing: 1.7,
+    textTransform: 'uppercase',
+    color: color.t3,
+    marginBottom: 2,
+  },
+  strike: {
+    border: '1px solid',
+    borderRadius: radius.base,
+    padding: 13,
+    display: 'flex',
+    gap: 12,
+    alignItems: 'center',
+  },
+  strikeNum: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.sm,
+    display: 'grid',
+    placeItems: 'center',
+    background: '#171412',
+    color: '#FAFAF9',
     fontFamily: font.mono,
     fontSize: 11,
     flexShrink: 0,
   },
-  stepTitle: {
+  strikeTitle: {
     fontWeight: 700,
-    color: color.t1,
-    fontSize: 15,
+    fontSize: 14,
   },
-  stepDetail: {
-    fontSize: 13,
+  strikeDetail: {
+    marginTop: 3,
+    fontSize: 12,
     color: color.t2,
-    marginTop: 4,
-    lineHeight: 1.35,
     overflowWrap: 'anywhere',
   },
-  stepStatus: {
-    minWidth: 78,
-    textAlign: 'center',
-    border: '1px solid',
-    borderRadius: radius.sm,
-    padding: '6px 8px',
+  strikeStatus: {
     fontFamily: font.mono,
     fontSize: 10,
+    color: color.t3,
     textTransform: 'uppercase',
   },
-  manualControls: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gap: 8,
-  },
-  toolBtn: {
-    minHeight: 42,
-    borderRadius: radius.sm,
-    border: `1px solid ${color.borderHover}`,
-    background: '#FFFFFF',
-    color: color.t1,
-    fontFamily: font.mono,
-    fontSize: 12,
-    cursor: 'pointer',
-  },
-  consolePanel: {
+  feedPanel: {
     borderRadius: radius.base,
-    border: '1px solid #1F2937',
-    background: '#111827',
-    color: '#FAFAF9',
+    border: `1px solid ${color.border}`,
+    background: '#171412',
     padding: 18,
-    minHeight: 340,
+    minHeight: 470,
   },
-  console: {
-    marginTop: 18,
+  feedBox: {
+    marginTop: 14,
     display: 'grid',
     gap: 9,
-    minHeight: 232,
-    alignContent: 'start',
   },
-  logLine: {
+  feedLine: {
     display: 'grid',
-    gridTemplateColumns: '72px minmax(0, 1fr)',
+    gridTemplateColumns: '66px minmax(0, 1fr)',
     gap: 10,
     fontFamily: font.mono,
     fontSize: 12,
     lineHeight: 1.45,
-    overflowWrap: 'anywhere',
   },
-  logAt: {
-    color: 'rgba(250,250,249,0.38)',
+  evidenceVault: {
+    borderRadius: radius.base,
+    border: `1px solid ${color.border}`,
+    background: '#FFFFFF',
+    padding: 18,
+    minHeight: 470,
   },
-  challengeStrip: {
-    borderTop: '1px solid rgba(255,255,255,0.12)',
-    marginTop: 18,
-    paddingTop: 14,
+  vaultTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: 16,
+    alignItems: 'start',
   },
-  stripLabel: {
+  vaultTitle: {
+    margin: '4px 0 0',
+    fontSize: 22,
+  },
+  vaultSeal: {
+    border: '1px solid',
+    borderRadius: radius.sm,
+    padding: '8px 10px',
     fontFamily: font.mono,
     fontSize: 10,
-    letterSpacing: 1,
-    color: 'rgba(250,250,249,0.46)',
-    textTransform: 'uppercase',
-    marginBottom: 8,
+    whiteSpace: 'nowrap',
   },
-  stripCode: {
-    display: 'block',
-    fontFamily: font.mono,
-    fontSize: 12,
-    color: '#FBBF24',
-    overflowWrap: 'anywhere',
-  },
-  receiptPanel: {
-    borderRadius: radius.base,
+  json: {
+    margin: '18px 0 0',
     border: `1px solid ${color.border}`,
-    background: '#FFFFFF',
-    padding: 18,
-    minHeight: 320,
-  },
-  evidencePanel: {
-    borderRadius: radius.base,
-    border: `1px solid ${color.border}`,
-    background: '#FFFFFF',
-    padding: 18,
-    minHeight: 320,
-  },
-  jsonBox: {
-    margin: '16px 0 0',
-    padding: 16,
-    minHeight: 220,
-    maxHeight: 380,
-    overflow: 'auto',
     borderRadius: radius.sm,
-    border: `1px solid ${color.border}`,
     background: '#F5F5F4',
-    color: color.t2,
+    minHeight: 310,
+    maxHeight: 390,
+    overflow: 'auto',
+    padding: 15,
     fontFamily: font.mono,
     fontSize: 11,
     lineHeight: 1.55,
     whiteSpace: 'pre-wrap',
     overflowWrap: 'anywhere',
+    color: color.t2,
   },
-  evidenceActions: {
+  vaultButtons: {
     display: 'flex',
-    gap: 10,
     flexWrap: 'wrap',
+    gap: 10,
     marginTop: 14,
+  },
+  lightBtn: {
+    ...cta.secondary,
+    background: '#FFFFFF',
+    color: color.t1,
+    border: `1px solid ${color.borderHover}`,
   },
 };
