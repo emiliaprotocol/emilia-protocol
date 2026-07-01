@@ -34,8 +34,8 @@ li { margin: 0.28em 0; }
 <body>
 <header>
   <p class="kicker">Seed · 2026 · Confidential</p>
-  <h1 class="title">EMILIA Protocol — the seatbelt for the agentic era</h1>
-  <p class="subtitle">Verifiable human authorization for the irreversible actions AI agents are starting to take.</p>
+  <h1 class="title">EMILIA Protocol — the accountability layer for the agent economy</h1>
+  <p class="subtitle">Portable, offline-verifiable proof that a named human authorized each irreversible action an AI agent takes.</p>
 </header>
 
 <p class="lede">For fifty years, security answered <em>"who is allowed in?"</em> The dominant users of software are now AI agents that move money, change records, and delete data on the fly. The unanswered question is <strong>authorization at the moment of action: who approved <span class="gold">that exact action</span>, before it executed?</strong> "A human was in the loop" is, today, an unfalsifiable claim — and regulators (EU AI Act Art. 14) now require oversight no one can verify after the fact.</p>
@@ -50,13 +50,13 @@ li { margin: 0.28em 0; }
 <li><strong>Formal + standardized:</strong> machine-checked TLA+ &amp; Alloy in CI; authorization-receipt and quorum Internet-Drafts posted at the IETF.</li>
 </ul>
 
-<h2>The position — convergence, not competition</h2>
-<p>A dozen-plus efforts now define "a receipt for an agent's action." EP authored the <strong>Authorization Evidence Chain</strong> that composes them into one offline decision — and supplies the one leg none of the others do: <strong>a named human's authorization.</strong> EP is the convergence point of the field.</p>
+<h2>The category just got funded — we're the layer underneath</h2>
+<p>2026 confirmed agent-action security is a category: <strong>Arcade $60M</strong> (SYN Ventures, Morgan Stanley), <strong>Oasis $120M</strong> (Craft, Sequoia, Accel), <strong>GitGuardian $50M</strong> (Insight), Astrix acquired by Cisco. Identity/NHI proves <em>which machine</em> acts; action-auth proves <em>which tools</em> it may call. EP proves the piece none of them do — <strong>which named human authorized this exact action</strong>, verifiable offline. Complement, not competitor: the accountability artifact regulators demand and the funded stack doesn't emit.</p>
 
 <div class="cols">
 <div>
-<h2>Wedge: healthcare</h2>
-<p>The two-person rule is <strong>already mandated</strong> there (the high-alert-med double-check). EP makes it verifiable, PHI-free, and Article-14-aligned. B2B2H via healthcare-AI vendors + procurement platforms.</p>
+<h2>Wedge: payment-destination fraud</h2>
+<p>Vendor bank-detail changes &amp; beneficiary updates are where valid access turns into real loss (BEC). EP requires a named human to approve the exact change before money moves, then exports an evidence packet an auditor or insurer can verify. Same receipt covers clinical double-checks &amp; defense human-control.</p>
 </div>
 <div>
 <h2>Model: open core</h2>
@@ -64,11 +64,22 @@ li { margin: 0.28em 0; }
 </div>
 </div>
 
+<div class="cols">
+<div>
+<h2>How it ships</h2>
+<p>Apache-2.0 + a one-file <strong>zero-dependency drop-in</strong> + npm; kits for MCP, Vercel Eve, and agent runtimes; IETF drafts that compose with <strong>SCITT (RFC 9943)</strong>. Emitted by every platform, owned by none.</p>
+</div>
+<div>
+<h2>The raise</h2>
+<p><strong>$2–3M seed</strong>: team (GTM lead, AI-protocol &amp; network engineers, a standards &amp; policy lead — adoption, lobbying, testing), adoption &amp; standards, and the managed control plane to first regulated-deployer revenue.</p>
+</div>
+</div>
+
 <h2>Why inevitable</h2>
 <p>Public-key crypto existed two decades before the browser padlock made its <em>absence</em> unacceptable. EP becomes obvious the same way — an insurer's coverage condition, an auditor's framework, or a government AI-auditor registry making the <strong>absence of a receipt</strong> unacceptable. Precedent → recommendation → requirement.</p>
 
 <div class="proof">
-Open standard (Apache-2.0) · IETF Internet-Drafts · 3 verifiers / 8 conformance suites · independently re-verified · TLA+ &amp; Alloy in CI · NIST AI RMF + EU AI Act mappings · try it offline: npx&nbsp;@emilia-protocol/crash-test
+Open standard (Apache-2.0) · IETF Internet-Drafts (composes with SCITT / RFC 9943) · 3 verifiers / 8 conformance suites · RR-1 conformance · zero-dependency drop-in · TLA+ &amp; Alloy in CI · EU AI Act / DoD crosswalk · try it offline: npx&nbsp;@emilia-protocol/crash-test
 </div>
 
 <p class="contact"><strong>Iman Schrock</strong> — Founder, EMILIA Protocol · team@emiliaprotocol.ai · emiliaprotocol.ai · github.com/emiliaprotocol</p>
