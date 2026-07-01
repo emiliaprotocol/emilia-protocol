@@ -172,18 +172,6 @@ export default function AaifVideoPitchPage() {
           <Link href="/try/receipt-required" style={s.primaryLink}>Open live demo</Link>
         </article>
 
-        <article style={s.panel}>
-          <div style={s.eyebrow}>REAL AND SMALL</div>
-          <h2 style={s.h2}>A primitive, not a platform pitch.</h2>
-          <ul style={s.bullets}>
-            <li>Active individual Internet-Draft, not an IETF endorsement.</li>
-            <li>Reference verifiers in JavaScript, Python, and Go agree on shared conformance vectors.</li>
-            <li>26 TLA+ safety properties and Alloy checks are machine-checked in CI.</li>
-            <li>No account or backend for the local demo: <code>npx @emilia-protocol/issue demo</code>.</li>
-          </ul>
-          <a href={draftUrl} style={s.secondaryLink} target="_blank" rel="noopener noreferrer">Open datatracker draft</a>
-        </article>
-
         <article id="scitt" style={{ ...s.panel, ...s.anchor }}>
           <div style={s.eyebrow}>SCITT COMPOSITION PROOF</div>
           <h2 style={s.h2}>An authorization receipt can ride as a SCITT Signed Statement.</h2>
@@ -229,6 +217,18 @@ export default function AaifVideoPitchPage() {
             ))}
           </div>
           <pre style={s.command}>npx @emilia-protocol/issue demo</pre>
+        </article>
+
+        <article style={s.panel}>
+          <div style={s.eyebrow}>REAL AND SMALL</div>
+          <h2 style={s.h2}>A primitive, not a platform pitch.</h2>
+          <ul style={s.bullets}>
+            <li>Active individual Internet-Draft, not an IETF endorsement.</li>
+            <li>Reference verifiers in JavaScript, Python, and Go agree on shared conformance vectors.</li>
+            <li>26 TLA+ safety properties and Alloy checks are machine-checked in CI.</li>
+            <li>No account or backend for the local demo: <code>npx @emilia-protocol/issue demo</code>.</li>
+          </ul>
+          <a href={draftUrl} style={s.secondaryLink} target="_blank" rel="noopener noreferrer">Open datatracker draft</a>
         </article>
 
         <article style={s.panel}>
