@@ -41,14 +41,17 @@ const canonicalize = (v) => (v === null || v === undefined ? JSON.stringify(v)
 
 // A named human's device signs the EXACT action. Minted locally here so the
 // demo is self-contained; in production it's a real Face ID / passkey signoff.
-export function signAction(action, { approver, quorum = null, tamper = false } = {}) {
+export function signAction(action, { approver, outcome = 'allow_with_signoff', quorum = null, tamper = false } = {}) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const pub = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
   const quorumClaim = quorum?.required
     ? {
         quorum: {
-          signers: [approver, 'ep:approver:second-human'],
-          threshold: quorum.m || quorum.required || 2,
+          threshold: quorum.m || 2,
+          signers: [
+            approver || 'ep:approver:first-human',
+            quorum.second_approver || 'ep:approver:second-human',
+          ],
         },
       }
     : {};
@@ -56,7 +59,7 @@ export function signAction(action, { approver, quorum = null, tamper = false } =
     receipt_id: 'rcpt_' + crypto.randomBytes(6).toString('hex'),
     subject: 'agent:autonomous',
     created_at: new Date().toISOString(),
-    claim: { action_type: action, outcome: 'allow_with_signoff', approver, ...quorumClaim },
+    claim: { action_type: action, outcome, approver, ...quorumClaim },
   };
   const value = crypto.sign(null, Buffer.from(canonicalize(payload), 'utf8'), privateKey).toString('base64url');
   const doc = { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value }, public_key: pub };
@@ -101,6 +104,7 @@ export function makeGuardedServer({ tool }) {
         statusCode: RR,
         manifestUrl: MANIFEST_URL,
         assuranceClass: req.assurance_class,
+        quorum: req.quorum,
       });
       gates.set(req.action_type, gate);
     }
@@ -159,6 +163,9 @@ export async function runDemo({ title, tool, args, approver, agentLine }) {
   const boundAction = actionForCall(tool, action, args);
   const receipt = signAction(boundAction, { approver, quorum: req.quorum });
   line(`     receipt_id ${receipt.payload.receipt_id} · outcome ${receipt.payload.claim.outcome}`);
+  if (receipt.payload.claim.quorum) {
+    line(`     quorum ${receipt.payload.claim.quorum.threshold}-of-N · signers ${receipt.payload.claim.quorum.signers.join(', ')}`);
+  }
   line('     agent retries WITH the receipt:');
   res = await server(tool, args, receipt);
   show(res);
@@ -171,12 +178,12 @@ export async function runDemo({ title, tool, args, approver, agentLine }) {
   await pause(700);
 
   line('\n  4. A forged receipt (a signed field altered) is presented');
-  res = await server(tool, args, signAction(boundAction, { approver, tamper: true }));
+  res = await server(tool, args, signAction(boundAction, { approver, quorum: req.quorum, tamper: true }));
   show(res);
 
   if (req.quorum?.required) {
-    line(`\n  note: the manifest escalates ${tool} to a ${req.quorum.m}-of-N quorum;`);
-    line('        the demo receipt carries two distinct approvers and the gate refuses a lower tier.');
+    line(`\n  note: the manifest escalates ${tool} to a ${req.quorum.m}-of-N quorum (EP-QUORUM-v1);`);
+    line('        the demo receipt carries two distinct human approvers, and a single-signoff receipt is refused.');
   }
   line('\n  No receipt, no irreversible action. If it ran, anyone can verify who authorized exactly what.');
   line();

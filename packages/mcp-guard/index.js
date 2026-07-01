@@ -38,7 +38,10 @@
  */
 
 import crypto from 'node:crypto';
-import { verifyEmiliaReceipt, receiptChallenge } from '@emilia-protocol/require-receipt';
+const {
+  verifyEmiliaReceipt,
+  receiptChallenge,
+} = await import('@emilia-protocol/require-receipt').catch(() => import('../require-receipt/index.js'));
 
 // ---------------------------------------------------------------------------
 // Canonicalization (RFC 8785-style, key-sorted) — used ONLY for the additive
@@ -78,6 +81,29 @@ export const GUARD_DECISIONS = Object.freeze({
   DENY: 'deny',
 });
 
+const ASSURANCE_RANK = { software: 0, class_a: 1, quorum: 2 };
+
+function normalizeAssurance(value) {
+  return Object.prototype.hasOwnProperty.call(ASSURANCE_RANK, value) ? value : 'software';
+}
+
+function receiptAssuranceTier(doc) {
+  const payload = doc?.payload || {};
+  const q = payload.quorum || payload.claim?.quorum;
+  const signers = q && (q.signers || q.approvers);
+  const threshold = Number(q && (q.m ?? q.threshold ?? (Array.isArray(signers) ? signers.length : 0)));
+  if (q && Array.isArray(signers) && Number.isFinite(threshold) && threshold >= 2) {
+    const distinct = new Set(signers.map((s) => String(s))).size;
+    if (distinct >= 2) return 'quorum';
+  }
+  if (payload.signoff || payload.claim?.outcome === GUARD_DECISIONS.ALLOW_WITH_SIGNOFF) return 'class_a';
+  return 'software';
+}
+
+function assuranceMeets(have, need) {
+  return (ASSURANCE_RANK[normalizeAssurance(have)] ?? 0) >= (ASSURANCE_RANK[normalizeAssurance(need)] ?? 0);
+}
+
 // ---------------------------------------------------------------------------
 // Irreversibility classification
 // ---------------------------------------------------------------------------
@@ -85,8 +111,10 @@ export const GUARD_DECISIONS = Object.freeze({
 /**
  * Decide whether a tool call is irreversible and therefore must be gated.
  *
- * Resolution order (first hit wins):
- *   1. Per-call override:        args.__ep?.irreversible === true|false
+ * Resolution order:
+ *   1. Per-call escalation:      args.__ep?.irreversible === true
+ *      (agent/tool-call metadata may only make a call stricter, never downgrade
+ *      trusted server annotations or policy)
  *   2. Tool annotation:          annotations[name].irreversible (or the MCP
  *      `readOnlyHint`/`destructiveHint` tool annotations, if provided)
  *   3. Policy function:          policy(name, args) → boolean
@@ -104,7 +132,6 @@ export function classifyToolCall(name, args = {}, opts = {}) {
 
   const override = args && args.__ep ? args.__ep.irreversible : undefined;
   if (override === true) return { irreversible: true, reason: 'per_call_override' };
-  if (override === false) return { irreversible: false, reason: 'per_call_override' };
 
   const ann = annotations[name];
   if (ann) {
@@ -203,6 +230,7 @@ export function refusal(action, reason, extra = {}) {
  * @param {object} p.args              tool arguments (carrier for the receipt)
  * @param {object} [p.meta]            MCP _meta (header-style carrier)
  * @param {object} p.verifyOpts        require-receipt options { trustedKeys, maxAgeSec, allowedOutcomes, ... }
+ *                                     plus optional { assuranceClass }
  * @returns {{ok:true, verified:object} | {ok:false, refusal:object}}
  */
 export function demandReceipt({ action, args = {}, meta = {}, verifyOpts = {} }) {
@@ -215,6 +243,16 @@ export function demandReceipt({ action, args = {}, meta = {}, verifyOpts = {} })
     return {
       ok: false,
       refusal: refusal(action, `Receipt rejected: ${v.reason}.`, { rejected: v }),
+    };
+  }
+  const requiredTier = verifyOpts.assuranceClass || verifyOpts.assurance_class || 'software';
+  const haveTier = receiptAssuranceTier(doc);
+  if (!assuranceMeets(haveTier, requiredTier)) {
+    return {
+      ok: false,
+      refusal: refusal(action, 'Receipt rejected: assurance_too_low.', {
+        rejected: { ok: false, reason: 'assurance_too_low', have_tier: haveTier, need_tier: requiredTier },
+      }),
     };
   }
   return { ok: true, verified: v };
@@ -381,6 +419,7 @@ export function withMcpGuard(handler, options = {}) {
     if (!irreversible) return handler(name, args, extra);
 
     const action = resolveAction(name, args, ann);
+    const requiredTier = ann.assuranceClass || ann.assurance_class || verifyOpts.assuranceClass || verifyOpts.assurance_class || 'class_a';
     const meta = (extra && (extra._meta || extra.meta)) || {};
     const actionDigest = hashObject({ tool: name, action, args: stripEpFields(args) });
 
@@ -388,7 +427,7 @@ export function withMcpGuard(handler, options = {}) {
     if (enforceDemand) {
       const carriesReceipt = !!extractReceipt(args, meta);
       if (carriesReceipt) {
-        const d = demandReceipt({ action, args, meta, verifyOpts });
+        const d = demandReceipt({ action, args, meta, verifyOpts: { ...verifyOpts, assuranceClass: requiredTier } });
         if (!d.ok) return d.refusal; // FAIL CLOSED — refusal object, do not run.
         // Verified. Record provenance referencing the (already v1) receipt, run.
         const doc = extractReceipt(args, meta);
@@ -458,6 +497,13 @@ export function withMcpGuard(handler, options = {}) {
       return refusal(action, `Issued receipt failed self-verification: ${selfCheck.reason}.`, {
         stage: 'issue',
         rejected: selfCheck,
+      });
+    }
+    const issuedTier = receiptAssuranceTier(doc);
+    if (!assuranceMeets(issuedTier, requiredTier)) {
+      return refusal(action, 'Issued receipt failed assurance check: assurance_too_low.', {
+        stage: 'issue',
+        rejected: { ok: false, reason: 'assurance_too_low', have_tier: issuedTier, need_tier: requiredTier },
       });
     }
 

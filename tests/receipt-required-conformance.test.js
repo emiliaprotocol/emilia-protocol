@@ -32,7 +32,10 @@ describe('Receipt Required conformance — example servers earn level RR-1', () 
         tool,
         args: { demo: true },
         action,
-        issueReceipt: () => signAction(action, { approver: 'ep:approver:conformance-test', quorum: req?.quorum }),
+        issueReceipt: () => signAction(action, {
+          approver: 'ep:approver:conformance-test',
+          quorum: req?.quorum,
+        }),
         manifest,
       });
       expect(report.checks.manifest_valid).toBe(true);

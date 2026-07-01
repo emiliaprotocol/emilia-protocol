@@ -74,3 +74,48 @@ test('gateMcpTools wraps a map of handlers', async () => {
   const allowed = await tools.release_payment({ _emilia_receipt: harness.mint({ outcome: 'allow_with_signoff' }) });
   assert.equal(allowed.paid, true);
 });
+
+test('gateMcpTool accepts the base64 receipt carrier', async () => {
+  const { gate, harness, action } = setup();
+  const tool = gateMcpTool(gate, { tool: 'release_payment', observedAction: () => action }, async () => ({ paid: true }));
+  const receipt = harness.mint({ outcome: 'allow_with_signoff' });
+  const res = await tool({ _emilia_receipt_b64: Buffer.from(JSON.stringify(receipt), 'utf8').toString('base64') });
+  assert.equal(res.paid, true);
+  assert.equal(res._emilia.gate, 'allowed');
+});
+
+test('gateMcpTool does not let a lower-priority valid carrier override an invalid primary carrier', async () => {
+  const { gate, harness, action } = setup();
+  const tool = gateMcpTool(gate, { tool: 'release_payment', observedAction: () => action }, async () => ({ paid: true }));
+  const invalidPrimary = harness.mint({ outcome: 'allow_with_signoff', tamper: { amount_usd: 999999 } });
+  const validSecondary = harness.mint({ outcome: 'allow_with_signoff' });
+  const res = await tool({
+    _emilia_receipt: invalidPrimary,
+    emilia_receipt: validSecondary,
+  });
+  assert.equal(res.isError, true);
+  assert.match(res._emilia.reason, /receipt_rejected|binding|signature/);
+});
+
+test('gateMcpTool fail-closes when receipt resolution or observed-action mapping throws', async () => {
+  const { gate, action } = setup();
+  let ran = false;
+  const receiptThrows = gateMcpTool(gate, {
+    tool: 'release_payment',
+    observedAction: () => action,
+    receipt: () => { throw new Error('resolver down'); },
+  }, async () => { ran = true; return { paid: true }; });
+  const r1 = await receiptThrows({});
+  assert.equal(r1.isError, true);
+  assert.equal(r1._emilia.reason, 'receipt_boundary_failed');
+  assert.equal(ran, false);
+
+  const observedThrows = gateMcpTool(gate, {
+    tool: 'release_payment',
+    observedAction: () => { throw new Error('mapper down'); },
+  }, async () => { ran = true; return { paid: true }; });
+  const r2 = await observedThrows({});
+  assert.equal(r2.isError, true);
+  assert.equal(r2._emilia.reason, 'receipt_boundary_failed');
+  assert.equal(ran, false);
+});

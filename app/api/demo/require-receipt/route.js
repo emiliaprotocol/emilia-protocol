@@ -53,6 +53,7 @@ const DEMO_ACTIONS = {
     action_type: 'payment.release',
     target: 'wire:vendor-acme-250000',
     assurance_class: 'class_a',
+    quorum: { required: false },
     policy_id: 'demo.payment-release.class-a.v1',
     mutation: 'Release a $250,000 vendor payment.',
     evidence_kind: 'money_movement',
@@ -63,6 +64,7 @@ const DEMO_ACTIONS = {
     action_type: 'github.repo.delete',
     target: 'repo:emilia/prod-ledger',
     assurance_class: 'quorum',
+    quorum: { required: true, mode: 'm_of_n', m: 2, distinct_humans: true },
     policy_id: 'demo.github-repo-delete.quorum.v1',
     mutation: 'Delete the emilia/prod-ledger repository.',
     evidence_kind: 'code_state',
@@ -73,6 +75,7 @@ const DEMO_ACTIONS = {
     action_type: 'payment.bank_details.change',
     target: 'vendor:acme-routing-9124',
     assurance_class: 'class_a',
+    quorum: { required: false },
     policy_id: 'demo.vendor-bank-change.class-a.v1',
     mutation: 'Change ACME vendor payout destination.',
     evidence_kind: 'payment_destination',
@@ -107,6 +110,7 @@ function gateFor(demo) {
       allowInlineKey: true,
       allowedOutcomes: ['allow', 'allow_with_signoff'],
       assuranceClass: demo.assurance_class,
+      quorum: demo.quorum,
       manifestUrl: MANIFEST_URL,
       maxAgeSec: 900,
       statusCode: RR,
@@ -120,6 +124,7 @@ function challengeHeaders(demo) {
     [RECEIPT_REQUIRED_HEADER]: receiptRequiredHeader({
       action: boundActionFor(demo),
       assuranceClass: demo.assurance_class,
+      quorum: demo.quorum,
       manifestUrl: MANIFEST_URL,
       maxAgeSec: 900,
       proofHeader: RECEIPT_PROOF_HEADER,
@@ -136,6 +141,7 @@ function bodySummary(demo) {
     action_type: demo.action_type,
     target: demo.target,
     assurance_class: demo.assurance_class,
+    quorum: demo.quorum,
     policy_id: demo.policy_id,
   };
 }
@@ -159,6 +165,7 @@ function receiptOptions(demo) {
     status: RR,
     manifestUrl: MANIFEST_URL,
     assuranceClass: demo.assurance_class,
+    quorum: demo.quorum,
     maxAgeSec: 900,
   };
 }
@@ -166,9 +173,14 @@ function receiptOptions(demo) {
 function signDemoReceipt(demo, approver) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const publicKeyB64u = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
-  const signer = approver || 'ep:approver:demo-human';
-  const quorumClaim = demo.assurance_class === 'quorum'
-    ? { quorum: { signers: [signer, 'ep:approver:demo-second-human'], threshold: 2 } }
+  const human = approver || 'ep:approver:demo-human';
+  const quorumClaim = demo.quorum?.required
+    ? {
+        quorum: {
+          threshold: demo.quorum.m || 2,
+          signers: [human, 'ep:approver:demo-second-human'],
+        },
+      }
     : {};
   const payload = {
     receipt_id: `rcpt_demo_${crypto.randomBytes(8).toString('hex')}`,
@@ -177,7 +189,7 @@ function signDemoReceipt(demo, approver) {
     claim: {
       action_type: boundActionFor(demo),
       outcome: 'allow_with_signoff',
-      approver: signer,
+      approver: human,
       policy_id: demo.policy_id,
       assurance_class: demo.assurance_class,
       ...quorumClaim,

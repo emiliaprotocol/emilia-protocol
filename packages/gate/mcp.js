@@ -52,29 +52,37 @@ export function gateMcpTool(gate, o = {}, handler) {
   const { tool, protocol = 'mcp', action } = o;
   if (!tool) throw new Error('gateMcpTool requires { tool }');
 
+  const refused = (reason, body = null) => ({
+    isError: true,
+    content: [{
+      type: 'text',
+      text: `EMILIA Gate refused "${tool}": ${reason}. `
+        + 'This is a high-risk action; present a valid, sufficiently-assured, unused human/quorum receipt.',
+    }],
+    _emilia: {
+      gate: 'refused',
+      status: 428,
+      reason,
+      challenge: body,
+    },
+  });
+
   return async function gatedTool(args = {}, extra) {
     const selector = { protocol, tool, ...(action ? { action_type: action } : {}) };
-    const receipt = resolveReceipt(args, o);
-    const observedAction = typeof o.observedAction === 'function'
-      ? o.observedAction(args, extra)
-      : (o.observedAction ?? args);
+    let receipt;
+    let observedAction;
+    try {
+      receipt = resolveReceipt(args, o);
+      observedAction = typeof o.observedAction === 'function'
+        ? o.observedAction(args, extra)
+        : (o.observedAction ?? args);
+    } catch {
+      return refused('receipt_boundary_failed');
+    }
 
     const out = await gate.run({ selector, receipt, observedAction }, () => handler(args, extra));
     if (!out.ok) {
-      return {
-        isError: true,
-        content: [{
-          type: 'text',
-          text: `EMILIA Gate refused "${tool}": ${out.authorization.reason}. `
-            + 'This is a high-risk action; present a valid, sufficiently-assured, unused human/quorum receipt.',
-        }],
-        _emilia: {
-          gate: 'refused',
-          status: out.status,
-          reason: out.authorization.reason,
-          challenge: out.body,
-        },
-      };
+      return refused(out.authorization.reason, out.body);
     }
     const result = out.result;
     // Attach the proof without clobbering a structured tool result.

@@ -23,14 +23,19 @@ const canon = (v) => (v === null || v === undefined ? JSON.stringify(v)
     : typeof v === 'object' ? `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canon(v[k])).join(',')}}`
       : JSON.stringify(v));
 
-function mint(actionType, { outcome = 'allow_with_signoff', extra = {} } = {}) {
+function mint(actionType, { outcome = 'allow_with_signoff', quorum = null } = {}) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const pub = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
   const payload = {
     receipt_id: 'rcpt_' + crypto.randomBytes(6).toString('hex'),
     subject: 'agent:autonomous',
     created_at: new Date().toISOString(),
-    claim: { action_type: actionType, outcome, approver: 'jane@yourco.example', ...extra },
+    claim: {
+      action_type: actionType,
+      outcome,
+      approver: 'jane@yourco.example',
+      ...(quorum ? { quorum } : {}),
+    },
   };
   const value = crypto.sign(null, Buffer.from(canon(payload), 'utf8'), privateKey).toString('base64url');
   return { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value }, public_key: pub };
@@ -67,11 +72,20 @@ test('drop-in passes EMILIA RR-1 (challenge / runs / replay-refused / forged-ref
   expect(report.level).toBe('RR-1');
 });
 
-test('drop-in enforces assuranceClass, not only signature/action/replay', async () => {
-  const gate = makeReceiptGate({ action: 'payment.release', allowInlineKey: true, assuranceClass: 'class_a' });
-  let ran = false;
-  const r = await gate.run(mint('payment.release', { outcome: 'allow' }), {}, async () => { ran = true; });
-  expect(r.ok).toBe(false);
-  expect(r.body.rejected.reason).toBe('assurance_too_low');
-  expect(ran).toBe(false);
+test('drop-in enforces assuranceClass, including quorum', async () => {
+  const gate = makeReceiptGate({ action: 'deploy.production', assuranceClass: 'quorum', allowInlineKey: true });
+
+  const software = await gate.run(mint('deploy.production', { outcome: 'allow' }), {}, async () => 'should-not-run');
+  expect(software.ok).toBe(false);
+  expect(software.body.rejected.reason).toBe('assurance_too_low');
+
+  const classA = await gate.run(mint('deploy.production'), {}, async () => 'should-not-run');
+  expect(classA.ok).toBe(false);
+  expect(classA.body.rejected.reason).toBe('assurance_too_low');
+
+  const quorum = await gate.run(mint('deploy.production', {
+    quorum: { threshold: 2, signers: ['ep:approver:a', 'ep:approver:b'] },
+  }), {}, async () => 'deployed');
+  expect(quorum.ok).toBe(true);
+  expect(quorum.result).toBe('deployed');
 });
