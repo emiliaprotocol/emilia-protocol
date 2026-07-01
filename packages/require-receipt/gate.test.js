@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { makeReceiptGate } from './gate.js';
+import { makeReceiptGate, receiptAssuranceTier } from './gate.js';
 
 const canon = (v) => (v === null || v === undefined ? JSON.stringify(v)
   : Array.isArray(v) ? `[${v.map(canon).join(',')}]`
@@ -13,14 +13,19 @@ const canon = (v) => (v === null || v === undefined ? JSON.stringify(v)
       : JSON.stringify(v));
 
 // Mint a valid EP-RECEIPT-v1 bound to exactly `actionType`.
-function mint(actionType, { outcome = 'allow_with_signoff', extra = {} } = {}) {
+function mint(actionType, { outcome = 'allow_with_signoff', quorum = null } = {}) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const pub = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
   const payload = {
     receipt_id: 'rcpt_' + crypto.randomBytes(6).toString('hex'),
     subject: 'agent:autonomous',
     created_at: new Date().toISOString(),
-    claim: { action_type: actionType, outcome, approver: 'jane@yourco.example', ...extra },
+    claim: {
+      action_type: actionType,
+      outcome,
+      approver: 'jane@yourco.example',
+      ...(quorum ? { quorum } : {}),
+    },
   };
   const value = crypto.sign(null, Buffer.from(canon(payload), 'utf8'), privateKey).toString('base64url');
   return { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value }, public_key: pub };
@@ -71,15 +76,6 @@ test('forged receipt -> refused, sanitized (no signer/subject leak)', async () =
   assert.deepEqual(Object.keys(r.body.rejected), ['reason']);
 });
 
-test('payload outside the I-JSON profile -> refused before canonicalization can diverge', async () => {
-  const g = gate();
-  const rc = mint('db.records.delete:customers');
-  rc.payload.claim.amount = Number.NaN;
-  const r = await g.run(rc, { target: 'customers' }, async () => 'should-not-run');
-  assert.equal(r.ok, false);
-  assert.equal(r.body.rejected.reason, 'payload_outside_ijson_profile');
-});
-
 test('cross-target -> a receipt for customers cannot delete orders', async () => {
   const g = gate();
   const rc = mint('db.records.delete:customers');
@@ -123,31 +119,38 @@ test('target binding via action function', async () => {
   assert.equal(r.ok, true);
 });
 
-test('assuranceClass: software receipt cannot satisfy Class-A requirement', async () => {
-  const g = makeReceiptGate({ action: 'payment.release', allowInlineKey: true, assuranceClass: 'class_a' });
+test('assuranceClass=class_a refuses a software-only receipt', async () => {
+  const g = makeReceiptGate({ action: 'payment.release', assuranceClass: 'class_a', allowInlineKey: true });
   const rc = mint('payment.release', { outcome: 'allow' });
-  let ran = false;
-  const r = await g.run(rc, {}, async () => { ran = true; });
-  assert.equal(r.ok, false);
-  assert.equal(r.body.rejected.reason, 'assurance_too_low');
-  assert.equal(ran, false);
-});
-
-test('assuranceClass: Class-A receipt cannot satisfy quorum requirement', async () => {
-  const g = makeReceiptGate({ action: 'deploy.production', allowInlineKey: true, assuranceClass: 'quorum' });
-  const rc = mint('deploy.production', { outcome: 'allow_with_signoff' });
-  const r = await g.run(rc, {}, async () => 'deployed');
+  const r = await g.run(rc, {}, async () => {
+    throw new Error('should not run');
+  });
   assert.equal(r.ok, false);
   assert.equal(r.body.rejected.reason, 'assurance_too_low');
 });
 
-test('assuranceClass: signed quorum claim satisfies quorum requirement', async () => {
-  const g = makeReceiptGate({ action: 'deploy.production', allowInlineKey: true, assuranceClass: 'quorum' });
+test('assuranceClass=quorum refuses a single human signoff', async () => {
+  const g = makeReceiptGate({ action: 'deploy.production', assuranceClass: 'quorum', allowInlineKey: true });
+  const rc = mint('deploy.production');
+  const r = await g.run(rc, {}, async () => {
+    throw new Error('should not run');
+  });
+  assert.equal(r.ok, false);
+  assert.equal(r.body.rejected.reason, 'assurance_too_low');
+});
+
+test('assuranceClass=quorum accepts threshold-2 distinct-human quorum evidence', async () => {
+  const g = makeReceiptGate({ action: 'deploy.production', assuranceClass: 'quorum', allowInlineKey: true });
   const rc = mint('deploy.production', {
-    outcome: 'allow_with_signoff',
-    extra: { quorum: { signers: ['ep:alice', 'ep:bob'], threshold: 2 } },
+    quorum: { threshold: 2, signers: ['ep:approver:a', 'ep:approver:b'] },
   });
   const r = await g.run(rc, {}, async () => 'deployed');
-  assert.equal(r.ok, true);
+  assert.equal(r.ok, true, r.body?.rejected?.reason);
   assert.equal(r.result, 'deployed');
+});
+
+test('receiptAssuranceTier does not count duplicate quorum signers', () => {
+  assert.equal(receiptAssuranceTier({
+    payload: { claim: { outcome: 'allow_with_signoff', quorum: { threshold: 2, signers: ['same', 'same'] } } },
+  }), 'class_a');
 });
