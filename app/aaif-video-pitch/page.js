@@ -71,19 +71,21 @@ export default function AaifVideoPitchPage() {
   const publishedReports = reports.reports.filter((r) => r.published).length;
 
   return (
-    <main style={s.page}>
+    <main style={s.page} className="aaif-deck">
       <style>{`
         html { scroll-behavior: smooth; }
         #ep-eu-ai-act-banner { display: none !important; }
         nextjs-portal { display: none !important; }
+        .aaif-deck { scroll-snap-type: y mandatory; overflow-y: auto; height: 100vh; }
+        .aaif-deck > section { scroll-snap-align: start; scroll-snap-stop: always; }
         @media (max-width: 900px) {
-          .aaif-deck-grid { grid-template-columns: 1fr !important; }
           .aaif-stats { grid-template-columns: 1fr !important; }
           .aaif-proof-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
           .aaif-void-map { grid-template-columns: 1fr !important; }
         }
         @media (max-width: 640px) {
-          .aaif-hero { padding: 52px 20px 24px !important; }
+          .aaif-deck { scroll-snap-type: y proximity; }
+          .aaif-hero, .aaif-slide { padding: 52px 20px 32px !important; }
           .aaif-layer-row { grid-template-columns: 1fr !important; }
           .aaif-check-grid { grid-template-columns: 1fr !important; }
           .aaif-proof-grid { grid-template-columns: 1fr !important; }
@@ -132,8 +134,8 @@ export default function AaifVideoPitchPage() {
         </div>
       </section>
 
-      <section style={s.deckGrid} className="aaif-deck-grid">
-        <article id="gap" style={{ ...s.panel, ...s.widePanel, ...s.anchor }}>
+      <section id="gap" style={{ ...s.slide, ...s.anchor }} className="aaif-slide">
+        <div style={s.slideInner}>
           <div style={s.eyebrow}>01 · THE LANDSCAPE GAP</div>
           <h2 style={s.h2}>Many drafts describe the agent stack. The missing primitive is proof of human authorization.</h2>
           <div style={s.voidMap} className="aaif-void-map">
@@ -155,9 +157,11 @@ export default function AaifVideoPitchPage() {
             <Link href="/standards" style={s.secondaryLink}>Open standards map</Link>
             <a href={draftUrl} style={s.secondaryLink} target="_blank" rel="noopener noreferrer">Open I-D</a>
           </div>
-        </article>
+        </div>
+      </section>
 
-        <article style={s.panel}>
+      <section style={s.slide} className="aaif-slide">
+        <div style={s.slideInner}>
           <div style={s.eyebrow}>02 · WHERE IT SITS</div>
           <h2 style={s.h2}>A small layer between intent and mutation.</h2>
           <div style={s.layerStack}>
@@ -169,9 +173,11 @@ export default function AaifVideoPitchPage() {
             ))}
           </div>
           <p style={s.statement}>Decision logs are testimony. Receipts are evidence.</p>
-        </article>
+        </div>
+      </section>
 
-        <article id="demo" style={{ ...s.panel, ...s.anchor }}>
+      <section id="demo" style={{ ...s.slide, ...s.anchor }} className="aaif-slide">
+        <div style={s.slideInner}>
           <div style={s.eyebrow}>03 · LIVE DEMO</div>
           <h2 style={s.h2}>Try to break the action layer.</h2>
           <p style={s.body}>An irreversible action is blocked without a receipt, runs once with an exact-action receipt, and rejects replay or tampering.</p>
@@ -184,9 +190,11 @@ export default function AaifVideoPitchPage() {
             ))}
           </div>
           <Link href="/try/receipt-required" style={s.primaryLink}>Open live demo</Link>
-        </article>
+        </div>
+      </section>
 
-        <article id="scitt" style={{ ...s.panel, ...s.anchor }}>
+      <section id="scitt" style={{ ...s.slide, ...s.anchor }} className="aaif-slide">
+        <div style={s.slideInner}>
           <div style={s.eyebrow}>04 · SCITT COMPOSITION PROOF</div>
           <h2 style={s.h2}>An authorization receipt can ride as a SCITT Signed Statement.</h2>
           <p style={s.body}>The end-to-end harness wraps the same canonical EP payload as COSE_Sign1, registers it through the SCRAPI path, and verifies mock transparency evidence in CI. SCITT proves the statement was logged; EMILIA proves who authorized the action.</p>
@@ -203,9 +211,11 @@ export default function AaifVideoPitchPage() {
             <a href={scittProfileUrl} style={s.secondaryLink} target="_blank" rel="noopener noreferrer">SCITT profile</a>
             <a href={scittHarnessUrl} style={s.secondaryLink} target="_blank" rel="noopener noreferrer">Harness</a>
           </div>
-        </article>
+        </div>
+      </section>
 
-        <article id="surfaces" style={{ ...s.panel, ...s.anchor }}>
+      <section id="surfaces" style={{ ...s.slide, ...s.anchor }} className="aaif-slide">
+        <div style={s.slideInner}>
           <div style={s.eyebrow}>05 · HIGHER-STAKES SURFACES</div>
           <h2 style={s.h2}>Single approval, quorum, and human-control profiles use the same receipt spine.</h2>
           <div style={s.capabilityGrid}>
@@ -217,9 +227,11 @@ export default function AaifVideoPitchPage() {
             ))}
           </div>
           <p style={s.body}>The defense-facing human-control surface maps receipt evidence to DoD Directive 3000.09, EU AI Act Article 14, NIST AI RMF, and the LAWS debate - carefully scoped as authorization proof, not proof of wisdom.</p>
-        </article>
+        </div>
+      </section>
 
-        <article style={s.panel}>
+      <section style={s.slide} className="aaif-slide">
+        <div style={s.slideInner}>
           <div style={s.eyebrow}>BUILT, TESTED, LIGHTWEIGHT</div>
           <h2 style={s.h2}>Small enough to try. Serious enough to review.</h2>
           <div style={s.proofGrid} className="aaif-proof-grid">
@@ -231,9 +243,11 @@ export default function AaifVideoPitchPage() {
             ))}
           </div>
           <pre style={s.command}>npx @emilia-protocol/issue demo</pre>
-        </article>
+        </div>
+      </section>
 
-        <article style={s.panel}>
+      <section style={s.slide} className="aaif-slide">
+        <div style={s.slideInner}>
           <div style={s.eyebrow}>REAL AND SMALL</div>
           <h2 style={s.h2}>A primitive, not a platform pitch.</h2>
           <ul style={s.bullets}>
@@ -243,9 +257,11 @@ export default function AaifVideoPitchPage() {
             <li>No account or backend for the local demo: <code>npx @emilia-protocol/issue demo</code>.</li>
           </ul>
           <a href={draftUrl} style={s.secondaryLink} target="_blank" rel="noopener noreferrer">Open datatracker draft</a>
-        </article>
+        </div>
+      </section>
 
-        <article style={s.panel}>
+      <section style={s.slide} className="aaif-slide">
+        <div style={s.slideInner}>
           <div style={s.eyebrow}>ECOSYSTEM PROOF</div>
           <h2 style={s.h2}>The maintainer path is a badge, not a scold.</h2>
           <div style={s.stats} className="aaif-stats">
@@ -267,16 +283,18 @@ export default function AaifVideoPitchPage() {
             <Link href="/fire-drill/registry" style={s.secondaryLink}>Registry index</Link>
             <Link href="/fire-drill/rr-1" style={s.secondaryLink}>RR-1 page</Link>
           </div>
-        </article>
+        </div>
       </section>
 
-      <section id="ask" style={{ ...s.closeCard, ...s.anchor }}>
-        <div style={s.eyebrow}>06 · THE ASK</div>
-        <h2 style={s.closeTitle}>If this is the missing human-authorization layer, where should it belong?</h2>
-        <p style={s.closeBody}>Early, non-binding read on fit. Composes with MCP, goose, and AGENTS.md. Apache-2.0 reference implementation.</p>
-        <div style={s.closeLinks}>
-          <span>team@emiliaprotocol.ai</span>
-          <a href={repoUrl} style={s.closeLink} target="_blank" rel="noopener noreferrer">github.com/emiliaprotocol/emilia-protocol</a>
+      <section id="ask" style={{ ...s.slide, ...s.anchor, borderBottom: 'none' }} className="aaif-slide">
+        <div style={s.slideInner}>
+          <div style={s.eyebrow}>06 · THE ASK</div>
+          <h2 style={s.closeTitle}>If this is the missing human-authorization layer, where should it belong?</h2>
+          <p style={s.closeBody}>Early, non-binding read on fit. Composes with MCP, goose, and AGENTS.md. Apache-2.0 reference implementation.</p>
+          <div style={s.closeLinks}>
+            <span>team@emiliaprotocol.ai</span>
+            <a href={repoUrl} style={s.closeLink} target="_blank" rel="noopener noreferrer">github.com/emiliaprotocol/emilia-protocol</a>
+          </div>
         </div>
       </section>
     </main>
@@ -382,27 +400,21 @@ const s = {
     fontFamily: font.mono,
     fontSize: 11,
   },
-  deckGrid: {
-    maxWidth: 1220,
-    margin: '0 auto',
-    padding: '44px 28px',
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gap: 16,
+  slide: {
+    minHeight: 'calc(100vh - 68px)',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    padding: '64px 32px',
+    borderBottom: '1px solid rgba(250,250,249,0.14)',
   },
-  panel: {
-    border: '1px solid rgba(250,250,249,0.14)',
-    borderRadius: radius.base,
-    background: '#211D1A',
-    padding: 26,
-    minHeight: 390,
+  slideInner: {
+    maxWidth: 1040,
+    margin: '0 auto',
+    width: '100%',
   },
   anchor: {
-    scrollMarginTop: 92,
-  },
-  widePanel: {
-    gridColumn: '1 / -1',
-    minHeight: 360,
+    scrollMarginTop: 68,
   },
   h2: {
     margin: 0,
@@ -616,12 +628,6 @@ const s = {
     fontFamily: font.mono,
     fontSize: 14,
     overflowX: 'auto',
-  },
-  closeCard: {
-    maxWidth: 1220,
-    margin: '0 auto',
-    padding: '72px 28px 86px',
-    borderTop: '1px solid rgba(250,250,249,0.14)',
   },
   closeTitle: {
     margin: 0,
