@@ -33,6 +33,21 @@ function canonicalize(v) {
 }
 
 /**
+ * EP canonicalization profile: JCS over an I-JSON value subset. Signed receipt
+ * payloads must contain only strings, booleans, null, arrays, objects, and safe
+ * integers. Non-finite numbers, floats, BigInt, undefined, functions, and
+ * symbols are rejected before signature verification so implementations never
+ * diverge on canonical bytes.
+ */
+export function isCanonicalizable(value) {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return true;
+  if (typeof value === 'number') return Number.isInteger(value) && Number.isSafeInteger(value);
+  if (Array.isArray(value)) return value.every(isCanonicalizable);
+  if (typeof value === 'object') return Object.values(value).every(isCanonicalizable);
+  return false;
+}
+
+/**
  * Parse a base64url SPKI-DER public key into a KeyObject, cached by string so a
  * given key is parsed once (not once per verification). Beyond the perf win this
  * removes the per-key DER-parsing work from the verify loop, shrinking the timing
@@ -110,6 +125,9 @@ export function verifyEmiliaReceipt(doc, opts = {}) {
     return { ok: false, reason: 'malformed_receipt' };
   }
   const payload = doc.payload;
+  if (!isCanonicalizable(payload)) {
+    return { ok: false, reason: 'payload_outside_ijson_profile' };
+  }
 
   const candidates = [...trustedKeys];
   if (allowInlineKey && doc.public_key) candidates.push(doc.public_key);

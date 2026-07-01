@@ -54,9 +54,15 @@ export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 
 /**
- * The assurance tier a receipt demonstrably meets. Conservative / fail-closed:
- * if a higher tier's structure is not present, the receipt only earns the lower
- * tier, and a guard that needs more will refuse it.
+ * The assurance tier a verified EP-RECEIPT-v1 issuer attests. Conservative /
+ * fail-closed: if a higher tier's signed structure is not present, the receipt
+ * only earns the lower tier, and a guard that needs more will refuse it.
+ *
+ * Trust boundary: this lightweight action gate verifies the pinned issuer's
+ * Ed25519 signature over the receipt. It does not re-run a full EP §6.2
+ * multi-signature trust-receipt verifier here; the tier is therefore an
+ * issuer-attested fact. Use @emilia-protocol/verify verifyTrustReceipt for
+ * independent proof of embedded signoff/quorum signatures.
  *   quorum   — a quorum block with >= 2 distinct signers and threshold >= 2.
  *   class_a  — a device signoff (or claim.outcome === 'allow_with_signoff').
  *   software — any otherwise-valid receipt (a software-held key).
@@ -183,14 +189,14 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     // Assurance tier.
     const have = receiptAssuranceTier(receipt);
     if ((TIER_RANK[have] ?? 0) < (TIER_RANK[requiredTier] ?? 0)) {
-      return decide(false, RECEIPT_REQUIRED_STATUS, 'assurance_too_low', { have_tier: have, need_tier: requiredTier });
+      return decide(false, RECEIPT_REQUIRED_STATUS, 'assurance_too_low', { have_tier: have, need_tier: requiredTier, assurance_tier_source: 'issuer_attestation' });
     }
     // The high-risk action packs define material fields that must be observed
     // by the executor from the system of record. A signed, harmless-looking
     // claim cannot authorize a different real mutation.
     const executionBinding = verifyExecutionBinding({ requirement, receipt, observedAction: observed });
     if (!executionBinding.ok) {
-      return decide(false, RECEIPT_REQUIRED_STATUS, 'execution_binding_failed', { execution_binding: executionBinding, have_tier: have });
+      return decide(false, RECEIPT_REQUIRED_STATUS, 'execution_binding_failed', { execution_binding: executionBinding, have_tier: have, assurance_tier_source: 'issuer_attestation' });
     }
     // One-time consumption (replay defense). Require a stable, issuer-generated
     // receipt_id — never fall back to a content hash, whose canonicalization can
@@ -214,7 +220,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     if (!fresh) {
       return decide(false, RECEIPT_REQUIRED_STATUS, 'replay_refused', { consumption_key: receiptId });
     }
-    return decide(true, 200, 'allow', { signer: v.signer, outcome: v.outcome, have_tier: have, execution_binding: executionBinding, consumption_mode: consumptionMode });
+    return decide(true, 200, 'allow', { signer: v.signer, outcome: v.outcome, have_tier: have, assurance_tier_source: 'issuer_attestation', execution_binding: executionBinding, consumption_mode: consumptionMode });
   }
 
   /** Express/Connect middleware: refuse the route unless a sufficient receipt is present. */

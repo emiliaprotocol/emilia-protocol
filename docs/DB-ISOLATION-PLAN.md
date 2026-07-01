@@ -13,7 +13,7 @@ Earlier work raised "EP's prod DB is shared across products." Investigation
 
 - **Each product has its own Supabase project** (sidekick, echo, redflag, rekkn,
   unihodl, dorea, coyl, elvera, …). EP runs on its own dedicated project
-  `xmiiwehtivksdjbultym` (`emilia-protocol`), region us-west-2.
+  the current shared production project, region us-west-2.
 - **Zero non-EP base tables exist in EP's project.** EP does not share table data
   with any other product. The data layer is already isolated.
 - The only co-mingling was **~22 orphaned functions** from other products

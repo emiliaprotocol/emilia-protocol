@@ -239,6 +239,15 @@ describe('loadPolicyById', () => {
     expect(result).toBeNull();
   });
 
+  it('scopes by tenant when tenantId is supplied', async () => {
+    const policyRow = { policy_id: 'pol-abc', policy_key: 'strict', tenant_id: 'tenant_1' };
+    const { from: supabaseFrom, chain } = makeSupabaseMock({ data: policyRow });
+    const result = await loadPolicyById({ from: supabaseFrom }, 'pol-abc', { tenantId: 'tenant_1' });
+    expect(result.policy_id).toBe('pol-abc');
+    expect(chain.eq).toHaveBeenCalledWith('policy_id', 'pol-abc');
+    expect(chain.eq).toHaveBeenCalledWith('tenant_id', 'tenant_1');
+  });
+
   it('throws when DB error occurs', async () => {
     const { from: supabaseFrom } = makeSupabaseMock({ error: { message: 'query failed' } });
     await expect(loadPolicyById({ from: supabaseFrom }, 'pol-1'))

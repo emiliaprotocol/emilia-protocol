@@ -579,7 +579,7 @@ def _verify_class_a_over_digest(webauthn: dict, digest_bytes: bytes, pub_spki_b6
         if client.get("challenge") != base64.urlsafe_b64encode(digest_bytes).decode().rstrip("="):
             return False
         ad = _b64url_decode(webauthn["authenticator_data"])
-        if len(ad) < 37 or (ad[32] & _FLAG_UV) != _FLAG_UV:
+        if len(ad) < 37 or (ad[32] & _FLAG_UP) != _FLAG_UP or (ad[32] & _FLAG_UV) != _FLAG_UV:
             return False
         signed = ad + hashlib.sha256(cd).digest()
         pub = load_der_public_key(_b64url_decode(pub_spki_b64u))

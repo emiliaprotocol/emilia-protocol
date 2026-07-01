@@ -166,6 +166,10 @@ function receiptOptions(demo) {
 function signDemoReceipt(demo, approver) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const publicKeyB64u = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+  const signer = approver || 'ep:approver:demo-human';
+  const quorumClaim = demo.assurance_class === 'quorum'
+    ? { quorum: { signers: [signer, 'ep:approver:demo-second-human'], threshold: 2 } }
+    : {};
   const payload = {
     receipt_id: `rcpt_demo_${crypto.randomBytes(8).toString('hex')}`,
     subject: 'agent:demo-breaker',
@@ -173,9 +177,10 @@ function signDemoReceipt(demo, approver) {
     claim: {
       action_type: boundActionFor(demo),
       outcome: 'allow_with_signoff',
-      approver: approver || 'ep:approver:demo-human',
+      approver: signer,
       policy_id: demo.policy_id,
       assurance_class: demo.assurance_class,
+      ...quorumClaim,
     },
   };
   const value = crypto

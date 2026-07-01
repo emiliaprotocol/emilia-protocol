@@ -41,14 +41,22 @@ const canonicalize = (v) => (v === null || v === undefined ? JSON.stringify(v)
 
 // A named human's device signs the EXACT action. Minted locally here so the
 // demo is self-contained; in production it's a real Face ID / passkey signoff.
-export function signAction(action, { approver, tamper = false } = {}) {
+export function signAction(action, { approver, quorum = null, tamper = false } = {}) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const pub = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+  const quorumClaim = quorum?.required
+    ? {
+        quorum: {
+          signers: [approver, 'ep:approver:second-human'],
+          threshold: quorum.m || quorum.required || 2,
+        },
+      }
+    : {};
   const payload = {
     receipt_id: 'rcpt_' + crypto.randomBytes(6).toString('hex'),
     subject: 'agent:autonomous',
     created_at: new Date().toISOString(),
-    claim: { action_type: action, outcome: 'allow_with_signoff', approver },
+    claim: { action_type: action, outcome: 'allow_with_signoff', approver, ...quorumClaim },
   };
   const value = crypto.sign(null, Buffer.from(canonicalize(payload), 'utf8'), privateKey).toString('base64url');
   const doc = { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value }, public_key: pub };
@@ -149,7 +157,7 @@ export async function runDemo({ title, tool, args, approver, agentLine }) {
   // The signoff is bound to the SPECIFIC target (action_type:<resource>), so it
   // authorizes exactly this resource — not any other repo/payment/deploy.
   const boundAction = actionForCall(tool, action, args);
-  const receipt = signAction(boundAction, { approver });
+  const receipt = signAction(boundAction, { approver, quorum: req.quorum });
   line(`     receipt_id ${receipt.payload.receipt_id} · outcome ${receipt.payload.claim.outcome}`);
   line('     agent retries WITH the receipt:');
   res = await server(tool, args, receipt);
@@ -167,8 +175,8 @@ export async function runDemo({ title, tool, args, approver, agentLine }) {
   show(res);
 
   if (req.quorum?.required) {
-    line(`\n  note: the manifest escalates ${tool} to a ${req.quorum.m}-of-N quorum (EP-QUORUM-v1);`);
-    line('        this shows the single-signoff base rail — the quorum path adds distinct human #2.');
+    line(`\n  note: the manifest escalates ${tool} to a ${req.quorum.m}-of-N quorum;`);
+    line('        the demo receipt carries two distinct approvers and the gate refuses a lower tier.');
   }
   line('\n  No receipt, no irreversible action. If it ran, anyone can verify who authorized exactly what.');
   line();

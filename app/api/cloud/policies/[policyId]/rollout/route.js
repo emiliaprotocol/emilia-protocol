@@ -56,7 +56,7 @@ export async function POST(request, { params }) {
 
     // Resolve the route policyId to its policy_key; the version to roll out is
     // the handshake_policies row with this key and body.version.
-    const policy = await loadPolicyById(supabase, policyId);
+    const policy = await loadPolicyById(supabase, policyId, { tenantId: auth.tenantId });
     if (!policy) {
       return EP_ERRORS.NOT_FOUND('Policy');
     }

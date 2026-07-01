@@ -26,7 +26,7 @@ export async function GET(request, { params }) {
 
     // Resolve the route policyId to its policy_key. Versions are keyed by
     // policy_key in handshake_policies (UNIQUE(policy_key, version)).
-    const policy = await loadPolicyById(supabase, policyId);
+    const policy = await loadPolicyById(supabase, policyId, { tenantId: auth.tenantId });
     if (!policy) {
       return EP_ERRORS.NOT_FOUND('Policy');
     }

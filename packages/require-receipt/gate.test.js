@@ -13,14 +13,14 @@ const canon = (v) => (v === null || v === undefined ? JSON.stringify(v)
       : JSON.stringify(v));
 
 // Mint a valid EP-RECEIPT-v1 bound to exactly `actionType`.
-function mint(actionType) {
+function mint(actionType, { outcome = 'allow_with_signoff', extra = {} } = {}) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const pub = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
   const payload = {
     receipt_id: 'rcpt_' + crypto.randomBytes(6).toString('hex'),
     subject: 'agent:autonomous',
     created_at: new Date().toISOString(),
-    claim: { action_type: actionType, outcome: 'allow_with_signoff', approver: 'jane@yourco.example' },
+    claim: { action_type: actionType, outcome, approver: 'jane@yourco.example', ...extra },
   };
   const value = crypto.sign(null, Buffer.from(canon(payload), 'utf8'), privateKey).toString('base64url');
   return { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value }, public_key: pub };
@@ -71,6 +71,15 @@ test('forged receipt -> refused, sanitized (no signer/subject leak)', async () =
   assert.deepEqual(Object.keys(r.body.rejected), ['reason']);
 });
 
+test('payload outside the I-JSON profile -> refused before canonicalization can diverge', async () => {
+  const g = gate();
+  const rc = mint('db.records.delete:customers');
+  rc.payload.claim.amount = Number.NaN;
+  const r = await g.run(rc, { target: 'customers' }, async () => 'should-not-run');
+  assert.equal(r.ok, false);
+  assert.equal(r.body.rejected.reason, 'payload_outside_ijson_profile');
+});
+
 test('cross-target -> a receipt for customers cannot delete orders', async () => {
   const g = gate();
   const rc = mint('db.records.delete:customers');
@@ -112,4 +121,33 @@ test('target binding via action function', async () => {
   const rc = mint('block.delete:abc123');
   const r = await g.run(rc, { target: 'abc123' }, async () => 'gone');
   assert.equal(r.ok, true);
+});
+
+test('assuranceClass: software receipt cannot satisfy Class-A requirement', async () => {
+  const g = makeReceiptGate({ action: 'payment.release', allowInlineKey: true, assuranceClass: 'class_a' });
+  const rc = mint('payment.release', { outcome: 'allow' });
+  let ran = false;
+  const r = await g.run(rc, {}, async () => { ran = true; });
+  assert.equal(r.ok, false);
+  assert.equal(r.body.rejected.reason, 'assurance_too_low');
+  assert.equal(ran, false);
+});
+
+test('assuranceClass: Class-A receipt cannot satisfy quorum requirement', async () => {
+  const g = makeReceiptGate({ action: 'deploy.production', allowInlineKey: true, assuranceClass: 'quorum' });
+  const rc = mint('deploy.production', { outcome: 'allow_with_signoff' });
+  const r = await g.run(rc, {}, async () => 'deployed');
+  assert.equal(r.ok, false);
+  assert.equal(r.body.rejected.reason, 'assurance_too_low');
+});
+
+test('assuranceClass: signed quorum claim satisfies quorum requirement', async () => {
+  const g = makeReceiptGate({ action: 'deploy.production', allowInlineKey: true, assuranceClass: 'quorum' });
+  const rc = mint('deploy.production', {
+    outcome: 'allow_with_signoff',
+    extra: { quorum: { signers: ['ep:alice', 'ep:bob'], threshold: 2 } },
+  });
+  const r = await g.run(rc, {}, async () => 'deployed');
+  assert.equal(r.ok, true);
+  assert.equal(r.result, 'deployed');
 });

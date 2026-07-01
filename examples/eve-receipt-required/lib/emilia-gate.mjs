@@ -27,7 +27,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.4.1  ·  content-sha256:655027fbb947f466
+//   source: @emilia-protocol/require-receipt@0.4.1  ·  content-sha256:c3c4951a5d9b8c37
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 /**
@@ -62,6 +62,21 @@ function canonicalize(v) {
   if (Array.isArray(v)) return `[${v.map(canonicalize).join(',')}]`;
   if (typeof v === 'object') return `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonicalize(v[k])).join(',')}}`;
   return JSON.stringify(v);
+}
+
+/**
+ * EP canonicalization profile: JCS over an I-JSON value subset. Signed receipt
+ * payloads must contain only strings, booleans, null, arrays, objects, and safe
+ * integers. Non-finite numbers, floats, BigInt, undefined, functions, and
+ * symbols are rejected before signature verification so implementations never
+ * diverge on canonical bytes.
+ */
+export function isCanonicalizable(value) {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return true;
+  if (typeof value === 'number') return Number.isInteger(value) && Number.isSafeInteger(value);
+  if (Array.isArray(value)) return value.every(isCanonicalizable);
+  if (typeof value === 'object') return Object.values(value).every(isCanonicalizable);
+  return false;
 }
 
 /**
@@ -142,6 +157,9 @@ export function verifyEmiliaReceipt(doc, opts = {}) {
     return { ok: false, reason: 'malformed_receipt' };
   }
   const payload = doc.payload;
+  if (!isCanonicalizable(payload)) {
+    return { ok: false, reason: 'payload_outside_ijson_profile' };
+  }
 
   const candidates = [...trustedKeys];
   if (allowInlineKey && doc.public_key) candidates.push(doc.public_key);
@@ -409,6 +427,47 @@ function normalizeTarget(target) {
   return String(target);
 }
 
+export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
+const TIER_RANK = {
+  software: 0,
+  class_c: 0,
+  c: 0,
+  class_b: 0,
+  b: 0,
+  class_a: 1,
+  a: 1,
+  quorum: 2,
+  dual: 2,
+  '2-of-n': 2,
+  '2_of_n': 2,
+};
+
+function normalizeAssuranceTier(tier) {
+  if (!tier) return 'software';
+  return String(tier).trim().toLowerCase().replace(/\s+/g, '_');
+}
+
+function tierRank(tier) {
+  return TIER_RANK[normalizeAssuranceTier(tier)] ?? 0;
+}
+
+/**
+ * The assurance tier a valid EP-RECEIPT-v1 claims. This package verifies the
+ * receipt issuer signature first; tier fields are then treated as issuer
+ * attestations. Use @emilia-protocol/verify for full EP §6.2 multi-signature
+ * trust-receipt verification.
+ */
+export function receiptAssuranceTier(doc) {
+  const p = doc?.payload || {};
+  const q = p.quorum || p.claim?.quorum;
+  const signers = q && (q.signers || q.approvers || q.approvals);
+  const distinct = Array.isArray(signers) ? new Set(signers.map((s) => typeof s === 'string' ? s : (s?.approver || s?.id || JSON.stringify(s)))).size : 0;
+  const threshold = q && (q.m ?? q.threshold ?? q.required ?? (Array.isArray(signers) ? signers.length : 0));
+  if (q && distinct >= 2 && Number(threshold) >= 2) return 'quorum';
+  if (p.signoff || p.claim?.signoff || p.claim?.outcome === 'allow_with_signoff') return 'class_a';
+  return 'software';
+}
+
 /**
  * Build a hardened Receipt-Required gate for one action type.
  *
@@ -481,6 +540,10 @@ export function makeReceiptGate(opts = {}) {
 
     const v = verifyEmiliaReceipt(receipt, { trustedKeys, allowInlineKey, action: boundAction, maxAgeSec, allowedOutcomes });
     if (!v.ok) return refuse(boundAction, v.reason); // sanitized: reason code only
+
+    if (assuranceClass && tierRank(receiptAssuranceTier(receipt)) < tierRank(assuranceClass)) {
+      return refuse(boundAction, 'assurance_too_low');
+    }
 
     if (store.has(v.receipt_id) || inflight.has(v.receipt_id)) return refuse(boundAction, 'replay_refused');
 
