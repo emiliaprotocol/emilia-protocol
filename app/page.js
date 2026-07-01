@@ -124,11 +124,11 @@ export default function HomePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ width: 5, height: 5, borderRadius: '50%', background: color.gold, display: 'inline-block', flexShrink: 0 }} />
               <span style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, letterSpacing: 1.5, textTransform: 'uppercase' }}>
-                Formally verified · Apache 2.0
+                Secure agent actions · portable evidence
               </span>
             </div>
             <span style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, letterSpacing: 0.5 }}>
-              26 TLA+ theorems · 35 Alloy facts
+              No receipt, no mutation
             </span>
             <span style={{ flex: 1 }} />
             <a href="/spec" style={{ fontFamily: font.mono, fontSize: 10, color: color.gold, letterSpacing: 1.5, textTransform: 'uppercase', textDecoration: 'none' }}>
@@ -295,6 +295,74 @@ export default function HomePage() {
               <Link href="/standards" className="ep-cta-secondary" style={cta.secondary}>Open the standards map →</Link>
             </div>
           </motion.div>
+        </C>
+      </section>
+
+      {/* ── THE WALL OF REGRET (buyer emotion — before the math) ─ */}
+      <section style={{ padding: '104px 0 0' }}>
+        <C>
+          <div style={{ display: 'grid', gridTemplateColumns: '5fr 7fr', gap: 80, alignItems: 'start' }}>
+            {/* Sticky editorial label */}
+            <motion.div {...reveal()} style={{ position: 'sticky', top: 96 }}>
+              <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>
+                The Wall of Regret
+              </div>
+              <h2 style={{
+                fontFamily: font.sans, fontWeight: 700,
+                fontSize: 'clamp(22px, 2.5vw, 34px)',
+                letterSpacing: -0.75, lineHeight: 1.18, color: color.t1, marginBottom: 20,
+              }}>
+                Every one of these passed. None of them had an owner.
+              </h2>
+              <p style={{ fontSize: 15, color: color.t2, lineHeight: 1.72 }}>
+                The actions that drain accounts and break production are rarely
+                &ldquo;hacks.&rdquo; They&rsquo;re authenticated users, legitimate tools, approved
+                channels — and afterward, no one can say <em style={{ fontStyle: 'normal', fontWeight: 600, color: color.t1 }}>who approved this</em>.
+                That unanswered question is the whole problem.
+              </p>
+            </motion.div>
+
+            {/* Problem rows — ep-problem-row gives left-bar gold hover */}
+            <motion.div {...reveal(0.08)} style={{ borderTop: `1px solid ${color.border}` }}>
+              {PROBLEMS.map((p, i) => (
+                <div key={i} className="ep-problem-row" style={{
+                  position: 'relative', overflow: 'hidden',
+                  padding: '36px 16px 36px 28px',
+                  borderBottom: `1px solid ${color.border}`,
+                }}>
+                  {/* Ghost large number — more prominent */}
+                  <div aria-hidden style={{
+                    position: 'absolute', right: -4, top: -12,
+                    fontFamily: font.mono, fontWeight: 700, fontSize: 104,
+                    color: 'rgba(12,10,9,0.04)', pointerEvents: 'none',
+                    lineHeight: 1, userSelect: 'none',
+                  }}>
+                    {p.num}
+                  </div>
+                  <div style={{ position: 'relative', zIndex: 1 }}>
+                    <div style={{ fontFamily: font.mono, fontSize: 10, color: color.gold, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>
+                      {p.num}
+                    </div>
+                    <h3 style={{ fontFamily: font.sans, fontWeight: 600, fontSize: 16, marginBottom: 8, color: color.t1 }}>
+                      {p.title}
+                    </h3>
+                    <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.65, margin: 0 }}>
+                      {p.body}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              <div style={{ padding: '32px 16px 8px 28px' }}>
+                <p style={{ fontSize: 16, color: color.t1, lineHeight: 1.6, margin: 0, fontWeight: 600 }}>
+                  Who approved this? In every case, no one could say.
+                </p>
+                <p style={{ fontSize: 15, color: color.t2, lineHeight: 1.7, margin: '8px 0 0' }}>
+                  EMILIA assigns a named human owner <em style={{ fontStyle: 'normal', fontWeight: 600, color: color.t1 }}>before</em> the
+                  action runs — so the question always has an answer, on the record, that anyone can verify.
+                </p>
+              </div>
+            </motion.div>
+          </div>
         </C>
       </section>
 
@@ -512,74 +580,6 @@ export default function HomePage() {
               <div style={{ height: 16 }} />
               <div style={{ color: 'rgba(250,250,249,0.45)' }}>{'// see it in 60s, fully offline:'}</div>
               <div>$ node examples/mcp/payment-server.mjs</div>
-            </motion.div>
-          </div>
-        </C>
-      </section>
-
-      {/* ── THE PROBLEM ──────────────────────────────────────── */}
-      <section style={{ padding: '104px 0', borderBottom: `1px solid ${color.border}` }}>
-        <C>
-          <div style={{ display: 'grid', gridTemplateColumns: '5fr 7fr', gap: 80, alignItems: 'start' }}>
-            {/* Sticky editorial label */}
-            <motion.div {...reveal()} style={{ position: 'sticky', top: 96 }}>
-              <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>
-                The Wall of Regret
-              </div>
-              <h2 style={{
-                fontFamily: font.sans, fontWeight: 700,
-                fontSize: 'clamp(22px, 2.5vw, 34px)',
-                letterSpacing: -0.75, lineHeight: 1.18, color: color.t1, marginBottom: 20,
-              }}>
-                Every one of these passed. None of them had an owner.
-              </h2>
-              <p style={{ fontSize: 15, color: color.t2, lineHeight: 1.72 }}>
-                The actions that drain accounts and break production are rarely
-                &ldquo;hacks.&rdquo; They&rsquo;re authenticated users, legitimate tools, approved
-                channels — and afterward, no one can say <em style={{ fontStyle: 'normal', fontWeight: 600, color: color.t1 }}>who approved this</em>.
-                That unanswered question is the whole problem.
-              </p>
-            </motion.div>
-
-            {/* Problem rows — ep-problem-row gives left-bar gold hover */}
-            <motion.div {...reveal(0.08)} style={{ borderTop: `1px solid ${color.border}` }}>
-              {PROBLEMS.map((p, i) => (
-                <div key={i} className="ep-problem-row" style={{
-                  position: 'relative', overflow: 'hidden',
-                  padding: '36px 16px 36px 28px',
-                  borderBottom: `1px solid ${color.border}`,
-                }}>
-                  {/* Ghost large number — more prominent */}
-                  <div aria-hidden style={{
-                    position: 'absolute', right: -4, top: -12,
-                    fontFamily: font.mono, fontWeight: 700, fontSize: 104,
-                    color: 'rgba(12,10,9,0.04)', pointerEvents: 'none',
-                    lineHeight: 1, userSelect: 'none',
-                  }}>
-                    {p.num}
-                  </div>
-                  <div style={{ position: 'relative', zIndex: 1 }}>
-                    <div style={{ fontFamily: font.mono, fontSize: 10, color: color.gold, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>
-                      {p.num}
-                    </div>
-                    <h3 style={{ fontFamily: font.sans, fontWeight: 600, fontSize: 16, marginBottom: 8, color: color.t1 }}>
-                      {p.title}
-                    </h3>
-                    <p style={{ fontSize: 14, color: color.t2, lineHeight: 1.65, margin: 0 }}>
-                      {p.body}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              <div style={{ padding: '32px 16px 8px 28px' }}>
-                <p style={{ fontSize: 16, color: color.t1, lineHeight: 1.6, margin: 0, fontWeight: 600 }}>
-                  Who approved this? In every case, no one could say.
-                </p>
-                <p style={{ fontSize: 15, color: color.t2, lineHeight: 1.7, margin: '8px 0 0' }}>
-                  EMILIA assigns a named human owner <em style={{ fontStyle: 'normal', fontWeight: 600, color: color.t1 }}>before</em> the
-                  action runs — so the question always has an answer, on the record, that anyone can verify.
-                </p>
-              </div>
             </motion.div>
           </div>
         </C>
