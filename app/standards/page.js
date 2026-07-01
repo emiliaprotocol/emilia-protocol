@@ -38,7 +38,7 @@ const PILLARS = [
   {
     role: 'ACCOUNTABILITY RAIL',
     status: 'standardizing now',
-    title: 'SCITT — draft-ietf-scitt-architecture',
+    title: 'SCITT — RFC 9943 + SCRAPI',
     body:
       'A SCITT "Receipt" is a transparency / INCLUSION proof: it proves a statement was logged in an append-only ledger. ' +
       'SCITT is deliberately AGNOSTIC about who authorized anything — that delegated-away question is exactly EMILIA’s payload. ' +

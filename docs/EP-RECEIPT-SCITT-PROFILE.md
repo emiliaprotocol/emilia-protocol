@@ -2,7 +2,7 @@
 # EP-RECEIPT-SCITT-PROFILE-v1 — an EMILIA authorization receipt as a SCITT Signed Statement
 
 **Status:** working profile for SCITT WG engagement. Maps the EMILIA authorization receipt onto
-`draft-ietf-scitt-architecture` + `draft-ietf-scitt-scrapi`. Not yet posted to a list.
+**RFC 9943** (the SCITT architecture, published 2026-06-30) + `draft-ietf-scitt-scrapi`. Shared with the SCITT WG list 2026-06-30.
 
 ## What this profile does (and does not) claim
 
@@ -87,9 +87,10 @@ those terms — not as "decay physics."
 
 - **EMILIA** — `draft-schrock-ep-authorization-receipts` (individual I-D, Apache-2.0). Reference
   verifiers JS/Python/Go; JWS profile shipped (`EP-RECEIPT-JWS-PROFILE-v1`).
-- **SCITT** — `draft-ietf-scitt-architecture` + `draft-ietf-scitt-scrapi` + COSE Receipts
-  (`draft-ietf-cose-merkle-tree-proofs`): active WG drafts (Microsoft Signing Transparency is GA, so
-  the substrate is real). **Not** an endorsement by the SCITT WG; this is a complement profile.
+- **SCITT** — architecture now **RFC 9943** (published 2026-06-30) + `draft-ietf-scitt-scrapi` + COSE
+  Receipts (`draft-ietf-cose-merkle-tree-proofs`): SCRAPI and COSE-Merkle remain active WG drafts
+  (Microsoft Signing Transparency is GA, so the substrate is real). **Not** an endorsement by the
+  SCITT WG; this is a complement profile.
 - **COSE / Ed25519** — RFC 9052 / RFC 9053 / RFC 8032 (published).
 
 Runnable examples (zero-dependency, signature-correct) are in `examples/scitt/`.
