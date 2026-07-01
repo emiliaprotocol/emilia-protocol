@@ -38,6 +38,47 @@ function normalizeTarget(target) {
   return String(target);
 }
 
+export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
+const TIER_RANK = {
+  software: 0,
+  class_c: 0,
+  c: 0,
+  class_b: 0,
+  b: 0,
+  class_a: 1,
+  a: 1,
+  quorum: 2,
+  dual: 2,
+  '2-of-n': 2,
+  '2_of_n': 2,
+};
+
+function normalizeAssuranceTier(tier) {
+  if (!tier) return 'software';
+  return String(tier).trim().toLowerCase().replace(/\s+/g, '_');
+}
+
+function tierRank(tier) {
+  return TIER_RANK[normalizeAssuranceTier(tier)] ?? 0;
+}
+
+/**
+ * The assurance tier a valid EP-RECEIPT-v1 claims. This package verifies the
+ * receipt issuer signature first; tier fields are then treated as issuer
+ * attestations. Use @emilia-protocol/verify for full EP §6.2 multi-signature
+ * trust-receipt verification.
+ */
+export function receiptAssuranceTier(doc) {
+  const p = doc?.payload || {};
+  const q = p.quorum || p.claim?.quorum;
+  const signers = q && (q.signers || q.approvers || q.approvals);
+  const distinct = Array.isArray(signers) ? new Set(signers.map((s) => typeof s === 'string' ? s : (s?.approver || s?.id || JSON.stringify(s)))).size : 0;
+  const threshold = q && (q.m ?? q.threshold ?? q.required ?? (Array.isArray(signers) ? signers.length : 0));
+  if (q && distinct >= 2 && Number(threshold) >= 2) return 'quorum';
+  if (p.signoff || p.claim?.signoff || p.claim?.outcome === 'allow_with_signoff') return 'class_a';
+  return 'software';
+}
+
 /**
  * Build a hardened Receipt-Required gate for one action type.
  *
@@ -110,6 +151,10 @@ export function makeReceiptGate(opts = {}) {
 
     const v = verifyEmiliaReceipt(receipt, { trustedKeys, allowInlineKey, action: boundAction, maxAgeSec, allowedOutcomes });
     if (!v.ok) return refuse(boundAction, v.reason); // sanitized: reason code only
+
+    if (assuranceClass && tierRank(receiptAssuranceTier(receipt)) < tierRank(assuranceClass)) {
+      return refuse(boundAction, 'assurance_too_low');
+    }
 
     if (store.has(v.receipt_id) || inflight.has(v.receipt_id)) return refuse(boundAction, 'replay_refused');
 

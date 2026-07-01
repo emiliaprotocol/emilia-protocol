@@ -59,7 +59,7 @@ func verifyClassAOverDigestGo(wa map[string]any, digest []byte, pubB64u string) 
 		return false
 	}
 	ad, err := b64urlDecode(getStr(wa, "authenticator_data"))
-	if err != nil || len(ad) < 37 || ad[32]&flagUV != flagUV {
+	if err != nil || len(ad) < 37 || ad[32]&flagUP != flagUP || ad[32]&flagUV != flagUV {
 		return false
 	}
 	signed := append(append([]byte{}, ad...), func() []byte { s := sha256.Sum256(cdBytes); return s[:] }()...)

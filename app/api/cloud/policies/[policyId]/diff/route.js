@@ -34,7 +34,7 @@ export async function GET(request, { params }) {
     const supabase = getGuardedClient();
 
     // Resolve the route policyId to its policy_key; versions are keyed by it.
-    const policy = await loadPolicyById(supabase, policyId);
+    const policy = await loadPolicyById(supabase, policyId, { tenantId: auth.tenantId });
     if (!policy) {
       return EP_ERRORS.NOT_FOUND('Policy');
     }

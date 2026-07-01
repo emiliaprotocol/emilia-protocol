@@ -14,10 +14,10 @@ transcript when the Supabase wipe + re-migration was being driven via
 the CLI. The literal value is **NOT** stored in this file. Pull it
 from your password manager or the original transcript if you need to
 identify which credential to revoke.
-**Project:** `xmiiwehtivksdjbultym` (EMILIA Protocol production)
+**Project:** EMILIA Protocol production Supabase project (`<project-ref>`)
 
 ### Steps
-1. Open https://supabase.com/dashboard/project/xmiiwehtivksdjbultym/settings/database
+1. Open `https://supabase.com/dashboard/project/<project-ref>/settings/database`
 2. Click "Reset database password"
 3. Generate a new password using a password manager (≥24 chars, no
    reused fragments). Store in 1Password under "EMILIA Protocol — DB".
@@ -31,7 +31,7 @@ identify which credential to revoke.
    password directly:
    ```bash
    # If using a URL with embedded password, regenerate it
-   echo "postgres://postgres.xmiiwehtivksdjbultym:NEW_PW@aws-...:5432/postgres" \
+   echo "postgres://postgres.<project-ref>:NEW_PW@aws-...:5432/postgres" \
      | vercel env add POSTGRES_URL production
    ```
 6. Trigger a redeploy to pick up the new env var:

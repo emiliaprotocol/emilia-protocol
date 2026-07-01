@@ -36,7 +36,7 @@ Emilia Protocol (EP) is a **trust enforcement infrastructure layer** for AI agen
 |-------|-----------|-------|
 | Framework | Next.js (App Router) | All routes under `app/api/` |
 | Runtime | Node.js 20 LTS | Edge runtime not used (crypto deps) |
-| Database | Supabase (Postgres 15) | Project: `xmiiwehtivksdjbultym` |
+| Database | Supabase (Postgres 15) | Project ref configured per environment |
 | Deployment | Vercel | Production branch: `main` |
 | Blockchain | Base L2 (Coinbase) | Merkle root anchoring, ~$0.60/mo |
 | Auth | Custom API key scheme | `ep_live_*` / `ep_test_*` prefixed keys |
@@ -204,7 +204,7 @@ Vercel (auto-deploy on push)
          ├── /api/disputes/resolve — every hour
          └── /api/disputes/appeal/resolve — every hour
 
-Supabase (xmiiwehtivksdjbultym)
+Supabase (`<project-ref>`)
     ├── Postgres 15 (primary)
     ├── Realtime (not used)
     └── Storage (not used)

@@ -210,6 +210,10 @@ challenge. The Gate composes that and adds the three things a firewall needs:
 
 - **Assurance tiers** — `software` < `class_a` (device signoff) < `quorum` (m-of-n). A `critical`
   action can demand `class_a` or `quorum`; a lower-assurance receipt is refused (`assurance_too_low`).
+  In the lightweight EP-RECEIPT-v1 gate, the tier is an issuer-attested claim
+  inside a receipt signed by a pinned issuer key. For independent verification
+  of every embedded device/quorum signature, use the EP §6.2 trust-receipt
+  verifier in `@emilia-protocol/verify`.
 - **One-time consumption** — a receipt authorizes one action, once. Replays are refused
   (`replay_refused`). Default store is in-memory; swap in Redis/DB for a fleet.
 - **Evidence log** — every decision is hash-chained (`evidence.verify()` detects any alteration).
