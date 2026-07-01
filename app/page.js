@@ -267,16 +267,24 @@ export default function HomePage() {
       {/* ── THE POSITION (Arcade = market validation, below fold) ─ */}
       <section style={{ padding: '72px 0 0' }}>
         <C>
-          <motion.div {...reveal()} style={{ maxWidth: 780 }}>
+          <motion.div {...reveal()} style={{ maxWidth: 940 }}>
             <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>The position</div>
             <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(26px, 3vw, 40px)', letterSpacing: -1, lineHeight: 1.15, color: color.t1, margin: 0 }}>
-              Built to be emitted by every agent platform, not owned by one.
+              Not the passport — passport control, and the stamp.
             </h2>
             <p style={{ fontSize: 17, color: color.t2, lineHeight: 1.72, maxWidth: 640, marginTop: 20 }}>
-              Arcade validated the agent-action category. EMILIA is the open, offline-verifiable
-              evidence layer underneath it: portable across MCP servers, agent frameworks,
-              transparency logs, auditors, insurers, and system-of-record workflows.
+              Arcade validated the agent-action category. Identity says <em>which machine</em> is acting;
+              tool-auth says it <em>may call</em> a tool. EMILIA is the open, offline-verifiable
+              evidence layer none of them produce: proof a named human authorized <em>this exact action</em>.
             </p>
+            <figure style={{ margin: '32px 0 0' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- static SVG diagram; next/image doesn't optimize SVG */}
+              <img
+                src="/diagrams/agent-action-stack.svg"
+                alt="Agent-action pipeline: an AI agent's action passes identity (passport), permission (visa), then EMILIA — passport control (deny-by-default Gate) plus the stamp (a named human's offline-verifiable authorization receipt) — before it runs; no valid stamp, no execution."
+                style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 14, border: `1px solid ${color.border}` }}
+              />
+            </figure>
             <div style={{ marginTop: 28, borderTop: `1px solid ${color.border}`, paddingTop: 20, maxWidth: 640 }}>
               {[
                 ['MCP', 'connects agents to tools'],
