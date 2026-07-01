@@ -1,0 +1,69 @@
+<svg viewBox="0 0 1200 540" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, Helvetica Neue, Arial, sans-serif">
+  <defs>
+    <marker id="aDim" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#5a5750"/></marker>
+    <marker id="aGold" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#E0A82E"/></marker>
+    <marker id="aGrn" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#5bbb5f"/></marker>
+    <marker id="aRed" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#e2554a"/></marker>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="540" rx="16" fill="#0b0b0d"/>
+
+  <!-- AGENT -->
+  <rect x="28" y="228" width="150" height="98" rx="10" fill="#16161a" stroke="#2a2a30"/>
+  <text x="103" y="264" text-anchor="middle" fill="#f4f1ea" font-size="18" font-weight="700">AI agent</text>
+  <text x="103" y="286" text-anchor="middle" fill="#9a968c" font-size="12">wants an irreversible</text>
+  <text x="103" y="303" text-anchor="middle" fill="#9a968c" font-size="12">action</text>
+  <line x1="178" y1="277" x2="212" y2="277" stroke="#5a5750" stroke-width="2" marker-end="url(#aDim)"/>
+
+  <!-- PASSPORT (identity) -->
+  <rect x="214" y="220" width="168" height="114" rx="10" fill="#16161a" stroke="#2a2a30"/>
+  <text x="298" y="243" text-anchor="middle" fill="#9a968c" font-size="10.5" letter-spacing="2" font-weight="700">PASSPORT</text>
+  <text x="298" y="270" text-anchor="middle" fill="#f4f1ea" font-size="17" font-weight="700">Identity</text>
+  <text x="298" y="291" text-anchor="middle" fill="#9a968c" font-size="12">which machine?</text>
+  <text x="298" y="308" text-anchor="middle" fill="#6f6b62" font-size="11">NHI · SPIFFE · Astrix</text>
+  <text x="298" y="326" text-anchor="middle" fill="#6f6b62" font-size="10" font-style="italic">— someone else —</text>
+  <line x1="382" y1="277" x2="416" y2="277" stroke="#5a5750" stroke-width="2" marker-end="url(#aDim)"/>
+
+  <!-- VISA (permission) -->
+  <rect x="418" y="220" width="168" height="114" rx="10" fill="#16161a" stroke="#2a2a30"/>
+  <text x="502" y="243" text-anchor="middle" fill="#9a968c" font-size="10.5" letter-spacing="2" font-weight="700">VISA</text>
+  <text x="502" y="270" text-anchor="middle" fill="#f4f1ea" font-size="17" font-weight="700">Permission</text>
+  <text x="502" y="291" text-anchor="middle" fill="#9a968c" font-size="12">may it call this tool?</text>
+  <text x="502" y="308" text-anchor="middle" fill="#6f6b62" font-size="11">Arcade · tool-auth</text>
+  <text x="502" y="326" text-anchor="middle" fill="#6f6b62" font-size="10" font-style="italic">— someone else —</text>
+  <line x1="586" y1="277" x2="622" y2="277" stroke="#E0A82E" stroke-width="2.5" marker-end="url(#aGold)"/>
+
+  <!-- EMILIA — control + stamp (hero) -->
+  <rect x="624" y="150" width="392" height="248" rx="16" fill="#16161a" stroke="#E0A82E" stroke-width="2.5"/>
+  <text x="648" y="188" fill="#E0A82E" font-size="22" font-weight="800">EMILIA</text>
+  <text x="648" y="210" fill="#9a968c" font-size="13">passport control + the stamp</text>
+  <text x="648" y="236" fill="#E0A82E" font-size="11.5">↑ a named human signs the exact action (Face&#160;ID)</text>
+
+  <!-- (1) control -->
+  <rect x="648" y="248" width="344" height="60" rx="8" fill="#0b0b0d" stroke="#2a2a30"/>
+  <text x="666" y="272" fill="#f4f1ea" font-size="14" font-weight="700">1 · Passport control — the Gate</text>
+  <text x="666" y="293" fill="#9a968c" font-size="12">deny-by-default: no valid authorization → no action</text>
+
+  <!-- (2) stamp -->
+  <rect x="648" y="318" width="344" height="66" rx="8" fill="#0b0b0d" stroke="#E0A82E"/>
+  <text x="666" y="342" fill="#E0A82E" font-size="14" font-weight="700">2 · The stamp — the receipt</text>
+  <text x="666" y="362" fill="#f4f1ea" font-size="12">a named human authorized this exact action</text>
+  <text x="666" y="378" fill="#9a968c" font-size="12">verifiable offline, forever — trust no one</text>
+
+  <!-- to execute -->
+  <line x1="1016" y1="277" x2="1052" y2="277" stroke="#5bbb5f" stroke-width="2.5" marker-end="url(#aGrn)"/>
+
+  <!-- EXECUTE -->
+  <rect x="1054" y="228" width="120" height="98" rx="10" fill="#16161a" stroke="#5bbb5f"/>
+  <text x="1114" y="262" text-anchor="middle" fill="#5bbb5f" font-size="16" font-weight="700">Action</text>
+  <text x="1114" y="282" text-anchor="middle" fill="#5bbb5f" font-size="16" font-weight="700">runs</text>
+  <text x="1114" y="303" text-anchor="middle" fill="#9a968c" font-size="11">once · proof attached</text>
+
+  <!-- blocked branch -->
+  <line x1="820" y1="398" x2="820" y2="430" stroke="#e2554a" stroke-width="2" marker-end="url(#aRed)"/>
+  <text x="812" y="452" text-anchor="middle" fill="#e2554a" font-size="12.5">✗ no valid stamp → ⛔ blocked — nothing executes</text>
+
+  <!-- punchline -->
+  <text x="600" y="502" text-anchor="middle" fill="#9a968c" font-size="13.5">Others issue the <tspan fill="#f4f1ea">passport</tspan> (identity) and the <tspan fill="#f4f1ea">visa</tspan> (permission).</text>
+  <text x="600" y="522" text-anchor="middle" fill="#f4f1ea" font-size="14" font-weight="700">EMILIA is passport control + the stamp — the layer every border uses.</text>
+</svg>
