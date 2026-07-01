@@ -99,16 +99,33 @@ function tamperReceipt(receipt) {
 }
 
 async function postDemo(body) {
-  const res = await fetch('/api/demo/require-receipt', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  return {
-    status: res.status,
-    data: await res.json(),
-    receiptRequired: res.headers.get('receipt-required'),
-  };
+  // Never throw: a rejected fetch or a non-JSON/500 response must still resolve
+  // so the caller can reset `busy` and unlock the panel (a thrown error here
+  // used to leave every control — including "Sign exact" — permanently locked).
+  try {
+    const res = await fetch('/api/demo/require-receipt', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    let data = {};
+    try {
+      data = await res.json();
+    } catch {
+      data = { title: 'non-JSON response', error: `gate returned ${res.status}` };
+    }
+    return {
+      status: res.status,
+      data,
+      receiptRequired: res.headers.get('receipt-required'),
+    };
+  } catch (err) {
+    return {
+      status: 0,
+      data: { title: 'network error', error: String(err?.message || err) },
+      receiptRequired: null,
+    };
+  }
 }
 
 function sceneFrom(strikes, busy, evidence) {
