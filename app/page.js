@@ -147,52 +147,42 @@ export default function HomePage() {
                 letterSpacing: 2.5, textTransform: 'uppercase',
                 color: color.gold, marginBottom: 28,
               }}>
-                Pre-Execution Accountability for AI Agents
+                Portable evidence for secure agent actions
               </div>
 
               <h1 style={{
                 fontFamily: font.sans, fontWeight: 700,
-                fontSize: 'clamp(48px, 6vw, 82px)',
-                letterSpacing: -3, lineHeight: 0.95,
+                fontSize: 'clamp(40px, 5vw, 68px)',
+                letterSpacing: -2.5, lineHeight: 1.02,
                 color: color.t1, margin: '0 0 32px',
               }}>
-                No receipt, no{' '}
-                <em style={{ fontStyle: 'normal', color: color.gold }}>execution.</em>
+                Stop agents from executing irreversible actions without{' '}
+                <em style={{ fontStyle: 'normal', color: color.gold }}>accountable approval.</em>
               </h1>
 
               <p style={{
                 fontSize: 17, color: color.t2,
-                maxWidth: 490, lineHeight: 1.72, margin: '0 0 40px',
+                maxWidth: 520, lineHeight: 1.72, margin: '0 0 40px',
               }}>
-                EMILIA makes agent accountability verifiable. Before an agent changes money, code,
-                permissions, records, or regulated state, the system requires a receipt. If the
-                action runs, anyone can verify who approved exactly what, under which policy,
-                without trusting EMILIA&apos;s server.
+                EMILIA plugs into MCP, agent runtimes, SCITT, and systems of record so high-risk
+                actions require verifiable authorization before execution. If the action runs,
+                anyone can verify who approved exactly what, under which policy, offline.
               </p>
 
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <Link href="/try" className="ep-cta" style={cta.primary}>Approve one yourself with Face ID →</Link>
-                <Link href="/demo" className="ep-cta-secondary" style={cta.secondary}>Or just watch one get stopped</Link>
+                <Link href="/demo" className="ep-cta" style={cta.primary}>Watch an action get blocked →</Link>
+                <Link href="/quickstart" className="ep-cta-secondary" style={cta.secondary}>Wrap one dangerous action</Link>
               </div>
 
-              {/* Inline proof metrics — editorial data strip */}
+              {/* Proof strip — trust chips (formal proof lives below the fold) */}
               <div style={{
-                display: 'flex', gap: 36, marginTop: 52,
+                display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 52,
                 paddingTop: 28, borderTop: `1px solid ${color.border}`,
               }}>
-                {[
-                  { val: '4,220', label: 'Tests Passing' },
-                  { val: '26',    label: 'TLA+ Theorems' },
-                  { val: '85',    label: 'Red Team Cases' },
-                ].map(({ val, label }) => (
-                  <div key={label}>
-                    <div style={{ fontFamily: font.sans, fontSize: 24, fontWeight: 700, color: color.t1, letterSpacing: -0.5, lineHeight: 1 }}>
-                      {val}
-                    </div>
-                    <div style={{ fontFamily: font.mono, fontSize: 9, color: color.t3, letterSpacing: 1.5, textTransform: 'uppercase', marginTop: 7 }}>
-                      {label}
-                    </div>
-                  </div>
+                {['Apache-2.0', 'JS/Python/Go verifiers', 'SCITT profile', 'RR-1 conformance', '4,220 tests'].map((chip) => (
+                  <span key={chip} style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, letterSpacing: 0.5, border: `1px solid ${color.border}`, borderRadius: 999, padding: '5px 11px' }}>
+                    {chip}
+                  </span>
                 ))}
               </div>
             </motion.div>
@@ -205,6 +195,106 @@ export default function HomePage() {
               </div>
             </motion.div>
           </div>
+        </C>
+      </section>
+
+      {/* ── THE GAP (pain — buyer feels it in 5 seconds) ───────── */}
+      <section style={{ padding: '96px 0 0' }}>
+        <C>
+          <motion.div {...reveal()} style={{ maxWidth: 780 }}>
+            <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>The gap</div>
+            <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(26px, 3vw, 40px)', letterSpacing: -1, lineHeight: 1.15, color: color.t1, margin: 0 }}>
+              Auth gets an agent a token. It doesn&apos;t prove a human authorized the action.
+            </h2>
+            <p style={{ fontSize: 17, color: color.t2, lineHeight: 1.72, maxWidth: 640, marginTop: 20 }}>
+              An agent can have valid access and still do the wrong thing: change a vendor bank
+              account, release funds, delete a repo, export records, or approve a regulated
+              decision. Decision logs say what happened after the fact. EMILIA creates portable
+              evidence <em style={{ fontStyle: 'normal', color: color.t1, fontWeight: 600 }}>before</em> the mutation runs.
+            </p>
+          </motion.div>
+        </C>
+      </section>
+
+      {/* ── THE INVARIANT (product) ────────────────────────────── */}
+      <section style={{ padding: '72px 0 0' }}>
+        <C>
+          <motion.div {...reveal()} style={{ maxWidth: 780 }}>
+            <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>The invariant</div>
+            <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(26px, 3vw, 40px)', letterSpacing: -1, lineHeight: 1.15, color: color.t1, margin: '0 0 24px' }}>
+              No valid receipt, no mutation.
+            </h2>
+            <div style={{ borderTop: `1px solid ${color.border}`, maxWidth: 620 }}>
+              {[
+                ['Missing receipt', 'blocked before execution'],
+                ['Valid receipt', 'action runs once'],
+                ['Replay', 'refused'],
+                ['Tampering', 'rejected'],
+                ['Evidence packet', 'verifiable offline'],
+              ].map(([k, v]) => (
+                <div key={k} style={{ display: 'flex', alignItems: 'baseline', gap: 12, padding: '13px 0', borderBottom: `1px solid ${color.border}` }}>
+                  <span style={{ fontFamily: font.mono, fontSize: 13, color: color.t1, minWidth: 170 }}>{k}</span>
+                  <span style={{ fontFamily: font.mono, fontSize: 12, color: color.gold }}>→</span>
+                  <span style={{ fontFamily: font.sans, fontSize: 14, color: color.t2 }}>{v}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 28 }}>
+              <Link href="/demo" className="ep-cta-secondary" style={cta.secondary}>Try the Receipt Required demo →</Link>
+            </div>
+          </motion.div>
+        </C>
+      </section>
+
+      {/* ── THE WEDGE (payment destination changes) ────────────── */}
+      <section style={{ padding: '72px 0 0' }}>
+        <C>
+          <motion.div {...reveal()} style={{ maxWidth: 780 }}>
+            <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>The wedge</div>
+            <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(26px, 3vw, 40px)', letterSpacing: -1, lineHeight: 1.15, color: color.t1, margin: 0 }}>
+              Start with the action fraud teams already fear: payment destination changes.
+            </h2>
+            <p style={{ fontSize: 17, color: color.t2, lineHeight: 1.72, maxWidth: 640, marginTop: 20 }}>
+              Vendor bank-detail changes and beneficiary updates are where valid access turns into
+              real loss. EMILIA requires a named human to approve the exact change before money
+              moves, then exports an evidence packet an auditor, insurer, or regulator can verify
+              without trusting your app.
+            </p>
+          </motion.div>
+        </C>
+      </section>
+
+      {/* ── THE POSITION (Arcade = market validation, below fold) ─ */}
+      <section style={{ padding: '72px 0 0' }}>
+        <C>
+          <motion.div {...reveal()} style={{ maxWidth: 780 }}>
+            <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>The position</div>
+            <h2 style={{ fontFamily: font.sans, fontWeight: 700, fontSize: 'clamp(26px, 3vw, 40px)', letterSpacing: -1, lineHeight: 1.15, color: color.t1, margin: 0 }}>
+              Built to be emitted by every agent platform, not owned by one.
+            </h2>
+            <p style={{ fontSize: 17, color: color.t2, lineHeight: 1.72, maxWidth: 640, marginTop: 20 }}>
+              Arcade validated the agent-action category. EMILIA is the open, offline-verifiable
+              evidence layer underneath it: portable across MCP servers, agent frameworks,
+              transparency logs, auditors, insurers, and system-of-record workflows.
+            </p>
+            <div style={{ marginTop: 28, borderTop: `1px solid ${color.border}`, paddingTop: 20, maxWidth: 640 }}>
+              {[
+                ['MCP', 'connects agents to tools'],
+                ['Eve & agent runtimes', 'execute workflows'],
+                ['Arcade-style systems', 'handle tool auth'],
+                ['SCITT', 'logs signed statements'],
+                ['EMILIA', 'proves who authorized the irreversible action'],
+              ].map(([k, v], i) => (
+                <div key={k} style={{ display: 'flex', alignItems: 'baseline', gap: 12, padding: '10px 0' }}>
+                  <span style={{ fontFamily: font.mono, fontSize: 13, color: i === 4 ? color.gold : color.t1, minWidth: 190 }}>{k}</span>
+                  <span style={{ fontFamily: font.sans, fontSize: 14, color: color.t2 }}>{v}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 24 }}>
+              <Link href="/standards" className="ep-cta-secondary" style={cta.secondary}>Open the standards map →</Link>
+            </div>
+          </motion.div>
         </C>
       </section>
 
