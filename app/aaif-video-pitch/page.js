@@ -110,6 +110,20 @@ export default function AaifVideoPitchPage() {
             The agent stack is filling in around identity, tools, execution, and logs. The void in the middle is portable proof that a named human authorized one exact irreversible action before it ran.
           </p>
         </div>
+        <div style={{ margin: '28px auto 4px', maxWidth: 900, width: '100%' }}>
+          <video
+            autoPlay muted loop playsInline preload="metadata"
+            poster="/hero/emilia-sequence-poster.jpg"
+            aria-label="Automated agent control: each high-risk action is scanned, then AUTHORIZED with a named human authorizer or DENIED when no human authorizer is available."
+            style={{
+              width: '100%', aspectRatio: '16 / 9', objectFit: 'cover',
+              borderRadius: 14, border: `1px solid ${color.border}`,
+              display: 'block', background: '#0b0b0d',
+            }}
+          >
+            <source src="/hero/emilia-sequence.mp4" type="video/mp4" />
+          </video>
+        </div>
         <div style={s.lowerThird}>
           <span style={s.pill}>draft-schrock-ep-authorization-receipts</span>
           <span style={s.pill}>Apache-2.0</span>
