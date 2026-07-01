@@ -115,6 +115,22 @@ export default function HomePage() {
       {/* ── HERO ─────────────────────────────────────────────── */}
       <section style={{ paddingTop: 120 }}>
         <C>
+          {/* Cinematic hero film — automated agent control: scan → authorize/deny → EMILIA */}
+          <motion.div {...heroIn(0)} style={{ marginBottom: 52 }}>
+            <video
+              autoPlay muted loop playsInline preload="metadata"
+              poster="/hero/emilia-sequence-poster.jpg"
+              aria-label="Automated agent control: high-risk actions are scanned, then AUTHORIZED with a named human authorizer or DENIED when no human authorizer is available."
+              style={{
+                width: '100%', aspectRatio: '16 / 9', objectFit: 'cover',
+                borderRadius: 16, border: `1px solid ${color.border}`,
+                display: 'block', background: '#0b0b0d',
+              }}
+            >
+              <source src="/hero/emilia-sequence.mp4" type="video/mp4" />
+            </video>
+          </motion.div>
+
           {/* Metadata strip — flat, mono, no widget chrome */}
           <motion.div {...heroIn(0)} style={{
             display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap',

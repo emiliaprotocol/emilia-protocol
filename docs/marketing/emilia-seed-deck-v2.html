@@ -39,18 +39,17 @@ h2{font-size:3.2vw;line-height:1.08;letter-spacing:-.015em;font-weight:800}
 .tier .amt{font-size:2.6vw;font-weight:800;margin-top:.8vh;letter-spacing:-.02em}
 .tier .d{font-size:.95vw;color:var(--dim);margin-top:.8vh;line-height:1.4}
 .prog{position:absolute;top:0;left:0;height:3px;background:var(--gold);transition:width .3s}
-@media print{@page{size:landscape;margin:0}body{overflow:visible}.prog{display:none}.slide{display:flex!important;position:relative;inset:auto;height:100vh;width:100vw;animation:none;page-break-after:always}.foot{position:absolute}}
+.cover{padding:0}
+.cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+@media print{@page{size:1280px 720px;margin:0}html,body{width:1280px}body{overflow:visible}.prog{display:none}.slide{display:flex!important;position:relative;inset:auto;height:720px;width:1280px;animation:none;page-break-after:always}.foot{position:absolute}.cover img{position:absolute}}
 </style></head>
 <body>
 <div class="prog" id="prog"></div>
 <div class="deck" id="deck">
 
-<!-- 1 -->
-<section class="slide">
-  <div class="ey">EMILIA Protocol &nbsp;·&nbsp; Seed</div>
-  <h1>The accountability layer for<br>the <span class="gold">agent economy.</span></h1>
-  <div class="lede">AI is about to take trillions of irreversible actions — moving money, deploying code, dispatching power, moving machines. <span class="gold">EMILIA is the portable, offline-verifiable proof that a named human authorized each one.</span> Antivirus scanned files. Firewalls filtered packets. EMILIA verifies actions.</div>
-  <div class="foot"><span>Iman Schrock · Founder</span><span>team@emiliaprotocol.ai</span></div>
+<!-- 1 — COVER -->
+<section class="slide cover">
+  <img src="assets/cover-investor.jpg" alt="EMILIA — the accountability layer for the agent economy">
 </section>
 
 <!-- 2 -->
