@@ -59,11 +59,20 @@ const capabilityCards = [
   ['Human control', 'Defense and public-sector oversight mapped to verifiable receipts.', '/human-control'],
 ];
 
+const objections = [
+  ['"Isn’t this just SCITT?"', 'SCITT proves a statement was logged. EP proves who authorized — and rides as a SCITT Signed Statement. Composes, doesn’t compete.'],
+  ['"Isn’t this OAuth / delegation?"', 'Those grant a machine a scope. EP proves a named human approved this exact action. Above identity, not instead of it.'],
+  ['"Why not just log the approval?"', 'A log is operator-editable testimony. An EP receipt is offline-verifiable evidence — bound to the action, one-time, no trust in the operator.'],
+  ['"Doesn’t per-action sign-off kill latency?"', 'Only irreversible actions gate — not every call. Pre-authorization, scoped delegation, and quorum carry the throughput.'],
+  ['"Where does it standardize?"', 'Individual IETF I-D cluster — receipts + quorum + evidence-chain — composing with SCITT / RFC 9943. That’s the open question we bring.'],
+];
+
 const links = [
   ['#gap', 'Gap'],
   ['#demo', 'Demo'],
   ['#scitt', 'SCITT'],
   ['#surfaces', 'Surfaces'],
+  ['#qa', 'Q&A'],
   ['#ask', 'Ask'],
 ];
 
@@ -90,6 +99,7 @@ export default function AaifVideoPitchPage() {
           .aaif-check-grid { grid-template-columns: 1fr !important; }
           .aaif-proof-grid { grid-template-columns: 1fr !important; }
           .aaif-ring-grid { grid-template-columns: 1fr !important; }
+          .aaif-qa-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
       <header style={s.topbar}>
@@ -282,6 +292,21 @@ export default function AaifVideoPitchPage() {
           <div style={s.rowLinks}>
             <Link href="/fire-drill/registry" style={s.secondaryLink}>Registry index</Link>
             <Link href="/fire-drill/rr-1" style={s.secondaryLink}>RR-1 page</Link>
+          </div>
+        </div>
+      </section>
+
+      <section id="qa" style={{ ...s.slide, ...s.anchor }} className="aaif-slide">
+        <div style={s.slideInner}>
+          <div style={s.eyebrow}>OBJECTIONS, ANSWERED</div>
+          <h2 style={s.h2}>The five questions — and the one-line answers.</h2>
+          <div style={s.qaGrid} className="aaif-qa-grid">
+            {objections.map(([q, a]) => (
+              <div key={q} style={s.qaCard}>
+                <strong style={s.qaQ}>{q}</strong>
+                <span style={s.qaA}>{a}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -515,6 +540,31 @@ const s = {
     gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
     gap: 10,
     marginTop: 24,
+  },
+  qaGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: 12,
+    marginTop: 26,
+  },
+  qaCard: {
+    border: '1px solid rgba(250,250,249,0.14)',
+    borderRadius: radius.sm,
+    borderLeft: `3px solid ${color.gold}`,
+    padding: '16px 18px',
+    display: 'grid',
+    gap: 8,
+    background: 'rgba(250,250,249,0.03)',
+  },
+  qaQ: {
+    fontSize: 16,
+    color: '#FAFAF9',
+    lineHeight: 1.25,
+  },
+  qaA: {
+    fontSize: 14,
+    color: 'rgba(250,250,249,0.72)',
+    lineHeight: 1.55,
   },
   check: {
     border: '1px solid rgba(250,250,249,0.14)',
