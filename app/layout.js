@@ -65,10 +65,10 @@ export const metadata = {
       'does anything irreversible. Formally verified, Apache 2.0, production-oriented reference runtime.',
     images: [
       {
-        url: '/og-default.png',
+        url: '/og-sequence.jpg',
         width: 1200,
         height: 630,
-        alt: 'EMILIA Protocol — Trust before high-risk AI action',
+        alt: 'EMILIA — automated control for AI agents: high-risk actions are AUTHORIZED only with a named human authorizer, otherwise DENIED',
       },
     ],
   },
@@ -78,7 +78,7 @@ export const metadata = {
     description:
       'A named human\'s signed yes — on their own device — before an AI agent ' +
       'does anything irreversible. Formally verified.',
-    images: ['/og-default.png'],
+    images: ['/og-sequence.jpg'],
   },
   robots: {
     index: true,
