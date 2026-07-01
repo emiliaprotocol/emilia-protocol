@@ -120,7 +120,7 @@ export default function AaifVideoPitchPage() {
 
       <section style={s.deckGrid} className="aaif-deck-grid">
         <article id="gap" style={{ ...s.panel, ...s.widePanel, ...s.anchor }}>
-          <div style={s.eyebrow}>THE LANDSCAPE GAP</div>
+          <div style={s.eyebrow}>01 · THE LANDSCAPE GAP</div>
           <h2 style={s.h2}>Many drafts describe the agent stack. The missing primitive is proof of human authorization.</h2>
           <div style={s.voidMap} className="aaif-void-map">
             <div style={s.ringGrid} className="aaif-ring-grid">
@@ -144,7 +144,7 @@ export default function AaifVideoPitchPage() {
         </article>
 
         <article style={s.panel}>
-          <div style={s.eyebrow}>WHERE IT SITS</div>
+          <div style={s.eyebrow}>02 · WHERE IT SITS</div>
           <h2 style={s.h2}>A small layer between intent and mutation.</h2>
           <div style={s.layerStack}>
             {stackRows.map(([name, job], index) => (
@@ -158,7 +158,7 @@ export default function AaifVideoPitchPage() {
         </article>
 
         <article id="demo" style={{ ...s.panel, ...s.anchor }}>
-          <div style={s.eyebrow}>LIVE DEMO</div>
+          <div style={s.eyebrow}>03 · LIVE DEMO</div>
           <h2 style={s.h2}>Try to break the action layer.</h2>
           <p style={s.body}>An irreversible action is blocked without a receipt, runs once with an exact-action receipt, and rejects replay or tampering.</p>
           <div style={s.checkGrid} className="aaif-check-grid">
@@ -173,7 +173,7 @@ export default function AaifVideoPitchPage() {
         </article>
 
         <article id="scitt" style={{ ...s.panel, ...s.anchor }}>
-          <div style={s.eyebrow}>SCITT COMPOSITION PROOF</div>
+          <div style={s.eyebrow}>04 · SCITT COMPOSITION PROOF</div>
           <h2 style={s.h2}>An authorization receipt can ride as a SCITT Signed Statement.</h2>
           <p style={s.body}>The end-to-end harness wraps the same canonical EP payload as COSE_Sign1, registers it through the SCRAPI path, and verifies mock transparency evidence in CI. SCITT proves the statement was logged; EMILIA proves who authorized the action.</p>
           <div style={s.checkGrid} className="aaif-check-grid">
@@ -192,7 +192,7 @@ export default function AaifVideoPitchPage() {
         </article>
 
         <article id="surfaces" style={{ ...s.panel, ...s.anchor }}>
-          <div style={s.eyebrow}>HIGHER-STAKES SURFACES</div>
+          <div style={s.eyebrow}>05 · HIGHER-STAKES SURFACES</div>
           <h2 style={s.h2}>Single approval, quorum, and human-control profiles use the same receipt spine.</h2>
           <div style={s.capabilityGrid}>
             {capabilityCards.map(([name, body, href]) => (
@@ -257,7 +257,7 @@ export default function AaifVideoPitchPage() {
       </section>
 
       <section id="ask" style={{ ...s.closeCard, ...s.anchor }}>
-        <div style={s.eyebrow}>THE ASK</div>
+        <div style={s.eyebrow}>06 · THE ASK</div>
         <h2 style={s.closeTitle}>If this is the missing human-authorization layer, where should it belong?</h2>
         <p style={s.closeBody}>Early, non-binding read on fit. Composes with MCP, goose, and AGENTS.md. Apache-2.0 reference implementation.</p>
         <div style={s.closeLinks}>
