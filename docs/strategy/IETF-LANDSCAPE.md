@@ -27,7 +27,7 @@ platform trustworthy / which workload is this."* EMILIA answers the **orthogonal
 question: *"did a NAMED HUMAN authorize THIS exact irreversible action."* Same
 evidence bundle, different trust root.
 
-### 3. ACCOUNTABILITY RAIL (standardizing now) — SCITT, draft-ietf-scitt-architecture
+### 3. ACCOUNTABILITY RAIL (architecture now RFC 9943) — SCITT
 A SCITT **"Receipt"** is a transparency / **inclusion** proof: it proves a statement
 was logged in an append-only ledger. SCITT is deliberately **agnostic about who
 authorized anything** — that delegated-away question is exactly EMILIA's payload. So

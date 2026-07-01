@@ -32,7 +32,7 @@ The COSA / `@emilia-protocol/attest` machine-attestation loop maps cleanly onto 
 
 **"Decay" → freshness, in standard terms.** Replay/staleness control is *freshness*, not physics: RATS freshness (nonce / epoch) for the attestation, plus EMILIA's validity window + observed-evidence freshness for the authorization. Don't ship the word "decay" to the list.
 
-## B. Packing Slip / Bill of Lading / lineage as SCITT Signed Statements (draft-ietf-scitt-architecture)
+## B. Packing Slip / Bill of Lading / lineage as SCITT Signed Statements (RFC 9943)
 
 | SCITT term | EMILIA / COSA component |
 |---|---|
@@ -55,7 +55,7 @@ EMILIA's canonical base is RFC 8785 (JCS). For interop it serializes as **JWS (R
 ## Status (cite accurately)
 
 - **RATS architecture — RFC 9334** (Informational, published). **EAT — RFC 9711** (Proposed Standard, published).
-- **SCITT — `draft-ietf-scitt-architecture` + `draft-ietf-scitt-scrapi` + COSE Receipts (`draft-ietf-cose-merkle-tree-proofs`)** — active WG drafts, not yet RFCs. Real deployment exists (Microsoft Signing Transparency is GA), so the substrate is not theoretical.
+- **SCITT — RFC 9943 (architecture, published 2026-06-30) + `draft-ietf-scitt-scrapi` + COSE Receipts (`draft-ietf-cose-merkle-tree-proofs`)** — the architecture is now a published RFC; SCRAPI and COSE-Merkle remain active WG drafts. Real deployment exists (Microsoft Signing Transparency is GA), so the substrate is not theoretical.
 - **EMILIA — `draft-schrock-ep-authorization-receipts`** — individual Internet-Draft, Apache-2.0. *Not* an IETF standard and *not* endorsed by the RATS or SCITT WGs. These are complement relationships, not adoption claims.
 
 ## Why this dodges the three objections that stalled monolithic proposals
