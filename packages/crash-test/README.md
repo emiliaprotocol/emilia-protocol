@@ -42,6 +42,19 @@ Dual control — **Department Director, then CFO** — and a forged copy with th
 bank account swapped after approval** (textbook payment-redirect / BEC fraud) is
 rejected, because the payee account is inside the signed action.
 
+```
+npx -y @emilia-protocol/crash-test --scenario release-authorization
+```
+An **autonomous effector release** in a contested, disconnected environment. An ordered
+**two-person authorization** — Mission Commander, then Weapons Safety Officer — gates the
+action (a requester cannot self-approve); the receipt is verified **offline, at the edge,
+with EMILIA deleted**; and a forged copy with the **designated track re-pointed to a
+different target after authorization** is rejected, because the exact designated track is
+inside the signed action. Maps to **DoD Directive 3000.09** ("appropriate levels of human
+judgment over the use of force") and "meaningful human control." Necessary, not sufficient:
+it proves the required humans authorized *this exact action*, unaltered — not that the
+engagement was lawful or appropriate (that remains the commander's judgment).
+
 ## What you get
 
 The run writes an **Auditor Workpaper Package** to `./emilia-workpaper/`:

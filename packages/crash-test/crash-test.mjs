@@ -20,6 +20,8 @@
  *   (default)            a $2.4M county grant disbursement to a new vendor
  *   --scenario clinical    a high-alert IV medication, independent double-check
  *   --scenario procurement a hospital capital purchase (3T MRI), dual control
+ *   --scenario release-authorization  an autonomous effector release, ordered
+ *                          two-person authorization (DoD 3000.09 human-control)
  *
  * This runs the REAL EP-QUORUM-v1 predicate (@emilia-protocol/verify). The
  * approver signatures are real ES256 device-class (Class A) WebAuthn assertions,
@@ -118,6 +120,51 @@ const SCENARIOS = {
 Under **GAGAS (Government Auditing Standards / the GAO "Yellow Book")**, audit evidence must be **sufficient and appropriate** — where *appropriateness* turns on **relevance and reliability**, and evidence the auditor can **independently test**, that does **not depend on the auditee's own systems or representations**, is the most reliable kind. An EP authorization receipt is exactly that: verified here offline, with open-source code, without trusting the county, EMILIA, or any internal log.
 
 Concretely, this supports a **test of the authorization control** over a high-risk disbursement — both that the control *existed* for this exact action and that the *required approvers operated it* (separation of duties, order, threshold). For federal-funds programs it speaks to internal control over compliance for **allowability/approval** under **2 CFR 200 (Uniform Guidance)**; in a financial audit it supports the transaction's **authorization / occurrence** assertion.`,
+  },
+
+  'release-authorization': {
+    key: 'release-authorization',
+    act1Where: 'forward area, contested — intermittent comms',
+    act2Where: 'post-mission review / accountability inquiry, weeks later',
+    receiptId: 'ep:receipt:eng-A7Q-2291',
+    action: {
+      ep_version: '1.0',
+      action_type: 'effector.release.authorize',
+      target: { system: 'c2.effector-control', resource: 'engagement/ENG-A7Q-2291' },
+      parameters: {
+        designated_track: 'TRK-7731',
+        track_class: 'ground-mobile',
+        effector: 'loitering-munition:LM-4',
+        roe_profile: 'ROE:defensive-counterfire@v3',
+        engagement_window: 'T+00:14',
+        track_hash: 'sha256:' + sha256hex('track:TRK-7731|class:ground-mobile|grid:38SMB4481'),
+      },
+      initiator: 'ep:agent:autonomy-core',
+      policy_id: 'dod:policy:human-authorized-engagement@3000.09',
+      requested_at: '2026-03-02T09:41:07Z',
+    },
+    approvers: [
+      { role: 'mission_commander', approver: 'ep:approver:mc_hale', label: 'Mission Commander', short: 'mc_hale', issuedAt: '2026-03-02T09:41:40.000Z' },
+      { role: 'weapons_safety_officer', approver: 'ep:approver:wso_reyes', label: 'Weapons Safety Officer', short: 'wso_reyes', issuedAt: '2026-03-02T09:41:52.000Z' },
+    ],
+    windowSec: 120, expiresAt: '2026-03-02T09:43:07.000Z',
+    selfApprovalAt: '2026-03-02T09:41:20.000Z', committedAt: '2026-03-02T09:41:53.000Z',
+    proposalLines: (a) => [
+      `  ${c('cyn', 'autonomy core')} proposes: authorize ${c('bold', a.parameters.effector)} against designated track ${c('bold', a.parameters.designated_track)}`,
+      `         ${c('dim', 'ROE: ')}${c('ylw', a.parameters.roe_profile)}${c('dim', '  ·  policy: dod:human-authorized-engagement@3000.09')}`,
+    ],
+    blockedLine: () => `  ${c('red', '⛔ BLOCKED')} — TWO_PERSON_AUTH_REQUIRED  ${c('dim', '(autonomous effector release → ordered: Mission Commander, then Weapons Safety Officer)')}`,
+    forge: (r) => { r.action.parameters.designated_track = 'TRK-9002'; return 'Forged copy (designated track re-pointed from TRK-7731 to TRK-9002 after authorization)'; },
+    actionSummary: (a) => `${a.action_type} — authorize ${a.parameters.effector} against ${a.parameters.designated_track} under ${a.parameters.roe_profile}`,
+    extraRow: (a) => ['ROE profile', a.parameters.roe_profile],
+    policyDesc: 'ordered two-person authorization: Mission Commander, then Weapons Safety Officer',
+    forgeNarrative: 'A forged copy of this receipt, with the designated track re-pointed to a different target *after* authorization, was submitted to the same offline verification:',
+    boundNote: 'a judgment about whether the engagement was lawful or appropriate under the rules of engagement (that remains the commander\'s responsibility) — only that the required humans authorized *this exact action against this exact designated track*, unaltered, before release',
+    standards: `## For the review board — how this maps to human-control policy
+
+**DoD Directive 3000.09** requires that autonomous and semi-autonomous weapon systems allow commanders and operators to exercise **appropriate levels of human judgment over the use of force**. An EP authorization receipt is verifiable evidence that the required human judgment was exercised for **this exact action**: a named, ordered two-person authorization, bound to the specific designated track, that a reviewer can confirm **offline** — in a contested or disconnected environment — without trusting the platform, the operator, or any log.
+
+This supports a **test of the human-authorization control** over an autonomous effector release: both that the control *existed* for this exact engagement and that the *required humans operated it* (identity, order, separation of duties, and binding to the designated track). It is the kind of artifact "meaningful human control" (as discussed at the **UN CCW GGE on LAWS**) requires. It is **necessary, not sufficient**: it does not judge the lawfulness or ROE-appropriateness of the engagement — only that the required humans authorized it, unaltered, before it executed.`,
   },
 
   clinical: {
