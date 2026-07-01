@@ -26,12 +26,16 @@ const TARGETS = [
 describe('Receipt Required conformance — example servers earn level RR-1', () => {
   for (const [tool, action] of TARGETS) {
     it(`${tool}: RR-1 (challenge -> runs -> replay refused -> forged refused)`, async () => {
+      const req = manifest.actions.find((a) => a.match?.protocol === 'mcp' && a.match?.tool === tool);
       const report = await receiptRequiredConformance({
         dispatch: makeGuardedServer({ tool }),
         tool,
         args: { demo: true },
         action,
-        issueReceipt: () => signAction(action, { approver: 'ep:approver:conformance-test' }),
+        issueReceipt: () => signAction(action, {
+          approver: 'ep:approver:conformance-test',
+          quorum: req?.quorum,
+        }),
         manifest,
       });
       expect(report.checks.manifest_valid).toBe(true);

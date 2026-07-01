@@ -6,6 +6,7 @@
 // refusal, and evidence export.
 
 import { describe, expect, it } from 'vitest';
+import crypto from 'node:crypto';
 import { GET, POST } from '../app/api/demo/require-receipt/route.js';
 
 function request(body, headers = {}) {
@@ -18,6 +19,29 @@ function request(body, headers = {}) {
 
 function b64(doc) {
   return Buffer.from(JSON.stringify(doc), 'utf8').toString('base64');
+}
+
+const canon = (v) => (v === null || v === undefined ? JSON.stringify(v)
+  : Array.isArray(v) ? `[${v.map(canon).join(',')}]`
+    : typeof v === 'object' ? `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canon(v[k])).join(',')}}`
+      : JSON.stringify(v));
+
+function mint(action, { outcome = 'allow_with_signoff', quorum = null } = {}) {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
+  const pub = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+  const payload = {
+    receipt_id: 'rcpt_http_' + crypto.randomBytes(6).toString('hex'),
+    subject: 'agent:http-redteam',
+    created_at: new Date().toISOString(),
+    claim: {
+      action_type: action,
+      outcome,
+      approver: 'ep:approver:http-redteam',
+      ...(quorum ? { quorum } : {}),
+    },
+  };
+  const value = crypto.sign(null, Buffer.from(canon(payload), 'utf8'), privateKey).toString('base64url');
+  return { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value }, public_key: pub };
 }
 
 async function catalog() {
@@ -102,5 +126,33 @@ describe('HTTP/API Receipt Required conformance', () => {
     const body = await res.json();
     expect(body.evidence.receipt_id).toBe(receipt.payload.receipt_id);
     expect(body.evidence_packet.verifier.offline).toBe(true);
+  });
+
+  it('refuses receipts below the advertised assurance tier at the HTTP boundary', async () => {
+    for (const action of await catalog()) {
+      const software = await POST(request({
+        demo: action.id,
+        emilia_receipt: mint(action.action, { outcome: 'allow' }),
+      }));
+      expect(software.status).toBe(428);
+      expect((await software.json()).rejected.reason).toBe('assurance_too_low');
+
+      if (action.assurance_class === 'quorum') {
+        const singleHuman = await POST(request({
+          demo: action.id,
+          emilia_receipt: mint(action.action),
+        }));
+        expect(singleHuman.status).toBe(428);
+        expect((await singleHuman.json()).rejected.reason).toBe('assurance_too_low');
+
+        const quorum = await POST(request({
+          demo: action.id,
+          emilia_receipt: mint(action.action, {
+            quorum: { threshold: 2, signers: ['ep:approver:a', 'ep:approver:b'] },
+          }),
+        }));
+        expect(quorum.status).toBe(200);
+      }
+    }
   });
 });

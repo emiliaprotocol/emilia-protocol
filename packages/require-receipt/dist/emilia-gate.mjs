@@ -27,7 +27,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.4.1  ·  content-sha256:655027fbb947f466
+//   source: @emilia-protocol/require-receipt@0.4.1  ·  content-sha256:a52bca3a5378d8f1
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 /**
@@ -101,6 +101,31 @@ function definedEntries(obj) {
 
 function isObject(v) {
   return v && typeof v === 'object' && !Array.isArray(v);
+}
+
+const MIDDLEWARE_ASSURANCE_RANK = { software: 0, class_a: 1, quorum: 2 };
+
+function receiptAssuranceTierForMiddleware(doc) {
+  const payload = doc?.payload || {};
+  const q = payload.quorum || payload.claim?.quorum;
+  const signers = q && (q.signers || q.approvers);
+  const threshold = Number(q && (q.m ?? q.threshold ?? (Array.isArray(signers) ? signers.length : 0)));
+  if (q && Array.isArray(signers) && Number.isFinite(threshold) && threshold >= 2) {
+    const distinct = new Set(signers.map((s) => String(s))).size;
+    if (distinct >= 2) return 'quorum';
+  }
+  if (payload.signoff || payload.claim?.outcome === 'allow_with_signoff') return 'class_a';
+  return 'software';
+}
+
+function middlewareAssuranceMeets(doc, required) {
+  const need = MIDDLEWARE_ASSURANCE_RANK[required] === undefined ? 'software' : required;
+  const have = receiptAssuranceTierForMiddleware(doc);
+  return {
+    ok: (MIDDLEWARE_ASSURANCE_RANK[have] ?? 0) >= (MIDDLEWARE_ASSURANCE_RANK[need] ?? 0),
+    have,
+    need,
+  };
 }
 
 function challengeHeaderParams(opts = {}) {
@@ -298,6 +323,19 @@ export function requireEmiliaReceipt(opts = {}) {
       }
       return res.status(status).json({ ...receiptChallenge(action, `Receipt rejected: ${v.reason}.`, challengeOpts), rejected: v });
     }
+    if (opts.assuranceClass || opts.assurance_class) {
+      const tier = middlewareAssuranceMeets(doc, opts.assuranceClass || opts.assurance_class);
+      if (!tier.ok) {
+        res.setHeader(RECEIPT_REQUIRED_HEADER, receiptRequiredHeader(challengeOpts));
+        if (status === LEGACY_RECEIPT_REQUIRED_STATUS) {
+          res.setHeader('WWW-Authenticate', `EMILIA realm="agent-actions"${action ? `, action="${action}"` : ''}`);
+        }
+        return res.status(status).json({
+          ...receiptChallenge(action, 'Receipt rejected: assurance_too_low.', challengeOpts),
+          rejected: { ok: false, reason: 'assurance_too_low', have_tier: tier.have, need_tier: tier.need },
+        });
+      }
+    }
     req.emiliaReceipt = v;
     return next();
   };
@@ -409,6 +447,32 @@ function normalizeTarget(target) {
   return String(target);
 }
 
+export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
+const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
+
+function normalizeAssuranceClass(value) {
+  return ASSURANCE_TIERS.includes(value) ? value : 'software';
+}
+
+/**
+ * Conservative tier earned by the receipt itself.
+ * - software: a valid software-held receipt.
+ * - class_a: a human signoff receipt (`allow_with_signoff` or explicit signoff).
+ * - quorum: explicit quorum evidence with threshold >= 2 and >= 2 distinct humans.
+ */
+export function receiptAssuranceTier(doc) {
+  const p = doc?.payload || {};
+  const q = p.quorum || p.claim?.quorum;
+  const signers = q && (q.signers || q.approvers);
+  const threshold = Number(q && (q.m ?? q.threshold ?? (Array.isArray(signers) ? signers.length : 0)));
+  if (q && Array.isArray(signers) && Number.isFinite(threshold) && threshold >= 2) {
+    const distinct = new Set(signers.map((s) => String(s))).size;
+    if (distinct >= 2) return 'quorum';
+  }
+  if (p.signoff || p.claim?.outcome === 'allow_with_signoff') return 'class_a';
+  return 'software';
+}
+
 /**
  * Build a hardened Receipt-Required gate for one action type.
  *
@@ -423,6 +487,7 @@ function normalizeTarget(target) {
  * @param {number} [opts.statusCode=428]
  * @param {string} [opts.manifestUrl]
  * @param {string} [opts.assuranceClass]
+ * @param {object} [opts.quorum]
  * @param {{has:(id:string)=>boolean, add:(id:string)=>void}} [opts.store]
  *   consumed-receipt store; defaults to in-memory (process-local). A durable
  *   store makes one-time consumption survive restarts and span instances. The
@@ -438,6 +503,7 @@ export function makeReceiptGate(opts = {}) {
     statusCode = RECEIPT_REQUIRED_STATUS,
     manifestUrl,
     assuranceClass,
+    quorum,
     store = inMemoryStore(),
   } = opts;
 
@@ -452,7 +518,8 @@ export function makeReceiptGate(opts = {}) {
     return t === null ? base : `${base}:${t}`;
   };
 
-  const challengeOpts = () => ({ statusCode, manifestUrl, assuranceClass, maxAgeSec });
+  const requiredTier = normalizeAssuranceClass(assuranceClass);
+  const challengeOpts = () => ({ statusCode, manifestUrl, assuranceClass: requiredTier, quorum, maxAgeSec });
 
   function refuse(boundAction, reason) {
     return {
@@ -481,6 +548,11 @@ export function makeReceiptGate(opts = {}) {
 
     const v = verifyEmiliaReceipt(receipt, { trustedKeys, allowInlineKey, action: boundAction, maxAgeSec, allowedOutcomes });
     if (!v.ok) return refuse(boundAction, v.reason); // sanitized: reason code only
+
+    const haveTier = receiptAssuranceTier(receipt);
+    if ((TIER_RANK[haveTier] ?? 0) < (TIER_RANK[requiredTier] ?? 0)) {
+      return refuse(boundAction, 'assurance_too_low');
+    }
 
     if (store.has(v.receipt_id) || inflight.has(v.receipt_id)) return refuse(boundAction, 'replay_refused');
 

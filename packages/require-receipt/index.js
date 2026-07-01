@@ -71,6 +71,31 @@ function isObject(v) {
   return v && typeof v === 'object' && !Array.isArray(v);
 }
 
+const MIDDLEWARE_ASSURANCE_RANK = { software: 0, class_a: 1, quorum: 2 };
+
+function receiptAssuranceTierForMiddleware(doc) {
+  const payload = doc?.payload || {};
+  const q = payload.quorum || payload.claim?.quorum;
+  const signers = q && (q.signers || q.approvers);
+  const threshold = Number(q && (q.m ?? q.threshold ?? (Array.isArray(signers) ? signers.length : 0)));
+  if (q && Array.isArray(signers) && Number.isFinite(threshold) && threshold >= 2) {
+    const distinct = new Set(signers.map((s) => String(s))).size;
+    if (distinct >= 2) return 'quorum';
+  }
+  if (payload.signoff || payload.claim?.outcome === 'allow_with_signoff') return 'class_a';
+  return 'software';
+}
+
+function middlewareAssuranceMeets(doc, required) {
+  const need = MIDDLEWARE_ASSURANCE_RANK[required] === undefined ? 'software' : required;
+  const have = receiptAssuranceTierForMiddleware(doc);
+  return {
+    ok: (MIDDLEWARE_ASSURANCE_RANK[have] ?? 0) >= (MIDDLEWARE_ASSURANCE_RANK[need] ?? 0),
+    have,
+    need,
+  };
+}
+
 function challengeHeaderParams(opts = {}) {
   return definedEntries({
     action: opts.action,
@@ -265,6 +290,19 @@ export function requireEmiliaReceipt(opts = {}) {
         res.setHeader('WWW-Authenticate', `EMILIA realm="agent-actions"${action ? `, action="${action}"` : ''}`);
       }
       return res.status(status).json({ ...receiptChallenge(action, `Receipt rejected: ${v.reason}.`, challengeOpts), rejected: v });
+    }
+    if (opts.assuranceClass || opts.assurance_class) {
+      const tier = middlewareAssuranceMeets(doc, opts.assuranceClass || opts.assurance_class);
+      if (!tier.ok) {
+        res.setHeader(RECEIPT_REQUIRED_HEADER, receiptRequiredHeader(challengeOpts));
+        if (status === LEGACY_RECEIPT_REQUIRED_STATUS) {
+          res.setHeader('WWW-Authenticate', `EMILIA realm="agent-actions"${action ? `, action="${action}"` : ''}`);
+        }
+        return res.status(status).json({
+          ...receiptChallenge(action, 'Receipt rejected: assurance_too_low.', challengeOpts),
+          rejected: { ok: false, reason: 'assurance_too_low', have_tier: tier.have, need_tier: tier.need },
+        });
+      }
     }
     req.emiliaReceipt = v;
     return next();
