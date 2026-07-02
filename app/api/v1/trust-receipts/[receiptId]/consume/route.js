@@ -25,6 +25,7 @@ import { isTierQuorumEnforced } from '@/lib/env';
 import { countDistinctValidApprovers, requiredApprovalsForTier } from '@/lib/guard-tier.js';
 import { canReadReceipt } from '@/lib/tenant-binding.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
+import { resolveOrgQuorumTemplate, evaluateQuorumAgainstTemplate } from '@/lib/guard-quorum-template.js';
 
 const RECEIPT_ID_PATTERN = /^tr_[a-f0-9]{32}$/;
 const MAX_TRUST_RECEIPT_CONSUME_BYTES = 32 * 1024;
@@ -111,6 +112,35 @@ export async function POST(request, { params }) {
       }
 
       if (base.quorum_policy) {
+        // ── Defense in depth: the STORED quorum_policy must still meet the org
+        // template at consume. Creation already gates this, but re-checking here
+        // catches a template tightened after issuance or a policy that reached
+        // the timeline by a path other than the create route (e.g. a direct DB
+        // write). A real store fault fails closed; a not-yet-migrated table is
+        // surfaced as template:null and does not block a legitimately-issued
+        // receipt (matching the create path's un-migrated behavior).
+        const tpl = await resolveOrgQuorumTemplate(supabase, {
+          organizationId: base.organization_id,
+          actionType: base.action_type,
+        });
+        if (tpl.error) {
+          return epProblem(
+            503,
+            'quorum_template_unavailable',
+            'Could not verify the receipt quorum against the organization policy template; failing closed.',
+          );
+        }
+        if (tpl.template) {
+          const cmp = evaluateQuorumAgainstTemplate(base.quorum_policy, tpl.template);
+          if (!cmp.ok) {
+            return epProblem(
+              403,
+              'quorum_policy_below_template',
+              `Receipt quorum_policy is weaker than the organization template (${cmp.violations.join(', ')})`,
+            );
+          }
+        }
+
         // ── Multi-party (EP-QUORUM-v1): require a SATISFIED quorum ──────────
         // Re-verify ALL approvals through the same fail-closed predicate the
         // cross-language conformance suite covers (distinct humans, roles,

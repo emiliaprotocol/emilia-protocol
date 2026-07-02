@@ -33,7 +33,8 @@ import {
 } from '@/lib/guard-policies';
 import { evaluateAction as evaluateRulesEngineV0 } from '@/lib/rules-engine.js';
 import { logger } from '@/lib/logger.js';
-import { isRulesEngineV0Enabled } from '@/lib/env.js';
+import { isRulesEngineV0Enabled, isQuorumTemplateRequired } from '@/lib/env.js';
+import { resolveOrgQuorumTemplate, evaluateQuorumAgainstTemplate } from '@/lib/guard-quorum-template.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
 import {
   buildExecutionBindingContract,
@@ -113,6 +114,58 @@ export async function POST(request) {
     const inputError = validateGuardActionInput(body, { actionType: body.action_type, changedFields });
     if (inputError) return epProblem(inputError.status, inputError.code, inputError.detail);
 
+    const supabase = getGuardedClient();
+
+    // ── Org-pinned quorum template gate (policy authenticity) ─────────────
+    // verifyQuorum proves a quorum is internally consistent against WHATEVER
+    // policy it is handed; that policy has, until now, been creator-declared on
+    // the receipt. Bind it to org intent: a submitted quorum_policy may EXCEED
+    // the org's pinned template for this action_type but never fall below it
+    // (lower threshold, longer window, disabled distinct-humans, out-of-roster
+    // approver). Also honor a template that MANDATES quorum for the action.
+    // See lib/guard-quorum-template.js + migration 124.
+    const quorumTpl = await resolveOrgQuorumTemplate(supabase, {
+      organizationId: body.organization_id,
+      actionType: body.action_type,
+    });
+    if (quorumTpl.error) {
+      // A real policy-store fault. Only the quorum path is high-stakes enough to
+      // fail closed on — non-quorum creation is unaffected (a not-yet-migrated
+      // table is surfaced as template:null, not error, so it does not block).
+      if (body.quorum_policy) {
+        return epProblem(
+          503,
+          'quorum_template_unavailable',
+          'Could not verify the submitted quorum against the organization policy template; failing closed.',
+        );
+      }
+    } else if (quorumTpl.template) {
+      if (body.quorum_policy) {
+        const cmp = evaluateQuorumAgainstTemplate(body.quorum_policy, quorumTpl.template);
+        if (!cmp.ok) {
+          return epProblem(
+            422,
+            'quorum_policy_below_template',
+            `Submitted quorum_policy is weaker than the organization template (${cmp.violations.join(', ')})`,
+          );
+        }
+      } else if (quorumTpl.template.quorum_required) {
+        return epProblem(
+          422,
+          'quorum_required',
+          'Organization policy requires a multi-party quorum for this action_type',
+        );
+      }
+    } else if (body.quorum_policy && isQuorumTemplateRequired()) {
+      // Hardened posture (EP_QUORUM_TEMPLATE_REQUIRED=true): refuse a quorum
+      // receipt that has no org template to anchor its strength against.
+      return epProblem(
+        422,
+        'quorum_template_missing',
+        'Organization requires a pinned quorum template for quorum-gated actions, but none is configured for this action_type',
+      );
+    }
+
     const now = new Date();
     const expiresAt = new Date(now.getTime() + resolveReceiptTtlMs(body.expires_in_sec));
     const nonce = `nonce_${crypto.randomBytes(12).toString('hex')}`;
@@ -186,7 +239,6 @@ export async function POST(request) {
       receipt_status = 'denied';
     }
 
-    const supabase = getGuardedClient();
     let evidenceStatus = 'durable';
     try {
       const { error: auditError } = await supabase.from('audit_events').insert({
