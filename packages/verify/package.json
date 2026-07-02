@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/verify",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "Zero-dependency offline verification for EP authorization receipts: Ed25519 receipts, Merkle anchors, commitment proofs, Class-A WebAuthn device signoffs, multi-party quorum (M-of-N / ordered, two-person rule), portable revocation, trusted-time attestation, provenance chains, long-term evidence records, and federated cross-operator receipts (PIP-006). Node uses built-in crypto; the /web build runs in any browser, edge, or Deno via Web Crypto. No EP infrastructure required.",
   "license": "Apache-2.0",
   "type": "module",
