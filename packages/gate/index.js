@@ -38,6 +38,7 @@ import { DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, createDefaultActionRiskM
 import { hashCanonical, verifyExecutionBinding } from './execution-binding.js';
 import { buildReliancePacket } from './reliance-packet.js';
 import { createEg1Harness, makeGateInvoke, runEg1, EG1_DEFAULT_SELECTOR } from './eg1-conformance.js';
+import { CF1_VERSION, CF1_CHECKS, runCf1 } from './cf1-conformance.js';
 import { createKeyRegistry, asKeyRegistry } from './key-registry.js';
 import { classifyRetention, buildRetentionExport } from './retention.js';
 
@@ -52,6 +53,7 @@ export {
   EG1_VERSION, EG1_CHECKS, EG1_DEFAULT_ACTION, EG1_DEFAULT_SELECTOR,
   createEg1Harness, makeGateInvoke, runEg1,
 } from './eg1-conformance.js';
+export { CF1_VERSION, CF1_CHECKS, runCf1 } from './cf1-conformance.js';
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 
@@ -385,6 +387,48 @@ export async function gateConformanceSelfTest({ now } = {}) {
   return gateConformance({ gate, harness });
 }
 
+/**
+ * CF-1 (Consequence Firewall) conformance for an existing gate. Runs the eight
+ * EG-1 runtime checks plus the three CF-1 category checks: the action is
+ * declared consequential by the manifest, a gate pinned to the WRONG issuer key
+ * refuses a valid receipt, and the allowed run emits offline-verifiable reliance
+ * evidence. The `gate` MUST trust `harness.publicKey`; `wrongGate` MUST trust a
+ * DIFFERENT key (otherwise wrong_authority_refused cannot be demonstrated).
+ * @param {object} o
+ * @param {object} o.gate       an EMILIA Gate trusting harness.publicKey
+ * @param {object} [o.wrongGate] a sibling gate trusting a different (wrong) key
+ * @param {object} o.harness    from createEg1Harness()
+ * @param {object} [o.manifest] the action-risk manifest (to resolve the requirement)
+ * @param {object} [o.selector] the manifest selector for the action
+ * @param {object} [o.action]   the high-risk action to exercise
+ */
+export async function cf1Conformance({ gate, wrongGate, harness, manifest = null, selector = EG1_DEFAULT_SELECTOR, action } = {}) {
+  if (!gate || typeof gate.run !== 'function') throw new Error('cf1Conformance requires a gate built trusting harness.publicKey');
+  if (!harness) throw new Error('cf1Conformance requires the harness whose key the gate trusts');
+  const act = action || harness.action;
+  const invoke = makeGateInvoke(gate, { selector, action: act });
+  const wrongInvoke = (wrongGate && typeof wrongGate.run === 'function')
+    ? makeGateInvoke(wrongGate, { selector, action: act }) : undefined;
+  const requirement = manifest ? findActionRequirement(manifest, selector) : null;
+  return runCf1({ invoke, wrongInvoke, harness, action: act, requirement });
+}
+
+/**
+ * Self-certify the reference gate against CF-1: a default Trusted Action
+ * Firewall trusting a fresh harness key, a sibling firewall trusting a DIFFERENT
+ * key (for wrong_authority_refused), and the default action-risk manifest (for
+ * consequential_action_declared). The canonical "reference gate earns CF-1"
+ * proof — runnable as a CLI (`cf1.mjs`).
+ */
+export async function cf1ConformanceSelfTest({ now } = {}) {
+  const harness = createEg1Harness({ now });
+  const manifest = createDefaultActionRiskManifest();
+  const gate = createTrustedActionFirewall({ trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys, now });
+  const wrongHarness = createEg1Harness({ now });
+  const wrongGate = createTrustedActionFirewall({ trustedKeys: [wrongHarness.publicKey], approverKeys: wrongHarness.approverKeys, now });
+  return cf1Conformance({ gate, wrongGate, harness, manifest, selector: EG1_DEFAULT_SELECTOR, action: harness.action });
+}
+
 export default {
   createGate,
   createTrustedActionFirewall,
@@ -396,6 +440,11 @@ export default {
   HIGH_RISK_ACTION_PACKS,
   gateConformance,
   gateConformanceSelfTest,
+  cf1Conformance,
+  cf1ConformanceSelfTest,
+  CF1_VERSION,
+  CF1_CHECKS,
+  runCf1,
   createEg1Harness,
   runEg1,
   createKeyRegistry,
