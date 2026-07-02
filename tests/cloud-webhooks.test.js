@@ -470,12 +470,9 @@ describe('deliverWebhook', () => {
   });
 
   it('sends correct headers including X-EP-Signature', async () => {
-    const capturedHeaders = {};
-
-    globalThis.fetch = vi.fn().mockImplementation(async (url, opts) => {
-      Object.assign(capturedHeaders, opts.headers);
-      return { ok: true, status: 200, text: async () => 'OK' };
-    });
+    // Delivery goes through the pinned-address node:https path, so assert on the
+    // headers handed to https.request (captured by the _https mock), not fetch.
+    setHttpsResponse(200, 'OK');
 
     const updatedDelivery = { ...DELIVERY, status: 'delivered', attempts: 1 };
     const epChain = makeChain({ data: ENDPOINT, error: null });
@@ -503,6 +500,7 @@ describe('deliverWebhook', () => {
 
     await deliverWebhook('ep-1', 'receipt.created', { id: 'evt-1' });
 
+    const capturedHeaders = _https.lastOptions?.headers || {};
     expect(capturedHeaders['X-EP-Signature']).toBeDefined();
     expect(capturedHeaders['X-EP-Timestamp']).toBeDefined();
     expect(capturedHeaders['X-EP-Event']).toBe('receipt.created');

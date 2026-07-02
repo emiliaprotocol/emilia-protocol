@@ -18,11 +18,15 @@ const canon = (v) => (v === null || v === undefined ? JSON.stringify(v)
 const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
 const trustedKeyB64u = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
 
-function mint(action, { createdAt = new Date().toISOString(), receiptId } = {}) {
+// NOTE: pass `omitCreatedAt: true` to actually drop created_at. A destructuring
+// default (`createdAt = ...`) fires on an explicit `undefined`, so it cannot be
+// used to omit the field — hence the explicit flag.
+function mint(action, { createdAt, receiptId, omitCreatedAt = false } = {}) {
+  const ts = createdAt || new Date().toISOString();
   const payload = {
     receipt_id: receiptId || `rcpt_test_${crypto.randomBytes(6).toString('hex')}`,
     subject: 'agent:test',
-    ...(createdAt !== undefined ? { created_at: createdAt } : {}),
+    ...(omitCreatedAt ? {} : { created_at: ts }),
     claim: { action_type: action, outcome: 'allow_with_signoff', approver: 'ep:approver:test' },
   };
   const value = crypto.sign(null, Buffer.from(canon(payload), 'utf8'), privateKey).toString('base64url');
@@ -78,7 +82,7 @@ describe('/api/v1/guarded replay + freshness', () => {
   });
 
   it('REFUSES a receipt with no created_at when max age is enforced (402)', async () => {
-    const doc = mint('payment.release', { createdAt: undefined });
+    const doc = mint('payment.release', { omitCreatedAt: true });
     const res = await POST(guardedRequest(doc));
     expect(res.status).toBe(402);
     const body = await res.json();
