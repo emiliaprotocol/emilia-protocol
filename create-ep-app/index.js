@@ -120,15 +120,25 @@ function generateEntityKeys() {
   };
 }
 
+// Canonical JSON (EP I-JSON profile): recursively sorted object keys, no
+// whitespace. NOTE: JSON.stringify with a replacer ARRAY is NOT canonicalization
+// — it silently filters nested keys out of the signed bytes. Never use it here.
+function canon(v) {
+  if (v === null || typeof v !== 'object') return JSON.stringify(v);
+  if (Array.isArray(v)) return '[' + v.map((x) => (x === undefined ? 'null' : canon(x))).join(',') + ']';
+  return '{' + Object.keys(v).filter((k) => v[k] !== undefined).sort()
+    .map((k) => JSON.stringify(k) + ':' + canon(v[k])).join(',') + '}';
+}
+
 function signPayload(payload, privateKeyBase64url) {
-  const payloadBytes = Buffer.from(JSON.stringify(payload, Object.keys(payload).sort()), 'utf8');
+  const payloadBytes = Buffer.from(canon(payload), 'utf8');
   const keyDer = Buffer.from(privateKeyBase64url, 'base64url');
   const keyObject = crypto.createPrivateKey({ key: keyDer, format: 'der', type: 'pkcs8' });
   return crypto.sign(null, payloadBytes, keyObject).toString('base64url');
 }
 
 function verifySignature(payload, signature, publicKeyBase64url) {
-  const payloadBytes = Buffer.from(JSON.stringify(payload, Object.keys(payload).sort()), 'utf8');
+  const payloadBytes = Buffer.from(canon(payload), 'utf8');
   const keyDer = Buffer.from(publicKeyBase64url, 'base64url');
   const keyObject = crypto.createPublicKey({ key: keyDer, format: 'der', type: 'spki' });
   return crypto.verify(null, payloadBytes, keyObject, Buffer.from(signature, 'base64url'));
@@ -224,7 +234,7 @@ const routes = {
     const id = 'ep_hs_' + crypto.randomBytes(8).toString('hex');
     const nonce = crypto.randomBytes(32).toString('hex');
     const binding = { action_type: body.action_type, resource_ref: body.resource_ref, nonce, expires_at: new Date(Date.now() + 300_000).toISOString() };
-    const binding_hash = sha256(JSON.stringify(binding, Object.keys(binding).sort()));
+    const binding_hash = sha256(canon(binding));
 
     const hs = { handshake_id: id, status: 'initiated', initiator: body.initiator, binding, binding_hash, created_at: new Date().toISOString(), consumed: false };
     handshakes.set(id, hs);
@@ -458,19 +468,11 @@ writeFileSync(safeDir( 'verify-receipt.js'), `
 /**
  * Standalone receipt verification — works offline, no EP server needed.
  *
- * Usage: node verify-receipt.js < receipt.json
+ * Usage: node verify-receipt.js <public-key-base64url> < receipt.json
  */
 
 import crypto from 'crypto';
 import { readFileSync } from 'fs';
-
-const input = readFileSync('/dev/stdin', 'utf8');
-const doc = JSON.parse(input);
-
-if (doc['@version'] !== 'EP-RECEIPT-v1') {
-  console.error('Unsupported version:', doc['@version']);
-  process.exit(1);
-}
 
 // To verify, you need the signer's public key.
 // In production, fetch from: signer's /.well-known/ep-keys.json
@@ -480,7 +482,24 @@ if (!publicKey) {
   process.exit(1);
 }
 
-const payloadBytes = Buffer.from(JSON.stringify(doc.payload, Object.keys(doc.payload).sort()), 'utf8');
+const input = readFileSync('/dev/stdin', 'utf8');
+const doc = JSON.parse(input);
+
+if (doc['@version'] !== 'EP-RECEIPT-v1') {
+  console.error('Unsupported version:', doc['@version']);
+  process.exit(1);
+}
+
+// Canonical JSON (EP I-JSON profile): recursively sorted keys, no whitespace.
+// (A JSON.stringify replacer ARRAY is not canonicalization — it drops nested keys.)
+function canon(v) {
+  if (v === null || typeof v !== 'object') return JSON.stringify(v);
+  if (Array.isArray(v)) return '[' + v.map((x) => (x === undefined ? 'null' : canon(x))).join(',') + ']';
+  return '{' + Object.keys(v).filter((k) => v[k] !== undefined).sort()
+    .map((k) => JSON.stringify(k) + ':' + canon(v[k])).join(',') + '}';
+}
+
+const payloadBytes = Buffer.from(canon(doc.payload), 'utf8');
 const keyDer = Buffer.from(publicKey, 'base64url');
 const keyObject = crypto.createPublicKey({ key: keyDer, format: 'der', type: 'spki' });
 const sigBytes = Buffer.from(doc.signature.value, 'base64url');

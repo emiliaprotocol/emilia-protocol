@@ -7,6 +7,7 @@ no Vercel, no blockchain wallet. Just Node.js 20+.
 ```bash
 npx @emilia-protocol/create-ep-app my-trust-system
 cd my-trust-system
+npm install
 npm run dev
 ```
 

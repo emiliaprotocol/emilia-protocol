@@ -23,6 +23,7 @@ EP today has 137 documentation files, 50 database tables, and a setup process th
 ```bash
 npx @emilia-protocol/create-ep-app my-trust-system
 cd my-trust-system
+npm install
 npm run dev
 # Open localhost:3000 → working trust system with:
 #   - Entity registration
@@ -35,7 +36,7 @@ npm run dev
 
 Not "read the docs and figure out which of 45 API endpoints to call." A working app. In 5 minutes. With a guided walkthrough that shows you what trust enforcement looks like.
 
-**Status: BUILT.** `create-ep-app/index.js` ships this exact experience through the scoped package `@emilia-protocol/create-ep-app`. Run `npx @emilia-protocol/create-ep-app my-app && cd my-app && npm run dev` → working trust system with in-browser demo dashboard in under 5 minutes.
+**Status: BUILT.** `create-ep-app/index.js` ships this exact experience through the scoped package `@emilia-protocol/create-ep-app`. Run `npx @emilia-protocol/create-ep-app my-app && cd my-app && npm install && npm run dev` → working trust system with in-browser demo dashboard in under 5 minutes.
 
 ### 2. The Acid Test (Conformance Test Suite)
 

@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/create-ep-app",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Create a minimal EMILIA Protocol trust system in five minutes.",
   "type": "module",
   "bin": {
