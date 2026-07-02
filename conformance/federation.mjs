@@ -94,8 +94,21 @@ void B;
 const r1 = issueReceipt(A, { receipt_id: 'fed_001', '@version': 'EP-RECEIPT-v1', amount: 82000, currency: 'USD' });
 // B pins A's operator id out-of-band (PIP-006: trust comes from the relying
 // party's allowlist, never from the receipt-carried signer). Without a pin a
-// cryptographically-valid receipt stays accepted:false — fail closed.
-check('B accepts a valid receipt issued by A', verifyFederatedReceiptOffline(r1, discoveryDoc(A), { trustedIssuers: ['ep_operator_a'] }).accepted === true);
+// cryptographically-valid receipt stays accepted:false — fail closed. Offline,
+// a bare-id pin suffices because the discovery doc is supplied by the relying
+// party (its own trust source), not fetched from a receipt-controlled URL.
+check('B accepts a valid receipt issued by A (bare-id pin, caller-supplied doc)', verifyFederatedReceiptOffline(r1, discoveryDoc(A), { trustedIssuers: ['ep_operator_a'] }).accepted === true);
+// Stronger: B also pins A's KEY SOURCE (expected discovery origin + public key).
+// The matched key must be the pinned key, or acceptance fails closed. This is
+// the pin shape a relying party uses online, where key_discovery is receipt-
+// controlled and pinning the id alone cannot authenticate the key origin.
+const r1b = issueReceipt(A, { receipt_id: 'fed_001b', '@version': 'EP-RECEIPT-v1', amount: 82000, currency: 'USD' });
+const pinnedA = { ep_operator_a: { key_discovery: `https://ep_operator_a.example/.well-known/ep-keys.json`, publicKey: A.publicKeyB64u } };
+check('B accepts under a key-SOURCE pin (origin + pinned public key)', verifyFederatedReceiptOffline(r1b, discoveryDoc(A), { trustedIssuers: pinnedA }).accepted === true);
+// And refuses when the discovery doc advertises a DIFFERENT key under A's id
+// (the trust-laundering attack): a wrong key can never be the pinned key.
+const laundered = discoveryDoc(makeOperator('ep_operator_a')); // same id, attacker key
+check('B refuses a laundered key that is not the pinned key', verifyFederatedReceiptOffline(r1b, laundered, { trustedIssuers: pinnedA }).accepted === false);
 
 // 2. Tamper rejection.
 const r2 = issueReceipt(A, { receipt_id: 'fed_002', '@version': 'EP-RECEIPT-v1', amount: 82000, currency: 'USD' });
