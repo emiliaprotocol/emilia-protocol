@@ -43,6 +43,80 @@ const canon = (v) => (v == null ? JSON.stringify(v)
 const sha256Hex = (v) => crypto.createHash('sha256').update(v, 'utf8').digest('hex');
 const sha256Bytes = (v) => crypto.createHash('sha256').update(v).digest();
 
+const RP_ID = 'emiliaprotocol.ai';
+
+/**
+ * Mint a GENUINE WebAuthn ECDSA-P256 device signoff over an authorization
+ * context — the same structure @emilia-protocol/verify verifyWebAuthnSignoff
+ * checks. This is what earns a receipt its class_a tier: a real per-signer
+ * assertion, not a self-asserted `outcome` string. Used to build the Class-A and
+ * quorum evidence the EG-1 harness embeds so the Gate can CRYPTOGRAPHICALLY
+ * credit the tier.
+ */
+export function mintDeviceSignoff({ actionHash, approver, issuedAtMs = Date.now(), nonce, prevContextHash = undefined } = {}) {
+  const signer = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  const context = {
+    ep_version: '1.0', context_type: 'ep.signoff.v1',
+    action_hash: actionHash,
+    policy: 'policy_eg1',
+    nonce: nonce || ('sig_' + crypto.randomBytes(16).toString('hex')),
+    approver,
+    initiator: 'ent_agent_eg1',
+    issued_at: new Date(issuedAtMs).toISOString(),
+    expires_at: new Date(issuedAtMs + 5 * 60_000).toISOString(),
+    ...(prevContextHash !== undefined ? { prev_context_hash: prevContextHash } : {}),
+  };
+  const challenge = crypto.createHash('sha256').update(canon(context), 'utf8').digest().toString('base64url');
+  const clientData = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge, origin: `https://www.${RP_ID}` }), 'utf8');
+  const authData = Buffer.concat([
+    crypto.createHash('sha256').update(RP_ID, 'utf8').digest(),
+    Buffer.from([0x05]), // UP | UV
+    Buffer.from([0, 0, 0, 1]),
+  ]);
+  const signed = Buffer.concat([authData, crypto.createHash('sha256').update(clientData).digest()]);
+  const signature = crypto.sign('sha256', signed, signer.privateKey).toString('base64url');
+  return {
+    signoff: {
+      '@type': 'ep.signoff',
+      context,
+      webauthn: {
+        authenticator_data: authData.toString('base64url'),
+        client_data_json: clientData.toString('base64url'),
+        signature,
+      },
+      approver_public_key: signer.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+    },
+    approver_public_key: signer.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+    context,
+  };
+}
+
+/**
+ * Mint a GENUINE EP-QUORUM-v1 evidence document: N distinct humans, each on a
+ * distinct device key, each with a real WebAuthn assertion bound to the SAME
+ * action_hash, within a window. verifyQuorum returns valid for it. This is what
+ * earns a receipt its `quorum` tier — never a bare {signers,threshold} block.
+ */
+export function mintQuorumEvidence({ actionHash, threshold = 2, approvers, issuedAtMs = Date.now() } = {}) {
+  const people = approvers || Array.from({ length: threshold }, (_, i) => ({ role: `approver_${i + 1}`, approver: `ep:approver:eg1_${i + 1}` }));
+  const members = people.map((p, i) => {
+    const s = mintDeviceSignoff({ actionHash, approver: p.approver, issuedAtMs: issuedAtMs + i * 1000 });
+    return { role: p.role, approver_public_key: s.approver_public_key, signoff: { '@type': s.signoff['@type'], context: s.signoff.context, webauthn: s.signoff.webauthn } };
+  });
+  return {
+    '@type': 'ep.quorum',
+    action_hash: actionHash,
+    policy: {
+      mode: 'threshold',
+      required: threshold,
+      approvers: people,
+      distinct_humans: true,
+      window_sec: 900,
+    },
+    members,
+  };
+}
+
 // The default high-risk action EG-1 exercises: a Class-A money movement, which
 // the default gate manifest guards (selector { protocol:'mcp', tool:'release_payment' }).
 export const EG1_DEFAULT_SELECTOR = Object.freeze({ protocol: 'mcp', tool: 'release_payment' });
@@ -86,6 +160,10 @@ export function createEg1Harness({ now = Date.now, action = EG1_DEFAULT_ACTION, 
   };
   let counter = 0;
   const nowMs = () => (typeof now === 'function' ? now() : now);
+
+  // The action_hash the self-contained human device assertions are bound to.
+  // Derived from the action so the signoff/quorum evidence is about THIS action.
+  const actionHash = crypto.createHash('sha256').update(canon(action), 'utf8').digest('hex');
 
   function assuranceContext(payload) {
     return {
@@ -140,26 +218,46 @@ export function createEg1Harness({ now = Date.now, action = EG1_DEFAULT_ACTION, 
   /**
    * Mint a scenario receipt.
    * @param {object} o
-   * @param {'allow'|'allow_with_signoff'} [o.outcome] 'allow'=software, 'allow_with_signoff'=Class-A
-   * @param {object} [o.quorum] a quorum block (signers/threshold) -> quorum tier
+   * @param {'allow'|'allow_with_signoff'} [o.outcome] 'allow'=software; 'allow_with_signoff'
+   *   embeds a REAL WebAuthn device signoff so the receipt cryptographically earns class_a.
+   * @param {object|boolean} [o.quorum] request quorum-tier evidence. Truthy -> a REAL
+   *   EP-QUORUM-v1 doc (distinct humans + distinct keys + per-signer assertions). If an
+   *   object with `threshold`/`signers`, its size sets the quorum size.
+   * @param {boolean} [o.fakeQuorum] embed an UNVERIFIABLE self-asserted quorum block
+   *   ({signers,threshold}) with no per-signer signatures — used to prove the Gate
+   *   REFUSES it (must NOT be credited quorum). For adversarial tests only.
    * @param {object} [o.tamper] fields assigned to the claim AFTER signing (breaks the signature)
    */
-  function mint({ outcome = 'allow_with_signoff', quorum = null, tamper = null, extra = {} } = {}) {
+  function mint({ outcome = 'allow_with_signoff', quorum = null, fakeQuorum = false, tamper = null, extra = {} } = {}) {
+    const claim = { ...action, outcome, approver: 'ep:approver:eg1', ...extra };
     const payload = {
       receipt_id: `${idPrefix}_${++counter}`,
       subject: 'agent:eg1-conformance',
       issuer: 'ep:org:eg1',
       created_at: new Date(nowMs()).toISOString(),
-      claim: {
-        ...action,
-        outcome,
-        approver: 'ep:approver:eg1',
-        ...(quorum ? { quorum } : {}),
-        ...extra,
-      },
+      claim,
     };
-    if (outcome === 'allow_with_signoff' || quorum) {
+    if (fakeQuorum) {
+      // Self-asserted ONLY — NO members / NO signatures / NO pinned proof. The
+      // Gate must refuse to credit this as quorum (assurance_too_low). For
+      // adversarial tests that prove payload claims are never trusted.
+      payload.quorum = { signers: ['ep:a', 'ep:b'], threshold: 2 };
+    } else if (outcome === 'allow_with_signoff' || quorum) {
+      // Genuine, per-signer-verifiable evidence. The PRIMARY proof is the pinned
+      // EP-ASSURANCE-PROOF-v1 (verified against the harness's pinned approverKeys),
+      // which is what the EG-1 gate/custody path checks. We ALSO embed self-contained
+      // evidence (EP-QUORUM-v1 / WebAuthn device signoff) so a relying party that
+      // does NOT pin keys can still cryptographically credit the tier (DoD audit fix).
       payload.assurance_proof = assuranceProof(payload, quorum);
+      if (quorum) {
+        const threshold = Number.isInteger(quorum.threshold) ? quorum.threshold
+          : (Array.isArray(quorum.signers) ? quorum.signers.length : 2);
+        payload.quorum = mintQuorumEvidence({ actionHash, threshold, issuedAtMs: nowMs() });
+      } else {
+        const s = mintDeviceSignoff({ actionHash, approver: 'ep:approver:eg1', issuedAtMs: nowMs() });
+        payload.signoff = s.signoff;
+        payload.approver_public_key = s.approver_public_key;
+      }
     }
     const value = crypto.sign(null, Buffer.from(canon(payload), 'utf8'), privateKey).toString('base64url');
     const receipt = { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value } };
@@ -167,7 +265,7 @@ export function createEg1Harness({ now = Date.now, action = EG1_DEFAULT_ACTION, 
     return receipt;
   }
 
-  return { publicKey: pub, approverKeys, mint, action, now: nowMs };
+  return { publicKey: pub, approverKeys, mint, action, actionHash, now: nowMs };
 }
 
 /**
@@ -270,4 +368,4 @@ export async function runEg1({ invoke, harness, action } = {}) {
   };
 }
 
-export default { EG1_VERSION, EG1_CHECKS, EG1_DEFAULT_ACTION, EG1_DEFAULT_SELECTOR, createEg1Harness, makeGateInvoke, runEg1 };
+export default { EG1_VERSION, EG1_CHECKS, EG1_DEFAULT_ACTION, EG1_DEFAULT_SELECTOR, createEg1Harness, makeGateInvoke, runEg1, mintDeviceSignoff, mintQuorumEvidence };
