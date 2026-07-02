@@ -10,3 +10,7 @@ LICENSE
 Dockerfile
 docker-compose*.yml
 .dockerignore
+
+# Attorney-prep IP packet — never in the build context/image (defense-in-depth
+# alongside the .gitignore rule).
+docs/ip/

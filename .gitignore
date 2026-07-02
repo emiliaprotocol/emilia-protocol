@@ -52,3 +52,9 @@ staircase-results.json
 
 # crash-test runtime output
 emilia-workpaper/
+
+# Attorney-prep IP packet — MUST NOT reach the public repo (patent-clock /
+# attorney-work-product privilege risk). Local-only; keep untracked. Security
+# sweep HIGH finding: docs/ip/ was untracked but not ignored — one `git add .`
+# from irreversibly publishing invention-disclosure + claim strategy.
+docs/ip/
