@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="212" height="20" role="img" aria-label="Consequence Firewall: CF-1">
+  <title>Consequence Firewall: CF-1 - consequential actions require a verifiable authorization receipt before execution</title>
+  <linearGradient id="s" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-color="#bbb" stop-opacity=".1"/>
+  </linearGradient>
+  <clipPath id="r"><rect width="212" height="20" rx="3" fill="#fff"/></clipPath>
+  <g clip-path="url(#r)">
+    <rect width="153" height="20" fill="#1c1917"/>
+    <rect x="153" width="59" height="20" fill="#16a34a"/>
+    <rect width="212" height="20" fill="url(#s)"/>
+  </g>
+  <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="110" text-rendering="geometricPrecision">
+    <text x="775" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="1430">Consequence Firewall</text>
+    <text x="775" y="140" transform="scale(.1)" textLength="1430">Consequence Firewall</text>
+    <text x="1825" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="490">CF-1</text>
+    <text x="1825" y="140" transform="scale(.1)" textLength="490">CF-1</text>
+  </g>
+</svg>

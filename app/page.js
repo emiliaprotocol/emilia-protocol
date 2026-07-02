@@ -8,6 +8,7 @@ import EmailCapture from '@/components/EmailCapture';
 import CrashTestDemo from '@/components/CrashTestDemo';
 import ProofBlock from '@/components/ProofBlock';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
+import proofStats from '@/lib/proof-stats.json';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Homepage — buyer-facing flow.
@@ -18,15 +19,20 @@ import { styles, cta, color, font, radius } from '@/lib/tokens';
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Stats — independently verifiable in the repo:
-//   4,220 tests passing (per lib/proof-stats.json: 4,220 passed / 29 skipped) — `npx vitest run`
+//   tests passing (per lib/proof-stats.json) — `node scripts/generate-proof-stats.mjs`
 //   26 TLA+ invariants verified — formal/PROOF_STATUS.md (T1–T26)
 //   35 Alloy facts — formal/Alloy/EP.als
 //   85 red team cases — docs/conformance/RED_TEAM_CASES.md
 //   Apache 2.0 — LICENSE
+const TESTS_PASSED = Number(proofStats.tests?.passed || 0).toLocaleString('en-US');
+const TEST_FILES = Number(proofStats.tests?.files || 0).toLocaleString('en-US');
+const TLA_INVARIANTS = String(proofStats.tla?.invariants || 26);
+const ALLOY_FACTS = String(proofStats.alloy?.facts || 35);
+
 const STATS = [
-  { value: '4,220',     label: 'Automated Tests',  sub: 'passing — per proof-stats.json', accent: color.t1    },
-  { value: '26',        label: 'TLA+ Theorems',    sub: 'TLC 2.19, zero errors',         accent: color.blue  },
-  { value: '35',        label: 'Alloy Facts',       sub: '22 assertions verified',        accent: color.gold  },
+  { value: TESTS_PASSED, label: 'Automated Tests',  sub: `passing across ${TEST_FILES} files`, accent: color.t1 },
+  { value: TLA_INVARIANTS, label: 'TLA+ Theorems',  sub: 'TLC 2.19, zero errors',             accent: color.blue },
+  { value: ALLOY_FACTS, label: 'Alloy Facts',       sub: '22 assertions verified',            accent: color.gold },
   { value: '3',         label: 'Independent Verifiers', sub: 'JS · Python · Go, proven to agree', accent: color.t1 },
   { value: 'Apache 2.0', label: 'License',          sub: 'Open specification',            accent: color.green },
 ];
@@ -90,20 +96,25 @@ const INSET = 'rgba(228,229,225,0.35) 0 1px 0 0 inset, rgba(110,111,109,0.08) 0 
 // no class-toggling, no timing hacks. Motion handles edge cases internally.
 const EASE = [0.23, 1, 0.32, 1];
 
-// Scroll-triggered fade-up: used for every section below the hero.
+// Scroll-triggered rise: used for every section below the hero.
+// Keep opacity at 1 by default so no-JS, crawler, PDF, and full-page screenshot
+// renders never capture a blank page before intersection events fire.
 // viewport.once:true means it animates once and stays visible.
 const reveal = (delay = 0) => ({
-  initial: { opacity: 0, y: 18 },
-  whileInView: { opacity: 1, y: 0 },
+  initial: { opacity: 1, y: 18 },
+  whileInView: { y: 0 },
   viewport: { once: true, margin: '-40px' },
   transition: { duration: 0.58, delay, ease: EASE },
 });
 
 // Above-fold hero elements: triggered by animate (not scroll) so they play
-// immediately on load regardless of viewport position.
+// immediately on load regardless of viewport position. Opacity stays 1 by
+// default (same reason as `reveal` above) so the hero headline, CTAs, and
+// film are never blank for no-JS, crawler, PDF, or pre-hydration full-page
+// screenshot renders — only the rise animates once JS runs.
 const heroIn = (delay = 0) => ({
-  initial: { opacity: 0, y: 14 },
-  animate: { opacity: 1, y: 0 },
+  initial: { opacity: 1, y: 14 },
+  animate: { y: 0 },
   transition: { duration: 0.6, delay, ease: EASE },
 });
 
@@ -140,7 +151,7 @@ export default function HomePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ width: 5, height: 5, borderRadius: '50%', background: color.gold, display: 'inline-block', flexShrink: 0 }} />
               <span style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, letterSpacing: 1.5, textTransform: 'uppercase' }}>
-                Secure agent actions · portable evidence
+                Consequence firewall · secure agent actions
               </span>
             </div>
             <span style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, letterSpacing: 0.5 }}>
@@ -163,7 +174,7 @@ export default function HomePage() {
                 letterSpacing: 2.5, textTransform: 'uppercase',
                 color: color.gold, marginBottom: 28,
               }}>
-                Portable evidence for secure agent actions
+                The open Consequence Firewall for AI agents
               </div>
 
               <h1 style={{
@@ -172,7 +183,7 @@ export default function HomePage() {
                 letterSpacing: -2.5, lineHeight: 1.02,
                 color: color.t1, margin: '0 0 32px',
               }}>
-                Stop agents from executing irreversible actions without{' '}
+                Stop AI agents from executing irreversible actions without{' '}
                 <em style={{ fontStyle: 'normal', color: color.gold }}>accountable approval.</em>
               </h1>
 
@@ -180,13 +191,14 @@ export default function HomePage() {
                 fontSize: 17, color: color.t2,
                 maxWidth: 520, lineHeight: 1.72, margin: '0 0 40px',
               }}>
-                EMILIA plugs into MCP, agent runtimes, SCITT, and systems of record so high-risk
-                actions require verifiable authorization before execution. If the action runs,
-                anyone can verify who approved exactly what, under which policy, offline.
+                EMILIA is an open control layer for secure agent actions. It plugs into MCP,
+                agent runtimes, SCITT, and systems of record so high-risk actions require
+                verifiable authorization before execution. If the action runs, anyone can verify
+                who approved exactly what, under which policy, offline.
               </p>
 
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <Link href="/demo" className="ep-cta" style={cta.primary}>Watch an action get blocked →</Link>
+                <Link href="/try/receipt-required" className="ep-cta" style={cta.primary}>Try to break the gate →</Link>
                 <Link href="/quickstart" className="ep-cta-secondary" style={cta.secondary}>Wrap one dangerous action</Link>
               </div>
 
@@ -195,7 +207,7 @@ export default function HomePage() {
                 display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 52,
                 paddingTop: 28, borderTop: `1px solid ${color.border}`,
               }}>
-                {['Apache-2.0', 'JS/Python/Go verifiers', 'SCITT profile', 'RR-1 conformance', '4,220 tests'].map((chip) => (
+                {['Apache-2.0', 'JS/Python/Go verifiers', 'SCITT profile', 'CF-1 conformance', `${TESTS_PASSED} tests`].map((chip) => (
                   <span key={chip} style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, letterSpacing: 0.5, border: `1px solid ${color.border}`, borderRadius: 999, padding: '5px 11px' }}>
                     {chip}
                   </span>
@@ -812,8 +824,8 @@ export default function HomePage() {
           color: 'rgba(255,255,255,0.22)', letterSpacing: 1.5, textTransform: 'uppercase',
         }}>
           <span>Compliance: NIST AI RMF · EU AI ACT</span>
-          <span>Tests: 4,220 passing · 0 failing</span>
-          <span>Formal verification: 26 theorems · 0 errors</span>
+          <span>Tests: {TESTS_PASSED} passing · 0 failing</span>
+          <span>Formal verification: {TLA_INVARIANTS} theorems · 0 errors</span>
         </div>
       </section>
 

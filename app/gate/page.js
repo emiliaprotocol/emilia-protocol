@@ -125,6 +125,7 @@ export default function GatePage() {
               <a href="#loop" style={cta.primary}>How it works</a>
               <a href="#surfaces" style={cta.secondary}>Where it runs</a>
               <a href="/try/receipt-required" style={cta.secondary}>Try to break it</a>
+              <a href="/fire-drill/cf-1" style={cta.secondary}>CF-1 conformance</a>
               <a href="/pilot?v=gate" style={cta.secondary}>Request pilot</a>
             </div>
           </div>
@@ -265,17 +266,18 @@ export default function GatePage() {
           </div>
         </section>
 
-        {/* EG-1 conformance */}
+        {/* CF-1 / EG-1 conformance */}
         <section id="eg1" style={{ ...styles.section, background: '#1C1917', color: '#FAFAF9', borderTop: `1px solid ${color.border}`, borderBottom: `1px solid ${color.border}` }}>
           <div style={styles.container}>
-            <div style={{ ...styles.eyebrow, color: color.gold }}>EG-1 CONFORMANCE</div>
+            <div style={{ ...styles.eyebrow, color: color.gold }}>CF-1 / EG-1 CONFORMANCE</div>
             <h2 style={{ ...styles.h2, marginTop: 12, color: '#FAFAF9', maxWidth: 820 }}>
               Does your integration actually enforce the gate — or are you just claiming it?
             </h2>
             <p style={{ ...styles.body, maxWidth: 720, marginTop: 16, color: 'rgba(250,250,249,0.72)' }}>
-              EG-1 turns adoption into a binary artifact. Point the harness at your dangerous action;
-              if it passes all eight checks, you earn <b style={{ color: color.gold }}>EG-1 Enforced</b>.
-              It makes an open PR crisp: <i>“this makes <code>delete_row</code> earn EG-1.”</i>
+              CF-1 is the public Consequence Firewall badge. EG-1 is the runnable Gate harness
+              that earns it: point the harness at your dangerous action; if it passes all eight
+              checks, you have a binary artifact instead of a claim. It makes an open PR crisp:
+              <i>“this makes <code>delete_row</code> earn EG-1 / CF-1.”</i>
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, marginTop: 32, alignItems: 'start' }}>
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.14)' }}>
@@ -292,6 +294,13 @@ export default function GatePage() {
                   <span style={{ width: 8, height: 8, borderRadius: 999, background: color.green, display: 'inline-block' }} />
                   <span style={{ fontFamily: font.mono, fontSize: 12, color: color.gold, letterSpacing: 1, textTransform: 'uppercase' }}>EG-1 Enforced</span>
                 </div>
+                <div style={{ marginTop: 14 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- static SVG badge, next/image is overkill */}
+                  <img src="/badges/cf-1.svg" alt="Consequence Firewall: CF-1" width={212} height={20} />
+                </div>
+                <p style={{ ...styles.body, fontSize: 13, color: 'rgba(250,250,249,0.58)', marginTop: 12 }}>
+                  Public definition: <a href="/fire-drill/cf-1" style={{ color: color.gold }}>CF-1 Consequence Firewall conformance</a>.
+                </p>
               </div>
             </div>
           </div>

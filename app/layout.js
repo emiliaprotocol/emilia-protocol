@@ -26,16 +26,21 @@ const ibmPlexMono = IBM_Plex_Mono({
 export const metadata = {
   metadataBase: new URL('https://www.emiliaprotocol.ai'),
   title: {
-    default: 'EMILIA Protocol — The Accountability Layer for AI Agents',
+    default: 'EMILIA Protocol — The Consequence Firewall for AI Agents',
     template: '%s | EMILIA Protocol',
   },
   description:
-    'Every AI action needs an owner. Before an agent does anything irreversible, EMILIA '
-    + 'assigns a named human who approves the exact action on their own device — so "who '
-    + 'approved this?" always has an answer anyone can verify. Formally verified, Apache-2.0.',
+    'The open consequence firewall for secure agent actions. Before an AI agent does anything '
+    + 'irreversible, EMILIA requires a verifiable authorization receipt proving who approved '
+    + 'the exact action, under which policy, offline.',
   applicationName: 'EMILIA Protocol',
   keywords: [
     'AI agent authorization',
+    'AI agent firewall',
+    'consequence firewall',
+    'secure agent actions',
+    'authorization receipts',
+    'receipt required',
     'pre-action authorization',
     'AI agent trust',
     'verifiable AI authorization',
@@ -59,10 +64,9 @@ export const metadata = {
     locale: 'en_US',
     url: 'https://www.emiliaprotocol.ai',
     siteName: 'EMILIA Protocol',
-    title: 'EMILIA Protocol — The Accountability Layer for AI Agents',
+    title: 'EMILIA Protocol — The Consequence Firewall for AI Agents',
     description:
-      'A named human signs the exact action on their own device before an AI agent ' +
-      'does anything irreversible. Formally verified, Apache 2.0, production-oriented reference runtime.',
+      'The open control layer for secure agent actions: no valid authorization receipt, no irreversible execution. Formally verified, Apache 2.0, production-oriented reference runtime.',
     images: [
       {
         url: '/og-sequence.jpg',
@@ -74,10 +78,9 @@ export const metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'EMILIA Protocol — The Accountability Layer for AI Agents',
+    title: 'EMILIA Protocol — The Consequence Firewall for AI Agents',
     description:
-      'A named human\'s signed yes — on their own device — before an AI agent ' +
-      'does anything irreversible. Formally verified.',
+      'No valid authorization receipt, no irreversible agent action. Open, offline-verifiable, formally checked.',
     images: ['/og-sequence.jpg'],
   },
   robots: {
@@ -111,8 +114,8 @@ const ORGANIZATION_JSONLD = {
   url: 'https://www.emiliaprotocol.ai',
   logo: 'https://www.emiliaprotocol.ai/logo.png',
   description:
-    'Open protocol and Apache-2.0 reference runtime for verifiable pre-action ' +
-    'authorization in AI agent systems.',
+    'Open protocol and Apache-2.0 reference runtime for secure agent actions: ' +
+    'a consequence firewall that requires verifiable pre-action authorization.',
   foundingDate: '2026-06-03',
   sameAs: [
     'https://github.com/emiliaprotocol',
@@ -148,12 +151,12 @@ const SOFTWARE_APPLICATION_JSONLD = {
   '@type': 'SoftwareApplication',
   name: 'EMILIA Protocol',
   applicationCategory: 'SecurityApplication',
-  applicationSubCategory: 'AI Authorization Protocol',
+  applicationSubCategory: 'Consequence Firewall for AI Agents',
   operatingSystem: 'Cross-platform (Node.js, Python, Go; Cloud)',
   description:
-    'Open protocol and Apache-2.0 reference runtime for verifiable ' +
-    'pre-action authorization in AI agent systems. Cryptographically binds ' +
-    'actor identity, authority, policy, and action context before execution.',
+    'Open protocol and Apache-2.0 reference runtime for secure agent actions. ' +
+    'EMILIA acts as a consequence firewall: it cryptographically binds actor ' +
+    'identity, authority, policy, and action context before irreversible execution.',
   url: 'https://www.emiliaprotocol.ai',
   downloadUrl: 'https://www.npmjs.com/package/@emilia-protocol/sdk',
   softwareVersion: '1.0',
@@ -204,18 +207,21 @@ export default async function RootLayout({ children }) {
         <link rel="icon" href="/favicon.ico" sizes="32x32" />
         <script
           type="application/ld+json"
+          suppressHydrationWarning
           // Site-wide Organization schema — see ORGANIZATION_JSONLD const.
           dangerouslySetInnerHTML={{ __html: JSON.stringify(ORGANIZATION_JSONLD) }}
           nonce={nonce}
         />
         <script
           type="application/ld+json"
+          suppressHydrationWarning
           // Site-wide WebSite schema with SiteLinks Search Box action.
           dangerouslySetInnerHTML={{ __html: JSON.stringify(WEBSITE_JSONLD) }}
           nonce={nonce}
         />
         <script
           type="application/ld+json"
+          suppressHydrationWarning
           // EP as a SoftwareApplication — surfaced in software knowledge panels.
           dangerouslySetInnerHTML={{ __html: JSON.stringify(SOFTWARE_APPLICATION_JSONLD) }}
           nonce={nonce}

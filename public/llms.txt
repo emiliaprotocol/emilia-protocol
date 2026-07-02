@@ -1,6 +1,6 @@
 # EMILIA Protocol
 
-> Open (Apache-2.0) accountability layer for AI agent actions. Before an agent takes an irreversible action — a payment, a deletion, a record change, a deploy — EMILIA requires a named human's signoff and mints a Trust Receipt that anyone can verify offline. Pre-action authorization plus cryptographic evidence, not after-the-fact logging.
+> Open (Apache-2.0) Consequence Firewall for AI agent actions. Before an agent takes an irreversible action — a payment, a deletion, a record change, a deploy — EMILIA requires a named human's signoff and mints a Trust Receipt that anyone can verify offline. Pre-action authorization plus cryptographic evidence, not after-the-fact logging.
 
 EMILIA answers one question: "can anyone prove this exact irreversible action was authorized by an accountable, named human?" It is an enforcement-and-evidence layer — action-bound signoff, one-time consumption (nonce), an offline-verifiable Ed25519 + Merkle Trust Receipt, and a formally verified policy engine — distinct from approval-routing middleware.
 
@@ -17,7 +17,7 @@ Test any MCP server, OpenAPI spec, or tool list for dangerous actions an agent c
 
     npx @emilia-protocol/fire-drill ./mcp-manifest.json
 
-EMILIA Gate is the action firewall: drop it in front of a dangerous tool and it will not run without a valid, sufficiently-assured, non-replayed human/quorum receipt — then it proves what executed. 12 system-of-record adapters (GitHub, Stripe, Supabase, AWS, Kubernetes, Terraform, GCP, Vercel, Cloudflare, Linear, Jira, Salesforce):
+EMILIA Gate is the Consequence Firewall: drop it in front of a dangerous tool and it will not run without a valid, sufficiently-assured, non-replayed human/quorum receipt — then it proves what executed. 12 system-of-record adapters (GitHub, Stripe, Supabase, AWS, Kubernetes, Terraform, GCP, Vercel, Cloudflare, Linear, Jira, Salesforce):
 
     npm i @emilia-protocol/gate
 
@@ -30,6 +30,7 @@ EMILIA Gate is the action firewall: drop it in front of a dangerous tool and it 
 
 ## Test & certify
 - [Fire Drill](https://www.emiliaprotocol.ai/fire-drill): the Agent Action Firewall Test — paste an MCP manifest / OpenAPI spec / tool list, get an Agent Action Firewall score and which dangerous actions can run without a receipt. Also `npx @emilia-protocol/fire-drill`.
+- [CF-1 Consequence Firewall conformance](https://www.emiliaprotocol.ai/fire-drill/cf-1): the public badge definition for a real consequence firewall — wrong authority, weak assurance, execution mismatch, replay, tamper, and missing receipt all refused; evidence verifies offline.
 - [EMILIA Gate](https://www.emiliaprotocol.ai/gate): the action firewall + EG-1 conformance (the badge a project earns when no dangerous action can run unreceipted).
 - [Agent Action Safety Index](https://www.emiliaprotocol.ai/fire-drill/gallery): projects that refuse dangerous actions without a receipt.
 - [The Agent Action Firewall Report](https://www.emiliaprotocol.ai/fire-drill/report): how many agents can take an irreversible action with no receipt.
