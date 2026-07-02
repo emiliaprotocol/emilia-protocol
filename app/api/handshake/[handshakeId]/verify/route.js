@@ -36,7 +36,11 @@ export async function POST(request, { params }) {
     });
 
     if (result.error) {
-      return epError(EP_ERROR_CODES.HANDSHAKE_VERIFICATION_FAILED, result.error);
+      // Same info-leak posture as the present route: the verifier/DB error can
+      // carry internal detail. Log server-side; return a generic code with no
+      // client-facing detail. (LOW audit finding.)
+      logger.error('[handshake:verify] Verification failed:', result.error);
+      return epError(EP_ERROR_CODES.HANDSHAKE_VERIFICATION_FAILED);
     }
 
     return NextResponse.json(result);

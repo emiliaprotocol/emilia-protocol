@@ -27,8 +27,14 @@ const IMPLS = [
 ];
 
 const pad = (s, n) => String(s).padEnd(n);
+const ALL_IMPLS = IMPLS.map((i) => i.lang);
 let totalFailures = 0;
 let anyRan = false;
+// Track every impl that was skipped in ANY suite. The "three independent
+// implementations agree" claim is only honest if all three actually ran on
+// every suite — a skipped impl (e.g. missing go/python) must FAIL the run, not
+// be silently papered over. (MED audit finding: over-claimed conformance.)
+const missingImpls = new Set();
 
 for (const suiteFile of SUITES) {
   const vectorsPath = resolve(root, 'conformance/vectors', suiteFile);
@@ -45,6 +51,7 @@ for (const suiteFile of SUITES) {
       ran.push(impl.lang);
     } catch (e) {
       console.log(`  ⚠ ${impl.lang}: skipped (${(e.message || '').split('\n')[0]})`);
+      missingImpls.add(impl.lang);
     }
   }
 
@@ -63,9 +70,19 @@ for (const suiteFile of SUITES) {
 }
 
 if (!anyRan) { console.error('\nNo implementations ran.'); process.exit(1); }
-if (totalFailures === 0) {
-  console.log('\n✅ all suites (receipts · signoffs · quorum · revocation · time-attestation · trust-receipt · provenance) — three independent implementations agree.');
-  process.exit(0);
+if (totalFailures > 0) {
+  console.log(`\n❌ ${totalFailures} divergence(s) across implementations — NOT conformant`);
+  process.exit(1);
 }
-console.log(`\n❌ ${totalFailures} divergence(s) across implementations — NOT conformant`);
-process.exit(1);
+// No divergences — but a green run with a MISSING impl is NOT the multi-impl
+// interop claim. Fail rather than over-claim "three independent implementations
+// agree" when one (or more) never ran.
+if (missingImpls.size > 0) {
+  const ran = ALL_IMPLS.filter((l) => !missingImpls.has(l));
+  console.error(`\n❌ incomplete: only ${ran.length}/${ALL_IMPLS.length} implementations ran (${ran.join(', ') || 'none'}). `
+    + `Missing: ${[...missingImpls].join(', ')}. `
+    + `Vectors agreed where run, but the cross-language interop claim requires all ${ALL_IMPLS.length} — install the missing toolchain(s) and re-run.`);
+  process.exit(1);
+}
+console.log(`\n✅ all suites (receipts · signoffs · quorum · revocation · time-attestation · trust-receipt · provenance) — all ${ALL_IMPLS.length} independent implementations (${ALL_IMPLS.join(', ')}) agree.`);
+process.exit(0);

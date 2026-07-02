@@ -27,7 +27,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.4.1  ·  content-sha256:dc952e178f03b850
+//   source: @emilia-protocol/require-receipt@0.5.2  ·  content-sha256:8f9fdce429898a65
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 /**
@@ -206,7 +206,11 @@ function verifyPinnedAssuranceProof(doc, opts = {}) {
       ? verifyWebAuthnDigest(s.webauthn, digest, entry.public_key)
       : verifyEd25519Digest(s.signature, digest, entry.public_key);
     if (!ok) continue;
-    valid.push({ approver: String(s.approver || keyId), keyClass });
+    // Distinctness MUST key on the PINNED SIGNING KEY (approver_key_id), never the
+    // attacker-controlled `approver` label. One key signing the same digest twice
+    // under two names is ONE approver — it must not inflate the quorum count and
+    // satisfy a two-person rule with a single key.
+    valid.push({ approver: String(keyId), keyClass });
   }
   if (!valid.length) return { ok: false, tier: 'software', reason: 'assurance_proof_invalid' };
   const distinctApprovers = new Set(valid.map((s) => s.approver));
@@ -318,9 +322,13 @@ export function verifyEmiliaReceipt(doc, opts = {}) {
   }
   if (!signer) return { ok: false, reason: 'untrusted_or_invalid_signature' };
 
-  if (maxAgeSec && payload.created_at) {
+  // Freshness fail-closed: when a max age is enforced, a receipt MUST carry a
+  // parseable created_at. A missing or unparseable created_at is treated as
+  // EXPIRED (not skipped) so an undated receipt can never slip past the age
+  // gate — matching what /api/v1/guarded enforces on the demand side.
+  if (maxAgeSec) {
     const ageSec = (Date.now() - Date.parse(payload.created_at)) / 1000;
-    if (Number.isFinite(ageSec) && ageSec > maxAgeSec) return { ok: false, reason: 'receipt_expired' };
+    if (!Number.isFinite(ageSec) || ageSec > maxAgeSec) return { ok: false, reason: 'receipt_expired' };
   }
   if (action && payload.claim?.action_type !== action) {
     return { ok: false, reason: 'action_mismatch', detail: `receipt is for "${payload.claim?.action_type}", required "${action}"` };

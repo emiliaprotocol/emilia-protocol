@@ -86,7 +86,10 @@ export async function GET(request) {
     const result = await listHandshakes(filters, auth.entity);
 
     if (result.error) {
-      return epError(EP_ERROR_CODES.INTERNAL, result.error);
+      // The query/DB error can carry internal detail. Log server-side; return a
+      // generic INTERNAL with no client-facing detail. (LOW audit finding.)
+      logger.error('[handshake:list] List query failed:', result.error);
+      return epError(EP_ERROR_CODES.INTERNAL);
     }
 
     return NextResponse.json(result);
