@@ -6,7 +6,7 @@ import { gateMcpTool, gateMcpTools } from './mcp.js';
 
 function setup() {
   const harness = createEg1Harness();
-  const gate = createTrustedActionFirewall({ trustedKeys: [harness.publicKey] });
+  const gate = createTrustedActionFirewall({ trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys });
   return { harness, gate, action: harness.action };
 }
 

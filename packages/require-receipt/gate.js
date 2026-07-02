@@ -23,6 +23,8 @@ import {
   verifyEmiliaReceipt,
   receiptChallenge,
   RECEIPT_REQUIRED_STATUS,
+  evaluateReceiptAssurance,
+  receiptAssuranceTier,
 } from './index.js';
 
 /** Default in-memory consumed-store. Process-local — pass a shared/durable store
@@ -38,31 +40,13 @@ function normalizeTarget(target) {
   return String(target);
 }
 
-export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 
-function normalizeAssuranceClass(value) {
-  return ASSURANCE_TIERS.includes(value) ? value : 'software';
+function normalizeGateAssuranceClass(value) {
+  return Object.prototype.hasOwnProperty.call(TIER_RANK, value) ? value : 'software';
 }
 
-/**
- * Conservative tier earned by the receipt itself.
- * - software: a valid software-held receipt.
- * - class_a: a human signoff receipt (`allow_with_signoff` or explicit signoff).
- * - quorum: explicit quorum evidence with threshold >= 2 and >= 2 distinct humans.
- */
-export function receiptAssuranceTier(doc) {
-  const p = doc?.payload || {};
-  const q = p.quorum || p.claim?.quorum;
-  const signers = q && (q.signers || q.approvers);
-  const threshold = Number(q && (q.m ?? q.threshold ?? (Array.isArray(signers) ? signers.length : 0)));
-  if (q && Array.isArray(signers) && Number.isFinite(threshold) && threshold >= 2) {
-    const distinct = new Set(signers.map((s) => String(s))).size;
-    if (distinct >= 2) return 'quorum';
-  }
-  if (p.signoff || p.claim?.outcome === 'allow_with_signoff') return 'class_a';
-  return 'software';
-}
+export { receiptAssuranceTier };
 
 /**
  * Build a hardened Receipt-Required gate for one action type.
@@ -95,6 +79,9 @@ export function makeReceiptGate(opts = {}) {
     manifestUrl,
     assuranceClass,
     quorum,
+    approverKeys,
+    approver_keys,
+    verifyAssurance,
     store = inMemoryStore(),
   } = opts;
 
@@ -109,7 +96,7 @@ export function makeReceiptGate(opts = {}) {
     return t === null ? base : `${base}:${t}`;
   };
 
-  const requiredTier = normalizeAssuranceClass(assuranceClass);
+  const requiredTier = normalizeGateAssuranceClass(assuranceClass);
   const challengeOpts = () => ({ statusCode, manifestUrl, assuranceClass: requiredTier, quorum, maxAgeSec });
 
   function refuse(boundAction, reason) {
@@ -140,9 +127,9 @@ export function makeReceiptGate(opts = {}) {
     const v = verifyEmiliaReceipt(receipt, { trustedKeys, allowInlineKey, action: boundAction, maxAgeSec, allowedOutcomes });
     if (!v.ok) return refuse(boundAction, v.reason); // sanitized: reason code only
 
-    const haveTier = receiptAssuranceTier(receipt);
-    if ((TIER_RANK[haveTier] ?? 0) < (TIER_RANK[requiredTier] ?? 0)) {
-      return refuse(boundAction, 'assurance_too_low');
+    const assurance = evaluateReceiptAssurance(receipt, requiredTier, { approverKeys, approver_keys, verifyAssurance });
+    if (!assurance.ok || (TIER_RANK[assurance.have] ?? 0) < (TIER_RANK[requiredTier] ?? 0)) {
+      return refuse(boundAction, assurance.reason || 'assurance_too_low');
     }
 
     if (store.has(v.receipt_id) || inflight.has(v.receipt_id)) return refuse(boundAction, 'replay_refused');

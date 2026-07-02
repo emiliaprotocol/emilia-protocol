@@ -18,6 +18,7 @@ const Operators = await import('../app/api/operators/apply/route.js');
 const PilotRequest = await import('../app/api/pilot/request/route.js');
 const Checkout = await import('../app/api/checkout/route.js');
 const Guarded = await import('../app/api/v1/guarded/route.js');
+const TrustGate = await import('../app/api/trust/gate/route.js');
 const DemoReceipt = await import('../app/api/demo/require-receipt/route.js');
 const DemoX402 = await import('../app/api/demo/x402/route.js');
 const Mcp = await import('../app/api/mcp/[transport]/route.js');
@@ -54,6 +55,7 @@ describe('public POST body limits', () => {
     ['pilot/request', PilotRequest.POST, '/api/pilot/request', 17 * 1024],
     ['checkout', Checkout.POST, '/api/checkout', 3 * 1024],
     ['v1/guarded', Guarded.POST, '/api/v1/guarded?action=payment.release', 257 * 1024],
+    ['trust/gate', TrustGate.POST, '/api/trust/gate', 257 * 1024],
     ['demo/require-receipt', DemoReceipt.POST, '/api/demo/require-receipt', 257 * 1024],
     ['demo/x402', DemoX402.POST, '/api/demo/x402', 257 * 1024],
     ['mcp', Mcp.POST, '/api/mcp/mcp', 257 * 1024],

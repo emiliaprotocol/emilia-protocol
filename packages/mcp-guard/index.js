@@ -41,6 +41,7 @@ import crypto from 'node:crypto';
 const {
   verifyEmiliaReceipt,
   receiptChallenge,
+  evaluateReceiptAssurance,
 } = await import('@emilia-protocol/require-receipt').catch(() => import('../require-receipt/index.js'));
 
 // ---------------------------------------------------------------------------
@@ -80,29 +81,6 @@ export const GUARD_DECISIONS = Object.freeze({
   ALLOW_WITH_SIGNOFF: 'allow_with_signoff',
   DENY: 'deny',
 });
-
-const ASSURANCE_RANK = { software: 0, class_a: 1, quorum: 2 };
-
-function normalizeAssurance(value) {
-  return Object.prototype.hasOwnProperty.call(ASSURANCE_RANK, value) ? value : 'software';
-}
-
-function receiptAssuranceTier(doc) {
-  const payload = doc?.payload || {};
-  const q = payload.quorum || payload.claim?.quorum;
-  const signers = q && (q.signers || q.approvers);
-  const threshold = Number(q && (q.m ?? q.threshold ?? (Array.isArray(signers) ? signers.length : 0)));
-  if (q && Array.isArray(signers) && Number.isFinite(threshold) && threshold >= 2) {
-    const distinct = new Set(signers.map((s) => String(s))).size;
-    if (distinct >= 2) return 'quorum';
-  }
-  if (payload.signoff || payload.claim?.outcome === GUARD_DECISIONS.ALLOW_WITH_SIGNOFF) return 'class_a';
-  return 'software';
-}
-
-function assuranceMeets(have, need) {
-  return (ASSURANCE_RANK[normalizeAssurance(have)] ?? 0) >= (ASSURANCE_RANK[normalizeAssurance(need)] ?? 0);
-}
 
 // ---------------------------------------------------------------------------
 // Irreversibility classification
@@ -246,12 +224,12 @@ export function demandReceipt({ action, args = {}, meta = {}, verifyOpts = {} })
     };
   }
   const requiredTier = verifyOpts.assuranceClass || verifyOpts.assurance_class || 'software';
-  const haveTier = receiptAssuranceTier(doc);
-  if (!assuranceMeets(haveTier, requiredTier)) {
+  const assurance = evaluateReceiptAssurance(doc, requiredTier, verifyOpts);
+  if (!assurance.ok) {
     return {
       ok: false,
-      refusal: refusal(action, 'Receipt rejected: assurance_too_low.', {
-        rejected: { ok: false, reason: 'assurance_too_low', have_tier: haveTier, need_tier: requiredTier },
+      refusal: refusal(action, `Receipt rejected: ${assurance.reason}.`, {
+        rejected: { ok: false, reason: assurance.reason, have_tier: assurance.have, need_tier: assurance.need },
       }),
     };
   }
@@ -499,11 +477,16 @@ export function withMcpGuard(handler, options = {}) {
         rejected: selfCheck,
       });
     }
-    const issuedTier = receiptAssuranceTier(doc);
-    if (!assuranceMeets(issuedTier, requiredTier)) {
-      return refusal(action, 'Issued receipt failed assurance check: assurance_too_low.', {
+    const issuedAssurance = evaluateReceiptAssurance(doc, requiredTier, verifyOpts);
+    if (!issuedAssurance.ok) {
+      return refusal(action, `Issued receipt failed assurance check: ${issuedAssurance.reason}.`, {
         stage: 'issue',
-        rejected: { ok: false, reason: 'assurance_too_low', have_tier: issuedTier, need_tier: requiredTier },
+        rejected: {
+          ok: false,
+          reason: issuedAssurance.reason,
+          have_tier: issuedAssurance.have,
+          need_tier: issuedAssurance.need,
+        },
       });
     }
 

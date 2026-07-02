@@ -41,6 +41,18 @@ function mint(actionType, { outcome = 'allow_with_signoff', quorum = null } = {}
   return { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value }, public_key: pub };
 }
 
+function fixtureAssurance(doc) {
+  const claim = doc?.payload?.claim || {};
+  const q = claim.quorum || {};
+  const signers = Array.isArray(q.signers) ? q.signers : [];
+  const threshold = Number(q.threshold ?? q.m ?? 0);
+  if (threshold >= 2 && new Set(signers).size >= threshold) {
+    return { ok: true, tier: 'quorum', reason: 'fixture_assurance_verified' };
+  }
+  if (claim.outcome === 'allow_with_signoff') return { ok: true, tier: 'class_a', reason: 'fixture_assurance_verified' };
+  return { ok: true, tier: 'software', reason: 'fixture_assurance_verified' };
+}
+
 test('drop-in imports only node: builtins (genuinely dependency-free)', () => {
   const src = readFileSync(dropInPath, 'utf8');
   const specifiers = [...src.matchAll(/^\s*(?:import|export)\b[^\n]*\bfrom\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]);
@@ -77,13 +89,19 @@ test('drop-in enforces assuranceClass, including quorum', async () => {
 
   const software = await gate.run(mint('deploy.production', { outcome: 'allow' }), {}, async () => 'should-not-run');
   expect(software.ok).toBe(false);
-  expect(software.body.rejected.reason).toBe('assurance_too_low');
+  expect(software.body.rejected.reason).toBe('assurance_proof_required');
 
   const classA = await gate.run(mint('deploy.production'), {}, async () => 'should-not-run');
   expect(classA.ok).toBe(false);
-  expect(classA.body.rejected.reason).toBe('assurance_too_low');
+  expect(classA.body.rejected.reason).toBe('assurance_proof_required');
 
-  const quorum = await gate.run(mint('deploy.production', {
+  const verifiedGate = makeReceiptGate({
+    action: 'deploy.production',
+    assuranceClass: 'quorum',
+    allowInlineKey: true,
+    verifyAssurance: fixtureAssurance,
+  });
+  const quorum = await verifiedGate.run(mint('deploy.production', {
     quorum: { threshold: 2, signers: ['ep:approver:a', 'ep:approver:b'] },
   }), {}, async () => 'deployed');
   expect(quorum.ok).toBe(true);

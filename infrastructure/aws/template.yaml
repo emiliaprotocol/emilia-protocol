@@ -351,4 +351,4 @@ Outputs:
 
   ConformanceTestCommand:
     Description: Run this to verify conformance
-    Value: !Sub 'npx ep-conformance-test ${ApiGateway.ApiEndpoint}'
+    Value: !Sub 'node conformance/ep-conformance-test.js ${ApiGateway.ApiEndpoint}'

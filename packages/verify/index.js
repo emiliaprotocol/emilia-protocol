@@ -776,6 +776,21 @@ function buildAttestationReport(contexts) {
   return { present: true, consistent, issues };
 }
 
+function trustReceiptCanonicalProfileError(receipt) {
+  const leafContent = { ...receipt };
+  delete leafContent.log_proof;
+  delete leafContent.approver_key_proofs;
+  if (!isCanonicalizable(leafContent)) return 'Trust Receipt body';
+
+  const checkpoint = receipt?.log_proof?.checkpoint;
+  if (checkpoint && typeof checkpoint === 'object') {
+    const signedCheckpoint = { ...checkpoint };
+    delete signedCheckpoint.log_signature;
+    if (!isCanonicalizable(signedCheckpoint)) return 'Trust Receipt checkpoint';
+  }
+  return null;
+}
+
 /**
  * Verify a Trust Receipt (I-D Section 6.2) fully offline — the Section 6.3
  * algorithm. All six steps; fails closed on any missing input.
@@ -817,6 +832,10 @@ export function verifyTrustReceipt(receipt, opts = {}) {
   const signoffs = Array.isArray(receipt.signoffs) ? receipt.signoffs : [];
   if (!receipt.action || !receipt.action_hash) return fail('Missing action or action_hash');
   if (contexts.length === 0 || signoffs.length === 0) return fail('Missing contexts or signoffs');
+  const profileError = trustReceiptCanonicalProfileError(receipt);
+  if (profileError) {
+    return fail(`${profileError} is outside the EP canonicalization profile; encode non-integer quantities as strings`);
+  }
 
   // ── Step 1: recompute the action hash from the canonical Action Object ────
   const actionHashHex = sha256(canonicalize(receipt.action));
@@ -914,8 +933,20 @@ export function verifyTrustReceipt(receipt, opts = {}) {
     const leafContent = { ...receipt };
     delete leafContent.log_proof;
     delete leafContent.approver_key_proofs;
-    const leafHash = sha256(canonicalize(leafContent));
-    checks.inclusion = verifyMerkleAnchor(leafHash, lp.inclusion_path, hexOf(lp.checkpoint.root_hash));
+    const merkleAlg = lp.alg || lp.checkpoint?.merkle_alg || null;
+    if (merkleAlg === MERKLE_V2_ALG) {
+      const leafHash = leafHashV2(canonicalize(leafContent));
+      const presentedLeaf = lp.leaf_hash ? hexOf(lp.leaf_hash) : '';
+      checks.inclusion = presentedLeaf === leafHash
+        && verifyMerkleAnchor(leafHash, lp.inclusion_path, hexOf(lp.checkpoint.root_hash), { v2: true });
+      if (presentedLeaf !== leafHash) errors.push('Trust Receipt log_proof leaf_hash does not bind this receipt');
+    } else if (opts.allowLegacyMerkle === true || opts.allowLegacyTrustReceiptMerkle === true) {
+      const leafHash = sha256(canonicalize(leafContent));
+      checks.inclusion = verifyMerkleAnchor(leafHash, lp.inclusion_path, hexOf(lp.checkpoint.root_hash));
+    } else {
+      checks.inclusion = false;
+      errors.push('Trust Receipt log_proof must use EP-MERKLE-v2');
+    }
     if (!checks.inclusion) errors.push('Merkle inclusion proof does not reconstruct the checkpoint root');
 
     if (logPublicKey && lp.checkpoint.log_signature) {

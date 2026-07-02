@@ -32,6 +32,12 @@ function canonicalize(value) {
 }
 const sha256hex = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
 const hashPair = (a, b) => { const s = [a, b].sort(); return sha256hex(s[0] + s[1]); };
+const leafHashV2 = (canonical) => crypto.createHash('sha256')
+  .update(Buffer.concat([Buffer.from([0x00]), Buffer.from(canonical, 'utf8')]))
+  .digest('hex');
+const hashPairV2 = (left, right) => crypto.createHash('sha256')
+  .update(Buffer.concat([Buffer.from([0x01]), Buffer.from(left, 'utf8'), Buffer.from(right, 'utf8')]))
+  .digest('hex');
 
 // ── fixture actors ───────────────────────────────────────────────────────────
 function ed25519() {
@@ -120,13 +126,19 @@ function buildReceipt(mutate = {}) {
     consumption: { nonce: 'n-consume', state: 'COMMITTED', committed_at: mutate.committed_at || '2026-06-09T17:25:02Z' },
   };
 
-  // Build the log: leaf = hash of canonical receipt without log_proof.
-  const leaf = sha256hex(canonicalize(receipt));
+  // Build the log: default leaf = EP-MERKLE-v2(canonical receipt without log_proof).
+  const legacyMerkle = mutate.legacyMerkle === true;
+  const leaf = legacyMerkle ? sha256hex(canonicalize(receipt)) : leafHashV2(canonicalize(receipt));
   const sibling1 = sha256hex('other-leaf-1');
   const sibling2 = sha256hex('other-subtree');
-  const level1 = hashPair(leaf, sibling1);
-  const root = hashPair(level1, sibling2);
-  const checkpoint = { tree_size: 4, root_hash: `sha256:${root}`, log_key_id: 'ep:log:test#1' };
+  const level1 = legacyMerkle ? hashPair(leaf, sibling1) : hashPairV2(leaf, sibling1);
+  const root = legacyMerkle ? hashPair(level1, sibling2) : hashPairV2(level1, sibling2);
+  const checkpoint = {
+    tree_size: 4,
+    root_hash: `sha256:${root}`,
+    log_key_id: 'ep:log:test#1',
+    ...(legacyMerkle ? {} : { merkle_alg: 'EP-MERKLE-v2' }),
+  };
   const log_signature = crypto.sign(
     null,
     crypto.createHash('sha256').update(canonicalize(checkpoint), 'utf8').digest(),
@@ -134,6 +146,7 @@ function buildReceipt(mutate = {}) {
   ).toString('base64url');
 
   receipt.log_proof = {
+    ...(legacyMerkle ? {} : { alg: 'EP-MERKLE-v2', leaf_hash: `sha256:${leaf}` }),
     leaf_index: 0,
     inclusion_path: [
       { hash: sibling1, position: 'right' },
@@ -176,6 +189,13 @@ test('step 1 — a tampered action parameter fails the action hash', () => {
   const r = verifyTrustReceipt(receipt, OPTS);
   assert.equal(r.checks.action_hash, false);
   assert.equal(r.valid, false);
+});
+
+test('step 1 — non-I-JSON signed material is rejected before Trust Receipt hashing', () => {
+  const receipt = buildReceipt({ action: { parameters: { amount: 2400000.25, currency: 'USD' } } });
+  const r = verifyTrustReceipt(receipt, OPTS);
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(' '), /canonicalization profile/);
 });
 
 // ── step 2: context commitments ──────────────────────────────────────────────
@@ -276,6 +296,26 @@ test('step 5 — a broken inclusion path fails', () => {
   assert.equal(r.valid, false);
 });
 
+test('step 5 — a legacy Trust Receipt Merkle proof is opt-in only', () => {
+  const receipt = buildReceipt({ legacyMerkle: true });
+  const strictDefault = verifyTrustReceipt(receipt, OPTS);
+  assert.equal(strictDefault.checks.inclusion, false);
+  assert.match(strictDefault.errors.join(' '), /EP-MERKLE-v2/);
+  assert.equal(strictDefault.valid, false);
+
+  const legacyAllowed = verifyTrustReceipt(receipt, { ...OPTS, allowLegacyTrustReceiptMerkle: true });
+  assert.equal(legacyAllowed.checks.inclusion, true, JSON.stringify(legacyAllowed.errors));
+});
+
+test('step 5 — a v2 Trust Receipt leaf_hash must bind this receipt', () => {
+  const receipt = buildReceipt();
+  receipt.log_proof.leaf_hash = `sha256:${sha256hex('not-this-receipt')}`;
+  const r = verifyTrustReceipt(receipt, OPTS);
+  assert.equal(r.checks.inclusion, false);
+  assert.match(r.errors.join(' '), /leaf_hash/);
+  assert.equal(r.valid, false);
+});
+
 test('step 5 — a checkpoint signed by a different log key fails', () => {
   const r = verifyTrustReceipt(buildReceipt(), { approverKeys: KEYS, logPublicKey: ed25519().pub });
   assert.equal(r.checks.checkpoint_signature, false);
@@ -359,7 +399,7 @@ test('PIP-007 — an over-cap statement is SHOULD-flagged; the receipt still ver
 });
 
 test('PIP-007 — unknown members and policy_rule-without-basis are SHOULD-flagged; signature unaffected', () => {
-  const att = { escalation_trigger: 'policy_rule', confidence: 0.9 }; // missing policy_basis + extra member
+  const att = { escalation_trigger: 'policy_rule', confidence: 'high' }; // missing policy_basis + extra member
   const r = verifyTrustReceipt(buildReceipt({ attestation: att }), OPTS);
   assert.equal(r.valid, true);
   assert.equal(r.checks.signoff_signatures, true);

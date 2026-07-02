@@ -598,6 +598,19 @@ def _verify_ed25519_over_digest(sig_b64u: Any, digest_bytes: bytes, pub_spki_b64
         return False
 
 
+def _trust_receipt_canonical_profile_error(receipt: dict) -> Optional[str]:
+    leaf_content = {k: v for k, v in receipt.items() if k not in ("log_proof", "approver_key_proofs")}
+    if not is_canonicalizable(leaf_content):
+        return "Trust Receipt body"
+    log_proof = receipt.get("log_proof")
+    checkpoint = log_proof.get("checkpoint") if isinstance(log_proof, dict) else None
+    if isinstance(checkpoint, dict):
+        signed_cp = {k: v for k, v in checkpoint.items() if k != "log_signature"}
+        if not is_canonicalizable(signed_cp):
+            return "Trust Receipt checkpoint"
+    return None
+
+
 def verify_trust_receipt(receipt: Any, opts: Optional[dict] = None) -> dict:
     """Offline EP §6.2 Trust Receipt verifier (I-D §6.3). Mirrors packages/verify
     verifyTrustReceipt; the PIP-007 attestation report is advisory and omitted
@@ -621,6 +634,9 @@ def verify_trust_receipt(receipt: Any, opts: Optional[dict] = None) -> dict:
         return fail("Missing action or action_hash")
     if not contexts or not signoffs:
         return fail("Missing contexts or signoffs")
+    profile_error = _trust_receipt_canonical_profile_error(receipt)
+    if profile_error:
+        return fail(f"{profile_error} is outside the EP canonicalization profile; encode non-integer quantities as strings")
 
     action_hash_hex = _sha256_hex(canonicalize(receipt["action"]))
     checks["action_hash"] = action_hash_hex == _hex_of(receipt.get("action_hash"))
@@ -683,8 +699,17 @@ def verify_trust_receipt(receipt: Any, opts: Optional[dict] = None) -> dict:
     lp = receipt.get("log_proof")
     if lp and lp.get("checkpoint") and isinstance(lp.get("inclusion_path"), list):
         leaf_content = {k: v for k, v in receipt.items() if k not in ("log_proof", "approver_key_proofs")}
-        leaf_hash = _sha256_hex(canonicalize(leaf_content))
-        checks["inclusion"] = verify_merkle_anchor(leaf_hash, lp["inclusion_path"], _hex_of(lp["checkpoint"].get("root_hash")))
+        merkle_alg = lp.get("alg") or (lp.get("checkpoint") or {}).get("merkle_alg")
+        if merkle_alg == MERKLE_V2_ALG:
+            leaf_hash = _leaf_hash_v2(canonicalize(leaf_content))
+            presented_leaf = _hex_of(lp.get("leaf_hash")) if lp.get("leaf_hash") else ""
+            checks["inclusion"] = (presented_leaf == leaf_hash) and verify_merkle_anchor(
+                leaf_hash, lp["inclusion_path"], _hex_of(lp["checkpoint"].get("root_hash")), v2=True)
+        elif opts.get("allowLegacyMerkle") is True or opts.get("allow_legacy_merkle") is True or opts.get("allowLegacyTrustReceiptMerkle") is True:
+            leaf_hash = _sha256_hex(canonicalize(leaf_content))
+            checks["inclusion"] = verify_merkle_anchor(leaf_hash, lp["inclusion_path"], _hex_of(lp["checkpoint"].get("root_hash")))
+        else:
+            checks["inclusion"] = False
         if log_public_key and lp["checkpoint"].get("log_signature"):
             signed_cp = {k: v for k, v in lp["checkpoint"].items() if k != "log_signature"}
             checks["checkpoint_signature"] = _verify_ed25519_over_digest(

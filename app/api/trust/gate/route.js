@@ -12,7 +12,10 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { canonicalize } from '@/lib/canonical-json';
 import { sha256 } from '@/lib/handshake/invariants';
+import { readLimitedJson } from '@/lib/http/body-limit';
 import { logger } from '../../../../lib/logger.js';
+
+const MAX_TRUST_GATE_BYTES = 256 * 1024;
 
 const GATE_POLICIES = {
   strict:     { min_ee: 40,  max_dispute_rate: 0.02, require_established: true },
@@ -22,7 +25,11 @@ const GATE_POLICIES = {
 
 export async function POST(request) {
   try {
-    const body = await request.json().catch(() => ({}));
+    const parsed = await readLimitedJson(request, MAX_TRUST_GATE_BYTES, { invalidValue: {} });
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.detail || 'Request body too large', code: parsed.code }, { status: parsed.status });
+    }
+    const body = parsed.value;
 
     const auth = await authenticateRequest(request);
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();

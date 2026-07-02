@@ -74,9 +74,11 @@ Every EP-RECEIPT-v1 MUST carry, in its `signature` block:
 }
 ```
 
-`signer` + `key_discovery` are what make a receipt **self-locating**: a relying
-party who has never heard of Operator A can still find A's keys from the receipt
-alone.
+`signer` identifies the issuing operator. `key_discovery` is a portability hint
+for demos and offline exchange, not a relying-party trust root. A production
+verifier MUST pin or allowlist the discovery origin it is willing to dereference;
+otherwise a malicious receipt can choose where the verifier sends network
+traffic.
 
 ---
 
@@ -88,8 +90,11 @@ This is implemented, tested, and published as
 later** (`npm install @emilia-protocol/verify`); earlier releases do not carry
 the federation exports. The algorithm:
 
-1. Read `signature.signer` and `signature.key_discovery` from the receipt.
-2. Fetch (or use a cached, un-expired copy of) the operator's `ep-keys.json`.
+1. Read `signature.signer` from the receipt and select the pinned discovery URL
+   for that operator. Treat `signature.key_discovery` as a hint unless an
+   explicit unsafe/demo opt-in is enabled.
+2. Fetch (or use a cached, un-expired copy of) the operator's `ep-keys.json`
+   from that pinned HTTPS URL.
 3. Resolve candidate keys for `signer`: **current first, then historical**.
 4. Verify the Ed25519 signature over the canonical payload against each
    candidate; the first that validates wins. A tampered payload or an
@@ -103,7 +108,9 @@ the federation exports. The algorithm:
 // requires @emilia-protocol/verify >= 1.3.0
 import { verifyFederatedReceipt } from '@emilia-protocol/verify';
 
-const verdict = await verifyFederatedReceipt(receipt);
+const verdict = await verifyFederatedReceipt(receipt, {
+  keyDiscoveryUrl: 'https://op-a.example/.well-known/ep-keys.json',
+});
 // { accepted, verified, revoked, signer, keyMatched: 'current'|'historical', checks }
 ```
 
@@ -121,8 +128,9 @@ There is no central registrar. An operator joins the federation by:
 2. Passing the cross-operator conformance harness against the primary:
    `node conformance/federation.mjs https://<your-operator-origin>`.
 3. (Optional, recommended) opening a PR to the operator list below so relying
-   parties can pin a known origin. Pinning is a *convenience*, never a
-   *requirement* — a receipt's `key_discovery` URL is always authoritative.
+   parties can pin a known origin. Pinning is required for production online
+   verification; a receipt's `key_discovery` URL is never authoritative by
+   itself.
 
 ### Known operators
 

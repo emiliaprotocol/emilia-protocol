@@ -35,6 +35,12 @@ function mint(action, { outcome = 'allow_with_signoff', quorum = null } = {}) {
   return { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value }, public_key: pub };
 }
 
+function fixtureAssurance(doc) {
+  const claim = doc?.payload?.claim || {};
+  if (claim.outcome === 'allow_with_signoff') return { ok: true, tier: 'class_a', reason: 'fixture_assurance_verified' };
+  return { ok: true, tier: 'software', reason: 'fixture_assurance_verified' };
+}
+
 describe('@emilia-protocol/mcp-guard boundary hardening', () => {
   it('does not let attacker-controlled __ep.irreversible=false downgrade trusted policy', () => {
     expect(classifyToolCall('delete_repo', { __ep: { irreversible: false } }, {
@@ -76,7 +82,7 @@ describe('@emilia-protocol/mcp-guard boundary hardening', () => {
     const refused = demandReceipt({
       action,
       args: { __ep: { receipt: software } },
-      verifyOpts: { allowInlineKey: true, assuranceClass: 'class_a' },
+      verifyOpts: { allowInlineKey: true, assuranceClass: 'class_a', verifyAssurance: fixtureAssurance },
     });
     expect(refused.ok).toBe(false);
     expect(refused.refusal.rejected.reason).toBe('assurance_too_low');
@@ -84,7 +90,7 @@ describe('@emilia-protocol/mcp-guard boundary hardening', () => {
     const classA = demandReceipt({
       action,
       args: { __ep: { receipt: mint(action) } },
-      verifyOpts: { allowInlineKey: true, assuranceClass: 'class_a' },
+      verifyOpts: { allowInlineKey: true, assuranceClass: 'class_a', verifyAssurance: fixtureAssurance },
     });
     expect(classA.ok).toBe(true);
   });
@@ -96,7 +102,7 @@ describe('@emilia-protocol/mcp-guard boundary hardening', () => {
       return { deleted: true };
     }, {
       annotations: { delete_repo: { irreversible: true, action: 'github.repo.delete' } },
-      verifyOpts: { allowInlineKey: true },
+      verifyOpts: { allowInlineKey: true, verifyAssurance: fixtureAssurance },
     });
 
     const res = await guarded('delete_repo', {
@@ -124,7 +130,7 @@ describe('@emilia-protocol/mcp-guard boundary hardening', () => {
     const res = await guarded('delete_repo', { repo: 'prod' });
     expect(res.ep_refused).toBe(true);
     expect(res.stage).toBe('issue');
-    expect(res.rejected.reason).toBe('assurance_too_low');
+    expect(res.rejected.reason).toBe('assurance_proof_required');
     expect(ran).toBe(false);
   });
 });

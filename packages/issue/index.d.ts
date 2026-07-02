@@ -152,6 +152,7 @@ export interface LogConfig {
 }
 
 export function canonicalize(value: unknown): string;
+export function isCanonicalizable(value: unknown): boolean;
 export function actionHash(action: ActionObject): string;
 export function policyHash(policy: Record<string, unknown>): string;
 

@@ -28,7 +28,10 @@ export default defineConfig({
     // examples/** are reference implementations with their own node:test suites
     // (e.g. robot-sidecar) — same reason as packages/**: run via `node --test`,
     // not vitest, which would otherwise fail with "No test suite found".
-    exclude: ['e2e/**', '**/node_modules/**', 'dist/**', '.next/**', 'packages/**', 'apps/**', 'examples/**', 'receipt-required-pr-kit/**'],
+    // .claude/.serena are local agent scratch/worktree directories. They may
+    // contain stale copies of this repo with their own tests and env assumptions;
+    // collecting them would poison the canonical gate with non-source artifacts.
+    exclude: ['e2e/**', '**/node_modules/**', 'dist/**', '.next/**', '.claude/**', '.serena/**', 'packages/**', 'apps/**', 'examples/**', 'receipt-required-pr-kit/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],

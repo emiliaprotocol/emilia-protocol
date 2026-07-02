@@ -42,6 +42,7 @@ index = index.replace(gateReExport, '\n');
 const gateImport = /import \{[\s\S]*?\} from '\.\/index\.js';\n/;
 if (!gateImport.test(gate)) throw new Error('build-drop-in: gate.js import block not found — source changed; update the generator.');
 gate = gate.replace(gateImport, '').trimStart();
+gate = gate.replace(/\nexport \{ receiptAssuranceTier \};\n/, '\n');
 
 const body = `${index.trimEnd()}\n\n// ── inlined from gate.js ───────────────────────────────────────────────────\n\n${gate.trimEnd()}\n`;
 

@@ -103,10 +103,10 @@ When Operator B receives an EP-RECEIPT-v1 document issued by Operator A:
 
 ```
 1. Extract signer entity_id from doc.signature.signer
-2. Discover Operator A's keys URL:
-   a. If doc.signature.key_discovery is a full URL, fetch it
-   b. Otherwise, look up the entity's operator via federation registry
-3. Fetch Operator A's /.well-known/ep-keys.json
+2. Select Operator A's pinned discovery URL from local policy or a federation
+   registry. Treat doc.signature.key_discovery as a hint only; do not fetch a
+   receipt-supplied URL as a trust anchor.
+3. Fetch Operator A's /.well-known/ep-keys.json over HTTPS from that pinned URL
 4. Find the signer's public key
 5. Verify Ed25519 signature over canonical payload
 6. If anchor present:

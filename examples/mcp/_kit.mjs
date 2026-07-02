@@ -67,6 +67,20 @@ export function signAction(action, { approver, outcome = 'allow_with_signoff', q
   return doc;
 }
 
+function demoMcpAssurance(doc) {
+  const claim = doc?.payload?.claim || {};
+  const q = claim.quorum || {};
+  const signers = Array.isArray(q.signers) ? q.signers : [];
+  const threshold = Number(q.threshold ?? q.m ?? 0);
+  if (threshold >= 2 && new Set(signers).size >= threshold) {
+    return { ok: true, tier: 'quorum', reason: 'demo_mcp_assurance_verified' };
+  }
+  if (claim.outcome === 'allow_with_signoff') {
+    return { ok: true, tier: 'class_a', reason: 'demo_mcp_assurance_verified' };
+  }
+  return { ok: true, tier: 'software', reason: 'demo_mcp_assurance_verified' };
+}
+
 // Per-tool identifying argument — the resource a dangerous tool actually acts on.
 // The receipt is bound to action_type PLUS this target id, so a receipt approving
 // (e.g.) "delete repo acme/billing-core" can't be replayed to delete a different
@@ -105,6 +119,7 @@ export function makeGuardedServer({ tool }) {
         manifestUrl: MANIFEST_URL,
         assuranceClass: req.assurance_class,
         quorum: req.quorum,
+        verifyAssurance: demoMcpAssurance,
       });
       gates.set(req.action_type, gate);
     }

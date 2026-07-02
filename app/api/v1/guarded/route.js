@@ -69,6 +69,14 @@ export async function POST(request) {
     return NextResponse.json({ ...receiptChallenge(action, 'Receipt rejected: missing_created_at.'), rejected }, { status: 402 });
   }
 
+  // A verified receipt with no receipt_id cannot be bound to a one-time
+  // consumption record, so it could be replayed indefinitely (every no-id
+  // receipt would collapse to the same empty consume key). Refuse it outright.
+  if (!v.receipt_id) {
+    const rejected = { ok: false, reason: 'missing_receipt_id', detail: 'receipt has no receipt_id; cannot enforce one-time consumption' };
+    return NextResponse.json({ ...receiptChallenge(action, 'Receipt rejected: missing_receipt_id.'), rejected }, { status: 402 });
+  }
+
   // One-time consumption (replay defense): a verified receipt authorizes ONE
   // action, once. Reserve the receipt id (action-scoped) atomically; a replay of
   // the same receipt loses the race and is refused. Commit after we decide to
