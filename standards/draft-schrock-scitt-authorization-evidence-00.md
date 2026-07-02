@@ -1,0 +1,371 @@
+# A Human-Authorization Evidence Profile for SCITT Agent-Action Statements
+## draft-schrock-scitt-authorization-evidence-00
+
+> Readable mirror of the xml2rfc source ([`draft-schrock-scitt-authorization-evidence-00.xml`](./draft-schrock-scitt-authorization-evidence-00.xml)). The XML is authoritative.
+
+```
+Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
+Intended status: Informational                               2 July 2026
+Expires: 3 January 2027
+
+A Human-Authorization Evidence Profile for SCITT Agent-Action Statements
+             draft-schrock-scitt-authorization-evidence-00
+
+Abstract
+
+   A growing family of drafts records what an autonomous agent did: per-
+   action receipt envelopes, action capsules, post-execution evidence
+   profiles, pre-execution permits, and refusal events, all composing on
+   the SCITT transparency architecture [RFC9943].  These profiles
+   establish that an action was logged, that a workload or token acted,
+   and that policy allowed it.  None of them emits the artifact that
+   regulated and high-consequence deployments require: portable,
+   offline-verifiable evidence that a named, accountable human (or a
+   quorum of humans) authorized this exact irreversible action before it
+   executed.
+
+   This document defines a small, reusable _authorization-evidence_
+   profile: how a SCITT-family agent-action statement references a
+   named-human authorization receipt by digest, and how a relying party
+   verifies that the referenced authorization and the recorded action
+   are about the same operation.  The referenced receipt is an EMILIA
+   Protocol (EP) authorization receipt
+   [I-D.schrock-ep-authorization-receipts], verifiable fully offline and
+   independent of the operator, the agent runtime, and the transparency
+   service.  The profile composes by shared digest, not by containment:
+   a host statement commits to the authorization without restating it.
+
+   This profile is complementary to, not a replacement for, the SCITT
+   architecture and the agent-action, permit, and identity work that
+   composes with it.  It defines no transparency log, no action
+   envelope, no policy language, and no agent-identity scheme; it
+   defines only the reference and verification of the human-
+   authorization leg those layers assume but do not themselves produce.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 3 January 2027.
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
+   3.  Composition Rule  . . . . . . . . . . . . . . . . . . . . . .   4
+   4.  The Authorization-Evidence Reference  . . . . . . . . . . . .   4
+   5.  Verification Procedure  . . . . . . . . . . . . . . . . . . .   5
+   6.  Verdict-Completeness  . . . . . . . . . . . . . . . . . . . .   6
+   7.  Relationship to Adjacent Work . . . . . . . . . . . . . . . .   6
+   8.  Security Considerations . . . . . . . . . . . . . . . . . . .   7
+   9.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   7
+   10. Normative References  . . . . . . . . . . . . . . . . . . . .   7
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   8
+
+1.  Introduction
+
+   Autonomous agents increasingly hold credentials sufficient to perform
+   irreversible operations: releasing payments, changing beneficiary
+   records, rotating production credentials, deleting data.  A rapidly
+   growing set of specifications makes those actions observable and
+   accountable.  The SCITT architecture [RFC9943] provides append-only
+   transparency and inclusion proofs for signed statements.  Agent-
+
+   action work layered on it records per-action receipts, action
+   capsules, and post-execution evidence; pre-execution permit profiles
+   express allow/deny/challenge decisions; refusal-event work records
+   safety declinations; workload-identity and transaction-token work
+   assert which principal acted.
+
+   Each of these answers a different question, and none answers the one
+   that matters at the moment an irreversible action executes: _which
+   accountable human authorized this exact action, and can a third party
+   verify that without trusting the operator?_ The emerging gap is
+   therefore not a shortage of agent logs or action envelopes.  It is
+   the absence of a portable human-authorization artifact that can be
+   verified independently of the operator, the agent runtime, and the
+   transparency service — and that any of the above profiles can
+   reference.
+
+   This document defines that reference.  It specifies how an agent-
+   action statement carries an _authorization-evidence reference_ to a
+   named-human (or quorum) authorization receipt, and the verification
+   procedure a relying party runs to confirm that the recorded action
+   and the referenced authorization bind the same operation.  The
+   referenced receipt is an EP authorization receipt
+   [I-D.schrock-ep-authorization-receipts]: an approver holding their
+   own key signs a canonical Authorization Context over the exact
+   action, the authorization is consumed exactly once, and the resulting
+   receipt verifies offline.  This profile does not redefine that
+   receipt; it defines only how a host statement points at one and how
+   the linkage is checked.
+
+   The design principle throughout is _composition by digest, not
+   containment_. A host statement never restates the human approval; it
+   commits to the exact bytes of the authorization by digest, so the two
+   artifacts remain independently verifiable and the human-authorization
+   evidence is neither duplicated nor weakened.
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+   Action  The exact irreversible operation under consideration,
+      expressed as a canonical value (for example, an action type, a
+      target, and material parameters).
+
+   Host statement  A SCITT-family agent-action statement — a per-action
+
+      receipt, action capsule, permit, or post-execution evidence record
+      — that records or authorizes an Action and that carries an
+      authorization-evidence reference under this profile.
+
+   Authorization receipt  An EP authorization receipt
+      [I-D.schrock-ep-authorization-receipts]: an offline-verifiable
+      artifact in which a named human or a quorum signs over the exact
+      Action before execution.
+
+   Subject digest  SHA-256(JCS(Action)) — the digest of the canonical
+      JSON [RFC8785] encoding of the Action.  Both the host statement
+      and the authorization receipt are ABOUT the same Action when they
+      yield the same subject digest.
+
+   Authority-reference digest  The digest a host statement embeds to
+      commit to the authorization receipt (see Section 4).
+
+3.  Composition Rule
+
+   A conforming host statement MUST compose with an authorization
+   receipt by reference, not by containment.  Specifically:
+
+   *  The host statement MUST commit to the Action by a subject digest
+      computed as SHA-256(JCS(Action)).  It MUST NOT rely on a self-
+      asserted subject digest supplied by the party being held
+      accountable; a verifier MUST be able to recompute the subject
+      digest from the Action itself.
+
+   *  The host statement MUST carry exactly one authority-reference
+      digest committing to the authorization receipt for that Action
+      (Section 4).
+
+   *  The host statement MUST NOT restate the human approval (approver
+      identity, signature, or decision) as its own trusted assertion.
+      Those live in the authorization receipt and are verified there.
+
+   This keeps the two artifacts independently verifiable: a relying
+   party can check the recorded action against one and the human
+   authorization against the other, and confirm they concern the same
+   operation, without either artifact having to trust the other's
+   issuer.
+
+4.  The Authorization-Evidence Reference
+
+   The authority-reference digest is one of the following, selected per
+   deployment and fixed for a given host-statement profile so that both
+   implementations bind identical bytes:
+
+   receipt_payload_digest  SHA-256(JCS(receipt.payload)) — used for
+      offline composition, where the relying party holds or can fetch
+      the EP receipt directly.
+
+   statement_digest  SHA-256(COSE_Sign1 bytes) of the EP receipt
+      expressed as a SCITT Signed Statement — RECOMMENDED when the
+      receipt is registered in a transparency service, so the reference
+      also resolves to a logged, inclusion-proofed entry.
+
+   The encoding of the EP receipt as a COSE_Sign1 [RFC9052] Signed
+   Statement, including the canonical payload and content type, is
+   specified by the EP SCITT profile and is out of scope here; this
+   document specifies only the digest that a host statement embeds and
+   the verification that binds it.
+
+   A host-statement profile adopting this document defines the concrete
+   carrier for the authority-reference digest within its own structure
+   (for example, a dedicated field in a per-action receipt, the opaque
+   authority reference of an action capsule, or a
+   human_authorization_evidence element of a permit).  This document
+   does not mandate a single carrier; it mandates the digest semantics
+   and verification below.
+
+5.  Verification Procedure
+
+   A relying party presented with a host statement and its referenced
+   authorization receipt determines that the host statement is
+   _authorization-backed_ if and only if all of the following hold:
+
+   1.  The verifier recomputes the subject digest from the Action as
+       SHA-256(JCS(Action)) and confirms it matches the subject digest
+       committed by the host statement.
+
+   2.  The verifier resolves the authority-reference digest to an EP
+       authorization receipt (held locally, fetched offline, or
+       retrieved from the transparency service when a statement_digest
+       is used) and confirms the resolved receipt hashes to that digest.
+
+   3.  The authorization receipt itself verifies under
+       [I-D.schrock-ep-authorization-receipts]: a valid signature by an
+       authorized approver (or a satisfied quorum) over the canonical
+       Authorization Context, within its validity window, and not
+       already consumed or refused.
+
+   4.  The Action the authorization receipt is over yields the same
+       subject digest as step 1 — that is, the human authorized the
+       exact operation the host statement records, not a different or
+       broader one.
+
+   If any step fails, the host statement MUST NOT be treated as
+   authorization-backed.  A verifier that cannot resolve or verify the
+   referenced authorization MUST fail closed: absence of verifiable
+   human authorization is not authorization.
+
+6.  Verdict-Completeness
+
+   Authorization evidence is verdict-complete: a denied or absent human
+   authorization is itself a signed EP event, not merely the lack of an
+   approval.  A host statement MAY reference a denied authorization
+   receipt exactly as it references an approval, so that "no accountable
+   human authorized this action" is a positive, verifiable fact rather
+   than an inference from silence.  Auditors and counterparties rely on
+   refusals as much as approvals; this profile makes both first-class.
+
+7.  Relationship to Adjacent Work
+
+   This profile is deliberately narrow and composes with, rather than
+   replaces, each adjacent layer:
+
+   *  The SCITT architecture [RFC9943] provides transparency and
+      inclusion; an EP receipt registered as a Signed Statement gains a
+      logged, inclusion-proofed home, and its statement_digest becomes a
+      resolvable authority reference.  SCITT is agnostic about who
+      authorized a statement; this profile supplies exactly that.
+
+   *  Pre-execution permit work expresses allow/deny/challenge
+      decisions; an EP receipt is the human-authorization evidence a
+      permit carries when its policy demands an accountable human.
+
+   *  Per-action receipt and action-capsule work records what an agent
+      did; those envelopes carry the EP receipt as a human-authorization
+      sub-reference by digest.
+
+   *  Post-execution evidence and refusal-event work sits after or
+      beside execution; an EP authorization is the pre-execution leg it
+      links back to.
+
+   *  Workload-identity and transaction-token work asserts which
+      principal acted; the EP authority-reference digest can be bound
+      into those flows to tie the workload's action to a named human's
+      approval.
+
+   In every case the composition is by digest, and the EP receipt
+   answers only the human-authorization question.  This profile makes no
+   claim of a human in the real-time execution path: the authorization
+   is pre-execution, may be delegated within bounds, and is evidenced
+   after the fact by an offline-verifiable receipt.
+
+8.  Security Considerations
+
+   *Recompute, never trust, the subject digest.* A verifier MUST
+   recompute the subject digest from the Action and MUST NOT accept a
+   subject digest asserted by the host statement's issuer.  Accepting a
+   self-asserted digest would let a party bind a genuine human
+   authorization for one action to a different recorded action.
+
+   *Trust anchor is the approver's key, not the operator.* The security
+   of the human-authorization leg derives entirely from the EP receipt's
+   signature by a key held by the accountable human or quorum, verified
+   under [I-D.schrock-ep-authorization-receipts].  The host statement's
+   issuer, the agent runtime, and the transparency service are untrusted
+   for this leg.
+
+   *Fail closed.* A relying party that cannot resolve the authority
+   reference, cannot verify the EP receipt, or finds the receipt
+   consumed, expired, or over a different action MUST NOT treat the host
+   statement as authorization-backed.
+
+   *Digest agility and second-preimage.* This document specifies SHA-256
+   over RFC 8785 canonical JSON for both the subject digest and
+   receipt_payload_digest.  Deployments MUST use a collision- and
+   second-preimage-resistant hash and MUST pin one canonicalization so
+   that independent implementations bind identical bytes.  Hash agility
+   follows the referenced receipt and COSE specifications.
+
+   *Replay.* One-time consumption of the authorization is enforced by
+   the EP receipt, not by this profile.  A host statement that
+   references a receipt does not itself re-open a replay window, but a
+   verifier relying on allow semantics MUST honor the referenced
+   receipt's consumption state.
+
+9.  IANA Considerations
+
+   This document has no IANA actions.  A future revision may request
+   registration of a claim or COSE header parameter carrying the
+   authority-reference digest; no such registration is requested at this
+   time.
+
+10.  Normative References
+
+   [I-D.schrock-ep-authorization-receipts]
+              Schrock, I., "Authorization Receipts for High-Risk Agent
+              Actions (EP)", Work in Progress, Internet-Draft, draft-
+              schrock-ep-authorization-receipts-05, July 2026,
+              <https://datatracker.ietf.org/doc/html/draft-schrock-ep-
+              authorization-receipts-05>.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, May 2017,
+              <https://www.rfc-editor.org/info/rfc8174>.
+
+   [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
+              Canonicalization Scheme (JCS)", RFC 8785, June 2020,
+              <https://www.rfc-editor.org/info/rfc8785>.
+
+   [RFC9052]  Schaad, J., "CBOR Object Signing and Encryption (COSE):
+              Structures and Process", STD 96, RFC 9052, August 2022,
+              <https://www.rfc-editor.org/info/rfc9052>.
+
+   [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
+              Y., and S. Lasker, "An Architecture for Trustworthy and
+              Transparent Digital Supply Chains", RFC 9943, March 2026,
+              <https://www.rfc-editor.org/info/rfc9943>.
+
+Author's Address
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+```

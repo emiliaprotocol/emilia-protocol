@@ -127,6 +127,32 @@ failure, and we hold ourselves to the rule first.
 - `draft-schrock-emilia-eye-00.xml` — the xml2rfc v3 source.
 - `draft-schrock-emilia-eye-00.txt` — the rendered I-D.
 
+## draft-schrock-scitt-authorization-evidence-00
+
+**A Human-Authorization Evidence Profile for SCITT Agent-Action Statements** —
+the composition profile that makes EP citable *by* the SCITT agent-action
+cluster (permit profiles, action-receipt envelopes, action capsules,
+post-execution evidence). It defines how a host statement references a
+named-human (or quorum) authorization receipt
+(`draft-schrock-ep-authorization-receipts`) **by digest** — subject digest =
+`SHA-256(JCS(action))`, authority-reference digest = `receipt_payload_digest`
+(offline) or `statement_digest` (when registered as a SCITT Signed Statement) —
+and the fail-closed verification that binds the recorded action to the human
+authorization. Composes by digest, not containment; defines no log, envelope,
+policy language, or identity scheme. Verdict-complete (a denied authorization
+is itself a referenced signed event).
+
+**Status: written + render-clean (xml2rfc v3), NOT yet filed (intended status: Informational).**
+"Posted" is not "adopted" — individual submission, no working-group standing.
+Runnable companions: `examples/scitt/ep-receipt-scitt-end-to-end.mjs`,
+`examples/scitt/capsule-seam-vector.mjs`; engagement frame in
+`docs/standards-engagement/EP-HUMAN-AUTHORIZATION-RECEIPT-PROFILE.md`.
+
+### Source artifacts
+
+- `draft-schrock-scitt-authorization-evidence-00.xml` — the xml2rfc v3 source.
+- `draft-schrock-scitt-authorization-evidence-00.txt` — the rendered I-D.
+
 ## draft-schrock-ep-enforcement-point-00
 
 **An Enforcement-Point Profile for Authorization Receipts (EP)** — a Policy
