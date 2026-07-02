@@ -528,3 +528,71 @@ describe('Crypto / ZK claims', () => {
     expect(readme).toContain('Handshake');
   });
 });
+
+// ── 8. Test-count freshness (README ↔ proof-stats) ──────────────────────────
+// Regression guard for finding #1: the README "Automated tests | N across M
+// files" line drifted from ground truth. Bind it to lib/proof-stats.json so it
+// can never silently go stale again — regenerate with
+// `node scripts/generate-proof-stats.mjs`.
+
+describe('README test-count freshness', () => {
+  const readme = readFile('README.md');
+  const proofStats = JSON.parse(readFile('lib/proof-stats.json'));
+
+  it('"Automated tests | N across M files" matches lib/proof-stats.json', () => {
+    // Parse the Proof-points row: | Automated tests | 4,583 across 216 files |
+    const match = readme.match(
+      /Automated tests\s*\|\s*([\d,]+)\s+across\s+([\d,]+)\s+files/i
+    );
+    expect(
+      match,
+      'README must contain an "Automated tests | N across M files" claim'
+    ).not.toBeNull();
+
+    const claimedTests = Number(match[1].replace(/,/g, ''));
+    const claimedFiles = Number(match[2].replace(/,/g, ''));
+
+    expect(claimedTests).toBe(proofStats.tests.passed);
+    expect(claimedFiles).toBe(proofStats.tests.files);
+  });
+});
+
+// ── 9. WYSIWYS honesty (README ↔ EP-WYSIWYS-SPEC.md) ────────────────────────
+// Regression guard for finding #2: the README overclaimed WYSIWYS as an
+// absolute ("What the human saw is what they signed. No script can forge
+// it..."), while docs/EP-WYSIWYS-SPEC.md marks it EXPERIMENTAL and states it
+// "reduces, does not eliminate" the presentation-attack surface.
+
+describe('WYSIWYS claim honesty', () => {
+  const readme = readFile('README.md');
+
+  it('README does not state WYSIWYS as an unqualified absolute', () => {
+    // The bare declarative "what the human saw is what they signed" (no hedge)
+    // is an overclaim. A quoted/hedged form ("what you saw is what you signed"
+    // gap) is fine.
+    expect(readme.toLowerCase()).not.toMatch(
+      /what the human saw is what they signed/
+    );
+  });
+
+  it('README WYSIWYS mentions co-occur with a reduces/narrows/experimental hedge', () => {
+    // Wherever the README talks about "what you saw is what you signed", the
+    // surrounding sentence must qualify it.
+    const idx = readme.toLowerCase().indexOf('what you saw is what you signed');
+    if (idx !== -1) {
+      // Inspect a window around the mention for a hedging word.
+      const window = readme
+        .slice(Math.max(0, idx - 200), idx + 400)
+        .toLowerCase();
+      expect(window).toMatch(/reduce|narrow|experimental|does not eliminate|gap/);
+    }
+    // The README must not contain the old absolute "No script can forge it".
+    expect(readme).not.toContain('No script can forge it');
+  });
+
+  it('EP-WYSIWYS-SPEC.md keeps its experimental / reduces-not-eliminates framing', () => {
+    const spec = readFile('docs/EP-WYSIWYS-SPEC.md');
+    expect(spec.toLowerCase()).toMatch(/experimental/);
+    expect(spec.toLowerCase()).toMatch(/does not\b[\s\S]{0,40}\beliminate/);
+  });
+});
