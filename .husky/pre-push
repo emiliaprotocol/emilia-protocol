@@ -1,0 +1,50 @@
+#!/bin/sh
+# EMILIA Protocol — pre-push guard against "stranded commit" no-op pushes to main.
+#
+# WHY. Multiple agent sessions edit this ONE shared working tree and sometimes
+# switch the checkout to a feature branch mid-session. A commit then lands on
+# that branch, and a following `git push origin main` silently pushes the
+# UNCHANGED main ref (a no-op) — the work never reaches main and nobody notices.
+# This has bitten three times. Fail LOUD instead of silently succeeding.
+#
+# RULE. If a push updates refs/heads/main but the current HEAD is NOT contained
+# in the commit being pushed (you have local commits that won't reach main),
+# refuse and explain. Legit pushes — on main, or an explicit `<sha>:main`
+# fast-forward recovery where HEAD == that sha — are allowed.
+#
+# Escape hatch for a deliberate, understood push: EP_ALLOW_MAIN_PUSH=1 git push ...
+
+[ "$EP_ALLOW_MAIN_PUSH" = "1" ] && exit 0
+
+head_sha=$(git rev-parse HEAD 2>/dev/null) || exit 0
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  # Only guard pushes that update the remote main branch.
+  case "$remote_ref" in
+    refs/heads/main) ;;
+    *) continue ;;
+  esac
+  # Skip branch deletions (local_sha is all zeros).
+  case "$local_sha" in *[!0]*) ;; *) continue ;; esac
+
+  # If HEAD is not an ancestor of the commit going to main, local work is being
+  # left behind — almost certainly a stranded commit on a switched-under-you branch.
+  if ! git merge-base --is-ancestor "$head_sha" "$local_sha" 2>/dev/null; then
+    cur=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+    echo "" >&2
+    echo "✗ pre-push BLOCKED — refusing to push to main." >&2
+    echo "  HEAD ($cur @ $(git rev-parse --short HEAD)) is NOT contained in the commit" >&2
+    echo "  you are pushing to main ($(git rev-parse --short "$local_sha" 2>/dev/null))." >&2
+    echo "  Your latest commit likely landed on '$cur', not main — a concurrent agent may" >&2
+    echo "  have switched this shared checkout. Pushing now would be a silent no-op." >&2
+    echo "" >&2
+    echo "  Fix (land your commit on main):" >&2
+    echo "    git push origin $(git rev-parse --short HEAD):main   # if it is a clean fast-forward" >&2
+    echo "    # or: git checkout main && git cherry-pick <sha>" >&2
+    echo "  Deliberate override: EP_ALLOW_MAIN_PUSH=1 git push ..." >&2
+    echo "" >&2
+    exit 1
+  fi
+done
+
+exit 0
