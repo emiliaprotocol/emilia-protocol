@@ -4,7 +4,7 @@ import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
 import { getServiceClient } from '@/lib/supabase';
 import { validateWebhookUrl } from '@/lib/cloud/webhooks';
-import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { epProblem, EP_ERRORS, epDbError } from '@/lib/errors';
 import { logger } from '../../../../../lib/logger.js';
 
 /**
@@ -31,7 +31,7 @@ export async function GET(request, { params }) {
 
     if (error) {
       logger.error('[cloud/webhooks] GET error:', error);
-      return epProblem(500, 'webhook_query_failed', error.message);
+      return epDbError(500, 'webhook_query_failed', error, 'cloud/webhooks/id');
     }
 
     if (!endpoint) {
@@ -79,7 +79,7 @@ export async function PUT(request, { params }) {
 
     if (lookupErr) {
       logger.error('[cloud/webhooks] PUT lookup error:', lookupErr);
-      return epProblem(500, 'webhook_query_failed', lookupErr.message);
+      return epDbError(500, 'webhook_query_failed', lookupErr, 'cloud/webhooks/id');
     }
 
     if (!existing) {
@@ -125,7 +125,7 @@ export async function PUT(request, { params }) {
 
     if (updateErr) {
       logger.error('[cloud/webhooks] PUT update error:', updateErr);
-      return epProblem(500, 'webhook_update_failed', updateErr.message);
+      return epDbError(500, 'webhook_update_failed', updateErr, 'cloud/webhooks/id');
     }
 
     return NextResponse.json({
@@ -166,7 +166,7 @@ export async function DELETE(request, { params }) {
 
     if (lookupErr) {
       logger.error('[cloud/webhooks] DELETE lookup error:', lookupErr);
-      return epProblem(500, 'webhook_query_failed', lookupErr.message);
+      return epDbError(500, 'webhook_query_failed', lookupErr, 'cloud/webhooks/id');
     }
 
     if (!existing) {
@@ -187,7 +187,7 @@ export async function DELETE(request, { params }) {
 
     if (deleteErr) {
       logger.error('[cloud/webhooks] DELETE error:', deleteErr);
-      return epProblem(500, 'webhook_delete_failed', deleteErr.message);
+      return epDbError(500, 'webhook_delete_failed', deleteErr, 'cloud/webhooks/id');
     }
 
     return NextResponse.json({

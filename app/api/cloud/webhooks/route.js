@@ -3,7 +3,7 @@ import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
 import { registerEndpoint } from '@/lib/cloud/webhooks';
-import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { epProblem, EP_ERRORS, epDbError } from '@/lib/errors';
 import { logger } from '../../../../lib/logger.js';
 
 /**
@@ -28,7 +28,7 @@ export async function GET(request) {
 
     if (error) {
       logger.error('[cloud/webhooks] List error:', error);
-      return epProblem(500, 'webhooks_query_failed', error.message);
+      return epDbError(500, 'webhooks_query_failed', error, 'cloud/webhooks');
     }
 
     return NextResponse.json({

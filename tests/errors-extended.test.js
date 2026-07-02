@@ -21,10 +21,15 @@ vi.mock('next/server', () => ({
 
 import {
   epProblem,
+  epDbError,
   EP_ERRORS,
   ProtocolWriteError,
   TrustEvaluationError,
 } from '../lib/errors.js';
+
+// Spy on the logger so we can assert epDbError logs the raw error server-side
+// while returning a scrubbed, generic body to the client.
+import { logger } from '../lib/logger.js';
 
 // =============================================================================
 // epProblem — RFC 7807 shape
@@ -290,5 +295,57 @@ describe('TrustEvaluationError', () => {
   it('message is set correctly', () => {
     const e = new TrustEvaluationError('trust evaluation timed out');
     expect(e.message).toBe('trust evaluation timed out');
+  });
+});
+
+// =============================================================================
+// epDbError — logs the raw DB error server-side, returns a scrubbed body
+// =============================================================================
+
+describe('epDbError', () => {
+  beforeEach(() => vi.restoreAllMocks());
+
+  it('never leaks the raw error.message to the client; returns a generic detail', () => {
+    vi.spyOn(logger, 'error').mockImplementation(() => {});
+    const raw = { message: 'relation "secret_table" does not exist', detail: 'internal', code: '42P01' };
+    const res = epDbError(500, 'audit_query_failed', raw, 'audit');
+    expect(res.status).toBe(500);
+    expect(res.body.detail).toBe('The request could not be completed due to a server-side error.');
+    expect(res.body.detail).not.toContain('secret_table');
+    expect(res.body.type).toContain('audit_query_failed');
+  });
+
+  it('logs the raw error fields (message/detail/dbCode) server-side under the logContext tag', () => {
+    const spy = vi.spyOn(logger, 'error').mockImplementation(() => {});
+    const raw = { message: 'boom', detail: 'col x', code: '23505' };
+    epDbError(500, 'write_failed', raw, 'signoff');
+    expect(spy).toHaveBeenCalledWith('[signoff] datastore error', {
+      code: 'write_failed',
+      message: 'boom',
+      detail: 'col x',
+      dbCode: '23505',
+    });
+  });
+
+  it('falls back gracefully when the error is a bare string (no message/detail/code)', () => {
+    const spy = vi.spyOn(logger, 'error').mockImplementation(() => {});
+    epDbError(503, 'store_unavailable', 'connection refused', 'guarded');
+    expect(spy).toHaveBeenCalledWith('[guarded] datastore error', {
+      code: 'store_unavailable',
+      message: 'connection refused',
+      detail: null,
+      dbCode: null,
+    });
+  });
+
+  it('falls back to the code as the log tag when logContext is omitted', () => {
+    const spy = vi.spyOn(logger, 'error').mockImplementation(() => {});
+    epDbError(500, 'lookup_failed', null);
+    expect(spy).toHaveBeenCalledWith('[lookup_failed] datastore error', {
+      code: 'lookup_failed',
+      message: 'null',
+      detail: null,
+      dbCode: null,
+    });
   });
 });

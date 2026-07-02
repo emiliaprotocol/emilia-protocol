@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
-import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { epProblem, EP_ERRORS, epDbError } from '@/lib/errors';
 import { checkClaimsAgainstPolicy, getRequiredPartiesForMode } from '@/lib/handshake/policy';
 import { checkAssuranceLevel } from '@/lib/handshake/invariants';
 import { logger } from '../../../../../../lib/logger.js';
@@ -43,7 +43,7 @@ export async function POST(request, { params }) {
 
     if (error) {
       logger.error('[cloud/policies/simulate] Query error:', error);
-      return epProblem(500, 'policy_query_failed', error.message);
+      return epDbError(500, 'policy_query_failed', error, 'cloud/policies/simulate');
     }
 
     if (!policy) {

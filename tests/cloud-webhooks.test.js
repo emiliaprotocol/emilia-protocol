@@ -18,6 +18,53 @@ vi.mock('node:dns/promises', () => ({
   }),
 }));
 
+// Delivery now uses node:https with a PINNED lookup (DNS-rebinding TOCTOU fix),
+// not global fetch. Mock https.request so tests drive the outbound response and
+// can assert the connection is pinned to the pre-validated address.
+const _https = {
+  // { status, body } to resolve with, or { error } to emit a request error.
+  response: { status: 200, body: 'OK' },
+  error: null,
+  lastOptions: null,
+  lastBody: '',
+};
+function setHttpsResponse(status, body = '') { _https.response = { status, body }; _https.error = null; }
+function setHttpsError(message) { _https.error = new Error(message); }
+function resetHttps() { _https.response = { status: 200, body: 'OK' }; _https.error = null; _https.lastOptions = null; _https.lastBody = ''; }
+
+vi.mock('node:https', () => ({
+  default: {
+    request(options, cb) {
+      _https.lastOptions = options;
+      const listeners = {};
+      const req = {
+        on(evt, fn) { listeners[evt] = fn; return req; },
+        write(chunk) { _https.lastBody += chunk; },
+        end() {
+          if (_https.error) {
+            queueMicrotask(() => listeners.error && listeners.error(_https.error));
+            return;
+          }
+          // Simulate a response stream.
+          const resListeners = {};
+          const res = {
+            statusCode: _https.response.status,
+            on(evt, fn) { resListeners[evt] = fn; return res; },
+            destroy() {},
+          };
+          queueMicrotask(() => {
+            cb(res);
+            if (_https.response.body) resListeners.data && resListeners.data(Buffer.from(_https.response.body));
+            resListeners.end && resListeners.end();
+          });
+        },
+        destroy() {},
+      };
+      return req;
+    },
+  },
+}));
+
 import {
   registerEndpoint,
   disableEndpoint,
@@ -251,15 +298,9 @@ describe('disableEndpoint', () => {
 // ── deliverWebhook ────────────────────────────────────────────────────────────
 
 describe('deliverWebhook', () => {
-  let originalFetch;
-
   beforeEach(() => {
     vi.clearAllMocks();
-    originalFetch = globalThis.fetch;
-  });
-
-  afterEach(() => {
-    globalThis.fetch = originalFetch;
+    resetHttps();
   });
 
   it('returns 404 when endpoint is not found', async () => {
@@ -301,12 +342,7 @@ describe('deliverWebhook', () => {
   it('delivers successfully and marks delivery as delivered', async () => {
     const updatedDelivery = { ...DELIVERY, status: 'delivered', attempts: 1 };
 
-    // Mock fetch to return a 200 OK response
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      text: async () => 'OK',
-    });
+    setHttpsResponse(200, 'OK');
 
     const epChain = makeChain({ data: ENDPOINT, error: null });
     const deliveryInsertChain = makeChain({ data: DELIVERY, error: null });
@@ -336,16 +372,20 @@ describe('deliverWebhook', () => {
     const result = await deliverWebhook('ep-1', 'receipt.created', { id: 'evt-1' });
     expect(result.delivery).toBeDefined();
     expect(result.delivery.status).toBe('delivered');
+    // The connection must be pinned to the pre-validated public IP, not left to
+    // an independent re-resolution (DNS-rebinding TOCTOU defense).
+    expect(_https.lastOptions.hostname).toBe('example.com');
+    expect(typeof _https.lastOptions.lookup).toBe('function');
+    await new Promise((res) => _https.lastOptions.lookup('example.com', {}, (_e, addr) => {
+      expect(addr).toBe('93.184.216.34');
+      res();
+    }));
   });
 
   it('sets status to retrying on HTTP failure', async () => {
     const retriedDelivery = { ...DELIVERY, status: 'retrying', attempts: 1 };
 
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: false,
-      status: 500,
-      text: async () => 'Server Error',
-    });
+    setHttpsResponse(500, 'Server Error');
 
     const epChain = makeChain({ data: ENDPOINT, error: null });
     const deliveryInsertChain = makeChain({ data: DELIVERY, error: null });
@@ -430,12 +470,9 @@ describe('deliverWebhook', () => {
   });
 
   it('sends correct headers including X-EP-Signature', async () => {
-    const capturedHeaders = {};
-
-    globalThis.fetch = vi.fn().mockImplementation(async (url, opts) => {
-      Object.assign(capturedHeaders, opts.headers);
-      return { ok: true, status: 200, text: async () => 'OK' };
-    });
+    // Delivery goes through the pinned-address node:https path, so assert on the
+    // headers handed to https.request (captured by the _https mock), not fetch.
+    setHttpsResponse(200, 'OK');
 
     const updatedDelivery = { ...DELIVERY, status: 'delivered', attempts: 1 };
     const epChain = makeChain({ data: ENDPOINT, error: null });
@@ -463,6 +500,7 @@ describe('deliverWebhook', () => {
 
     await deliverWebhook('ep-1', 'receipt.created', { id: 'evt-1' });
 
+    const capturedHeaders = _https.lastOptions?.headers || {};
     expect(capturedHeaders['X-EP-Signature']).toBeDefined();
     expect(capturedHeaders['X-EP-Timestamp']).toBeDefined();
     expect(capturedHeaders['X-EP-Event']).toBe('receipt.created');

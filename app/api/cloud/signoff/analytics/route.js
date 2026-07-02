@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
-import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { epProblem, EP_ERRORS, epDbError } from '@/lib/errors';
 import { logger } from '../../../../../lib/logger.js';
 
 /**
@@ -47,7 +47,7 @@ export async function GET(request) {
 
     if (cErr) {
       logger.error('[cloud/signoff/analytics] Challenge query error:', cErr);
-      return epProblem(500, 'signoff_analytics_query_failed', cErr.message);
+      return epDbError(500, 'signoff_analytics_query_failed', cErr, 'cloud/signoff/analytics');
     }
     if (aErr) {
       // Attestation table may not exist in older deployments; degrade gracefully.
