@@ -76,7 +76,7 @@ export default function FireDrillPage() {
             </p>
             <p style={{ ...styles.body, maxWidth: 760, marginTop: 12, fontSize: 15, color: color.t2 }}>
               Runs the same scanner as <code style={{ fontFamily: font.mono }}>npx @emilia-protocol/fire-drill</code>.
-              Static assessment — verify the fix at runtime with EG-1 conformance.
+              Static assessment — verify the fix at runtime with CF-1 / EG-1 conformance.
             </p>
           </div>
         </section>
@@ -153,12 +153,13 @@ export default function FireDrillPage() {
             </h2>
             <div style={{ display: 'flex', gap: 12, marginTop: 28, flexWrap: 'wrap' }}>
               <a href="/gate" style={cta.primary}>Add EMILIA Gate</a>
+              <a href="/fire-drill/cf-1" style={cta.secondary}>What is CF-1?</a>
               <a href="/gate#eg1" style={cta.secondary}>Earn EG-1</a>
               <a href="/fire-drill/gallery" style={cta.secondary}>Safety Index</a>
               <Link href="/fire-drill/report" style={cta.secondary}>The Report</Link>
             </div>
             <div style={{ marginTop: 28 }}>
-              <div style={{ ...styles.eyebrow, color: color.t3 }}>EARNED EG-1? EMBED THE BADGE</div>
+              <div style={{ ...styles.eyebrow, color: color.t3 }}>EARNED CF-1 / EG-1? EMBED THE BADGE</div>
               <pre style={{ fontFamily: font.mono, fontSize: 12, color: '#D6D3D1', background: '#1C1917', border: `1px solid ${color.border}`, borderRadius: 8, padding: 16, marginTop: 10, overflowX: 'auto', whiteSpace: 'pre-wrap' }}>{'![EG-1 Enforced](https://www.emiliaprotocol.ai/badge/eg1?eg1=pass)'}</pre>
             </div>
           </div>

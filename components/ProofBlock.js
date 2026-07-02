@@ -6,7 +6,7 @@
  *
  * The spear tip: almost nobody in AI governance can say "we machine-checked our
  * safety properties." EP can. Copy is ground-truthed against formal/ep_handshake.tla
- * + ep_relations.als (26 TLA+ invariants, 35 Alloy facts, 15 assertions, Alloy 6.0.0,
+ * + ep_relations.als (26 TLA+ invariants, 35 Alloy facts, 22 assertions, Alloy 6.0.0,
  * checked in CI). Invariant identifiers below are the REAL source names — do not
  * invent friendly labels.
  */
@@ -19,7 +19,7 @@ const EASE = [0.23, 1, 0.32, 1];
 
 const STATS = [
   { n: '26', label: 'TLA+ invariants' },
-  { n: '35', label: 'Alloy facts + 15 assertions' },
+  { n: '35', label: 'Alloy facts + 22 assertions' },
   { n: 'CI', label: 'machine-checked every commit' },
 ];
 

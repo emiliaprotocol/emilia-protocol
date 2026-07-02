@@ -21,6 +21,7 @@ export default function sitemap() {
     { path: '/',                      priority: 1.0, changeFrequency: 'weekly' },
     { path: '/agent-guard',           priority: 0.95, changeFrequency: 'weekly' },
     { path: '/fire-drill',            priority: 0.95, changeFrequency: 'weekly' },
+    { path: '/fire-drill/cf-1',       priority: 0.9,  changeFrequency: 'monthly' },
     { path: '/fire-drill/gallery',    priority: 0.8,  changeFrequency: 'weekly' },
     { path: '/fire-drill/report',     priority: 0.85, changeFrequency: 'weekly' },
     { path: '/gate',                  priority: 0.95, changeFrequency: 'monthly' },

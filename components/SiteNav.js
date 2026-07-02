@@ -68,7 +68,7 @@ export default function SiteNav({ activePage }) {
               width={110}
               height={28}
               priority
-              style={{ height: 28, width: 'auto', display: 'block' }}
+              style={{ width: 110, height: 'auto', display: 'block' }}
             />
           </Link>
 
