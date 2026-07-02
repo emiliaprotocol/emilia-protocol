@@ -27,7 +27,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.5.0  ·  content-sha256:d8b8f9a497689121
+//   source: @emilia-protocol/require-receipt@0.5.1  ·  content-sha256:d8b8f9a497689121
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 /**
