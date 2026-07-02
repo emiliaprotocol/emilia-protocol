@@ -65,5 +65,50 @@
     "cose_sign1_b64": "0oRYM6MBJwN4G2FwcGxpY2F0aW9uL2VwLXJlY2VpcHQranNvbgRQ/HWiVeePW0NxN2t2zoE82KBZAWJ7ImNsYWltIjp7ImFjdGlvbl90eXBlIjoicGF5bWVudC5yZWxlYXNlIiwiYXBwcm92ZXIiOm51bGwsIm91dGNvbWUiOiJkZW55IiwicmVhc29uIjoibm9faHVtYW5fYXV0aG9yaXplciIsInN1YmplY3RfZGlnZXN0IjoiZmQ3ODg3ZjJmN2IwZWM5YzllZDA2ZWY0MmY2MmUyMWIzYjExOWJkZmIxMzcyOGI5ZWFlYTZlNWVmMjgyNzNiMyIsInRhcmdldCI6IndpcmU6dmVuZG9yLWFjbWUtMjUwMDAwIn0sImNyZWF0ZWRfYXQiOiIyMDI2LTA3LTAyVDAwOjAwOjAwWiIsInJlY2VpcHRfaWQiOiJlcDpyZWNlaXB0OnNlYW0tdmVjdG9yLWRlbmllZC0wMDAxIiwic3ViamVjdCI6ImFnZW50OmF1dG9ub21vdXM6dHJlYXN1cnktYm90In1YQIPUa+9dacUbhBlHuju9TSjcL6FGoUW1vp8BRbIRkZa3iuMCUp8JFOwm6RSs5EuBnPGbPd2wEFQjoASy4J3dhAY=",
     "receipt_payload_digest": "3ec7b1742fa887d9fff06b06142298aaace5481d01b623bd3fa27c1a7f641020",
     "statement_digest": "5cd060174152a5e86a50184b431c976e52c9e2f67175d8bf8a61ba6c7466aa7e"
-  }
+  },
+  "action_b": {
+    "action_type": "payment.release",
+    "target": "wire:vendor-acme-999999",
+    "amount": "999999.00",
+    "currency": "USD"
+  },
+  "subject_digest_b": "7eb50ff87c502482f1a77795ca5be391fbb0b7a02dab1fd60362567e4d5b8307",
+  "must_reject": [
+    {
+      "id": "wrong_action",
+      "must": "reject",
+      "reason": "who_subject_mismatch",
+      "detail": "WHO receipt binds ACTION A; a Capsule recording ACTION B must not accept it as B’s approval.",
+      "capsule_subject_digest": "7eb50ff87c502482f1a77795ca5be391fbb0b7a02dab1fd60362567e4d5b8307",
+      "who_subject_digest": "fd7887f2f7b0ec9c9ed06ef42f62e21b3b119bdfb13728b9eaea6e5ef28273b3"
+    },
+    {
+      "id": "approval_contradiction",
+      "must": "reject",
+      "reason": "disposition_contradicts_receipt",
+      "detail": "Capsule records human_disposed=approved but references the DENIED receipt digest — the WHO evidence is a refusal.",
+      "referenced_authority_digest": "3ec7b1742fa887d9fff06b06142298aaace5481d01b623bd3fa27c1a7f641020"
+    },
+    {
+      "id": "untrusted_issuer",
+      "must": "reject",
+      "reason": "issuer_not_pinned",
+      "detail": "A receipt signed by a non-pinned key must fail verification under the pinned issuer SPKI — no trust laundering via a receipt-supplied key.",
+      "forged_signature_b64": "0BjUsed6xuPB5LZv7TYZkKumnc6Cmvp2lMRo9ggPuW9eAum/9dJ9Yczkuvbu33r+mFxhQVwarwkKcltiMvKKCQ=="
+    },
+    {
+      "id": "replay_across_subject",
+      "must": "reject",
+      "reason": "receipt_action_bound",
+      "detail": "The approved receipt is bound to ACTION A via claim.subject_digest; presenting its digest for a Capsule over ACTION B must be refused (action-bound, one-time).",
+      "receipt_bound_subject": "fd7887f2f7b0ec9c9ed06ef42f62e21b3b119bdfb13728b9eaea6e5ef28273b3",
+      "other_subject": "7eb50ff87c502482f1a77795ca5be391fbb0b7a02dab1fd60362567e4d5b8307"
+    },
+    {
+      "id": "missing_who_when_required",
+      "must": "policy_reject",
+      "reason": "who_required_but_absent",
+      "detail": "When policy requires accountable-human approval, a Capsule chain with no resolvable WHO digest must be policy-rejected. Verdict-complete: a required-but-absent approval is itself the finding."
+    }
+  ]
 }

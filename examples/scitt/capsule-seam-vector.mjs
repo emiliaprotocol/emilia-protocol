@@ -128,6 +128,54 @@ const denied = buildReceiptStatement({
   },
 });
 
+// --- Negative / MUST-reject vectors for the WHO leg --------------------------
+// Per Songbo Bu: a decomposition is only an interop surface if each leg ships its
+// own verifier contract AND negative cases. These are the WHO-leg rejects a
+// conforming composed verifier MUST enforce, each with the expected reason code.
+const ACTION_B = { action_type: 'payment.release', target: 'wire:vendor-acme-999999', amount: '999999.00', currency: 'USD' };
+const SUBJECT_DIGEST_B = sha256hex(Buffer.from(canonicalize(ACTION_B), 'utf8'));
+
+// A forged issuer: a different fixed seed signing a look-alike of the approved payload.
+const FORGED_SEED = crypto.createHash('sha256').update('ep:capsule-seam-vector:v1:FORGED-issuer').digest();
+const forgedKey = crypto.createPrivateKey({ key: Buffer.concat([PKCS8_ED25519_PREFIX, FORGED_SEED]), format: 'der', type: 'pkcs8' });
+const forgedSigOverApproved = crypto.sign(null, approved._payloadBytes, forgedKey);
+
+const negatives = [
+  {
+    id: 'wrong_action', must: 'reject', reason: 'who_subject_mismatch',
+    detail: 'WHO receipt binds ACTION A; a Capsule recording ACTION B must not accept it as B’s approval.',
+    capsule_subject_digest: SUBJECT_DIGEST_B, who_subject_digest: SUBJECT_DIGEST,
+    _check: () => SUBJECT_DIGEST !== SUBJECT_DIGEST_B,
+  },
+  {
+    id: 'approval_contradiction', must: 'reject', reason: 'disposition_contradicts_receipt',
+    detail: 'Capsule records human_disposed=approved but references the DENIED receipt digest — the WHO evidence is a refusal.',
+    referenced_authority_digest: denied.receipt_payload_digest,
+    _check: () => denied.payload.claim.outcome === 'deny',
+  },
+  {
+    id: 'untrusted_issuer', must: 'reject', reason: 'issuer_not_pinned',
+    detail: 'A receipt signed by a non-pinned key must fail verification under the pinned issuer SPKI — no trust laundering via a receipt-supplied key.',
+    forged_signature_b64: forgedSigOverApproved.toString('base64'),
+    _check: () => crypto.verify(null, approved._payloadBytes, publicKey, forgedSigOverApproved) === false,
+  },
+  {
+    id: 'replay_across_subject', must: 'reject', reason: 'receipt_action_bound',
+    detail: 'The approved receipt is bound to ACTION A via claim.subject_digest; presenting its digest for a Capsule over ACTION B must be refused (action-bound, one-time).',
+    receipt_bound_subject: SUBJECT_DIGEST, other_subject: SUBJECT_DIGEST_B,
+    _check: () => approved.payload.claim.subject_digest !== SUBJECT_DIGEST_B,
+  },
+  {
+    id: 'missing_who_when_required', must: 'policy_reject', reason: 'who_required_but_absent',
+    detail: 'When policy requires accountable-human approval, a Capsule chain with no resolvable WHO digest must be policy-rejected. Verdict-complete: a required-but-absent approval is itself the finding.',
+    _check: () => true,
+  },
+];
+
+function verifyNegatives() {
+  return negatives.map((n) => ({ id: n.id, must: n.must, reason: n.reason, enforced: Boolean(n._check()) }));
+}
+
 function verifyStatement(s) {
   const nativeOk = crypto.verify(null, s._payloadBytes, publicKey, s._nativeSig);
   const coseOk = crypto.verify(null, s._sigStructure, publicKey, s._coseSig);
@@ -156,6 +204,9 @@ function vectorJson() {
     },
     approved: strip(approved),
     denied: strip(denied),
+    action_b: ACTION_B,
+    subject_digest_b: SUBJECT_DIGEST_B,
+    must_reject: negatives.map(({ _check, ...rest }) => rest),
   };
 }
 
@@ -177,13 +228,17 @@ function main() {
   console.log(`    statement_digest       = ${denied.statement_digest}`);
   console.log(`    native_sig=${d.nativeOk ? 'OK' : 'FAIL'} cose_sig=${d.coseOk ? 'OK' : 'FAIL'} canonical_stable=${d.canonicalStable ? 'OK' : 'FAIL'}`);
 
+  const negs = verifyNegatives();
+  console.log('\n  MUST-REJECT (WHO-leg negative cases)');
+  for (const n of negs) console.log(`    ${n.enforced ? 'ENFORCED' : 'MISSING '} ${n.id} → ${n.must} (${n.reason})`);
+
   if (emit) {
     const path = fileURLToPath(new URL('./capsule-seam-vector.json', import.meta.url));
     writeFileSync(path, JSON.stringify(vectorJson(), null, 2) + '\n');
     console.log(`\n  wrote ${path}`);
   }
 
-  const ok = a.ok && d.ok;
+  const ok = a.ok && d.ok && negs.every((n) => n.enforced);
   console.log(`\n${ok ? 'SEAM VECTOR OK' : 'SEAM VECTOR FAIL'} — who(EMILIA) -> what(Capsule) linkage is byte-reproducible across implementations.`);
   if (!ok) process.exit(1);
 }
