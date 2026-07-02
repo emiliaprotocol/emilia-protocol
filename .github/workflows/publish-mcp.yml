@@ -30,6 +30,9 @@ jobs:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
       - name: Upgrade npm (>= 11.5.1 for OIDC trusted publishing + provenance)
-        run: npm install -g npm@latest
+        # --min-release-age=0: the repo .npmrc age-gates app dependencies (supply-
+        # chain defense); the trusted first-party npm tool is exempt so publish
+        # tooling always installs a current npm with full provenance support.
+        run: npm install -g npm@latest --min-release-age=0
       - run: cd mcp-server && npm ci --ignore-scripts
       - run: cd mcp-server && npm publish --access public --provenance
