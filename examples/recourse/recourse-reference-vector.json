@@ -1,0 +1,90 @@
+{
+  "vector": "EP-RECOURSE-REFERENCE v1",
+  "spec": "docs/EP-RECOURSE-REFERENCE-SPEC.md",
+  "schema": "public/schemas/ep-recourse-reference.schema.json",
+  "canonicalization": "RFC 8785 (JCS); SHA-256; Ed25519",
+  "note": "EMILIA proves the reference + its binding to a genuine authorization. It does NOT bear the loss, adjudicate coverage, or move funds.",
+  "action": {
+    "action_type": "finance.wire_transfer",
+    "target": "wire:vendor-acme-250000",
+    "amount": "250000.00",
+    "currency": "USD"
+  },
+  "subject_digest": "47cc75b9e6a52e9eb130ab3aaa1bd9eeb5d3f53bf8b0e5bee8a053856f1f88ef",
+  "authorization": {
+    "receipt_id": "ep:receipt:recourse-vector-0001",
+    "receipt_payload_digest": "sha256:b9646dedbe767bf6298336d9cd9589f0708a03f739feefba29099e33c42ded9e"
+  },
+  "recourse_reference": {
+    "@type": "ep.recourse-reference",
+    "@version": "EP-RECOURSE-REFERENCE-v1",
+    "subject_digest": "47cc75b9e6a52e9eb130ab3aaa1bd9eeb5d3f53bf8b0e5bee8a053856f1f88ef",
+    "authorization": {
+      "receipt_id": "ep:receipt:recourse-vector-0001",
+      "receipt_payload_digest": "sha256:b9646dedbe767bf6298336d9cd9589f0708a03f739feefba29099e33c42ded9e"
+    },
+    "responsible_party": {
+      "entity": "did:web:acme-recourse.example",
+      "legal_name": "Acme Recourse LLC",
+      "role": "third_party"
+    },
+    "coverage": {
+      "action_class": "urn:ep:action:finance.wire_transfer",
+      "limit": {
+        "amount": "1000000.00",
+        "currency": "USD"
+      },
+      "exclusions_digest": "sha256:42983717f8862287de4630b9cf86e426412e2e604746cd5d29d21faf79c1c6a3",
+      "window": {
+        "not_before": "2026-07-01T00:00:00Z",
+        "not_after": "2026-12-31T23:59:59Z"
+      }
+    },
+    "dispute_endpoint": "https://acme-recourse.example/dispute",
+    "settlement_instruction": "ref:settlement-schedule-A",
+    "evidence_requirements": [
+      "EP-RECEIPT-v1",
+      "EP-EXECUTION-ATTESTATION-v1"
+    ],
+    "retention": "7y",
+    "status_url": "https://acme-recourse.example/recourse/status/recourse-vector-0001",
+    "issued_at": "2026-07-02T00:00:00Z",
+    "expires_at": "2026-12-31T23:59:59Z",
+    "signature": {
+      "algorithm": "Ed25519",
+      "value": "k0dlsiEfkB1Oj5qrlbIf9TDo9HUMyeMqLT_KKAxmz7FFSrEYaRKbTQ4mvaWlFc1mxVzRt1jIHbNiaR502xqhBQ"
+    },
+    "issuer_key": "MCowBQYDK2VwAyEA2KDOin1ZMleb__XuWG6GAJeShElNK3D1kuRjrBcc8I4"
+  },
+  "accepted_when": {
+    "pinned_issuer_key": "MCowBQYDK2VwAyEA2KDOin1ZMleb__XuWG6GAJeShElNK3D1kuRjrBcc8I4",
+    "at_time_within_window": "2026-07-02T12:00:00Z"
+  },
+  "must_reject": [
+    {
+      "id": "tampered_terms",
+      "reason": "coverage_limit_altered_after_signing",
+      "detail": "The coverage limit is raised after signing; the signature no longer verifies."
+    },
+    {
+      "id": "wrong_action",
+      "reason": "subject_mismatch",
+      "detail": "A recourse for action A is presented against a Capsule/gateway for action B."
+    },
+    {
+      "id": "authorization_mismatch",
+      "reason": "recourse_not_bound_to_this_authorization",
+      "detail": "The recourse references a different receipt than the one presented — recourse cannot ride a forged/other authorization."
+    },
+    {
+      "id": "expired_window",
+      "reason": "action_outside_coverage_window",
+      "detail": "The action occurs after the coverage window closes; verified terms, but not accepted."
+    },
+    {
+      "id": "untrusted_issuer",
+      "reason": "responsible_party_not_pinned",
+      "detail": "A self-asserted recourse from a non-pinned issuer verifies but is NEVER accepted (no self-asserted recourse)."
+    }
+  ]
+}
