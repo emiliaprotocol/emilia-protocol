@@ -247,6 +247,24 @@
       scan has a verifiable, not merely asserted, posture.</t>
     </section>
 
+    <section anchor="openapi">
+      <name>Inline OpenAPI Expression (x-emilia-action)</name>
+      <t>Deployments that already publish an OpenAPI description MAY
+      express a manifest entry inline, per operation, as an
+      "x-emilia-action" vendor extension carrying the same members as
+      the corresponding manifest entry (action identifier, assurance
+      tier, and the advisory effects preview). The two forms are
+      equivalent views of the same declaration: when both are present
+      for an action, they MUST NOT disagree, and a verifier encountering
+      a disagreement MUST treat the stricter declaration as governing.
+      Action identifiers in either form use the
+      "urn:ep:action:&lt;family&gt;.&lt;action&gt;" vocabulary, so that
+      relying-party evidence policies can be keyed to the same names the
+      resource declares. A JSON Schema for the extension and a worked
+      OpenAPI example are published with the reference
+      implementation.</t>
+    </section>
+
     <section>
       <name>Security Considerations</name>
       <t><strong>Enforcement is authoritative, not the manifest.</strong> A

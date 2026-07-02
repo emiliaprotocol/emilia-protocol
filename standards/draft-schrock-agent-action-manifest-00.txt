@@ -87,12 +87,13 @@ Table of Contents
    4.  Manifest Structure  . . . . . . . . . . . . . . . . . . . . .   4
    5.  Action Control Declarations . . . . . . . . . . . . . . . . .   4
    6.  Semantics: Declaration Is Not Enforcement . . . . . . . . . .   6
-   7.  Security Considerations . . . . . . . . . . . . . . . . . . .   7
-   8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   7
-   9.  Normative References  . . . . . . . . . . . . . . . . . . . .   7
-   10. Informative References  . . . . . . . . . . . . . . . . . . .   8
+   7.  Inline OpenAPI Expression (x-emilia-action) . . . . . . . . .   7
+   8.  Security Considerations . . . . . . . . . . . . . . . . . . .   7
+   9.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   8
+   10. Normative References  . . . . . . . . . . . . . . . . . . . .   8
+   11. Informative References  . . . . . . . . . . . . . . . . . . .   8
    Appendix A.  Example Manifest (Non-Normative) . . . . . . . . . .   9
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  10
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  11
 
 1.  Introduction
 
@@ -105,7 +106,6 @@ Table of Contents
    matter at machine speed: whether an action is irreversible, what
    authorization it needs, which observed execution fields the
    authorization must bind, and what evidence must survive it.
-
 
 
 
@@ -338,7 +338,22 @@ Schrock                  Expires 3 January 2027                 [Page 6]
 Internet-Draft        Agent Action Control Manifest            July 2026
 
 
-7.  Security Considerations
+7.  Inline OpenAPI Expression (x-emilia-action)
+
+   Deployments that already publish an OpenAPI description MAY express a
+   manifest entry inline, per operation, as an "x-emilia-action" vendor
+   extension carrying the same members as the corresponding manifest
+   entry (action identifier, assurance tier, and the advisory effects
+   preview).  The two forms are equivalent views of the same
+   declaration: when both are present for an action, they MUST NOT
+   disagree, and a verifier encountering a disagreement MUST treat the
+   stricter declaration as governing.  Action identifiers in either form
+   use the "urn:ep:action:<family>.<action>" vocabulary, so that
+   relying-party evidence policies can be keyed to the same names the
+   resource declares.  A JSON Schema for the extension and a worked
+   OpenAPI example are published with the reference implementation.
+
+8.  Security Considerations
 
    *Enforcement is authoritative, not the manifest.* A manifest that
    omits an action, or marks it not-required, does not make that action
@@ -371,7 +386,15 @@ Internet-Draft        Agent Action Control Manifest            July 2026
    was authenticated, and receipt audience binding limits what a
    misdirected receipt is worth.
 
-8.  IANA Considerations
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 7]
+
+Internet-Draft        Agent Action Control Manifest            July 2026
+
+
+9.  IANA Considerations
 
    This document requests registration of the following well-known URI
    in the "Well-Known URIs" registry established by [RFC8615]:
@@ -384,15 +407,7 @@ Internet-Draft        Agent Action Control Manifest            July 2026
 
    Status  permanent
 
-9.  Normative References
-
-
-
-
-Schrock                  Expires 3 January 2027                 [Page 7]
-
-Internet-Draft        Agent Action Control Manifest            July 2026
-
+10.  Normative References
 
    [I-D.schrock-ep-authorization-receipts]
               Schrock, I., "Authorization Receipts for High-Risk Agent
@@ -421,7 +436,19 @@ Internet-Draft        Agent Action Control Manifest            July 2026
               (URIs)", RFC 8615, May 2019,
               <https://www.rfc-editor.org/info/rfc8615>.
 
-10.  Informative References
+11.  Informative References
+
+
+
+
+
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 8]
+
+Internet-Draft        Agent Action Control Manifest            July 2026
+
 
    [I-D.schrock-ep-assurance-classes]
               Schrock, I., "Assurance Classes for Authorization
@@ -442,13 +469,6 @@ Internet-Draft        Agent Action Control Manifest            July 2026
               Y., and S. Lasker, "An Architecture for Trustworthy and
               Transparent Digital Supply Chains", RFC 9943, March 2026,
               <https://www.rfc-editor.org/info/rfc9943>.
-
-
-
-Schrock                  Expires 3 January 2027                 [Page 8]
-
-Internet-Draft        Agent Action Control Manifest            July 2026
-
 
 Appendix A.  Example Manifest (Non-Normative)
 
@@ -478,6 +498,14 @@ Appendix A.  Example Manifest (Non-Normative)
        "evidence_log": "strict"
      },
      "evidence_profiles": {
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 9]
+
+Internet-Draft        Agent Action Control Manifest            July 2026
+
+
        "authorization_receipt": "EP-RECEIPT-v1",
        "execution_attestation": "EP-EXECUTION-ATTESTATION-v1",
        "reliance_packet": "EP-RELIANCE-PACKET-v1",
@@ -498,14 +526,6 @@ Appendix A.  Example Manifest (Non-Normative)
            "cost_class": "high",
            "downstream": ["ledger", "counterparty_bank", "settlement"],
            "consent_required": true
-
-
-
-Schrock                  Expires 3 January 2027                 [Page 9]
-
-Internet-Draft        Agent Action Control Manifest            July 2026
-
-
          },
          "control": {
            "enforcement_point": "pre_effect_commit",
@@ -534,6 +554,14 @@ Internet-Draft        Agent Action Control Manifest            July 2026
              "execution_attestation": true,
              "reliance_packet": true,
              "blocked_attempts": true
+
+
+
+Schrock                  Expires 3 January 2027                [Page 10]
+
+Internet-Draft        Agent Action Control Manifest            July 2026
+
+
            }
          },
          "conformance": {
@@ -552,38 +580,10 @@ Internet-Draft        Agent Action Control Manifest            July 2026
 
 Author's Address
 
-
-
-
-
-
-Schrock                  Expires 3 January 2027                [Page 10]
-
-Internet-Draft        Agent Action Control Manifest            July 2026
-
-
    Iman Schrock
    EMILIA Protocol, Inc.
    United States of America
    Email: team@emiliaprotocol.ai
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
