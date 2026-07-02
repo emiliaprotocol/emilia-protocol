@@ -39,7 +39,7 @@ export default function InvestorsPage() {
   }
 
   const FEATURES = [
-    { title: 'Protocol-grade trust substrate', body: 'Infrastructure for high-risk action enforcement between authentication and execution.' },
+    { title: 'Protocol-grade authorization layer', body: 'The control layer for high-risk action enforcement between authentication and execution.' },
     { title: 'Policy-based evaluation', body: 'Trust decisions should depend on context and policy, not a single universal score.' },
     { title: 'Handshake and action control', body: 'Pre-action trust enforcement that binds actor, authority, policy, and exact action context.' },
     { title: 'Accountable signoff and evidence', body: 'High-risk actions can require named human ownership, policy snapshots, and reconstruction-ready event trails.' },
@@ -87,10 +87,10 @@ export default function InvestorsPage() {
 
       {/* Hero */}
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 72 }}>
-        <div className="ep-tag ep-hero-badge" style={{ color: color.gold }}>Trust Infrastructure / Investors</div>
+        <div className="ep-tag ep-hero-badge" style={{ color: color.gold }}>Consequence Firewall / Investors</div>
         <h1 className="ep-hero-text" style={styles.h1}>Trust before high-risk action.</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 600 }}>
-          EMILIA is a protocol-grade trust substrate for high-risk action enforcement. It creates the control layer between authentication and execution.
+          EMILIA is the authorization-receipt layer — the Consequence Firewall — for irreversible AI-agent actions. It creates the control layer between authentication and execution.
         </p>
         <div className="ep-hero-text" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <a href="#inquiry" className="ep-cta" style={cta.primary}>Request Investor Materials</a>
@@ -159,7 +159,7 @@ export default function InvestorsPage() {
       <section style={styles.section}>
         <div className="ep-reveal" style={{ marginBottom: 40 }}>
           <h2 style={styles.h2}>What EMILIA is building</h2>
-          <p style={styles.body}>EMILIA is building protocol-grade trust infrastructure with a commercial layer on top.</p>
+          <p style={styles.body}>EMILIA is building the protocol-grade authorization-receipt layer — the Consequence Firewall — with a commercial layer on top.</p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
           {FEATURES.map((f, i) => (
@@ -314,7 +314,7 @@ export default function InvestorsPage() {
       <section style={{ borderTop: `4px solid ${color.gold}`, background: '#1C1917', padding: '80px 0', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.04) 0%, transparent 70%)' }} />
         <div style={{ ...styles.section, position: 'relative', zIndex: 1 }}>
-          <div style={{ fontFamily: font.mono, fontSize: 10, color: color.gold, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 24 }}>Trust Infrastructure / Capital</div>
+          <div style={{ fontFamily: font.mono, fontSize: 10, color: color.gold, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 24 }}>Consequence Firewall / Capital</div>
           <h2 style={{ fontFamily: font.sans, fontSize: 32, fontWeight: 700, color: '#FAFAF9', marginBottom: 16, lineHeight: 1.2, maxWidth: 560 }}>
             Backing the trust-control layer between authentication and execution
           </h2>
