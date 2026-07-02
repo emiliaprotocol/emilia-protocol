@@ -153,6 +153,27 @@ Runnable companions: `examples/scitt/ep-receipt-scitt-end-to-end.mjs`,
 - `draft-schrock-scitt-authorization-evidence-00.xml` — the xml2rfc v3 source.
 - `draft-schrock-scitt-authorization-evidence-00.txt` — the rendered I-D.
 
+## draft-schrock-agent-action-manifest-00
+
+**The Agent Action Manifest** — the robots.txt / CORS / SBOM-tier declaration
+standard for dangerous machine actions. A service publishes
+`/.well-known/agent-actions.json` declaring which of its actions are
+consequential, the assurance class each requires, and the 428 challenge an
+agent receives when it attempts one without a valid authorization receipt
+(`draft-schrock-ep-authorization-receipts`). Machine-readable so an agent
+self-serves the requirement and an independent scanner can audit it. Declares
+policy; does **not** replace enforcement (the boundary is authoritative — a
+manifest can't be edited to disable protection). Formalizes the shipped
+`EP-ACTION-RISK-MANIFEST` fixture at `public/.well-known/agent-actions.json`.
+Requests registration of the `agent-actions.json` well-known URI (RFC 8615).
+
+**Status: written + render-clean (xml2rfc v3), NOT yet filed (Informational, individual submission).**
+
+### Source artifacts
+
+- `draft-schrock-agent-action-manifest-00.xml` — the xml2rfc v3 source.
+- `draft-schrock-agent-action-manifest-00.txt` — the rendered I-D.
+
 ## draft-schrock-ep-enforcement-point-00
 
 **An Enforcement-Point Profile for Authorization Receipts (EP)** — a Policy

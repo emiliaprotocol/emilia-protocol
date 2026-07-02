@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-agent-action-manifest-00"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="Agent Action Manifest">The Agent Action Manifest: Declaring Which Machine Actions Require Authorization</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-agent-action-manifest-00"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address>
+        <postal>
+          <country>US</country>
+        </postal>
+        <email>team@emiliaprotocol.ai</email>
+      </address>
+    </author>
+    <date year="2026" month="July" day="2"/>
+    <area>sec</area>
+    <keyword>AI agents</keyword>
+    <keyword>authorization</keyword>
+    <keyword>well-known URI</keyword>
+    <keyword>receipts</keyword>
+    <keyword>fail-closed</keyword>
+    <abstract>
+      <t>Autonomous agents call tools and APIs, some of which perform
+      irreversible operations: releasing payments, deleting
+      repositories, deploying to production, running destructive
+      database statements. There is today no machine-readable way for a
+      service to declare, in advance, <em>which</em> of its actions are
+      consequential and therefore require a verifiable human (or quorum)
+      authorization before they execute.</t>
+      <t>This document defines the Agent Action Manifest: a JSON document
+      published at a well-known location by which a service declares its
+      consequential actions, the assurance class each requires, and the
+      challenge an agent receives when it attempts one without a valid
+      authorization receipt. The manifest is to dangerous machine actions
+      what robots.txt is to crawling and CORS is to cross-origin requests:
+      a public, machine-readable declaration that both an agent can
+      self-serve and an independent scanner can audit. The manifest
+      <em>declares</em> policy; it does not replace enforcement, which
+      remains authoritative at the action boundary.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section>
+      <name>Introduction</name>
+      <t>When a human uses a browser, layered conventions tell software
+      what it may and may not do: robots.txt declares crawler policy,
+      CORS declares cross-origin policy, and a Content Security Policy
+      declares what a page may load. When an autonomous agent drives a
+      tool or API, no equivalent declaration exists for the one property
+      that matters most at machine speed: whether a given action is
+      irreversible and therefore requires accountable human
+      authorization before it runs.</t>
+      <t>The result is that every integrator rediscovers, by reading
+      prose documentation or by trial and error, which of a service's
+      actions are dangerous — and an agent has no way to obtain, ahead of
+      time, the requirement it must satisfy. This document closes that
+      gap with a small, machine-readable manifest a service publishes at
+      a well-known URI. An agent fetches it to learn which actions need a
+      receipt and of what assurance class; a scanner fetches it to audit
+      whether a service's dangerous actions are gated at all.</t>
+      <t>The manifest names, but does not define, the authorization
+      receipt an action requires; that artifact is specified in
+      <xref target="I-D.schrock-ep-authorization-receipts"/>. The
+      manifest is transport- and profile-agnostic: it declares that an
+      action requires a receipt of a named profile and assurance class,
+      and the challenge/response by which an agent supplies one.</t>
+    </section>
+
+    <section>
+      <name>Terminology</name>
+      <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
+      NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED",
+      "MAY", and "OPTIONAL" in this document are to be interpreted as
+      described in BCP 14 <xref target="RFC2119"/>
+      <xref target="RFC8174"/> when, and only when, they appear in all
+      capitals, as shown here.</t>
+      <dl>
+        <dt>Consequential action</dt>
+        <dd>An operation whose effect is irreversible or materially
+        hard to reverse — a payment, a deletion, a production deploy, a
+        destructive data operation, a permission change.</dd>
+        <dt>Manifest</dt>
+        <dd>The JSON document defined here, declaring a service's
+        consequential actions and their authorization requirements.</dd>
+        <dt>Authorization receipt</dt>
+        <dd>The offline-verifiable artifact a caller supplies to satisfy
+        a receipt requirement
+        <xref target="I-D.schrock-ep-authorization-receipts"/>.</dd>
+      </dl>
+    </section>
+
+    <section anchor="location">
+      <name>Manifest Location</name>
+      <t>A service SHOULD publish its manifest at the well-known URI
+      <xref target="RFC8615"/>:</t>
+      <t><tt>/.well-known/agent-actions.json</tt></t>
+      <t>The manifest MUST be served with media type
+      <tt>application/json</tt> over a transport that provides server
+      authentication and integrity (for example, HTTPS). A service MAY
+      additionally reference a manifest URL from an action's
+      challenge response.</t>
+    </section>
+
+    <section anchor="structure">
+      <name>Manifest Structure</name>
+      <t>The manifest is a JSON object <xref target="RFC8259"/> with the
+      following members.</t>
+      <dl>
+        <dt>version (string, REQUIRED)</dt>
+        <dd>The manifest schema version.</dd>
+        <dt>service (object, REQUIRED)</dt>
+        <dd>Identifies the publishing service (name and issuer origin).</dd>
+        <dt>receipt_required (object, REQUIRED)</dt>
+        <dd>The challenge contract used when a receipt is missing or
+        invalid: the HTTP status to return (RECOMMENDED: 428 Precondition
+        Required <xref target="RFC6585"/>), the challenge header naming
+        the requirement, the header by which a caller presents a receipt,
+        and the receipt profile identifier.</dd>
+        <dt>defaults (object, REQUIRED)</dt>
+        <dd>The default disposition for actions not otherwise matched:
+        for example, read-only operations allowed, and missing, invalid,
+        or stale receipts refused. Defaults MUST be fail-closed for any
+        action declared consequential.</dd>
+        <dt>actions (array, REQUIRED)</dt>
+        <dd>Zero or more action declarations (<xref target="action"/>).</dd>
+      </dl>
+    </section>
+
+    <section anchor="action">
+      <name>Action Declarations</name>
+      <t>Each element of <tt>actions</tt> is an object declaring one
+      consequential action:</t>
+      <dl>
+        <dt>id (string, REQUIRED)</dt>
+        <dd>A stable identifier for the declaration.</dd>
+        <dt>match (object, REQUIRED)</dt>
+        <dd>How to recognize the action in the service's surface — for
+        example a protocol and tool name (MCP), or an HTTP method and
+        path template.</dd>
+        <dt>action_type (string, REQUIRED)</dt>
+        <dd>The canonical action type carried into the authorization
+        receipt (for example <tt>payment.release</tt>).</dd>
+        <dt>risk (string, OPTIONAL)</dt>
+        <dd>An advisory severity (for example <tt>high</tt>,
+        <tt>critical</tt>). Advisory only; it MUST NOT be interpreted as
+        a score or a substitute for the receipt requirement.</dd>
+        <dt>receipt_required (boolean, REQUIRED)</dt>
+        <dd>Whether a valid authorization receipt is required before the
+        action may execute.</dd>
+        <dt>assurance_class (string, REQUIRED when receipt_required)</dt>
+        <dd>The minimum assurance the receipt must meet (for example
+        <tt>class_a</tt> for a user-verification-gated human signature, or
+        <tt>quorum</tt>).</dd>
+        <dt>max_age_sec (number, OPTIONAL)</dt>
+        <dd>The maximum age of an acceptable receipt; older receipts MUST
+        be refused as stale.</dd>
+        <dt>quorum (object, OPTIONAL)</dt>
+        <dd>When present and required, the m-of-n and distinct-human
+        constraints the authorization must satisfy.</dd>
+      </dl>
+    </section>
+
+    <section>
+      <name>Semantics and the Challenge Flow</name>
+      <t>An agent that intends a matched action SHOULD fetch the manifest,
+      determine the requirement, obtain a conforming authorization
+      receipt, and present it with the action request in the declared
+      proof header. A service that receives a matched action without a
+      valid, in-scope, sufficiently assured, non-replayed, non-stale
+      receipt MUST refuse it and SHOULD return the declared challenge
+      (RECOMMENDED: 428 <xref target="RFC6585"/>) so the caller can
+      self-serve a receipt and retry.</t>
+      <t>When more than one <tt>match</tt> applies, the most specific
+      declaration wins. An action not matched by any declaration is
+      governed by <tt>defaults</tt>.</t>
+      <t><strong>The manifest is a declaration, not the enforcement
+      point.</strong> A service MUST enforce its receipt requirement at
+      the action boundary regardless of what the manifest says; a caller
+      MUST NOT infer that an action is safe merely because the manifest
+      omits it or marks it <tt>receipt_required: false</tt>. Enforcement
+      is authoritative; the manifest exists so the requirement is
+      discoverable and auditable, not so it can be bypassed by editing a
+      file.</t>
+    </section>
+
+    <section>
+      <name>Relationship to Scanning and Enforcement</name>
+      <t>The manifest is the <em>declaration</em> side of a pair. The
+      <em>audit</em> side — determining whether a service's dangerous
+      actions can in fact be invoked without a receipt — is performed by
+      an independent scanner against the live surface, and does not rely
+      on the service's own manifest being honest. A service that both
+      publishes a manifest and passes an independent scan has a
+      verifiable, not merely asserted, posture. The receipt an action
+      requires, and its offline verification, are specified in
+      <xref target="I-D.schrock-ep-authorization-receipts"/>; this
+      document specifies only the declaration.</t>
+    </section>
+
+    <section>
+      <name>Security Considerations</name>
+      <t><strong>Enforcement is authoritative, not the manifest.</strong>
+      The manifest is advisory declaration. A manifest that omits an
+      action, or marks it not-required, does not make that action safe;
+      the enforcement point at the action boundary is the security
+      control. Treating the manifest as authoritative would let an
+      attacker who can edit or spoof it disable protection.</t>
+      <t><strong>Integrity and authenticity.</strong> The manifest MUST
+      be served over an authenticated, integrity-protected transport. A
+      service MAY sign its manifest so relying parties can detect
+      tampering; unsigned manifests fetched over an untrusted path MUST
+      NOT be relied upon for anything beyond discovery.</t>
+      <t><strong>Information disclosure.</strong> A manifest enumerates a
+      service's high-consequence actions. Publishers SHOULD assume it is
+      public and SHOULD NOT encode secrets, internal-only endpoints, or
+      details whose disclosure creates risk beyond the action names
+      themselves.</t>
+      <t><strong>Advisory fields are not scores.</strong> The
+      <tt>risk</tt> field and any similar advisory metadata MUST NOT be
+      interpreted as a measurement of safety or as a substitute for the
+      receipt requirement. The security property is the fail-closed
+      receipt requirement, not a severity label.</t>
+    </section>
+
+    <section>
+      <name>IANA Considerations</name>
+      <t>This document requests registration of the following well-known
+      URI in the "Well-Known URIs" registry established by
+      <xref target="RFC8615"/>:</t>
+      <dl>
+        <dt>URI suffix</dt>
+        <dd>agent-actions.json</dd>
+        <dt>Change controller</dt>
+        <dd>IETF</dd>
+        <dt>Specification document</dt>
+        <dd>This document</dd>
+        <dt>Status</dt>
+        <dd>permanent</dd>
+      </dl>
+    </section>
+  </middle>
+  <back>
+    <references>
+      <name>Normative References</name>
+      <reference anchor="RFC2119" target="https://www.rfc-editor.org/info/rfc2119">
+        <front>
+          <title>Key words for use in RFCs to Indicate Requirement Levels</title>
+          <author fullname="S. Bradner" initials="S." surname="Bradner"/>
+          <date year="1997" month="March"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="2119"/>
+      </reference>
+      <reference anchor="RFC8174" target="https://www.rfc-editor.org/info/rfc8174">
+        <front>
+          <title>Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words</title>
+          <author fullname="B. Leiba" initials="B." surname="Leiba"/>
+          <date year="2017" month="May"/>
+        </front>
+        <seriesInfo name="BCP" value="14"/>
+        <seriesInfo name="RFC" value="8174"/>
+      </reference>
+      <reference anchor="RFC8259" target="https://www.rfc-editor.org/info/rfc8259">
+        <front>
+          <title>The JavaScript Object Notation (JSON) Data Interchange Format</title>
+          <author fullname="T. Bray" initials="T." surname="Bray"/>
+          <date year="2017" month="December"/>
+        </front>
+        <seriesInfo name="STD" value="90"/>
+        <seriesInfo name="RFC" value="8259"/>
+      </reference>
+      <reference anchor="RFC8615" target="https://www.rfc-editor.org/info/rfc8615">
+        <front>
+          <title>Well-Known Uniform Resource Identifiers (URIs)</title>
+          <author fullname="M. Nottingham" initials="M." surname="Nottingham"/>
+          <date year="2019" month="May"/>
+        </front>
+        <seriesInfo name="RFC" value="8615"/>
+      </reference>
+      <reference anchor="RFC6585" target="https://www.rfc-editor.org/info/rfc6585">
+        <front>
+          <title>Additional HTTP Status Codes</title>
+          <author fullname="M. Nottingham" initials="M." surname="Nottingham"/>
+          <author fullname="R. Fielding" initials="R." surname="Fielding"/>
+          <date year="2012" month="April"/>
+        </front>
+        <seriesInfo name="RFC" value="6585"/>
+      </reference>
+      <reference anchor="I-D.schrock-ep-authorization-receipts">
+        <front>
+          <title>Authorization Receipts for High-Risk Agent Actions (EP)</title>
+          <author fullname="I. Schrock" initials="I." surname="Schrock"/>
+          <date year="2026" month="July"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-05"/>
+      </reference>
+    </references>
+  </back>
+</rfc>
