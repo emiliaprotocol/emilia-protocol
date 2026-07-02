@@ -32,7 +32,7 @@ describe('EP Action Control Manifest v0.2', () => {
 
   it('advertises the control manifest from ep-trust discovery', () => {
     const trust = readJson('public/.well-known/ep-trust.json');
-    expect(trust.agent_action_control_url).toBe('https://emiliaprotocol.ai/.well-known/agent-action-control.json');
+    expect(trust.agent_action_control_url).toBe('https://www.emiliaprotocol.ai/.well-known/agent-action-control.json');
   });
 
   it('covers every receipt-required action in the public v0.1 Action Risk Manifest', () => {
