@@ -40,8 +40,8 @@ export default function GracePage() {
               COSA moves the megawatts. <span style={{ color: color.gold }}>EMILIA proves the move was authorized and delivered.</span>
             </p>
             <div style={{ display: 'flex', gap: 12, marginTop: 32, flexWrap: 'wrap' }}>
-              <a href="#loop" style={cta.primary}>How it works</a>
-              <a href="/gate" style={cta.secondary}>The Gate</a>
+              <a href="/grace/flex-passport" style={cta.primary}>Get the Flex Passport</a>
+              <a href="#loop" style={cta.secondary}>How it works</a>
               <a href="/pilot?v=grace" style={cta.secondary}>Request pilot</a>
             </div>
           </div>
@@ -73,7 +73,7 @@ export default function GracePage() {
             <h2 style={{ ...styles.h2, marginTop: 12 }}>Authorize → verify → shed → measure → prove → settle.</h2>
             <div style={{ marginTop: 32 }}>
               {LOOP.map((s) => (
-                <div key={s.n} style={{ display: 'flex', gap: 24, padding: '20px 0', borderTop: `1px solid ${color.brd}` }}>
+                <div key={s.n} style={{ display: 'flex', gap: 24, padding: '20px 0', borderTop: `1px solid ${color.border}` }}>
                   <div style={{ fontFamily: font.mono, fontSize: 14, color: color.gold, fontWeight: 600, minWidth: 24 }}>{s.n}</div>
                   <div>
                     <div style={{ ...styles.h3, fontSize: 18 }}>{s.title}</div>
