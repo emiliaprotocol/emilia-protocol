@@ -4,7 +4,10 @@ import { getCommitStatus, CommitError } from '@/lib/commit';
 import { authorizeCommitAccess } from '@/lib/commit-auth';
 import { protocolWrite, COMMAND_TYPES, ProtocolWriteError } from '@/lib/protocol-write';
 import { epProblem } from '@/lib/errors';
+import { readLimitedJson } from '@/lib/http/body-limit';
 import { logger } from '../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 5 * 1024;
 
 /**
  * POST /api/commit/[commitId]/revoke
@@ -33,7 +36,9 @@ export async function POST(request, { params }) {
       return epProblem(403, 'not_authorized', authz.reason);
     }
 
-    const body = await request.json();
+    const parsed = await readLimitedJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
+    const body = parsed.value;
 
     if (!body.reason) {
       return epProblem(400, 'missing_reason', 'reason is required');
