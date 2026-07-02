@@ -81,6 +81,7 @@ const SERVICE_CLIENT_ALLOWLIST = new Set([
   // cannot be migrated to protocolWrite() and when that will change.
   'app/api/cloud/webhooks/[endpointId]/route.js',   // webhook endpoint CRUD
   'app/api/handshake/[handshakeId]/verify/route.js', // verify reads binding state
+  'app/api/handshake/[handshakeId]/present/route.js', // authz read of party membership (IDOR guard) — same pattern as verify; must see true rows unfiltered by RLS
   'app/api/keys/rotate/route.js',                    // key rotation admin op
 ]);
 
