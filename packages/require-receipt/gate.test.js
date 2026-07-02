@@ -31,6 +31,20 @@ function mint(actionType, { outcome = 'allow_with_signoff', quorum = null } = {}
   return { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value }, public_key: pub };
 }
 
+function fixtureAssurance(doc) {
+  const claim = doc?.payload?.claim || {};
+  const q = claim.quorum;
+  const signers = Array.isArray(q?.signers) ? q.signers : [];
+  const threshold = Number(q?.threshold ?? q?.m ?? 0);
+  if (threshold >= 2 && new Set(signers).size >= threshold) {
+    return { ok: true, tier: 'quorum', reason: 'fixture_assurance_verified' };
+  }
+  if (claim.outcome === 'allow_with_signoff') {
+    return { ok: true, tier: 'class_a', reason: 'fixture_assurance_verified' };
+  }
+  return { ok: true, tier: 'software', reason: 'fixture_assurance_verified' };
+}
+
 const gate = () => makeReceiptGate({ action: 'db.records.delete', allowInlineKey: true, maxAgeSec: 900 });
 
 test('missing receipt -> 428 challenge, no rejected detail', async () => {
@@ -126,11 +140,23 @@ test('assuranceClass=class_a refuses a software-only receipt', async () => {
     throw new Error('should not run');
   });
   assert.equal(r.ok, false);
-  assert.equal(r.body.rejected.reason, 'assurance_too_low');
+  assert.equal(r.body.rejected.reason, 'assurance_proof_required');
 });
 
-test('assuranceClass=quorum refuses a single human signoff', async () => {
+test('assuranceClass=quorum refuses self-asserted high assurance without proof', async () => {
   const g = makeReceiptGate({ action: 'deploy.production', assuranceClass: 'quorum', allowInlineKey: true });
+  const rc = mint('deploy.production', {
+    quorum: { threshold: 2, signers: ['ep:approver:a', 'ep:approver:b'] },
+  });
+  const r = await g.run(rc, {}, async () => {
+    throw new Error('should not run');
+  });
+  assert.equal(r.ok, false);
+  assert.equal(r.body.rejected.reason, 'assurance_proof_required');
+});
+
+test('assuranceClass=quorum refuses a verified single human signoff', async () => {
+  const g = makeReceiptGate({ action: 'deploy.production', assuranceClass: 'quorum', allowInlineKey: true, verifyAssurance: fixtureAssurance });
   const rc = mint('deploy.production');
   const r = await g.run(rc, {}, async () => {
     throw new Error('should not run');
@@ -140,7 +166,7 @@ test('assuranceClass=quorum refuses a single human signoff', async () => {
 });
 
 test('assuranceClass=quorum accepts threshold-2 distinct-human quorum evidence', async () => {
-  const g = makeReceiptGate({ action: 'deploy.production', assuranceClass: 'quorum', allowInlineKey: true });
+  const g = makeReceiptGate({ action: 'deploy.production', assuranceClass: 'quorum', allowInlineKey: true, verifyAssurance: fixtureAssurance });
   const rc = mint('deploy.production', {
     quorum: { threshold: 2, signers: ['ep:approver:a', 'ep:approver:b'] },
   });
@@ -152,5 +178,8 @@ test('assuranceClass=quorum accepts threshold-2 distinct-human quorum evidence',
 test('receiptAssuranceTier does not count duplicate quorum signers', () => {
   assert.equal(receiptAssuranceTier({
     payload: { claim: { outcome: 'allow_with_signoff', quorum: { threshold: 2, signers: ['same', 'same'] } } },
-  }), 'class_a');
+  }), 'software');
+  assert.equal(receiptAssuranceTier({
+    payload: { claim: { outcome: 'allow_with_signoff', quorum: { threshold: 2, signers: ['same', 'same'] } } },
+  }, { verifyAssurance: fixtureAssurance }), 'class_a');
 });

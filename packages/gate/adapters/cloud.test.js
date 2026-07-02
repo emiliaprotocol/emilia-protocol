@@ -10,7 +10,7 @@ import { createGcpManifest, guardGcpMutation, GCP_OPS } from './gcp.js';
 
 function gateFor(manifest, action) {
   const harness = createEg1Harness({ action });
-  return { harness, gate: createGate({ manifest, trustedKeys: [harness.publicKey] }) };
+  return { harness, gate: createGate({ manifest, trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys }) };
 }
 const A = 'allow_with_signoff';
 const Q = { quorum: { signers: ['ep:a', 'ep:b'], threshold: 2 } };

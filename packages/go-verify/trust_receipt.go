@@ -83,6 +83,32 @@ func verifyClassAOverDigestGo(wa map[string]any, digest []byte, pubB64u string) 
 	return ecdsa.VerifyASN1(pub, h[:], sig)
 }
 
+func trustReceiptCanonicalProfileOK(receipt map[string]any) bool {
+	leaf := map[string]any{}
+	for k, v := range receipt {
+		if k != "log_proof" && k != "approver_key_proofs" {
+			leaf[k] = v
+		}
+	}
+	if !IsCanonicalizable(leaf) {
+		return false
+	}
+	if lp := getMap(receipt["log_proof"]); lp != nil {
+		if cp := getMap(lp["checkpoint"]); cp != nil {
+			signedCP := map[string]any{}
+			for k, v := range cp {
+				if k != "log_signature" {
+					signedCP[k] = v
+				}
+			}
+			if !IsCanonicalizable(signedCP) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // VerifyTrustReceipt verifies an EP §6.2 Trust Receipt offline. opts keys:
 // approverKeys (map of approver_key_id -> {public_key,key_class,valid_from,valid_to}),
 // logPublicKey (string).
@@ -102,6 +128,9 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 		return TrustReceiptResult{false, checks}
 	}
 	if len(contexts) == 0 || len(signoffs) == 0 {
+		return TrustReceiptResult{false, checks}
+	}
+	if !trustReceiptCanonicalProfileOK(receipt) {
 		return TrustReceiptResult{false, checks}
 	}
 
@@ -218,7 +247,18 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 					leaf[k] = v
 				}
 			}
-			checks["inclusion"] = VerifyMerkleAnchor(sha256HexOf(leaf), ipath, hexStrip(cp["root_hash"]))
+			merkleAlg := getStr(lp, "alg")
+			if merkleAlg == "" {
+				merkleAlg = getStr(cp, "merkle_alg")
+			}
+			if merkleAlg == MerkleV2Alg {
+				leafHash := leafHashV2(Canonicalize(leaf))
+				checks["inclusion"] = hexStrip(lp["leaf_hash"]) == leafHash && verifyMerkleAnchorMode(leafHash, ipath, hexStrip(cp["root_hash"]), true)
+			} else if opts != nil && (opts["allowLegacyMerkle"] == true || opts["allowLegacyTrustReceiptMerkle"] == true) {
+				checks["inclusion"] = VerifyMerkleAnchor(sha256HexOf(leaf), ipath, hexStrip(cp["root_hash"]))
+			} else {
+				checks["inclusion"] = false
+			}
 			logSig := getStr(cp, "log_signature")
 			if logPublicKey != "" && logSig != "" {
 				signedCP := map[string]any{}

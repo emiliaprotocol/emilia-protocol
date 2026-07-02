@@ -27,7 +27,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.4.1  ·  content-sha256:ed1ce5337419db87
+//   source: @emilia-protocol/require-receipt@0.4.1  ·  content-sha256:dc952e178f03b850
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 /**
@@ -56,6 +56,11 @@ export const RECEIPT_REQUIRED_HEADER = 'Receipt-Required';
 export const RECEIPT_PROOF_HEADER = 'X-EMILIA-Receipt';
 export const ACTION_RISK_MANIFEST_VERSION = 'EP-ACTION-RISK-MANIFEST-v0.1';
 export const DEFAULT_ACTION_RISK_MANIFEST = '/.well-known/agent-actions.json';
+export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
+export const ASSURANCE_PROOF_VERSION = 'EP-ASSURANCE-PROOF-v1';
+const ASSURANCE_RANK = { software: 0, class_a: 1, quorum: 2 };
+const FLAG_UP = 0x01;
+const FLAG_UV = 0x04;
 
 function canonicalize(v) {
   if (v === null || v === undefined) return JSON.stringify(v);
@@ -118,28 +123,137 @@ function isObject(v) {
   return v && typeof v === 'object' && !Array.isArray(v);
 }
 
-const MIDDLEWARE_ASSURANCE_RANK = { software: 0, class_a: 1, quorum: 2 };
-
-function receiptAssuranceTierForMiddleware(doc) {
-  const payload = doc?.payload || {};
-  const q = payload.quorum || payload.claim?.quorum;
-  const signers = q && (q.signers || q.approvers);
-  const threshold = Number(q && (q.m ?? q.threshold ?? (Array.isArray(signers) ? signers.length : 0)));
-  if (q && Array.isArray(signers) && Number.isFinite(threshold) && threshold >= 2) {
-    const distinct = new Set(signers.map((s) => String(s))).size;
-    if (distinct >= 2) return 'quorum';
-  }
-  if (payload.signoff || payload.claim?.outcome === 'allow_with_signoff') return 'class_a';
-  return 'software';
+function normalizeAssuranceClass(value) {
+  return ASSURANCE_TIERS.includes(value) ? value : 'software';
 }
 
-function middlewareAssuranceMeets(doc, required) {
-  const need = MIDDLEWARE_ASSURANCE_RANK[required] === undefined ? 'software' : required;
-  const have = receiptAssuranceTierForMiddleware(doc);
+function b64urlDecode(value) {
+  return Buffer.from(String(value || ''), 'base64url');
+}
+
+function sha256Bytes(value) {
+  return crypto.createHash('sha256').update(value).digest();
+}
+
+function sha256Hex(value) {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+function proofContext(doc) {
   return {
-    ok: (MIDDLEWARE_ASSURANCE_RANK[have] ?? 0) >= (MIDDLEWARE_ASSURANCE_RANK[need] ?? 0),
+    '@version': 'EP-ASSURANCE-CONTEXT-v1',
+    receipt_id: doc?.payload?.receipt_id || null,
+    claim_hash: `sha256:${sha256Hex(canonicalize(doc?.payload?.claim || {}))}`,
+  };
+}
+
+function verifyEd25519Digest(signature, digest, publicKeyB64u) {
+  try {
+    const pub = crypto.createPublicKey({ key: b64urlDecode(publicKeyB64u), format: 'der', type: 'spki' });
+    return crypto.verify(null, digest, pub, b64urlDecode(signature));
+  } catch {
+    return false;
+  }
+}
+
+function verifyWebAuthnDigest(webauthn, digest, publicKeyB64u) {
+  try {
+    if (!webauthn || typeof webauthn !== 'object') return false;
+    const authData = b64urlDecode(webauthn.authenticator_data);
+    const clientDataBytes = b64urlDecode(webauthn.client_data_json);
+    if (authData.length < 37) return false;
+    const flags = authData[32];
+    if ((flags & FLAG_UP) !== FLAG_UP || (flags & FLAG_UV) !== FLAG_UV) return false;
+    const clientData = JSON.parse(clientDataBytes.toString('utf8'));
+    if (clientData.type !== 'webauthn.get') return false;
+    if (clientData.challenge !== Buffer.from(digest).toString('base64url')) return false;
+    const signedData = Buffer.concat([authData, sha256Bytes(clientDataBytes)]);
+    const pub = crypto.createPublicKey({ key: b64urlDecode(publicKeyB64u), format: 'der', type: 'spki' });
+    return crypto.verify('sha256', signedData, pub, b64urlDecode(webauthn.signature));
+  } catch {
+    return false;
+  }
+}
+
+function normalizeApproverKeys(input) {
+  if (!input || typeof input !== 'object') return {};
+  return input;
+}
+
+function verifyPinnedAssuranceProof(doc, opts = {}) {
+  const proof = doc?.payload?.assurance_proof || doc?.assurance_proof;
+  if (!proof || typeof proof !== 'object') return { ok: false, tier: 'software', reason: 'assurance_proof_required' };
+  if (proof['@version'] !== ASSURANCE_PROOF_VERSION) {
+    return { ok: false, tier: 'software', reason: 'assurance_proof_bad_version' };
+  }
+  const approverKeys = normalizeApproverKeys(opts.approverKeys || opts.approver_keys);
+  const signoffs = Array.isArray(proof.signoffs) ? proof.signoffs : [];
+  if (!signoffs.length) return { ok: false, tier: 'software', reason: 'assurance_proof_missing_signoffs' };
+
+  const context = proofContext(doc);
+  const contextHash = `sha256:${sha256Hex(canonicalize(context))}`;
+  if (proof.context_hash && proof.context_hash !== contextHash) {
+    return { ok: false, tier: 'software', reason: 'assurance_context_mismatch' };
+  }
+  const digest = Buffer.from(contextHash.replace(/^sha256:/, ''), 'hex');
+  const valid = [];
+  for (const s of signoffs) {
+    const keyId = s?.approver_key_id;
+    const entry = keyId ? approverKeys[keyId] : null;
+    if (!entry?.public_key) continue;
+    const keyClass = s.key_class || entry.key_class || 'B';
+    const ok = keyClass === 'A'
+      ? verifyWebAuthnDigest(s.webauthn, digest, entry.public_key)
+      : verifyEd25519Digest(s.signature, digest, entry.public_key);
+    if (!ok) continue;
+    valid.push({ approver: String(s.approver || keyId), keyClass });
+  }
+  if (!valid.length) return { ok: false, tier: 'software', reason: 'assurance_proof_invalid' };
+  const distinctApprovers = new Set(valid.map((s) => s.approver));
+  const threshold = Number(proof.threshold ?? proof.m ?? 1);
+  if (Number.isFinite(threshold) && threshold >= 2 && distinctApprovers.size >= threshold && valid.length >= threshold) {
+    return { ok: true, tier: 'quorum', reason: 'assurance_proof_verified' };
+  }
+  if (valid.some((s) => s.keyClass === 'A')) {
+    return { ok: true, tier: 'class_a', reason: 'assurance_proof_verified' };
+  }
+  return { ok: true, tier: 'software', reason: 'assurance_proof_verified' };
+}
+
+function normalizeVerifierResult(result) {
+  if (typeof result === 'string') return { ok: true, tier: normalizeAssuranceClass(result), reason: 'custom_assurance_verifier' };
+  if (result && typeof result === 'object') {
+    return {
+      ok: result.ok !== false,
+      tier: normalizeAssuranceClass(result.tier || result.have || result.assuranceClass),
+      reason: result.reason || 'custom_assurance_verifier',
+    };
+  }
+  return { ok: false, tier: 'software', reason: 'custom_assurance_verifier_failed' };
+}
+
+export function receiptAssuranceTier(doc, opts = {}) {
+  const custom = typeof opts.verifyAssurance === 'function'
+    ? normalizeVerifierResult(opts.verifyAssurance(doc, { requiredTier: 'quorum' }))
+    : null;
+  if (custom?.ok) return custom.tier;
+  return verifyPinnedAssuranceProof(doc, opts).tier;
+}
+
+export function evaluateReceiptAssurance(doc, required, opts = {}) {
+  const need = normalizeAssuranceClass(required);
+  if (need === 'software') return { ok: true, have: 'software', need, reason: 'software_receipt' };
+  const custom = typeof opts.verifyAssurance === 'function'
+    ? normalizeVerifierResult(opts.verifyAssurance(doc, { requiredTier: need }))
+    : null;
+  const proof = custom || verifyPinnedAssuranceProof(doc, opts);
+  const have = normalizeAssuranceClass(proof.tier);
+  const rankOk = (ASSURANCE_RANK[have] ?? 0) >= (ASSURANCE_RANK[need] ?? 0);
+  return {
+    ok: proof.ok === true && rankOk,
     have,
     need,
+    reason: proof.ok === true && !rankOk ? 'assurance_too_low' : (proof.reason || (proof.ok ? 'assurance_ok' : 'assurance_proof_required')),
   };
 }
 
@@ -342,15 +456,15 @@ export function requireEmiliaReceipt(opts = {}) {
       return res.status(status).json({ ...receiptChallenge(action, `Receipt rejected: ${v.reason}.`, challengeOpts), rejected: v });
     }
     if (opts.assuranceClass || opts.assurance_class) {
-      const tier = middlewareAssuranceMeets(doc, opts.assuranceClass || opts.assurance_class);
+      const tier = evaluateReceiptAssurance(doc, opts.assuranceClass || opts.assurance_class, opts);
       if (!tier.ok) {
         res.setHeader(RECEIPT_REQUIRED_HEADER, receiptRequiredHeader(challengeOpts));
         if (status === LEGACY_RECEIPT_REQUIRED_STATUS) {
           res.setHeader('WWW-Authenticate', `EMILIA realm="agent-actions"${action ? `, action="${action}"` : ''}`);
         }
         return res.status(status).json({
-          ...receiptChallenge(action, 'Receipt rejected: assurance_too_low.', challengeOpts),
-          rejected: { ok: false, reason: 'assurance_too_low', have_tier: tier.have, need_tier: tier.need },
+          ...receiptChallenge(action, `Receipt rejected: ${tier.reason}.`, challengeOpts),
+          rejected: { ok: false, reason: tier.reason, have_tier: tier.have, need_tier: tier.need },
         });
       }
     }
@@ -465,31 +579,12 @@ function normalizeTarget(target) {
   return String(target);
 }
 
-export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 
-function normalizeAssuranceClass(value) {
-  return ASSURANCE_TIERS.includes(value) ? value : 'software';
+function normalizeGateAssuranceClass(value) {
+  return Object.prototype.hasOwnProperty.call(TIER_RANK, value) ? value : 'software';
 }
 
-/**
- * Conservative tier earned by the receipt itself.
- * - software: a valid software-held receipt.
- * - class_a: a human signoff receipt (`allow_with_signoff` or explicit signoff).
- * - quorum: explicit quorum evidence with threshold >= 2 and >= 2 distinct humans.
- */
-export function receiptAssuranceTier(doc) {
-  const p = doc?.payload || {};
-  const q = p.quorum || p.claim?.quorum;
-  const signers = q && (q.signers || q.approvers);
-  const threshold = Number(q && (q.m ?? q.threshold ?? (Array.isArray(signers) ? signers.length : 0)));
-  if (q && Array.isArray(signers) && Number.isFinite(threshold) && threshold >= 2) {
-    const distinct = new Set(signers.map((s) => String(s))).size;
-    if (distinct >= 2) return 'quorum';
-  }
-  if (p.signoff || p.claim?.outcome === 'allow_with_signoff') return 'class_a';
-  return 'software';
-}
 
 /**
  * Build a hardened Receipt-Required gate for one action type.
@@ -522,6 +617,9 @@ export function makeReceiptGate(opts = {}) {
     manifestUrl,
     assuranceClass,
     quorum,
+    approverKeys,
+    approver_keys,
+    verifyAssurance,
     store = inMemoryStore(),
   } = opts;
 
@@ -536,7 +634,7 @@ export function makeReceiptGate(opts = {}) {
     return t === null ? base : `${base}:${t}`;
   };
 
-  const requiredTier = normalizeAssuranceClass(assuranceClass);
+  const requiredTier = normalizeGateAssuranceClass(assuranceClass);
   const challengeOpts = () => ({ statusCode, manifestUrl, assuranceClass: requiredTier, quorum, maxAgeSec });
 
   function refuse(boundAction, reason) {
@@ -567,9 +665,9 @@ export function makeReceiptGate(opts = {}) {
     const v = verifyEmiliaReceipt(receipt, { trustedKeys, allowInlineKey, action: boundAction, maxAgeSec, allowedOutcomes });
     if (!v.ok) return refuse(boundAction, v.reason); // sanitized: reason code only
 
-    const haveTier = receiptAssuranceTier(receipt);
-    if ((TIER_RANK[haveTier] ?? 0) < (TIER_RANK[requiredTier] ?? 0)) {
-      return refuse(boundAction, 'assurance_too_low');
+    const assurance = evaluateReceiptAssurance(receipt, requiredTier, { approverKeys, approver_keys, verifyAssurance });
+    if (!assurance.ok || (TIER_RANK[assurance.have] ?? 0) < (TIER_RANK[requiredTier] ?? 0)) {
+      return refuse(boundAction, assurance.reason || 'assurance_too_low');
     }
 
     if (store.has(v.receipt_id) || inflight.has(v.receipt_id)) return refuse(boundAction, 'replay_refused');

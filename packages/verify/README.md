@@ -153,9 +153,12 @@ operator using only its published discovery surfaces.
 ```js
 import { verifyFederatedReceipt, verifyFederatedReceiptOffline } from '@emilia-protocol/verify';
 
-// Online: resolves the issuer's keys from signature.key_discovery and
-// checks its revocation surface.
-const verdict = await verifyFederatedReceipt(receipt);
+// Online: resolves the issuer's keys from a caller-pinned discovery URL and
+// checks its revocation surface. Treat receipt.signature.key_discovery as a
+// hint, not a trust root.
+const verdict = await verifyFederatedReceipt(receipt, {
+  keyDiscoveryUrl: 'https://op-a.example/.well-known/ep-keys.json',
+});
 // { accepted, verified, revoked, signer, keyMatched: 'current'|'historical', checks }
 
 // Air-gapped: supply the issuer's ep-keys.json + revocation set yourself.

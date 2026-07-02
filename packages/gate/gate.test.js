@@ -28,6 +28,22 @@ function receipt(privateKey, { action = 'payment.release', outcome = 'allow', ex
     created_at: new Date().toISOString(), claim: { action_type: action, outcome, ...extra },
   });
 }
+function fixtureAssurance(doc) {
+  const claim = doc?.payload?.claim || {};
+  const q = claim.quorum || doc?.payload?.quorum;
+  const signers = Array.isArray(q?.signers) ? q.signers : [];
+  const threshold = Number(q?.threshold ?? q?.m ?? 0);
+  if (threshold >= 2 && new Set(signers).size >= threshold) {
+    return { ok: true, tier: 'quorum', reason: 'fixture_assurance_verified' };
+  }
+  if (claim.outcome === 'allow_with_signoff' || doc?.payload?.signoff) {
+    return { ok: true, tier: 'class_a', reason: 'fixture_assurance_verified' };
+  }
+  return { ok: true, tier: 'software', reason: 'fixture_assurance_verified' };
+}
+function gateOpts(opts = {}) {
+  return { verifyAssurance: fixtureAssurance, ...opts };
+}
 
 const MANIFEST = {
   '@version': 'EP-ACTION-RISK-MANIFEST-v0.1',
@@ -40,7 +56,7 @@ const PAY = { protocol: 'mcp', tool: 'release_payment' };
 
 test('passes through non-guarded actions', async () => {
   const { pub } = makeKey();
-  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] });
+  const g = createGate(gateOpts({ manifest: MANIFEST, trustedKeys: [pub] }));
   const out = await g.check({ selector: { protocol: 'mcp', tool: 'read_balance' } });
   assert.equal(out.allow, true);
   assert.equal(out.reason, 'not_guarded');
@@ -48,7 +64,7 @@ test('passes through non-guarded actions', async () => {
 
 test('missing receipt -> 428 challenge', async () => {
   const { pub } = makeKey();
-  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] });
+  const g = createGate(gateOpts({ manifest: MANIFEST, trustedKeys: [pub] }));
   const out = await g.check({ selector: PAY });
   assert.equal(out.allow, false);
   assert.equal(out.status, 428);
@@ -58,7 +74,7 @@ test('missing receipt -> 428 challenge', async () => {
 
 test('valid class_a receipt -> allow; same receipt again -> replay refused', async () => {
   const { pub, privateKey } = makeKey();
-  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] });
+  const g = createGate(gateOpts({ manifest: MANIFEST, trustedKeys: [pub] }));
   const r = receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff' });
   const a = await g.check({ selector: PAY, receipt: r });
   assert.equal(a.allow, true, a.reason);
@@ -69,7 +85,7 @@ test('valid class_a receipt -> allow; same receipt again -> replay refused', asy
 
 test('tampered receipt -> rejected', async () => {
   const { pub, privateKey } = makeKey();
-  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] });
+  const g = createGate(gateOpts({ manifest: MANIFEST, trustedKeys: [pub] }));
   const r = receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff' });
   r.payload.claim.amount_usd = 999; // mutate a signed field
   const out = await g.check({ selector: PAY, receipt: r });
@@ -79,7 +95,7 @@ test('tampered receipt -> rejected', async () => {
 
 test('assurance too low (software receipt where class_a required) -> refused', async () => {
   const { pub, privateKey } = makeKey();
-  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] });
+  const g = createGate(gateOpts({ manifest: MANIFEST, trustedKeys: [pub] }));
   const r = receipt(privateKey, { action: 'payment.release', outcome: 'allow' }); // software tier
   const out = await g.check({ selector: PAY, receipt: r });
   assert.equal(out.allow, false);
@@ -89,7 +105,7 @@ test('assurance too low (software receipt where class_a required) -> refused', a
 test('untrusted issuer key -> refused', async () => {
   const { pub } = makeKey();
   const attacker = makeKey();
-  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] });
+  const g = createGate(gateOpts({ manifest: MANIFEST, trustedKeys: [pub] }));
   const r = receipt(attacker.privateKey, { action: 'payment.release', outcome: 'allow_with_signoff' });
   const out = await g.check({ selector: PAY, receipt: r });
   assert.equal(out.allow, false);
@@ -97,7 +113,7 @@ test('untrusted issuer key -> refused', async () => {
 
 test('wrong action_type -> refused', async () => {
   const { pub, privateKey } = makeKey();
-  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] });
+  const g = createGate(gateOpts({ manifest: MANIFEST, trustedKeys: [pub] }));
   const r = receipt(privateKey, { action: 'payment.refund', outcome: 'allow_with_signoff' });
   const out = await g.check({ selector: PAY, receipt: r });
   assert.equal(out.allow, false);
@@ -105,7 +121,7 @@ test('wrong action_type -> refused', async () => {
 
 test('guard() wrapper throws when refused, runs when allowed', async () => {
   const { pub, privateKey } = makeKey();
-  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] });
+  const g = createGate(gateOpts({ manifest: MANIFEST, trustedKeys: [pub] }));
   const release = g.guard(async (amt) => `sent ${amt}`, { selector: () => PAY, receipt: (amt, r) => r });
   await assert.rejects(() => release(100, null), /EMILIA Gate refused/);
   const r = receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff' });
@@ -114,7 +130,7 @@ test('guard() wrapper throws when refused, runs when allowed', async () => {
 
 test('evidence log is hash-chained and tamper-evident', async () => {
   const { pub, privateKey } = makeKey();
-  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] });
+  const g = createGate(gateOpts({ manifest: MANIFEST, trustedKeys: [pub] }));
   await g.check({ selector: PAY }); // a denial
   await g.check({ selector: PAY, receipt: receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff' }) }); // an allow
   assert.equal(g.evidence.verify().ok, true);
@@ -128,7 +144,7 @@ test('evidence log is hash-chained and tamper-evident', async () => {
 
 test('execution receipt binds to the authorization decision (full loop)', async () => {
   const { pub, privateKey } = makeKey();
-  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] });
+  const g = createGate(gateOpts({ manifest: MANIFEST, trustedKeys: [pub] }));
   const out = await g.check({ selector: PAY, receipt: receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff' }) });
   assert.equal(out.allow, true, out.reason);
   const exec = await g.recordExecution({ authorization: out, outcome: 'executed' });
@@ -140,7 +156,7 @@ test('execution receipt binds to the authorization decision (full loop)', async 
 
 test('guard() emits an execution receipt after a guarded run', async () => {
   const { pub, privateKey } = makeKey();
-  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] });
+  const g = createGate(gateOpts({ manifest: MANIFEST, trustedKeys: [pub] }));
   const release = g.guard(async (amt) => `sent ${amt}`, { selector: () => PAY, receipt: (amt, r) => r });
   const r = receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff' });
   assert.equal(await release(100, r), 'sent 100');
@@ -153,7 +169,7 @@ test('guard() emits an execution receipt after a guarded run', async () => {
 
 test('run() releases a reserved receipt when the side effect fails before mutation', async () => {
   const { pub, privateKey } = makeKey();
-  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] });
+  const g = createGate(gateOpts({ manifest: MANIFEST, trustedKeys: [pub] }));
   const r = receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff' });
   await assert.rejects(
     () => g.run({ selector: PAY, receipt: r }, async () => {
@@ -168,9 +184,10 @@ test('run() releases a reserved receipt when the side effect fails before mutati
 });
 
 test('receiptAssuranceTier classification', () => {
-  assert.equal(receiptAssuranceTier({ payload: { quorum: { m: 2, signers: ['a', 'b'] } } }), 'quorum');
-  assert.equal(receiptAssuranceTier({ payload: { claim: { outcome: 'allow_with_signoff' } } }), 'class_a');
+  assert.equal(receiptAssuranceTier({ payload: { quorum: { m: 2, signers: ['a', 'b'] } } }), 'software');
+  assert.equal(receiptAssuranceTier({ payload: { claim: { outcome: 'allow_with_signoff' } } }), 'software');
   assert.equal(receiptAssuranceTier({ payload: { claim: { outcome: 'allow' } } }), 'software');
+  assert.equal(receiptAssuranceTier({ payload: { claim: { outcome: 'allow_with_signoff' } } }, { verifyAssurance: fixtureAssurance }), 'class_a');
 });
 
 test('default product pack guards the seven high-risk action families', () => {
@@ -206,7 +223,7 @@ test('createTrustedActionFirewall uses default high-risk packs', async () => {
 
 test('execution binding refuses a mismatched system-of-record mutation without consuming the receipt', async () => {
   const { pub, privateKey } = makeKey();
-  const g = createTrustedActionFirewall({ trustedKeys: [pub] });
+  const g = createTrustedActionFirewall(gateOpts({ trustedKeys: [pub] }));
   const selector = { protocol: 'mcp', tool: 'release_payment' };
   const signedFields = {
     action_type: 'payment.release',
@@ -233,7 +250,7 @@ test('execution binding refuses a mismatched system-of-record mutation without c
 
 test('reliance packet ties allow decision, execution attestation, field binding, and evidence head', async () => {
   const { pub, privateKey } = makeKey();
-  const g = createTrustedActionFirewall({ trustedKeys: [pub] });
+  const g = createTrustedActionFirewall(gateOpts({ trustedKeys: [pub] }));
   const selector = { protocol: 'mcp', tool: 'release_payment' };
   const observedAction = {
     action_type: 'payment.release',

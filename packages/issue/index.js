@@ -47,6 +47,20 @@ export function canonicalize(value) {
   return JSON.stringify(value);
 }
 
+export function isCanonicalizable(value) {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return true;
+  if (typeof value === 'number') return Number.isInteger(value) && Number.isSafeInteger(value);
+  if (Array.isArray(value)) return value.every(isCanonicalizable);
+  if (typeof value === 'object') return Object.values(value).every(isCanonicalizable);
+  return false;
+}
+
+function assertCanonicalizable(value, label) {
+  if (!isCanonicalizable(value)) {
+    throw new Error(`${label} is outside the EP canonicalization profile; encode non-integer quantities as strings`);
+  }
+}
+
 const sha256hex = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
 const sha256Bytes = (s) => crypto.createHash('sha256').update(s, 'utf8').digest();
 const hashPair = (a, b) => { const s = [a, b].sort(); return sha256hex(s[0] + s[1]); };
@@ -521,6 +535,7 @@ export function merkleProofV2(leaves, leafIndex) {
  * @returns {{alg:'EP-MERKLE-v2', leaf_hash:string, merkle_proof:Array, merkle_root:string}}
  */
 export function buildReceiptAnchorV2(payload, priorLeaves = []) {
+  assertCanonicalizable(payload, 'buildReceiptAnchorV2 payload');
   const leaf = leafHashV2(canonicalize(payload));
   const leaves = [...priorLeaves, leaf];
   const { root, path } = merkleProofV2(leaves, leaves.length - 1);
@@ -548,6 +563,7 @@ export function assembleAuthorizationReceipt({ receiptId, action, contexts, sign
   if (!logPrivateKey || !log?.logKeyId) {
     throw new Error('assembleAuthorizationReceipt requires log.privateKey (or log.privateKeyB64u) and log.logKeyId');
   }
+  assertCanonicalizable({ action, contexts, signoffs }, 'Trust Receipt signed material');
 
   const receipt = {
     receipt_id: receiptId,
@@ -562,20 +578,25 @@ export function assembleAuthorizationReceipt({ receiptId, action, contexts, sign
     },
   };
 
-  // Leaf = canonical receipt WITHOUT log_proof / approver_key_proofs.
-  const leaf = sha256hex(canonicalize(receipt));
+  // Leaf = EP-MERKLE-v2(canonical receipt WITHOUT log_proof /
+  // approver_key_proofs). Keep Trust Receipt log leaves on the same
+  // domain-separated, positional tree as single-receipt anchors.
+  const leaf = leafHashV2(canonicalize(receipt));
   const leaves = [...(log.priorLeaves || []), leaf];
   const leafIndex = leaves.length - 1;
-  const { root, path } = merkleProof(leaves, leafIndex);
+  const { root, path } = merkleProofV2(leaves, leafIndex);
 
   const checkpoint = {
     tree_size: leaves.length,
     root_hash: `sha256:${root}`,
     log_key_id: log.logKeyId,
+    merkle_alg: 'EP-MERKLE-v2',
   };
   const log_signature = crypto.sign(null, sha256Bytes(canonicalize(checkpoint)), logPrivateKey).toString('base64url');
 
   receipt.log_proof = {
+    alg: 'EP-MERKLE-v2',
+    leaf_hash: `sha256:${leaf}`,
     leaf_index: leafIndex,
     inclusion_path: path,
     checkpoint: { ...checkpoint, log_signature },

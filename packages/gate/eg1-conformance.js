@@ -40,6 +40,8 @@ const canon = (v) => (v == null ? JSON.stringify(v)
   : Array.isArray(v) ? `[${v.map(canon).join(',')}]`
     : typeof v === 'object' ? `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canon(v[k])).join(',')}}`
       : JSON.stringify(v));
+const sha256Hex = (v) => crypto.createHash('sha256').update(v, 'utf8').digest('hex');
+const sha256Bytes = (v) => crypto.createHash('sha256').update(v).digest();
 
 // The default high-risk action EG-1 exercises: a Class-A money movement, which
 // the default gate manifest guards (selector { protocol:'mcp', tool:'release_payment' }).
@@ -70,8 +72,70 @@ export const EG1_CHECKS = Object.freeze([
 export function createEg1Harness({ now = Date.now, action = EG1_DEFAULT_ACTION, idPrefix = 'eg1' } = {}) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const pub = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+  const approverA = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  const approverB = crypto.generateKeyPairSync('ed25519');
+  const approverKeys = {
+    'ep:key:eg1:class-a': {
+      public_key: approverA.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+      key_class: 'A',
+    },
+    'ep:key:eg1:controller': {
+      public_key: approverB.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
+      key_class: 'B',
+    },
+  };
   let counter = 0;
   const nowMs = () => (typeof now === 'function' ? now() : now);
+
+  function assuranceContext(payload) {
+    return {
+      '@version': 'EP-ASSURANCE-CONTEXT-v1',
+      receipt_id: payload.receipt_id,
+      claim_hash: `sha256:${sha256Hex(canon(payload.claim))}`,
+    };
+  }
+
+  function classASignoff(digest) {
+    const challenge = Buffer.from(digest).toString('base64url');
+    const clientDataJSON = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge, origin: 'https://www.emiliaprotocol.ai' }), 'utf8');
+    const rpIdHash = crypto.createHash('sha256').update('www.emiliaprotocol.ai').digest();
+    const authData = Buffer.concat([rpIdHash, Buffer.from([0x05]), Buffer.from([0, 0, 0, 0])]); // UP + UV
+    const signedData = Buffer.concat([authData, sha256Bytes(clientDataJSON)]);
+    return {
+      approver: 'ep:approver:eg1:cfo',
+      approver_key_id: 'ep:key:eg1:class-a',
+      key_class: 'A',
+      webauthn: {
+        authenticator_data: authData.toString('base64url'),
+        client_data_json: clientDataJSON.toString('base64url'),
+        signature: crypto.sign('sha256', signedData, approverA.privateKey).toString('base64url'),
+      },
+    };
+  }
+
+  function softwareSignoff(digest) {
+    return {
+      approver: 'ep:approver:eg1:controller',
+      approver_key_id: 'ep:key:eg1:controller',
+      key_class: 'B',
+      signature: crypto.sign(null, digest, approverB.privateKey).toString('base64url'),
+    };
+  }
+
+  function assuranceProof(payload, quorum) {
+    const context = assuranceContext(payload);
+    const contextHash = `sha256:${sha256Hex(canon(context))}`;
+    const digest = Buffer.from(contextHash.replace(/^sha256:/, ''), 'hex');
+    const threshold = Number(quorum?.threshold ?? quorum?.m ?? 1);
+    const signoffs = [classASignoff(digest)];
+    if (threshold >= 2) signoffs.push(softwareSignoff(digest));
+    return {
+      '@version': 'EP-ASSURANCE-PROOF-v1',
+      context_hash: contextHash,
+      threshold: threshold >= 2 ? threshold : 1,
+      signoffs,
+    };
+  }
 
   /**
    * Mint a scenario receipt.
@@ -94,13 +158,16 @@ export function createEg1Harness({ now = Date.now, action = EG1_DEFAULT_ACTION, 
         ...extra,
       },
     };
+    if (outcome === 'allow_with_signoff' || quorum) {
+      payload.assurance_proof = assuranceProof(payload, quorum);
+    }
     const value = crypto.sign(null, Buffer.from(canon(payload), 'utf8'), privateKey).toString('base64url');
     const receipt = { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value } };
     if (tamper) Object.assign(receipt.payload.claim, tamper); // tamper AFTER signing -> signature no longer binds
     return receipt;
   }
 
-  return { publicKey: pub, mint, action, now: nowMs };
+  return { publicKey: pub, approverKeys, mint, action, now: nowMs };
 }
 
 /**

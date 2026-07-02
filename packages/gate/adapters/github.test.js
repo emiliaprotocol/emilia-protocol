@@ -18,7 +18,7 @@ function fakeOctokit() {
 
 function setup(action) {
   const harness = createEg1Harness({ action });
-  const gate = createGate({ manifest: createGithubManifest(), trustedKeys: [harness.publicKey] });
+  const gate = createGate({ manifest: createGithubManifest(), trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys });
   return { harness, gate, octokit: fakeOctokit() };
 }
 

@@ -21,10 +21,10 @@ const trustedKeyB64u = publicKey.export({ type: 'spki', format: 'der' }).toStrin
 // NOTE: pass `omitCreatedAt: true` to actually drop created_at. A destructuring
 // default (`createdAt = ...`) fires on an explicit `undefined`, so it cannot be
 // used to omit the field — hence the explicit flag.
-function mint(action, { createdAt, receiptId, omitCreatedAt = false } = {}) {
+function mint(action, { createdAt, receiptId, omitCreatedAt = false, omitReceiptId = false } = {}) {
   const ts = createdAt || new Date().toISOString();
   const payload = {
-    receipt_id: receiptId || `rcpt_test_${crypto.randomBytes(6).toString('hex')}`,
+    ...(omitReceiptId ? {} : { receipt_id: receiptId || `rcpt_test_${crypto.randomBytes(6).toString('hex')}` }),
     subject: 'agent:test',
     ...(omitCreatedAt ? {} : { created_at: ts }),
     claim: { action_type: action, outcome: 'allow_with_signoff', approver: 'ep:approver:test' },
@@ -59,6 +59,14 @@ describe('/api/v1/guarded replay + freshness', () => {
 
   afterEach(() => {
     delete process.env.EP_TRUSTED_ISSUER_KEYS;
+  });
+
+  it('REFUSES a verified receipt with no receipt_id (cannot enforce one-time consumption)', async () => {
+    const doc = mint('payment.release', { omitReceiptId: true });
+    const res = await POST(guardedRequest(doc));
+    expect(res.status).toBe(402);
+    const body = await res.json();
+    expect(body.rejected?.reason).toBe('missing_receipt_id');
   });
 
   it('allows a valid, action-bound receipt', async () => {

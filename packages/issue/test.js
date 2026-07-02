@@ -463,3 +463,26 @@ test('buildReceiptAnchorV2: a v2-anchored document verifies under verifyReceipt 
   lifted.signature = { algorithm: 'Ed25519', value: sign(lifted.payload) };
   assert.equal(verifyReceipt(lifted, pub).checks.anchor, false, 'anchor must not bind to a different payload');
 });
+
+test('issuer refuses non-I-JSON signed material before minting Trust Receipts or anchors', async () => {
+  const a = classBSigner('ep:key:k1', new Date().toISOString());
+  const badAction = { ...action, parameters: { amount: 2400000.25, currency: 'USD' } };
+  const contexts = buildContexts({
+    action: badAction,
+    policyHash: 'sha256:aa',
+    approvers: ['ep:approver:cfo'],
+    requiredApprovals: 1,
+    issuedAt: '2026-06-09T17:21:05Z',
+    expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+  });
+  const signoffs = await collectSignoffs(contexts, [a.signer]);
+  assert.throws(() => assembleAuthorizationReceipt({
+    receiptId: 'ep:receipt:bad-float',
+    action: badAction,
+    contexts,
+    signoffs,
+    committedAt: new Date().toISOString(),
+    log,
+  }), /canonicalization profile/);
+  assert.throws(() => buildReceiptAnchorV2({ amount: 1.25 }), /canonicalization profile/);
+});

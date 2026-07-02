@@ -32,7 +32,7 @@ npm whoami
 # → emiliaprotocol
 
 # 3. Publish
-npm publish --access public
+npm publish --access public --provenance
 # → 2FA prompt: enter OTP from authenticator app
 # → "+ @emilia-protocol/verify@1.0.1"
 

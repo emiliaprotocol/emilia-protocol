@@ -7,17 +7,11 @@
 ## Step 1: Create your trust system (30 seconds)
 
 ```bash
-# Clone the protocol repo and run the scaffolder directly
-git clone https://github.com/emilia-protocol/emilia-protocol.git
-node emilia-protocol/create-ep-app/index.js my-trust-system
+npx @emilia-protocol/create-ep-app my-trust-system
 cd my-trust-system
 npm install
 npm run dev
 ```
-
-> Once the scoped creator is published, this becomes a one-liner:
-> `npx @emilia-protocol/create-app my-trust-system`
-> (The scaffolder in `create-ep-app/index.js` is identical either way.)
 
 Open http://localhost:3000. Click **Run Trust Demo**. Watch the full EP lifecycle execute in 60 seconds.
 
@@ -135,7 +129,7 @@ The handshake is consumed exactly once. Replay attacks are structurally impossib
 | Integrate via SDK | `npm install @emilia-protocol/sdk` (TypeScript) or `pip install emilia-protocol` (Python) |
 | Read the specification | [PROTOCOL-STANDARD.md](https://github.com/emilia-protocol/docs/PROTOCOL-STANDARD.md) |
 | Check compliance mappings | [NIST AI RMF](../compliance/NIST-AI-RMF-MAPPING.md) · [EU AI Act](../compliance/EU-AI-ACT-MAPPING.md) |
-| Run conformance tests | `npx ep-conformance-test https://your-ep-server.com` |
+| Run conformance tests | `node conformance/ep-conformance-test.js https://your-ep-server.com` |
 | Request a pilot | [emiliaprotocol.ai/partners](https://emiliaprotocol.ai/partners) |
 
 ---

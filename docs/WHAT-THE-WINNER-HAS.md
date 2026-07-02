@@ -21,10 +21,9 @@ EP today has 137 documentation files, 50 database tables, and a setup process th
 **What the winner has:**
 
 ```bash
-git clone https://github.com/emilia-protocol/emilia-protocol.git
-node emilia-protocol/create-ep-app/index.js my-trust-system
+npx @emilia-protocol/create-ep-app my-trust-system
 cd my-trust-system
-npm install && npm run dev
+npm run dev
 # Open localhost:3000 → working trust system with:
 #   - Entity registration
 #   - Receipt submission
@@ -36,14 +35,14 @@ npm install && npm run dev
 
 Not "read the docs and figure out which of 45 API endpoints to call." A working app. In 5 minutes. With a guided walkthrough that shows you what trust enforcement looks like.
 
-**Status: BUILT.** `create-ep-app/index.js` ships this exact experience. Run `node create-ep-app/index.js my-app && cd my-app && npm install && npm run dev` → working trust system with in-browser demo dashboard in under 5 minutes. (Publishes as `npx @emilia-protocol/create-app` once the scoped creator is released — the unscoped `create-ep-app` name on npm belongs to an unrelated third party and must not be used.)
+**Status: BUILT.** `create-ep-app/index.js` ships this exact experience through the scoped package `@emilia-protocol/create-ep-app`. Run `npx @emilia-protocol/create-ep-app my-app && cd my-app && npm run dev` → working trust system with in-browser demo dashboard in under 5 minutes.
 
 ### 2. The Acid Test (Conformance Test Suite)
 
 **What the winner has:**
 
 ```bash
-npx ep-conformance-test https://my-ep-server.com
+node conformance/ep-conformance-test.js https://my-ep-server.com
 # ✓ Trust Receipt format (EP-RECEIPT-v1)
 # ✓ Ed25519 signature verification
 # ✓ Merkle anchor proof verification
@@ -58,7 +57,7 @@ npx ep-conformance-test https://my-ep-server.com
 
 Like the W3C Acid tests for browsers. If you pass, you're EP-conformant. If you're EP-conformant, every other EP operator can verify your receipts. This is what turns a single implementation into a network.
 
-**Status: BUILT.** `conformance/ep-conformance-test.js` implements this exact test. Primary operator passes 7/7 required checks (`CONFORMANT: EP Core v1.0`). Any external operator can run `npx ep-conformance-test https://their-server.com` to validate.
+**Status: BUILT.** `conformance/ep-conformance-test.js` implements this exact test. Primary operator passes 7/7 required checks (`CONFORMANT: EP Core v1.0`). Any external operator can clone the repo and run `node conformance/ep-conformance-test.js https://their-server.com` to validate.
 
 ### 3. The Trust Explorer (Etherscan for Trust)
 
@@ -138,7 +137,7 @@ The structural work is done:
 - LLM schema ✓
 
 All six adoption primitives are now **BUILT AND DEPLOYED:**
-- `create-ep-app` ✅ → `create-ep-app/index.js` (zero-to-trust in 5 minutes)
+- `@emilia-protocol/create-ep-app` ✅ → `create-ep-app/index.js` (zero-to-trust in 5 minutes)
 - Conformance test suite ✅ → `conformance/ep-conformance-test.js` (7/7 PASS)
 - Trust Explorer ✅ → `/explorer` (live verification UI)
 - Embed widget ✅ → `public/embed.js` (`<ep-trust-badge>` web component)

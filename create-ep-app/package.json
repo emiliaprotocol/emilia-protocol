@@ -1,0 +1,20 @@
+{
+  "name": "@emilia-protocol/create-ep-app",
+  "version": "0.1.0",
+  "description": "Create a minimal EMILIA Protocol trust system in five minutes.",
+  "type": "module",
+  "bin": {
+    "create-ep-app": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "README.md"
+  ],
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

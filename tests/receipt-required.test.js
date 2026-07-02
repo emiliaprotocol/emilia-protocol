@@ -58,6 +58,18 @@ function mint(action, { outcome = 'allow_with_signoff', quorum = null } = {}) {
   return { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value }, public_key: publicKeyB64u };
 }
 
+function fixtureAssurance(doc) {
+  const claim = doc?.payload?.claim || {};
+  const q = claim.quorum || {};
+  const signers = Array.isArray(q.signers) ? q.signers : [];
+  const threshold = Number(q.threshold ?? q.m ?? 0);
+  if (threshold >= 2 && new Set(signers).size >= threshold) {
+    return { ok: true, tier: 'quorum', reason: 'fixture_assurance_verified' };
+  }
+  if (claim.outcome === 'allow_with_signoff') return { ok: true, tier: 'class_a', reason: 'fixture_assurance_verified' };
+  return { ok: true, tier: 'software', reason: 'fixture_assurance_verified' };
+}
+
 describe('Action Risk Manifest', () => {
   const manifest = readJson('public/.well-known/agent-actions.json');
 
@@ -159,10 +171,17 @@ describe('Receipt Required challenge', () => {
     });
     expect(nextRan).toBe(false);
     expect(res.statusCode).toBe(RECEIPT_REQUIRED_STATUS);
-    expect(res.body.rejected.reason).toBe('assurance_too_low');
+    expect(res.body.rejected.reason).toBe('assurance_proof_required');
 
     const ok = fakeResponse();
-    gate({
+    const verifiedGate = requireEmiliaReceipt({
+      action: 'deploy.production',
+      statusCode: RECEIPT_REQUIRED_STATUS,
+      allowInlineKey: true,
+      assuranceClass: 'quorum',
+      verifyAssurance: fixtureAssurance,
+    });
+    verifiedGate({
       headers: {},
       body: {
         emilia_receipt: mint('deploy.production', {

@@ -26,7 +26,7 @@ const canon = (v) => (v === null || v === undefined ? JSON.stringify(v)
     : typeof v === 'object' ? `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canon(v[k])).join(',')}}`
       : JSON.stringify(v));
 
-function mint(action, { outcome = 'allow_with_signoff', quorum = null } = {}) {
+function mint(action, { outcome = 'allow_with_signoff', quorum = null, extra = {} } = {}) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   const pub = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
   const payload = {
@@ -38,6 +38,7 @@ function mint(action, { outcome = 'allow_with_signoff', quorum = null } = {}) {
       outcome,
       approver: 'ep:approver:http-redteam',
       ...(quorum ? { quorum } : {}),
+      ...extra,
     },
   };
   const value = crypto.sign(null, Buffer.from(canon(payload), 'utf8'), privateKey).toString('base64url');
@@ -135,21 +136,27 @@ describe('HTTP/API Receipt Required conformance', () => {
         emilia_receipt: mint(action.action, { outcome: 'allow' }),
       }));
       expect(software.status).toBe(428);
-      expect((await software.json()).rejected.reason).toBe('assurance_too_low');
+      expect((await software.json()).rejected.reason).toBe('assurance_proof_required');
 
       if (action.assurance_class === 'quorum') {
         const singleHuman = await POST(request({
           demo: action.id,
-          emilia_receipt: mint(action.action),
+          emilia_receipt: mint(action.action, {
+            extra: { policy_id: action.policy_id, assurance_class: action.assurance_class },
+          }),
         }));
         expect(singleHuman.status).toBe(428);
         expect((await singleHuman.json()).rejected.reason).toBe('assurance_too_low');
 
+        const signed = await POST(request({
+          demo: action.id,
+          sign_demo_receipt: true,
+          approver: 'ep:approver:quorum-fixture',
+        }));
+        const { receipt } = await signed.json();
         const quorum = await POST(request({
           demo: action.id,
-          emilia_receipt: mint(action.action, {
-            quorum: { threshold: 2, signers: ['ep:approver:a', 'ep:approver:b'] },
-          }),
+          emilia_receipt: receipt,
         }));
         expect(quorum.status).toBe(200);
       }

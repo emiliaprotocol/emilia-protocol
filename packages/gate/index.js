@@ -27,6 +27,8 @@ const {
   receiptRequiredHeader,
   validateActionRiskManifest,
   findActionRequirement,
+  evaluateReceiptAssurance,
+  receiptAssuranceTier: receiptAssuranceTierFromProof,
   RECEIPT_REQUIRED_STATUS,
   RECEIPT_REQUIRED_HEADER,
 } = await import('@emilia-protocol/require-receipt').catch(() => import('../require-receipt/index.js'));
@@ -54,27 +56,11 @@ export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 
 /**
- * The assurance tier a verified EP-RECEIPT-v1 issuer attests. Conservative /
- * fail-closed: if a higher tier's signed structure is not present, the receipt
- * only earns the lower tier, and a guard that needs more will refuse it.
- *
- * Trust boundary: this lightweight action gate verifies the pinned issuer's
- * Ed25519 signature over the receipt. It does not re-run a full EP §6.2
- * multi-signature trust-receipt verifier here; the tier is therefore an
- * issuer-attested fact. Use @emilia-protocol/verify verifyTrustReceipt for
- * independent proof of embedded signoff/quorum signatures.
- *   quorum   — a quorum block with >= 2 distinct signers and threshold >= 2.
- *   class_a  — a device signoff (or claim.outcome === 'allow_with_signoff').
- *   software — any otherwise-valid receipt (a software-held key).
+ * Return the proof-backed assurance tier. Without pinned approver keys or a
+ * caller-supplied verifier, higher tiers are not inferred from receipt fields.
  */
-export function receiptAssuranceTier(doc) {
-  const p = doc?.payload || {};
-  const q = p.quorum || p.claim?.quorum;
-  const signers = q && (q.signers || q.approvers);
-  const threshold = q && (q.m ?? q.threshold ?? (Array.isArray(signers) ? signers.length : 0));
-  if (q && Array.isArray(signers) && signers.length >= 2 && threshold >= 2) return 'quorum';
-  if (p.signoff || p.claim?.outcome === 'allow_with_signoff') return 'class_a';
-  return 'software';
+export function receiptAssuranceTier(doc, opts = {}) {
+  return receiptAssuranceTierFromProof(doc, opts);
 }
 
 /**
@@ -90,7 +76,7 @@ export function receiptAssuranceTier(doc) {
  *   if given it supersedes trustedKeys — a receipt is verified only against keys valid (and not
  *   revoked) at its issuance time.
  */
-export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null } = {}) {
+export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null } = {}) {
   // Production key custody: a registry (rotation + revocation) supersedes a flat
   // trustedKeys list. A flat list is coerced to an always-valid registry, so
   // existing callers are unchanged.
@@ -186,17 +172,28 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     if (!v.ok) {
       return decide(false, RECEIPT_REQUIRED_STATUS, `receipt_rejected:${v.reason}`, { rejected: v });
     }
-    // Assurance tier.
-    const have = receiptAssuranceTier(receipt);
-    if ((TIER_RANK[have] ?? 0) < (TIER_RANK[requiredTier] ?? 0)) {
-      return decide(false, RECEIPT_REQUIRED_STATUS, 'assurance_too_low', { have_tier: have, need_tier: requiredTier, assurance_tier_source: 'issuer_attestation' });
+    // Assurance tier: proof-backed only. A receipt's issuer may describe a human
+    // signoff, but high-tier enforcement requires pinned approver proof or an
+    // explicit verifier hook. Self-asserted `allow_with_signoff` / `quorum`
+    // fields are software-tier until proven.
+    const assurance = evaluateReceiptAssurance(receipt, requiredTier, {
+      approverKeys: approver_keys || approverKeys,
+      verifyAssurance,
+    });
+    const have = assurance.have;
+    if (!assurance.ok || (TIER_RANK[have] ?? 0) < (TIER_RANK[requiredTier] ?? 0)) {
+      return decide(false, RECEIPT_REQUIRED_STATUS, assurance.reason || 'assurance_too_low', {
+        have_tier: have,
+        need_tier: requiredTier,
+        assurance_tier_source: 'proof',
+      });
     }
     // The high-risk action packs define material fields that must be observed
     // by the executor from the system of record. A signed, harmless-looking
     // claim cannot authorize a different real mutation.
     const executionBinding = verifyExecutionBinding({ requirement, receipt, observedAction: observed });
     if (!executionBinding.ok) {
-      return decide(false, RECEIPT_REQUIRED_STATUS, 'execution_binding_failed', { execution_binding: executionBinding, have_tier: have, assurance_tier_source: 'issuer_attestation' });
+      return decide(false, RECEIPT_REQUIRED_STATUS, 'execution_binding_failed', { execution_binding: executionBinding, have_tier: have, assurance_tier_source: 'proof' });
     }
     // One-time consumption (replay defense). Require a stable, issuer-generated
     // receipt_id — never fall back to a content hash, whose canonicalization can
@@ -220,7 +217,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     if (!fresh) {
       return decide(false, RECEIPT_REQUIRED_STATUS, 'replay_refused', { consumption_key: receiptId });
     }
-    return decide(true, 200, 'allow', { signer: v.signer, outcome: v.outcome, have_tier: have, assurance_tier_source: 'issuer_attestation', execution_binding: executionBinding, consumption_mode: consumptionMode });
+    return decide(true, 200, 'allow', { signer: v.signer, outcome: v.outcome, have_tier: have, assurance_tier_source: 'proof', execution_binding: executionBinding, consumption_mode: consumptionMode });
   }
 
   /** Express/Connect middleware: refuse the route unless a sufficient receipt is present. */
@@ -384,7 +381,7 @@ export async function gateConformance({ gate, harness, action, selector = EG1_DE
  */
 export async function gateConformanceSelfTest({ now } = {}) {
   const harness = createEg1Harness({ now });
-  const gate = createTrustedActionFirewall({ trustedKeys: [harness.publicKey], now });
+  const gate = createTrustedActionFirewall({ trustedKeys: [harness.publicKey], approverKeys: harness.approverKeys, now });
   return gateConformance({ gate, harness });
 }
 

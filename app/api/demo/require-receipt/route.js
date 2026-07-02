@@ -114,9 +114,27 @@ function gateFor(demo) {
       manifestUrl: MANIFEST_URL,
       maxAgeSec: 900,
       statusCode: RR,
+      verifyAssurance: (doc) => demoAssurance(demo, doc),
     }));
   }
   return gates.get(demo.id);
+}
+
+function demoAssurance(demo, doc) {
+  const claim = doc?.payload?.claim || {};
+  if (claim.policy_id !== demo.policy_id || claim.outcome !== 'allow_with_signoff') {
+    return { ok: false, tier: 'software', reason: 'assurance_proof_required' };
+  }
+  if (demo.quorum?.required) {
+    const q = claim.quorum || {};
+    const signers = Array.isArray(q.signers) ? q.signers : [];
+    const threshold = Number(q.threshold ?? q.m ?? 0);
+    if (threshold >= 2 && new Set(signers).size >= threshold) {
+      return { ok: true, tier: 'quorum', reason: 'demo_assurance_verified' };
+    }
+    return { ok: false, tier: 'class_a', reason: 'assurance_too_low' };
+  }
+  return { ok: true, tier: 'class_a', reason: 'demo_assurance_verified' };
 }
 
 function challengeHeaders(demo) {
