@@ -56,6 +56,20 @@ export const contract = {
   // (mig 113: api_keys + waitlist were anon-readable.) authorities = permission root.
   noAnonRead: ['api_keys', 'waitlist', 'tenant_api_keys', 'authorities', 'commits'],
 
+  // Column-level least-privilege on secret material. RLS gates ROWS; a column
+  // GRANT is a SEPARATE gate. (2026-07 sweep: anon+authenticated held column
+  // SELECT/INSERT/UPDATE on entities.private_key_encrypted — a Supabase bootstrap
+  // default, NOT in any migration, so a migration scan can't see it.) These
+  // (table, column) pairs MUST NOT be grantable by anon/authenticated; only
+  // service_role/postgres. Revoked in migration 126; enforced statically against
+  // the migration set by tests/schema-secret-grant-guard.test.js. LIVE
+  // enforcement (catching a Supabase bootstrap re-grant after a project reset)
+  // is a follow-up: extend gov_schema_contract_introspect() to surface anon/
+  // authenticated column_grants, then assert them here like noAnonRead.
+  sensitiveColumnsNoPublicGrant: {
+    entities: ['private_key_encrypted', 'api_key_hash'],
+  },
+
   // No anon/authenticated/PUBLIC may have a write policy (INSERT/UPDATE/DELETE/ALL)
   // on these. (mig 113: these were anon-writable via mis-scoped USING(true).)
   noAnonWrite: [
