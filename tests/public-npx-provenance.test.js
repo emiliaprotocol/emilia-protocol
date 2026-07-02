@@ -37,4 +37,15 @@ describe('public command provenance', () => {
     }
     expect(findings).toEqual([]);
   });
+
+  // The bare `create-ep-app` npm name is owned by an unrelated third party, so
+  // we cannot register it. The one way the risk re-opens FROM OUR SIDE is
+  // accidentally publishing our scaffolder unscoped. Lock the scoped name and
+  // keep the README's warning, so a rename/typo can't ship an unscoped package.
+  it('create-ep-app stays scoped and keeps its foreign-name warning', () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'create-ep-app/package.json'), 'utf8'));
+    expect(pkg.name).toBe('@emilia-protocol/create-ep-app');
+    const readme = fs.readFileSync(path.join(ROOT, 'create-ep-app/README.md'), 'utf8');
+    expect(readme).toMatch(/unrelated third party/i);
+  });
 });
