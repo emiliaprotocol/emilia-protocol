@@ -35,7 +35,13 @@ describe('homepage category contract', () => {
 
     expect(page).toContain("proofStats from '@/lib/proof-stats.json'");
     expect(page).not.toContain('4,220');
+
+    // ProofBlock must also read its counts from proof-stats.json (finding #4:
+    // the TLA/Alloy numbers were hardcoded literals that could silently drift).
+    expect(proofBlock).toContain("proofStats from '@/lib/proof-stats.json'");
     expect(proofBlock).not.toContain('15 assertions');
-    expect(proofBlock).toContain('22 assertions');
+    // The Alloy assertion count is now interpolated from proofStats, not a
+    // hardcoded literal — but the generated stats must still be 22.
+    expect(proofStats.alloy.assertions).toBe(22);
   });
 });

@@ -76,7 +76,7 @@ const ARTICLES = [
     num: 'Art. 15',
     title: 'Accuracy, robustness, cybersecurity',
     burden: 'System must be resilient to errors, faults, and unauthorized third-party alteration.',
-    ep: '26 TLA+ theorems and 35 Alloy facts prove the ceremony cannot be replayed, forged, or partially executed.',
+    ep: '26 TLA+ theorems and 35 Alloy facts prove the ceremony logic cannot be replayed or partially executed, given signature soundness.',
   },
 ];
 
