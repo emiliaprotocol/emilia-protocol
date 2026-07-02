@@ -64,8 +64,8 @@ const PRODUCTS = [
   { key: 'td_retainer', name: 'AI Trust Desk — Retainer', amount: 1200000, interval: 'month', desc: 'Ongoing retainer, 3-month minimum.', linkEnv: 'NEXT_PUBLIC_STRIPE_RETAINER' },
 
   // EP Cloud — monthly subscriptions.  ◀── EDIT THESE TWO AMOUNTS to your real prices
-  { key: 'cloud_team', name: 'EP Cloud — Team', amount: 9900, interval: 'month', desc: 'Hosted control plane: managed policies, signoff orchestration, audit exports.', priceEnv: 'STRIPE_PRICE_CLOUD_TEAM', linkEnv: 'NEXT_PUBLIC_STRIPE_CLOUD_TEAM' },
-  { key: 'cloud_business', name: 'EP Cloud — Business', amount: 49900, interval: 'month', desc: 'Higher limits, webhooks, multi-tenant isolation, priority support.', priceEnv: 'STRIPE_PRICE_CLOUD_BUSINESS', linkEnv: 'NEXT_PUBLIC_STRIPE_CLOUD_BUSINESS' },
+  { key: 'cloud_team', name: 'EP Cloud — Team', amount: 49900, interval: 'month', desc: 'Hosted control plane: managed policies, signoff orchestration, audit exports.', priceEnv: 'STRIPE_PRICE_CLOUD_TEAM', linkEnv: 'NEXT_PUBLIC_STRIPE_CLOUD_TEAM' },
+  { key: 'cloud_business', name: 'EP Cloud — Business', amount: 250000, interval: 'month', desc: 'Higher limits, webhooks, multi-tenant isolation, priority support.', priceEnv: 'STRIPE_PRICE_CLOUD_BUSINESS', linkEnv: 'NEXT_PUBLIC_STRIPE_CLOUD_BUSINESS' },
 ];
 
 const { default: Stripe } = await import('stripe');

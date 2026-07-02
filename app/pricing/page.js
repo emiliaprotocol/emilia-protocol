@@ -49,16 +49,15 @@ const TIERS = [
   },
   {
     name: 'EP Cloud',
-    price: 'Early access',
-    priceNote: 'billing opens with our first cohort',
+    price: '$499',
+    priceNote: 'per month · billed monthly',
     tagline: 'Hosted control plane — policy management, signoff orchestration, and audit without running infrastructure.',
     accent: color.blue,
     cta: CLOUD_CHECKOUT
       ? { label: 'Subscribe', href: CLOUD_CHECKOUT }
-      : { label: 'Request early access', href: '/product/cloud#pilot' },
-    ctaStyle: 'secondary',
-    available: false,
-    priceIsLabel: true,
+      : { label: 'Get started', href: '/signup' },
+    ctaStyle: 'primary',
+    available: true,
     features: [
       'Everything in Core, fully managed',
       'Managed policy registry — version, diff, simulate before deploy',
@@ -71,8 +70,8 @@ const TIERS = [
   },
   {
     name: 'EP Enterprise',
-    price: 'Talk to us',
-    priceNote: 'annual · sales-led',
+    price: 'Custom',
+    priceNote: 'annual · sales-led · from $50k/yr',
     tagline: 'On-prem or private cloud, identity integration, and the assurance a bank or agency needs to clear you.',
     accent: color.gold,
     cta: { label: 'Talk to us', href: '/partners' },
