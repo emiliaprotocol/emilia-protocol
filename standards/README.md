@@ -174,6 +174,45 @@ Requests registration of the `agent-actions.json` well-known URI (RFC 8615).
 - `draft-schrock-agent-action-manifest-00.xml` — the xml2rfc v3 source.
 - `draft-schrock-agent-action-manifest-00.txt` — the rendered I-D.
 
+## draft-schrock-ep-assurance-classes-00
+
+**Assurance Classes for Authorization Receipts** — the policy primitive for
+*how strong* the human authorization must be. Defines an ordered taxonomy —
+Class C (software signer) < Class B (authenticated human, reserved/optional) <
+Class A (device user-verified human) < Class Q (quorum of distinct humans) —
+mapped to the receipt assurance values `software` / `class_a` / `quorum`; the
+monotonic comparison rule (required class satisfied iff proven class ≥ it); and
+the anti-forgery invariant that a **claimed** class is treated as Class C until
+**proof-backed** (matches the shipped gate: `TIER_RANK` + self-asserted tier =
+software floor). Consumed by the manifest, enforcement-point, and authority-registry profiles.
+
+**Status: written + render-clean (xml2rfc v3), NOT yet filed (Informational, individual submission).**
+
+### Source artifacts
+
+- `draft-schrock-ep-assurance-classes-00.xml` — the xml2rfc v3 source.
+- `draft-schrock-ep-assurance-classes-00.txt` — the rendered I-D.
+
+## draft-schrock-ep-authority-registry-00
+
+**A Human Authority Registry for Agent-Action Authorization** — the record a
+verifier consults to decide whether the human who signed was *entitled* to
+approve this action class, for this org, in this window, with this key, and
+whether self-approval is barred. Orthogonal to WIMSE (workload identity);
+complementary to delegation / evidence-chain. Defines the authority entry, the
+`authority-backed` verification rule (key resolves to an active in-scope entry;
+class within `action_classes`; proven assurance ≤ `max_assurance_class`; SoD;
+quorum distinctness), and signed-snapshot offline verification with a freshness
+bound. Grounds the shipped `createKeyRegistry` + `lib/revocation` + SoD
+primitives as a claimable standard.
+
+**Status: written + render-clean (xml2rfc v3), NOT yet filed (Informational, individual submission).**
+
+### Source artifacts
+
+- `draft-schrock-ep-authority-registry-00.xml` — the xml2rfc v3 source.
+- `draft-schrock-ep-authority-registry-00.txt` — the rendered I-D.
+
 ## draft-schrock-ep-enforcement-point-00
 
 **An Enforcement-Point Profile for Authorization Receipts (EP)** — a Policy
