@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { receiptChallenge } from '@/packages/require-receipt/index.js';
-import { verifyReceiptForProduction, assertGovVerifierReady } from '@/lib/gov-receipt-verifier.js';
+import {
+  verifyReceiptForProduction,
+  assertGovVerifierReady,
+  requiredAssuranceForAction,
+  enforceReceiptAssuranceForProduction,
+} from '@/lib/gov-receipt-verifier.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
 import { getGuardedConsumptionStore, consumeKey } from '@/lib/http/guarded-consumption.js';
 import { logger } from '@/lib/logger.js';
@@ -75,6 +80,33 @@ export async function POST(request) {
   if (!v.receipt_id) {
     const rejected = { ok: false, reason: 'missing_receipt_id', detail: 'receipt has no receipt_id; cannot enforce one-time consumption' };
     return NextResponse.json({ ...receiptChallenge(action, 'Receipt rejected: missing_receipt_id.'), rejected }, { status: 402 });
+  }
+
+  // Assurance tier fail-closed: a valid signature only proves the receipt is
+  // authentic and action-bound — it does NOT prove the human-authorization tier
+  // the action demands. The action-control manifest sets that tier
+  // (payment.release=class_a, deploy.production/permission.admin.change=quorum,
+  // …). A Class-A/quorum tier is PROVEN only when the receipt carries an
+  // assurance_proof that verifies against pinned approver keys; a self-asserted
+  // `allow_with_signoff` / `quorum` claim is software-tier until proven. Refuse
+  // when the proven tier is below the required tier (428 assurance_too_low), so
+  // a software-tier receipt can never authorize a quorum action. Enforce BEFORE
+  // consuming the receipt — don't burn a receipt we're going to refuse.
+  const requiredTier = requiredAssuranceForAction(action);
+  if (requiredTier && requiredTier !== 'software') {
+    const assurance = enforceReceiptAssuranceForProduction(doc, { action, requiredTier });
+    if (!assurance.ok) {
+      const rejected = {
+        ok: false,
+        reason: assurance.reason || 'assurance_too_low',
+        have_tier: assurance.have,
+        need_tier: assurance.need,
+      };
+      return NextResponse.json({
+        ...receiptChallenge(action, `Receipt rejected: ${rejected.reason}.`),
+        rejected,
+      }, { status: 428 });
+    }
   }
 
   // One-time consumption (replay defense): a verified receipt authorizes ONE
