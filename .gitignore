@@ -1,4 +1,6 @@
-node_modules/
+# no trailing slash — also catches node_modules SYMLINKS (a remote-sandbox
+# symlink slipped past `node_modules/`, which only matches directories)
+node_modules
 .next/
 .env
 .env.local
