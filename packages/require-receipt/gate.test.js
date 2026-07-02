@@ -6,11 +6,14 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { makeReceiptGate, receiptAssuranceTier } from './gate.js';
+import { evaluateReceiptAssurance } from './index.js';
 
 const canon = (v) => (v === null || v === undefined ? JSON.stringify(v)
   : Array.isArray(v) ? `[${v.map(canon).join(',')}]`
     : typeof v === 'object' ? `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canon(v[k])).join(',')}}`
       : JSON.stringify(v));
+const sha256Hex = (v) => crypto.createHash('sha256').update(v, 'utf8').digest('hex');
+const sha256Bytes = (v) => crypto.createHash('sha256').update(v).digest();
 
 // Mint a valid EP-RECEIPT-v1 bound to exactly `actionType`.
 function mint(actionType, { outcome = 'allow_with_signoff', quorum = null } = {}) {
@@ -182,4 +185,125 @@ test('receiptAssuranceTier does not count duplicate quorum signers', () => {
   assert.equal(receiptAssuranceTier({
     payload: { claim: { outcome: 'allow_with_signoff', quorum: { threshold: 2, signers: ['same', 'same'] } } },
   }, { verifyAssurance: fixtureAssurance }), 'class_a');
+});
+
+// ── Pinned-key quorum distinctness: a real EP-ASSURANCE-PROOF-v1, verified with
+//    pinned approver keys, must count DISTINCT SIGNING KEYS — never the free-text
+//    `approver` label. One key cannot satisfy a two-person rule. ────────────────
+
+// A minimal pinned-key proof toolkit modeled on the EG-1 harness. Class-B (Ed25519)
+// and Class-A (WebAuthn) signoffs both sign the EP-ASSURANCE-CONTEXT-v1 digest.
+function assuranceKit() {
+  const keys = {};
+  function addKeyB(keyId) {
+    const kp = crypto.generateKeyPairSync('ed25519');
+    keys[keyId] = { public_key: kp.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'), key_class: 'B' };
+    return { keyId, privateKey: kp.privateKey };
+  }
+  function addKeyA(keyId) {
+    const kp = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+    keys[keyId] = { public_key: kp.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'), key_class: 'A' };
+    return { keyId, privateKey: kp.privateKey };
+  }
+  function contextDigest(payload) {
+    const context = {
+      '@version': 'EP-ASSURANCE-CONTEXT-v1',
+      receipt_id: payload.receipt_id,
+      claim_hash: `sha256:${sha256Hex(canon(payload.claim))}`,
+    };
+    const contextHash = `sha256:${sha256Hex(canon(context))}`;
+    return { contextHash, digest: Buffer.from(contextHash.replace(/^sha256:/, ''), 'hex') };
+  }
+  function signB(signer, digest, approver) {
+    return {
+      approver: approver ?? signer.keyId,
+      approver_key_id: signer.keyId,
+      key_class: 'B',
+      signature: crypto.sign(null, digest, signer.privateKey).toString('base64url'),
+    };
+  }
+  function signA(signer, digest, approver) {
+    const challenge = Buffer.from(digest).toString('base64url');
+    const clientDataJSON = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge, origin: 'https://www.emiliaprotocol.ai' }), 'utf8');
+    const rpIdHash = crypto.createHash('sha256').update('www.emiliaprotocol.ai').digest();
+    const authData = Buffer.concat([rpIdHash, Buffer.from([0x05]), Buffer.from([0, 0, 0, 0])]); // UP + UV
+    const signedData = Buffer.concat([authData, sha256Bytes(clientDataJSON)]);
+    return {
+      approver: approver ?? signer.keyId,
+      approver_key_id: signer.keyId,
+      key_class: 'A',
+      webauthn: {
+        authenticator_data: authData.toString('base64url'),
+        client_data_json: clientDataJSON.toString('base64url'),
+        signature: crypto.sign('sha256', signedData, signer.privateKey).toString('base64url'),
+      },
+    };
+  }
+  // Build a receipt doc carrying an EP-ASSURANCE-PROOF-v1 with the given signoffs.
+  function receipt(threshold, makeSignoffs) {
+    const payload = {
+      receipt_id: 'rcpt_' + crypto.randomBytes(6).toString('hex'),
+      subject: 'agent:autonomous',
+      created_at: new Date().toISOString(),
+      claim: { action_type: 'deploy.production', outcome: 'allow_with_signoff', approver: 'ep:approver:agent' },
+    };
+    const { contextHash, digest } = contextDigest(payload);
+    payload.assurance_proof = {
+      '@version': 'EP-ASSURANCE-PROOF-v1',
+      context_hash: contextHash,
+      threshold,
+      signoffs: makeSignoffs(digest),
+    };
+    return { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value: 'unused-here' } };
+  }
+  return { keys, addKeyB, addKeyA, signB, signA, receipt };
+}
+
+test('quorum: one key signing twice under two approver names does NOT satisfy threshold 2', () => {
+  const kit = assuranceKit();
+  const solo = kit.addKeyB('ep:key:controller#1');
+  const doc = kit.receipt(2, (digest) => [
+    kit.signB(solo, digest, 'ep:approver:alice'),
+    kit.signB(solo, digest, 'ep:approver:bob'), // SAME key, different label — the attack
+  ]);
+  const r = evaluateReceiptAssurance(doc, 'quorum', { approverKeys: kit.keys });
+  assert.equal(r.ok, false, 'a single key must not clear a two-person rule');
+  assert.equal(r.have, 'software', 'one valid Class-B key -> software, never quorum');
+});
+
+test('quorum: one key signing twice under the IDENTICAL approver name does NOT satisfy threshold 2', () => {
+  const kit = assuranceKit();
+  const solo = kit.addKeyB('ep:key:controller#1');
+  const doc = kit.receipt(2, (digest) => [
+    kit.signB(solo, digest, 'ep:approver:same'),
+    kit.signB(solo, digest, 'ep:approver:same'),
+  ]);
+  const r = evaluateReceiptAssurance(doc, 'quorum', { approverKeys: kit.keys });
+  assert.equal(r.ok, false);
+  assert.equal(r.have, 'software');
+});
+
+test('quorum: one Class-A key signing twice does NOT satisfy threshold 2', () => {
+  const kit = assuranceKit();
+  const solo = kit.addKeyA('ep:key:cfo#1');
+  const doc = kit.receipt(2, (digest) => [
+    kit.signA(solo, digest, 'ep:approver:alice'),
+    kit.signA(solo, digest, 'ep:approver:bob'),
+  ]);
+  const r = evaluateReceiptAssurance(doc, 'quorum', { approverKeys: kit.keys });
+  assert.equal(r.ok, false, 'a single Class-A key must not clear a two-person rule');
+  assert.equal(r.have, 'class_a', 'still Class-A on one valid key');
+});
+
+test('quorum: TWO DISTINCT keys still satisfy threshold 2 (legitimate two-person rule)', () => {
+  const kit = assuranceKit();
+  const a = kit.addKeyA('ep:key:cfo#1');
+  const b = kit.addKeyB('ep:key:controller#1');
+  const doc = kit.receipt(2, (digest) => [
+    kit.signA(a, digest, 'ep:approver:cfo'),
+    kit.signB(b, digest, 'ep:approver:controller'),
+  ]);
+  const r = evaluateReceiptAssurance(doc, 'quorum', { approverKeys: kit.keys });
+  assert.equal(r.ok, true, r.reason);
+  assert.equal(r.have, 'quorum');
 });

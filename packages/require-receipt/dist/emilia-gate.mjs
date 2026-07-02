@@ -27,7 +27,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.4.1  ·  content-sha256:dc952e178f03b850
+//   source: @emilia-protocol/require-receipt@0.5.0  ·  content-sha256:d8b8f9a497689121
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 /**
@@ -206,7 +206,11 @@ function verifyPinnedAssuranceProof(doc, opts = {}) {
       ? verifyWebAuthnDigest(s.webauthn, digest, entry.public_key)
       : verifyEd25519Digest(s.signature, digest, entry.public_key);
     if (!ok) continue;
-    valid.push({ approver: String(s.approver || keyId), keyClass });
+    // Distinctness MUST key on the PINNED SIGNING KEY (approver_key_id), never the
+    // attacker-controlled `approver` label. One key signing the same digest twice
+    // under two names is ONE approver — it must not inflate the quorum count and
+    // satisfy a two-person rule with a single key.
+    valid.push({ approver: String(keyId), keyClass });
   }
   if (!valid.length) return { ok: false, tier: 'software', reason: 'assurance_proof_invalid' };
   const distinctApprovers = new Set(valid.map((s) => s.approver));
