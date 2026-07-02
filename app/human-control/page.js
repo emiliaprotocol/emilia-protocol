@@ -207,8 +207,9 @@ export default function HumanControlPage() {
             <p style={{ ...styles.body, color: color.t2, margin: 0 }}>
               A specific, pinned human — or quorum of distinct humans — authorized this exact
               action or bounded envelope, at a stated scope, within a validity window, under a
-              referenced authority. The record cannot be forged, replayed, re-targeted, or
-              repudiated, and anyone can verify it offline.
+              referenced authority. Given signature soundness and uncompromised signing keys,
+              the record cannot be forged, replayed, re-targeted, or repudiated, and anyone can
+              verify it offline.
             </p>
           </motion.div>
           <motion.div {...reveal(0.08)} style={{ ...styles.card, padding: 26, borderTop: `2px solid ${color.t3}` }}>
