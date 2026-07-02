@@ -1,0 +1,324 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://www.emiliaprotocol.ai/docs/schemas/agent-action-control-manifest-v0.2.schema.json",
+  "title": "EMILIA Action Control Manifest v0.2",
+  "description": "Machine-readable control plane for consequential agent actions: when a receipt is required, what assurance tier is required, which execution fields must be bound from the system of record, and which evidence must be emitted.",
+  "type": "object",
+  "required": [
+    "@version",
+    "profile",
+    "service",
+    "defaults",
+    "evidence_profiles",
+    "actions"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "@version": {
+      "const": "EP-ACTION-CONTROL-MANIFEST-v0.2"
+    },
+    "profile": {
+      "const": "emilia.action-control"
+    },
+    "service": {
+      "type": "object",
+      "required": [
+        "name",
+        "issuer",
+        "manifest_url"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "issuer": {
+          "type": "string",
+          "format": "uri"
+        },
+        "manifest_url": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "required": [
+        "decision_point",
+        "missing_receipt",
+        "invalid_receipt",
+        "stale_receipt",
+        "replay",
+        "evidence_log"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "decision_point": {
+          "enum": [
+            "pre_execution",
+            "pre_effect_commit"
+          ]
+        },
+        "missing_receipt": {
+          "const": "refuse"
+        },
+        "invalid_receipt": {
+          "const": "refuse"
+        },
+        "stale_receipt": {
+          "const": "refuse"
+        },
+        "replay": {
+          "const": "one_time_consumption"
+        },
+        "evidence_log": {
+          "enum": [
+            "strict",
+            "best_effort"
+          ]
+        }
+      }
+    },
+    "evidence_profiles": {
+      "type": "object",
+      "required": [
+        "authorization_receipt",
+        "execution_attestation",
+        "reliance_packet"
+      ],
+      "additionalProperties": true
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/action"
+      }
+    }
+  },
+  "$defs": {
+    "risk": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    },
+    "assurance": {
+      "enum": [
+        "software",
+        "class_a",
+        "quorum"
+      ]
+    },
+    "match": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": [
+          "string",
+          "number",
+          "boolean"
+        ]
+      }
+    },
+    "action": {
+      "type": "object",
+      "required": [
+        "id",
+        "action_type",
+        "risk",
+        "receipt_required",
+        "assurance_class",
+        "match",
+        "control",
+        "conformance"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string"
+        },
+        "action_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "risk": {
+          "$ref": "#/$defs/risk"
+        },
+        "receipt_required": {
+          "type": "boolean"
+        },
+        "assurance_class": {
+          "$ref": "#/$defs/assurance"
+        },
+        "max_age_sec": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "match": {
+          "$ref": "#/$defs/match"
+        },
+        "control": {
+          "$ref": "#/$defs/control"
+        },
+        "conformance": {
+          "type": "object",
+          "required": [
+            "level",
+            "checks"
+          ],
+          "additionalProperties": true,
+          "properties": {
+            "level": {
+              "const": "EG-1"
+            },
+            "checks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "contains": {
+                "const": "execution_drift_refused"
+              }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "receipt_required": {
+                "const": true
+              }
+            },
+            "required": [
+              "receipt_required"
+            ]
+          },
+          "then": {
+            "required": [
+              "max_age_sec"
+            ],
+            "properties": {
+              "control": {
+                "required": [
+                  "enforcement_point",
+                  "status",
+                  "authorization_receipt",
+                  "replay",
+                  "execution_binding",
+                  "evidence_output"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "control": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enforcement_point": {
+          "enum": [
+            "none",
+            "pre_execution",
+            "pre_effect_commit"
+          ]
+        },
+        "status": {
+          "const": 428
+        },
+        "challenge_header": {
+          "const": "Receipt-Required"
+        },
+        "proof_header": {
+          "const": "X-EMILIA-Receipt"
+        },
+        "authorization_receipt": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "required": {
+              "type": "boolean"
+            },
+            "profile": {
+              "const": "EP-RECEIPT-v1"
+            },
+            "verifier": {
+              "const": "offline"
+            }
+          }
+        },
+        "replay": {
+          "type": "object",
+          "required": [
+            "mode",
+            "receipt_id_required"
+          ],
+          "additionalProperties": true,
+          "properties": {
+            "mode": {
+              "const": "one_time_consumption"
+            },
+            "receipt_id_required": {
+              "const": true
+            }
+          }
+        },
+        "execution_binding": {
+          "type": "object",
+          "required": [
+            "required",
+            "source",
+            "required_fields"
+          ],
+          "additionalProperties": true,
+          "properties": {
+            "required": {
+              "const": true
+            },
+            "source": {
+              "const": "system_of_record"
+            },
+            "required_fields": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "evidence_output": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "audit_event": {
+              "type": "boolean"
+            },
+            "execution_attestation": {
+              "type": "boolean"
+            },
+            "reliance_packet": {
+              "type": "boolean"
+            },
+            "blocked_attempts": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    }
+  }
+}

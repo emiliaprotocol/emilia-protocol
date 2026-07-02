@@ -41,12 +41,25 @@ import { createEg1Harness, makeGateInvoke, runEg1, EG1_DEFAULT_SELECTOR } from '
 import { CF1_VERSION, CF1_CHECKS, runCf1 } from './cf1-conformance.js';
 import { createKeyRegistry, asKeyRegistry } from './key-registry.js';
 import { classifyRetention, buildRetentionExport } from './retention.js';
+import { createDefaultActionControlManifest, findActionControl, validateActionControlManifest } from './action-control-manifest.js';
 
 export { MemoryConsumptionStore, createEvidenceLog };
 export { createDurableConsumptionStore, createMemoryBackend } from './store.js';
 export { createKeyRegistry, asKeyRegistry } from './key-registry.js';
 export { classifyRetention, buildRetentionExport, RETENTION_EXPORT_VERSION } from './retention.js';
 export { DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, createDefaultActionRiskManifest };
+export {
+  ACTION_CONTROL_MANIFEST_VERSION,
+  ACTION_CONTROL_SCHEMA_URL,
+  ACTION_CONTROL_CONFORMANCE_LEVEL,
+  ACTION_CONTROL_DEFAULTS,
+  ACTION_CONTROL_EVIDENCE_PROFILES,
+  ACTION_CONTROL_CONFORMANCE_CHECKS,
+  toActionControl,
+  createDefaultActionControlManifest,
+  findActionControl,
+  validateActionControlManifest,
+} from './action-control-manifest.js';
 export { EXECUTION_BINDING_VERSION, canonicalize, hashCanonical, materialFieldsFor, verifyExecutionBinding } from './execution-binding.js';
 export { RELIANCE_PACKET_VERSION, buildReliancePacket } from './reliance-packet.js';
 export {
@@ -451,4 +464,7 @@ export default {
   asKeyRegistry,
   classifyRetention,
   buildRetentionExport,
+  createDefaultActionControlManifest,
+  findActionControl,
+  validateActionControlManifest,
 };

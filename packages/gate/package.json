@@ -7,6 +7,7 @@
   "main": "index.js",
   "exports": {
     ".": "./index.js",
+    "./action-control-manifest": "./action-control-manifest.js",
     "./mcp": "./mcp.js",
     "./adapters/github": "./adapters/github.js",
     "./adapters/stripe": "./adapters/stripe.js",
@@ -24,11 +25,12 @@
     "./retention": "./retention.js",
     "./package.json": "./package.json"
   },
-  "files": ["index.js", "store.js", "evidence.js", "action-packs.js", "execution-binding.js", "reliance-packet.js", "key-registry.js", "retention.js", "eg1-conformance.js", "eg1.mjs", "mcp.js", "adapters/_kit.js", "adapters/github.js", "adapters/github-demo.mjs", "adapters/stripe.js", "adapters/supabase.js", "adapters/aws.js", "adapters/k8s.js", "adapters/terraform.js", "adapters/gcp.js", "adapters/vercel.js", "adapters/cloudflare.js", "adapters/linear.js", "adapters/jira.js", "adapters/salesforce.js", "demo.mjs", "custody-demo.mjs", "README.md"],
+  "files": ["index.js", "store.js", "evidence.js", "action-packs.js", "action-control-manifest.js", "execution-binding.js", "reliance-packet.js", "key-registry.js", "retention.js", "eg1-conformance.js", "eg1.mjs", "cf1-conformance.js", "cf1.mjs", "mcp.js", "adapters/_kit.js", "adapters/github.js", "adapters/github-demo.mjs", "adapters/stripe.js", "adapters/supabase.js", "adapters/aws.js", "adapters/k8s.js", "adapters/terraform.js", "adapters/gcp.js", "adapters/vercel.js", "adapters/cloudflare.js", "adapters/linear.js", "adapters/jira.js", "adapters/salesforce.js", "demo.mjs", "custody-demo.mjs", "README.md"],
   "scripts": {
     "test": "node --test",
     "demo": "node demo.mjs",
-    "eg1": "node eg1.mjs"
+    "eg1": "node eg1.mjs",
+    "cf1": "node cf1.mjs"
   },
   "dependencies": {
     "@emilia-protocol/require-receipt": "^0.4.1"
