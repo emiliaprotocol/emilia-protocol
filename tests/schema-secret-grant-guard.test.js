@@ -2,23 +2,22 @@
 //
 // Schema secret-disclosure contract — static, CI-safe regression guard.
 //
-// The 2026-07 authorization sweep found two ways secret columns
-// (entities.private_key_encrypted, entities.api_key_hash) reached a boundary:
-//   1. an auth RPC that row_to_json'd the whole entity row (fixed: migration 125), and
-//   2. column-level GRANTs letting anon/authenticated SELECT the sealed key
-//      (fixed: migration 126 REVOKE).
+// The 2026-07 authorization sweep found secret-bearing columns reachable two ways:
+//   1. an auth RPC that row_to_json'd a whole entity row (fixed: migration 125);
+//   2. column/table GRANTs letting anon/authenticated read/write sealed material
+//      across entities + adjacent infra tables (fixed: migrations 126/127/128).
 //
-// This guard encodes BOTH invariants against the migration set, with no DB
-// connection required, so they cannot silently regress:
-//   A. Every declared sensitive column is REVOKED from anon+authenticated in the
-//      migration set (so a from-scratch replay reproduces the least-privilege
-//      posture, and deleting the revoke fails CI).
-//   B. No migration's LATEST function definition row_to_json's a table that has a
-//      declared sensitive column without stripping those columns.
+// This guard encodes the invariants against the migration set (no DB needed) so
+// they cannot silently regress:
+//   A. Every declared sensitive column is REVOKEd from anon AND authenticated.
+//   B. No statement GRANTs a declared sensitive column to a public role.
+//   C. No function row_to_json's a var populated by SELECT * FROM a secret-bearing
+//      table without stripping the sensitive columns.
 //
-// The LIVE column-grant assertion (against a running DB) lives in
-// scripts/db-contract.mjs (gov:db-contract); this test is the always-on,
-// zero-dependency floor.
+// Checks A/B are STATEMENT-SCOPED (split on ';') so a GRANT/REVOKE in one
+// statement can't be stitched to a column name in another. Live grant-drift
+// enforcement lives in scripts/db-contract.mjs (gov:db-contract); this is the
+// always-on, zero-dependency floor.
 
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
@@ -29,83 +28,83 @@ import { contract } from '../scripts/db-contract.manifest.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIG_DIR = path.join(ROOT, 'supabase/migrations');
 
-function allMigrationSql() {
-  return fs
-    .readdirSync(MIG_DIR)
-    .filter((f) => f.endsWith('.sql'))
-    .sort()
-    .map((f) => ({ file: f, sql: fs.readFileSync(path.join(MIG_DIR, f), 'utf8') }));
-}
+const migrations = fs
+  .readdirSync(MIG_DIR)
+  .filter((f) => f.endsWith('.sql'))
+  .sort()
+  .map((f) => ({ file: f, sql: fs.readFileSync(path.join(MIG_DIR, f), 'utf8') }));
 
-const migrations = allMigrationSql();
-const allSql = migrations.map((m) => m.sql).join('\n');
+// Coarse statement split. Adequate for GRANT/REVOKE (no embedded ';'); we do NOT
+// use this for function-body checks (those scan whole files). Strip `-- ...` line
+// comments first so a statement's leading comment block doesn't shadow the verb.
+const stripComments = (sql) => sql.replace(/--[^\n]*/g, '');
+const statements = migrations.flatMap((m) => stripComments(m.sql).split(';').map((s) => s.trim()).filter(Boolean));
+
+const pairs = Object.entries(contract.sensitiveColumnsNoPublicGrant).flatMap(
+  ([table, cols]) => cols.map((col) => ({ table, col })),
+);
+
+function esc(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+// Does a single statement REVOKE/GRANT `col` on `table` (or the whole table)
+// to/from `role`? Column-list form `(... col ...)` OR table-wide (no column list).
+function stmtActsOn(stmt, verb, table, col, role) {
+  const s = stmt.replace(/\s+/g, ' ');
+  if (!new RegExp(`^${verb}\\b`, 'i').test(s)) return false;
+  if (!new RegExp(`\\bON\\s+(?:public\\.)?${esc(table)}\\b`, 'i').test(s)) return false;
+  const dir = verb === 'REVOKE' ? 'FROM' : 'TO';
+  if (!new RegExp(`\\b${dir}\\b[^]*\\b${esc(role)}\\b`, 'i').test(s)) return false;
+  // Column named explicitly, OR a table-wide grant/revoke (no parenthesised list
+  // before ON) which necessarily covers the column too.
+  const namesCol = new RegExp(`\\(([^)]*\\b${esc(col)}\\b[^)]*)\\)`, 'i').test(s);
+  const tableWide = !/\([^)]*\)\s*ON\b/i.test(s); // no "(cols) ON" => privilege applies table-wide
+  return namesCol || tableWide;
+}
 
 describe('schema secret-disclosure contract (static)', () => {
   it('declares sensitive columns to protect', () => {
     expect(contract.sensitiveColumnsNoPublicGrant).toBeTruthy();
-    expect(Object.keys(contract.sensitiveColumnsNoPublicGrant).length).toBeGreaterThan(0);
+    expect(pairs.length).toBeGreaterThanOrEqual(6);
   });
 
-  // A. Each declared sensitive column is revoked from anon + authenticated.
-  const pairs = Object.entries(contract.sensitiveColumnsNoPublicGrant).flatMap(
-    ([table, cols]) => cols.map((col) => ({ table, col })),
-  );
-
-  it.each(pairs)('$table.$col is REVOKEd from anon+authenticated in the migration set', ({ table, col }) => {
-    // Look for a REVOKE ... (col) ON [public.]table FROM ... anon ... authenticated.
-    // Tolerant of column lists, whitespace, and privilege ordering.
-    const revokeRe = new RegExp(
-      `REVOKE[\\s\\S]*?\\(${escapeRe(col)}[\\s\\S]*?\\)[\\s\\S]*?ON\\s+(?:public\\.)?${escapeRe(table)}[\\s\\S]*?FROM[\\s\\S]*?(anon|authenticated)`,
-      'i',
-    );
-    const revokesAnon = new RegExp(
-      `REVOKE[\\s\\S]*?\\(${escapeRe(col)}[\\s\\S]*?\\)[\\s\\S]*?ON\\s+(?:public\\.)?${escapeRe(table)}[\\s\\S]*?FROM[^;]*anon`,
-      'i',
-    ).test(allSql);
-    const revokesAuthed = new RegExp(
-      `REVOKE[\\s\\S]*?\\(${escapeRe(col)}[\\s\\S]*?\\)[\\s\\S]*?ON\\s+(?:public\\.)?${escapeRe(table)}[\\s\\S]*?FROM[^;]*authenticated`,
-      'i',
-    ).test(allSql);
-    expect(revokeRe.test(allSql), `no REVOKE of ${table}.${col} from public roles found in migrations`).toBe(true);
-    expect(revokesAnon && revokesAuthed, `${table}.${col} must be revoked from BOTH anon and authenticated`).toBe(true);
+  // A. Each declared sensitive column is revoked from BOTH anon and authenticated.
+  it.each(pairs)('$table.$col is REVOKEd from anon+authenticated', ({ table, col }) => {
+    const anon = statements.some((s) => stmtActsOn(s, 'REVOKE', table, col, 'anon'));
+    const authed = statements.some((s) => stmtActsOn(s, 'REVOKE', table, col, 'authenticated'));
+    expect(anon, `no REVOKE of ${table}.${col} from anon`).toBe(true);
+    expect(authed, `no REVOKE of ${table}.${col} from authenticated`).toBe(true);
   });
 
-  // B. No migration re-grants a sensitive column to a public role AFTER (or without) a revoke.
+  // B. No statement GRANTs a sensitive column to a public role (statement-scoped).
   it.each(pairs)('$table.$col is never GRANTed to anon/authenticated', ({ table, col }) => {
-    const grantRe = new RegExp(
-      `GRANT[\\s\\S]*?\\(${escapeRe(col)}[\\s\\S]*?\\)[\\s\\S]*?ON\\s+(?:public\\.)?${escapeRe(table)}[\\s\\S]*?TO[^;]*(anon|authenticated)`,
-      'i',
+    const granted = statements.find(
+      (s) => stmtActsOn(s, 'GRANT', table, col, 'anon') || stmtActsOn(s, 'GRANT', table, col, 'authenticated'),
     );
-    expect(grantRe.test(allSql), `a migration GRANTs ${table}.${col} to a public role — remove it`).toBe(false);
+    expect(granted, `a statement GRANTs ${table}.${col} to a public role: ${granted}`).toBeUndefined();
   });
 
-  // C. Generalized secret-projection guard: the LATEST definition of any function
-  // that row_to_json's a variable populated by SELECT * FROM <sensitive table>
-  // must strip each sensitive column. (Subsumes the auth-RPC-specific guard for
-  // any future function over a secret-bearing table.)
+  // C. No function row_to_json's a SELECT * of a secret-bearing table unstripped.
   it('no function returns an unstripped row_to_json of a secret-bearing table', () => {
     const offenders = [];
-    for (const table of Object.keys(contract.sensitiveColumnsNoPublicGrant)) {
-      const cols = contract.sensitiveColumnsNoPublicGrant[table];
-      // Consider only the LATEST migration that mentions both a SELECT * of the
-      // table and row_to_json — earlier definitions are superseded by CREATE OR
-      // REPLACE, so scanning the last one reflects what actually runs.
-      const relevant = migrations.filter(
-        (m) => new RegExp(`SELECT\\s+\\*[\\s\\S]*?FROM\\s+(?:public\\.)?${escapeRe(table)}`, 'i').test(m.sql)
-          && /row_to_json/i.test(m.sql),
-      );
-      const latest = relevant[relevant.length - 1];
-      if (!latest) continue;
-      for (const col of cols) {
-        if (!latest.sql.includes(`- '${col}'`)) {
-          offenders.push(`${latest.file}: row_to_json over ${table} without stripping '${col}'`);
+    for (const { table, col } of pairs) {
+      // Latest migration that binds `SELECT * INTO <var> FROM <table>` AND row_to_json(<var>).
+      for (const m of migrations) {
+        const bind = new RegExp(`SELECT\\s+\\*\\s+INTO\\s+(\\w+)\\s+FROM\\s+(?:public\\.)?${esc(table)}\\b`, 'i').exec(m.sql);
+        if (!bind) continue;
+        const varName = bind[1];
+        if (!new RegExp(`row_to_json\\(\\s*${esc(varName)}\\s*\\)`, 'i').test(m.sql)) continue;
+        // A binding+row_to_json exists in a LATER migration? then this one is superseded.
+        const laterSupersedes = migrations.some(
+          (n) => n.file > m.file
+            && new RegExp(`SELECT\\s+\\*\\s+INTO\\s+\\w+\\s+FROM\\s+(?:public\\.)?${esc(table)}\\b`, 'i').test(n.sql)
+            && /row_to_json/i.test(n.sql),
+        );
+        if (laterSupersedes) continue;
+        if (!m.sql.includes(`- '${col}'`)) {
+          offenders.push(`${m.file}: row_to_json over ${table} without stripping '${col}'`);
         }
       }
     }
     expect(offenders, offenders.join('; ')).toEqual([]);
   });
 });
-
-function escapeRe(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}

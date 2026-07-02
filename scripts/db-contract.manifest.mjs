@@ -66,8 +66,16 @@ export const contract = {
   // enforcement (catching a Supabase bootstrap re-grant after a project reset)
   // is a follow-up: extend gov_schema_contract_introspect() to surface anon/
   // authenticated column_grants, then assert them here like noAnonRead.
+  // Full secret-bearing column set across ALL tables (live-swept 2026-07-02:
+  // private_key|api_key_hash|secret|encrypted|seed|password|signing_key|key_hash).
+  // Column SELECT/INSERT/UPDATE revoked from anon+authenticated in migration 127;
+  // table-level write grants on the pure-infra tables revoked in migration 128.
   sensitiveColumnsNoPublicGrant: {
     entities: ['private_key_encrypted', 'api_key_hash'],
+    api_keys: ['key_hash'],
+    tenant_api_keys: ['key_hash'],
+    sso_connections: ['oidc_client_secret'],
+    webhook_endpoints: ['secret'],
   },
 
   // No anon/authenticated/PUBLIC may have a write policy (INSERT/UPDATE/DELETE/ALL)
