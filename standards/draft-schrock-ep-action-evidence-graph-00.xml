@@ -74,7 +74,15 @@
       made ad hoc, is not reproducible, and leaves no evidence of its
       own. This document defines the missing layer. It deliberately
       defines no new receipt type: every leg of an evidence graph is an
-      existing artifact verified under its own specification's rules.</t>
+      existing artifact verified under its own specification's rules.
+      Within the same family,
+      <xref target="I-D.schrock-ep-authorization-receipts"/> defines the
+      named-human authorization artifact this layer most often consumes,
+      and <xref target="I-D.schrock-ep-authorization-evidence-chain"/>
+      defines same-action composition of heterogeneous receipts into one
+      ALLOW/DENY; this document generalizes that composition into a
+      referenced graph and adds the purpose-relative sufficiency
+      decision, its replay property, and the signed reliance result.</t>
       <section anchor="terms">
         <name>Terminology</name>
         <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL",
@@ -218,6 +226,8 @@
       </references>
       <references>
         <name>Informative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.schrock-ep-authorization-receipts.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.schrock-ep-authorization-evidence-chain.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9334.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9635.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9711.xml"/>

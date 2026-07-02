@@ -88,18 +88,18 @@ Table of Contents
    1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
      1.1.  Terminology . . . . . . . . . . . . . . . . . . . . . . .   3
    2.  The Action Evidence Graph (EP-AEG-v1) . . . . . . . . . . . .   3
-     2.1.  Nodes are content-addressed references  . . . . . . . . .   3
+     2.1.  Nodes are content-addressed references  . . . . . . . . .   4
      2.2.  Edges are presenter claims, verified against bytes  . . .   4
      2.3.  Graph identity is disclosure-independent  . . . . . . . .   4
    3.  Evidence Policy Replay  . . . . . . . . . . . . . . . . . . .   4
    4.  The Reliance Result (EP-RELIANCE-RESULT-v1) . . . . . . . . .   5
    5.  Policy Packs  . . . . . . . . . . . . . . . . . . . . . . . .   5
    6.  Security Considerations . . . . . . . . . . . . . . . . . . .   5
-   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   5
-   8.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   5
+   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   6
+   8.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   6
      8.1.  Normative References  . . . . . . . . . . . . . . . . . .   6
      8.2.  Informative References  . . . . . . . . . . . . . . . . .   6
-   Appendix A.  Implementation Status  . . . . . . . . . . . . . . .   6
+   Appendix A.  Implementation Status  . . . . . . . . . . . . . . .   7
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   7
 
 1.  Introduction
@@ -133,7 +133,14 @@ Internet-Draft           Action Evidence Graphs                July 2026
    reproducible, and leaves no evidence of its own.  This document
    defines the missing layer.  It deliberately defines no new receipt
    type: every leg of an evidence graph is an existing artifact verified
-   under its own specification's rules.
+   under its own specification's rules.  Within the same family,
+   [I-D.schrock-ep-authorization-receipts] defines the named-human
+   authorization artifact this layer most often consumes, and
+   [I-D.schrock-ep-authorization-evidence-chain] defines same-action
+   composition of heterogeneous receipts into one ALLOW/DENY; this
+   document generalizes that composition into a referenced graph and
+   adds the purpose-relative sufficiency decision, its replay property,
+   and the signed reliance result.
 
 1.1.  Terminology
 
@@ -154,6 +161,19 @@ Internet-Draft           Action Evidence Graphs                July 2026
    string "EP-AEG-v1"), "action_digest" (the JCS/SHA-256 digest of the
    canonical action), "nodes", and "edges".
 
+
+
+
+
+
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 3]
+
+Internet-Draft           Action Evidence Graphs                July 2026
+
+
 2.1.  Nodes are content-addressed references
 
    Each node has an "id" equal to the SHA-256 digest of the referenced
@@ -166,13 +186,6 @@ Internet-Draft           Action Evidence Graphs                July 2026
    disclose the SHAPE of its evidence without the contents; an
    undisclosed node contributes nothing to sufficiency and a required
    undisclosed node fails closed.
-
-
-
-Schrock                  Expires 3 January 2027                 [Page 3]
-
-Internet-Draft           Action Evidence Graphs                July 2026
-
 
 2.2.  Edges are presenter claims, verified against bytes
 
@@ -209,6 +222,14 @@ Internet-Draft           Action Evidence Graphs                July 2026
    Evaluation is deterministic and offline: given the same graph,
    policy, and evaluation time, any implementation reaches the same
    verdict and the same replay digest (a canonical digest over the
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 4]
+
+Internet-Draft           Action Evidence Graphs                July 2026
+
+
    policy, the normalized evidence facts, the graph digest, and the
    evaluation time).  The verdict is one of a CLOSED set of five:
    admissible, missing_evidence, stale, conflicted, unverifiable, with
@@ -218,17 +239,6 @@ Internet-Draft           Action Evidence Graphs                July 2026
    missing_human_approval, untrusted_workload, contradicted_outcome,
    unbacked_edge_claim) accompany the verdict; the reason vocabulary is
    open, the verdict set is not.
-
-
-
-
-
-
-
-Schrock                  Expires 3 January 2027                 [Page 4]
-
-Internet-Draft           Action Evidence Graphs                July 2026
-
 
 4.  The Reliance Result (EP-RELIANCE-RESULT-v1)
 
@@ -268,6 +278,14 @@ Internet-Draft           Action Evidence Graphs                July 2026
    bearing: a verdict of admissible is evidence that a bundle met a
    stated policy at a stated time; it is not a guarantee the action was
    correct or safe, it does not adjudicate disputes, and it confers no
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 5]
+
+Internet-Draft           Action Evidence Graphs                July 2026
+
+
    authority beyond what the underlying artifacts carry.  Each artifact
    class is verified under its own specification; this document
    inherits, and does not weaken, each one's trust model.
@@ -278,13 +296,6 @@ Internet-Draft           Action Evidence Graphs                July 2026
    edge-relation and reason-code vocabularies.
 
 8.  References
-
-
-
-Schrock                  Expires 3 January 2027                 [Page 5]
-
-Internet-Draft           Action Evidence Graphs                July 2026
-
 
 8.1.  Normative References
 
@@ -304,10 +315,32 @@ Internet-Draft           Action Evidence Graphs                July 2026
 
 8.2.  Informative References
 
+   [I-D.schrock-ep-authorization-evidence-chain]
+              Schrock, I., "Authorization Evidence Chains: Composing
+              Heterogeneous Agent-Authorization Receipts (EP-AEC)", Work
+              in Progress, Internet-Draft, draft-schrock-ep-
+              authorization-evidence-chain-00, 22 June 2026,
+              <https://datatracker.ietf.org/doc/html/draft-schrock-ep-
+              authorization-evidence-chain-00>.
+
+   [I-D.schrock-ep-authorization-receipts]
+              Schrock, I., "Authorization Receipts for High-Risk Agent
+              Actions", Work in Progress, Internet-Draft, draft-schrock-
+              ep-authorization-receipts-04, 30 June 2026,
+              <https://datatracker.ietf.org/doc/html/draft-schrock-ep-
+              authorization-receipts-04>.
+
    [RFC9334]  Birkholz, H., Thaler, D., Richardson, M., Smith, N., and
               W. Pan, "Remote ATtestation procedureS (RATS)
               Architecture", RFC 9334, DOI 10.17487/RFC9334, January
               2023, <https://www.rfc-editor.org/info/rfc9334>.
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 6]
+
+Internet-Draft           Action Evidence Graphs                July 2026
+
 
    [RFC9635]  Richer, J., Ed. and F. Imbault, "Grant Negotiation and
               Authorization Protocol (GNAP)", RFC 9635,
@@ -334,14 +367,6 @@ Appendix A.  Implementation Status
    disclosure-independent graph identity, unbacked-edge poisoning,
    required-edge stripping, freshness degradation, and replay
    determinism.  It builds on the same codebase's authorization-receipt,
-
-
-
-Schrock                  Expires 3 January 2027                 [Page 6]
-
-Internet-Draft           Action Evidence Graphs                July 2026
-
-
    quorum, evidence-chain, and admissibility layers.
 
 Author's Address
@@ -350,31 +375,6 @@ Author's Address
    EMILIA Protocol, Inc.
    United States of America
    Email: team@emiliaprotocol.ai
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
