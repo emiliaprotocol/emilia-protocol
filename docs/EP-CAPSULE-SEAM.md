@@ -39,6 +39,19 @@ From `capsule-seam-vector.json`:
 
 **Capsule-side test:** build a Capsule over the same `subject_digest`, put the chosen `authority_reference_digest` in the opaque authority reference, and confirm a verifier can (a) recompute `subject_digest` from the action, (b) resolve the authority reference to this EP receipt, and (c) verify the EP signature over `payload_canonical`. That closes who → what **testably**, not by assertion.
 
+## Negative cases (MUST-reject) — the WHO-leg contract
+Per Songbo Bu: a decomposition is only an interop surface if each leg ships its own verifier contract *and negative cases*. The vector's `must_reject` array carries the WHO-leg rejects a composed verifier MUST enforce (all `ENFORCED` by the generator):
+
+| id | verdict | reason |
+|---|---|---|
+| `wrong_action` | reject | `who_subject_mismatch` — receipt binds action A; Capsule records action B |
+| `approval_contradiction` | reject | `disposition_contradicts_receipt` — Capsule says approved, referenced receipt is a denial |
+| `untrusted_issuer` | reject | `issuer_not_pinned` — receipt signed by a non-pinned key (no trust laundering) |
+| `replay_across_subject` | reject | `receipt_action_bound` — an action-A receipt reused for a Capsule over action B |
+| `missing_who_when_required` | policy_reject | `who_required_but_absent` — policy requires WHO, chain has no resolvable receipt digest |
+
+These are the WHO analogues of Songbo's negative list (producer-log mismatch, permit/audience mismatch, superseded-without-predecessor, concealed-required-field), composed by cross-reference, not containment.
+
 ## Three questions "authorization" blurs
 Agent identity/discovery ("which agent, where") ≠ machine/scope permission (permit/agentroa, **CAN**) ≠ accountable-human approval of the exact action (**EMILIA, WHO**). This seam is only the WHO → WHAT edge.
 
