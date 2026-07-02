@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { EP_ERRORS, epProblem, epDbError } from '@/lib/errors';
 import { logger } from '../../../../lib/logger.js';
@@ -33,7 +33,7 @@ export async function GET(request, { params }) {
     }
 
     // ── Authorization: caller must be the accountable actor or have operator permissions ──
-    const callerEntityId = auth.entityId || auth.entity_id;
+    const callerEntityId = authEntityId(auth);
     const isAccountableActor = callerEntityId && callerEntityId === challenge.accountable_actor_ref;
     const hasOperatorPermission = auth.permissions?.includes('signoff.view') || auth.permissions?.includes('operator');
 

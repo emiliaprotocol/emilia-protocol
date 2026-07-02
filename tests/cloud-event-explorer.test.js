@@ -436,6 +436,10 @@ describe('searchEvents', () => {
 describe('verifyIntegrity', () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it('requires a tenant id for integrity checks', async () => {
+    await expect(verifyIntegrity()).rejects.toThrow('tenant_id is required for verifyIntegrity');
+  });
+
   it('returns a 100 score when no events exist', async () => {
     const emptyChain = makeChain({ data: [], error: null });
     const handshakesChain = makeChain({ data: [], error: null });
@@ -447,7 +451,9 @@ describe('verifyIntegrity', () => {
     });
     getGuardedClient.mockReturnValue(supabase);
 
-    const result = await verifyIntegrity();
+    const result = await verifyIntegrity({ tenant_id: 'test-tenant' });
+    expect(emptyChain.eq).toHaveBeenCalledWith('tenant_id', 'test-tenant');
+    expect(handshakesChain.eq).toHaveBeenCalledWith('tenant_id', 'test-tenant');
     expect(result.score).toBe(0); // score is 0 when no events (maxPenalty = 0)
     expect(result.anomalies).toEqual([]);
     expect(result.total_events).toBe(0);
@@ -469,7 +475,7 @@ describe('verifyIntegrity', () => {
     });
     getGuardedClient.mockReturnValue(supabase);
 
-    const result = await verifyIntegrity();
+    const result = await verifyIntegrity({ tenant_id: 'test-tenant' });
     const missingCreation = result.anomalies.find(a => a.type === 'missing_creation_event');
     expect(missingCreation).toBeDefined();
     expect(missingCreation.handshake_id).toBe('hs-1');
@@ -492,7 +498,7 @@ describe('verifyIntegrity', () => {
     });
     getGuardedClient.mockReturnValue(supabase);
 
-    const result = await verifyIntegrity();
+    const result = await verifyIntegrity({ tenant_id: 'test-tenant' });
     const inversion = result.anomalies.find(a => a.type === 'timestamp_inversion');
     expect(inversion).toBeDefined();
     expect(inversion.handshake_id).toBe('hs-2');
@@ -515,7 +521,7 @@ describe('verifyIntegrity', () => {
     });
     getGuardedClient.mockReturnValue(supabase);
 
-    const result = await verifyIntegrity();
+    const result = await verifyIntegrity({ tenant_id: 'test-tenant' });
     const missing = result.anomalies.find(a => a.type === 'missing_terminal_event');
     expect(missing).toBeDefined();
     expect(missing.handshake_id).toBe('hs-3');
@@ -539,7 +545,7 @@ describe('verifyIntegrity', () => {
     });
     getGuardedClient.mockReturnValue(supabase);
 
-    const result = await verifyIntegrity();
+    const result = await verifyIntegrity({ tenant_id: 'test-tenant' });
     expect(result.score).toBe(100);
     expect(result.anomalies).toHaveLength(0);
   });
@@ -550,7 +556,7 @@ describe('verifyIntegrity', () => {
     const supabase = makeSupabase({ handshake_events: heChain });
     getGuardedClient.mockReturnValue(supabase);
 
-    await expect(verifyIntegrity()).rejects.toThrow('Integrity check failed');
+    await expect(verifyIntegrity({ tenant_id: 'test-tenant' })).rejects.toThrow('Integrity check failed');
   });
 
   it('throws when signoff_events query fails critically', async () => {
@@ -563,7 +569,7 @@ describe('verifyIntegrity', () => {
     });
     getGuardedClient.mockReturnValue(supabase);
 
-    await expect(verifyIntegrity()).rejects.toThrow('Integrity check failed');
+    await expect(verifyIntegrity({ tenant_id: 'test-tenant' })).rejects.toThrow('Integrity check failed');
   });
 
   it('respects dateRange.from filter', async () => {
@@ -579,7 +585,7 @@ describe('verifyIntegrity', () => {
     getGuardedClient.mockReturnValue(supabase);
 
     const from = '2024-01-01T00:00:00Z';
-    await verifyIntegrity({ from });
+    await verifyIntegrity({ tenant_id: 'test-tenant', from });
 
     expect(heChain.gte).toHaveBeenCalledWith('created_at', from);
     expect(seChain.gte).toHaveBeenCalledWith('created_at', from);
@@ -598,7 +604,7 @@ describe('verifyIntegrity', () => {
     getGuardedClient.mockReturnValue(supabase);
 
     const to = '2024-12-31T23:59:59Z';
-    await verifyIntegrity({ to });
+    await verifyIntegrity({ tenant_id: 'test-tenant', to });
 
     expect(heChain.lte).toHaveBeenCalledWith('created_at', to);
     expect(seChain.lte).toHaveBeenCalledWith('created_at', to);
@@ -624,7 +630,7 @@ describe('verifyIntegrity', () => {
     });
     getGuardedClient.mockReturnValue(supabase);
 
-    const result = await verifyIntegrity();
+    const result = await verifyIntegrity({ tenant_id: 'test-tenant' });
     expect(result.handshake_event_count).toBe(2);
     expect(result.signoff_event_count).toBe(1);
     expect(result.total_events).toBe(3);
@@ -642,7 +648,7 @@ describe('verifyIntegrity', () => {
     });
     getGuardedClient.mockReturnValue(supabase);
 
-    const result = await verifyIntegrity();
+    const result = await verifyIntegrity({ tenant_id: 'test-tenant' });
     expect(typeof result.score).toBe('number');
     expect(result.score).toBeGreaterThanOrEqual(0);
     expect(result.score).toBeLessThanOrEqual(100);
@@ -661,7 +667,7 @@ describe('verifyIntegrity', () => {
     getGuardedClient.mockReturnValue(supabase);
 
     // should NOT throw — graceful degradation for missing tables
-    const result = await verifyIntegrity();
+    const result = await verifyIntegrity({ tenant_id: 'test-tenant' });
     expect(result).toBeDefined();
   });
 });

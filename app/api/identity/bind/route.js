@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { createBinding } from '@/lib/ep-ix';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { readLimitedJson } from '@/lib/http/body-limit';
@@ -18,6 +18,9 @@ export async function POST(request) {
     if (!body.principal_id) return EP_ERRORS.BAD_REQUEST('principal_id is required');
     if (!body.binding_type) return EP_ERRORS.BAD_REQUEST('binding_type is required');
     if (!body.binding_target) return EP_ERRORS.BAD_REQUEST('binding_target is required');
+    if (body.principal_id !== authEntityId(auth)) {
+      return epProblem(403, 'not_authorized', 'principal_id must match authenticated entity');
+    }
 
     const result = await createBinding(body);
     if (result.error) return NextResponse.json({ error: result.error }, { status: result.status || 500 });

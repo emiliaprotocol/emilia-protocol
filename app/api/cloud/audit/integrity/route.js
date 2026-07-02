@@ -22,7 +22,7 @@ export async function GET(request) {
     const from = url.searchParams.get('from');
     const to = url.searchParams.get('to');
 
-    const result = await verifyIntegrity({ from, to });
+    const result = await verifyIntegrity({ tenant_id: auth.tenantId, from, to });
 
     return NextResponse.json({
       ...result,

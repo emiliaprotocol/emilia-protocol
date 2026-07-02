@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
-import { recordOperatorAction } from '@/lib/procedural-justice';
+import { recordOperatorAction, hasPermission } from '@/lib/procedural-justice';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { getGuardedClient } from '@/lib/write-guard';
 import { authenticateOperator } from '@/lib/operator-auth';
@@ -26,6 +26,9 @@ export async function POST(request) {
     const opAuth = authenticateOperator(request, { requireOperatorIdentity: true });
     if (!opAuth.valid) return EP_ERRORS.UNAUTHORIZED();
     const operatorId = opAuth.operator_id;
+    if (!hasPermission(opAuth.role, 'appeal.resolve')) {
+      return epProblem(403, 'forbidden', 'Operator role lacks appeal.resolve permission');
+    }
 
     const parsed = await readEpJson(request, MAX_BODY_BYTES);
     if (!parsed.ok) return parsed.response;
@@ -63,7 +66,7 @@ export async function POST(request) {
     // Audit trail
     await recordOperatorAction(supabase, {
       operatorId,
-      operatorRole: 'appeal_reviewer',
+      operatorRole: opAuth.role,
       targetType: 'dispute',
       targetId: body.dispute_id,
       action: 'resolve_appeal',

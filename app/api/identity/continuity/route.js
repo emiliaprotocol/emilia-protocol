@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { fileContinuityClaim } from '@/lib/ep-ix';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { readLimitedJson } from '@/lib/http/body-limit';
@@ -19,6 +19,9 @@ export async function POST(request) {
     if (!body.old_entity_id) return EP_ERRORS.BAD_REQUEST('old_entity_id is required');
     if (!body.new_entity_id) return EP_ERRORS.BAD_REQUEST('new_entity_id is required');
     if (!body.reason) return EP_ERRORS.BAD_REQUEST('reason is required');
+    if (body.principal_id !== authEntityId(auth)) {
+      return epProblem(403, 'not_authorized', 'principal_id must match authenticated entity');
+    }
 
     const result = await fileContinuityClaim(body);
     if (result.error) {
