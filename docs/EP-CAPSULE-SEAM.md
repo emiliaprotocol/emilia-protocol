@@ -14,19 +14,23 @@ without restating it; the approval evidence lives in the EMILIA receipt.
 ## The chain
 `permit / agentroa (CAN)` → **EMILIA receipt (WHO approved)** → `Capsule (WHAT was done)` → `GAR (audit log)` — complementary SCITT statement profiles over one transparency service, each independently verifiable, composed by shared digest.
 
-## Two digests — keep them distinct
-Everything is **RFC 8785 (JCS)** canonical + **SHA-256**, so both are recomputable in any language.
+## Three digests — one binding, pinned per profile
+Everything is **RFC 8785 (JCS)** canonical + **SHA-256**, so all are recomputable in any language. Per Songbo Bu's byte-binding review (SCITT list, 2026-07-02), the WHO seam carries **three** distinct digests, and the authority-reference binding is **pinned per deployment profile** — never left ambiguous:
 
 1. **`subject_digest` — the exact action both statements are ABOUT.**
    `subject_digest = SHA-256( JCS(action) )`.
    The Capsule's subject and the EMILIA receipt's claim are over the **same** action; matching this digest proves both refer to the same operation.
 
-2. **`authority_reference_digest` — the WHO evidence the Capsule points at.**
-   The Capsule embeds this in its **opaque authority reference** to commit to the approval:
-   - `receipt_payload_digest = SHA-256( JCS(receipt.payload) )` — offline composition.
-   - `statement_digest = SHA-256( COSE_Sign1 bytes )` — when the receipt is registered as a SCITT Signed Statement (recommended in a transparency deployment).
+2. **`authority_reference_digest` — the WHO evidence the Capsule (and GAR's HEM_APPROVE ALE) commits to** in its **opaque authority reference**, composing by digest not containment. Its byte-binding is **profile-determined and MUST be labelled**:
+   - **Transparency profile** (receipt registered as a SCITT Signed Statement): `authority_reference_digest = SHA-256( COSE_Sign1 bytes )` (i.e. `statement_digest`). This is the object the transparency service registers and returns evidence about; a payload-only digest cannot distinguish the exact signed/logged statement from a later re-wrap or re-sign of the same JSON payload, so the reference binds the **statement** bytes.
+   - **Offline profile** (native receipt, no transparency service in the loop): `authority_reference_digest = SHA-256( JCS(receipt.payload) )` (i.e. `receipt_payload_digest`).
 
-   Pin **one** of these per deployment so both implementations bind identical bytes. The vector supplies both.
+   A conforming deployment pins **exactly one** interpretation and a bare `authority_reference_digest` travels with a **profile label** naming which byte string it hashes; **both interpretations MUST NOT be accepted under one profile**. SCITT registration is a *stronger producer profile* for WHO, never a precondition for a conforming WHO statement.
+
+   > **Determinism requirement (transparency profile).** `SHA-256(COSE_Sign1)` is only reproducible if the COSE encoding is: the profile mandates **deterministic COSE** — canonical/deterministic CBOR and a fixed protected-header encoding (`alg=EdDSA(-8)`, `content type=application/ep-receipt+json`, `kid`, in that key order) — per [`EP-RECEIPT-SCITT-PROFILE.md`](./EP-RECEIPT-SCITT-PROFILE.md). Ed25519 gives deterministic signatures (RFC 8032); the envelope must be pinned to match, or two conforming signers produce different statement bytes for the same payload and the cross-reference silently breaks. The generator here emits exactly this canonical CBOR, so the vector's `statement_digest` is reproducible across implementations.
+
+3. **`receipt_payload_digest = SHA-256( JCS(receipt.payload) )` — the inner payload check.**
+   Always present. It is the offline-composition binding *and* what a verifier confirms after it dereferences the statement and extracts the receipt payload — independent of whether a transparency service was involved. Keeping it distinct from the authority reference is what lets the WHO leg verify offline against a **pinned issuer** with no transparency dependency.
 
 ## Verdict-complete (the case auditors care about)
 A **denied / absent** human approval is itself a signed EP event. The vector ships an `approved` and a `denied` receipt; a Capsule can commit to a denied receipt's digest exactly as it commits to an approved one, so the who → what linkage holds for refusals too.

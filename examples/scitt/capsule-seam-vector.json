@@ -16,7 +16,12 @@
   },
   "subject_digest": "fd7887f2f7b0ec9c9ed06ef42f62e21b3b119bdfb13728b9eaea6e5ef28273b3",
   "authority_reference": {
-    "rule": "A Capsule commits to the approval by embedding one of these digests in its opaque authority reference. Recommend statement_digest when the receipt is registered as a SCITT Signed Statement; receipt_payload_digest for offline composition.",
+    "rule": "authority_reference_digest is pinned per deployment profile and MUST be labelled. transparency: SHA-256(COSE_Sign1) (statement_digest) — the registered statement object. offline: SHA-256(JCS(receipt.payload)) (receipt_payload_digest). A profile pins exactly one; both MUST NOT be accepted under one profile. receipt_payload_digest is always present as the inner payload check after the statement is dereferenced.",
+    "binding_by_profile": {
+      "transparency": "statement_digest",
+      "offline": "receipt_payload_digest"
+    },
+    "cose_determinism": "statement_digest is reproducible only under deterministic COSE: canonical CBOR + fixed protected header (alg=EdDSA(-8), cty=application/ep-receipt+json, kid), per EP-RECEIPT-SCITT-PROFILE.md. This generator emits exactly that canonical CBOR.",
     "approved": {
       "receipt_payload_digest": "e37000ae3366ce7d9ccddcce1e2fe8cc658339ef7e1a0e9d9f6aac86281580d7",
       "statement_digest": "141ea80006127f57d10c0b5104cfae1bfce52d851d8c9c8faae4fcf38b4e988f"

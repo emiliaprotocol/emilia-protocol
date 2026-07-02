@@ -14,9 +14,13 @@
 //   - EP authorization receipt over that action (APPROVED and DENIED variants),
 //     natively Ed25519-signed and wrapped as a COSE_Sign1 SCITT Signed Statement.
 //   - authority_reference_digest = the digest a Capsule's *opaque authority
-//     reference* embeds to commit to the approval WITHOUT restating it:
-//       * receipt_payload_digest = SHA-256( JCS(receipt.payload) )  (offline)
-//       * statement_digest       = SHA-256( COSE_Sign1 bytes )      (when registered)
+//     reference* embeds to commit to the approval WITHOUT restating it. PINNED
+//     per profile (Songbo Bu byte-binding review, SCITT list 2026-07-02):
+//       * transparency profile: SHA-256( COSE_Sign1 bytes ) = statement_digest
+//         (the registered statement object; requires deterministic COSE)
+//       * offline profile:       SHA-256( JCS(receipt.payload) ) = receipt_payload_digest
+//     One per profile, labelled; both MUST NOT be accepted under one profile.
+//   - receipt_payload_digest is ALSO always present as the inner payload check.
 //
 // Composition rule: authorization -> record, BY DIGEST, not containment. The
 // Capsule records subject_digest (same action) and carries authority_reference_
@@ -198,7 +202,16 @@ function vectorJson() {
     action: ACTION,
     subject_digest: SUBJECT_DIGEST,
     authority_reference: {
-      rule: 'A Capsule commits to the approval by embedding one of these digests in its opaque authority reference. Recommend statement_digest when the receipt is registered as a SCITT Signed Statement; receipt_payload_digest for offline composition.',
+      // Pinned per profile (Songbo Bu byte-binding review, SCITT list 2026-07-02):
+      // the authority reference binds ONE digest, labelled by profile — never both
+      // under one profile. Transparency = the registered statement; offline = the
+      // payload. receipt_payload_digest is ALSO always carried as the inner check.
+      rule: 'authority_reference_digest is pinned per deployment profile and MUST be labelled. transparency: SHA-256(COSE_Sign1) (statement_digest) — the registered statement object. offline: SHA-256(JCS(receipt.payload)) (receipt_payload_digest). A profile pins exactly one; both MUST NOT be accepted under one profile. receipt_payload_digest is always present as the inner payload check after the statement is dereferenced.',
+      binding_by_profile: {
+        transparency: 'statement_digest',        // SHA-256(COSE_Sign1 bytes)
+        offline: 'receipt_payload_digest',       // SHA-256(JCS(receipt.payload))
+      },
+      cose_determinism: 'statement_digest is reproducible only under deterministic COSE: canonical CBOR + fixed protected header (alg=EdDSA(-8), cty=application/ep-receipt+json, kid), per EP-RECEIPT-SCITT-PROFILE.md. This generator emits exactly that canonical CBOR.',
       approved: { receipt_payload_digest: approved.receipt_payload_digest, statement_digest: approved.statement_digest },
       denied: { receipt_payload_digest: denied.receipt_payload_digest, statement_digest: denied.statement_digest },
     },
