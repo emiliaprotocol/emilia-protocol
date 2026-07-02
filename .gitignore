@@ -62,6 +62,4 @@ docs/ip/
 # Local GRACE investor/strategy drafts — internal until finalized (fund targets,
 # warm-intro map, raise figures). This repo is the PUBLIC mirror; keep these out
 # until deliberately published (git add -f when ready).
-docs/strategy/GRACE-FUND-OUTREACH.md
-docs/marketing/grace-investor-onepager.html
-docs/marketing/grace-seed-deck.html
+docs/grace-raise/
