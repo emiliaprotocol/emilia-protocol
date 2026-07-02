@@ -27,7 +27,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.5.1  ·  content-sha256:d8b8f9a497689121
+//   source: @emilia-protocol/require-receipt@0.5.2  ·  content-sha256:8f9fdce429898a65
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 /**
@@ -322,9 +322,13 @@ export function verifyEmiliaReceipt(doc, opts = {}) {
   }
   if (!signer) return { ok: false, reason: 'untrusted_or_invalid_signature' };
 
-  if (maxAgeSec && payload.created_at) {
+  // Freshness fail-closed: when a max age is enforced, a receipt MUST carry a
+  // parseable created_at. A missing or unparseable created_at is treated as
+  // EXPIRED (not skipped) so an undated receipt can never slip past the age
+  // gate — matching what /api/v1/guarded enforces on the demand side.
+  if (maxAgeSec) {
     const ageSec = (Date.now() - Date.parse(payload.created_at)) / 1000;
-    if (Number.isFinite(ageSec) && ageSec > maxAgeSec) return { ok: false, reason: 'receipt_expired' };
+    if (!Number.isFinite(ageSec) || ageSec > maxAgeSec) return { ok: false, reason: 'receipt_expired' };
   }
   if (action && payload.claim?.action_type !== action) {
     return { ok: false, reason: 'action_mismatch', detail: `receipt is for "${payload.claim?.action_type}", required "${action}"` };

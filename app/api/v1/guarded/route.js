@@ -58,20 +58,21 @@ export async function POST(request) {
     }, { status: 503 });
   }
 
-  const v = verifyReceiptForProduction(doc, { action, maxAgeSec: MAX_RECEIPT_AGE_SEC });
-  if (!v.ok) {
-    return NextResponse.json({ ...receiptChallenge(action, `Receipt rejected: ${v.reason}.`), rejected: v }, { status: 402 });
-  }
-
-  // Freshness fail-closed: verifyEmiliaReceipt only applies the age gate when
-  // payload.created_at is present, so a receipt that OMITS created_at slips past
-  // the maxAge check entirely. On this demand route a stale/undated receipt must
-  // be refused when a max age is enforced. (Age-gate hole is also present in
-  // packages/require-receipt/index.js — owned by another agent; enforced here.)
+  // Freshness fail-closed: an undated receipt is refused when a max age is
+  // enforced. verifyEmiliaReceipt (as of require-receipt 0.5.2) already treats a
+  // missing/unparseable created_at as `receipt_expired`, so this is defense in
+  // depth — but we run it FIRST to return the more precise `missing_created_at`
+  // diagnostic (tells the agent exactly what to fix) rather than the generic
+  // expired label. Both are 402; both fail closed.
   const createdAt = doc?.payload?.created_at;
   if (MAX_RECEIPT_AGE_SEC && !createdAt) {
     const rejected = { ok: false, reason: 'missing_created_at', detail: 'receipt has no created_at; cannot verify freshness' };
     return NextResponse.json({ ...receiptChallenge(action, 'Receipt rejected: missing_created_at.'), rejected }, { status: 402 });
+  }
+
+  const v = verifyReceiptForProduction(doc, { action, maxAgeSec: MAX_RECEIPT_AGE_SEC });
+  if (!v.ok) {
+    return NextResponse.json({ ...receiptChallenge(action, `Receipt rejected: ${v.reason}.`), rejected: v }, { status: 402 });
   }
 
   // A verified receipt with no receipt_id cannot be bound to a one-time

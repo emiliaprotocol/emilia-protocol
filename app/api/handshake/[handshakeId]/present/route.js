@@ -49,7 +49,11 @@ export async function POST(request, { params }) {
     );
 
     if (result.error) {
-      return epError(EP_ERROR_CODES.INTERNAL, result.error);
+      // The writer/DB error can carry internal detail (table/column names, raw
+      // Postgres/RPC messages). Log it server-side; return a generic INTERNAL
+      // with no client-facing detail so nothing internal leaks. (LOW audit finding.)
+      logger.error('[handshake:present] Presentation write failed:', result.error);
+      return epError(EP_ERROR_CODES.INTERNAL);
     }
 
     return NextResponse.json(result, { status: 201 });

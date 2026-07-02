@@ -12,8 +12,10 @@
 // The only dependency in this package is `jose`, used solely by the JWS profile
 // (jws.js). That path is excluded here, so the drop-in is genuinely zero-dep.
 //
-// Run: `npm run build:drop-in` (from packages/require-receipt) — or it is checked
-// in CI that the committed dist/ matches a fresh regeneration.
+// Run: `npm run build:drop-in` (from packages/require-receipt). CI enforces this:
+// tests/require-receipt-dropin-fidelity.test.js regenerates to a temp path and
+// asserts byte-equality with every committed copy (dist/ + the eve example), so
+// a stale checked-in drop-in fails CI instead of silently drifting.
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -89,8 +91,30 @@ const banner = `// SPDX-License-Identifier: Apache-2.0
 `;
 
 const out = banner + body;
-mkdirSync(join(here, 'dist'), { recursive: true });
-writeFileSync(join(here, 'dist', 'emilia-gate.mjs'), out);
+
+// Emit the SAME bytes to every committed copy of the drop-in. The canonical
+// artifact is dist/emilia-gate.mjs; the reference example ships a byte-identical
+// copy (its README tells adopters to curl the dist file, so they must match).
+// Keeping the writes here means one regeneration syncs every copy — and
+// tests/require-receipt-dropin-fidelity.test.js asserts byte-equality, so a
+// stale copy fails CI instead of silently drifting (that drift previously let
+// the example miss the quorum-distinctness and freshness fail-closed fixes).
+const repoRoot = join(here, '..', '..');
+// Default: write in place to every committed copy. When EP_DROPIN_OUT_DIR is
+// set, write both copies (flat, distinct names) into that directory instead —
+// so the fidelity test can regenerate in isolation and diff against the
+// committed files WITHOUT mutating them.
+const outDir = process.env.EP_DROPIN_OUT_DIR;
+const targets = outDir
+  ? [join(outDir, 'dist-emilia-gate.mjs'), join(outDir, 'example-emilia-gate.mjs')]
+  : [
+    join(here, 'dist', 'emilia-gate.mjs'),
+    join(repoRoot, 'examples', 'eve-receipt-required', 'lib', 'emilia-gate.mjs'),
+  ];
+for (const target of targets) {
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, out);
+}
 
 // eslint-disable-next-line no-console
-console.log(`wrote dist/emilia-gate.mjs — ${out.length} bytes, source v${pkg.version}, sha256:${hash}, zero-dep ✓`);
+console.log(`wrote ${targets.length} copies of emilia-gate.mjs — ${out.length} bytes, source v${pkg.version}, sha256:${hash}, zero-dep ✓`);

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { revokeHandshake } from '@/lib/handshake';
-import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { EP_ERRORS, epProblem, epDbError } from '@/lib/errors';
 import { validateRevokeBody } from '@/lib/handshake/schema';
 import { logger } from '../../../../../lib/logger.js';
 
@@ -44,7 +44,9 @@ export async function POST(request, { params }) {
     const result = await revokeHandshake(handshakeId, validation.sanitized.reason, auth.entity);
 
     if (result.error) {
-      return epProblem(result.status || 500, 'handshake_revocation_failed', result.error);
+      // The writer/DB error can carry internal detail; epDbError logs it
+      // server-side and returns a generic client-facing message. (LOW audit finding.)
+      return epDbError(result.status || 500, 'handshake_revocation_failed', result.error, 'handshake:revoke');
     }
 
     return NextResponse.json(result);
