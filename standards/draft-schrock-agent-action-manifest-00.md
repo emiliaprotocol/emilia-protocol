@@ -1,38 +1,39 @@
-# The Agent Action Manifest: Declaring Which Machine Actions Require Authorization
+# The Agent Action Control Manifest: A Public Effect-Boundary Control Plane for Machine Actions
 ## draft-schrock-agent-action-manifest-00
 
 > Readable mirror of the xml2rfc source ([`draft-schrock-agent-action-manifest-00.xml`](./draft-schrock-agent-action-manifest-00.xml)). The XML is authoritative.
 
 ```
 Network Working Group                                         I. Schrock
-Internet-Draft                                     EMILIA Protocol, Inc.
 Intended status: Informational                               2 July 2026
 Expires: 3 January 2027
 
-   The Agent Action Manifest: Declaring Which Machine Actions Require
-                             Authorization
+  The Agent Action Control Manifest: A Public Effect-Boundary Control
+                       Plane for Machine Actions
                  draft-schrock-agent-action-manifest-00
 
 Abstract
 
-   Autonomous agents call tools and APIs, some of which perform
-   irreversible operations: releasing payments, deleting repositories,
-   deploying to production, running destructive database statements.
-   There is today no machine-readable way for a service to declare, in
-   advance, _which_ of its actions are consequential and therefore
-   require a verifiable human (or quorum) authorization before they
-   execute.
+   A growing set of specifications defines evidence _objects_ for
+   machine actions: transparency statements, workload-identity and
+   transaction tokens, permits, action capsules, and authorization,
+   delegation, and inference receipts.  What they mostly do not define
+   is the public control plane that says, for a given irreversible
+   action, _which_ evidence is required, at _what_ assurance tier, bound
+   to _which_ real system-of-record fields, under _what_ replay model,
+   and _what_ evidence must exist after the action runs.
 
-   This document defines the Agent Action Manifest: a JSON document
-   published at a well-known location by which a service declares its
-   consequential actions, the assurance class each requires, and the
-   challenge an agent receives when it attempts one without a valid
-   authorization receipt.  The manifest is to dangerous machine actions
-   what robots.txt is to crawling and CORS is to cross-origin requests:
-   a public, machine-readable declaration that both an agent can self-
-   serve and an independent scanner can audit.  The manifest _declares_
-   policy; it does not replace enforcement, which remains authoritative
-   at the action boundary.
+   This document defines the Agent Action Control Manifest: a machine-
+   readable document a service publishes at a well-known location that
+   declares, per consequential action, the enforcement point, the
+   required authorization receipt profile and assurance tier, the
+   execution-binding fields that MUST be observed from the system of
+   record, the replay model, and the evidence that MUST be emitted after
+   the effect boundary.  It is the declaration an agent runtime reads to
+   learn what it must satisfy before an irreversible action, and that an
+   independent scanner audits.  The manifest _declares_ policy; it never
+   replaces enforcement, which remains authoritative at the action
+   boundary.
 
 Status of This Memo
 
@@ -69,41 +70,35 @@ Table of Contents
 
    1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
    2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
-   3.  Manifest Location . . . . . . . . . . . . . . . . . . . . . .   3
-   4.  Manifest Structure  . . . . . . . . . . . . . . . . . . . . .   3
-   5.  Action Declarations . . . . . . . . . . . . . . . . . . . . .   4
-   6.  Semantics and the Challenge Flow  . . . . . . . . . . . . . .   5
-   7.  Relationship to Scanning and Enforcement  . . . . . . . . . .   5
-   8.  Security Considerations . . . . . . . . . . . . . . . . . . .   5
-   9.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   6
-   10. Normative References  . . . . . . . . . . . . . . . . . . . .   6
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   7
+   3.  Manifest Location and Versioning  . . . . . . . . . . . . . .   3
+   4.  Manifest Structure  . . . . . . . . . . . . . . . . . . . . .   4
+   5.  Action Control Declarations . . . . . . . . . . . . . . . . .   4
+   6.  Semantics: Declaration Is Not Enforcement . . . . . . . . . .   5
+   7.  Security Considerations . . . . . . . . . . . . . . . . . . .   5
+   8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   5
+   9.  Normative References  . . . . . . . . . . . . . . . . . . . .   6
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   6
 
 1.  Introduction
 
-   When a human uses a browser, layered conventions tell software what
-   it may and may not do: robots.txt declares crawler policy, CORS
-   declares cross-origin policy, and a Content Security Policy declares
-   what a page may load.  When an autonomous agent drives a tool or API,
-   no equivalent declaration exists for the one property that matters
-   most at machine speed: whether a given action is irreversible and
-   therefore requires accountable human authorization before it runs.
+   Layered web conventions tell software what it may do: robots.txt
+   declares crawler policy, CORS declares cross-origin policy.  When an
+   autonomous agent drives a tool or API, no equivalent declaration
+   exists for the properties that matter at machine speed: whether an
+   action is irreversible, what authorization it needs, which observed
+   execution fields the authorization must bind, and what evidence must
+   survive it.
 
-   The result is that every integrator rediscovers, by reading prose
-   documentation or by trial and error, which of a service's actions are
-   dangerous — and an agent has no way to obtain, ahead of time, the
-   requirement it must satisfy.  This document closes that gap with a
-   small, machine-readable manifest a service publishes at a well-known
-   URI.  An agent fetches it to learn which actions need a receipt and
-   of what assurance class; a scanner fetches it to audit whether a
-   service's dangerous actions are gated at all.
-
-   The manifest names, but does not define, the authorization receipt an
-   action requires; that artifact is specified in
-   [I-D.schrock-ep-authorization-receipts].  The manifest is transport-
-   and profile-agnostic: it declares that an action requires a receipt
-   of a named profile and assurance class, and the challenge/response by
-   which an agent supplies one.
+   The evidence-object ecosystem does not fill this gap.  Transparency
+   architecture [RFC9943] logs signed statements; workload and
+   transaction-token work identifies the acting principal; permit,
+   capsule, and action-receipt work records decisions and effects.  Each
+   defines an artifact; none defines the public contract that binds a
+   specific consequential action to the specific evidence and assurance
+   it requires.  This document defines that contract as a manifest a
+   service publishes, composing above the receipt primitive
+   [I-D.schrock-ep-authorization-receipts] and the assurance taxonomy it
+   references.
 
 2.  Terminology
 
@@ -117,146 +112,125 @@ Table of Contents
       materially hard to reverse — a payment, a deletion, a production
       deploy, a destructive data operation, a permission change.
 
-   Manifest  The JSON document defined here, declaring a service's
-      consequential actions and their authorization requirements.
+   Control plane  The declarative contract, defined by this manifest,
+      mapping each consequential action to its authorization, execution-
+      binding, replay, and evidence requirements.
 
-   Authorization receipt  The offline-verifiable artifact a caller
-      supplies to satisfy a receipt requirement
-      [I-D.schrock-ep-authorization-receipts].
+   Effect boundary  The point at which the action mutates the system of
+      record; the control MUST be enforced before it.
 
-3.  Manifest Location
+3.  Manifest Location and Versioning
 
    A service SHOULD publish its manifest at the well-known URI
    [RFC8615]:
 
-   /.well-known/agent-actions.json
+   /.well-known/agent-action-control.json
 
-   The manifest MUST be served with media type application/json over a
-   transport that provides server authentication and integrity (for
-   example, HTTPS).  A service MAY additionally reference a manifest URL
-   from an action's challenge response.
+   served with media type application/json over a transport providing
+   server authentication and integrity.  The current manifest version
+   identifier is EP-ACTION-CONTROL-MANIFEST-v0.2.  An earlier,
+   declaration-only predecessor (EP-ACTION-RISK-MANIFEST-v0.1, served at
+   /.well-known/agent-actions.json, without the control block defined in
+   Section 5) is superseded by this version.
 
 4.  Manifest Structure
 
-   The manifest is a JSON object [RFC8259] with the following members.
+   The manifest is a JSON object [RFC8259].  The normative field-level
+   schema is published alongside the manifest and is authoritative for
+   field types and requiredness; this section describes the model.
 
-   version (string, REQUIRED)  The manifest schema version.
+   @version, $schema, profile (REQUIRED)  The version identifier, the
+      URL of the JSON Schema, and the profile name (emilia.action-
+      control).
 
-   service (object, REQUIRED)  Identifies the publishing service (name
-      and issuer origin).
+   service (REQUIRED)  The publishing service (name, issuer origin,
+      manifest URL).
 
-   receipt_required (object, REQUIRED)  The challenge contract used when
+   defaults (REQUIRED)  The default disposition, which MUST be fail-
+      closed for consequential actions: missing, invalid, and stale
+      receipts refused; one-time consumption; strict evidence logging.
 
-      a receipt is missing or invalid: the HTTP status to return
-      (RECOMMENDED: 428 Precondition Required [RFC6585]), the challenge
-      header naming the requirement, the header by which a caller
-      presents a receipt, and the receipt profile identifier.
+   evidence_profiles (REQUIRED)  The evidence formats the manifest
+      references (authorization receipt, execution attestation, reliance
+      packet, transparency statement).
 
-   defaults (object, REQUIRED)  The default disposition for actions not
-      otherwise matched: for example, read-only operations allowed, and
-      missing, invalid, or stale receipts refused.  Defaults MUST be
-      fail-closed for any action declared consequential.
+   actions (REQUIRED)  The per-action control declarations (Section 5).
 
-   actions (array, REQUIRED)  Zero or more action declarations
-      (Section 5).
+5.  Action Control Declarations
 
-5.  Action Declarations
+   Each action declaration carries an identifier, a match (how to
+   recognize the action — e.g. protocol + tool, or method + path), the
+   canonical action_type, an advisory risk, receipt_required, the
+   minimum assurance_class, and max_age_sec.  When receipt_required is
+   true it MUST also carry a control object:
 
-   Each element of actions is an object declaring one consequential
-   action:
+   enforcement_point  Where the control runs (pre_execution or
+      pre_effect_commit); enforcement MUST precede the effect boundary.
+      On refusal the service SHOULD return 428 [RFC6585] with the
+      declared challenge header.
 
-   id (string, REQUIRED)  A stable identifier for the declaration.
+   authorization_receipt  The required receipt profile (an offline-
+      verifiable authorization receipt
+      [I-D.schrock-ep-authorization-receipts]).
 
-   match (object, REQUIRED)  How to recognize the action in the
-      service's surface — for example a protocol and tool name (MCP), or
-      an HTTP method and path template.
+   replay  The replay model; for consequential actions
+      one_time_consumption with a required receipt identifier.
 
-   action_type (string, REQUIRED)  The canonical action type carried
-      into the authorization receipt (for example payment.release).
+   execution_binding  That the authorized action MUST bind material
+      fields observed from the _system of record_ (source:
+      system_of_record), and the non-empty set of required_fields that
+      MUST match.  This is what stops "approve $250K to Vendor A" from
+      executing as "$300K to Vendor B".
 
-   risk (string, OPTIONAL)  An advisory severity (for example high,
-      critical).  Advisory only; it MUST NOT be interpreted as a score
-      or a substitute for the receipt requirement.
+   evidence_output  The evidence that MUST exist after the action: an
+      execution attestation, a reliance packet, and a record of blocked
+      attempts; optionally a transparency registration.
 
-   receipt_required (boolean, REQUIRED)  Whether a valid authorization
-      receipt is required before the action may execute.
+   A verifier MUST be able to recompute, from the action itself, that
+   the presented authorization is over the same action and meets the
+   declared assurance tier; it MUST NOT rely on a self-asserted
+   assurance value (see the assurance-class taxonomy).
 
-   assurance_class (string, REQUIRED when receipt_required)  The minimum
-      assurance the receipt must meet (for example class_a for a user-
-      verification-gated human signature, or quorum).
+6.  Semantics: Declaration Is Not Enforcement
 
-   max_age_sec (number, OPTIONAL)  The maximum age of an acceptable
-      receipt; older receipts MUST be refused as stale.
+   A service MUST enforce its receipt requirement at the effect boundary
+   regardless of the manifest, and a caller MUST NOT infer that an
+   action is safe because the manifest omits it or marks it not-
+   required.  Enforcement is authoritative; the manifest exists so the
+   requirement is discoverable and auditable, not so it can be disabled
+   by editing a file.  The declaration (this manifest) and the audit (an
+   independent scan of the live surface) are a pair; a service that both
+   publishes a manifest and passes an independent scan has a verifiable,
+   not merely asserted, posture.
 
-   quorum (object, OPTIONAL)  When present and required, the m-of-n and
-      distinct-human constraints the authorization must satisfy.
+7.  Security Considerations
 
-6.  Semantics and the Challenge Flow
-
-   An agent that intends a matched action SHOULD fetch the manifest,
-   determine the requirement, obtain a conforming authorization receipt,
-   and present it with the action request in the declared proof header.
-   A service that receives a matched action without a valid, in-scope,
-   sufficiently assured, non-replayed, non-stale receipt MUST refuse it
-   and SHOULD return the declared challenge (RECOMMENDED: 428 [RFC6585])
-   so the caller can self-serve a receipt and retry.
-
-   When more than one match applies, the most specific declaration wins.
-   An action not matched by any declaration is governed by defaults.
-
-   *The manifest is a declaration, not the enforcement point.* A service
-   MUST enforce its receipt requirement at the action boundary
-   regardless of what the manifest says; a caller MUST NOT infer that an
-   action is safe merely because the manifest omits it or marks it
-   receipt_required: false.  Enforcement is authoritative; the manifest
-   exists so the requirement is discoverable and auditable, not so it
-   can be bypassed by editing a file.
-
-7.  Relationship to Scanning and Enforcement
-
-   The manifest is the _declaration_ side of a pair.  The _audit_ side —
-   determining whether a service's dangerous actions can in fact be
-   invoked without a receipt — is performed by an independent scanner
-   against the live surface, and does not rely on the service's own
-   manifest being honest.  A service that both publishes a manifest and
-   passes an independent scan has a verifiable, not merely asserted,
-   posture.  The receipt an action requires, and its offline
-   verification, are specified in
-   [I-D.schrock-ep-authorization-receipts]; this document specifies only
-   the declaration.
-
-8.  Security Considerations
-
-   *Enforcement is authoritative, not the manifest.* The manifest is
-   advisory declaration.  A manifest that omits an action, or marks it
-   not-required, does not make that action safe; the enforcement point
-   at the action boundary is the security control.  Treating the
-   manifest as authoritative would let an attacker who can edit or spoof
-   it disable protection.
+   *Enforcement is authoritative, not the manifest.* A manifest that
+   omits an action, or marks it not-required, does not make that action
+   safe; the enforcement point is the control.  Treating the manifest as
+   authoritative would let an attacker who can edit or spoof it disable
+   protection.
 
    *Integrity and authenticity.* The manifest MUST be served over an
-   authenticated, integrity-protected transport.  A service MAY sign its
-   manifest so relying parties can detect tampering; unsigned manifests
-   fetched over an untrusted path MUST NOT be relied upon for anything
-   beyond discovery.
+   authenticated, integrity-protected transport and MAY be signed;
+   unsigned manifests fetched over an untrusted path MUST NOT be relied
+   upon beyond discovery.
+
+   *Advisory fields are not scores.* The risk field MUST NOT be read as
+   a measurement of safety or as a substitute for the receipt
+   requirement.  The security property is the fail-closed control, not a
+   severity label.
 
    *Information disclosure.* A manifest enumerates a service's high-
-   consequence actions.  Publishers SHOULD assume it is public and
-   SHOULD NOT encode secrets, internal-only endpoints, or details whose
-   disclosure creates risk beyond the action names themselves.
+   consequence actions; publishers SHOULD assume it is public and SHOULD
+   NOT encode secrets or internal-only endpoints.
 
-   *Advisory fields are not scores.* The risk field and any similar
-   advisory metadata MUST NOT be interpreted as a measurement of safety
-   or as a substitute for the receipt requirement.  The security
-   property is the fail-closed receipt requirement, not a severity
-   label.
-
-9.  IANA Considerations
+8.  IANA Considerations
 
    This document requests registration of the following well-known URI
    in the "Well-Known URIs" registry established by [RFC8615]:
 
-   URI suffix  agent-actions.json
+   URI suffix  agent-action-control.json
 
    Change controller  IETF
 
@@ -264,7 +238,7 @@ Table of Contents
 
    Status  permanent
 
-10.  Normative References
+9.  Normative References
 
    [I-D.schrock-ep-authorization-receipts]
               Schrock, I., "Authorization Receipts for High-Risk Agent
@@ -292,6 +266,11 @@ Table of Contents
    [RFC8615]  Nottingham, M., "Well-Known Uniform Resource Identifiers
               (URIs)", RFC 8615, May 2019,
               <https://www.rfc-editor.org/info/rfc8615>.
+
+   [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
+              Y., and S. Lasker, "An Architecture for Trustworthy and
+              Transparent Digital Supply Chains", RFC 9943, March 2026,
+              <https://www.rfc-editor.org/info/rfc9943>.
 
 Author's Address
 

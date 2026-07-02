@@ -155,17 +155,23 @@ Runnable companions: `examples/scitt/ep-receipt-scitt-end-to-end.mjs`,
 
 ## draft-schrock-agent-action-manifest-00
 
-**The Agent Action Manifest** — the robots.txt / CORS / SBOM-tier declaration
-standard for dangerous machine actions. A service publishes
-`/.well-known/agent-actions.json` declaring which of its actions are
-consequential, the assurance class each requires, and the 428 challenge an
-agent receives when it attempts one without a valid authorization receipt
-(`draft-schrock-ep-authorization-receipts`). Machine-readable so an agent
-self-serves the requirement and an independent scanner can audit it. Declares
-policy; does **not** replace enforcement (the boundary is authoritative — a
-manifest can't be edited to disable protection). Formalizes the shipped
-`EP-ACTION-RISK-MANIFEST` fixture at `public/.well-known/agent-actions.json`.
-Requests registration of the `agent-actions.json` well-known URI (RFC 8615).
+**The Agent Action Control Manifest** — the public effect-boundary control
+plane: the robots.txt / CORS / SBOM-tier declaration for dangerous machine
+actions. A service publishes `/.well-known/agent-action-control.json` declaring,
+per consequential action, the enforcement point, the required receipt profile
+and assurance tier, the **execution-binding fields that must be observed from
+the system of record**, the replay model, and the evidence that must exist after
+the effect boundary. The evidence-object drafts (SCITT, WIMSE, tokens, permits,
+capsules, receipts) define objects; this defines the contract that says which
+evidence is required for which action. Machine-readable so an agent self-serves
+the requirement and an independent scanner audits it. Declares policy; does
+**not** replace enforcement (the boundary is authoritative — a manifest can't be
+edited to disable protection). Formalizes the shipped
+`EP-ACTION-CONTROL-MANIFEST-v0.2` at `public/.well-known/agent-action-control.json`
+(+ served JSON schema + `packages/gate/action-control-manifest.js` validator +
+`docs/standards-engagement/EP-ACTION-CONTROL-MANIFEST.md`). Supersedes the
+declaration-only `EP-ACTION-RISK-MANIFEST-v0.1`. Requests registration of the
+`agent-action-control.json` well-known URI (RFC 8615).
 
 **Status: written + render-clean (xml2rfc v3), NOT yet filed (Informational, individual submission).**
 
