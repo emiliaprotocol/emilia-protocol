@@ -26,12 +26,19 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Download Alloy 6
+      - name: Download Alloy 6 (pinned release + checksum)
+        # v6.0.0 is the latest release that ships a flat org.alloytools.alloy.dist.jar.
+        # v6.1.0 has no jar asset; v6.2.0 only ships platform-specific zips.
+        # Verify the SHA-256 so a re-cut release asset can't inject a different jar.
+        # To bump: change ALLOY_VERSION, recompute with `shasum -a 256 alloy.jar`,
+        # and update ALLOY_SHA256.
+        env:
+          ALLOY_VERSION: v6.0.0
+          ALLOY_SHA256: ac0ee637172ed035a4ca43327d5e09c05990aa0d073887308e30f88c2471370c
         run: |
-          # v6.0.0 is the latest release that ships a flat org.alloytools.alloy.dist.jar.
-          # v6.1.0 has no jar asset; v6.2.0 only ships platform-specific zips.
-          wget -q -O alloy.jar \
-            https://github.com/AlloyTools/org.alloytools.alloy/releases/download/v6.0.0/org.alloytools.alloy.dist.jar
+          curl -fsSL -o alloy.jar \
+            "https://github.com/AlloyTools/org.alloytools.alloy/releases/download/${ALLOY_VERSION}/org.alloytools.alloy.dist.jar"
+          echo "${ALLOY_SHA256}  alloy.jar" | sha256sum -c -
 
       - name: Write Alloy runner
         run: |

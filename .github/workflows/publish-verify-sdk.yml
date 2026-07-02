@@ -1,5 +1,14 @@
 name: Publish Verify SDK
 
+# npm Trusted Publishing (OIDC) — NO long-lived NPM_TOKEN. On each run npm
+# verifies the OIDC claim (owner / repo / workflow filename) and issues a
+# short-lived credential, and `--provenance` attaches a signed provenance
+# attestation. Configure the trusted publisher once at:
+#   npmjs.com -> @emilia-protocol/verify -> Settings -> Trusted Publishing
+#   Organization/User: emilia-protocol (as owner) | Repository: emilia-protocol
+#   Workflow filename: publish-verify-sdk.yml | Environment: (leave blank)
+# Requires npm >= 11.5.1 (installed below).
+
 # Opt every JavaScript-based action into the Node.js 24 runner.
 # GitHub forces this default in June 2026; doing it now eliminates the
 # deprecation-warning noise on every run and surfaces any Node-24 incompat
@@ -19,6 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write   # REQUIRED for npm trusted publishing (OIDC) + provenance
 
     defaults:
       run:
@@ -34,6 +44,9 @@ jobs:
           node-version: "20"
           registry-url: https://registry.npmjs.org
 
+      - name: Upgrade npm (>= 11.5.1 for OIDC trusted publishing + provenance)
+        run: npm install -g npm@latest
+
       # Zero-dependency package — no install step. The package.json "files"
       # array controls exactly what ships: index.js plus every module it
       # re-exports (web, federation, quorum, revocation, provenance,
@@ -46,7 +59,5 @@ jobs:
       - name: Verify package contents
         run: npm pack --dry-run
 
-      - name: Publish to npm
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish to npm (OIDC trusted publishing + provenance)
+        run: npm publish --access public --provenance

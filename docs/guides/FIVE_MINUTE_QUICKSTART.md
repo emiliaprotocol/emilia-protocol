@@ -7,11 +7,17 @@
 ## Step 1: Create your trust system (30 seconds)
 
 ```bash
-npx create-ep-app my-trust-system
+# Clone the protocol repo and run the scaffolder directly
+git clone https://github.com/emilia-protocol/emilia-protocol.git
+node emilia-protocol/create-ep-app/index.js my-trust-system
 cd my-trust-system
 npm install
 npm run dev
 ```
+
+> Once the scoped creator is published, this becomes a one-liner:
+> `npx @emilia-protocol/create-app my-trust-system`
+> (The scaffolder in `create-ep-app/index.js` is identical either way.)
 
 Open http://localhost:3000. Click **Run Trust Demo**. Watch the full EP lifecycle execute in 60 seconds.
 
