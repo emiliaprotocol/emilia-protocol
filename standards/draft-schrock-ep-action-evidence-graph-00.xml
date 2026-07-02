@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-ep-action-evidence-graph-00"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="Action Evidence Graphs">Action Evidence Graphs and Evidence Policy Replay for High-Risk Agent Actions (EP-AEG)</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-action-evidence-graph-00"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address>
+        <postal>
+          <country>US</country>
+        </postal>
+        <email>team@emiliaprotocol.ai</email>
+      </address>
+    </author>
+    <date year="2026" month="July" day="2"/>
+    <area>sec</area>
+    <keyword>AI agents</keyword>
+    <keyword>evidence</keyword>
+    <keyword>admissibility</keyword>
+    <keyword>reliance</keyword>
+    <keyword>policy replay</keyword>
+    <keyword>JCS</keyword>
+    <abstract>
+      <t>The standards landscape now produces many signed artifacts about
+      an AI agent's action: workload identity credentials, delegation and
+      grant tokens, call-chain transaction tokens, runtime attestation
+      results, pre-execution policy permits, named-human authorization
+      receipts, post-execution action records, and transparency-log
+      inclusion receipts. No specification defines how a relying party
+      decides whether a collection of such artifacts is SUFFICIENT to
+      rely on for a given purpose: releasing a payment, honoring a
+      trade, satisfying an auditor, or paying an insurance claim. This
+      document defines three things that together fill that layer: the
+      Action Evidence Graph (EP-AEG), a portable, content-addressed
+      graph of references to signed artifacts about one action, whose
+      identity is independent of how much of it is disclosed; Evidence
+      Policy Replay, a deterministic, offline evaluation of a graph
+      against a RELYING-PARTY-supplied evidence policy, yielding one of
+      five closed verdicts (admissible, missing_evidence, stale,
+      conflicted, unverifiable) with a replay digest that lets any third
+      party recompute the decision; and the Reliance Result
+      (EP-RELIANCE-RESULT), the verdict as a signed artifact, making the
+      reliance decision itself auditable evidence. Six policy packs
+      profile the mechanism for concrete irreversible action classes. A
+      verdict is evidence of sufficiency under a stated policy; it is
+      not adjudication, and the graph never carries its own sufficiency
+      bar.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="intro">
+      <name>Introduction</name>
+      <t>Standards efforts have converged on signing artifacts about
+      agent actions, and on a shared substrate for doing so: a canonical
+      digest of the action (JSON Canonicalization Scheme, JCS
+      <xref target="RFC8785"/>) bound under a signature. Workload
+      identity (WIMSE, SPIFFE), delegation and grants (OAuth, GNAP
+      <xref target="RFC9635"/>), call-chain context (OAuth transaction
+      tokens), runtime attestation (RATS <xref target="RFC9334"/>, EAT
+      <xref target="RFC9711"/>), pre-execution permits, named-human
+      authorization receipts, post-execution action records, and
+      transparency services (SCITT <xref target="RFC9943"/>) each
+      produce their own artifact. Each artifact answers its own
+      question. None answers the relying party's question:</t>
+      <t>Given all of these artifacts, is this action evidence
+      sufficient for THIS reliance purpose?</t>
+      <t>A bank releasing a wire, an insurer paying a claim, a
+      regulator auditing an agent's action, and a gateway deciding
+      whether to execute an irreversible call each need a different
+      sufficiency bar over the same artifacts. Today that decision is
+      made ad hoc, is not reproducible, and leaves no evidence of its
+      own. This document defines the missing layer. It deliberately
+      defines no new receipt type: every leg of an evidence graph is an
+      existing artifact verified under its own specification's rules.</t>
+      <section anchor="terms">
+        <name>Terminology</name>
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL",
+        "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT
+        RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+        interpreted as described in BCP 14 <xref target="RFC2119"/>
+        <xref target="RFC8174"/> when, and only when, they appear in
+        all capitals, as shown here.</t>
+        <t>Relying party: the entity deciding whether to act on the
+        evidence (execute, settle, audit, insure). Presenter: the
+        entity assembling and conveying the graph, typically the agent
+        operator. The presenter and relying party MUST be assumed to be
+        different trust domains.</t>
+      </section>
+    </section>
+    <section anchor="graph">
+      <name>The Action Evidence Graph (EP-AEG-v1)</name>
+      <t>An evidence graph is a JSON document with members "@version"
+      (the string "EP-AEG-v1"), "action_digest" (the JCS/SHA-256 digest
+      of the canonical action), "nodes", and "edges".</t>
+      <section anchor="nodes">
+        <name>Nodes are content-addressed references</name>
+        <t>Each node has an "id" equal to the SHA-256 digest of the
+        referenced artifact's JCS-canonical bytes, a "type" token
+        naming the artifact class (for example authorization_receipt,
+        policy_permit, workload_identity, execution_attestation,
+        transparency, delegation, recourse_reference), and OPTIONALLY
+        the artifact itself inline. A verifier MUST reject an inline
+        artifact whose canonical digest does not equal the node id.
+        Because nodes are references, a presenter can disclose the
+        SHAPE of its evidence without the contents; an undisclosed node
+        contributes nothing to sufficiency and a required undisclosed
+        node fails closed.</t>
+      </section>
+      <section anchor="edges">
+        <name>Edges are presenter claims, verified against bytes</name>
+        <t>Each edge has "from" and "to" node ids and a "rel" from the
+        relation registry: authorizes, permits, delegates, executes,
+        records, attests_runtime, revokes, provides_recourse,
+        supersedes. An edge is a PRESENTER CLAIM. A verifier MUST NOT
+        credit an edge unless the claimed binding is present in the
+        source artifact's own canonical bytes (at minimum, containment
+        of the target's digest; artifact-type-specific verifiers MAY
+        require a stricter, field-level binding). A claimed edge that
+        the bytes do not back MUST poison the evaluation: the graph has
+        asserted something its evidence does not support, and the
+        verdict MUST NOT be admissible.</t>
+      </section>
+      <section anchor="identity">
+        <name>Graph identity is disclosure-independent</name>
+        <t>The graph digest is computed over the sorted (id, type)
+        node pairs, the sorted edges, and the action digest, and never
+        over inline artifact bytes. Two parties holding different
+        disclosures of the same graph agree on what graph they are
+        discussing.</t>
+      </section>
+    </section>
+    <section anchor="replay">
+      <name>Evidence Policy Replay</name>
+      <t>The sufficiency bar is an EVIDENCE POLICY supplied by the
+      relying party. The graph document has no policy member, by
+      construction: a presenter choosing its own sufficiency bar is the
+      confused-deputy failure of evidence systems. A policy names its
+      reliance purpose; a boolean requirement expression over node
+      types; per-type freshness bounds; per-type revocation
+      requirements; and REQUIRED EDGES — bindings that must be present
+      and byte-backed (for example, an execution record MUST provably
+      reference the authorization it acted under).</t>
+      <t>Evaluation is deterministic and offline: given the same graph,
+      policy, and evaluation time, any implementation reaches the same
+      verdict and the same replay digest (a canonical digest over the
+      policy, the normalized evidence facts, the graph digest, and the
+      evaluation time). The verdict is one of a CLOSED set of five:
+      admissible, missing_evidence, stale, conflicted, unverifiable,
+      with precedence unverifiable over conflicted over stale over
+      missing_evidence over admissible, so no failure ever degrades
+      toward admissibility. Machine-readable reason codes (for example
+      missing_human_approval, untrusted_workload, contradicted_outcome,
+      unbacked_edge_claim) accompany the verdict; the reason vocabulary
+      is open, the verdict set is not.</t>
+    </section>
+    <section anchor="result">
+      <name>The Reliance Result (EP-RELIANCE-RESULT-v1)</name>
+      <t>The verdict MAY be issued as a signed artifact carrying the
+      verdict, reason codes, action digest, graph digest, policy digest
+      and identifier, reliance purpose, replay digest, and evaluation
+      time, signed by the relying party's verifier key. The signature
+      adds ACCOUNTABILITY, never authority: any third party can
+      recompute the replay digest rather than trust the signer. A
+      consumer distinguishes VERIFIED (the signature holds over the
+      canonical payload) from ACCEPTED (the consumer additionally
+      trusts the signing verifier via an out-of-band pinned key); a
+      reliance result from an unpinned verifier MUST NOT be accepted.
+      Signed reliance results make reliance decisions themselves
+      auditable: an institution can prove, later, which policy it
+      applied to which evidence before it acted.</t>
+    </section>
+    <section anchor="packs">
+      <name>Policy Packs</name>
+      <t>This document profiles six policy packs for concrete
+      irreversible action classes: wire transfer, vendor bank-account
+      change (a distinct-human quorum, not a single approver),
+      credential rotation, production data deletion, regulated trade
+      execution (post-hoc: the execution record must provably reference
+      its authorization, and the record must be transparency-logged),
+      and healthcare record export. A pack is a starting point the
+      relying party adopts and owns: pinning its own trust anchors and
+      tightening freshness to its risk appetite. No pack waives
+      fail-closed behavior.</t>
+    </section>
+    <section anchor="security">
+      <name>Security Considerations</name>
+      <t>The presenter controls the graph; every defense in this
+      document assumes it. Edges are claims verified against artifact
+      bytes; the policy is never read from the graph; undisclosed
+      required nodes fail closed; a lying edge poisons the verdict;
+      verdict precedence never degrades toward admissibility; and the
+      replay digest makes every decision recomputable. What this layer
+      does NOT do is equally load-bearing: a verdict of admissible is
+      evidence that a bundle met a stated policy at a stated time; it
+      is not a guarantee the action was correct or safe, it does not
+      adjudicate disputes, and it confers no authority beyond what the
+      underlying artifacts carry. Each artifact class is verified under
+      its own specification; this document inherits, and does not
+      weaken, each one's trust model.</t>
+    </section>
+    <section anchor="iana">
+      <name>IANA Considerations</name>
+      <t>This document has no IANA actions. Future versions may
+      register the edge-relation and reason-code vocabularies.</t>
+    </section>
+  </middle>
+  <back>
+    <references>
+      <name>References</name>
+      <references>
+        <name>Normative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+      </references>
+      <references>
+        <name>Informative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9334.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9635.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9711.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9943.xml"/>
+      </references>
+    </references>
+    <section anchor="impl">
+      <name>Implementation Status</name>
+      <t>A reference implementation (graph evaluation, policy replay,
+      signed reliance results, and all six policy packs) is published
+      under Apache-2.0 in the EMILIA Protocol repository, with a test
+      suite covering the fail-closed invariants described here,
+      including disclosure-independent graph identity, unbacked-edge
+      poisoning, required-edge stripping, freshness degradation, and
+      replay determinism. It builds on the same codebase's
+      authorization-receipt, quorum, evidence-chain, and admissibility
+      layers.</t>
+    </section>
+  </back>
+</rfc>

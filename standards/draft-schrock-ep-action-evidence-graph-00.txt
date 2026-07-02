@@ -1,0 +1,392 @@
+
+
+
+
+Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
+Intended status: Informational                               2 July 2026
+Expires: 3 January 2027
+
+
+ Action Evidence Graphs and Evidence Policy Replay for High-Risk Agent
+                            Actions (EP-AEG)
+               draft-schrock-ep-action-evidence-graph-00
+
+Abstract
+
+   The standards landscape now produces many signed artifacts about an
+   AI agent's action: workload identity credentials, delegation and
+   grant tokens, call-chain transaction tokens, runtime attestation
+   results, pre-execution policy permits, named-human authorization
+   receipts, post-execution action records, and transparency-log
+   inclusion receipts.  No specification defines how a relying party
+   decides whether a collection of such artifacts is SUFFICIENT to rely
+   on for a given purpose: releasing a payment, honoring a trade,
+   satisfying an auditor, or paying an insurance claim.  This document
+   defines three things that together fill that layer: the Action
+   Evidence Graph (EP-AEG), a portable, content-addressed graph of
+   references to signed artifacts about one action, whose identity is
+   independent of how much of it is disclosed; Evidence Policy Replay, a
+   deterministic, offline evaluation of a graph against a RELYING-PARTY-
+   supplied evidence policy, yielding one of five closed verdicts
+   (admissible, missing_evidence, stale, conflicted, unverifiable) with
+   a replay digest that lets any third party recompute the decision; and
+   the Reliance Result (EP-RELIANCE-RESULT), the verdict as a signed
+   artifact, making the reliance decision itself auditable evidence.
+   Six policy packs profile the mechanism for concrete irreversible
+   action classes.  A verdict is evidence of sufficiency under a stated
+   policy; it is not adjudication, and the graph never carries its own
+   sufficiency bar.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+
+
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 1]
+
+Internet-Draft           Action Evidence Graphs                July 2026
+
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 3 January 2027.
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+     1.1.  Terminology . . . . . . . . . . . . . . . . . . . . . . .   3
+   2.  The Action Evidence Graph (EP-AEG-v1) . . . . . . . . . . . .   3
+     2.1.  Nodes are content-addressed references  . . . . . . . . .   3
+     2.2.  Edges are presenter claims, verified against bytes  . . .   4
+     2.3.  Graph identity is disclosure-independent  . . . . . . . .   4
+   3.  Evidence Policy Replay  . . . . . . . . . . . . . . . . . . .   4
+   4.  The Reliance Result (EP-RELIANCE-RESULT-v1) . . . . . . . . .   5
+   5.  Policy Packs  . . . . . . . . . . . . . . . . . . . . . . . .   5
+   6.  Security Considerations . . . . . . . . . . . . . . . . . . .   5
+   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   5
+   8.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   5
+     8.1.  Normative References  . . . . . . . . . . . . . . . . . .   6
+     8.2.  Informative References  . . . . . . . . . . . . . . . . .   6
+   Appendix A.  Implementation Status  . . . . . . . . . . . . . . .   6
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   7
+
+1.  Introduction
+
+   Standards efforts have converged on signing artifacts about agent
+   actions, and on a shared substrate for doing so: a canonical digest
+   of the action (JSON Canonicalization Scheme, JCS [RFC8785]) bound
+   under a signature.  Workload identity (WIMSE, SPIFFE), delegation and
+   grants (OAuth, GNAP [RFC9635]), call-chain context (OAuth transaction
+   tokens), runtime attestation (RATS [RFC9334], EAT [RFC9711]), pre-
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 2]
+
+Internet-Draft           Action Evidence Graphs                July 2026
+
+
+   execution permits, named-human authorization receipts, post-execution
+   action records, and transparency services (SCITT [RFC9943]) each
+   produce their own artifact.  Each artifact answers its own question.
+   None answers the relying party's question:
+
+   Given all of these artifacts, is this action evidence sufficient for
+   THIS reliance purpose?
+
+   A bank releasing a wire, an insurer paying a claim, a regulator
+   auditing an agent's action, and a gateway deciding whether to execute
+   an irreversible call each need a different sufficiency bar over the
+   same artifacts.  Today that decision is made ad hoc, is not
+   reproducible, and leaves no evidence of its own.  This document
+   defines the missing layer.  It deliberately defines no new receipt
+   type: every leg of an evidence graph is an existing artifact verified
+   under its own specification's rules.
+
+1.1.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+   Relying party: the entity deciding whether to act on the evidence
+   (execute, settle, audit, insure).  Presenter: the entity assembling
+   and conveying the graph, typically the agent operator.  The presenter
+   and relying party MUST be assumed to be different trust domains.
+
+2.  The Action Evidence Graph (EP-AEG-v1)
+
+   An evidence graph is a JSON document with members "@version" (the
+   string "EP-AEG-v1"), "action_digest" (the JCS/SHA-256 digest of the
+   canonical action), "nodes", and "edges".
+
+2.1.  Nodes are content-addressed references
+
+   Each node has an "id" equal to the SHA-256 digest of the referenced
+   artifact's JCS-canonical bytes, a "type" token naming the artifact
+   class (for example authorization_receipt, policy_permit,
+   workload_identity, execution_attestation, transparency, delegation,
+   recourse_reference), and OPTIONALLY the artifact itself inline.  A
+   verifier MUST reject an inline artifact whose canonical digest does
+   not equal the node id.  Because nodes are references, a presenter can
+   disclose the SHAPE of its evidence without the contents; an
+   undisclosed node contributes nothing to sufficiency and a required
+   undisclosed node fails closed.
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 3]
+
+Internet-Draft           Action Evidence Graphs                July 2026
+
+
+2.2.  Edges are presenter claims, verified against bytes
+
+   Each edge has "from" and "to" node ids and a "rel" from the relation
+   registry: authorizes, permits, delegates, executes, records,
+   attests_runtime, revokes, provides_recourse, supersedes.  An edge is
+   a PRESENTER CLAIM.  A verifier MUST NOT credit an edge unless the
+   claimed binding is present in the source artifact's own canonical
+   bytes (at minimum, containment of the target's digest; artifact-type-
+   specific verifiers MAY require a stricter, field-level binding).  A
+   claimed edge that the bytes do not back MUST poison the evaluation:
+   the graph has asserted something its evidence does not support, and
+   the verdict MUST NOT be admissible.
+
+2.3.  Graph identity is disclosure-independent
+
+   The graph digest is computed over the sorted (id, type) node pairs,
+   the sorted edges, and the action digest, and never over inline
+   artifact bytes.  Two parties holding different disclosures of the
+   same graph agree on what graph they are discussing.
+
+3.  Evidence Policy Replay
+
+   The sufficiency bar is an EVIDENCE POLICY supplied by the relying
+   party.  The graph document has no policy member, by construction: a
+   presenter choosing its own sufficiency bar is the confused-deputy
+   failure of evidence systems.  A policy names its reliance purpose; a
+   boolean requirement expression over node types; per-type freshness
+   bounds; per-type revocation requirements; and REQUIRED EDGES —
+   bindings that must be present and byte-backed (for example, an
+   execution record MUST provably reference the authorization it acted
+   under).
+
+   Evaluation is deterministic and offline: given the same graph,
+   policy, and evaluation time, any implementation reaches the same
+   verdict and the same replay digest (a canonical digest over the
+   policy, the normalized evidence facts, the graph digest, and the
+   evaluation time).  The verdict is one of a CLOSED set of five:
+   admissible, missing_evidence, stale, conflicted, unverifiable, with
+   precedence unverifiable over conflicted over stale over
+   missing_evidence over admissible, so no failure ever degrades toward
+   admissibility.  Machine-readable reason codes (for example
+   missing_human_approval, untrusted_workload, contradicted_outcome,
+   unbacked_edge_claim) accompany the verdict; the reason vocabulary is
+   open, the verdict set is not.
+
+
+
+
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 4]
+
+Internet-Draft           Action Evidence Graphs                July 2026
+
+
+4.  The Reliance Result (EP-RELIANCE-RESULT-v1)
+
+   The verdict MAY be issued as a signed artifact carrying the verdict,
+   reason codes, action digest, graph digest, policy digest and
+   identifier, reliance purpose, replay digest, and evaluation time,
+   signed by the relying party's verifier key.  The signature adds
+   ACCOUNTABILITY, never authority: any third party can recompute the
+   replay digest rather than trust the signer.  A consumer distinguishes
+   VERIFIED (the signature holds over the canonical payload) from
+   ACCEPTED (the consumer additionally trusts the signing verifier via
+   an out-of-band pinned key); a reliance result from an unpinned
+   verifier MUST NOT be accepted.  Signed reliance results make reliance
+   decisions themselves auditable: an institution can prove, later,
+   which policy it applied to which evidence before it acted.
+
+5.  Policy Packs
+
+   This document profiles six policy packs for concrete irreversible
+   action classes: wire transfer, vendor bank-account change (a
+   distinct-human quorum, not a single approver), credential rotation,
+   production data deletion, regulated trade execution (post-hoc: the
+   execution record must provably reference its authorization, and the
+   record must be transparency-logged), and healthcare record export.  A
+   pack is a starting point the relying party adopts and owns: pinning
+   its own trust anchors and tightening freshness to its risk appetite.
+   No pack waives fail-closed behavior.
+
+6.  Security Considerations
+
+   The presenter controls the graph; every defense in this document
+   assumes it.  Edges are claims verified against artifact bytes; the
+   policy is never read from the graph; undisclosed required nodes fail
+   closed; a lying edge poisons the verdict; verdict precedence never
+   degrades toward admissibility; and the replay digest makes every
+   decision recomputable.  What this layer does NOT do is equally load-
+   bearing: a verdict of admissible is evidence that a bundle met a
+   stated policy at a stated time; it is not a guarantee the action was
+   correct or safe, it does not adjudicate disputes, and it confers no
+   authority beyond what the underlying artifacts carry.  Each artifact
+   class is verified under its own specification; this document
+   inherits, and does not weaken, each one's trust model.
+
+7.  IANA Considerations
+
+   This document has no IANA actions.  Future versions may register the
+   edge-relation and reason-code vocabularies.
+
+8.  References
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 5]
+
+Internet-Draft           Action Evidence Graphs                July 2026
+
+
+8.1.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+   [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
+              Canonicalization Scheme (JCS)", RFC 8785,
+              DOI 10.17487/RFC8785, June 2020,
+              <https://www.rfc-editor.org/info/rfc8785>.
+
+8.2.  Informative References
+
+   [RFC9334]  Birkholz, H., Thaler, D., Richardson, M., Smith, N., and
+              W. Pan, "Remote ATtestation procedureS (RATS)
+              Architecture", RFC 9334, DOI 10.17487/RFC9334, January
+              2023, <https://www.rfc-editor.org/info/rfc9334>.
+
+   [RFC9635]  Richer, J., Ed. and F. Imbault, "Grant Negotiation and
+              Authorization Protocol (GNAP)", RFC 9635,
+              DOI 10.17487/RFC9635, October 2024,
+              <https://www.rfc-editor.org/info/rfc9635>.
+
+   [RFC9711]  Lundblade, L., Mandyam, G., O'Donoghue, J., and C.
+              Wallace, "The Entity Attestation Token (EAT)", RFC 9711,
+              DOI 10.17487/RFC9711, April 2025,
+              <https://www.rfc-editor.org/info/rfc9711>.
+
+   [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
+              Y., and S. Lasker, "An Architecture for Trustworthy and
+              Transparent Digital Supply Chains", RFC 9943,
+              DOI 10.17487/RFC9943, June 2026,
+              <https://www.rfc-editor.org/info/rfc9943>.
+
+Appendix A.  Implementation Status
+
+   A reference implementation (graph evaluation, policy replay, signed
+   reliance results, and all six policy packs) is published under
+   Apache-2.0 in the EMILIA Protocol repository, with a test suite
+   covering the fail-closed invariants described here, including
+   disclosure-independent graph identity, unbacked-edge poisoning,
+   required-edge stripping, freshness degradation, and replay
+   determinism.  It builds on the same codebase's authorization-receipt,
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 6]
+
+Internet-Draft           Action Evidence Graphs                July 2026
+
+
+   quorum, evidence-chain, and admissibility layers.
+
+Author's Address
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 7]
