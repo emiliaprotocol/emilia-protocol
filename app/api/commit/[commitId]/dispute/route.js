@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
+import { authorizeCommitAccess } from '@/lib/commit-auth';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { CommitError } from '@/lib/commit';
 import { epProblem } from '@/lib/errors';
@@ -39,6 +40,16 @@ export async function POST(request, { params }) {
 
     if (commitError || !commit) {
       return epProblem(404, 'commit_not_found', 'Commit not found');
+    }
+
+    // === AUTHORIZATION: only the issuing entity or principal may dispute ===
+    // Without this, any authenticated entity could file a dispute against any
+    // commit they don't own — starting a 7-day response clock against the real
+    // receipt submitter (IDOR). Mirrors the revoke route's guard. Placed before
+    // the receipt-binding check so an unauthorized caller can't probe state.
+    const authz = authorizeCommitAccess(auth, commit, 'dispute');
+    if (!authz.authorized) {
+      return epProblem(403, 'not_authorized', authz.reason);
     }
 
     // Must have a bound receipt to dispute

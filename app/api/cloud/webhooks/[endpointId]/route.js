@@ -125,6 +125,7 @@ export async function PUT(request, { params }) {
       .from('webhook_endpoints')
       .update(update)
       .eq('endpoint_id', endpointId)
+      .eq('tenant_id', auth.tenantId) // carry tenant scope into the mutation itself (defense-in-depth)
       .select()
       .single();
 
@@ -188,7 +189,8 @@ export async function DELETE(request, { params }) {
     const { error: deleteErr } = await supabase
       .from('webhook_endpoints')
       .delete()
-      .eq('endpoint_id', endpointId);
+      .eq('endpoint_id', endpointId)
+      .eq('tenant_id', auth.tenantId); // carry tenant scope into the mutation itself (defense-in-depth)
 
     if (deleteErr) {
       logger.error('[cloud/webhooks] DELETE error:', deleteErr);
