@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import Link from 'next/link';
+import proofStatsData from '@/lib/proof-stats.json';
 import { color, cta, font, radius } from '@/lib/tokens';
 import registryIndex from '../../packages/fire-drill/registry-index.json';
 import reports from '../../packages/fire-drill/reports.json';
@@ -47,7 +48,7 @@ const scittChecks = [
 ];
 
 const proofStats = [
-  ['4,220', 'automated tests'],
+  [proofStatsData.tests.passed.toLocaleString('en-US'), 'automated tests'],
   ['26', 'TLA+ safety properties'],
   ['35 / 22', 'Alloy facts / assertions'],
   ['8', 'cross-language conformance suites'],

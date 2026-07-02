@@ -92,7 +92,7 @@ We will:
 
 ## Proof points
 
-- 4,220 automated tests across 173 test files (`npx vitest run`)
+- 4,689 automated tests across 173 test files (`npx vitest run`)
 - 26 TLA+ safety properties verified (T1–T26, TLC 2.19, 413,137 states, 0 errors) — including the EP-IX identity continuity invariants
 - 85 red team cases cataloged in `docs/conformance/RED_TEAM_CASES.md`
 - 35 Alloy facts + 22 assertions verified (Alloy 6.0.0, 0 counterexamples)

@@ -11,6 +11,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import proofStats from '@/lib/proof-stats.json';
 import { motion } from 'motion/react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
@@ -50,7 +51,7 @@ const ARTICLES = [
     num: 'Art. 11',
     title: 'Technical documentation',
     burden: 'Documentation kept current and available to authorities on request.',
-    ep: 'TLA+ spec, Alloy facts, and 4,220 automated tests are public. Apache 2.0 — auditors read source, not vendor PDFs.',
+    ep: `TLA+ spec, Alloy facts, and ${proofStats.tests.passed.toLocaleString('en-US')} automated tests are public. Apache 2.0 — auditors read source, not vendor PDFs.`,
   },
   {
     num: 'Art. 12',

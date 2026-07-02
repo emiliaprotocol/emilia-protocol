@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import proofStats from '@/lib/proof-stats.json';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font, radius, grid } from '@/lib/tokens';
@@ -67,7 +68,7 @@ export default function InvestorsPage() {
   const PROOF = [
     { title: 'Accepted mutual flow', body: 'Full 7-step Accountable Signoff chain proven end-to-end under load: create, present (dual-key), verify (accepted), challenge, attest, consume. Zero errors at 50 concurrent users.' },
     { title: 'Measured operating envelope', body: 'Supported band with per-endpoint latency targets. Overload band with explicit 503 backpressure instead of timeout collapse. No correctness violations under stress.' },
-    { title: 'Protocol + product coherence', body: 'Open protocol, open runtime, managed cloud, enterprise packs, vertical pricing. EP Core v1.0 frozen (PIP-001 accepted); CHANGELOG tracks the v1.1.0 maintenance line. 4,220 automated tests (static count; parameterized runs exceed this), 26 TLA+ theorems machine-verified (TLC 2.19, 0 errors), 85 red team cases cataloged in docs/conformance/RED_TEAM_CASES.md.' },
+    { title: 'Protocol + product coherence', body: `Open protocol, open runtime, managed cloud, enterprise packs, vertical pricing. EP Core v1.0 frozen (PIP-001 accepted); CHANGELOG tracks the v1.1.0 maintenance line. ${proofStats.tests.passed.toLocaleString('en-US')} automated tests (static count; parameterized runs exceed this), ${proofStats.tla.invariants} TLA+ theorems machine-verified (TLC 2.19, 0 errors), ${proofStats.redTeamCases} red team cases cataloged in docs/conformance/RED_TEAM_CASES.md.` },
   ];
 
   const cardStyle = (accent) => ({
@@ -109,7 +110,7 @@ export default function InvestorsPage() {
             borderLeft: `1px solid ${color.border}`,
           }}>
             {[
-              { value: '4,220', label: 'Automated tests across 173 files', accent: color.gold },
+              { value: proofStats.tests.passed.toLocaleString('en-US'), label: `Automated tests across ${proofStats.tests.files} files`, accent: color.gold },
               { value: '26',    label: 'TLA+ theorems machine-verified, 0 errors', accent: color.gold },
               { value: '85',    label: 'Red team cases cataloged in repo', accent: color.gold },
             ].map((s, i) => (
