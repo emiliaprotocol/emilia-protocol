@@ -11,6 +11,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { getActiveCryptoProfile, assertProfileSatisfied, CRYPTO_PROFILE_IDS } from '../lib/crypto/profile.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -118,6 +119,23 @@ check('key custody abstraction rejects local keys in gov/prod mode', () => {
   requireContains('lib/env.js', 'getKeyCustodyConfig');
   requireContains('.env.example', 'EP_SECRET_KEY');
   return 'KMS/HSM custody interface present';
+});
+
+check('crypto profile is declared and fail-closed', () => {
+  // The profile registry exists and refuses unknown/out-of-boundary algorithms.
+  requireContains('lib/crypto/profile.js', 'assertAlgAllowed');
+  requireContains('lib/crypto/profile.js', 'unknown_crypto_profile');
+  // If THIS environment declares a profile, it must be satisfiable. A fips
+  // profile that isn't backed by a validated-module custody signer (kms/hsm) is
+  // not truly at its boundary → not ready. getActiveCryptoProfile throws
+  // (fail closed) on an unrecognized EP_CRYPTO_PROFILE.
+  if (process.env.EP_CRYPTO_PROFILE) {
+    const profile = getActiveCryptoProfile();
+    const sat = assertProfileSatisfied({ custodyMode: process.env.EP_KEY_CUSTODY_MODE });
+    if (!sat.ok) throw new Error(sat.reasons.join('; '));
+    return `crypto profile "${profile.id}" declared and satisfied`;
+  }
+  return `crypto profile module present (default; profiles: ${CRYPTO_PROFILE_IDS.join('/')})`;
 });
 
 check('incident drill is runnable', () => {
