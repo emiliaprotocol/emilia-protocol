@@ -93,6 +93,13 @@ describe('readLimitedJson — json()-only test-double path', () => {
     const r = await readLimitedJson(jsonDouble(async () => { throw new Error('bad'); }), 64);
     expect(r).toMatchObject({ ok: false, status: 400, code: 'invalid_json' });
   });
+
+  it('returns invalid_json when json() throws and an explicit undefined options arg is passed (3-arg, no invalidValue)', async () => {
+    // Exercises the `arguments[2] || {}` fallback: arguments.length is 3 but the
+    // options value is falsy (undefined), so the right-hand `|| {}` is taken.
+    const r = await readLimitedJson(jsonDouble(async () => { throw new Error('bad'); }), 64, undefined);
+    expect(r).toMatchObject({ ok: false, status: 400, code: 'invalid_json' });
+  });
 });
 
 describe('readLimitedJson — real stream path', () => {
@@ -123,6 +130,12 @@ describe('readLimitedJson — real stream path', () => {
 
   it('returns invalid_json on malformed JSON when no invalidValue is supplied', async () => {
     const r = await readLimitedJson(streamFrom('not-json'), 64);
+    expect(r).toMatchObject({ ok: false, status: 400, code: 'invalid_json' });
+  });
+
+  it('returns invalid_json on malformed JSON when a falsy (undefined) options arg is passed', async () => {
+    // Stream-path counterpart of the `arguments[2] || {}` fallback branch.
+    const r = await readLimitedJson(streamFrom('not-json'), 64, undefined);
     expect(r).toMatchObject({ ok: false, status: 400, code: 'invalid_json' });
   });
 });
