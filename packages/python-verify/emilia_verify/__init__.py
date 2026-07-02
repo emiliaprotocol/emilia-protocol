@@ -386,9 +386,17 @@ def _hex_of(h: Any) -> str:
     return str(h if h is not None else "").replace("sha256:", "").lower()
 
 
+# Canonical EP timestamp profile: RFC 3339 with an explicit UTC offset ("Z" or
+# ±hh:mm). No-timezone ("2026-07-01T12:00:00") and date-only ("2026-07-01") forms
+# are REJECTED — they are ambiguous (UTC vs local) and must never satisfy a
+# validity window. Single profile, parsed and rejected identically by JS/Py/Go.
+import re as _re
+_RFC3339_OFFSET = _re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$")
+
+
 def _instant_ms(s: Any):
     import datetime as _dt
-    if not isinstance(s, str) or not s:
+    if not isinstance(s, str) or not _RFC3339_OFFSET.match(s):
         return None
     try:
         return _dt.datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp() * 1000
@@ -555,17 +563,30 @@ def verify_time_attestation(att: Any, opts: Optional[dict] = None) -> dict:
 
 # ── EP §6.2 Trust Receipt offline verifier (I-D §6.3) — mirror packages/verify ─
 
+def _coerce_required_approvals(value: Any):
+    """Canonical required_approvals coercion (fail-closed; mirrors packages/verify
+    coerceRequiredApprovals and the Go verifier). The threshold MUST be an
+    integer-typed JSON number. A string ("2"), float, bool, or any non-integer is
+    malformed and returns None (forcing the receipt to fail). Missing/None -> 1.
+    NEVER raises (bool excluded because it subclasses int)."""
+    if value is None:
+        return 1
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        return None
+    return value
+
+
 def _within_window(t: Any, frm: Any, to: Any) -> bool:
     ms = _instant_ms(t)
     if ms is None:
         return False
     if frm:
         f = _instant_ms(frm)
-        if f is not None and ms < f:
+        if f is None or ms < f:
             return False
     if to:
         tt = _instant_ms(to)
-        if tt is not None and ms > tt:
+        if tt is None or ms > tt:
             return False
     return True
 
@@ -686,8 +707,11 @@ def verify_trust_receipt(receipt: Any, opts: Optional[dict] = None) -> dict:
 
     initiator = receipt["action"].get("initiator")
     approvers = [a["approver"] for a in valid_approvals]
-    required = max([1] + [int(c.get("required_approvals") or 1) for c in contexts])
+    coerced = [_coerce_required_approvals(c.get("required_approvals")) for c in contexts]
     sod_ok = True
+    if any(n is None for n in coerced):
+        sod_ok = False  # non-integer threshold is malformed -> fail-closed
+    required = max([1] + [n for n in coerced if n is not None])
     if initiator and initiator in approvers:
         sod_ok = False
     if len(set(approvers)) != len(approvers):
