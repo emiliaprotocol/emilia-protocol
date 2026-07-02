@@ -1,0 +1,69 @@
+{
+  "vector": "EP<->Capsule seam vector v1",
+  "spec": "docs/EP-CAPSULE-SEAM.md",
+  "canonicalization": "RFC 8785 (JCS) over the EP I-JSON value subset; SHA-256 for all digests",
+  "issuer": {
+    "alg": "Ed25519 (COSE EdDSA -8)",
+    "spki_der_b64": "MCowBQYDK2VwAyEAmz+PjEC2DzV6Y0PuLdnyzHwPA+HcgJ48EORHo57k8aE=",
+    "kid_hex": "fc75a255e78f5b4371376b76ce813cd8",
+    "note": "demo/interop vector key derived from a fixed seed — NOT a production issuer"
+  },
+  "action": {
+    "action_type": "payment.release",
+    "target": "wire:vendor-acme-250000",
+    "amount": "250000.00",
+    "currency": "USD"
+  },
+  "subject_digest": "fd7887f2f7b0ec9c9ed06ef42f62e21b3b119bdfb13728b9eaea6e5ef28273b3",
+  "authority_reference": {
+    "rule": "A Capsule commits to the approval by embedding one of these digests in its opaque authority reference. Recommend statement_digest when the receipt is registered as a SCITT Signed Statement; receipt_payload_digest for offline composition.",
+    "approved": {
+      "receipt_payload_digest": "e37000ae3366ce7d9ccddcce1e2fe8cc658339ef7e1a0e9d9f6aac86281580d7",
+      "statement_digest": "141ea80006127f57d10c0b5104cfae1bfce52d851d8c9c8faae4fcf38b4e988f"
+    },
+    "denied": {
+      "receipt_payload_digest": "3ec7b1742fa887d9fff06b06142298aaace5481d01b623bd3fa27c1a7f641020",
+      "statement_digest": "5cd060174152a5e86a50184b431c976e52c9e2f67175d8bf8a61ba6c7466aa7e"
+    }
+  },
+  "approved": {
+    "payload": {
+      "receipt_id": "ep:receipt:seam-vector-approved-0001",
+      "subject": "agent:autonomous:treasury-bot",
+      "created_at": "2026-07-02T00:00:00Z",
+      "claim": {
+        "action_type": "payment.release",
+        "target": "wire:vendor-acme-250000",
+        "subject_digest": "fd7887f2f7b0ec9c9ed06ef42f62e21b3b119bdfb13728b9eaea6e5ef28273b3",
+        "outcome": "allow_with_signoff",
+        "approver": "jane.doe@yourco.example",
+        "assurance": "class_a"
+      }
+    },
+    "payload_canonical": "{\"claim\":{\"action_type\":\"payment.release\",\"approver\":\"jane.doe@yourco.example\",\"assurance\":\"class_a\",\"outcome\":\"allow_with_signoff\",\"subject_digest\":\"fd7887f2f7b0ec9c9ed06ef42f62e21b3b119bdfb13728b9eaea6e5ef28273b3\",\"target\":\"wire:vendor-acme-250000\"},\"created_at\":\"2026-07-02T00:00:00Z\",\"receipt_id\":\"ep:receipt:seam-vector-approved-0001\",\"subject\":\"agent:autonomous:treasury-bot\"}",
+    "native_signature_b64": "KaXQX6CVuwY/A6zedpKKNj1F6pMljHO53+SSHTRcRqZyPAkoJdeGiERdLeVv8doPWWHqpDCV2PyZDdaYGQ1mAQ==",
+    "cose_sign1_b64": "0oRYM6MBJwN4G2FwcGxpY2F0aW9uL2VwLXJlY2VpcHQranNvbgRQ/HWiVeePW0NxN2t2zoE82KBZAX57ImNsYWltIjp7ImFjdGlvbl90eXBlIjoicGF5bWVudC5yZWxlYXNlIiwiYXBwcm92ZXIiOiJqYW5lLmRvZUB5b3VyY28uZXhhbXBsZSIsImFzc3VyYW5jZSI6ImNsYXNzX2EiLCJvdXRjb21lIjoiYWxsb3dfd2l0aF9zaWdub2ZmIiwic3ViamVjdF9kaWdlc3QiOiJmZDc4ODdmMmY3YjBlYzljOWVkMDZlZjQyZjYyZTIxYjNiMTE5YmRmYjEzNzI4YjllYWVhNmU1ZWYyODI3M2IzIiwidGFyZ2V0Ijoid2lyZTp2ZW5kb3ItYWNtZS0yNTAwMDAifSwiY3JlYXRlZF9hdCI6IjIwMjYtMDctMDJUMDA6MDA6MDBaIiwicmVjZWlwdF9pZCI6ImVwOnJlY2VpcHQ6c2VhbS12ZWN0b3ItYXBwcm92ZWQtMDAwMSIsInN1YmplY3QiOiJhZ2VudDphdXRvbm9tb3VzOnRyZWFzdXJ5LWJvdCJ9WEBfph7f5DLXLDlAOh9oqa/jMsT0VYiM+LRAvZ7c4/2KOS1GviGECGKC+7g5DN0GH0OYFl7ZMw2MSLfBdn/7JjYO",
+    "receipt_payload_digest": "e37000ae3366ce7d9ccddcce1e2fe8cc658339ef7e1a0e9d9f6aac86281580d7",
+    "statement_digest": "141ea80006127f57d10c0b5104cfae1bfce52d851d8c9c8faae4fcf38b4e988f"
+  },
+  "denied": {
+    "payload": {
+      "receipt_id": "ep:receipt:seam-vector-denied-0001",
+      "subject": "agent:autonomous:treasury-bot",
+      "created_at": "2026-07-02T00:00:00Z",
+      "claim": {
+        "action_type": "payment.release",
+        "target": "wire:vendor-acme-250000",
+        "subject_digest": "fd7887f2f7b0ec9c9ed06ef42f62e21b3b119bdfb13728b9eaea6e5ef28273b3",
+        "outcome": "deny",
+        "approver": null,
+        "reason": "no_human_authorizer"
+      }
+    },
+    "payload_canonical": "{\"claim\":{\"action_type\":\"payment.release\",\"approver\":null,\"outcome\":\"deny\",\"reason\":\"no_human_authorizer\",\"subject_digest\":\"fd7887f2f7b0ec9c9ed06ef42f62e21b3b119bdfb13728b9eaea6e5ef28273b3\",\"target\":\"wire:vendor-acme-250000\"},\"created_at\":\"2026-07-02T00:00:00Z\",\"receipt_id\":\"ep:receipt:seam-vector-denied-0001\",\"subject\":\"agent:autonomous:treasury-bot\"}",
+    "native_signature_b64": "NNsbkI9k3C4EqHlncIkIbIAnB6D4WB15+ZQWAFA1K5b59PAf3e2NaoWc3GX8FvZI3JXg7lML3hzIfu11TlahAw==",
+    "cose_sign1_b64": "0oRYM6MBJwN4G2FwcGxpY2F0aW9uL2VwLXJlY2VpcHQranNvbgRQ/HWiVeePW0NxN2t2zoE82KBZAWJ7ImNsYWltIjp7ImFjdGlvbl90eXBlIjoicGF5bWVudC5yZWxlYXNlIiwiYXBwcm92ZXIiOm51bGwsIm91dGNvbWUiOiJkZW55IiwicmVhc29uIjoibm9faHVtYW5fYXV0aG9yaXplciIsInN1YmplY3RfZGlnZXN0IjoiZmQ3ODg3ZjJmN2IwZWM5YzllZDA2ZWY0MmY2MmUyMWIzYjExOWJkZmIxMzcyOGI5ZWFlYTZlNWVmMjgyNzNiMyIsInRhcmdldCI6IndpcmU6dmVuZG9yLWFjbWUtMjUwMDAwIn0sImNyZWF0ZWRfYXQiOiIyMDI2LTA3LTAyVDAwOjAwOjAwWiIsInJlY2VpcHRfaWQiOiJlcDpyZWNlaXB0OnNlYW0tdmVjdG9yLWRlbmllZC0wMDAxIiwic3ViamVjdCI6ImFnZW50OmF1dG9ub21vdXM6dHJlYXN1cnktYm90In1YQIPUa+9dacUbhBlHuju9TSjcL6FGoUW1vp8BRbIRkZa3iuMCUp8JFOwm6RSs5EuBnPGbPd2wEFQjoASy4J3dhAY=",
+    "receipt_payload_digest": "3ec7b1742fa887d9fff06b06142298aaace5481d01b623bd3fa27c1a7f641020",
+    "statement_digest": "5cd060174152a5e86a50184b431c976e52c9e2f67175d8bf8a61ba6c7466aa7e"
+  }
+}
