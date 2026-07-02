@@ -53,6 +53,17 @@ function makeOperator(operatorId) {
 
 const KEY_DISCOVERY = (op) => `https://${op.operatorId}.example/.well-known/ep-keys.json`;
 
+// A key-SOURCE pin for an operator: the object-map form of trustedIssuers that
+// binds the signer's expected key_discovery origin (required online to honor a
+// receipt-supplied key_discovery — a bare-id pin cannot authenticate the key
+// origin). Optionally pins the public key too.
+const pinFor = (op, { pinKey = false } = {}) => ({
+  [op.operatorId]: {
+    key_discovery: KEY_DISCOVERY(op),
+    ...(pinKey ? { publicKey: op.publicKeyB64u } : {}),
+  },
+});
+
 /** Operator issues a genuine EP-RECEIPT-v1 over `payload`, signed with `signingKey`. */
 function issueReceipt(op, payload, { signingKey } = {}) {
   const priv = signingKey || op.privateKey;
@@ -254,7 +265,7 @@ test('online verifyFederatedReceipt resolves keys + revocation via injected fetc
     return { ok: false, status: 404, json: async () => ({}) };
   };
 
-  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: ['ep_operator_a'] });
+  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: pinFor(A) });
   assert.equal(result.verified, true);
   assert.equal(result.accepted, true);
   assert.equal(result.revocation_confirmed, true);
@@ -278,7 +289,7 @@ test('online path uses the discovery doc verify_url_template for revocation', as
     return { ok: false, status: 404, json: async () => ({}) };
   };
 
-  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: ['ep_operator_a'] });
+  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: pinFor(A) });
   assert.equal(result.accepted, true);
   assert.equal(result.revocation_confirmed, true);
   assert.equal(revocationUrlHit, 'https://op.example/fn/op/api/verify/ep_receipt_008b');
@@ -297,7 +308,7 @@ test('online path honors an operator revocation verdict', async () => {
     return { ok: false, status: 404, json: async () => ({}) };
   };
 
-  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: ['ep_operator_a'] });
+  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: pinFor(A) });
   assert.equal(result.verified, true);
   assert.equal(result.revoked, true);
   assert.equal(result.accepted, false);
@@ -307,7 +318,7 @@ test('online path fails closed when key discovery is unreachable', async () => {
   const A = makeOperator('ep_operator_a');
   const receipt = issueReceipt(A, samplePayload('ep_receipt_010'));
   const fetchImpl = async () => { throw new Error('network down'); };
-  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: ['ep_operator_a'] });
+  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: pinFor(A) });
   assert.equal(result.verified, false);
   assert.equal(result.accepted, false);
   assert.match(result.error || '', /Failed to fetch operator key discovery/);
@@ -322,7 +333,7 @@ test('online path fails open on revocation lookup but still verifies signature',
     if (url.endsWith('/ep-keys.json')) return { ok: true, status: 200, json: async () => doc };
     throw new Error('revocation feed down');
   };
-  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: ['ep_operator_a'] });
+  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: pinFor(A) });
   assert.equal(result.verified, true);
   assert.equal(result.accepted, true, 'an unreachable revocation feed must not fail a valid receipt');
   assert.equal(result.revocation_confirmed, false);
@@ -398,6 +409,95 @@ test('ONLINE: even a "verifying" attacker receipt is not accepted when signer is
   assert.equal(result.accepted, false);
 });
 
+// ── 8b. Key-SOURCE laundering — the federation trust-laundering finding ───────
+// The decisive attack the string-id pin missed: an attacker sets
+// signature.signer to a PINNED operator id and points signature.key_discovery at
+// a server THEY control, hosting an ep-keys.json that advertises the ATTACKER's
+// key under the pinned id. The forged receipt then "verifies" against the
+// attacker's key and — under an id-only pin — would be ACCEPTED (trusted, because
+// the id is pinned). Pinning the id does not authenticate the key SOURCE. The fix
+// binds the key source to the pinned signer and fails closed.
+
+test('ONLINE-REGRESSION: pinned signer id + attacker-hosted key_discovery origin → accepted:false', async () => {
+  // The relying party pins ep_operator_a's KEY SOURCE to A's real discovery
+  // origin (https://ep_operator_a.example).
+  const A = makeOperator('ep_operator_a');
+  // Attacker forges a receipt under A's pinned id, signs it with THEIR OWN key,
+  // and points key_discovery at their OWN server hosting a matching ep-keys.json.
+  const Attacker = makeOperator('ep_operator_a'); // same id, attacker key
+  const receipt = issueReceipt(Attacker, samplePayload('ep_receipt_launder_001'));
+  receipt.signature.key_discovery = 'https://attacker.evil.example/.well-known/ep-keys.json';
+
+  let fetchedUrl = null;
+  const fetchImpl = async (url) => {
+    fetchedUrl = url;
+    // The attacker's server advertises the ATTACKER's key under the pinned id,
+    // so the forged signature WOULD verify against it.
+    if (url.endsWith('/ep-keys.json')) return { ok: true, status: 200, json: async () => discoveryDoc(Attacker) };
+    return { ok: false, status: 404, json: async () => ({}) };
+  };
+
+  const result = await verifyFederatedReceipt(receipt, {
+    fetchImpl,
+    // Key-SOURCE pin: A's id bound to A's REAL discovery origin (+ real key).
+    trustedIssuers: { ep_operator_a: { key_discovery: KEY_DISCOVERY(A), publicKey: A.publicKeyB64u } },
+  });
+
+  assert.equal(result.accepted, false, 'a receipt-redirected key source must NOT be accepted (fail closed)');
+  assert.equal(result.verified, false, 'the attacker key is never fetched, so nothing verifies');
+  assert.equal(fetchedUrl, null, 'the verifier must not fetch the attacker-hosted key_discovery at all');
+  assert.match(result.error || '', /does not match the origin pinned/);
+});
+
+test('ONLINE-REGRESSION: bare-id pin refuses a receipt-supplied key_discovery (id pin cannot authenticate the key source)', async () => {
+  // A bare-id pin no longer authorizes fetching a receipt-supplied key_discovery:
+  // the id alone cannot say WHERE the key comes from. Fail closed.
+  const Attacker = makeOperator('ep_operator_a');
+  const receipt = issueReceipt(Attacker, samplePayload('ep_receipt_launder_002'));
+  receipt.signature.key_discovery = 'https://attacker.evil.example/.well-known/ep-keys.json';
+
+  let fetchCalled = false;
+  const fetchImpl = async () => { fetchCalled = true; return { ok: true, status: 200, json: async () => discoveryDoc(Attacker) }; };
+
+  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: ['ep_operator_a'] });
+  assert.equal(fetchCalled, false, 'a bare-id pin must not fetch a receipt-supplied key_discovery');
+  assert.equal(result.accepted, false);
+  assert.equal(result.verified, false);
+  assert.match(result.error || '', /does not bind a key source/);
+});
+
+test('OFFLINE-REGRESSION: a key-pinned signer refuses a laundered key advertised under the pinned id', () => {
+  // Offline, the discovery doc is caller-supplied — but a relying party may still
+  // pin the key. If a (compromised/attacker) doc advertises a different key under
+  // the pinned id, the matched key is not the pinned key → refused.
+  const A = makeOperator('ep_operator_a');
+  const Attacker = makeOperator('ep_operator_a'); // same id, attacker key
+  const receipt = issueReceipt(Attacker, samplePayload('ep_receipt_launder_003'));
+  const result = verifyFederatedReceiptOffline(receipt, discoveryDoc(Attacker), {
+    trustedIssuers: { ep_operator_a: { publicKey: A.publicKeyB64u } }, // pin A's REAL key
+  });
+  assert.equal(result.verified, true, 'the attacker signature is internally consistent with the attacker doc');
+  assert.equal(result.accepted, false, 'but the verified key is not the pinned key → fail closed');
+  assert.match(result.error || '', /does not match the relying party's pinned key/);
+});
+
+test('ONLINE: a properly key-SOURCE-pinned same-origin redemption still ACCEPTS', async () => {
+  // The legitimate case must stay green: signer pinned, key_discovery origin
+  // bound to A's real origin, key pinned to A's real key.
+  const A = makeOperator('ep_operator_a');
+  const receipt = issueReceipt(A, samplePayload('ep_receipt_launder_ok'));
+  const doc = discoveryDoc(A);
+  const fetchImpl = async (url) => {
+    if (url.endsWith('/ep-keys.json')) return { ok: true, status: 200, json: async () => doc };
+    if (url.includes('/api/verify/')) return { ok: true, status: 200, json: async () => ({ revoked: false }) };
+    return { ok: false, status: 404, json: async () => ({}) };
+  };
+  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: pinFor(A, { pinKey: true }) });
+  assert.equal(result.verified, true);
+  assert.equal(result.accepted, true);
+  assert.equal(result.trusted, true);
+});
+
 // ── 9. SSRF guard on receipt-supplied fetch URLs ─────────────────────────────
 // The receipt supplies the key_discovery URL. A pinned signer is necessary but
 // not sufficient: the URL itself must be a safe public https target, or the
@@ -416,10 +516,40 @@ const PRIVATE_KEY_DISCOVERY_URLS = [
   'https://metadata.google.internal/computeMetadata/v1/',        // GCP metadata host
 ];
 
+// Cohort A — the SSRF guard proper. A caller-supplied keyDiscoveryUrl override
+// is the relying party's own choice and skips the origin-binding gate, so it
+// exercises assertSafeFetchUrl directly: an unsafe target is blocked, no request
+// issued.
 for (const badUrl of PRIVATE_KEY_DISCOVERY_URLS) {
-  test(`ONLINE: SSRF attempt is blocked, no request issued — ${badUrl}`, async () => {
+  test(`ONLINE: SSRF attempt via caller override is blocked, no request issued — ${badUrl}`, async () => {
     const A = makeOperator('ep_operator_a');
     const receipt = issueReceipt(A, samplePayload('ep_receipt_ssrf'));
+
+    let fetchCalled = false;
+    const fetchImpl = async () => { fetchCalled = true; return { ok: true, status: 200, json: async () => discoveryDoc(A) }; };
+
+    const result = await verifyFederatedReceipt(receipt, {
+      fetchImpl,
+      keyDiscoveryUrl: badUrl, // relying party's own (mis)configuration; still SSRF-guarded
+    });
+
+    assert.equal(fetchCalled, false, 'the server must not issue a request to a private/unsafe URL');
+    assert.equal(result.accepted, false);
+    assert.equal(result.verified, false);
+    assert.match(result.error || '', /Blocked unsafe key_discovery URL/);
+  });
+}
+
+// Cohort B — key-SOURCE binding is fail-closed. The relying party pins A's key
+// source to A's real discovery origin. An attacker who sets a PINNED signer's
+// receipt key_discovery to an internal/foreign target is refused at the origin
+// gate BEFORE any request — the receipt origin does not match the pinned origin.
+// (An unsafe same-origin target would then still hit the SSRF guard; here the
+// point is that a receipt cannot redirect a pinned signer's key source at all.)
+for (const badUrl of PRIVATE_KEY_DISCOVERY_URLS) {
+  test(`ONLINE: pinned signer + receipt key_discovery pointed elsewhere is refused, no request — ${badUrl}`, async () => {
+    const A = makeOperator('ep_operator_a');
+    const receipt = issueReceipt(A, samplePayload('ep_receipt_ssrf_b'));
     // Attacker points a PINNED operator's key_discovery at an internal target.
     receipt.signature.key_discovery = badUrl;
 
@@ -428,13 +558,13 @@ for (const badUrl of PRIVATE_KEY_DISCOVERY_URLS) {
 
     const result = await verifyFederatedReceipt(receipt, {
       fetchImpl,
-      trustedIssuers: ['ep_operator_a'], // signer IS pinned; URL is still unsafe
+      trustedIssuers: pinFor(A), // signer + key SOURCE pinned to A's real origin
     });
 
-    assert.equal(fetchCalled, false, 'the server must not issue a request to a private/unsafe URL');
+    assert.equal(fetchCalled, false, 'the server must not issue a request to a receipt-redirected key source');
     assert.equal(result.accepted, false);
     assert.equal(result.verified, false);
-    assert.match(result.error || '', /Blocked unsafe key_discovery URL|Refusing to fetch/);
+    assert.match(result.error || '', /does not match the origin pinned|Blocked unsafe key_discovery URL/);
   });
 }
 
@@ -466,7 +596,7 @@ test('ONLINE: redirect responses are refused (redirect:manual closes rebind-via-
   const A = makeOperator('ep_operator_a');
   const receipt = issueReceipt(A, samplePayload('ep_receipt_redirect'));
   const fetchImpl = async () => ({ ok: false, status: 302, type: 'opaqueredirect', json: async () => ({}) });
-  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: ['ep_operator_a'] });
+  const result = await verifyFederatedReceipt(receipt, { fetchImpl, trustedIssuers: pinFor(A) });
   assert.equal(result.verified, false);
   assert.equal(result.accepted, false);
   assert.match(result.error || '', /Failed to fetch operator key discovery|redirect/);

@@ -260,15 +260,42 @@ export function resolveOperatorKeys(
  * operator's revocation set. `accepted` is verified-and-not-revoked; local trust
  * policy remains the caller's.
  */
+/**
+ * A pin binding for a federation issuer. Pins the KEY SOURCE for a signer, not
+ * just its id: a receipt-supplied `key_discovery` is honored online only when
+ * its origin matches the pinned `keyDiscoveryOrigin`/`key_discovery`, and a
+ * matched verifying key is accepted only when it is one of the pinned keys
+ * (if any were pinned). Bare-id pins (plain strings) carry no binding.
+ */
+export interface IssuerPin {
+  /** Full expected discovery URL; its origin binds the receipt's key_discovery. */
+  key_discovery?: string;
+  /** Expected discovery origin (scheme://host[:port]); alternative to key_discovery. */
+  keyDiscoveryOrigin?: string;
+  /** A single pinned Ed25519 public key (SPKI DER, base64url). */
+  publicKey?: string;
+  /** Multiple pinned public keys (e.g. across a key rotation). */
+  publicKeys?: string[];
+}
+
+/** Out-of-band issuer allowlist: bare ids, or a map from signer id → key-source pin. */
+export type TrustedIssuers = Set<string> | string[] | Record<string, IssuerPin>;
+
 export function verifyFederatedReceiptOffline(
   receipt: Record<string, unknown>,
   discoveryDoc: Record<string, unknown>,
-  opts?: { revokedReceiptIds?: Set<string> | string[]; expectedSigner?: string }
+  opts?: {
+    revokedReceiptIds?: Set<string> | string[];
+    expectedSigner?: string;
+    trustedIssuers?: TrustedIssuers;
+  }
 ): FederatedVerificationResult;
 
 /**
  * Verify a federated receipt against a live operator, fetching its ep-keys.json
  * (from `signature.key_discovery`) and revocation surface. Injectable fetch.
+ * To honor a RECEIPT-supplied key_discovery, pin the signer's key source via the
+ * object-map form of `trustedIssuers`; a bare-id pin will not fetch it.
  */
 export function verifyFederatedReceipt(
   receipt: Record<string, unknown>,
@@ -278,6 +305,8 @@ export function verifyFederatedReceipt(
     keyDiscoveryUrl?: string;
     verifyUrlBase?: string;
     expectedSigner?: string;
+    trustedIssuers?: TrustedIssuers;
+    allowInsecureFetch?: boolean;
   }
 ): Promise<FederatedVerificationResult & { fetched: Record<string, unknown>; revocation_confirmed?: boolean }>;
 

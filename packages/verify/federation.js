@@ -35,9 +35,21 @@
  * a matching ep-keys.json at a URL they control, and point key_discovery there.
  * Such a receipt will `verify` (its signature is internally consistent) but it
  * must NEVER `accept` unless the relying party has already pinned that issuer.
- * A receipt-carried key_discovery URL is at most a *hint*: it is only fetched
- * when the resolved signer is already in the caller's pinned set, and every
- * such fetch is routed through an SSRF guard (see assertSafeFetchUrl).
+ *
+ * PINNING THE ID IS NOT ENOUGH — PIN THE KEY SOURCE. A bare signer-id pin does
+ * not authenticate WHERE the verifying key comes from. The receipt still names
+ * the discovery URL, so an attacker who sets `signature.signer` to a pinned id
+ * and points `key_discovery` at their own ep-keys.json (advertising THEIR key
+ * under the pinned id) would otherwise verify-and-accept — laundering trust
+ * through a pinned string. To close this, a pin MUST bind the key SOURCE for
+ * that signer: an expected discovery origin/URL and/or a pinned public key. A
+ * receipt-supplied key_discovery is honored ONLY when its origin matches what
+ * the relying party pinned for that signer (online), and a matched key is
+ * accepted ONLY when it is the pinned key, if one was pinned (online + offline).
+ * A caller-supplied opts.keyDiscoveryUrl is the relying party's OWN choice and
+ * needs no such origin match. A receipt-carried key_discovery URL is at most a
+ * *hint*: it is only fetched when the signer is pinned AND its origin is bound,
+ * and every such fetch is routed through an SSRF guard (see assertSafeFetchUrl).
  *
  * "Federation enables receipt portability. It does not enable trust
  * laundering." — PIP-006.
@@ -124,9 +136,14 @@ export function resolveOperatorKeys(discoveryDoc, signerId) {
  * @param {Set<string>|string[]} [opts.revokedReceiptIds] - operator A's revocation set
  * @param {string} [opts.expectedSigner] - if set, the receipt's signer MUST equal this
  *   (this is itself a pin: matching it authorizes acceptance)
- * @param {Set<string>|string[]} [opts.trustedIssuers] - out-of-band allowlist of
- *   federation issuer entity_ids the relying party trusts. Acceptance REQUIRES
- *   the signer to be in this set (or to equal expectedSigner).
+ * @param {Set<string>|string[]|Record<string,IssuerPin>} [opts.trustedIssuers] -
+ *   out-of-band allowlist of federation issuer entity_ids the relying party
+ *   trusts. Acceptance REQUIRES the signer to be in this set (or to equal
+ *   expectedSigner). Entries may be bare id strings, or an object map from
+ *   signer id → pin binding ({ key_discovery, keyDiscoveryOrigin, publicKey,
+ *   publicKeys }). A pin binding pins the KEY SOURCE, not just the id: when a
+ *   pinned public key is supplied here, the matched verifying key MUST be one
+ *   of the pinned keys or acceptance fails closed.
  * @returns {{
  *   accepted: boolean,
  *   verified: boolean,
@@ -197,6 +214,23 @@ export function verifyFederatedReceiptOffline(receipt, discoveryDoc, opts = {}) 
   result.checks.signature = true;
   result.keyMatched = matched.status;
 
+  // KEY-SOURCE PIN — fail closed. If the relying party pinned a specific public
+  // key (or set of keys) for this signer, the key that actually verified the
+  // signature MUST be one of them. This binds trust to the KEY, not merely the
+  // signer string: a discovery doc that advertises an attacker's key under a
+  // pinned id verifies internally but is refused here. Bare-id pins (no pinned
+  // key) skip this — the caller-supplied discovery doc is the trust source
+  // offline.
+  const pinnedKeys = pinnedPublicKeysFor(signer, opts);
+  if (pinnedKeys && !pinnedKeys.has(matched.public_key)) {
+    return {
+      ...result,
+      error:
+        `Verified key for ${signer} does not match the relying party's pinned key(s); ` +
+        `refusing to accept a key from an unpinned source (fail closed)`,
+    };
+  }
+
   // Revocation (PIP-006 §"Cross-operator semantics" step 3). A revocation that
   // arrives after the action executed is a dispute, not a verification failure
   // (§"Security considerations" → Revocation) — but for the purpose of *now*
@@ -227,9 +261,70 @@ export function verifyFederatedReceiptOffline(receipt, discoveryDoc, opts = {}) 
 // either it is on the trustedIssuers allowlist, or it equals expectedSigner.
 // With neither supplied, no signer is pinned — acceptance fails closed.
 function isIssuerPinned(signer, opts) {
-  if (opts.expectedSigner) return signer === opts.expectedSigner;
-  const trusted = normalizeStringSet(opts.trustedIssuers);
-  return trusted.has(signer);
+  if (opts.expectedSigner && signer === opts.expectedSigner) return true;
+  return pinnedSignerIds(opts.trustedIssuers).has(signer);
+}
+
+// The set of signer ids the relying party has pinned via trustedIssuers,
+// regardless of whether each pin is a bare id or a bound-pin object entry.
+function pinnedSignerIds(trustedIssuers) {
+  if (trustedIssuers instanceof Set) return trustedIssuers;
+  if (Array.isArray(trustedIssuers)) return new Set(trustedIssuers);
+  if (isPlainObject(trustedIssuers)) return new Set(Object.keys(trustedIssuers));
+  return new Set();
+}
+
+// Look up the pin binding for a signer from trustedIssuers, if trustedIssuers is
+// the object-map form. Bare-string / array forms carry no binding (id-only), so
+// return null. expectedSigner is an id-only pin and never carries a binding.
+// Returns { key_discovery?, keyDiscoveryOrigin?, publicKey?, publicKeys? }|null.
+function pinBindingFor(signer, opts) {
+  const ti = opts.trustedIssuers;
+  if (!isPlainObject(ti)) return null;
+  const entry = ti[signer];
+  if (!isPlainObject(entry)) return null;
+  return entry;
+}
+
+// The set of public keys the relying party pinned for a signer, or null if none
+// were pinned (id-only pin). A non-null empty set is impossible: a binding with
+// no key material returns null so key-pinning is strictly opt-in.
+function pinnedPublicKeysFor(signer, opts) {
+  const binding = pinBindingFor(signer, opts);
+  if (!binding) return null;
+  const keys = new Set();
+  if (typeof binding.publicKey === 'string' && binding.publicKey) keys.add(binding.publicKey);
+  if (Array.isArray(binding.publicKeys)) {
+    for (const k of binding.publicKeys) if (typeof k === 'string' && k) keys.add(k);
+  }
+  return keys.size ? keys : null;
+}
+
+// The expected discovery origin the relying party bound to a signer, or null if
+// none was bound. Accepts either an explicit `keyDiscoveryOrigin` (origin string)
+// or a full `key_discovery` URL (origin is derived from it). Fail closed: an
+// unparseable pinned URL/origin yields null AND is reported via the boolean flag
+// on the binding so callers can distinguish "no binding" from "invalid binding".
+function pinnedDiscoveryOriginFor(signer, opts) {
+  const binding = pinBindingFor(signer, opts);
+  if (!binding) return { bound: false, origin: null };
+  const raw = binding.keyDiscoveryOrigin || binding.key_discovery;
+  if (typeof raw !== 'string' || !raw) return { bound: false, origin: null };
+  const origin = originOf(raw);
+  return { bound: true, origin };
+}
+
+function originOf(value) {
+  try {
+    const u = new URL(String(value));
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return null;
+  }
+}
+
+function isPlainObject(v) {
+  return v !== null && typeof v === 'object' && !Array.isArray(v) && !(v instanceof Set);
 }
 
 function normalizeStringSet(input) {
@@ -256,14 +351,20 @@ function normalizeStringSet(input) {
  *
  * FAIL CLOSED + SSRF-GUARDED. The receipt-supplied `key_discovery` URL is
  * attacker-controlled. It is fetched ONLY when the relying party has pinned the
- * signer (opts.trustedIssuers / opts.expectedSigner) — otherwise the receipt
- * could point us at an attacker-hosted ep-keys.json to launder trust, and the
- * fetch itself would be an SSRF primitive. A caller-supplied opts.keyDiscovery
- * Url override is the relying party's own choice and is always honored. Every
- * fetch of a URL that could be influenced by the receipt (key discovery,
- * discovery-advertised verify_url_template) is routed through assertSafeFetchUrl:
- * https-only, no embedded credentials, and private / loopback / link-local /
- * cloud-metadata targets are blocked, with redirects disabled (redirect:manual).
+ * signer AND bound that signer's key SOURCE (an expected discovery origin/URL,
+ * via the object-map form of opts.trustedIssuers). A bare signer-id pin does
+ * NOT authenticate the key source: an attacker could set signature.signer to a
+ * pinned id and point key_discovery at their own ep-keys.json advertising their
+ * key under that id — verifying, but laundering trust. So a receipt-supplied
+ * key_discovery whose origin is not explicitly bound to the pinned signer is
+ * refused (fail closed). The receipt URL's origin must match the pinned origin.
+ * A caller-supplied opts.keyDiscoveryUrl override is the relying party's OWN
+ * choice — it is the source of truth and is always honored (still SSRF-guarded),
+ * needing no origin match. Every fetch of a URL that could be influenced by the
+ * receipt (key discovery, discovery-advertised verify_url_template) is routed
+ * through assertSafeFetchUrl: https-only, no embedded credentials, and private /
+ * loopback / link-local / cloud-metadata targets are blocked, with redirects
+ * disabled (redirect:manual).
  *
  * @param {object} receipt - EP-RECEIPT-v1 with signature.signer + signature.key_discovery
  * @param {object} [opts]
@@ -271,8 +372,15 @@ function normalizeStringSet(input) {
  * @param {number} [opts.timeoutMs=5000]
  * @param {string} [opts.keyDiscoveryUrl] - relying-party override of the key_discovery URL
  * @param {string} [opts.verifyUrlBase] - relying-party override base for the revocation check
- * @param {Set<string>|string[]} [opts.trustedIssuers] - out-of-band issuer allowlist (required for acceptance)
- * @param {string} [opts.expectedSigner] - out-of-band single-issuer pin (required for acceptance)
+ * @param {Set<string>|string[]|Record<string,IssuerPin>} [opts.trustedIssuers] - out-of-band
+ *   issuer allowlist (required for acceptance). To honor a RECEIPT-supplied
+ *   key_discovery, use the object-map form and bind the signer's key source:
+ *   { [signerId]: { key_discovery|keyDiscoveryOrigin, publicKey?|publicKeys? } }.
+ *   A bare-id pin authorizes acceptance only when the caller supplies its own
+ *   opts.keyDiscoveryUrl; it will NOT fetch a receipt-supplied URL (fail closed).
+ * @param {string} [opts.expectedSigner] - out-of-band single-issuer pin (id only;
+ *   like a bare-id trustedIssuers entry, it does not bind the key source, so it
+ *   does not by itself authorize fetching a receipt-supplied key_discovery)
  * @param {boolean} [opts.allowInsecureFetch=false] - test-only escape hatch to skip the SSRF guard
  * @returns {Promise<ReturnType<typeof verifyFederatedReceiptOffline> & { fetched: object }>}
  */
@@ -288,16 +396,43 @@ export async function verifyFederatedReceipt(receipt, opts = {}) {
     return bail({}, 'No fetch implementation available; use verifyFederatedReceiptOffline instead');
   }
 
-  // The receipt's own key_discovery is only honored when the signer is pinned
-  // out-of-band. A caller-supplied override is the relying party's own choice
-  // and is always honored. Fail closed: no pin + no override = no fetch.
+  // A caller-supplied opts.keyDiscoveryUrl override is the relying party's OWN
+  // choice and is always honored (still SSRF-guarded below). Otherwise we may
+  // only use the RECEIPT-supplied key_discovery, and only under two conditions:
+  //   1. the signer is pinned out-of-band, AND
+  //   2. the relying party has BOUND that signer's key source — an expected
+  //      discovery origin/URL — and the receipt's key_discovery origin matches.
+  // Pinning the id alone is NOT enough: a bare-id pin does not authenticate
+  // WHERE the key comes from, so an attacker could set signer to a pinned id and
+  // point key_discovery at their own ep-keys.json. Fail closed on both.
   const callerOverride = Boolean(opts.keyDiscoveryUrl);
-  if (!callerOverride && !isIssuerPinned(signer, opts)) {
-    return bail(
-      {},
-      `Refusing to fetch a receipt-supplied key_discovery URL for unpinned signer ${signer || '(none)'}: ` +
-      `supply opts.trustedIssuers/opts.expectedSigner, or a caller-controlled opts.keyDiscoveryUrl`,
-    );
+  if (!callerOverride) {
+    if (!isIssuerPinned(signer, opts)) {
+      return bail(
+        {},
+        `Refusing to fetch a receipt-supplied key_discovery URL for unpinned signer ${signer || '(none)'}: ` +
+        `supply opts.trustedIssuers/opts.expectedSigner, or a caller-controlled opts.keyDiscoveryUrl`,
+      );
+    }
+    const pinnedOrigin = pinnedDiscoveryOriginFor(signer, opts);
+    if (!pinnedOrigin.bound) {
+      return bail(
+        {},
+        `Refusing a receipt-supplied key_discovery for pinned signer ${signer}: the pin does not bind a key ` +
+        `source. Pinning the id alone cannot authenticate the key origin. Pin the signer's key_discovery ` +
+        `origin via the object form of opts.trustedIssuers ({ [signer]: { key_discovery } }), or supply a ` +
+        `caller-controlled opts.keyDiscoveryUrl (fail closed).`,
+      );
+    }
+    const receiptOrigin = originOf(receipt?.signature?.key_discovery);
+    if (!pinnedOrigin.origin || !receiptOrigin || receiptOrigin !== pinnedOrigin.origin) {
+      return bail(
+        { keyDiscoveryUrl: receipt?.signature?.key_discovery || null },
+        `Receipt-supplied key_discovery origin ${receiptOrigin || '(none)'} does not match the origin pinned ` +
+        `for signer ${signer} (${pinnedOrigin.origin || '(invalid pinned origin)'}); refusing to fetch a key ` +
+        `from an unpinned source (fail closed).`,
+      );
+    }
   }
 
   const keyDiscoveryUrl = opts.keyDiscoveryUrl || receipt?.signature?.key_discovery;
@@ -516,4 +651,12 @@ function isPrivateIPv6(host) {
   );
 }
 
-export const _internals = { assertSafeFetchUrl, isPrivateIPv4, isPrivateIPv6, isBlockedHostname };
+export const _internals = {
+  assertSafeFetchUrl,
+  isPrivateIPv4,
+  isPrivateIPv6,
+  isBlockedHostname,
+  pinnedDiscoveryOriginFor,
+  pinnedPublicKeysFor,
+  originOf,
+};
