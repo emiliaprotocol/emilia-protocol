@@ -92,7 +92,10 @@ void B;
 
 // 1. Valid cross-redemption.
 const r1 = issueReceipt(A, { receipt_id: 'fed_001', '@version': 'EP-RECEIPT-v1', amount: 82000, currency: 'USD' });
-check('B accepts a valid receipt issued by A', verifyFederatedReceiptOffline(r1, discoveryDoc(A)).accepted === true);
+// B pins A's operator id out-of-band (PIP-006: trust comes from the relying
+// party's allowlist, never from the receipt-carried signer). Without a pin a
+// cryptographically-valid receipt stays accepted:false — fail closed.
+check('B accepts a valid receipt issued by A', verifyFederatedReceiptOffline(r1, discoveryDoc(A), { trustedIssuers: ['ep_operator_a'] }).accepted === true);
 
 // 2. Tamper rejection.
 const r2 = issueReceipt(A, { receipt_id: 'fed_002', '@version': 'EP-RECEIPT-v1', amount: 82000, currency: 'USD' });
@@ -109,12 +112,12 @@ const oldPair = crypto.generateKeyPairSync('ed25519');
 const oldOp = { operatorId: 'ep_operator_a', privateKey: oldPair.privateKey, publicKeyB64u: oldPair.publicKey.export({ type: 'spki', format: 'der' }).toString('base64url') };
 const Anew = makeOperator('ep_operator_a');
 const r4 = issueReceipt(oldOp, { receipt_id: 'fed_004', '@version': 'EP-RECEIPT-v1', amount: 7 }, oldPair.privateKey);
-const v4 = verifyFederatedReceiptOffline(r4, discoveryDoc(Anew, [oldOp]));
+const v4 = verifyFederatedReceiptOffline(r4, discoveryDoc(Anew, [oldOp]), { trustedIssuers: ['ep_operator_a'] });
 check('B verifies a pre-rotation receipt against an advertised historical key', v4.accepted === true && v4.keyMatched === 'historical');
 
 // 5. Revocation: valid signature, but not accepted.
 const r5 = issueReceipt(A, { receipt_id: 'fed_005', '@version': 'EP-RECEIPT-v1', amount: 9 });
-const v5 = verifyFederatedReceiptOffline(r5, discoveryDoc(A), { revokedReceiptIds: new Set(['fed_005']) });
+const v5 = verifyFederatedReceiptOffline(r5, discoveryDoc(A), { revokedReceiptIds: new Set(['fed_005']), trustedIssuers: ['ep_operator_a'] });
 check('B rejects a revoked receipt (verified but not accepted)', v5.verified === true && v5.accepted === false);
 
 // 6. Non-federated receipt (no signer).
