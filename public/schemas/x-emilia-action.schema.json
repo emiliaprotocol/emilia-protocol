@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://www.emiliaprotocol.ai/schemas/x-emilia-action.schema.json",
+  "title": "x-emilia-action — per-operation action-consequence declaration",
+  "description": "The inline, per-endpoint form of an EMILIA agent-action-control declaration, for use as an OpenAPI vendor extension (x-emilia-action) on an operation object. Same semantics as one entry of /.well-known/agent-action-control.json: it declares what a consequential operation does (effects) and what authorization evidence it requires (authority), so an agent runtime can weigh consequences and satisfy the requirement before acting. The effects block is ADVISORY; the authority/enforcement requirement is the control. Aligns with draft-schrock-agent-action-manifest and EP-ACTION-TYPE-PROFILE-REGISTRY.",
+  "type": "object",
+  "required": ["action", "effects", "authority"],
+  "additionalProperties": false,
+  "properties": {
+    "action": {
+      "description": "Canonical action-type URN, urn:ep:action:<family>.<action>, from the EP action-type registry (e.g. urn:ep:action:finance.wire_transfer). Owning the vocabulary is the point: this is the stable name evidence binds to and auditors query.",
+      "type": "string",
+      "pattern": "^urn:ep:action:[a-z0-9_]+\\.[a-z0-9_.]+$"
+    },
+    "effects": {
+      "description": "ADVISORY preview of what the operation does. Never a control; never lowers the authority requirement.",
+      "type": "object",
+      "required": ["reversibility"],
+      "additionalProperties": false,
+      "properties": {
+        "reversibility": { "enum": ["irreversible", "hard_to_reverse", "reversible"] },
+        "data_exposure": { "enum": ["none", "internal", "pii", "regulated"] },
+        "cost_class": { "enum": ["none", "low", "material", "high"] },
+        "downstream": { "type": "array", "items": { "type": "string" } },
+        "consent_required": { "type": "boolean" }
+      }
+    },
+    "authority": {
+      "description": "The CONTROL: what authorization evidence is required before the effect boundary. Fail-closed at the enforcement point; this declaration is discoverable, not the enforcement itself.",
+      "type": "object",
+      "required": ["receipt_required"],
+      "additionalProperties": false,
+      "properties": {
+        "receipt_required": { "type": "boolean" },
+        "assurance_class": { "enum": ["software", "class_a", "quorum"] },
+        "receipt_profile": { "type": "string", "description": "e.g. EP-RECEIPT-v1" },
+        "max_age_sec": { "type": "integer", "minimum": 0 },
+        "enforcement_point": { "enum": ["pre_execution", "pre_effect_commit"] },
+        "challenge_status": { "type": "integer", "description": "HTTP status on refusal (e.g. 428)" }
+      }
+    },
+    "execution_binding": {
+      "description": "Material fields that MUST be observed from the system of record and match the authorized action (stops parameter drift between approval and execution).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source": { "const": "system_of_record" },
+        "required_fields": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      }
+    },
+    "replay": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "enum": ["one_time_consumption", "none"] },
+        "receipt_id_required": { "type": "boolean" }
+      }
+    },
+    "evidence": {
+      "description": "Evidence the enforcement point emits after the effect boundary — the correlation anchors a runtime/auditor threads together.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "execution_attestation": { "type": "boolean" },
+        "reliance_packet": { "type": "boolean" },
+        "blocked_attempts": { "type": "boolean" },
+        "transparency": { "type": "string", "description": "e.g. SCITT Signed Statement (optional)" }
+      }
+    },
+    "rollback": {
+      "description": "Whether the effect can be programmatically undone, and where. Advisory, paired with effects.reversibility.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "supported": { "type": "boolean" },
+        "operation_id": { "type": "string", "description": "the OpenAPI operationId (or URN) that reverses this action, when supported" }
+      }
+    }
+  }
+}

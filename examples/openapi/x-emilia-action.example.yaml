@@ -1,0 +1,85 @@
+# SPDX-License-Identifier: Apache-2.0
+# Example: annotating a consequential OpenAPI operation with x-emilia-action.
+#
+# This is the INLINE, per-endpoint form of an EMILIA agent-action-control
+# declaration — the same semantics as one entry of
+# /.well-known/agent-action-control.json, expressed directly on the operation so
+# an agent that already reads the OpenAPI spec sees the consequence declaration
+# without a second fetch. An API MAY publish the well-known manifest, annotate
+# inline via x-emilia-action, or both (they carry identical fields).
+#
+# The point (per the effects-layer review): make adoption cheap. An API author
+# adds x-emilia-action to endpoints that change the world, and gets discovery +
+# a fail-closed authorization requirement + evidence correlation without adopting
+# EMILIA wholesale. Runtimes plan against it; gateways enforce it; auditors query
+# it. That is how the manifest becomes a dependency rather than a spec.
+#
+# Validate this file's x-emilia-action against public/schemas/x-emilia-action.schema.json
+# (see tests/x-emilia-action-example.test.js).
+
+openapi: 3.0.3
+info:
+  title: Example payments API (x-emilia-action demo)
+  version: "1.0.0"
+paths:
+  /payments:
+    post:
+      operationId: releasePayment
+      summary: Release a wire payment
+      # ── EMILIA action-consequence declaration ───────────────────────────────
+      x-emilia-action:
+        action: "urn:ep:action:finance.wire_transfer"
+        effects:
+          reversibility: irreversible
+          data_exposure: regulated
+          cost_class: high
+          downstream: [ledger, counterparty_bank, settlement]
+          consent_required: true
+        authority:
+          receipt_required: true
+          assurance_class: class_a
+          receipt_profile: EP-RECEIPT-v1
+          max_age_sec: 900
+          enforcement_point: pre_effect_commit
+          challenge_status: 428
+        execution_binding:
+          source: system_of_record
+          required_fields:
+            - action_type
+            - amount_usd
+            - currency
+            - payment_instruction_id
+            - beneficiary_account_hash
+        replay:
+          mode: one_time_consumption
+          receipt_id_required: true
+        evidence:
+          execution_attestation: true
+          reliance_packet: true
+          blocked_attempts: true
+          transparency: SCITT Signed Statement
+        rollback:
+          supported: false
+      responses:
+        "200": { description: Payment released (valid receipt presented and consumed) }
+        "428": { description: Receipt required — no valid class_a authorization presented }
+  /payments/{id}/reversal:
+    post:
+      operationId: reversePayment
+      summary: Reverse a payment (where the rail allows)
+      x-emilia-action:
+        action: "urn:ep:action:finance.wire_reversal"
+        effects:
+          reversibility: hard_to_reverse
+          data_exposure: regulated
+          cost_class: material
+          consent_required: true
+        authority:
+          receipt_required: true
+          assurance_class: class_a
+          receipt_profile: EP-RECEIPT-v1
+          max_age_sec: 900
+        rollback:
+          supported: false
+      responses:
+        "200": { description: Reversal submitted }

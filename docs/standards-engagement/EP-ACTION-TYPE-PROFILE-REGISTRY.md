@@ -9,6 +9,27 @@ action meets a human-oversight requirement. **Shipped** profiles have a spec + r
 profiles claim the namespace and scope, to be specified as demand lands. Standards strategy: claim
 the ground now so the vertical profile is EP's when the regulation arrives, not a competitor's.
 
+## Canonical action URNs
+
+Each action-type is named by a URN in the EP namespace so a SCITT receipt, an
+OAuth transaction challenge, a gateway, and an auditor can all reference the same
+action by a stable, citable id:
+
+```
+urn:ep:action:<family>.<action>
+```
+
+e.g. `urn:ep:action:finance.wire_transfer`, `urn:ep:action:devops.deploy`,
+`urn:ep:action:gov.benefit_disbursement`. The dotted `action_type` strings in the
+table below are the URN suffixes (`urn:ep:action:` + the string). This vocabulary
+is the piece the adjacent efforts explicitly decline to define (the
+intent-admission work states it does not define a global taxonomy of high-impact
+actions), so EP owns it. It is consumed inline via the `x-emilia-action` OpenAPI
+extension ([`EP-ACTION-CONSEQUENCE-OPENAPI.md`](../EP-ACTION-CONSEQUENCE-OPENAPI.md))
+and in aggregate via `/.well-known/agent-action-control.json`. A machine-readable
+registry file and a formal `urn:ep:action` namespace registration are the
+follow-on (see that doc's "missing/next").
+
 ## Assurance tiers (floor per action-type)
 
 `software` (valid receipt) < `class_a` (device-bound human signoff) < `quorum` (m-of-n distinct humans).
