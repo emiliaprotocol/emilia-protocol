@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
-import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { epProblem, EP_ERRORS, epDbError } from '@/lib/errors';
 import { logger } from '../../../../../../lib/logger.js';
 
 /**
@@ -34,7 +34,7 @@ export async function GET(request, { params }) {
 
     if (lookupErr) {
       logger.error('[cloud/webhooks/deliveries] Lookup error:', lookupErr);
-      return epProblem(500, 'webhook_query_failed', lookupErr.message);
+      return epDbError(500, 'webhook_query_failed', lookupErr, 'cloud/webhooks/deliveries');
     }
 
     if (!endpoint) {
@@ -61,7 +61,7 @@ export async function GET(request, { params }) {
 
     if (error) {
       logger.error('[cloud/webhooks/deliveries] Query error:', error);
-      return epProblem(500, 'deliveries_query_failed', error.message);
+      return epDbError(500, 'deliveries_query_failed', error, 'cloud/webhooks/deliveries');
     }
 
     return NextResponse.json({

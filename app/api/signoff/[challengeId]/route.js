@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
-import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { EP_ERRORS, epProblem, epDbError } from '@/lib/errors';
 import { logger } from '../../../../lib/logger.js';
 
 /**
@@ -25,7 +25,7 @@ export async function GET(request, { params }) {
       .maybeSingle();
 
     if (error) {
-      return epProblem(500, 'signoff_challenge_fetch_failed', error.message);
+      return epDbError(500, 'signoff_challenge_fetch_failed', error, 'signoff/challenge');
     }
 
     if (!challenge) {

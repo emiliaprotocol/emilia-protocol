@@ -308,23 +308,74 @@ function declaredApiBodyLimit(request) {
     : DEFAULT_API_BODY_LIMIT_BYTES;
 }
 
-function rejectOversizedDeclaredApiBody(request) {
-  if (!BODY_METHODS.has(request.method.toUpperCase())) return null;
-  const raw = request.headers.get('content-length');
-  if (!raw) return null;
-  const length = Number(raw);
-  if (!Number.isFinite(length) || length < 0) {
-    return NextResponse.json(
-      { error: 'Invalid Content-Length', code: 'invalid_content_length' },
-      { status: 400 },
-    );
-  }
-  const limit = declaredApiBodyLimit(request);
-  if (length <= limit) return null;
+function payloadTooLarge(limit) {
   return NextResponse.json(
     { error: 'Request body too large', code: 'payload_too_large', max_bytes: limit },
     { status: 413 },
   );
+}
+
+/**
+ * Global request-body cap for mutating API routes, enforced at the edge.
+ *
+ * Two layers, both fail-closed:
+ *   1. Fast path — reject on a declared Content-Length over the cap without
+ *      touching the stream.
+ *   2. Stream path — a client can OMIT or understate Content-Length (chunked
+ *      transfer), which slips past layer 1 and, on a self-hosted deploy with no
+ *      reverse-proxy/platform cap, lets request.json() buffer an unbounded body
+ *      into memory. We read a CLONE of the body and abort the moment the byte
+ *      count exceeds the cap. The clone is independent of the original stream,
+ *      so the downstream route handler still receives the intact request.
+ *
+ * @returns {Promise<NextResponse|null>} a 413/400 response, or null to proceed.
+ */
+async function rejectOversizedApiBody(request) {
+  if (!BODY_METHODS.has(request.method.toUpperCase())) return null;
+  const limit = declaredApiBodyLimit(request);
+
+  // Layer 1: declared Content-Length.
+  const raw = request.headers.get('content-length');
+  if (raw) {
+    const length = Number(raw);
+    if (!Number.isFinite(length) || length < 0) {
+      return NextResponse.json(
+        { error: 'Invalid Content-Length', code: 'invalid_content_length' },
+        { status: 400 },
+      );
+    }
+    if (length > limit) return payloadTooLarge(limit);
+  }
+
+  // Layer 2: byte-count the actual stream (covers chunked / absent / understated
+  // Content-Length). Reading a clone leaves request.body intact for the handler.
+  if (!request.body) return null;
+  let reader;
+  try {
+    reader = request.clone().body.getReader();
+  } catch {
+    // If the body can't be cloned we cannot safely enforce the stream cap here;
+    // in-route readLimitedJson() remains the backstop. Do not fail the request.
+    return null;
+  }
+  let total = 0;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      total += value?.byteLength || 0;
+      if (total > limit) {
+        await reader.cancel().catch(() => {});
+        return payloadTooLarge(limit);
+      }
+    }
+  } catch {
+    // A read error on the clone must not open the cap: fail closed only if we
+    // already saw an over-limit count (handled above). A transient stream error
+    // before the limit is reached falls through to the handler's own guard.
+    return null;
+  }
+  return null;
 }
 
 // =============================================================================
@@ -396,7 +447,7 @@ export async function middleware(request) {
     return response;
   }
 
-  const bodyLimitResponse = rejectOversizedDeclaredApiBody(request);
+  const bodyLimitResponse = await rejectOversizedApiBody(request);
   if (bodyLimitResponse) return bodyLimitResponse;
 
   // Cloud routes: enforce origin allowlist to prevent cross-origin reads from
@@ -411,15 +462,42 @@ export async function middleware(request) {
       // EP_-prefixed keys; non-EP keys (CORS allowlist, NODE_ENV, etc.)
       // are unavoidable in edge code.
       const allowedOrigins = process.env.ALLOWED_ORIGINS
-        ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+        ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean)
         : [];
-      // Always allow same-origin (no Origin header) and configured origins.
-      // In development (no ALLOWED_ORIGINS set) allow all to avoid blocking local dev.
-      if (allowedOrigins.length > 0 && !allowedOrigins.includes(origin)) {
-        return NextResponse.json(
-          { error: 'Origin not allowed', code: 'cors_denied' },
-          { status: 403 }
-        );
+
+      // Same-origin requests are always allowed: the browser sends an Origin
+      // header on cross-site AND many same-site requests, so compare the
+      // Origin's host to the request host rather than treating any Origin as
+      // cross-origin. The app's own /cloud dashboard hitting /api/cloud/* is
+      // same-origin and must never be blocked.
+      let sameOrigin = false;
+      try {
+        sameOrigin = new URL(origin).host === request.headers.get('host');
+      } catch {
+        sameOrigin = false;
+      }
+
+      if (!sameOrigin) {
+        if (allowedOrigins.length > 0) {
+          // Explicit allowlist configured: deny anything not on it.
+          if (!allowedOrigins.includes(origin)) {
+            return NextResponse.json(
+              { error: 'Origin not allowed', code: 'cors_denied' },
+              { status: 403 }
+            );
+          }
+        } else if (process.env.NODE_ENV === 'production') {
+          // FAIL CLOSED: in production with no ALLOWED_ORIGINS configured, a
+          // cross-origin request to the tenant cloud API is denied. Previously
+          // this fell open (allow-all), letting any website read cloud data
+          // whenever the operator forgot to set the allowlist. Dev keeps the
+          // permissive path below so local tooling isn't blocked.
+          return NextResponse.json(
+            { error: 'Cross-origin requests are not permitted', code: 'cors_denied' },
+            { status: 403 }
+          );
+        }
+        // Development with no allowlist: fall through (permissive for local dev).
       }
     }
   }

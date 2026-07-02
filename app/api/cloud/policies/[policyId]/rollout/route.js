@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
-import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { epProblem, EP_ERRORS, epDbError } from '@/lib/errors';
 import { loadPolicyById } from '@/lib/handshake/policy';
 import { logger } from '../../../../../../lib/logger.js';
 
@@ -71,7 +71,7 @@ export async function POST(request, { params }) {
 
     if (vErr) {
       logger.error('[cloud/policies/rollout] Version query error:', vErr);
-      return epProblem(500, 'rollout_query_failed', vErr.message);
+      return epDbError(500, 'rollout_query_failed', vErr, 'cloud/policies/rollout');
     }
 
     if (!versionRow) {
@@ -94,7 +94,7 @@ export async function POST(request, { params }) {
 
       if (keyErr) {
         logger.error('[cloud/policies/rollout] Key version query error:', keyErr);
-        return epProblem(500, 'rollout_query_failed', keyErr.message);
+        return epDbError(500, 'rollout_query_failed', keyErr, 'cloud/policies/rollout');
       }
 
       const keyPolicyIds = (keyVersions || []).map((r) => r.policy_id);
@@ -127,7 +127,7 @@ export async function POST(request, { params }) {
 
     if (insertErr) {
       logger.error('[cloud/policies/rollout] Insert error:', insertErr);
-      return epProblem(500, 'rollout_insert_failed', insertErr.message);
+      return epDbError(500, 'rollout_insert_failed', insertErr, 'cloud/policies/rollout');
     }
 
     return NextResponse.json({
