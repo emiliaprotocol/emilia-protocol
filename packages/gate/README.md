@@ -75,6 +75,13 @@ Each pack also defines `execution_binding.required_fields`. The executor must pa
 fields from the real system of record. If the signed claim and observed mutation differ, the gate
 refuses with `execution_binding_failed` before consuming the receipt.
 
+Execution-parameter binding is therefore a **Gate** guarantee that holds **only when you supply a
+system-of-record `observedAction`**: it is the Gate — not receipt verification on its own — that
+proves the executed parameters matched what was authorized. If a required field is declared but no
+`observedAction` is provided, the check fails closed (`execution_binding_failed`), never silently
+passes. A bare `@emilia-protocol/require-receipt` gate binds the action type/target only; reach for
+this package when parameter drift (amount, beneficiary, commit, role, …) must be caught.
+
 Prefer `gate.run(...)` for mutations: it reserves the receipt, runs the side effect, commits
 one-time consumption only after success, releases the reservation if the action fails before
 mutation, and emits the execution receipt + reliance packet. Use lower-level `gate.check(...)` only

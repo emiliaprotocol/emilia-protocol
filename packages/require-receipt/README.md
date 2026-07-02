@@ -8,6 +8,17 @@ This is **not auth** ("who are you") and **not permissions** ("are you allowed
 here"). It's *portable accountability evidence the service keeps for its own
 liability* — and the thing that makes agents adopt EMILIA on their own.
 
+> **Scope of what this enforces.** `require-receipt` verifies the receipt's
+> signature, freshness, one-time consumption, assurance tier, and binding to the
+> **action type/target** it was issued for. It does **not** by itself check that
+> every execution *parameter* (amount, beneficiary, commit, role, …) matches
+> what was authorized — that comparison needs the real system-of-record values.
+> To bind those parameters, use `@emilia-protocol/gate`, which verifies
+> `execution_binding.required_fields` against an `observedAction` you pass from
+> the system of record. A bare `require-receipt` in front of an endpoint proves
+> *a named human authorized this type of action*; the Gate proves *the executed
+> parameters matched what they authorized*.
+
 ```bash
 npm install @emilia-protocol/require-receipt
 ```
@@ -27,8 +38,10 @@ app.post(
     maxAgeSec: 900,
   }),
   (req, res) => {
-    // Only reached if a fresh, untampered, action-bound receipt from a trusted
-    // issuer was presented. req.emiliaReceipt holds the verified claim.
+    // Only reached if a fresh, untampered receipt from a trusted issuer, bound
+    // to this action_type, was presented. req.emiliaReceipt holds the verified
+    // claim. Parameter-level binding (amount/beneficiary/…) is the Gate's job —
+    // see the scope note above.
     res.json({ released: true, receipt: req.emiliaReceipt.receipt_id });
   },
 );
