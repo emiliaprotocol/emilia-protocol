@@ -134,12 +134,14 @@ export default function CF1Page() {
               fontFamily: font.mono, fontSize: 12.5, lineHeight: 1.8, color: '#D6D3D1',
               background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
               borderRadius: 8, padding: 22, margin: '28px 0 0', overflowX: 'auto', whiteSpace: 'pre',
-            }}>{`node packages/gate/eg1.mjs   # prints "EG-1 Enforced" — the eight runtime checks`}</pre>
+            }}>{`node packages/gate/cf1.mjs   # prints "CF-1 Enforced" — the full firewall check set
+node packages/gate/eg1.mjs   # the eight EG-1 runtime checks alone`}</pre>
             <p style={{ ...styles.body, fontSize: 14, color: 'rgba(250,250,249,0.68)', maxWidth: 720, marginTop: 18 }}>
-              The dedicated wrong-authority and allow-all / deny-all negative checks are part of the
-              EMILIA Gate conformance suite. CF-1 is not a fraud score or a guarantee that the human
-              made a good decision. It proves the enforcement point exists, fails closed, and leaves
-              portable evidence.
+              CF-1 runs the eight EG-1 runtime checks plus three category checks — the action is
+              declared consequential, a gate pinned to the wrong authority cannot authorize, and the
+              allowed run emits reliance evidence that verifies offline. CF-1 is not a fraud score or a
+              guarantee that the human made a good decision. It proves the enforcement point exists,
+              fails closed, and leaves portable evidence.
             </p>
           </div>
         </section>
