@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { consumeSignoff } from '@/lib/signoff/consume';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 64 * 1024;
 
 /**
  * POST /api/signoff/[signoffId]/consume
@@ -20,7 +23,9 @@ export async function POST(request, { params }) {
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();
 
     const { challengeId: signoffId } = await params;
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
 
     if (!body.executionRef) {
       return EP_ERRORS.BAD_REQUEST('Missing required field: executionRef');

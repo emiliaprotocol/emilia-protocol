@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { challengeContinuity } from '@/lib/ep-ix';
 import { EP_ERRORS } from '@/lib/errors';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 64 * 1024;
 
 // This route is auth-gated per middleware.js (useAuth: true,
 // dispute_write category). The route was previously NOT calling
@@ -15,7 +18,9 @@ export async function POST(request) {
     const auth = await authenticateRequest(request);
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();
 
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
     if (!body.continuity_id) return EP_ERRORS.BAD_REQUEST('continuity_id is required');
     if (!body.challenger_type) return EP_ERRORS.BAD_REQUEST('challenger_type is required');
     if (!body.reason) return EP_ERRORS.BAD_REQUEST('reason is required');

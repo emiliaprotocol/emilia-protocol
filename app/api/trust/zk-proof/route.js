@@ -28,7 +28,10 @@ import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { EP_ERRORS } from '@/lib/errors';
 import { siemEvent } from '@/lib/siem';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 64 * 1024;
 
 const VALID_CLAIM_TYPES = ['score_above', 'receipt_count_above', 'domain_score_above'];
 const VALID_DOMAINS = [
@@ -46,7 +49,9 @@ export async function POST(request) {
     const auth = await authenticateRequest(request);
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();
 
-    const body = await request.json().catch(() => ({}));
+    const parsed = await readEpJson(request, MAX_BODY_BYTES, { invalidValue: {} });
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
     const { entity_id, claim } = body;
 
     // 2. Validate inputs

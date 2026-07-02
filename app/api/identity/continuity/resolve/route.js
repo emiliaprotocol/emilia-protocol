@@ -3,7 +3,10 @@ import { authenticateRequest } from '@/lib/supabase';
 import { resolveContinuity } from '@/lib/ep-ix';
 import { EP_ERRORS } from '@/lib/errors';
 import { epProblem } from '@/lib/errors';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 64 * 1024;
 
 export async function POST(request) {
   try {
@@ -14,7 +17,9 @@ export async function POST(request) {
       return epProblem(403, 'forbidden', 'Identity continuity resolution requires dispute.review permission');
     }
 
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
     if (!body.continuity_id) return EP_ERRORS.BAD_REQUEST('continuity_id is required');
     if (!body.decision) return EP_ERRORS.BAD_REQUEST('decision is required (approved_full, approved_partial, rejected, rejected_laundering)');
 

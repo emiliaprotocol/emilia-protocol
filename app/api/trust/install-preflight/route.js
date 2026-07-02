@@ -4,7 +4,10 @@ import { EP_ERRORS } from '@/lib/errors';
 import { buildTrustDecision } from '@/lib/trust-decision';
 import { authenticateRequest } from '@/lib/supabase';
 import { isDemoEntity } from '@/lib/demo-entities';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 256 * 1024;
 
 /**
  * POST /api/trust/install-preflight (experimental — pre-action enforcement)
@@ -16,7 +19,9 @@ import { logger } from '../../../../lib/logger.js';
  */
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
 
     if (!body.entity_id) {
       return EP_ERRORS.BAD_REQUEST('entity_id is required');

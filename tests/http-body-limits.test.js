@@ -9,6 +9,8 @@
 // engines are never reached.
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import path from 'node:path';
 
 // ---------------------------------------------------------------------------
 // Mocks: auth passes; every downstream write engine is stubbed so we can assert
@@ -81,6 +83,17 @@ const IdentityVerify = await import('../app/api/identity/verify/route.js');
 const IdentityContinuity = await import('../app/api/identity/continuity/route.js');
 const CommitRevoke = await import('../app/api/commit/[commitId]/revoke/route.js');
 const HandshakePresent = await import('../app/api/handshake/[handshakeId]/present/route.js');
+
+function walkJsFiles(dir) {
+  const files = [];
+  for (const entry of readdirSync(dir)) {
+    const full = path.join(dir, entry);
+    const stat = statSync(full);
+    if (stat.isDirectory()) files.push(...walkJsFiles(full));
+    else if (entry.endsWith('.js')) files.push(full);
+  }
+  return files;
+}
 
 // A real Request carrying a body STREAM (not a `{ json() }` test double), so the
 // byte-enforcing path in readLimitedJson runs rather than the double fallback.
@@ -169,5 +182,16 @@ describe('authenticated write-route body limits (heap-exhaustion DoS)', () => {
 
     expect(res.status).toBe(201);
     expect(mockProtocolWrite).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('API route body parser invariant', () => {
+  it('does not call request.json() directly under app/api', () => {
+    const apiRoot = path.resolve(process.cwd(), 'app/api');
+    const offenders = walkJsFiles(apiRoot)
+      .filter(file => readFileSync(file, 'utf8').includes('request.json('))
+      .map(file => path.relative(process.cwd(), file));
+
+    expect(offenders).toEqual([]);
   });
 });

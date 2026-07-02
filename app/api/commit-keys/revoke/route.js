@@ -27,18 +27,18 @@ import { NextResponse } from 'next/server';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem } from '@/lib/errors';
 import { authenticateOperator } from '@/lib/operator-auth';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '@/lib/logger.js';
+
+const MAX_BODY_BYTES = 32 * 1024;
 
 export async function POST(request) {
   const auth = authenticateOperator(request, { requireOperatorIdentity: true });
   if (!auth.valid) return epProblem(401, 'unauthorized', auth.error || 'Unauthorized');
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return epProblem(400, 'invalid_json', 'Body must be valid JSON');
-  }
+  const parsed = await readEpJson(request, MAX_BODY_BYTES);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.value;
 
   const kid = typeof body?.kid === 'string' ? body.kid.trim() : '';
   if (!kid) return epProblem(400, 'missing_kid', 'kid is required');

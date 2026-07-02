@@ -3,7 +3,10 @@ import { authenticateRequest } from '@/lib/supabase';
 import { getGuardedClient } from '@/lib/write-guard';
 import { createReceipt } from '@/lib/create-receipt';
 import { epProblem } from '@/lib/errors';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 64 * 1024;
 
 /**
  * POST /api/needs/[id]/rate
@@ -19,7 +22,9 @@ export async function POST(request, { params }) {
     }
 
     const { id } = await params;
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
     const supabase = getGuardedClient();
 
     // Fetch the need

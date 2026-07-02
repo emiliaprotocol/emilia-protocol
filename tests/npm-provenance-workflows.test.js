@@ -13,7 +13,7 @@ describe('npm publish workflows', () => {
       const file = path.join(WORKFLOW_DIR, name);
       const text = fs.readFileSync(file, 'utf8');
       if (!text.includes('npm publish')) continue;
-      for (const line of text.split('\n').filter((l) => l.includes('npm publish'))) {
+      for (const line of text.split('\n').filter((l) => l.includes('npm publish') && !l.trim().startsWith('#'))) {
         if (!line.includes('--provenance')) {
           findings.push(`${name}: ${line.trim()} missing --provenance`);
         }

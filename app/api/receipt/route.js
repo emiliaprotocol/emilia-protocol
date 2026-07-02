@@ -5,7 +5,10 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { open as openSecret } from '@/lib/crypto/secret-box';
 import { canonicalize } from '@/lib/guard-evidence-receipt';
 import { epProblem } from '@/lib/errors';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '@/lib/logger.js';
+
+const MAX_BODY_BYTES = 256 * 1024;
 
 /**
  * POST /api/receipt
@@ -29,7 +32,9 @@ export async function POST(request) {
     const auth = await authenticateRequest(request);
     if (auth.error) return epProblem(401, 'unauthorized', auth.error);
 
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
 
     // ── ISSUER COMES FROM AUTH (per safety invariant) ────────────────────
     // Body issuer is optional; if present, must match auth. Never trust

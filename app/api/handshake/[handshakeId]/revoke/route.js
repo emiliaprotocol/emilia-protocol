@@ -4,7 +4,10 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { revokeHandshake } from '@/lib/handshake';
 import { EP_ERRORS, epProblem, epDbError } from '@/lib/errors';
 import { validateRevokeBody } from '@/lib/handshake/schema';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 32 * 1024;
 
 /**
  * POST /api/handshake/[handshakeId]/revoke
@@ -17,7 +20,9 @@ export async function POST(request, { params }) {
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();
 
     const { handshakeId } = await params;
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
 
     const validation = validateRevokeBody(body);
     if (!validation.valid) {

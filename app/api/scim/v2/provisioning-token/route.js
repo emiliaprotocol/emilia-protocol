@@ -9,8 +9,10 @@ import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { epProblem } from '@/lib/errors';
 import { logger } from '@/lib/logger.js';
 import { generateScimToken, hashScimToken } from '@/lib/scim/auth';
+import { readEpJson } from '@/lib/http/route-body';
 
 const BASE = 'https://www.emiliaprotocol.ai';
+const MAX_BODY_BYTES = 32 * 1024;
 
 export async function POST(request) {
   const auth = await authenticateRequest(request);
@@ -24,8 +26,9 @@ export async function POST(request) {
     ? (auth.entity.organization_id || null)
     : null;
 
-  let body = {};
-  try { body = await request.json(); } catch { /* label optional */ }
+  const parsed = await readEpJson(request, MAX_BODY_BYTES, { invalidValue: {} });
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.value;
   const label = (body.label || 'IdP provisioning token').toString().slice(0, 120);
 
   const token = generateScimToken();

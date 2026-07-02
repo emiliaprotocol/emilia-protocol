@@ -4,7 +4,7 @@
 import { getGuardedClient } from '@/lib/write-guard';
 import { logger } from '@/lib/logger.js';
 import { toScimGroup, fromScimGroup, listResponse, parseFilter, etag } from '@/lib/scim/core';
-import { scimJson, scimErrorResponse, requireScimAuth, scimBaseUrl } from '@/lib/scim/http';
+import { scimJson, scimErrorResponse, requireScimAuth, scimBaseUrl, readScimJson } from '@/lib/scim/http';
 
 const GROUP_FILTER_COLUMN = { displayName: 'display_name', externalId: 'external_id', id: 'id' };
 
@@ -45,8 +45,9 @@ export async function POST(request) {
   const auth = await requireScimAuth(request);
   if (auth.response) return auth.response;
 
-  let body;
-  try { body = await request.json(); } catch { return scimErrorResponse(400, 'Body must be valid JSON', 'invalidSyntax'); }
+  const parsed = await readScimJson(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.value;
 
   const fields = fromScimGroup(body);
   if (!fields.display_name) return scimErrorResponse(400, 'displayName is required', 'invalidValue');

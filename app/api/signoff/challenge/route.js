@@ -5,7 +5,10 @@ import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';
 import { epError } from '@/lib/errors/response';
 import { validateSignoffChallenge } from '@/lib/validation/schemas';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 256 * 1024;
 
 /**
  * POST /api/signoff/challenge
@@ -25,7 +28,9 @@ export async function POST(request) {
     const auth = await authenticateRequest(request);
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();
 
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
 
     // ── Schema validation (early gate) ────────────────────────────────
     const { valid, data, errors } = validateSignoffChallenge(body);

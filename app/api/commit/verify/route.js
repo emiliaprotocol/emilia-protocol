@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { protocolWrite, COMMAND_TYPES, ProtocolWriteError } from '@/lib/protocol-write';
 import { epProblem } from '@/lib/errors';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 32 * 1024;
 
 /**
  * POST /api/commit/verify
@@ -18,7 +21,9 @@ import { logger } from '../../../../lib/logger.js';
  */
 export async function POST(request) {
   try {
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
 
     if (!body.commit_id) {
       return epProblem(400, 'missing_commit_id', 'Provide commit_id');

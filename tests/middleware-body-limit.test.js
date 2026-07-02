@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
+import { readFileSync } from 'node:fs';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const mockCheckRateLimit = vi.fn();
@@ -19,6 +20,7 @@ vi.mock('@/lib/siem', () => ({
 }));
 
 const { middleware } = await import('../middleware.js');
+const middlewareSource = readFileSync(new URL('../middleware.js', import.meta.url), 'utf8');
 
 function req(path, { method = 'POST', headers = {}, bodyBytes = null } = {}) {
   const url = `https://www.emiliaprotocol.ai${path}`;
@@ -124,5 +126,10 @@ describe('middleware API body-size tripwire', () => {
 
     expect(res.status).toBe(413);
     expect(mockCheckRateLimit).not.toHaveBeenCalled();
+  });
+
+  it('pins API matcher and mutating-method body-cap coverage', () => {
+    expect(middlewareSource).toContain("'/api/:path*'");
+    expect(middlewareSource).toContain("new Set(['POST', 'PUT', 'PATCH', 'DELETE'])");
   });
 });

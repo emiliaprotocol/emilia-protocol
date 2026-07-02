@@ -5,7 +5,10 @@ import { canonicalEvaluate } from '@/lib/canonical-evaluator';
 import crypto from 'crypto';
 import { epProblem } from '@/lib/errors';
 import { generateEmbedding } from '@/lib/providers/embeddings';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 256 * 1024;
 
 /**
  * POST /api/needs/broadcast
@@ -33,7 +36,9 @@ export async function POST(request) {
       return epProblem(401, 'unauthorized', auth.error);
     }
 
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
     const supabase = getGuardedClient();
 
     if (!body.capability_needed) {

@@ -34,6 +34,7 @@ import { authenticateRequest } from '@/lib/supabase';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { epProblem } from '@/lib/errors';
 import { getAutoSubmitSecret } from '@/lib/env';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../lib/logger.js';
 
 // ---------------------------------------------------------------------------
@@ -45,6 +46,7 @@ const BATCH_MAX = 100;
 
 /** Required top-level fields on every auto-receipt. */
 const REQUIRED_FIELDS = ['entity_id', 'transaction_ref'];
+const MAX_BODY_BYTES = 1024 * 1024;
 
 // ---------------------------------------------------------------------------
 // Authentication
@@ -146,12 +148,12 @@ export async function POST(request) {
     // -----------------------------------------------------------------
     // Parse body
     // -----------------------------------------------------------------
-    let body;
-    try {
-      body = await request.json();
-    } catch {
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) {
+      if (parsed.error?.code !== 'invalid_json') return parsed.response;
       return epProblem(400, 'bad_request', 'Invalid JSON body');
     }
+    const body = parsed.value;
 
     if (!body || !Array.isArray(body.receipts)) {
       return epProblem(400, 'bad_request', 'Body must be { receipts: [...] }');

@@ -3,7 +3,7 @@
 // public write surface, so the limit/error branches must be exercised, not just
 // the happy path.
 import { describe, it, expect } from 'vitest';
-import { readLimitedText, readLimitedJson } from '../lib/http/body-limit.js';
+import { enforceBodyByteLimit, readLimitedText, readLimitedJson } from '../lib/http/body-limit.js';
 
 function streamFrom(text, { contentLength } = {}) {
   const headers = new Headers();
@@ -15,6 +15,16 @@ function streamFrom(text, { contentLength } = {}) {
     },
   });
   return { headers, body };
+}
+
+function requestFrom(text, { contentLength } = {}) {
+  const headers = new Headers();
+  if (contentLength !== undefined) headers.set('content-length', String(contentLength));
+  return new Request('https://www.emiliaprotocol.ai/test', {
+    method: 'POST',
+    headers,
+    body: text,
+  });
 }
 
 describe('readLimitedText', () => {
@@ -99,6 +109,25 @@ describe('readLimitedJson — json()-only test-double path', () => {
     // options value is falsy (undefined), so the right-hand `|| {}` is taken.
     const r = await readLimitedJson(jsonDouble(async () => { throw new Error('bad'); }), 64, undefined);
     expect(r).toMatchObject({ ok: false, status: 400, code: 'invalid_json' });
+  });
+});
+
+describe('enforceBodyByteLimit', () => {
+  it('rejects when declared Content-Length exceeds the cap', async () => {
+    const r = await enforceBodyByteLimit(requestFrom('ok', { contentLength: 999 }), 8);
+    expect(r).toMatchObject({ ok: false, status: 413, code: 'payload_too_large' });
+  });
+
+  it('counts the actual cloned stream when Content-Length is absent', async () => {
+    const r = await enforceBodyByteLimit(requestFrom('0123456789'), 4);
+    expect(r).toMatchObject({ ok: false, status: 413, code: 'payload_too_large' });
+  });
+
+  it('leaves the original request body readable after enforcing the cap', async () => {
+    const request = requestFrom('hello');
+    const r = await enforceBodyByteLimit(request, 64);
+    expect(r).toEqual({ ok: true });
+    await expect(request.text()).resolves.toBe('hello');
   });
 });
 

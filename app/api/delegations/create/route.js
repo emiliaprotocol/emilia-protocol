@@ -6,7 +6,10 @@ import { authenticateRequest } from '@/lib/supabase';
 import { createDelegation, EPError } from '@/lib/delegation';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 64 * 1024;
 
 export async function POST(request) {
   try {
@@ -20,7 +23,9 @@ export async function POST(request) {
     const auth = await authenticateRequest(request);
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();
 
-    const body = await request.json().catch(() => ({}));
+    const parsed = await readEpJson(request, MAX_BODY_BYTES, { invalidValue: {} });
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
     const { principal_id, agent_entity_id, scope, max_value_usd, expires_at, constraints } = body;
 
     // Principal must match authenticated entity (no forgery)

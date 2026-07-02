@@ -4,7 +4,10 @@ import { recordOperatorAction } from '@/lib/procedural-justice';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
 import { getGuardedClient } from '@/lib/write-guard';
 import { authenticateOperator } from '@/lib/operator-auth';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 64 * 1024;
 
 /**
  * POST /api/disputes/appeal/resolve
@@ -24,7 +27,9 @@ export async function POST(request) {
     if (!opAuth.valid) return EP_ERRORS.UNAUTHORIZED();
     const operatorId = opAuth.operator_id;
 
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
     if (!body.dispute_id || !body.resolution) {
       return EP_ERRORS.BAD_REQUEST('dispute_id and resolution are required');
     }

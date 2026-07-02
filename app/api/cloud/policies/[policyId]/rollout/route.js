@@ -4,7 +4,10 @@ import { requirePermission } from '@/lib/cloud/authorize';
 import { getGuardedClient } from '@/lib/write-guard';
 import { epProblem, EP_ERRORS, epDbError } from '@/lib/errors';
 import { loadPolicyById } from '@/lib/handshake/policy';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 64 * 1024;
 
 /**
  * POST /api/cloud/policies/[policyId]/rollout
@@ -34,7 +37,9 @@ export async function POST(request, { params }) {
     requirePermission(auth, 'admin');
 
     const { policyId } = await params;
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
 
     if (!body.version || !body.environment) {
       return epProblem(400, 'missing_rollout_params', 'Both "version" and "environment" are required');

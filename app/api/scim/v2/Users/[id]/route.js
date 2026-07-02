@@ -5,7 +5,7 @@
 import { getGuardedClient } from '@/lib/write-guard';
 import { logger } from '@/lib/logger.js';
 import { toScimUser, fromScimUser, applyPatch, etag } from '@/lib/scim/core';
-import { scimJson, scimErrorResponse, requireScimAuth, scimBaseUrl } from '@/lib/scim/http';
+import { scimJson, scimErrorResponse, requireScimAuth, scimBaseUrl, readScimJson } from '@/lib/scim/http';
 import { revokeApproverCredentials, recordApproverEligible } from '@/lib/scim/approver-link';
 import { isScimAutoApproverEnabled } from '@/lib/env';
 
@@ -38,8 +38,9 @@ export async function PUT(request, { params }) {
   if (auth.response) return auth.response;
   const { id } = await params;
 
-  let body;
-  try { body = await request.json(); } catch { return scimErrorResponse(400, 'Body must be valid JSON', 'invalidSyntax'); }
+  const parsed = await readScimJson(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.value;
 
   const supabase = getGuardedClient();
   const { data: current, error: loadErr } = await loadUser(supabase, auth.tenantId, id);
@@ -57,8 +58,9 @@ export async function PATCH(request, { params }) {
   if (auth.response) return auth.response;
   const { id } = await params;
 
-  let body;
-  try { body = await request.json(); } catch { return scimErrorResponse(400, 'Body must be valid JSON', 'invalidSyntax'); }
+  const parsed = await readScimJson(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.value;
 
   const supabase = getGuardedClient();
   const { data: current, error: loadErr } = await loadUser(supabase, auth.tenantId, id);

@@ -5,7 +5,10 @@ import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';
 import { epError } from '@/lib/errors/response';
 import { authorizeHandshakeVerify, resolveAuthEntityId } from '@/lib/handshake-auth';
 import { getServiceClient } from '@/lib/supabase';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 256 * 1024;
 
 /**
  * POST /api/handshake/[handshakeId]/verify
@@ -25,7 +28,9 @@ export async function POST(request, { params }) {
     const supabase = getServiceClient();
     await authorizeHandshakeVerify(supabase, authEntityId, handshakeId);
 
-    const body = await request.json().catch(() => ({}));
+    const parsed = await readEpJson(request, MAX_BODY_BYTES, { invalidValue: {} });
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
 
     const result = await verifyHandshake(handshakeId, {
       actor: auth.entity,

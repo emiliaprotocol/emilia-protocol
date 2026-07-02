@@ -5,7 +5,10 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { getServiceClient } from '@/lib/supabase';
 import { validateWebhookUrl } from '@/lib/cloud/webhooks';
 import { epProblem, EP_ERRORS, epDbError } from '@/lib/errors';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 64 * 1024;
 
 /**
  * GET /api/cloud/webhooks/[endpointId]
@@ -66,7 +69,9 @@ export async function PUT(request, { params }) {
     requirePermission(auth, 'write');
 
     const { endpointId } = await params;
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
     const supabase = getServiceClient();
 
     // Verify ownership

@@ -4,7 +4,10 @@ import { getGuardedClient } from '@/lib/write-guard';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { CommitError } from '@/lib/commit';
 import { epProblem } from '@/lib/errors';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 256 * 1024;
 
 /**
  * POST /api/commit/[commitId]/dispute
@@ -22,7 +25,9 @@ export async function POST(request, { params }) {
     }
 
     const { commitId } = await params;
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
     const supabase = getGuardedClient();
 
     // Look up the commit

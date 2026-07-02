@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server';
 import { authenticateCloudRequest } from '@/lib/cloud/auth';
 import { requirePermission } from '@/lib/cloud/authorize';
 import { epProblem, EP_ERRORS } from '@/lib/errors';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 64 * 1024;
 
 /**
  * POST /api/cloud/signoff/notify
@@ -19,7 +22,9 @@ export async function POST(request) {
     if (!auth) return EP_ERRORS.UNAUTHORIZED();
     requirePermission(auth, 'write');
 
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
 
     if (!body.challenge_id) {
       return epProblem(400, 'missing_challenge_id', '"challenge_id" is required');

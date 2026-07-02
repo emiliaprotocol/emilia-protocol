@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { revokeChallenge, revokeAttestation } from '@/lib/signoff/revoke';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 32 * 1024;
 
 /**
  * POST /api/signoff/[challengeId]/revoke
@@ -17,7 +20,9 @@ export async function POST(request, { params }) {
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();
 
     const { challengeId } = await params;
-    const body = await request.json().catch(() => ({}));
+    const parsed = await readEpJson(request, MAX_BODY_BYTES, { invalidValue: {} });
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
 
     let result;
     if (body.revokeAttestation) {

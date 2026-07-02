@@ -5,11 +5,13 @@ import { CommitError } from '@/lib/commit';
 import { authorizeCommitIssuance } from '@/lib/commit-auth';
 import { protocolWrite, COMMAND_TYPES, ProtocolWriteError } from '@/lib/protocol-write';
 import { epProblem } from '@/lib/errors';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../lib/logger.js';
 
 // High-stakes action types MUST be routed through /api/trust/gate.
 // Direct issuance is only permitted for lower-risk actions.
 const GATE_REQUIRED_ACTIONS = new Set(['transact', 'connect']);
+const MAX_BODY_BYTES = 256 * 1024;
 
 /**
  * POST /api/commit/issue
@@ -27,7 +29,9 @@ export async function POST(request) {
       return epProblem(401, 'unauthorized', auth.error);
     }
 
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
 
     // === INPUT VALIDATION (route responsibility) ===
     if (!body.action_type) {

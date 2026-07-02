@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS } from '@/lib/errors';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 32 * 1024;
 
 /**
  * POST /api/disputes/withdraw
@@ -14,7 +17,9 @@ export async function POST(request) {
     const auth = await authenticateRequest(request);
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();
 
-    const body = await request.json();
+    const parsed = await readEpJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
     if (!body.dispute_id) {
       return EP_ERRORS.BAD_REQUEST('dispute_id is required');
     }

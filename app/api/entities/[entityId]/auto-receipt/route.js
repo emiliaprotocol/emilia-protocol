@@ -20,7 +20,10 @@ import { authenticateRequest } from '@/lib/supabase';
 import { getAutoReceiptConfig, setAutoReceiptConfig } from '@/lib/auto-receipt-config';
 import { EP_ERRORS } from '@/lib/errors';
 import { checkRateLimit, getClientIP } from '@/lib/rate-limit';
+import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 32 * 1024;
 
 // ---------------------------------------------------------------------------
 // GET — retrieve current config
@@ -119,7 +122,9 @@ export async function POST(request, { params }) {
     }
 
     // Parse body
-    const body = await request.json().catch(() => ({}));
+    const parsed = await readEpJson(request, MAX_BODY_BYTES, { invalidValue: {} });
+    if (!parsed.ok) return parsed.response;
+    const body = parsed.value;
     const { enabled, redact_fields, privacy_mode } = body;
 
     // Validate required field

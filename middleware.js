@@ -19,7 +19,7 @@ import { siemEvent } from '@/lib/siem';
 // `useAuth` means the rate-limit key includes the API key prefix + IP.
 // =============================================================================
 
-const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH']);
+const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const DEFAULT_API_BODY_LIMIT_BYTES = 1024 * 1024;
 const MULTIPART_API_BODY_LIMIT_BYTES = 26 * 1024 * 1024; // 25 MB file + form overhead
 
@@ -365,7 +365,7 @@ async function rejectOversizedApiBody(request) {
       if (done) break;
       total += value?.byteLength || 0;
       if (total > limit) {
-        await reader.cancel().catch(() => {});
+        reader.cancel().catch(() => {});
         return payloadTooLarge(limit);
       }
     }
@@ -565,6 +565,9 @@ export async function middleware(request) {
 
 export const config = {
   matcher: [
+    // Always run API middleware, even if a future API path contains an extension
+    // excluded by the page/static matcher below.
+    '/api/:path*',
     // Apply to all routes: page routes get nonce-based CSP; API routes get rate limiting.
     // Exclude Next.js internals and static files.
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
