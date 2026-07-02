@@ -134,6 +134,20 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 		return TrustReceiptResult{false, checks}
 	}
 
+	// I-JSON canonicalization gate (fail-closed) — identical guard to VerifyReceipt.
+	// Every field folded into a signed digest below is re-canonicalized; a value
+	// outside the profile canonicalizes differently across JS/Py/Go, so reject it
+	// here. Signature/proof fields are excluded from the check.
+	canonicalScope := map[string]any{}
+	for k, v := range receipt {
+		if k != "signoffs" && k != "log_proof" && k != "approver_key_proofs" {
+			canonicalScope[k] = v
+		}
+	}
+	if !IsCanonicalizable(canonicalScope) {
+		return TrustReceiptResult{false, checks}
+	}
+
 	actionHashHex := sha256HexOf(receipt["action"])
 	checks["action_hash"] = actionHashHex == hexStrip(receipt["action_hash"])
 
@@ -261,16 +275,24 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 					leaf[k] = v
 				}
 			}
+			// EP-MERKLE-v2 (default): domain-separated, payload-bound leaf + positional
+			// proof; when log_proof carries leaf_hash it must bind this receipt.
 			merkleAlg := getStr(lp, "alg")
 			if merkleAlg == "" {
 				merkleAlg = getStr(cp, "merkle_alg")
 			}
 			if merkleAlg == MerkleV2Alg {
 				leafHash := leafHashV2(Canonicalize(leaf))
-				checks["inclusion"] = hexStrip(lp["leaf_hash"]) == leafHash && verifyMerkleAnchorMode(leafHash, ipath, hexStrip(cp["root_hash"]), true)
+				presented := hexStrip(lp["leaf_hash"])
+				if presented == "" {
+					presented = leafHash
+				}
+				checks["inclusion"] = presented == leafHash && verifyMerkleAnchorMode(leafHash, ipath, hexStrip(cp["root_hash"]), true)
 			} else if opts != nil && (opts["allowLegacyMerkle"] == true || opts["allowLegacyTrustReceiptMerkle"] == true) {
+				// Dormant legacy path: pre-v2 sorted-pair inclusion, opt-in only.
 				checks["inclusion"] = VerifyMerkleAnchor(sha256HexOf(leaf), ipath, hexStrip(cp["root_hash"]))
 			} else {
+				// Default (and every production gate): require EP-MERKLE-v2.
 				checks["inclusion"] = false
 			}
 			logSig := getStr(cp, "log_signature")

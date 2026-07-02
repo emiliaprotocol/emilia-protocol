@@ -659,6 +659,14 @@ def verify_trust_receipt(receipt: Any, opts: Optional[dict] = None) -> dict:
     if profile_error:
         return fail(f"{profile_error} is outside the EP canonicalization profile; encode non-integer quantities as strings")
 
+    # I-JSON canonicalization gate (fail-closed) — identical guard to verify_receipt.
+    # Every field folded into a signed digest below is re-canonicalized; a value
+    # outside the profile canonicalizes differently across JS/Py/Go, so reject it
+    # here. Signature/proof fields are excluded from the check.
+    canonical_scope = {k: v for k, v in receipt.items() if k not in ("signoffs", "log_proof", "approver_key_proofs")}
+    if not is_canonicalizable(canonical_scope):
+        return fail("Receipt contains a value outside the EP canonicalization profile; use strings or safe integers in signed material")
+
     action_hash_hex = _sha256_hex(canonicalize(receipt["action"]))
     checks["action_hash"] = action_hash_hex == _hex_of(receipt.get("action_hash"))
 
@@ -723,16 +731,21 @@ def verify_trust_receipt(receipt: Any, opts: Optional[dict] = None) -> dict:
     lp = receipt.get("log_proof")
     if lp and lp.get("checkpoint") and isinstance(lp.get("inclusion_path"), list):
         leaf_content = {k: v for k, v in receipt.items() if k not in ("log_proof", "approver_key_proofs")}
+        canonical_leaf = canonicalize(leaf_content)
+        # EP-MERKLE-v2 (default): domain-separated, payload-bound leaf + positional
+        # proof; when log_proof carries leaf_hash it must bind this receipt.
         merkle_alg = lp.get("alg") or (lp.get("checkpoint") or {}).get("merkle_alg")
         if merkle_alg == MERKLE_V2_ALG:
-            leaf_hash = _leaf_hash_v2(canonicalize(leaf_content))
-            presented_leaf = _hex_of(lp.get("leaf_hash")) if lp.get("leaf_hash") else ""
+            leaf_hash = _leaf_hash_v2(canonical_leaf)
+            presented_leaf = _hex_of(lp.get("leaf_hash")) if lp.get("leaf_hash") else leaf_hash
             checks["inclusion"] = (presented_leaf == leaf_hash) and verify_merkle_anchor(
                 leaf_hash, lp["inclusion_path"], _hex_of(lp["checkpoint"].get("root_hash")), v2=True)
         elif opts.get("allowLegacyMerkle") is True or opts.get("allow_legacy_merkle") is True or opts.get("allowLegacyTrustReceiptMerkle") is True:
-            leaf_hash = _sha256_hex(canonicalize(leaf_content))
+            # Dormant legacy path: pre-v2 sorted-pair inclusion, opt-in only.
+            leaf_hash = _sha256_hex(canonical_leaf)
             checks["inclusion"] = verify_merkle_anchor(leaf_hash, lp["inclusion_path"], _hex_of(lp["checkpoint"].get("root_hash")))
         else:
+            # Default (and every production gate): require EP-MERKLE-v2.
             checks["inclusion"] = False
         if log_public_key and lp["checkpoint"].get("log_signature"):
             signed_cp = {k: v for k, v in lp["checkpoint"].items() if k != "log_signature"}

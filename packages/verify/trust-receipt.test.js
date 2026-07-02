@@ -31,13 +31,13 @@ function canonicalize(value) {
   return JSON.stringify(value);
 }
 const sha256hex = (s) => crypto.createHash('sha256').update(s, 'utf8').digest('hex');
+// Legacy EP-MERKLE-v1 (sorted-pair) helper — used only by opt-in legacy tests.
 const hashPair = (a, b) => { const s = [a, b].sort(); return sha256hex(s[0] + s[1]); };
-const leafHashV2 = (canonical) => crypto.createHash('sha256')
-  .update(Buffer.concat([Buffer.from([0x00]), Buffer.from(canonical, 'utf8')]))
-  .digest('hex');
-const hashPairV2 = (left, right) => crypto.createHash('sha256')
-  .update(Buffer.concat([Buffer.from([0x01]), Buffer.from(left, 'utf8'), Buffer.from(right, 'utf8')]))
-  .digest('hex');
+// EP-MERKLE-v2 helpers (domain-separated, positional) — must match index.js.
+const leafHashV2 = (canonicalPayload) =>
+  crypto.createHash('sha256').update(Buffer.concat([Buffer.from([0x00]), Buffer.from(canonicalPayload, 'utf8')])).digest('hex');
+const hashPairV2 = (left, right) =>
+  crypto.createHash('sha256').update(Buffer.concat([Buffer.from([0x01]), Buffer.from(left, 'utf8'), Buffer.from(right, 'utf8')])).digest('hex');
 
 // ── fixture actors ───────────────────────────────────────────────────────────
 function ed25519() {
@@ -394,6 +394,61 @@ test('step 5 — a checkpoint signed by a different log key fails', () => {
   assert.equal(r.valid, false);
 });
 
+// Rebuild a receipt's log_proof as LEGACY EP-MERKLE-v1 (sorted-pair, no domain
+// separation, no alg marker) so the migration guard can be exercised.
+const hashPairV1 = (a, b) => { const s = [a, b].sort(); return sha256hex(s[0] + s[1]); };
+function buildLegacyV1Receipt() {
+  const receipt = buildReceipt();
+  const leafSource = { ...receipt };
+  delete leafSource.log_proof;
+  const leaf = sha256hex(canonicalize(leafSource));
+  const sibling1 = sha256hex('other-leaf-1');
+  const sibling2 = sha256hex('other-subtree');
+  const root = hashPairV1(hashPairV1(leaf, sibling1), sibling2);
+  const checkpoint = { tree_size: 4, root_hash: `sha256:${root}`, log_key_id: 'ep:log:test#1' };
+  const log_signature = crypto.sign(null, crypto.createHash('sha256').update(canonicalize(checkpoint), 'utf8').digest(), logKey.privateKey).toString('base64url');
+  receipt.log_proof = {
+    leaf_index: 0,
+    inclusion_path: [{ hash: sibling1, position: 'right' }, { hash: sibling2, position: 'right' }],
+    checkpoint: { ...checkpoint, log_signature },
+  };
+  return receipt;
+}
+
+test('step 5 — a legacy EP-MERKLE-v1 inclusion is REFUSED by default (no allowLegacyMerkle)', () => {
+  const r = verifyTrustReceipt(buildLegacyV1Receipt(), OPTS);
+  assert.equal(r.checks.inclusion, false);
+  assert.equal(r.valid, false);
+});
+
+test('step 5 — the same legacy v1 inclusion VERIFIES when allowLegacyMerkle is opted in', () => {
+  const r = verifyTrustReceipt(buildLegacyV1Receipt(), { ...OPTS, allowLegacyMerkle: true });
+  assert.equal(r.checks.inclusion, true);
+  assert.equal(r.valid, true);
+});
+
+test('step 5 — a v2 inclusion still verifies (default path) but a v1 fold does not reconstruct it', () => {
+  const r = verifyTrustReceipt(buildReceipt(), OPTS);
+  assert.equal(r.checks.inclusion, true);
+});
+
+// ── I-JSON canonicalization gate (fail-closed, mirrors verifyReceipt) ─────────
+
+test('rejects a non-representable number in signed material (fail-closed I-JSON gate)', () => {
+  const receipt = buildReceipt();
+  receipt.action.parameters.rate = 1e-7; // outside the EP canonicalization profile
+  const r = verifyTrustReceipt(receipt, OPTS);
+  assert.equal(r.valid, false);
+  assert.ok(r.errors.some((e) => /canonicalization profile/.test(e)));
+});
+
+test('rejects a value larger than a safe integer in signed material', () => {
+  const receipt = buildReceipt();
+  receipt.contexts[0].big = 1e20;
+  const r = verifyTrustReceipt(receipt, OPTS);
+  assert.equal(r.valid, false);
+});
+
 // ── step 6: temporal windows ─────────────────────────────────────────────────
 
 test('step 6 — signed_at after expires_at fails', () => {
@@ -471,7 +526,9 @@ test('PIP-007 — an over-cap statement is SHOULD-flagged; the receipt still ver
 });
 
 test('PIP-007 — unknown members and policy_rule-without-basis are SHOULD-flagged; signature unaffected', () => {
-  const att = { escalation_trigger: 'policy_rule', confidence: 'high' }; // missing policy_basis + extra member
+  // NB: value is a STRING — a fractional float like 0.9 is (correctly) refused by
+  // the I-JSON canonicalization gate; the "unknown member" flag is orthogonal to type.
+  const att = { escalation_trigger: 'policy_rule', confidence: '0.9' }; // missing policy_basis + extra member
   const r = verifyTrustReceipt(buildReceipt({ attestation: att }), OPTS);
   assert.equal(r.valid, true);
   assert.equal(r.checks.signoff_signatures, true);

@@ -7,6 +7,7 @@ import crypto from 'node:crypto';
 import { writeFileSync } from 'node:fs';
 import {
   buildContexts, collectSignoffs, assembleAuthorizationReceipt,
+  assembleAuthorizationReceiptLegacyV1,
   policyHash as computePolicyHash, generateEd25519KeyPair,
 } from '../../packages/issue/index.js';
 
@@ -31,18 +32,20 @@ function classASigner({ approverKeyId, privateKey, signedAt }) {
   };
 }
 
-async function mint(actionParams) {
+async function mint(actionParams, { legacy = false } = {}) {
   const action = { action_type: 'payment.release', policy_id: 'pol:test', initiator: 'ep:agent:1', params: actionParams };
   const kp = newP256(); const logKp = generateEd25519KeyPair();
   const contexts = buildContexts({ action, policyHash: computePolicyHash({ policy_id: action.policy_id }), approvers: ['ep:approver:dir'], requiredApprovals: 1, issuedAt: ISSUED_AT, expiresAt: EXPIRES_AT });
   const signoffs = await collectSignoffs(contexts, [classASigner({ approverKeyId: 'ep:key:dir#1', signedAt: ISSUED_AT, privateKey: kp.privateKey })]);
-  const receipt = assembleAuthorizationReceipt({ receiptId: `ep:receipt:${crypto.randomBytes(8).toString('base64url')}`, action, contexts, signoffs, committedAt: COMMITTED_AT, log: { privateKey: logKp.privateKey, logKeyId: 'ep:log:test#1' } });
+  const assemble = legacy ? assembleAuthorizationReceiptLegacyV1 : assembleAuthorizationReceipt;
+  const receipt = assemble({ receiptId: `ep:receipt:${crypto.randomBytes(8).toString('base64url')}`, action, contexts, signoffs, committedAt: COMMITTED_AT, log: { privateKey: logKp.privateKey, logKeyId: 'ep:log:test#1' } });
   const verification = { approver_keys: { 'ep:key:dir#1': { public_key: kp.publicKeyB64u, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2036-01-01T00:00:00Z' } }, log_public_key: logKp.publicKeyB64u };
   return { receipt, verification };
 }
 
 const V = [];
-const add = (id, expectValid, trust_receipt, verification) => V.push({ id, expect: { valid: expectValid }, trust_receipt, verification });
+const add = (id, expectValid, trust_receipt, verification, verify_opts) =>
+  V.push({ id, expect: { valid: expectValid }, trust_receipt, verification, ...(verify_opts ? { verify_opts } : {}) });
 
 const valid = await mint({ amount: 82000, currency: 'USD' });
 add('accept_valid_receipt', true, valid.receipt, valid.verification);
@@ -65,6 +68,26 @@ add('accept_valid_receipt', true, valid.receipt, valid.verification);
     m.receipt.log_proof = { ...m.receipt.log_proof, inclusion_path: [{ hash: crypto.createHash('sha256').update('evil').digest('hex'), position: 'right' }] };
   }
   add('reject_broken_inclusion', false, m.receipt, m.verification);
+}
+{ // §6.2 migration: a v2 receipt is accepted (alg == EP-MERKLE-v2 by default)
+  const m = await mint({ amount: 500, currency: 'USD' });
+  if (m.receipt.log_proof.alg !== 'EP-MERKLE-v2') throw new Error('expected v2 anchor from default issuance');
+  add('accept_v2_inclusion', true, m.receipt, m.verification);
+}
+{ // legacy v1 anchor is REFUSED by default (no allowLegacyMerkle) — the core fix
+  const m = await mint({ amount: 500, currency: 'USD' }, { legacy: true });
+  if (m.receipt.log_proof.alg) throw new Error('legacy v1 must not carry a v2 alg marker');
+  add('reject_legacy_v1_by_default', false, m.receipt, m.verification);
+}
+{ // same legacy v1 anchor VERIFIES when the caller explicitly opts in
+  const m = await mint({ amount: 500, currency: 'USD' }, { legacy: true });
+  add('accept_legacy_v1_when_opted_in', true, m.receipt, m.verification, { allowLegacyMerkle: true });
+}
+{ // I-JSON gate: a non-representable number in signed material is rejected fail-closed
+  const m = await mint({ amount: 82000, currency: 'USD' });
+  m.receipt.action.params.rate = 1e-7; // outside the EP canonicalization profile
+  m.receipt.action_hash = `sha256:${crypto.createHash('sha256').update('x').digest('hex')}`;
+  add('reject_non_canonicalizable_number', false, m.receipt, m.verification);
 }
 
 const suite = {

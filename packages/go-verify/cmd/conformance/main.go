@@ -31,6 +31,7 @@ type vec struct {
 	NotAfter          string         `json:"not_after"`
 	TrustReceipt      map[string]any `json:"trust_receipt"`
 	Verification      map[string]any `json:"verification"`
+	VerifyOpts        map[string]any `json:"verify_opts"`
 	ProvenanceChain   map[string]any `json:"provenance_chain"`
 	DelegationKeys    map[string]any `json:"delegation_keys"`
 	NowMs             *float64       `json:"now_ms"`
@@ -78,6 +79,9 @@ func main() {
 			if v.Verification != nil {
 				opts["approverKeys"] = v.Verification["approver_keys"]
 				opts["logPublicKey"] = v.Verification["log_public_key"]
+			}
+			for k, val := range v.VerifyOpts {
+				opts[k] = val
 			}
 			valid = emiliaverify.VerifyTrustReceipt(v.TrustReceipt, opts).Valid
 		case v.ProvenanceChain != nil:
