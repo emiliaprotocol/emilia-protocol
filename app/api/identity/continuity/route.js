@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { fileContinuityClaim } from '@/lib/ep-ix';
-import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { EP_ERRORS, epProblem, epDbError } from '@/lib/errors';
 import { readLimitedJson } from '@/lib/http/body-limit';
 import { logger } from '../../../../lib/logger.js';
 
@@ -25,7 +25,8 @@ export async function POST(request) {
 
     const result = await fileContinuityClaim(body);
     if (result.error) {
-      return NextResponse.json({ error: result.error, frozen: result.frozen, active_disputes: result.active_disputes }, { status: result.status || 500 });
+      if ((result.status || 500) >= 500) return epDbError(result.status || 500, 'identity_continuity_failed', result.error, 'identity/continuity');
+      return NextResponse.json({ error: result.error, frozen: result.frozen, active_disputes: result.active_disputes }, { status: result.status });
     }
 
     return NextResponse.json(result, { status: 201 });

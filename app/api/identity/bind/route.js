@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest, authEntityId } from '@/lib/supabase';
 import { createBinding } from '@/lib/ep-ix';
-import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { EP_ERRORS, epProblem, epDbError } from '@/lib/errors';
 import { readLimitedJson } from '@/lib/http/body-limit';
 import { logger } from '../../../../lib/logger.js';
 
@@ -23,7 +23,10 @@ export async function POST(request) {
     }
 
     const result = await createBinding(body);
-    if (result.error) return NextResponse.json({ error: result.error }, { status: result.status || 500 });
+    if (result.error) {
+      if ((result.status || 500) >= 500) return epDbError(result.status || 500, 'identity_bind_failed', result.error, 'identity/bind');
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
 
     return NextResponse.json(result, { status: 201 });
   } catch (err) {

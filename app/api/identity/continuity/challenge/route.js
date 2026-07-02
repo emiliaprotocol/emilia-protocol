@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { challengeContinuity } from '@/lib/ep-ix';
-import { EP_ERRORS } from '@/lib/errors';
+import { EP_ERRORS, epDbError } from '@/lib/errors';
 import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
 
@@ -32,7 +32,10 @@ export async function POST(request) {
       ...body,
       challenger_id: auth.entity,
     });
-    if (result.error) return NextResponse.json({ error: result.error }, { status: result.status || 500 });
+    if (result.error) {
+      if ((result.status || 500) >= 500) return epDbError(result.status || 500, 'identity_continuity_challenge_failed', result.error, 'identity/continuity/challenge');
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
 
     return NextResponse.json(result, { status: 201 });
   } catch (err) {

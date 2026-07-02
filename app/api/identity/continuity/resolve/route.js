@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { resolveContinuity } from '@/lib/ep-ix';
-import { EP_ERRORS } from '@/lib/errors';
+import { EP_ERRORS, epDbError } from '@/lib/errors';
 import { epProblem } from '@/lib/errors';
 import { readEpJson } from '@/lib/http/route-body';
 import { logger } from '../../../../../lib/logger.js';
@@ -24,7 +24,10 @@ export async function POST(request) {
     if (!body.decision) return EP_ERRORS.BAD_REQUEST('decision is required (approved_full, approved_partial, rejected, rejected_laundering)');
 
     const result = await resolveContinuity(body.continuity_id, body.decision, body.reasoning, auth.entity?.entity_id || 'operator');
-    if (result.error) return NextResponse.json({ error: result.error }, { status: result.status || 500 });
+    if (result.error) {
+      if ((result.status || 500) >= 500) return epDbError(result.status || 500, 'identity_continuity_resolve_failed', result.error, 'identity/continuity/resolve');
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
 
     return NextResponse.json(result);
   } catch (err) {

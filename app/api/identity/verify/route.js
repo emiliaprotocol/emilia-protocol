@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { verifyBinding } from '@/lib/ep-ix';
-import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { EP_ERRORS, epProblem, epDbError } from '@/lib/errors';
 import { readLimitedJson } from '@/lib/http/body-limit';
 import { logger } from '../../../../lib/logger.js';
 
@@ -18,7 +18,10 @@ export async function POST(request) {
     if (!body.binding_id) return EP_ERRORS.BAD_REQUEST('binding_id is required');
 
     const result = await verifyBinding(body.binding_id, auth.entity?.entity_id || 'operator');
-    if (result.error) return NextResponse.json({ error: result.error }, { status: result.status || 500 });
+    if (result.error) {
+      if ((result.status || 500) >= 500) return epDbError(result.status || 500, 'identity_verify_failed', result.error, 'identity/verify');
+      return NextResponse.json({ error: result.error }, { status: result.status });
+    }
 
     return NextResponse.json(result);
   } catch (err) {
