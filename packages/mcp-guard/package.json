@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/mcp-guard",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "EP-MCP middleware (reference implementation). Wraps an MCP tool-call handler: irreversible tool calls route through consent → Class-A signoff → an emitted EP-RECEIPT-v1 + an appended provenance entry; everything else passes through. Includes the demand hook — no irreversible tool call without a valid receipt — reusing @emilia-protocol/require-receipt and returning a legacy MCP refusal object. Framework-agnostic, fails closed. Experimental.",
   "type": "module",
   "main": "index.js",
