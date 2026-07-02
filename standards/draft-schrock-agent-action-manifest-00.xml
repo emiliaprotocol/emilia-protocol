@@ -36,11 +36,14 @@
       declares, per consequential action, the enforcement point, the required
       authorization receipt profile and assurance tier, the execution-binding
       fields that MUST be observed from the system of record, the replay model,
-      and the evidence that MUST be emitted after the effect boundary. It is the
-      declaration an agent runtime reads to learn what it must satisfy before an
-      irreversible action, and that an independent scanner audits. The manifest
-      <em>declares</em> policy; it never replaces enforcement, which remains
-      authoritative at the action boundary.</t>
+      and the evidence that MUST be emitted after the effect boundary. It also
+      carries an OPTIONAL, advisory <em>effects</em> preview (reversibility,
+      data-exposure class, cost class, downstream reach, and whether human
+      consent is required) so a runtime can weigh consequences before it seeks
+      authorization. It is the declaration an agent runtime reads to learn what
+      it must satisfy before an irreversible action, and that an independent
+      scanner audits. The manifest <em>declares</em> policy; it never replaces
+      enforcement, which remains authoritative at the action boundary.</t>
     </abstract>
   </front>
   <middle>
@@ -183,6 +186,42 @@
         attestation, a reliance packet, and a record of blocked attempts;
         optionally a transparency registration.</dd>
       </dl>
+      <t>A declaration MAY carry an OPTIONAL <tt>effects</tt> member: a
+      machine-readable preview of what the action does, so an agent runtime or a
+      human approver can weigh consequences before authorizing. Like
+      <tt>risk</tt>, <tt>effects</tt> is ADVISORY — it is not a security control
+      and MUST NOT substitute for the receipt requirement; the fail-closed
+      control is the enforcement point, not a label. Its members:</t>
+      <dl>
+        <dt>reversibility</dt>
+        <dd>Whether the effect can be undone: <tt>irreversible</tt>,
+        <tt>hard_to_reverse</tt>, or <tt>reversible</tt>. An honest class, not
+        a guarantee.</dd>
+        <dt>data_exposure</dt>
+        <dd>The most sensitive data class the action exposes or mutates:
+        <tt>none</tt>, <tt>internal</tt>, <tt>pii</tt>, or <tt>regulated</tt>.</dd>
+        <dt>cost_class</dt>
+        <dd>An order-of-magnitude impact band (<tt>none</tt>, <tt>low</tt>,
+        <tt>material</tt>, <tt>high</tt>) — a class, not a figure: the manifest is
+        static, and the actual amount is an execution-binding field observed from
+        the system of record.</dd>
+        <dt>downstream</dt>
+        <dd>External systems or services the effect propagates to, so a caller
+        can see blast radius beyond the immediate resource.</dd>
+        <dt>consent_required</dt>
+        <dd>Whether an explicit human-consent interaction is required for this
+        action, distinct from the authorization receipt: the receipt is the
+        durable, offline-verifiable evidence; consent is the interaction that
+        produces it. A true value means the runtime MUST surface the effect to a
+        human before an authorization is sought.</dd>
+      </dl>
+      <t>The <tt>effects</tt> preview and the <tt>control</tt> requirement answer
+      different questions — "what will this do, and how consequential is it"
+      versus "what authorization evidence is required, and how is it enforced" —
+      and a runtime uses the first to decide whether to seek the second. Neither
+      substitutes for the other: a low-<tt>cost_class</tt> action can still be
+      <tt>irreversible</tt> and demand the strongest tier, and the effects preview
+      never lowers a declared control.</t>
       <t>A declaration MAY additionally carry a <tt>conformance</tt> member
       naming the conformance level the enforcement claims to meet and the
       checks it passes (for example: missing receipt refused, insufficient
@@ -394,6 +433,13 @@
       "assurance_class": "class_a",
       "max_age_sec": 900,
       "match": { "protocol": "mcp", "tool": "release_payment" },
+      "effects": {
+        "reversibility": "irreversible",
+        "data_exposure": "regulated",
+        "cost_class": "high",
+        "downstream": ["ledger", "counterparty_bank", "settlement"],
+        "consent_required": true
+      },
       "control": {
         "enforcement_point": "pre_effect_commit",
         "status": 428,

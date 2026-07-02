@@ -29,11 +29,14 @@ Abstract
    required authorization receipt profile and assurance tier, the
    execution-binding fields that MUST be observed from the system of
    record, the replay model, and the evidence that MUST be emitted after
-   the effect boundary.  It is the declaration an agent runtime reads to
-   learn what it must satisfy before an irreversible action, and that an
-   independent scanner audits.  The manifest _declares_ policy; it never
-   replaces enforcement, which remains authoritative at the action
-   boundary.
+   the effect boundary.  It also carries an OPTIONAL, advisory _effects_
+   preview (reversibility, data-exposure class, cost class, downstream
+   reach, and whether human consent is required) so a runtime can weigh
+   consequences before it seeks authorization.  It is the declaration an
+   agent runtime reads to learn what it must satisfy before an
+   irreversible action, and that an independent scanner audits.  The
+   manifest _declares_ policy; it never replaces enforcement, which
+   remains authoritative at the action boundary.
 
 Status of This Memo
 
@@ -45,10 +48,7 @@ Status of This Memo
    working documents as Internet-Drafts.  The list of current Internet-
    Drafts is at https://datatracker.ietf.org/drafts/current/.
 
-   Internet-Drafts are draft documents valid for a maximum of six months
-   and may be updated, replaced, or obsoleted by other documents at any
-   time.  It is inappropriate to use Internet-Drafts as reference
-   material or to cite them other than as "work in progress."
+
 
 
 
@@ -57,6 +57,11 @@ Schrock                  Expires 3 January 2027                 [Page 1]
 
 Internet-Draft        Agent Action Control Manifest            July 2026
 
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
 
    This Internet-Draft will expire on 3 January 2027.
 
@@ -81,13 +86,13 @@ Table of Contents
    3.  Manifest Location and Versioning  . . . . . . . . . . . . . .   3
    4.  Manifest Structure  . . . . . . . . . . . . . . . . . . . . .   4
    5.  Action Control Declarations . . . . . . . . . . . . . . . . .   4
-   6.  Semantics: Declaration Is Not Enforcement . . . . . . . . . .   5
-   7.  Security Considerations . . . . . . . . . . . . . . . . . . .   6
-   8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   6
-   9.  Normative References  . . . . . . . . . . . . . . . . . . . .   6
-   10. Informative References  . . . . . . . . . . . . . . . . . . .   7
-   Appendix A.  Example Manifest (Non-Normative) . . . . . . . . . .   8
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   9
+   6.  Semantics: Declaration Is Not Enforcement . . . . . . . . . .   6
+   7.  Security Considerations . . . . . . . . . . . . . . . . . . .   7
+   8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   7
+   9.  Normative References  . . . . . . . . . . . . . . . . . . . .   7
+   10. Informative References  . . . . . . . . . . . . . . . . . . .   8
+   Appendix A.  Example Manifest (Non-Normative) . . . . . . . . . .   9
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  10
 
 1.  Introduction
 
@@ -101,11 +106,6 @@ Table of Contents
    authorization it needs, which observed execution fields the
    authorization must bind, and what evidence must survive it.
 
-   The evidence-object ecosystem does not fill this gap.  Transparency
-   architecture [RFC9943] logs signed statements; workload and
-   transaction-token work identifies the acting principal; permit,
-   capsule, and action-receipt work records decisions and effects.  Each
-   defines an artifact; none defines the public contract that binds a
 
 
 
@@ -114,6 +114,11 @@ Schrock                  Expires 3 January 2027                 [Page 2]
 Internet-Draft        Agent Action Control Manifest            July 2026
 
 
+   The evidence-object ecosystem does not fill this gap.  Transparency
+   architecture [RFC9943] logs signed statements; workload and
+   transaction-token work identifies the acting principal; permit,
+   capsule, and action-receipt work records decisions and effects.  Each
+   defines an artifact; none defines the public contract that binds a
    specific consequential action to the specific evidence and assurance
    it requires.  Tool-catalog declarations (tool annotations, agent
    cards) sit closer, but they describe what a tool _can do_ and hint at
@@ -155,12 +160,7 @@ Internet-Draft        Agent Action Control Manifest            July 2026
 
    /.well-known/agent-action-control.json
 
-   served with media type application/json over a transport providing
-   server authentication and integrity.  The current manifest version
-   identifier is EP-ACTION-CONTROL-MANIFEST-v0.2.  An earlier,
-   declaration-only predecessor (EP-ACTION-RISK-MANIFEST-v0.1, served at
-   /.well-known/agent-actions.json, without the control block defined in
-   Section 5) is superseded by this version.
+
 
 
 
@@ -169,6 +169,13 @@ Schrock                  Expires 3 January 2027                 [Page 3]
 
 Internet-Draft        Agent Action Control Manifest            July 2026
 
+
+   served with media type application/json over a transport providing
+   server authentication and integrity.  The current manifest version
+   identifier is EP-ACTION-CONTROL-MANIFEST-v0.2.  An earlier,
+   declaration-only predecessor (EP-ACTION-RISK-MANIFEST-v0.1, served at
+   /.well-known/agent-actions.json, without the control block defined in
+   Section 5) is superseded by this version.
 
    A consumer that encounters an unrecognized @version MUST treat the
    document as discovery-only: it MUST NOT infer weaker requirements
@@ -211,13 +218,6 @@ Internet-Draft        Agent Action Control Manifest            July 2026
    minimum assurance_class, and max_age_sec — the maximum age, in
    seconds, of the presented authorization receipt at verification time,
    measured from its issuance timestamp; an older receipt MUST be
-   refused as stale.  The match member selects the surface; the
-   action_type is the canonical name the authorization evidence binds
-   to.  A publisher MUST NOT publish overlapping match selectors whose
-   declarations conflict; a consumer that finds more than one matching
-   declaration MUST apply the most restrictive one.  When
-   receipt_required is true the declaration MUST also carry a control
-   object:
 
 
 
@@ -225,6 +225,14 @@ Schrock                  Expires 3 January 2027                 [Page 4]
 
 Internet-Draft        Agent Action Control Manifest            July 2026
 
+
+   refused as stale.  The match member selects the surface; the
+   action_type is the canonical name the authorization evidence binds
+   to.  A publisher MUST NOT publish overlapping match selectors whose
+   declarations conflict; a consumer that finds more than one matching
+   declaration MUST apply the most restrictive one.  When
+   receipt_required is true the declaration MUST also carry a control
+   object:
 
    enforcement_point  Where the control runs (pre_execution or
       pre_effect_commit); enforcement MUST precede the effect boundary.
@@ -249,6 +257,52 @@ Internet-Draft        Agent Action Control Manifest            July 2026
    evidence_output  The evidence that MUST exist after the action: an
       execution attestation, a reliance packet, and a record of blocked
       attempts; optionally a transparency registration.
+
+   A declaration MAY carry an OPTIONAL effects member: a machine-
+   readable preview of what the action does, so an agent runtime or a
+   human approver can weigh consequences before authorizing.  Like risk,
+   effects is ADVISORY — it is not a security control and MUST NOT
+   substitute for the receipt requirement; the fail-closed control is
+   the enforcement point, not a label.  Its members:
+
+   reversibility  Whether the effect can be undone: irreversible,
+      hard_to_reverse, or reversible.  An honest class, not a guarantee.
+
+   data_exposure  The most sensitive data class the action exposes or
+      mutates: none, internal, pii, or regulated.
+
+   cost_class  An order-of-magnitude impact band (none, low, material,
+
+
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 5]
+
+Internet-Draft        Agent Action Control Manifest            July 2026
+
+
+      high) — a class, not a figure: the manifest is static, and the
+      actual amount is an execution-binding field observed from the
+      system of record.
+
+   downstream  External systems or services the effect propagates to, so
+      a caller can see blast radius beyond the immediate resource.
+
+   consent_required  Whether an explicit human-consent interaction is
+      required for this action, distinct from the authorization receipt:
+      the receipt is the durable, offline-verifiable evidence; consent
+      is the interaction that produces it.  A true value means the
+      runtime MUST surface the effect to a human before an authorization
+      is sought.
+
+   The effects preview and the control requirement answer different
+   questions — "what will this do, and how consequential is it" versus
+   "what authorization evidence is required, and how is it enforced" —
+   and a runtime uses the first to decide whether to seek the second.
+   Neither substitutes for the other: a low-cost_class action can still
+   be irreversible and demand the strongest tier, and the effects
+   preview never lowers a declared control.
 
    A declaration MAY additionally carry a conformance member naming the
    conformance level the enforcement claims to meet and the checks it
@@ -277,7 +331,9 @@ Internet-Draft        Agent Action Control Manifest            July 2026
 
 
 
-Schrock                  Expires 3 January 2027                 [Page 5]
+
+
+Schrock                  Expires 3 January 2027                 [Page 6]
 
 Internet-Draft        Agent Action Control Manifest            July 2026
 
@@ -333,7 +389,7 @@ Internet-Draft        Agent Action Control Manifest            July 2026
 
 
 
-Schrock                  Expires 3 January 2027                 [Page 6]
+Schrock                  Expires 3 January 2027                 [Page 7]
 
 Internet-Draft        Agent Action Control Manifest            July 2026
 
@@ -389,7 +445,7 @@ Internet-Draft        Agent Action Control Manifest            July 2026
 
 
 
-Schrock                  Expires 3 January 2027                 [Page 7]
+Schrock                  Expires 3 January 2027                 [Page 8]
 
 Internet-Draft        Agent Action Control Manifest            July 2026
 
@@ -436,20 +492,27 @@ Appendix A.  Example Manifest (Non-Normative)
          "assurance_class": "class_a",
          "max_age_sec": 900,
          "match": { "protocol": "mcp", "tool": "release_payment" },
+         "effects": {
+           "reversibility": "irreversible",
+           "data_exposure": "regulated",
+           "cost_class": "high",
+           "downstream": ["ledger", "counterparty_bank", "settlement"],
+           "consent_required": true
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 9]
+
+Internet-Draft        Agent Action Control Manifest            July 2026
+
+
+         },
          "control": {
            "enforcement_point": "pre_effect_commit",
            "status": 428,
            "challenge_header": "Receipt-Required",
            "proof_header": "X-EMILIA-Receipt",
            "authorization_receipt": {
-
-
-
-Schrock                  Expires 3 January 2027                 [Page 8]
-
-Internet-Draft        Agent Action Control Manifest            July 2026
-
-
              "required": true,
              "profile": "EP-RECEIPT-v1",
              "verifier": "offline"
@@ -489,6 +552,16 @@ Internet-Draft        Agent Action Control Manifest            July 2026
 
 Author's Address
 
+
+
+
+
+
+Schrock                  Expires 3 January 2027                [Page 10]
+
+Internet-Draft        Agent Action Control Manifest            July 2026
+
+
    Iman Schrock
    EMILIA Protocol, Inc.
    United States of America
@@ -501,4 +574,43 @@ Author's Address
 
 
 
-Schrock                  Expires 3 January 2027                 [Page 9]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 3 January 2027                [Page 11]
