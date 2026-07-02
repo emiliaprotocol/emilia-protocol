@@ -6,7 +6,11 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 # Publishes on a `langchain-v*` tag (e.g. langchain-v0.1.0) or a manual run.
-# Uses the same secrets.NPM_TOKEN as the verify/sdk publishers.
+# Uses npm Trusted Publishing (OIDC) + provenance — NO NPM_TOKEN.
+# Configure the trusted publisher once at:
+#   npmjs.com -> @emilia-protocol/langchain -> Settings -> Trusted Publishing
+#   Repository: emilia-protocol | Workflow: publish-langchain.yml
+# Requires npm >= 11.5.1 (installed below).
 on:
   workflow_dispatch:
   push:
@@ -19,6 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write   # REQUIRED for npm trusted publishing (OIDC) + provenance
 
     defaults:
       run:
@@ -34,6 +39,9 @@ jobs:
           node-version: "20"
           registry-url: https://registry.npmjs.org
 
+      - name: Upgrade npm (>= 11.5.1 for OIDC trusted publishing + provenance)
+        run: npm install -g npm@latest
+
       # @langchain/core is an OPTIONAL peer dependency — withGuard is a thin
       # Proxy that doesn't import it. No install step; files array publishes
       # only index.js, README.md, and LICENSE.
@@ -43,7 +51,5 @@ jobs:
       - name: Verify package contents
         run: npm pack --dry-run
 
-      - name: Publish to npm
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish to npm (OIDC trusted publishing + provenance)
+        run: npm publish --access public --provenance

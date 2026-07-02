@@ -3,7 +3,14 @@
 /**
  * create-ep-app — Zero to verified trust system in 5 minutes
  *
- * Usage: npx create-ep-app my-trust-system
+ * Usage (works today, from a repo checkout):
+ *   node create-ep-app/index.js my-trust-system
+ *
+ * Once published under the EP-controlled scope:
+ *   npx @emilia-protocol/create-app my-trust-system
+ *
+ * NOTE: the unscoped npm name "create-ep-app" is owned by an unrelated
+ * third party — never instruct `npx create-ep-app`.
  *
  * Creates a minimal but complete EP-powered application with:
  *   - Entity registration
@@ -27,9 +34,11 @@ const rawProjectName = process.argv[2];
 
 if (!rawProjectName) {
   console.error(`
-  Usage: npx create-ep-app <project-name>
+  Usage: node create-ep-app/index.js <project-name>
 
-  Example: npx create-ep-app my-trust-system
+  Example: node create-ep-app/index.js my-trust-system
+
+  (Once the scoped creator is published: npx @emilia-protocol/create-app <project-name>)
   `);
   process.exit(1);
 }
