@@ -2,12 +2,19 @@
 //
 // /api/v1/guarded — replay defense + freshness fail-closed.
 //
-// The reference DEMAND route must (a) run on a valid, action-bound receipt,
-// (b) REFUSE a replay of that same receipt (one-time consumption), and
+// The reference DEMAND route must (a) run on a valid, action-bound, tier-proven
+// receipt, (b) REFUSE a replay of that same receipt (one-time consumption), and
 // (c) REFUSE a receipt that omits created_at when a max age is enforced.
+//
+// payment.release is a Class-A action in the default action-control manifest, so
+// the allowed-path cases mint a PROOF-BACKED Class-A receipt (via the EG-1
+// harness) whose assurance_proof verifies against pinned approver keys. Tier
+// enforcement itself (software-on-quorum refused, quorum allowed) is covered in
+// tests/guarded-assurance.test.js.
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import crypto from 'node:crypto';
+import { createEg1Harness } from '../packages/gate/eg1-conformance.js';
 
 const canon = (v) => (v === null || v === undefined ? JSON.stringify(v)
   : Array.isArray(v) ? `[${v.map(canon).join(',')}]`
@@ -18,10 +25,17 @@ const canon = (v) => (v === null || v === undefined ? JSON.stringify(v)
 const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
 const trustedKeyB64u = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
 
-// NOTE: pass `omitCreatedAt: true` to actually drop created_at. A destructuring
-// default (`createdAt = ...`) fires on an explicit `undefined`, so it cannot be
-// used to omit the field — hence the explicit flag.
-function mint(action, { createdAt, receiptId, omitCreatedAt = false, omitReceiptId = false } = {}) {
+// A Class-A action per the default action-control manifest — the route's default.
+const ACTION = 'payment.release';
+
+// Proof-backed Class-A minter for the allowed-path cases. The harness pins its
+// own issuer key + approver keys; we trust BOTH so a valid Class-A receipt runs.
+const harness = createEg1Harness({ action: { action_type: ACTION }, idPrefix: 'guarded_ok' });
+
+// A software-tier (unproven) receipt bound to `action`, for the fail-closed
+// (missing receipt_id / missing created_at) cases that must be caught BEFORE
+// the tier check — those refuse regardless of tier.
+function mintSoftware(action, { createdAt, receiptId, omitCreatedAt = false, omitReceiptId = false } = {}) {
   const ts = createdAt || new Date().toISOString();
   const payload = {
     ...(omitReceiptId ? {} : { receipt_id: receiptId || `rcpt_test_${crypto.randomBytes(6).toString('hex')}` }),
@@ -33,7 +47,7 @@ function mint(action, { createdAt, receiptId, omitCreatedAt = false, omitReceipt
   return { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value } };
 }
 
-function guardedRequest(doc, { action = 'payment.release' } = {}) {
+function guardedRequest(doc, { action = ACTION } = {}) {
   const url = `https://www.emiliaprotocol.ai/api/v1/guarded?action=${encodeURIComponent(action)}`;
   return {
     url,
@@ -49,7 +63,11 @@ describe('/api/v1/guarded replay + freshness', () => {
   let POST;
 
   beforeEach(async () => {
-    process.env.EP_TRUSTED_ISSUER_KEYS = trustedKeyB64u;
+    // Trust BOTH the software issuer key (fail-closed cases) and the harness
+    // issuer key (proof-backed allow cases), and pin the harness approver keys
+    // so a genuine Class-A proof verifies.
+    process.env.EP_TRUSTED_ISSUER_KEYS = `${trustedKeyB64u},${harness.publicKey}`;
+    process.env.EP_PINNED_APPROVER_KEYS = JSON.stringify(harness.approverKeys);
     // Force dev posture so the consumption store uses the in-memory backend.
     delete process.env.NODE_ENV;
     const consumption = await import('../lib/http/guarded-consumption.js');
@@ -59,18 +77,19 @@ describe('/api/v1/guarded replay + freshness', () => {
 
   afterEach(() => {
     delete process.env.EP_TRUSTED_ISSUER_KEYS;
+    delete process.env.EP_PINNED_APPROVER_KEYS;
   });
 
   it('REFUSES a verified receipt with no receipt_id (cannot enforce one-time consumption)', async () => {
-    const doc = mint('payment.release', { omitReceiptId: true });
+    const doc = mintSoftware(ACTION, { omitReceiptId: true });
     const res = await POST(guardedRequest(doc));
     expect(res.status).toBe(402);
     const body = await res.json();
     expect(body.rejected?.reason).toBe('missing_receipt_id');
   });
 
-  it('allows a valid, action-bound receipt', async () => {
-    const doc = mint('payment.release');
+  it('allows a valid, action-bound, tier-proven receipt', async () => {
+    const doc = harness.mint({ outcome: 'allow_with_signoff' });
     const res = await POST(guardedRequest(doc));
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -79,7 +98,7 @@ describe('/api/v1/guarded replay + freshness', () => {
   });
 
   it('REFUSES a replay of the same receipt (409)', async () => {
-    const doc = mint('payment.release', { receiptId: 'rcpt_replay_fixed' });
+    const doc = harness.mint({ outcome: 'allow_with_signoff' });
     const first = await POST(guardedRequest(doc));
     expect(first.status).toBe(200);
 
@@ -90,7 +109,7 @@ describe('/api/v1/guarded replay + freshness', () => {
   });
 
   it('REFUSES a receipt with no created_at when max age is enforced (402)', async () => {
-    const doc = mint('payment.release', { omitCreatedAt: true });
+    const doc = mintSoftware(ACTION, { omitCreatedAt: true });
     const res = await POST(guardedRequest(doc));
     expect(res.status).toBe(402);
     const body = await res.json();
@@ -98,8 +117,8 @@ describe('/api/v1/guarded replay + freshness', () => {
   });
 
   it('distinct receipts for the same action are each allowed once', async () => {
-    const a = await POST(guardedRequest(mint('payment.release')));
-    const b = await POST(guardedRequest(mint('payment.release')));
+    const a = await POST(guardedRequest(harness.mint({ outcome: 'allow_with_signoff' })));
+    const b = await POST(guardedRequest(harness.mint({ outcome: 'allow_with_signoff' })));
     expect(a.status).toBe(200);
     expect(b.status).toBe(200);
   });
