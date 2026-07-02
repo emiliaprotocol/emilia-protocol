@@ -47,21 +47,32 @@
     <section>
       <name>Introduction</name>
       <t>Layered web conventions tell software what it may do: robots.txt
-      declares crawler policy, CORS declares cross-origin policy. When an
-      autonomous agent drives a tool or API, no equivalent declaration exists for
-      the properties that matter at machine speed: whether an action is
-      irreversible, what authorization it needs, which observed execution fields
-      the authorization must bind, and what evidence must survive it.</t>
+      declares crawler policy, CORS declares cross-origin policy, security.txt
+      <xref target="RFC9116"/> declares where to report vulnerabilities, and
+      authorization-server metadata <xref target="RFC8414"/> declares an
+      issuer's endpoints and capabilities. When an autonomous agent drives a
+      tool or API, no equivalent declaration exists for the properties that
+      matter at machine speed: whether an action is irreversible, what
+      authorization it needs, which observed execution fields the authorization
+      must bind, and what evidence must survive it.</t>
       <t>The evidence-object ecosystem does not fill this gap. Transparency
       architecture <xref target="RFC9943"/> logs signed statements; workload and
       transaction-token work identifies the acting principal; permit, capsule,
       and action-receipt work records decisions and effects. Each defines an
       artifact; none defines the public contract that binds a specific
       consequential action to the specific evidence and assurance it requires.
-      This document defines that contract as a manifest a service publishes,
+      Tool-catalog declarations (tool annotations, agent cards) sit closer, but
+      they describe what a tool <em>can do</em> and hint at destructiveness;
+      they do not state what evidence a caller must present, at what assurance,
+      bound to which fields, with what replay semantics. The manifest defined
+      here is also deliberately protocol-agnostic: one declaration covers the
+      same consequential action whether it is reached as a tool call, an HTTP
+      API, or an agent-to-agent message.</t>
+      <t>This document defines that contract as a manifest a service publishes,
       composing above the receipt primitive
       <xref target="I-D.schrock-ep-authorization-receipts"/> and the assurance
-      taxonomy it references.</t>
+      taxonomy <xref target="I-D.schrock-ep-assurance-classes"/> it
+      references.</t>
     </section>
 
     <section>
@@ -98,13 +109,22 @@
       declaration-only predecessor (<tt>EP-ACTION-RISK-MANIFEST-v0.1</tt>, served
       at <tt>/.well-known/agent-actions.json</tt>, without the control block
       defined in <xref target="control"/>) is superseded by this version.</t>
+      <t>A consumer that encounters an unrecognized <tt>@version</tt> MUST
+      treat the document as discovery-only: it MUST NOT infer weaker
+      requirements from fields it does not understand. Consumers MAY cache the
+      manifest under ordinary HTTP cache semantics; because enforcement is
+      authoritative at the action boundary (<xref target="semantics"/>),
+      manifest staleness fails safe — an outdated manifest can at worst cause a
+      caller to present insufficient evidence and be refused, never an
+      unauthorized execution.</t>
     </section>
 
     <section anchor="structure">
       <name>Manifest Structure</name>
-      <t>The manifest is a JSON object <xref target="RFC8259"/>. The normative
-      field-level schema is published alongside the manifest and is authoritative
-      for field types and requiredness; this section describes the model.</t>
+      <t>The manifest is a JSON object <xref target="RFC8259"/>. This section
+      defines the interoperable model; a field-level JSON Schema for the
+      profile is published at the URL named by <tt>$schema</tt> and pins field
+      types and requiredness for implementations of that profile.</t>
       <dl>
         <dt>@version, $schema, profile (REQUIRED)</dt>
         <dd>The version identifier, the URL of the JSON Schema, and the profile
@@ -129,14 +149,23 @@
       recognize the action — e.g. protocol + tool, or method + path), the
       canonical <tt>action_type</tt>, an advisory <tt>risk</tt>,
       <tt>receipt_required</tt>, the minimum <tt>assurance_class</tt>, and
-      <tt>max_age_sec</tt>. When <tt>receipt_required</tt> is true it MUST also
-      carry a <tt>control</tt> object:</t>
+      <tt>max_age_sec</tt> — the maximum age, in seconds, of the presented
+      authorization receipt at verification time, measured from its issuance
+      timestamp; an older receipt MUST be refused as stale. The
+      <tt>match</tt> member selects the surface; the <tt>action_type</tt> is
+      the canonical name the authorization evidence binds to. A publisher MUST
+      NOT publish overlapping <tt>match</tt> selectors whose declarations
+      conflict; a consumer that finds more than one matching declaration MUST
+      apply the most restrictive one. When <tt>receipt_required</tt> is true
+      the declaration MUST also carry a <tt>control</tt> object:</t>
       <dl>
         <dt>enforcement_point</dt>
         <dd>Where the control runs (<tt>pre_execution</tt> or
         <tt>pre_effect_commit</tt>); enforcement MUST precede the effect
-        boundary. On refusal the service SHOULD return 428
-        <xref target="RFC6585"/> with the declared challenge header.</dd>
+        boundary. For HTTP surfaces the declaration also names the transport
+        binding: on refusal the service SHOULD return 428
+        <xref target="RFC6585"/> with the declared challenge header, and the
+        caller presents its receipt in the declared proof header.</dd>
         <dt>authorization_receipt</dt>
         <dd>The required receipt profile (an offline-verifiable authorization
         receipt <xref target="I-D.schrock-ep-authorization-receipts"/>).</dd>
@@ -154,13 +183,20 @@
         attestation, a reliance packet, and a record of blocked attempts;
         optionally a transparency registration.</dd>
       </dl>
+      <t>A declaration MAY additionally carry a <tt>conformance</tt> member
+      naming the conformance level the enforcement claims to meet and the
+      checks it passes (for example: missing receipt refused, insufficient
+      assurance refused, execution mismatch refused, replay refused, tamper
+      refused). This turns the declared posture into a set of independently
+      re-runnable tests rather than an assertion.</t>
       <t>A verifier MUST be able to recompute, from the action itself, that the
       presented authorization is over the same action and meets the declared
       assurance tier; it MUST NOT rely on a self-asserted assurance value (see
-      the assurance-class taxonomy).</t>
+      the assurance-class taxonomy
+      <xref target="I-D.schrock-ep-assurance-classes"/>).</t>
     </section>
 
-    <section>
+    <section anchor="semantics">
       <name>Semantics: Declaration Is Not Enforcement</name>
       <t>A service MUST enforce its receipt requirement at the effect boundary
       regardless of the manifest, and a caller MUST NOT infer that an action is
@@ -190,6 +226,15 @@
       <t><strong>Information disclosure.</strong> A manifest enumerates a
       service's high-consequence actions; publishers SHOULD assume it is public
       and SHOULD NOT encode secrets or internal-only endpoints.</t>
+      <t><strong>Downgrade and receipt disclosure.</strong> Because enforcement
+      is authoritative, an attacker who spoofs or weakens a manifest cannot
+      disable protection — a caller misled into presenting weaker or no
+      evidence is refused, a denial of service at worst. The sharper risk is
+      disclosure: a spoofed manifest could induce an agent to present an
+      authorization receipt — which may carry an approver identity and action
+      details — to an attacker-controlled endpoint. A consumer SHOULD present
+      a receipt only to the origin from which the manifest was authenticated,
+      and receipt audience binding limits what a misdirected receipt is worth.</t>
     </section>
 
     <section>
@@ -256,6 +301,36 @@
         </front>
         <seriesInfo name="RFC" value="6585"/>
       </reference>
+      <reference anchor="I-D.schrock-ep-authorization-receipts">
+        <front>
+          <title>Authorization Receipts for High-Risk Agent Actions (EP)</title>
+          <author fullname="I. Schrock" initials="I." surname="Schrock"/>
+          <date year="2026" month="July"/>
+        </front>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-05"/>
+      </reference>
+    </references>
+    <references>
+      <name>Informative References</name>
+      <reference anchor="RFC8414" target="https://www.rfc-editor.org/info/rfc8414">
+        <front>
+          <title>OAuth 2.0 Authorization Server Metadata</title>
+          <author fullname="M. Jones" initials="M." surname="Jones"/>
+          <author fullname="N. Sakimura" initials="N." surname="Sakimura"/>
+          <author fullname="J. Bradley" initials="J." surname="Bradley"/>
+          <date year="2018" month="June"/>
+        </front>
+        <seriesInfo name="RFC" value="8414"/>
+      </reference>
+      <reference anchor="RFC9116" target="https://www.rfc-editor.org/info/rfc9116">
+        <front>
+          <title>A File Format to Aid in Security Vulnerability Disclosure</title>
+          <author fullname="E. Foudil" initials="E." surname="Foudil"/>
+          <author fullname="Y. Shafranovich" initials="Y." surname="Shafranovich"/>
+          <date year="2022" month="April"/>
+        </front>
+        <seriesInfo name="RFC" value="9116"/>
+      </reference>
       <reference anchor="RFC9943" target="https://www.rfc-editor.org/info/rfc9943">
         <front>
           <title>An Architecture for Trustworthy and Transparent Digital Supply Chains</title>
@@ -268,14 +343,100 @@
         </front>
         <seriesInfo name="RFC" value="9943"/>
       </reference>
-      <reference anchor="I-D.schrock-ep-authorization-receipts">
+      <reference anchor="I-D.schrock-ep-assurance-classes">
         <front>
-          <title>Authorization Receipts for High-Risk Agent Actions (EP)</title>
+          <title>Assurance Classes for Authorization Receipts</title>
           <author fullname="I. Schrock" initials="I." surname="Schrock"/>
           <date year="2026" month="July"/>
         </front>
-        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-05"/>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-assurance-classes-00"/>
       </reference>
     </references>
+    <section anchor="example">
+      <name>Example Manifest (Non-Normative)</name>
+      <t>The following example, abridged from a live deployment, declares one
+      consequential action. A payment-release tool is reachable over a
+      tool-call protocol; executing it requires a device-verified named-human
+      authorization receipt no older than 900 seconds, bound to the material
+      fields as observed from the system of record, consumed exactly once,
+      with post-execution evidence.</t>
+      <sourcecode type="json"><![CDATA[
+{
+  "@version": "EP-ACTION-CONTROL-MANIFEST-v0.2",
+  "$schema": "https://example.com/schemas/action-control-v0.2.json",
+  "profile": "emilia.action-control",
+  "service": {
+    "name": "Example payments service",
+    "issuer": "https://example.com",
+    "manifest_url":
+      "https://example.com/.well-known/agent-action-control.json"
+  },
+  "defaults": {
+    "decision_point": "pre_effect_commit",
+    "missing_receipt": "refuse",
+    "invalid_receipt": "refuse",
+    "stale_receipt": "refuse",
+    "replay": "one_time_consumption",
+    "evidence_log": "strict"
+  },
+  "evidence_profiles": {
+    "authorization_receipt": "EP-RECEIPT-v1",
+    "execution_attestation": "EP-EXECUTION-ATTESTATION-v1",
+    "reliance_packet": "EP-RELIANCE-PACKET-v1",
+    "transparency": "SCITT-compatible Signed Statement"
+  },
+  "actions": [
+    {
+      "id": "money_movement.release",
+      "action_type": "payment.release",
+      "risk": "critical",
+      "receipt_required": true,
+      "assurance_class": "class_a",
+      "max_age_sec": 900,
+      "match": { "protocol": "mcp", "tool": "release_payment" },
+      "control": {
+        "enforcement_point": "pre_effect_commit",
+        "status": 428,
+        "challenge_header": "Receipt-Required",
+        "proof_header": "X-EMILIA-Receipt",
+        "authorization_receipt": {
+          "required": true,
+          "profile": "EP-RECEIPT-v1",
+          "verifier": "offline"
+        },
+        "replay": {
+          "mode": "one_time_consumption",
+          "receipt_id_required": true
+        },
+        "execution_binding": {
+          "required": true,
+          "source": "system_of_record",
+          "required_fields": [
+            "action_type", "amount_usd", "currency",
+            "payment_instruction_id", "beneficiary_account_hash"
+          ]
+        },
+        "evidence_output": {
+          "audit_event": true,
+          "execution_attestation": true,
+          "reliance_packet": true,
+          "blocked_attempts": true
+        }
+      },
+      "conformance": {
+        "level": "EG-1",
+        "checks": [
+          "missing_receipt_refused",
+          "software_on_classA_refused",
+          "execution_mismatch_refused",
+          "replay_refused",
+          "tamper_refused"
+        ]
+      }
+    }
+  ]
+}
+]]></sourcecode>
+    </section>
   </back>
 </rfc>

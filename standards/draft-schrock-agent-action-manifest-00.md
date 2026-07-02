@@ -5,8 +5,10 @@
 
 ```
 Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
 Intended status: Informational                               2 July 2026
 Expires: 3 January 2027
+
 
   The Agent Action Control Manifest: A Public Effect-Boundary Control
                        Plane for Machine Actions
@@ -50,6 +52,14 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 1]
+
+Internet-Draft        Agent Action Control Manifest            July 2026
+
+
    This Internet-Draft will expire on 3 January 2027.
 
 Copyright Notice
@@ -74,31 +84,52 @@ Table of Contents
    4.  Manifest Structure  . . . . . . . . . . . . . . . . . . . . .   4
    5.  Action Control Declarations . . . . . . . . . . . . . . . . .   4
    6.  Semantics: Declaration Is Not Enforcement . . . . . . . . . .   5
-   7.  Security Considerations . . . . . . . . . . . . . . . . . . .   5
-   8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   5
+   7.  Security Considerations . . . . . . . . . . . . . . . . . . .   6
+   8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   6
    9.  Normative References  . . . . . . . . . . . . . . . . . . . .   6
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   6
+   10. Informative References  . . . . . . . . . . . . . . . . . . .   7
+   Appendix A.  Example Manifest (Non-Normative) . . . . . . . . . .   8
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   9
 
 1.  Introduction
 
    Layered web conventions tell software what it may do: robots.txt
-   declares crawler policy, CORS declares cross-origin policy.  When an
-   autonomous agent drives a tool or API, no equivalent declaration
-   exists for the properties that matter at machine speed: whether an
-   action is irreversible, what authorization it needs, which observed
-   execution fields the authorization must bind, and what evidence must
-   survive it.
+   declares crawler policy, CORS declares cross-origin policy,
+   security.txt [RFC9116] declares where to report vulnerabilities, and
+   authorization-server metadata [RFC8414] declares an issuer's
+   endpoints and capabilities.  When an autonomous agent drives a tool
+   or API, no equivalent declaration exists for the properties that
+   matter at machine speed: whether an action is irreversible, what
+   authorization it needs, which observed execution fields the
+   authorization must bind, and what evidence must survive it.
 
    The evidence-object ecosystem does not fill this gap.  Transparency
    architecture [RFC9943] logs signed statements; workload and
    transaction-token work identifies the acting principal; permit,
    capsule, and action-receipt work records decisions and effects.  Each
    defines an artifact; none defines the public contract that binds a
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 2]
+
+Internet-Draft        Agent Action Control Manifest            July 2026
+
+
    specific consequential action to the specific evidence and assurance
-   it requires.  This document defines that contract as a manifest a
-   service publishes, composing above the receipt primitive
-   [I-D.schrock-ep-authorization-receipts] and the assurance taxonomy it
-   references.
+   it requires.  Tool-catalog declarations (tool annotations, agent
+   cards) sit closer, but they describe what a tool _can do_ and hint at
+   destructiveness; they do not state what evidence a caller must
+   present, at what assurance, bound to which fields, with what replay
+   semantics.  The manifest defined here is also deliberately protocol-
+   agnostic: one declaration covers the same consequential action
+   whether it is reached as a tool call, an HTTP API, or an agent-to-
+   agent message.
+
+   This document defines that contract as a manifest a service
+   publishes, composing above the receipt primitive
+   [I-D.schrock-ep-authorization-receipts] and the assurance taxonomy
+   [I-D.schrock-ep-assurance-classes] it references.
 
 2.  Terminology
 
@@ -133,11 +164,29 @@ Table of Contents
    /.well-known/agent-actions.json, without the control block defined in
    Section 5) is superseded by this version.
 
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 3]
+
+Internet-Draft        Agent Action Control Manifest            July 2026
+
+
+   A consumer that encounters an unrecognized @version MUST treat the
+   document as discovery-only: it MUST NOT infer weaker requirements
+   from fields it does not understand.  Consumers MAY cache the manifest
+   under ordinary HTTP cache semantics; because enforcement is
+   authoritative at the action boundary (Section 6), manifest staleness
+   fails safe — an outdated manifest can at worst cause a caller to
+   present insufficient evidence and be refused, never an unauthorized
+   execution.
+
 4.  Manifest Structure
 
-   The manifest is a JSON object [RFC8259].  The normative field-level
-   schema is published alongside the manifest and is authoritative for
-   field types and requiredness; this section describes the model.
+   The manifest is a JSON object [RFC8259].  This section defines the
+   interoperable model; a field-level JSON Schema for the profile is
+   published at the URL named by $schema and pins field types and
+   requiredness for implementations of that profile.
 
    @version, $schema, profile (REQUIRED)  The version identifier, the
       URL of the JSON Schema, and the profile name (emilia.action-
@@ -161,13 +210,30 @@ Table of Contents
    Each action declaration carries an identifier, a match (how to
    recognize the action — e.g. protocol + tool, or method + path), the
    canonical action_type, an advisory risk, receipt_required, the
-   minimum assurance_class, and max_age_sec.  When receipt_required is
-   true it MUST also carry a control object:
+   minimum assurance_class, and max_age_sec — the maximum age, in
+   seconds, of the presented authorization receipt at verification time,
+   measured from its issuance timestamp; an older receipt MUST be
+   refused as stale.  The match member selects the surface; the
+   action_type is the canonical name the authorization evidence binds
+   to.  A publisher MUST NOT publish overlapping match selectors whose
+   declarations conflict; a consumer that finds more than one matching
+   declaration MUST apply the most restrictive one.  When
+   receipt_required is true the declaration MUST also carry a control
+   object:
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 4]
+
+Internet-Draft        Agent Action Control Manifest            July 2026
+
 
    enforcement_point  Where the control runs (pre_execution or
       pre_effect_commit); enforcement MUST precede the effect boundary.
-      On refusal the service SHOULD return 428 [RFC6585] with the
-      declared challenge header.
+      For HTTP surfaces the declaration also names the transport
+      binding: on refusal the service SHOULD return 428 [RFC6585] with
+      the declared challenge header, and the caller presents its receipt
+      in the declared proof header.
 
    authorization_receipt  The required receipt profile (an offline-
       verifiable authorization receipt
@@ -186,10 +252,18 @@ Table of Contents
       execution attestation, a reliance packet, and a record of blocked
       attempts; optionally a transparency registration.
 
+   A declaration MAY additionally carry a conformance member naming the
+   conformance level the enforcement claims to meet and the checks it
+   passes (for example: missing receipt refused, insufficient assurance
+   refused, execution mismatch refused, replay refused, tamper refused).
+   This turns the declared posture into a set of independently re-
+   runnable tests rather than an assertion.
+
    A verifier MUST be able to recompute, from the action itself, that
    the presented authorization is over the same action and meets the
    declared assurance tier; it MUST NOT rely on a self-asserted
-   assurance value (see the assurance-class taxonomy).
+   assurance value (see the assurance-class taxonomy
+   [I-D.schrock-ep-assurance-classes]).
 
 6.  Semantics: Declaration Is Not Enforcement
 
@@ -202,6 +276,13 @@ Table of Contents
    independent scan of the live surface) are a pair; a service that both
    publishes a manifest and passes an independent scan has a verifiable,
    not merely asserted, posture.
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 5]
+
+Internet-Draft        Agent Action Control Manifest            July 2026
+
 
 7.  Security Considerations
 
@@ -225,6 +306,17 @@ Table of Contents
    consequence actions; publishers SHOULD assume it is public and SHOULD
    NOT encode secrets or internal-only endpoints.
 
+   *Downgrade and receipt disclosure.* Because enforcement is
+   authoritative, an attacker who spoofs or weakens a manifest cannot
+   disable protection — a caller misled into presenting weaker or no
+   evidence is refused, a denial of service at worst.  The sharper risk
+   is disclosure: a spoofed manifest could induce an agent to present an
+   authorization receipt — which may carry an approver identity and
+   action details — to an attacker-controlled endpoint.  A consumer
+   SHOULD present a receipt only to the origin from which the manifest
+   was authenticated, and receipt audience binding limits what a
+   misdirected receipt is worth.
+
 8.  IANA Considerations
 
    This document requests registration of the following well-known URI
@@ -239,6 +331,14 @@ Table of Contents
    Status  permanent
 
 9.  Normative References
+
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 6]
+
+Internet-Draft        Agent Action Control Manifest            July 2026
+
 
    [I-D.schrock-ep-authorization-receipts]
               Schrock, I., "Authorization Receipts for High-Risk Agent
@@ -267,10 +367,127 @@ Table of Contents
               (URIs)", RFC 8615, May 2019,
               <https://www.rfc-editor.org/info/rfc8615>.
 
+10.  Informative References
+
+   [I-D.schrock-ep-assurance-classes]
+              Schrock, I., "Assurance Classes for Authorization
+              Receipts", Work in Progress, Internet-Draft, draft-
+              schrock-ep-assurance-classes-00, July 2026,
+              <https://datatracker.ietf.org/doc/html/draft-schrock-ep-
+              assurance-classes-00>.
+
+   [RFC8414]  Jones, M., Sakimura, N., and J. Bradley, "OAuth 2.0
+              Authorization Server Metadata", RFC 8414, June 2018,
+              <https://www.rfc-editor.org/info/rfc8414>.
+
+   [RFC9116]  Foudil, E. and Y. Shafranovich, "A File Format to Aid in
+              Security Vulnerability Disclosure", RFC 9116, April 2022,
+              <https://www.rfc-editor.org/info/rfc9116>.
+
    [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
               Y., and S. Lasker, "An Architecture for Trustworthy and
               Transparent Digital Supply Chains", RFC 9943, March 2026,
               <https://www.rfc-editor.org/info/rfc9943>.
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 7]
+
+Internet-Draft        Agent Action Control Manifest            July 2026
+
+
+Appendix A.  Example Manifest (Non-Normative)
+
+   The following example, abridged from a live deployment, declares one
+   consequential action.  A payment-release tool is reachable over a
+   tool-call protocol; executing it requires a device-verified named-
+   human authorization receipt no older than 900 seconds, bound to the
+   material fields as observed from the system of record, consumed
+   exactly once, with post-execution evidence.
+
+   {
+     "@version": "EP-ACTION-CONTROL-MANIFEST-v0.2",
+     "$schema": "https://example.com/schemas/action-control-v0.2.json",
+     "profile": "emilia.action-control",
+     "service": {
+       "name": "Example payments service",
+       "issuer": "https://example.com",
+       "manifest_url":
+         "https://example.com/.well-known/agent-action-control.json"
+     },
+     "defaults": {
+       "decision_point": "pre_effect_commit",
+       "missing_receipt": "refuse",
+       "invalid_receipt": "refuse",
+       "stale_receipt": "refuse",
+       "replay": "one_time_consumption",
+       "evidence_log": "strict"
+     },
+     "evidence_profiles": {
+       "authorization_receipt": "EP-RECEIPT-v1",
+       "execution_attestation": "EP-EXECUTION-ATTESTATION-v1",
+       "reliance_packet": "EP-RELIANCE-PACKET-v1",
+       "transparency": "SCITT-compatible Signed Statement"
+     },
+     "actions": [
+       {
+         "id": "money_movement.release",
+         "action_type": "payment.release",
+         "risk": "critical",
+         "receipt_required": true,
+         "assurance_class": "class_a",
+         "max_age_sec": 900,
+         "match": { "protocol": "mcp", "tool": "release_payment" },
+         "control": {
+           "enforcement_point": "pre_effect_commit",
+           "status": 428,
+           "challenge_header": "Receipt-Required",
+           "proof_header": "X-EMILIA-Receipt",
+           "authorization_receipt": {
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 8]
+
+Internet-Draft        Agent Action Control Manifest            July 2026
+
+
+             "required": true,
+             "profile": "EP-RECEIPT-v1",
+             "verifier": "offline"
+           },
+           "replay": {
+             "mode": "one_time_consumption",
+             "receipt_id_required": true
+           },
+           "execution_binding": {
+             "required": true,
+             "source": "system_of_record",
+             "required_fields": [
+               "action_type", "amount_usd", "currency",
+               "payment_instruction_id", "beneficiary_account_hash"
+             ]
+           },
+           "evidence_output": {
+             "audit_event": true,
+             "execution_attestation": true,
+             "reliance_packet": true,
+             "blocked_attempts": true
+           }
+         },
+         "conformance": {
+           "level": "EG-1",
+           "checks": [
+             "missing_receipt_refused",
+             "software_on_classA_refused",
+             "execution_mismatch_refused",
+             "replay_refused",
+             "tamper_refused"
+           ]
+         }
+       }
+     ]
+   }
 
 Author's Address
 
@@ -278,4 +495,13 @@ Author's Address
    EMILIA Protocol, Inc.
    United States of America
    Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 9]
 ```
