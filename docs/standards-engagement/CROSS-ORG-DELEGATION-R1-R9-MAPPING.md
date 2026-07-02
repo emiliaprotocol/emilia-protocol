@@ -157,3 +157,30 @@ JS/Python/Go verifier agreement is a single-repository consistency property;
 the independent data point is a third party's execution and verification of
 the published artifacts against a pinned commit (2026-06-23). No claim of
 independently developed implementations is made.
+
+---
+
+## Format requirements vs. deployment assumptions
+
+A fair challenge to this mapping: do the CONDITIONAL grades, taken together,
+amount to an implied architecture? Three of them name infrastructure —
+issuer-key pinning (R2), revocation distribution (R7), cross-log witnessing
+(R8).
+
+They are **deployment assumptions deliberately left to the relying party, not
+format requirements**. The artifact prescribes no PKI, no
+revocation-availability service, and no log topology; a relying party
+satisfies each assumption with whatever channel it already operates. Two
+properties keep that split honest:
+
+1. every such assumption is **named per-requirement** rather than absorbed
+   silently into the format, and
+2. each **degrades fail-closed** — a missing key means *not accepted*, stale
+   revocation material means *stale, does not authorize*, an unwitnessed
+   checkpoint means *per-record integrity only*.
+
+The comparative point for the requirements discussion: **any** candidate meets
+acceptance-level cross-org trust only on top of *some* trust-anchor
+distribution (R2's irreducibility note). Candidates therefore differ not in
+whether such assumptions exist but in whether they are surfaced or hidden. The
+grades in this mapping exist to surface them.
