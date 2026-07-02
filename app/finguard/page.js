@@ -108,7 +108,7 @@ export default function FinGuardPage() {
             <h2 style={{ ...styles.h2, marginTop: 12 }}>Six stages from precheck to evidence.</h2>
             <div style={{ marginTop: 32 }}>
               {STAGES.map((s) => (
-                <div key={s.n} style={{ display: 'flex', gap: 24, padding: '20px 0', borderTop: `1px solid ${color.brd}` }}>
+                <div key={s.n} style={{ display: 'flex', gap: 24, padding: '20px 0', borderTop: `1px solid ${color.border}` }}>
                   <div style={{ fontFamily: font.mono, fontSize: 14, color: color.gold, fontWeight: 600, minWidth: 24 }}>{s.n}</div>
                   <div>
                     <div style={{ ...styles.h3, fontSize: 18 }}>{s.title}</div>
@@ -141,7 +141,7 @@ export default function FinGuardPage() {
           <div style={styles.container}>
             <div style={styles.eyebrow}>API</div>
             <h2 style={{ ...styles.h2, marginTop: 12 }}>Same v1 surface as GovGuard.</h2>
-            <div style={{ marginTop: 24, padding: 24, background: color.bgCard, border: `1px solid ${color.brd}`, borderRadius: radius.md, fontFamily: font.mono, fontSize: 13, lineHeight: 1.9 }}>
+            <div style={{ marginTop: 24, padding: 24, background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, fontFamily: font.mono, fontSize: 13, lineHeight: 1.9 }}>
               <div><span style={{ color: color.gold }}>POST</span>   /api/v1/trust-receipts</div>
               <div><span style={{ color: color.gold }}>GET</span>    /api/v1/trust-receipts/&#123;receiptId&#125;</div>
               <div><span style={{ color: color.gold }}>POST</span>   /api/v1/trust-receipts/&#123;receiptId&#125;/consume</div>

@@ -86,7 +86,7 @@ export default function SovereigntyPage() {
             <h2 style={{ ...styles.h2, marginTop: 12 }}>Authorize → gate → verify.</h2>
             <div style={{ marginTop: 32 }}>
               {STEPS.map((s) => (
-                <div key={s.n} style={{ display: 'flex', gap: 24, padding: '20px 0', borderTop: `1px solid ${color.brd}` }}>
+                <div key={s.n} style={{ display: 'flex', gap: 24, padding: '20px 0', borderTop: `1px solid ${color.border}` }}>
                   <div style={{ fontFamily: font.mono, fontSize: 14, color: color.gold, fontWeight: 600, minWidth: 24 }}>{s.n}</div>
                   <div>
                     <div style={{ ...styles.h3, fontSize: 18 }}>{s.title}</div>
