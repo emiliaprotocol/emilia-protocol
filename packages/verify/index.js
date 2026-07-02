@@ -474,11 +474,22 @@ function sha256Bytes(input) {
   return crypto.createHash('sha256').update(input, 'utf8').digest();
 }
 
+// Canonical EP timestamp profile: RFC 3339 with an explicit UTC offset ("Z" or
+// ±hh:mm). No-timezone ("2026-07-01T12:00:00") and date-only ("2026-07-01")
+// forms are REJECTED — they are ambiguous (UTC vs local) and must never satisfy
+// a validity window. This is the single profile JS, Python, and Go all parse
+// identically and reject identically (fail-closed). Returns epoch ms or NaN.
+const RFC3339_OFFSET = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+function parseInstant(value) {
+  if (typeof value !== 'string' || !RFC3339_OFFSET.test(value)) return NaN;
+  return Date.parse(value);
+}
+
 function withinWindow(t, from, to) {
-  const ts = Date.parse(t);
+  const ts = parseInstant(t);
   if (Number.isNaN(ts)) return false;
-  if (from && ts < Date.parse(from)) return false;
-  if (to && ts > Date.parse(to)) return false;
+  if (from) { const f = parseInstant(from); if (Number.isNaN(f) || ts < f) return false; }
+  if (to) { const g = parseInstant(to); if (Number.isNaN(g) || ts > g) return false; }
   return true;
 }
 
@@ -547,7 +558,19 @@ function createStrictReport(enabled) {
 }
 
 function parseableTimestamp(value) {
-  return typeof value === 'string' && !Number.isNaN(Date.parse(value));
+  return typeof value === 'string' && !Number.isNaN(parseInstant(value));
+}
+
+// Canonical required_approvals coercion (fail-closed, shared semantics with the
+// Python and Go verifiers): the threshold MUST be an integer-typed JSON number.
+// A string ("2"), a float (2.5), or any non-integer is treated as malformed and
+// forces the whole receipt to fail — a lower/under-approval must never satisfy a
+// higher threshold because the type was coerced away. Returns an integer >= 1,
+// or null if malformed.
+function coerceRequiredApprovals(value) {
+  if (value === undefined || value === null) return 1;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) return null;
+  return value;
 }
 
 function markStrict(report, name, ok, message) {
@@ -911,8 +934,13 @@ export function verifyTrustReceipt(receipt, opts = {}) {
   // ── Step 4: separation of duties ──────────────────────────────────────────
   const initiator = receipt.action.initiator;
   const approvers = validApprovals.map((a) => a.approver);
-  const requiredApprovals = Math.max(1, ...contexts.map((c) => Number(c.required_approvals) || 1));
+  const coerced = contexts.map((c) => coerceRequiredApprovals(c.required_approvals));
   let sodOk = true;
+  if (coerced.some((n) => n === null)) {
+    sodOk = false;
+    errors.push('required_approvals must be an integer >= 1 (fail-closed on non-integer)');
+  }
+  const requiredApprovals = Math.max(1, ...coerced.map((n) => n ?? 1));
   if (initiator && approvers.includes(initiator)) {
     sodOk = false;
     errors.push('initiator appears in an approver slot (SoD violation)');

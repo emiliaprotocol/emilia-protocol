@@ -286,6 +286,78 @@ test('step 4 — fewer valid approvals than required_approvals fails', () => {
   assert.match(r.errors.join(' '), /approval count 1 < required_approvals 2/);
 });
 
+// ── step 4: required_approvals type — cross-language parity (fail-closed) ─────
+// required_approvals is signed INSIDE the context; buildReceipt re-signs, so the
+// value below is legitimately what the approver signed. A string that would
+// coerce to a satisfiable threshold must NOT be silently coerced — otherwise one
+// signoff satisfies a threshold of 2 (SoD bypass). Matches Python + Go.
+
+test('step 4 — required_approvals as a string is malformed and fails closed', () => {
+  // single 1-of context, but the threshold is the string "2" — an under-approval
+  // that Number("2") would have satisfied. Must reject.
+  const receipt = buildReceipt({
+    ctx1: { required_approvals: '2' },
+    ctx2: { required_approvals: '2' },
+  });
+  receipt.signoffs = [receipt.signoffs[0]]; // one valid signoff only
+  const r = verifyTrustReceipt(receipt, OPTS);
+  assert.equal(r.checks.sod, false);
+  assert.match(r.errors.join(' '), /required_approvals must be an integer/);
+  assert.equal(r.valid, false);
+});
+
+test('step 4 — non-integer required_approvals never throws and is rejected', () => {
+  for (const bad of ['abc', 2.5, true, [], {}, '1']) {
+    const receipt = buildReceipt({ ctx1: { required_approvals: bad }, ctx2: { required_approvals: bad } });
+    let r;
+    assert.doesNotThrow(() => { r = verifyTrustReceipt(receipt, OPTS); });
+    assert.equal(r.checks.sod, false, `sod should fail for required_approvals=${JSON.stringify(bad)}`);
+    assert.equal(r.valid, false);
+  }
+});
+
+// ── timestamp profile — canonical RFC3339 with offset (Z or ±hh:mm) ──────────
+// issued_at/expires_at are signed inside the context; buildReceipt re-signs. The
+// window checks (step 6) parse them, so a non-conforming form fails the window on
+// all three ports identically (JS/Python/Go).
+
+test('timestamp profile — a no-timezone issued_at is rejected (fail-closed)', () => {
+  // issued_at is signed inside the context (buildReceipt re-signs), so the
+  // signature is valid — but a no-timezone "2026-07-01T12:00:00" is not the
+  // canonical profile, so every window/key-window parse of it fails closed. The
+  // receipt must be rejected. Matches Python + Go.
+  const receipt = buildReceipt({
+    ctx1: { issued_at: '2026-07-01T12:00:00', expires_at: '2026-07-01T20:00:00' },
+    ctx2: { issued_at: '2026-07-01T12:00:00', expires_at: '2026-07-01T20:00:00' },
+  });
+  const r = verifyTrustReceipt(receipt, OPTS);
+  assert.equal(r.checks.windows, false);
+  assert.equal(r.valid, false);
+});
+
+test('timestamp profile — a date-only issued_at is rejected (fail-closed)', () => {
+  const receipt = buildReceipt({
+    ctx1: { issued_at: '2026-07-01', expires_at: '2026-07-02' },
+    ctx2: { issued_at: '2026-07-01', expires_at: '2026-07-02' },
+  });
+  const r = verifyTrustReceipt(receipt, OPTS);
+  assert.equal(r.checks.windows, false);
+  assert.equal(r.valid, false);
+});
+
+test('timestamp profile — a numeric +hh:mm offset is accepted', () => {
+  // issued/expires as +02:00 == [17:21:05, 17:36:05]Z, which contains the default
+  // signed_at (17:24:40Z / 17:25:01Z) and committed_at (17:25:02Z). Those defaults
+  // stay untouched so the Merkle leaf (hashed over the whole receipt) is stable.
+  const receipt = buildReceipt({
+    ctx1: { issued_at: '2026-06-09T19:21:05+02:00', expires_at: '2026-06-09T19:36:05+02:00' },
+    ctx2: { issued_at: '2026-06-09T19:21:05+02:00', expires_at: '2026-06-09T19:36:05+02:00' },
+  });
+  const r = verifyTrustReceipt(receipt, OPTS);
+  assert.equal(r.checks.windows, true, JSON.stringify({ checks: r.checks, errors: r.errors }));
+  assert.equal(r.valid, true);
+});
+
 // ── step 5: log inclusion + checkpoint ───────────────────────────────────────
 
 test('step 5 — a broken inclusion path fails', () => {

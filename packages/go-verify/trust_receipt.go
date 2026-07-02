@@ -215,13 +215,27 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 	for _, a := range validApprovals {
 		approvers = append(approvers, a.approver)
 	}
+	// Canonical required_approvals coercion (fail-closed; mirrors packages/verify
+	// coerceRequiredApprovals and the Python verifier). The threshold MUST be an
+	// integer-valued JSON number. A string ("2"), a non-integer float, or any
+	// other type is malformed and forces the receipt to fail — a string must NEVER
+	// be silently ignored (that would let 1 signoff satisfy an under-approval).
 	required := 1
+	sodOK := true
 	for _, c := range contexts {
-		if ra, ok := getMap(c)["required_approvals"].(float64); ok && int(ra) > required {
+		v, present := getMap(c)["required_approvals"]
+		if !present || v == nil {
+			continue
+		}
+		ra, ok := v.(float64)
+		if !ok || ra != float64(int(ra)) || int(ra) < 1 {
+			sodOK = false // non-integer threshold is malformed -> fail-closed
+			continue
+		}
+		if int(ra) > required {
 			required = int(ra)
 		}
 	}
-	sodOK := true
 	if initiator != "" && contains(approvers, initiator) {
 		sodOK = false
 	}
