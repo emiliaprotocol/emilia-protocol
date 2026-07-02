@@ -478,6 +478,7 @@ export function merkleProof(leaves, leafIndex) {
 // different receipt. New issuance defaults to v2 via buildReceiptAnchorV2();
 // the legacy sorted-pair tree (merkleProof above) remains for already-anchored
 // v1 receipts only.
+export const MERKLE_V2_ALG = 'EP-MERKLE-v2';
 const leafHashV2 = (canonicalPayload) =>
   crypto.createHash('sha256')
     .update(Buffer.concat([Buffer.from([0x00]), Buffer.from(canonicalPayload, 'utf8')]))
@@ -487,7 +488,17 @@ const hashPairV2 = (left, right) =>
     .update(Buffer.concat([Buffer.from([0x01]), Buffer.from(left, 'utf8'), Buffer.from(right, 'utf8')]))
     .digest('hex');
 
-/** v2 (domain-separated, positional) sibling of merkleProof(). */
+/**
+ * v2 (domain-separated, positional) sibling of merkleProof().
+ *
+ * CVE-2012-2459 fix: an unpaired node on an odd-count level is PROMOTED to the
+ * next level unchanged (never duplicated and re-hashed against itself). Combined
+ * with positional, domain-separated hashing this makes the root a UNIQUE
+ * commitment to the leaf set — an operator cannot mint two distinct trees with
+ * the same root (no equivocation). The verifier's proof-folding is agnostic to
+ * promotion (a promoted node contributes no proof step), so verifyMerkleAnchor
+ * with {v2:true} reconstructs the identical root.
+ */
 export function merkleProofV2(leaves, leafIndex) {
   if (!Array.isArray(leaves) || leaves.length === 0) throw new Error('merkleProofV2: no leaves');
   let level = [...leaves];
@@ -496,8 +507,14 @@ export function merkleProofV2(leaves, leafIndex) {
   while (level.length > 1) {
     const next = [];
     for (let i = 0; i < level.length; i += 2) {
+      if (i + 1 >= level.length) {
+        // Odd tail: promote the lone node unchanged (no self-pairing).
+        next.push(level[i]);
+        if (i === index) index = next.length - 1;
+        continue;
+      }
       const left = level[i];
-      const right = i + 1 < level.length ? level[i + 1] : level[i]; // duplicate last when odd
+      const right = level[i + 1];
       next.push(hashPairV2(left, right));
       if (i === index || i + 1 === index) {
         const isLeft = index === i;
@@ -562,11 +579,16 @@ export function assembleAuthorizationReceipt({ receiptId, action, contexts, sign
     },
   };
 
-  // Leaf = canonical receipt WITHOUT log_proof / approver_key_proofs.
-  const leaf = sha256hex(canonicalize(receipt));
+  // EP-MERKLE-v2 log inclusion. Leaf is the domain-separated, payload-bound hash
+  // of the canonical receipt WITHOUT log_proof / approver_key_proofs; the tree is
+  // positional + domain-separated with NO odd-node duplication (CVE-2012-2459),
+  // so the checkpoint root is a unique commitment the operator cannot equivocate.
+  // priorLeaves MUST be v2 leaf hashes (hex). Legacy v1 minting is retained only
+  // via merkleProof()/assembleAuthorizationReceiptLegacyV1() for pre-existing logs.
+  const leaf = leafHashV2(canonicalize(receipt));
   const leaves = [...(log.priorLeaves || []), leaf];
   const leafIndex = leaves.length - 1;
-  const { root, path } = merkleProof(leaves, leafIndex);
+  const { root, path } = merkleProofV2(leaves, leafIndex);
 
   const checkpoint = {
     tree_size: leaves.length,
@@ -576,10 +598,46 @@ export function assembleAuthorizationReceipt({ receiptId, action, contexts, sign
   const log_signature = crypto.sign(null, sha256Bytes(canonicalize(checkpoint)), logPrivateKey).toString('base64url');
 
   receipt.log_proof = {
+    alg: MERKLE_V2_ALG,
     leaf_index: leafIndex,
     inclusion_path: path,
     checkpoint: { ...checkpoint, log_signature },
   };
+  return receipt;
+}
+
+/**
+ * LEGACY (EP-MERKLE-v1) assembler — sorted-pair, undomain-separated, no
+ * payload-bound leaf. DEPRECATED and INSECURE (leaf/branch second-preimage +
+ * CVE-2012-2459 root equivocation). Retained ONLY to produce compatibility
+ * artifacts for the opt-in legacy verification path; NEVER use for new issuance.
+ * A receipt from this function verifies under verifyTrustReceipt ONLY when the
+ * caller passes { allowLegacyMerkle: true }.
+ */
+export function assembleAuthorizationReceiptLegacyV1({ receiptId, action, contexts, signoffs, committedAt, log }) {
+  const logPrivateKey = log?.privateKey || (log?.privateKeyB64u && privateKeyFromPkcs8B64u(log.privateKeyB64u));
+  if (!logPrivateKey || !log?.logKeyId) {
+    throw new Error('assembleAuthorizationReceiptLegacyV1 requires log.privateKey (or log.privateKeyB64u) and log.logKeyId');
+  }
+  const receipt = {
+    receipt_id: receiptId,
+    action,
+    action_hash: actionHash(action),
+    contexts,
+    signoffs,
+    consumption: {
+      nonce: crypto.randomBytes(16).toString('base64url'),
+      state: 'COMMITTED',
+      committed_at: committedAt,
+    },
+  };
+  const leaf = sha256hex(canonicalize(receipt));
+  const leaves = [...(log.priorLeaves || []), leaf];
+  const leafIndex = leaves.length - 1;
+  const { root, path } = merkleProof(leaves, leafIndex);
+  const checkpoint = { tree_size: leaves.length, root_hash: `sha256:${root}`, log_key_id: log.logKeyId };
+  const log_signature = crypto.sign(null, sha256Bytes(canonicalize(checkpoint)), logPrivateKey).toString('base64url');
+  receipt.log_proof = { leaf_index: leafIndex, inclusion_path: path, checkpoint: { ...checkpoint, log_signature } };
   return receipt;
 }
 

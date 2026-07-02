@@ -105,6 +105,21 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 		return TrustReceiptResult{false, checks}
 	}
 
+	// I-JSON canonicalization gate (fail-closed) — identical guard to VerifyReceipt.
+	// Every field folded into a signed digest below is re-canonicalized; a value
+	// outside the profile canonicalizes differently across JS/Py/Go, so reject it
+	// here. Signature/proof fields are excluded from the check.
+	canonicalScope := map[string]any{}
+	for k, v := range receipt {
+		if k != "signoffs" && k != "log_proof" && k != "approver_key_proofs" {
+			canonicalScope[k] = v
+		}
+	}
+	if !IsCanonicalizable(canonicalScope) {
+		return TrustReceiptResult{false, checks}
+	}
+	allowLegacyMerkle, _ := opts["allowLegacyMerkle"].(bool)
+
 	actionHashHex := sha256HexOf(receipt["action"])
 	checks["action_hash"] = actionHashHex == hexStrip(receipt["action_hash"])
 
@@ -218,7 +233,18 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 					leaf[k] = v
 				}
 			}
-			checks["inclusion"] = VerifyMerkleAnchor(sha256HexOf(leaf), ipath, hexStrip(cp["root_hash"]))
+			canonicalLeaf := Canonicalize(leaf)
+			if getStr(lp, "alg") == MerkleV2Alg {
+				// EP-MERKLE-v2 (default): domain-separated, payload-bound leaf + positional proof.
+				checks["inclusion"] = verifyMerkleAnchorMode(leafHashV2(canonicalLeaf), ipath, hexStrip(cp["root_hash"]), true)
+			} else if allowLegacyMerkle {
+				// Dormant legacy path: pre-v2 sorted-pair inclusion, opt-in only.
+				sum := sha256.Sum256([]byte(canonicalLeaf))
+				checks["inclusion"] = verifyMerkleAnchorMode(hex.EncodeToString(sum[:]), ipath, hexStrip(cp["root_hash"]), false)
+			} else {
+				// Default (and every production gate): require EP-MERKLE-v2.
+				checks["inclusion"] = false
+			}
 			logSig := getStr(cp, "log_signature")
 			if logPublicKey != "" && logSig != "" {
 				signedCP := map[string]any{}

@@ -818,6 +818,16 @@ export function verifyTrustReceipt(receipt, opts = {}) {
   if (!receipt.action || !receipt.action_hash) return fail('Missing action or action_hash');
   if (contexts.length === 0 || signoffs.length === 0) return fail('Missing contexts or signoffs');
 
+  // I-JSON canonicalization gate (fail-closed) — identical guard to verifyReceipt.
+  // Every field folded into a signed digest below (action, contexts, leaf content)
+  // is re-canonicalized; a value outside the profile (e.g. 1e-7, 1e20, unsafe int)
+  // canonicalizes differently across JS/Py/Go, so it is rejected here rather than
+  // silently disagreeing. The signature/proof fields are excluded from the check.
+  const { signoffs: _s, log_proof: _lp, approver_key_proofs: _akp, ...canonicalScope } = receipt;
+  if (!isCanonicalizable(canonicalScope)) {
+    return fail('Receipt contains a value outside the EP canonicalization profile; use strings or safe integers in signed material');
+  }
+
   // ── Step 1: recompute the action hash from the canonical Action Object ────
   const actionHashHex = sha256(canonicalize(receipt.action));
   checks.action_hash = actionHashHex === hexOf(receipt.action_hash);
@@ -914,9 +924,29 @@ export function verifyTrustReceipt(receipt, opts = {}) {
     const leafContent = { ...receipt };
     delete leafContent.log_proof;
     delete leafContent.approver_key_proofs;
-    const leafHash = sha256(canonicalize(leafContent));
-    checks.inclusion = verifyMerkleAnchor(leafHash, lp.inclusion_path, hexOf(lp.checkpoint.root_hash));
-    if (!checks.inclusion) errors.push('Merkle inclusion proof does not reconstruct the checkpoint root');
+    const canonicalLeaf = canonicalize(leafContent);
+    const isV2 = lp.alg === MERKLE_V2_ALG;
+    if (isV2) {
+      // EP-MERKLE-v2 (default): leaf is domain-separated (0x00) and bound to the
+      // canonical receipt payload; the proof folds with positional, domain-
+      // separated (0x01) branch hashing. Closes leaf/branch second-preimage
+      // confusion and root equivocation.
+      const leafHash = leafHashV2(canonicalLeaf);
+      checks.inclusion = verifyMerkleAnchor(leafHash, lp.inclusion_path, hexOf(lp.checkpoint.root_hash), { v2: true });
+      if (!checks.inclusion) errors.push('EP-MERKLE-v2 inclusion proof does not reconstruct the checkpoint root');
+    } else if (opts.allowLegacyMerkle === true) {
+      // Dormant legacy path: pre-v2 (sorted-pair, undomain-separated) inclusion
+      // verifies ONLY when the caller explicitly opts in. Never the default,
+      // never used by production gates.
+      const leafHash = sha256(canonicalLeaf);
+      checks.inclusion = verifyMerkleAnchor(leafHash, lp.inclusion_path, hexOf(lp.checkpoint.root_hash));
+      if (!checks.inclusion) errors.push('legacy EP-MERKLE-v1 inclusion proof does not reconstruct the checkpoint root');
+    } else {
+      // Default (and every production gate): require EP-MERKLE-v2. A legacy v1
+      // proof is refused unless the caller passes { allowLegacyMerkle: true }.
+      checks.inclusion = false;
+      errors.push('log_proof is not EP-MERKLE-v2 (legacy v1 refused unless allowLegacyMerkle is set)');
+    }
 
     if (logPublicKey && lp.checkpoint.log_signature) {
       const signedCheckpoint = { ...lp.checkpoint };
