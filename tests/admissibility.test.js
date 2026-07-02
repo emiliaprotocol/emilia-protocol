@@ -4,7 +4,8 @@
 // bundle is classified, purpose-relative, relying-party-policed, and replayable.
 
 import { describe, it, expect } from 'vitest';
-import { evaluateAdmissibility, evalRequirement, ADMISSIBILITY_VERDICTS } from '../lib/evidence/admissibility.js';
+import { evaluateAdmissibility, evaluateChainAdmissibility, evalRequirement, ADMISSIBILITY_VERDICTS } from '../lib/evidence/admissibility.js';
+import { actionDigest } from '../packages/verify/evidence-chain.js';
 import { baseComponents, POLICIES, AS_OF, results } from '../examples/admissibility/admissibility-vector.mjs';
 
 const AT = { as_of: AS_OF };
@@ -78,6 +79,62 @@ describe('determinism / policy replay', () => {
     const a = evaluateAdmissibility(bundle(baseComponents()), POLICIES.money_movement, AT);
     const c = evaluateAdmissibility(bundle(baseComponents()), POLICIES.audit, AT);
     expect(a.replay_digest).not.toBe(c.replay_digest);
+  });
+});
+
+describe('EP-AEC bridge — chain in, classified verdict out', () => {
+  const action = { do: 'wire', amount: '250000.00' };
+  const D = `sha256:${actionDigest(action)}`;
+  const stub = (ev) => ({ valid: ev.valid !== false, action_digest: ev.action_digest });
+  const verifiers = { 'policy_permit': stub, 'authorization_receipt': stub };
+  const chainDoc = (over = {}) => ({
+    '@version': 'EP-AEC-v1',
+    action,
+    // presenter's self-chosen (weak) bar — must be IGNORED by the bridge
+    requirement: 'policy_permit',
+    components: [
+      { type: 'policy_permit', evidence: { valid: true, action_digest: D } },
+      { type: 'authorization_receipt', evidence: { valid: true, action_digest: D } },
+    ],
+    ...over,
+  });
+  const rpPolicy = {
+    policy_id: 'ep:evpolicy:test:v1', reliance_purpose: 'money_movement',
+    requirement: 'policy_permit AND authorization_receipt',
+  };
+
+  it('a good chain classifies admissible, with the relying-party requirement pinned', () => {
+    const r = evaluateChainAdmissibility(chainDoc(), rpPolicy, { verifiers });
+    expect(r.verdict).toBe('admissible');
+    expect(r.chain.requirement_source).toBe('relying_party');
+  });
+
+  it("the presenter's weak requirement never substitutes for the relying party's", () => {
+    const doc = chainDoc({
+      components: [{ type: 'policy_permit', evidence: { valid: true, action_digest: D } }],
+    });
+    // presenter's own bar ("policy_permit") would pass; the pinned bar does not
+    const r = evaluateChainAdmissibility(doc, rpPolicy, { verifiers });
+    expect(r.verdict).toBe('missing_evidence');
+  });
+
+  it('a valid leg bound to a DIFFERENT action classifies conflicted', () => {
+    const doc = chainDoc();
+    doc.components[0].evidence.action_digest = `sha256:${'e'.repeat(64)}`;
+    const r = evaluateChainAdmissibility(doc, rpPolicy, { verifiers });
+    expect(r.verdict).toBe('conflicted');
+  });
+
+  it('an invalid leg classifies unverifiable', () => {
+    const doc = chainDoc();
+    doc.components[1].evidence.valid = false;
+    const r = evaluateChainAdmissibility(doc, rpPolicy, { verifiers });
+    expect(r.verdict).toBe('unverifiable');
+  });
+
+  it('a structurally broken chain classifies unverifiable', () => {
+    const r = evaluateChainAdmissibility({ '@version': 'bogus' }, rpPolicy, { verifiers });
+    expect(r.verdict).toBe('unverifiable');
   });
 });
 

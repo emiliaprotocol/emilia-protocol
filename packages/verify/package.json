@@ -58,7 +58,7 @@
   },
   "author": "EMILIA Protocol, Inc.",
   "scripts": {
-    "test": "node --test test.js web.test.js federation.test.js trust-receipt.test.js quorum.test.js revocation.test.js time-attestation.test.js no-symmetric.test.js cli.test.js"
+    "test": "node --test test.js web.test.js federation.test.js trust-receipt.test.js quorum.test.js revocation.test.js time-attestation.test.js no-symmetric.test.js cli.test.js evidence-chain.test.js agent-binding.test.js consistency.test.js"
   },
   "bin": {
     "emilia-verify": "./cli.js"

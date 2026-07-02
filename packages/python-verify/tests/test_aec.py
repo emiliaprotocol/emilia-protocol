@@ -43,5 +43,8 @@ def _hydrate(chain):
 
 def test_aec_vectors():
     for v in SUITE["vectors"]:
-        r = verify_authorization_chain(_hydrate(v["chain"]), verifiers=VERIFIERS)
+        r = verify_authorization_chain(_hydrate(v["chain"]), verifiers=VERIFIERS,
+                                       requirement=v.get("relying_party_requirement"))
         assert r["allow"] == v["expect_allow"], f'{v["name"]}: allow={r["allow"]}; {r["reasons"]}'
+        if v.get("expect_requirement_source"):
+            assert r["requirement_source"] == v["expect_requirement_source"], v["name"]

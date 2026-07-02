@@ -107,19 +107,30 @@ function evalRequirement(expr, satisfied) {
  * Verify an Authorization Evidence Chain. FAIL-CLOSED: anything missing,
  * malformed, unverifiable, or binding a different action yields allow=false.
  *
+ * TRUST BOUNDARY — whose requirement is it? The chain document's `requirement`
+ * is PRESENTER-supplied: it is the presenter's claim of what the bundle
+ * satisfies, and a presenter must never choose its own sufficiency bar. A
+ * relying party SHOULD pin its own bar via `opts.requirement`, which takes
+ * precedence over the document's; the result records which was used
+ * (`requirement_source: 'relying_party' | 'presenter'`). Same discipline as
+ * pinned quorum policies and pinned federation issuers.
+ *
  * @param {object} aec  { '@version', action, action_digest?, components:[{type,label?,evidence}], requirement }
- * @param {object} opts { verifiers?: {[type]:fn}, keys?: {[spki]:spki} }
- * @returns {{allow:boolean, action_digest:string|null, components:Array, reasons:string[]}}
+ * @param {object} opts { verifiers?: {[type]:fn}, keys?: {[spki]:spki}, requirement?: string }
+ * @returns {{allow:boolean, action_digest:string|null, components:Array, reasons:string[], requirement_source:string}}
  */
 export function verifyAuthorizationChain(aec, opts = {}) {
   const reasons = [];
-  const fail = (why) => { reasons.push(why); return { allow: false, action_digest: null, components: [], reasons }; };
+  const pinned = typeof opts.requirement === 'string' && opts.requirement.trim() ? opts.requirement : null;
+  const requirementSource = pinned ? 'relying_party' : 'presenter';
+  const fail = (why) => { reasons.push(why); return { allow: false, action_digest: null, components: [], reasons, requirement_source: requirementSource }; };
 
   if (!aec || typeof aec !== 'object') return fail('chain is not an object');
   if (aec['@version'] !== AEC_VERSION) return fail(`unexpected @version (want ${AEC_VERSION})`);
   if (!aec.action || typeof aec.action !== 'object') return fail('missing action object');
   if (!Array.isArray(aec.components) || aec.components.length === 0) return fail('no components');
-  if (typeof aec.requirement !== 'string' || !aec.requirement.trim()) return fail('missing requirement expression');
+  const requirement = pinned ?? aec.requirement;
+  if (typeof requirement !== 'string' || !requirement.trim()) return fail('missing requirement expression');
 
   const chainDigest = actionDigest(aec.action);
   if (aec.action_digest != null && normDigest(aec.action_digest) !== chainDigest) {
@@ -144,7 +155,10 @@ export function verifyAuthorizationChain(aec, opts = {}) {
     return row;
   });
 
-  const allow = evalRequirement(aec.requirement, satisfied);
-  if (!allow) reasons.push(`requirement not satisfied: "${aec.requirement}" over {${[...satisfied].join(', ') || '∅'}}`);
-  return { allow, action_digest: chainDigest, components, reasons };
+  const allow = evalRequirement(requirement, satisfied);
+  if (!allow) reasons.push(`requirement not satisfied: "${requirement}" over {${[...satisfied].join(', ') || '∅'}}`);
+  if (pinned && typeof aec.requirement === 'string' && aec.requirement.trim() && aec.requirement !== pinned) {
+    reasons.push(`presenter requirement ignored in favor of relying-party requirement (presenter claimed: "${aec.requirement}")`);
+  }
+  return { allow, action_digest: chainDigest, components, reasons, requirement_source: requirementSource };
 }

@@ -39,13 +39,17 @@ jobs:
         run: npx vitest run --coverage
       - name: Verify package suites (node:test)
         # packages/verify and packages/issue ship zero-dependency standalone
-        # suites on Node's built-in runner (excluded from vitest). This runs the
-        # Node verifier tests AND the Web Crypto equivalence suite (browser
-        # verifier proven byte-identical to the audited Node build), then the
-        # issuer round-trip suite (a locally-issued receipt proven to pass all
-        # seven §6.3 checks under @emilia-protocol/verify, plus negative and CLI
-        # smoke tests). "issue locally, verify anywhere", enforced every push.
-        run: node --test packages/verify/test.js packages/verify/web.test.js packages/verify/federation.test.js packages/issue/test.js packages/attest/test.js
+        # suites on Node's built-in runner (excluded from vitest). The glob runs
+        # EVERY packages/verify suite — quorum, revocation, time-attestation,
+        # evidence-chain (AEC incl. relying-party requirement pinning),
+        # federation, consistency, agent-binding, no-symmetric, CLI — plus the
+        # Web Crypto equivalence suite (browser verifier proven byte-identical
+        # to the audited Node build) and the issuer round-trip suite (a
+        # locally-issued receipt proven to pass all seven §6.3 checks under
+        # @emilia-protocol/verify). "issue locally, verify anywhere", enforced
+        # every push. Do NOT go back to an explicit file list — that silently
+        # dropped 8 of 11 suites from CI until 2026-07-02.
+        run: node --test packages/verify/test.js packages/verify/*.test.js packages/issue/test.js packages/attest/test.js
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1

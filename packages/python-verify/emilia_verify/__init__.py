@@ -1122,13 +1122,23 @@ def _eval_requirement(expr: str, satisfied: set) -> bool:
         return False
 
 
-def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None, keys: Optional[dict] = None) -> dict:
-    """Verify an EP-AEC chain offline. Fail-closed. Mirrors JS verifyAuthorizationChain()."""
+def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None, keys: Optional[dict] = None,
+                                requirement: Optional[str] = None) -> dict:
+    """Verify an EP-AEC chain offline. Fail-closed. Mirrors JS verifyAuthorizationChain().
+
+    TRUST BOUNDARY: the chain document's ``requirement`` is PRESENTER-supplied — a
+    claim of what the bundle satisfies, never the relying party's bar. Pass
+    ``requirement=`` to pin the RELYING PARTY's own requirement; it takes
+    precedence and the result records ``requirement_source``.
+    """
     reasons: list = []
+    pinned = requirement if isinstance(requirement, str) and requirement.strip() else None
+    requirement_source = "relying_party" if pinned else "presenter"
 
     def fail(why):
         reasons.append(why)
-        return {"allow": False, "action_digest": None, "components": [], "reasons": reasons}
+        return {"allow": False, "action_digest": None, "components": [], "reasons": reasons,
+                "requirement_source": requirement_source}
 
     if not isinstance(aec, dict):
         return fail("chain is not an object")
@@ -1139,7 +1149,7 @@ def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None, keys:
     comps_in = aec.get("components")
     if not isinstance(comps_in, list) or not comps_in:
         return fail("no components")
-    req = aec.get("requirement")
+    req = pinned if pinned is not None else aec.get("requirement")
     if not isinstance(req, str) or not req.strip():
         return fail("missing requirement expression")
 
@@ -1180,7 +1190,12 @@ def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None, keys:
     allow = _eval_requirement(req, satisfied)
     if not allow:
         reasons.append(f'requirement not satisfied: "{req}"')
-    return {"allow": allow, "action_digest": chain_digest, "components": components, "reasons": reasons}
+    presenter_req = aec.get("requirement")
+    if pinned and isinstance(presenter_req, str) and presenter_req.strip() and presenter_req != pinned:
+        reasons.append(
+            f'presenter requirement ignored in favor of relying-party requirement (presenter claimed: "{presenter_req}")')
+    return {"allow": allow, "action_digest": chain_digest, "components": components, "reasons": reasons,
+            "requirement_source": requirement_source}
 
 
 # =============================================================================

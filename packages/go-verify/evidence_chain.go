@@ -40,6 +40,10 @@ type AECResult struct {
 	ActionDigest string
 	Components   []AECComponentRow
 	Reasons      []string
+	// RequirementSource records whose sufficiency bar was evaluated:
+	// "relying_party" when pinned via the variadic requirement argument,
+	// "presenter" when the chain document's own requirement was used.
+	RequirementSource string
 }
 
 // ActionDigest returns the canonical action digest (hex) = sha256(JCS(action)).
@@ -156,8 +160,20 @@ func aecEvalRequirement(expr string, satisfied map[string]bool) bool {
 }
 
 // VerifyAuthorizationChain verifies an EP-AEC chain offline, fail-closed.
-func VerifyAuthorizationChain(aec map[string]any, verifiers map[string]ComponentVerifier) AECResult {
-	res := AECResult{}
+//
+// TRUST BOUNDARY: the chain document's "requirement" is PRESENTER-supplied — a
+// claim of what the bundle satisfies, never the relying party's bar. Pass an
+// optional relying-party requirement as the trailing argument to pin it; it
+// takes precedence and RequirementSource records which was used.
+func VerifyAuthorizationChain(aec map[string]any, verifiers map[string]ComponentVerifier, relyingPartyRequirement ...string) AECResult {
+	pinned := ""
+	if len(relyingPartyRequirement) > 0 {
+		pinned = strings.TrimSpace(relyingPartyRequirement[0])
+	}
+	res := AECResult{RequirementSource: "presenter"}
+	if pinned != "" {
+		res.RequirementSource = "relying_party"
+	}
 	fail := func(why string) AECResult {
 		res.Allow = false
 		res.Reasons = append(res.Reasons, why)
@@ -177,8 +193,10 @@ func VerifyAuthorizationChain(aec map[string]any, verifiers map[string]Component
 	if !ok || len(compsIn) == 0 {
 		return fail("no components")
 	}
-	req, ok := aec["requirement"].(string)
-	if !ok || strings.TrimSpace(req) == "" {
+	req, reqOk := aec["requirement"].(string)
+	if pinned != "" {
+		req = pinned
+	} else if !reqOk || strings.TrimSpace(req) == "" {
 		return fail("missing requirement expression")
 	}
 	chainDigest := ActionDigest(action)
@@ -230,6 +248,11 @@ func VerifyAuthorizationChain(aec map[string]any, verifiers map[string]Component
 	res.Allow = aecEvalRequirement(req, satisfied)
 	if !res.Allow {
 		res.Reasons = append(res.Reasons, fmt.Sprintf("requirement not satisfied: %q", req))
+	}
+	if pinned != "" && reqOk {
+		if presenter := strings.TrimSpace(aec["requirement"].(string)); presenter != "" && presenter != pinned {
+			res.Reasons = append(res.Reasons, fmt.Sprintf("presenter requirement ignored in favor of relying-party requirement (presenter claimed: %q)", presenter))
+		}
 	}
 	return res
 }

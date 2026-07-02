@@ -20,9 +20,11 @@ func TestAECVectors(t *testing.T) {
 		Action    map[string]any `json:"action"`
 		StubTypes []string       `json:"stub_types"`
 		Vectors   []struct {
-			Name        string         `json:"name"`
-			Chain       map[string]any `json:"chain"`
-			ExpectAllow bool           `json:"expect_allow"`
+			Name          string         `json:"name"`
+			Chain         map[string]any `json:"chain"`
+			ExpectAllow   bool           `json:"expect_allow"`
+			RPRequirement string         `json:"relying_party_requirement"`
+			ExpectSource  string         `json:"expect_requirement_source"`
 		} `json:"vectors"`
 	}
 	if err := json.Unmarshal(raw, &suite); err != nil {
@@ -78,9 +80,17 @@ func TestAECVectors(t *testing.T) {
 				}
 			}
 		}
-		res := VerifyAuthorizationChain(chain, verifiers)
+		var res AECResult
+		if v.RPRequirement != "" {
+			res = VerifyAuthorizationChain(chain, verifiers, v.RPRequirement)
+		} else {
+			res = VerifyAuthorizationChain(chain, verifiers)
+		}
 		if res.Allow != v.ExpectAllow {
 			t.Errorf("%s: allow=%v want %v; reasons=%v", v.Name, res.Allow, v.ExpectAllow, res.Reasons)
+		}
+		if v.ExpectSource != "" && res.RequirementSource != v.ExpectSource {
+			t.Errorf("%s: requirement_source=%q want %q", v.Name, res.RequirementSource, v.ExpectSource)
 		}
 	}
 }
