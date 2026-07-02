@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { createGate, createTrustedActionFirewall, DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, receiptAssuranceTier } from './index.js';
+import { createGate, createTrustedActionFirewall, DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, receiptAssuranceTier, mintDeviceSignoff, mintQuorumEvidence } from './index.js';
 
 function canon(v) {
   if (v === null || v === undefined) return JSON.stringify(v);
@@ -21,12 +21,26 @@ function mint(privateKey, payload) {
   const value = crypto.sign(null, Buffer.from(canon(payload), 'utf8'), privateKey).toString('base64url');
   return { '@version': 'EP-RECEIPT-v1', payload, signature: { algorithm: 'Ed25519', value } };
 }
+const HASH_FOR = (action) => crypto.createHash('sha256').update(canon({ action_type: action }), 'utf8').digest('hex');
 let n = 0;
-function receipt(privateKey, { action = 'payment.release', outcome = 'allow', extra = {} } = {}) {
-  return mint(privateKey, {
+// Mint a receipt. When outcome === 'allow_with_signoff', embed a GENUINE WebAuthn
+// device signoff so the receipt cryptographically earns class_a (post-audit: the
+// Gate no longer credits a bare outcome string). When quorum:true, embed a real
+// EP-QUORUM-v1 doc.
+function receipt(privateKey, { action = 'payment.release', outcome = 'allow', extra = {}, quorum = false } = {}) {
+  const claim = { action_type: action, outcome, ...extra };
+  const payload = {
     receipt_id: `rcpt_${++n}`, subject: 'agent:test', issuer: 'ep:org:test',
-    created_at: new Date().toISOString(), claim: { action_type: action, outcome, ...extra },
-  });
+    created_at: new Date().toISOString(), claim,
+  };
+  if (quorum) {
+    payload.quorum = mintQuorumEvidence({ actionHash: HASH_FOR(action), threshold: 2 });
+  } else if (outcome === 'allow_with_signoff') {
+    const s = mintDeviceSignoff({ actionHash: HASH_FOR(action), approver: 'ep:approver:test' });
+    payload.signoff = s.signoff;
+    payload.approver_public_key = s.approver_public_key;
+  }
+  return mint(privateKey, payload);
 }
 
 const MANIFEST = {
@@ -167,10 +181,26 @@ test('run() releases a reserved receipt when the side effect fails before mutati
   assert.equal(retry.result, 'sent');
 });
 
-test('receiptAssuranceTier classification', () => {
-  assert.equal(receiptAssuranceTier({ payload: { quorum: { m: 2, signers: ['a', 'b'] } } }), 'quorum');
-  assert.equal(receiptAssuranceTier({ payload: { claim: { outcome: 'allow_with_signoff' } } }), 'class_a');
+test('receiptAssuranceTier is cryptographically verified, not payload-inferred (DoD audit)', () => {
+  // A fabricated quorum block with NO per-signer signatures earns only software.
+  assert.equal(receiptAssuranceTier({ payload: { quorum: { m: 2, signers: ['a', 'b'], threshold: 2 } } }), 'software');
+  // A self-asserted outcome string with NO WebAuthn device signoff earns only software.
+  assert.equal(receiptAssuranceTier({ payload: { claim: { outcome: 'allow_with_signoff' } } }), 'software');
+  // A plain software receipt is software.
   assert.equal(receiptAssuranceTier({ payload: { claim: { outcome: 'allow' } } }), 'software');
+
+  // A GENUINE device signoff earns class_a.
+  const s = mintDeviceSignoff({ actionHash: HASH_FOR('payment.release'), approver: 'ep:approver:test' });
+  assert.equal(receiptAssuranceTier({ payload: { signoff: s.signoff, approver_public_key: s.approver_public_key } }), 'class_a');
+
+  // A GENUINE quorum (real per-signer assertions) earns quorum.
+  const q = mintQuorumEvidence({ actionHash: HASH_FOR('payment.release'), threshold: 2 });
+  assert.equal(receiptAssuranceTier({ payload: { quorum: q } }), 'quorum');
+
+  // A quorum evidence doc with a broken (tampered) member signature is NOT credited quorum.
+  const tampered = mintQuorumEvidence({ actionHash: HASH_FOR('payment.release'), threshold: 2 });
+  tampered.members[0].signoff.context.approver = 'ep:approver:someone_else'; // breaks challenge binding
+  assert.equal(receiptAssuranceTier({ payload: { quorum: tampered } }), 'software');
 });
 
 test('default product pack guards the seven high-risk action families', () => {
@@ -253,4 +283,121 @@ test('reliance packet ties allow decision, execution attestation, field binding,
   assert.equal(packet.checks.find((c) => c.id === 'execution_fields_bound').ok, true);
   assert.equal(packet.checks.find((c) => c.id === 'execution_attests_decision').ok, true);
   assert.equal(packet.checks.find((c) => c.id === 'evidence_log_intact').ok, true);
+});
+
+// =============================================================================
+// DoD AUDIT: the credited tier MUST be cryptographically verified, not inferred
+// from self-asserted payload content. These prove the deeper hole is closed.
+// =============================================================================
+
+const QUORUM_MANIFEST = {
+  '@version': 'EP-ACTION-RISK-MANIFEST-v0.1',
+  actions: [
+    { id: 'grant_admin', action_type: 'permission.admin.change', receipt_required: true, risk: 'critical', assurance_class: 'quorum', match: { protocol: 'mcp', tool: 'grant_admin' } },
+  ],
+};
+const GRANT = { protocol: 'mcp', tool: 'grant_admin' };
+
+test('AUDIT: a fabricated quorum block (no per-signer signatures) is REFUSED', async () => {
+  const { pub, privateKey } = makeKey();
+  const g = createGate({ manifest: QUORUM_MANIFEST, trustedKeys: [pub] });
+  // A receipt that merely CLAIMS quorum — signers + threshold, but no members,
+  // no WebAuthn assertions. Signed by a trusted issuer, so the Ed25519 check
+  // passes; the fraud is that the quorum is self-asserted.
+  const resigned = mint(privateKey, {
+    receipt_id: 'rcpt_fabquorum', subject: 'agent:test', issuer: 'ep:org:test',
+    created_at: new Date().toISOString(),
+    claim: { action_type: 'permission.admin.change', outcome: 'allow' },
+    quorum: { signers: ['ep:a', 'ep:b'], threshold: 2 }, // fabricated: no members, no signatures
+  });
+  const out = await g.check({ selector: GRANT, receipt: resigned });
+  assert.equal(out.allow, false);
+  assert.equal(out.reason, 'assurance_too_low');
+  assert.equal(out.evidence.have_tier, 'software'); // fabricated quorum earns nothing above software
+  assert.equal(out.evidence.need_tier, 'quorum');
+  assert.equal(out.evidence.assurance_tier_source, 'cryptographic_verification');
+});
+
+test('AUDIT: a single-issuer software receipt does NOT satisfy class_a', async () => {
+  const { pub, privateKey } = makeKey();
+  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] }); // class_a required
+  const r = receipt(privateKey, { action: 'payment.release', outcome: 'allow' }); // software only
+  const out = await g.check({ selector: PAY, receipt: r });
+  assert.equal(out.allow, false);
+  assert.equal(out.reason, 'assurance_too_low');
+  assert.equal(out.evidence.have_tier, 'software');
+});
+
+test('AUDIT: outcome:allow_with_signoff string WITHOUT WebAuthn evidence does NOT satisfy class_a', async () => {
+  const { pub, privateKey } = makeKey();
+  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] });
+  // Self-asserted outcome string, but NO signoff evidence attached.
+  const r = mint(privateKey, {
+    receipt_id: 'rcpt_selfassert', subject: 'agent:test', issuer: 'ep:org:test',
+    created_at: new Date().toISOString(),
+    claim: { action_type: 'payment.release', outcome: 'allow_with_signoff' },
+  });
+  const out = await g.check({ selector: PAY, receipt: r });
+  assert.equal(out.allow, false);
+  assert.equal(out.reason, 'assurance_too_low');
+  assert.equal(out.evidence.have_tier, 'software');
+});
+
+test('AUDIT: a single-issuer software receipt does NOT satisfy quorum', async () => {
+  const { pub, privateKey } = makeKey();
+  const g = createGate({ manifest: QUORUM_MANIFEST, trustedKeys: [pub] });
+  const r = receipt(privateKey, { action: 'permission.admin.change', outcome: 'allow_with_signoff' }); // class_a at best
+  const out = await g.check({ selector: GRANT, receipt: r });
+  assert.equal(out.allow, false);
+  assert.equal(out.reason, 'assurance_too_low');
+  assert.equal(out.evidence.have_tier, 'class_a'); // genuine signoff, but quorum needs more
+  assert.equal(out.evidence.need_tier, 'quorum');
+});
+
+test('AUDIT: a genuinely quorum-verified receipt PASSES a quorum gate', async () => {
+  const { pub, privateKey } = makeKey();
+  const g = createGate({ manifest: QUORUM_MANIFEST, trustedKeys: [pub] });
+  const r = receipt(privateKey, { action: 'permission.admin.change', quorum: true });
+  const out = await g.check({ selector: GRANT, receipt: r });
+  assert.equal(out.allow, true, out.reason);
+  assert.equal(out.evidence.have_tier, 'quorum');
+  assert.equal(out.evidence.assurance_tier_source, 'cryptographic_verification');
+});
+
+test('AUDIT: a genuine WebAuthn device signoff PASSES a class_a gate', async () => {
+  const { pub, privateKey } = makeKey();
+  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub] });
+  const r = receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff' });
+  const out = await g.check({ selector: PAY, receipt: r });
+  assert.equal(out.allow, true, out.reason);
+  assert.equal(out.evidence.have_tier, 'class_a');
+});
+
+test('AUDIT: a quorum receipt whose one member signature is broken is NOT credited quorum', async () => {
+  const { pub, privateKey } = makeKey();
+  const g = createGate({ manifest: QUORUM_MANIFEST, trustedKeys: [pub] });
+  const q = mintQuorumEvidence({ actionHash: HASH_FOR('permission.admin.change'), threshold: 2 });
+  q.members[1].signoff.webauthn.signature = Buffer.from('forged').toString('base64url'); // break one signer
+  const r = mint(privateKey, {
+    receipt_id: 'rcpt_brokenquorum', subject: 'agent:test', issuer: 'ep:org:test',
+    created_at: new Date().toISOString(),
+    claim: { action_type: 'permission.admin.change', outcome: 'allow_with_signoff' },
+    quorum: q,
+  });
+  const out = await g.check({ selector: GRANT, receipt: r });
+  assert.equal(out.allow, false);
+  assert.equal(out.reason, 'assurance_too_low');
+  assert.equal(out.evidence.have_tier, 'software');
+});
+
+test('AUDIT: an unknown / mis-cased required tier fails CLOSED (no silent downgrade to software)', async () => {
+  const { pub, privateKey } = makeKey();
+  // No manifest: the required tier comes from the selector, which is NOT run
+  // through the manifest validator — a mis-cased 'Class_A' reaches the tier check.
+  const g = createGate({ trustedKeys: [pub] });
+  // Even a genuine class_a signoff must not satisfy a tier the gate does not model.
+  const r = receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff' });
+  const out = await g.check({ selector: { action_type: 'payment.release', assurance_class: 'Class_A' }, receipt: r });
+  assert.equal(out.allow, false);
+  assert.equal(out.reason, 'unknown_required_tier');
 });

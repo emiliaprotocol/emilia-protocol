@@ -6,8 +6,12 @@
  * action runs ONLY if it arrives with a receipt that is:
  *   1. valid          — Ed25519 over canonical JSON, signed by a pinned issuer;
  *   2. in-scope       — bound to the exact action the manifest guards;
- *   3. sufficiently   — meets the action's required assurance tier
- *      assured           (software / class_a device signoff / quorum);
+ *   3. sufficiently   — meets the action's required assurance tier, and the
+ *      assured           credited tier is CRYPTOGRAPHICALLY VERIFIED, not read
+ *                        from self-asserted payload fields: class_a requires a
+ *                        valid WebAuthn device signoff, quorum requires a valid
+ *                        EP-QUORUM-v1 (distinct humans + distinct keys +
+ *                        threshold + per-signer assertions);
  *   4. fresh          — within max age; and
  *   5. unused         — not a replay (one-time consumption).
  * Otherwise it is refused with a machine-readable Receipt-Required challenge
@@ -30,12 +34,19 @@ const {
   RECEIPT_REQUIRED_STATUS,
   RECEIPT_REQUIRED_HEADER,
 } = await import('@emilia-protocol/require-receipt').catch(() => import('../require-receipt/index.js'));
+// The real per-signer verifiers (WebAuthn device-signoff + M-of-N quorum). The
+// Gate MUST use these to CREDIT class_a / quorum — a receipt's self-asserted
+// outcome string or a fabricated quorum block is NOT proof. Same resolution
+// pattern as require-receipt: prefer the published package, fall back to the
+// in-repo source so the monorepo test/build works without a node_modules link.
+const { verifyWebAuthnSignoff, verifyQuorum } = await import('@emilia-protocol/verify')
+  .catch(() => import('../verify/index.js'));
 import { MemoryConsumptionStore } from './store.js';
 import { createEvidenceLog } from './evidence.js';
 import { DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, createDefaultActionRiskManifest } from './action-packs.js';
 import { hashCanonical, verifyExecutionBinding } from './execution-binding.js';
 import { buildReliancePacket } from './reliance-packet.js';
-import { createEg1Harness, makeGateInvoke, runEg1, EG1_DEFAULT_SELECTOR } from './eg1-conformance.js';
+import { createEg1Harness, makeGateInvoke, runEg1, EG1_DEFAULT_SELECTOR, mintDeviceSignoff, mintQuorumEvidence } from './eg1-conformance.js';
 import { createKeyRegistry, asKeyRegistry } from './key-registry.js';
 import { classifyRetention, buildRetentionExport } from './retention.js';
 
@@ -48,33 +59,82 @@ export { EXECUTION_BINDING_VERSION, canonicalize, hashCanonical, materialFieldsF
 export { RELIANCE_PACKET_VERSION, buildReliancePacket } from './reliance-packet.js';
 export {
   EG1_VERSION, EG1_CHECKS, EG1_DEFAULT_ACTION, EG1_DEFAULT_SELECTOR,
-  createEg1Harness, makeGateInvoke, runEg1,
+  createEg1Harness, makeGateInvoke, runEg1, mintDeviceSignoff, mintQuorumEvidence,
 } from './eg1-conformance.js';
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
 
 /**
- * The assurance tier a verified EP-RECEIPT-v1 issuer attests. Conservative /
- * fail-closed: if a higher tier's signed structure is not present, the receipt
- * only earns the lower tier, and a guard that needs more will refuse it.
+ * The assurance tier a receipt has CRYPTOGRAPHICALLY EARNED.
  *
- * Trust boundary: this lightweight action gate verifies the pinned issuer's
- * Ed25519 signature over the receipt. It does not re-run a full EP §6.2
- * multi-signature trust-receipt verifier here; the tier is therefore an
- * issuer-attested fact. Use @emilia-protocol/verify verifyTrustReceipt for
- * independent proof of embedded signoff/quorum signatures.
- *   quorum   — a quorum block with >= 2 distinct signers and threshold >= 2.
- *   class_a  — a device signoff (or claim.outcome === 'allow_with_signoff').
- *   software — any otherwise-valid receipt (a software-held key).
+ * SECURITY (DoD audit fix): the credited tier is NOT inferred from
+ * self-asserted payload fields. A receipt earns:
+ *   quorum   — only if it carries an EP-QUORUM-v1 evidence document whose
+ *              per-signer WebAuthn assertions verify (distinct humans + distinct
+ *              keys + threshold + action-binding + window), via verifyQuorum.
+ *   class_a  — only if it carries a device signoff ({context, webauthn}) whose
+ *              WebAuthn assertion verifies against the approver's own key, via
+ *              verifyWebAuthnSignoff.
+ *   software — every other otherwise-valid receipt (a software-held issuer key).
+ *
+ * A payload that merely CLAIMS quorum (e.g. `quorum:{signers:[...],threshold:2}`
+ * with no verifiable signatures) or sets `outcome:'allow_with_signoff'` with no
+ * WebAuthn evidence earns only `software` — it will be refused `assurance_too_low`
+ * by any guard that needs more. This is fail-closed by construction.
+ *
+ * @param {object} doc  the EP-RECEIPT-v1 document
+ * @param {object} [opts]
+ * @param {string} [opts.rpId]  bind device assertions to this WebAuthn RP id
+ * @returns {'software'|'class_a'|'quorum'} the highest tier proven, or a detailed
+ *          result when opts.detail is set.
  */
-export function receiptAssuranceTier(doc) {
+export function receiptAssuranceTier(doc, opts = {}) {
+  const detail = { tier: 'software', quorum: null, signoff: null };
   const p = doc?.payload || {};
+  const verifyOpts = opts.rpId ? { rpId: opts.rpId } : {};
+
+  // --- quorum: require a real, self-contained EP-QUORUM-v1 evidence document. ---
+  // Accept it under payload.quorum or payload.claim.quorum. It only counts if it
+  // is a full quorum document (policy + members with WebAuthn signoffs) AND
+  // verifyQuorum returns valid. A bare {signers,threshold} block has no members
+  // to verify and therefore CANNOT be credited quorum.
   const q = p.quorum || p.claim?.quorum;
-  const signers = q && (q.signers || q.approvers);
-  const threshold = q && (q.m ?? q.threshold ?? (Array.isArray(signers) ? signers.length : 0));
-  if (q && Array.isArray(signers) && signers.length >= 2 && threshold >= 2) return 'quorum';
-  if (p.signoff || p.claim?.outcome === 'allow_with_signoff') return 'class_a';
-  return 'software';
+  if (isQuorumEvidence(q)) {
+    const qr = verifyQuorum(q, verifyOpts);
+    detail.quorum = { valid: qr.valid, checks: qr.checks };
+    if (qr.valid) {
+      detail.tier = 'quorum';
+      return opts.detail ? detail : 'quorum';
+    }
+  }
+
+  // --- class_a: require a verifiable WebAuthn device signoff. ---
+  // The signoff evidence is {context, webauthn}; the approver key travels with
+  // it (signoff.approver_public_key) or alongside it (payload.approver_public_key).
+  const so = p.signoff || p.claim?.signoff;
+  if (isSignoffEvidence(so)) {
+    const key = so.approver_public_key || p.approver_public_key || p.claim?.approver_public_key;
+    if (key) {
+      const sr = verifyWebAuthnSignoff(so, key, verifyOpts);
+      detail.signoff = { valid: sr.valid, checks: sr.checks };
+      if (sr.valid) {
+        detail.tier = 'class_a';
+        return opts.detail ? detail : 'class_a';
+      }
+    }
+  }
+
+  return opts.detail ? detail : 'software';
+}
+
+/** A quorum evidence doc must carry members with per-signer signoffs to be verifiable. */
+function isQuorumEvidence(q) {
+  return !!q && typeof q === 'object' && q.policy && Array.isArray(q.members) && q.members.length > 0
+    && typeof q.action_hash === 'string' && q.action_hash.length > 0;
+}
+/** A device signoff must carry the WebAuthn assertion material to be verifiable. */
+function isSignoffEvidence(s) {
+  return !!s && typeof s === 'object' && s.context && s.webauthn;
 }
 
 /**
@@ -90,7 +150,7 @@ export function receiptAssuranceTier(doc) {
  *   if given it supersedes trustedKeys — a receipt is verified only against keys valid (and not
  *   revoked) at its issuance time.
  */
-export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null } = {}) {
+export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, rpId = null } = {}) {
   // Production key custody: a registry (rotation + revocation) supersedes a flat
   // trustedKeys list. A flat list is coerced to an always-valid registry, so
   // existing callers are unchanged.
@@ -186,17 +246,33 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     if (!v.ok) {
       return decide(false, RECEIPT_REQUIRED_STATUS, `receipt_rejected:${v.reason}`, { rejected: v });
     }
-    // Assurance tier.
-    const have = receiptAssuranceTier(receipt);
-    if ((TIER_RANK[have] ?? 0) < (TIER_RANK[requiredTier] ?? 0)) {
-      return decide(false, RECEIPT_REQUIRED_STATUS, 'assurance_too_low', { have_tier: have, need_tier: requiredTier, assurance_tier_source: 'issuer_attestation' });
+    // Assurance tier. CRYPTOGRAPHICALLY VERIFIED (DoD audit fix): the credited
+    // tier comes from re-verifying the receipt's embedded per-signer evidence
+    // (WebAuthn device signoff / EP-QUORUM-v1), not from self-asserted payload
+    // fields. A receipt that only CLAIMS a higher tier earns 'software' and is
+    // refused here.
+    const tierResult = receiptAssuranceTier(receipt, { rpId, detail: true });
+    const have = tierResult.tier;
+    const needRank = TIER_RANK[requiredTier];
+    // Fail CLOSED on an unknown / mis-cased required tier: never silently treat
+    // it as 'software'. If a manifest asks for a tier this gate does not model,
+    // no receipt can satisfy it.
+    if (needRank === undefined) {
+      return decide(false, RECEIPT_REQUIRED_STATUS, 'unknown_required_tier', { have_tier: have, need_tier: requiredTier, assurance_tier_source: 'cryptographic_verification' });
+    }
+    if ((TIER_RANK[have] ?? 0) < needRank) {
+      return decide(false, RECEIPT_REQUIRED_STATUS, 'assurance_too_low', {
+        have_tier: have, need_tier: requiredTier,
+        assurance_tier_source: 'cryptographic_verification',
+        tier_evidence: { quorum: tierResult.quorum, signoff: tierResult.signoff },
+      });
     }
     // The high-risk action packs define material fields that must be observed
     // by the executor from the system of record. A signed, harmless-looking
     // claim cannot authorize a different real mutation.
     const executionBinding = verifyExecutionBinding({ requirement, receipt, observedAction: observed });
     if (!executionBinding.ok) {
-      return decide(false, RECEIPT_REQUIRED_STATUS, 'execution_binding_failed', { execution_binding: executionBinding, have_tier: have, assurance_tier_source: 'issuer_attestation' });
+      return decide(false, RECEIPT_REQUIRED_STATUS, 'execution_binding_failed', { execution_binding: executionBinding, have_tier: have, assurance_tier_source: 'cryptographic_verification' });
     }
     // One-time consumption (replay defense). Require a stable, issuer-generated
     // receipt_id — never fall back to a content hash, whose canonicalization can
@@ -220,7 +296,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     if (!fresh) {
       return decide(false, RECEIPT_REQUIRED_STATUS, 'replay_refused', { consumption_key: receiptId });
     }
-    return decide(true, 200, 'allow', { signer: v.signer, outcome: v.outcome, have_tier: have, assurance_tier_source: 'issuer_attestation', execution_binding: executionBinding, consumption_mode: consumptionMode });
+    return decide(true, 200, 'allow', { signer: v.signer, outcome: v.outcome, have_tier: have, assurance_tier_source: 'cryptographic_verification', execution_binding: executionBinding, consumption_mode: consumptionMode });
   }
 
   /** Express/Connect middleware: refuse the route unless a sufficient receipt is present. */
