@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// EP-SCITT register -> receipt -> verify demo.
+// EP-SCITT Composition Demo — register -> receipt -> verify.
+//
+// Proves the composition claim end to end: an EP authorization receipt
+// (WHO approved) becomes a COSE_Sign1 Signed Statement, is registered via
+// SCRAPI, yields a SCITT receipt, and a third party verifies BOTH the
+// authorization and the inclusion offline.
 //
 // Default mode uses an in-process mock SCRAPI-like Transparency Service so CI
 // can prove the complete path without network sockets or external accounts:
