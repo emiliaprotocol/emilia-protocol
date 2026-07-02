@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
-import { EP_ERRORS } from '@/lib/errors';
+import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { readLimitedJson } from '@/lib/http/body-limit';
 import { logger } from '../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 10 * 1024;
 
 /**
  * POST /api/disputes/respond
@@ -14,7 +17,9 @@ export async function POST(request) {
     const auth = await authenticateRequest(request);
     if (auth.error) return EP_ERRORS.UNAUTHORIZED();
 
-    const body = await request.json();
+    const parsed = await readLimitedJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
+    const body = parsed.value;
     if (!body.dispute_id || !body.response) {
       return EP_ERRORS.BAD_REQUEST('dispute_id and response are required');
     }

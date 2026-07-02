@@ -2,8 +2,11 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/lib/supabase';
 import { protocolWrite, COMMAND_TYPES } from '@/lib/protocol-write';
 import { EP_ERRORS, epProblem } from '@/lib/errors';
+import { readLimitedJson } from '@/lib/http/body-limit';
 import { buildAttributionChain, applyAttributionChain } from '@/lib/attribution';
 import { logger } from '../../../../lib/logger.js';
+
+const MAX_BODY_BYTES = 100 * 1024;
 
 /**
  * POST /api/receipts/submit
@@ -18,7 +21,9 @@ export async function POST(request) {
       return epProblem(401, 'unauthorized', auth.error);
     }
 
-    const body = await request.json();
+    const parsed = await readLimitedJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
+    const body = parsed.value;
 
     // === VALIDATION (input validation is route responsibility) ===
     if (!body.entity_id) {
