@@ -6,7 +6,14 @@ import { EP_ERROR_CODES } from '@/lib/errors/taxonomy';
 import { epError } from '@/lib/errors/response';
 import { validatePresentBody } from '@/lib/handshake/schema';
 import { validatePresent } from '@/lib/validation/schemas';
+import { authorizeHandshakePresent, resolveAuthEntityId } from '@/lib/handshake-auth';
+import { getServiceClient } from '@/lib/supabase';
+import { readLimitedJson } from '@/lib/http/body-limit';
 import { logger } from '../../../../../lib/logger.js';
+
+// Presentations carry identity-claim payloads (credentials), so allow more than
+// the 10KB identity routes — but still bounded to prevent unbounded-body DoS.
+const MAX_BODY_BYTES = 100 * 1024;
 
 /**
  * POST /api/handshake/[handshakeId]/present
@@ -20,7 +27,9 @@ export async function POST(request, { params }) {
     if (auth.error) return epError(EP_ERROR_CODES.UNAUTHORIZED);
 
     const { handshakeId } = await params;
-    const body = await request.json();
+    const parsed = await readLimitedJson(request, MAX_BODY_BYTES);
+    if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
+    const body = parsed.value;
 
     // ── Schema validation (early gate) ────────────────────────────────
     const { valid, data, errors } = validatePresent(body);
@@ -35,6 +44,15 @@ export async function POST(request, { params }) {
     }
 
     const { party_role, presentation_type, claims, issuer_ref, disclosure_mode } = data;
+
+    // ── Authorization: caller must OWN the party_role they present as ─────
+    // Without this, any authenticated entity could post a presentation to any
+    // handshake as any role (IDOR) — impersonating a counterparty or injecting
+    // fake identity proofs. addPresentation only validates the role is a valid
+    // enum, not that the caller owns it. Mirrors the verify route's guard.
+    const authEntityId = resolveAuthEntityId(auth.entity);
+    const supabase = getServiceClient();
+    await authorizeHandshakePresent(supabase, authEntityId, handshakeId, party_role);
 
     const result = await addPresentation(
       handshakeId,
@@ -58,6 +76,9 @@ export async function POST(request, { params }) {
 
     return NextResponse.json(result, { status: 201 });
   } catch (err) {
+    if (err.name === 'HandshakeError' && err.status === 403) {
+      return epError(EP_ERROR_CODES.FORBIDDEN, err.message);
+    }
     logger.error('Handshake presentation error:', err);
     return epError(EP_ERROR_CODES.INTERNAL);
   }

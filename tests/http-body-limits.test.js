@@ -19,6 +19,8 @@ const mockAuthenticate = vi.fn();
 
 vi.mock('@/lib/supabase', () => ({
   authenticateRequest: (...args) => mockAuthenticate(...args),
+  // present route imports this; not reached on the 413 path, but must resolve.
+  getServiceClient: () => ({ from: () => ({ select: () => ({ eq: () => ({ data: [], error: null }) }) }) }),
 }));
 
 const mockProtocolWrite = vi.fn();
@@ -34,8 +36,19 @@ vi.mock('@/lib/protocol-write', () => ({
 }));
 
 const mockCreateBinding = vi.fn();
+const mockVerifyBinding = vi.fn();
+const mockFileContinuityClaim = vi.fn();
 vi.mock('@/lib/ep-ix', () => ({
   createBinding: (...args) => mockCreateBinding(...args),
+  verifyBinding: (...args) => mockVerifyBinding(...args),
+  fileContinuityClaim: (...args) => mockFileContinuityClaim(...args),
+}));
+
+// present route deps — not reached on the 413 path, mocked so imports resolve.
+vi.mock('@/lib/handshake', () => ({ addPresentation: vi.fn() }));
+vi.mock('@/lib/handshake-auth', () => ({
+  authorizeHandshakePresent: vi.fn().mockResolvedValue(undefined),
+  resolveAuthEntityId: (a) => (a && (a.entity_id || a.id)) || null,
 }));
 
 const mockGetCommitStatus = vi.fn();
@@ -64,7 +77,10 @@ const DisputesRespond = await import('../app/api/disputes/respond/route.js');
 const DisputesFile = await import('../app/api/disputes/file/route.js');
 const ReceiptsSubmit = await import('../app/api/receipts/submit/route.js');
 const IdentityBind = await import('../app/api/identity/bind/route.js');
+const IdentityVerify = await import('../app/api/identity/verify/route.js');
+const IdentityContinuity = await import('../app/api/identity/continuity/route.js');
 const CommitRevoke = await import('../app/api/commit/[commitId]/revoke/route.js');
+const HandshakePresent = await import('../app/api/handshake/[handshakeId]/present/route.js');
 
 // A real Request carrying a body STREAM (not a `{ json() }` test double), so the
 // byte-enforcing path in readLimitedJson runs rather than the double fallback.
@@ -104,7 +120,10 @@ describe('authenticated write-route body limits (heap-exhaustion DoS)', () => {
     ['disputes/file', DisputesFile.POST, '/api/disputes/file', 10 * 1024, undefined],
     ['receipts/submit', ReceiptsSubmit.POST, '/api/receipts/submit', 100 * 1024, undefined],
     ['identity/bind', IdentityBind.POST, '/api/identity/bind', 10 * 1024, undefined],
+    ['identity/verify', IdentityVerify.POST, '/api/identity/verify', 10 * 1024, undefined],
+    ['identity/continuity', IdentityContinuity.POST, '/api/identity/continuity', 10 * 1024, undefined],
     ['commit/[commitId]/revoke', CommitRevoke.POST, '/api/commit/epc_1/revoke', 5 * 1024, { params: Promise.resolve({ commitId: 'epc_1' }) }],
+    ['handshake/[handshakeId]/present', HandshakePresent.POST, '/api/handshake/eph_1/present', 100 * 1024, { params: Promise.resolve({ handshakeId: 'eph_1' }) }],
   ];
 
   for (const [name, handler, path, cap, params] of cases) {

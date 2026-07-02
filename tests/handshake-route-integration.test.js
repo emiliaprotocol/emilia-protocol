@@ -106,9 +106,11 @@ vi.mock('@/lib/handshake', () => ({
 // ============================================================================
 
 const mockAuthorizeHandshakeVerify = vi.fn().mockResolvedValue(undefined);
+const mockAuthorizeHandshakePresent = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@/lib/handshake-auth', () => ({
   authorizeHandshakeVerify: (...args) => mockAuthorizeHandshakeVerify(...args),
+  authorizeHandshakePresent: (...args) => mockAuthorizeHandshakePresent(...args),
   resolveAuthEntityId: (actor) => {
     if (!actor) return null;
     if (typeof actor === 'string') return actor;
@@ -143,6 +145,8 @@ beforeEach(() => {
   // Reset getServiceClient to return a mock with party found (access control passes)
   const freshMock = createMockSupabase();
   mockGetServiceClient.mockReturnValue(freshMock);
+  mockAuthorizeHandshakePresent.mockResolvedValue(undefined);
+  mockAuthorizeHandshakeVerify.mockResolvedValue(undefined);
   mockInitiateHandshake.mockResolvedValue({
     handshake_id: 'eph_test_123',
     mode: 'mutual',
@@ -351,6 +355,37 @@ describe('POST /api/handshake/:id/present', () => {
     const detail = json.detail ?? json.error?.detail;
     expect(detail).toContain('presentation_type');
     expect(mockAddPresentation).not.toHaveBeenCalled();
+  });
+
+  // ── IDOR regression (CRITICAL audit finding) ──────────────────────────────
+  // The route authenticated but never authorized party ownership, so any
+  // authenticated entity could post a presentation to any handshake as any
+  // role. These lock the guard in place.
+  it('13. IDOR: rejects with 403 and does NOT write when caller is not the party owner', async () => {
+    const denial = Object.assign(
+      new Error("Caller does not own the 'initiator' party role on this handshake"),
+      { name: 'HandshakeError', status: 403 },
+    );
+    mockAuthorizeHandshakePresent.mockRejectedValueOnce(denial);
+
+    const req = createMockRequest('POST', `http://localhost/api/handshake/${handshakeId}/present`, validBody);
+    const res = await presentPost(req, mockParams);
+
+    expect(res.status).toBe(403);
+    expect(mockAddPresentation).not.toHaveBeenCalled();
+  });
+
+  it('14. wires authorizeHandshakePresent with (supabase, authEntityId, handshakeId, party_role) before writing', async () => {
+    const req = createMockRequest('POST', `http://localhost/api/handshake/${handshakeId}/present`, validBody);
+    await presentPost(req, mockParams);
+
+    expect(mockAuthorizeHandshakePresent).toHaveBeenCalledTimes(1);
+    const args = mockAuthorizeHandshakePresent.mock.calls[0];
+    // (supabase, authEntityId, handshakeId, partyRole)
+    expect(args[1]).toBe('test-entity-123'); // resolveAuthEntityId(auth.entity)
+    expect(args[2]).toBe(handshakeId);
+    expect(args[3]).toBe('initiator');
+    expect(mockAddPresentation).toHaveBeenCalledTimes(1);
   });
 });
 
