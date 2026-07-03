@@ -4,13 +4,14 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Informational                              28 June 2026
-Expires: 30 December 2026
+Intended status: Informational                               J. Kintzele
+Expires: 30 December 2026                                           COSA
+                                                            28 June 2026
 
 
    EMILIA Protocol: Grid Curtailment Authorization Profile (Proof-of-
                               Curtailment)
-                  draft-schrock-ep-grid-curtailment-00
+               draft-schrock-kintzele-grid-curtailment-00
 
 Abstract
 
@@ -46,17 +47,21 @@ Status of This Memo
 
    This Internet-Draft will expire on 30 December 2026.
 
+
+
+
+
+
+
+Schrock & Kintzele      Expires 30 December 2026                [Page 1]
+
+Internet-Draft             EP Grid Curtailment                 June 2026
+
+
 Copyright Notice
 
    Copyright (c) 2026 IETF Trust and the persons identified as the
    document authors.  All rights reserved.
-
-
-
-Schrock                 Expires 30 December 2026                [Page 1]
-
-Internet-Draft             EP Grid Curtailment                 June 2026
-
 
    This document is subject to BCP 78 and the IETF Trust's Legal
    Provisions Relating to IETF Documents (https://trustee.ietf.org/
@@ -76,8 +81,8 @@ Table of Contents
    5.  Relationship to Other Work  . . . . . . . . . . . . . . . . .   3
    6.  Security Considerations . . . . . . . . . . . . . . . . . . .   3
    7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   3
-   8.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   3
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   4
+   8.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   4
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .   4
 
 1.  Introduction
 
@@ -101,18 +106,15 @@ Table of Contents
    does not define); control_mode (human-oversight profile, typically
    "on_the_loop"); and OPTIONAL protected_lanes, telemetry_sources,
    approver, max_duration.  Hard cuts (large target_delta_kw or full-
-   site) MUST use EP-QUORUM (m-of-n distinct signers).
 
 
 
-
-
-
-
-Schrock                 Expires 30 December 2026                [Page 2]
+Schrock & Kintzele      Expires 30 December 2026                [Page 2]
 
 Internet-Draft             EP Grid Curtailment                 June 2026
 
+
+   site) MUST use EP-QUORUM (m-of-n distinct signers).
 
 3.  Gate Predicates (Fail-Closed)
 
@@ -161,21 +163,21 @@ Internet-Draft             EP Grid Curtailment                 June 2026
    This document registers the "grid.curtailment" action-type in the EP
    action-type profile registry.  It has no other IANA actions.
 
-8.  References
 
 
-
-Schrock                 Expires 30 December 2026                [Page 3]
+Schrock & Kintzele      Expires 30 December 2026                [Page 3]
 
 Internet-Draft             EP Grid Curtailment                 June 2026
 
 
+8.  References
+
    [I-D.schrock-ep-authorization-receipts]
               Schrock, I., "Authorization Receipts for High-Risk Agent
               Actions", Work in Progress, Internet-Draft, draft-schrock-
-              ep-authorization-receipts-01, 12 June 2026,
+              ep-authorization-receipts-04, 30 June 2026,
               <https://datatracker.ietf.org/doc/html/draft-schrock-ep-
-              authorization-receipts-01>.
+              authorization-receipts-04>.
 
    [RFC4998]  Gondrom, T., Brandner, R., and U. Pordesch, "Evidence
               Record Syntax (ERS)", RFC 4998, DOI 10.17487/RFC4998,
@@ -186,7 +188,7 @@ Internet-Draft             EP Grid Curtailment                 June 2026
               DOI 10.17487/RFC8785, June 2020,
               <https://www.rfc-editor.org/info/rfc8785>.
 
-Author's Address
+Authors' Addresses
 
    Iman Schrock
    EMILIA Protocol, Inc.
@@ -194,6 +196,10 @@ Author's Address
    Email: team@emiliaprotocol.ai
 
 
+   Justin Kintzele
+   COSA
+   United States of America
+   Email: jkintzele@jdieselny.com
 
 
 
@@ -215,10 +221,4 @@ Author's Address
 
 
 
-
-
-
-
-
-
-Schrock                 Expires 30 December 2026                [Page 4]
+Schrock & Kintzele      Expires 30 December 2026                [Page 4]

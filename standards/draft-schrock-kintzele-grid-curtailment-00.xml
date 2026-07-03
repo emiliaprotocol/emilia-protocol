@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rfc xmlns:xi="http://www.w3.org/2001/XInclude"
-     docName="draft-schrock-ep-grid-curtailment-00"
+     docName="draft-schrock-kintzele-grid-curtailment-00"
      category="info" ipr="trust200902" submissionType="IETF"
      version="3" tocInclude="true" sortRefs="true" symRefs="true">
   <front>
     <title abbrev="EP Grid Curtailment">EMILIA Protocol: Grid Curtailment Authorization Profile (Proof-of-Curtailment)</title>
-    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-grid-curtailment-00"/>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-kintzele-grid-curtailment-00"/>
     <author fullname="Iman Schrock">
       <organization>EMILIA Protocol, Inc.</organization>
       <address><postal><country>US</country></postal><email>team@emiliaprotocol.ai</email></address>
+    </author>
+    <author fullname="Justin Kintzele">
+      <organization>COSA</organization>
+      <address><postal><country>US</country></postal><email>jkintzele@jdieselny.com</email></address>
     </author>
     <date year="2026" month="June" day="28"/>
     <area>Security</area>
