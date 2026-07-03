@@ -1026,6 +1026,20 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
         Attestation (<xref target="initiator-attestation"/>); those sections
         are specified, not proven, and extending the models to them is
         tracked work.</t>
+        <t>Independent implementation status, stated precisely: the
+        three reference verifiers (JavaScript, Python, Go) agree on the
+        published conformance vectors but live in one repository -- a
+        cross-language consistency check, not independent
+        implementations. A second, independent implementation is now in
+        progress: COSA announced (2 July 2026) a clean-room
+        reimplementation of the receipt and quorum verification path
+        directly from this specification, to be validated against the
+        published conformance vectors in COSA's own repository. At this
+        document's date that work is announced and underway, not
+        complete; this section will state the result, either way, when
+        it lands. Separately, a third party has independently executed
+        and verified the published artifacts against a pinned
+        commit.</t>
       </section>
       <section anchor="directory-authority">
         <name>Directory Authority</name>

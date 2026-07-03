@@ -116,14 +116,14 @@ Internet-Draft          EP Authorization Receipts              July 2026
 
      11.5.  What the Formal Models Do and Do Not Prove . . . . . . .  22
      11.6.  Directory Authority  . . . . . . . . . . . . . . . . . .  23
-     11.7.  What Separation of Duties Does and Does Not Provide  . .  23
+     11.7.  What Separation of Duties Does and Does Not Provide  . .  24
      11.8.  Approver Fatigue . . . . . . . . . . . . . . . . . . . .  24
      11.9.  Initiator Attestation as an Attack Surface . . . . . . .  24
      11.10. No symmetric key on the verification trust path  . . . .  25
    12. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  26
    13. Normative References  . . . . . . . . . . . . . . . . . . . .  26
    14. Informative References  . . . . . . . . . . . . . . . . . . .  26
-   Appendix A.  Changes since -04  . . . . . . . . . . . . . . . . .  26
+   Appendix A.  Changes since -04  . . . . . . . . . . . . . . . . .  27
    Appendix B.  Changes since -00 (through -04)  . . . . . . . . . .  27
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  28
 
@@ -1252,6 +1252,19 @@ Internet-Draft          EP Authorization Receipts              July 2026
    sections are specified, not proven, and extending the models to them
    is tracked work.
 
+   Independent implementation status, stated precisely: the three
+   reference verifiers (JavaScript, Python, Go) agree on the published
+   conformance vectors but live in one repository -- a cross-language
+   consistency check, not independent implementations.  A second,
+   independent implementation is now in progress: COSA announced (2 July
+   2026) a clean-room reimplementation of the receipt and quorum
+   verification path directly from this specification, to be validated
+   against the published conformance vectors in COSA's own repository.
+   At this document's date that work is announced and underway, not
+   complete; this section will state the result, either way, when it
+   lands.  Separately, a third party has independently executed and
+   verified the published artifacts against a pinned commit.
+
 11.6.  Directory Authority
 
    Section 5 removes the operator from the signature path; Section 5.2
@@ -1263,19 +1276,6 @@ Internet-Draft          EP Authorization Receipts              July 2026
    enrollment; Class C-equivalent treatment otherwise) exist for this
    reason.  Auditors SHOULD verify directory key custody as part of any
    assessment that relies on receipts.
-
-11.7.  What Separation of Duties Does and Does Not Provide
-
-   SelfApprovalImpossible (Section 6) defeats _unilateral_ self-
-   approval: no initiator can approve its own action, and m-of-n
-   approvers are pairwise distinct identities.  It does not defeat
-   collusion among distinct enrolled humans, one human who controls
-   multiple enrolled identities (an enrollment control -- Section 5.2),
-   or a coerced approver.  Receipts make such events _attributable_ --
-   named, signed, and evidenced -- which raises the cost of insider
-   fraud; they do not make it impossible, and implementations MUST NOT
-   claim otherwise.
-
 
 
 
@@ -1289,6 +1289,18 @@ Schrock                  Expires 3 January 2027                [Page 23]
 
 Internet-Draft          EP Authorization Receipts              July 2026
 
+
+11.7.  What Separation of Duties Does and Does Not Provide
+
+   SelfApprovalImpossible (Section 6) defeats _unilateral_ self-
+   approval: no initiator can approve its own action, and m-of-n
+   approvers are pairwise distinct identities.  It does not defeat
+   collusion among distinct enrolled humans, one human who controls
+   multiple enrolled identities (an enrollment control -- Section 5.2),
+   or a coerced approver.  Receipts make such events _attributable_ --
+   named, signed, and evidenced -- which raises the cost of insider
+   fraud; they do not make it impossible, and implementations MUST NOT
+   claim otherwise.
 
 11.8.  Approver Fatigue
 
@@ -1326,6 +1338,14 @@ Internet-Draft          EP Authorization Receipts              July 2026
    rendered Action Object.  This is consistent with the rendering-
    faithfulness discipline of Section 11.3: the approver's decision
    input is the rendered Action Object; the statement is commentary from
+
+
+
+Schrock                  Expires 3 January 2027                [Page 24]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
    a party the protocol never trusts.  A related residual vector is
    divide-and-misinform: because each approver signs their own context,
    a malicious orchestrator can show different approvers of an m-of-n
@@ -1335,16 +1355,6 @@ Internet-Draft          EP Authorization Receipts              July 2026
    violations, but on verifiers that predate the member such a receipt
    still verifies -- the rule is a conformance check, not a signature
    property.
-
-
-
-
-
-
-Schrock                  Expires 3 January 2027                [Page 24]
-
-Internet-Draft          EP Authorization Receipts              July 2026
-
 
    Privacy: statements written by an agent mid-task can leak sensitive
    operational context -- counterparty details, internal findings,
@@ -1384,16 +1394,6 @@ Internet-Draft          EP Authorization Receipts              July 2026
    HMAC-chained audit log) is verifiable only by a party holding the
    same secret as the producer, which is precisely the party whose
    conduct the evidence is meant to constrain -- its keeper can rewrite
-   its own history undetectably.  An EP receipt's issuer cannot.
-   Conforming verifier implementations MUST NOT introduce a symmetric
-   primitive on the verification path; an implementation that does so
-   does not provide EP's non-repudiation property.  (HMAC MAY appear
-   elsewhere in a deployment -- e.g. authenticating an operator's own
-   cron or webhook calls -- provided it is never a link in the chain a
-   third party verifies.)
-
-
-
 
 
 
@@ -1401,6 +1401,14 @@ Schrock                  Expires 3 January 2027                [Page 25]
 
 Internet-Draft          EP Authorization Receipts              July 2026
 
+
+   its own history undetectably.  An EP receipt's issuer cannot.
+   Conforming verifier implementations MUST NOT introduce a symmetric
+   primitive on the verification path; an implementation that does so
+   does not provide EP's non-repudiation property.  (HMAC MAY appear
+   elsewhere in a deployment -- e.g. authenticating an operator's own
+   cron or webhook calls -- provided it is never a link in the chain a
+   third party verifies.)
 
 12.  IANA Considerations
 
@@ -1441,6 +1449,15 @@ Internet-Draft          EP Authorization Receipts              July 2026
               <https://datatracker.ietf.org/doc/html/draft-nelson-agent-
               delegation-receipts-10>.
 
+
+
+
+
+Schrock                  Expires 3 January 2027                [Page 26]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
 Appendix A.  Changes since -04
 
    -05 adds the human-authorization-receipt composition frame for the
@@ -1450,14 +1467,6 @@ Appendix A.  Changes since -04
    note in Section 5.1 (key classes classify custody, not assurance
    levels); corrects the formal-models status (the m-of-n quorum flow is
    now Alloy-checked) and states plainly which three normative
-
-
-
-Schrock                  Expires 3 January 2027                [Page 26]
-
-Internet-Draft          EP Authorization Receipts              July 2026
-
-
    mechanisms the reference implementation does not yet cover.
 
 Appendix B.  Changes since -00 (through -04)
@@ -1497,6 +1506,14 @@ Appendix B.  Changes since -00 (through -04)
        Section 5.2): makes unmistakable that (a) EP's user-verification-
        gated Class-A signoff is native to this draft and does not depend
        on any other draft's acquiescence/confirmation mechanism, and (b)
+
+
+
+Schrock                  Expires 3 January 2027                [Page 27]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
        proof of a specific natural-person identity is out of scope --
        the Approver Directory trust root is the explicit slot where
        identity/key-discovery layers bind keys to named persons.
@@ -1506,14 +1523,6 @@ Appendix B.  Changes since -00 (through -04)
        an OPTIONAL delegation (scheme, ref, OPTIONAL hash, OPTIONAL
        observed_at), plus an OPTIONAL length-capped (<= 280 character)
        statement.  Like initiator_attestation, it is OPTIONAL, covered
-
-
-
-Schrock                  Expires 3 January 2027                [Page 27]
-
-Internet-Draft          EP Authorization Receipts              July 2026
-
-
        by the context hash via the JCS canonicalization already
        normative in Section 4, verifies under the existing Section 6.3
        verifiers unmodified, and is a claim -- identified but never
@@ -1535,15 +1544,6 @@ Author's Address
    EMILIA Protocol, Inc.
    United States of America
    Email: team@emiliaprotocol.ai
-
-
-
-
-
-
-
-
-
 
 
 
