@@ -1450,8 +1450,8 @@ Internet-Draft          EP Authorization Receipts              July 2026
               Nelson, R., "Delegation Receipt Protocol for AI Agent
               Authorization", Work in Progress, Internet-Draft, draft-
               nelson-agent-delegation-receipts-10, 13 June 2026,
-              <https://datatracker.ietf.org/doc/html/draft-nelson-agent-
-              delegation-receipts-10>.
+              <https://datatracker.ietf.org/doc/draft-nelson-agent-
+              delegation-receipts/>.
 
 
 
