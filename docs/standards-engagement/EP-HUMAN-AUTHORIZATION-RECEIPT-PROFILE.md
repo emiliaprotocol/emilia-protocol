@@ -114,12 +114,12 @@ npm run conformance
 
 ## Relationship to the EP Internet-Drafts
 
-- **`draft-schrock-scitt-authorization-evidence`** — **the citable form of this
+- **`draft-schrock-human-authorization-binding`** (SCITT expression section; absorbed the former scitt-authorization-evidence draft 2026-07-03) — **the citable form of this
   document**: the normative profile defining how a SCITT-family agent-action
   statement references a named-human authorization receipt by digest, and how a
   relying party verifies the linkage. This is the artifact the Permit / Capsule /
   Action-Receipt drafts can normatively reference for their human-authorization
-  slot. Source: [`standards/draft-schrock-scitt-authorization-evidence-00.xml`](../../standards/draft-schrock-scitt-authorization-evidence-00.xml).
+  slot. Source: [`standards/draft-schrock-human-authorization-binding-00.xml`](../../standards/draft-schrock-human-authorization-binding-00.xml).
 - `draft-schrock-ep-authorization-receipts` — the receipt primitive this
   profile transports (rev -05 sharpens the composition framing).
 - `draft-schrock-ep-quorum` — the quorum (two-person rule) variant of the same
