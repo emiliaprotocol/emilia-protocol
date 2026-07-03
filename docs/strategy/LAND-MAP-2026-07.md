@@ -28,8 +28,9 @@ declines to define it. The named, empty slots:
 ONE short universal profile: how any host record binds a named-human
 authorization receipt (or quorum) by content digest, with verified-vs-accepted
 semantics — plus a per-host mapping appendix covering the eleven slots above.
-Eleven companion profiles collapse into one document. Base text already exists
-(`docs/EP-HUMAN-AUTHORIZATION-CLAIM.md`). Effort: days. File first post-126.
+Eleven companion profiles collapse into one document. **STATUS: BUILT AND
+BATCHED 2026-07-03** — draft + B1-B5 vector done same night, joins the
+pre-cutoff upload as draft #6 (land-grab acceleration, Iman's call).
 
 ## The WIMSE parcel, stated precisely (Iman, 2026-07-03)
 
@@ -109,8 +110,9 @@ a small company becomes load-bearing.
 
 ## Sequencing (post-cutoff)
 
-1. Week of Jul 7: Flag #1 (binding profile) + Flag #2 (revocation statement)
-   drafted and render-clean — file when datatracker reopens (~Jul 18-20).
+1. DONE early: Flag #1 filed WITH the Monday batch. Week of Jul 7: Flag #2
+   (revocation statement) drafted render-clean — file when the tracker
+   reopens (~Jul 18-20).
 2. Vienna week: WHO leg lands in the co-authored composition; announcement
    threads carry the flags' existence.
 3. Week of Jul 21: architecture -01 (map catches up); SPICE actor-chain
