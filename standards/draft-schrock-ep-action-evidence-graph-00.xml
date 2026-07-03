@@ -162,7 +162,40 @@
       toward admissibility. Machine-readable reason codes (for example
       missing_human_approval, untrusted_workload, contradicted_outcome,
       unbacked_edge_claim) accompany the verdict; the reason vocabulary
-      is open, the verdict set is not.</t>
+      is open, the verdict set is not. The token "admissible" is a
+      protocol token naming sufficiency under the stated policy; it
+      carries no legal meaning, and whether the wire name should instead
+      read "sufficient" is an open editorial question for -01 -- the
+      semantics are fixed.</t>
+      <section anchor="replay-det">
+        <name>Replay determinism, precisely</name>
+        <t>The replay digest is the canonical digest (JCS-style, I-JSON
+        subset) of exactly three inputs: the policy object as supplied;
+        the ordered list of NORMALIZED EVIDENCE FACTS; and the
+        evaluation time. This composite is then bound to the graph
+        digest. A normalized evidence fact carries, per node and
+        nothing more: type, label, verified (boolean), the action
+        digest the artifact itself attests, outcome (if the artifact
+        carries one), revoked (boolean), age in seconds relative to the
+        evaluation time, the derived staleness boolean, and whether the
+        policy required a revocation check for that type. Raw artifact
+        bytes, network state, and clock reads are excluded by
+        construction; two evaluators disagreeing on a replay digest are
+        by definition evaluating different inputs.</t>
+        <t>Failure semantics are fixed, not implementation-defined. A
+        node whose type has no registered verifier, whose inline
+        artifact does not hash to its node id, or whose verifier throws
+        yields verified=false and the bundle cannot reach admissible
+        (unverifiable-class failures). A node REFERENCED but not
+        disclosed (no artifact bytes available) contributes a fact with
+        verified=false: if the policy's requirement needed that type,
+        the verdict is missing_evidence -- the evidence may exist but
+        was not presented; nothing about the graph lied. By contrast a
+        CLAIMED edge the source artifact's bytes do not back is a lie
+        about the evidence and forces unverifiable regardless of what
+        else verified. The distinction is deliberate: absence degrades
+        to "not enough", deception degrades to "not trustable".</t>
+      </section>
     </section>
     <section anchor="result">
       <name>The Reliance Result (EP-RELIANCE-RESULT-v1)</name>
@@ -226,14 +259,160 @@
       </references>
       <references>
         <name>Informative References</name>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.schrock-ep-authorization-receipts.xml"/>
-        <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.schrock-ep-authorization-evidence-chain.xml"/>
+        <reference anchor="I-D.schrock-ep-authorization-receipts" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">
+          <front>
+            <title>Authorization Receipts for High-Risk Agent Actions</title>
+            <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+            <date year="2026" month="July"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-05"/>
+        </reference>
+        <reference anchor="I-D.schrock-ep-authorization-evidence-chain" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/">
+          <front>
+            <title>Authorization Evidence Chains: Composing Heterogeneous Agent-Authorization Receipts (EP-AEC)</title>
+            <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+            <date year="2026" month="July"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-evidence-chain-01"/>
+        </reference>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9334.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9635.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9711.xml"/>
         <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9943.xml"/>
       </references>
     </references>
+    <section anchor="example">
+      <name>Worked Example (Non-Normative)</name>
+      <t>The following objects are a complete, verifiable vector
+      produced by the reference implementation with a fixed test seed;
+      the runnable form ships with the reference implementation
+      (examples/evidence-graph/). Long lines are wrapped per the
+      single-backslash strategy of RFC 8792. The graph carries three
+      disclosed nodes for one wire-transfer action and one claimed edge
+      (the permit provably references the authorization it permits);
+      under the wire-transfer policy pack at evaluation time
+      2026-07-02T12:03:00Z the verdict is admissible, and one hour
+      later the same graph under the same policy is stale.</t>
+      <t>The evidence graph:</t>
+      <sourcecode type="json"><![CDATA[
+NOTE: '\' line wrapping per RFC 8792
+
+{
+ "@version": "EP-AEG-v1",
+ "action_digest": "sha256:0911345840214f3319dcdad832c2d8d38f98e3\
+ce74d952b182127c74ee19147a",
+ "nodes": [
+  {
+   "id": "sha256:f086f356d62b8b682e97c006b2c748fbfba9f97a627d3bf\
+5d6367d2c5a0aae12",
+   "type": "authorization_receipt",
+   "artifact": {
+    "typ": "authorization_receipt",
+    "action_digest": "sha256:0911345840214f3319dcdad832c2d8d38f9\
+8e3ce74d952b182127c74ee19147a",
+    "approver": "ops-lead@example.com",
+    "issued_at": "2026-07-02T12:00:00Z"
+   }
+  },
+  {
+   "id": "sha256:0a588d34875e4f69e2b016a3f6e8bd1da7743e957688865\
+bcf9f7fba50b408c3",
+   "type": "policy_permit",
+   "artifact": {
+    "typ": "policy_permit",
+    "action_digest": "sha256:0911345840214f3319dcdad832c2d8d38f9\
+8e3ce74d952b182127c74ee19147a",
+    "permits_receipt": "sha256:f086f356d62b8b682e97c006b2c748fbf\
+ba9f97a627d3bf5d6367d2c5a0aae12",
+    "decision": "allow",
+    "issued_at": "2026-07-02T12:00:05Z"
+   }
+  },
+  {
+   "id": "sha256:9a16eb90dd1d7fa726195c0eceaa8e2f763ee12af33e3b4\
+122f728ee67e51932",
+   "type": "workload_identity",
+   "artifact": {
+    "typ": "workload_identity",
+    "action_digest": "sha256:0911345840214f3319dcdad832c2d8d38f9\
+8e3ce74d952b182127c74ee19147a",
+    "spiffe_id": "spiffe://example.org/payments-agent",
+    "issued_at": "2026-07-02T11:30:00Z"
+   }
+  }
+ ],
+ "edges": [
+  {
+   "from": "sha256:0a588d34875e4f69e2b016a3f6e8bd1da7743e9576888\
+65bcf9f7fba50b408c3",
+   "rel": "permits",
+   "to": "sha256:f086f356d62b8b682e97c006b2c748fbfba9f97a627d3bf\
+5d6367d2c5a0aae12"
+  }
+ ]
+}
+]]></sourcecode>
+      <t>The relying-party policy (the wire-transfer policy pack):</t>
+      <sourcecode type="json"><![CDATA[
+NOTE: '\' line wrapping per RFC 8792
+
+{
+ "policy_id": "ep:pack:wire-transfer:v1",
+ "reliance_purpose": "money_movement",
+ "action_family": "urn:ep:action:payments.wire_transfer",
+ "requirement": "authorization_receipt AND policy_permit AND wor\
+kload_identity",
+ "freshness_sec": {
+  "authorization_receipt": 300,
+  "policy_permit": 600,
+  "workload_identity": 3600
+ },
+ "revocation_required": [
+  "authorization_receipt"
+ ],
+ "required_edges": [
+  {
+   "from_type": "policy_permit",
+   "rel": "permits",
+   "to_type": "authorization_receipt"
+  }
+ ],
+ "trust_anchor_slots": [
+  "authorization_receipt",
+  "policy_permit"
+ ]
+}
+]]></sourcecode>
+      <t>The signed reliance result (Ed25519 over the canonical
+      payload; the replay digest is recomputable from the graph and
+      policy above):</t>
+      <sourcecode type="json"><![CDATA[
+NOTE: '\' line wrapping per RFC 8792
+
+{
+ "payload": {
+  "@version": "EP-RELIANCE-RESULT-v1",
+  "verdict": "admissible",
+  "reasons": [],
+  "action_digest": "sha256:0911345840214f3319dcdad832c2d8d38f98e\
+3ce74d952b182127c74ee19147a",
+  "graph_digest": "sha256:c29e2f1e66a5e617d4432ecc2d77fa0b2e9fa6\
+111106e39368602e4539f0d4e5",
+  "policy_digest": "sha256:76210f17d0592189a15104ede6045af8a96e4\
+79f8b15a6053291b2cfd684dda9",
+  "policy_id": "ep:pack:wire-transfer:v1",
+  "reliance_purpose": "money_movement",
+  "replay_digest": "sha256:8b540fadbd7b2e0ba5fc979b2b0bad005712a\
+e83ed6a80f7b72173f1eacedafa",
+  "evaluated_at": "2026-07-02T12:03:00Z"
+ },
+ "sig": "DknmC2Rj29d2ck-EJk-ZYV-9MPw8rxvJj-9U5kQTP1LCUs4JVsqlFN5\
+03wDjt-A2p25fgDDVXHSStEuevHn1CA",
+ "verifier_key": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAW\
+uvhSCjMsl3hzc"
+}
+]]></sourcecode>
+    </section>
     <section anchor="impl">
       <name>Implementation Status</name>
       <t>A reference implementation (graph evaluation, policy replay,

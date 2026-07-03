@@ -632,6 +632,12 @@
       systems.</t>
       <section anchor="key-classes">
         <name>Key Classes</name>
+        <t>Key classes classify KEY CUSTODY -- who holds and exercises
+        the approver's signing key -- and nothing else. They are
+        distinct from, and unrelated to, any assurance-level or
+        conformance-class vocabulary used elsewhere; a companion
+        document on assurance classification uses different
+        identifiers precisely to avoid collision with these.</t>
         <t><strong>Class A -- Device-bound keys
         (<bcp14>RECOMMENDED</bcp14>).</strong> The approver's key is
         generated and held in a platform authenticator or security key

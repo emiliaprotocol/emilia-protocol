@@ -94,7 +94,7 @@ Table of Contents
      5.2.  Enrollment and the Approver Directory . . . . . . . . . .  15
      5.3.  The Signoff . . . . . . . . . . . . . . . . . . . . . . .  16
    6.  Consumption, Commitment, and the Trust Receipt  . . . . . . .  16
-     6.1.  State Machine . . . . . . . . . . . . . . . . . . . . . .  16
+     6.1.  State Machine . . . . . . . . . . . . . . . . . . . . . .  17
      6.2.  The Trust Receipt . . . . . . . . . . . . . . . . . . . .  17
      6.3.  Offline Verification Algorithm  . . . . . . . . . . . . .  18
    7.  Multi-Approver Policies (m-of-n)  . . . . . . . . . . . . . .  19
@@ -103,8 +103,8 @@ Table of Contents
    10. Relationship to Other Work  . . . . . . . . . . . . . . . . .  20
    11. Security Considerations . . . . . . . . . . . . . . . . . . .  21
      11.1.  Operator Compromise  . . . . . . . . . . . . . . . . . .  21
-     11.2.  Approver Device Compromise . . . . . . . . . . . . . . .  21
-     11.3.  Presentation Attacks . . . . . . . . . . . . . . . . . .  21
+     11.2.  Approver Device Compromise . . . . . . . . . . . . . . .  22
+     11.3.  Presentation Attacks . . . . . . . . . . . . . . . . . .  22
      11.4.  Log Equivocation . . . . . . . . . . . . . . . . . . . .  22
 
 
@@ -115,14 +115,14 @@ Internet-Draft          EP Authorization Receipts              July 2026
 
 
      11.5.  What the Formal Models Do and Do Not Prove . . . . . . .  22
-     11.6.  Directory Authority  . . . . . . . . . . . . . . . . . .  22
+     11.6.  Directory Authority  . . . . . . . . . . . . . . . . . .  23
      11.7.  What Separation of Duties Does and Does Not Provide  . .  23
      11.8.  Approver Fatigue . . . . . . . . . . . . . . . . . . . .  23
-     11.9.  Initiator Attestation as an Attack Surface . . . . . . .  23
-     11.10. No symmetric key on the verification trust path  . . . .  24
+     11.9.  Initiator Attestation as an Attack Surface . . . . . . .  24
+     11.10. No symmetric key on the verification trust path  . . . .  25
    12. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  25
    13. Normative References  . . . . . . . . . . . . . . . . . . . .  25
-   14. Informative References  . . . . . . . . . . . . . . . . . . .  25
+   14. Informative References  . . . . . . . . . . . . . . . . . . .  26
    Appendix A.  Changes since -00  . . . . . . . . . . . . . . . . .  26
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  27
 
@@ -792,6 +792,12 @@ Internet-Draft          EP Authorization Receipts              July 2026
 
 5.1.  Key Classes
 
+   Key classes classify KEY CUSTODY -- who holds and exercises the
+   approver's signing key -- and nothing else.  They are distinct from,
+   and unrelated to, any assurance-level or conformance-class vocabulary
+   used elsewhere; a companion document on assurance classification uses
+   different identifiers precisely to avoid collision with these.
+
    *Class A -- Device-bound keys (RECOMMENDED).* The approver's key is
    generated and held in a platform authenticator or security key and
    exercised via WebAuthn [WEBAUTHN].  The signature algorithm is ES256
@@ -827,13 +833,7 @@ Internet-Draft          EP Authorization Receipts              July 2026
    access.  Key rotation appends a new entry and terminates the old one;
    signatures verify against the key entry valid at issued_at.
 
-   Directory authority is a trust root and MUST NOT default to the EP
-   operator.  The directory tree head MUST be signed by an organization-
-   controlled directory key (custody options parallel Section 5.1; an
-   organization-held hardware key is RECOMMENDED).  Where directory
-   _operation_ is delegated to the EP operator, every enrollment entry
-   MUST carry a second-party attestation -- a signature over the new
-   entry by an organization administrator key or by a quorum of already-
+
 
 
 
@@ -842,6 +842,13 @@ Schrock                  Expires 3 January 2027                [Page 15]
 Internet-Draft          EP Authorization Receipts              July 2026
 
 
+   Directory authority is a trust root and MUST NOT default to the EP
+   operator.  The directory tree head MUST be signed by an organization-
+   controlled directory key (custody options parallel Section 5.1; an
+   organization-held hardware key is RECOMMENDED).  Where directory
+   _operation_ is delegated to the EP operator, every enrollment entry
+   MUST carry a second-party attestation -- a signature over the new
+   entry by an organization administrator key or by a quorum of already-
    enrolled approvers -- and that attestation MUST be included in the
    receipt's approver_key_proofs.  Verifiers MUST treat a directory head
    signed only by an operator-held key as operator assertion (Class
@@ -881,13 +888,6 @@ Internet-Draft          EP Authorization Receipts              July 2026
 
 6.  Consumption, Commitment, and the Trust Receipt
 
-6.1.  State Machine
-
-   An authorization attempt proceeds:
-
-   REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
-             \-> DENIED                          \-> EXPIRED
-             \-> EXPIRED
 
 
 
@@ -897,6 +897,14 @@ Schrock                  Expires 3 January 2027                [Page 16]
 
 Internet-Draft          EP Authorization Receipts              July 2026
 
+
+6.1.  State Machine
+
+   An authorization attempt proceeds:
+
+   REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
+             \-> DENIED                          \-> EXPIRED
+             \-> EXPIRED
 
    COMMITTED, DENIED, and EXPIRED are terminal.  The protocol invariants
    -- maintained as machine-checked models and REQUIRED of conforming
@@ -924,6 +932,28 @@ Internet-Draft          EP Authorization Receipts              July 2026
    Upon commitment the orchestrator assembles and logs the Trust
    Receipt:
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 3 January 2027                [Page 17]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
    {
      "receipt_id": "ep:receipt:01J...",
      "action": { "...": "full Action Object" },
@@ -942,17 +972,6 @@ Internet-Draft          EP Authorization Receipts              July 2026
                                     "log_key_id": "ep:log:acme#1" } },
      "approver_key_proofs": [ { "directory_inclusion": "..." } ]
    }
-
-
-
-
-
-
-
-Schrock                  Expires 3 January 2027                [Page 17]
-
-Internet-Draft          EP Authorization Receipts              July 2026
-
 
 6.3.  Offline Verification Algorithm
 
@@ -982,6 +1001,15 @@ Internet-Draft          EP Authorization Receipts              July 2026
    6.  Confirm signed_at and committed_at fall within [issued_at,
        expires_at].
 
+
+
+
+
+Schrock                  Expires 3 January 2027                [Page 18]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
    Step 5 is what distinguishes EP receipts from log-access designs: the
    checkpoint travels _inside_ the receipt, so verification requires no
    query to the log.  Detecting log equivocation (split-view attacks)
@@ -1000,15 +1028,6 @@ Internet-Draft          EP Authorization Receipts              July 2026
    additionally consult a current directory head and log checkpoint
    online.  Implementations MUST NOT describe offline verification as
    establishing that a receipt is "currently valid."
-
-
-
-
-
-Schrock                  Expires 3 January 2027                [Page 18]
-
-Internet-Draft          EP Authorization Receipts              July 2026
-
 
    The Initiator Attestation (Section 4.1), where present, is covered by
    the context hash recomputed in step 2 above; no additional
@@ -1039,6 +1058,14 @@ Internet-Draft          EP Authorization Receipts              July 2026
    Honesty about deployment topology is a protocol feature.  Three
    classes:
 
+
+
+
+Schrock                  Expires 3 January 2027                [Page 19]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
    *EP-Verified Execution (STRONG).* The system of record (payment
    switch, registry, deployment controller) verifies the Authorization
    Bundle (receipt-less pre-execution form: action object, contexts,
@@ -1054,17 +1081,6 @@ Internet-Draft          EP Authorization Receipts              July 2026
 
    *EP-Evidence Only (BASIC).* Actions execute independently; receipts
    are produced for audit.  No enforcement claim is made.
-
-
-
-
-
-
-
-Schrock                  Expires 3 January 2027                [Page 19]
-
-Internet-Draft          EP Authorization Receipts              July 2026
-
 
    Implementations MUST declare their class in receipts
    (enforcement_class), and marketing or compliance claims MUST NOT
@@ -1096,6 +1112,16 @@ Internet-Draft          EP Authorization Receipts              July 2026
    A complete deployment benefits from both: EP proves the action was
    authorized; receiver attestation proves what then actually occurred.
 
+
+
+
+
+
+Schrock                  Expires 3 January 2027                [Page 20]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
    *AgentROA (draft-nivalto-agentroa-route-authorization), AIIP, and
    CIRP* define machine-side, per-hop execution and route receipts for
    agent actions under delegated authority; none binds a named,
@@ -1112,15 +1138,6 @@ Internet-Draft          EP Authorization Receipts              July 2026
    *Transaction Tokens (draft-ietf-oauth-transaction-tokens)* propagate
    workload and agent authorization context across a machine call chain;
    EP is the human-authority root from which such a chain descends.
-
-
-
-
-
-Schrock                  Expires 3 January 2027                [Page 20]
-
-Internet-Draft          EP Authorization Receipts              July 2026
-
 
    *Evidence Record Syntax (RFC 4998)* preserves signed evidence across
    algorithm aging by periodic re-timestamping.  EP applies the same
@@ -1151,6 +1168,16 @@ Internet-Draft          EP Authorization Receipts              July 2026
    Under class C the operator can fabricate outright; hence the labeling
    requirement.
 
+
+
+
+
+
+Schrock                  Expires 3 January 2027                [Page 21]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
 11.2.  Approver Device Compromise
 
    A stolen authenticator with user verification still requires the
@@ -1170,14 +1197,6 @@ Internet-Draft          EP Authorization Receipts              July 2026
    description; (2) for high-value policies, render templates MUST be
    registered with the policy and committed by policy_hash, so the
    display logic is part of what the approver's signature covers; (3)
-
-
-
-Schrock                  Expires 3 January 2027                [Page 21]
-
-Internet-Draft          EP Authorization Receipts              July 2026
-
-
    for policies above an organization-designated threshold, the material
    action parameters (amount, beneficiary identifiers) MUST additionally
    be rendered on a second surface not authored by the orchestrating
@@ -1207,6 +1226,14 @@ Internet-Draft          EP Authorization Receipts              July 2026
    model's behavior, about host compromise, or about deployments in a
    weaker conformance class.  Implementations MUST NOT represent the
    proofs as covering deployment topologies they do not model.  The
+
+
+
+Schrock                  Expires 3 January 2027                [Page 22]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
    models additionally do not yet cover the WebAuthn challenge binding,
    the Approver Directory, log checkpoints, the m-of-n flow, or the
    Initiator Attestation (Section 4.1); those sections are specified,
@@ -1223,16 +1250,6 @@ Internet-Draft          EP Authorization Receipts              July 2026
    enrollment; Class C-equivalent treatment otherwise) exist for this
    reason.  Auditors SHOULD verify directory key custody as part of any
    assessment that relies on receipts.
-
-
-
-
-
-
-Schrock                  Expires 3 January 2027                [Page 22]
-
-Internet-Draft          EP Authorization Receipts              July 2026
-
 
 11.7.  What Separation of Duties Does and Does Not Provide
 
@@ -1264,6 +1281,15 @@ Internet-Draft          EP Authorization Receipts              July 2026
    human at its center, and implementations SHOULD say so to their
    customers.
 
+
+
+
+
+Schrock                  Expires 3 January 2027                [Page 23]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
 11.9.  Initiator Attestation as an Attack Surface
 
    The statement member of an Initiator Attestation (Section 4.1) is
@@ -1282,14 +1308,6 @@ Internet-Draft          EP Authorization Receipts              July 2026
    rendered Action Object.  This is consistent with the rendering-
    faithfulness discipline of Section 11.3: the approver's decision
    input is the rendered Action Object; the statement is commentary from
-
-
-
-Schrock                  Expires 3 January 2027                [Page 23]
-
-Internet-Draft          EP Authorization Receipts              July 2026
-
-
    a party the protocol never trusts.  A related residual vector is
    divide-and-misinform: because each approver signs their own context,
    a malicious orchestrator can show different approvers of an m-of-n
@@ -1319,6 +1337,15 @@ Internet-Draft          EP Authorization Receipts              July 2026
    remains evidence that the control was bypassed -- that property comes
    from the gate, not from this member.)
 
+
+
+
+
+Schrock                  Expires 3 January 2027                [Page 24]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
    No trust feedback: policy engines MUST NOT use initiator_attestation
    content to relax thresholds, skip approvers, or raise any trust
    score.  The initiator must gain nothing by saying the right words;
@@ -1338,14 +1365,6 @@ Internet-Draft          EP Authorization Receipts              July 2026
    HMAC-chained audit log) is verifiable only by a party holding the
    same secret as the producer, which is precisely the party whose
    conduct the evidence is meant to constrain -- its keeper can rewrite
-
-
-
-Schrock                  Expires 3 January 2027                [Page 24]
-
-Internet-Draft          EP Authorization Receipts              July 2026
-
-
    its own history undetectably.  An EP receipt's issuer cannot.
    Conforming verifier implementations MUST NOT introduce a symmetric
    primitive on the verification path; an implementation that does so
@@ -1375,6 +1394,14 @@ Internet-Draft          EP Authorization Receipts              July 2026
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://www.rfc-editor.org/info/rfc8174>.
 
+
+
+
+Schrock                  Expires 3 January 2027                [Page 25]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
    [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
               Canonicalization Scheme (JCS)", RFC 8785,
               DOI 10.17487/RFC8785, June 2020,
@@ -1392,15 +1419,6 @@ Internet-Draft          EP Authorization Receipts              July 2026
               nelson-agent-delegation-receipts-10, 13 June 2026,
               <https://datatracker.ietf.org/doc/html/draft-nelson-agent-
               delegation-receipts-10>.
-
-
-
-
-
-Schrock                  Expires 3 January 2027                [Page 25]
-
-Internet-Draft          EP Authorization Receipts              July 2026
-
 
 Appendix A.  Changes since -00
 
@@ -1421,6 +1439,24 @@ Appendix A.  Changes since -00
        trusted -- not proof of the initiator's internal state.  A
        terminology entry and a step-2 note in Section 6.3 were added
        accordingly.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 3 January 2027                [Page 26]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
 
    2.  Security Considerations additions (new Section 11.9): the
        statement is attacker-influenceable text presented to a human
@@ -1450,14 +1486,6 @@ Appendix A.  Changes since -00
        observed_at), plus an OPTIONAL length-capped (<= 280 character)
        statement.  Like initiator_attestation, it is OPTIONAL, covered
        by the context hash via the JCS canonicalization already
-
-
-
-Schrock                  Expires 3 January 2027                [Page 26]
-
-Internet-Draft          EP Authorization Receipts              July 2026
-
-
        normative in Section 4, verifies under the existing Section 6.3
        verifiers unmodified, and is a claim -- identified but never
        trusted -- not proof of the agent's identity or the delegation's
@@ -1478,34 +1506,6 @@ Author's Address
    EMILIA Protocol, Inc.
    United States of America
    Email: team@emiliaprotocol.ai
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

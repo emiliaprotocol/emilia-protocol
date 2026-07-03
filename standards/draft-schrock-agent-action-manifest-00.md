@@ -91,11 +91,11 @@ Table of Contents
    4.  Manifest Structure  . . . . . . . . . . . . . . . . . . . . .   4
    5.  Action Control Declarations . . . . . . . . . . . . . . . . .   4
    6.  Semantics: Declaration Is Not Enforcement . . . . . . . . . .   6
-   7.  Inline OpenAPI Expression (x-emilia-action) . . . . . . . . .   7
+   7.  Inline OpenAPI Expression (x-agent-action-control)  . . . . .   7
    8.  Security Considerations . . . . . . . . . . . . . . . . . . .   7
    9.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   8
    10. Normative References  . . . . . . . . . . . . . . . . . . . .   8
-   11. Informative References  . . . . . . . . . . . . . . . . . . .   8
+   11. Informative References  . . . . . . . . . . . . . . . . . . .   9
    Appendix A.  Example Manifest (Non-Normative) . . . . . . . . . .   9
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  11
 
@@ -198,7 +198,7 @@ Internet-Draft        Agent Action Control Manifest            July 2026
    requiredness for implementations of that profile.
 
    @version, $schema, profile (REQUIRED)  The version identifier, the
-      URL of the JSON Schema, and the profile name (emilia.action-
+      URL of the JSON Schema, and the profile name (agent-action-
       control).
 
    service (REQUIRED)  The publishing service (name, issuer origin,
@@ -342,20 +342,23 @@ Schrock                  Expires 3 January 2027                 [Page 6]
 Internet-Draft        Agent Action Control Manifest            July 2026
 
 
-7.  Inline OpenAPI Expression (x-emilia-action)
+7.  Inline OpenAPI Expression (x-agent-action-control)
 
    Deployments that already publish an OpenAPI description MAY express a
-   manifest entry inline, per operation, as an "x-emilia-action" vendor
-   extension carrying the same members as the corresponding manifest
-   entry (action identifier, assurance tier, and the advisory effects
-   preview).  The two forms are equivalent views of the same
-   declaration: when both are present for an action, they MUST NOT
-   disagree, and a verifier encountering a disagreement MUST treat the
-   stricter declaration as governing.  Action identifiers in either form
-   use the "urn:ep:action:<family>.<action>" vocabulary, so that
-   relying-party evidence policies can be keyed to the same names the
-   resource declares.  A JSON Schema for the extension and a worked
-   OpenAPI example are published with the reference implementation.
+   manifest entry inline, per operation, as an "x-agent-action-control"
+   specification extension carrying the same members as the
+   corresponding manifest entry (action identifier, assurance tier, and
+   the advisory effects preview).  The extension was first deployed
+   under the vendor name "x-emilia-action"; implementations SHOULD
+   accept both names and MUST treat them as aliases of this definition.
+   The two forms are equivalent views of the same declaration: when both
+   are present for an action, they MUST NOT disagree, and a verifier
+   encountering a disagreement MUST treat the stricter declaration as
+   governing.  Action identifiers in either form use the
+   "urn:ep:action:<family>.<action>" vocabulary, so that relying-party
+   evidence policies can be keyed to the same names the resource
+   declares.  A JSON Schema for the extension and a worked OpenAPI
+   example are published with the reference implementation.
 
 8.  Security Considerations
 
@@ -379,6 +382,22 @@ Internet-Draft        Agent Action Control Manifest            July 2026
    consequence actions; publishers SHOULD assume it is public and SHOULD
    NOT encode secrets or internal-only endpoints.
 
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 7]
+
+Internet-Draft        Agent Action Control Manifest            July 2026
+
+
    *Downgrade and receipt disclosure.* Because enforcement is
    authoritative, an attacker who spoofs or weakens a manifest cannot
    disable protection — a caller misled into presenting weaker or no
@@ -389,14 +408,6 @@ Internet-Draft        Agent Action Control Manifest            July 2026
    SHOULD present a receipt only to the origin from which the manifest
    was authenticated, and receipt audience binding limits what a
    misdirected receipt is worth.
-
-
-
-
-Schrock                  Expires 3 January 2027                 [Page 7]
-
-Internet-Draft        Agent Action Control Manifest            July 2026
-
 
 9.  IANA Considerations
 
@@ -436,23 +447,18 @@ Internet-Draft        Agent Action Control Manifest            July 2026
               Interchange Format", STD 90, RFC 8259, December 2017,
               <https://www.rfc-editor.org/info/rfc8259>.
 
-   [RFC8615]  Nottingham, M., "Well-Known Uniform Resource Identifiers
-              (URIs)", RFC 8615, May 2019,
-              <https://www.rfc-editor.org/info/rfc8615>.
-
-11.  Informative References
-
-
-
-
-
-
 
 
 Schrock                  Expires 3 January 2027                 [Page 8]
 
 Internet-Draft        Agent Action Control Manifest            July 2026
 
+
+   [RFC8615]  Nottingham, M., "Well-Known Uniform Resource Identifiers
+              (URIs)", RFC 8615, May 2019,
+              <https://www.rfc-editor.org/info/rfc8615>.
+
+11.  Informative References
 
    [I-D.schrock-ep-assurance-classes]
               Schrock, I., "Assurance Classes for Authorization
@@ -471,7 +477,7 @@ Internet-Draft        Agent Action Control Manifest            July 2026
 
    [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
               Y., and S. Lasker, "An Architecture for Trustworthy and
-              Transparent Digital Supply Chains", RFC 9943, March 2026,
+              Transparent Digital Supply Chains", RFC 9943, June 2026,
               <https://www.rfc-editor.org/info/rfc9943>.
 
 Appendix A.  Example Manifest (Non-Normative)
@@ -486,7 +492,7 @@ Appendix A.  Example Manifest (Non-Normative)
    {
      "@version": "EP-ACTION-CONTROL-MANIFEST-v0.2",
      "$schema": "https://example.com/schemas/action-control-v0.2.json",
-     "profile": "emilia.action-control",
+     "profile": "agent-action-control",
      "service": {
        "name": "Example payments service",
        "issuer": "https://example.com",
@@ -496,12 +502,6 @@ Appendix A.  Example Manifest (Non-Normative)
      "defaults": {
        "decision_point": "pre_effect_commit",
        "missing_receipt": "refuse",
-       "invalid_receipt": "refuse",
-       "stale_receipt": "refuse",
-       "replay": "one_time_consumption",
-       "evidence_log": "strict"
-     },
-     "evidence_profiles": {
 
 
 
@@ -510,6 +510,12 @@ Schrock                  Expires 3 January 2027                 [Page 9]
 Internet-Draft        Agent Action Control Manifest            July 2026
 
 
+       "invalid_receipt": "refuse",
+       "stale_receipt": "refuse",
+       "replay": "one_time_consumption",
+       "evidence_log": "strict"
+     },
+     "evidence_profiles": {
        "authorization_receipt": "EP-RECEIPT-v1",
        "execution_attestation": "EP-EXECUTION-ATTESTATION-v1",
        "reliance_packet": "EP-RELIANCE-PACKET-v1",
@@ -552,12 +558,6 @@ Internet-Draft        Agent Action Control Manifest            July 2026
                "action_type", "amount_usd", "currency",
                "payment_instruction_id", "beneficiary_account_hash"
              ]
-           },
-           "evidence_output": {
-             "audit_event": true,
-             "execution_attestation": true,
-             "reliance_packet": true,
-             "blocked_attempts": true
 
 
 
@@ -566,6 +566,12 @@ Schrock                  Expires 3 January 2027                [Page 10]
 Internet-Draft        Agent Action Control Manifest            July 2026
 
 
+           },
+           "evidence_output": {
+             "audit_event": true,
+             "execution_attestation": true,
+             "reliance_packet": true,
+             "blocked_attempts": true
            }
          },
          "conformance": {
@@ -588,12 +594,6 @@ Author's Address
    EMILIA Protocol, Inc.
    United States of America
    Email: team@emiliaprotocol.ai
-
-
-
-
-
-
 
 
 

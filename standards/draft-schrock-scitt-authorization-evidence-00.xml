@@ -112,7 +112,7 @@
         expressed as a canonical value (for example, an action type, a
         target, and material parameters).</dd>
         <dt>Host statement</dt>
-        <dd>A SCITT-family agent-action statement — a per-action
+        <dd>A SCITT-family agent-action statement: a per-action
         receipt, action capsule, permit, or post-execution evidence
         record — that records or authorizes an Action and that carries
         an authorization-evidence reference under this profile.</dd>
@@ -220,14 +220,24 @@
 
     <section anchor="verdict">
       <name>Verdict-Completeness</name>
-      <t>Authorization evidence is verdict-complete: a denied or absent
-      human authorization is itself a signed EP event, not merely the
-      lack of an approval. A host statement MAY reference a denied
-      authorization receipt exactly as it references an approval, so that
-      "no accountable human authorized this action" is a positive,
-      verifiable fact rather than an inference from silence. Auditors and
-      counterparties rely on refusals as much as approvals; this profile
-      makes both first-class.</t>
+      <t>Authorization evidence distinguishes three states, and only
+      two of them are evidence. A DENIAL (an accountable human refused,
+      an approval was revoked, or a validity window lapsed and the
+      expiry was recorded) is a signed EP event; a host statement MAY
+      reference a denied authorization exactly as it references an
+      approval, so that "an accountable human refused this action" is a
+      positive, verifiable fact. ABSENCE, by contrast, is not evidence
+      and cannot be made so by assertion: the mere failure to present an
+      authorization proves nothing to anyone. Absence becomes positive
+      evidence only when a verifier or policy engine signs an
+      OBSERVED-ABSENCE statement -- an attestation that it performed a
+      defined lookup against defined sources at a stated time and found
+      no qualifying authorization. Such a statement attests the search
+      and its emptiness, not a universal negative. Verifiers MUST
+      otherwise treat absence as an inference from silence: fail closed,
+      but do not record it as a fact. Auditors and counterparties rely
+      on refusals as much as approvals; this profile makes both --
+      and honest observed-absence -- first-class.</t>
     </section>
 
     <section>
@@ -351,7 +361,7 @@
           <author fullname="C. Fournet" initials="C." surname="Fournet"/>
           <author fullname="Y. Deshpande" initials="Y." surname="Deshpande"/>
           <author fullname="S. Lasker" initials="S." surname="Lasker"/>
-          <date year="2026" month="March"/>
+          <date year="2026" month="June"/>
         </front>
         <seriesInfo name="RFC" value="9943"/>
       </reference>

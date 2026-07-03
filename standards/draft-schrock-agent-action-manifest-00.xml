@@ -131,7 +131,7 @@
       <dl>
         <dt>@version, $schema, profile (REQUIRED)</dt>
         <dd>The version identifier, the URL of the JSON Schema, and the profile
-        name (<tt>emilia.action-control</tt>).</dd>
+        name (<tt>agent-action-control</tt>).</dd>
         <dt>service (REQUIRED)</dt>
         <dd>The publishing service (name, issuer origin, manifest URL).</dd>
         <dt>defaults (REQUIRED)</dt>
@@ -248,12 +248,15 @@
     </section>
 
     <section anchor="openapi">
-      <name>Inline OpenAPI Expression (x-emilia-action)</name>
+      <name>Inline OpenAPI Expression (x-agent-action-control)</name>
       <t>Deployments that already publish an OpenAPI description MAY
       express a manifest entry inline, per operation, as an
-      "x-emilia-action" vendor extension carrying the same members as
-      the corresponding manifest entry (action identifier, assurance
-      tier, and the advisory effects preview). The two forms are
+      "x-agent-action-control" specification extension carrying the same
+      members as the corresponding manifest entry (action identifier,
+      assurance tier, and the advisory effects preview). The extension
+      was first deployed under the vendor name "x-emilia-action";
+      implementations SHOULD accept both names and MUST treat them as
+      aliases of this definition. The two forms are
       equivalent views of the same declaration: when both are present
       for an action, they MUST NOT disagree, and a verifier encountering
       a disagreement MUST treat the stricter declaration as governing.
@@ -396,7 +399,7 @@
           <author fullname="C. Fournet" initials="C." surname="Fournet"/>
           <author fullname="Y. Deshpande" initials="Y." surname="Deshpande"/>
           <author fullname="S. Lasker" initials="S." surname="Lasker"/>
-          <date year="2026" month="March"/>
+          <date year="2026" month="June"/>
         </front>
         <seriesInfo name="RFC" value="9943"/>
       </reference>
@@ -421,7 +424,7 @@
 {
   "@version": "EP-ACTION-CONTROL-MANIFEST-v0.2",
   "$schema": "https://example.com/schemas/action-control-v0.2.json",
-  "profile": "emilia.action-control",
+  "profile": "agent-action-control",
   "service": {
     "name": "Example payments service",
     "issuer": "https://example.com",

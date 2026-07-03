@@ -460,8 +460,12 @@ Internet-Draft        Authorization Evidence Chains            July 2026
    EP human quorum with a policy-permit leg, and rejecting both a cross-
    binding attack and a missing human leg) are maintained as open-source
    software and are exercised offline, with no network dependency, by
-   three independent implementations (JavaScript, Python, Go) that agree
-   on a shared conformance vector set.
+   the reference suite's three language implementations (JavaScript,
+   Python, Go), which agree on a shared conformance vector set.  These
+   are one project's implementations -- a cross-language consistency
+   check, not independently developed implementations; a third party has
+   separately executed and verified the published artifacts against a
+   pinned commit.
 
 12.  Normative References
 
@@ -498,10 +502,6 @@ Internet-Draft        Authorization Evidence Chains            July 2026
               <https://www.rfc-editor.org/info/rfc8785>.
 
 13.  Informative References
-
-
-
-
 
 
 

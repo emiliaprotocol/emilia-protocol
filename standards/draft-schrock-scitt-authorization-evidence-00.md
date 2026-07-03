@@ -1,13 +1,16 @@
-# A Human-Authorization Evidence Profile for SCITT Agent-Action Statements
+# Human-Authorization Evidence as SCITT Signed Statements
 ## draft-schrock-scitt-authorization-evidence-00
 
-> Readable mirror of the xml2rfc source ([`draft-schrock-scitt-authorization-evidence-00.xml`](./draft-schrock-scitt-authorization-evidence-00.xml)). The XML is authoritative.
-
 ```
+
+
+
+
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
 Intended status: Informational                               2 July 2026
 Expires: 3 January 2027
+
 
 A Human-Authorization Evidence Profile for SCITT Agent-Action Statements
              draft-schrock-scitt-authorization-evidence-00
@@ -48,6 +51,17 @@ Status of This Memo
    This Internet-Draft is submitted in full conformance with the
    provisions of BCP 78 and BCP 79.
 
+
+
+
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 1]
+
+Internet-Draft        Human-Authorization Evidence             July 2026
+
+
    Internet-Drafts are working documents of the Internet Engineering
    Task Force (IETF).  Note that other groups may also distribute
    working documents as Internet-Drafts.  The list of current Internet-
@@ -84,8 +98,8 @@ Table of Contents
    6.  Verdict-Completeness  . . . . . . . . . . . . . . . . . . . .   6
    7.  Relationship to Adjacent Work . . . . . . . . . . . . . . . .   6
    8.  Security Considerations . . . . . . . . . . . . . . . . . . .   7
-   9.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   7
-   10. Normative References  . . . . . . . . . . . . . . . . . . . .   7
+   9.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   8
+   10. Normative References  . . . . . . . . . . . . . . . . . . . .   8
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   8
 
 1.  Introduction
@@ -96,6 +110,13 @@ Table of Contents
    growing set of specifications makes those actions observable and
    accountable.  The SCITT architecture [RFC9943] provides append-only
    transparency and inclusion proofs for signed statements.  Agent-
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 2]
+
+Internet-Draft        Human-Authorization Evidence             July 2026
+
 
    action work layered on it records per-action receipts, action
    capsules, and post-execution evidence; pre-execution permit profiles
@@ -144,7 +165,14 @@ Table of Contents
       expressed as a canonical value (for example, an action type, a
       target, and material parameters).
 
-   Host statement  A SCITT-family agent-action statement — a per-action
+   Host statement  A SCITT-family agent-action statement: a per-action
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 3]
+
+Internet-Draft        Human-Authorization Evidence             July 2026
+
 
       receipt, action capsule, permit, or post-execution evidence record
       — that records or authorizes an Action and that carries an
@@ -193,6 +221,14 @@ Table of Contents
    The authority-reference digest is one of the following, selected per
    deployment and fixed for a given host-statement profile so that both
    implementations bind identical bytes:
+
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 4]
+
+Internet-Draft        Human-Authorization Evidence             July 2026
+
 
    receipt_payload_digest  SHA-256(JCS(receipt.payload)) — used for
       offline composition, where the relying party holds or can fetch
@@ -243,6 +279,13 @@ Table of Contents
        exact operation the host statement records, not a different or
        broader one.
 
+
+
+Schrock                  Expires 3 January 2027                 [Page 5]
+
+Internet-Draft        Human-Authorization Evidence             July 2026
+
+
    If any step fails, the host statement MUST NOT be treated as
    authorization-backed.  A verifier that cannot resolve or verify the
    referenced authorization MUST fail closed: absence of verifiable
@@ -250,13 +293,23 @@ Table of Contents
 
 6.  Verdict-Completeness
 
-   Authorization evidence is verdict-complete: a denied or absent human
-   authorization is itself a signed EP event, not merely the lack of an
-   approval.  A host statement MAY reference a denied authorization
-   receipt exactly as it references an approval, so that "no accountable
-   human authorized this action" is a positive, verifiable fact rather
-   than an inference from silence.  Auditors and counterparties rely on
-   refusals as much as approvals; this profile makes both first-class.
+   Authorization evidence distinguishes three states, and only two of
+   them are evidence.  A DENIAL (an accountable human refused, an
+   approval was revoked, or a validity window lapsed and the expiry was
+   recorded) is a signed EP event; a host statement MAY reference a
+   denied authorization exactly as it references an approval, so that
+   "an accountable human refused this action" is a positive, verifiable
+   fact.  ABSENCE, by contrast, is not evidence and cannot be made so by
+   assertion: the mere failure to present an authorization proves
+   nothing to anyone.  Absence becomes positive evidence only when a
+   verifier or policy engine signs an OBSERVED-ABSENCE statement -- an
+   attestation that it performed a defined lookup against defined
+   sources at a stated time and found no qualifying authorization.  Such
+   a statement attests the search and its emptiness, not a universal
+   negative.  Verifiers MUST otherwise treat absence as an inference
+   from silence: fail closed, but do not record it as a fact.  Auditors
+   and counterparties rely on refusals as much as approvals; this
+   profile makes both -- and honest observed-absence -- first-class.
 
 7.  Relationship to Adjacent Work
 
@@ -280,6 +333,14 @@ Table of Contents
    *  Post-execution evidence and refusal-event work sits after or
       beside execution; an EP authorization is the pre-execution leg it
       links back to.
+
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 6]
+
+Internet-Draft        Human-Authorization Evidence             July 2026
+
 
    *  Workload-identity and transaction-token work asserts which
       principal acted; the EP authority-reference digest can be bound
@@ -325,6 +386,18 @@ Table of Contents
    verifier relying on allow semantics MUST honor the referenced
    receipt's consumption state.
 
+
+
+
+
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 7]
+
+Internet-Draft        Human-Authorization Evidence             July 2026
+
+
 9.  IANA Considerations
 
    This document has no IANA actions.  A future revision may request
@@ -359,7 +432,7 @@ Table of Contents
 
    [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
               Y., and S. Lasker, "An Architecture for Trustworthy and
-              Transparent Digital Supply Chains", RFC 9943, March 2026,
+              Transparent Digital Supply Chains", RFC 9943, June 2026,
               <https://www.rfc-editor.org/info/rfc9943>.
 
 Author's Address
@@ -368,4 +441,14 @@ Author's Address
    EMILIA Protocol, Inc.
    United States of America
    Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 8]
+
 ```
