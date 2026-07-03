@@ -1,57 +1,60 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-# AAIF pitch — TIGHT re-record script (for Manik, CTO, AAIF)
+# AAIF pitch — section-by-section script (for Manik, CTO, AAIF)
 
-**Target: 2:30–3:00. One clean pass.** Present off the LIVE page:
-https://www.emiliaprotocol.ai/aaif-video-pitch — scroll top-to-bottom.
+**Present off the LIVE page, scrolling top to bottom, one clean pass:**
+https://www.emiliaprotocol.ai/aaif-video-pitch
+Every heading below matches a box on the page **in the order you'll scroll past it** —
+so you always have a line, even on the boxes between §05 and the ask.
 
-**Record discipline (this is why take 1 didn't land):**
-- Quiet room, door shut, no interruptions. Demo tab **pre-opened** in a second tab.
-- **No bio open.** Do NOT lead with "Dr. …, my doctorate is in psychology, named after my daughter." Lead with the hook. (Save the daughter line for the very end — it's lovely there.)
-- Say the **core sentence** slowly and exactly. It's the one thing that must be perfect.
-- Register: **engineer-to-engineer.** You're showing a peer a primitive, not asking permission.
-- Read the quoted lines close to verbatim. Everything else, riff freely.
+**Before you hit record:** quiet room, door shut, demo pre-opened in a 2nd tab.
+**No bio open** — start on the hook. Say the **CORE SENTENCE** slowly; it's the one that must be perfect.
 
 ---
 
-## 0:00 — HOOK (≈20s)  [screen: hero]
-> "Hey Manik — thanks for making time. Straight to it.
-> The agent stack is filling in fast: identity, tools, execution, transparency logs. There's one primitive nobody produces — **portable proof that a named human authorized this exact, irreversible action, before it ran.** That's the gap. That's all EMILIA does."
+### HERO — "The missing human-proof layer for agent actions"
+> "Hey Manik — thanks for the time. Straight to it. The agent stack is filling in fast: identity, tools, execution, transparency logs. One primitive nobody produces — **portable proof a named human authorized this exact, irreversible action, before it ran.** That's the whole of what EMILIA does."
+- (the clip): "that animation is the shape of it — an action scanned, then authorized by a named human, or denied."
+- (the pills): "active individual Internet-Draft, Apache-2.0, JS/Python/Go verifiers, verifies offline."
 
-## 0:20 — WHAT IT IS (≈25s)  [screen: §01 gap → §02 stack]
-> "A log won't do it — a log is the operator's own editable record. **Logs are testimony; receipts are evidence.**
-> So the primitive is one sentence:"
+### 01 · THE LANDSCAPE GAP — the void map
+> "Each ring is a real effort — tools, identity, attestation and logs, agent frameworks. None answers *who authorized this exact action*. Logs get close, but a log is the operator's own editable record."
+> **"Logs are testimony. Receipts are evidence."**
 
-**CORE SENTENCE — say it slowly, get every word:**
-> "**A named human — or a quorum — signs the exact canonical bytes of one irreversible action, before it runs. Offline-verifiable, bound to that action and no other, usable once.**"
+### 02 · WHERE IT SITS — the stack
+> "It sits above MCP, goose, AGENTS.md — a thin layer between intent and mutation. Composes with all of them, replaces none."
+>
+> **CORE SENTENCE (slow, every word):** "A named human — or a quorum — signs the exact canonical bytes of one irreversible action, before it runs. Offline-verifiable, bound to that action and no other, usable once."
 
-> "It's a thin layer between intent and mutation. It sits above MCP, goose, AGENTS.md — composes with all of them, replaces none."
+### 03 · LIVE DEMO — try to break it
+> "The part a CTO trusts. Four states: missing receipt → blocked, valid → runs once, replay → refused, forged signature → rejected. Deny-by-default, bound to the action hash, one-time. Real running code — I'll send you the receipt so you can verify it offline yourself."
+- (optional: click into the live demo tab and run the attack sequence)
 
-## 0:45 — DEMO — the part a CTO trusts (≈45s)  [screen: open the live demo tab]
-> "Let me just try to break it. Four states."
-- Missing receipt → **blocked (428)**
-- Valid receipt → **runs once**
-- Same receipt again → **replay refused**
-- Forged signature → **rejected**
-> "Deny-by-default. The receipt is bound to the hash of the *specific* action, and it's one-time — so replay is refused and a forged signature fails. It's real running code; I'll send you the exact receipt so you can verify it yourself offline."
+### 04 · SCITT COMPOSITION PROOF
+> "Composition, not competition. The same canonical receipt rides as a **COSE_Sign1 Signed Statement**, registers through SCRAPI, inclusion verified in CI. SCITT proves a statement was *logged*; EMILIA proves *who authorized* the action — and rides on top of SCITT."
 
-## 1:30 — COMPOSITION — what matters most to you (≈50s)  [screen: §04 SCITT → Evidence graph card]
-> "Here's the part I actually want your read on: it **composes, it doesn't compete.**
-> The same canonical receipt rides as a **COSE_Sign1 Signed Statement** — registers through SCRAPI, inclusion verified in CI. SCITT proves a statement was *logged*; EMILIA proves *who authorized the action* — and rides on top of SCITT.
-> And it composes one level up into an **Action Evidence Graph**: the authorization receipt, a policy permit, and workload identity, bound into one offline-verifiable graph — **who authorized, what ran, under which policy** — checkable without trusting any single operator. That's the individual Internet-Draft we just filed, and it's the reason I went quiet for a few days."
+### 05 · HIGHER-STAKES SURFACES — the four cards  (keep it short)
+> "Same receipt spine, four surfaces: single approval; quorum, the two-person rule; the **Evidence Graph** — authorization, policy, and identity in one offline-verifiable graph, *who authorized, what ran, under which policy*; and a human-control profile for defense and public-sector oversight. The Evidence Graph is the draft we just filed — the composition point I most want your read on."
 
-## 2:20 — THE ASK (≈20s)  [screen: §06 ask]
-> "That's it. It's Apache-2.0, it composes with MCP, goose, and AGENTS.md. The ask is non-binding: **is this the missing human-authorization layer, and where should it belong?** — and does AAIF see it composing with the surfaces you care about?
-> One last thing — EMILIA is named after my daughter. This one matters to me. Thanks for the read."
+### BUILT, TESTED, LIGHTWEIGHT — the proof-stats grid
+> "Small enough to try, serious enough to review: roughly **4,800 automated tests, 26 machine-checked TLA+ safety properties, Alloy models, nine cross-language conformance suites** — and it runs in one line, `npx @emilia-protocol/issue demo`."
+
+### REAL AND SMALL — the honesty bullets
+> "Status, plainly: it's an *active individual* Internet-Draft, not an IETF endorsement. Three independent verifiers — JavaScript, Python, Go — agree on shared vectors. No account, no backend for the demo."
+
+### ECOSYSTEM PROOF — the fire-drill / RR-1 numbers
+> "The adoption path is a badge, not a scold: we scanned the MCP ecosystem, and a real share advertise high-risk capability. The line we lead with — *your most dangerous action should be safer than the ecosystem default.*"
+
+### OBJECTIONS, ANSWERED — the Q&A grid
+> "The usual objections are answered right here — is it just SCITT, is it OAuth, latency, where it standardizes. One-liners on screen; happy to take any of them."
+
+### 06 · THE ASK
+> "That's it. Apache-2.0, composes with MCP, goose, and AGENTS.md. The ask is non-binding: **is this the missing human-authorization layer, and where should it belong** — and does AAIF see it composing with the surfaces you care about?"
+> "One last thing — EMILIA is named after my daughter. This one matters to me. Thank you for the read."
 
 ---
 
-## If asked (one-breath answers — keep these ready, don't volunteer them)
-- **"Isn't this just SCITT?"** → SCITT logs a statement; it never asserts a *named human authorized the action*. EP is that assertion, and rides *as* a SCITT Signed Statement.
-- **"Isn't this OAuth / WIMSE?"** → Those say which *machine* may act. EP says a *named human* authorized *this exact action*. Above identity, not instead of it.
-- **"Latency of per-action sign-off?"** → Only irreversible actions gate. Pre-auth + scoped delegation + quorum carry throughput; honest story is pre-auth + post-hoc proof, not real-time human-in-the-loop.
-- **"Where does it standardize?"** → Individual IETF I-D cluster — receipts + quorum + evidence graph — composing with SCITT / RFC 9943. That's the open question I'm bringing you.
-
-## Cut from take 1 (deliberately) — do NOT include
-- The bio / doctorate / "honored to present in front of you" open.
-- The ring-by-ring "void map" narration (let the screen carry it).
-- The DoD / EU AI Act / NIST defense-surfaces deep-dive — one line max if at all; it's not AAIF's lane and it ate time.
+## One-liners if he interrupts with an objection (don't volunteer)
+- **Just SCITT?** → SCITT logs a statement; never asserts a named human authorized the action. EP is that assertion, riding *as* a SCITT Signed Statement.
+- **OAuth / WIMSE?** → Those say which *machine* may act. EP says a *named human* authorized *this exact action*. Above identity, not instead of it.
+- **Latency of per-action sign-off?** → Only irreversible actions gate. Pre-auth + scoped delegation + quorum carry throughput.
+- **Where does it standardize?** → Individual IETF I-D cluster — receipts + quorum + evidence graph — composing with SCITT / RFC 9943.
