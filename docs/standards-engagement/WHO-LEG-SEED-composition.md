@@ -16,8 +16,10 @@ authorized this exact action before it ran.* It is deliberately narrow:
   new audit-record format, or a replacement for agent/workload identity. "Which
   agent acted" is a different leg; "was this authorization sufficient for this
   action" is a layer above the seam.
-- It binds a human, or quorum, authorization to the shared action digest and
-  exposes the binding metadata a Composition Verifier needs — and nothing more.
+- It binds the authorization to the exact observed action by the composition's
+  shared action digest, and exposes the binding metadata a Composition Verifier
+  needs — and nothing more. Digest equality itself neither authorizes the
+  action nor proves completeness.
 
 The native WHO record is an authorization receipt: a device-bound signature by a
 named principal — or a set of distinct principals — over the canonical bytes of
@@ -98,6 +100,11 @@ leg exposes a minimal, disclosure-aware reference:
 The reference carries no agent identity, no policy verdict, and no sufficiency
 claim. It is the WHO leg's contribution to the join, and nothing more.
 
+Cross-profile metadata stays minimal and testable, per the composition
+profile's list: action-digest bytes; digest algorithm/version;
+domain-separation context; canonicalization/projection rule; covered subject;
+native profile name/version; verifier result; and binding coverage.
+
 ## Quorum and Distinctness
 
 Where more than one human authorization is required, the WHO leg MUST express:
@@ -147,9 +154,14 @@ check failed:
 - an ordered quorum satisfied out of order;
 - a threshold not met (M-1 of N);
 - a mismatched or absent receipt signature;
-- an authorization outside its validity window (stale); and
+- an authorization outside its validity window (stale);
 - a signature that verifies but whose signed payload does not cover the action
-  digest (an unbound signature).
+  digest (an unbound signature);
+- a post-hoc ratification presented as pre-execution authorization;
+- a reusable authorization presented under one-time semantics, or a one-time
+  authorization presented as reusable; and
+- WHO digest bytes that do not match an adjacent leg's (WHAT/AUDIT) digest for
+  the same claimed action under compatible digest contexts.
 
 ## Open Issues for -00
 
