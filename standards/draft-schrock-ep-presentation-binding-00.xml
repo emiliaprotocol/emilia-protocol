@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-ep-presentation-binding-00"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="Presentation Binding">Presentation Binding for Human-Authorization Receipts: Proving the Human Approved What They Saw</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-presentation-binding-00"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address>
+        <postal>
+          <country>US</country>
+        </postal>
+        <email>team@emiliaprotocol.ai</email>
+      </address>
+    </author>
+    <date year="2026" month="July" day="3"/>
+    <area>sec</area>
+    <keyword>human authorization</keyword>
+    <keyword>WYSIWYS</keyword>
+    <keyword>presentation attack</keyword>
+    <keyword>AI agents</keyword>
+    <abstract>
+      <t>A human-authorization receipt proves a named person produced a
+      user-verified signature over a digest that commits to an exact
+      action. It does not prove the surface that person signed on
+      DISPLAYED that action honestly. If a signing interface shows a
+      benign summary while committing a different action, the resulting
+      receipt is laundered authority — cryptographically valid and
+      semantically false, which is worse than no receipt at all. This is
+      the presentation attack, and it is the deepest unsolved problem in
+      authorization evidence, because a signature cannot attest to
+      pixels. This document narrows the gap with two additive,
+      offline-checkable pieces that touch no existing receipt format: a
+      DETERMINISTIC RENDERER, a pure function from the canonical action
+      to a byte-identical human-readable rendering, so a verifier
+      RE-DERIVES the rendering from the signed bytes and rejects any
+      surface that showed something else; and a DISPLAY ATTESTATION, a
+      signed claim by the signing client binding the rendering it showed
+      to the action it committed. Neither eliminates the presentation
+      attack — nothing purely digital can — but together they convert
+      "trust the vendor's UI" into "verify the rendering was the honest
+      function of the signed action," and they make the residual risk
+      explicit rather than hidden.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="intro">
+      <name>Introduction</name>
+      <t>The hard part of human authorization was never the signature.
+      It is the question a relying party's counsel asks first: a receipt
+      of WHAT? A named human signed a digest; the digest commits to an
+      action; but the human did not see the digest — they saw a screen,
+      and the screen was drawn by software. If that software rendered
+      "approve invoice, $1.00" while committing "wire $82,000 to account
+      X", the receipt is perfect and the authority is fabricated. Every
+      downstream layer — composition, sufficiency, recourse — inherits
+      this weakness: they compose and grade a receipt whose meaning was
+      set by an unattested rendering step.</t>
+      <t>Two observations make the problem tractable without
+      overclaiming. First, most presentation attacks are RENDERING
+      attacks: the surface computed the display from something other
+      than the signed action. That is defeatable, because a rendering
+      can be made a PURE FUNCTION of the signed action and re-derived by
+      any verifier. Second, the residue — a compromised or malicious
+      client that renders honestly to a verifier's re-derivation while
+      showing the human something else out of band — cannot be closed by
+      any digital artifact and MUST be stated as residual risk, not
+      papered over. This document does the first and is scrupulous about
+      the second.</t>
+      <section anchor="terms">
+        <name>Terminology</name>
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL",
+        "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT
+        RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+        interpreted as described in BCP 14 <xref target="RFC2119"/>
+        <xref target="RFC8174"/> when, and only when, they appear in
+        all capitals, as shown here.</t>
+      </section>
+    </section>
+    <section anchor="renderer">
+      <name>The Deterministic Renderer</name>
+      <t>A conforming renderer is a PURE FUNCTION from a canonical
+      action object to a rendering. For any two canonical actions that
+      are deeply equal it MUST produce byte-identical output on every
+      conformant runtime, in every locale, at any time; it MUST NOT read
+      the clock, locale, environment, randomness, or any I/O. It reads a
+      fixed, ordered, closed set of action fields (for example: action
+      type, target, organization, initiator, policy, amount, currency,
+      requested-at, risk signals), each with a fixed label, and produces
+      an ordered list of label/value lines, a concatenated human-readable
+      text, and a rendering digest over the canonical structure.</t>
+      <t>Because the rendering is a pure function of the SIGNED action,
+      a verifier re-derives it from the very bytes the receipt's action
+      digest commits to and compares. A surface that displayed "$1" for
+      an action that says "$82,000" cannot produce a rendering that
+      re-derives — the deviation is detected offline, by anyone, without
+      trusting the surface. This turns "render from the exact hashed
+      bytes, never a re-described copy" from an unverifiable interface
+      rule into a verifiable property.</t>
+      <t>Handling untrusted content is normative: values that can carry
+      display-manipulating characters (bidirectional overrides,
+      control characters, homoglyph-bearing runs, or excessive length)
+      MUST be neutralized by a specified, deterministic transformation
+      before rendering, and a value that cannot be safely rendered MUST
+      cause the renderer to refuse rather than emit a misleading line.
+      The neutralization is itself part of the pure function, so the
+      verifier re-derives the same neutralized rendering.</t>
+    </section>
+    <section anchor="attestation">
+      <name>The Display Attestation</name>
+      <t>A display attestation (wire tag EP-DISPLAY-ATTESTATION-v1) is a
+      signed claim by the signing client: "I rendered THIS rendering of
+      THIS action." It binds the rendering digest to the action digest
+      under the client's key and is stored ALONGSIDE the receipt (in an
+      audit record, a provenance bundle, or an evidence-graph node),
+      never inside the signed receipt body — verifiers that predate this
+      profile continue to verify receipts unchanged; verifiers that
+      implement it add the display check. For high-stakes action classes
+      a relying party's policy MAY require a valid display attestation
+      and fail closed when it is missing or does not verify.</t>
+      <t>Verified versus accepted applies here too: verifying the
+      attestation (its signature holds and its rendering re-derives from
+      the action) is distinct from trusting the CLIENT that made it. A
+      display attestation raises the cost and auditability of a
+      presentation attack; it does not, by itself, make the client
+      honest.</t>
+    </section>
+    <section anchor="compose">
+      <name>Composition with the Evidence Layers</name>
+      <t>Presentation binding is the missing precondition under the
+      rest of the stack. An authorization receipt
+      (<xref target="I-D.schrock-ep-authorization-receipts"/>) gains a
+      rendering that a verifier can re-derive; a binding
+      (<xref target="I-D.schrock-human-authorization-binding"/>) that
+      carries such a receipt MAY additionally require the display
+      attestation as part of its digest-grounding requirement; an
+      evidence policy
+      (<xref target="I-D.schrock-ep-action-evidence-graph"/>) MAY, for a
+      high-stakes reliance purpose, treat a receipt without a verifying
+      display attestation as insufficient. The property this document
+      adds — the human approved what a verifier can prove they were
+      shown — is the one every other layer silently assumed.</t>
+    </section>
+    <section anchor="residual">
+      <name>Residual Risk: WYSIWYS Is Not Solved</name>
+      <t>This profile narrows the presentation-attack surface; it does
+      not eliminate it, and implementers MUST NOT represent it as doing
+      so. A compromised signing client can render honestly to the
+      verifier's re-derivation while presenting a different artifact to
+      the human through a channel the protocol cannot observe (a
+      manipulated display driver, an overlaid window, a coerced
+      approver). Defenses against that residue are operational and
+      hardware-rooted (trusted display paths, out-of-band confirmation
+      of material fields, secure enclaves) and are out of scope here.
+      What this document removes is the CHEAP, SCALABLE, UNDETECTABLE
+      rendering attack — the software surface that simply computed the
+      display from the wrong bytes — and it makes the remaining,
+      expensive residue explicit so a relying party can price it rather
+      than discover it in a dispute.</t>
+    </section>
+    <section anchor="security">
+      <name>Security Considerations</name>
+      <t>The entire document is a security consideration; the residual
+      risk section states the boundary. One further point: the renderer
+      MUST be conservative to the point of refusing. A renderer that
+      guesses at an unmodeled field, truncates silently, or best-effort
+      displays hostile content trades a detectable failure for an
+      undetectable one. Refusal to render is a safe outcome; a
+      misleading render is the attack.</t>
+    </section>
+    <section anchor="iana">
+      <name>IANA Considerations</name>
+      <t>This document has no IANA actions. Registration of the render
+      profile and display-attestation identifiers is anticipated for a
+      future revision.</t>
+    </section>
+  </middle>
+  <back>
+    <references>
+      <name>References</name>
+      <references>
+        <name>Normative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
+      </references>
+      <references>
+        <name>Informative References</name>
+        <reference anchor="I-D.schrock-ep-authorization-receipts" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">
+          <front>
+            <title>Authorization Receipts for High-Risk Agent Actions</title>
+            <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+            <date year="2026" month="July"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-05"/>
+        </reference>
+        <reference anchor="I-D.schrock-human-authorization-binding" target="https://datatracker.ietf.org/doc/draft-schrock-human-authorization-binding/">
+          <front>
+            <title>Binding Named-Human Authorization Evidence into Agent-Action Records</title>
+            <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+            <date year="2026" month="July"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-human-authorization-binding-00"/>
+        </reference>
+        <reference anchor="I-D.schrock-ep-action-evidence-graph" target="https://datatracker.ietf.org/doc/draft-schrock-ep-action-evidence-graph/">
+          <front>
+            <title>Action Evidence Graphs and Evidence Policy Replay for High-Risk Agent Actions (EP-AEG)</title>
+            <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+            <date year="2026" month="July"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-action-evidence-graph-00"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="impl">
+      <name>Implementation Status</name>
+      <t>A reference implementation (the deterministic renderer, the
+      display attestation, and the offline re-derivation check) is
+      published Apache-2.0 in the EMILIA Protocol repository
+      (lib/wysiwys/render.js) with conformance vectors and a test suite,
+      including negative vectors: a rendering that does not re-derive
+      from its action is rejected, and hostile display content
+      (bidirectional overrides, control characters, over-length values)
+      is neutralized or refused rather than rendered misleadingly.</t>
+    </section>
+  </back>
+</rfc>
