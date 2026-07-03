@@ -218,10 +218,10 @@ Internet-Draft            Presentation Binding                 July 2026
    an overlaid window, a coerced approver).  Defenses against that
    residue are operational and hardware-rooted (trusted display paths,
    out-of-band confirmation of material fields, secure enclaves) and are
-   out of scope here.  What this document removes is the CHEAP,
-   SCALABLE, UNDETECTABLE rendering attack — the software surface that
-   simply computed the display from the wrong bytes — and it makes the
-   remaining, expensive residue explicit so a relying party can price it
+   out of scope here, though at least one such path ships today:
+   Android's Protected Confirmation renders a prompt in a TEE-isolated
+   display path and signs the exact displayed text under a key
+   restricted to user-confirmed content, with an attestation chain a
 
 
 
@@ -230,7 +230,14 @@ Schrock                  Expires 4 January 2027                 [Page 4]
 Internet-Draft            Presentation Binding                 July 2026
 
 
-   rather than discover it in a dispute.
+   relying party can grade.  Profiling such mechanisms as display
+   attestors for this document's attestation, with assurance graded by
+   the attestation chain, is planned work for a future revision.  What
+   this document removes is the CHEAP, SCALABLE, UNDETECTABLE rendering
+   attack — the software surface that simply computed the display from
+   the wrong bytes — and it makes the remaining, expensive residue
+   explicit so a relying party can price it rather than discover it in a
+   dispute.
 
 6.  Security Considerations
 
@@ -271,13 +278,6 @@ Internet-Draft            Presentation Binding                 July 2026
               Schrock, I., "Action Evidence Graphs and Evidence Policy
               Replay for High-Risk Agent Actions (EP-AEG)", Work in
               Progress, Internet-Draft, draft-schrock-ep-action-
-              evidence-graph-00, July 2026,
-              <https://datatracker.ietf.org/doc/draft-schrock-ep-action-
-              evidence-graph/>.
-
-   [I-D.schrock-ep-authorization-receipts]
-              Schrock, I., "Authorization Receipts for High-Risk Agent
-              Actions", Work in Progress, Internet-Draft, draft-schrock-
 
 
 
@@ -286,6 +286,13 @@ Schrock                  Expires 4 January 2027                 [Page 5]
 Internet-Draft            Presentation Binding                 July 2026
 
 
+              evidence-graph-00, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-action-
+              evidence-graph/>.
+
+   [I-D.schrock-ep-authorization-receipts]
+              Schrock, I., "Authorization Receipts for High-Risk Agent
+              Actions", Work in Progress, Internet-Draft, draft-schrock-
               ep-authorization-receipts-05, July 2026,
               <https://datatracker.ietf.org/doc/draft-schrock-ep-
               authorization-receipts/>.
@@ -314,13 +321,6 @@ Author's Address
    EMILIA Protocol, Inc.
    United States of America
    Email: team@emiliaprotocol.ai
-
-
-
-
-
-
-
 
 
 

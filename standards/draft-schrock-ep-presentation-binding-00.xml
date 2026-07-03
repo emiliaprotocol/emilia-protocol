@@ -153,7 +153,14 @@
       manipulated display driver, an overlaid window, a coerced
       approver). Defenses against that residue are operational and
       hardware-rooted (trusted display paths, out-of-band confirmation
-      of material fields, secure enclaves) and are out of scope here.
+      of material fields, secure enclaves) and are out of scope here,
+      though at least one such path ships today: Android's Protected
+      Confirmation renders a prompt in a TEE-isolated display path and
+      signs the exact displayed text under a key restricted to
+      user-confirmed content, with an attestation chain a relying party
+      can grade. Profiling such mechanisms as display attestors for
+      this document's attestation, with assurance graded by the
+      attestation chain, is planned work for a future revision.
       What this document removes is the CHEAP, SCALABLE, UNDETECTABLE
       rendering attack — the software surface that simply computed the
       display from the wrong bytes — and it makes the remaining,
