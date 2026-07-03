@@ -93,6 +93,48 @@ identified as the most-validated unowned slot.
 conformance vectors `conformance/vectors/aec.json` (JS/Python/Go agree). Source:
 `draft-schrock-ep-authorization-evidence-chain-00.{xml,txt}`.
 
+## draft-schrock-ep-action-evidence-graph-00
+
+**Action Evidence Graphs and Evidence Policy Replay (EP-AEG)** — the
+decision-grade admissibility layer. It turns heterogeneous signed artifacts
+(authorization receipts, permits, workload identity, execution attestations,
+transparency entries, recourse references) into a portable graph about one
+action, then evaluates that graph against the relying party's own policy to
+produce a replayable verdict: `admissible`, `missing_evidence`, `stale`,
+`conflicted`, or `unverifiable`. This is the layer above raw evidence and below
+business recourse: what evidence is good enough for money, liability,
+settlement, audit, or regulatory reliance.
+
+**Status: written + rendered (xml2rfc v3), NOT yet filed (Informational,
+individual submission).** Reference implementation: `lib/evidence/evidence-graph.js`
+and `lib/evidence/admissibility.js`; policy packs in `lib/evidence/policy-packs.js`.
+
+### Source artifacts
+
+- `draft-schrock-ep-action-evidence-graph-00.xml` — the xml2rfc v3 source.
+- `draft-schrock-ep-action-evidence-graph-00.txt` — the rendered I-D.
+
+## draft-schrock-authorization-evidence-challenge-00
+
+**Authorization Evidence Challenge (AE-CHALLENGE)** — the missing negotiation
+verb. Manifests declare what evidence an action requires; EP-AEG presents and
+replays evidence into a verdict. This draft defines the machine-readable
+challenge a relying party returns when evidence is missing or stale: the exact
+artifact types still required, assurance/freshness/revocation constraints,
+acceptable presentation formats, obtain hints, expiry, and a single-use nonce.
+The relying party computes the action digest and every follow-up challenge
+carries that same digest, closing the TOCTOU swap between "what was approved"
+and "what will execute."
+
+**Status: written + rendered (xml2rfc v3), NOT yet filed (Informational,
+individual submission).** Reference implementation:
+`lib/negotiate/evidence-challenge.js`; tests in `tests/evidence-challenge.test.js`.
+
+### Source artifacts
+
+- `draft-schrock-authorization-evidence-challenge-00.xml` — the xml2rfc v3 source.
+- `draft-schrock-authorization-evidence-challenge-00.txt` — the rendered I-D.
+
 ## draft-schrock-ep-evidence-record-00
 
 **Long-Term, Crypto-Agile Preservation of Authorization Evidence

@@ -41,7 +41,7 @@
       OAuth step-up authentication (RFC 9470) from authentication to
       evidence, and completes the circuit: declare, attempt, challenge,
       obtain, present, replay, consume. A satisfied challenge yields a
-      verdict under the relying party's policy — never a promise to
+      verdict under the relying party's policy, never a promise to
       execute.</t>
     </abstract>
   </front>
@@ -105,12 +105,37 @@
   "expires_at": "..."
 }
 ]]></sourcecode>
-      <t>required_evidence names types from the same vocabulary the
-      relying party's evidence policy and the resource's action
-      manifest use — the challenge is the DYNAMIC form of the same
-      declaration the manifest makes statically, minus whatever a
-      prior presentation already satisfied. obtain_hints are hints,
-      never endorsements: following one confers no trust.</t>
+      <t>The fields have the following semantics. @version MUST be
+      AE-CHALLENGE-v1. challenge_id identifies this challenge for
+      diagnostics and correlation; authorization decisions MUST NOT
+      depend on its uniqueness. nonce MUST be an unpredictable,
+      non-empty value that the relying party consumes on the first
+      evaluation attempt, successful or not. action_digest MUST be a
+      sha256 digest computed by the relying party over its canonical
+      action representation; it MUST NOT be copied from the requester
+      or from a presented evidence graph.</t>
+      <t>reliance_purpose and policy_id identify the relying party's
+      purpose and evidence policy. They are labels for the challenge,
+      not authority for the presenter to lower or replace the policy
+      used at evaluation time. required_evidence names types from the
+      same vocabulary the relying party's evidence policy and the
+      resource's action manifest use: the challenge is the dynamic form
+      of the same declaration the manifest makes statically, minus
+      whatever a prior presentation already satisfied.</t>
+      <t>Each required_evidence entry MUST contain type and MAY contain
+      assurance_class, fresh_max_sec, and revocation_checked. type names
+      the required evidence artifact. assurance_class names the minimum
+      acceptable proof class for that artifact when the relying party's
+      policy supplies one. fresh_max_sec is the maximum acceptable age
+      in seconds at evaluation time. revocation_checked, when true,
+      means the relying party requires a live non-revocation result for
+      that artifact type.</t>
+      <t>present_as is an ordered list of acceptable presentation
+      formats; this version defines EP-AEG-v1 as the initial graph
+      presentation format. obtain_hints are hints, never endorsements:
+      following one confers no trust. expires_at MUST be an absolute
+      timestamp after which the challenge is refused before policy
+      replay.</t>
     </section>
     <section anchor="lifecycle">
       <name>Lifecycle and the Completed Circuit</name>
@@ -120,14 +145,16 @@
       relying party evaluates the presentation against the SAME policy
       the challenge was derived from (never a policy carried on the
       wire). Evaluation is fail-closed and ordered: version and
-      structure; expiry; nonce single-use (a nonce is consumed by its
-      FIRST evaluation attempt, successful or not); action agreement;
-      then policy replay. If the verdict is not admissible, the
+      structure, including nonce, action_digest, expires_at, and
+      evaluation time; expiry; nonce single-use (a nonce is consumed by
+      its FIRST evaluation attempt, successful or not); action
+      agreement; then policy replay. If the verdict is not admissible,
+      including when evidence exists but is stale, the
       response carries a follow-up challenge for the SAME action digest
       (copied from the original challenge, never recomputed from
       anything the presenter sent) listing only the still-missing
-      evidence, under a fresh nonce. The loop continues until
-      admissible, refused, or expired.</t>
+      or still-unacceptable evidence, under a fresh nonce. The loop
+      continues until admissible, refused, or expired.</t>
       <t>The full circuit this completes:
       declare (manifest) -> attempt -> challenge (this document) ->
       obtain (receipts, permits, confirmations) -> present (evidence
@@ -149,6 +176,12 @@
       into a stale decision context. Expiry bounds are the relying
       party's choice per action class and SHOULD be short for
       irreversible actions.</t>
+      <t>Challenge integrity and audience. A challenge authorizes
+      nothing by itself, so a forged challenge cannot make an action
+      admissible. It can, however, cause wasted obtain work or confuse
+      audit trails. Deployments that store, forward, or answer
+      challenges outside the original protected connection SHOULD bind
+      them to the relying party, intended audience, and policy context.</t>
       <t>Denial of service. A challenge commits the relying party to
       nothing and SHOULD be cheap to mint; the nonce ledger is the only
       per-challenge state, and deployments MAY bound it by the expiry
@@ -203,12 +236,14 @@
       policy-derived required-evidence lists, fail-closed presentation
       evaluation in the order specified here, and follow-up challenges
       that carry the original action digest and list only the remaining
-      evidence) is published Apache-2.0 in the EMILIA Protocol
+      or still-unacceptable evidence) is published Apache-2.0 in the EMILIA Protocol
       repository (lib/negotiate/evidence-challenge.js), with a test
       suite covering the full circuit (partial presentation to
       follow-up challenge to admissible), nonce single-use, expiry,
-      the action-swap refusal, and the rule that follow-up challenges
-      never derive their action from presenter input.</t>
+      malformed challenge refusal before nonce consumption, stale
+      evidence being re-requested, the action-swap refusal, and the
+      rule that follow-up challenges never derive their action from
+      presenter input.</t>
     </section>
   </back>
 </rfc>

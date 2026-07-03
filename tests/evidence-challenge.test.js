@@ -18,8 +18,8 @@ const verifiers = {
   workload_identity: (a) => ({ valid: true, action_digest: a.action, issued_at: a.issued_at }),
 };
 
-function graphFor(types) {
-  const arts = types.map((t) => mk(t));
+function graphFor(types, overrides = {}) {
+  const arts = types.map((t) => mk(t, overrides[t] ?? {}));
   const auth = arts.find((a) => a.typ === 'authorization_receipt');
   const nodes = arts.map((a) => ({ id: artifactDigest(a), type: a.typ, artifact: a }));
   const edges = [];
@@ -42,6 +42,15 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
     expect(types).toContain('workload_identity');
     expect(req.find((r) => r.type === 'authorization_receipt').fresh_max_sec).toBe(300);
     expect(req.find((r) => r.type === 'authorization_receipt').revocation_checked).toBe(true);
+  });
+
+  it('carries per-type assurance constraints when the policy supplies them', () => {
+    const req = deriveRequiredEvidence({
+      ...policy,
+      required_assurance: { authorization_receipt: 'class_a' },
+    });
+    expect(req.find((r) => r.type === 'authorization_receipt').assurance_class).toBe('class_a');
+    expect(req.find((r) => r.type === 'policy_permit').assurance_class).toBeUndefined();
   });
 
   it('the full circuit: challenge -> partial present -> next_challenge lists ONLY the missing -> complete present -> admissible', () => {
@@ -99,6 +108,44 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
     const r = evaluatePresentation(ch, graphFor(['authorization_receipt']), policy, { verifiers, as_of: AS_OF });
     expect(r.verdict).toBe('refused');
     expect(r.reasons.join(' ')).toContain('nonce ledger');
+  });
+
+  it('malformed challenges fail closed before consuming a nonce', () => {
+    const nonces = new Set();
+    const ch = createEvidenceChallenge(ACTION, policy, { expires_at: EXPIRES, nonce: 'n1' });
+    const g = graphFor(['authorization_receipt']);
+
+    const missingNonce = { ...ch };
+    delete missingNonce.nonce;
+    const r1 = evaluatePresentation(missingNonce, g, policy, { verifiers, as_of: AS_OF, consumedNonces: nonces });
+    expect(r1.verdict).toBe('refused');
+    expect(r1.reasons.join(' ')).toContain('nonce');
+    expect(nonces.size).toBe(0);
+
+    const badExpiry = evaluatePresentation({ ...ch, expires_at: 'not-a-date' }, g, policy,
+      { verifiers, as_of: AS_OF, consumedNonces: nonces });
+    expect(badExpiry.verdict).toBe('refused');
+    expect(badExpiry.reasons.join(' ')).toContain('expires_at');
+    expect(nonces.size).toBe(0);
+
+    const badAsOf = evaluatePresentation(ch, g, policy, { verifiers, as_of: 'not-a-date', consumedNonces: nonces });
+    expect(badAsOf.verdict).toBe('refused');
+    expect(badAsOf.reasons.join(' ')).toContain('as_of');
+    expect(nonces.size).toBe(0);
+  });
+
+  it('stale evidence remains in the follow-up challenge as evidence to refresh', () => {
+    const nonces = new Set();
+    const ch = createEvidenceChallenge(ACTION, policy, { expires_at: EXPIRES, nonce: 'n1' });
+    const staleAuth = graphFor(['authorization_receipt', 'policy_permit', 'workload_identity'], {
+      authorization_receipt: { issued_at: '2026-07-03T11:50:00Z' },
+    });
+    const r = evaluatePresentation(ch, staleAuth, policy,
+      { verifiers, as_of: AS_OF, consumedNonces: nonces, nonce: 'n2' });
+    expect(r.verdict).toBe('stale');
+    const missing = r.next_challenge.required_evidence.map((x) => x.type);
+    expect(missing).toEqual(['authorization_receipt']);
+    expect(r.next_challenge.action_digest).toBe(ch.action_digest);
   });
 
   it('the next challenge derives its action from the ORIGINAL challenge, never the presentation', () => {
