@@ -27,7 +27,7 @@
       action. It does not prove the surface that person signed on
       DISPLAYED that action honestly. If a signing interface shows a
       benign summary while committing a different action, the resulting
-      receipt is laundered authority — cryptographically valid and
+      receipt is laundered authority: cryptographically valid and
       semantically false, which is worse than no receipt at all. This is
       the presentation attack, and it is the deepest unsolved problem in
       authorization evidence, because a signature cannot attest to
@@ -39,7 +39,7 @@
       surface that showed something else; and a DISPLAY ATTESTATION, a
       signed claim by the signing client binding the rendering it showed
       to the action it committed. Neither eliminates the presentation
-      attack — nothing purely digital can — but together they convert
+      attack (nothing purely digital can), but together they convert
       "trust the vendor's UI" into "verify the rendering was the honest
       function of the signed action," and they make the residual risk
       explicit rather than hidden.</t>
@@ -51,7 +51,7 @@
       <t>The hard part of human authorization was never the signature.
       It is the question a relying party's counsel asks first: a receipt
       of WHAT? A named human signed a digest; the digest commits to an
-      action; but the human did not see the digest — they saw a screen,
+      action; but the human did not see the digest; they saw a screen,
       and the screen was drawn by software. If that software rendered
       "approve invoice, $1.00" while committing "wire $82,000 to account
       X", the receipt is perfect and the authority is fabricated. Every
@@ -63,9 +63,9 @@
       attacks: the surface computed the display from something other
       than the signed action. That is defeatable, because a rendering
       can be made a PURE FUNCTION of the signed action and re-derived by
-      any verifier. Second, the residue — a compromised or malicious
+      any verifier. Second, the residue (a compromised or malicious
       client that renders honestly to a verifier's re-derivation while
-      showing the human something else out of band — cannot be closed by
+      showing the human something else out of band) cannot be closed by
       any digital artifact and MUST be stated as residual risk, not
       papered over. This document does the first and is scrupulous about
       the second.</t>
@@ -95,7 +95,7 @@
       a verifier re-derives it from the very bytes the receipt's action
       digest commits to and compares. A surface that displayed "$1" for
       an action that says "$82,000" cannot produce a rendering that
-      re-derives — the deviation is detected offline, by anyone, without
+      re-derives; the deviation is detected offline, by anyone, without
       trusting the surface. This turns "render from the exact hashed
       bytes, never a re-described copy" from an unverifiable interface
       rule into a verifiable property.</t>
@@ -115,7 +115,7 @@
       THIS action." It binds the rendering digest to the action digest
       under the client's key and is stored ALONGSIDE the receipt (in an
       audit record, a provenance bundle, or an evidence-graph node),
-      never inside the signed receipt body — verifiers that predate this
+      never inside the signed receipt body; verifiers that predate this
       profile continue to verify receipts unchanged; verifiers that
       implement it add the display check. For high-stakes action classes
       a relying party's policy MAY require a valid display attestation
@@ -141,7 +141,7 @@
       high-stakes reliance purpose, treat a receipt without a verifying
       display attestation as insufficient. The property this document
       adds — the human approved what a verifier can prove they were
-      shown — is the one every other layer silently assumed.</t>
+      shown, is the one every other layer silently assumed.</t>
     </section>
     <section anchor="residual">
       <name>Residual Risk: WYSIWYS Is Not Solved</name>
