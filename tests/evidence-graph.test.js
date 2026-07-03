@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import crypto from 'node:crypto';
 import {
-  EVIDENCE_GRAPH_VERSION, EDGE_RELS, artifactDigest, graphDigest,
+  EVIDENCE_GRAPH_VERSION, RELIANCE_RESULT_VERSION, EDGE_RELS, artifactDigest, graphDigest,
   evaluateEvidenceGraph, signRelianceResult, verifyRelianceResult,
 } from '../lib/evidence/evidence-graph.js';
 import { POLICY_PACKS, POLICY_PACK_IDS, getPolicyPack } from '../lib/evidence/policy-packs.js';
@@ -111,6 +111,29 @@ describe('EP-AEG — evidence graph evaluation', () => {
     expect(a.verdict).toBe(b.verdict);
     expect(a.replay_digest).toBe(b.replay_digest);
   });
+
+  it('a verifier that throws is contained per-node, never fatal', () => {
+    const { doc } = buildGraph();
+    const throwing = { ...verifiers, authorization_receipt: () => { throw new Error('boom'); } };
+    const r = evaluateEvidenceGraph(doc, wirePack, { verifiers: throwing, as_of: AS_OF });
+    expect(r.verdict).not.toBe('admissible');
+    expect(r.reasons.join(' ')).toContain('verifier threw');
+  });
+
+  it('honors a custom per-rel edge checker over the default byte check', () => {
+    const { doc } = buildGraph();
+    const r = evaluateEvidenceGraph(doc, wirePack, {
+      verifiers, as_of: AS_OF, edgeCheckers: { permits: () => true },
+    });
+    expect(r.graph.edge_rows.find((e) => e.rel === 'permits').backed).toBe(true);
+  });
+
+  it('a policy with no required_edges strips nothing (|| [] fallback)', () => {
+    const { doc } = buildGraph();
+    const noReq = { ...wirePack, required_edges: undefined };
+    const r = evaluateEvidenceGraph(doc, noReq, { verifiers, as_of: AS_OF });
+    expect(r.reasons.join(' ')).not.toContain('required edge missing');
+  });
 });
 
 describe('EP-RELIANCE-RESULT — the verdict as signed evidence', () => {
@@ -143,6 +166,57 @@ describe('EP-RELIANCE-RESULT — the verdict as signed evidence', () => {
     const { doc: g } = buildGraph();
     const recomputed = evaluateEvidenceGraph(g, wirePack, { verifiers, as_of: AS_OF });
     expect(doc.payload.replay_digest).toBe(recomputed.replay_digest);
+  });
+
+  it('fails closed on a structurally-invalid doc, before any crypto (every guard branch)', () => {
+    const V = RELIANCE_RESULT_VERSION;
+    const bad = [
+      null,
+      undefined,
+      {},                                                                 // no payload
+      { payload: { '@version': 'EP-RELIANCE-RESULT-vWRONG' }, sig: 'x', verifier_key: 'y' }, // wrong version
+      { payload: { '@version': V }, sig: 123, verifier_key: 'y' },        // non-string sig
+      { payload: { '@version': V }, sig: 'x', verifier_key: 123 },        // non-string verifier_key
+    ];
+    for (const doc of bad) {
+      const r = verifyRelianceResult(doc, []);
+      expect(r.verified).toBe(false);
+      expect(r.accepted).toBe(false);
+      expect(r.checks.structure).toBe(false);
+    }
+  });
+
+  it('a verifier_key that is not a valid SPKI key fails closed (structure ok, unverified)', () => {
+    const doc = signed();
+    doc.verifier_key = Buffer.from('not-a-real-spki-key').toString('base64url');
+    const r = verifyRelianceResult(doc, [doc.verifier_key]);
+    expect(r.checks.structure).toBe(true);
+    expect(r.verified).toBe(false);
+    expect(r.accepted).toBe(false);
+  });
+
+  it('an unserializable payload is caught, not thrown (signature=false, never crashes)', () => {
+    const doc = signed();
+    doc.payload.evil = 1n; // BigInt -> canon() throws inside verify's try block
+    const r = verifyRelianceResult(doc, [doc.verifier_key]);
+    expect(r.checks.structure).toBe(true);
+    expect(r.checks.signature).toBe(false);
+    expect(r.verified).toBe(false);
+  });
+
+  it('signs a bare result: missing graph / policy-id / evaluated_at fall back to null', () => {
+    const bare = signRelianceResult(
+      { verdict: 'admissible', reasons: [], action_digest: ACTION, replay_digest: 'sha256:' + '0'.repeat(64) },
+      {},          // policy with no policy_id / reliance_purpose
+      privateKey,  // no opts -> evaluated_at defaults to null
+    );
+    expect(bare.payload.graph_digest).toBe(null);
+    expect(bare.payload.policy_id).toBe(null);
+    expect(bare.payload.reliance_purpose).toBe(null);
+    expect(bare.payload.evaluated_at).toBe(null);
+    const r = verifyRelianceResult(bare, [bare.verifier_key]);
+    expect(r.verified).toBe(true);
+    expect(r.accepted).toBe(true);
   });
 });
 
