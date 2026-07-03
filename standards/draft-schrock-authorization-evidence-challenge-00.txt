@@ -1,0 +1,336 @@
+
+
+
+
+Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
+Intended status: Informational                               3 July 2026
+Expires: 4 January 2027
+
+
+    An Authorization Evidence Challenge for High-Risk Agent Actions
+           draft-schrock-authorization-evidence-challenge-00
+
+Abstract
+
+   The agent-action evidence stack has declaration (a resource declares
+   what evidence its actions require), presentation (an evidence graph
+   of signed artifacts), and decision (deterministic policy replay
+   yielding a closed verdict).  Nothing closes the loop: when the
+   verdict is that evidence is missing or stale, no machine-readable
+   message tells the agent what to obtain, how to re-present, or what
+   the retry semantics are — every deployment hand-rolls the dance.
+   This document defines the Authorization Evidence Challenge: the
+   message a relying party returns before a high-risk action executes,
+   naming the exact evidence still required (type, assurance
+   constraints, freshness bound, revocation-check requirement), how to
+   present it, where it might be obtained, and the challenge's own
+   expiry and single-use nonce.  The action digest in a challenge is
+   computed by the RELYING PARTY over its own canonical action, so
+   evidence is obtained against the action that will actually execute.
+   The exchange generalizes OAuth step-up authentication (RFC 9470) from
+   authentication to evidence, and completes the circuit: declare,
+   attempt, challenge, obtain, present, replay, consume.  A satisfied
+   challenge yields a verdict under the relying party's policy — never a
+   promise to execute.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 4 January 2027.
+
+
+
+Schrock                  Expires 4 January 2027                 [Page 1]
+
+Internet-Draft             Evidence Challenge                  July 2026
+
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+     1.1.  Terminology . . . . . . . . . . . . . . . . . . . . . . .   3
+   2.  The Challenge (AE-CHALLENGE-v1) . . . . . . . . . . . . . . .   3
+   3.  Lifecycle and the Completed Circuit . . . . . . . . . . . . .   4
+   4.  Security Considerations . . . . . . . . . . . . . . . . . . .   4
+   5.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   5
+   6.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   5
+     6.1.  Normative References  . . . . . . . . . . . . . . . . . .   5
+     6.2.  Informative References  . . . . . . . . . . . . . . . . .   5
+   Appendix A.  Implementation Status  . . . . . . . . . . . . . . .   5
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   6
+
+1.  Introduction
+
+   Signed-evidence formats for agent actions are nouns: receipts,
+   permits, capsules, records, logs.  The interactions between them —
+   the verbs — are largely unspecified, and the most immediately
+   consequential missing verb is the CHALLENGE.  A relying party that
+   evaluates presented evidence and finds it insufficient today has no
+   standard way to say so usefully: HTTP offers a status code but no
+   vocabulary for "your bundle lacks a distinct-human quorum approval
+   fresher than five minutes."  The agent's runtime cannot react
+   mechanically to prose.  The result is that the entire obtain-and-
+   retry loop — the part a production deployment spends most of its
+   integration effort on — is bespoke everywhere.
+
+   The nearest prior art is OAuth step-up authentication [RFC9470], in
+   which a resource signals that the presented token's authentication is
+   insufficient and names the ACR it requires.  This document
+   generalizes that shape from authentication level to AUTHORIZATION
+   EVIDENCE: the thing named is not how strongly a user logged in, but
+   which signed artifacts about this exact action are still missing.
+
+
+
+Schrock                  Expires 4 January 2027                 [Page 2]
+
+Internet-Draft             Evidence Challenge                  July 2026
+
+
+   Real-time confirmation-interaction protocols compose naturally: a
+   CHEQ-style flow is one way to OBTAIN a missing human authorization,
+   referenced from the challenge's obtain hints rather than competing
+   with it.
+
+1.1.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+2.  The Challenge (AE-CHALLENGE-v1)
+
+   A challenge is a JSON object, returned (in the HTTP binding) with
+   status 428 and media type application/authorization-evidence-
+   challenge+json:
+
+   {
+     "@version": "AE-CHALLENGE-v1",
+     "challenge_id": "...",
+     "nonce": "<single-use>",
+     "action_digest": "sha256:<RELYING PARTY's canonical action>",
+     "reliance_purpose": "money_movement",
+     "policy_id": "ep:pack:wire-transfer:v1",
+     "required_evidence": [
+       { "type": "authorization_receipt",
+         "fresh_max_sec": 300, "revocation_checked": true },
+       { "type": "policy_permit", "fresh_max_sec": 600 },
+       { "type": "workload_identity", "fresh_max_sec": 3600 }
+     ],
+     "present_as": ["EP-AEG-v1"],
+     "obtain_hints": [ { "type": "authorization_receipt",
+                         "uri": "..." } ],
+     "expires_at": "..."
+   }
+
+   required_evidence names types from the same vocabulary the relying
+   party's evidence policy and the resource's action manifest use — the
+   challenge is the DYNAMIC form of the same declaration the manifest
+   makes statically, minus whatever a prior presentation already
+   satisfied. obtain_hints are hints, never endorsements: following one
+   confers no trust.
+
+
+
+
+
+
+
+Schrock                  Expires 4 January 2027                 [Page 3]
+
+Internet-Draft             Evidence Challenge                  July 2026
+
+
+3.  Lifecycle and the Completed Circuit
+
+   The exchange proceeds: the agent attempts the action (or asks in
+   advance); the relying party mints a challenge; the agent obtains the
+   named evidence and presents an evidence graph; the relying party
+   evaluates the presentation against the SAME policy the challenge was
+   derived from (never a policy carried on the wire).  Evaluation is
+   fail-closed and ordered: version and structure; expiry; nonce single-
+   use (a nonce is consumed by its FIRST evaluation attempt, successful
+   or not); action agreement; then policy replay.  If the verdict is not
+   admissible, the response carries a follow-up challenge for the SAME
+   action digest (copied from the original challenge, never recomputed
+   from anything the presenter sent) listing only the still-missing
+   evidence, under a fresh nonce.  The loop continues until admissible,
+   refused, or expired.
+
+   The full circuit this completes: declare (manifest) -> attempt ->
+   challenge (this document) -> obtain (receipts, permits,
+   confirmations) -> present (evidence graph) -> replay (evidence policy
+   -> verdict) -> consume (one-time use at the enforcement point).
+
+4.  Security Considerations
+
+   Time-of-check versus time-of-use.  The single most important
+   property: the action digest in every challenge — including every
+   follow-up — is computed by the relying party over its own canonical
+   action and never derived from presenter input.  Evidence is therefore
+   obtained against the action that will execute; a presentation whose
+   graph binds any other action is refused before policy evaluation.  At
+   execution the enforcement point recomputes the digest once more.
+
+   Replay and hoarding.  Challenges are single-use and expiring; an
+   agent cannot hoard a challenge, satisfy it slowly, and present into a
+   stale decision context.  Expiry bounds are the relying party's choice
+   per action class and SHOULD be short for irreversible actions.
+
+   Denial of service.  A challenge commits the relying party to nothing
+   and SHOULD be cheap to mint; the nonce ledger is the only per-
+   challenge state, and deployments MAY bound it by the expiry window
+   (an expired nonce can be forgotten).
+
+   What a challenge is not.  It is not authorization, not a reservation,
+   and not a promise: a fully satisfied challenge yields a verdict under
+   the relying party's policy, and the relying party remains free to
+   refuse for reasons outside the evidence (limits, sanctions, panic
+   switches).  Conversely, a challenge MUST NOT be treated by the
+   agent's operator as evidence that the action was attempted with
+   authorization — it is evidence only that evidence was requested.
+
+
+
+Schrock                  Expires 4 January 2027                 [Page 4]
+
+Internet-Draft             Evidence Challenge                  July 2026
+
+
+5.  IANA Considerations
+
+   A future revision will register the media type application/
+   authorization-evidence-challenge+json.
+
+6.  References
+
+6.1.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+6.2.  Informative References
+
+   [I-D.schrock-agent-action-manifest]
+              Schrock, I., "Agent Action Manifests: Declaring Control
+              and Consequences for Agent-Reachable Actions", Work in
+              Progress, Internet-Draft, draft-schrock-agent-action-
+              manifest-00, July 2026, <https://datatracker.ietf.org/doc/
+              draft-schrock-agent-action-manifest/>.
+
+   [I-D.schrock-ep-action-evidence-graph]
+              Schrock, I., "Action Evidence Graphs and Evidence Policy
+              Replay for High-Risk Agent Actions (EP-AEG)", Work in
+              Progress, Internet-Draft, draft-schrock-ep-action-
+              evidence-graph-00, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-action-
+              evidence-graph/>.
+
+   [RFC9470]  Bertocci, V. and B. Campbell, "OAuth 2.0 Step Up
+              Authentication Challenge Protocol", RFC 9470,
+              DOI 10.17487/RFC9470, September 2023,
+              <https://www.rfc-editor.org/info/rfc9470>.
+
+Appendix A.  Implementation Status
+
+   A reference implementation (challenge minting with policy-derived
+   required-evidence lists, fail-closed presentation evaluation in the
+   order specified here, and follow-up challenges that carry the
+   original action digest and list only the remaining evidence) is
+   published Apache-2.0 in the EMILIA Protocol repository
+   (lib/negotiate/evidence-challenge.js), with a test suite covering the
+
+
+
+Schrock                  Expires 4 January 2027                 [Page 5]
+
+Internet-Draft             Evidence Challenge                  July 2026
+
+
+   full circuit (partial presentation to follow-up challenge to
+   admissible), nonce single-use, expiry, the action-swap refusal, and
+   the rule that follow-up challenges never derive their action from
+   presenter input.
+
+Author's Address
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 4 January 2027                 [Page 6]

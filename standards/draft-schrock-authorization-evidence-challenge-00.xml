@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rfc xmlns:xi="http://www.w3.org/2001/XInclude"
+     docName="draft-schrock-authorization-evidence-challenge-00"
+     category="info" ipr="trust200902" submissionType="IETF"
+     version="3" tocInclude="true" sortRefs="true" symRefs="true">
+  <front>
+    <title abbrev="Evidence Challenge">An Authorization Evidence Challenge for High-Risk Agent Actions</title>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-authorization-evidence-challenge-00"/>
+    <author fullname="Iman Schrock">
+      <organization>EMILIA Protocol, Inc.</organization>
+      <address>
+        <postal>
+          <country>US</country>
+        </postal>
+        <email>team@emiliaprotocol.ai</email>
+      </address>
+    </author>
+    <date year="2026" month="July" day="3"/>
+    <area>sec</area>
+    <keyword>AI agents</keyword>
+    <keyword>evidence</keyword>
+    <keyword>challenge</keyword>
+    <keyword>step-up</keyword>
+    <abstract>
+      <t>The agent-action evidence stack has declaration (a resource
+      declares what evidence its actions require), presentation (an
+      evidence graph of signed artifacts), and decision (deterministic
+      policy replay yielding a closed verdict). Nothing closes the loop:
+      when the verdict is that evidence is missing or stale, no
+      machine-readable message tells the agent what to obtain, how to
+      re-present, or what the retry semantics are — every deployment
+      hand-rolls the dance. This document defines the Authorization
+      Evidence Challenge: the message a relying party returns before a
+      high-risk action executes, naming the exact evidence still
+      required (type, assurance constraints, freshness bound,
+      revocation-check requirement), how to present it, where it might
+      be obtained, and the challenge's own expiry and single-use nonce.
+      The action digest in a challenge is computed by the RELYING PARTY
+      over its own canonical action, so evidence is obtained against
+      the action that will actually execute. The exchange generalizes
+      OAuth step-up authentication (RFC 9470) from authentication to
+      evidence, and completes the circuit: declare, attempt, challenge,
+      obtain, present, replay, consume. A satisfied challenge yields a
+      verdict under the relying party's policy — never a promise to
+      execute.</t>
+    </abstract>
+  </front>
+  <middle>
+    <section anchor="intro">
+      <name>Introduction</name>
+      <t>Signed-evidence formats for agent actions are nouns: receipts,
+      permits, capsules, records, logs. The interactions between them —
+      the verbs — are largely unspecified, and the most immediately
+      consequential missing verb is the CHALLENGE. A relying party that
+      evaluates presented evidence and finds it insufficient today has
+      no standard way to say so usefully: HTTP offers a status code but
+      no vocabulary for "your bundle lacks a distinct-human quorum
+      approval fresher than five minutes." The agent's runtime cannot
+      react mechanically to prose. The result is that the entire
+      obtain-and-retry loop — the part a production deployment spends
+      most of its integration effort on — is bespoke everywhere.</t>
+      <t>The nearest prior art is OAuth step-up authentication
+      <xref target="RFC9470"/>, in which a resource signals that the
+      presented token's authentication is insufficient and names the
+      ACR it requires. This document generalizes that shape from
+      authentication level to AUTHORIZATION EVIDENCE: the thing named
+      is not how strongly a user logged in, but which signed artifacts
+      about this exact action are still missing. Real-time
+      confirmation-interaction protocols compose naturally: a
+      CHEQ-style flow is one way to OBTAIN a missing human
+      authorization, referenced from the challenge's obtain hints
+      rather than competing with it.</t>
+      <section anchor="terms">
+        <name>Terminology</name>
+        <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL",
+        "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT
+        RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+        interpreted as described in BCP 14 <xref target="RFC2119"/>
+        <xref target="RFC8174"/> when, and only when, they appear in
+        all capitals, as shown here.</t>
+      </section>
+    </section>
+    <section anchor="challenge">
+      <name>The Challenge (AE-CHALLENGE-v1)</name>
+      <t>A challenge is a JSON object, returned (in the HTTP binding)
+      with status 428 and media type
+      application/authorization-evidence-challenge+json:</t>
+      <sourcecode type="json"><![CDATA[
+{
+  "@version": "AE-CHALLENGE-v1",
+  "challenge_id": "...",
+  "nonce": "<single-use>",
+  "action_digest": "sha256:<RELYING PARTY's canonical action>",
+  "reliance_purpose": "money_movement",
+  "policy_id": "ep:pack:wire-transfer:v1",
+  "required_evidence": [
+    { "type": "authorization_receipt",
+      "fresh_max_sec": 300, "revocation_checked": true },
+    { "type": "policy_permit", "fresh_max_sec": 600 },
+    { "type": "workload_identity", "fresh_max_sec": 3600 }
+  ],
+  "present_as": ["EP-AEG-v1"],
+  "obtain_hints": [ { "type": "authorization_receipt",
+                      "uri": "..." } ],
+  "expires_at": "..."
+}
+]]></sourcecode>
+      <t>required_evidence names types from the same vocabulary the
+      relying party's evidence policy and the resource's action
+      manifest use — the challenge is the DYNAMIC form of the same
+      declaration the manifest makes statically, minus whatever a
+      prior presentation already satisfied. obtain_hints are hints,
+      never endorsements: following one confers no trust.</t>
+    </section>
+    <section anchor="lifecycle">
+      <name>Lifecycle and the Completed Circuit</name>
+      <t>The exchange proceeds: the agent attempts the action (or asks
+      in advance); the relying party mints a challenge; the agent
+      obtains the named evidence and presents an evidence graph; the
+      relying party evaluates the presentation against the SAME policy
+      the challenge was derived from (never a policy carried on the
+      wire). Evaluation is fail-closed and ordered: version and
+      structure; expiry; nonce single-use (a nonce is consumed by its
+      FIRST evaluation attempt, successful or not); action agreement;
+      then policy replay. If the verdict is not admissible, the
+      response carries a follow-up challenge for the SAME action digest
+      (copied from the original challenge, never recomputed from
+      anything the presenter sent) listing only the still-missing
+      evidence, under a fresh nonce. The loop continues until
+      admissible, refused, or expired.</t>
+      <t>The full circuit this completes:
+      declare (manifest) -> attempt -> challenge (this document) ->
+      obtain (receipts, permits, confirmations) -> present (evidence
+      graph) -> replay (evidence policy -> verdict) -> consume
+      (one-time use at the enforcement point).</t>
+    </section>
+    <section anchor="security">
+      <name>Security Considerations</name>
+      <t>Time-of-check versus time-of-use. The single most important
+      property: the action digest in every challenge — including every
+      follow-up — is computed by the relying party over its own
+      canonical action and never derived from presenter input. Evidence
+      is therefore obtained against the action that will execute; a
+      presentation whose graph binds any other action is refused before
+      policy evaluation. At execution the enforcement point recomputes
+      the digest once more.</t>
+      <t>Replay and hoarding. Challenges are single-use and expiring;
+      an agent cannot hoard a challenge, satisfy it slowly, and present
+      into a stale decision context. Expiry bounds are the relying
+      party's choice per action class and SHOULD be short for
+      irreversible actions.</t>
+      <t>Denial of service. A challenge commits the relying party to
+      nothing and SHOULD be cheap to mint; the nonce ledger is the only
+      per-challenge state, and deployments MAY bound it by the expiry
+      window (an expired nonce can be forgotten).</t>
+      <t>What a challenge is not. It is not authorization, not a
+      reservation, and not a promise: a fully satisfied challenge
+      yields a verdict under the relying party's policy, and the
+      relying party remains free to refuse for reasons outside the
+      evidence (limits, sanctions, panic switches). Conversely, a
+      challenge MUST NOT be treated by the agent's operator as evidence
+      that the action was attempted with authorization — it is
+      evidence only that evidence was requested.</t>
+    </section>
+    <section anchor="iana">
+      <name>IANA Considerations</name>
+      <t>A future revision will register the media type
+      application/authorization-evidence-challenge+json.</t>
+    </section>
+  </middle>
+  <back>
+    <references>
+      <name>References</name>
+      <references>
+        <name>Normative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
+      </references>
+      <references>
+        <name>Informative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9470.xml"/>
+        <reference anchor="I-D.schrock-ep-action-evidence-graph" target="https://datatracker.ietf.org/doc/draft-schrock-ep-action-evidence-graph/">
+          <front>
+            <title>Action Evidence Graphs and Evidence Policy Replay for High-Risk Agent Actions (EP-AEG)</title>
+            <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+            <date year="2026" month="July"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-action-evidence-graph-00"/>
+        </reference>
+        <reference anchor="I-D.schrock-agent-action-manifest" target="https://datatracker.ietf.org/doc/draft-schrock-agent-action-manifest/">
+          <front>
+            <title>Agent Action Manifests: Declaring Control and Consequences for Agent-Reachable Actions</title>
+            <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
+            <date year="2026" month="July"/>
+          </front>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-agent-action-manifest-00"/>
+        </reference>
+      </references>
+    </references>
+    <section anchor="impl">
+      <name>Implementation Status</name>
+      <t>A reference implementation (challenge minting with
+      policy-derived required-evidence lists, fail-closed presentation
+      evaluation in the order specified here, and follow-up challenges
+      that carry the original action digest and list only the remaining
+      evidence) is published Apache-2.0 in the EMILIA Protocol
+      repository (lib/negotiate/evidence-challenge.js), with a test
+      suite covering the full circuit (partial presentation to
+      follow-up challenge to admissible), nonce single-use, expiry,
+      the action-swap refusal, and the rule that follow-up challenges
+      never derive their action from presenter input.</t>
+    </section>
+  </back>
+</rfc>
