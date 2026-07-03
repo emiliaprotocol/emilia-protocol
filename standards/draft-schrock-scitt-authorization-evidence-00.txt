@@ -96,7 +96,7 @@ Table of Contents
    8.  Security Considerations . . . . . . . . . . . . . . . . . . .   7
    9.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   8
    10. Normative References  . . . . . . . . . . . . . . . . . . . .   8
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   8
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   9
 
 1.  Introduction
 
@@ -259,10 +259,14 @@ Internet-Draft        Human-Authorization Evidence             July 2026
        SHA-256(JCS(Action)) and confirms it matches the subject digest
        committed by the host statement.
 
-   2.  The verifier resolves the authority-reference digest to an EP
-       authorization receipt (held locally, fetched offline, or
-       retrieved from the transparency service when a statement_digest
-       is used) and confirms the resolved receipt hashes to that digest.
+   2.  The verifier obtains the EP authorization receipt through
+       whatever distribution channel the deployment provides (held
+       locally, conveyed with the statement, or fetched from a
+       transparency service when a statement_digest is used -- the
+       acquisition transport is out of scope for this profile) and
+       confirms the obtained receipt hashes to the authority-reference
+       digest.  Digest equality, not the channel, is what the profile
+       relies on.
 
    3.  The authorization receipt itself verifies under
        [I-D.schrock-ep-authorization-receipts]: a valid signature by an
@@ -270,10 +274,6 @@ Internet-Draft        Human-Authorization Evidence             July 2026
        Authorization Context, within its validity window, and not
        already consumed or refused.
 
-   4.  The Action the authorization receipt is over yields the same
-       subject digest as step 1 — that is, the human authorized the
-       exact operation the host statement records, not a different or
-       broader one.
 
 
 
@@ -281,6 +281,11 @@ Schrock                  Expires 3 January 2027                 [Page 5]
 
 Internet-Draft        Human-Authorization Evidence             July 2026
 
+
+   4.  The Action the authorization receipt is over yields the same
+       subject digest as step 1 — that is, the human authorized the
+       exact operation the host statement records, not a different or
+       broader one.
 
    If any step fails, the host statement MUST NOT be treated as
    authorization-backed.  A verifier that cannot resolve or verify the
@@ -303,9 +308,14 @@ Internet-Draft        Human-Authorization Evidence             July 2026
    sources at a stated time and found no qualifying authorization.  Such
    a statement attests the search and its emptiness, not a universal
    negative.  Verifiers MUST otherwise treat absence as an inference
-   from silence: fail closed, but do not record it as a fact.  Auditors
-   and counterparties rely on refusals as much as approvals; this
-   profile makes both -- and honest observed-absence -- first-class.
+   from silence: fail closed, but do not record it as a fact.  A minimal
+   observed-absence statement format (typed payload naming the sources
+   searched, the query, and the observation time, signed by the
+   observer, with verified-versus-accepted semantics) ships as a
+   deterministic vector with the reference implementation
+   (examples/scitt/observed-absence-vector.mjs).  Auditors and
+   counterparties rely on refusals as much as approvals; this profile
+   makes both -- and honest observed-absence -- first-class.
 
 7.  Relationship to Adjacent Work
 
@@ -318,6 +328,16 @@ Internet-Draft        Human-Authorization Evidence             July 2026
       resolvable authority reference.  SCITT is agnostic about who
       authorized a statement; this profile supplies exactly that.
 
+
+
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 6]
+
+Internet-Draft        Human-Authorization Evidence             July 2026
+
+
    *  Pre-execution permit work expresses allow/deny/challenge
       decisions; an EP receipt is the human-authorization evidence a
       permit carries when its policy demands an accountable human.
@@ -329,14 +349,6 @@ Internet-Draft        Human-Authorization Evidence             July 2026
    *  Post-execution evidence and refusal-event work sits after or
       beside execution; an EP authorization is the pre-execution leg it
       links back to.
-
-
-
-
-Schrock                  Expires 3 January 2027                 [Page 6]
-
-Internet-Draft        Human-Authorization Evidence             July 2026
-
 
    *  Workload-identity and transaction-token work asserts which
       principal acted; the EP authority-reference digest can be bound
@@ -369,18 +381,6 @@ Internet-Draft        Human-Authorization Evidence             July 2026
    consumed, expired, or over a different action MUST NOT treat the host
    statement as authorization-backed.
 
-   *Digest agility and second-preimage.* This document specifies SHA-256
-   over RFC 8785 canonical JSON for both the subject digest and
-   receipt_payload_digest.  Deployments MUST use a collision- and
-   second-preimage-resistant hash and MUST pin one canonicalization so
-   that independent implementations bind identical bytes.  Hash agility
-   follows the referenced receipt and COSE specifications.
-
-   *Replay.* One-time consumption of the authorization is enforced by
-   the EP receipt, not by this profile.  A host statement that
-   references a receipt does not itself re-open a replay window, but a
-   verifier relying on allow semantics MUST honor the referenced
-   receipt's consumption state.
 
 
 
@@ -393,6 +393,19 @@ Schrock                  Expires 3 January 2027                 [Page 7]
 
 Internet-Draft        Human-Authorization Evidence             July 2026
 
+
+   *Digest agility and second-preimage.* This document specifies SHA-256
+   over RFC 8785 canonical JSON for both the subject digest and
+   receipt_payload_digest.  Deployments MUST use a collision- and
+   second-preimage-resistant hash and MUST pin one canonicalization so
+   that independent implementations bind identical bytes.  Hash agility
+   follows the referenced receipt and COSE specifications.
+
+   *Replay.* One-time consumption of the authorization is enforced by
+   the EP receipt, not by this profile.  A host statement that
+   references a receipt does not itself re-open a replay window, but a
+   verifier relying on allow semantics MUST honor the referenced
+   receipt's consumption state.
 
 9.  IANA Considerations
 
@@ -426,6 +439,17 @@ Internet-Draft        Human-Authorization Evidence             July 2026
               Structures and Process", STD 96, RFC 9052, August 2022,
               <https://www.rfc-editor.org/info/rfc9052>.
 
+
+
+
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 8]
+
+Internet-Draft        Human-Authorization Evidence             July 2026
+
+
    [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
               Y., and S. Lasker, "An Architecture for Trustworthy and
               Transparent Digital Supply Chains", RFC 9943, June 2026,
@@ -445,4 +469,36 @@ Author's Address
 
 
 
-Schrock                  Expires 3 January 2027                 [Page 8]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 9]

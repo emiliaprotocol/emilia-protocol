@@ -218,8 +218,10 @@ term := '(' expr ')' | IDENT
       <t>IDENT matches a component type or label in the satisfied set; an
       unknown identifier evaluates to false. Implementations MUST evaluate
       the expression with a bounded parser and MUST NOT use a
-      general-purpose evaluator. Operator precedence is left-associative;
-      parentheses group explicitly. Example: "ep-quorum AND (policy-permit
+      general-purpose evaluator. AND and OR have EQUAL binding
+      strength and are evaluated strictly left to right; implementations
+      MUST NOT assume AND binds tighter than OR. Parentheses group
+      explicitly and are the only precedence mechanism. Example: "ep-quorum AND (policy-permit
       OR delegation)" requires a human quorum plus either a policy permit
       or a delegation receipt, all bound to the same action.</t>
     </section>
@@ -285,7 +287,14 @@ term := '(' expr ')' | IDENT
       component to attest the chain's exact canonical digest. The strength
       of this defense rests entirely on the canonical digest being
       byte-identical across implementations; the I-JSON profile
-      (<xref target="EP-RECEIPTS"/> Section 3) is therefore normative.</t>
+      (<xref target="EP-RECEIPTS"/> Section 3) is therefore normative,
+      and one restriction in it is load-bearing enough to restate here:
+      canonical payloads MUST NOT contain non-integer numbers (amounts
+      travel as strings). Within that restriction the reference
+      canonicalizers coincide with RFC 8785 output; full RFC 8785
+      number serialization (for payloads outside the profile) is an
+      open conformance item, and implementations MUST reject payloads
+      containing non-integer numbers rather than guess.</t>
       <t>Component verifier trust. A chain is only as sound as its weakest
       registered verifier and the keys it trusts. Relying parties MUST
       configure verifiers and trust anchors explicitly; an unconfigured
@@ -323,14 +332,16 @@ term := '(' expr ')' | IDENT
     <section anchor="impl"><name>Implementation Status</name>
       <t>A reference verifier and a runnable demonstration (composing a
       real EP human quorum with a policy-permit leg, and rejecting both a
-      cross-binding attack and a missing human leg) are maintained as
-      open-source software and are exercised offline, with no network
+      cross-binding attack and a missing human leg;
+      examples/authorization-chain.mjs in the repository) are maintained
+      as open-source software and are exercised offline, with no network
       dependency, by the reference suite's three language
       implementations (JavaScript, Python, Go), which agree on a shared
       conformance vector set. These are one project's implementations --
       a cross-language consistency check, not independently developed
       implementations; a third party has separately executed and
-      verified the published artifacts against a pinned commit.</t>
+      verified the published artifacts against a pinned commit, as
+      reported to the IETF SECDISPATCH mailing list on 23 June 2026.</t>
     </section>
   </middle>
   <back>

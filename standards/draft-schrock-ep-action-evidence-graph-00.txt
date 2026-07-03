@@ -92,8 +92,8 @@ Table of Contents
    4.  The Reliance Result (EP-RELIANCE-RESULT-v1) . . . . . . . . .   6
    5.  Policy Packs  . . . . . . . . . . . . . . . . . . . . . . . .   6
    6.  Security Considerations . . . . . . . . . . . . . . . . . . .   6
-   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   6
-   8.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   6
+   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   7
+   8.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   7
      8.1.  Normative References  . . . . . . . . . . . . . . . . . .   7
      8.2.  Informative References  . . . . . . . . . . . . . . . . .   7
    Appendix A.  Worked Example (Non-Normative) . . . . . . . . . . .   8
@@ -237,9 +237,12 @@ Internet-Draft           Action Evidence Graphs                July 2026
    admissible, missing_evidence, stale, conflicted, unverifiable, with
    precedence unverifiable over conflicted over stale over
    missing_evidence over admissible, so no failure ever degrades toward
-   admissibility.  Machine-readable reason codes (for example
-   missing_human_approval, untrusted_workload, contradicted_outcome,
-   unbacked_edge_claim) accompany the verdict; the reason vocabulary is
+   admissibility.  Machine-readable reason codes accompany the verdict;
+   the reference implementation currently emits unbacked_edge_claim,
+   malformed_graph, and action_digest_mismatch, and additionally
+   reserves (declares but does not yet emit) missing_human_approval,
+   untrusted_workload, contradicted_outcome, revoked_artifact, and
+   stale_evidence for richer classifications.  The reason vocabulary is
    open, the verdict set is not.  The token "admissible" is a protocol
    token naming sufficiency under the stated policy; it carries no legal
    meaning, and whether the wire name should instead read "sufficient"
@@ -260,6 +263,25 @@ Internet-Draft           Action Evidence Graphs                July 2026
    two evaluators disagreeing on a replay digest are by definition
    evaluating different inputs.
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 5]
+
+Internet-Draft           Action Evidence Graphs                July 2026
+
+
    Failure semantics are fixed, not implementation-defined.  A node
    whose type has no registered verifier, whose inline artifact does not
    hash to its node id, or whose verifier throws yields verified=false
@@ -272,15 +294,6 @@ Internet-Draft           Action Evidence Graphs                July 2026
    lie about the evidence and forces unverifiable regardless of what
    else verified.  The distinction is deliberate: absence degrades to
    "not enough", deception degrades to "not trustable".
-
-
-
-
-
-Schrock                  Expires 3 January 2027                 [Page 5]
-
-Internet-Draft           Action Evidence Graphs                July 2026
-
 
 4.  The Reliance Result (EP-RELIANCE-RESULT-v1)
 
@@ -317,6 +330,14 @@ Internet-Draft           Action Evidence Graphs                July 2026
    closed; a lying edge poisons the verdict; verdict precedence never
    degrades toward admissibility; and the replay digest makes every
    decision recomputable.  What this layer does NOT do is equally load-
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 6]
+
+Internet-Draft           Action Evidence Graphs                July 2026
+
+
    bearing: a verdict of admissible is evidence that a bundle met a
    stated policy at a stated time; it is not a guarantee the action was
    correct or safe, it does not adjudicate disputes, and it confers no
@@ -330,13 +351,6 @@ Internet-Draft           Action Evidence Graphs                July 2026
    edge-relation and reason-code vocabularies.
 
 8.  References
-
-
-
-Schrock                  Expires 3 January 2027                 [Page 6]
-
-Internet-Draft           Action Evidence Graphs                July 2026
-
 
 8.1.  Normative References
 
@@ -371,6 +385,15 @@ Internet-Draft           Action Evidence Graphs                July 2026
               <https://datatracker.ietf.org/doc/draft-schrock-ep-
               authorization-receipts/>.
 
+
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 7]
+
+Internet-Draft           Action Evidence Graphs                July 2026
+
+
    [RFC9334]  Birkholz, H., Thaler, D., Richardson, M., Smith, N., and
               W. Pan, "Remote ATtestation procedureS (RATS)
               Architecture", RFC 9334, DOI 10.17487/RFC9334, January
@@ -385,14 +408,6 @@ Internet-Draft           Action Evidence Graphs                July 2026
               Wallace, "The Entity Attestation Token (EAT)", RFC 9711,
               DOI 10.17487/RFC9711, April 2025,
               <https://www.rfc-editor.org/info/rfc9711>.
-
-
-
-
-Schrock                  Expires 3 January 2027                 [Page 7]
-
-Internet-Draft           Action Evidence Graphs                July 2026
-
 
    [RFC9943]  Birkholz, H., Delignat-Lavaud, A., Fournet, C., Deshpande,
               Y., and S. Lasker, "An Architecture for Trustworthy and
@@ -427,6 +442,14 @@ Appendix A.  Worked Example (Non-Normative)
       "type": "authorization_receipt",
       "artifact": {
        "typ": "authorization_receipt",
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 8]
+
+Internet-Draft           Action Evidence Graphs                July 2026
+
+
        "action_digest": "sha256:0911345840214f3319dcdad832c2d8d38f9\
    8e3ce74d952b182127c74ee19147a",
        "approver": "ops-lead@example.com",
@@ -442,14 +465,6 @@ Appendix A.  Worked Example (Non-Normative)
        "action_digest": "sha256:0911345840214f3319dcdad832c2d8d38f9\
    8e3ce74d952b182127c74ee19147a",
        "permits_receipt": "sha256:f086f356d62b8b682e97c006b2c748fbf\
-
-
-
-Schrock                  Expires 3 January 2027                 [Page 8]
-
-Internet-Draft           Action Evidence Graphs                July 2026
-
-
    ba9f97a627d3bf5d6367d2c5a0aae12",
        "decision": "allow",
        "issued_at": "2026-07-02T12:00:05Z"
@@ -480,21 +495,6 @@ Internet-Draft           Action Evidence Graphs                July 2026
    }
 
    The relying-party policy (the wire-transfer policy pack):
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

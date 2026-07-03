@@ -135,7 +135,7 @@ export function createDefaultActionControlManifest({
   return {
     '@version': ACTION_CONTROL_MANIFEST_VERSION,
     '$schema': ACTION_CONTROL_SCHEMA_URL,
-    profile: 'emilia.action-control',
+    profile: 'agent-action-control',
     service: {
       name: service.name || 'EMILIA Gate default action controls',
       issuer: service.issuer || 'https://www.emiliaprotocol.ai',
@@ -169,8 +169,8 @@ export function validateActionControlManifest(manifest) {
   if (manifest['@version'] !== ACTION_CONTROL_MANIFEST_VERSION) {
     errors.push(`@version must be ${ACTION_CONTROL_MANIFEST_VERSION}`);
   }
-  if (manifest.profile !== 'emilia.action-control') {
-    errors.push('profile must be emilia.action-control');
+  if (manifest.profile !== 'agent-action-control' && manifest.profile !== 'emilia.action-control') {
+    errors.push('profile must be agent-action-control (or the deployed alias emilia.action-control)');
   }
   if (!manifest.service || typeof manifest.service !== 'object') {
     errors.push('service object is required');

@@ -1006,9 +1006,23 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
         about any AI model's behavior, about host compromise, or about
         deployments in a weaker conformance class. Implementations
         <bcp14>MUST NOT</bcp14> represent the proofs as covering
-        deployment topologies they do not model. The models additionally
+        deployment topologies they do not model. For the same honesty:
+        three normative mechanisms in this document are specified ahead
+        of the reference implementation and are not yet exercised by it
+        or by conformance vectors -- the operator-signed-directory
+        assurance downgrade (Section 5.2), delegation records in
+        approver_key_proofs and the DelegateCannotExceedPrincipal check
+        (Section 8), and enforcement_class emission (Section 9).
+        Implementers MUST treat the text as normative and the reference
+        implementation as incomplete on these three points, not the
+        reverse. The m-of-n quorum flow IS
+        now modeled: a checked Alloy model (formal/ep_quorum.als in the
+        repository) proves SelfApprovalImpossible, NoHumanFillsTwoSlots,
+        NoKeyFillsTwoSlots, TwoPersonRuleHolds, and ordered-chain
+        acyclicity/linearity against the quorum verifier and its
+        conformance vectors. The models additionally
         do not yet cover the WebAuthn challenge binding, the Approver
-        Directory, log checkpoints, the m-of-n flow, or the Initiator
+        Directory, log checkpoints, or the Initiator
         Attestation (<xref target="initiator-attestation"/>); those sections
         are specified, not proven, and extending the models to them is
         tracked work.</t>
@@ -1171,9 +1185,21 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
       <name>Informative References</name>
       <xi:include href="https://bib.ietf.org/public/rfc/bibxml3/reference.I-D.nelson-agent-delegation-receipts.xml"/>
     </references>
+    <section anchor="changes-since-04" numbered="true">
+      <name>Changes since -04</name>
+      <t>-05 adds the human-authorization-receipt composition frame for
+      the SCITT agent-action statement cluster (how a WHO receipt is
+      referenced, by digest, from capsule/record-style statements);
+      updates the SCITT citation to RFC 9943; adds the key-custody
+      disambiguation note in Section 5.1 (key classes classify custody,
+      not assurance levels); corrects the formal-models status (the
+      m-of-n quorum flow is now Alloy-checked) and states plainly which
+      three normative mechanisms the reference implementation does not
+      yet cover.</t>
+    </section>
     <section anchor="changes-since-00" numbered="true">
-      <name>Changes since -00</name>
-      <t>This revision is a focused, additive diff over -00. Section
+      <name>Changes since -00 (through -04)</name>
+      <t>This summary covers -00 through -04. Section
       numbering is stable; all changes are new subsections or in-place
       additions.</t>
       <ol>

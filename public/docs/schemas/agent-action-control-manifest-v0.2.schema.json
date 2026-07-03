@@ -18,7 +18,8 @@
       "const": "EP-ACTION-CONTROL-MANIFEST-v0.2"
     },
     "profile": {
-      "const": "emilia.action-control"
+      "enum": ["agent-action-control", "emilia.action-control"],
+      "description": "Canonical token is agent-action-control; emilia.action-control is the original deployed alias and MUST be accepted as equivalent."
     },
     "service": {
       "type": "object",

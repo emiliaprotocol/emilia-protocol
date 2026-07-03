@@ -197,11 +197,14 @@
         <li>The verifier recomputes the subject digest from the Action
         as <tt>SHA-256(JCS(Action))</tt> and confirms it matches the
         subject digest committed by the host statement.</li>
-        <li>The verifier resolves the authority-reference digest to an EP
-        authorization receipt (held locally, fetched offline, or
-        retrieved from the transparency service when a
-        <tt>statement_digest</tt> is used) and confirms the resolved
-        receipt hashes to that digest.</li>
+        <li>The verifier obtains the EP authorization receipt through
+        whatever distribution channel the deployment provides (held
+        locally, conveyed with the statement, or fetched from a
+        transparency service when a <tt>statement_digest</tt> is used
+        -- the acquisition transport is out of scope for this profile)
+        and confirms the obtained receipt hashes to the
+        authority-reference digest. Digest equality, not the channel,
+        is what the profile relies on.</li>
         <li>The authorization receipt itself verifies under
         <xref target="I-D.schrock-ep-authorization-receipts"/>: a valid
         signature by an authorized approver (or a satisfied quorum) over
@@ -235,7 +238,12 @@
       no qualifying authorization. Such a statement attests the search
       and its emptiness, not a universal negative. Verifiers MUST
       otherwise treat absence as an inference from silence: fail closed,
-      but do not record it as a fact. Auditors and counterparties rely
+      but do not record it as a fact. A minimal observed-absence
+      statement format (typed payload naming the sources searched, the
+      query, and the observation time, signed by the observer, with
+      verified-versus-accepted semantics) ships as a deterministic
+      vector with the reference implementation
+      (examples/scitt/observed-absence-vector.mjs). Auditors and counterparties rely
       on refusals as much as approvals; this profile makes both --
       and honest observed-absence -- first-class.</t>
     </section>

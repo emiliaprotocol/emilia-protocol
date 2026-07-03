@@ -91,7 +91,7 @@ Table of Contents
    8.  Security Considerations . . . . . . . . . . . . . . . . . . .   7
    9.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   8
    10. Normative References  . . . . . . . . . . . . . . . . . . . .   8
-   11. Informative References  . . . . . . . . . . . . . . . . . . .   9
+   11. Informative References  . . . . . . . . . . . . . . . . . . .   8
    Appendix A.  Example Manifest (Non-Normative) . . . . . . . . . .   9
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  11
 
@@ -342,19 +342,21 @@ Internet-Draft        Agent Action Control Manifest            July 2026
 
    Deployments that already publish an OpenAPI description MAY express a
    manifest entry inline, per operation, as an "x-agent-action-control"
-   specification extension carrying the same members as the
+   specification extension carrying the equivalent members of the
    corresponding manifest entry (action identifier, assurance tier, and
-   the advisory effects preview).  The extension was first deployed
-   under the vendor name "x-emilia-action"; implementations SHOULD
-   accept both names and MUST treat them as aliases of this definition.
-   The two forms are equivalent views of the same declaration: when both
-   are present for an action, they MUST NOT disagree, and a verifier
-   encountering a disagreement MUST treat the stricter declaration as
-   governing.  Action identifiers in either form use the
-   "urn:ep:action:<family>.<action>" vocabulary, so that relying-party
-   evidence policies can be keyed to the same names the resource
-   declares.  A JSON Schema for the extension and a worked OpenAPI
-   example are published with the reference implementation.
+   the advisory effects preview); the extension's JSON Schema defines
+   the field-level mapping between the two forms, whose member names
+   differ in places for historical reasons.  The extension was first
+   deployed under the vendor name "x-emilia-action"; implementations
+   SHOULD accept both names and MUST treat them as aliases of this
+   definition.  The two forms are equivalent views of the same
+   declaration: when both are present for an action, they MUST NOT
+   disagree, and a verifier encountering a disagreement MUST treat the
+   stricter declaration as governing.  Action identifiers in either form
+   use the "urn:ep:action:<family>.<action>" vocabulary, so that
+   relying-party evidence policies can be keyed to the same names the
+   resource declares.  A JSON Schema for the extension and a worked
+   OpenAPI example are published with the reference implementation.
 
 8.  Security Considerations
 
@@ -378,14 +380,12 @@ Internet-Draft        Agent Action Control Manifest            July 2026
    consequence actions; publishers SHOULD assume it is public and SHOULD
    NOT encode secrets or internal-only endpoints.
 
-
-
-
-
-
-
-
-
+   *Downgrade and receipt disclosure.* Because enforcement is
+   authoritative, an attacker who spoofs or weakens a manifest cannot
+   disable protection — a caller misled into presenting weaker or no
+   evidence is refused, a denial of service at worst.  The sharper risk
+   is disclosure: a spoofed manifest could induce an agent to present an
+   authorization receipt — which may carry an approver identity and
 
 
 
@@ -394,12 +394,6 @@ Schrock                  Expires 3 January 2027                 [Page 7]
 Internet-Draft        Agent Action Control Manifest            July 2026
 
 
-   *Downgrade and receipt disclosure.* Because enforcement is
-   authoritative, an attacker who spoofs or weakens a manifest cannot
-   disable protection — a caller misled into presenting weaker or no
-   evidence is refused, a denial of service at worst.  The sharper risk
-   is disclosure: a spoofed manifest could induce an agent to present an
-   authorization receipt — which may carry an approver identity and
    action details — to an attacker-controlled endpoint.  A consumer
    SHOULD present a receipt only to the origin from which the manifest
    was authenticated, and receipt audience binding limits what a
@@ -443,18 +437,18 @@ Internet-Draft        Agent Action Control Manifest            July 2026
               Interchange Format", STD 90, RFC 8259, December 2017,
               <https://www.rfc-editor.org/info/rfc8259>.
 
+   [RFC8615]  Nottingham, M., "Well-Known Uniform Resource Identifiers
+              (URIs)", RFC 8615, May 2019,
+              <https://www.rfc-editor.org/info/rfc8615>.
+
+11.  Informative References
+
 
 
 Schrock                  Expires 3 January 2027                 [Page 8]
 
 Internet-Draft        Agent Action Control Manifest            July 2026
 
-
-   [RFC8615]  Nottingham, M., "Well-Known Uniform Resource Identifiers
-              (URIs)", RFC 8615, May 2019,
-              <https://www.rfc-editor.org/info/rfc8615>.
-
-11.  Informative References
 
    [I-D.schrock-ep-assurance-classes]
               Schrock, I., "Assurance Classes for Authorization
@@ -498,6 +492,12 @@ Appendix A.  Example Manifest (Non-Normative)
      "defaults": {
        "decision_point": "pre_effect_commit",
        "missing_receipt": "refuse",
+       "invalid_receipt": "refuse",
+       "stale_receipt": "refuse",
+       "replay": "one_time_consumption",
+       "evidence_log": "strict"
+     },
+     "evidence_profiles": {
 
 
 
@@ -506,12 +506,6 @@ Schrock                  Expires 3 January 2027                 [Page 9]
 Internet-Draft        Agent Action Control Manifest            July 2026
 
 
-       "invalid_receipt": "refuse",
-       "stale_receipt": "refuse",
-       "replay": "one_time_consumption",
-       "evidence_log": "strict"
-     },
-     "evidence_profiles": {
        "authorization_receipt": "EP-RECEIPT-v1",
        "execution_attestation": "EP-EXECUTION-ATTESTATION-v1",
        "reliance_packet": "EP-RELIANCE-PACKET-v1",
@@ -554,6 +548,12 @@ Internet-Draft        Agent Action Control Manifest            July 2026
                "action_type", "amount_usd", "currency",
                "payment_instruction_id", "beneficiary_account_hash"
              ]
+           },
+           "evidence_output": {
+             "audit_event": true,
+             "execution_attestation": true,
+             "reliance_packet": true,
+             "blocked_attempts": true
 
 
 
@@ -562,12 +562,6 @@ Schrock                  Expires 3 January 2027                [Page 10]
 Internet-Draft        Agent Action Control Manifest            July 2026
 
 
-           },
-           "evidence_output": {
-             "audit_event": true,
-             "execution_attestation": true,
-             "reliance_packet": true,
-             "blocked_attempts": true
            }
          },
          "conformance": {
@@ -590,6 +584,12 @@ Author's Address
    EMILIA Protocol, Inc.
    United States of America
    Email: team@emiliaprotocol.ai
+
+
+
+
+
+
 
 
 

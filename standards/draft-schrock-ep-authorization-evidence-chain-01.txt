@@ -87,10 +87,10 @@ Table of Contents
    8.  Security Considerations . . . . . . . . . . . . . . . . . . .   7
    9.  Relationship to Other Work  . . . . . . . . . . . . . . . . .   8
    10. IANA Considerations . . . . . . . . . . . . . . . . . . . . .   8
-   11. Implementation Status . . . . . . . . . . . . . . . . . . . .   9
+   11. Implementation Status . . . . . . . . . . . . . . . . . . . .   8
    12. Normative References  . . . . . . . . . . . . . . . . . . . .   9
    13. Informative References  . . . . . . . . . . . . . . . . . . .   9
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  11
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  10
 
 1.  Introduction
 
@@ -305,10 +305,12 @@ Internet-Draft        Authorization Evidence Chains            July 2026
    IDENT matches a component type or label in the satisfied set; an
    unknown identifier evaluates to false.  Implementations MUST evaluate
    the expression with a bounded parser and MUST NOT use a general-
-   purpose evaluator.  Operator precedence is left-associative;
-   parentheses group explicitly.  Example: "ep-quorum AND (policy-permit
-   OR delegation)" requires a human quorum plus either a policy permit
-   or a delegation receipt, all bound to the same action.
+   purpose evaluator.  AND and OR have EQUAL binding strength and are
+   evaluated strictly left to right; implementations MUST NOT assume AND
+   binds tighter than OR.  Parentheses group explicitly and are the only
+   precedence mechanism.  Example: "ep-quorum AND (policy-permit OR
+   delegation)" requires a human quorum plus either a policy permit or a
+   delegation receipt, all bound to the same action.
 
 6.  Whose requirement is it? (changed in -01)
 
@@ -319,25 +321,6 @@ Internet-Draft        Authorization Evidence Chains            July 2026
    suffices.  This is the same confused-deputy class as a quorum policy
    read from the object it governs.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Schrock                  Expires 3 January 2027                 [Page 6]
-
-Internet-Draft        Authorization Evidence Chains            July 2026
-
-
    Accordingly: a verifier MUST accept a requirement expression supplied
    out-of-band by the RELYING PARTY, and when one is supplied it MUST
    take precedence over the document's; the document's member is then
@@ -347,6 +330,14 @@ Internet-Draft        Authorization Evidence Chains            July 2026
    ignored in favor of a pinned one.  The document member remains
    REQUIRED for self-describing interchange, but relying parties SHOULD
    pin their own bar for any consequential decision.  The reference
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 6]
+
+Internet-Draft        Authorization Evidence Chains            July 2026
+
+
    implementations (JavaScript, Python, Go) implement this behavior and
    agree on shared conformance vectors covering both sources, including
    a vector where the presenter's weak bar would pass and the relying
@@ -381,10 +372,19 @@ Internet-Draft        Authorization Evidence Chains            July 2026
    source is recorded.  Deployments of -00 verifiers SHOULD upgrade or
    wrap verification with an out-of-band requirement check.
 
-
-
-
-
+   Cross-binding (action substitution).  The core threat is splicing
+   receipts that authorize different actions into one chain.  Step 3c of
+   Section 4 defeats this by requiring every satisfied component to
+   attest the chain's exact canonical digest.  The strength of this
+   defense rests entirely on the canonical digest being byte-identical
+   across implementations; the I-JSON profile ([EP-RECEIPTS] Section 3)
+   is therefore normative, and one restriction in it is load-bearing
+   enough to restate here: canonical payloads MUST NOT contain non-
+   integer numbers (amounts travel as strings).  Within that restriction
+   the reference canonicalizers coincide with RFC 8785 output; full RFC
+   8785 number serialization (for payloads outside the profile) is an
+   open conformance item, and implementations MUST reject payloads
+   containing non-integer numbers rather than guess.
 
 
 
@@ -393,14 +393,6 @@ Schrock                  Expires 3 January 2027                 [Page 7]
 
 Internet-Draft        Authorization Evidence Chains            July 2026
 
-
-   Cross-binding (action substitution).  The core threat is splicing
-   receipts that authorize different actions into one chain.  Step 3c of
-   Section 4 defeats this by requiring every satisfied component to
-   attest the chain's exact canonical digest.  The strength of this
-   defense rests entirely on the canonical digest being byte-identical
-   across implementations; the I-JSON profile ([EP-RECEIPTS] Section 3)
-   is therefore normative.
 
    Component verifier trust.  A chain is only as sound as its weakest
    registered verifier and the keys it trusts.  Relying parties MUST
@@ -435,12 +427,20 @@ Internet-Draft        Authorization Evidence Chains            July 2026
    media type (e.g. "application/ep-aec+json") and a registry of
    component type identifiers should the work be adopted.
 
+11.  Implementation Status
 
-
-
-
-
-
+   A reference verifier and a runnable demonstration (composing a real
+   EP human quorum with a policy-permit leg, and rejecting both a cross-
+   binding attack and a missing human leg; examples/authorization-
+   chain.mjs in the repository) are maintained as open-source software
+   and are exercised offline, with no network dependency, by the
+   reference suite's three language implementations (JavaScript, Python,
+   Go), which agree on a shared conformance vector set.  These are one
+   project's implementations -- a cross-language consistency check, not
+   independently developed implementations; a third party has separately
+   executed and verified the published artifacts against a pinned
+   commit, as reported to the IETF SECDISPATCH mailing list on 23 June
+   2026.
 
 
 
@@ -449,19 +449,6 @@ Schrock                  Expires 3 January 2027                 [Page 8]
 
 Internet-Draft        Authorization Evidence Chains            July 2026
 
-
-11.  Implementation Status
-
-   A reference verifier and a runnable demonstration (composing a real
-   EP human quorum with a policy-permit leg, and rejecting both a cross-
-   binding attack and a missing human leg) are maintained as open-source
-   software and are exercised offline, with no network dependency, by
-   the reference suite's three language implementations (JavaScript,
-   Python, Go), which agree on a shared conformance vector set.  These
-   are one project's implementations -- a cross-language consistency
-   check, not independently developed implementations; a third party has
-   separately executed and verified the published artifacts against a
-   pinned commit.
 
 12.  Normative References
 
@@ -499,13 +486,6 @@ Internet-Draft        Authorization Evidence Chains            July 2026
 
 13.  Informative References
 
-
-
-Schrock                  Expires 3 January 2027                 [Page 9]
-
-Internet-Draft        Authorization Evidence Chains            July 2026
-
-
    [ACTA]     Farley, A., "Signed Decision Receipts for Machine-to-
               Machine Access Control", Work in Progress, Internet-Draft,
               draft-farley-acta-signed-receipts, 2026,
@@ -517,6 +497,14 @@ Internet-Draft        Authorization Evidence Chains            July 2026
               route-authorization, 2026,
               <https://datatracker.ietf.org/doc/draft-nivalto-agentroa-
               route-authorization/>.
+
+
+
+
+Schrock                  Expires 3 January 2027                 [Page 9]
+
+Internet-Draft        Authorization Evidence Chains            July 2026
+
 
    [ASQAV]    Marques, J., "Compliance Profile of Signed Action Receipts
               for AI Agents", Work in Progress, Internet-Draft, draft-
@@ -554,14 +542,6 @@ Internet-Draft        Authorization Evidence Chains            July 2026
               DOI 10.17487/RFC9711, April 2025,
               <https://www.rfc-editor.org/info/rfc9711>.
 
-
-
-
-Schrock                  Expires 3 January 2027                [Page 10]
-
-Internet-Draft        Authorization Evidence Chains            July 2026
-
-
    [SCITT]    IETF SCITT WG, "An Architecture for Trustworthy and
               Transparent Digital Supply Chains", Work in Progress,
               Internet-Draft, draft-ietf-scitt-architecture, 2026,
@@ -577,40 +557,4 @@ Author's Address
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Schrock                  Expires 3 January 2027                [Page 11]
+Schrock                  Expires 3 January 2027                [Page 10]

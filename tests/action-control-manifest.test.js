@@ -27,7 +27,7 @@ describe('EP Action Control Manifest v0.2', () => {
     const manifest = readJson('public/.well-known/agent-action-control.json');
     const report = validateActionControlManifest(manifest);
     expect(report).toEqual({ ok: true, errors: [] });
-    expect(manifest.profile).toBe('emilia.action-control');
+    expect(['agent-action-control', 'emilia.action-control']).toContain(manifest.profile);
   });
 
   it('advertises the control manifest from ep-trust discovery', () => {

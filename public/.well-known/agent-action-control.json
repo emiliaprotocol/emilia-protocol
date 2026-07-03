@@ -1,7 +1,7 @@
 {
   "@version": "EP-ACTION-CONTROL-MANIFEST-v0.2",
   "$schema": "https://www.emiliaprotocol.ai/docs/schemas/agent-action-control-manifest-v0.2.schema.json",
-  "profile": "emilia.action-control",
+  "profile": "agent-action-control",
   "service": {
     "name": "EMILIA Protocol public action controls",
     "issuer": "https://www.emiliaprotocol.ai",

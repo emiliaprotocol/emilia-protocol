@@ -251,9 +251,12 @@
       <name>Inline OpenAPI Expression (x-agent-action-control)</name>
       <t>Deployments that already publish an OpenAPI description MAY
       express a manifest entry inline, per operation, as an
-      "x-agent-action-control" specification extension carrying the same
-      members as the corresponding manifest entry (action identifier,
-      assurance tier, and the advisory effects preview). The extension
+      "x-agent-action-control" specification extension carrying the
+      equivalent members of the corresponding manifest entry (action
+      identifier, assurance tier, and the advisory effects preview);
+      the extension's JSON Schema defines the field-level mapping
+      between the two forms, whose member names differ in places for
+      historical reasons. The extension
       was first deployed under the vendor name "x-emilia-action";
       implementations SHOULD accept both names and MUST treat them as
       aliases of this definition. The two forms are

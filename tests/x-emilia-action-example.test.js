@@ -20,9 +20,15 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const schema = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/schemas/x-emilia-action.schema.json'), 'utf8'));
 const doc = yaml.load(fs.readFileSync(path.join(ROOT, 'examples/openapi/x-emilia-action.example.yaml'), 'utf8'));
 
-// Pull every x-emilia-action object out of the example OpenAPI operations.
+// Pull every action-control annotation (canonical name x-agent-action-control,
+// deployed alias x-emilia-action — MUST be treated as equivalent).
 const annotations = Object.values(doc.paths).flatMap((p) =>
-  Object.values(p).map((op) => op && op['x-emilia-action']).filter(Boolean),
+  Object.values(p)
+    .map((op) => op && (op['x-agent-action-control'] ?? op['x-emilia-action']))
+    .filter(Boolean),
+);
+const names = Object.values(doc.paths).flatMap((p) =>
+  Object.values(p).flatMap((op) => op ? Object.keys(op).filter((k) => k === 'x-agent-action-control' || k === 'x-emilia-action') : []),
 );
 
 const ajv = new Ajv({ allErrors: true, strict: false });
@@ -31,6 +37,11 @@ const validate = ajv.compile(schema);
 describe('x-emilia-action OpenAPI extension', () => {
   it('the example annotates at least one consequential operation', () => {
     expect(annotations.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('both extension names are exercised and validate identically (alias contract)', () => {
+    expect(names).toContain('x-agent-action-control');
+    expect(names).toContain('x-emilia-action');
   });
 
   it.each(annotations.map((a, i) => [a.action || `#${i}`, a]))(

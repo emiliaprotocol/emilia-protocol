@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
-# Example: annotating a consequential OpenAPI operation with x-emilia-action.
+# Example: annotating a consequential OpenAPI operation with the
+# action-control extension. Canonical name: x-agent-action-control;
+# x-emilia-action is the original deployed alias — the two are equivalent
+# and consumers MUST accept both (same schema).
 #
 # This is the INLINE, per-endpoint form of an EMILIA agent-action-control
 # declaration — the same semantics as one entry of
@@ -67,7 +70,7 @@ paths:
     post:
       operationId: reversePayment
       summary: Reverse a payment (where the rail allows)
-      x-emilia-action:
+      x-agent-action-control:
         action: "urn:ep:action:finance.wire_reversal"
         effects:
           reversibility: hard_to_reverse

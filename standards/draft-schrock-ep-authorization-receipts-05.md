@@ -121,14 +121,15 @@ Internet-Draft          EP Authorization Receipts              July 2026
      11.5.  What the Formal Models Do and Do Not Prove . . . . . . .  22
      11.6.  Directory Authority  . . . . . . . . . . . . . . . . . .  23
      11.7.  What Separation of Duties Does and Does Not Provide  . .  23
-     11.8.  Approver Fatigue . . . . . . . . . . . . . . . . . . . .  23
+     11.8.  Approver Fatigue . . . . . . . . . . . . . . . . . . . .  24
      11.9.  Initiator Attestation as an Attack Surface . . . . . . .  24
      11.10. No symmetric key on the verification trust path  . . . .  25
-   12. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  25
-   13. Normative References  . . . . . . . . . . . . . . . . . . . .  25
+   12. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  26
+   13. Normative References  . . . . . . . . . . . . . . . . . . . .  26
    14. Informative References  . . . . . . . . . . . . . . . . . . .  26
-   Appendix A.  Changes since -00  . . . . . . . . . . . . . . . . .  26
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  27
+   Appendix A.  Changes since -04  . . . . . . . . . . . . . . . . .  26
+   Appendix B.  Changes since -00 (through -04)  . . . . . . . . . .  27
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  28
 
 1.  Introduction
 
@@ -164,7 +165,6 @@ Internet-Draft          EP Authorization Receipts              July 2026
    only the approver holds; the signed authorization is consumed exactly
    once; and the resulting receipt is independently verifiable offline,
    forever.
-
 
 
 
@@ -1229,7 +1229,7 @@ Internet-Draft          EP Authorization Receipts              July 2026
    system_, no partial commitment.  They prove nothing about any AI
    model's behavior, about host compromise, or about deployments in a
    weaker conformance class.  Implementations MUST NOT represent the
-   proofs as covering deployment topologies they do not model.  The
+   proofs as covering deployment topologies they do not model.  For the
 
 
 
@@ -1238,10 +1238,23 @@ Schrock                  Expires 3 January 2027                [Page 22]
 Internet-Draft          EP Authorization Receipts              July 2026
 
 
-   models additionally do not yet cover the WebAuthn challenge binding,
-   the Approver Directory, log checkpoints, the m-of-n flow, or the
-   Initiator Attestation (Section 4.1); those sections are specified,
-   not proven, and extending the models to them is tracked work.
+   same honesty: three normative mechanisms in this document are
+   specified ahead of the reference implementation and are not yet
+   exercised by it or by conformance vectors -- the operator-signed-
+   directory assurance downgrade (Section 5.2), delegation records in
+   approver_key_proofs and the DelegateCannotExceedPrincipal check
+   (Section 8), and enforcement_class emission (Section 9).
+   Implementers MUST treat the text as normative and the reference
+   implementation as incomplete on these three points, not the reverse.
+   The m-of-n quorum flow IS now modeled: a checked Alloy model (formal/
+   ep_quorum.als in the repository) proves SelfApprovalImpossible,
+   NoHumanFillsTwoSlots, NoKeyFillsTwoSlots, TwoPersonRuleHolds, and
+   ordered-chain acyclicity/linearity against the quorum verifier and
+   its conformance vectors.  The models additionally do not yet cover
+   the WebAuthn challenge binding, the Approver Directory, log
+   checkpoints, or the Initiator Attestation (Section 4.1); those
+   sections are specified, not proven, and extending the models to them
+   is tracked work.
 
 11.6.  Directory Authority
 
@@ -1267,6 +1280,20 @@ Internet-Draft          EP Authorization Receipts              July 2026
    fraud; they do not make it impossible, and implementations MUST NOT
    claim otherwise.
 
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 3 January 2027                [Page 23]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
 11.8.  Approver Fatigue
 
    A gate that humans route around protects nothing; rubber-stamping is
@@ -1284,15 +1311,6 @@ Internet-Draft          EP Authorization Receipts              July 2026
    protocol's guarantees are only as strong as the attention of the
    human at its center, and implementations SHOULD say so to their
    customers.
-
-
-
-
-
-Schrock                  Expires 3 January 2027                [Page 23]
-
-Internet-Draft          EP Authorization Receipts              July 2026
-
 
 11.9.  Initiator Attestation as an Attack Surface
 
@@ -1322,6 +1340,16 @@ Internet-Draft          EP Authorization Receipts              July 2026
    still verifies -- the rule is a conformance check, not a signature
    property.
 
+
+
+
+
+
+Schrock                  Expires 3 January 2027                [Page 24]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
    Privacy: statements written by an agent mid-task can leak sensitive
    operational context -- counterparty details, internal findings,
    fragments of prompts -- into receipts that are long-lived and
@@ -1340,15 +1368,6 @@ Internet-Draft          EP Authorization Receipts              July 2026
    policy gates on signoff, the absence of any valid receipt at all
    remains evidence that the control was bypassed -- that property comes
    from the gate, not from this member.)
-
-
-
-
-
-Schrock                  Expires 3 January 2027                [Page 24]
-
-Internet-Draft          EP Authorization Receipts              July 2026
-
 
    No trust feedback: policy engines MUST NOT use initiator_attestation
    content to relax thresholds, skip approvers, or raise any trust
@@ -1377,6 +1396,16 @@ Internet-Draft          EP Authorization Receipts              July 2026
    cron or webhook calls -- provided it is never a link in the chain a
    third party verifies.)
 
+
+
+
+
+
+Schrock                  Expires 3 January 2027                [Page 25]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
 12.  IANA Considerations
 
    This document has no IANA actions.  A future version may register the
@@ -1398,14 +1427,6 @@ Internet-Draft          EP Authorization Receipts              July 2026
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://www.rfc-editor.org/info/rfc8174>.
 
-
-
-
-Schrock                  Expires 3 January 2027                [Page 25]
-
-Internet-Draft          EP Authorization Receipts              July 2026
-
-
    [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
               Canonicalization Scheme (JCS)", RFC 8785,
               DOI 10.17487/RFC8785, June 2020,
@@ -1424,11 +1445,29 @@ Internet-Draft          EP Authorization Receipts              July 2026
               <https://datatracker.ietf.org/doc/html/draft-nelson-agent-
               delegation-receipts-10>.
 
-Appendix A.  Changes since -00
+Appendix A.  Changes since -04
 
-   This revision is a focused, additive diff over -00.
-   Section numbering is stable; all changes are new subsections or in-
-   place additions.
+   -05 adds the human-authorization-receipt composition frame for the
+   SCITT agent-action statement cluster (how a WHO receipt is
+   referenced, by digest, from capsule/record-style statements); updates
+   the SCITT citation to RFC 9943; adds the key-custody disambiguation
+   note in Section 5.1 (key classes classify custody, not assurance
+   levels); corrects the formal-models status (the m-of-n quorum flow is
+   now Alloy-checked) and states plainly which three normative
+
+
+
+Schrock                  Expires 3 January 2027                [Page 26]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
+   mechanisms the reference implementation does not yet cover.
+
+Appendix B.  Changes since -00 (through -04)
+
+   This summary covers -00 through -04.  Section numbering is stable;
+   all changes are new subsections or in-place additions.
 
    1.  New OPTIONAL Authorization Context member initiator_attestation
        (new Section 4.1): a REQUIRED escalation_trigger enum
@@ -1443,24 +1482,6 @@ Appendix A.  Changes since -00
        trusted -- not proof of the initiator's internal state.  A
        terminology entry and a step-2 note in Section 6.3 were added
        accordingly.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Schrock                  Expires 3 January 2027                [Page 26]
-
-Internet-Draft          EP Authorization Receipts              July 2026
-
 
    2.  Security Considerations additions (new Section 11.9): the
        statement is attacker-influenceable text presented to a human
@@ -1489,6 +1510,14 @@ Internet-Draft          EP Authorization Receipts              July 2026
        an OPTIONAL delegation (scheme, ref, OPTIONAL hash, OPTIONAL
        observed_at), plus an OPTIONAL length-capped (<= 280 character)
        statement.  Like initiator_attestation, it is OPTIONAL, covered
+
+
+
+Schrock                  Expires 3 January 2027                [Page 27]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
        by the context hash via the JCS canonicalization already
        normative in Section 4, verifies under the existing Section 6.3
        verifiers unmodified, and is a claim -- identified but never
@@ -1513,6 +1542,33 @@ Author's Address
 
 
 
-Schrock                  Expires 3 January 2027                [Page 27]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 3 January 2027                [Page 28]
 
 ```

@@ -159,9 +159,12 @@
       admissible, missing_evidence, stale, conflicted, unverifiable,
       with precedence unverifiable over conflicted over stale over
       missing_evidence over admissible, so no failure ever degrades
-      toward admissibility. Machine-readable reason codes (for example
-      missing_human_approval, untrusted_workload, contradicted_outcome,
-      unbacked_edge_claim) accompany the verdict; the reason vocabulary
+      toward admissibility. Machine-readable reason codes accompany the verdict; the
+      reference implementation currently emits unbacked_edge_claim,
+      malformed_graph, and action_digest_mismatch, and additionally
+      reserves (declares but does not yet emit) missing_human_approval,
+      untrusted_workload, contradicted_outcome, revoked_artifact, and
+      stale_evidence for richer classifications. The reason vocabulary
       is open, the verdict set is not. The token "admissible" is a
       protocol token naming sufficiency under the stated policy; it
       carries no legal meaning, and whether the wire name should instead
