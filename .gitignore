@@ -63,3 +63,7 @@ docs/ip/
 # warm-intro map, raise figures). This repo is the PUBLIC mirror; keep these out
 # until deliberately published (git add -f when ready).
 docs/grace-raise/
+
+# Local strategy stash — targeting plans and build direction (competitive
+# intel; the public repo must never carry the parcel map or the build queue).
+docs/strategy-private/
