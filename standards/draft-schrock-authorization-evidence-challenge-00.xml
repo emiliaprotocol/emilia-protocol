@@ -119,9 +119,10 @@
       not authority for the presenter to lower or replace the policy
       used at evaluation time. required_evidence names types from the
       same vocabulary the relying party's evidence policy and the
-      resource's action manifest use: the challenge is the dynamic form
-      of the same declaration the manifest makes statically, minus
-      whatever a prior presentation already satisfied.</t>
+      resource's action manifest <xref target="I-D.schrock-agent-action-manifest"/>
+      use: the challenge is the dynamic form of the same declaration
+      the manifest makes statically, minus whatever a prior
+      presentation already satisfied.</t>
       <t>Each required_evidence entry MUST contain type and MAY contain
       assurance_class, fresh_max_sec, and revocation_checked. type names
       the required evidence artifact. assurance_class names the minimum
@@ -131,11 +132,12 @@
       means the relying party requires a live non-revocation result for
       that artifact type.</t>
       <t>present_as is an ordered list of acceptable presentation
-      formats; this version defines EP-AEG-v1 as the initial graph
-      presentation format. obtain_hints are hints, never endorsements:
-      following one confers no trust. expires_at MUST be an absolute
-      timestamp after which the challenge is refused before policy
-      replay.</t>
+      formats; this version defines EP-AEG-v1
+      <xref target="I-D.schrock-ep-action-evidence-graph"/> as the
+      initial graph presentation format. obtain_hints are hints, never
+      endorsements: following one confers no trust. expires_at MUST be
+      an absolute timestamp after which the challenge is refused before
+      policy replay.</t>
     </section>
     <section anchor="lifecycle">
       <name>Lifecycle and the Completed Circuit</name>

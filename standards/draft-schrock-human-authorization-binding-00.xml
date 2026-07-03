@@ -37,7 +37,10 @@
       semantics), with five requirements that make the binding mean the
       same thing in every host: digest grounding, action agreement,
       verified-versus-accepted discipline, fail-closed absence, and
-      embedded/referenced consistency. An informative appendix maps the
+      embedded/referenced consistency. The SCITT signed-statement host
+      family is expressed concretely (digest selection, and the
+      observed-absence statement that is the only way absence of
+      authorization becomes evidence); an informative appendix maps the
       binding onto the reserved slots of eleven current documents.
       This document defines no new authorization format: the referenced
       evidence verifies under its own specification.</t>
@@ -61,7 +64,17 @@
       <t>This document is the single answer: a host-agnostic definition
       of what it means to bind named-human authorization evidence into
       any record, plus the small set of requirements that keep the
-      binding trustworthy regardless of host. It deliberately does not
+      binding trustworthy regardless of host. The reserved slots this
+      profile serves appear, at this writing, in
+      draft-mih-scitt-agent-action-capsule,
+      draft-munoz-scitt-permit-profile, draft-sharif-agent-audit-trail,
+      draft-bates-atp, draft-aylward-aiga,
+      draft-nelson-agent-delegation-receipts,
+      draft-rosenberg-aiproto-cheq, draft-yossif-psea,
+      draft-kuehlewind-audit-architecture, the ACP charter, and the
+      SPICE-adjacent intent-chain work — the mappings in
+      <xref target="mappings"/> are offered for those authors to
+      correct or adopt. It deliberately does not
       define the authorization evidence itself — a bound artifact
       verifies under its own specification (for example
       <xref target="I-D.schrock-ep-authorization-receipts"/> for
@@ -168,6 +181,59 @@
         reference's digest; a mismatch invalidates both.</li>
       </ol>
     </section>
+    <section anchor="scitt">
+      <name>Expression for SCITT Signed Statements</name>
+      <t>Transparency-logged agent-action statements (SCITT
+      <xref target="RFC9943"/>: capsules, permits, audit records) are
+      the binding's most developed host family, and their expression is
+      specified here concretely. The reference form's digest is one of
+      the following, selected per deployment and FIXED for a given
+      host-statement profile so that both sides bind identical bytes:</t>
+      <ul>
+        <li>receipt_payload_digest — SHA-256 over the JCS canonical
+        bytes of the authorization receipt's payload; used for offline
+        composition, where the relying party holds or can fetch the
+        receipt directly.</li>
+        <li>statement_digest — SHA-256 over the COSE_Sign1
+        <xref target="RFC9052"/> bytes of the receipt expressed as a
+        SCITT Signed Statement; RECOMMENDED when the receipt is
+        registered in a transparency service, so the reference also
+        resolves to a logged, inclusion-proofed entry.</li>
+      </ul>
+      <t>The COSE encoding of the receipt as a Signed Statement
+      (canonical payload, content type) is the EP SCITT profile's job
+      and out of scope here: this section specifies only the digest a
+      host statement embeds and the verification that B1-B5 already
+      require. A host profile defines its own concrete carrier (a
+      dedicated field, a capsule's opaque authority reference, a
+      permit's authority context); this document mandates the digest
+      semantics, never the carrier's name. The verifier obtains the
+      receipt through whatever channel the deployment provides — held
+      locally, conveyed with the statement, or fetched from the
+      transparency service — and relies on digest equality, never on
+      the channel.</t>
+      <section anchor="absence">
+        <name>Denial, Absence, and Observed Absence</name>
+        <t>B4 (fail-closed absence) has one elaboration worth stating
+        normatively for this host family, because settlement and audit
+        flows rely on refusals as much as approvals. Three states,
+        only two of which are evidence: a DENIAL (a named human
+        refused, an approval was revoked, or a validity window lapsed
+        and the expiry was recorded) is a signed event, and a host
+        statement MAY reference a denied authorization exactly as it
+        references an approval — "an accountable human refused this
+        action" is a positive, verifiable fact. ABSENCE is not
+        evidence and cannot be made so by assertion: the mere failure
+        to present an authorization proves nothing. Absence becomes
+        positive evidence only through a signed OBSERVED-ABSENCE
+        statement — an attestation that the verifier performed a
+        defined search against defined sources at a stated time and
+        found no qualifying authorization; it attests the search and
+        its emptiness, never a universal negative. A deterministic
+        observed-absence vector ships with the reference
+        implementation (examples/scitt/observed-absence-vector.mjs).</t>
+      </section>
+    </section>
     <section anchor="naming">
       <name>Claim Naming</name>
       <t>The canonical claim names are "human_authorization_ref" and
@@ -214,6 +280,8 @@
       </references>
       <references>
         <name>Informative References</name>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9052.xml"/>
+        <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.9943.xml"/>
         <reference anchor="I-D.schrock-ep-authorization-receipts" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">
           <front>
             <title>Authorization Receipts for High-Risk Agent Actions</title>

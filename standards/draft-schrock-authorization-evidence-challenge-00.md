@@ -179,9 +179,10 @@ Internet-Draft             Evidence Challenge                  July 2026
    authority for the presenter to lower or replace the policy used at
    evaluation time. required_evidence names types from the same
    vocabulary the relying party's evidence policy and the resource's
-   action manifest use: the challenge is the dynamic form of the same
-   declaration the manifest makes statically, minus whatever a prior
-   presentation already satisfied.
+   action manifest [I-D.schrock-agent-action-manifest] use: the
+   challenge is the dynamic form of the same declaration the manifest
+   makes statically, minus whatever a prior presentation already
+   satisfied.
 
    Each required_evidence entry MUST contain type and MAY contain
    assurance_class, fresh_max_sec, and revocation_checked. type names
@@ -193,10 +194,11 @@ Internet-Draft             Evidence Challenge                  July 2026
    type.
 
    present_as is an ordered list of acceptable presentation formats;
-   this version defines EP-AEG-v1 as the initial graph presentation
-   format. obtain_hints are hints, never endorsements: following one
-   confers no trust. expires_at MUST be an absolute timestamp after
-   which the challenge is refused before policy replay.
+   this version defines EP-AEG-v1 [I-D.schrock-ep-action-evidence-graph]
+   as the initial graph presentation format. obtain_hints are hints,
+   never endorsements: following one confers no trust. expires_at MUST
+   be an absolute timestamp after which the challenge is refused before
+   policy replay.
 
 3.  Lifecycle and the Completed Circuit
 
