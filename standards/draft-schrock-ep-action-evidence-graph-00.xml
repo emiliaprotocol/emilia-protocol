@@ -246,5 +246,17 @@
       authorization-receipt, quorum, evidence-chain, and admissibility
       layers.</t>
     </section>
+    <section anchor="ack" numbered="false">
+      <name>Acknowledgments</name>
+      <t>The composition seam this document builds on was materially
+      sharpened by Songbo Bu's review of the digest bindings between
+      the human-authorization and action-record layers, and by his
+      independent execution and verification of the published EP
+      artifacts against a pinned commit, reported to the SECDISPATCH
+      list on 23 June 2026. The comparative, claim-disciplined framing
+      of the surrounding landscape owes much to the authorization-
+      evidence survey maintained by Mohamad Khalil-Yossif.
+      Acknowledgment implies no endorsement of this document.</t>
+    </section>
   </back>
 </rfc>
