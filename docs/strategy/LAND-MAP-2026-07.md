@@ -31,6 +31,31 @@ semantics — plus a per-host mapping appendix covering the eleven slots above.
 Eleven companion profiles collapse into one document. Base text already exists
 (`docs/EP-HUMAN-AUTHORIZATION-CLAIM.md`). Effort: days. File first post-126.
 
+## The WIMSE parcel, stated precisely (Iman, 2026-07-03)
+
+WIMSE's charter is the deed: it scopes the WG to runtime workload identity
+and security context and EXPLICITLY will not define personal identities. So
+WIMSE can say "workload X from trust domain Y proved possession of key K,
+calling this service, optionally carrying user/transaction context" — and
+structurally cannot say "this named human, with authority under this org
+policy, approved this exact irreversible action, once, before execution,
+offline-verifiable." That second sentence needs a different trust root
+(human key, approver authority, policy hash, action digest, validity
+window, one-time consumption, reliance semantics) — which is EP. Carrying
+a user identifier != a portable, non-repudiable human authorization
+receipt. The seam:
+
+    WIT/WPT:    which workload is calling, and did it prove possession?
+    EP receipt: which accountable human authorized this exact action?
+    Together:   this workload made this tool call, and this human
+                authorized the action it is about to perform.
+
+Any WIMSE expansion into named-human authorization would require
+recharter/SECDISPATCH — i.e., the boundary is procedural as well as
+architectural. Claimed in binding-00's appendix (carry-capable JWT claim,
+distinct from the eleven slot-hosts). Wave-2 follow-through: the WIT +
+receipt dual-proof demo vector (days).
+
 ## The second pattern: nobody specifies revocation
 
 WIMSE creds (none, named as unaddressed), kuehlewind (time-evolving authz,

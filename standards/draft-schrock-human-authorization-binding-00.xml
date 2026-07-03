@@ -278,6 +278,22 @@
         the reference form's digest, giving the named field its
         missing semantics.</li>
       </ul>
+      <t>One adjacent family fits differently and deserves saying
+      precisely. WIMSE workload credentials (WIT/WIC, and the WPT
+      request binding) do not reserve a human-authorization slot;
+      their working group is deliberately chartered for workload
+      identity and explicitly does not define personal identities.
+      They are, however, carry-capable: a WIT or transaction context
+      is a JWT, and a deployment MAY carry human_authorization_ref as
+      a claim alongside the workload identity — the workload
+      credential then proves WHICH WORKLOAD is calling and proved
+      possession, while the bound artifact proves WHICH ACCOUNTABLE
+      HUMAN authorized the exact action it is about to perform. The
+      two answers have different trust roots (a workload key versus a
+      named human's key under organizational authority), which is why
+      neither format can absorb the other and why the composition,
+      rather than either alone, is what a relying party needs for an
+      irreversible action.</t>
     </section>
     <section anchor="impl">
       <name>Implementation Status</name>
