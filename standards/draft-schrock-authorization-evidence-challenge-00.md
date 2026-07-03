@@ -225,8 +225,6 @@ Internet-Draft             Evidence Challenge                  July 2026
 
 
 
-
-
 Schrock                  Expires 4 January 2027                 [Page 4]
 
 Internet-Draft             Evidence Challenge                  July 2026
