@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   FLEX_ENVELOPE_VERSION, CURTAILMENT_SETTLEMENT_POLICY,
-  checkOrderWithinEnvelope, computeCompliance,
+  checkOrderWithinEnvelope, computeCompliance, buildRefusalStatement,
 } from '../lib/grace/curtailment.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -28,7 +28,7 @@ describe('GRACE — Order ⊆ Envelope (fail-closed pre-execution)', () => {
   });
 
   it.each([
-    ['oversized MW', { ...order, mw: '22.0' }, 'exceeds envelope max'],
+    ['oversized MW', { ...order, mw: '22.0' }, 'exceeds envelope unspent balance'],
     ['short notice', { ...order, notice_minutes: 3 }, 'below envelope floor'],
     ['outside participation window', { ...order, window: { start: '2026-11-01T15:00:00Z', end: '2026-11-01T19:00:00Z' } }, 'outside envelope participation window'],
     ['event too long', { ...order, window: { start: '2026-07-15T08:00:00Z', end: '2026-07-15T18:00:00Z' } }, 'longer than envelope max'],
@@ -42,6 +42,29 @@ describe('GRACE — Order ⊆ Envelope (fail-closed pre-execution)', () => {
   it('an unknown envelope version is itself a violation (fail closed)', () => {
     const r = checkOrderWithinEnvelope(order, { ...envelope, '@version': 'v0' });
     expect(r.within).toBe(false);
+  });
+
+  it('the envelope, not any single order, is the ceiling: an order within max_mw but over the UNSPENT balance is refused', () => {
+    // 12 MW order is under max_mw (15), but only 5 MW remains unspent this period
+    const r = checkOrderWithinEnvelope(order, envelope, { spent_mw: 10 });
+    expect(r.within).toBe(false);
+    expect(r.violations.join(' ')).toContain('unspent balance');
+  });
+
+  it('the same order passes when the remaining balance covers it', () => {
+    expect(checkOrderWithinEnvelope(order, envelope, { spent_mw: 2 }).within).toBe(true);
+    expect(checkOrderWithinEnvelope(order, envelope, {}).within).toBe(true); // spent defaults to 0
+  });
+});
+
+describe('GRACE — a refusal is signed evidence, not silence', () => {
+  it('builds a refusal statement binding the refused order digest, the failing predicate, and the time', () => {
+    const bad = checkOrderWithinEnvelope({ ...order, mw: '99.0' }, envelope);
+    const refusal = buildRefusalStatement('sha256:' + 'a'.repeat(64), bad.violations, '2026-07-15T15:00:00Z');
+    expect(refusal.typ).toBe('ep-curtailment-refusal');
+    expect(refusal.refused_order_digest).toMatch(/^sha256:/);
+    expect(refusal.failing_predicates.join(' ')).toContain('unspent balance');
+    expect(refusal.refused_at).toBe('2026-07-15T15:00:00Z');
   });
 });
 

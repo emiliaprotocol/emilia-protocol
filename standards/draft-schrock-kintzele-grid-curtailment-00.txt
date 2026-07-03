@@ -78,11 +78,11 @@ Table of Contents
    2.  The Curtailment Order . . . . . . . . . . . . . . . . . . . .   2
    3.  Gate Predicates (Fail-Closed) . . . . . . . . . . . . . . . .   3
    4.  Telemetry Attestation and the Proof-of-Curtailment Bundle . .   3
-   5.  Relationship to Other Work  . . . . . . . . . . . . . . . . .   3
-   6.  Security Considerations . . . . . . . . . . . . . . . . . . .   3
-   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   3
+   5.  Relationship to Other Work  . . . . . . . . . . . . . . . . .   4
+   6.  Security Considerations . . . . . . . . . . . . . . . . . . .   4
+   7.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   4
    8.  References  . . . . . . . . . . . . . . . . . . . . . . . . .   4
-   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .   4
+   Authors' Addresses  . . . . . . . . . . . . . . . . . . . . . . .   5
 
 1.  Introduction
 
@@ -116,14 +116,37 @@ Internet-Draft             EP Grid Curtailment                 June 2026
 
    site) MUST use EP-QUORUM (m-of-n distinct signers).
 
+   An order draws against a SEASONAL ENVELOPE: a prior EP-RECEIPT-v1 in
+   which a named human (or quorum) authorizes bounded participation for
+   a program period -- a maximum aggregate target_delta_kw, a
+   participation window, a per-event max_duration, and a minimum notice.
+   The envelope is the human authorization; an individual order is a
+   machine dispatch that must fit inside it.  This is what lets
+   curtailment run at machine speed while a compromised or erroneous
+   dispatcher key can never exceed what a human already authorized.
+
 3.  Gate Predicates (Fail-Closed)
 
    A facility controller changes posture only if all hold: the order
    verifies (Ed25519 over RFC 8785 / JCS, [RFC8785]) against the
    _pinned_ authority key; action_type is "grid.curtailment"; the
    current time is within window; and the current time is before
-   expires_at.  Otherwise the action is refused and no posture change
-   occurs.
+   expires_at.  In addition, and load-bearing: the order's
+   target_delta_kw MUST NOT exceed the seasonal envelope's UNSPENT
+   balance (the envelope's authorized aggregate minus the sum of
+   already-settled events under it), and the order MUST fit the
+   envelope's window, per-event duration, and notice bounds.  An order
+   that exceeds the remaining balance is refused even under a validly
+   signed authority key -- the envelope, not any single order, is the
+   ceiling.
+
+   A refused order is not silent.  On any gate-predicate failure or a
+   protected-lane conflict, the controller MUST emit a signed REFUSAL
+   receipt (an EP-RECEIPT-v1 over the refused order's digest, the
+   failing predicate, and the time), so the dispatcher obtains
+   verifiable evidence of "no, and here is why," not an absence.  A
+   refusal is evidence in the same sense an authorization is, and is
+   offline-verifiable by the same parties.
 
 4.  Telemetry Attestation and the Proof-of-Curtailment Bundle
 
@@ -138,6 +161,23 @@ Internet-Draft             EP Grid Curtailment                 June 2026
    order.baseline_method_hash; and recomputing delivered kW*h from the
    signed samples equals the claimed value.  Anyone can run this
    offline, with no account.
+
+
+
+
+Schrock & Kintzele      Expires 30 December 2026                [Page 3]
+
+Internet-Draft             EP Grid Curtailment                 June 2026
+
+
+   The meter's signature over baseline_method_hash binds the settlement
+   bundle to a single event under a single program method, so the same
+   physical power reduction cannot be sold into two programs: a second
+   bundle claiming the same meter samples under a different method hash
+   fails the equality check, and a second claim under the same method
+   resolves to the same event digest.  Settlement is single-use per
+   event by construction, the demand-response analogue of one-time
+   receipt consumption.
 
 5.  Relationship to Other Work
 
@@ -155,20 +195,16 @@ Internet-Draft             EP Grid Curtailment                 June 2026
    and telemetry integrity against a pinned method, not that the
    baseline is physically correct (baseline estimation belongs to the
    program).  Spoofed, stale, and replayed orders are refused fail-
-   closed.  EP is a necessary, not sufficient, condition for trustworthy
-   demand response.
+   closed, as are orders exceeding the human-authorized envelope balance
+   -- a compromised dispatcher key spends only what the envelope already
+   authorized, never more.  Double-counting the same reduction across
+   programs is defeated by the meter-signed method binding.  EP is a
+   necessary, not sufficient, condition for trustworthy demand response.
 
 7.  IANA Considerations
 
    This document registers the "grid.curtailment" action-type in the EP
    action-type profile registry.  It has no other IANA actions.
-
-
-
-Schrock & Kintzele      Expires 30 December 2026                [Page 3]
-
-Internet-Draft             EP Grid Curtailment                 June 2026
-
 
 8.  References
 
@@ -182,6 +218,13 @@ Internet-Draft             EP Grid Curtailment                 June 2026
    [RFC4998]  Gondrom, T., Brandner, R., and U. Pordesch, "Evidence
               Record Syntax (ERS)", RFC 4998, DOI 10.17487/RFC4998,
               August 2007, <https://www.rfc-editor.org/info/rfc4998>.
+
+
+
+Schrock & Kintzele      Expires 30 December 2026                [Page 4]
+
+Internet-Draft             EP Grid Curtailment                 June 2026
+
 
    [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
               Canonicalization Scheme (JCS)", RFC 8785,
@@ -221,4 +264,17 @@ Authors' Addresses
 
 
 
-Schrock & Kintzele      Expires 30 December 2026                [Page 4]
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock & Kintzele      Expires 30 December 2026                [Page 5]

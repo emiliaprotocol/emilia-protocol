@@ -59,14 +59,36 @@
       <tt>approver</tt>, <tt>max_duration</tt>. Hard cuts (large
       <tt>target_delta_kw</tt> or full-site) <bcp14>MUST</bcp14> use EP-QUORUM
       (m-of-n distinct signers).</t>
+      <t>An order draws against a SEASONAL ENVELOPE: a prior EP-RECEIPT-v1
+      in which a named human (or quorum) authorizes bounded participation
+      for a program period -- a maximum aggregate <tt>target_delta_kw</tt>,
+      a participation <tt>window</tt>, a per-event <tt>max_duration</tt>,
+      and a minimum notice. The envelope is the human authorization; an
+      individual order is a machine dispatch that must fit inside it. This
+      is what lets curtailment run at machine speed while a compromised or
+      erroneous dispatcher key can never exceed what a human already
+      authorized.</t>
     </section>
     <section anchor="gate"><name>Gate Predicates (Fail-Closed)</name>
       <t>A facility controller changes posture only if all hold: the order
       verifies (Ed25519 over RFC 8785 / JCS, <xref target="RFC8785"/>) against the
       <em>pinned</em> authority key; <tt>action_type</tt> is "grid.curtailment";
       the current time is within <tt>window</tt>; and the current time is before
-      <tt>expires_at</tt>. Otherwise the action is refused and no posture change
-      occurs.</t>
+      <tt>expires_at</tt>. In addition, and load-bearing: the order's
+      <tt>target_delta_kw</tt> <bcp14>MUST NOT</bcp14> exceed the seasonal
+      envelope's UNSPENT balance (the envelope's authorized aggregate minus
+      the sum of already-settled events under it), and the order
+      <bcp14>MUST</bcp14> fit the envelope's window, per-event duration, and
+      notice bounds. An order that exceeds the remaining balance is refused
+      even under a validly signed authority key -- the envelope, not any
+      single order, is the ceiling.</t>
+      <t>A refused order is not silent. On any gate-predicate failure or a
+      protected-lane conflict, the controller <bcp14>MUST</bcp14> emit a
+      signed REFUSAL receipt (an EP-RECEIPT-v1 over the refused order's
+      digest, the failing predicate, and the time), so the dispatcher
+      obtains verifiable evidence of "no, and here is why," not an absence.
+      A refusal is evidence in the same sense an authorization is, and is
+      offline-verifiable by the same parties.</t>
     </section>
     <section anchor="bundle"><name>Telemetry Attestation and the Proof-of-Curtailment Bundle</name>
       <t>Power telemetry is signed by an attested meter (an EP-RECEIPT-v1 over
@@ -81,6 +103,14 @@
       <tt>order.baseline_method_hash</tt>; and recomputing delivered kW*h from the
       signed samples equals the claimed value. Anyone can run this offline, with
       no account.</t>
+      <t>The meter's signature over <tt>baseline_method_hash</tt> binds the
+      settlement bundle to a single event under a single program method, so
+      the same physical power reduction cannot be sold into two programs: a
+      second bundle claiming the same meter samples under a different
+      method hash fails the equality check, and a second claim under the
+      same method resolves to the same event digest. Settlement is
+      single-use per event by construction, the demand-response analogue of
+      one-time receipt consumption.</t>
     </section>
     <section anchor="related"><name>Relationship to Other Work</name>
       <t>This is a profile of
@@ -96,7 +126,11 @@
       <t>Over-trust is the dominant risk: a valid bundle proves authorization and
       telemetry integrity against a pinned method, not that the baseline is
       physically correct (baseline estimation belongs to the program). Spoofed,
-      stale, and replayed orders are refused fail-closed. EP is a necessary, not
+      stale, and replayed orders are refused fail-closed, as are orders
+      exceeding the human-authorized envelope balance -- a compromised
+      dispatcher key spends only what the envelope already authorized,
+      never more. Double-counting the same reduction across programs is
+      defeated by the meter-signed method binding. EP is a necessary, not
       sufficient, condition for trustworthy demand response.</t>
     </section>
     <section anchor="iana"><name>IANA Considerations</name>
