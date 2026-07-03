@@ -30,6 +30,7 @@
 
 ## §05 · Higher-stakes surfaces  ·  nav: Surfaces  (2:45–3:05)
 - "Same receipt spine scales up: M-of-N / ordered two-person rule; a human-control profile mapped to DoD 3000.09, EU AI Act Art. 14, NIST AI RMF — scoped as authorization proof, *not* proof of wisdom."
+- **New — say if time (this is the composition point AAIF cares about):** "And it composes into an *Action Evidence Graph* — authorization + policy + workload identity bound into one offline-verifiable graph: who authorized, what ran, under which policy — checkable without trusting any single operator. That's the individual I-D we just filed."
 
 ## §06 · The ask  ·  nav: Ask  (3:05–3:30)
 - "That's it. Non-binding read: if this is the missing human-authorization layer, where should it belong — and does AAIF see it composing with the surfaces you care about? Apache-2.0; composes with MCP, goose, AGENTS.md."

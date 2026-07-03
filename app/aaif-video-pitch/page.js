@@ -51,12 +51,13 @@ const proofStats = [
   [proofStatsData.tests.passed.toLocaleString('en-US'), 'automated tests'],
   ['26', 'TLA+ safety properties'],
   ['35 / 22', 'Alloy facts / assertions'],
-  ['8', 'cross-language conformance suites'],
+  ['9', 'cross-language conformance suites'],
 ];
 
 const capabilityCards = [
   ['Authorization receipts', 'Single human signs the exact action before execution.', '/spec'],
   ['Quorum', 'M-of-N or ordered two-person rule for highest-stakes actions.', '/quorum'],
+  ['Evidence graph', 'Compose authorization, policy, and identity into one offline-verifiable graph — who authorized, what ran, under which policy.', '/standards'],
   ['Human control', 'Defense and public-sector oversight mapped to verifiable receipts.', '/human-control'],
 ];
 
