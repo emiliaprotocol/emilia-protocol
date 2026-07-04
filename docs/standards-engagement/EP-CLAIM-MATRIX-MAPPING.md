@@ -1,136 +1,200 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-# EMILIA Protocol — protocol mapping table (staged, pending stable claim IDs)
+# EMILIA Protocol — protocol mapping table against draft-bu-agentproto-security-principal-binding-01
 
-Prepared for the AGENTPROTO claim registry proposed on the agent2agent list
-(Songbo Bu's "Security Principal and Verifier Binding for Agent Communication
-Protocols", in progress). Claim names below use the initial list from the
-2026-07-04 thread; **IDs will be re-keyed to the registry the day its claim IDs
-stabilize.** Fields follow the registry's proposed set — claim, carrier,
-verifier, binding, freshness, layer, failure behavior, implementation status,
-specification status, external dependency/inheritance — plus the optional
-**vector** column we proposed on-list, so every mapped row is checkable rather
-than asserted.
+A complete worked mapping of the EMILIA Protocol (EP) artifact-layer
+mechanisms against the claim registry and Protocol Mapping Template of
+[draft-bu-agentproto-security-principal-binding-01]
+(https://datatracker.ietf.org/doc/html/draft-bu-agentproto-security-principal-binding-01),
+offered as an early test of the template (Section 12/14) and per Section 16:
+EP is **not** an agent communication protocol; it is an artifact-layer
+mechanism intended as an **inheritance target** — where a communication
+protocol marks C-002, C-005, C-007, or C-008 rows "inherited," this table
+supplies the inherited verifier, carrier, binding, freshness rule, failure
+behavior, and evidence reference.
 
-Framing note (as stated on-list): EP is not an agent communication protocol.
-It is the artifact layer several candidate protocols already reference for the
-authority and action-evidence claims. This table exists so that a candidate
-protocol marking those rows "Inherited" can point at a concrete mechanism with
-a named verifier, binding, and failure path.
+Status vocabulary is the draft's (Section 13). All EP Internet-Drafts are
+active **individual** submissions, not IETF-adopted or endorsed. Reference
+verifiers exist in JavaScript, Python, and Go in one repository — a
+consistency check, **not** independent implementations; an independent
+clean-room reimplementation (COSA) is underway and its result will be
+recorded either way.
 
-Status vocabulary (per the thread's discipline): *specified* = in a current
-public draft/spec; *implemented* = running code in the public repo;
-*planned* = stated intent, not yet a guarantee. All EP Internet-Drafts are
-**active individual submissions, not IETF-adopted or endorsed**.
+Repo root for evidence references:
+`https://github.com/emiliaprotocol/emilia-protocol/blob/main/`
 
 ---
 
-## Claims EP maps
+## C-002 — Human or organizational authority
 
-### 1. Authority (named-human / quorum authorization)
-
-- **Mechanism**: EP-RECEIPT-v1 — a device-bound signature by a named human
-  principal (or EP-QUORUM: M-of-N distinct principals, optionally ordered)
-  over the canonical bytes (RFC 8785 / JCS) of one action.
-- **Carrier**: a self-contained signed JSON artifact; transport-agnostic
-  (HTTP header, message field, file, SCITT Signed Statement).
-- **Verifier**: any conforming verifier, offline, no account. Reference
-  verifiers in JavaScript, Python, and Go — one repository, a consistency
-  check, **not** independent implementations; an independent clean-room
-  reimplementation (COSA) is underway, result will be recorded either way.
-- **Binding**: Ed25519 over the canonical action bytes; the signed payload
-  covers the action digest, so the same record cannot satisfy authority for a
-  different action. Digest equality itself neither authorizes nor proves
-  completeness.
-- **Freshness**: validity window (`not_before`/`expires_at`); one-time-use is
-  enforcement-point state (consumption committed before allow), represented
-  but not offline-verifiable.
-- **Layer**: application-layer artifact; rides any session/transport layer
-  (layer stated per the registry's open-ended row convention).
+- **Claim**: a named, accountable human principal — or an M-of-N (optionally
+  ordered) quorum of distinct human principals — authorized this exact
+  action before execution.
+- **Carrier**: EP-RECEIPT-v1 / EP-QUORUM: a self-contained signed JSON
+  artifact; transport-agnostic (HTTP header, message field, file, SCITT
+  Signed Statement).
+- **Verifier and verification rule**: any conforming verifier, offline, no
+  account: Ed25519 over RFC 8785/JCS canonical action bytes against a pinned
+  issuer key; quorum: threshold met by DISTINCT principals over the same
+  digest, order enforced when declared. Verified-vs-accepted kept separate:
+  a valid signature proves VERIFIED; ACCEPTED is a relying-party key-pinning
+  decision; neither implies sufficiency.
+- **Binding and freshness**: signed payload covers the action digest — the
+  same record cannot satisfy authority for a different action; digest
+  equality itself neither authorizes nor proves completeness. Validity
+  window (`not_before`/`expires_at`). One-time use is enforcement-point
+  state (consumption committed before allow) — represented in the artifact,
+  enforced at the gate, not offline-verifiable (see Dependency).
+- **Layer**: application-layer artifact; rides any session/transport.
 - **Failure behavior**: fail-closed. Missing/invalid/stale/replayed/
-  out-of-scope receipt → action refused + machine-readable challenge
-  (HTTP 428, `application/authorization-evidence-challenge+json`).
-- **Implementation status**: implemented. **Specification status**: specified
-  (draft-schrock-ep-authorization-receipts; quorum draft posted).
-- **Inheritance**: none — this is EP's native claim.
-- **Vectors**: `conformance/vectors/receipts.v1.json`,
+  out-of-scope → refuse + machine-readable challenge (HTTP 428,
+  `application/authorization-evidence-challenge+json`).
+- **Implementation status**: implemented.
+- **Specification status**: specified — draft-schrock-ep-authorization-receipts,
+  draft-schrock-human-authorization-binding (host-record binding profile).
+- **Dependency**: one-time consumption requires an enforcement point
+  (deployed by the resource owner); issuer-key pinning is a relying-party
+  process.
+- **Evidence reference**: `conformance/vectors/receipts.v1.json`,
   `conformance/vectors/quorum.v1.json`, `conformance/vectors/signoffs.v1.json`
-  (positive + negative; run: `node conformance/run.mjs`).
+  (positive + negative; `node conformance/run.mjs`).
 
-### 2. Action evidence
+## C-005 — Action evidence
 
-- **Mechanism**: EP-AEG-v1 action evidence graph — content-addressed
-  references to heterogeneous signed artifacts; edges are presenter claims
-  verified against artifact bytes (a lying edge → unverifiable; a required
-  absent edge → missing_evidence); deterministic policy replay to a 5-state
-  verdict with a replay digest; verdict signable as EP-RELIANCE-RESULT-v1
-  (accountability, never authority). Every gate decision (allow or deny)
-  appends to a tamper-evident evidence log.
-- **Carrier / Verifier / Layer**: as row 1 — offline, transport-agnostic.
-- **Binding**: each evidence node bound by content digest; the graph digest is
-  disclosure-independent; the verdict is bound to policy + graph + purpose.
-- **Freshness**: staleness is a first-class verdict state (`stale`).
-- **Failure behavior**: verdict precedence is fail-closed
+- **Claim**: what action was requested/blocked/completed, with evidence
+  sufficient for a stated reliance purpose.
+- **Carrier**: EP-AEG-v1 action evidence graph (content-addressed references
+  to heterogeneous signed artifacts) + tamper-evident gate evidence log
+  (every allow AND deny appended); signed EP-RELIANCE-RESULT-v1 verdict.
+- **Verifier and verification rule**: offline replay: edges are presenter
+  claims verified against artifact bytes (a lying edge → unverifiable; a
+  required absent edge → missing_evidence); deterministic policy replay to a
+  5-state verdict with a replay digest a third party recomputes.
+- **Binding and freshness**: every node bound by content digest; graph
+  digest disclosure-independent; staleness is a first-class verdict state.
+- **Layer**: application-layer artifact.
+- **Failure behavior**: fail-closed verdict precedence
   (unverifiable > missing_evidence > stale > conflicted > admissible).
-- **Implementation status**: implemented (15+ tests, deterministic vector).
-  **Specification status**: specified (draft-schrock-ep-action-evidence-graph).
-- **Vectors**: `examples/evidence-graph/evidence-graph-vector.mjs` +
-  `evidence-graph-vector.json` (deterministic, negatives enforced),
-  `tests/evidence-graph.test.js`.
+- **Implementation status**: implemented.
+- **Specification status**: specified — draft-schrock-ep-action-evidence-graph.
+- **Dependency**: reliance policy is supplied by the relying party, never
+  read from the presented graph.
+- **Evidence reference**: `examples/evidence-graph/evidence-graph-vector.mjs`
+  + `.json` (deterministic, negatives enforced), `tests/evidence-graph.test.js`.
 
-### 3. Freshness / revocation
+## C-007 — Evidence provenance
 
-- **Mechanism**: validity windows on every artifact; portable offline
+- **Claim**: the provenance of an evidence artifact itself — issuance chain,
+  execution attestation, transparency registration — is verifiable.
+- **Carrier**: EP provenance chains, evidence records (RFC 4998-style
+  renewal), trust receipts, execution attestations; optional SCITT/COSE_Sign1
+  registration (RFC 9943 architecture) with inclusion verified.
+- **Verifier and verification rule**: chain verification against pinned
+  roots; transparency-receipt validation kept SEPARATE from native signature
+  validation (registration proves logging per service policy, never that a
+  human authorized the action).
+- **Binding and freshness**: digest-addressed chains; evidence-record
+  renewal for long-term preservation.
+- **Layer**: application-layer artifact.
+- **Failure behavior**: broken chain/failed inclusion → that provenance leg
+  fails closed; native verification result reported separately.
+- **Implementation status**: implemented.
+- **Specification status**: specified (EP-native); SCITT expression specified
+  in draft-schrock-human-authorization-binding.
+- **Dependency**: a transparency service, where registration is claimed.
+- **Evidence reference**: `conformance/vectors/provenance-chains.v1.json`,
+  `provenance.exec.v1.json`, `evidence-record.v1.json`,
+  `trust-receipt.exec.v1.json`.
+
+## C-008 — Freshness or revocation
+
+- **Claim**: the authority or artifact relied on is still current.
+- **Carrier**: validity windows on every artifact; portable offline
   revocation statement + server-state revocation; signed time-attestation.
-- **Binding**: revocation statements are digest-addressed to the artifact they
-  revoke; bounded-staleness semantics stated.
-- **Implementation status**: implemented — JS/Python/Go verifiers agree on the
-  revocation suites. **Specification status**: specified for EP-native
-  artifacts; a generalized credential-revocation-statement I-D (revoking any
-  digest-addressed artifact) is **planned** (drafted, filing when the
-  datatracker reopens) — listed as planned, not a current guarantee.
-- **Failure behavior**: a revoked or stale artifact fails verification closed.
-- **Vectors**: `conformance/vectors/revocation.v1.json`,
-  `conformance/vectors/revocation.exec.v1.json`,
-  `conformance/vectors/time-attestation.v1.json`.
+- **Verifier and verification rule**: offline revocation-statement
+  verification with bounded-staleness semantics; JS/Python/Go verifiers agree
+  on the revocation suites.
+- **Binding and freshness**: revocation statements are digest-addressed to
+  the artifact they revoke.
+- **Layer**: application-layer artifact.
+- **Failure behavior**: revoked or stale → fails closed.
+- **Implementation status**: implemented.
+- **Specification status**: specified for EP-native artifacts; a GENERALIZED
+  credential-revocation statement (revoking any digest-addressed artifact)
+  is **planned** — drafted, filing when the datatracker reopens; listed as
+  planned, not a guarantee.
+- **Evidence reference**: `conformance/vectors/revocation.v1.json`,
+  `revocation.exec.v1.json`, `time-attestation.v1.json`.
 
-### 4. Delegation (partial)
+## C-009 — Failure handling
 
-- **Mechanism**: scoped delegation records (delegator principal → delegate,
-  bounded scope and window), verified like receipts.
-- **Implementation status**: implemented with single-repo tests
-  (`lib/delegation.js`, `tests/delegation.test.js`). **Not yet in the
-  cross-language conformance suite** — that gap is stated here so the row
-  cannot read as more than it is. **Specification status**: documented;
-  not yet an I-D.
-- **Failure behavior**: out-of-scope or expired delegation fails closed.
+- **Claim**: verifier failure paths are specified, machine-readable, and
+  themselves evidenced.
+- **Carrier**: AE-CHALLENGE-v1 (HTTP 428 challenge naming exactly the missing
+  evidence; relying-party-computed action digest; single-use nonces); signed
+  refusal receipts (grid-curtailment profile) — a refusal is evidence, not
+  silence.
+- **Verifier and verification rule**: deny-by-default at the enforcement
+  point; every EP conformance suite requires negative vectors where the
+  verifier MUST name the failing check.
+- **Implementation status**: implemented.
+- **Specification status**: specified —
+  draft-schrock-authorization-evidence-challenge.
+- **Evidence reference**: `conformance/vectors/aec.json`; negative cases in
+  every suite.
 
-### 5. Failure behavior (as a claim in itself)
+## C-003 — Delegated scope (partial)
 
-- **Mechanism**: deny-by-default everywhere; machine-readable 428 challenge
-  names exactly the missing evidence; refusals can themselves be signed
-  evidence (refusal receipts in the grid-curtailment profile).
-- **Implementation status**: implemented; negative vectors are mandatory in
-  every EP suite (each MUST be rejected with the failing check named).
-- **Vectors**: negative cases across all suites; `conformance/vectors/aec.json`.
+- **Claim**: bounded delegation from a named principal to a delegate, with
+  scope and window.
+- **Carrier / rule**: scoped delegation records verified like receipts;
+  out-of-scope or expired fails closed.
+- **Implementation status**: **partial** — implemented with single-repo tests
+  (`lib/delegation.js`, `tests/delegation.test.js`); NOT yet in the
+  cross-language conformance suite. Stated so the row cannot read as more
+  than it is.
+- **Specification status**: documented; not yet an I-D.
 
-## Claims EP intentionally does NOT map
+## C-010 — Composition boundary
 
-Per the registry's request to "state explicitly where your draft
-intentionally differs":
+- **Claim**: which claims survive composition across agents, gateways, and
+  hosts: an EP authorization binds by content digest into a host record
+  (eleven host formats mapped), and verified-vs-accepted semantics are
+  preserved — embedding never upgrades trust.
+- **Carrier**: the binding profile's digest reference (embedded or
+  referenced, consistency required); the action-digest join key at the
+  composition seam.
+- **Verifier and verification rule**: host-record verification and EP-native
+  verification remain SEPARATE results; absence of a required authorization
+  is an observed-absence statement, not silence.
+- **Failure behavior**: embedded/referenced inconsistency or absent required
+  binding → fail closed.
+- **Implementation status**: implemented (binding vectors B1-B5).
+- **Specification status**: specified — draft-schrock-human-authorization-binding;
+  a co-authored composition profile (mih-sato agent-accountability
+  composition) is in progress — listed as planned where it extends beyond
+  binding-00.
+- **Evidence reference**: `examples/binding/human-authorization-binding-vector.mjs`,
+  `examples/scitt/observed-absence-vector.mjs`.
 
-- **Live agent instance** — not claimed. Agent/workload identity is a
-  different leg (WIMSE, AGTP, IACP territory). EP composes with it through
-  the shared action-digest join key; it never asserts which agent acted.
-- **Tool or resource identity** — not claimed as identity. The tool/resource
-  appears inside the canonical action bytes a human signs; adjacent (not a
-  substitute): the agent-action manifest / `x-agent-action-control` declares
-  per-endpoint consequence metadata on the demand side.
-- **Session continuity** — not claimed. Session semantics belong to the
-  communication protocols; an EP receipt is deliberately valid for one exact
-  action, not a session.
+## Claims EP does not carry and does not rely on
+
+Per Section 14's omission rule — stated rather than omitted, since reviewers
+may expect them:
+
+- **C-001 Instance identity**: not carried, not relied upon. EP receipts
+  verify identically whichever agent/workload presents them; instance
+  identity is WIMSE/communication-protocol territory. Composition happens
+  through the action-digest join key.
+- **C-004 Session continuity**: not carried, not relied upon. An EP receipt
+  is deliberately valid for one exact action, not a session.
+- **C-006 Tool or resource identity**: not carried as identity. The
+  tool/resource appears inside the canonical action bytes the human signs
+  (so it is bound, not identified). Adjacent, not a substitute: the
+  agent-action manifest (`x-agent-action-control`) declares per-endpoint
+  consequence metadata on the demand side.
 
 ---
 
-*Maintained at `docs/standards-engagement/EP-CLAIM-MATRIX-MAPPING.md`; will be
-PR'd to the registry repo (`agentproto-claim-matrix` or successor) once claim
-IDs stabilize.*
+*Maintained at `docs/standards-engagement/EP-CLAIM-MATRIX-MAPPING.md`.
+Re-keyed to -01's C-IDs 2026-07-04; will be PR'd to the registry repo when
+one exists.*
