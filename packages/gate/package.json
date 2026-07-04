@@ -32,7 +32,9 @@
     "./reports/underwriter": "./reports/underwriter.js",
     "./metrics": "./metrics.js",
     "./breakglass": "./breakglass.js",
-    "./store-postgres": "./store-postgres.js"
+    "./store-postgres": "./store-postgres.js",
+    "./reports/auditor-workpaper": "./reports/auditor-workpaper.js",
+    "./reports/reperform": "./reports/reperform.js"
   },
   "files": [
     "index.js",
@@ -87,7 +89,9 @@
     "deploy/terraform/variables.tf",
     "deploy/terraform/outputs.tf",
     "deploy/terraform/versions.tf",
-    "deploy/terraform/README.md"
+    "deploy/terraform/README.md",
+    "reports/auditor-workpaper.js",
+    "reports/reperform.js"
   ],
   "scripts": {
     "test": "node --test",
