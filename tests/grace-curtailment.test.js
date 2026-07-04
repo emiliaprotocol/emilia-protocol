@@ -66,6 +66,24 @@ describe('GRACE — a refusal is signed evidence, not silence', () => {
     expect(refusal.failing_predicates.join(' ')).toContain('unspent balance');
     expect(refusal.refused_at).toBe('2026-07-15T15:00:00Z');
   });
+
+  it('a non-array violation is coerced into a single-predicate list', () => {
+    const refusal = buildRefusalStatement('sha256:' + 'b'.repeat(64), 'order: invalid window', '2026-07-15T15:00:00Z');
+    expect(refusal.failing_predicates).toEqual(['order: invalid window']);
+  });
+});
+
+describe('GRACE — envelope balance edge cases fail closed', () => {
+  it('an envelope without max_mw cannot vouch for any balance (remaining unknown → refused)', () => {
+    const noMax = { ...envelope, bounds: { ...envelope.bounds, max_mw: undefined } };
+    const r = checkOrderWithinEnvelope(order, noMax);
+    expect(r.within).toBe(false);
+    expect(r.violations.join(' ')).toContain('unknown');
+  });
+
+  it('a non-numeric spent_mw is treated as zero spent, not as a wildcard', () => {
+    expect(checkOrderWithinEnvelope(order, envelope, { spent_mw: 'garbage' }).within).toBe(true);
+  });
 });
 
 describe('GRACE — compliance comes from the meter, and only the meter', () => {
