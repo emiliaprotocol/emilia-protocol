@@ -32,10 +32,11 @@ W1. Named accountable principal. The record identifies a human principal
     established (and its strength) is stated, not implied.
 
 W2. Exact-action binding. The record binds the authorization to the exact
-    action via the composition's shared action digest, such that the same
-    record cannot satisfy WHO for a different action. A record that binds a
-    scope, a session, or a class of actions answers a different (still
-    useful) question and says so.
+    observed action by the composition's shared action digest, such that the
+    same record cannot satisfy WHO for a different action — and digest
+    equality itself neither authorizes the action nor proves completeness.
+    A record that binds a scope, a session, or a class of actions answers a
+    different (still useful) question and says so.
 
 W3. Temporal semantics. The record states whether authorization preceded
     execution. Pre-execution authorization and post-hoc ratification are
