@@ -1,0 +1,134 @@
+# SPDX-License-Identifier: Apache-2.0
+# emilia-gate reference chart (EP-GATE-HELM-v1) — Deployment.
+# Single-container gate service. Env-driven config; issuer keys come from an
+# EXISTING Secret (never rendered here); the action-risk manifest is mounted
+# read-only from a ConfigMap. Fails closed: rendering aborts without a
+# pinned-issuer Secret reference.
+{{- $name := default .Chart.Name .Values.nameOverride }}
+{{- $fullname := default (printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-") .Values.fullnameOverride }}
+{{- $manifestConfigMap := default $fullname .Values.manifest.existingConfigMap }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    app.kubernetes.io/component: trusted-action-firewall
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version }}
+    emiliaprotocol.ai/chart-contract: EP-GATE-HELM-v1
+    emiliaprotocol.ai/maturity: experimental
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: trusted-action-firewall
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        {{- if not .Values.manifest.existingConfigMap }}
+        # Roll pods when the rendered action-risk manifest changes.
+        checksum/manifest: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      # The gate never talks to the Kubernetes API — do not mount a token.
+      automountServiceAccountToken: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: gate
+          image: "{{ .Values.image.repository }}:{{ default .Chart.AppVersion .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.gate.port }}
+              protocol: TCP
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: EP_GATE_PORT
+              value: {{ .Values.gate.port | quote }}
+            - name: EP_GATE_LOG_LEVEL
+              value: {{ .Values.gate.logLevel | quote }}
+            # Strict evidence log: never authorize an action the gate cannot
+            # durably account for.
+            - name: EP_GATE_EVIDENCE_STRICT
+              value: {{ .Values.gate.evidenceStrict | quote }}
+            - name: EP_GATE_MANIFEST_PATH
+              value: /etc/emilia-gate/{{ .Values.manifest.fileName }}
+            - name: EP_GATE_METRICS_ENABLED
+              value: {{ .Values.metrics.enabled | quote }}
+            # Pinned issuer keys — REFERENCED from an existing Secret, never
+            # rendered into the chart. `required` makes helm refuse to render
+            # a gate with no pinned issuers: fail closed.
+            - name: EP_GATE_ISSUER_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "issuerKeys.existingSecret is required. This chart NEVER renders key material — create the Secret out-of-band (see README.md) and set issuerKeys.existingSecret to its name." .Values.issuerKeys.existingSecret }}
+                  key: {{ .Values.issuerKeys.secretKey }}
+            {{- with .Values.gate.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: action-risk-manifest
+              mountPath: /etc/emilia-gate
+              readOnly: true
+            # Writable scratch for the runtime; rootfs stays read-only.
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: action-risk-manifest
+          configMap:
+            name: {{ $manifestConfigMap }}
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

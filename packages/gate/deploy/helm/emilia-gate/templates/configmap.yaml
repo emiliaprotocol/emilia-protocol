@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: Apache-2.0
+# emilia-gate reference chart (EP-GATE-HELM-v1) — action-risk manifest ConfigMap.
+# Carries the EP-ACTION-RISK-MANIFEST-v0.1 JSON that tells the gate which
+# actions are guarded and what assurance each requires. Config only — NEVER
+# key material (issuer keys live in an existing Secret you create yourself).
+# Skipped entirely when manifest.existingConfigMap points at your own.
+{{- if not .Values.manifest.existingConfigMap }}
+{{- $name := default .Chart.Name .Values.nameOverride }}
+{{- $fullname := default (printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-") .Values.fullnameOverride }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullname }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    app.kubernetes.io/component: trusted-action-firewall
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version }}
+    emiliaprotocol.ai/chart-contract: EP-GATE-HELM-v1
+    emiliaprotocol.ai/maturity: experimental
+data:
+  {{ .Values.manifest.fileName }}: |-
+    {{- .Values.manifest.inline | toPrettyJson | nindent 4 }}
+{{- end }}

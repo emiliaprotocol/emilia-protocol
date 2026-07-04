@@ -1,0 +1,169 @@
+# SPDX-License-Identifier: Apache-2.0
+# Default values for the emilia-gate reference chart (EP-GATE-HELM-v1).
+#
+# HONEST LABEL: reference chart, experimental, BYOC. Review before use.
+#
+# SECURITY INVARIANTS (fail-closed by design):
+#   1. Issuer key material is NEVER rendered by this chart. You MUST create a
+#      Kubernetes Secret out-of-band and point issuerKeys.existingSecret at
+#      it — templating fails (helm refuses to render) if it is unset.
+#   2. The evidence log defaults to strict mode: the gate refuses to authorize
+#      an action it cannot durably account for.
+#   3. Pod security defaults are hardened (non-root, read-only rootfs, no
+#      capabilities, no service-account token). Loosen deliberately, not
+#      accidentally.
+
+replicaCount: 2
+
+image:
+  # BYOC: build and push your own image of the gate service; there is no
+  # official public image while the chart is experimental.
+  repository: ghcr.io/emilia-protocol/gate
+  # Defaults to the chart's appVersion when empty.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# ---------------------------------------------------------------------------
+# Gate service configuration — everything is env-driven; the container reads
+# these EP_GATE_* variables at boot (see README.md for the full contract).
+# ---------------------------------------------------------------------------
+gate:
+  # Port the gate HTTP service listens on (EP_GATE_PORT).
+  port: 8080
+  # Log verbosity (EP_GATE_LOG_LEVEL): error | warn | info | debug
+  logLevel: info
+  # Strict evidence log (EP_GATE_EVIDENCE_STRICT): when "true" the gate fails
+  # CLOSED if a decision record cannot be durably written. Keep true.
+  evidenceStrict: true
+  # Extra environment variables appended verbatim to the container (list of
+  # EnvVar objects — supports valueFrom for your own Secret/ConfigMap refs).
+  extraEnv: []
+
+# ---------------------------------------------------------------------------
+# Issuer keys — REQUIRED, referenced, never rendered.
+# Create the Secret yourself, e.g.:
+#   kubectl create secret generic emilia-gate-issuer-keys \
+#     --from-file=issuer-keys.json=./issuer-keys.json
+# where issuer-keys.json is a JSON array of pinned base64url SPKI-DER Ed25519
+# public keys (or {kid: key} map). The chart exposes it to the container as
+# EP_GATE_ISSUER_KEYS via a secretKeyRef. Rendering fails if existingSecret
+# is empty — a gate with no pinned issuers must not deploy (fail closed).
+# ---------------------------------------------------------------------------
+issuerKeys:
+  existingSecret: ""
+  secretKey: "issuer-keys.json"
+
+# ---------------------------------------------------------------------------
+# Action-risk manifest (EP-ACTION-RISK-MANIFEST-v0.1) — which actions are
+# guarded and what assurance each one requires. Rendered into a ConfigMap and
+# mounted read-only; the container reads it from EP_GATE_MANIFEST_PATH.
+# Set existingConfigMap to bring your own instead of the inline default.
+# ---------------------------------------------------------------------------
+manifest:
+  # File name of the manifest key inside the ConfigMap / mount.
+  fileName: action-risk-manifest.json
+  # Name of a pre-existing ConfigMap carrying the manifest under `fileName`.
+  # When set, the chart's own ConfigMap is not rendered.
+  existingConfigMap: ""
+  # Inline manifest — rendered to JSON verbatim. The default below is a
+  # SUBSET of the gate's built-in high-risk action packs (see
+  # packages/gate/action-packs.js for the full set); replace it with your
+  # organization's real manifest.
+  inline:
+    "@version": EP-ACTION-RISK-MANIFEST-v0.1
+    actions:
+      - id: money_movement.release
+        label: Money movement
+        action_type: payment.release
+        risk: critical
+        receipt_required: true
+        assurance_class: class_a
+        match: { protocol: mcp, tool: release_payment }
+        execution_binding:
+          required_fields:
+            - action_type
+            - amount_usd
+            - currency
+            - payment_instruction_id
+            - beneficiary_account_hash
+      - id: production.deploy
+        label: Production deploy
+        action_type: deploy.production
+        risk: critical
+        receipt_required: true
+        assurance_class: quorum
+        match: { protocol: mcp, tool: deploy_production }
+        execution_binding:
+          required_fields:
+            - action_type
+            - repo
+            - commit_sha
+            - environment
+            - artifact_digest
+
+service:
+  type: ClusterIP
+  port: 8080
+
+# ---------------------------------------------------------------------------
+# Metrics — matches the gate's /metrics endpoint. When enabled, the chart
+# sets EP_GATE_METRICS_ENABLED=true and renders a ServiceMonitor stub
+# (requires the Prometheus Operator CRDs to be installed in the cluster).
+# ---------------------------------------------------------------------------
+metrics:
+  enabled: false
+  path: /metrics
+  serviceMonitor:
+    interval: 30s
+    scrapeTimeout: 10s
+    # Extra labels for the ServiceMonitor (e.g. `release: prometheus` so your
+    # Prometheus instance selects it).
+    additionalLabels: {}
+
+probes:
+  liveness:
+    path: /healthz
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  readiness:
+    path: /readyz
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# Hardened pod defaults — loosen deliberately, not accidentally.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+podAnnotations: {}
+podLabels: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

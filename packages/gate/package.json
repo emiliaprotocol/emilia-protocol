@@ -29,7 +29,10 @@
     "./siem": "./siem.js",
     "./roster": "./roster.js",
     "./reports/art14": "./reports/art14.js",
-    "./reports/underwriter": "./reports/underwriter.js"
+    "./reports/underwriter": "./reports/underwriter.js",
+    "./metrics": "./metrics.js",
+    "./breakglass": "./breakglass.js",
+    "./store-postgres": "./store-postgres.js"
   },
   "files": [
     "index.js",
@@ -68,7 +71,23 @@
     "siem.js",
     "roster.js",
     "reports/art14.js",
-    "reports/underwriter.js"
+    "reports/underwriter.js",
+    "metrics.js",
+    "breakglass.js",
+    "store-postgres.js",
+    "deploy/helm/emilia-gate/Chart.yaml",
+    "deploy/helm/emilia-gate/values.yaml",
+    "deploy/helm/emilia-gate/templates/deployment.yaml",
+    "deploy/helm/emilia-gate/templates/service.yaml",
+    "deploy/helm/emilia-gate/templates/configmap.yaml",
+    "deploy/helm/emilia-gate/templates/servicemonitor.yaml",
+    "deploy/helm/emilia-gate/templates/NOTES.txt",
+    "deploy/helm/README.md",
+    "deploy/terraform/main.tf",
+    "deploy/terraform/variables.tf",
+    "deploy/terraform/outputs.tf",
+    "deploy/terraform/versions.tf",
+    "deploy/terraform/README.md"
   ],
   "scripts": {
     "test": "node --test",
