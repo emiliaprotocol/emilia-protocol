@@ -26,9 +26,12 @@ Repo root for evidence references:
 
 ## C-002 — Human or organizational authority
 
-- **Claim**: a named, accountable human principal — or an M-of-N (optionally
-  ordered) quorum of distinct human principals — authorized this exact
-  action before execution.
+- **Claim**: HUMAN authority, asserted explicitly (per the -02 direction that
+  a mapping row names which of the two it carries): a named, accountable
+  natural person — or an M-of-N (optionally ordered) quorum of distinct
+  natural persons — authorized this exact action before execution.
+  Organizational authority (policy/role grants) is NOT what this row
+  asserts; EP consumes it as relying-party policy input.
 - **Carrier**: EP-RECEIPT-v1 / EP-QUORUM: a self-contained signed JSON
   artifact; transport-agnostic (HTTP header, message field, file, SCITT
   Signed Statement).
@@ -53,7 +56,11 @@ Repo root for evidence references:
   draft-schrock-human-authorization-binding (host-record binding profile).
 - **Dependency**: one-time consumption requires an enforcement point
   (deployed by the resource owner); issuer-key pinning is a relying-party
-  process.
+  process. (Split per the registry's Section-14 direction: the semantic
+  rule lives in binding-and-freshness above; the state holder here; and
+  the evidence that the rule is actually checked: replay negatives in the
+  receipts suite and `packages/gate/store.js` + `store-postgres.js` tests,
+  where a replay and a concurrent duplicate consume are refused.)
 - **Evidence reference**: `conformance/vectors/receipts.v1.json`,
   `conformance/vectors/quorum.v1.json`, `conformance/vectors/signoffs.v1.json`
   (positive + negative; `node conformance/run.mjs`).
@@ -122,7 +129,8 @@ Repo root for evidence references:
 - **Specification status**: specified for EP-native artifacts; a GENERALIZED
   credential-revocation statement (revoking any digest-addressed artifact)
   is **planned** — drafted, filing when the datatracker reopens; listed as
-  planned, not a guarantee.
+  planned, not a guarantee. **Becomes reviewable when**: the generalized
+  revocation I-D posts and its vector file joins the revocation suites.
 - **Evidence reference**: `conformance/vectors/revocation.v1.json`,
   `revocation.exec.v1.json`, `time-attestation.v1.json`.
 
@@ -154,6 +162,10 @@ Repo root for evidence references:
   cross-language conformance suite. Stated so the row cannot read as more
   than it is.
 - **Specification status**: documented; not yet an I-D.
+- **Becomes fully reviewable when**: a cross-language delegation vector
+  file lands in `conformance/vectors/` and all three verifiers agree on it
+  (per the registry's rule that non-implemented rows name the artifact
+  that would make the claim reviewable).
 
 ## C-010 — Composition boundary
 
