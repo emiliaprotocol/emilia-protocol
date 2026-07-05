@@ -73,7 +73,8 @@ Repo root for evidence references:
   digest disclosure-independent; staleness is a first-class verdict state.
 - **Layer**: application-layer artifact.
 - **Failure behavior**: fail-closed verdict precedence
-  (unverifiable > missing_evidence > stale > conflicted > admissible).
+  (unverifiable > conflicted > stale > missing_evidence > admissible —
+  no failure ever degrades toward admissibility).
 - **Implementation status**: implemented.
 - **Specification status**: specified — draft-schrock-ep-action-evidence-graph.
 - **Dependency**: reliance policy is supplied by the relying party, never
