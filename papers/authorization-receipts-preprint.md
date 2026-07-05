@@ -4,7 +4,7 @@
 EMILIA Protocol, Inc.
 team@emiliaprotocol.ai
 
-*Preprint. Prepared for submission to arXiv (cs.CR). July 2026.*
+*Preprint. July 2026.*
 
 *The protocol described here is specified in a set of active individual Internet-Drafts (draft-schrock-ep-authorization-receipts-05, draft-schrock-human-authorization-binding-00, draft-schrock-ep-action-evidence-graph-00, and companions). These are individual submissions to the IETF Internet-Draft repository; they are not IETF-adopted or endorsed documents, and nothing in this paper should be read as implying working-group status.*
 
