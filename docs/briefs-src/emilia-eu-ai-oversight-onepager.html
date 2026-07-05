@@ -1,0 +1,112 @@
+<!-- SPDX-License-Identifier: Apache-2.0 · source for public/briefs/emilia-eu-ai-oversight-onepager.pdf -->
+<meta charset="utf-8">
+<title>EMILIA — Digital sovereignty you can verify</title>
+<style>
+  @page { size: letter; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; font-size: 10.2pt; line-height: 1.5; }
+  .label { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+  header { background: #10141c; color: #fff; padding: 34px 48px 30px; }
+  header .label { color: #4c8dff; font-size: 7.6pt; margin-bottom: 10px; }
+  header h1 { font-size: 21pt; font-weight: 700; margin-bottom: 10px; letter-spacing: -.01em; }
+  header p { color: #c9d2e0; font-size: 9.6pt; max-width: 62em; }
+  header b { color: #fff; }
+  main { padding: 26px 48px 20px; }
+  h2 { font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; font-size: 8.4pt; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; color: #1d4fd8; margin: 16px 0 6px; }
+  p, li { margin-bottom: 6px; }
+  ul { list-style: none; }
+  ul li { padding-left: 14px; position: relative; }
+  ul li::before { content: "•"; position: absolute; left: 2px; color: #1d4fd8; }
+  .callout { background: #f2f6ff; border-left: 3px solid #1d4fd8; padding: 12px 16px; margin: 8px 0; }
+  .callout .label { color: #1d4fd8; font-size: 7.4pt; margin-bottom: 5px; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 9.6pt; }
+  th { text-align: left; font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif; font-size: 7.4pt; letter-spacing: .12em; text-transform: uppercase; color: #667085; border-bottom: 1.5px solid #1d4fd8; padding: 4px 10px 5px 0; }
+  td { border-bottom: 1px solid #e4e7ec; padding: 7px 10px 7px 0; vertical-align: top; }
+  td:first-child { font-weight: 700; color: #1d4fd8; white-space: nowrap; width: 34%; }
+  .fineprint { border: 1px solid #e4e7ec; background: #fafbfc; padding: 11px 14px; font-size: 8.8pt; margin-top: 10px; }
+  footer { display: flex; justify-content: space-between; gap: 24px; padding: 14px 48px 30px; font-size: 8.6pt; color: #667085; border-top: 1px solid #e4e7ec; margin-top: 14px; }
+  footer .right { text-align: right; }
+  footer b { color: #1a1a1a; }
+</style>
+
+<header>
+  <div class="label">EMILIA Protocol · Neutral technical reference on digital sovereignty &amp; AI accountability</div>
+  <h1>Digital sovereignty you can verify — not just declare.</h1>
+  <p>True digital sovereignty is <b>democratic control over digital infrastructure</b> — not only owning the data
+  centres, but being able to <b>independently check</b> that a named, accountable human, not a foreign vendor's
+  black box, was in control of a consequential decision. This note describes an open, vendor-neutral property that
+  turns "a human oversaw this" and "public money was properly authorised" from claims Europe must trust into
+  evidence Europe can verify.</p>
+</header>
+
+<main>
+  <h2>The sovereignty gap</h2>
+  <p>When automated systems act on Europe's behalf — moving public funds, deciding on benefits, changing records —
+  "a human was in control" is today an assertion held inside the operator's systems, often a non-EU platform's.
+  There is no artifact a competent authority, a court, or a citizen can check <b>without trusting that operator</b>.
+  Sovereignty that cannot be independently verified is sovereignty in name only.</p>
+
+  <h2>What a verifiable authorisation receipt is</h2>
+  <p>Before a high-risk action executes, a <b>named, accountable person</b> approves that exact action on their own
+  device, and the system emits a cryptographic <b>receipt</b> verifiable <b>offline, by anyone, without access to or
+  trust in the operator</b>. Alter it and verification fails by construction. For the most consequential actions, the
+  receipt can require a <b>quorum</b> of distinct named approvers — the two-person rule, made checkable.</p>
+
+  <h2>Why this is sovereignty, not dependence</h2>
+  <ul>
+    <li><b>Owned by no platform.</b> It is an <b>open standard</b> (Apache-2.0). Any European institution, member
+    state, or vendor can implement and run it — the control does not sit with, and cannot be withdrawn by, any
+    single company or country.</li>
+    <li><b>Democratic control you can check.</b> Oversight stops being "trust us" and becomes a portable,
+    tamper-evident record an authority or citizen verifies themselves — accountability that does not depend on a
+    foreign black box.</li>
+    <li><b>Cross-border by design.</b> A receipt verifies identically in any member state, with no central service
+    to trust — fitting a Union of 27 competent authorities.</li>
+    <li><b>Capture-proof &amp; durable.</b> It specifies an <i>outcome</i> (checkable evidence), not a product, so it
+    favours no incumbent and does not go stale as tools change.</li>
+  </ul>
+
+  <h2>A concrete application: public investment creating public value</h2>
+  <div class="callout">
+    <div class="label">Where automated decisions move public money</div>
+    <p>As agents and automated systems increasingly touch the disbursement of EU funds — cohesion, recovery,
+    benefits — verifiable authorisation gives national authorities and the <b>European Public Prosecutor's
+    Office</b> independently-checkable proof of <b>who authorised each high-risk action</b>, before it executed.
+    It turns anti-fraud oversight of public money from logs that must be trusted into <b>evidence that can be
+    verified</b> — years later, by an outside party, without trusting the body under review. "Public investment
+    creates public value" becomes something Europe can demonstrate, not merely assert.</p>
+  </div>
+
+  <h2>Where it also maps in the AI Act</h2>
+  <table>
+    <tr><th>Provision</th><th>How a verifiable authorisation receipt provides the evidence</th></tr>
+    <tr><td>Art. 14 — Human oversight</td><td>Turns "a human oversaw this" from an unfalsifiable claim into
+    checkable proof that a <b>named</b> person authorised the <b>specific</b> action before it took effect. A
+    companion <b>Article 14 evidence checklist</b> — the questions a reviewer will ask, and the properties any
+    satisfying evidence needs — is freely available at emiliaprotocol.ai/briefs ahead of the August 2026
+    application date for high-risk obligations.</td></tr>
+    <tr><td>Art. 12 / 26 — Logging &amp; deployer duties</td><td>A tamper-evident, portable record of the
+    authorisation event — not a log held and editable by the party under examination.</td></tr>
+    <tr><td>Art. 86 — Right to explanation</td><td>An affected person (or their counsel) can independently verify
+    who authorised the decision — not take the deployer's word.</td></tr>
+  </table>
+
+  <div class="fineprint">
+    <b>What this evidence proves — and doesn't.</b> A verifiable authorisation receipt proves, independently, that
+    the required named person(s) approved a specific action under a stated policy and that the record is unaltered.
+    It does not by itself prove the decision was <i>correct</i>, establish the real-world <i>identity</i> behind an
+    enrolled approver (an enrolment/identity-proofing layer), or replace an authority's own assessment — it makes
+    those things <i>auditable</i>. Offered as an open reference: a posted cluster of individual IETF Internet-Drafts
+    (authorisation receipts, multi-party quorum, an action evidence graph, revocation, and companions — individual
+    submissions, not IETF-adopted standards), reference verifiers in three languages with public test vectors, and
+    machine-checked formal models of the core protocol. Anyone can check a receipt in one line:
+    <b>npx&nbsp;ep-verify</b> or <b>pip&nbsp;install&nbsp;ep-verify</b>. Not offered as a product to specify.
+  </div>
+</main>
+
+<footer>
+  <div>Prepared as a neutral technical resource for European policymakers and their staff — not lobbying, not legal
+  advice, and not advocacy for any instrument or vendor.<br>A 60-second demonstration is at emiliaprotocol.ai/try ·
+  the sovereignty note is at emiliaprotocol.ai/sovereignty.</div>
+  <div class="right"><b>Iman Schrock</b>, Founder<br>EMILIA Protocol, Inc.<br>team@emiliaprotocol.ai · emiliaprotocol.ai</div>
+</footer>
