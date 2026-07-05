@@ -1,0 +1,41 @@
+{
+  "name": "ep-verify",
+  "version": "0.1.0",
+  "description": "One-command offline check of an EP authorization receipt (EP-RECEIPT-v1) against issuer keys you pin. Prints VERIFIED or REFUSED with a machine-readable reason and exits 0/1; fails closed on any error. A thin CLI over @emilia-protocol/verify — it proves signature, binding, and (when present) anchor integrity, never business correctness.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "ep-verify": "./cli.mjs"
+  },
+  "files": [
+    "cli.mjs",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@emilia-protocol/verify": "^3.3.0"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "emilia-protocol",
+    "authorization-receipt",
+    "verification",
+    "ed25519",
+    "offline-verification",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
+    "directory": "packages/ep-verify"
+  },
+  "homepage": "https://emiliaprotocol.ai",
+  "bugs": {
+    "url": "https://github.com/emiliaprotocol/emilia-protocol/issues"
+  },
+  "author": "EMILIA Protocol, Inc."
+}
