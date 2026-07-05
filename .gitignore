@@ -67,3 +67,36 @@ docs/grace-raise/
 # Local strategy stash — targeting plans and build direction (competitive
 # intel; the public repo must never carry the parcel map or the build queue).
 docs/strategy-private/
+
+# ── Private business material (2026-07-05) — NOT the open protocol ──
+# Removed from public tracking to keep GTM/competitive/fundraising strategy
+# out of competitors' hands. Files remain LOCAL (working tree), just untracked.
+docs/strategy/
+docs/marketing/
+docs/outreach/
+docs/positioning/
+docs/pilots/
+docs/seo/
+docs/legal/
+docs/launch/
+docs/distribution/
+docs/archive/grants-and-applications-2026-06-29/
+docs/archive/competitive-analysis-raw.md
+docs/TARGET-LIST-AND-OUTREACH.md
+docs/INVESTOR-NARRATIVE.md
+docs/ECONOMIC-MOAT.md
+docs/CEO-ROLE-SPEC.md
+docs/FOCUS-RECOMMENDATION.md
+docs/WHAT-THE-WINNER-HAS.md
+docs/NIST-ENGAGEMENT-PLAN.md
+docs/OUTREACH-EMAILS.md
+docs/PILOT-OUTREACH-EMAILS.md
+docs/SEND_TOMORROW_INDEX.md
+docs/FINANCIAL-INSTITUTIONS-PILOT-PROPOSAL.md
+docs/GOVERNMENT-PILOT-PROPOSAL.md
+docs/MN-FRAUD-OVERSIGHT-ONE-PAGER.md
+docs/TRUST-DESK-AUTOMATION-SPEC.md
+docs/TRUST-DESK-LAUNCH-RUNBOOK.md
+docs/EP-EVOLUTION-VISION-v2.md
+docs/VISION-BITCOIN-OF-TRUST.md
+docs/LAUNCH.md
