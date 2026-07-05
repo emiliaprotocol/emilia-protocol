@@ -204,4 +204,4 @@ EP is authorization at the moment of action, not an identity system, not a walle
 - **Is not**: a proprietary product (the core is Apache-2.0 and IETF-tracked)
 - **Is not**: a blockchain (the receipt is the hero; optional public timestamping is a footnote)
 
-See [CONFORMANCE.md](CONFORMANCE.md) · [SECURITY.md](SECURITY.md) · [THREAT_MODEL.md](THREAT_MODEL.md) · [GOVERNANCE.md](GOVERNANCE.md)
+See [CONFORMANCE.md](CONFORMANCE.md) · [SECURITY.md](SECURITY.md) · [THREAT_MODEL.md](THREAT_MODEL.md) · [GOVERNANCE.md](GOVERNANCE.md) · [Neutrality Covenant](docs/NEUTRALITY-COVENANT.md)
