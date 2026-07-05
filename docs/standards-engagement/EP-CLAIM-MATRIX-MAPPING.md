@@ -22,6 +22,12 @@ recorded either way.
 Repo root for evidence references:
 `https://github.com/emiliaprotocol/emilia-protocol/blob/main/`
 
+Per the acceptance-side convention announced for -02 (success behavior /
+accepted result, name the editor's choice): each mapped row below states its
+ACCEPTED RESULT — the constrained, verifier-produced output an application
+may consume, never raw peer-provided claims — including what that output
+does NOT authorize.
+
 ---
 
 ## C-002 — Human or organizational authority
@@ -61,6 +67,13 @@ Repo root for evidence references:
   the evidence that the rule is actually checked: replay negatives in the
   receipts suite and `packages/gate/store.js` + `store-postgres.js` tests,
   where a replay and a concurrent duplicate consume are refused.)
+- **Accepted result (success behavior)**: the verifier returns a constrained
+  result object — VERIFIED/REFUSED plus named checks (version, signature,
+  anchor) and, at the enforcement point, a reliance packet — never the raw
+  presented claims. The result states scope: it establishes who authorized
+  what, and does not establish correctness, sufficiency, or acceptance
+  (a relying-party key-pinning decision). `ep-verify` (npm/PyPI) emits
+  exactly this shape on stdout.
 - **Evidence reference**: `conformance/vectors/receipts.v1.json`,
   `conformance/vectors/quorum.v1.json`, `conformance/vectors/signoffs.v1.json`
   (positive + negative; `node conformance/run.mjs`).
@@ -86,6 +99,11 @@ Repo root for evidence references:
 - **Specification status**: specified — draft-schrock-ep-action-evidence-graph.
 - **Dependency**: reliance policy is supplied by the relying party, never
   read from the presented graph.
+- **Accepted result (success behavior)**: a signed EP-RELIANCE-RESULT-v1 —
+  the verdict, the policy identity applied, and a replay digest so a third
+  party recomputes the same verdict. It is accountability, never authority:
+  the artifact itself states that it confers no permission and does not
+  establish the action's business correctness.
 - **Evidence reference**: `examples/evidence-graph/evidence-graph-vector.mjs`
   + `.json` (deterministic, negatives enforced), `tests/evidence-graph.test.js`.
 
@@ -109,6 +127,9 @@ Repo root for evidence references:
 - **Specification status**: specified (EP-native); SCITT expression specified
   in draft-schrock-human-authorization-binding.
 - **Dependency**: a transparency service, where registration is claimed.
+- **Accepted result (success behavior)**: separate named results per leg
+  (native signature, chain, transparency inclusion) — never one collapsed
+  boolean, so registration can never silently stand in for authorization.
 - **Evidence reference**: `conformance/vectors/provenance-chains.v1.json`,
   `provenance.exec.v1.json`, `evidence-record.v1.json`,
   `trust-receipt.exec.v1.json`.
