@@ -1,0 +1,92 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://www.emiliaprotocol.ai/schemas/ep-action-risk-manifest.schema.json",
+  "title": "EMILIA action-risk manifest",
+  "description": "Declares which machine actions require pre-execution human-authorization receipts, at which assurance tier (EP-ACTION-RISK-MANIFEST-v0.1). Consumed by EMILIA Gate and @emilia-protocol/require-receipt; mirrors validateActionRiskManifest.",
+  "type": "object",
+  "required": ["@version", "actions"],
+  "properties": {
+    "@version": {
+      "const": "EP-ACTION-RISK-MANIFEST-v0.1",
+      "description": "Manifest format version. Exactly EP-ACTION-RISK-MANIFEST-v0.1."
+    },
+    "actions": {
+      "type": "array",
+      "description": "Action entries. Entry ids must be unique (enforced by the runtime validator).",
+      "items": { "$ref": "#/definitions/action" }
+    }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "action": {
+      "type": "object",
+      "required": ["id", "match", "receipt_required"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique entry id, e.g. \"money_movement.release\"."
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable label shown in logs and reports."
+        },
+        "action_type": {
+          "type": "string",
+          "description": "Canonical action type the receipt must be bound to, e.g. \"payment.release\". Required when receipt_required is true."
+        },
+        "risk": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "Risk class. Must be medium, high, or critical when receipt_required is true."
+        },
+        "receipt_required": {
+          "type": "boolean",
+          "description": "When true, the gate refuses this action without a valid, in-scope, unconsumed authorization receipt."
+        },
+        "assurance_class": {
+          "type": "string",
+          "enum": ["software", "class_a", "quorum"],
+          "description": "Minimum assurance tier credited only from cryptographic proof: software; class_a (WebAuthn device signoff); quorum (M-of-N distinct humans)."
+        },
+        "match": {
+          "type": "object",
+          "description": "Selector matching incoming actions. Protocol fields such as {\"protocol\": \"mcp\", \"tool\": \"release_payment\"} or {\"method\": \"POST\", \"path\": \"/v1/payments\"}.",
+          "properties": {
+            "protocol": { "type": "string", "description": "e.g. \"mcp\", \"http\"." },
+            "tool": { "type": "string", "description": "Tool name for tool-call protocols." },
+            "method": { "type": "string", "description": "HTTP method, used together with path." },
+            "path": { "type": "string", "description": "HTTP path, used together with method." }
+          },
+          "additionalProperties": true
+        },
+        "why": {
+          "type": "string",
+          "description": "One-sentence rationale recorded alongside decisions."
+        },
+        "execution_binding": {
+          "type": "object",
+          "description": "Fields of the executed action that must byte-match the fields the human authorized.",
+          "properties": {
+            "required_fields": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "description": "Field names bound between authorization and execution, e.g. [\"action_type\", \"amount_usd\", \"beneficiary_account_hash\"]."
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "receipt_required": { "const": true } }, "required": ["receipt_required"] },
+          "then": {
+            "required": ["action_type", "risk"],
+            "properties": { "risk": { "enum": ["medium", "high", "critical"] } }
+          }
+        }
+      ],
+      "additionalProperties": true
+    }
+  }
+}
