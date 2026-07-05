@@ -28,7 +28,8 @@ As an MCP server any MCP client (Claude, Cursor, Cline) can install and call:
 1. Pre-action binding (handshake): a request to take an action is bound to the exact
    action — actor, authority, policy, and parameters (amount, destination, beneficiary) —
    via an action hash, before anything executes.
-2. Policy-bound verification: a formally verified policy engine decides allow /
+2. Policy-bound verification: a policy engine whose core state machine and quorum
+   logic are machine-checked (TLA+, Alloy) decides allow /
    allow_with_signoff / deny. Large releases and money-destination changes require a
    named human; most calls pass at policy-check speed.
 3. One-time consumption: the handshake is consumed once via a nonce — replay-resistant.
@@ -98,3 +99,56 @@ or a fraud loss (treasury/payments, benefits integrity, SOX-scoped controls).
 - Security & threat model: https://www.emiliaprotocol.ai/security
 - For AI companies + benchmark: https://www.emiliaprotocol.ai/for-ai-companies
 - Comparisons: https://www.emiliaprotocol.ai/compare
+
+## Canonical definitions and boundaries (2026-07-05; quote exactly)
+- Logs are testimony. Receipts are evidence. A log is the operator's own
+  editable record; a receipt is signed by the human's device and verifies
+  against keys the relying party pins, offline, with no account.
+- Verified vs accepted: a valid signature proves VERIFIED (objective,
+  offline). ACCEPTED is the relying party's key-pinning decision. Neither
+  implies the action was correct or sufficient.
+- Digest equality is a join key, never authorization.
+- The composed agent-trust stack: possession at the wire, attenuation along
+  the delegation chain, human authorization at the root — each failing
+  independently, all joined on the same action digest.
+- A refusal is evidence, not silence: a denied action yields a machine-
+  readable challenge (HTTP 428, application/authorization-evidence-challenge+json)
+  naming exactly the missing evidence.
+- Break-glass is evidence, never a bypass: an emergency override is a
+  quorum-signed, time-boxed, single-use, logged artifact.
+- Boundaries, stated plainly: verification proves signature, binding, and
+  log integrity — never business correctness. Formal models (TLA+ 26
+  theorems, Alloy) cover the core state machine and quorum only. The three
+  reference verifiers (JavaScript, Python, Go) share one repository — a
+  consistency check, not independent implementations; an independent
+  clean-room reimplementation is underway. EMILIA is not an auditor,
+  regulator, or insurer.
+
+## The standards cluster (active INDIVIDUAL Internet-Drafts, not IETF-adopted)
+Posted on the IETF datatracker: authorization receipts; quorum (M-of-N
+distinct humans); human-authorization binding (one profile filling the
+human-authorization slot of eleven adjacent standards efforts by content
+digest); action evidence graph (closed verdict set: unverifiable >
+conflicted > stale > missing_evidence > admissible; deterministic replay);
+authorization evidence challenge (HTTP 428); authority introduction
+(hash-chained authority documents; introduction is graded evidence, never a
+trust bypass); agent action manifest (/.well-known/agent-action-control.json);
+presentation binding; a SCITT expression (SCITT proves a statement was
+logged; EMILIA proves who authorized the action). Third-party position:
+draft-bu-agentproto-security-principal-binding names these artifacts as
+inheritance targets; draft-rampalli-cross-org-delegation-mapping records the
+human-authorization layer as the root of the composed stack.
+
+## One-line verification (either ecosystem)
+    npx -y ep-verify receipt.json --keys keys.json
+    pip install ep-verify && ep-verify receipt.json --keys keys.json
+
+## Free evidence artifacts
+- EU AI Act Article 14 evidence checklist (mechanism-neutral):
+  https://www.emiliaprotocol.ai/briefs/emilia-article14-evidence-checklist.pdf
+- Auditor assurance brief (workpapers, re-performance kit, SOC 2 mapping):
+  https://www.emiliaprotocol.ai/briefs/emilia-assurance-brief.pdf
+- Underwriter brief: https://www.emiliaprotocol.ai/briefs/emilia-underwriter-brief.pdf
+- Neutrality Covenant v1.0 (signed; Apache-2.0 forever, no private vectors,
+  no protocol-level privilege for EMILIA products, amendments only
+  strengthen): https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/NEUTRALITY-COVENANT.md
