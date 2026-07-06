@@ -47,7 +47,11 @@
       verifiers (JavaScript, Python, Go) are required to agree on. Those
       verifiers live in one repository -- a cross-language consistency check,
       not clean-room independent implementations; independent implementations
-      remain future interoperability evidence.</t>
+      remain future interoperability evidence. The document also describes,
+      informatively, the multi-handshake composition process: how individual
+      signing ceremonies -- fresh one-time challenge, exact-action binding,
+      user-verified device signature -- compose into one ordered,
+      offline-verifiable, once-consumable multi-party decision.</t>
     </abstract>
   </front>
   <middle>
@@ -403,6 +407,83 @@
       enforcement, <xref target="EP-RECEIPTS"/>, Section 9).</t>
     </section>
 
+    <section anchor="composition">
+      <name>Multi-Handshake Composition</name>
+      <t>This section is informative. It describes, end to end, the process
+      by which the normative machinery of <xref target="quorum-policy"/>
+      through <xref target="incremental-admission"/> composes individual
+      signing ceremonies into one multi-party decision. Every property named
+      here is required elsewhere in this document or in the base draft; this
+      section introduces no new requirements.</t>
+      <t><strong>The handshake is the unit of approval.</strong> Each quorum
+      member is one complete run of the base draft's single-approver signing
+      ceremony (<xref target="EP-RECEIPTS"/>, Section 5.3): a fresh, one-time
+      challenge is issued for that approver against a verified handshake,
+      bound to the exact action bytes through the action hash and binding
+      hash it commits to, and bounded by an explicit validity window; the
+      approver answers it with a user-verified, device-held signature whose
+      WebAuthn assertion challenge is the member's context hash (the
+      per-member requirement is check 2 of the Quorum Gate,
+      <xref target="quorum-gate"/>). Nothing about the ceremony is weakened
+      or amortized when the action needs several approvers: there is no
+      batch signature and no shared signing session; k approvals are k
+      separate ceremonies, each independently verifiable and each
+      independently refusable.</t>
+      <t><strong>A malformed trail never exists.</strong> Composition is
+      incremental and server-side. Each candidate member is evaluated
+      against the admission rule of <xref target="incremental-admission"/>
+      before it is recorded, so a wrong-action, off-roster, duplicate,
+      out-of-order, stale, or invalidly signed member handshake is refused
+      at the moment it is presented and never enters the trail. The stored
+      trail is therefore, at every instant, a prefix of a potentially
+      satisfiable quorum; there is no later cleaning pass that removes bad
+      members, because bad members are never written. The Verifying
+      Executor still re-evaluates the full Quorum Gate over the assembled
+      trail, as <xref target="incremental-admission"/> requires, precisely
+      because it does not trust the orchestrator to have admitted
+      honestly.</t>
+      <t><strong>Order is a signed commitment, not a claim.</strong> In
+      strong ordered mode (<xref target="approval-modes"/>), each member's
+      signed context after the first commits to the hash of its
+      predecessor's context. Because that commitment sits inside the bytes
+      the approver's device signed, and each predecessor in turn committed
+      to its own predecessor, the i-th signature transitively covers the
+      entire prior trail: the order of approvals is non-repudiable, and no
+      party -- including the operator -- can reorder, insert, or backdate a
+      member without invalidating a signature (check 7a,
+      <xref target="quorum-gate"/>). Plain ordered mode retains the weaker,
+      timestamp-based ordering described in
+      <xref target="approval-modes"/>.</t>
+      <t><strong>Denial is a first-class terminal outcome.</strong> Any
+      approver in the trail can refuse, and a refusal is not the mere
+      absence of an approval. Under the base draft a denial is signed over
+      the same context hash with a decision of "denied" and is terminal: a
+      denied authorization can never later become approved
+      (<xref target="EP-RECEIPTS"/>, Sections 5.3 and 6.1). At the
+      composition level, one dissenting approver leaves durable,
+      attributable evidence of the dissent, which a relying party can weigh
+      as adverse evidence rather than as a gap in the trail.</t>
+      <t><strong>The composed decision is consumed once.</strong> A
+      satisfied quorum authorizes exactly one execution of exactly one
+      action. Each member's signoff individually retains the base draft's
+      one-time-consumption rule (<xref target="sec-window"/>), and
+      consumption of the composed decision is refused until the Quorum Gate
+      is satisfied; a partial trail confers no partial authority
+      (<xref target="sec-partial"/>).</t>
+      <t><strong>The whole composition is verifiable offline.</strong>
+      Because the satisfied/not-satisfied judgment is a pure function of
+      the policy, the action hash, and the members
+      (<xref target="quorum-gate"/>, Q5), an auditor holding only the
+      quorum receipt can recompute every check above -- per-member
+      signatures, action binding, distinctness of humans and keys, roster
+      admission, threshold, order and ordering chain, and window -- without
+      contacting the operator. As in the base draft, such offline
+      verification establishes the integrity and authenticity of the
+      recorded composition as of signing time; it does not by itself
+      establish current validity, such as the present enrollment or
+      revocation status of the approvers involved.</t>
+    </section>
+
     <section anchor="member-representation">
       <name>Member Representation in the Receipt</name>
       <t>A quorum receipt is an ordinary EP Trust Receipt
@@ -461,6 +542,8 @@
           <tr><td><tt>reject_expired_window</tt></td><td>not satisfied</td><td>A member outside <tt>window_sec</tt></td></tr>
           <tr><td><tt>reject_one_bad_signature</tt></td><td>not satisfied</td><td>One invalid member signature</td></tr>
           <tr><td><tt>reject_wrong_role</tt></td><td>not satisfied</td><td>A correct signature by an off-roster approver</td></tr>
+          <tr><td><tt>reject_duplicate_key</tt></td><td>not satisfied</td><td>One device key signing under two approver identifiers (check 5a)</td></tr>
+          <tr><td><tt>reject_broken_chain</tt></td><td>not satisfied</td><td>Strong ordered mode, a member committing to the wrong predecessor context hash (check 7a)</td></tr>
         </tbody>
       </table>
       <t>The reference suite is maintained such that three cross-language
@@ -552,6 +635,28 @@
         low-frequency actions, and deployments <bcp14>SHOULD</bcp14> monitor
         per-role time-to-sign and deny rates rather than assume that more
         signers means more scrutiny.</t>
+      </section>
+      <section anchor="sec-rubberstamp">
+        <name>Rubber-stamping and review-latency evidence</name>
+        <t>Signing-ceremony telemetry -- the times at which each member's
+        challenge was issued, first viewed, and approved --
+        <bcp14>SHOULD</bcp14> be retained alongside the trail as evidence of
+        how much review each approval actually received. A relying party
+        <bcp14>MAY</bcp14> apply a minimum-review-latency policy when
+        weighing an approval: an approval recorded a very short interval
+        after the challenge was first viewed is evidence of rubber-stamping
+        rather than review, and a relying party may discount it or treat the
+        bundle as containing conflicting evidence accordingly. This raises
+        the probability that rubber-stamping is detected after the fact and
+        makes it attributable to a named approver; it does not prevent
+        rubber-stamping, and it does not defeat collusion or coercion, for
+        which <xref target="sec-prevent"/> applies. Ceremony telemetry
+        originates with the orchestrator, so a relying party that depends on
+        it should weigh unsigned telemetry with the same skepticism as any
+        other operator-supplied metadata; deployments that need it to serve
+        as evidence rather than log data can have the operator sign the
+        ceremony record so that its integrity is independently
+        checkable.</t>
       </section>
     </section>
 

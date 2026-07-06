@@ -31,6 +31,10 @@ that three reference verifiers (JavaScript, Python, Go) are required to
 agree on. Those verifiers live in one repository, a cross-language
 consistency check rather than clean-room independent implementations;
 independent implementations remain future interoperability evidence.
+The document also describes, informatively, the multi-handshake composition
+process: how individual signing ceremonies (fresh one-time challenge,
+exact-action binding, user-verified device signature) compose into one
+ordered, offline-verifiable, once-consumable multi-party decision.
 
 ### Status of This Memo
 
@@ -79,7 +83,7 @@ constraint for ordered mode (Section 4); an incremental server-side
 admission rule, `canAccept`, that keeps a non-conforming signer out of the
 trail in the first place (Section 6); the consolidated fail-closed quorum
 predicate, `quorumGate` (Section 5); and an adversarial conformance suite
-(Section 8).
+(Section 9).
 
 ### 1.1. Design Goals
 
@@ -300,7 +304,76 @@ performing the action, regardless of incremental admission, because the
 executor does not trust the orchestrator to have applied admission honestly
 (this mirrors the base draft's execution-side enforcement, Section 9).
 
-## 7. Member Representation in the Receipt
+## 7. Multi-Handshake Composition
+
+This section is informative. It describes, end to end, the process by which
+the normative machinery of Sections 3 through 6 composes individual signing
+ceremonies into one multi-party decision. Every property named here is
+required elsewhere in this document or in the base draft; this section
+introduces no new requirements.
+
+**The handshake is the unit of approval.** Each quorum member is one
+complete run of the base draft's single-approver signing ceremony
+([draft-schrock-ep-authorization-receipts], Section 5.3): a fresh, one-time
+challenge is issued for that approver against a verified handshake, bound to
+the exact action bytes through the action hash and binding hash it commits
+to, and bounded by an explicit validity window; the approver answers it with
+a user-verified, device-held signature whose WebAuthn assertion challenge is
+the member's context hash (the per-member requirement is check 2 of the
+Quorum Gate, Section 5). Nothing about the ceremony is weakened or amortized
+when the action needs several approvers: there is no batch signature and no
+shared signing session; k approvals are k separate ceremonies, each
+independently verifiable and each independently refusable.
+
+**A malformed trail never exists.** Composition is incremental and
+server-side. Each candidate member is evaluated against the admission rule
+of Section 6 before it is recorded, so a wrong-action, off-roster,
+duplicate, out-of-order, stale, or invalidly signed member handshake is
+refused at the moment it is presented and never enters the trail. The stored
+trail is therefore, at every instant, a prefix of a potentially satisfiable
+quorum; there is no later cleaning pass that removes bad members, because
+bad members are never written. The Verifying Executor still re-evaluates the
+full Quorum Gate over the assembled trail, as Section 6 requires, precisely
+because it does not trust the orchestrator to have admitted honestly.
+
+**Order is a signed commitment, not a claim.** In strong ordered mode
+(Section 4), each member's signed context after the first commits to the
+hash of its predecessor's context. Because that commitment sits inside the
+bytes the approver's device signed, and each predecessor in turn committed
+to its own predecessor, the i-th signature transitively covers the entire
+prior trail: the order of approvals is non-repudiable, and no party
+(including the operator) can reorder, insert, or backdate a member without
+invalidating a signature (check 7a, Section 5). Plain ordered mode retains
+the weaker, timestamp-based ordering described in Section 4.
+
+**Denial is a first-class terminal outcome.** Any approver in the trail can
+refuse, and a refusal is not the mere absence of an approval. Under the
+base draft a denial is signed over the same context hash with a decision of
+"denied" and is terminal: a denied authorization can never later become
+approved ([draft-schrock-ep-authorization-receipts], Sections 5.3 and 6.1).
+At the composition level, one dissenting approver leaves durable,
+attributable evidence of the dissent, which a relying party can weigh as
+adverse evidence rather than as a gap in the trail.
+
+**The composed decision is consumed once.** A satisfied quorum authorizes
+exactly one execution of exactly one action. Each member's signoff
+individually retains the base draft's one-time-consumption rule
+(Section 10.4), and consumption of the composed decision is refused until
+the Quorum Gate is satisfied; a partial trail confers no partial authority
+(Section 10.3).
+
+**The whole composition is verifiable offline.** Because the
+satisfied/not-satisfied judgment is a pure function of the policy, the
+action hash, and the members (Section 5, Q5), an auditor holding only the
+quorum receipt can recompute every check above (per-member signatures,
+action binding, distinctness of humans and keys, roster admission,
+threshold, order and ordering chain, and window) without contacting the
+operator. As in the base draft, such offline verification establishes the
+integrity and authenticity of the recorded composition as of signing time;
+it does not by itself establish current validity, such as the present
+enrollment or revocation status of the approvers involved.
+
+## 8. Member Representation in the Receipt
 
 A quorum receipt is an ordinary EP Trust Receipt
 ([draft-schrock-ep-authorization-receipts], Section 6.2) whose `contexts`
@@ -325,7 +398,7 @@ draft; EP-QUORUM does not alter their canonicalization, hashing, or
 signature verification. The `role` and `approver_public_key` are the
 join keys against the Quorum Policy roster and the Approver Directory.
 
-## 8. Conformance
+## 9. Conformance
 
 An implementation conforms to EP-QUORUM if, for the published adversarial
 conformance vectors, it returns the expected satisfied/not-satisfied verdict
@@ -345,6 +418,8 @@ assertions:
 | `reject_expired_window` | not satisfied | A member outside `window_sec` |
 | `reject_one_bad_signature` | not satisfied | One invalid member signature |
 | `reject_wrong_role` | not satisfied | A correct signature by an off-roster approver |
+| `reject_duplicate_key` | not satisfied | One device key signing under two approver identifiers (check 5a) |
+| `reject_broken_chain` | not satisfied | Strong ordered mode, a member committing to the wrong predecessor context hash (check 7a) |
 
 The reference suite is maintained such that three cross-language reference
 verifiers (JavaScript, Python, Go), which share one repository and are
@@ -356,13 +431,13 @@ interoperability evidence. The
 quorums); the "reject" vectors guard against a verifier that is too lenient
 (the security-critical direction).
 
-## 9. Security Considerations
+## 10. Security Considerations
 
 EP-QUORUM inherits all Security Considerations of
 [draft-schrock-ep-authorization-receipts] and adds the following. Several
 restate, honestly, what a quorum does *not* buy.
 
-**9.1. What multi-party authorization does and does not prevent.** A
+**10.1. What multi-party authorization does and does not prevent.** A
 satisfied quorum proves that `k` pairwise-distinct enrolled approvers each
 produced a valid, action-bound, in-window, in-order (where required)
 signature with their own device-held keys, and that the orchestrator could
@@ -377,20 +452,20 @@ full quorum. As in the base draft, EP-QUORUM makes such events
 deterrent and an audit primitive, not an impossibility proof. Implementations
 MUST NOT claim a quorum is collusion-proof.
 
-**9.2. Fail-closed is the only safe default.** The dangerous error in a
+**10.2. Fail-closed is the only safe default.** The dangerous error in a
 multi-party gate is to treat ambiguity as approval. EP-QUORUM is specified so
 that a malformed policy, a missing or unparseable member, a partial trail, or
 any single failed check yields "not satisfied." A verifier MUST NOT default
 to satisfied on any unrecognized condition. The "reject" conformance vectors
 exist to catch a regression in this direction.
 
-**9.3. Partial trails confer no authority.** A trail short of the threshold,
+**10.3. Partial trails confer no authority.** A trail short of the threshold,
 or one in which incremental admission has accepted some but not all required
 slots, authorizes nothing. A Verifying Executor presented with a partial
 trail MUST refuse, exactly as it refuses a missing single signoff. This is
 the multi-party form of the base draft's NoBypassWrite invariant.
 
-**9.4. Window and replay.** The approval window (`window_sec`) bounds how
+**10.4. Window and replay.** The approval window (`window_sec`) bounds how
 long a partial quorum remains completable, limiting the value to an attacker
 of compromising a *remaining* approver after some approvals already exist.
 Each member's signoff retains the base draft's one-time-consumption nonce
@@ -399,7 +474,7 @@ for per-signoff replay protection. The monotonic-time rule in ordered mode
 additionally prevents back-dating a later authority's signature to appear to
 precede an earlier one.
 
-**9.5. Divide-and-misinform across members.** Because each approver signs
+**10.5. Divide-and-misinform across members.** Because each approver signs
 their own Authorization Context, a malicious orchestrator can attempt to show
 different approvers different renderings or different initiator attestations
 ([draft-schrock-ep-authorization-receipts], Section 11.9) while each
@@ -410,20 +485,38 @@ the prior approvers' decisions to each subsequent approver so that the trail
 is a chain of informed approvals rather than parallel ones. The
 presentation-attack mitigations of base draft Section 11.3 apply per member.
 
-**9.6. Approver fatigue, at quorum scale.** Requiring more humans does not
+**10.6. Approver fatigue, at quorum scale.** Requiring more humans does not
 help if each rubber-stamps; it can hurt, by diffusing responsibility across a
 group in which no member feels decisive (base draft Section 11.8). Quorum
 policies MUST be scoped to genuinely high-consequence, low-frequency actions,
 and deployments SHOULD monitor per-role time-to-sign and deny rates rather
 than assume that more signers means more scrutiny.
 
-## 10. IANA Considerations
+**10.7. Rubber-stamping and review-latency evidence.** Signing-ceremony
+telemetry (the times at which each member's challenge was issued, first
+viewed, and approved) SHOULD be retained alongside the trail as evidence of
+how much review each approval actually received. A relying party MAY apply
+a minimum-review-latency policy when weighing an approval: an approval
+recorded a very short interval after the challenge was first viewed is
+evidence of rubber-stamping rather than review, and a relying party may
+discount it or treat the bundle as containing conflicting evidence
+accordingly. This raises the probability that rubber-stamping is detected
+after the fact and makes it attributable to a named approver; it does not
+prevent rubber-stamping, and it does not defeat collusion or coercion, for
+which Section 10.1 applies. Ceremony telemetry originates with the
+orchestrator, so a relying party that depends on it should weigh unsigned
+telemetry with the same skepticism as any other operator-supplied metadata;
+deployments that need it to serve as evidence rather than log data can have
+the operator sign the ceremony record so that its integrity is
+independently checkable.
+
+## 11. IANA Considerations
 
 This document has no IANA actions.
 
-## 11. References
+## 12. References
 
-### 11.1. Normative References
+### 12.1. Normative References
 
 [draft-schrock-ep-authorization-receipts] Schrock, I., "Authorization
    Receipts for High-Risk Agent Actions (EP)", Internet-Draft

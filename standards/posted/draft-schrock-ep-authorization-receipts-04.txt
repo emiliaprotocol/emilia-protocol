@@ -4,8 +4,8 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Informational                              30 June 2026
-Expires: 1 January 2027
+Intended status: Informational                               6 July 2026
+Expires: 7 January 2027
 
 
            Authorization Receipts for High-Risk Agent Actions
@@ -53,9 +53,9 @@ Status of This Memo
 
 
 
-Schrock                  Expires 1 January 2027                 [Page 1]
+Schrock                  Expires 7 January 2027                 [Page 1]
 
-Internet-Draft          EP Authorization Receipts              June 2026
+Internet-Draft          EP Authorization Receipts              July 2026
 
 
    Internet-Drafts are draft documents valid for a maximum of six months
@@ -63,7 +63,7 @@ Internet-Draft          EP Authorization Receipts              June 2026
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 1 January 2027.
+   This Internet-Draft will expire on 7 January 2027.
 
 Copyright Notice
 
@@ -104,27 +104,28 @@ Table of Contents
    11. Security Considerations . . . . . . . . . . . . . . . . . . .  21
      11.1.  Operator Compromise  . . . . . . . . . . . . . . . . . .  21
      11.2.  Approver Device Compromise . . . . . . . . . . . . . . .  21
-     11.3.  Presentation Attacks . . . . . . . . . . . . . . . . . .  21
+     11.3.  Presentation Attacks . . . . . . . . . . . . . . . . . .  22
      11.4.  Log Equivocation . . . . . . . . . . . . . . . . . . . .  22
 
 
 
-Schrock                  Expires 1 January 2027                 [Page 2]
+Schrock                  Expires 7 January 2027                 [Page 2]
 
-Internet-Draft          EP Authorization Receipts              June 2026
+Internet-Draft          EP Authorization Receipts              July 2026
 
 
      11.5.  What the Formal Models Do and Do Not Prove . . . . . . .  22
-     11.6.  Directory Authority  . . . . . . . . . . . . . . . . . .  22
+     11.6.  Directory Authority  . . . . . . . . . . . . . . . . . .  23
      11.7.  What Separation of Duties Does and Does Not Provide  . .  23
      11.8.  Approver Fatigue . . . . . . . . . . . . . . . . . . . .  23
-     11.9.  Initiator Attestation as an Attack Surface . . . . . . .  23
-     11.10. No symmetric key on the verification trust path  . . . .  24
-   12. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  25
-   13. Normative References  . . . . . . . . . . . . . . . . . . . .  25
-   14. Informative References  . . . . . . . . . . . . . . . . . . .  25
+     11.9.  Initiator Attestation as an Attack Surface . . . . . . .  24
+     11.10. No symmetric key on the verification trust path  . . . .  25
+     11.11. Canonicalization Robustness  . . . . . . . . . . . . . .  25
+   12. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  26
+   13. Normative References  . . . . . . . . . . . . . . . . . . . .  26
+   14. Informative References  . . . . . . . . . . . . . . . . . . .  26
    Appendix A.  Changes since -00  . . . . . . . . . . . . . . . . .  26
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  27
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  28
 
 1.  Introduction
 
@@ -164,10 +165,9 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-
-Schrock                  Expires 1 January 2027                 [Page 3]
+Schrock                  Expires 7 January 2027                 [Page 3]
 
-Internet-Draft          EP Authorization Receipts              June 2026
+Internet-Draft          EP Authorization Receipts              July 2026
 
 
    Why existing mechanisms do not close this gap: each adjacent layer
@@ -221,9 +221,9 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                  Expires 1 January 2027                 [Page 4]
+Schrock                  Expires 7 January 2027                 [Page 4]
 
-Internet-Draft          EP Authorization Receipts              June 2026
+Internet-Draft          EP Authorization Receipts              July 2026
 
 
    *  *G1 -- Action binding.* An approval is cryptographically bound to
@@ -277,9 +277,9 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                  Expires 1 January 2027                 [Page 5]
+Schrock                  Expires 7 January 2027                 [Page 5]
 
-Internet-Draft          EP Authorization Receipts              June 2026
+Internet-Draft          EP Authorization Receipts              July 2026
 
 
 2.  Terminology
@@ -333,9 +333,9 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                  Expires 1 January 2027                 [Page 6]
+Schrock                  Expires 7 January 2027                 [Page 6]
 
-Internet-Draft          EP Authorization Receipts              June 2026
+Internet-Draft          EP Authorization Receipts              July 2026
 
 
 3.  The Action Object and Action Hash
@@ -389,9 +389,9 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                  Expires 1 January 2027                 [Page 7]
+Schrock                  Expires 7 January 2027                 [Page 7]
 
-Internet-Draft          EP Authorization Receipts              June 2026
+Internet-Draft          EP Authorization Receipts              July 2026
 
 
    *  nonce MUST be at least 128 bits of CSPRNG output and MUST be
@@ -445,9 +445,9 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                  Expires 1 January 2027                 [Page 8]
+Schrock                  Expires 7 January 2027                 [Page 8]
 
-Internet-Draft          EP Authorization Receipts              June 2026
+Internet-Draft          EP Authorization Receipts              July 2026
 
 
    +==================+==================+======+=====================+
@@ -501,9 +501,9 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                  Expires 1 January 2027                 [Page 9]
+Schrock                  Expires 7 January 2027                 [Page 9]
 
-Internet-Draft          EP Authorization Receipts              June 2026
+Internet-Draft          EP Authorization Receipts              July 2026
 
 
    *  policy_rule -- a deterministic policy rule required signoff and
@@ -557,9 +557,9 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                  Expires 1 January 2027                [Page 10]
+Schrock                  Expires 7 January 2027                [Page 10]
 
-Internet-Draft          EP Authorization Receipts              June 2026
+Internet-Draft          EP Authorization Receipts              July 2026
 
 
    *  *Trigger/basis precedence.* escalation_trigger always carries the
@@ -613,9 +613,9 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                  Expires 1 January 2027                [Page 11]
+Schrock                  Expires 7 January 2027                [Page 11]
 
-Internet-Draft          EP Authorization Receipts              June 2026
+Internet-Draft          EP Authorization Receipts              July 2026
 
 
     +============+==========+========+================================+
@@ -669,9 +669,9 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                  Expires 1 January 2027                [Page 12]
+Schrock                  Expires 7 January 2027                [Page 12]
 
-Internet-Draft          EP Authorization Receipts              June 2026
+Internet-Draft          EP Authorization Receipts              July 2026
 
 
    {
@@ -725,9 +725,9 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                  Expires 1 January 2027                [Page 13]
+Schrock                  Expires 7 January 2027                [Page 13]
 
-Internet-Draft          EP Authorization Receipts              June 2026
+Internet-Draft          EP Authorization Receipts              July 2026
 
 
    *  *Cross-context consistency.* When a receipt contains multiple
@@ -781,9 +781,9 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                  Expires 1 January 2027                [Page 14]
+Schrock                  Expires 7 January 2027                [Page 14]
 
-Internet-Draft          EP Authorization Receipts              June 2026
+Internet-Draft          EP Authorization Receipts              July 2026
 
 
 5.  Approver Keys and the Signoff Signature
@@ -837,9 +837,9 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                  Expires 1 January 2027                [Page 15]
+Schrock                  Expires 7 January 2027                [Page 15]
 
-Internet-Draft          EP Authorization Receipts              June 2026
+Internet-Draft          EP Authorization Receipts              July 2026
 
 
    enrolled approvers -- and that attestation MUST be included in the
@@ -893,9 +893,9 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                  Expires 1 January 2027                [Page 16]
+Schrock                  Expires 7 January 2027                [Page 16]
 
-Internet-Draft          EP Authorization Receipts              June 2026
+Internet-Draft          EP Authorization Receipts              July 2026
 
 
    COMMITTED, DENIED, and EXPIRED are terminal.  The protocol invariants
@@ -949,9 +949,9 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
 
 
-Schrock                  Expires 1 January 2027                [Page 17]
+Schrock                  Expires 7 January 2027                [Page 17]
 
-Internet-Draft          EP Authorization Receipts              June 2026
+Internet-Draft          EP Authorization Receipts              July 2026
 
 
 6.3.  Offline Verification Algorithm
@@ -982,6 +982,18 @@ Internet-Draft          EP Authorization Receipts              June 2026
    6.  Confirm signed_at and committed_at fall within [issued_at,
        expires_at].
 
+   Degenerate empty-path rule (step 5).  An empty inclusion_path MUST be
+   accepted only when the checkpoint's tree_size is exactly 1 and the
+   leaf_index, when present, is 0; an empty path presented with any
+   other tree size (including a missing or non-integer tree_size) MUST
+   be refused, before any Merkle computation.  Without this rule an
+   empty path degenerates to "leaf hash equals root hash", which a
+   forged checkpoint can satisfy at any claimed tree size by simply
+   repeating the leaf hash as its root.  Two public reject vectors in
+   the EP conformance suite (reject_empty_path_tree_size_not_1 and
+   reject_empty_path_nonzero_leaf_index) pin this rule across the cross-
+   language reference verifiers.
+
    Step 5 is what distinguishes EP receipts from log-access designs: the
    checkpoint travels _inside_ the receipt, so verification requires no
    query to the log.  Detecting log equivocation (split-view attacks)
@@ -990,6 +1002,13 @@ Internet-Draft          EP Authorization Receipts              June 2026
    that _this receipt is internally consistent, correctly signed by
    enrolled approver keys, and was included in a log tree whose head the
    log operator signed_.
+
+
+
+Schrock                  Expires 7 January 2027                [Page 18]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
 
    Offline verification establishes authenticity, not currency.  Two
    properties are explicitly NOT established offline: (a) post-issuance
@@ -1000,15 +1019,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    additionally consult a current directory head and log checkpoint
    online.  Implementations MUST NOT describe offline verification as
    establishing that a receipt is "currently valid."
-
-
-
-
-
-Schrock                  Expires 1 January 2027                [Page 18]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
 
    The Initiator Attestation (Section 4.1), where present, is covered by
    the context hash recomputed in step 2 above; no additional
@@ -1046,6 +1056,16 @@ Internet-Draft          EP Authorization Receipts              June 2026
    otherwise.  The gate cannot be bypassed by any party that does not
    control the system of record itself.
 
+
+
+
+
+
+Schrock                  Expires 7 January 2027                [Page 19]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
    *EP-Gated Middleware (STANDARD).* An interception layer between the
    agent and the executing credential enforces the gate.  Provides
    strong protection against agent error and prompt injection; an
@@ -1054,17 +1074,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
 
    *EP-Evidence Only (BASIC).* Actions execute independently; receipts
    are produced for audit.  No enforcement claim is made.
-
-
-
-
-
-
-
-Schrock                  Expires 1 January 2027                [Page 19]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
 
    Implementations MUST declare their class in receipts
    (enforcement_class), and marketing or compliance claims MUST NOT
@@ -1103,6 +1112,16 @@ Internet-Draft          EP Authorization Receipts              June 2026
    root, and its delegation chain shares AgentROA's monotonic ("tighten-
    only") scope-narrowing discipline.
 
+
+
+
+
+
+Schrock                  Expires 7 January 2027                [Page 20]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
    *The Entity Attestation Token (RFC 9711, RATS)* attests the _agent or
    platform_ -- model, keys, posture; EP attests the _human
    authorization_. The two are orthogonal and composable: an EAT says
@@ -1112,15 +1131,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    *Transaction Tokens (draft-ietf-oauth-transaction-tokens)* propagate
    workload and agent authorization context across a machine call chain;
    EP is the human-authority root from which such a chain descends.
-
-
-
-
-
-Schrock                  Expires 1 January 2027                [Page 20]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
 
    *Evidence Record Syntax (RFC 4998)* preserves signed evidence across
    algorithm aging by periodic re-timestamping.  EP applies the same
@@ -1158,6 +1168,16 @@ Internet-Draft          EP Authorization Receipts              June 2026
    value policies and SHOULD pair approval with out-of-band action
    rendering (the approver sees the wire details on a second surface).
 
+
+
+
+
+
+Schrock                  Expires 7 January 2027                [Page 21]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
 11.3.  Presentation Attacks
 
    The gravest risk in this protocol, stated without minimization: the
@@ -1170,14 +1190,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    description; (2) for high-value policies, render templates MUST be
    registered with the policy and committed by policy_hash, so the
    display logic is part of what the approver's signature covers; (3)
-
-
-
-Schrock                  Expires 1 January 2027                [Page 21]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
-
    for policies above an organization-designated threshold, the material
    action parameters (amount, beneficiary identifiers) MUST additionally
    be rendered on a second surface not authored by the orchestrating
@@ -1212,6 +1224,16 @@ Internet-Draft          EP Authorization Receipts              June 2026
    Initiator Attestation (Section 4.1); those sections are specified,
    not proven, and extending the models to them is tracked work.
 
+
+
+
+
+
+Schrock                  Expires 7 January 2027                [Page 22]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
 11.6.  Directory Authority
 
    Section 5 removes the operator from the signature path; Section 5.2
@@ -1223,16 +1245,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    enrollment; Class C-equivalent treatment otherwise) exist for this
    reason.  Auditors SHOULD verify directory key custody as part of any
    assessment that relies on receipts.
-
-
-
-
-
-
-Schrock                  Expires 1 January 2027                [Page 22]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
 
 11.7.  What Separation of Duties Does and Does Not Provide
 
@@ -1264,6 +1276,20 @@ Internet-Draft          EP Authorization Receipts              June 2026
    human at its center, and implementations SHOULD say so to their
    customers.
 
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 7 January 2027                [Page 23]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
 11.9.  Initiator Attestation as an Attack Surface
 
    The statement member of an Initiator Attestation (Section 4.1) is
@@ -1282,14 +1308,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    rendered Action Object.  This is consistent with the rendering-
    faithfulness discipline of Section 11.3: the approver's decision
    input is the rendered Action Object; the statement is commentary from
-
-
-
-Schrock                  Expires 1 January 2027                [Page 23]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
-
    a party the protocol never trusts.  A related residual vector is
    divide-and-misinform: because each approver signs their own context,
    a malicious orchestrator can show different approvers of an m-of-n
@@ -1319,6 +1337,15 @@ Internet-Draft          EP Authorization Receipts              June 2026
    remains evidence that the control was bypassed -- that property comes
    from the gate, not from this member.)
 
+
+
+
+
+Schrock                  Expires 7 January 2027                [Page 24]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
    No trust feedback: policy engines MUST NOT use initiator_attestation
    content to relax thresholds, skip approvers, or raise any trust
    score.  The initiator must gain nothing by saying the right words;
@@ -1338,14 +1365,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
    HMAC-chained audit log) is verifiable only by a party holding the
    same secret as the producer, which is precisely the party whose
    conduct the evidence is meant to constrain -- its keeper can rewrite
-
-
-
-Schrock                  Expires 1 January 2027                [Page 24]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
-
    its own history undetectably.  An EP receipt's issuer cannot.
    Conforming verifier implementations MUST NOT introduce a symmetric
    primitive on the verification path; an implementation that does so
@@ -1353,6 +1372,35 @@ Internet-Draft          EP Authorization Receipts              June 2026
    elsewhere in a deployment -- e.g. authenticating an operator's own
    cron or webhook calls -- provided it is never a link in the chain a
    third party verifies.)
+
+11.11.  Canonicalization Robustness
+
+   Every signed EP artifact is verified over its canonical JSON form
+   (Section 3, Section 4), so any divergence between two
+   implementations' canonicalization behavior is a signature-
+   verification divergence and therefore a malleability hazard.
+   Implementations MUST reject the known malleability hazard classes,
+   and MUST reject them identically: duplicate object member names
+   (compared after escape decoding), unpaired UTF-16 surrogate escapes,
+   and inputs outside the profile's number and depth bounds (non-integer
+   numbers or integers with magnitude greater than 2^53-1, and container
+   nesting deeper than the profile-pinned bound of 64).  The public EP-
+   CANONICALIZATION-v1 vector suite exercises these classes as raw JSON
+   texts, with pinned SHA-256 digests over the canonical bytes of every
+   accepted input, across the cross-language reference verifiers;
+   divergence from the pinned results is a conformance defect, not an
+   implementation choice.  (In the reference stack the duplicate-name,
+   surrogate, and depth gates are applied at the parse boundary by the
+   conformance runners, since the verifier packages receive already-
+   parsed values; the profile predicate, canonical serialization, and
+   digests exercise the verifier packages themselves.)
+
+
+
+Schrock                  Expires 7 January 2027                [Page 25]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
 
 12.  IANA Considerations
 
@@ -1393,15 +1441,6 @@ Internet-Draft          EP Authorization Receipts              June 2026
               <https://datatracker.ietf.org/doc/html/draft-nelson-agent-
               delegation-receipts-10>.
 
-
-
-
-
-Schrock                  Expires 1 January 2027                [Page 25]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
-
 Appendix A.  Changes since -00
 
    This revision is a focused, additive diff over -00.
@@ -1411,6 +1450,14 @@ Appendix A.  Changes since -00
    1.  New OPTIONAL Authorization Context member initiator_attestation
        (new Section 4.1): a REQUIRED escalation_trigger enum
        (irreversibility, magnitude, uncertainty, novelty, authority_gap,
+
+
+
+Schrock                  Expires 7 January 2027                [Page 26]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
+
        policy_rule), an OPTIONAL policy_basis rule identifier, and an
        OPTIONAL length-capped (<= 280 character) statement.  The member
        is OPTIONAL; it is covered by the context hash via the JCS
@@ -1450,14 +1497,6 @@ Appendix A.  Changes since -00
        observed_at), plus an OPTIONAL length-capped (<= 280 character)
        statement.  Like initiator_attestation, it is OPTIONAL, covered
        by the context hash via the JCS canonicalization already
-
-
-
-Schrock                  Expires 1 January 2027                [Page 26]
-
-Internet-Draft          EP Authorization Receipts              June 2026
-
-
        normative in Section 4, verifies under the existing Section 6.3
        verifiers unmodified, and is a claim -- identified but never
        trusted -- not proof of the agent's identity or the delegation's
@@ -1467,6 +1506,13 @@ Internet-Draft          EP Authorization Receipts              June 2026
        keeping the receipt agnostic to which external identity scheme
        prevails while making a stale or unconstrained upstream claim
        detectable after the fact.
+
+
+
+Schrock                  Expires 7 January 2027                [Page 27]
+
+Internet-Draft          EP Authorization Receipts              July 2026
+
 
    5.  Housekeeping: version and date bumped in the header; this
        appendix added; the idnits non-ASCII em-dash / curly-quote
@@ -1509,4 +1555,14 @@ Author's Address
 
 
 
-Schrock                  Expires 1 January 2027                [Page 27]
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 7 January 2027                [Page 28]

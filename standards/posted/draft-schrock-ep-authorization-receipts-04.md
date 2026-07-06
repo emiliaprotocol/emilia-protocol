@@ -4,8 +4,8 @@
 ```
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Informational                              30 June 2026
-Expires: 1 January 2027
+Intended status: Informational                               6 July 2026
+Expires: 7 January 2027
 ```
 
 ### Abstract
@@ -665,6 +665,18 @@ exactly these steps:
 6. Confirm `signed_at` and `committed_at` fall within
    `[issued_at, expires_at]`.
 
+Degenerate empty-path rule (step 5). An empty `inclusion_path` MUST be
+accepted only when the checkpoint's `tree_size` is exactly 1 and the
+`leaf_index`, when present, is 0; an empty path presented with any
+other tree size (including a missing or non-integer `tree_size`) MUST
+be refused, before any Merkle computation. Without this rule an empty
+path degenerates to "leaf hash equals root hash", which a forged
+checkpoint can satisfy at any claimed tree size by simply repeating the
+leaf hash as its root. Two public reject vectors in the EP conformance
+suite (`reject_empty_path_tree_size_not_1` and
+`reject_empty_path_nonzero_leaf_index`) pin this rule across the
+cross-language reference verifiers.
+
 Step 5 is what distinguishes EP receipts from log-access designs: the
 checkpoint travels *inside* the receipt, so verification requires no
 query to the log. Detecting log equivocation (split-view attacks)
@@ -963,6 +975,26 @@ primitive on the verification path; an implementation that does so does
 not provide EP's non-repudiation property. (HMAC MAY appear elsewhere in
 a deployment — e.g. authenticating an operator's own cron or webhook
 calls — provided it is never a link in the chain a third party verifies.)
+
+**11.11. Canonicalization robustness.** Every signed EP artifact is
+verified over its canonical JSON form (Sections 3 and 4), so any
+divergence between two implementations' canonicalization behavior is a
+signature-verification divergence and therefore a malleability hazard.
+Implementations MUST reject the known malleability hazard classes, and
+MUST reject them identically: duplicate object member names (compared
+after escape decoding), unpaired UTF-16 surrogate escapes, and inputs
+outside the profile's number and depth bounds (non-integer numbers or
+integers with magnitude greater than 2^53-1, and container nesting
+deeper than the profile-pinned bound of 64). The public
+EP-CANONICALIZATION-v1 vector suite exercises these classes as raw JSON
+texts, with pinned SHA-256 digests over the canonical bytes of every
+accepted input, across the cross-language reference verifiers;
+divergence from the pinned results is a conformance defect, not an
+implementation choice. (In the reference stack the duplicate-name,
+surrogate, and depth gates are applied at the parse boundary by the
+conformance runners, since the verifier packages receive already-parsed
+values; the profile predicate, canonical serialization, and digests
+exercise the verifier packages themselves.)
 
 ## 12. IANA Considerations
 

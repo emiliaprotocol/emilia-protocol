@@ -15,7 +15,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="June" day="30"/>
+    <date year="2026" month="July" day="6"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>authorization</keyword>
@@ -793,6 +793,19 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
           <li>Confirm <tt>signed_at</tt> and <tt>committed_at</tt> fall
           within <tt>[issued_at, expires_at]</tt>.</li>
         </ol>
+        <t>Degenerate empty-path rule (step 5). An empty
+        <tt>inclusion_path</tt> <bcp14>MUST</bcp14> be accepted only when
+        the checkpoint's <tt>tree_size</tt> is exactly 1 and the
+        <tt>leaf_index</tt>, when present, is 0; an empty path presented
+        with any other tree size (including a missing or non-integer
+        <tt>tree_size</tt>) <bcp14>MUST</bcp14> be refused, before any
+        Merkle computation. Without this rule an empty path degenerates
+        to "leaf hash equals root hash", which a forged checkpoint can
+        satisfy at any claimed tree size by simply repeating the leaf
+        hash as its root. Two public reject vectors in the EP conformance
+        suite (<tt>reject_empty_path_tree_size_not_1</tt> and
+        <tt>reject_empty_path_nonzero_leaf_index</tt>) pin this rule
+        across the cross-language reference verifiers.</t>
         <t>Step 5 is what distinguishes EP receipts from log-access
         designs: the checkpoint travels <em>inside</em> the receipt, so
         verification requires no query to the log. Detecting log
@@ -1122,6 +1135,31 @@ REQUESTED -> {PARTIALLY_APPROVED}* -> APPROVED -> COMMITTED
         elsewhere in a deployment -- e.g. authenticating an operator's own cron
         or webhook calls -- provided it is never a link in the chain a third
         party verifies.)</t>
+      </section>
+      <section anchor="canonicalization-robustness">
+        <name>Canonicalization Robustness</name>
+        <t>Every signed EP artifact is verified over its canonical JSON
+        form (<xref target="action-object"/>,
+        <xref target="authorization-context"/>), so any divergence
+        between two implementations' canonicalization behavior is a
+        signature-verification divergence and therefore a malleability
+        hazard. Implementations <bcp14>MUST</bcp14> reject the known
+        malleability hazard classes, and <bcp14>MUST</bcp14> reject them
+        identically: duplicate object member names (compared after
+        escape decoding), unpaired UTF-16 surrogate escapes, and inputs
+        outside the profile's number and depth bounds (non-integer
+        numbers or integers with magnitude greater than 2^53-1, and
+        container nesting deeper than the profile-pinned bound of 64).
+        The public EP-CANONICALIZATION-v1 vector suite exercises these
+        classes as raw JSON texts, with pinned SHA-256 digests over the
+        canonical bytes of every accepted input, across the
+        cross-language reference verifiers; divergence from the pinned
+        results is a conformance defect, not an implementation choice.
+        (In the reference stack the duplicate-name, surrogate, and depth
+        gates are applied at the parse boundary by the conformance
+        runners, since the verifier packages receive already-parsed
+        values; the profile predicate, canonical serialization, and
+        digests exercise the verifier packages themselves.)</t>
       </section>
     </section>
     <section>
