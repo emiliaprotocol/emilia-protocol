@@ -47,7 +47,7 @@ import { MemoryConsumptionStore } from './store.js';
 import { createEvidenceLog } from './evidence.js';
 import { DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, createDefaultActionRiskManifest } from './action-packs.js';
 import { hashCanonical, verifyExecutionBinding } from './execution-binding.js';
-import { buildReliancePacket } from './reliance-packet.js';
+import { buildReliancePacket, ADMISSIBILITY_VERDICTS } from './reliance-packet.js';
 import { createEg1Harness, makeGateInvoke, runEg1, EG1_DEFAULT_SELECTOR, mintDeviceSignoff, mintQuorumEvidence } from './eg1-conformance.js';
 import { CF1_VERSION, CF1_CHECKS, runCf1 } from './cf1-conformance.js';
 import { createKeyRegistry, asKeyRegistry } from './key-registry.js';
@@ -72,7 +72,7 @@ export {
   validateActionControlManifest,
 } from './action-control-manifest.js';
 export { EXECUTION_BINDING_VERSION, canonicalize, hashCanonical, materialFieldsFor, verifyExecutionBinding } from './execution-binding.js';
-export { RELIANCE_PACKET_VERSION, buildReliancePacket } from './reliance-packet.js';
+export { RELIANCE_PACKET_VERSION, ADMISSIBILITY_VERDICTS, buildReliancePacket } from './reliance-packet.js';
 export {
   EG1_VERSION, EG1_CHECKS, EG1_DEFAULT_ACTION, EG1_DEFAULT_SELECTOR,
   createEg1Harness, makeGateInvoke, runEg1, mintDeviceSignoff, mintQuorumEvidence,
@@ -80,6 +80,55 @@ export {
 export { CF1_VERSION, CF1_CHECKS, runCf1 } from './cf1-conformance.js';
 export const ASSURANCE_TIERS = ['software', 'class_a', 'quorum'];
 const TIER_RANK = { software: 0, class_a: 1, quorum: 2 };
+
+/**
+ * Verify a PRE-COMPUTED reliance packet's admissibility block against a profile
+ * the relying party PINNED. This is the gate's whole job re: admissibility — it
+ * does NOT re-evaluate raw evidence and does NOT define the bar. The relying
+ * party's own evaluator (lib/evidence/admissibility-profiles.js) computes the
+ * verdict OFFLINE against its pinned profile and produces the reliance packet;
+ * the gate only confirms the packet answers the SAME profile_hash and carries an
+ * 'admissible' verdict. Pure, dependency-light, fail-closed.
+ *
+ * @param {{id?:string, profile_hash:string}} pinned  the profile the relying party requires
+ * @param {object|null} presented  a reliance packet, or its `.admissibility` block,
+ *   as produced by buildReliancePacket / the relying party's evaluator
+ * @returns {{ok:boolean, reason:string|null, pinned_hash:string, presented_hash:string|null, verdict:string|null}}
+ *   ok:true ONLY when the presented profile_hash equals the pinned hash AND the
+ *   verdict is exactly 'admissible'. Every other case fails closed with a distinct reason.
+ */
+export function verifyAdmissibilityAgainstPinnedProfile(pinned, presented) {
+  const pinnedHash = pinned && typeof pinned.profile_hash === 'string' ? pinned.profile_hash : null;
+  // A pin with no hash is a misconfiguration: refuse, do not silently pass.
+  if (!pinnedHash) {
+    return { ok: false, reason: 'pinned_profile_missing_hash', pinned_hash: null, presented_hash: null, verdict: null };
+  }
+  // Accept either a full reliance packet (has .admissibility) or the block itself.
+  const adm = presented && typeof presented === 'object'
+    ? (presented.admissibility !== undefined ? presented.admissibility : presented)
+    : null;
+  if (!adm || typeof adm !== 'object') {
+    return { ok: false, reason: 'admissibility_profile_pinned_but_absent', pinned_hash: pinnedHash, presented_hash: null, verdict: null };
+  }
+  const presentedHash = typeof adm.profile_hash === 'string' ? adm.profile_hash : null;
+  const verdict = typeof adm.verdict === 'string' ? adm.verdict : null;
+  // Constant-work equality is unnecessary (hashes are public), but the mismatch
+  // MUST be a distinct, named refusal: a presented verdict for a DIFFERENT bar is
+  // not evidence about the pinned bar.
+  if (presentedHash === null || presentedHash !== pinnedHash) {
+    return { ok: false, reason: 'profile_hash_mismatch', pinned_hash: pinnedHash, presented_hash: presentedHash, verdict };
+  }
+  // Verdict must be recognized AND exactly 'admissible'. Any other closed-set
+  // member (missing_evidence/stale/conflicted/unverifiable), an unrecognized
+  // string, or a missing verdict fails closed and names the verdict it saw.
+  if (verdict === null || !ADMISSIBILITY_VERDICTS.includes(verdict)) {
+    return { ok: false, reason: 'admissibility_verdict_unrecognized', pinned_hash: pinnedHash, presented_hash: presentedHash, verdict };
+  }
+  if (verdict !== 'admissible') {
+    return { ok: false, reason: `admissibility_not_admissible:${verdict}`, pinned_hash: pinnedHash, presented_hash: presentedHash, verdict };
+  }
+  return { ok: true, reason: null, pinned_hash: pinnedHash, presented_hash: presentedHash, verdict };
+}
 
 /**
  * The assurance tier a receipt has CRYPTOGRAPHICALLY EARNED.
@@ -183,7 +232,7 @@ function isSignoffEvidence(s) {
  *   if given it supersedes trustedKeys — a receipt is verified only against keys valid (and not
  *   revoked) at its issuance time.
  */
-export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null } = {}) {
+export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null, requiredAdmissibilityProfile = null } = {}) {
   // Production key custody: a registry (rotation + revocation) supersedes a flat
   // trustedKeys list. A flat list is coerced to an always-valid registry, so
   // existing callers are unchanged.
@@ -210,7 +259,7 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
   }
   const evidence = log || createEvidenceLog({ strict: strictEvidence });
 
-  async function check({ selector = {}, receipt = null, observedAction = null, consumptionMode = 'consume' } = {}) {
+  async function check({ selector = {}, receipt = null, observedAction = null, consumptionMode = 'consume', admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null } = {}) {
     const requirement = manifest ? findActionRequirement(manifest, selector) : null;
     const action = requirement?.action_type || selector.action_type || selector.action || null;
     // Assurance tier the action requires (cryptographically checked below). For a
@@ -341,6 +390,29 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     if (!executionBinding.ok) {
       return decide(false, RECEIPT_REQUIRED_STATUS, 'execution_binding_failed', { execution_binding: executionBinding, have_tier: have, assurance_tier_source: 'cryptographic_verification' });
     }
+    // OPT-IN admissibility pinning. When the caller pins a required admissibility
+    // profile {id, profile_hash} (gate-level requiredAdmissibilityProfile, a
+    // per-call admissibilityProfile, or selector.admissibilityProfile), the gate
+    // REFUSES unless a presented reliance packet's admissibility block was computed
+    // against the SAME pinned profile_hash AND carries an 'admissible' verdict. The
+    // gate does NOT re-evaluate raw evidence and does NOT define the bar — the
+    // relying party's own evaluator produced the verdict OFFLINE against its pinned
+    // profile. Checked BEFORE consumption so a mismatch never burns the receipt.
+    // When no profile is pinned, this whole block is inert — behavior is
+    // byte-for-byte unchanged from the pre-admissibility gate.
+    const pinnedProfile = admissibilityProfile || selector.admissibilityProfile || requiredAdmissibilityProfile;
+    if (pinnedProfile) {
+      const presentedAdmissibility = admissibility ?? presentedPacket ?? selector.reliancePacket ?? selector.admissibility ?? null;
+      const adm = verifyAdmissibilityAgainstPinnedProfile(pinnedProfile, presentedAdmissibility);
+      if (!adm.ok) {
+        return decide(false, RECEIPT_REQUIRED_STATUS, adm.reason, {
+          admissibility_check: adm,
+          pinned_profile: { id: pinnedProfile.id ?? null, profile_hash: pinnedProfile.profile_hash ?? null },
+          have_tier: have,
+          assurance_tier_source: 'cryptographic_verification',
+        });
+      }
+    }
     // One-time consumption (replay defense). Require a stable, issuer-generated
     // receipt_id — never fall back to a content hash, whose canonicalization can
     // differ across language implementations and silently break replay detection
@@ -363,7 +435,16 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     if (!fresh) {
       return decide(false, RECEIPT_REQUIRED_STATUS, 'replay_refused', { consumption_key: receiptId });
     }
-    return decide(true, 200, 'allow', { signer: v.signer, outcome: v.outcome, have_tier: have, assurance_tier_source: 'cryptographic_verification', execution_binding: executionBinding, consumption_mode: consumptionMode });
+    const allowExtra = { signer: v.signer, outcome: v.outcome, have_tier: have, assurance_tier_source: 'cryptographic_verification', execution_binding: executionBinding, consumption_mode: consumptionMode };
+    // Carry the admissibility block (from the presented packet) onto the decision
+    // so a reliance packet built from this decision embeds the verdict the relying
+    // party's evaluator computed. Only when something was actually presented.
+    const presentedAdmForAllow = admissibility ?? presentedPacket ?? selector.reliancePacket ?? selector.admissibility ?? null;
+    if (presentedAdmForAllow) {
+      const admBlock = presentedAdmForAllow.admissibility !== undefined ? presentedAdmForAllow.admissibility : presentedAdmForAllow;
+      if (admBlock) allowExtra.admissibility = admBlock;
+    }
+    return decide(true, 200, 'allow', allowExtra);
   }
 
   /** Express/Connect middleware: refuse the route unless a sufficient receipt is present. */
@@ -417,9 +498,9 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
    * If the side effect throws, the reservation is released so the approval can
    * be retried safely.
    */
-  async function run({ selector = {}, receipt = null, observedAction = null } = {}, fn, opts = {}) {
+  async function run({ selector = {}, receipt = null, observedAction = null, admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null } = {}, fn, opts = {}) {
     if (typeof fn !== 'function') throw new Error('EMILIA Gate run(): fn is required');
-    const authorization = await check({ selector, receipt, observedAction, consumptionMode: 'reserve' });
+    const authorization = await check({ selector, receipt, observedAction, consumptionMode: 'reserve', admissibilityProfile, reliancePacket: presentedPacket, admissibility });
     if (!authorization.allow) {
       return { ok: false, status: authorization.status, body: authorization.challenge, authorization };
     }
@@ -458,7 +539,13 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       const observedAction = typeof opts.observedAction === 'function'
         ? opts.observedAction(...args)
         : (opts.observedAction || selector.observedAction || null);
-      const out = await run({ selector, receipt, observedAction }, () => fn(...args), { recordExecution: opts.recordExecution });
+      const admissibilityProfile = typeof opts.admissibilityProfile === 'function'
+        ? opts.admissibilityProfile(...args)
+        : (opts.admissibilityProfile ?? null);
+      const presentedPacket = typeof opts.reliancePacket === 'function'
+        ? opts.reliancePacket(...args)
+        : (opts.reliancePacket ?? opts.admissibility ?? null);
+      const out = await run({ selector, receipt, observedAction, admissibilityProfile, reliancePacket: presentedPacket }, () => fn(...args), { recordExecution: opts.recordExecution });
       if (!out.ok) {
         const e = new Error(`EMILIA Gate refused (${out.authorization.reason})`);
         e.code = 'EMILIA_RECEIPT_REQUIRED';
@@ -469,13 +556,22 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     };
   }
 
-  function reliancePacket({ authorization, execution = null, binding = null } = {}) {
+  function reliancePacket({ authorization, execution = null, binding = null, admissibility = null } = {}) {
+    // The admissibility block rides on the authorization decision's evidence when
+    // a reliance packet was presented at check() time; an explicit `admissibility`
+    // arg overrides it. buildReliancePacket fails closed on a non-'admissible'
+    // block, so a do_not_rely verdict can never be laundered into rely here.
+    const adm = admissibility
+      ?? authorization?.evidence?.admissibility
+      ?? authorization?.admissibility
+      ?? null;
     return buildReliancePacket({
       decision: authorization,
       execution,
       evidence,
       manifest,
       binding,
+      admissibility: adm,
     });
   }
 
@@ -577,6 +673,8 @@ export default {
   createGate,
   createTrustedActionFirewall,
   receiptAssuranceTier,
+  verifyAdmissibilityAgainstPinnedProfile,
+  ADMISSIBILITY_VERDICTS,
   MemoryConsumptionStore,
   createEvidenceLog,
   ASSURANCE_TIERS,

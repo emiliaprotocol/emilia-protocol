@@ -1,0 +1,150 @@
+{
+  "@version": "EP-ADMISSIBILITY-PROFILE-REGISTRY-v1",
+  "disclaimer": {
+    "is_authoritative_registry": false,
+    "summary": "These are REFERENCE EXAMPLES, not an authoritative registry. A relying party AUTHORS its own admissibility profile and PINS its own profile_hash; the admissibility verdict is computed OFFLINE and deterministically against that pinned profile. EMILIA does not adjudicate and is not in the trust path.",
+    "what_emilia_publishes": "EMILIA publishes (1) the interoperable schema at /schemas/ep-admissibility-profile.schema.json and (2) these clearly-labeled reference/example profiles, on identical terms to everyone including competitors, exactly the way it publishes conformance vectors. EMILIA is NEVER the definer of the bar.",
+    "how_to_use": "Fork any example, set your own id/namespace and authored_by, tune min_assurance/max_staleness_sec/checks to your risk appetite, recompute profile_hash with computeProfileHash() (sha256 over the RFC-8785/JCS canonical bytes with profile_hash excluded), and PIN that hash out-of-band. Acceptance is by pinned hash, never by name or by this file.",
+    "fail_closed": "A profile_hash mismatch, an unrecognized profile, or missing/invalid evidence yields a non-admissible verdict or a refusal, never admissible. A default is the weakest outcome.",
+    "honest_limit": "An admissible verdict means only that an evidence bundle clears the bar THIS relying party pinned, at the evaluation time supplied. It does NOT establish that the action is correct, safe, or currently valid beyond the freshness bounds evaluated. Offline verification never establishes current validity."
+  },
+  "schema": "/schemas/ep-admissibility-profile.schema.json",
+  "spec": "docs/EP-ADMISSIBILITY-PROFILE-SPEC.md",
+  "related_spec": "docs/EP-ADMISSIBILITY-SPEC.md",
+  "authoring_module": "lib/evidence/admissibility-profiles.js (defineAdmissibilityProfile / computeProfileHash / evaluateAdmissibilityProfile)",
+  "evaluator": "lib/evidence/admissibility.js (closed precedence: unverifiable > conflicted > stale > missing_evidence > admissible)",
+  "profile_hash_construction": "sha256: over RFC-8785/JCS canonical bytes of the profile object (id, version, authored_by, requires, verdicts) with the profile_hash field excluded (lib/canonical-json.js canonicalize + SHA-256).",
+  "annotations": {
+    "ep:admissibility:money-movement:v1": {
+      "reliance_purpose": "money_movement",
+      "action_family": "urn:ep:action:payments.wire_transfer",
+      "description": "Reference bar for irreversible agentic money movement above a relying-party threshold."
+    },
+    "ep:admissibility:config-change:v1": {
+      "reliance_purpose": "config_change",
+      "action_family": "urn:ep:action:config.production_change",
+      "description": "Lighter reference bar for a reversible-with-effort production configuration change."
+    },
+    "ep:admissibility:data-export:v1": {
+      "reliance_purpose": "data_disclosure",
+      "action_family": "urn:ep:action:data.record_export",
+      "description": "Reference bar for bulk export of sensitive records: delegated authority plus a transparency-logged authorization."
+    }
+  },
+  "profiles": [
+    {
+      "id": "ep:admissibility:money-movement:v1",
+      "version": 1,
+      "authored_by": "EMILIA Protocol (reference example, not an authority)",
+      "requires": [
+        {
+          "evidence": "authorization_receipt",
+          "min_assurance": "high",
+          "max_staleness_sec": 300,
+          "checks": [
+            "revocation_checked"
+          ]
+        },
+        {
+          "evidence": "policy_permit",
+          "max_staleness_sec": 600
+        },
+        {
+          "evidence": "workload_identity",
+          "max_staleness_sec": 3600
+        },
+        {
+          "evidence": "witness_quorum",
+          "optional": true,
+          "params": {
+            "k": 2
+          }
+        },
+        {
+          "evidence": "consumption_proof",
+          "optional": true
+        }
+      ],
+      "verdicts": [
+        "admissible",
+        "missing_evidence",
+        "stale",
+        "conflicted",
+        "unverifiable"
+      ],
+      "profile_hash": "sha256:c6f29ddec7e82805c5b140be557976dc62536fea5f157a8f4f4d066f30454dfb"
+    },
+    {
+      "id": "ep:admissibility:config-change:v1",
+      "version": 1,
+      "authored_by": "EMILIA Protocol (reference example, not an authority)",
+      "requires": [
+        {
+          "evidence": "authorization_receipt",
+          "min_assurance": "verified",
+          "max_staleness_sec": 900,
+          "checks": [
+            "revocation_checked"
+          ]
+        },
+        {
+          "evidence": "policy_permit",
+          "max_staleness_sec": 900,
+          "optional": true
+        }
+      ],
+      "verdicts": [
+        "admissible",
+        "missing_evidence",
+        "stale",
+        "conflicted",
+        "unverifiable"
+      ],
+      "profile_hash": "sha256:ac09e12334ed9a1bb004c2cce82661e75ea8c0a1406f56bee7ee5d64d0487740"
+    },
+    {
+      "id": "ep:admissibility:data-export:v1",
+      "version": 1,
+      "authored_by": "EMILIA Protocol (reference example, not an authority)",
+      "requires": [
+        {
+          "evidence": "authorization_receipt",
+          "min_assurance": "high",
+          "max_staleness_sec": 900,
+          "checks": [
+            "revocation_checked"
+          ]
+        },
+        {
+          "evidence": "delegation",
+          "max_staleness_sec": 86400,
+          "checks": [
+            "revocation_checked"
+          ]
+        },
+        {
+          "evidence": "policy_permit",
+          "max_staleness_sec": 900
+        },
+        {
+          "evidence": "transparency",
+          "checks": [
+            "transparency_included"
+          ]
+        },
+        {
+          "evidence": "recourse_reference",
+          "optional": true
+        }
+      ],
+      "verdicts": [
+        "admissible",
+        "missing_evidence",
+        "stale",
+        "conflicted",
+        "unverifiable"
+      ],
+      "profile_hash": "sha256:dadcc0caaaad59f9bd31fad52baff9d1bb2c773052fe5eec3892105c96341205"
+    }
+  ]
+}
