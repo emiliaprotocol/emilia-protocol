@@ -1,12 +1,13 @@
-# Authorization-Receipt Interop Pack — IETF 126 Side Meeting
+# Authorization-Receipt Interop Pack
 
-Interop tooling for a plugfest on signed, offline-verifiable authorization
-receipts and related artifacts (device signoffs, multi-party quorum, revocation,
-time attestation, provenance chains, evidence records). This pack exists so any
-implementation — in any language, from any organization — can run the same
-public vectors and report its own results. It is interop tooling, not
-marketing: no participant grades another, and running the vectors implies no
-endorsement of any project.
+Async interop tooling for signed, offline-verifiable authorization receipts and
+related artifacts (device signoffs, multi-party quorum, revocation, time
+attestation, provenance chains, evidence records). This pack exists so any
+implementation, in any language, from any organization, can run the same public
+vectors and report its own results, on its own machine, on its own schedule. It
+is interop tooling, not marketing: no participant grades another, there is no
+host and no central scoreboard, and running the vectors implies no endorsement
+of any project.
 
 The formats under test are specified in the `EP-*` documents in this repository
 and in the companion Internet-Drafts (`draft-schrock-ep-authorization-receipts`,
@@ -22,8 +23,8 @@ network, no shared state. Reject vectors are adversarial: each one pins a
 single invariant (tampered payload, wrong key, malformed signature, broken
 anchor, missing user verification, quorum-ordering violation, …).
 
-Suites and vector counts as of 2026-07-05 (the `SUITES` list in
-[`../run.mjs`](../run.mjs) is authoritative if this table drifts):
+Suites and vector counts as of 2026-07-06 (16 suites, 158 vectors; the `SUITES`
+list in [`../run.mjs`](../run.mjs) is authoritative if this table drifts):
 
 | Suite file | Format | Vectors |
 |---|---|---|
@@ -37,6 +38,12 @@ Suites and vector counts as of 2026-07-05 (the `SUITES` list in
 | `provenance.exec.v1.json` | EP-PROVENANCE-CHAIN-v1 | 6 |
 | `evidence-record.v1.json` | EP-EVIDENCE-RECORD-v1 | 5 |
 | `canonicalization.v1.json` | EP-CANONICALIZATION-v1 (differential RFC 8785 / I-JSON battery, digest-pinned) | 35 |
+| `boundary.v1.json` | EP-BOUNDARY-v1 (verifier trust-boundary refusals) | 3 |
+| `currency.v1.json` | EP-CURRENCY-v1 (two-valued currency-at-T, unknown when offline) | 12 |
+| `initiator-attestation.v1.json` | EP-INITIATOR-ATTESTATION-v1 (validation + hostile-text neutralization) | 11 |
+| `consumption-proof.v1.json` | EP-CONSUMPTION-PROOF-v1 (sparse-Merkle one-time nonce) | 6 |
+| `witness.v1.json` | EP-WITNESS-v1 (k-of-n cosignature quorum) | 6 |
+| `timestamp-proof.v1.json` | EP-TIMESTAMP-PROOF-v1 (RFC 3161, real openssl-minted TimeStampTokens) | 13 |
 
 Format definitions, field-by-field: [`../../CONFORMANCE.md`](../../CONFORMANCE.md)
 and [`../vectors/README.md`](../vectors/README.md). The optional JWS (RFC 7515)
@@ -89,16 +96,16 @@ node conformance/run.mjs
 ```
 
 That command feeds every suite through the repository's JavaScript, Python, and
-Go verifiers. These are three languages in one repository — a consistency
-check, not independent implementations; an independent clean-room
-reimplementation (COSA) is underway. At the plugfest they are simply one
-participating implementation set, reported in the matrix like everyone else's.
+Go verifiers. These are three languages in one repository, a consistency check,
+not independent implementations; an independent clean-room reimplementation
+(COSA) is underway. They are simply one participating implementation set,
+reported in the matrix like everyone else's.
 
 ## Self-reported results matrix
 
 Results are self-reported. Participants run the vectors themselves, on their
-own machines, and report their own numbers — nobody grades anyone, and no
-result in this table is verified by the meeting organizers. A "pass" means the
+own machines, and report their own numbers. Nobody grades anyone, and no result
+in this table is verified by anyone but the participant who ran it. A "pass" means the
 implementation returned each vector's `expect.valid`: it demonstrates
 format-level agreement on signature, binding, and structural checks, never the
 business correctness of any authorized action, and it is not a certification.
@@ -108,31 +115,32 @@ Copy a row per (implementation, suite) pair:
 | Implementation (org / repo / language) | Suite | Pass/Fail | Notes |
 |---|---|---|---|
 | _example: acme-verify (Acme, Rust)_ | `receipts.v1.json` | pass (13/13) | anchor proofs not implemented; 2 anchor vectors skipped and counted as fail |
-| _example: repo reference set (JS+Py+Go, one repo)_ | all 15 suites | pass (145/145) | consistency check across three languages, single repository |
+| _example: repo reference set (JS+Py+Go, one repo)_ | all 16 suites | pass (158/158) | consistency check across three languages, single repository |
 |  |  |  |  |
 |  |  |  |  |
 
 Notes worth recording: partial-suite coverage, vectors your implementation
 rejects for a *different* reason than the one pinned, spec ambiguities you hit
-(those are the plugfest's most useful output), and library versions.
+(those are the most useful output of the exercise), and library versions.
 
-## Side-meeting logistics (placeholder)
+## Participation is asynchronous
 
-- **When/where:** IETF 126, Vienna, 18–24 July 2026. Room and slot: **TBD** —
-  will be listed on the IETF 126 side-meeting wiki once confirmed.
-- **Sign-up:** TBD (wiki page link to follow).
-- **Format:** bring a laptop with your implementation; the vectors run fully
-  offline, so no venue network dependency. Rough agenda: 10 min format
-  walkthrough, ~60 min running suites and filling in the matrix, remainder on
-  divergences and spec-ambiguity findings.
-- **Remote participation:** results may be submitted asynchronously by PR or
-  email; the matrix does not require attendance.
-- **Contact:** TBD.
+There is no scheduled call, no host, and no attendance requirement. Run the
+vectors whenever you like, on your own machine, and report results by opening a
+GitHub issue or pull request against this repository with your rows. The vectors
+are fully offline and self-contained, so nothing depends on a venue, a network,
+or a meeting time.
+
+If an interop session is convened somewhere (for example around IETF 126 in
+Vienna, 18 to 24 July 2026), this pack can serve it, but the pack does not
+depend on any such session, and this repository does not organize, host, or
+grade one. The matrix above is a template anyone can copy, not a scoreboard we
+maintain.
 
 ## Reporting divergences
 
 If two implementations disagree on a vector, or a vector contradicts the spec
-text, that is the most valuable outcome a plugfest can produce — please open a
+text, that is the most valuable outcome this exercise can produce. Please open a
 GitHub issue with the vector id and both results. Protocol correctness outranks
 backward compatibility.
 
