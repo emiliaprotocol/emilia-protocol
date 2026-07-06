@@ -3,6 +3,47 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.6.0 (2026-07-06)
+
+### Added
+**EP-CONSENT-GRANT-v1** (`./consent-grant`): the scoped, revocable STANDING
+consent grant naming `{asset, control_verb, expiry}`. It fills binding 3 (Consent
+Grant) of the Command Authority Envelope (draft-morrison-ot-command-authority) as
+its own first-class object, DISTINCT from the per-action receipt at the binding
+moment (CAE binding 4, which is what an EP receipt IS). The grant is standing
+authority issued once over a window; the receipt is the per-action authorization.
+
+- **The object.** `{ profile: "EP-CONSENT-GRANT-v1", grant_id, principal, asset,
+  control_verb, constraints?, issued_at, expires_at, grant_hash, signature }`.
+  `grant_hash` is `sha256:` over the JCS/RFC-8785 canonical bytes of the grant
+  with grant_hash and signature excluded; `signature` is the principal's
+  device-bound Ed25519 signature over those same bytes. Reuses the package's
+  `canonicalize()` + SHA-256 and the `crypto.verify(null, ...)` Ed25519
+  convention exactly, no new primitives.
+- **`buildConsentGrant(spec, signer)`** reference issuer (stamps grant_hash,
+  signs), plus `computeGrantHash(grant)` / `verifyGrantHash(grant)`.
+- **`verifyConsentGrant(grant, pinnedPrincipalKey, { now, revocation, revokerKeys })`**
+  returns `{ valid, checks: { hash, signature, within_window }, reason? }`.
+  Fail-closed with a distinct reason: a bad grant_hash, an unpinned or bad
+  principal signature, a `now` outside `[issued_at, expires_at]`, or a valid
+  revocation statement binding the grant_hash (`grant_revoked`). Revocation is
+  checked with the existing `verifyRevocation` against a `commit`-typed target
+  keyed on grant_hash; an unpinned revoker cannot revoke.
+- **`verifyReceiptUnderGrant(receipt, grant, opts)`** is the composition: the
+  per-action receipt acts under the grant by carrying grant_hash. Returns
+  `{ ok, checks: { grant, asset_covered, verb_covered, grant_binding }, reason? }`
+  and refuses with a distinct reason on any mismatch: `grant_signature_invalid`,
+  `grant_expired`, `grant_revoked`, `asset_mismatch`, `verb_mismatch`,
+  `grant_binding_mismatch`. What it proves: the grant is authentic and in-window
+  and the receipt is scoped-and-bound to it. What it does NOT prove: business
+  correctness, or CURRENT validity. Offline verification of either artifact is
+  authenticity as of commit; revocation currency needs a fresh revocation
+  snapshot, the same as any EP status.
+
+Schema: `public/schemas/ep-consent-grant.schema.json`. Spec:
+`docs/EP-CONSENT-GRANT-SPEC.md`. This is a candidate profile to fold into the
+authority / receipts drafts in a future revision, shipped in code today.
+
 ## 3.5.0 (2026-07-05)
 
 ### Added

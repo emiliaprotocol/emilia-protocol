@@ -2,10 +2,9 @@
 # EMILIA Protocol mapping against the Command Authority Envelope (draft-morrison-ot-command-authority)
 
 A row-by-row pass of EP artifacts against the CAE's five bindings, offered as
-"which slots EP fills, which it deliberately does not, and where a claim is a
-gap rather than a pass." EP does not fill the whole envelope, and says so; it
-fills the human-authorization slots and composes with the rest through the
-shared action digest. Carrier for the CAE slot is
+which slots EP fills as first-class artifacts and which it deliberately leaves
+to other layers. EP fills the human-authorization slots precisely and composes
+with the rest through the shared action digest. Carrier for the CAE slot is
 draft-schrock-human-authorization-binding.
 
 ## The five bindings
@@ -14,24 +13,32 @@ draft-schrock-human-authorization-binding.
 |---|---|---|---|
 | **1. Agent Identity** (machine identity, resolvable independently of the conduit) | **Out of EP scope, by design.** EP is human authorization, not machine identity. An EP receipt verifies identically whichever agent presents it. | filled by WIMSE workload identity / RFC 9421 / DNSSEC discovery; EP composes with it through the action-digest join key, never carries it | EP never asserts agent identity; conflating the two is the "possession is not authority" error EP refuses |
 | **2. Principal Reference** (the human on whose authority the agent acts) | **EP fills this.** The receipt names the accountable human approver; the Approver Directory binds that key to a named principal at a graded identity-proofing level. | EP-RECEIPT-v1 `approver`; Approver Directory entry (IAL/eIDAS/1311 grade carried) | the binding of key to natural person is only as strong as the enrollment ceremony's proofing; EP states that grade, it does not manufacture it |
-| **3. Consent Grant** (scoped, revocable, naming asset + control verb + expiry) | **Partial, expressed through the policy layer, not a single first-class object.** See Question 1 below. | the receipt's `policy` / policy_hash; Approver Directory scope; an EP admissibility profile (named, content-addressed, revocable-by-repin bar); optional EP delegation for a scoped grant; revocable via an EP revocation statement | EP does not today ship one artifact that is exactly a `{asset, control_verb, expiry}` consent grant; if the CAE wants that distinct from the per-action receipt, it is a profile EP can define |
+| **3. Consent Grant** (scoped, revocable, naming asset + control verb + expiry) | **EP fills this. EP now SHIPS EP-CONSENT-GRANT-v1 as the first-class object for binding 3.** A standing, scoped, revocable grant naming exactly `{asset, control_verb, expiry}`, distinct from the per-action receipt, with a reference issuer, an offline verifier, and the receipt composition. See Question 1 below. | EP-CONSENT-GRANT-v1 (`packages/verify/consent-grant.js`; schema `public/schemas/ep-consent-grant.schema.json`; spec `docs/EP-CONSENT-GRANT-SPEC.md`); grant_hash bound + Ed25519 principal signature; a receipt acts under it by carrying grant_hash; revocable via an EP revocation statement against the grant_hash | the grant is standing authority; the per-action receipt is the binding moment. Offline verification of either is authenticity as of commit, not current validity, so revocation currency needs a fresh revocation snapshot (see Question 2) |
 | **4. Binding Moment** (per-action human authorization at the moment of consequence, mutual veto) | **EP fills this. This is what an EP receipt IS.** A named human's device-bound signature over the exact action, before execution. The mutual veto is native: an approval or a signed, terminal denial are the two outcomes, and the initiator cannot railroad the human (separation of duties, initiator MUST NOT approve). | EP-RECEIPT-v1 / EP signoff; signed DENIAL as a first-class terminal outcome; EP-QUORUM for M-of-N | offline verification establishes authenticity at the moment of signing, not current validity (see Question 2) |
 | **5. Audit Record** (append-only, provenance-labelled, attribution across agent/principal/consent/time) | **EP composes here via SCITT, as you proposed.** The receipt is the statement; the append-only property comes from a transparency log run by others. | EP receipt + EP-AEG evidence graph + effect_attestation (executor-signed observed-effect digest) registered as SCITT Signed Statements (RFC 9943) | EP produces the statement the log ingests; it does not run the log. Transparency-log inclusion proves logging per the log's policy, never that a human authorized the action |
 
 ## Blake's three questions
 
 **1. Standing consent (grant) versus per-action sign-off (binding moment).**
-The EP receipt is the binding moment, not the consent grant. The scoped,
-revocable grant is expressed through EP's policy layer: the policy_hash the
-receipt references, the Approver Directory that scopes who may consent for which
-action class, and an admissibility profile as a named, content-addressed,
-revocable bar that names the requirements for an action family. Revocation is an
-EP revocation statement against that policy or grant. What EP does not have today
-is a single artifact that is exactly a `{asset, control_verb, expiry}` grant,
-independently revocable, distinct from the per-action receipt. If the CAE wants
-that as its own object, it is a clean profile to define; the pieces (scoping,
-pinning, revocation) already exist, they are just not assembled into one named
-grant. That is a gap, stated as one.
+The EP receipt is the binding moment. The scoped, revocable STANDING grant is now
+its own first-class artifact: EP ships EP-CONSENT-GRANT-v1, a named object that is
+exactly a `{asset, control_verb, expiry}` grant, independently revocable, distinct
+from the per-action receipt. The grant carries `{profile, grant_id, principal,
+asset, control_verb, constraints?, issued_at, expires_at, grant_hash, signature}`,
+where grant_hash is the JCS/SHA-256 hash over the grant body and the principal
+signs those same bytes with the same Ed25519 convention EP uses everywhere. It has
+a reference issuer, an offline verifier (`verifyConsentGrant`, fail-closed on bad
+hash, unpinned or bad principal signature, out-of-window, or a valid revocation
+statement against the grant_hash), and a composition (`verifyReceiptUnderGrant`)
+in which a per-action receipt acts under the grant by carrying its grant_hash and
+being covered by the grant's asset and control_verb. The pieces EP already had
+(policy_hash the receipt references, Approver Directory scope, admissibility
+profiles, delegation, revocation statements) still compose, but binding 3 no
+longer depends on assembling them per call site: it is one named grant. See
+`packages/verify/consent-grant.js`, `public/schemas/ep-consent-grant.schema.json`,
+and `docs/EP-CONSENT-GRANT-SPEC.md`. It is a candidate profile to fold into the
+authority / receipts drafts in a future revision, shipped in code today. Binding 3
+is filled by a first-class object.
 
 **2. Revocation against offline verifiability.**
 EP is explicit that offline verification establishes authenticity as of commit,
