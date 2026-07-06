@@ -95,7 +95,12 @@ reimplementation agrees on the same vectors.
   sufficient for a stated reliance purpose.
 - **Carrier**: EP-AEG-v1 action evidence graph (content-addressed references
   to heterogeneous signed artifacts) + tamper-evident gate evidence log
-  (every allow AND deny appended); signed EP-RELIANCE-RESULT-v1 verdict.
+  (every allow AND deny appended); signed EP-RELIANCE-RESULT-v1 verdict. The
+  graph now carries two additional node types: `ceremony_evidence`
+  (signing-ceremony telemetry, the challenge issued/viewed/approved instants,
+  enabling a minimum-review-latency rule that surfaces a below-floor approval
+  as a conflict) and `effect_attestation` (executor-signed observed-effect
+  digest bound to the receipt, mapped under C-012).
 - **Verifier and verification rule**: offline replay: edges are presenter
   claims verified against artifact bytes (a lying edge → unverifiable; a
   required absent edge → missing_evidence); deterministic policy replay to a
@@ -109,7 +114,12 @@ reimplementation agrees on the same vectors.
 - **Implementation status**: implemented.
 - **Specification status**: specified — draft-schrock-ep-action-evidence-graph.
 - **Dependency**: reliance policy is supplied by the relying party, never
-  read from the presented graph.
+  read from the presented graph. The policy MAY be expressed as a named,
+  content-addressed EP-ADMISSIBILITY-PROFILE (an `id` plus a `profile_hash`
+  over its canonical bytes) that the relying party authors and pins; the
+  verdict names which `profile_hash` was in force and carries a deterministic
+  replay digest, so two parties that pin the same hash provably evaluate the
+  same bar. EMILIA never authors the bar and is never in the trust path.
 - **Accepted result (success behavior)**: a signed EP-RELIANCE-RESULT-v1 —
   the verdict, the policy identity applied, and a replay digest so a third
   party recomputes the same verdict. It is accountability, never authority:
@@ -118,7 +128,12 @@ reimplementation agrees on the same vectors.
 - **Evidence type**: local-harness — deterministic example vector plus
   unit test, one repository.
 - **Evidence reference**: `examples/evidence-graph/evidence-graph-vector.mjs`
-  + `.json` (deterministic, negatives enforced), `tests/evidence-graph.test.js`.
+  + `.json` (deterministic, negatives enforced), `tests/evidence-graph.test.js`,
+  `tests/admissibility-profiles.test.js` (same evidence bundle, two pinned
+  profiles, one admissible and one missing_evidence, replay digests differ
+  deterministically), `docs/EP-ADMISSIBILITY-PROFILE-SPEC.md`,
+  `public/.well-known/ep-admissibility-profiles.json` (reference profiles,
+  in-band non-authoritative-registry disclaimer).
 
 ## C-007 — Evidence provenance
 
@@ -126,7 +141,12 @@ reimplementation agrees on the same vectors.
   execution attestation, transparency registration — is verifiable.
 - **Carrier**: EP provenance chains, evidence records (RFC 4998-style
   renewal), trust receipts, execution attestations; optional SCITT/COSE_Sign1
-  registration (RFC 9943 architecture) with inclusion verified.
+  registration (RFC 9943 architecture) with inclusion verified; optional
+  independent witness cosignatures (EP-WITNESS-v1: a domain-separated
+  co-signature over the log's committed checkpoint bytes) so that log
+  equivocation becomes detectable when several independent witnesses compare
+  heads. A single witness detects nothing; this is stated as scope, not sold
+  as split-view prevention.
 - **Verifier and verification rule**: chain verification against pinned
   roots; transparency-receipt validation kept SEPARATE from native signature
   validation (registration proves logging per service policy, never that a
@@ -152,7 +172,11 @@ reimplementation agrees on the same vectors.
 
 - **Claim**: the authority or artifact relied on is still current.
 - **Carrier**: validity windows on every artifact; portable offline
-  revocation statement + server-state revocation; signed time-attestation.
+  revocation statement + server-state revocation; signed time-attestation,
+  including an RFC-3161 timestamp proof verified offline against a
+  relying-party-pinned TSA key, so an artifact's existence-by-time no longer
+  reduces to trusting the operator's clock (existence-by-time only, never
+  correctness).
 - **Verifier and verification rule**: offline revocation-statement
   verification with bounded-staleness semantics; JS/Python/Go verifiers agree
   on the revocation suites.
@@ -198,7 +222,12 @@ reimplementation agrees on the same vectors.
   signature, anchor }, error }` from the receipt verifier
   (`packages/verify`); `{ verified, accepted, checks }` from the binding
   verifier; the signed EP-RELIANCE-RESULT-v1 verdict (C-005); the
-  enforcement-point reliance packet (C-002).
+  enforcement-point reliance packet (C-002); and, when a named bar is pinned,
+  the EP-ADMISSIBILITY-PROFILE verdict, one of the closed 5-state set bound to
+  the in-force `profile_hash` with a deterministic replay digest. The profile
+  verdict is a constrained, relying-party-pinned result: the bar is authored
+  and pinned by the relying party, evaluated offline, and confers no permission
+  and no correctness by itself.
 - **Verifier and verification rule**: VERIFIED and ACCEPTED are computed
   and reported separately, never collapsed into one boolean — a binding
   from an unpinned issuer reports verified but never accepted (B3); each
@@ -246,7 +275,11 @@ reimplementation agrees on the same vectors.
   enforces freshness in strict mode, `packages/verify/index.js`). Post-execution — EP-AEG-v1 + gate evidence log +
   EP-EXECUTION-INTEGRITY-v1, whose executor is identified but never
   trusted: its signature attributes the executed-action claim to a named
-  key and grants no authority.
+  key and grants no authority. The AEG `effect_attestation` node adds the
+  observed-effect leg: the executor signs `{receipt_id, observed_effect_digest}`
+  after execution, so divergence between the approved bytes and the observed
+  effect is offline-checkable and surfaces as a conflict, never as authority;
+  a bad or unpinned executor signature is inadmissible.
 - **Verifier and verification rule**: each leg has its own verifier and
   its own accepted result. The shared action digest joins the legs (a
   binding and composition aid for C-005/C-010) and makes the join
@@ -383,4 +416,8 @@ reviewers may expect them:
 *Maintained at `docs/standards-engagement/EP-CLAIM-MATRIX-MAPPING.md`.
 Re-keyed to -01's C-IDs 2026-07-04; updated to -02 (C-011, C-012,
 accepted-result + evidence-type fields, Section 18 composition-slots note)
-2026-07-05; boundary.v1.json cross-language cases landed 2026-07-05; will be PR'd to the registry repo when one exists.*
+2026-07-05; boundary.v1.json cross-language cases landed 2026-07-05; new
+carriers added 2026-07-06 (EP-ADMISSIBILITY-PROFILE named/pinnable reliance
+bar under C-005/C-011; `effect_attestation` and `ceremony_evidence` AEG nodes
+under C-005/C-012; EP-WITNESS-v1 witness cosignatures under C-007; RFC-3161
+timestamp proof under C-008); will be PR'd to the registry repo when one exists.*
