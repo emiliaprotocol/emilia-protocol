@@ -1,0 +1,261 @@
+/*
+ * ep_receipt_core.spthy
+ *
+ * First symbolic-crypto model of the EP core receipt lemma.
+ * Unlike the TLA+ (ep_handshake.tla) and Alloy (ep_relations.als,
+ * ep_federation.als) models, this model does NOT treat "signature
+ * verifies" as an axiom: signatures are terms in Tamarin's standard
+ * signing equational theory, and the adversary is the standard
+ * Dolev-Yao network attacker (full control of the network, can
+ * apply all function symbols, learns everything sent).
+ *
+ * What is modeled (maps to draft-schrock-ep-authorization-receipts-04):
+ *   - A human approver holds a device-bound signing key (Sec 5.1
+ *     Class A). The public key is published (the attacker knows it).
+ *   - A relying party pins the human's public key OUT OF BAND
+ *     (rule RP_Pin_Key consumes the key fact directly, not via the
+ *     network), abstracting the Approver Directory (Sec 5.2).
+ *   - A user-verification (UV) event MUST precede every human
+ *     signature: the signing rule can only consume the linear
+ *     UVDone fact, which only the UV rule produces. A signature
+ *     cannot exist in any trace without a prior UV event for
+ *     exactly that action and nonce (Sec 5.1: user-verification
+ *     flag MUST be required).
+ *   - The signed message is the Authorization Context abstracted as
+ *     <'ep_signoff_v1', h(action), nonce> (Sec 4: the approver signs
+ *     the hash of the JCS-canonical context containing the action
+ *     hash and a fresh unique nonce).
+ *   - The attacker can request the human to sign ARBITRARY actions
+ *     of the attacker's choice (rule Request_Signoff takes the
+ *     action from In(), i.e. from the attacker). This is what rules
+ *     out cross-action replay: the attacker holds honest signatures
+ *     over any other actions it likes and still cannot get action A
+ *     accepted without a signature over exactly A.
+ *   - The relying party accepts only if the signature verifies under
+ *     the pinned key over the exact action term (Sec 9 offline
+ *     verification, reduced to the signature leg).
+ *   - Key compromise (Reveal_Human_Ltk) is modeled so the lemmas
+ *     state exactly which guarantee is lost when the device key
+ *     leaks.
+ *
+ * OUT OF SCOPE (deliberately, this is the honest boundary; each is
+ * the next model's job, not silently assumed proven):
+ *   - The Approver Directory, Merkle receipt log, checkpoints and
+ *     inclusion proofs: key pinning is modeled as a single
+ *     out-of-band step, not as the directory protocol.
+ *   - WebAuthn attestation internals, authenticator hardware, and
+ *     clientDataJSON parsing: UV is modeled as an atomic gating
+ *     event, i.e. we ASSUME the authenticator enforces UV before
+ *     releasing a signature (the spec's MUST); we do not prove
+ *     WebAuthn itself.
+ *   - Policy evaluation, m-of-n quorum, separation of duties,
+ *     expiry / wall-clock time (covered by the TLA+/Alloy models
+ *     at the state-machine level).
+ *   - JCS canonicalization: the symbolic model assumes message
+ *     encoding is injective (standard symbolic assumption);
+ *     canonicalization robustness is covered by the
+ *     EP-CANONICALIZATION-v1 vector suite, not here.
+ *   - Algorithm-specific properties (ES256/Ed25519/ML-DSA):
+ *     'sign' is the abstract Dolev-Yao signature with perfect
+ *     cryptography; no computational claim is made.
+ *
+ * One-time consumption (Sec 6, guarantee G3): the model has TWO
+ * relying-party accept rules. RP_Accept_NoConsume does no
+ * consumption check; RP_Accept_Consume enforces one-time
+ * consumption per (human, nonce) via the ConsumeOnce restriction,
+ * abstracting the consumption record. Lemma
+ * unchecked_acceptance_is_injective over the unchecked rule is
+ * EXPECTED TO BE FALSIFIED (same-receipt double acceptance), which
+ * is precisely why the spec mandates the consumption record; the
+ * checked variant is then proven injective.
+ *
+ * Run (see README.md in this directory; no official Tamarin image
+ * exists on Docker Hub as of 2026-07-05, this third-party image
+ * carries the stock tamarin-prover 1.10.0 binary and Maude 3.4):
+ *   docker run --rm -v "$PWD":/work -w /work \
+ *     lmandrelli/tamarin-prover-and-batch:latest \
+ *     tamarin-prover --prove ep_receipt_core.spthy
+ */
+
+theory ep_receipt_core
+begin
+
+builtins: signing, hashing
+
+/* ------------------------------------------------------------------
+ * 1. Enrollment: a human approver generates a device-bound signing
+ *    key. The public key is published, so the Dolev-Yao attacker
+ *    always knows it (security must not rest on pk secrecy).
+ * ------------------------------------------------------------------ */
+rule Register_Human_Key:
+    [ Fr(~ltk) ]
+  --[ RegisterKey($H) ]->
+    [ !HumanLtk($H, ~ltk)
+    , !HumanPk($H, pk(~ltk))
+    , Out(pk(~ltk))
+    ]
+
+/* ------------------------------------------------------------------
+ * 2. Out-of-band pinning: the relying party pins the human's public
+ *    key directly from the enrollment fact, NOT from the network.
+ *    This abstracts the signed Approver Directory (Sec 5.2): the
+ *    directory protocol itself is out of scope here.
+ * ------------------------------------------------------------------ */
+rule RP_Pin_Key:
+    [ !HumanPk($H, pkH) ]
+  --[ PinKey($RP, $H, pkH) ]->
+    [ !PinnedKey($RP, $H, pkH) ]
+
+/* ------------------------------------------------------------------
+ * 3. Signoff request: the ACTION COMES FROM THE NETWORK, i.e. the
+ *    attacker chooses which actions the human is asked to approve.
+ *    A fresh nonce is drawn per authorization attempt (Sec 4:
+ *    globally unique CSPRNG nonce).
+ * ------------------------------------------------------------------ */
+rule Request_Signoff:
+    [ In(a), Fr(~n) ]
+  --[ Requested($H, a, ~n) ]->
+    [ SignRequest($H, a, ~n) ]
+
+/* ------------------------------------------------------------------
+ * 4. User verification: the human performs UV (biometric/PIN) for
+ *    exactly this request. UVDone is a LINEAR fact: each signature
+ *    consumes one UV event, and no rule other than this one
+ *    produces UVDone, so a human signature cannot exist without a
+ *    preceding UV over the same (action, nonce).
+ * ------------------------------------------------------------------ */
+rule Human_UserVerify:
+    [ SignRequest(H, a, n) ]
+  --[ UV(H, a, n) ]->
+    [ UVDone(H, a, n) ]
+
+/* ------------------------------------------------------------------
+ * 5. Signature: UV-gated. Signs the abstracted Authorization
+ *    Context <tag, h(action), nonce>; the receipt (action, nonce,
+ *    signature) goes to the network, so the attacker holds every
+ *    honest receipt.
+ * ------------------------------------------------------------------ */
+rule Human_Sign_Receipt:
+    [ UVDone(H, a, n)
+    , !HumanLtk(H, ltk)
+    ]
+  --[ Signed(H, a, n) ]->
+    [ Out(<a, n, sign(<'ep_signoff_v1', h(a), n>, ltk)>) ]
+
+/* ------------------------------------------------------------------
+ * 6. Key compromise: the device key can leak. Lemmas below are
+ *    stated relative to this event, so the model says exactly what
+ *    is lost if the authenticator key is extracted.
+ * ------------------------------------------------------------------ */
+rule Reveal_Human_Ltk:
+    [ !HumanLtk(H, ltk) ]
+  --[ RevealLtk(H) ]->
+    [ Out(ltk) ]
+
+/* ------------------------------------------------------------------
+ * 7a. Relying-party acceptance WITHOUT a consumption check: verify
+ *     the signature under the pinned key over the exact action term
+ *     received. This is the pure signature-verification leg.
+ * ------------------------------------------------------------------ */
+rule RP_Accept_NoConsume:
+    [ In(<a, n, sig>)
+    , !PinnedKey(RP, H, pkH)
+    ]
+  --[ Accept(RP, H, a, n)
+    , Eq(verify(sig, <'ep_signoff_v1', h(a), n>, pkH), true)
+    ]->
+    [ ]
+
+/* ------------------------------------------------------------------
+ * 7b. Relying-party acceptance WITH one-time consumption per
+ *     (human, nonce), abstracting the consumption record (Sec 6,
+ *     G3) as the ConsumeOnce restriction.
+ * ------------------------------------------------------------------ */
+rule RP_Accept_Consume:
+    [ In(<a, n, sig>)
+    , !PinnedKey(RP, H, pkH)
+    ]
+  --[ Accept(RP, H, a, n)
+    , AcceptChecked(RP, H, a, n)
+    , Consume(<H, n>)
+    , Eq(verify(sig, <'ep_signoff_v1', h(a), n>, pkH), true)
+    ]->
+    [ ]
+
+restriction Equality:
+  "All x y #i. Eq(x, y) @ #i ==> x = y"
+
+restriction ConsumeOnce:
+  "All x #i #j. Consume(x) @ #i & Consume(x) @ #j ==> #i = #j"
+
+/* ==================================================================
+ * LEMMAS
+ * ================================================================== */
+
+/* (a) EXECUTABILITY: sanity trace. An honest, UV-gated,
+ *     consumption-checked receipt is accepted with no key
+ *     compromise, so the model is not vacuous. */
+lemma executable_honest_receipt:
+  exists-trace
+  "Ex RP H a n #j #k #i.
+      UV(H, a, n) @ #j
+    & Signed(H, a, n) @ #k
+    & AcceptChecked(RP, H, a, n) @ #i
+    & #j < #k & #k < #i
+    & not (Ex #r. RevealLtk(H) @ #r)"
+
+/* (b) CORE AUTHENTICITY: if any relying party accepts a receipt
+ *     naming human H for action a with nonce n, and H's key was not
+ *     compromised before acceptance, then H performed a UV event
+ *     and then a signature over EXACTLY (a, n), both before the
+ *     acceptance. Covers both accept rules. */
+lemma core_authenticity_uv_gated:
+  "All RP H a n #i.
+      Accept(RP, H, a, n) @ #i
+    & not (Ex #r. RevealLtk(H) @ #r & #r < #i)
+    ==> (Ex #j #k.
+            UV(H, a, n) @ #j
+          & Signed(H, a, n) @ #k
+          & #j < #k & #k < #i)"
+
+/* (c) NO-REPLAY-ACROSS-ACTIONS: there is no trace in which a
+ *     receipt for action a is accepted while the uncompromised
+ *     human never signed exactly (a, n). Since the attacker can
+ *     obtain honest signatures over arbitrary OTHER actions
+ *     (Request_Signoff takes the action from the network), this
+ *     rules out transplanting a signature over any a' != a (or
+ *     nonce n' != n) onto action a. */
+lemma no_replay_across_actions:
+  "not (Ex RP H a n #i.
+           Accept(RP, H, a, n) @ #i
+         & not (Ex #r. RevealLtk(H) @ #r & #r < #i)
+         & not (Ex #j. Signed(H, a, n) @ #j & #j < #i))"
+
+/* (d) INJECTIVE ACCEPTANCE with the consumption check: every
+ *     consumption-checked acceptance corresponds to a preceding
+ *     honest signature over exactly (a, n), and no second
+ *     consumption-checked acceptance of the same (H, a, n) exists
+ *     anywhere (injective agreement, given one-time consumption). */
+lemma injective_acceptance_with_consumption:
+  "All RP H a n #i.
+      AcceptChecked(RP, H, a, n) @ #i
+    & not (Ex #r. RevealLtk(H) @ #r & #r < #i)
+    ==> (Ex #k. Signed(H, a, n) @ #k & #k < #i
+         & not (Ex RP2 #i2.
+                   AcceptChecked(RP2, H, a, n) @ #i2
+                 & not (#i2 = #i)))"
+
+/* (e) EXPECTED FALSIFIED, kept deliberately: WITHOUT a consumption
+ *     check, acceptance is NOT injective. The attacker replays the
+ *     same honest receipt and gets it accepted twice. This is the
+ *     known same-action replay that the consumption record (G3)
+ *     exists to prevent; the counterexample Tamarin finds is that
+ *     replay, not a new attack on the signature scheme. */
+lemma unchecked_acceptance_is_injective:
+  "All RP1 RP2 H a n #i1 #i2.
+      Accept(RP1, H, a, n) @ #i1
+    & Accept(RP2, H, a, n) @ #i2
+    & not (Ex #r. RevealLtk(H) @ #r)
+    ==> #i1 = #i2"
+
+end

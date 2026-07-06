@@ -67,6 +67,7 @@
     "ws": "^8.21.0"
   },
   "devDependencies": {
+    "@noble/post-quantum": "^0.6.1",
     "@playwright/test": "^1.61.0",
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/vitest-runner": "^9.6.1",

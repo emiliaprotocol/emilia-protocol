@@ -160,3 +160,50 @@ Without this checkpoint, the entire v1 historical log loses evidentiary value th
 - Authority key management: `AUTHORITY-GOVERNANCE.md` — maintainer HSM policy will need PQ-capable hardware by Phase 2.
 - Federation: `FEDERATION-SEMANTICS.md` — cross-certs include PQ keys by Phase 2.
 - Conformance: the conformance test suite will bump in lockstep with protocol versions.
+
+---
+
+## 9. EP-HYBRID-v1 hybrid envelope (implemented: `packages/verify/pq-hybrid.js`)
+
+**Scope:** EP INFRASTRUCTURE keys, meaning the transparency-log, directory, and checkpoint signing keys that today sign with Ed25519. This is the concrete envelope for the hybrid principle in section 2, implemented as `signHybrid` / `verifyHybrid` in `packages/verify/pq-hybrid.js`.
+
+**Honest status.** This section does NOT change EP's security posture today. EP is not post-quantum secure today. EP-HYBRID-v1 is the format plus verifier logic that makes the migration possible without a flag-day swap. The classical leg (Ed25519 via Node's built-in crypto) is always live. The ML-DSA-65 leg runs only when an ML-DSA backend is present: `packages/verify` ships with zero runtime dependencies, so the backend is either injected by the caller (`mldsaBackend` option) or lazily imported from `@noble/post-quantum/ml-dsa.js` if the consumer has installed it (in this repo it is a devDependency at the repo root, used by the tests; the package.json of `packages/verify` has no `dependencies` entry). When no backend is available the verifier REFUSES with `pq_backend_unavailable`; it never skips the PQ leg and never reports a classical-only result as a valid hybrid. `@noble/post-quantum` is a pure-JS implementation of FIPS 204 and is not a FIPS-validated module.
+
+### 9.1. Envelope
+
+```
+{
+  "alg": "EP-HYBRID-v1",
+  "signature_algos": ["Ed25519", "ML-DSA-65"],
+  "sigs": {
+    "Ed25519":   "<base64url>",
+    "ML-DSA-65": "<base64url>"
+  }
+}
+```
+
+v1 is a FIXED two-algorithm hybrid. Verifiers MUST reject any presented `signature_algos` that is not exactly `["Ed25519", "ML-DSA-65"]` in that order (refusal reason `algo_set_mismatch`), and MUST require exactly one signature per committed algorithm (a committed algorithm with no signature refuses with `missing_signature`; an extra entry refuses with `invalid_envelope`).
+
+### 9.2. Anti-stripping rule (normative)
+
+Every signature in the envelope MUST be computed over a domain-separated signing input that includes a canonical encoding of the full algorithm set:
+
+```
+signing_input = UTF8("emilia-protocol/pq-hybrid/v1") || 0x00
+             || UTF8(JSON.stringify(signature_algos)) || 0x00
+             || message
+```
+
+This is the transcript-commitment rule of section 4.1 applied to the infrastructure-key envelope. Because both legs sign a byte string that commits to `["Ed25519", "ML-DSA-65"]`, an attacker who strips the ML-DSA-65 signature and presents the Ed25519 signature as if a classical-only signature were the whole intent fails twice: the presented algorithm set no longer matches what the verifier requires, and the Ed25519 signature does not verify over the bare message, nor over any signing input that commits to a reduced set. The test suite exercises the stripping path, the algo-set tampering path, and the direct cryptographic commitment (the hybrid Ed25519 signature verifies only over the input committing to the full set).
+
+Refusal reasons are fixed strings so relying parties can branch on them: `invalid_input`, `invalid_envelope`, `algo_set_mismatch`, `missing_signature`, `missing_key`, `classical_signature_invalid`, `pq_signature_invalid`, `pq_backend_unavailable`.
+
+### 9.3. Retroactive-forgery defense: re-anchor BEFORE a CRQC exists
+
+A hybrid envelope protects signatures made from now on. It does nothing for the historical record by itself. Once a CRQC exists, any classical-only signature stops being evidence about the past, because a forger with a CRQC can mint a "historical" Ed25519 signature at will. The defense, in the style of RFC 4998 evidence-record renewal, is timestamp-and-renew while the old algorithm is still secure:
+
+1. BEFORE any CRQC exists, produce a PQ-signed checkpoint (EP-HYBRID-v1 or pure ML-DSA/SLH-DSA) over the Merkle roots of the historical log heads and anchored receipts. This is the same requirement as the Phase 3.5 classical-sunset checkpoint in section 5.
+2. The PQ signature over the historical roots proves those roots existed before the PQ signature was made. A forgery created after a classical break cannot be inside a checkpoint that was published, mirrored, and witnessed before the break.
+3. Renewal is periodic, not one-shot: re-sign the accumulated evidence with then-current primitives before each incumbent algorithm weakens, exactly as RFC 4998 chains ArchiveTimeStamps.
+
+The value of this defense depends entirely on the checkpoint existing BEFORE the break. It cannot be produced retroactively. That is why the envelope and the verifier land now, years ahead of need.

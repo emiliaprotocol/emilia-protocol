@@ -168,6 +168,39 @@ with no counterexample.
 
 ## How to Update This Document
 
+## Tamarin (symbolic, Dolev-Yao) : `tamarin/ep_receipt_core.spthy`
+
+**Status: first symbolic-crypto model, machine-checked 2026-07-05** (tamarin-prover 1.10.0,
+Maude 3.4, via Docker; full tool output and the re-run one-liner are in `formal/tamarin/README.md`).
+Unlike the TLA+/Alloy models above, this model does NOT treat "signature verifies" as an axiom:
+it runs a Dolev-Yao attacker (full network control, may request the human to sign other actions,
+explicit key-compromise rule) against the core receipt lemma.
+
+Verbatim tool summary:
+
+```
+executable_honest_receipt (exists-trace): verified (8 steps)
+core_authenticity_uv_gated (all-traces): verified (12 steps)
+no_replay_across_actions (all-traces): verified (12 steps)
+injective_acceptance_with_consumption (all-traces): verified (6 steps)
+unchecked_acceptance_is_injective (all-traces): falsified - found trace (10 steps)
+```
+
+The falsified lemma is a deliberate, by-design result: it asserts injective acceptance WITHOUT a
+consumption check, and Tamarin's counterexample is a same-receipt replay (the one honest receipt
+delivered twice; no forgery, no key reveal). Adding the one-time-consumption restriction restores
+injectivity, which Tamarin proved. The model thereby demonstrates mechanically that one-time
+consumption is load-bearing, not defense-in-depth.
+
+**Scoped out (stated in the model header):** the Approver Directory / Merkle log / checkpoints
+(pinning is one out-of-band step), WebAuthn attestation internals (user verification is assumed as
+the spec's MUST, not proven), policy/quorum/expiry (covered by the state-machine models above), JCS
+canonicalization (symbolic injective-encoding assumption; exercised by the EP-CANONICALIZATION-v1
+vectors), and any computational/algorithm-specific claim. The full WebAuthn / directory / log
+composition under a symbolic prover remains future work.
+
+---
+
 When a property is verified by a model checker:
 1. Update its status from `Specified — not yet verified` to `Verified (TLC/Alloy, YYYY-MM-DD)`
 2. Commit the `.cfg` / Alloy result file alongside the status update
@@ -175,4 +208,4 @@ When a property is verified by a model checker:
 
 ---
 
-*Last updated: 2026-06-11 — 26 TLA+ properties verified: T1–T20 (2026-04-02) and T21–T26 EP-IX continuity (2026-04-30) all verified by TLC 2.19 across 413,137 states with 0 errors; all 15 `ep_relations.als` assertions + 35 facts, and all 7 `ep_federation.als` (PIP-006) assertions, verified by Alloy 6.0.0 with 0 counterexamples*
+*Last updated: 2026-07-05 (Tamarin core-receipt model added; two-handshake TLC bounded result recorded). Prior: 2026-06-11 — 26 TLA+ properties verified: T1–T20 (2026-04-02) and T21–T26 EP-IX continuity (2026-04-30) all verified by TLC 2.19 across 413,137 states with 0 errors; all 15 `ep_relations.als` assertions + 35 facts, and all 7 `ep_federation.als` (PIP-006) assertions, verified by Alloy 6.0.0 with 0 counterexamples*
