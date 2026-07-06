@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "emilia-verify"
-version = "2.4.0"
+version = "2.4.1"
 description = "Zero-infrastructure verification of EMILIA Protocol trust receipts (Ed25519 + Merkle). Byte-compatible with @emilia-protocol/verify."
 readme = "README.md"
 requires-python = ">=3.9"

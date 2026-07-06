@@ -3,6 +3,20 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.6.1 (2026-07-06)
+
+### Added
+`receiptGrantBindingStrength(receipt, grantHash?)` (`./consent-grant`), returning
+`signed_action | top_level | caller_override | none`, and a top-level
+`binding_strength` field on `verifyReceiptUnderGrant` results. A receipt binds to
+a consent grant most strongly when it carries `grant_hash` inside its SIGNED
+Action Object (covered by the human signature); a caller-supplied hash is still
+honored but labeled `caller_override` (advisory, only as trustworthy as the
+caller). `receiptReferencedGrantHash` now prefers the signed reference over any
+override. The `witness` and `consumption-proof` reference emitters are now
+reachable as package subpaths (`@emilia-protocol/verify/witness.js`,
+`@emilia-protocol/verify/consumption-proof.js`).
+
 ## 3.6.0 (2026-07-06)
 
 ### Added
