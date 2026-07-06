@@ -50,17 +50,18 @@ const OID_MESSAGE_DIGEST = '1.2.840.113549.1.9.4';     // id-messageDigest signe
 const OID_SHA256 = '2.16.840.1.101.3.4.2.1';
 const OID_SHA384 = '2.16.840.1.101.3.4.2.2';
 const OID_SHA512 = '2.16.840.1.101.3.4.2.3';
-const OID_SHA1 = '1.3.14.3.2.26';
 const OID_RSA_ENCRYPTION = '1.2.840.113549.1.1.1';     // rsaEncryption (PKCS1 v1.5)
 const OID_ECDSA_WITH_SHA256 = '1.2.840.10045.4.3.2';
 const OID_ECDSA_WITH_SHA384 = '1.2.840.10045.4.3.3';
 const OID_ECDSA_WITH_SHA512 = '1.2.840.10045.4.3.4';
 
+// SHA-2 only, deliberately: SHA-1 (1.3.14.3.2.26) is collision-broken and a
+// TSA still issuing SHA-1 tokens is itself a trust signal to refuse. A SHA-1
+// digest OID therefore refuses with unsupported_digest_algorithm.
 const DIGEST_OID_TO_NAME = {
   [OID_SHA256]: 'sha256',
   [OID_SHA384]: 'sha384',
   [OID_SHA512]: 'sha512',
-  [OID_SHA1]: 'sha1',
 };
 
 // ── Minimal DER reader. Returns typed TLV nodes; throws on malformed length. ──

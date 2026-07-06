@@ -34,12 +34,29 @@ Abstract
    fail-closed requirement expression.  EP-AEC introduces no new receipt
    type and replaces none; it is the verifier-side glue that lets
    independently specified receipts compose into one accountability
-   decision.
+   decision.  This revision additionally profiles two optional component
+   record types for that composition: the effect attestation, a post-
+   execution record in which the executor signs the receipt identifier
+   together with a digest of the observed effect, and ceremony evidence,
+   a signed record of signing-ceremony telemetry (the challenge issued,
+   viewed, and approved instants and the approver identity) that enables
+   review-latency policies.
 
 Status of This Memo
 
    This Internet-Draft is submitted in full conformance with the
    provisions of BCP 78 and BCP 79.
+
+
+
+
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 1]
+
+Internet-Draft        Authorization Evidence Chains            July 2026
+
 
    Internet-Drafts are working documents of the Internet Engineering
    Task Force (IETF).  Note that other groups may also distribute
@@ -50,13 +67,6 @@ Status of This Memo
    and may be updated, replaced, or obsoleted by other documents at any
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
-
-
-
-Schrock                  Expires 7 January 2027                 [Page 1]
-
-Internet-Draft        Authorization Evidence Chains            July 2026
-
 
    This Internet-Draft will expire on 7 January 2027.
 
@@ -76,20 +86,33 @@ Copyright Notice
 
 Table of Contents
 
-   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
-     1.1.  Scope and non-goals . . . . . . . . . . . . . . . . . . .   3
-   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
+     1.1.  Scope and non-goals . . . . . . . . . . . . . . . . . . .   4
+   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   4
    3.  The Authorization Evidence Chain object . . . . . . . . . . .   4
    4.  Verification algorithm  . . . . . . . . . . . . . . . . . . .   5
    5.  Requirement expressions . . . . . . . . . . . . . . . . . . .   6
-   6.  The human-authorization leg . . . . . . . . . . . . . . . . .   6
-   7.  Security Considerations . . . . . . . . . . . . . . . . . . .   6
-   8.  Relationship to Other Work  . . . . . . . . . . . . . . . . .   7
-   9.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   7
-   10. Implementation Status . . . . . . . . . . . . . . . . . . . .   7
-   11. Normative References  . . . . . . . . . . . . . . . . . . . .   7
-   12. Informative References  . . . . . . . . . . . . . . . . . . .   8
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   9
+   6.  The human-authorization leg . . . . . . . . . . . . . . . . .   7
+   7.  Effect Attestation  . . . . . . . . . . . . . . . . . . . . .   7
+   8.  Ceremony Evidence . . . . . . . . . . . . . . . . . . . . . .   9
+   9.  Security Considerations . . . . . . . . . . . . . . . . . . .  10
+   10. Relationship to Other Work  . . . . . . . . . . . . . . . . .  10
+   11. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  10
+   12. Implementation Status . . . . . . . . . . . . . . . . . . . .  11
+   13. Normative References  . . . . . . . . . . . . . . . . . . . .  11
+   14. Informative References  . . . . . . . . . . . . . . . . . . .  12
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  13
+
+
+
+
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 2]
+
+Internet-Draft        Authorization Evidence Chains            July 2026
+
 
 1.  Introduction
 
@@ -104,15 +127,6 @@ Table of Contents
 
    *  Delegation -- that the agent was authorized to act for a principal
       (e.g. [DRP], [DAAP]).
-
-
-
-
-
-Schrock                  Expires 7 January 2027                 [Page 2]
-
-Internet-Draft        Authorization Evidence Chains            July 2026
-
 
    *  Policy or permit -- that policy permitted the effect before commit
       (e.g. [PERMIT], [AGENTROA]).
@@ -142,6 +156,20 @@ Internet-Draft        Authorization Evidence Chains            July 2026
    exists for the predominantly JSON/JCS receipt cluster described
    above.  This document fills that gap.
 
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 3]
+
+Internet-Draft        Authorization Evidence Chains            July 2026
+
+
 1.1.  Scope and non-goals
 
    EP-AEC defines (1) a composition object that references component
@@ -162,14 +190,6 @@ Internet-Draft        Authorization Evidence Chains            July 2026
    Action Object  the canonical representation of the external effect
       being authorized, as defined by [EP-RECEIPTS] Section 3.
 
-
-
-
-Schrock                  Expires 7 January 2027                 [Page 3]
-
-Internet-Draft        Authorization Evidence Chains            July 2026
-
-
    Canonical action digest  the SHA-256 digest of the JCS [RFC8785]
       serialization of the Action Object, expressed as lowercase
       hexadecimal, optionally prefixed "sha256:".  The Action Object
@@ -189,6 +209,22 @@ Internet-Draft        Authorization Evidence Chains            July 2026
       determines ALLOW.
 
 3.  The Authorization Evidence Chain object
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 4]
+
+Internet-Draft        Authorization Evidence Chains            July 2026
+
 
    {
      "@version": "EP-AEC-v1",
@@ -217,15 +253,6 @@ Internet-Draft        Authorization Evidence Chains            July 2026
       canonical action digest recomputed from "action"; a mismatch is a
       fatal error.
 
-
-
-
-
-Schrock                  Expires 7 January 2027                 [Page 4]
-
-Internet-Draft        Authorization Evidence Chains            July 2026
-
-
    *  "components" (array, REQUIRED, non-empty) -- each has "type"
       (string), "evidence" (object), and optional "label" (string).
 
@@ -245,6 +272,15 @@ Internet-Draft        Authorization Evidence Chains            July 2026
    1.  If C is malformed (missing "@version", wrong version, missing or
        non-object "action", empty "components", or missing
        "requirement"), return DENY.
+
+
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 5]
+
+Internet-Draft        Authorization Evidence Chains            July 2026
+
 
    2.  Compute chain_digest = canonical action digest of C.action.  If
        C.action_digest is present and does not equal chain_digest,
@@ -272,19 +308,20 @@ Internet-Draft        Authorization Evidence Chains            July 2026
 
    5.  Any unexpected error at any step MUST yield DENY.
 
-
-
-
-
-
-Schrock                  Expires 7 January 2027                 [Page 5]
-
-Internet-Draft        Authorization Evidence Chains            July 2026
-
-
    The result SHOULD include, per component, whether it verified and
    whether it was bound, with a reason for any failure, to support
    audit.
+
+   Two optional component record types, the effect attestation
+   (Section 7) and ceremony evidence (Section 8), attach additional
+   evidence rules on top of step 3.  Findings from those rules are
+   conflict-class: they never move the outcome toward ALLOW, and in the
+   graded verdict set used by the reference evaluation (admissible,
+   missing_evidence, stale, conflicted, unverifiable) they downgrade the
+   verdict to "conflicted".  A record whose signature does not verify is
+   "unverifiable", which is strictly worse and is never softened to
+   "conflicted".  No rule in this document ever moves a verdict toward a
+   more admissible one.
 
 5.  Requirement expressions
 
@@ -292,6 +329,14 @@ Internet-Draft        Authorization Evidence Chains            July 2026
 
    expr := term (('AND' | 'OR') term)*
    term := '(' expr ')' | IDENT
+
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 6]
+
+Internet-Draft        Authorization Evidence Chains            July 2026
+
 
    IDENT matches a component type or label in the satisfied set; an
    unknown identifier evaluates to false.  Implementations MUST evaluate
@@ -315,7 +360,153 @@ Internet-Draft        Authorization Evidence Chains            July 2026
    by [EP-QUORUM] and [EP-RECEIPTS] respectively; all other types are
    supplied by the relying party.
 
-7.  Security Considerations
+7.  Effect Attestation
+
+   Every receipt family enumerated in Section 1 attests something about
+   an action before or at authorization time.  None of them states what
+   was then done.  An effect attestation is a post-execution evidence
+   record that closes that "approved X, executed Y" gap: the executor
+   signs the receipt identifier of the authorization it acted under
+   together with a digest of the effect it observed.  Any third party
+   holding both the authorization (which commits to the approved effect)
+   and the effect attestation can check divergence offline: if the
+   observed effect digest differs from the approved action's committed
+   effect digest, "approved X, executed Y" is demonstrated by the two
+   records alone, with no access to the executing system, and in the
+   evidence verdict the divergence surfaces as a conflict.
+
+   Use of this record type is OPTIONAL.  Its component type identifier
+   is "effect_attestation".  When it is used, the following rules apply:
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 7]
+
+Internet-Draft        Authorization Evidence Chains            July 2026
+
+
+   *  The record MUST carry the receipt identifier of the authorization
+      it attests and the digest of the observed effect, and MUST be
+      signed by the executor.  The component verifier for this type
+      returns, alongside "valid" and "action_digest", the fields
+      "receipt_id", "observed_effect_digest", and, where the verifier
+      could read the approved effect out of the referenced
+      authorization, "committed_effect_digest".  Digest values are
+      compared as lowercase hexadecimal after removal of an optional
+      "sha256:" prefix.
+
+   *  An effect attestation whose executor signature does not verify, or
+      whose executor key is not pinned by the relying party, is
+      inadmissible as evidence: the component verifier MUST report it
+      invalid, and it MUST NOT be weighed as effect evidence at all
+      (fail closed).
+
+   *  The committed effect digest against which the observed digest is
+      compared MUST NOT be taken from the presenter.  It is either
+      pinned by the relying party (the "expected_effect_digest" member
+      of the relying-party policy) or read by the component verifier
+      from the referenced authorization; where both are available, the
+      relying-party pin takes precedence.
+
+   *  If the observed effect digest differs from the committed effect
+      digest, the verification result MUST record the reason code
+      "effect_divergence" and treat the finding as a conflict
+      (Section 4); it never moves the outcome toward ALLOW.
+
+   *  A verified effect attestation that carries no observed effect
+      digest MUST likewise be recorded under "effect_divergence" and
+      treated as a conflict (fail closed).
+
+   *  A verified effect attestation with no committed effect digest to
+      compare against MUST record the reason code
+      "effect_commitment_missing" and be treated as a conflict, never as
+      admissible: an observed effect that cannot be tied to an approved
+      effect does not show the effect was approved (fail closed).
+
+   Stated honestly: an effect attestation says what the executor CLAIMS
+   was observed.  It is one more accountable, signed leg in the chain,
+   not ground truth.  Its value is that an executor that misreports the
+   effect is now misreporting in a signed, attributable artifact bound
+   to a specific receipt, and that a divergence between two honest
+   records is checkable offline by any third party holding both.  How
+   the observed effect is represented and digested is action-family
+   specific and out of scope for this document.
+
+
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 8]
+
+Internet-Draft        Authorization Evidence Chains            July 2026
+
+
+8.  Ceremony Evidence
+
+   A human-authorization receipt proves that an accountable human
+   approved the exact action.  It does not show how the approval
+   happened.  Ceremony evidence carries signing-ceremony telemetry as a
+   first-class evidence record: the instants at which the authorization
+   challenge was issued, viewed, and approved, and the approver
+   identity.  Its component type identifier is "ceremony_evidence"; the
+   component verifier for this type returns, alongside "valid" and
+   "action_digest", the fields "approver", "issued_at", "viewed_at", and
+   "approved_at".  The component verifier proves the ceremony record is
+   authentic; the rules below judge what it says.
+
+   Ceremony evidence enables review-latency policies.  An approval that
+   comes in below a policy floor every time is itself evidence of
+   rubber-stamping: the recorded human review contradicts a genuine one,
+   and a relying party MAY weigh it as a conflict.  A relying party
+   adopting such a policy sets a review-latency floor (the
+   "ceremony_min_review_sec" member of the relying-party policy).  When
+   a floor is set, the following rules apply:
+
+   *  The review interval of a verified ceremony record is "approved_at"
+      minus "viewed_at", in whole seconds.
+
+   *  A verified ceremony record whose review interval is strictly below
+      the floor MUST be recorded under the reason code
+      "rubber_stamped_ceremony" and treated as a conflict (Section 4);
+      it never moves the outcome toward ALLOW.
+
+   *  If the telemetry on a verified ceremony record is absent or
+      unusable (a missing or unparseable "viewed_at" or "approved_at",
+      or "approved_at" earlier than "viewed_at"), real review cannot be
+      shown; the record MUST be recorded under the reason code
+      "ceremony_telemetry_missing" and treated as a conflict, never as a
+      silent pass (fail closed).
+
+   *  A ceremony record whose signature does not verify is unverifiable;
+      it is never softened to a conflict.
+
+   When no floor is set, this document attaches no judgment to the
+   telemetry.  Stated honestly: ceremony telemetry is operator-
+   originated.  The issued, viewed, and approved instants are recorded
+   by the operator of the signing ceremony, not by an independent
+   observer; ceremony evidence gives the relying party an accountable,
+   signed record of the claimed timeline, not an independent measurement
+   of human attention.
+
+
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 9]
+
+Internet-Draft        Authorization Evidence Chains            July 2026
+
+
+9.  Security Considerations
 
    Cross-binding (action substitution).  The core threat is splicing
    receipts that authorize different actions into one chain.  Step 3c of
@@ -330,14 +521,6 @@ Internet-Draft        Authorization Evidence Chains            July 2026
    configure verifiers and trust anchors explicitly; an unconfigured
    type is unsatisfied, never assumed.
 
-
-
-
-Schrock                  Expires 7 January 2027                 [Page 6]
-
-Internet-Draft        Authorization Evidence Chains            July 2026
-
-
    Requirement under-specification.  A weak requirement yields a weak
    decision.  Requirements SHOULD name every leg the relying party
    depends on, including the human leg where accountability is required.
@@ -351,7 +534,7 @@ Internet-Draft        Authorization Evidence Chains            July 2026
    the confidentiality and integrity properties of whatever conveys it.
    It is fail-closed by construction (Section 4).
 
-8.  Relationship to Other Work
+10.  Relationship to Other Work
 
    EP-AEC is complementary to, and composes, the efforts in Section 1.
    It is the JSON/JCS analogue of the EAT [RFC9711] detached-bundle
@@ -360,13 +543,26 @@ Internet-Draft        Authorization Evidence Chains            July 2026
    [DRP], [PERMIT], [ACTA], or [AGENTROA]; each plugs in as a component
    type.
 
-9.  IANA Considerations
+11.  IANA Considerations
 
    This document has no IANA actions.  A future revision may request a
    media type (e.g. "application/ep-aec+json") and a registry of
    component type identifiers should the work be adopted.
 
-10.  Implementation Status
+
+
+
+
+
+
+
+
+Schrock                  Expires 7 January 2027                [Page 10]
+
+Internet-Draft        Authorization Evidence Chains            July 2026
+
+
+12.  Implementation Status
 
    A reference verifier and a runnable demonstration (composing a real
    EP human quorum with a policy-permit leg, and rejecting both a cross-
@@ -376,9 +572,13 @@ Internet-Draft        Authorization Evidence Chains            July 2026
    agree on a shared conformance vector set.  The three implementations
    live in one repository and are a cross-language consistency check,
    not clean-room independent implementations; independent
-   implementations remain future interoperability evidence.
+   implementations remain future interoperability evidence.  The
+   evidence rules for the effect-attestation and ceremony-evidence
+   record types (Section 7, Section 8) are implemented in a JavaScript-
+   only reference evaluation in the same repository; they are not yet
+   part of the shared cross-language conformance vector set.
 
-11.  Normative References
+13.  Normative References
 
    [EP-QUORUM]
               Schrock, I., "Multi-Party Quorum Authorization for High-
@@ -386,13 +586,6 @@ Internet-Draft        Authorization Evidence Chains            July 2026
               Internet-Draft, draft-schrock-ep-quorum, June 2026,
               <https://datatracker.ietf.org/doc/draft-schrock-ep-
               quorum/>.
-
-
-
-Schrock                  Expires 7 January 2027                 [Page 7]
-
-Internet-Draft        Authorization Evidence Chains            July 2026
-
 
    [EP-RECEIPTS]
               Schrock, I., "Authorization Receipts for High-Risk Agent
@@ -414,12 +607,23 @@ Internet-Draft        Authorization Evidence Chains            July 2026
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://www.rfc-editor.org/info/rfc8174>.
 
+
+
+
+
+
+
+Schrock                  Expires 7 January 2027                [Page 11]
+
+Internet-Draft        Authorization Evidence Chains            July 2026
+
+
    [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
               Canonicalization Scheme (JCS)", RFC 8785,
               DOI 10.17487/RFC8785, June 2020,
               <https://www.rfc-editor.org/info/rfc8785>.
 
-12.  Informative References
+14.  Informative References
 
    [ACTA]     Farley, A., "Signed Decision Receipts for Machine-to-
               Machine Access Control", Work in Progress, Internet-Draft,
@@ -438,17 +642,6 @@ Internet-Draft        Authorization Evidence Chains            July 2026
               marques-asqav-compliance-receipts, 2026,
               <https://datatracker.ietf.org/doc/draft-marques-asqav-
               compliance-receipts/>.
-
-
-
-
-
-
-
-Schrock                  Expires 7 January 2027                 [Page 8]
-
-Internet-Draft        Authorization Evidence Chains            July 2026
-
 
    [DAAP]     Mishra, "Delegated Agent Authorization Protocol (DAAP)",
               Work in Progress, Internet-Draft, draft-mishra-oauth-
@@ -471,6 +664,15 @@ Internet-Draft        Authorization Evidence Chains            July 2026
               Wallace, "The Entity Attestation Token (EAT)", RFC 9711,
               DOI 10.17487/RFC9711, April 2025,
               <https://www.rfc-editor.org/info/rfc9711>.
+
+
+
+
+
+Schrock                  Expires 7 January 2027                [Page 12]
+
+Internet-Draft        Authorization Evidence Chains            July 2026
+
 
    [SCITT]    IETF SCITT WG, "An Architecture for Trustworthy and
               Transparent Digital Supply Chains", Work in Progress,
@@ -501,4 +703,26 @@ Author's Address
 
 
 
-Schrock                  Expires 7 January 2027                 [Page 9]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 7 January 2027                [Page 13]

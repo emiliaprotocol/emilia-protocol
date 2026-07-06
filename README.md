@@ -131,7 +131,7 @@ EMILIA is an open standard, not a product moat. The core is Apache-2.0 and track
 |---|---|
 | **IETF Internet-Drafts** | Posted: [authorization-receipts](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/) · [quorum](https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/). Staged in [`standards/`](standards/): authorization-evidence-chain (EP-AEC, composition) · evidence-record (EP-EVIDENCE-RECORD, long-term retention). |
 | **Cross-language verifiers** | JavaScript · Python · Go — all three proven to agree on adversarial conformance vectors, every push (`npm run conformance`). A consistency check across one team's ports, not clean-room independent implementations; independent implementations remain future interoperability evidence. |
-| **Formal verification** | 26 TLA+ safety properties (0 errors) · 35 Alloy facts, 22 assertions — both run in CI |
+| **Formal verification** | 26 TLA+ safety properties (0 errors) · 35 Alloy facts, 22 assertions — both run in CI · first symbolic Dolev-Yao model (Tamarin) of the core receipt lemma: core authenticity verified; remove the one-time-consumption check and the prover finds the replay attack ([formal/tamarin/](formal/tamarin/)) |
 | **MCP registries** | Official MCP registry · Glama (Grade A, Official badge) · Smithery |
 | **License** | Apache-2.0 |
 

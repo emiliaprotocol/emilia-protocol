@@ -11,6 +11,7 @@ Each example runs offline (a local policy stub), so you see all three outcomes i
 | CrewAI (Python) | [`crewai_guard.py`](crewai_guard.py) | `python examples/crewai_guard.py` |
 | AutoGen (Python) | [`autogen_guard.py`](autogen_guard.py) | `python examples/autogen_guard.py` |
 | xAI Grok — **live** | [`grok-guard.mjs`](grok-guard.mjs) | `XAI_API_KEY=… node examples/grok-guard.mjs` |
+| Multi-handshake quorum (protocol) | [`multi-handshake/`](multi-handshake/) | `node examples/multi-handshake/compose-and-verify.mjs` |
 
 Shared Python helper: [`emilia_guard.py`](emilia_guard.py) — `guard_action()` and the `guard`
 decorator. HTTP is dependency-injected: pass a `fetch` callable (requests/httpx) for live calls;

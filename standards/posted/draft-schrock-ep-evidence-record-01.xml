@@ -38,7 +38,12 @@
       required to agree on. Those verifiers live in one repository, a
       cross-language consistency check, not clean-room independent
       implementations; independent implementations remain future
-      interoperability evidence.</t>
+      interoperability evidence. This revision additionally defines two
+      OPTIONAL companion profiles, EP-WITNESS-v1 witness cosignatures over a
+      transparency log's committed checkpoint head and an independent RFC 3161
+      time attestation verified offline against a relying-party-pinned
+      time-stamping authority key; both are implemented today in the JavaScript
+      reference verifier only.</t>
     </abstract>
     <note><name>Discussion</name><t>This document depends on
     [draft-schrock-ep-authorization-receipts] and uses its canonicalization and
@@ -66,7 +71,7 @@
         artifact it is given (typically an EP receipt, but any byte string by its
         hash). It does NOT establish that the artifact was correct, nor that a
         renewal actually occurred before the prior algorithm was broken in the
-        wild -- that is an operational discipline (Section 6). It defines no new
+        wild -- that is an operational discipline (<xref target="security"/>). It defines no new
         signature or hash algorithm; it composes existing ones over time.</t>
       </section>
     </section>
@@ -148,6 +153,133 @@
       assumption.</t>
     </section>
 
+    <section anchor="witness"><name>Witness Cosignatures (EP-WITNESS-v1)</name>
+      <t>Evidence intended to outlive its operator should not rest on that
+      operator's log signature alone. A transparency-log operator signs its own
+      checkpoint `{tree_size, root_hash, log_key_id, ...}`; a single operator
+      signature does not make a split view (equivocation) detectable, because
+      the operator can sign two internally-consistent but divergent heads and
+      present one to each of two verifiers. EP-WITNESS-v1 is an OPTIONAL
+      companion profile in which an independent witness cosigns the log's
+      committed checkpoint bytes.</t>
+      <section anchor="witness-construction"><name>Construction</name>
+        <ul>
+          <li>The committed checkpoint is the checkpoint object with the log's
+          own `log_signature` field removed -- exactly the bytes the log itself
+          signed. A witness cosignature MUST be an Ed25519 signature over the
+          SHA-256 digest of the domain separation tag followed by the JCS
+          <xref target="RFC8785"/> canonical serialization of the committed
+          checkpoint.</li>
+          <li>The domain separation tag MUST be the UTF-8 string
+          "EP-WITNESS-COSIGN-v1" followed by a single zero octet. The log's own
+          signature is computed over the untagged canonical bytes (which begin
+          with 0x7b and never contain a zero octet), so the two pre-images are
+          disjoint: a witness cosignature can never be presented as, or
+          confused with, the log signature, and vice versa, even if the same
+          key were misconfigured into both roles.</li>
+          <li>Witness identity is a self-certifying key fingerprint:
+          `witness_id` MUST be the string "witness:sha256:" followed by the
+          first 16 lowercase hex characters of the SHA-256 digest of the
+          witness's Ed25519 public key in SPKI DER form, so anyone holding the
+          public key can recompute and confirm the identifier.</li>
+          <li>A cosignature envelope MUST carry `witness_id` and a base64url
+          Ed25519 `signature`; it MAY echo the head it cosigned (`tree_size`,
+          `root_hash`, `log_key_id`) and MAY carry an `alg` field, which MUST
+          equal "EP-WITNESS-v1" when present.</li>
+        </ul>
+      </section>
+      <section anchor="witness-verify"><name>Verification</name>
+        <t>Verification is fail-closed: every check refuses on missing,
+        malformed, or unrecognized input and never silently passes. A verifier
+        MUST refuse when: the cosignature names a witness identifier that the
+        relying party has not pinned (an unpinned witness is never trusted);
+        `alg` is present and is not "EP-WITNESS-v1"; any echoed head field is
+        present and differs from the checkpoint under verification (a
+        cosignature lifted from a different head refuses before any
+        cryptography runs); the checkpoint cannot be canonically serialized; or
+        the signature does not verify over the domain-tagged committed bytes
+        under the pinned key. A relying party pins witness keys out of band;
+        nothing defaults to trusted.</t>
+        <t>A relying party MAY require k distinct pinned witnesses over one
+        head. The quorum check MUST count each pinned witness identifier at
+        most once (a witness cannot satisfy a threshold by cosigning twice),
+        MUST ignore cosignatures that fail verification or name unpinned
+        witnesses, and MUST treat a witness identifier pinned more than once
+        as ambiguous and drop it rather than trust either entry. Fewer than k
+        distinct valid cosignatures over the one head refuses.</t>
+      </section>
+      <section anchor="witness-scope"><name>What a cosignature proves (honest scope)</name>
+        <t>A cosignature attests only that the named witness observed this
+        head. It does not vouch for the log's honesty or its append-only
+        behavior: a witness signs the bytes it was shown and does not re-derive
+        the tree. It does not establish current validity: it is evidence of
+        observation at cosign time only. A single witness detects nothing.
+        Equivocation becomes DETECTABLE only when multiple independent
+        witnesses -- distinct operators, distinct incentives -- cosign and
+        their views are later compared; the quorum check above is the local,
+        single-view half of that comparison, and cross-view comparison
+        (gossip) remains the deployment's responsibility.</t>
+      </section>
+      <section anchor="witness-relevance"><name>Relevance to long-term evidence</name>
+        <t>Evidence intended to outlive its operator SHOULD reference witnessed
+        heads rather than bare operator-signed checkpoints, and each
+        re-anchoring event in a renewal chain SHOULD itself be anchored to a
+        witnessed head. The pre-quantum retroactive-forgery defense -- a
+        renewal under a stronger algorithm made while the older one is still
+        unbroken -- is only as strong as the independence of the anchoring: a
+        renewal anchored solely to material the operator alone signs adds the
+        operator's word, not an independent observation.</t>
+      </section>
+    </section>
+
+    <section anchor="timeproof"><name>Independent Time Attestation (RFC 3161)</name>
+      <t>The renewal chain in this document time-attests with EP's native,
+      key-pinned time-attestation primitive. This OPTIONAL companion profile
+      adds an interoperable, standards-track alternative for the WHEN: an RFC
+      3161 <xref target="RFC3161"/> timestamp token over the record digest (or
+      over a checkpoint root), verified OFFLINE against a time-stamping
+      authority (TSA) key the relying party has pinned out of band. A verified
+      token establishes that the bytes bound by the digest existed no later
+      than the TSA-asserted genTime, so the age of a record no longer reduces
+      to trusting the operator's own clock.</t>
+      <section anchor="timeproof-verify"><name>Verification</name>
+        <t>A verifier MUST proceed fail-closed and refuse, with a distinct
+        reason, on any failure:</t>
+        <ol>
+          <li>The token MUST parse as an RFC 3161 TimeStampToken: a CMS
+          SignedData <xref target="RFC5652"/> whose encapsulated content type
+          is id-ct-TSTInfo. An unparseable token, a token that is not
+          SignedData, or a token that is not a timestamp token refuses.</li>
+          <li>The TSTInfo messageImprint MUST equal the digest the relying
+          party independently expects (the record digest or checkpoint root it
+          holds). A digest mismatch refuses regardless of who signed the
+          token.</li>
+          <li>The TSA signature MUST verify under a key the relying party has
+          pinned. An empty or absent pinned-key set is an unpinned TSA and
+          refuses; nothing defaults to trusted, and no certificate-chain walk
+          substitutes for the pin.</li>
+          <li>When CMS signed attributes are present, the signature MUST be
+          verified over the DER re-encoding of the SignedAttributes per
+          Section 5.4 of <xref target="RFC5652"/>, the content-type attribute
+          MUST be id-ct-TSTInfo, and the message-digest attribute MUST equal
+          the digest of the encapsulated TSTInfo; any mismatch refuses.</li>
+        </ol>
+        <t>On success the verifier reports the TSA-asserted time and a SHA-256
+        fingerprint of the pinned SPKI key that verified the token, so the
+        record can state which pinned authority stamped it.</t>
+      </section>
+      <section anchor="timeproof-scope"><name>What it does and does not prove</name>
+        <t>A verified token proves existence-by-time only: a TSA the relying
+        party chose to pin asserted that these bytes existed at genTime, i.e.
+        the bytes predate genTime. It does NOT prove the underlying action was
+        correct, authorized, or even sensible; it does not prove the TSA's
+        clock was accurate; it does not prove that no earlier timestamp
+        exists; and, like every offline check in this document, it does not
+        establish current validity or the revocation status of the TSA's
+        credentials (that needs a fresh online status check).</t>
+      </section>
+    </section>
+
     <section anchor="security"><name>Security Considerations</name>
       <t>The central operational requirement is timeliness: a renewal under a
       stronger algorithm MUST be appended while the current algorithm is still
@@ -187,6 +319,16 @@
       cross-language consistency check, not clean-room independent
       implementations; independent implementations remain future
       interoperability evidence.</t>
+      <t>The witness-cosignature and independent-time-attestation profiles
+      added in this revision are implemented today in the JavaScript reference
+      verifier only; the Python and Go ports cover the core evidence-record
+      verification, not these profiles yet. The JavaScript RFC 3161 verifier is
+      a purpose-built minimal DER/CMS reader: it supports a single SignerInfo
+      signed with RSASSA-PKCS1-v1_5 or ECDSA over a SHA-2 digest, with or
+      without CMS signed attributes, and refuses tokens outside that shape
+      (including RSASSA-PSS and multi-signer tokens) rather than
+      force-fitting them. A minimal reference witness cosigner
+      service accompanies the verifier.</t>
     </section>
   </middle>
   <back>
@@ -196,6 +338,8 @@
       <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml"/>
       <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.8785.xml"/>
       <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.4998.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.3161.xml"/>
+      <xi:include href="https://bib.ietf.org/public/rfc/bibxml/reference.RFC.5652.xml"/>
       <reference anchor="draft-schrock-ep-authorization-receipts" target="https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/">
         <front>
           <title>Authorization Receipts for High-Risk Agent Actions (EP)</title>

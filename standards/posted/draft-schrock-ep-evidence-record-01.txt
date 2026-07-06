@@ -32,6 +32,12 @@ Abstract
    agree on.  Those verifiers live in one repository, a cross-language
    consistency check, not clean-room independent implementations;
    independent implementations remain future interoperability evidence.
+   This revision additionally defines two OPTIONAL companion profiles,
+   EP-WITNESS-v1 witness cosignatures over a transparency log's
+   committed checkpoint head and an independent RFC 3161 time
+   attestation verified offline against a relying-party-pinned time-
+   stamping authority key; both are implemented today in the JavaScript
+   reference verifier only.
 
 Discussion
 
@@ -43,12 +49,6 @@ Status of This Memo
    This Internet-Draft is submitted in full conformance with the
    provisions of BCP 78 and BCP 79.
 
-   Internet-Drafts are working documents of the Internet Engineering
-   Task Force (IETF).  Note that other groups may also distribute
-   working documents as Internet-Drafts.  The list of current Internet-
-   Drafts is at https://datatracker.ietf.org/drafts/current/.
-
-
 
 
 
@@ -57,6 +57,11 @@ Schrock                  Expires 7 January 2027                 [Page 1]
 
 Internet-Draft             EP Evidence Records                 July 2026
 
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
 
    Internet-Drafts are draft documents valid for a maximum of six months
    and may be updated, replaced, or obsoleted by other documents at any
@@ -81,19 +86,35 @@ Copyright Notice
 
 Table of Contents
 
-   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   3
      1.1.  Scope and non-goals . . . . . . . . . . . . . . . . . . .   3
    2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
-   3.  The renewal chain . . . . . . . . . . . . . . . . . . . . . .   3
+   3.  The renewal chain . . . . . . . . . . . . . . . . . . . . . .   4
    4.  Verification algorithm  . . . . . . . . . . . . . . . . . . .   4
    5.  Crypto-agility  . . . . . . . . . . . . . . . . . . . . . . .   5
-   6.  Security Considerations . . . . . . . . . . . . . . . . . . .   5
-   7.  Relationship to Other Work  . . . . . . . . . . . . . . . . .   5
-   8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   5
-   9.  Implementation Status . . . . . . . . . . . . . . . . . . . .   6
-   10. Normative References  . . . . . . . . . . . . . . . . . . . .   6
-   11. Informative References  . . . . . . . . . . . . . . . . . . .   6
-   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   7
+   6.  Witness Cosignatures (EP-WITNESS-v1)  . . . . . . . . . . . .   5
+     6.1.  Construction  . . . . . . . . . . . . . . . . . . . . . .   5
+     6.2.  Verification  . . . . . . . . . . . . . . . . . . . . . .   6
+     6.3.  What a cosignature proves (honest scope)  . . . . . . . .   6
+     6.4.  Relevance to long-term evidence . . . . . . . . . . . . .   7
+   7.  Independent Time Attestation (RFC 3161) . . . . . . . . . . .   7
+     7.1.  Verification  . . . . . . . . . . . . . . . . . . . . . .   7
+     7.2.  What it does and does not prove . . . . . . . . . . . . .   8
+   8.  Security Considerations . . . . . . . . . . . . . . . . . . .   8
+   9.  Relationship to Other Work  . . . . . . . . . . . . . . . . .   8
+   10. IANA Considerations . . . . . . . . . . . . . . . . . . . . .   9
+   11. Implementation Status . . . . . . . . . . . . . . . . . . . .   9
+   12. Normative References  . . . . . . . . . . . . . . . . . . . .   9
+   13. Informative References  . . . . . . . . . . . . . . . . . . .  10
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 2]
+
+Internet-Draft             EP Evidence Records                 July 2026
+
+
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  10
 
 1.  Introduction
 
@@ -106,13 +127,6 @@ Table of Contents
    cryptanalytically relevant quantum computers.  A receipt that
    verifies today may not verify, or may not be trustworthy, a decade
    from now under the algorithm it was sealed with.
-
-
-
-Schrock                  Expires 7 January 2027                 [Page 2]
-
-Internet-Draft             EP Evidence Records                 July 2026
-
 
    This is a solved problem in long-term archiving: the Evidence Record
    Syntax [RFC4998] preserves data integrity across algorithm changes by
@@ -128,7 +142,7 @@ Internet-Draft             EP Evidence Records                 July 2026
    artifact it is given (typically an EP receipt, but any byte string by
    its hash).  It does NOT establish that the artifact was correct, nor
    that a renewal actually occurred before the prior algorithm was
-   broken in the wild -- that is an operational discipline (Section 6).
+   broken in the wild -- that is an operational discipline (Section 8).
    It defines no new signature or hash algorithm; it composes existing
    ones over time.
 
@@ -149,6 +163,13 @@ Internet-Draft             EP Evidence Records                 July 2026
       the first) covering the entire previous archive timestamp under a
       possibly stronger hash algorithm.
 
+
+
+Schrock                  Expires 7 January 2027                 [Page 3]
+
+Internet-Draft             EP Evidence Records                 July 2026
+
+
 3.  The renewal chain
 
    {
@@ -161,14 +182,6 @@ Internet-Draft             EP Evidence Records                 July 2026
    }
 
    *  `@version` (REQUIRED) MUST be "EP-EVIDENCE-RECORD-v1".
-
-
-
-
-Schrock                  Expires 7 January 2027                 [Page 3]
-
-Internet-Draft             EP Evidence Records                 July 2026
-
 
    *  `protected_hash` (REQUIRED) the algorithm-tagged hash of the
       protected artifact (e.g. an EP receipt).
@@ -203,19 +216,6 @@ Internet-Draft             EP Evidence Records                 July 2026
    4.  `all_timestamps_valid` -- every renewal's EP time-attestation
        verifies under a pinned, independent time authority's key.
 
-   5.  `chain_linked` -- the first renewal covers `protected_hash`; each
-       later renewal's attested `hashed` equals the algorithm-agile hash
-       of the prior archive timestamp's canonical serialization.
-
-   6.  `monotonic_time` -- attested times strictly increase along the
-       chain.
-
-   The record is valid iff all applicable checks pass.  Verification
-   requires no network and no live service.
-
-
-
-
 
 
 
@@ -225,6 +225,16 @@ Schrock                  Expires 7 January 2027                 [Page 4]
 
 Internet-Draft             EP Evidence Records                 July 2026
 
+
+   5.  `chain_linked` -- the first renewal covers `protected_hash`; each
+       later renewal's attested `hashed` equals the algorithm-agile hash
+       of the prior archive timestamp's canonical serialization.
+
+   6.  `monotonic_time` -- attested times strictly increase along the
+       chain.
+
+   The record is valid iff all applicable checks pass.  Verification
+   requires no network and no live service.
 
 5.  Crypto-agility
 
@@ -237,7 +247,169 @@ Internet-Draft             EP Evidence Records                 July 2026
    without invalidating earlier links.  The verifier selects the hash
    function by the tag, not by assumption.
 
-6.  Security Considerations
+6.  Witness Cosignatures (EP-WITNESS-v1)
+
+   Evidence intended to outlive its operator should not rest on that
+   operator's log signature alone.  A transparency-log operator signs
+   its own checkpoint `{tree_size, root_hash, log_key_id, ...}`; a
+   single operator signature does not make a split view (equivocation)
+   detectable, because the operator can sign two internally-consistent
+   but divergent heads and present one to each of two verifiers.  EP-
+   WITNESS-v1 is an OPTIONAL companion profile in which an independent
+   witness cosigns the log's committed checkpoint bytes.
+
+6.1.  Construction
+
+   *  The committed checkpoint is the checkpoint object with the log's
+      own `log_signature` field removed -- exactly the bytes the log
+      itself signed.  A witness cosignature MUST be an Ed25519 signature
+      over the SHA-256 digest of the domain separation tag followed by
+      the JCS [RFC8785] canonical serialization of the committed
+      checkpoint.
+
+   *  The domain separation tag MUST be the UTF-8 string "EP-WITNESS-
+      COSIGN-v1" followed by a single zero octet.  The log's own
+      signature is computed over the untagged canonical bytes (which
+      begin with 0x7b and never contain a zero octet), so the two pre-
+      images are disjoint: a witness cosignature can never be presented
+      as, or confused with, the log signature, and vice versa, even if
+      the same key were misconfigured into both roles.
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 5]
+
+Internet-Draft             EP Evidence Records                 July 2026
+
+
+   *  Witness identity is a self-certifying key fingerprint:
+      `witness_id` MUST be the string "witness:sha256:" followed by the
+      first 16 lowercase hex characters of the SHA-256 digest of the
+      witness's Ed25519 public key in SPKI DER form, so anyone holding
+      the public key can recompute and confirm the identifier.
+
+   *  A cosignature envelope MUST carry `witness_id` and a base64url
+      Ed25519 `signature`; it MAY echo the head it cosigned
+      (`tree_size`, `root_hash`, `log_key_id`) and MAY carry an `alg`
+      field, which MUST equal "EP-WITNESS-v1" when present.
+
+6.2.  Verification
+
+   Verification is fail-closed: every check refuses on missing,
+   malformed, or unrecognized input and never silently passes.  A
+   verifier MUST refuse when: the cosignature names a witness identifier
+   that the relying party has not pinned (an unpinned witness is never
+   trusted); `alg` is present and is not "EP-WITNESS-v1"; any echoed
+   head field is present and differs from the checkpoint under
+   verification (a cosignature lifted from a different head refuses
+   before any cryptography runs); the checkpoint cannot be canonically
+   serialized; or the signature does not verify over the domain-tagged
+   committed bytes under the pinned key.  A relying party pins witness
+   keys out of band; nothing defaults to trusted.
+
+   A relying party MAY require k distinct pinned witnesses over one
+   head.  The quorum check MUST count each pinned witness identifier at
+   most once (a witness cannot satisfy a threshold by cosigning twice),
+   MUST ignore cosignatures that fail verification or name unpinned
+   witnesses, and MUST treat a witness identifier pinned more than once
+   as ambiguous and drop it rather than trust either entry.  Fewer than
+   k distinct valid cosignatures over the one head refuses.
+
+6.3.  What a cosignature proves (honest scope)
+
+   A cosignature attests only that the named witness observed this head.
+   It does not vouch for the log's honesty or its append-only behavior:
+   a witness signs the bytes it was shown and does not re-derive the
+   tree.  It does not establish current validity: it is evidence of
+   observation at cosign time only.  A single witness detects nothing.
+   Equivocation becomes DETECTABLE only when multiple independent
+   witnesses -- distinct operators, distinct incentives -- cosign and
+   their views are later compared; the quorum check above is the local,
+   single-view half of that comparison, and cross-view comparison
+   (gossip) remains the deployment's responsibility.
+
+
+
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 6]
+
+Internet-Draft             EP Evidence Records                 July 2026
+
+
+6.4.  Relevance to long-term evidence
+
+   Evidence intended to outlive its operator SHOULD reference witnessed
+   heads rather than bare operator-signed checkpoints, and each re-
+   anchoring event in a renewal chain SHOULD itself be anchored to a
+   witnessed head.  The pre-quantum retroactive-forgery defense -- a
+   renewal under a stronger algorithm made while the older one is still
+   unbroken -- is only as strong as the independence of the anchoring: a
+   renewal anchored solely to material the operator alone signs adds the
+   operator's word, not an independent observation.
+
+7.  Independent Time Attestation (RFC 3161)
+
+   The renewal chain in this document time-attests with EP's native,
+   key-pinned time-attestation primitive.  This OPTIONAL companion
+   profile adds an interoperable, standards-track alternative for the
+   WHEN: an RFC 3161 [RFC3161] timestamp token over the record digest
+   (or over a checkpoint root), verified OFFLINE against a time-stamping
+   authority (TSA) key the relying party has pinned out of band.  A
+   verified token establishes that the bytes bound by the digest existed
+   no later than the TSA-asserted genTime, so the age of a record no
+   longer reduces to trusting the operator's own clock.
+
+7.1.  Verification
+
+   A verifier MUST proceed fail-closed and refuse, with a distinct
+   reason, on any failure:
+
+   1.  The token MUST parse as an RFC 3161 TimeStampToken: a CMS
+       SignedData [RFC5652] whose encapsulated content type is id-ct-
+       TSTInfo.  An unparseable token, a token that is not SignedData,
+       or a token that is not a timestamp token refuses.
+
+   2.  The TSTInfo messageImprint MUST equal the digest the relying
+       party independently expects (the record digest or checkpoint root
+       it holds).  A digest mismatch refuses regardless of who signed
+       the token.
+
+   3.  The TSA signature MUST verify under a key the relying party has
+       pinned.  An empty or absent pinned-key set is an unpinned TSA and
+       refuses; nothing defaults to trusted, and no certificate-chain
+       walk substitutes for the pin.
+
+   4.  When CMS signed attributes are present, the signature MUST be
+       verified over the DER re-encoding of the SignedAttributes per
+       Section 5.4 of [RFC5652], the content-type attribute MUST be id-
+       ct-TSTInfo, and the message-digest attribute MUST equal the
+       digest of the encapsulated TSTInfo; any mismatch refuses.
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 7]
+
+Internet-Draft             EP Evidence Records                 July 2026
+
+
+   On success the verifier reports the TSA-asserted time and a SHA-256
+   fingerprint of the pinned SPKI key that verified the token, so the
+   record can state which pinned authority stamped it.
+
+7.2.  What it does and does not prove
+
+   A verified token proves existence-by-time only: a TSA the relying
+   party chose to pin asserted that these bytes existed at genTime, i.e.
+   the bytes predate genTime.  It does NOT prove the underlying action
+   was correct, authorized, or even sensible; it does not prove the
+   TSA's clock was accurate; it does not prove that no earlier timestamp
+   exists; and, like every offline check in this document, it does not
+   establish current validity or the revocation status of the TSA's
+   credentials (that needs a fresh online status check).
+
+8.  Security Considerations
 
    The central operational requirement is timeliness: a renewal under a
    stronger algorithm MUST be appended while the current algorithm is
@@ -255,7 +427,7 @@ Internet-Draft             EP Evidence Records                 July 2026
    The record is fail-closed: a missing renewal, a broken link, a non-
    monotonic time, or an unverifiable time-attestation yields invalid.
 
-7.  Relationship to Other Work
+9.  Relationship to Other Work
 
    EP-EVIDENCE-RECORD adapts the Archive Timestamp Chain of [RFC4998]
    (Evidence Record Syntax) to EP's JSON/JCS evidence and EP time-
@@ -267,22 +439,22 @@ Internet-Draft             EP Evidence Records                 July 2026
    SCITT [I-D.ietf-scitt-architecture] for third-party anchoring, but
    the profile does not require it.
 
-8.  IANA Considerations
-
-   This document has no IANA actions.
 
 
 
 
 
 
-
-Schrock                  Expires 7 January 2027                 [Page 5]
+Schrock                  Expires 7 January 2027                 [Page 8]
 
 Internet-Draft             EP Evidence Records                 July 2026
 
 
-9.  Implementation Status
+10.  IANA Considerations
+
+   This document has no IANA actions.
+
+11.  Implementation Status
 
    A reference verifier is maintained as open-source software in three
    cross-language implementations (JavaScript, Python, Go) that agree on
@@ -292,7 +464,18 @@ Internet-Draft             EP Evidence Records                 July 2026
    implementations; independent implementations remain future
    interoperability evidence.
 
-10.  Normative References
+   The witness-cosignature and independent-time-attestation profiles
+   added in this revision are implemented today in the JavaScript
+   reference verifier only; the Python and Go ports cover the core
+   evidence-record verification, not these profiles yet.  The JavaScript
+   RFC 3161 verifier is a purpose-built minimal DER/CMS reader: it
+   supports a single SignerInfo signed with RSASSA-PKCS1-v1_5 or ECDSA
+   over a SHA-2 digest, with or without CMS signed attributes, and
+   refuses tokens outside that shape (including RSASSA-PSS and multi-
+   signer tokens) rather than force-fitting them.  A minimal reference
+   witness cosigner service accompanies the verifier.
+
+12.  Normative References
 
    [draft-schrock-ep-authorization-receipts]
               Schrock, I., "Authorization Receipts for High-Risk Agent
@@ -306,9 +489,26 @@ Internet-Draft             EP Evidence Records                 July 2026
               DOI 10.17487/RFC2119, March 1997,
               <https://www.rfc-editor.org/info/rfc2119>.
 
+   [RFC3161]  Adams, C., Cain, P., Pinkas, D., and R. Zuccherato,
+              "Internet X.509 Public Key Infrastructure Time-Stamp
+              Protocol (TSP)", RFC 3161, DOI 10.17487/RFC3161, August
+              2001, <https://www.rfc-editor.org/info/rfc3161>.
+
    [RFC4998]  Gondrom, T., Brandner, R., and U. Pordesch, "Evidence
               Record Syntax (ERS)", RFC 4998, DOI 10.17487/RFC4998,
               August 2007, <https://www.rfc-editor.org/info/rfc4998>.
+
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 9]
+
+Internet-Draft             EP Evidence Records                 July 2026
+
+
+   [RFC5652]  Housley, R., "Cryptographic Message Syntax (CMS)", STD 70,
+              RFC 5652, DOI 10.17487/RFC5652, September 2009,
+              <https://www.rfc-editor.org/info/rfc5652>.
 
    [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
@@ -319,7 +519,7 @@ Internet-Draft             EP Evidence Records                 July 2026
               DOI 10.17487/RFC8785, June 2020,
               <https://www.rfc-editor.org/info/rfc8785>.
 
-11.  Informative References
+13.  Informative References
 
    [draft-schrock-ep-authorization-evidence-chain]
               Schrock, I., "Authorization Evidence Chains (EP-AEC)",
@@ -327,16 +527,6 @@ Internet-Draft             EP Evidence Records                 July 2026
               authorization-evidence-chain, June 2026,
               <https://datatracker.ietf.org/doc/draft-schrock-ep-
               authorization-evidence-chain/>.
-
-
-
-
-
-
-Schrock                  Expires 7 January 2027                 [Page 6]
-
-Internet-Draft             EP Evidence Records                 July 2026
-
 
    [I-D.ietf-scitt-architecture]
               IETF SCITT WG, "An Architecture for Trustworthy and
@@ -367,26 +557,4 @@ Author's Address
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Schrock                  Expires 7 January 2027                 [Page 7]
+Schrock                  Expires 7 January 2027                [Page 10]
