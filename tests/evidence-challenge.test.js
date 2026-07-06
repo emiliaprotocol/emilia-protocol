@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, it, expect } from 'vitest';
 import {
-  CHALLENGE_VERSION, createEvidenceChallenge, evaluatePresentation, deriveRequiredEvidence,
+  CHALLENGE_VERSION, createEvidenceChallenge, createFollowupEvidenceChallenge,
+  evaluatePresentation, deriveRequiredEvidence,
 } from '../lib/negotiate/evidence-challenge.js';
 import { EVIDENCE_GRAPH_VERSION, artifactDigest } from '../lib/evidence/evidence-graph.js';
 import { getPolicyPack } from '../lib/evidence/policy-packs.js';
@@ -156,5 +157,105 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
     expect(r.next_challenge.action_digest).toBe(artifactDigest(ACTION));
     expect(r.next_challenge.nonce).toBe('n2');
     expect(r.next_challenge.nonce).not.toBe(ch.nonce);
+  });
+});
+
+// ── Fail-closed guard coverage. Each drives a specific defensive branch. ──────
+
+describe('mintChallengeForDigest guards (via createEvidenceChallenge/createFollowup)', () => {
+  it('an invalid action_digest reaching the minter throws (MUST be a sha256 digest)', () => {
+    // A follow-up copies the prior challenge's action_digest verbatim. Corrupt it
+    // to a non-digest and the minter fails closed.
+    const ch = createEvidenceChallenge(ACTION, policy, { expires_at: EXPIRES, nonce: 'n1' });
+    const corrupt = { ...ch, action_digest: 'not-a-digest' };
+    expect(() => createFollowupEvidenceChallenge(corrupt, policy, null, { nonce: 'n2' }))
+      .toThrow(/action_digest MUST be a sha256 digest/);
+  });
+
+  it('a non-string / blank nonce override throws', () => {
+    expect(() => createEvidenceChallenge(ACTION, policy, { expires_at: EXPIRES, nonce: 123 }))
+      .toThrow(/nonce MUST be a non-empty string/);
+    expect(() => createEvidenceChallenge(ACTION, policy, { expires_at: EXPIRES, nonce: '   ' }))
+      .toThrow(/nonce MUST be a non-empty string/);
+  });
+
+  it('an auto-generated nonce is used when none is supplied (base64url, non-empty)', () => {
+    const ch = createEvidenceChallenge(ACTION, policy, { expires_at: EXPIRES });
+    expect(typeof ch.nonce).toBe('string');
+    expect(ch.nonce.length).toBeGreaterThan(0);
+    expect(ch.challenge_id).toMatch(/^[0-9a-f-]{36}$/); // auto UUID
+  });
+
+  it('a null policy yields null reliance_purpose / policy_id (fallbacks), not a throw', () => {
+    const ch = createEvidenceChallenge(ACTION, null, { expires_at: EXPIRES, nonce: 'n1' });
+    expect(ch.reliance_purpose).toBeNull();
+    expect(ch.policy_id).toBeNull();
+    expect(ch.required_evidence).toEqual([]); // no requirement string -> empty go-get list
+  });
+});
+
+describe('createFollowupEvidenceChallenge guards', () => {
+  it('a wrong challenge @version throws', () => {
+    expect(() => createFollowupEvidenceChallenge({ '@version': 'AE-CHALLENGE-vWRONG' }, policy, null))
+      .toThrow(/unknown challenge version/);
+  });
+
+  it('the follow-up inherits expires_at from the prior challenge when opts omits it', () => {
+    const ch = createEvidenceChallenge(ACTION, policy, { expires_at: EXPIRES, nonce: 'n1' });
+    const next = createFollowupEvidenceChallenge(ch, policy, null, { nonce: 'n2' });
+    expect(next.expires_at).toBe(EXPIRES);
+  });
+
+  it('a follow-up nonce EQUAL to the prior nonce is dropped (fresh nonce auto-minted)', () => {
+    const ch = createEvidenceChallenge(ACTION, policy, { expires_at: EXPIRES, nonce: 'n1' });
+    // opts.nonce === challenge.nonce -> the reused nonce is discarded, a new one minted.
+    const next = createFollowupEvidenceChallenge(ch, policy, null, { nonce: 'n1' });
+    expect(next.nonce).not.toBe('n1');
+    expect(typeof next.nonce).toBe('string');
+    expect(next.nonce.length).toBeGreaterThan(0);
+  });
+});
+
+describe('deriveRequiredEvidence — edge cases fail safe', () => {
+  it('a policy with no requirement string yields an empty go-get list', () => {
+    expect(deriveRequiredEvidence({})).toEqual([]);
+    expect(deriveRequiredEvidence(null)).toEqual([]);
+  });
+
+  it('a prior result already satisfying a type removes it from the go-get list', () => {
+    const req = deriveRequiredEvidence(policy, { satisfied_by: ['authorization_receipt'] });
+    const types = req.map((r) => r.type);
+    expect(types).not.toContain('authorization_receipt');
+    expect(types).toContain('policy_permit');
+  });
+
+  it('a type with no freshness bound simply omits fresh_max_sec', () => {
+    // workload_identity has a 3600s bound in the wire pack; a bespoke policy without
+    // any freshness_sec entry omits the field entirely.
+    const req = deriveRequiredEvidence({ requirement: 'authorization_receipt AND policy_permit' });
+    for (const r of req) expect(r.fresh_max_sec).toBeUndefined();
+    expect(req.map((r) => r.type)).toEqual(['authorization_receipt', 'policy_permit']);
+  });
+});
+
+describe('evaluatePresentation — structural refusals before any policy runs', () => {
+  it('a wrong challenge @version is refused', () => {
+    const ch = createEvidenceChallenge(ACTION, policy, { expires_at: EXPIRES, nonce: 'n1' });
+    const r = evaluatePresentation({ ...ch, '@version': 'AE-CHALLENGE-vWRONG' },
+      graphFor(['authorization_receipt']), policy,
+      { verifiers, as_of: AS_OF, consumedNonces: new Set() });
+    expect(r.verdict).toBe('refused');
+    expect(r.reasons.join(' ')).toContain('unknown challenge version');
+  });
+
+  it('a challenge whose action_digest is not a sha256 digest is refused (no nonce consumed)', () => {
+    const nonces = new Set();
+    const ch = createEvidenceChallenge(ACTION, policy, { expires_at: EXPIRES, nonce: 'n1' });
+    const r = evaluatePresentation({ ...ch, action_digest: 'not-a-digest' },
+      graphFor(['authorization_receipt']), policy,
+      { verifiers, as_of: AS_OF, consumedNonces: nonces });
+    expect(r.verdict).toBe('refused');
+    expect(r.reasons.join(' ')).toContain('action_digest missing or invalid');
+    expect(nonces.size).toBe(0);
   });
 });

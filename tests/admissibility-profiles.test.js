@@ -246,4 +246,278 @@ describe('policy packs are pinnable objects', () => {
     expect(wire.freshness_sec.authorization_receipt).toBe(300);
     expect(wire.revocation_required).toEqual(['authorization_receipt']);
   });
+
+  it('computePolicyPackHash on a non-object throws (fail closed)', () => {
+    expect(() => computePolicyPackHash(null)).toThrow(/pack must be an object/);
+    expect(() => computePolicyPackHash('nope')).toThrow(/pack must be an object/);
+  });
+
+  it('verifyPolicyPackHash is false (never throws) for a non-object or a hashless pack', () => {
+    // Non-object: the inner computePolicyPackHash throws -> caught -> false.
+    expect(verifyPolicyPackHash(null)).toBe(false);
+    expect(verifyPolicyPackHash(42)).toBe(false);
+    // A pack object with no policy_hash string is simply not verifiable -> false.
+    expect(verifyPolicyPackHash({ policy_id: 'ep:x:v1' })).toBe(false);
+  });
+});
+
+// ── Fail-closed guard coverage. Each test below drives a specific defensive
+//    branch to its CORRECT fail-closed outcome (throw / refuse / weakest verdict),
+//    never a coverage no-op. ──────────────────────────────────────────────────
+
+describe('defineAdmissibilityProfile — input validation fails closed', () => {
+  it('a non-object spec throws', () => {
+    expect(() => defineAdmissibilityProfile(null)).toThrow(/spec must be an object/);
+    expect(() => defineAdmissibilityProfile('nope')).toThrow(/spec must be an object/);
+  });
+
+  it('a missing / blank id throws', () => {
+    expect(() => defineAdmissibilityProfile({ authored_by: 'rp', requires: [{ evidence: 'x' }] }))
+      .toThrow(/profile id is required/);
+    expect(() => defineAdmissibilityProfile({ id: '   ', authored_by: 'rp', requires: [{ evidence: 'x' }] }))
+      .toThrow(/profile id is required/);
+  });
+
+  it('a missing / blank authored_by throws (EMILIA does not author the bar)', () => {
+    expect(() => defineAdmissibilityProfile({ id: 'ep:x:v1', requires: [{ evidence: 'x' }] }))
+      .toThrow(/authored_by/);
+    expect(() => defineAdmissibilityProfile({ id: 'ep:x:v1', authored_by: '  ', requires: [{ evidence: 'x' }] }))
+      .toThrow(/authored_by/);
+  });
+
+  it('an empty / non-array requires throws (a bar must require something)', () => {
+    expect(() => defineAdmissibilityProfile({ id: 'ep:x:v1', authored_by: 'rp', requires: [] }))
+      .toThrow(/at least one requirement/);
+    expect(() => defineAdmissibilityProfile({ id: 'ep:x:v1', authored_by: 'rp', requires: 'x' }))
+      .toThrow(/at least one requirement/);
+  });
+
+  it('a requirement without a non-empty evidence type throws', () => {
+    expect(() => defineAdmissibilityProfile({ id: 'ep:x:v1', authored_by: 'rp', requires: [{ min_assurance: 'high' }] }))
+      .toThrow(/non-empty `evidence` type/);
+    expect(() => defineAdmissibilityProfile({ id: 'ep:x:v1', authored_by: 'rp', requires: [{ evidence: '   ' }] }))
+      .toThrow(/non-empty `evidence` type/);
+  });
+
+  it('opaque relying-party params are preserved into the profile (and hashed)', () => {
+    const p = defineAdmissibilityProfile({
+      id: 'ep:x:v1',
+      authored_by: 'rp',
+      version: 3,
+      requires: [{ evidence: 'authorization_receipt', params: { jurisdiction: 'US' } }],
+    });
+    expect(p.version).toBe(3);
+    expect(p.requires[0].params).toEqual({ jurisdiction: 'US' });
+    expect(verifyProfileHash(p)).toBe(true);
+  });
+
+  it('a non-finite version defaults to 1', () => {
+    const p = defineAdmissibilityProfile({
+      id: 'ep:x:v1', authored_by: 'rp', version: 'abc',
+      requires: [{ evidence: 'authorization_receipt' }],
+    });
+    expect(p.version).toBe(1);
+  });
+});
+
+describe('computeProfileHash / assurance ordering — fail closed', () => {
+  it('computeProfileHash on a non-object throws', () => {
+    expect(() => computeProfileHash(null)).toThrow(/profile must be an object/);
+    expect(() => computeProfileHash(42)).toThrow(/profile must be an object/);
+  });
+
+  it('an unknown min_assurance floor is UNSATISFIABLE (unknown class is the weakest)', () => {
+    const profileUnknownFloor = defineAdmissibilityProfile({
+      id: 'ep:admissibility:unknown-floor:v1',
+      authored_by: 'rp',
+      requires: [{ evidence: 'authorization_receipt', min_assurance: 'ultra_max', checks: ['revocation_checked'] }],
+    });
+    const res = evaluateAdmissibilityProfile(profileUnknownFloor, baseBundle(), { now: NOW });
+    expect(res.verdict).not.toBe('admissible');
+    const row = res.requirement_results.find((r) => r.evidence === 'authorization_receipt');
+    expect(row.reason).toMatch(/assurance below ultra_max/);
+  });
+
+  it('an item whose OWN assurance class is unknown fails a real floor', () => {
+    const bundle = baseBundle();
+    bundle.items[0].assurance = 'made_up_class'; // rank -1, below any real floor
+    const res = evaluateAdmissibilityProfile(profileA, bundle, { now: NOW });
+    expect(res.verdict).not.toBe('admissible');
+    const row = res.requirement_results.find((r) => r.evidence === 'authorization_receipt');
+    expect(row.reason).toMatch(/assurance below high/);
+  });
+});
+
+describe('resolveRequirement — problem-reason branches and item identity', () => {
+  it('a denied item is flagged as a denial (conflicted-class problem)', () => {
+    const bundle = baseBundle();
+    bundle.items[0].outcome = 'deny';
+    const res = evaluateAdmissibilityProfile(profileA, bundle, { now: NOW });
+    expect(res.verdict).not.toBe('admissible');
+    const row = res.requirement_results.find((r) => r.evidence === 'authorization_receipt');
+    expect(row.reason).toMatch(/denial/);
+  });
+
+  it('a required non-revocation check that is absent/false fails the item', () => {
+    const profileChecked = defineAdmissibilityProfile({
+      id: 'ep:admissibility:sig-check:v1',
+      authored_by: 'rp',
+      requires: [{ evidence: 'authorization_receipt', min_assurance: 'high', checks: ['revocation_checked', 'signature_valid'] }],
+    });
+    const bundle = baseBundle();
+    // item.checks map is absent -> the 'signature_valid' member check is not true.
+    const res = evaluateAdmissibilityProfile(profileChecked, bundle, { now: NOW });
+    expect(res.verdict).not.toBe('admissible');
+    const row = res.requirement_results.find((r) => r.evidence === 'authorization_receipt');
+    expect(row.reason).toMatch(/required check failed/);
+  });
+
+  it('the member check passes when the item explicitly reports it true', () => {
+    const profileChecked = defineAdmissibilityProfile({
+      id: 'ep:admissibility:sig-check2:v1',
+      authored_by: 'rp',
+      requires: [{ evidence: 'authorization_receipt', min_assurance: 'high', checks: ['revocation_checked', 'signature_valid'] }],
+    });
+    const bundle = baseBundle();
+    bundle.items[0].checks = { signature_valid: true };
+    const res = evaluateAdmissibilityProfile(profileChecked, bundle, { now: NOW });
+    expect(res.verdict).toBe('admissible');
+  });
+
+  it('an item with neither digest nor id still resolves (identified by a JCS fingerprint of its fields)', () => {
+    // Drop both digest and id -> itemIdentifier() falls through to hashObject().
+    // The identity feeds the replay digest, so a valid item still admits and the
+    // digest is a stable sha256 (the fingerprint path ran).
+    const bundle = {
+      items: [{
+        evidence: 'authorization_receipt',
+        signature_valid: true, assurance: 'high', issued_at: iso(60_000), revoked: false,
+        outcome: 'allow',
+      }],
+    };
+    const res = evaluateAdmissibilityProfile(profileA, bundle, { now: NOW });
+    expect(res.verdict).toBe('admissible');
+    expect(res.replay_digest).toMatch(/^sha256:[0-9a-f]{64}$/);
+  });
+
+  it('the item-identity fallbacks are distinct: id-identified vs fingerprint-identified differ in the replay digest', () => {
+    // Same decision-relevant fields, but one item carries an explicit `id` and the
+    // other does not. itemIdentifier() takes the id for the first and a JCS
+    // fingerprint for the second -> different consulted identities -> different digest.
+    const withId = {
+      items: [{
+        evidence: 'authorization_receipt', id: 'item-42',
+        signature_valid: true, assurance: 'high', issued_at: iso(60_000), revoked: false,
+      }],
+    };
+    const withoutId = {
+      items: [{
+        evidence: 'authorization_receipt',
+        signature_valid: true, assurance: 'high', issued_at: iso(60_000), revoked: false,
+      }],
+    };
+    const a = evaluateAdmissibilityProfile(profileA, withId, { now: NOW });
+    const b = evaluateAdmissibilityProfile(profileA, withoutId, { now: NOW });
+    expect(a.verdict).toBe('admissible');
+    expect(b.verdict).toBe('admissible');
+    expect(a.replay_digest).not.toBe(b.replay_digest);
+  });
+
+  it('an item with no issued_at has no derived staleness (never spuriously stale)', () => {
+    const bundle = baseBundle();
+    delete bundle.items[0].issued_at; // ageSec resolves to null -> not stale
+    const res = evaluateAdmissibilityProfile(profileA, bundle, { now: NOW });
+    // still admissible (no freshness violation, everything else clears)
+    expect(res.verdict).toBe('admissible');
+  });
+});
+
+describe('findItem — accepts items[] | components[] | a bare array', () => {
+  it('finds a requirement item under a `components` array', () => {
+    const bundle = {
+      components: [{
+        evidence: 'authorization_receipt', digest: 'sha256:comp1',
+        signature_valid: true, assurance: 'high', issued_at: iso(60_000), revoked: false,
+      }],
+    };
+    const res = evaluateAdmissibilityProfile(profileA, bundle, { now: NOW });
+    expect(res.verdict).toBe('admissible');
+  });
+
+  it('finds a requirement item in a bare array bundle (by `type` alias)', () => {
+    const bundle = [{
+      type: 'authorization_receipt', digest: 'sha256:arr1',
+      signature_valid: true, assurance: 'high', issued_at: iso(60_000), revoked: false,
+    }];
+    const res = evaluateAdmissibilityProfile(profileA, bundle, { now: NOW });
+    expect(res.verdict).toBe('admissible');
+  });
+});
+
+describe('evaluateAdmissibilityProfile — top-level refusals fail closed', () => {
+  it('an uncanonicalizable profile is refused (profile_uncanonicalizable, null hash)', () => {
+    const evil = { requires: [{ evidence: 'x' }] };
+    evil.self = evil; // circular -> canonicalize throws inside computeProfileHash
+    const res = evaluateAdmissibilityProfile(evil, baseBundle(), { now: NOW });
+    expect(res.verdict).toBe('unverifiable');
+    expect(res.reason).toBe('profile_uncanonicalizable');
+    expect(res.profile_hash).toBeNull();
+    expect(res.replay_digest).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(res.requirement_results[0].evidence).toBeNull();
+  });
+
+  it('a profile with an empty requires[] is refused (profile_has_no_requirements)', () => {
+    // A raw object (bypassing defineAdmissibilityProfile) with a MATCHING self-hash
+    // but no requirements: it passes the pin/self-hash checks, then fails closed
+    // on the empty-requirements guard.
+    const raw = { id: 'ep:x:v1', requires: [] };
+    raw.profile_hash = computeProfileHash(raw);
+    const res = evaluateAdmissibilityProfile(raw, baseBundle(), { now: NOW });
+    expect(res.verdict).toBe('unverifiable');
+    expect(res.reason).toBe('profile_has_no_requirements');
+    expect(res.refused).toBe(true);
+  });
+
+  it('an invalid `now` falls back to a real evaluated_at timestamp', () => {
+    const res = evaluateAdmissibilityProfile(profileA, baseBundle(), { now: 'not-a-date' });
+    // now is unparseable -> nowMs NaN -> evaluated_at defaults to Date.now().
+    expect(res.evaluated_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    // With no finite now, staleness cannot be computed, so no spurious stale.
+    const row = res.requirement_results.find((r) => r.evidence === 'authorization_receipt');
+    expect(row.reason).not.toMatch(/staler/);
+  });
+});
+
+describe('only-optional profiles — the vacuous-bar path', () => {
+  const profileAllOptional = defineAdmissibilityProfile({
+    id: 'ep:admissibility:all-optional:v1',
+    authored_by: 'rp',
+    requires: [
+      { evidence: 'transparency', optional: true },
+      { evidence: 'recourse_reference', optional: true },
+    ],
+  });
+
+  it('every requirement optional-and-absent -> vacuously admissible (empty bar cleared)', () => {
+    const res = evaluateAdmissibilityProfile(profileAllOptional, { items: [] }, { now: NOW });
+    expect(res.verdict).toBe('admissible');
+    // Both optional legs reported satisfied-because-absent.
+    for (const row of res.requirement_results) {
+      expect(row.satisfied).toBe(true);
+      expect(row.reason).toMatch(/optional requirement absent/);
+    }
+  });
+
+  it('an only-optional profile with a PRESENT-but-invalid optional item is caught (no mandatory bar, present fact judged)', () => {
+    const bundle = {
+      items: [{
+        evidence: 'transparency', digest: 'sha256:opt-bad',
+        signature_valid: false, assurance: 'basic', issued_at: iso(30_000), revoked: false,
+      }],
+    };
+    const res = evaluateAdmissibilityProfile(profileAllOptional, bundle, { now: NOW });
+    // No mandatory requirements, but a present invalid optional item enters `facts`
+    // and is classified by admissibility.js precedence -> not admissible.
+    expect(res.verdict).not.toBe('admissible');
+  });
 });

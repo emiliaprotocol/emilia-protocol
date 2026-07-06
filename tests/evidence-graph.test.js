@@ -371,6 +371,148 @@ describe('EP-RELIANCE-RESULT — the verdict as signed evidence', () => {
   });
 });
 
+// ── Fail-closed / defensive-branch coverage. Every assertion below drives a
+//    specific guard to its correct fail-closed outcome, never a no-op. ─────────
+
+describe('graphDigest — structural normalization is disclosure- and null-safe', () => {
+  it('a graph with no nodes/edges arrays still hashes deterministically', () => {
+    const empty = { '@version': EVIDENCE_GRAPH_VERSION };
+    expect(graphDigest(empty)).toBe(graphDigest({ '@version': EVIDENCE_GRAPH_VERSION }));
+    expect(graphDigest(empty)).toMatch(/^sha256:[0-9a-f]{64}$/);
+  });
+
+  it('nodes with missing id/type normalize to null and still sort stably', () => {
+    const g = {
+      '@version': EVIDENCE_GRAPH_VERSION,
+      nodes: [{ id: undefined }, { id: 'sha256:bb', type: undefined }],
+      edges: [{ from: undefined, rel: undefined, to: 'sha256:bb' }],
+    };
+    // Deterministic across two calls (the null-normalization + sort ran).
+    expect(graphDigest(g)).toBe(graphDigest(JSON.parse(JSON.stringify(g))));
+  });
+});
+
+describe('evaluateEvidenceGraph — structural failures fail closed', () => {
+  it('a non-object graph is malformed_graph -> unverifiable', () => {
+    const r = evaluateEvidenceGraph(null, wirePack, { verifiers, as_of: AS_OF });
+    expect(r.verdict).toBe('unverifiable');
+    expect(r.reasons.join(' ')).toContain('malformed_graph');
+    expect(r.graph.nodes).toBe(0);
+  });
+
+  it('a wrong @version is malformed_graph -> unverifiable', () => {
+    const { doc } = buildGraph();
+    doc['@version'] = 'EP-AEG-vWRONG';
+    const r = evaluateEvidenceGraph(doc, wirePack, { verifiers, as_of: AS_OF });
+    expect(r.verdict).toBe('unverifiable');
+    expect(r.reasons.join(' ')).toContain('unexpected @version');
+  });
+
+  it('a graph with a non-array / empty nodes is malformed_graph', () => {
+    const noNodes = { '@version': EVIDENCE_GRAPH_VERSION, action_digest: ACTION, nodes: [], edges: [] };
+    const r = evaluateEvidenceGraph(noNodes, wirePack, { verifiers, as_of: AS_OF });
+    expect(r.verdict).toBe('unverifiable');
+    expect(r.reasons.join(' ')).toContain('graph has no nodes');
+  });
+
+  it('a node with no digest id is reported and contributes no verified fact', () => {
+    const { doc } = buildGraph();
+    doc.nodes.push({ id: null, type: 'transparency', artifact: { any: 'thing' } });
+    const r = evaluateEvidenceGraph(doc, wirePack, { verifiers, as_of: AS_OF });
+    expect(r.reasons.join(' ')).toContain('has no digest id');
+  });
+
+  it('a node type with no registered verifier is reported and stays unverified', () => {
+    const { doc } = buildGraph();
+    // Register no verifier for workload_identity -> its node cannot be verified.
+    const partial = { authorization_receipt: verifiers.authorization_receipt, policy_permit: verifiers.policy_permit };
+    const r = evaluateEvidenceGraph(doc, wirePack, { verifiers: partial, as_of: AS_OF });
+    expect(r.reasons.join(' ')).toContain('no verifier registered');
+    expect(r.verdict).not.toBe('admissible');
+  });
+
+  it('an edge that references a node absent from the graph is an unbacked claim', () => {
+    const { doc, ids } = buildGraph();
+    doc.edges.push({ from: ids.permitId, rel: 'permits', to: 'sha256:' + 'd'.repeat(64) }); // to-node not present
+    const r = evaluateEvidenceGraph(doc, wirePack, { verifiers, as_of: AS_OF });
+    expect(r.verdict).toBe('unverifiable');
+    expect(r.reasons.join(' ')).toContain('references a node not in the graph');
+  });
+});
+
+describe('EP-AEG — ceremony / effect defensive telemetry branches', () => {
+  const VC = { ...verifiers, ceremony_evidence: CEREMONY_VERIFIER };
+  const VE = { ...verifiers, effect_attestation: EFFECT_VERIFIER };
+
+  it('approved_at BEFORE viewed_at is unusable telemetry -> conflicted (fail closed)', () => {
+    // approved earlier than viewed: approved < viewed branch of the floor guard.
+    const doc = ceremonyGraph({ viewed_at: '2026-07-02T00:01:00Z', approved_at: '2026-07-02T00:00:00Z' });
+    const r = evaluateEvidenceGraph(doc, ceremonyPolicy(30), { verifiers: VC, as_of: AS_OF });
+    expect(r.verdict).toBe('conflicted');
+    expect(r.reasons.join(' ')).toContain('ceremony_telemetry_missing');
+  });
+
+  it('a below-floor ceremony with a NULL approver still surfaces rubber-stamping (approver unknown)', () => {
+    // Build the ceremony node directly with approver:null so the verifier reports
+    // approver:null and the reason renders the `?? 'unknown'` fallback.
+    const cer = mk('ceremony_evidence', {
+      approver: null, issued_at: '2026-07-02T00:00:00Z',
+      viewed_at: '2026-07-02T00:00:00Z', approved_at: '2026-07-02T00:00:02Z', // 2s
+    });
+    const id = artifactDigest(cer);
+    const doc = {
+      '@version': EVIDENCE_GRAPH_VERSION, action_digest: ACTION,
+      nodes: [{ id, type: 'ceremony_evidence', artifact: cer }], edges: [],
+    };
+    const r = evaluateEvidenceGraph(doc, ceremonyPolicy(30), { verifiers: VC, as_of: AS_OF });
+    expect(r.verdict).toBe('conflicted');
+    expect(r.reasons.join(' ')).toContain('approver unknown');
+  });
+
+  it('an effect_attestation with NO observed_effect_digest fails closed (effect_divergence)', () => {
+    const doc = effectGraph({ observed: undefined, committed: EFFECT_X });
+    const r = evaluateEvidenceGraph(doc, effectPolicy(), { verifiers: VE, as_of: AS_OF });
+    expect(r.verdict).toBe('conflicted');
+    expect(r.reasons.join(' ')).toContain('carries no observed_effect_digest');
+  });
+
+  it('effect divergence never softens an ALREADY-unverifiable verdict (downgradeToConflicted keeps unverifiable)', () => {
+    // Build a graph whose base verdict is unverifiable (an unbacked edge claim
+    // among OTHER nodes), while carrying a VERIFIED, diverging effect_attestation.
+    // The effect-divergence downgrade then runs downgradeToConflicted('unverifiable'),
+    // which must return 'unverifiable' — never soften the worse verdict.
+    const att = mk('effect_attestation', {
+      receipt_id: 'tr_x', issued_at: '2026-07-02T00:00:00Z',
+      observed_effect_digest: EFFECT_Y, committed_effect_digest: EFFECT_X, // diverges
+    });
+    const attId = artifactDigest(att);
+    const auth = mk('authorization_receipt', { issued_at: '2026-07-02T00:00:00Z' });
+    const authId = artifactDigest(auth);
+    const wl = mk('workload_identity', { issued_at: '2026-07-02T00:00:00Z' });
+    const wlId = artifactDigest(wl);
+    const doc = {
+      '@version': EVIDENCE_GRAPH_VERSION, action_digest: ACTION,
+      nodes: [
+        { id: attId, type: 'effect_attestation', artifact: att },
+        { id: authId, type: 'authorization_receipt', artifact: auth },
+        { id: wlId, type: 'workload_identity', artifact: wl },
+      ],
+      // presenter claims workload attests_runtime auth, but auth's bytes contain
+      // no such binding -> unbacked edge -> base verdict unverifiable.
+      edges: [{ from: wlId, rel: 'attests_runtime', to: authId }],
+    };
+    const policy = {
+      policy_id: 'ep:test:effect-plus', reliance_purpose: 'regulated_execution',
+      requirement: 'effect_attestation AND authorization_receipt AND workload_identity',
+    };
+    const r = evaluateEvidenceGraph(doc, policy, { verifiers: VE, as_of: AS_OF });
+    expect(r.verdict).toBe('unverifiable');
+    expect(r.reasons.join(' ')).toContain('unbacked_edge_claim');
+    // The verified diverging effect is present but did NOT downgrade past unverifiable.
+    expect(r.reasons.join(' ')).toContain('effect_divergence');
+  });
+});
+
 describe('policy packs', () => {
   it('ships six packs, all frozen, with fail-closed lookup', () => {
     expect(POLICY_PACK_IDS.length).toBe(6);
