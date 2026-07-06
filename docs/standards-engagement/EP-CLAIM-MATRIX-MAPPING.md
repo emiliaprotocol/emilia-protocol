@@ -1,18 +1,24 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
-# EMILIA Protocol — protocol mapping table against draft-bu-agentproto-security-principal-binding-01
+# EMILIA Protocol — protocol mapping table against draft-bu-agentproto-security-principal-binding-02
 
 A complete worked mapping of the EMILIA Protocol (EP) artifact-layer
 mechanisms against the claim registry and Protocol Mapping Template of
-[draft-bu-agentproto-security-principal-binding-01]
-(https://datatracker.ietf.org/doc/html/draft-bu-agentproto-security-principal-binding-01),
-offered as an early test of the template (Section 12/14) and per Section 16:
-EP is **not** an agent communication protocol; it is an artifact-layer
-mechanism intended as an **inheritance target** — where a communication
-protocol marks C-002, C-005, C-007, or C-008 rows "inherited," this table
-supplies the inherited verifier, carrier, binding, freshness rule, failure
-behavior, and evidence reference.
+[draft-bu-agentproto-security-principal-binding-02]
+(https://datatracker.ietf.org/doc/html/draft-bu-agentproto-security-principal-binding-02),
+offered as an early test of the template (mapping-row fields, Sections 10
+and 15) and of its inheritance framing: EP is **not** an agent
+communication protocol; it is an artifact-layer mechanism intended as an
+**inheritance target** — where a communication protocol marks C-002,
+C-005, C-007, or C-008 rows "inherited," this table supplies the inherited
+verifier, carrier, binding, freshness rule, failure behavior, accepted
+result, and evidence reference.
 
-Status vocabulary is the draft's (Section 13). All EP Internet-Drafts are
+Status vocabulary is the draft's (Section 14): specified / planned /
+inherited / assumption for specification; implemented / partial / none /
+external for implementation — two independent vocabularies. Evidence-type
+labels follow the Section 10 field (e.g., source-level, unit-level,
+local-harness, interop, deployment, document); per the draft, an evidence
+type is a boundary, not an assurance level. All EP Internet-Drafts are
 active **individual** submissions, not IETF-adopted or endorsed. Reference
 verifiers exist in JavaScript, Python, and Go in one repository — a
 consistency check, **not** independent implementations; an independent
@@ -22,18 +28,21 @@ recorded either way.
 Repo root for evidence references:
 `https://github.com/emiliaprotocol/emilia-protocol/blob/main/`
 
-Per the acceptance-side convention announced for -02 (success behavior /
-accepted result, name the editor's choice): each mapped row below states its
-ACCEPTED RESULT — the constrained, verifier-produced output an application
-may consume, never raw peer-provided claims — including what that output
-does NOT authorize.
+Per -02's accepted-result machinery (the Section 3 definition, matrix
+review rules 3 and 8, and the Security Considerations): each mapped row
+below states its ACCEPTED RESULT — the constrained, verifier-produced
+output an application may consume, never raw peer-provided claims —
+including what that output does NOT authorize. Because the JS/Python/Go
+verifiers live in one repository, EP labels its vector evidence
+local-harness, **not** interop, until the independent COSA
+reimplementation agrees on the same vectors.
 
 ---
 
 ## C-002 — Human or organizational authority
 
-- **Claim**: HUMAN authority, asserted explicitly (per the -02 direction that
-  a mapping row names which of the two it carries): a named, accountable
+- **Claim**: HUMAN authority, asserted explicitly (the row names which of
+  the two authorities it carries): a named, accountable
   natural person — or an M-of-N (optionally ordered) quorum of distinct
   natural persons — authorized this exact action before execution.
   Organizational authority (policy/role grants) is NOT what this row
@@ -62,7 +71,7 @@ does NOT authorize.
   draft-schrock-human-authorization-binding (host-record binding profile).
 - **Dependency**: one-time consumption requires an enforcement point
   (deployed by the resource owner); issuer-key pinning is a relying-party
-  process. (Split per the registry's Section-14 direction: the semantic
+  process. (Split per the registry's template direction: the semantic
   rule lives in binding-and-freshness above; the state holder here; and
   the evidence that the rule is actually checked: replay negatives in the
   receipts suite and `packages/gate/store.js` + `store-postgres.js` tests,
@@ -74,6 +83,8 @@ does NOT authorize.
   what, and does not establish correctness, sufficiency, or acceptance
   (a relying-party key-pinning decision). `ep-verify` (npm/PyPI) emits
   exactly this shape on stdout.
+- **Evidence type**: local-harness — cross-language vectors, one
+  repository (see the status note above).
 - **Evidence reference**: `conformance/vectors/receipts.v1.json`,
   `conformance/vectors/quorum.v1.json`, `conformance/vectors/signoffs.v1.json`
   (positive + negative; `node conformance/run.mjs`).
@@ -104,6 +115,8 @@ does NOT authorize.
   party recomputes the same verdict. It is accountability, never authority:
   the artifact itself states that it confers no permission and does not
   establish the action's business correctness.
+- **Evidence type**: local-harness — deterministic example vector plus
+  unit test, one repository.
 - **Evidence reference**: `examples/evidence-graph/evidence-graph-vector.mjs`
   + `.json` (deterministic, negatives enforced), `tests/evidence-graph.test.js`.
 
@@ -130,6 +143,7 @@ does NOT authorize.
 - **Accepted result (success behavior)**: separate named results per leg
   (native signature, chain, transparency inclusion) — never one collapsed
   boolean, so registration can never silently stand in for authorization.
+- **Evidence type**: local-harness.
 - **Evidence reference**: `conformance/vectors/provenance-chains.v1.json`,
   `provenance.exec.v1.json`, `evidence-record.v1.json`,
   `trust-receipt.exec.v1.json`.
@@ -152,6 +166,7 @@ does NOT authorize.
   is **planned** — drafted, filing when the datatracker reopens; listed as
   planned, not a guarantee. **Becomes reviewable when**: the generalized
   revocation I-D posts and its vector file joins the revocation suites.
+- **Evidence type**: local-harness.
 - **Evidence reference**: `conformance/vectors/revocation.v1.json`,
   `revocation.exec.v1.json`, `time-attestation.v1.json`.
 
@@ -169,8 +184,115 @@ does NOT authorize.
 - **Implementation status**: implemented.
 - **Specification status**: specified —
   draft-schrock-authorization-evidence-challenge.
+- **Evidence type**: local-harness.
 - **Evidence reference**: `conformance/vectors/aec.json`; negative cases in
   every suite.
+
+## C-011 — Accepted result
+
+- **Claim**: what an application may consume after successful verification
+  is a constrained, verifier-produced result — never the raw receipt,
+  quorum record, graph, or attestation — and that result names its scope
+  and its non-claims.
+- **Carrier**: the verifier output contracts: `{ valid, checks: { version,
+  signature, anchor }, error }` from the receipt verifier
+  (`packages/verify`); `{ verified, accepted, checks }` from the binding
+  verifier; the signed EP-RELIANCE-RESULT-v1 verdict (C-005); the
+  enforcement-point reliance packet (C-002).
+- **Verifier and verification rule**: VERIFIED and ACCEPTED are computed
+  and reported separately, never collapsed into one boolean — a binding
+  from an unpinned issuer reports verified but never accepted (B3); each
+  check is named, so a consumer cannot mistake one passing check for
+  another check's claim.
+- **Failure behavior**: the failure result names the failing check (reason
+  codes across every suite; see C-009) — a refusal is a constrained
+  result too, not silence.
+- **Implementation status**: implemented — `ep-verify` (npm/PyPI) emits
+  the constrained result shape on stdout.
+- **Specification status**: specified for the reliance result
+  (draft-schrock-ep-action-evidence-graph) and verified-vs-accepted
+  (draft-schrock-human-authorization-binding, B3); the receipt-verifier
+  result-object shape itself is documented in-repo, **not** yet pinned in
+  an I-D — stated so the row cannot read as more than it is.
+- **Accepted result (success behavior)**: the result object states what
+  one named check decided and nothing else — it never establishes
+  authority, sufficiency, or correctness by itself.
+- **Evidence type**: local-harness.
+- **Evidence reference**: `examples/binding/human-authorization-binding-vector.mjs`
+  (B3: verifies-but-never-accepted — the non-claim survives into the
+  result), `examples/evidence-graph/evidence-graph-vector.mjs` (signed
+  verdict + recomputable replay digest), named reason codes in
+  `conformance/vectors/receipts.v1.json` (`wrong_key`, `tampered_payload`,
+  `tampered_anchor`).
+- **Becomes fully reviewable when**: a dedicated raw-claim-pass-through
+  negative case (Section 20) — a raw artifact consumed in place of the
+  result object, with an expected reject — lands in a cross-language
+  vector file under `conformance/vectors/`.
+
+## C-012 — Authorization and attribution boundary
+
+- **Claim**: pre-execution authority and post-execution attribution are
+  DIFFERENT claims, and EP keeps them separate. EP-RECEIPT-v1 / EP-QUORUM
+  speak BEFORE execution — a named human (or quorum) authorized this
+  exact action (C-002). EP-AEG-v1, the gate evidence log, and the
+  executor execution-integrity attestation speak AFTER execution —
+  attribution and evidence, never authority. This row claims both legs
+  and the boundary between them; it does NOT claim delegated scope
+  (C-003, partial) or relying-party acceptance.
+- **Carrier**: pre-execution — EP-RECEIPT-v1 / EP-QUORUM (signature
+  produced before execution; the verifier's validity-window rule
+  enforces freshness in strict mode, `packages/verify/index.js`). Post-execution — EP-AEG-v1 + gate evidence log +
+  EP-EXECUTION-INTEGRITY-v1, whose executor is identified but never
+  trusted: its signature attributes the executed-action claim to a named
+  key and grants no authority.
+- **Verifier and verification rule**: each leg has its own verifier and
+  its own accepted result. The shared action digest joins the legs (a
+  binding and composition aid for C-005/C-010) and makes the join
+  checkable — it never makes the legs interchangeable. A record from the
+  wrong side of the boundary is refused: no resolvable pre-execution WHO
+  evidence → `who_required_but_absent`; WHO evidence that is a refusal →
+  `disposition_contradicts_receipt`.
+- **Binding and freshness**: shared action digest as the join key; digest
+  equality across legs neither authorizes nor proves completeness (the
+  Section 20 digest-equality case).
+- **Failure behavior**: fail-closed per leg; absence of required
+  pre-execution authority becomes evidence only through a signed
+  observed-absence statement naming the search performed.
+- **Implementation status**: implemented for the boundary and the digest
+  join; the execution-integrity leg is experimental (Extension-PIP
+  governed) — cited here for the boundary rule, **not** as a production
+  claim.
+- **Specification status**: specified —
+  draft-schrock-ep-authorization-receipts (pre-execution),
+  draft-schrock-ep-action-evidence-graph (post-execution),
+  draft-schrock-human-authorization-binding (the join). The temporal
+  rule — pre-execution authorization and post-hoc ratification are both
+  legitimate records; conflating them is not — is contributed from EP as WHO-leg
+  requirement W3 (contribution text:
+  `docs/standards-engagement/WHO-LEG-agent-accountability-composition.md`);
+  the composition -00's WHO slot carries the corresponding reject rule.
+- **Accepted result (success behavior)**: separate named results per
+  leg — pre-execution authority and post-execution attribution are never
+  merged into one accepted result, even when both verify over the same
+  action digest.
+- **Evidence type**: local-harness.
+- **Evidence reference**: `examples/scitt/capsule-seam-vector.mjs` +
+  `capsule-seam-vector.json` must-reject cases — `wrong_action`
+  (`who_subject_mismatch`) and `replay_across_subject` (cross-leg digest
+  mismatch and reuse across subjects), `approval_contradiction`
+  (`disposition_contradicts_receipt`), `missing_who_when_required`
+  (`who_required_but_absent`); `conformance/vectors/execution-integrity.v1.json`
+  (`a_execution_drift`, `c_missing_attestation_irreversible` — the
+  attestation is additive and grants no authority);
+  `examples/scitt/observed-absence-vector.mjs` (a bare absence assertion
+  is refused).
+- **Becomes fully reviewable when**: a named
+  attribution-substituted-for-authorization negative case (Section 20) —
+  a post-hoc ratification or attribution record presented as
+  pre-execution authority, with an expected reject reason — lands in a
+  cross-language vector file under `conformance/vectors/`. Today that
+  substitution is refused indirectly (`missing_who_when_required` +
+  `approval_contradiction`); the dedicated case is **not** yet written.
 
 ## C-003 — Delegated scope (partial)
 
@@ -183,6 +305,8 @@ does NOT authorize.
   cross-language conformance suite. Stated so the row cannot read as more
   than it is.
 - **Specification status**: documented; not yet an I-D.
+- **Evidence type**: unit-level (`tests/delegation.test.js`) — not vector
+  evidence.
 - **Becomes fully reviewable when**: a cross-language delegation vector
   file lands in `conformance/vectors/` and all three verifiers agree on it
   (per the registry's rule that non-implemented rows name the artifact
@@ -202,23 +326,44 @@ does NOT authorize.
   is an observed-absence statement, not silence.
 - **Failure behavior**: embedded/referenced inconsistency or absent required
   binding → fail closed.
-- **Implementation status**: implemented (binding vectors B1-B5).
+- **Implementation status**: implemented — the binding vector enforces
+  B1-B4 by name; B5 (dual-form consistency) is specified in the I-D with
+  **no vector case yet** — stated so the row cannot read as more than it
+  is.
 - **Specification status**: specified — draft-schrock-human-authorization-binding;
-  a co-authored composition profile (mih-sato agent-accountability
-  composition) is in progress — listed as planned where it extends beyond
-  binding-00.
-- **Evidence reference**: `examples/binding/human-authorization-binding-vector.mjs`,
-  `examples/scitt/observed-absence-vector.mjs`.
+  the co-authored composition profile posted as
+  draft-mih-sato-agent-accountability-composition-00 (2026-07-05) —
+  still listed as planned where it extends beyond binding-00.
+- **Evidence type**: local-harness.
+- **Evidence reference**: `examples/binding/human-authorization-binding-vector.mjs`
+  (B1-B4), `examples/scitt/observed-absence-vector.mjs`.
+
+## Composition slots (Section 18)
+
+Where review is slot-shaped rather than protocol-shaped: in
+draft-mih-sato-agent-accountability-composition-00 (CAN / WHO / WHAT /
+AUDIT joined by a shared action digest) EP maps to the WHO slot — the
+WHO-leg text was contributed from EP and merged into composition-00;
+the W1-W7 numbering (including the W3 temporal rule) follows EP's
+contribution source,
+`docs/standards-engagement/WHO-LEG-agent-accountability-composition.md`. Consistent with Section 18: the shared
+digest is a binding and composition aid for C-005 and C-010, NOT an
+accepted result for authority, completeness, or policy sufficiency — the
+seam vector's reject cases (C-012 above) are the executable form of that
+boundary. EP claims the WHO slot only; CAN, WHAT, and AUDIT are other
+formats' rows.
 
 ## Claims EP does not carry and does not rely on
 
-Per Section 14's omission rule — stated rather than omitted, since reviewers
-may expect them:
+Per the registry's omission rule — stated rather than omitted, since
+reviewers may expect them:
 
 - **C-001 Instance identity**: not carried, not relied upon. EP receipts
   verify identically whichever agent/workload presents them; instance
   identity is WIMSE/communication-protocol territory. Composition happens
-  through the action-digest join key.
+  through the action-digest join key. The Section 20
+  possession-without-authority case is structural for EP: no possession
+  check exists here to be mistaken for authority.
 - **C-004 Session continuity**: not carried, not relied upon. An EP receipt
   is deliberately valid for one exact action, not a session.
 - **C-006 Tool or resource identity**: not carried as identity. The
@@ -230,5 +375,6 @@ may expect them:
 ---
 
 *Maintained at `docs/standards-engagement/EP-CLAIM-MATRIX-MAPPING.md`.
-Re-keyed to -01's C-IDs 2026-07-04; will be PR'd to the registry repo when
-one exists.*
+Re-keyed to -01's C-IDs 2026-07-04; updated to -02 (C-011, C-012,
+accepted-result + evidence-type fields, Section 18 composition-slots note)
+2026-07-05; will be PR'd to the registry repo when one exists.*
