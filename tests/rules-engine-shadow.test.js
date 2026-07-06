@@ -109,11 +109,15 @@ describe('rules-engine v0 shadow signal — wiring', () => {
     expect(typeof shadow.guard_policy_decision).toBe('string');
   });
 
-  it('shadow event correctly identifies vendor_bank_account_change as REQUIRE_SECOND_APPROVAL or stronger', async () => {
-    // Per §4.6 + §4.7 + §4.9 — vendor_bank_account_change always requires
-    // signoff (BANK_DESTINATION_CHANGE), quorum 2+. With after-hours +
-    // new-destination + amount-25K, risk crosses 50, escalating to
-    // REQUIRE_THIRD_APPROVAL.
+  it('shadow event hard-denies a bearer-only vendor_bank_account_change with MFA_REQUIRED (stronger than REQUIRE_SECOND_APPROVAL)', async () => {
+    // Hardened behavior: the mint route no longer fabricates an MFA-strong actor
+    // for a bearer request. A bearer API key carries no MFA / WebAuthn UV signal,
+    // so the shadow input now uses the fail-safe weakest values
+    // (mfa_verified: false, assurance_level: 'low'). The §4.5 hard-deny gate
+    // fires MFA_REQUIRED and short-circuits BEFORE the §4.6 quorum layer, so the
+    // engine returns DENY (required_approvals 0, no required_signoff). DENY is
+    // strictly stronger than REQUIRE_SECOND_APPROVAL — the escalation intent is
+    // preserved: a bearer-only critical change is never waved through.
     process.env.EP_RULES_ENGINE_V0 = 'enabled';
     const { client, inserts } = makeAuditCapture();
     mockGetGuardedClient.mockReturnValue(client);
@@ -121,9 +125,12 @@ describe('rules-engine v0 shadow signal — wiring', () => {
     await createReceipt(req(VALID_BODY));
     const shadow = inserts[1].after_state;
 
-    expect(shadow.rules_engine_required_approvals).toBeGreaterThanOrEqual(2);
-    expect(shadow.rules_engine_reason_codes).toContain('BANK_DESTINATION_CHANGE');
-    expect(shadow.rules_engine_required_signoff?.reason_code).toBe('BANK_DESTINATION_CHANGE');
+    expect(shadow.rules_engine_decision).toBe('DENY');
+    expect(shadow.rules_engine_reason_codes).toContain('MFA_REQUIRED');
+    // Hard-deny short-circuits before the quorum layer, so there is no
+    // per-signoff quorum requirement and no accumulated approval count.
+    expect(shadow.rules_engine_required_approvals).toBe(0);
+    expect(shadow.rules_engine_required_signoff).toBeNull();
   });
 
   it('when EP_RULES_ENGINE_V0 is unset, emits ONLY the live audit_event (no shadow)', async () => {

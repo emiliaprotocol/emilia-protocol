@@ -337,9 +337,31 @@ export async function POST(request) {
             actor_id,
             role: body.actor_role || 'unknown',
             department: body.actor_department,
-            // Auth is bearer-token + middleware-enforced; treat as MFA-strong.
-            assurance_level: 'high',
-            mfa_verified: true,
+            // FAIL-SAFE (weakest credible values). A bearer API key is a
+            // long-lived shared secret; it does NOT establish MFA or a
+            // user-verification (UV) signal. There is no WebAuthn assertion on
+            // the mint request today (authenticateRequest resolves a bearer key
+            // via resolve_authenticated_actor and returns { entity, permissions }
+            // with no assurance/UV field), so we MUST NOT claim MFA-strong here.
+            // The previous 'high' / mfa_verified:true was a fail-OPEN default:
+            // if this shadow engine is ever promoted to enforce, treating every
+            // bearer request as MFA-verified would let a bare bearer token clear
+            // the §4.5 MFA/assurance hard-deny gate. Mirror the same fail-safe
+            // the live evaluator uses at authStrength (line ~219): weakest
+            // credible tier. The rules engine will hard-deny (MFA_REQUIRED) a
+            // bearer-only request — which is the HONEST shadow result until a
+            // verified UV signal is threaded through (see wiring note below).
+            //
+            // WIRING NEEDED to safely raise this above the floor: a genuine
+            // WebAuthn user-verification signal (UV flag from a Class-A device
+            // key / passkey assertion) must be surfaced on the authenticated
+            // request. That signal exists at signoff/consume time, NOT at mint
+            // time, so authenticateRequest would need to accept and verify a
+            // fresh UV-bearing assertion on the mint call before assurance_level
+            // 'high' / mfa_verified:true could be asserted. Never trust a
+            // body-supplied assurance/mfa value (the caller/agent controls it).
+            assurance_level: 'low',
+            mfa_verified: false,
           },
           action: {
             action_id: receiptId,

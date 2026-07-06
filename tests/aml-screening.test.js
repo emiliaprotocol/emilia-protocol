@@ -133,10 +133,21 @@ describe('guard-policy AML integration', () => {
     expect(d.aml_signals.some((s) => s.startsWith('structuring'))).toBe(true);
   });
 
-  it('a clean action with AML context still allows, with no signals', () => {
-    const d = fin({ counterpartyName: 'Acme Widgets', amount: 2000 });
-    expect(d.decision).toBe(GUARD_DECISIONS.ALLOW);
-    expect(d.aml_signals).toBeUndefined();
+  it('a clean action with AML context contributes no AML signals (base decision unchanged by AML)', () => {
+    // AML intent: a clean counterparty produces NO aml_signals and does NOT
+    // escalate. The base decision here is allow_with_signoff purely because of
+    // the mint-time key-class floor on large_payment_release (independent of
+    // AML). Compare it against the same call WITHOUT AML context to prove AML
+    // contributed nothing: identical decision, and no aml_signals field.
+    const withAml = fin({ counterpartyName: 'Acme Widgets', amount: 2000 });
+    const withoutAml = evaluateGuardPolicy({
+      organizationId: 'org', actorId: 'a', actorRole: 'system',
+      actionType: GUARD_ACTION_TYPES.LARGE_PAYMENT_RELEASE, targetChangedFields: [],
+      amount: 2000, riskFlags: [], authStrength: 'mfa',
+    });
+    expect(withAml.aml_signals).toBeUndefined();
+    expect(withAml.decision).toBe(withoutAml.decision);
+    expect(withAml.signoffRequired).toBe(withoutAml.signoffRequired);
   });
 
   it('AML never weakens an existing signoff requirement (large payment stays signoff)', () => {
@@ -150,13 +161,17 @@ describe('guard-policy AML integration', () => {
     expect(d.signoffTier).toBe('single');
   });
 
-  it('omitting AML context preserves the exact prior decision shape', () => {
+  it('omitting AML context preserves the exact non-AML decision shape (no aml_signals field)', () => {
+    // AML intent: with no AML context, the result carries no aml_signals field
+    // at all — the AML layer is a pure no-op. The decision itself is
+    // allow_with_signoff because of the key-class floor on large_payment_release
+    // (a base-policy property, not an AML one).
     const d = evaluateGuardPolicy({
       organizationId: 'org', actorId: 'a', actorRole: 'system',
       actionType: GUARD_ACTION_TYPES.LARGE_PAYMENT_RELEASE, targetChangedFields: [],
       amount: 2000, riskFlags: [], authStrength: 'mfa',
     });
-    expect(d.decision).toBe(GUARD_DECISIONS.ALLOW);
-    expect(d.aml_signals).toBeUndefined();
+    expect(d.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+    expect('aml_signals' in d).toBe(false);
   });
 });
