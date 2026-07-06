@@ -74,6 +74,30 @@ per vector. Proposed minimal shape, offered for the list:
 `{ root: "general_infrastructure" | "pinned_root", consequence_tier:
 "software" | "class_a" | "quorum", sufficiency_bar: "<profile_hash | none>" }`.
 
+## Relationship to the WIMSE architecture (draft-ietf-wimse-arch-08)
+
+The -08 architecture revision adds a Policy Enforcement Point / Policy Decision
+Point model (Section 3.3) and an AI/ML intermediaries use case (Section 3.4.11)
+in which an agent inherits the upstream principal's security context and operates
+within the constraints of that delegation. EP composes with this in the
+architecture's own vocabulary:
+
+- **EP's Gate is a PEP.** It allows, blocks, or applies obligations on a request
+  based on the authenticated context, exactly as Section 3.3 defines. The Gate's
+  obligation is a valid, in-scope, non-replayed authorization receipt.
+- **Per-action human authorization is a PEP obligation, distinct from inherited
+  delegation.** The architecture's AI/ML model has the agent operate within a
+  standing delegation, which is necessary but not sufficient for irreversible or
+  high-consequence actions. For those, the PEP can additionally require proof
+  that a named human authorized this exact action (the WHO leg, C-002 above),
+  evaluated at the enforcement point. Delegation says the agent may act; the
+  receipt says a named human authorized this specific consequential act.
+
+This is a composition, not a competing model: WIMSE workload identity and
+delegation establish which agent acts under which principal's standing authority;
+EP adds, at the same PEP, the per-action human-authorization obligation for the
+consequential subset. The gradient_position field records where each sits.
+
 ## Reconciliation note
 
 The C-IDs are Songbo's registry (draft-bu). This crosswalk pins each row's
