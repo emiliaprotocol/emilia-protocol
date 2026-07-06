@@ -3,6 +3,85 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.5.0 (2026-07-05)
+
+### Added
+Five ADDITIVE, OPT-IN transparency/currency knobs in `verifyTrustReceipt`, each
+following the existing `priorCheckpoint` pattern: a knob runs ONLY when its
+option is supplied, adds exactly one member to `checks` when active, folds into
+`valid` by conjunction, and fails closed with a distinct reason. With NO knob
+option supplied the result is byte-for-byte unchanged (the frozen seven-member
+`checks` set, no extra top-level members). Each knob's full module result is
+surfaced under a dedicated, option-gated top-level member.
+
+- **Witness cosignatures (EP-WITNESS-v1).** `opts.witnessQuorum = { cosignatures,
+  pinnedWitnessKeys, k }` requires at least `k` DISTINCT pinned witnesses to have
+  validly cosigned the receipt's checkpoint head. Adds `checks.witness_quorum`
+  and surfaces `result.witness_quorum`. Fail-closed: a receipt with no checkpoint,
+  a bad `k`, or fewer than `k` distinct valid cosignatures each refuse. What it
+  proves: `k` trusted witnesses attested to ONE head (the local, single-view half
+  of equivocation detection). What it does NOT prove: that no different head was
+  shown to someone else (that cross-view gossip is the deployment's job).
+- **Trusted-time proof (RFC 3161).** `opts.timestampProof = { token,
+  expectedDigest, pinnedTsaKeys }` verifies a TSA timestamp token over a
+  caller-chosen digest against a PINNED TSA key. Adds `checks.timestamp_proof`
+  and surfaces `result.timestamp_proof`. Fail-closed: a missing token, a
+  missing/malformed digest, an unpinned TSA, or a bad signature each refuse with
+  a distinct reason. What it proves: a TSA asserted the digest existed at
+  `gen_time` (the bytes predate `gen_time`). What it does NOT prove: that the
+  action was correct or authorized, and it is authentic-as-of-token only (it says
+  nothing about current TSA-certificate validity or revocation, which needs a
+  fresh online check).
+- **Currency evaluation (EP-CURRENCY-v1).** `opts.currency = { now,
+  maxStalenessSeconds, freshHead, freshHeadRequired }` evaluates currency-at-T on
+  a separate axis from offline authenticity. Adds `checks.currency`, which passes
+  ONLY when a supplied recent non-revoking signed head proves status `fresh`.
+  BOTH `stale` AND the honest offline default `unknown` FAIL this opted-in gate:
+  offline verification can NEVER establish currency, so absence of proof of
+  freshness does not pass (fail-closed). The full two-axis result
+  (`authentic_as_of_commit` plus `currency_at_T` with status, evaluated_at, and a
+  stable reason string) is surfaced as `result.currency` so a caller can tell
+  `unknown` (offline only) apart from `stale` (a head that is too old, was
+  required but absent, or shows revocation). `maxStalenessSeconds` is an
+  action-policy field (tighter for higher-consequence, irreversible actions), not
+  a global verifier constant.
+- **Consumption proof (EP-SMT-CONSUME-v1).** `opts.consumptionProof` is a
+  third-party bundle proving a one-time nonce transitioned absent to present
+  exactly once across two append-only-linked heads. Adds `checks.consumption` and
+  surfaces `result.consumption`. Fail-closed: any missing, malformed, or invalid
+  sub-proof, a non-append-only h1 to h2 link, a present-at-h1, or an absent-at-h2
+  each refuse with a distinct reason (`present` is never inferred). What it
+  proves: the tree-shaped consumption facts only. What it does NOT prove: the
+  checkpoint SIGNATURES (the caller authenticates those separately) or currency of
+  the later head.
+- **Initiator-software attestation (EP-INITIATOR-ATTESTATION-v1).**
+  `opts.requireInitiatorAttestation === true` structurally validates the
+  self-asserted initiating-software attestation at
+  `receipt.action.initiator_software` (model_id, model_version,
+  tool_chain_digest, optional neutralized statement). Adds
+  `checks.initiator_attestation` and surfaces `result.initiator_attestation`.
+  Fail-closed: an absent or malformed attestation is `false` (the validator never
+  repairs a malformed one). What it proves: WHICH software asked. What it does NOT
+  prove: that the software behaved (the labels are self-asserted, and the digest
+  is authentic-as-supplied, not proof of correct execution).
+
+The five modules (`witness.js`, `timestamp-proof.js`, `currency.js`,
+`consumption-proof.js`, `initiator-attestation.js`) now ship in the published
+package, and their standalone functions and constants are re-exported from the
+package entry (`verifyWitnessCosignature`, `requireWitnessQuorum`,
+`witnessSigningDigest`, `WITNESS_VERSION`, `WITNESS_DOMAIN_TAG`,
+`verifyTimestampProof`, `TIMESTAMP_PROOF_ALG`, `evaluateCurrency`,
+`CURRENCY_VERSION`, `CURRENCY_STATUS`, `CURRENCY_REASON`,
+`verifyConsumptionProof`, `ReferenceConsumptionTree`, `CONSUMPTION_PROFILE`,
+`CONSUMPTION_LEAF_DOMAIN`, `SMT_DEPTH`, `validateInitiatorAttestation`,
+`neutralizeStatement`, `normalizeDigest`, `bindInitiatorAttestation`,
+`INITIATOR_ATTESTATION_VERSION`, `INITIATOR_ATTESTATION_FIELD`,
+`INITIATOR_STATEMENT_MAX`), with TypeScript types in `index.d.ts`. Note: the
+in-repo JS reference verifiers are one team's cross-language ports, not
+clean-room independent implementations; the EP-CURRENCY-v1, EP-WITNESS-v1,
+EP-SMT-CONSUME-v1, and EP-INITIATOR-ATTESTATION-v1 checks have no Python or Go
+port yet (the JS reason strings and enums are written to be portable).
+
 ## 3.4.0 (2026-07-05)
 
 ### Added

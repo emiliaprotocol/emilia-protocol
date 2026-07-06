@@ -136,6 +136,157 @@ describe('EP-AEG — evidence graph evaluation', () => {
   });
 });
 
+// ── Step 6: ceremony_evidence + effect_attestation node types ───────────────
+
+// A ceremony node carries the signing-ceremony timeline (issued/viewed/approved
+// + approver). Its verifier surfaces that telemetry alongside signature state.
+const CEREMONY_VERIFIER = (a) => ({
+  valid: a.tampered !== true,
+  action_digest: a.action,
+  issued_at: a.issued_at,
+  approver: a.approver,
+  viewed_at: a.viewed_at,
+  approved_at: a.approved_at,
+});
+// An effect_attestation is executor-signed {receipt_id, observed_effect_digest}.
+// The verifier reports the observed effect and (when it could read it out of the
+// referenced authorization) the approved committed effect. valid:false models a
+// bad executor signature or an unpinned executor key — fail-closed at source.
+const EFFECT_VERIFIER = (a) => ({
+  valid: a.bad_sig !== true && a.unpinned_key !== true,
+  action_digest: a.action,
+  issued_at: a.issued_at,
+  receipt_id: a.receipt_id,
+  observed_effect_digest: a.observed_effect_digest,
+  committed_effect_digest: a.committed_effect_digest,
+});
+
+// A ceremony-only policy: require the ceremony node, set a review-latency floor.
+const ceremonyPolicy = (floorSec) => ({
+  policy_id: 'ep:test:ceremony',
+  reliance_purpose: 'audit',
+  requirement: 'ceremony_evidence',
+  ceremony_min_review_sec: floorSec,
+});
+// An effect policy: require the effect attestation, optionally pin the approved
+// effect digest (relying-party-supplied, never presenter-chosen).
+const effectPolicy = (expected_effect_digest) => ({
+  policy_id: 'ep:test:effect',
+  reliance_purpose: 'regulated_execution',
+  requirement: 'effect_attestation',
+  ...(expected_effect_digest ? { expected_effect_digest } : {}),
+});
+
+function ceremonyGraph({ viewed_at, approved_at, approver = 'alice', tampered = false } = {}) {
+  const cer = mk('ceremony_evidence', {
+    approver, issued_at: '2026-07-02T00:00:00Z', viewed_at, approved_at,
+    ...(tampered ? { tampered: true } : {}),
+  });
+  const id = artifactDigest(cer);
+  return {
+    '@version': EVIDENCE_GRAPH_VERSION, action_digest: ACTION,
+    nodes: [{ id, type: 'ceremony_evidence', artifact: cer }], edges: [],
+  };
+}
+function effectGraph({ observed, committed, bad_sig = false, unpinned_key = false } = {}) {
+  const att = mk('effect_attestation', {
+    receipt_id: 'tr_effect_1', issued_at: '2026-07-02T00:00:00Z',
+    observed_effect_digest: observed, committed_effect_digest: committed,
+    ...(bad_sig ? { bad_sig: true } : {}), ...(unpinned_key ? { unpinned_key: true } : {}),
+  });
+  const id = artifactDigest(att);
+  return {
+    '@version': EVIDENCE_GRAPH_VERSION, action_digest: ACTION,
+    nodes: [{ id, type: 'effect_attestation', artifact: att }], edges: [],
+  };
+}
+const EFFECT_X = 'sha256:' + 'e'.repeat(64); // approved effect
+const EFFECT_Y = 'sha256:' + 'f'.repeat(64); // executed-but-different effect
+
+describe('EP-AEG — ceremony_evidence (review-latency floor)', () => {
+  const V = { ...verifiers, ceremony_evidence: CEREMONY_VERIFIER };
+
+  it('an above-floor ceremony is admissible (genuine review)', () => {
+    const doc = ceremonyGraph({ viewed_at: '2026-07-02T00:00:00Z', approved_at: '2026-07-02T00:01:00Z' }); // 60s
+    const r = evaluateEvidenceGraph(doc, ceremonyPolicy(30), { verifiers: V, as_of: AS_OF });
+    expect(r.verdict).toBe('admissible');
+  });
+
+  it('a below-floor ceremony downgrades the verdict to conflicted (rubber-stamped)', () => {
+    const doc = ceremonyGraph({ viewed_at: '2026-07-02T00:00:00Z', approved_at: '2026-07-02T00:00:02Z' }); // 2s
+    const r = evaluateEvidenceGraph(doc, ceremonyPolicy(30), { verifiers: V, as_of: AS_OF });
+    expect(r.verdict).toBe('conflicted');
+    expect(r.reasons.join(' ')).toContain('rubber_stamped_ceremony');
+  });
+
+  it('a review-latency floor with unusable telemetry fails closed (conflicted, never admissible)', () => {
+    const doc = ceremonyGraph({ viewed_at: undefined, approved_at: '2026-07-02T00:01:00Z' });
+    const r = evaluateEvidenceGraph(doc, ceremonyPolicy(30), { verifiers: V, as_of: AS_OF });
+    expect(r.verdict).toBe('conflicted');
+    expect(r.reasons.join(' ')).toContain('ceremony_telemetry_missing');
+  });
+
+  it('no floor set means the ceremony telemetry is not judged (admissible)', () => {
+    const doc = ceremonyGraph({ viewed_at: '2026-07-02T00:00:00Z', approved_at: '2026-07-02T00:00:02Z' }); // 2s
+    const noFloor = { policy_id: 'ep:test:ceremony', reliance_purpose: 'audit', requirement: 'ceremony_evidence' };
+    const r = evaluateEvidenceGraph(doc, noFloor, { verifiers: V, as_of: AS_OF });
+    expect(r.verdict).toBe('admissible');
+  });
+
+  it('an unverifiable ceremony is not softened to conflicted (precedence: unverifiable > conflicted)', () => {
+    const doc = ceremonyGraph({ viewed_at: '2026-07-02T00:00:00Z', approved_at: '2026-07-02T00:00:02Z', tampered: true });
+    const r = evaluateEvidenceGraph(doc, ceremonyPolicy(30), { verifiers: V, as_of: AS_OF });
+    expect(r.verdict).toBe('unverifiable');
+  });
+});
+
+describe('EP-AEG — effect_attestation (approved X, executed Y)', () => {
+  const V = { ...verifiers, effect_attestation: EFFECT_VERIFIER };
+
+  it('an effect digest matching the approved committed effect admits', () => {
+    const doc = effectGraph({ observed: EFFECT_X, committed: EFFECT_X });
+    const r = evaluateEvidenceGraph(doc, effectPolicy(), { verifiers: V, as_of: AS_OF });
+    expect(r.verdict).toBe('admissible');
+  });
+
+  it('a diverging effect digest surfaces conflict (approved X, executed Y)', () => {
+    const doc = effectGraph({ observed: EFFECT_Y, committed: EFFECT_X });
+    const r = evaluateEvidenceGraph(doc, effectPolicy(), { verifiers: V, as_of: AS_OF });
+    expect(r.verdict).toBe('conflicted');
+    expect(r.reasons.join(' ')).toContain('effect_divergence');
+  });
+
+  it('a relying-party-pinned expected effect overrides the verifier-read committed digest', () => {
+    // Verifier reports committed==observed==X, but the relying party pins Y as
+    // the effect it approved: divergence still surfaces (pinned bar wins).
+    const doc = effectGraph({ observed: EFFECT_X, committed: EFFECT_X });
+    const r = evaluateEvidenceGraph(doc, effectPolicy(EFFECT_Y), { verifiers: V, as_of: AS_OF });
+    expect(r.verdict).toBe('conflicted');
+    expect(r.reasons.join(' ')).toContain('effect_divergence');
+  });
+
+  it('a verified effect with no committed effect to compare fails closed (conflicted)', () => {
+    const doc = effectGraph({ observed: EFFECT_X, committed: undefined });
+    const r = evaluateEvidenceGraph(doc, effectPolicy(), { verifiers: V, as_of: AS_OF });
+    expect(r.verdict).toBe('conflicted');
+    expect(r.reasons.join(' ')).toContain('effect_commitment_missing');
+  });
+
+  it('a bad executor signature is inadmissible evidence (unverifiable, not weighed as effect)', () => {
+    const doc = effectGraph({ observed: EFFECT_Y, committed: EFFECT_X, bad_sig: true });
+    const r = evaluateEvidenceGraph(doc, effectPolicy(), { verifiers: V, as_of: AS_OF });
+    expect(r.verdict).toBe('unverifiable');
+    // Divergence is NOT the reason — the signature failed first (fail closed).
+    expect(r.reasons.join(' ')).not.toContain('effect_divergence');
+  });
+
+  it('an unpinned executor key is inadmissible evidence (unverifiable)', () => {
+    const doc = effectGraph({ observed: EFFECT_X, committed: EFFECT_X, unpinned_key: true });
+    const r = evaluateEvidenceGraph(doc, effectPolicy(), { verifiers: V, as_of: AS_OF });
+    expect(r.verdict).toBe('unverifiable');
+  });
+});
+
 describe('EP-RELIANCE-RESULT — the verdict as signed evidence', () => {
   const { privateKey } = crypto.generateKeyPairSync('ed25519');
 

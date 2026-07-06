@@ -127,6 +127,82 @@ export interface TrustReceiptChecks {
    * currency or split-view honesty (that needs independent witnesses).
    */
   consistency?: boolean;
+  /**
+   * Present ONLY when `opts.witnessQuorum` is set (opt-in, fail-closed): true
+   * iff >= k distinct pinned witnesses validly cosigned the receipt's
+   * checkpoint head. Proves k trusted witnesses saw ONE head (local
+   * single-view); it does NOT prove no different head was shown elsewhere.
+   */
+  witness_quorum?: boolean;
+  /**
+   * Present ONLY when `opts.timestampProof` is set (opt-in, fail-closed): true
+   * iff a pinned TSA's RFC 3161 token verifies over the caller's expectedDigest.
+   * Proves the digest existed at gen_time; authentic-as-of-token only.
+   */
+  timestamp_proof?: boolean;
+  /**
+   * Present ONLY when `opts.currency` is set (opt-in, fail-closed): true iff
+   * currency status is `fresh`. BOTH `stale` and the honest offline default
+   * `unknown` fail this gate: offline verification can never prove currency,
+   * so opting in requires a supplied recent non-revoking signed head.
+   */
+  currency?: boolean;
+  /**
+   * Present ONLY when `opts.consumptionProof` is set (opt-in, fail-closed):
+   * true iff the bundle proves a one-time nonce went absent -> present exactly
+   * once across two append-only-linked heads. Tree-shaped facts only; the
+   * checkpoint signatures and currency of the later head are the caller's job.
+   */
+  consumption?: boolean;
+  /**
+   * Present ONLY when `opts.requireInitiatorAttestation` is true (opt-in,
+   * fail-closed): true iff action.initiator_software is a structurally valid
+   * EP-INITIATOR-ATTESTATION-v1. Says WHICH software asked; does NOT prove the
+   * software behaved (labels are self-asserted). Absent or malformed => false.
+   */
+  initiator_attestation?: boolean;
+}
+
+/** EP-WITNESS-v1 quorum report surfaced as result.witness_quorum. */
+export interface WitnessQuorumReport {
+  ok: boolean;
+  met: number;
+  required: number;
+  witness_ids: string[];
+  reasons: string[];
+}
+
+/** RFC 3161 timestamp result surfaced as result.timestamp_proof. */
+export interface TimestampProofResult {
+  verified: boolean;
+  tsa_key_id: string | null;
+  gen_time: string | null;
+  reason?: string;
+}
+
+/** EP-CURRENCY-v1 two-axis result surfaced as result.currency. */
+export interface CurrencyResult {
+  authentic_as_of_commit: boolean;
+  currency_at_T: {
+    status: 'fresh' | 'stale' | 'unknown';
+    evaluated_at: string | null;
+    reason: string;
+  };
+}
+
+/** EP-SMT-CONSUME-v1 result surfaced as result.consumption. */
+export interface ConsumptionProofResult {
+  valid: boolean;
+  checks: { non_inclusion: boolean; inclusion: boolean; consistency: boolean };
+  reason: string | null;
+}
+
+/** EP-INITIATOR-ATTESTATION-v1 result surfaced as result.initiator_attestation. */
+export interface InitiatorAttestationResult {
+  ok: boolean;
+  normalized: Record<string, unknown> | null;
+  errors: string[];
+  statement_report: Record<string, unknown> | null;
 }
 
 export type TrustReceiptStrictCheckName =
@@ -173,6 +249,16 @@ export interface TrustReceiptResult {
   attestation: AttestationReport;
   /** Optional deployment-grade gate; affects `valid` only when enabled. */
   strict: TrustReceiptStrictReport;
+  /** Present ONLY when `opts.witnessQuorum` was supplied. */
+  witness_quorum?: WitnessQuorumReport;
+  /** Present ONLY when `opts.timestampProof` was supplied. */
+  timestamp_proof?: TimestampProofResult;
+  /** Present ONLY when `opts.currency` was supplied. */
+  currency?: CurrencyResult;
+  /** Present ONLY when `opts.consumptionProof` was supplied. */
+  consumption?: ConsumptionProofResult;
+  /** Present ONLY when `opts.requireInitiatorAttestation` was true. */
+  initiator_attestation?: InitiatorAttestationResult;
 }
 
 export interface TrustReceiptVerificationOptions {
@@ -192,6 +278,63 @@ export interface TrustReceiptVerificationOptions {
    * fails closed on a malformed pin, missing proof, or invalid proof.
    */
   priorCheckpoint?: { tree_size: number; root_hash: string; consistency_proof: string[] };
+  /**
+   * OPT-IN (EP-WITNESS-v1): require >= k DISTINCT pinned witnesses to have
+   * validly cosigned the receipt's checkpoint head. Adds fail-closed
+   * `checks.witness_quorum` and surfaces `result.witness_quorum`. Proves k
+   * trusted witnesses saw ONE head (local single-view); does NOT prove no
+   * split view elsewhere. Fail-closed: no checkpoint, bad k, or < k distinct
+   * valid cosignatures each refuse.
+   */
+  witnessQuorum?: {
+    cosignatures: Array<Record<string, unknown>>;
+    pinnedWitnessKeys: Array<{ witness_id: string; public_key: string }>;
+    k: number;
+  };
+  /**
+   * OPT-IN (RFC 3161): verify a TSA timestamp token over a caller-chosen
+   * `expectedDigest` against a PINNED TSA key. Adds fail-closed
+   * `checks.timestamp_proof` and surfaces `result.timestamp_proof`. Proves the
+   * digest existed at gen_time; authentic-as-of-token only (nothing about
+   * current TSA-cert validity).
+   */
+  timestampProof?: {
+    token: string | Uint8Array;
+    expectedDigest: string | Uint8Array;
+    pinnedTsaKeys: string | string[] | Record<string, string>;
+  };
+  /**
+   * OPT-IN (EP-CURRENCY-v1): evaluate currency-at-T. Adds `checks.currency`,
+   * which passes ONLY on a proven `fresh` status; BOTH `stale` and the honest
+   * offline default `unknown` fail this opted-in gate (offline can never prove
+   * currency). Surfaces the two-axis `result.currency`. `authentic_as_of_commit`
+   * is a SEPARATE axis, passed through verbatim (fail-safe false), and does not
+   * influence the gate.
+   */
+  currency?: {
+    now?: number | string | Date;
+    maxStalenessSeconds?: number;
+    freshHead?: Record<string, unknown>;
+    freshHeadRequired?: boolean;
+    authentic_as_of_commit?: boolean;
+  };
+  /**
+   * OPT-IN (EP-SMT-CONSUME-v1): a third-party bundle proving a one-time nonce
+   * went absent -> present exactly once across two append-only-linked heads.
+   * Adds fail-closed `checks.consumption` and surfaces `result.consumption`.
+   * Tree-shaped facts only; checkpoint signatures and currency of the later
+   * head are the caller's responsibility.
+   */
+  consumptionProof?: Record<string, unknown>;
+  /**
+   * OPT-IN (EP-INITIATOR-ATTESTATION-v1): when true, structurally validate the
+   * self-asserted initiating-software attestation at
+   * receipt.action.initiator_software. Adds fail-closed
+   * `checks.initiator_attestation` (absent or malformed => false) and surfaces
+   * `result.initiator_attestation`. Says WHICH software asked; does NOT prove
+   * the software behaved.
+   */
+  requireInitiatorAttestation?: boolean;
 }
 
 /**
@@ -228,6 +371,92 @@ export function verifyCheckpointConsistency(
   newSize: number,
   proof: string[]
 ): boolean;
+
+// ── Opt-in transparency/currency knobs (also usable standalone) ────────────
+
+export const WITNESS_VERSION: 'EP-WITNESS-v1';
+export const WITNESS_DOMAIN_TAG: string;
+
+/** Verify one EP-WITNESS-v1 cosignature over a checkpoint against a pinned key. */
+export function verifyWitnessCosignature(
+  checkpoint: Record<string, unknown>,
+  cosignature: Record<string, unknown>,
+  pinnedWitnessKey: { witness_id: string; public_key: string }
+): { verified: boolean; witness_id: string | null; reason?: string };
+
+/** Require >= k DISTINCT pinned witnesses to have validly cosigned one head. */
+export function requireWitnessQuorum(
+  checkpoint: Record<string, unknown>,
+  cosignatures: Array<Record<string, unknown>>,
+  pinnedWitnessKeys: Array<{ witness_id: string; public_key: string }>,
+  k: number
+): WitnessQuorumReport;
+
+/** The exact bytes a witness signs for a checkpoint (log_signature stripped). */
+export function witnessSigningDigest(checkpoint: Record<string, unknown>): Uint8Array | null;
+
+export const TIMESTAMP_PROOF_ALG: 'RFC3161';
+
+/** Parse + verify an RFC 3161 TimeStampToken against a PINNED TSA key. */
+export function verifyTimestampProof(
+  timestampProof: string | Uint8Array,
+  expectedDigest: string | Uint8Array,
+  pinnedTsaKeys: string | string[] | Record<string, string>
+): TimestampProofResult;
+
+export const CURRENCY_VERSION: 'EP-CURRENCY-v1';
+export const CURRENCY_STATUS: readonly ['fresh', 'stale', 'unknown'];
+export const CURRENCY_REASON: Readonly<Record<string, string>>;
+
+/** Two-axis authenticity-vs-currency evaluation; `unknown` is the honest default. */
+export function evaluateCurrency(args: {
+  receipt?: Record<string, unknown>;
+  authentic_as_of_commit?: boolean;
+  now?: number | string | Date;
+  maxStalenessSeconds?: number;
+  freshHead?: Record<string, unknown>;
+  freshHeadRequired?: boolean;
+}): CurrencyResult;
+
+export const CONSUMPTION_PROFILE: 'EP-SMT-CONSUME-v1';
+export const CONSUMPTION_LEAF_DOMAIN: 'EP-SMT-CONSUME-v1';
+export const SMT_DEPTH: number;
+
+/** Verify a third-party consumption bundle (absent -> present exactly once). */
+export function verifyConsumptionProof(bundle: Record<string, unknown>): ConsumptionProofResult;
+
+/** Reference/spec sparse-Merkle prover for tests and tooling (NOT a ledger). */
+export class ReferenceConsumptionTree {
+  constructor(depth?: number);
+  insert(nonce: string, value?: string): void;
+  root(): string;
+  prove(nonce: string): { root: string; siblings: string[]; present: boolean; value?: string };
+}
+
+export const INITIATOR_ATTESTATION_VERSION: 'EP-INITIATOR-ATTESTATION-v1';
+export const INITIATOR_ATTESTATION_FIELD: 'initiator_software';
+export const INITIATOR_STATEMENT_MAX: number;
+
+/** Normalize a digest to bare 64-hex, or '' when malformed. */
+export function normalizeDigest(h: unknown): string;
+
+/** Neutralize hostile statement text (escape bidi/control, flag homoglyphs). */
+export function neutralizeStatement(statement: unknown): {
+  safe: string;
+  changed: boolean;
+  homoglyph_risk: boolean;
+  escaped_codepoints: number[];
+  truncated: boolean;
+};
+
+/** Fail-closed structural validation of a self-asserted software attestation. */
+export function validateInitiatorAttestation(att: unknown): InitiatorAttestationResult;
+
+/** Bind a validated attestation into an action under `initiator_software`. */
+export function bindInitiatorAttestation(
+  action: Record<string, unknown>,
+  att: Record<string, unknown>
+): { action: Record<string, unknown>; attestation: Record<string, unknown>; digest_preview: string };
 
 // ── PIP-008: L4 → L7 binding (record relied-on agent identity + freshness) ──
 

@@ -145,6 +145,44 @@ r.attestation; // { present, consistent, issues: [] }
 
 The advisory **never affects `valid` or any member of `checks`** — by design (PIP-007 §2): a receipt carrying a malformed attestation still verifies cryptographically, exactly as it does on a verifier that predates this PIP. The attestation is **a claim by the initiator** — identified but never trusted — so a policy engine MUST NOT use it to relax any check or raise any trust score.
 
+#### Opt-in transparency and currency knobs (requires 3.5.0)
+
+Five **additive, opt-in** checks extend `verifyTrustReceipt` in the same shape as `priorCheckpoint`: each runs **only** when you pass its option, adds **one** member to `checks` when active, folds into `valid` by conjunction, and **fails closed** with a distinct reason. Pass none of them and the result is byte-for-byte what a pre-3.5.0 verifier returns (the frozen seven `checks` members, no extra top-level members).
+
+```js
+const r = verifyTrustReceipt(receipt, {
+  approverKeys, logPublicKey,
+
+  // 1. Witness quorum (EP-WITNESS-v1): k distinct pinned witnesses cosigned the head.
+  witnessQuorum: { cosignatures, pinnedWitnessKeys, k: 2 },
+
+  // 2. Trusted-time proof (RFC 3161): a pinned TSA timestamped a digest you choose.
+  timestampProof: { token, expectedDigest, pinnedTsaKeys },
+
+  // 3. Currency (EP-CURRENCY-v1): passes ONLY on a proven-fresh signed head.
+  currency: { now, maxStalenessSeconds, freshHead, freshHeadRequired },
+
+  // 4. Consumption proof (EP-SMT-CONSUME-v1): a nonce went absent -> present once.
+  consumptionProof: bundle,
+
+  // 5. Initiator-software attestation (EP-INITIATOR-ATTESTATION-v1).
+  requireInitiatorAttestation: true,
+});
+// checks.witness_quorum / .timestamp_proof / .currency / .consumption /
+// .initiator_attestation are added only for the options you passed, and the
+// full module result is surfaced under the matching top-level member.
+```
+
+Honesty boundaries (also stated in each module):
+
+- **Witness quorum** proves `k` trusted witnesses saw **one** head (the local, single-view half of equivocation detection). It does **not** prove no different head was shown elsewhere; that cross-view gossip is the deployment's responsibility.
+- **Timestamp proof** proves a TSA asserted the digest existed at `gen_time` (the bytes predate `gen_time`). It is authentic-as-of-token only and says nothing about current TSA-certificate validity or revocation, and it does not prove the action was correct or authorized.
+- **Currency** is a separate axis from offline authenticity. `checks.currency` passes **only** on status `fresh`; both `stale` and the honest offline default **`unknown`** fail the opted-in gate, because offline verification can **never** establish currency. Read `result.currency.currency_at_T` to tell `unknown` (offline only) apart from `stale`.
+- **Consumption proof** proves the tree-shaped consumption facts only. Checkpoint **signatures** and currency of the later head are the caller's responsibility.
+- **Initiator attestation** says **which** software asked; it does **not** prove the software behaved (the labels are self-asserted, and the digest is authentic-as-supplied, not proof of correct execution).
+
+These four new profiles (EP-WITNESS-v1, EP-CURRENCY-v1, EP-SMT-CONSUME-v1, EP-INITIATOR-ATTESTATION-v1) currently ship as JS reference verifiers only; there is no Python or Go port yet.
+
 ### Federation (PIP-006) — *requires 1.3.0*
 
 Cross-operator verification: accept a receipt issued by a different EP

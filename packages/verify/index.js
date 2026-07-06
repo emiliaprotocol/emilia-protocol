@@ -129,6 +129,72 @@ export { verifyEvidenceRecord, EVIDENCE_RECORD_VERSION } from './evidence-record
 import { verifyCheckpointConsistency } from './consistency.js';
 export { verifyCheckpointConsistency, CONSISTENCY_ALG } from './consistency.js';
 
+// ── OPT-IN transparency/currency knobs wired into verifyTrustReceipt ──────────
+// Each of the five modules below is an independent, additive check. It runs
+// ONLY when its dedicated option is supplied, adds ONE key to result.checks,
+// and folds into `valid` by conjunction. With none of the options set,
+// verifyTrustReceipt's `checks` keeps its frozen seven members and behaves
+// byte-for-byte as before. Every knob fails closed exactly as its module
+// specifies. See each module for the full honesty boundary.
+
+// EP-WITNESS-v1: k-of-n independent witness cosignatures over ONE checkpoint
+// head. Proves k distinct trusted witnesses attested to that head (the local,
+// single-view half of equivocation detection); does NOT by itself prove no
+// split view was shown elsewhere (needs gossip).
+import { requireWitnessQuorum } from './witness.js';
+export {
+  verifyWitnessCosignature,
+  requireWitnessQuorum,
+  witnessSigningDigest,
+  WITNESS_VERSION,
+  WITNESS_DOMAIN_TAG,
+} from './witness.js';
+
+// RFC 3161 timestamp token verification against a PINNED TSA key. Proves a TSA
+// asserted a digest existed at gen_time (the bytes predate gen_time); does NOT
+// prove the action was correct/authorized, and is authentic-as-of-token only.
+import { verifyTimestampProof } from './timestamp-proof.js';
+export { verifyTimestampProof, TIMESTAMP_PROOF_ALG } from './timestamp-proof.js';
+
+// EP-CURRENCY-v1: the two-axis authenticity-vs-currency evaluation. `unknown`
+// is the honest offline default: offline verification can NEVER prove currency.
+// Only a supplied, recent, non-revoking signed head reaches `fresh`.
+import { evaluateCurrency } from './currency.js';
+export {
+  evaluateCurrency,
+  CURRENCY_VERSION,
+  CURRENCY_STATUS,
+  CURRENCY_REASON,
+} from './currency.js';
+
+// EP-SMT-CONSUME-v1: third-party proof that a one-time nonce transitioned
+// absent -> present exactly once across two append-only-linked heads. Proves
+// the tree-shaped consumption facts only; checkpoint SIGNATURES are the
+// caller's responsibility, and it does NOT establish currency of h2.
+import { verifyConsumptionProof } from './consumption-proof.js';
+export {
+  verifyConsumptionProof,
+  ReferenceConsumptionTree,
+  CONSUMPTION_PROFILE,
+  CONSUMPTION_LEAF_DOMAIN,
+  SMT_DEPTH,
+} from './consumption-proof.js';
+
+// EP-INITIATOR-ATTESTATION-v1: fail-closed structural validation of the
+// self-asserted initiating-software attestation (model_id / model_version /
+// tool_chain_digest / neutralized statement). It says WHICH software asked; it
+// does NOT prove the software behaved (labels are self-asserted).
+import { validateInitiatorAttestation } from './initiator-attestation.js';
+export {
+  validateInitiatorAttestation,
+  neutralizeStatement,
+  normalizeDigest,
+  bindInto as bindInitiatorAttestation,
+  INITIATOR_ATTESTATION_VERSION,
+  INITIATOR_ATTESTATION_FIELD,
+  INITIATOR_STATEMENT_MAX,
+} from './initiator-attestation.js';
+
 // EP-MERKLE-v1 (legacy): sorted-pair, no domain separation. Kept verifying
 // forever for already-anchored receipts. Do NOT use for new anchors.
 function hashPair(a, b) {
@@ -840,10 +906,58 @@ function trustReceiptCanonicalProfileError(receipt) {
  *   gate. NOTE (honesty): this proves append-only consistency between two
  *   observed heads only; it does NOT establish currency or split-view honesty
  *   by itself (that needs independent witnesses).
- * @returns {{ valid:boolean, checks:object, errors:string[], attestation:{ present:boolean, consistent:boolean, issues:string[] }, strict:{ enabled:boolean, valid:boolean, checks:object, errors:string[] } }}
+ *
+ * The five options below are ADDITIVE, OPT-IN knobs. Each runs ONLY when its
+ * option is supplied, adds exactly one member to `checks`, and folds into
+ * `valid` by conjunction. With none supplied, `checks` keeps its frozen seven
+ * members and the result is byte-for-byte unchanged. Each fails closed.
+ *
+ * @param {{cosignatures:object[], pinnedWitnessKeys:Array<{witness_id:string,public_key:string}>, k:number}} [opts.witnessQuorum]
+ *   OPT-IN (EP-WITNESS-v1): require >= k DISTINCT pinned witnesses to have
+ *   validly cosigned the receipt's checkpoint head. Adds fail-closed
+ *   `checks.witness_quorum` and surfaces the full quorum report as
+ *   result.witness_quorum. HONESTY: proves k trusted witnesses attested to ONE
+ *   head (local single-view); it does NOT prove no different head was shown
+ *   elsewhere (that cross-view gossip is the deployment's responsibility).
+ *   Fail-closed: missing receipt checkpoint, bad k, or < k distinct valid
+ *   cosignatures each refuse.
+ * @param {{token:(string|Buffer), expectedDigest:(string|Buffer), pinnedTsaKeys:(string|string[]|object)}} [opts.timestampProof]
+ *   OPT-IN (RFC 3161): verify a TSA timestamp token over a caller-chosen
+ *   `expectedDigest` (e.g. the checkpoint root or action digest) against a
+ *   PINNED TSA key. Adds fail-closed `checks.timestamp_proof` and surfaces
+ *   result.timestamp_proof (tsa_key_id, gen_time, reason). HONESTY: proves a
+ *   TSA asserted the digest existed at gen_time; it does NOT prove the action
+ *   was correct/authorized and is authentic-as-of-token only (says nothing
+ *   about current TSA-cert validity).
+ * @param {{now?:(number|string|Date), maxStalenessSeconds?:number, freshHead?:object, freshHeadRequired?:boolean, authentic_as_of_commit?:boolean}} [opts.currency]
+ *   OPT-IN (EP-CURRENCY-v1): evaluate currency-at-T. Adds `checks.currency`,
+ *   which passes ONLY when a supplied recent non-revoking signed head proves
+ *   status `fresh`; BOTH `stale` and the honest offline default `unknown` fail
+ *   this opted-in gate (fail-closed: absence of proof of freshness does not
+ *   pass). The full two-axis result is surfaced as result.currency. HONESTY:
+ *   offline verification can NEVER prove currency; `authentic_as_of_commit` is a
+ *   separate axis from `currency_at_T`.
+ * @param {object} [opts.consumptionProof]
+ *   OPT-IN (EP-SMT-CONSUME-v1): a third-party bundle proving a one-time nonce
+ *   went absent -> present exactly once across two append-only-linked heads.
+ *   Adds fail-closed `checks.consumption` and surfaces result.consumption.
+ *   HONESTY: proves the tree-shaped consumption facts only; checkpoint
+ *   SIGNATURES are the caller's responsibility and it does NOT establish
+ *   currency of the later head.
+ * @param {boolean} [opts.requireInitiatorAttestation]
+ *   OPT-IN (EP-INITIATOR-ATTESTATION-v1): when true, structurally validate the
+ *   self-asserted initiating-software attestation at
+ *   receipt.action.initiator_software. Adds fail-closed
+ *   `checks.initiator_attestation` (absent or malformed => false) and surfaces
+ *   result.initiator_attestation. HONESTY: says WHICH software asked; it does
+ *   NOT prove the software behaved (labels are self-asserted).
+ * @returns {{ valid:boolean, checks:object, errors:string[], attestation:{ present:boolean, consistent:boolean, issues:string[] }, strict:{ enabled:boolean, valid:boolean, checks:object, errors:string[] }, witness_quorum?:object, timestamp_proof?:object, currency?:object, consumption?:object, initiator_attestation?:object }}
  *   `attestation` is the PIP-007 §2 ADVISORY report. It never affects `valid` or
  *   any member of `checks`: a receipt with a malformed or inconsistent
  *   attestation still verifies (or fails) on its cryptographic checks alone.
+ *   The opt-in `witness_quorum` / `timestamp_proof` / `currency` / `consumption`
+ *   / `initiator_attestation` result members are present ONLY when their
+ *   respective option was supplied.
  */
 export function verifyTrustReceipt(receipt, opts = {}) {
   const checks = {
@@ -1093,6 +1207,153 @@ export function verifyTrustReceipt(receipt, opts = {}) {
     }
   }
 
+  // ── Step 5d..5h (OPT-IN transparency/currency knobs) ──────────────────────
+  // Each block below is additive and mirrors the priorCheckpoint pattern: it
+  // runs ONLY when its option is present, sets ONE new `checks` member to false
+  // first (fail-closed default) then flips it true only on a clean pass, and
+  // surfaces its full module result under a dedicated, option-gated member of
+  // `optionalResults`. When NO knob option is supplied, `checks` keeps exactly
+  // its frozen seven members and `optionalResults` stays empty, so the returned
+  // object is byte-for-byte identical to the pre-knob behavior.
+  const optionalResults = {};
+
+  // ── Step 5d (OPT-IN): k-of-n witness cosignatures (EP-WITNESS-v1) ─────────
+  // Require >= k DISTINCT pinned witnesses to have validly cosigned the
+  // receipt's checkpoint head. HONESTY: this proves k trusted witnesses saw ONE
+  // head (the local, single-view half of equivocation detection); it does NOT
+  // prove no different head was shown to someone else (needs gossip). Fail
+  // closed: a receipt with no usable checkpoint, or fewer than k distinct valid
+  // cosignatures, refuses via checks.witness_quorum. The module already returns
+  // ok:false for a bad k or non-array inputs.
+  if (opts.witnessQuorum !== undefined) {
+    checks.witness_quorum = false;
+    const wq = opts.witnessQuorum;
+    const checkpoint = lp?.checkpoint;
+    if (!checkpoint || typeof checkpoint !== 'object') {
+      optionalResults.witness_quorum = {
+        ok: false, met: 0, required: 0, witness_ids: [],
+        reasons: ['receipt has no checkpoint for witnesses to cosign'],
+      };
+      errors.push('witnessQuorum is set but the receipt checkpoint is missing');
+    } else if (!wq || typeof wq !== 'object') {
+      optionalResults.witness_quorum = {
+        ok: false, met: 0, required: 0, witness_ids: [],
+        reasons: ['witnessQuorum must be an object { cosignatures, pinnedWitnessKeys, k }'],
+      };
+      errors.push('witnessQuorum must be an object with cosignatures, pinnedWitnessKeys, and k');
+    } else {
+      const res = requireWitnessQuorum(checkpoint, wq.cosignatures, wq.pinnedWitnessKeys, wq.k);
+      optionalResults.witness_quorum = res;
+      checks.witness_quorum = res.ok === true;
+      if (!checks.witness_quorum) {
+        errors.push(`witness quorum not met: ${res.met}/${res.required} distinct pinned witnesses cosigned this head`);
+      }
+    }
+  }
+
+  // ── Step 5e (OPT-IN): RFC 3161 trusted-time proof (TIMESTAMP_PROOF_ALG) ────
+  // Verify a TSA timestamp token over a caller-chosen digest against a PINNED
+  // TSA key. HONESTY: proves a TSA asserted the digest existed at gen_time; it
+  // does NOT prove the action was correct/authorized and is authentic-as-of-
+  // token only. Fail closed: the module refuses (verified:false + reason) on
+  // missing token, missing/malformed digest, an unpinned TSA, or a bad
+  // signature; a refusal fails checks.timestamp_proof.
+  if (opts.timestampProof !== undefined) {
+    checks.timestamp_proof = false;
+    const tp = opts.timestampProof;
+    if (!tp || typeof tp !== 'object') {
+      optionalResults.timestamp_proof = {
+        verified: false, tsa_key_id: null, gen_time: null,
+        reason: 'timestampProof must be an object { token, expectedDigest, pinnedTsaKeys }',
+      };
+      errors.push('timestampProof must be an object with token, expectedDigest, and pinnedTsaKeys');
+    } else {
+      const res = verifyTimestampProof(tp.token, tp.expectedDigest, tp.pinnedTsaKeys);
+      optionalResults.timestamp_proof = res;
+      checks.timestamp_proof = res.verified === true;
+      if (!checks.timestamp_proof) {
+        errors.push(`timestamp proof did not verify: ${res.reason}`);
+      }
+    }
+  }
+
+  // ── Step 5f (OPT-IN): currency-at-T (EP-CURRENCY-v1) ──────────────────────
+  // Two-axis evaluation. `checks.currency` GATES validity and passes ONLY on a
+  // proven `fresh` status. Both `stale` and the honest offline default
+  // `unknown` FAIL this opted-in gate: opting in means the caller REQUIRES
+  // demonstrated freshness, and offline verification can NEVER prove currency,
+  // so absence of proof does not pass (fail-closed). The full two-axis result
+  // (authentic_as_of_commit + currency_at_T{status,evaluated_at,reason}) is
+  // surfaced so the caller can distinguish `unknown` from `stale`.
+  if (opts.currency !== undefined) {
+    checks.currency = false;
+    const c = (opts.currency && typeof opts.currency === 'object') ? opts.currency : {};
+    // authentic_as_of_commit is a SEPARATE axis (offline authenticity), passed
+    // through verbatim and fail-safe to false. It does NOT influence the
+    // currency status gate below, which is driven solely by freshHead recency
+    // and revocation. The caller supplies it (typically this same call's overall
+    // `valid`); if omitted it records false rather than guessing an in-progress
+    // partial verdict.
+    const res = evaluateCurrency({
+      receipt,
+      authentic_as_of_commit: c.authentic_as_of_commit === true,
+      now: c.now,
+      maxStalenessSeconds: c.maxStalenessSeconds,
+      freshHead: c.freshHead,
+      freshHeadRequired: c.freshHeadRequired,
+    });
+    optionalResults.currency = res;
+    checks.currency = res.currency_at_T.status === 'fresh';
+    if (!checks.currency) {
+      errors.push(`currency gate not satisfied: status "${res.currency_at_T.status}" (${res.currency_at_T.reason}); only "fresh" passes`);
+    }
+  }
+
+  // ── Step 5g (OPT-IN): third-party consumption proof (EP-SMT-CONSUME-v1) ────
+  // Prove a one-time nonce transitioned absent -> present exactly once between
+  // two append-only-linked heads. HONESTY: proves the tree-shaped consumption
+  // facts only; checkpoint SIGNATURES are the caller's responsibility and it
+  // does NOT establish currency of the later head. Fail closed: the module
+  // refuses with a distinct reason on any missing/malformed/invalid sub-proof;
+  // a refusal fails checks.consumption.
+  if (opts.consumptionProof !== undefined) {
+    checks.consumption = false;
+    const res = verifyConsumptionProof(opts.consumptionProof);
+    optionalResults.consumption = res;
+    checks.consumption = res.valid === true;
+    if (!checks.consumption) {
+      errors.push(`consumption proof did not verify: ${res.reason}`);
+    }
+  }
+
+  // ── Step 5h (OPT-IN): initiating-software attestation (EP-INITIATOR-...) ───
+  // Structurally validate the self-asserted initiating-software attestation at
+  // receipt.action.initiator_software. HONESTY: says WHICH software asked; it
+  // does NOT prove the software behaved (labels are self-asserted). Fail
+  // closed: when required, an absent or malformed attestation fails
+  // checks.initiator_attestation (the module never repairs a malformed one).
+  if (opts.requireInitiatorAttestation === true) {
+    checks.initiator_attestation = false;
+    const att = (receipt.action && typeof receipt.action === 'object')
+      ? receipt.action.initiator_software
+      : undefined;
+    if (att === undefined) {
+      optionalResults.initiator_attestation = {
+        ok: false, normalized: null,
+        errors: ['requireInitiatorAttestation is set but action.initiator_software is absent'],
+        statement_report: null,
+      };
+      errors.push('requireInitiatorAttestation is set but action.initiator_software is absent');
+    } else {
+      const res = validateInitiatorAttestation(att);
+      optionalResults.initiator_attestation = res;
+      checks.initiator_attestation = res.ok === true;
+      if (!checks.initiator_attestation) {
+        errors.push(`initiator_software attestation is invalid: ${res.errors.join('; ')}`);
+      }
+    }
+  }
+
   // ── Step 6: temporal windows ──────────────────────────────────────────────
   let windowsOk = validApprovals.length > 0;
   for (const a of validApprovals) {
@@ -1127,7 +1388,10 @@ export function verifyTrustReceipt(receipt, opts = {}) {
     }
   }
   const valid = Object.values(checks).every(Boolean) && strict.valid;
-  return { valid, checks, errors, attestation, strict };
+  // Spread the opt-in knob results LAST. `optionalResults` is empty unless a
+  // knob option was supplied, so with no new options the returned object is
+  // byte-for-byte { valid, checks, errors, attestation, strict } as before.
+  return { valid, checks, errors, attestation, strict, ...optionalResults };
 }
 
 // =============================================================================
