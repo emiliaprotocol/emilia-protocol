@@ -215,7 +215,12 @@ describe('evaluateGuardPolicy: large-payment threshold', () => {
     expect(r.signoffTier).toBe('dual');
   });
 
-  it('does NOT require signoff on payment < $50,000', () => {
+  it('floors a payment < $50,000 to signoff (no bare-allow below threshold)', () => {
+    // Hardened behavior: a sub-$50k payment release is still money movement, so
+    // the mint-time key-class floor escalates the would-be bare ALLOW to
+    // allow_with_signoff + Class-A. The amount does NOT reach the $50k single
+    // tier, so no signoffTier is set — this isolates the floor (not the
+    // threshold rule) as the escalation source.
     const r = evaluateGuardPolicy({
       organizationId: 'org_1',
       actorId: 'user_1',
@@ -226,10 +231,16 @@ describe('evaluateGuardPolicy: large-payment threshold', () => {
       riskFlags: [],
       authStrength: 'mfa',
     });
-    expect(r.decision).toBe(GUARD_DECISIONS.ALLOW);
+    expect(r.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+    expect(r.signoffRequired).toBe(true);
+    expect(r.requiredAssurance).toBe('A');
+    expect(r.signoffTier).toBeUndefined(); // below the $50k threshold tier
   });
 
-  it('skips threshold when amount is undefined', () => {
+  it('floors a payment with an undefined amount to signoff (fail-closed, never defaults to allow)', () => {
+    // Hardened behavior: a payment release with no amount must not fall through
+    // to a bare ALLOW. The threshold rule finds no tier, so the key-class floor
+    // catches it and escalates to allow_with_signoff + Class-A.
     const r = evaluateGuardPolicy({
       organizationId: 'org_1',
       actorId: 'user_1',
@@ -239,7 +250,10 @@ describe('evaluateGuardPolicy: large-payment threshold', () => {
       riskFlags: [],
       authStrength: 'mfa',
     });
-    expect(r.decision).toBe(GUARD_DECISIONS.ALLOW);
+    expect(r.decision).toBe(GUARD_DECISIONS.ALLOW_WITH_SIGNOFF);
+    expect(r.signoffRequired).toBe(true);
+    expect(r.requiredAssurance).toBe('A');
+    expect(r.signoffTier).toBeUndefined(); // no amount → no threshold tier
   });
 });
 
