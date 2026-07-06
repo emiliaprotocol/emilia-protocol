@@ -11,7 +11,6 @@
     ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
     */
     html {
-      font-size: 11pt;
       color: #1a1a1a;
       background-color: #fdfdfd;
     }
@@ -349,9 +348,17 @@ initiator, that the initiator cannot self-approve, and that no single
 signer fills the quorum. We report the falsification-then-fix history
 that makes the bindings load-bearing, and we bound the scope
 exactly.</li>
-<li>A threat model for named-human authorization of agent actions in
-which the orchestrating operator is untrusted for evidence purposes
-(Section 2).</li>
+<li><strong>The adversary model, and the argument that it is the
+interesting one (Section 2).</strong> A threat model for named-human
+authorization in which the party that renders the action, routes the
+approval, and keeps the record is untrusted for evidence purposes and
+can drive an honest human to sign arbitrary actions of the attacker’s
+choice. This is a stronger adversary than session and delegation
+authorization models admit: those reason about which principal
+<em>may</em> act and assume an honest principal signs only what a
+correct run presents. It is the adversary the evidence-versus-testimony
+problem actually presents, and it is the adversary the symbolic analysis
+of Section 7 is run against.</li>
 <li>The receipt construction the analysis is about: canonical action
 bytes, approver-held keys, one-time consumption as enforcement-point
 state, and an offline verification algorithm whose log checkpoint
@@ -369,6 +376,22 @@ independent-implementation status stated precisely (Section 8).</li>
 <p>Three adversarial settings drive the design. They are treated
 together because a mechanism that addresses one while silently assuming
 away another produces evidence that fails exactly when it matters.</p>
+<p>The adversary here is stronger than the one standard authorization
+models carry, and the difference is the point of the work. Session and
+delegation systems, from OAuth scopes and Rich Authorization Requests
+through transaction tokens and delegation receipts, reason about which
+principal may act, and they assume that an honest principal signs only
+what a correct protocol run presents to it. This setting removes that
+assumption. The operator that renders the action to the approver, routes
+the approval, and later holds the record is untrusted for evidence
+purposes, and it can present an honest human with any action it chooses
+to have signed. The question is therefore not whether the actor was
+authorized in general, which the delegation layer answers, but whether
+an accepted record can still prove that a named human authorized exactly
+this action when the party producing the record is the one whose conduct
+is later in dispute. The symbolic analysis in Section 7 is run against
+exactly this adversary, which is what makes its authenticity and
+no-replay results say something the delegation layer cannot.</p>
 <h3 id="compromised-or-malicious-operator">2.1 Compromised or malicious
 operator</h3>
 <p>The party running the orchestration service (policy registry, signoff
