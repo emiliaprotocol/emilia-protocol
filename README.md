@@ -4,7 +4,7 @@
 [![Verify Sample Receipt](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/verify-receipt-example.yml/badge.svg)](https://github.com/emiliaprotocol/emilia-protocol/actions/workflows/verify-receipt-example.yml)
 [![npm](https://img.shields.io/npm/v/@emilia-protocol/verify)](https://www.npmjs.com/package/@emilia-protocol/verify)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
-[![IETF Internet-Draft](https://img.shields.io/badge/IETF-draft--schrock--ep--authorization--receipts--03-blue)](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/)
+[![IETF Internet-Draft](https://img.shields.io/badge/IETF-draft--schrock--ep--authorization--receipts-blue)](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/)
 [![Discord](https://img.shields.io/badge/Discord-join%20the%20community-5865F2?logo=discord&logoColor=white)](https://discord.gg/MSJXjEtD4)
 
 ---
@@ -130,12 +130,12 @@ EMILIA is an open standard, not a product moat. The core is Apache-2.0 and track
 | | |
 |---|---|
 | **IETF Internet-Drafts** | Posted: [authorization-receipts](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/) · [quorum](https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/). Staged in [`standards/`](standards/): authorization-evidence-chain (EP-AEC, composition) · evidence-record (EP-EVIDENCE-RECORD, long-term retention). |
-| **Cross-language verifiers** | JavaScript · Python · Go — all three proven to agree on adversarial conformance vectors, every push (`npm run conformance`). That is the IETF bar for a real standard: multiple independent interoperable implementations. |
+| **Cross-language verifiers** | JavaScript · Python · Go — all three proven to agree on adversarial conformance vectors, every push (`npm run conformance`). A consistency check across one team's ports, not clean-room independent implementations; independent implementations remain future interoperability evidence. |
 | **Formal verification** | 26 TLA+ safety properties (0 errors) · 35 Alloy facts, 22 assertions — both run in CI |
 | **MCP registries** | Official MCP registry · Glama (Grade A, Official badge) · Smithery |
 | **License** | Apache-2.0 |
 
-Three independent implementations proven to agree — see [CONFORMANCE.md](CONFORMANCE.md), or verify a receipt yourself at [emiliaprotocol.ai/verify](https://www.emiliaprotocol.ai/verify).
+Three cross-language implementations (JS / Python / Go) proven to agree — a consistency check across one team's ports, not independent reimplementations; independent implementations remain future interoperability evidence. See [CONFORMANCE.md](CONFORMANCE.md), or verify a receipt yourself at [emiliaprotocol.ai/verify](https://www.emiliaprotocol.ai/verify).
 
 ---
 
@@ -164,7 +164,7 @@ Eye observes. Handshake verifies. Signoff owns. Commit seals.
 | Red-team cases cataloged | 85 — [RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |
 | Security findings remediated | 31 |
 | Conformance (7/7) | `node conformance/ep-conformance-test.js https://www.emiliaprotocol.ai` |
-| Cross-language conformance | 8 suites — receipts · device signoffs · multi-party quorum · revocation · time-attestation · trust-receipt · provenance · evidence-record — JS / Python / Go verifiers agree (`node conformance/run.mjs`) |
+| Cross-language conformance | 110 vectors · 11 suites: receipts · device signoffs · multi-party quorum · revocation · time-attestation · trust-receipt (×2 profiles) · provenance · evidence-record · canonicalization · boundary. JS / Python / Go verifiers agree (`node conformance/run.mjs`) |
 | Handshake create p95 | 575ms at 50 VUs — [PERFORMANCE_PROOF.md](docs/operations/PERFORMANCE_PROOF.md) |
 
 ---

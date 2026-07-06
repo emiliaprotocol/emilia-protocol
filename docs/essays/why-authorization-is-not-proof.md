@@ -33,7 +33,7 @@ Here is the line I keep coming back to, because it is the whole thesis in five w
 
 I want to be careful not to overclaim, because overclaiming is how trust infrastructure loses the room. A receipt does not prove the decision was wise, or that the policy was adequate, or that the human was not coerced. It does not prove the signing screen showed the action honestly — that is a real and serious risk, and EP names it in the spec rather than papering over it. What a receipt proves is narrow and exact: this key, enrolled to this named approver, produced a user-verified signature over this exact action, under this policy, before it ran, recorded in an append-only log anyone can check offline. That is less than "we caught all fraud." It is also vastly more than "trust our database." The honest claim is the durable one.
 
-None of this is a thought experiment. The verifier is published, it has zero dependencies, and three independent implementations — JavaScript, Python, and Go — are proven to agree on the adversarial vectors on every push. You can run it yourself, offline, no account, no API key:
+None of this is a thought experiment. The verifier is published, it has zero dependencies, and the JavaScript, Python, and Go reference verifiers are proven to agree on the adversarial vectors on every push. They are a cross-language consistency check, not clean-room independent implementations. You can run it yourself, offline, no account, no API key:
 
 ```bash
 npx @emilia-protocol/verify receipt.json

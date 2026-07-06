@@ -24,40 +24,74 @@ During verification, TLC identified and we fixed 4 real spec bugs:
 3. `Revoke`/`Expire`/`ConcurrentRevokeConsume` — did not cascade signoff termination
 4. `SignoffRequiresVerifiedHandshake` — was too strict; allowed terminal signoff states after handshake terminates
 
-| ID | Property | Type | Status |
-|----|----------|------|--------|
-| T1 | HandshakeNeverConsumedTwice | Safety | **Verified (TLC 2.19, 2026-04-02)** |
-| T2 | ConsumedHandshakeNeverRevoked | Safety | **Verified (TLC 2.19, 2026-04-02)** |
-| T3 | RevokedHandshakeNeverConsumed | Safety | **Verified (TLC 2.19, 2026-04-02)** |
-| T4 | HandshakeLifecycleIsAcyclic | Safety | **Verified (TLC 2.19, 2026-04-02)** |
-| T5 | InitiatedHandshakesHaveUniqueNonces | Safety | **Verified (TLC 2.19, 2026-04-02)** |
-| T6 | PresentedHandshakeHasMatchingInitiator | Safety | **Verified (TLC 2.19, 2026-04-02)** |
-| T7 | VerifiedHandshakeHasMatchingPresenter | Safety | **Verified (TLC 2.19, 2026-04-02)** |
-| T8 | DelegationChainIsAcyclic | Safety | **Verified (TLC 2.19, 2026-04-02)** |
-| T9 | DelegatedActorHasSufficientAuthority | Safety | **Verified (TLC 2.19, 2026-04-02)** |
-| T10 | DirectWriteBypassIsImpossible | Safety | **Verified (TLC 2.19, 2026-04-02)** |
-| T11 | ConcurrentRevokeConsumeIsSerializable | Safety | **Verified (TLC 2.19, 2026-04-02)** |
-| T12 | ReplayAfterConsumptionIsRejected | Safety | **Verified (TLC 2.19, 2026-04-02)** |
-| T13 | DuplicateConsumeAttemptIsRejected | Safety | **Verified (TLC 2.19, 2026-04-02)** |
-| T14 | SignoffRequiresAuthorizedActor | Safety | **Verified (TLC 2.19, 2026-04-02)** — code guard in `lib/signoff/attest.js` |
-| T15 | SignoffCannotBeReusedAcrossHandshakes | Safety | **Verified (TLC 2.19, 2026-04-02)** — code guard in `lib/signoff/challenge.js` |
-| T16 | SignoffRevocationPreventsConsumption | Safety | **Verified (TLC 2.19, 2026-04-02)** — code guard in `lib/signoff/invariants.js` |
-| T17 | SignoffChallengeExpiresIfUnanswered | Safety | **Verified (TLC 2.19, 2026-04-02)** — code guard in `lib/signoff/challenge.js` |
-| T18 | SignoffAttestationRequiresMFA | Safety | **Verified (TLC 2.19, 2026-04-02)** — code guard in `lib/signoff/attest.js` |
-| T19 | TerminalEscapeAttemptIsRejected | Safety | **Verified (TLC 2.19, 2026-04-02)** |
-| T20 | TypeInvariant | Structural | **Verified (TLC 2.19, 2026-04-02)** — all state variables maintain declared type invariants throughout every reachable state |
-| T21 | ContinuityTypeInvariant | Structural | **Verified (TLC 2.19, 2026-04-30)** — EP-IX claim/filer/openChallenges variables maintain declared types |
-| T22 | ContinuityTerminalIrreversibility | Safety | **Verified (TLC 2.19, 2026-04-30)** — terminal continuity states (approved_full, approved_partial, rejected, expired, withdrawn) cannot transition to active states |
-| T23 | FrozenClaimBlocksResolution | Safety | **Verified (TLC 2.19, 2026-04-30)** — frozen_pending_dispute claims cannot be directly approved or rejected; unfreeze required first |
-| T24 | ChallengeRateLimit | Safety | **Verified (TLC 2.19, 2026-04-30)** — openChallenges[c] never exceeds MAX_OPEN_CHALLENGES (5); maps to max-challenge count guard in lib/ep-ix.js |
-| T25 | SelfContestImpossible | Safety | **Verified (TLC 2.19, 2026-04-30)** — ContinuityChallenge action requires challenger ≠ claimFiler; maps to self-contest guard in lib/ep-ix.js |
-| T26 | WithdrawnClaimIsTerminal | Safety | **Verified (TLC 2.19, 2026-04-30)** — withdrawn state is terminal; maps to withdrawContinuityClaim() guard in lib/ep-ix.js |
+The 26 invariants below are exactly the `INVARIANT` list TLC checks in
+[`ep_handshake.cfg`](./ep_handshake.cfg) — grep any name there to confirm it exists.
+CI ([`.github/workflows/tlc.yml`](../.github/workflows/tlc.yml)) runs TLC on every push
+and fails the build on any violation.
 
-**26 properties total: T1–T19 are behavioral safety properties; T20 (TypeInvariant) is a structural invariant; T21–T26 are EP-IX identity continuity safety invariants (added 2026-04-04).**
+**Core state machine and delegation — 14 invariants**
 
-**Model scope note:** Verified with `Handshakes = {h1}` (single handshake), `Claims = {c1}` (single claim). Two-handshake
-verification is computationally feasible with a more compact events representation;
-single-handshake covers all per-handshake safety properties. Single-claim covers all per-claim EP-IX properties.
+| Invariant (as in `ep_handshake.cfg`) | What it proves |
+|---|---|
+| `TypeInvariant` | every state variable keeps its declared type in every reachable state |
+| `ConsumeOnceSafety` | an authorization is consumed at most once |
+| `ConsumeRequiresVerified` | consumption is reachable only from a verified handshake |
+| `RevokedIsTerminal` | a revoked handshake never returns to an active/consumable state |
+| `ExpiredIsTerminal` | an expired handshake is terminal |
+| `RejectedIsTerminal` | a rejected handshake is terminal |
+| `TerminalStateIrreversibility` | no terminal state transitions back to a non-terminal one |
+| `WriteBypassSafety` | no approval-bearing write is reachable without passing the gate |
+| `PolicyRequired` | an authorization cannot proceed without its policy reference |
+| `PolicyHashMismatchDetection` | a policy-hash mismatch is detected and refused |
+| `DelegateCannotExceedPrincipal` | a delegate's authority never exceeds the principal's |
+| `DelegationAcyclicity` | the delegation chain is acyclic |
+| `EventCoverage` | every modeled transition emits its evidence event |
+| `EventCompleteness` | the evidence log is complete over the reachable state space |
+
+**Accountable signoff / quorum — 6 invariants**
+
+| Invariant | What it proves |
+|---|---|
+| `SignoffRequiresVerifiedHandshake` | a signoff is valid only against a verified handshake |
+| `SignoffConsumeOnce` | a signoff is consumed at most once (no reuse across handshakes) |
+| `SignoffBindingMatch` | a signoff binds to the exact action context |
+| `SignoffTerminalIrreversible` | a terminal signoff state cannot be reversed |
+| `DenyCannotBeApproved` | a denied action can never become approved (separation of duties) |
+| `SignoffAuthorityMatch` | the signing actor is an authorized approver |
+
+**EP-IX identity continuity — 6 invariants**
+
+| Invariant | What it proves |
+|---|---|
+| `ContinuityTypeInvariant` | EP-IX claim/filer/challenge variables keep their declared types |
+| `ContinuityTerminalIrreversibility` | terminal continuity states cannot return to active |
+| `FrozenClaimBlocksResolution` | a frozen-pending-dispute claim cannot be approved/rejected without unfreezing |
+| `ChallengeRateLimit` | open challenges never exceed `MAX_OPEN_CHALLENGES` |
+| `SelfContestImpossible` | a filer cannot challenge their own claim |
+| `WithdrawnClaimIsTerminal` | a withdrawn claim is terminal |
+
+**26 machine-checked invariants total** — 14 core + 6 signoff/quorum + 6 EP-IX, each the exact
+identifier TLC runs. The Alloy models (`ep_quorum.als`, `ep_relations.als`, `ep_federation.als`)
+separately check the m-of-n two-person-rule and no-key-fills-two-slots properties.
+
+**Enforced in code, NOT model-checked (do not count as TLC-verified):** a few properties are
+enforced by code guards and covered by unit/conformance tests, not by the TLA+/Alloy models —
+notably signoff attestation user-verification / MFA gating (`lib/signoff/attest.js`, exercised by
+the WebAuthn signoff conformance vectors) and challenge wall-clock expiry (`lib/signoff/challenge.js`).
+The models deliberately do NOT cover WebAuthn/device binding, the approver directory, log
+checkpoints, or wall-clock time. See the model scope note below.
+
+**Model scope note:** The CI default is `Handshakes = {h1}` (single handshake), `Claims = {c1}` (single claim):
+exhaustively checked, 413,137 states / 45,342 distinct, depth 20, all 26 invariants hold with no counterexample.
+Single-handshake covers all per-handshake safety properties; single-claim covers all per-claim EP-IX properties.
+
+The two-handshake configuration (`Handshakes = {h1, h2}`) was also run under this representation. It explored
+several million distinct states with no counterexample before the search was stopped: the state space explodes
+(tens of millions of states, frontier still growing) and does not terminate at a CI-friendly scale, so
+cross-handshake concurrency here is bounded-tested, not exhaustively proven. Exhaustively proving the composed,
+concurrent case is future work and is better suited to a symbolic protocol prover (Tamarin/ProVerif with a
+Dolev-Yao attacker over the full WebAuthn / directory / log composition) than to TLC brute force. We do not
+claim exhaustive verification beyond one handshake.
 
 **To re-run locally:**
 ```

@@ -213,7 +213,16 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
   async function check({ selector = {}, receipt = null, observedAction = null, consumptionMode = 'consume' } = {}) {
     const requirement = manifest ? findActionRequirement(manifest, selector) : null;
     const action = requirement?.action_type || selector.action_type || selector.action || null;
-    const requiredTier = requirement?.assurance_class || selector.assurance_class || 'software';
+    // Assurance tier the action requires (cryptographically checked below). For a
+    // manifest-guarded action the tier MUST be declared explicitly: never fall
+    // back to the weakest 'software' tier because assurance_class was omitted —
+    // that would let a guarded, possibly critical, action accept a bare
+    // machine-signed receipt (a fail-open). A guarded requirement with no tier
+    // is a misconfiguration and fails closed just below. Only selector-only
+    // checks (no manifest requirement) use the documented 'software' default.
+    const requiredTier = requirement
+      ? requirement.assurance_class
+      : (selector.assurance_class || 'software');
     const observed = observedAction || selector.observedAction || selector.actionDetails || null;
 
     async function decide(allow, status, reason, extra = {}) {
@@ -267,6 +276,14 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     // Guarded, but no receipt was presented.
     if (!receipt) {
       return decide(false, RECEIPT_REQUIRED_STATUS, 'receipt_required');
+    }
+    // A manifest-guarded action that declares no assurance_class is a
+    // misconfiguration. Fail CLOSED rather than defaulting to the weakest tier
+    // (which would accept a bare machine-signed receipt for a guarded action).
+    // validateActionRiskManifest also rejects such a manifest at author time;
+    // this is defense in depth for a manifest loaded without re-validation.
+    if (requirement && requirement.receipt_required !== false && !requiredTier) {
+      return decide(false, RECEIPT_REQUIRED_STATUS, 'manifest_missing_assurance_class');
     }
     // Signature / freshness / action-binding / outcome. Production key custody:
     // resolve the issuer keys valid (and not revoked) at THIS receipt's issuance

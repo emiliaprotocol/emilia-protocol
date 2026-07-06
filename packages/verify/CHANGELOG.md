@@ -3,6 +3,31 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.4.0 (2026-07-05)
+
+### Added
+- **Opt-in append-only consistency check** in `verifyTrustReceipt`: pass
+  `opts.priorCheckpoint = { tree_size, root_hash, consistency_proof }` (a
+  checkpoint head you previously observed and pinned, plus the RFC 6962
+  consistency proof from that head to the receipt's checkpoint) and the
+  verifier adds a fail-closed `checks.consistency` gate. A malformed pin, a
+  missing proof, an unusable receipt checkpoint, or an invalid proof each
+  refuse with a distinct reason. Honesty note: this proves append-only
+  consistency between two observed heads; it does NOT establish currency or
+  split-view honesty by itself (that needs independent witnesses).
+  `verifyCheckpointConsistency` and `CONSISTENCY_ALG` are now exported from
+  the package entry, and `consistency.js` ships in the published package.
+
+### Fixed
+- **Empty inclusion path degenerate case (fail-closed).** An empty
+  `log_proof.inclusion_path` used to collapse to `leafHash === root_hash` for
+  ANY claimed `tree_size`, so a forged checkpoint whose root simply repeated
+  the leaf hash would pass. An empty path is now accepted only when the
+  checkpoint's `tree_size` is exactly the integer 1 (and `leaf_index`, when
+  present, is 0). Any other tree size with an empty path is refused with a
+  distinct reason. Applies to both EP-MERKLE-v2 and opt-in legacy folds.
+  Behavior for non-empty paths is unchanged.
+
 ## 3.0.0 — 2026-06-28
 
 ### Changed (BREAKING)

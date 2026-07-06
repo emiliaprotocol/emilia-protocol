@@ -1,9 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
 // JS conformance runner: emits [{id, valid}] per vector. argv[2] = vectors path.
 // Polymorphic: receipt (document) | signoff | quorum.
-import { verifyReceipt, verifyWebAuthnSignoff, verifyQuorum, verifyRevocation, verifyTimeAttestation, verifyTrustReceipt, verifyProvenanceOffline, verifyEvidenceRecord } from '../../packages/verify/index.js';
+import { verifyReceipt, verifyWebAuthnSignoff, verifyQuorum, verifyRevocation, verifyTimeAttestation, verifyTrustReceipt, verifyProvenanceOffline, verifyEvidenceRecord, canonicalize, isCanonicalizable } from '../../packages/verify/index.js';
+import { strictParseGate } from './strict-json.mjs';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 const { vectors } = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+
+// EP-CANONICALIZATION-v1 differential branch. Contract (see the suite profile):
+// standard parse, then the strict-parse gate (duplicate member names, unpaired
+// surrogate escapes, depth > 64 — see strict-json.mjs), then the EP I-JSON
+// profile predicate, then SHA-256 over the UTF-8 canonical bytes compared to the
+// pinned digest. Fail-closed at every step.
+function runCanonicalization(c) {
+  if (typeof c?.input_json !== 'string') return false;
+  let value;
+  try { value = JSON.parse(c.input_json); } catch { return false; }
+  if (!strictParseGate(c.input_json).ok) return false;
+  if (!isCanonicalizable(value)) return false;
+  return createHash('sha256').update(canonicalize(value), 'utf8').digest('hex') === c.expected_digest;
+}
 const out = vectors.map((v) => {
   if (v.document) return { id: v.id, valid: verifyReceipt(v.document, v.public_key).valid };
   if (v.signoff) return { id: v.id, valid: verifyWebAuthnSignoff(v.signoff, v.approver_public_key, { rpId: v.rp_id }).valid };
@@ -13,6 +29,7 @@ const out = vectors.map((v) => {
   if (v.trust_receipt) return { id: v.id, valid: verifyTrustReceipt(v.trust_receipt, { approverKeys: v.verification.approver_keys, logPublicKey: v.verification.log_public_key, ...(v.verify_opts || {}) }).valid };
   if (v.provenance_chain) return { id: v.id, valid: verifyProvenanceOffline(v.provenance_chain, { delegationKeys: v.delegation_keys, now: v.now_ms }).valid };
   if (v.evidence_record) return { id: v.id, valid: verifyEvidenceRecord(v.evidence_record, { tsaKeys: v.tsa_keys, protectedHash: v.protected_hash }).valid };
+  if (v.canonicalization) return { id: v.id, valid: runCanonicalization(v.canonicalization) };
   return { id: v.id, valid: false };
 });
 process.stdout.write(JSON.stringify(out));

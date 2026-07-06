@@ -123,6 +123,12 @@ export { verifyTimeAttestation, TIME_ATTESTATION_VERSION } from './time-attestat
 // renewal chain) so a receipt's non-repudiation survives algorithm aging.
 export { verifyEvidenceRecord, EVIDENCE_RECORD_VERSION } from './evidence-record.js';
 
+// RFC 6962 §2.1.2 checkpoint consistency over EP-MERKLE-v2 branch hashing.
+// Used by verifyTrustReceipt when the caller pins a prior checkpoint head
+// (opts.priorCheckpoint), and re-exported for log tooling and witnesses.
+import { verifyCheckpointConsistency } from './consistency.js';
+export { verifyCheckpointConsistency, CONSISTENCY_ALG } from './consistency.js';
+
 // EP-MERKLE-v1 (legacy): sorted-pair, no domain separation. Kept verifying
 // forever for already-anchored receipts. Do NOT use for new anchors.
 function hashPair(a, b) {
@@ -826,6 +832,14 @@ function trustReceiptCanonicalProfileError(receipt) {
  * @param {boolean} [opts.strict=false] - require deployment-grade strict checks
  * @param {string} [opts.rpId] - expected WebAuthn RP ID when strict mode sees Class-A signoffs
  * @param {string} [opts.expectedPolicyHash] - expected policy hash when strict mode is enabled
+ * @param {{tree_size:number, root_hash:string, consistency_proof:string[]}} [opts.priorCheckpoint]
+ *   OPT-IN append-only check: a checkpoint head this verifier previously
+ *   OBSERVED and pinned, plus the RFC 6962 consistency proof from that head to
+ *   the receipt's checkpoint (obtained from the log; EP-MERKLE-v2 branch
+ *   hashing). When set, verification adds a fail-closed `checks.consistency`
+ *   gate. NOTE (honesty): this proves append-only consistency between two
+ *   observed heads only; it does NOT establish currency or split-view honesty
+ *   by itself (that needs independent witnesses).
  * @returns {{ valid:boolean, checks:object, errors:string[], attestation:{ present:boolean, consistent:boolean, issues:string[] }, strict:{ enabled:boolean, valid:boolean, checks:object, errors:string[] } }}
  *   `attestation` is the PIP-007 §2 ADVISORY report. It never affects `valid` or
  *   any member of `checks`: a receipt with a malformed or inconsistent
@@ -973,7 +987,28 @@ export function verifyTrustReceipt(receipt, opts = {}) {
     delete leafContent.approver_key_proofs;
     const canonicalLeaf = canonicalize(leafContent);
     const merkleAlg = lp.alg || lp.checkpoint?.merkle_alg || null;
-    if (merkleAlg === MERKLE_V2_ALG) {
+    // Degenerate empty-path rule (fail-closed): with an empty inclusion_path the
+    // Merkle fold collapses to leafHash === root_hash, which is only a true
+    // inclusion statement for a SINGLE-LEAF tree. Without this gate, a forged
+    // checkpoint whose root_hash simply repeats the leaf hash would "include"
+    // the receipt at ANY claimed tree_size. An empty path is therefore accepted
+    // ONLY when the checkpoint's tree_size is exactly the integer 1 (and, since
+    // this shape carries an index, leaf_index — when present — is 0). Any other
+    // tree size (including a missing or non-integer tree_size) refuses with a
+    // distinct reason. Applies to v2 AND opt-in legacy folds; mirrored by the
+    // Python and Go ports.
+    let emptyPathRefusal = null;
+    if (lp.inclusion_path.length === 0) {
+      if (lp.checkpoint.tree_size !== 1) {
+        emptyPathRefusal = 'empty inclusion_path requires checkpoint tree_size 1 (single-leaf tree)';
+      } else if (lp.leaf_index !== undefined && lp.leaf_index !== 0) {
+        emptyPathRefusal = 'empty inclusion_path requires leaf_index 0 in a single-leaf tree';
+      }
+    }
+    if (emptyPathRefusal) {
+      checks.inclusion = false;
+      errors.push(emptyPathRefusal);
+    } else if (merkleAlg === MERKLE_V2_ALG) {
       // EP-MERKLE-v2 (default): leaf is domain-separated (0x00) and bound to the
       // canonical receipt payload; the proof folds with positional, domain-
       // separated (0x01) branch hashing. Closes leaf/branch second-preimage
@@ -1013,6 +1048,49 @@ export function verifyTrustReceipt(receipt, opts = {}) {
     }
   } else {
     errors.push('missing log_proof (inclusion path + checkpoint)');
+  }
+
+  // ── Step 5c (OPT-IN): append-only consistency from a pinned prior head ────
+  // When the caller pins a previously-OBSERVED checkpoint head
+  // (opts.priorCheckpoint = { tree_size, root_hash, consistency_proof }), the
+  // receipt's checkpoint MUST additionally be proven an append-only extension
+  // of that head via an RFC 6962 §2.1.2 consistency proof over EP-MERKLE-v2
+  // branch hashing (consistency.js). The proof travels IN THE OPTION, not
+  // inside the receipt's log_proof: a consistency proof is relative to
+  // whichever head THIS verifier pinned, so the issuer cannot embed one at
+  // issuance (no such field exists in the Section 6.2 artifact shape); the
+  // verifier obtains it from the log alongside the receipt and supplies it
+  // here. An EMPTY array is a legitimate proof only for equal heads (same
+  // tree_size, same root_hash); a missing/non-array proof always refuses.
+  //
+  // HONESTY: this proves append-only consistency between two OBSERVED heads.
+  // It does NOT establish currency (that the receipt's head is the log's
+  // latest) and does NOT by itself detect split-view equivocation (a log
+  // showing different histories to different verifiers) — that requires
+  // independent witnesses/gossip. See docs/security/TRANSPARENCY-LAYER-DESIGN.md.
+  //
+  // Fail-closed: option set + malformed pin, unusable receipt checkpoint,
+  // missing proof, or invalid proof each refuse with a distinct reason and
+  // fail the receipt via checks.consistency. Option NOT set: this block never
+  // runs, checks keeps its frozen seven members, and the result is unchanged.
+  if (opts.priorCheckpoint !== undefined) {
+    checks.consistency = false;
+    const prior = opts.priorCheckpoint;
+    const priorSize = prior?.tree_size;
+    const priorRoot = hexOf(prior?.root_hash);
+    const headSize = lp?.checkpoint?.tree_size;
+    const headRoot = hexOf(lp?.checkpoint?.root_hash);
+    if (!prior || typeof prior !== 'object' || !Number.isInteger(priorSize) || priorSize < 1 || !priorRoot) {
+      errors.push('priorCheckpoint requires integer tree_size >= 1 and root_hash');
+    } else if (!Number.isInteger(headSize) || !headRoot) {
+      errors.push('priorCheckpoint is pinned but the receipt checkpoint is missing tree_size or root_hash');
+    } else if (!Array.isArray(prior.consistency_proof)) {
+      errors.push('priorCheckpoint is pinned but consistency_proof is missing');
+    } else if (verifyCheckpointConsistency(priorRoot, priorSize, headRoot, headSize, prior.consistency_proof)) {
+      checks.consistency = true;
+    } else {
+      errors.push('consistency_proof does not prove an append-only extension from the pinned prior checkpoint');
+    }
   }
 
   // ── Step 6: temporal windows ──────────────────────────────────────────────

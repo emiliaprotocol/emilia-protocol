@@ -1,7 +1,9 @@
 /**
- * @emilia-protocol/verify — Checkpoint CONSISTENCY proofs (EXPERIMENTAL)
+ * @emilia-protocol/verify — Checkpoint CONSISTENCY proofs
  *
- * ⚠️  DESIGN-STAGE / EXPERIMENTAL — NOT wired into verifyTrustReceipt() yet.
+ * Wired into verifyTrustReceipt() as the OPT-IN `opts.priorCheckpoint` knob
+ * (checks.consistency, fail-closed). Also exported directly from index.js for
+ * log tooling and witnesses.
  *
  * This module addresses the DoD-audit MED-HIGH transparency finding: a trust
  * receipt today carries a SINGLE-signer checkpoint {log_key_id, root_hash,
@@ -21,7 +23,11 @@
  * DOMAIN SEPARATION: this uses the EP-MERKLE-v2 branch construction
  * (SHA-256(0x01 || left || right), hex) so it composes with the v2 inclusion
  * proofs already verified by verifyMerkleAnchor(..., { v2: true }) in index.js.
- * It is intentionally standalone and additive — index.js is unchanged.
+ * It stays standalone (no imports from index.js) so it can also be used alone.
+ *
+ * HONESTY: a consistency proof shows append-only extension between two
+ * OBSERVED heads. It does NOT establish currency or split-view honesty by
+ * itself — that needs independent witnesses + gossip (see the design doc).
  *
  * @license Apache-2.0
  */

@@ -358,9 +358,10 @@ off-roster approver \\
 \end{longtable}
 }
 
-The suite is run against three independent implementations ---
-JavaScript, Python, and Go --- which are required to agree on every
-vector; divergence is a conformance defect. The ``accept'' vectors guard
+The suite is run against the JavaScript, Python, and Go reference
+verifiers, which are required to agree on every vector; divergence is a
+conformance defect. This is a cross-language consistency check, not a
+clean-room independent-implementation claim. The ``accept'' vectors guard
 against an over-strict verifier (denying valid quorums); the ``reject''
 vectors guard the security-critical direction (a verifier that accepts
 something it must not). The mechanism is implemented in the EP reference

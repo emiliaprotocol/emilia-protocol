@@ -52,7 +52,7 @@ EMILIA Protocol:
 - a posted IETF Internet-Draft, `draft-schrock-ep-quorum` (companion to
   `draft-schrock-ep-authorization-receipts`);
 - a peer-citable preprint (Zenodo, CC-BY);
-- **three independent reference verifiers** (JavaScript, Python, Go) that agree on the
+- **three cross-language reference verifiers** (JavaScript, Python, Go) that agree on the
   predicate, plus **nine adversarial conformance vectors** (under-threshold, duplicate
   human, out-of-order, action-mismatch, expired-window, bad-signature, wrong-role);
 - all Apache-2.0.

@@ -22,10 +22,11 @@ invariant:
 | **accept** | minimal receipt · deeply-nested payload (recursive canonicalization) · key-order-independence · valid Merkle anchor |
 | **reject** | unsupported version · missing signature · tampered payload · wrong key · malformed signature · tampered Merkle anchor |
 
-### Three independent implementations, proven to agree
+### Three cross-language reference verifiers, proven to agree
 
-The repository ships three independent reference verifiers — written separately,
-sharing no code:
+The repository ships JavaScript/TypeScript, Python, and Go reference verifiers
+in one repository. They are a cross-language consistency check, not clean-room
+independent implementations:
 
 | Language | Package |
 |---|---|
@@ -41,31 +42,59 @@ node conformance/run.mjs
 ```
 
 ```
-EP-RECEIPT-v1            — 11 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-SIGNOFF-v1            —  9 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-QUORUM-v1             — 11 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-REVOCATION-v1         —  6 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-TIME-ATTESTATION-v1   —  6 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-TRUST-RECEIPT (§6.2)  —  4 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-PROVENANCE-CHAIN-v1   —  6 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-EVIDENCE-RECORD-v1    —  5 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-RECEIPT-v1                   — 13 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-SIGNOFF-v1                   —  9 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-QUORUM-v1                    — 11 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-REVOCATION-v1               —  6 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-TIME-ATTESTATION-v1         —  6 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-TRUST-RECEIPT-v1 (§6.2)     — 10 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-TRUST-RECEIPT-v1 ts-profile —  6 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-PROVENANCE-CHAIN-v1         —  6 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-EVIDENCE-RECORD-v1          —  5 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-CANONICALIZATION-v1         — 35 vectors   JavaScript ✓   Python ✓   Go ✓
 
-✅ all suites — three independent implementations agree.
+✅ 110 vectors · 11 suites — JavaScript, Python, and Go verifiers agree.
+   (One team's three-language ports in one repository: a consistency check,
+    not independent reimplementations. Independent implementations remain future interoperability evidence.)
 ```
 
-The three independent verifiers now agree across the **entire artifact surface** —
+The three cross-language verifiers agree across the core artifact surface:
 not only Ed25519 authorization **receipts**, but Class-A WebAuthn device
 **signoffs**, **EP-QUORUM-v1 multi-party approval** (M-of-N / ordered — the
 "two-person rule," with a strong cryptographic ordering chain and distinct-key
 checks, fail-closed), portable **revocation** statements, **trusted-time
 attestations**, the full **§6.2 Trust Receipt** (signoff signatures + Merkle
 inclusion + Ed25519-signed checkpoint), and **provenance chains** (human-authority
-root → delegation chain → action, with scope containment). That is the IETF bar
-for a real standard — **multiple independent interoperable implementations across
-every protocol artifact** — and it runs on every push (CI job `conformance`). The
+root → delegation chain → action, with scope containment). Publishing a public,
+cross-language conformance suite of this breadth, re-proven on every push
+(CI job `conformance`), is itself uncommon. Some artifacts remain outside the
+three-language run today (EP-AEC composition, WYSIWYS rendering,
+execution-integrity, the JWS profile) and are exercised in JavaScript only;
+bringing them into the cross-language run, and independent implementations,
+are the next bar. The
 companion Internet-Drafts are
 [`draft-schrock-ep-authorization-receipts`](standards/) and
 [`draft-schrock-ep-quorum`](standards/).
+
+### Canonicalization-malleability battery (EP-CANONICALIZATION-v1)
+
+Every signed EP artifact is verified over recursive canonical JSON, so
+canonicalization divergence between implementations is a signature-forgery
+surface. [`conformance/vectors/canonicalization.v1.json`](conformance/vectors/canonicalization.v1.json)
+is a differential battery of raw JSON texts that pins the RFC 8785 / I-JSON
+behavior byte-for-byte across all three languages: Unicode normalization is NOT
+applied (NFC and NFD spellings pin distinct digests on purpose), escaped and
+literal spellings of the same code points pin the same digest, member names
+sort by UTF-16 code units, integer-valued number tokens (`1`, `1.0`, `1e0`,
+`-0`) pin one canonical serialization, and duplicate member names, unpaired
+surrogate escapes, out-of-profile numbers, and nesting deeper than the
+suite-pinned bound of 64 must all reject. Accept vectors carry a pinned SHA-256
+of the canonical bytes, so agreement is proven on the exact bytes, not just the
+verdict. Scope, stated honestly: the duplicate-name, surrogate, and depth gates
+live in each conformance runner at the parse boundary (the verify packages
+receive already-parsed values); the profile predicate, canonical serialization,
+and digests exercise the verify packages themselves. Regenerate with
+`node conformance/vectors/generate-canonicalization.mjs`.
 
 > **Scope, stated honestly.** Multi-party quorum is a *verifiable protocol
 > capability* with cross-language reference verifiers and a live in-browser demo
@@ -133,8 +162,9 @@ a verifier decision table:
 Scope note: these exercise the **offline** assertion verifier. Replay /
 one-time consumption (the nonce is the global consumption key) and
 enrollment-active are **server-state** checks, out of scope for offline
-assertion vectors. Cross-language signoff verifiers (Python, Go) are the next
-milestone; the receipt format remains the three-language interop surface today.
+assertion vectors. The signoff verifiers agree across JavaScript, Python, and Go
+today (see EP-SIGNOFF-v1 above); signoffs are part of the three-language interop
+surface, not a pending milestone.
 
 ---
 

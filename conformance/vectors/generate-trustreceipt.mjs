@@ -10,6 +10,7 @@ import {
   assembleAuthorizationReceiptLegacyV1,
   policyHash as computePolicyHash, generateEd25519KeyPair,
 } from '../../packages/issue/index.js';
+import { canonicalize } from '../../packages/verify/index.js';
 
 const ISSUED_AT = '2026-06-13T11:00:00.000Z';
 const EXPIRES_AT = '2026-06-13T18:00:00.000Z';
@@ -40,7 +41,7 @@ async function mint(actionParams, { legacy = false } = {}) {
   const assemble = legacy ? assembleAuthorizationReceiptLegacyV1 : assembleAuthorizationReceipt;
   const receipt = assemble({ receiptId: `ep:receipt:${crypto.randomBytes(8).toString('base64url')}`, action, contexts, signoffs, committedAt: COMMITTED_AT, log: { privateKey: logKp.privateKey, logKeyId: 'ep:log:test#1' } });
   const verification = { approver_keys: { 'ep:key:dir#1': { public_key: kp.publicKeyB64u, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2036-01-01T00:00:00Z' } }, log_public_key: logKp.publicKeyB64u };
-  return { receipt, verification };
+  return { receipt, verification, logPrivateKey: logKp.privateKey };
 }
 
 const V = [];
@@ -88,6 +89,30 @@ add('accept_valid_receipt', true, valid.receipt, valid.verification);
   m.receipt.action.params.rate = 1e-7; // outside the EP canonicalization profile
   m.receipt.action_hash = `sha256:${crypto.createHash('sha256').update('x').digest('hex')}`;
   add('reject_non_canonicalizable_number', false, m.receipt, m.verification);
+}
+{ // empty-path degenerate: an empty inclusion_path folds to leaf == root, which is
+  // only a true inclusion statement for a SINGLE-LEAF tree. The checkpoint here is
+  // RE-SIGNED with the real log key after forging tree_size, so the ONLY refusing
+  // check is the empty-path rule: a verifier WITHOUT the rule would accept this
+  // receipt as "included" in a claimed 4-leaf tree whose root merely repeats the
+  // leaf hash. Must refuse: "empty inclusion_path requires checkpoint tree_size 1".
+  const m = await mint({ amount: 82000, currency: 'USD' });
+  if (m.receipt.log_proof.inclusion_path.length !== 0) throw new Error('expected single-leaf receipt (empty inclusion_path)');
+  const cp = { ...m.receipt.log_proof.checkpoint };
+  delete cp.log_signature;
+  cp.tree_size = 4;
+  const log_signature = crypto.sign(null, crypto.createHash('sha256').update(canonicalize(cp), 'utf8').digest(), m.logPrivateKey).toString('base64url');
+  m.receipt.log_proof.checkpoint = { ...cp, log_signature };
+  add('reject_empty_path_tree_size_not_1', false, m.receipt, m.verification);
+}
+{ // empty-path degenerate: a single-leaf tree has exactly one index, 0. leaf_index
+  // sits OUTSIDE the signed checkpoint, so this mutation leaves every signature
+  // valid — only the empty-path rule refuses. Must refuse:
+  // "empty inclusion_path requires leaf_index 0 in a single-leaf tree".
+  const m = await mint({ amount: 82000, currency: 'USD' });
+  if (m.receipt.log_proof.inclusion_path.length !== 0) throw new Error('expected single-leaf receipt (empty inclusion_path)');
+  m.receipt.log_proof.leaf_index = 1;
+  add('reject_empty_path_nonzero_leaf_index', false, m.receipt, m.verification);
 }
 
 const suite = {

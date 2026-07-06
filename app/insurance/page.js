@@ -47,7 +47,7 @@ const FAQ = [
     + 'two-person rule) cannot be defeated the way a callback can.'],
   ['Is it vendor lock-in?',
     'No. EMILIA Protocol is an open protocol (Apache-2.0) published as IETF Internet-Drafts, '
-    + 'with independent verifiers in three languages. Carrier and insured can verify '
+    + 'with reference verifiers in three languages (JS, Python, Go). Carrier and insured can verify '
     + 'receipts with open-source code, with no account and no trust in EMILIA.'],
 ];
 

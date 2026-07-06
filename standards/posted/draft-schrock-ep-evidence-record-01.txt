@@ -1,0 +1,392 @@
+
+
+
+
+Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
+Intended status: Informational                               6 July 2026
+Expires: 7 January 2027
+
+
+  Long-Term, Crypto-Agile Preservation of Authorization Evidence (EP-
+                            EVIDENCE-RECORD)
+                  draft-schrock-ep-evidence-record-01
+
+Abstract
+
+   Regulations increasingly require that records of who authorized a
+   high-risk action be retained for years (e.g. five years under DORA,
+   six under HIPAA and SEC 17a-4).  Any fixed signature or hash
+   algorithm used to protect such a record weakens over time; a receipt
+   signed today with Ed25519 over SHA-256 may be cryptographically
+   attackable before its retention period ends.  This document defines
+   EP-EVIDENCE-RECORD, an OPTIONAL profile that preserves the
+   verifiability of EMILIA Protocol authorization receipts (and other
+   artifacts) across algorithm aging, using a renewal chain in the style
+   of the Evidence Record Syntax [RFC4998].  Each renewal time-attests
+   the entire prior renewal under a fresh, stronger algorithm before the
+   older one is broken, so an unbroken chain links the original artifact
+   to the most recent renewal.  The record is offline- verifiable, fail-
+   closed, and maintained as cross-language conformance vectors that
+   three reference verifiers (JavaScript, Python, Go) are required to
+   agree on.  Those verifiers live in one repository, a cross-language
+   consistency check, not clean-room independent implementations;
+   independent implementations remain future interoperability evidence.
+
+Discussion
+
+   This document depends on [draft-schrock-ep-authorization-receipts]
+   and uses its canonicalization and terminology without restating them.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+
+
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 1]
+
+Internet-Draft             EP Evidence Records                 July 2026
+
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 7 January 2027.
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+     1.1.  Scope and non-goals . . . . . . . . . . . . . . . . . . .   3
+   2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
+   3.  The renewal chain . . . . . . . . . . . . . . . . . . . . . .   3
+   4.  Verification algorithm  . . . . . . . . . . . . . . . . . . .   4
+   5.  Crypto-agility  . . . . . . . . . . . . . . . . . . . . . . .   5
+   6.  Security Considerations . . . . . . . . . . . . . . . . . . .   5
+   7.  Relationship to Other Work  . . . . . . . . . . . . . . . . .   5
+   8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   5
+   9.  Implementation Status . . . . . . . . . . . . . . . . . . . .   6
+   10. Normative References  . . . . . . . . . . . . . . . . . . . .   6
+   11. Informative References  . . . . . . . . . . . . . . . . . . .   6
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   7
+
+1.  Introduction
+
+   An EMILIA Protocol (EP) authorization receipt [draft-schrock-ep-
+   authorization-receipts] is offline-verifiable evidence that a named
+   human authorized a specific high-risk action.  Compliance regimes
+   require such evidence to be retained for years.  Over that horizon
+   the cryptography protecting it ages: hash functions succumb to
+   collision attacks, signature algorithms to advances including
+   cryptanalytically relevant quantum computers.  A receipt that
+   verifies today may not verify, or may not be trustworthy, a decade
+   from now under the algorithm it was sealed with.
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 2]
+
+Internet-Draft             EP Evidence Records                 July 2026
+
+
+   This is a solved problem in long-term archiving: the Evidence Record
+   Syntax [RFC4998] preserves data integrity across algorithm changes by
+   periodically re-protecting the data, and the prior protection, under
+   a newer algorithm before the old one is broken.  EP-EVIDENCE-RECORD
+   applies that idea to EP receipts with EP's own time-attestation
+   primitive, so the result stays offline-verifiable with no new trust
+   dependencies.
+
+1.1.  Scope and non-goals
+
+   EP-EVIDENCE-RECORD preserves the *verifiability over time* of an
+   artifact it is given (typically an EP receipt, but any byte string by
+   its hash).  It does NOT establish that the artifact was correct, nor
+   that a renewal actually occurred before the prior algorithm was
+   broken in the wild -- that is an operational discipline (Section 6).
+   It defines no new signature or hash algorithm; it composes existing
+   ones over time.
+
+2.  Terminology
+
+   The key words "MUST", "MUST NOT", "SHOULD", and "MAY" in this
+   document are to be interpreted as described in BCP 14 [RFC2119]
+   [RFC8174] when, and only when, they appear in all capitals.
+
+   Protected artifact  the byte string whose long-term verifiability is
+      being preserved, referenced only by its hash (`protected_hash`).
+
+   Archive timestamp  one renewal: an EP time-attestation by an
+      independent, key-pinned time authority over a stated `hashed`
+      value.
+
+   Renewal chain  the ordered list of archive timestamps, each (after
+      the first) covering the entire previous archive timestamp under a
+      possibly stronger hash algorithm.
+
+3.  The renewal chain
+
+   {
+     "@version": "EP-EVIDENCE-RECORD-v1",
+     "protected_hash": "sha256:<hex>",
+     "archive_timestamps": [
+       { "time_attestation": { ... hashed = protected_hash ... } },
+       { "time_attestation": { ... hashed = sha384(canon(prev)) ... } }
+     ]
+   }
+
+   *  `@version` (REQUIRED) MUST be "EP-EVIDENCE-RECORD-v1".
+
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 3]
+
+Internet-Draft             EP Evidence Records                 July 2026
+
+
+   *  `protected_hash` (REQUIRED) the algorithm-tagged hash of the
+      protected artifact (e.g. an EP receipt).
+
+   *  `archive_timestamps` (REQUIRED, non-empty) the renewal chain, in
+      order.  The FIRST entry's time-attestation MUST be over
+      `protected_hash`.  Each LATER entry's attested `hashed` value MUST
+      equal the algorithm- agile hash of the canonical serialization
+      (JCS [RFC8785]) of the immediately preceding archive timestamp.
+
+   Because renewal i covers the whole of renewal i-1, an unbroken chain
+   links the protected artifact to the most recent renewal even across a
+   change of hash algorithm (e.g. SHA-256 then SHA-384).  This is the
+   Archive Timestamp Chain concept of [RFC4998], expressed with EP time-
+   attestations.  A new renewal is appended under a fresh, stronger
+   algorithm whenever the current algorithm's margin is judged to be
+   eroding, BEFORE it is broken.
+
+4.  Verification algorithm
+
+   A verifier MUST proceed fail-closed and return invalid on any
+   failure:
+
+   1.  `version_ok` -- `@version` equals "EP-EVIDENCE-RECORD-v1".
+
+   2.  `protected_bound` (when the relying party supplies the artifact)
+       -- `protected_hash` equals the hash the relying party
+       independently computes over the artifact it holds.
+
+   3.  `chain_nonempty` -- at least one archive timestamp is present.
+
+   4.  `all_timestamps_valid` -- every renewal's EP time-attestation
+       verifies under a pinned, independent time authority's key.
+
+   5.  `chain_linked` -- the first renewal covers `protected_hash`; each
+       later renewal's attested `hashed` equals the algorithm-agile hash
+       of the prior archive timestamp's canonical serialization.
+
+   6.  `monotonic_time` -- attested times strictly increase along the
+       chain.
+
+   The record is valid iff all applicable checks pass.  Verification
+   requires no network and no live service.
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 4]
+
+Internet-Draft             EP Evidence Records                 July 2026
+
+
+5.  Crypto-agility
+
+   Hash algorithms are carried as algorithm-tagged values (e.g.
+   `sha256:`, `sha384:`, `sha512:`); supported renewal hashes are SHA-
+   256, SHA-384, and SHA-512, and the set is extensible as stronger
+   functions are standardized.  Each renewal's time-attestation MAY use
+   a different signature algorithm from earlier renewals, including
+   post-quantum signatures once profiled, so the chain migrates forward
+   without invalidating earlier links.  The verifier selects the hash
+   function by the tag, not by assumption.
+
+6.  Security Considerations
+
+   The central operational requirement is timeliness: a renewal under a
+   stronger algorithm MUST be appended while the current algorithm is
+   still unbroken.  The chain cannot prove this happened; deployments
+   retain a renewal policy and monitoring as out-of-band discipline.  A
+   renewal added after the prior algorithm is already broken provides no
+   additional assurance.
+
+   Trust derives from the pinned, independent time authorities across
+   the chain.  Using the same authority for every renewal concentrates
+   trust; diversity of authorities strengthens the record.  The profile
+   preserves only *verifiability*, not *correctness* of the protected
+   artifact.
+
+   The record is fail-closed: a missing renewal, a broken link, a non-
+   monotonic time, or an unverifiable time-attestation yields invalid.
+
+7.  Relationship to Other Work
+
+   EP-EVIDENCE-RECORD adapts the Archive Timestamp Chain of [RFC4998]
+   (Evidence Record Syntax) to EP's JSON/JCS evidence and EP time-
+   attestations, keeping the result offline-verifiable.  It composes
+   with [draft-schrock-ep-authorization-receipts] (the typical protected
+   artifact) and with [draft-schrock-ep-authorization-evidence-chain] (a
+   chain may be preserved as the protected artifact).  A renewal chain
+   MAY additionally be registered with a transparency service such as
+   SCITT [I-D.ietf-scitt-architecture] for third-party anchoring, but
+   the profile does not require it.
+
+8.  IANA Considerations
+
+   This document has no IANA actions.
+
+
+
+
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 5]
+
+Internet-Draft             EP Evidence Records                 July 2026
+
+
+9.  Implementation Status
+
+   A reference verifier is maintained as open-source software in three
+   cross-language implementations (JavaScript, Python, Go) that agree on
+   a shared conformance vector set, exercised offline in continuous
+   integration.  The three verifiers live in one repository and are a
+   cross-language consistency check, not clean-room independent
+   implementations; independent implementations remain future
+   interoperability evidence.
+
+10.  Normative References
+
+   [draft-schrock-ep-authorization-receipts]
+              Schrock, I., "Authorization Receipts for High-Risk Agent
+              Actions (EP)", Work in Progress, Internet-Draft, draft-
+              schrock-ep-authorization-receipts, June 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              authorization-receipts/>.
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC4998]  Gondrom, T., Brandner, R., and U. Pordesch, "Evidence
+              Record Syntax (ERS)", RFC 4998, DOI 10.17487/RFC4998,
+              August 2007, <https://www.rfc-editor.org/info/rfc4998>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+   [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
+              Canonicalization Scheme (JCS)", RFC 8785,
+              DOI 10.17487/RFC8785, June 2020,
+              <https://www.rfc-editor.org/info/rfc8785>.
+
+11.  Informative References
+
+   [draft-schrock-ep-authorization-evidence-chain]
+              Schrock, I., "Authorization Evidence Chains (EP-AEC)",
+              Work in Progress, Internet-Draft, draft-schrock-ep-
+              authorization-evidence-chain, June 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              authorization-evidence-chain/>.
+
+
+
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 6]
+
+Internet-Draft             EP Evidence Records                 July 2026
+
+
+   [I-D.ietf-scitt-architecture]
+              IETF SCITT WG, "An Architecture for Trustworthy and
+              Transparent Digital Supply Chains", Work in Progress,
+              Internet-Draft, draft-ietf-scitt-architecture, 2026,
+              <https://datatracker.ietf.org/doc/draft-ietf-scitt-
+              architecture/>.
+
+Author's Address
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 7 January 2027                 [Page 7]

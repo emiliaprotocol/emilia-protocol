@@ -119,6 +119,14 @@ export interface TrustReceiptChecks {
   inclusion: boolean;
   checkpoint_signature: boolean;
   windows: boolean;
+  /**
+   * Present ONLY when `opts.priorCheckpoint` is set (opt-in, fail-closed):
+   * true iff the receipt's checkpoint is proven an append-only extension of
+   * the caller's pinned prior head via an RFC 6962 consistency proof.
+   * Proves consistency between two OBSERVED heads only; it does NOT establish
+   * currency or split-view honesty (that needs independent witnesses).
+   */
+  consistency?: boolean;
 }
 
 export type TrustReceiptStrictCheckName =
@@ -176,6 +184,14 @@ export interface TrustReceiptVerificationOptions {
   rpId?: string;
   /** Expected policy hash all contexts must carry in strict mode. */
   expectedPolicyHash?: string;
+  /**
+   * OPT-IN append-only check: a checkpoint head this verifier previously
+   * observed and pinned, plus the RFC 6962 consistency proof from that head
+   * to the receipt's checkpoint (hex or "sha256:"-prefixed node hashes over
+   * EP-MERKLE-v2 branch hashing). When set, `checks.consistency` is added and
+   * fails closed on a malformed pin, missing proof, or invalid proof.
+   */
+  priorCheckpoint?: { tree_size: number; root_hash: string; consistency_proof: string[] };
 }
 
 /**
@@ -194,6 +210,24 @@ export function verifyTrustReceipt(
   receipt: Record<string, unknown>,
   opts: TrustReceiptVerificationOptions
 ): TrustReceiptResult;
+
+// ── Checkpoint consistency (RFC 6962 §2.1.2 over EP-MERKLE-v2 branches) ─────
+
+export const CONSISTENCY_ALG: 'EP-MERKLE-v2';
+
+/**
+ * Verify an RFC 6962 §2.1.2 consistency proof: the size-`newSize` tree (root
+ * `newRoot`) is an append-only extension of the size-`oldSize` tree (root
+ * `oldRoot`). Fail-closed on malformed inputs. Proves consistency between two
+ * OBSERVED heads only; it does NOT establish currency or split-view honesty.
+ */
+export function verifyCheckpointConsistency(
+  oldRoot: string,
+  oldSize: number,
+  newRoot: string,
+  newSize: number,
+  proof: string[]
+): boolean;
 
 // ── PIP-008: L4 → L7 binding (record relied-on agent identity + freshness) ──
 

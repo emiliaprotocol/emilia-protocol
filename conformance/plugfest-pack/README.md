@@ -22,7 +22,7 @@ network, no shared state. Reject vectors are adversarial: each one pins a
 single invariant (tampered payload, wrong key, malformed signature, broken
 anchor, missing user verification, quorum-ordering violation, …).
 
-Suites and vector counts as of 2026-07-04 (the `SUITES` list in
+Suites and vector counts as of 2026-07-05 (the `SUITES` list in
 [`../run.mjs`](../run.mjs) is authoritative if this table drifts):
 
 | Suite file | Format | Vectors |
@@ -32,10 +32,11 @@ Suites and vector counts as of 2026-07-04 (the `SUITES` list in
 | `quorum.v1.json` | EP-QUORUM-v1 (M-of-N / ordered multi-party approval) | 11 |
 | `revocation.exec.v1.json` | EP-REVOCATION-v1 | 6 |
 | `time-attestation.v1.json` | EP-TIME-ATTESTATION-v1 | 6 |
-| `trust-receipt.exec.v1.json` | EP-TRUST-RECEIPT-v1 (§6.2) | 8 |
+| `trust-receipt.exec.v1.json` | EP-TRUST-RECEIPT-v1 (§6.2) | 10 |
 | `trust-receipt.timestamp-forms.v1.json` | EP-TRUST-RECEIPT-v1 timestamp profile (§6.2/§6.3) | 6 |
 | `provenance.exec.v1.json` | EP-PROVENANCE-CHAIN-v1 | 6 |
 | `evidence-record.v1.json` | EP-EVIDENCE-RECORD-v1 | 5 |
+| `canonicalization.v1.json` | EP-CANONICALIZATION-v1 (differential RFC 8785 / I-JSON battery, digest-pinned) | 35 |
 
 Format definitions, field-by-field: [`../../CONFORMANCE.md`](../../CONFORMANCE.md)
 and [`../vectors/README.md`](../vectors/README.md). The optional JWS (RFC 7515)
@@ -107,7 +108,7 @@ Copy a row per (implementation, suite) pair:
 | Implementation (org / repo / language) | Suite | Pass/Fail | Notes |
 |---|---|---|---|
 | _example: acme-verify (Acme, Rust)_ | `receipts.v1.json` | pass (13/13) | anchor proofs not implemented; 2 anchor vectors skipped and counted as fail |
-| _example: repo reference set (JS+Py+Go, one repo)_ | all 9 suites | pass (70/70) | consistency check across three languages, single repository |
+| _example: repo reference set (JS+Py+Go, one repo)_ | all 11 suites | pass (110/110) | consistency check across three languages, single repository |
 |  |  |  |  |
 |  |  |  |  |
 

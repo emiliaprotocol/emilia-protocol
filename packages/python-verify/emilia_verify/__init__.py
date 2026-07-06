@@ -735,7 +735,31 @@ def verify_trust_receipt(receipt: Any, opts: Optional[dict] = None) -> dict:
         # EP-MERKLE-v2 (default): domain-separated, payload-bound leaf + positional
         # proof; when log_proof carries leaf_hash it must bind this receipt.
         merkle_alg = lp.get("alg") or (lp.get("checkpoint") or {}).get("merkle_alg")
-        if merkle_alg == MERKLE_V2_ALG:
+        # Degenerate empty-path rule (fail-closed): with an empty inclusion_path
+        # the Merkle fold collapses to leaf_hash == root_hash, which is only a
+        # true inclusion statement for a SINGLE-LEAF tree. Without this gate, a
+        # forged checkpoint whose root_hash simply repeats the leaf hash would
+        # "include" the receipt at ANY claimed tree_size. An empty path is
+        # therefore accepted ONLY when checkpoint.tree_size is exactly 1 (and,
+        # since this shape carries an index, leaf_index, when present, is 0; a
+        # null leaf_index counts as present and refuses). Missing or non-numeric
+        # tree_size refuses. Applies to v2 AND opt-in legacy folds, evaluated
+        # before the Merkle fold. Mirrors packages/verify (JS) verifyTrustReceipt
+        # exactly (JSON numbers: an integer-valued 1.0 token equals 1, a bool
+        # does not).
+        empty_path_refusal = None
+        if len(lp["inclusion_path"]) == 0:
+            ts = lp["checkpoint"].get("tree_size")
+            ts_is_one = isinstance(ts, (int, float)) and not isinstance(ts, bool) and ts == 1
+            li = lp.get("leaf_index")
+            if not ts_is_one:
+                empty_path_refusal = "empty inclusion_path requires checkpoint tree_size 1 (single-leaf tree)"
+            elif "leaf_index" in lp and (isinstance(li, bool) or not isinstance(li, (int, float)) or li != 0):
+                empty_path_refusal = "empty inclusion_path requires leaf_index 0 in a single-leaf tree"
+        if empty_path_refusal:
+            checks["inclusion"] = False
+            errors.append(empty_path_refusal)
+        elif merkle_alg == MERKLE_V2_ALG:
             leaf_hash = _leaf_hash_v2(canonical_leaf)
             presented_leaf = _hex_of(lp.get("leaf_hash")) if lp.get("leaf_hash") else leaf_hash
             checks["inclusion"] = (presented_leaf == leaf_hash) and verify_merkle_anchor(

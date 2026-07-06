@@ -32,7 +32,7 @@ We are EMILIA Protocol, an open standards effort (Apache-2.0, published as IETF 
 
 **Long-term non-repudiation.** EP-EVIDENCE-RECORD provides RFC 4998-style, crypto-agile long-term retention, so receipts remain verifiable as algorithms age — relevant to audit and retention obligations long after an action occurs.
 
-**Interoperability and assurance.** We maintain three independent implementations (JavaScript, Python, Go) that agree on a public conformance suite, plus machine-checked TLA+/Alloy models of the core protocols. We consider cross-implementation agreement and formal models prerequisites for any primitive proposed as a standard.
+**Interoperability and assurance.** We maintain JavaScript, Python, and Go reference verifiers that agree on a public conformance suite, plus machine-checked TLA+/Alloy models of the core protocols. We treat that as a cross-language consistency check, not a clean-room independent-implementation claim. We consider cross-verifier agreement and formal models prerequisites for any primitive proposed as a standard.
 
 **Standards alignment.** The work maps to the NIST AI RMF and is relevant to EU AI Act Article 14 (human oversight). It is complementary to the identity standards the paper considers (OAuth, OIDC, SPIFFE/SPIRE): those establish *who/what an agent is*; authorization receipts establish *that a specific human authorized a specific act, verifiably and after the fact.*
 

@@ -33,7 +33,7 @@ const STATS = [
   { value: TESTS_PASSED, label: 'Automated Tests',  sub: `passing across ${TEST_FILES} files`, accent: color.t1 },
   { value: TLA_INVARIANTS, label: 'TLA+ Theorems',  sub: 'TLC 2.19, zero errors',             accent: color.blue },
   { value: ALLOY_FACTS, label: 'Alloy Facts',       sub: '22 assertions verified',            accent: color.gold },
-  { value: '3',         label: 'Independent Verifiers', sub: 'JS · Python · Go, proven to agree', accent: color.t1 },
+  { value: '3',         label: 'Cross-language Verifiers', sub: 'JS · Python · Go, proven to agree', accent: color.t1 },
   { value: 'Apache 2.0', label: 'License',          sub: 'Open specification',            accent: color.green },
 ];
 

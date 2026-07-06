@@ -193,6 +193,12 @@ export function validateActionControlManifest(manifest) {
     if (typeof action.receipt_required !== 'boolean') errors.push(`${prefix}.receipt_required must be boolean`);
     if (!RISK_LEVELS.has(action.risk)) errors.push(`${prefix}.risk must be low|medium|high|critical`);
     if (!ASSURANCE_CLASSES.has(action.assurance_class)) errors.push(`${prefix}.assurance_class must be software|class_a|quorum`);
+    // Key-class floor: a critical action must be bound to a human key. normalizeAssurance()
+    // defaults a missing or unrecognized tier to the weakest 'software', so this also fails
+    // closed on a critical action whose tier was omitted rather than silently downgrading it.
+    if (action.receipt_required && action.risk === 'critical' && action.assurance_class === 'software') {
+      errors.push(`${prefix}.assurance_class must be class_a or quorum when risk is critical`);
+    }
     if (action.receipt_required) {
       if (!Number.isFinite(action.max_age_sec) || action.max_age_sec <= 0) errors.push(`${prefix}.max_age_sec must be positive`);
       const control = action.control;

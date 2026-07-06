@@ -20,6 +20,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { verifyTrustReceipt } from './index.js';
+import { buildConsistencyProof, merkleRoot } from './consistency.js';
 
 // ── canonicalize + sha256: must match index.js ───────────────────────────────
 function canonicalize(value) {
@@ -614,4 +615,179 @@ test('strict verifier — rejects unsigned critical signoff fields', () => {
   assert.equal(r.strict.checks.no_unsigned, false);
   assert.equal(r.valid, false);
   assert.match(r.strict.errors.join(' '), /Ed25519 signoff signature/);
+});
+
+// ── step 5c: opt-in priorCheckpoint consistency knob ─────────────────────────
+// The caller pins a previously-observed checkpoint head; the receipt's
+// checkpoint must be proven an append-only extension of it (RFC 6962 §2.1.2
+// over EP-MERKLE-v2 branches). Knob off = behavior unchanged. Fail-closed on
+// a malformed pin, missing proof, or invalid proof — each a distinct reason.
+
+// Sign a checkpoint exactly as buildReceipt does.
+const signCheckpoint = (cp) => crypto.sign(
+  null,
+  crypto.createHash('sha256').update(canonicalize(cp), 'utf8').digest(),
+  logKey.privateKey,
+).toString('base64url');
+
+// Rebuild a receipt's log_proof over a REAL 4-leaf RFC 6962 tree (receipt leaf
+// at index 1), and return the pinned prior head (the first 2 leaves) plus the
+// genuine consistency proof from that head to the receipt's checkpoint.
+function buildConsistencyReceipt() {
+  const receipt = buildReceipt();
+  const leafSource = { ...receipt };
+  delete leafSource.log_proof;
+  const receiptLeaf = leafHashV2(canonicalize(leafSource));
+  const l0 = leafHashV2('log-entry-0');
+  const l2 = leafHashV2('log-entry-2');
+  const l3 = leafHashV2('log-entry-3');
+  const allLeaves = [l0, receiptLeaf, l2, l3];
+  const newRoot = merkleRoot(allLeaves);            // head at tree_size 4
+  const oldRoot = merkleRoot(allLeaves.slice(0, 2)); // pinned prior head at tree_size 2
+  const checkpoint = { tree_size: 4, root_hash: `sha256:${newRoot}`, log_key_id: 'ep:log:test#1', merkle_alg: 'EP-MERKLE-v2' };
+  receipt.log_proof = {
+    alg: 'EP-MERKLE-v2',
+    leaf_hash: `sha256:${receiptLeaf}`,
+    leaf_index: 1,
+    inclusion_path: [
+      { hash: l0, position: 'left' },
+      { hash: hashPairV2(l2, l3), position: 'right' },
+    ],
+    checkpoint: { ...checkpoint, log_signature: signCheckpoint(checkpoint) },
+  };
+  const prior = {
+    tree_size: 2,
+    root_hash: `sha256:${oldRoot}`,
+    consistency_proof: buildConsistencyProof(2, 4, allLeaves),
+  };
+  return { receipt, prior };
+}
+
+test('step 5c — knob OFF: result shape and behavior are unchanged (no consistency key)', () => {
+  const { receipt } = buildConsistencyReceipt();
+  const r = verifyTrustReceipt(receipt, OPTS);
+  assert.equal(r.valid, true, JSON.stringify(r.errors));
+  assert.deepEqual(Object.keys(r.checks), [
+    'action_hash', 'context_commitments', 'signoff_signatures', 'sod', 'inclusion', 'checkpoint_signature', 'windows',
+  ]);
+  assert.equal('consistency' in r.checks, false);
+});
+
+test('step 5c — knob ON + genuine append-only proof from the pinned head passes', () => {
+  const { receipt, prior } = buildConsistencyReceipt();
+  const r = verifyTrustReceipt(receipt, { ...OPTS, priorCheckpoint: prior });
+  assert.equal(r.checks.consistency, true, JSON.stringify(r.errors));
+  assert.equal(r.valid, true);
+});
+
+test('step 5c — knob ON + equal heads: an EMPTY proof array is legitimate', () => {
+  const { receipt } = buildConsistencyReceipt();
+  const head = receipt.log_proof.checkpoint;
+  const r = verifyTrustReceipt(receipt, {
+    ...OPTS,
+    priorCheckpoint: { tree_size: head.tree_size, root_hash: head.root_hash, consistency_proof: [] },
+  });
+  assert.equal(r.checks.consistency, true, JSON.stringify(r.errors));
+  assert.equal(r.valid, true);
+});
+
+test('step 5c — knob ON + MISSING proof refuses with a distinct reason', () => {
+  const { receipt, prior } = buildConsistencyReceipt();
+  delete prior.consistency_proof;
+  const r = verifyTrustReceipt(receipt, { ...OPTS, priorCheckpoint: prior });
+  assert.equal(r.checks.consistency, false);
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(' '), /priorCheckpoint is pinned but consistency_proof is missing/);
+});
+
+test('step 5c — knob ON + TAMPERED proof refuses with a distinct reason', () => {
+  const { receipt, prior } = buildConsistencyReceipt();
+  prior.consistency_proof = [...prior.consistency_proof];
+  prior.consistency_proof[0] = sha256hex('not-the-node');
+  const r = verifyTrustReceipt(receipt, { ...OPTS, priorCheckpoint: prior });
+  assert.equal(r.checks.consistency, false);
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(' '), /consistency_proof does not prove an append-only extension from the pinned prior checkpoint/);
+});
+
+test('step 5c — knob ON + a rewritten prior head (split view) refuses', () => {
+  const { receipt, prior } = buildConsistencyReceipt();
+  prior.root_hash = `sha256:${sha256hex('a-forked-history-head')}`; // not a prefix of this log
+  const r = verifyTrustReceipt(receipt, { ...OPTS, priorCheckpoint: prior });
+  assert.equal(r.checks.consistency, false);
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(' '), /does not prove an append-only extension/);
+});
+
+test('step 5c — knob ON + malformed pin fails closed with a distinct reason', () => {
+  const { receipt, prior } = buildConsistencyReceipt();
+  for (const badSize of ['2', 2.5, 0, -1, undefined]) {
+    const r = verifyTrustReceipt(receipt, { ...OPTS, priorCheckpoint: { ...prior, tree_size: badSize } });
+    assert.equal(r.checks.consistency, false, `tree_size=${JSON.stringify(badSize)}`);
+    assert.equal(r.valid, false);
+    assert.match(r.errors.join(' '), /priorCheckpoint requires integer tree_size >= 1 and root_hash/);
+  }
+});
+
+test('step 5c — knob ON + receipt without a usable checkpoint fails closed', () => {
+  const { receipt, prior } = buildConsistencyReceipt();
+  delete receipt.log_proof; // no checkpoint head to extend to
+  const r = verifyTrustReceipt(receipt, { ...OPTS, priorCheckpoint: prior });
+  assert.equal(r.checks.consistency, false);
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(' '), /priorCheckpoint is pinned but the receipt checkpoint is missing tree_size or root_hash/);
+});
+
+// ── step 5: empty inclusion_path degenerate rule (fail-closed) ───────────────
+// An empty path collapses the Merkle fold to leafHash === root_hash, which is
+// only a true inclusion statement for a single-leaf tree. tree_size must be
+// exactly the integer 1 (and leaf_index, when present, 0) — otherwise refuse.
+
+// Rebuild a receipt's log_proof as a SINGLE-LEAF log: root == leaf, empty path.
+// (Sentinel: a destructuring default would swallow a literal `undefined`.)
+const ABSENT = Symbol('absent tree_size');
+function buildSingleLeafReceipt({ treeSize = 1, leafIndex = 0 } = {}) {
+  const receipt = buildReceipt();
+  const leafSource = { ...receipt };
+  delete leafSource.log_proof;
+  const leaf = leafHashV2(canonicalize(leafSource));
+  const checkpoint = { tree_size: treeSize, root_hash: `sha256:${leaf}`, log_key_id: 'ep:log:test#1', merkle_alg: 'EP-MERKLE-v2' };
+  if (treeSize === ABSENT) delete checkpoint.tree_size; // "missing tree_size" case
+  receipt.log_proof = {
+    alg: 'EP-MERKLE-v2',
+    leaf_hash: `sha256:${leaf}`,
+    leaf_index: leafIndex,
+    inclusion_path: [],
+    checkpoint: { ...checkpoint, log_signature: signCheckpoint(checkpoint) },
+  };
+  return receipt;
+}
+
+test('step 5 — an empty inclusion_path with tree_size 1 (single-leaf log) verifies', () => {
+  const r = verifyTrustReceipt(buildSingleLeafReceipt(), OPTS);
+  assert.equal(r.checks.inclusion, true, JSON.stringify(r.errors));
+  assert.equal(r.valid, true);
+});
+
+test('step 5 — an empty inclusion_path with tree_size > 1 is REFUSED (degenerate leaf==root forgery)', () => {
+  const r = verifyTrustReceipt(buildSingleLeafReceipt({ treeSize: 4 }), OPTS);
+  assert.equal(r.checks.inclusion, false);
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(' '), /empty inclusion_path requires checkpoint tree_size 1 \(single-leaf tree\)/);
+});
+
+test('step 5 — an empty inclusion_path with a non-integer, zero, or missing tree_size fails closed', () => {
+  for (const badSize of ['1', 0, null, ABSENT]) {
+    const r = verifyTrustReceipt(buildSingleLeafReceipt({ treeSize: badSize }), OPTS);
+    assert.equal(r.checks.inclusion, false, `tree_size=${String(badSize)}`);
+    assert.equal(r.valid, false);
+    assert.match(r.errors.join(' '), /empty inclusion_path requires checkpoint tree_size 1/);
+  }
+});
+
+test('step 5 — an empty inclusion_path with a nonzero leaf_index is REFUSED even at tree_size 1', () => {
+  const r = verifyTrustReceipt(buildSingleLeafReceipt({ leafIndex: 1 }), OPTS);
+  assert.equal(r.checks.inclusion, false);
+  assert.equal(r.valid, false);
+  assert.match(r.errors.join(' '), /empty inclusion_path requires leaf_index 0 in a single-leaf tree/);
 });

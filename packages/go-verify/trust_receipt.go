@@ -25,6 +25,27 @@ func sha256HexOf(v any) string {
 	return hex.EncodeToString(sum[:])
 }
 
+// jsonNumEquals reports whether a decoded JSON value is a NUMBER equal to want.
+// Fail-closed: strings, bools, nil, and missing values are never equal. Handles
+// both decode modes used in this package (float64 from plain json.Unmarshal,
+// json.Number from UseNumber decoders), so an integer-valued token such as
+// "1.0" equals 1 exactly as it does after ECMAScript JSON.parse.
+func jsonNumEquals(v any, want float64) bool {
+	switch n := v.(type) {
+	case float64:
+		return n == want
+	case json.Number:
+		f, err := n.Float64()
+		return err == nil && f == want
+	case int:
+		return float64(n) == want
+	case int64:
+		return float64(n) == want
+	default:
+		return false
+	}
+}
+
 func withinWindowGo(t, frm, to string) bool {
 	ts, ok := parseMillis(t)
 	if !ok {
@@ -281,7 +302,30 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 			if merkleAlg == "" {
 				merkleAlg = getStr(cp, "merkle_alg")
 			}
-			if merkleAlg == MerkleV2Alg {
+			// Degenerate empty-path rule (fail-closed): with an empty
+			// inclusion_path the Merkle fold collapses to leafHash == root_hash,
+			// which is only a true inclusion statement for a SINGLE-LEAF tree.
+			// Without this gate, a forged checkpoint whose root_hash simply
+			// repeats the leaf hash would "include" the receipt at ANY claimed
+			// tree_size. An empty path is therefore accepted ONLY when
+			// checkpoint.tree_size is exactly 1 (and, since this shape carries
+			// an index, leaf_index, when present, is 0; a null leaf_index counts
+			// as present and refuses). Missing or non-numeric tree_size refuses.
+			// Applies to v2 AND opt-in legacy folds, evaluated before the
+			// Merkle fold. Mirrors packages/verify (JS) verifyTrustReceipt:
+			//   "empty inclusion_path requires checkpoint tree_size 1 (single-leaf tree)"
+			//   "empty inclusion_path requires leaf_index 0 in a single-leaf tree"
+			emptyPathRefused := false
+			if len(ipath) == 0 {
+				if !jsonNumEquals(cp["tree_size"], 1) {
+					emptyPathRefused = true
+				} else if li, present := lp["leaf_index"]; present && !jsonNumEquals(li, 0) {
+					emptyPathRefused = true
+				}
+			}
+			if emptyPathRefused {
+				checks["inclusion"] = false
+			} else if merkleAlg == MerkleV2Alg {
 				leafHash := leafHashV2(Canonicalize(leaf))
 				presented := hexStrip(lp["leaf_hash"])
 				if presented == "" {

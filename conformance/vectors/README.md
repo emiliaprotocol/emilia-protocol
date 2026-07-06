@@ -20,6 +20,18 @@ node conformance/run.mjs     # or: npm run conformance
 Format, claiming conformance, and adding a new-language implementation:
 see [`../../CONFORMANCE.md`](../../CONFORMANCE.md).
 
+## `canonicalization.v1.json` — EP-CANONICALIZATION-v1
+
+Differential canonicalization-malleability battery: raw JSON texts that pin
+RFC 8785 / I-JSON behavior byte-for-byte across the JavaScript, Python, and Go
+lanes (Unicode normalization non-application, escape aliases, UTF-16 member
+sort, duplicate member names, unpaired surrogates, number-token aliases, a
+pinned nesting bound of 64). Accept vectors carry a pinned SHA-256 of the
+canonical bytes. The duplicate-name, surrogate, and depth gates are enforced at
+the parse boundary of each runner (see `../runners/strict-json.mjs` for the
+shared contract); the profile predicate, canonicalization, and digests exercise
+the verify packages. Regenerate with `node generate-canonicalization.mjs`.
+
 ## `jws.json` — EP-RECEIPT-JWS-PROFILE-v1
 
 `jws.json` carries vectors for the OPTIONAL JWS (RFC 7515) serialization of EP

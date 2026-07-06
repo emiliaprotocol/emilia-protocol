@@ -95,9 +95,9 @@ export default function QuorumPage() {
             A decision log that says &ldquo;three people approved&rdquo; is testimony, controlled by the
             party who acted. A quorum receipt is evidence: an auditor, regulator, or counterparty can
             verify it offline, with open-source code, without trusting the system that issued it. To
-            earn that, the verification is unambiguous enough that independent implementations agree —
-            EMILIA ships three reference verifiers (JavaScript, Python, Go) that pass the same
-            adversarial quorum vectors identically, on every change.
+            earn that, the verification is unambiguous enough that separate verifiers should agree.
+            EMILIA ships three cross-language reference verifiers (JavaScript, Python, Go) that pass
+            the same adversarial quorum vectors identically, on every change.
           </p>
           <p style={{ ...styles.body, maxWidth: 760, marginTop: 16 }}>
             See it without trusting us. One command issues a dual-approval receipt, then verifies

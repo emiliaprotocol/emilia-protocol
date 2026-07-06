@@ -1,12 +1,62 @@
 # SPDX-License-Identifier: Apache-2.0
 # Python conformance runner: emits [{id, valid}] per vector. argv[1] = vectors path.
 # Polymorphic: receipt (document) | signoff | quorum.
-import sys, json, os
+import sys, json, os, hashlib
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "packages", "python-verify"))
 from emilia_verify import (verify_receipt, verify_webauthn_signoff, verify_quorum,
                             verify_revocation, verify_time_attestation, verify_trust_receipt,
-                            verify_provenance_offline, verify_evidence_record)
+                            verify_provenance_offline, verify_evidence_record,
+                            canonicalize, is_canonicalizable)
 vectors = json.load(open(sys.argv[1]))["vectors"]
+
+# EP-CANONICALIZATION-v1 differential branch. Same gate as the JS runner
+# (conformance/runners/strict-json.mjs) and the Go runner: standard parse, then
+# duplicate member names / unpaired surrogates / depth > 64 reject, then the EP
+# I-JSON profile predicate, then SHA-256 over the UTF-8 canonical bytes compared
+# to the pinned digest. Python's json module decodes valid surrogate-pair
+# escapes into astral code points and leaves UNPAIRED surrogates in the str, so
+# the surrogate gate scans decoded strings; duplicate names are caught with
+# object_pairs_hook (decoded names, per RFC 8785 s3.1). Fail-closed throughout.
+_CANON_MAX_DEPTH = 64
+
+def _canon_dup_hook(pairs):
+    seen = set()
+    for k, _ in pairs:
+        if k in seen:
+            raise ValueError("duplicate object member name")
+        seen.add(k)
+    return dict(pairs)
+
+def _canon_lone_surrogate(v):
+    if isinstance(v, str):
+        return any(0xD800 <= ord(ch) <= 0xDFFF for ch in v)
+    if isinstance(v, dict):
+        return any(_canon_lone_surrogate(k) or _canon_lone_surrogate(x) for k, x in v.items())
+    if isinstance(v, list):
+        return any(_canon_lone_surrogate(x) for x in v)
+    return False
+
+def _canon_depth(v):
+    if isinstance(v, dict):
+        return 1 + max([_canon_depth(x) for x in v.values()] + [0])
+    if isinstance(v, list):
+        return 1 + max([_canon_depth(x) for x in v] + [0])
+    return 0
+
+def run_canonicalization(c):
+    raw = c.get("input_json")
+    if not isinstance(raw, str):
+        return False
+    try:
+        value = json.loads(raw, object_pairs_hook=_canon_dup_hook)
+    except Exception:
+        return False
+    if _canon_lone_surrogate(value) or _canon_depth(value) > _CANON_MAX_DEPTH:
+        return False
+    if not is_canonicalizable(value):
+        return False
+    digest = hashlib.sha256(canonicalize(value).encode("utf-8", "strict")).hexdigest()
+    return digest == c.get("expected_digest")
 def run(v):
     if "document" in v: return verify_receipt(v["document"], v["public_key"]).valid
     if "signoff" in v: return verify_webauthn_signoff(v["signoff"], v["approver_public_key"], {"rpId": v.get("rp_id")})["valid"]
@@ -16,5 +66,6 @@ def run(v):
     if "trust_receipt" in v: return verify_trust_receipt(v["trust_receipt"], {"approverKeys": v["verification"]["approver_keys"], "logPublicKey": v["verification"]["log_public_key"], **(v.get("verify_opts") or {})})["valid"]
     if "provenance_chain" in v: return verify_provenance_offline(v["provenance_chain"], {"delegationKeys": v.get("delegation_keys"), "now": v.get("now_ms")})["valid"]
     if "evidence_record" in v: return verify_evidence_record(v["evidence_record"], {"tsaKeys": v.get("tsa_keys"), "protectedHash": v.get("protected_hash")})["valid"]
+    if "canonicalization" in v: return run_canonicalization(v["canonicalization"])
     return False
 print(json.dumps([{"id": v["id"], "valid": run(v)} for v in vectors]))

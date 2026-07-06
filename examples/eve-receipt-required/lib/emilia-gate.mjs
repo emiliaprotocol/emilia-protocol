@@ -27,7 +27,7 @@
 //
 //   GENERATED — do not edit by hand. Regenerate with:
 //     npx @emilia-protocol/require-receipt   (or: node build-drop-in.mjs)
-//   source: @emilia-protocol/require-receipt@0.5.2  ·  content-sha256:8f9fdce429898a65
+//   source: @emilia-protocol/require-receipt@0.5.2  ·  content-sha256:320e357f1ab7ebc5
 //   docs: https://www.emiliaprotocol.ai/gate   spec: draft-schrock-ep-authorization-receipts
 
 /**
@@ -402,8 +402,22 @@ export function validateActionRiskManifest(manifest) {
     if (action.receipt_required && !['medium', 'high', 'critical'].includes(action.risk)) {
       errors.push(`${p}.risk must be medium, high, or critical when receipt_required is true`);
     }
+    if (action.receipt_required && !action.assurance_class) {
+      // Omitting the tier on a guarded action would silently downgrade it to the
+      // weakest 'software' tier at enforcement time, letting a critical action
+      // accept a bare machine-signed receipt with no human signoff. Require it.
+      errors.push(`${p}.assurance_class is required when receipt_required is true (software, class_a, or quorum)`);
+    }
     if (action.assurance_class && !['software', 'class_a', 'quorum'].includes(action.assurance_class)) {
       errors.push(`${p}.assurance_class must be software, class_a, or quorum`);
+    }
+    if (action.receipt_required && action.risk === 'critical' && action.assurance_class === 'software') {
+      // A critical (typically irreversible) action must be bound to a human key,
+      // not a bare software/machine key. Require at least class_a (a WebAuthn
+      // human signature) so the weakest tier cannot satisfy the highest-
+      // consequence action. This is the author-time key-class floor; the gate
+      // separately fails closed on any receipt weaker than the declared tier.
+      errors.push(`${p}.assurance_class must be class_a or quorum when risk is critical (software is not sufficient for a critical action)`);
     }
   }
 

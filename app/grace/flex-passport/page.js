@@ -21,7 +21,7 @@ const PASSPORT_CONTENTS = [
   { item: 'Pinned baseline method', body: 'The hash of the program’s prescribed baseline methodology, bound into the order — method swaps and input manipulation become tamper-evident.' },
   { item: 'Delivered-kWh calculation', body: 'Delivered = baseline − actual, recomputable by any verifier from the signed samples. The number the settlement is paid against.' },
   { item: 'Replay & tamper refusal record', body: 'The negative evidence: forged orders refused, tampered telemetry invalid, replayed authorizations rejected — each refusal itself a signed event.' },
-  { item: 'Offline verifier', body: 'Open-source, three independent implementations (JavaScript, Python, Go). Anyone — utility, auditor, counterparty — verifies the packet with math, not trust.' },
+  { item: 'Offline verifier', body: 'Open-source cross-language reference verifiers (JavaScript, Python, Go). Anyone — utility, auditor, counterparty — verifies the packet with math, not trust.' },
   { item: 'Settlement packet', body: 'One Proof-of-Curtailment Bundle: order + authorization + acknowledgment + telemetry + delivered kWh, portable and verifiable offline forever.' },
   { item: 'Recurring fire-drill evidence', body: 'Scheduled curtailment drills produce fresh bundles on a cadence — the passport stays current instead of decaying into a one-time certificate.' },
 ];

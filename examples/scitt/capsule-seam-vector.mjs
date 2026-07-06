@@ -25,7 +25,7 @@
 // Composition rule: authorization -> record, BY DIGEST, not containment. The
 // Capsule records subject_digest (same action) and carries authority_reference_
 // digest (this receipt). who (EMILIA) -> what (Capsule) is then verifiable
-// end-to-end across independent implementations.
+// end-to-end across conforming implementations.
 //
 // Determinism: a FIXED Ed25519 issuer seed + fixed receipt fields, so every run
 // (and every implementation) reproduces byte-identical payloads and digests.
