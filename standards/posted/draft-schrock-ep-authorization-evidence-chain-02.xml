@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rfc xmlns:xi="http://www.w3.org/2001/XInclude"
-     docName="draft-schrock-ep-authorization-evidence-chain-01"
+     docName="draft-schrock-ep-authorization-evidence-chain-02"
      category="info" ipr="trust200902" submissionType="IETF"
      version="3" tocInclude="true" sortRefs="true" symRefs="true">
   <front>
     <title abbrev="Authorization Evidence Chains">Authorization Evidence Chains: Composing Heterogeneous Agent-Authorization Receipts (EP-AEC)</title>
-    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-evidence-chain-01"/>
+    <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-evidence-chain-02"/>
     <author fullname="Iman Schrock">
       <organization>EMILIA Protocol, Inc.</organization>
       <address>
@@ -15,7 +15,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="July" day="2"/>
+    <date year="2026" month="July" day="6"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>authorization</keyword>
@@ -45,7 +45,14 @@
       fail-closed requirement expression. EP-AEC introduces no new receipt
       type and replaces none; it is the verifier-side glue that lets
       independently specified receipts compose into one accountability
-      decision.</t>
+      decision. This revision additionally profiles two optional
+      component record types for that composition: the effect
+      attestation, a post-execution record in which the executor signs
+      the receipt identifier together with a digest of the observed
+      effect, and ceremony evidence, a signed record of
+      signing-ceremony telemetry (the challenge issued, viewed, and
+      approved instants and the approver identity) that enables
+      review-latency policies.</t>
     </abstract>
   </front>
   <middle>
@@ -207,6 +214,17 @@
       <t>The result SHOULD include, per component, whether it verified and
       whether it was bound, with a reason for any failure, to support
       audit.</t>
+      <t>Two optional component record types, the effect attestation
+      (<xref target="effect-attestation"/>) and ceremony evidence
+      (<xref target="ceremony-evidence"/>), attach additional evidence
+      rules on top of step 3. Findings from those rules are
+      conflict-class: they never move the outcome toward ALLOW, and in
+      the graded verdict set used by the reference evaluation
+      (admissible, missing_evidence, stale, conflicted, unverifiable)
+      they downgrade the verdict to "conflicted". A record whose
+      signature does not verify is "unverifiable", which is strictly
+      worse and is never softened to "conflicted". No rule in this
+      document ever moves a verdict toward a more admissible one.</t>
     </section>
 
     <section anchor="requirement"><name>Requirement expressions</name>
@@ -271,6 +289,118 @@ term := '(' expr ')' | IDENT
       supplied by the relying party.</t>
     </section>
 
+    <section anchor="effect-attestation"><name>Effect Attestation</name>
+      <t>Every receipt family enumerated in <xref target="intro"/>
+      attests something about an action before or at authorization
+      time. None of them states what was then done. An effect
+      attestation is a post-execution evidence record that closes that
+      "approved X, executed Y" gap: the executor signs the receipt
+      identifier of the authorization it acted under together with a
+      digest of the effect it observed. Any third party holding both
+      the authorization (which commits to the approved effect) and the
+      effect attestation can check divergence offline: if the observed
+      effect digest differs from the approved action's committed effect
+      digest, "approved X, executed Y" is demonstrated by the two
+      records alone, with no access to the executing system, and in the
+      evidence verdict the divergence surfaces as a conflict.</t>
+      <t>Use of this record type is OPTIONAL. Its component type
+      identifier is "effect_attestation". When it is used, the
+      following rules apply:</t>
+      <ul>
+        <li>The record MUST carry the receipt identifier of the
+        authorization it attests and the digest of the observed effect,
+        and MUST be signed by the executor. The component verifier for
+        this type returns, alongside "valid" and "action_digest", the
+        fields "receipt_id", "observed_effect_digest", and, where the
+        verifier could read the approved effect out of the referenced
+        authorization, "committed_effect_digest". Digest values are
+        compared as lowercase hexadecimal after removal of an optional
+        "sha256:" prefix.</li>
+        <li>An effect attestation whose executor signature does not
+        verify, or whose executor key is not pinned by the relying
+        party, is inadmissible as evidence: the component verifier MUST
+        report it invalid, and it MUST NOT be weighed as effect
+        evidence at all (fail closed).</li>
+        <li>The committed effect digest against which the observed
+        digest is compared MUST NOT be taken from the presenter. It is
+        either pinned by the relying party (the
+        "expected_effect_digest" member of the relying-party policy) or
+        read by the component verifier from the referenced
+        authorization; where both are available, the relying-party pin
+        takes precedence.</li>
+        <li>If the observed effect digest differs from the committed
+        effect digest, the verification result MUST record the reason
+        code "effect_divergence" and treat the finding as a conflict
+        (<xref target="verify"/>); it never moves the outcome toward
+        ALLOW.</li>
+        <li>A verified effect attestation that carries no observed
+        effect digest MUST likewise be recorded under
+        "effect_divergence" and treated as a conflict (fail
+        closed).</li>
+        <li>A verified effect attestation with no committed effect
+        digest to compare against MUST record the reason code
+        "effect_commitment_missing" and be treated as a conflict, never
+        as admissible: an observed effect that cannot be tied to an
+        approved effect does not show the effect was approved (fail
+        closed).</li>
+      </ul>
+      <t>Stated honestly: an effect attestation says what the executor
+      CLAIMS was observed. It is one more accountable, signed leg in
+      the chain, not ground truth. Its value is that an executor that
+      misreports the effect is now misreporting in a signed,
+      attributable artifact bound to a specific receipt, and that a
+      divergence between two honest records is checkable offline by any
+      third party holding both. How the observed effect is represented
+      and digested is action-family specific and out of scope for this
+      document.</t>
+    </section>
+
+    <section anchor="ceremony-evidence"><name>Ceremony Evidence</name>
+      <t>A human-authorization receipt proves that an accountable human
+      approved the exact action. It does not show how the approval
+      happened. Ceremony evidence carries signing-ceremony telemetry as
+      a first-class evidence record: the instants at which the
+      authorization challenge was issued, viewed, and approved, and the
+      approver identity. Its component type identifier is
+      "ceremony_evidence"; the component verifier for this type
+      returns, alongside "valid" and "action_digest", the fields
+      "approver", "issued_at", "viewed_at", and "approved_at". The
+      component verifier proves the ceremony record is authentic; the
+      rules below judge what it says.</t>
+      <t>Ceremony evidence enables review-latency policies. An approval
+      that comes in below a policy floor every time is itself
+      evidence of rubber-stamping: the recorded human review
+      contradicts a genuine one, and a relying party MAY weigh it as a
+      conflict. A relying party adopting such a policy sets a
+      review-latency floor (the "ceremony_min_review_sec" member of the
+      relying-party policy). When a floor is set, the following rules
+      apply:</t>
+      <ul>
+        <li>The review interval of a verified ceremony record is
+        "approved_at" minus "viewed_at", in whole seconds.</li>
+        <li>A verified ceremony record whose review interval is
+        strictly below the floor MUST be recorded under the reason code
+        "rubber_stamped_ceremony" and treated as a conflict
+        (<xref target="verify"/>); it never moves the outcome toward
+        ALLOW.</li>
+        <li>If the telemetry on a verified ceremony record is absent or
+        unusable (a missing or unparseable "viewed_at" or "approved_at",
+        or "approved_at" earlier than "viewed_at"), real review cannot
+        be shown; the record MUST be recorded under the reason code
+        "ceremony_telemetry_missing" and treated as a conflict, never
+        as a silent pass (fail closed).</li>
+        <li>A ceremony record whose signature does not verify is
+        unverifiable; it is never softened to a conflict.</li>
+      </ul>
+      <t>When no floor is set, this document attaches no judgment to
+      the telemetry. Stated honestly: ceremony telemetry is
+      operator-originated. The issued, viewed, and approved instants
+      are recorded by the operator of the signing ceremony, not by an
+      independent observer; ceremony evidence gives the relying party
+      an accountable, signed record of the claimed timeline, not an
+      independent measurement of human attention.</t>
+    </section>
+
     <section anchor="security"><name>Security Considerations</name>
       <t>Presenter-chosen sufficiency (fixed in -01). Prior to this
       revision the requirement was read only from the presented
@@ -310,6 +440,19 @@ term := '(' expr ')' | IDENT
       <t>No transport assumptions. EP-AEC is a data structure; it inherits
       the confidentiality and integrity properties of whatever conveys it.
       It is fail-closed by construction (<xref target="verify"/>).</t>
+      <t>Post-execution and ceremony evidence are operator-originated.
+      The effect attestation (<xref target="effect-attestation"/>) and
+      ceremony evidence (<xref target="ceremony-evidence"/>) records
+      carry what the executor and the ceremony operator report, signed
+      and attributable, not an independent measurement. Their guarantee
+      is accountability, not ground truth: a false report is a signed,
+      bound artifact, and a divergence or below-floor review is
+      checkable offline. Both are fail-closed in the same direction as
+      the rest of this document: a signature that does not verify is
+      unverifiable, a missing committed effect or missing ceremony
+      telemetry is a conflict, and no finding from either record ever
+      moves a verdict toward a more admissible one
+      (<xref target="verify"/>).</t>
     </section>
 
     <section anchor="relationship"><name>Relationship to Other Work</name>
@@ -342,6 +485,13 @@ term := '(' expr ')' | IDENT
       implementations; a third party has separately executed and
       verified the published artifacts against a pinned commit, as
       reported to the IETF SECDISPATCH mailing list on 23 June 2026.</t>
+      <t>The evidence rules for the effect-attestation and
+      ceremony-evidence record types
+      (<xref target="effect-attestation"/>,
+      <xref target="ceremony-evidence"/>) are implemented in a
+      JavaScript-only reference evaluation in the same repository; they
+      are not yet part of the shared cross-language conformance vector
+      set.</t>
     </section>
   </middle>
   <back>
