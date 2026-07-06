@@ -285,30 +285,74 @@ export function verifyConsentGrant(grant, pinnedPrincipalKey, opts = {}) {
 
 /**
  * Extract the grant_hash a receipt claims to act under. The per-action receipt
- * SHOULD carry grant_hash so the binding-moment authorization is cryptographically
- * tied to the standing grant it exercised. EP receipts do not have a dedicated
- * grant_hash field TODAY, so this reads (in precedence order):
- *   1. receipt.grant_hash                              (top-level, once shipped)
- *   2. receipt.action.grant_hash                       (inside the signed Action Object)
- *   3. receipt.action.consent_grant_hash               (explicit alias)
- * and falls back to a caller-supplied override. Returning the referenced hash is
- * separate from checking it MATCHES the grant — verifyReceiptUnderGrant does the
- * comparison and refuses on mismatch.
+ * SHOULD carry grant_hash INSIDE its signed Action Object so the binding-moment
+ * authorization is cryptographically tied to the standing grant it exercised.
+ * The reference implementation now mints grant_hash natively into the canonical
+ * Action Object (lib/guard-adapter.js), so it is covered by the action hash and
+ * the human signature over the action.
+ *
+ * Precedence — the SIGNED reference is preferred over the caller override, so a
+ * present, signed grant_hash always wins:
+ *   1. receipt.action.grant_hash        (native, inside the signed Action Object) — STRONG
+ *   2. receipt.action.consent_grant_hash (explicit signed alias)                  — STRONG
+ *   3. receipt.grant_hash                (top-level; only signed if the receipt
+ *                                         profile folds it under its signature)   — as strong as that profile
+ *   4. overrideGrantHash                 (caller-supplied, out-of-band)           — ADVISORY
+ *
+ * STRENGTH BOUNDARY (honesty): a grant_hash read from the signed Action Object
+ * (1 or 2) is a STRONG binding — tampering it breaks the action hash and thus the
+ * receipt's own signature. A caller-supplied override (4) is ADVISORY: it is only
+ * as trustworthy as the caller, since nothing in the receipt's cryptography
+ * covers it. The signed reference therefore takes precedence and an override is
+ * used ONLY when the receipt carries no native grant reference (the transitional
+ * case for receipts minted before this field existed). Use
+ * receiptGrantBindingStrength() to report which one applied.
+ *
+ * Returning the referenced hash is separate from checking it MATCHES the grant —
+ * verifyReceiptUnderGrant does the comparison and refuses on mismatch.
  * @param {object} receipt
  * @param {string} [overrideGrantHash]  a grant_hash the caller supplies out-of-band
- *   when the receipt does not yet carry one (documented, transitional).
+ *   when the receipt does not carry a native one (documented, transitional, ADVISORY).
  * @returns {string|null} the referenced grant_hash ("sha256:<hex>") or null.
  */
 export function receiptReferencedGrantHash(receipt, overrideGrantHash) {
   if (receipt && typeof receipt === 'object') {
-    if (receipt.grant_hash) return receipt.grant_hash;
     const action = receipt.action;
     if (action && typeof action === 'object') {
+      // Prefer the SIGNED action-object reference (strong binding) over any
+      // caller override (advisory), so a native grant_hash always wins.
       if (action.grant_hash) return action.grant_hash;
       if (action.consent_grant_hash) return action.consent_grant_hash;
     }
+    if (receipt.grant_hash) return receipt.grant_hash;
   }
   return overrideGrantHash || null;
+}
+
+/**
+ * Report WHERE the receipt's grant reference came from, so a relying party can
+ * distinguish the strong (signed) binding from the advisory (caller-supplied)
+ * one. Same precedence as receiptReferencedGrantHash().
+ * @param {object} receipt
+ * @param {string} [overrideGrantHash]
+ * @returns {'signed_action' | 'top_level' | 'caller_override' | 'none'}
+ *   - 'signed_action'   : from receipt.action.grant_hash / consent_grant_hash —
+ *                         covered by the action hash + the receipt's signature (STRONG).
+ *   - 'top_level'       : from receipt.grant_hash — strength depends on whether the
+ *                         receipt profile signs that field.
+ *   - 'caller_override' : from the out-of-band override — ADVISORY, as trustworthy
+ *                         as the caller only.
+ *   - 'none'            : the receipt references no grant and no override was given.
+ */
+export function receiptGrantBindingStrength(receipt, overrideGrantHash) {
+  if (receipt && typeof receipt === 'object') {
+    const action = receipt.action;
+    if (action && typeof action === 'object' && (action.grant_hash || action.consent_grant_hash)) {
+      return 'signed_action';
+    }
+    if (receipt.grant_hash) return 'top_level';
+  }
+  return overrideGrantHash ? 'caller_override' : 'none';
 }
 
 function refuseComposition(reason, checks) {
@@ -331,8 +375,13 @@ function refuseComposition(reason, checks) {
  *   (c) verb_covered    — the receipt's action control verb is covered by the
  *                         grant's control_verb (exact match).
  *   (d) grant_binding   — the receipt REFERENCES grant_hash (per
- *                         receiptReferencedGrantHash, or a caller override) and it
- *                         equals the grant's own grant_hash.
+ *                         receiptReferencedGrantHash — the SIGNED action.grant_hash
+ *                         preferred over a caller override) and it equals the
+ *                         grant's own grant_hash. The result also carries
+ *                         `binding_strength` ('signed_action' | 'top_level' |
+ *                         'caller_override' | 'none'): a signed reference is the
+ *                         STRONG binding (covered by the receipt's signature), a
+ *                         caller override is ADVISORY (as trustworthy as the caller).
  *
  * HONESTY: the grant is STANDING authority; the binding-moment receipt is the
  * PER-ACTION authorization. Both are required and they are DIFFERENT artifacts —
@@ -365,7 +414,10 @@ function refuseComposition(reason, checks) {
  *   scope predicate; default is strict equality. MUST fail closed (return false on doubt).
  * @param {(receiptVerb:any, grantVerb:any)=>boolean} [opts.verbCovers]  optional
  *   verb-coverage predicate; default is strict equality.
- * @returns {{ ok:boolean, checks:object, reason?:string }}
+ * @returns {{ ok:boolean, checks:object, binding_strength?:string, reason?:string }}
+ *   `binding_strength` (present from the grant-binding step onward) reports where
+ *   the grant reference came from: 'signed_action' (strong) | 'top_level' |
+ *   'caller_override' (advisory) | 'none'.
  */
 export function verifyReceiptUnderGrant(receipt, grant, opts = {}) {
   const checks = {
@@ -423,14 +475,21 @@ export function verifyReceiptUnderGrant(receipt, grant, opts = {}) {
 
   // (d) grant binding. The receipt MUST reference the grant's grant_hash (or the
   // caller supplies it out-of-band, transitional) and it MUST equal the grant's.
+  // The SIGNED action.grant_hash is preferred over the caller override; a signed
+  // reference is the STRONG binding (covered by the receipt's own signature),
+  // while a caller override is ADVISORY (only as trustworthy as the caller).
+  // binding_strength is surfaced as a top-level result field (NOT a `checks`
+  // member, so the frozen four-member checks shape is unchanged) so a relying
+  // party can distinguish a strong from an advisory binding and price it.
   const referenced = receiptReferencedGrantHash(receipt, opts.grantHash);
+  const bindingStrength = receiptGrantBindingStrength(receipt, opts.grantHash);
   if (!referenced) {
-    return refuseComposition('missing_grant_reference', checks);
+    return { ...refuseComposition('missing_grant_reference', checks), binding_strength: bindingStrength };
   }
   checks.grant_binding = hexOf(referenced) !== '' && hexOf(referenced) === hexOf(grant.grant_hash);
   if (!checks.grant_binding) {
-    return refuseComposition('grant_binding_mismatch', checks);
+    return { ...refuseComposition('grant_binding_mismatch', checks), binding_strength: bindingStrength };
   }
 
-  return { ok: true, checks };
+  return { ok: true, checks, binding_strength: bindingStrength };
 }

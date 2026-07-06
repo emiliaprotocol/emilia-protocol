@@ -201,6 +201,60 @@ composition under a symbolic prover remains future work.
 
 ---
 
+## Tamarin (symbolic, Dolev-Yao) : `tamarin/ep_quorum_core.spthy`
+
+**Status: second symbolic-crypto model, machine-checked 2026-07-06** (tamarin-prover 1.10.0,
+Maude 3.4, via Docker; full tool output, the falsification history, and the re-run one-liner are
+in `formal/tamarin/README.md`). Layers m-of-n quorum, in the smallest non-trivial instance
+(2-of-2), on top of the same UV-gated signature machinery proven in `ep_receipt_core.spthy`.
+It does NOT re-prove the single-signature core lemma; it assumes the per-signature core
+guarantees and asks whether a satisfied 2-of-2 quorum necessarily consists of two distinct
+UV-gated signatures over the same action, and whether an initiator can count toward its own
+quorum. Same Dolev-Yao attacker as the core model, additionally choosing which action goes up
+for quorum and which identity is named the initiator.
+
+Verbatim tool summary:
+
+```
+executable_quorum (exists-trace): verified (12 steps)
+quorum_requires_two_distinct_uv_gated_signatures (all-traces): verified (20 steps)
+initiator_cannot_self_approve (all-traces): verified (4 steps)
+no_single_signer_fills_quorum (all-traces): verified (4 steps)
+commit_requires_signature_over_that_action (all-traces): verified (7 steps)
+```
+
+| Lemma | Result | Meaning |
+|---|---|---|
+| `executable_quorum` | verified | A 2-of-2 quorum can commit with two distinct honest UV-gated approvers, neither the initiator, no key compromise (model not vacuous). |
+| `quorum_requires_two_distinct_uv_gated_signatures` | verified | Any commit of action a with uncompromised approvers H1, H2 forces H1 != H2 and a UV-then-signature over exactly a by each, before the commit. |
+| `initiator_cannot_self_approve` | verified | No commit names the initiator as either approver (Section 6 SelfApprovalImpossible / G4); the initiator identity is attacker-chosen. |
+| `no_single_signer_fills_quorum` | verified | The two committing approvers are never the same identity (distinct pinned keys entail distinct enrolled identities). |
+| `commit_requires_signature_over_that_action` | verified | No commit of a while an uncompromised named approver never signed exactly a; rules out transplanting a signature over any other action. |
+
+**Falsification history (honest record):** an earlier revision of this model omitted the
+initiator identity from the signed Authorization Context. Under that revision Tamarin FALSIFIED
+`quorum_requires_two_distinct_uv_gated_signatures` and `commit_requires_signature_over_that_action`:
+approvers signed action a under one initiator label and the executor committed a under a different
+one, because the approver signatures were not tied to the committing initiator. The fix was
+spec-faithful, not a lemma weakening: bind the initiator into the signed context
+(`<'ep_signoff_v1', h(action), initiator, nonce>`, per Section 3), after which all five lemmas
+verify. The falsification identified a load-bearing binding.
+
+**Scoped out (stated in the model header):** COLLUSION, one-human-many-identities, and COERCION
+(Section 11.7 is explicit that separation of duties guarantees distinct signing IDENTITIES, not two
+independent wills; the one-human-to-one-identity binding is the directory's job); the Approver
+Directory / Merkle log / checkpoints (pinning is one out-of-band step); WebAuthn attestation
+internals (UV assumed as the spec's MUST, not proven); general m-of-n for arbitrary m,n (only the
+2-of-2 instance is modeled); expiry / policy-hash / one-time consumption of the committed quorum
+(consumption is `ep_receipt_core.spthy`'s subject, G3); JCS canonicalization and any computational
+claim. `ep_receipt_core.spthy` and `ep_quorum_core.spthy` are TWO SEPARATE models: the quorum model
+assumes rather than re-derives the core lemmas, and both abstract key pinning. The full WebAuthn /
+directory / log / quorum composition as a SINGLE symbolic model, with the directory trust root and
+receipt log modeled rather than abstracted, remains future work and is proven by neither model nor
+by their conjunction.
+
+---
+
 When a property is verified by a model checker:
 1. Update its status from `Specified — not yet verified` to `Verified (TLC/Alloy, YYYY-MM-DD)`
 2. Commit the `.cfg` / Alloy result file alongside the status update
@@ -208,4 +262,4 @@ When a property is verified by a model checker:
 
 ---
 
-*Last updated: 2026-07-05 (Tamarin core-receipt model added; two-handshake TLC bounded result recorded). Prior: 2026-06-11 — 26 TLA+ properties verified: T1–T20 (2026-04-02) and T21–T26 EP-IX continuity (2026-04-30) all verified by TLC 2.19 across 413,137 states with 0 errors; all 15 `ep_relations.als` assertions + 35 facts, and all 7 `ep_federation.als` (PIP-006) assertions, verified by Alloy 6.0.0 with 0 counterexamples*
+*Last updated: 2026-07-06 (Tamarin quorum model `ep_quorum_core.spthy` added: 2-of-2 distinct UV-gated signatures + no self-approval, 5 lemmas verified; falsification-then-fix history recorded). Prior: 2026-07-05 (Tamarin core-receipt model added; two-handshake TLC bounded result recorded). Prior: 2026-06-11 — 26 TLA+ properties verified: T1–T20 (2026-04-02) and T21–T26 EP-IX continuity (2026-04-30) all verified by TLC 2.19 across 413,137 states with 0 errors; all 15 `ep_relations.als` assertions + 35 facts, and all 7 `ep_federation.als` (PIP-006) assertions, verified by Alloy 6.0.0 with 0 counterexamples*

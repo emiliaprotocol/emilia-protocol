@@ -44,6 +44,20 @@ Schema: `public/schemas/ep-consent-grant.schema.json`. Spec:
 `docs/EP-CONSENT-GRANT-SPEC.md`. This is a candidate profile to fold into the
 authority / receipts drafts in a future revision, shipped in code today.
 
+### Changed
+**timestamp-proof (RFC 3161) is now cross-language.** The `timestamp-proof.js`
+minimal DER/CMS reader was ported faithfully to Python (`packages/python-verify`,
+`verify_timestamp_proof`) and Go (`packages/go-verify`, `VerifyTimestampProof`).
+The Python port hand-rolls the same minimal DER reader in pure Python and uses
+`cryptography` only for the RSA/ECDSA signature verify (no new dependency); the Go
+port uses a pure-stdlib DER reader plus `crypto/rsa` / `crypto/ecdsa` /
+`crypto/x509`. A new shared vector suite
+(`conformance/vectors/timestamp-proof.v1.json`, 13 vectors minted from a local
+test TSA with `openssl`) runs in `conformance/run.mjs`, where the JavaScript,
+Python, and Go verifiers must agree, including the exact per-vector refusal path.
+This supersedes the earlier "timestamp proof remains JavaScript-only" note in the
+3.5.0 entry below.
+
 ## 3.5.0 (2026-07-05)
 
 ### Added

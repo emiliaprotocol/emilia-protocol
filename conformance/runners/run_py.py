@@ -8,7 +8,8 @@ from emilia_verify import (verify_receipt, verify_webauthn_signoff, verify_quoru
                             verify_provenance_offline, verify_evidence_record,
                             canonicalize, is_canonicalizable,
                             evaluate_currency, validate_initiator_attestation,
-                            verify_consumption_proof, require_witness_quorum)
+                            verify_consumption_proof, require_witness_quorum,
+                            verify_timestamp_proof)
 vectors = json.load(open(sys.argv[1]))["vectors"]
 
 # EP-CANONICALIZATION-v1 differential branch. Same gate as the JS runner
@@ -79,5 +80,9 @@ def run(v):
     if "witness_quorum" in v:
         w = v["witness_quorum"]
         return require_witness_quorum(w["checkpoint"], w["cosignatures"], w["pinned"], w["k"])["ok"]
+    # EP-TIMESTAMP-PROOF-v1 (RFC 3161): valid iff the pinned TSA's TimeStampToken
+    # verifies over the expected digest (fail-closed on any refusal).
+    if "timestamp_proof" in v:
+        return verify_timestamp_proof(v["timestamp_proof"], v.get("expected_digest"), v.get("pinned_tsa_keys"))["verified"]
     return False
 print(json.dumps([{"id": v["id"], "valid": run(v)} for v in vectors]))

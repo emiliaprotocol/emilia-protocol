@@ -134,3 +134,160 @@ quoted above should be treated as a regression and investigated before
 claiming verification. Alternatively, install Tamarin 1.10.0 natively per
 https://tamarin-prover.com/manual/master/book/002_installation.html and run
 `tamarin-prover --prove ep_receipt_core.spthy` from this directory.
+
+---
+
+# Tamarin model: EP quorum lemma (`ep_quorum_core.spthy`)
+
+This is the second EP symbolic model. It layers m-of-n quorum, in the smallest
+non-trivial instance (2-of-2), on top of the same UV-gated signature machinery
+proven in `ep_receipt_core.spthy`. It does NOT re-prove the single-signature
+core lemma; it assumes the per-signature guarantees already machine-checked in
+`ep_receipt_core.spthy` and asks the next question: given two distinct enrolled
+approver keys and a 2-of-2 policy, does a satisfied quorum necessarily consist
+of two distinct UV-gated signatures over the same action, and can the initiator
+of that action count toward its own quorum?
+
+Signatures are again terms in Tamarin's standard `signing` equational theory,
+and the adversary is the standard Dolev-Yao network attacker: full network
+control, sees every message, may apply all function symbols, may request either
+honest human to sign arbitrary actions of its choice, and additionally chooses
+which action is put up for quorum and which identity is named as the initiator.
+
+## What is modeled
+
+Maps to `standards/posted/draft-schrock-ep-authorization-receipts-06.txt`:
+
+- TWO distinct human approver identities, each with its own device-bound key
+  (Section 5.1, Class A). Distinctness of enrolled identities is enforced
+  structurally (restriction `TwoDistinctApprovers`), so one name cannot be
+  enrolled twice.
+- An INITIATOR identity that proposes the action (Section 2, Section 3: the
+  initiator is identified but never trusted). The initiator is bound INTO the
+  signed Authorization Context, `<'ep_signoff_v1', h(action), initiator, nonce>`
+  (Section 3), so an approver signature commits to a specific initiator.
+- A user-verification (UV) event that MUST precede every approver signature,
+  gated structurally the same way as in the core model (a linear `UVDone` fact
+  that only the UV rule produces and only the signing rule consumes).
+- Each approver signs its own per-approver context sharing the same action hash
+  but carrying that approver's own fresh nonce (Section 7: "same action_hash and
+  nonce family but a distinct approver_index"; the fresh nonce abstracts the
+  distinct index).
+- Commitment (the executor's accept) fires only when TWO signatures that verify
+  under TWO DISTINCT pinned approver keys over the SAME action AND the SAME
+  initiator are presented, and neither approver is the initiator (Section 6
+  SelfApprovalImpossible, G4, Section 7 "k valid, distinct signoffs"). There is
+  no accept rule that fires on a single signature: partial approval commits
+  nothing.
+- Key compromise is a modeled event (`RevealLtk`), so each quorum lemma states
+  explicitly which guarantee is conditional on an approver key not having
+  leaked.
+
+## Machine-checked result
+
+Verbatim `summary of summaries` from the run on 2026-07-06
+(tamarin-prover 1.10.0, Maude 3.4, all wellformedness checks successful):
+
+```
+summary of summaries:
+
+analyzed: ep_quorum_core.spthy
+
+  processing time: 0.44s
+
+  executable_quorum (exists-trace): verified (12 steps)
+  quorum_requires_two_distinct_uv_gated_signatures (all-traces): verified (20 steps)
+  initiator_cannot_self_approve (all-traces): verified (4 steps)
+  no_single_signer_fills_quorum (all-traces): verified (4 steps)
+  commit_requires_signature_over_that_action (all-traces): verified (7 steps)
+```
+
+| Lemma | Result | Meaning |
+|---|---|---|
+| `executable_quorum` | verified | Sanity trace exists: a 2-of-2 quorum commits with two distinct honest approvers, both UV-gated, neither the initiator, no key compromise. The model is not vacuous, so the distinctness/self-approval restrictions do not make `Commit` unreachable. |
+| `quorum_requires_two_distinct_uv_gated_signatures` | verified | Whenever the executor commits action a citing approvers H1 and H2, and neither approver key was compromised before the commit, then H1 and H2 are distinct and each performed a UV event followed by a signature over exactly action a, all before the commit. A single signature, two signatures from one identity, or two over different actions can never commit. |
+| `initiator_cannot_self_approve` | verified | No trace commits an action with the initiator itself appearing as either quorum approver (Section 6 SelfApprovalImpossible, G4). The initiator identity is attacker-chosen, so this also rules out an attacker naming a compliant approver as initiator to have it count against itself. |
+| `no_single_signer_fills_quorum` | verified | The two committing approvers are never the same identity (distinct pinned keys entail distinct fresh keys entail distinct enrolled identities). This is the "no key fills two slots" property at the identity level. |
+| `commit_requires_signature_over_that_action` | verified | No trace commits action a while an uncompromised named approver never signed exactly a. Because the attacker can obtain honest signoffs over arbitrary other actions, this rules out transplanting an approver's signature over any other action onto a committed a. |
+
+## An earlier revision of this model was FALSIFIED, and why
+
+Honest record, because it changed the model. In the first revision the signed
+Authorization Context was `<'ep_signoff_v1', h(action), nonce>`, i.e. it did NOT
+bind the initiator identity. Under that revision Tamarin FALSIFIED both
+`quorum_requires_two_distinct_uv_gated_signatures` and
+`commit_requires_signature_over_that_action`: two honest approvers signed action
+a while requested under one initiator label, and the executor committed the same
+a under a DIFFERENT initiator label, because nothing tied the approver signatures
+to the committing initiator. The initiator label floated, so separation of duties
+was only an executor-local check rather than a property of the signatures.
+
+The fix is spec-faithful, not a lemma weakening: the initiator identity is now
+bound inside the signed context (`<'ep_signoff_v1', h(action), initiator,
+nonce>`, per Section 3, the Authorization Context carries the initiator). With
+the initiator bound into what each approver signs, all five lemmas verify. This
+is the same kind of result the core model records for one-time consumption: the
+falsification identified a load-bearing binding, and the model now shows that
+binding is what carries the property.
+
+## Out of scope (honest boundary)
+
+This model checks quorum composition (Section 7 / G4) only, on top of the
+core model's per-signature guarantees. It does NOT model, and therefore proves
+nothing about:
+
+- COLLUSION, one-human-many-identities, and COERCION. Section 11.7 is explicit:
+  separation of duties defeats UNILATERAL self-approval and guarantees pairwise-
+  distinct signing IDENTITIES; it does NOT defeat two distinct enrolled humans
+  who choose to collude, one operator who controls two enrolled credentials (an
+  enrollment control, not a receipt control), or a coerced approver. This model
+  proves the distinct-identity / no-self-approval property and NOTHING about
+  whether the two identities are two independent wills. The enrollment binding
+  (one human to one identity) is the Approver Directory's job (Section 5.2),
+  which is out of scope here exactly as in `ep_receipt_core.spthy`.
+- The Approver Directory, Merkle receipt log, checkpoints, or inclusion proofs.
+  Approver-key pinning is a single out-of-band step; the directory protocol and
+  its trust root are a later model's job.
+- WebAuthn attestation internals and authenticator hardware. UV is an atomic
+  gating event: the model ASSUMES the authenticator enforces user verification
+  before releasing a signature (the spec's MUST). It does not prove WebAuthn.
+- General m-of-n for arbitrary m and n. This model fixes the 2-of-2 instance
+  (two enrolled approver rules; an accept rule that consumes exactly two
+  distinct-key signatures). It does not prove the parametric k-of-n statement.
+  2-of-2 is the smallest case that exhibits distinctness and self-approval and
+  is what terminates in under a second.
+- Expiry / wall-clock (`expires_at`), policy-hash evaluation, and one-time
+  consumption of the committed quorum. Consumption/replay is the subject of
+  `ep_receipt_core.spthy` (guarantee G3); this model is about quorum
+  composition (G4 / Section 7) and deliberately does not restate the
+  consumption lemma.
+- JCS canonicalization (assumed injective encoding) and any algorithm-specific
+  or computational claim. `sign` is the abstract Dolev-Yao signature with
+  perfect cryptography.
+
+## The full composition is still not one model
+
+`ep_receipt_core.spthy` and `ep_quorum_core.spthy` are two SEPARATE models. The
+quorum model reuses the core model's UV-gated signature discipline but assumes
+the per-signature core lemmas rather than re-deriving them, and both models
+abstract key pinning as a single out-of-band step. The full WebAuthn plus
+directory plus log plus quorum composition under a single symbolic prover, with
+the directory trust root and the receipt log modeled rather than abstracted,
+remains future work and is not proven by either model individually or by their
+conjunction.
+
+## How to re-run
+
+Same third-party image as the core model (stock tamarin-prover 1.10.0 + Maude
+3.4; no official Tamarin image on Docker Hub as of 2026-07):
+
+```
+docker run --rm \
+  -v /path/to/emilia-protocol/formal/tamarin:/work -w /work \
+  lmandrelli/tamarin-prover-and-batch:latest \
+  tamarin-prover --prove ep_quorum_core.spthy
+```
+
+The proof completes in under a second. Any result differing from the summary
+quoted above should be treated as a regression and investigated before claiming
+verification.

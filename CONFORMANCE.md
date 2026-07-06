@@ -57,8 +57,9 @@ EP-CURRENCY-v1                 — 12 vectors   JavaScript ✓   Python ✓   Go
 EP-INITIATOR-ATTESTATION-v1    — 11 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-SMT-CONSUME-v1              —  6 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-WITNESS-v1                  —  6 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-TIMESTAMP-PROOF-v1          — 13 vectors   JavaScript ✓   Python ✓   Go ✓
 
-✅ 145 vectors · 15 suites — JavaScript, Python, and Go verifiers agree.
+✅ 158 vectors · 16 suites — JavaScript, Python, and Go verifiers agree.
    (One team's three-language ports in one repository: a consistency check,
     not independent reimplementations. Independent implementations remain future interoperability evidence.)
 ```
@@ -70,26 +71,35 @@ not only Ed25519 authorization **receipts**, but Class-A WebAuthn device
 checks, fail-closed), portable **revocation** statements, **trusted-time
 attestations**, the full **§6.2 Trust Receipt** (signoff signatures + Merkle
 inclusion + Ed25519-signed checkpoint), **provenance chains** (human-authority
-root → delegation chain → action, with scope containment), and four **opt-in
+root → delegation chain → action, with scope containment), and five **opt-in
 profiles**: **EP-CURRENCY-v1** (the two-valued authentic-as-of-commit vs
 currency-at-T result, where `unknown` is the honest offline default),
 **EP-INITIATOR-ATTESTATION-v1** (fail-closed field validation + hostile-text
 neutralization), **EP-SMT-CONSUME-v1** (sparse-Merkle one-time-consumption
-transition), and **EP-WITNESS-v1** (k-of-n witness cosignatures over one
-checkpoint head). Publishing a public, cross-language conformance suite of this
-breadth, re-proven on every push (CI job `conformance`), is itself uncommon.
+transition), **EP-WITNESS-v1** (k-of-n witness cosignatures over one
+checkpoint head), and **EP-TIMESTAMP-PROOF-v1** (an INDEPENDENT RFC 3161
+proof of WHEN: a pinned external TSA's TimeStampToken over the caller's expected
+digest, fail-closed on any refusal). Publishing a public, cross-language
+conformance suite of this breadth, re-proven on every push (CI job
+`conformance`), is itself uncommon.
 
-One opt-in profile is **not** yet in the cross-language run: **timestamp-proof
-(RFC 3161)** remains a **JavaScript-only** reference verifier. Its Python and Go
-ports were deferred for an honest reason — a faithful port needs a CMS/PKCS#7
-SignedData / TSTInfo parser that neither the Python dependency
-(`cryptography`) nor the zero-dependency Go module exposes, and hand-rolling a
-DER/CMS parser was out of scope. It has no vector suite in
-`conformance/run.mjs` and is not claimed as cross-language. Other artifacts also
-remain outside the three-language run today (EP-AEC composition, WYSIWYS
-rendering, execution-integrity, the JWS profile) and are exercised in JavaScript
-only; bringing them into the cross-language run, and independent implementations,
-are the next bar. The
+**timestamp-proof (RFC 3161) is now cross-language.** It began as a JavaScript-only
+reference verifier (a purpose-built minimal DER/CMS reader in pure `node:crypto`)
+because neither the Python dependency (`cryptography`) nor the Go standard
+library exposes an RFC 3161 TimeStampToken / TSTInfo / CMS SignedData API that
+returns the signed bytes. Rather than pull in a heavy CMS dependency, the same
+minimal DER/CMS reader was ported faithfully to **pure Python** (the structural
+parse is hand-rolled; `cryptography` is used only for the RSA/ECDSA signature
+verification, so no new dependency) and to **pure-stdlib Go** (`crypto/rsa` +
+`crypto/ecdsa` + `crypto/x509` for the verify). All three lanes now agree over
+real `openssl`-minted TimeStampTokens in
+[`conformance/vectors/timestamp-proof.v1.json`](conformance/vectors/timestamp-proof.v1.json),
+including the exact per-vector refusal path (unpinned TSA, digest mismatch, wrong
+pinned key, tampered signature, non-SignedData, unparseable token). Other
+artifacts still remain outside the three-language run today (EP-AEC composition,
+WYSIWYS rendering, execution-integrity, the JWS profile) and are exercised in
+JavaScript only; bringing them into the cross-language run, and independent
+implementations, are the next bar. The
 companion Internet-Drafts are
 [`draft-schrock-ep-authorization-receipts`](standards/) and
 [`draft-schrock-ep-quorum`](standards/).

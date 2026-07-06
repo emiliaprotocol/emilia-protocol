@@ -18,6 +18,8 @@ import {
   verifyGrantHash,
   verifyConsentGrant,
   verifyReceiptUnderGrant,
+  receiptReferencedGrantHash,
+  receiptGrantBindingStrength,
   CONSENT_GRANT_VERSION,
 } from './consent-grant.js';
 
@@ -121,6 +123,8 @@ test('accepts a per-action receipt acting under the grant (composition)', () => 
   assert.deepStrictEqual(r.checks, {
     grant: true, asset_covered: true, verb_covered: true, grant_binding: true,
   });
+  // grant_hash is inside the signed Action Object here => STRONG binding.
+  assert.strictEqual(r.binding_strength, 'signed_action');
 });
 
 // ── reject vectors ─────────────────────────────────────────────────────────────
@@ -249,4 +253,153 @@ test('a revocation bound to a DIFFERENT grant does not revoke (revoke-A-for-B)',
     revokerKeys: { 'ep:revoker:site3_ciso': { public_key: revokerSigner.publicKeyB64u } },
   });
   assert.strictEqual(r.valid, true, r.reason);
+});
+
+// ── native grant_hash in the SIGNED Action Object ────────────────────────────
+//
+// The mint path (lib/guard-adapter.js) puts grant_hash INSIDE the canonical
+// Action Object, so it is covered by the action hash AND by the human signature
+// over the action. These tests model a real signed receipt (action_hash =
+// sha256(canonicalize(action)), plus an Ed25519 signature over the SAME canonical
+// action bytes, exactly as the receipt signs its action) and prove that tampering
+// the native grant_hash breaks BOTH the action hash and the signature.
+
+const ACTOR = newSigner();
+
+// sha256 over the canonical action, matching hashCanonicalAction / verifyTrustReceipt step 1.
+function actionHashOf(action) {
+  return 'sha256:' + crypto.createHash('sha256').update(canonicalize(action), 'utf8').digest('hex');
+}
+
+// A REAL signed receipt whose Action Object carries grant_hash natively. The
+// signature is Ed25519 over the canonical action bytes (the same bytes the action
+// hash is computed over), so tampering any action field — including grant_hash —
+// breaks both.
+function makeSignedReceipt(grant, actionOverrides = {}) {
+  const action = {
+    organization_id: 'org_ot',
+    actor_id: 'ep:approver:diane_staheli',
+    action_type: 'ot.setpoint_write',
+    target_resource_id: grant.asset,
+    asset: grant.asset,
+    control_verb: grant.control_verb,
+    grant_hash: grant.grant_hash, // native, inside the signed Action Object
+    nonce: 'nonce_abc',
+    ...actionOverrides,
+  };
+  const canonical = canonicalize(action);
+  const signature = crypto
+    .sign(null, Buffer.from(canonical, 'utf8'), ACTOR.privateKey)
+    .toString('base64url');
+  return {
+    '@version': 'EP-RECEIPT-v1',
+    action,
+    action_hash: actionHashOf(action),
+    signature: { algorithm: 'Ed25519', value: signature },
+  };
+}
+
+// Independent re-check of the receipt's action self-consistency: action_hash must
+// recompute from the canonical action, and the signature must verify over the same
+// canonical bytes. This is what a full receipt verifier (verifyReceipt /
+// verifyTrustReceipt) enforces; here it lets us assert the tamper breaks it.
+function actionSelfConsistent(receipt) {
+  const recomputed = actionHashOf(receipt.action);
+  const hashOk = recomputed.replace(/^sha256:/, '') === String(receipt.action_hash).replace(/^sha256:/, '');
+  let sigOk = false;
+  try {
+    const key = crypto.createPublicKey({
+      key: Buffer.from(ACTOR.publicKeyB64u, 'base64url'),
+      format: 'der',
+      type: 'spki',
+    });
+    sigOk = crypto.verify(
+      null,
+      Buffer.from(canonicalize(receipt.action), 'utf8'),
+      key,
+      Buffer.from(receipt.signature.value, 'base64url'),
+    );
+  } catch {
+    sigOk = false;
+  }
+  return { hashOk, sigOk };
+}
+
+test('receiptReferencedGrantHash prefers the signed action.grant_hash over the caller override', () => {
+  const grant = makeGrant();
+  const other = makeGrant({ grant_id: 'grant_other' });
+  const receipt = makeReceipt(grant); // action.grant_hash = grant.grant_hash
+  // Even when the caller supplies a DIFFERENT override, the signed reference wins.
+  assert.strictEqual(receiptReferencedGrantHash(receipt, other.grant_hash), grant.grant_hash);
+  assert.strictEqual(receiptGrantBindingStrength(receipt, other.grant_hash), 'signed_action');
+});
+
+test('a receipt whose SIGNED action carries grant_hash composes under the grant (strong binding)', () => {
+  const grant = makeGrant();
+  const receipt = makeSignedReceipt(grant);
+  // The signed receipt is self-consistent to begin with.
+  assert.deepStrictEqual(actionSelfConsistent(receipt), { hashOk: true, sigOk: true });
+  const r = verifyReceiptUnderGrant(receipt, grant, {
+    now: NOW,
+    pinnedPrincipalKey: PRINCIPAL.publicKeyB64u,
+  });
+  assert.strictEqual(r.ok, true, r.reason);
+  assert.strictEqual(r.checks.grant_binding, true);
+  assert.strictEqual(r.binding_strength, 'signed_action');
+});
+
+test('tampering the native grant_hash breaks the action hash AND the signature', () => {
+  const grant = makeGrant();
+  const other = makeGrant({ grant_id: 'grant_other' });
+  const receipt = makeSignedReceipt(grant);
+  // Repoint the grant reference to a DIFFERENT grant WITHOUT re-signing.
+  const tampered = {
+    ...receipt,
+    action: { ...receipt.action, grant_hash: other.grant_hash },
+  };
+  // Because grant_hash is inside the signed Action Object, the tamper breaks BOTH
+  // the recomputed action hash and the Ed25519 signature over the action.
+  const consistency = actionSelfConsistent(tampered);
+  assert.strictEqual(consistency.hashOk, false, 'action_hash must no longer bind the tampered action');
+  assert.strictEqual(consistency.sigOk, false, 'signature must no longer verify over the tampered action');
+
+  // The composition also refuses: the (now-signed) reference points at other's
+  // grant, which does not equal THIS grant's grant_hash.
+  const r = verifyReceiptUnderGrant(tampered, grant, {
+    now: NOW,
+    pinnedPrincipalKey: PRINCIPAL.publicKeyB64u,
+  });
+  assert.strictEqual(r.ok, false);
+  assert.strictEqual(r.reason, 'grant_binding_mismatch');
+  assert.strictEqual(r.binding_strength, 'signed_action');
+});
+
+test('a receipt with NO native grant_hash still composes via caller override (advisory binding)', () => {
+  const grant = makeGrant();
+  // Receipt whose action does NOT carry grant_hash (pre-native / transitional).
+  const receipt = {
+    '@version': 'EP-RECEIPT-v1',
+    action: { asset: grant.asset, control_verb: grant.control_verb },
+  };
+  assert.strictEqual(receiptReferencedGrantHash(receipt), null);
+  assert.strictEqual(receiptGrantBindingStrength(receipt), 'none');
+
+  // Without an override the binding is missing (fail-closed).
+  const missing = verifyReceiptUnderGrant(receipt, grant, {
+    now: NOW,
+    pinnedPrincipalKey: PRINCIPAL.publicKeyB64u,
+  });
+  assert.strictEqual(missing.ok, false);
+  assert.strictEqual(missing.reason, 'missing_grant_reference');
+  assert.strictEqual(missing.binding_strength, 'none');
+
+  // A caller-supplied grant_hash lets it compose, flagged as ADVISORY.
+  const r = verifyReceiptUnderGrant(receipt, grant, {
+    now: NOW,
+    pinnedPrincipalKey: PRINCIPAL.publicKeyB64u,
+    grantHash: grant.grant_hash,
+  });
+  assert.strictEqual(r.ok, true, r.reason);
+  assert.strictEqual(r.checks.grant_binding, true);
+  assert.strictEqual(r.binding_strength, 'caller_override');
 });

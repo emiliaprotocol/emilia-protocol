@@ -82,6 +82,35 @@ test('exports and constants', () => {
   assert.equal(SMT_DEPTH, 32);
 });
 
+test('reference emitter is reachable via the declared package subpath export', async () => {
+  // package.json exports "./consumption-proof.js", so a third party can import
+  // the reference issuer-side emitter (not only the verifier) by package name.
+  const viaSubpath = await import('@emilia-protocol/verify/consumption-proof.js');
+  assert.equal(typeof viaSubpath.ReferenceConsumptionTree, 'function');
+  assert.equal(viaSubpath.ReferenceConsumptionTree, ReferenceConsumptionTree);
+  assert.equal(typeof viaSubpath.verifyConsumptionProof, 'function');
+  // The emitter really produces a bundle the verifier accepts: emit, then verify.
+  const before = new viaSubpath.ReferenceConsumptionTree();
+  before.insert('other');
+  const ni = before.prove('subpath-nonce'); // absent
+  const after = new viaSubpath.ReferenceConsumptionTree();
+  after.insert('other');
+  after.insert('subpath-nonce');
+  const inc = after.prove('subpath-nonce'); // present
+  const leaves = denseLeaves(6);
+  const bundle = {
+    nonce: 'subpath-nonce',
+    non_inclusion_proof: ni,
+    inclusion_proof: inc,
+    consistency_proof: buildConsistencyProof(3, 6, leaves),
+    checkpoints: {
+      h1: { tree_size: 3, root_hash: merkleRoot(leaves.slice(0, 3)) },
+      h2: { tree_size: 6, root_hash: merkleRoot(leaves) },
+    },
+  };
+  assert.equal(viaSubpath.verifyConsumptionProof(bundle).valid, true);
+});
+
 test('ACCEPT: genuine absent->present transition between append-only heads', () => {
   const b = makeBundle();
   const res = verifyConsumptionProof(b);

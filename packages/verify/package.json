@@ -22,6 +22,12 @@
     },
     "./consent-grant": {
       "import": "./consent-grant.js"
+    },
+    "./witness.js": {
+      "import": "./witness.js"
+    },
+    "./consumption-proof.js": {
+      "import": "./consumption-proof.js"
     }
   },
   "files": [

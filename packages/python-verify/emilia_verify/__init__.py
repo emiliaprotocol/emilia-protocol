@@ -2180,11 +2180,542 @@ def bind_into(action: Any, att: Any) -> dict:
     return {"action": bound, "attestation": v["normalized"], "digest_preview": digest_preview}
 
 
-# NOTE (honest scope): timestamp-proof (RFC 3161 / EP-TIMESTAMP-PROOF) is NOT
-# ported here. The JS reference (packages/verify/timestamp-proof.js) is a
-# purpose-built minimal DER/CMS reader in pure node:crypto. `cryptography` (this
-# package's only dependency) exposes no RFC 3161 TimeStampToken / TSTInfo API and
-# no generic CMS SignedData parser that returns the signed bytes for the
-# id-ct-TSTInfo eContentType, so a faithful port would require hand-rolling the
-# same DER/CMS parser from scratch. That is deferred rather than force-fit;
-# RFC 3161 timestamp verification remains JS-only for now.
+# =============================================================================
+# EP timestamp-proof (RFC 3161) — Python port of packages/verify/timestamp-proof.js
+# =============================================================================
+#
+# An INDEPENDENT proof of WHEN: verify a standards-track RFC 3161 TimeStampToken
+# (a CMS/PKCS#7 SignedData carrying a TSTInfo) minted by an EXTERNAL TSA, against
+# a PINNED TSA public key. Same contract as the JS reference: ASYMMETRIC,
+# key-PINNED, FAIL-CLOSED. An unpinned/unknown TSA REFUSES; a messageImprint that
+# is not the caller's expected digest REFUSES; a signature that does not verify
+# under the pinned key REFUSES; an unparseable token REFUSES. Nothing defaults to
+# "trusted".
+#
+# PARSING BOUNDARY (honest, identical to the JS reference): this is a
+# PURPOSE-BUILT minimal DER/CMS reader. `cryptography` (this package's only
+# dependency) exposes no RFC 3161 TimeStampToken / TSTInfo / generic CMS
+# SignedData API that returns the signed bytes for the id-ct-TSTInfo eContent, so
+# the structural parse is hand-rolled here in pure Python (no new dependency) and
+# `cryptography` is used only for the RSA/ECDSA signature verification. Supports
+# a single SignerInfo, RSA (RSASSA-PKCS1-v1_5) or ECDSA over a SHA-2 digest, with
+# OR without CMS signed attributes. Does NOT implement X.509 path building
+# (caller PINS the exact key), RSASSA-PSS, or multi-signer tokens; anything
+# outside the supported shape REFUSES with a distinct reason.
+#
+# WHAT THIS PROVES (and only this): a TSA the caller chose to pin asserted, with
+# its signature, that `expected_digest` existed at gen_time (the bytes PREDATE
+# gen_time). It does NOT prove the action was correct/authorized, does not prove
+# the TSA clock was accurate, and — like every offline check here — says nothing
+# about CURRENT validity or revocation of the TSA certificate.
+
+from cryptography.hazmat.primitives.asymmetric import padding as _rsa_padding  # noqa: E402
+from cryptography.hazmat.primitives.asymmetric import utils as _asym_utils  # noqa: E402
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey as _RSAPublicKey  # noqa: E402
+from cryptography.hazmat.primitives.asymmetric.ec import (  # noqa: E402
+    EllipticCurvePublicKey as _ECPublicKey,
+    ECDSA as _ECDSA,
+)
+
+TIMESTAMP_PROOF_ALG = "RFC3161"
+
+# ── OIDs we recognize (dotted string form) ───────────────────────────────────
+_TSP_OID_SIGNED_DATA = "1.2.840.113549.1.7.2"        # pkcs7-signedData
+_TSP_OID_CT_TSTINFO = "1.2.840.113549.1.9.16.1.4"    # id-ct-TSTInfo (eContentType)
+_TSP_OID_CONTENT_TYPE = "1.2.840.113549.1.9.3"       # id-contentType signed attr
+_TSP_OID_MESSAGE_DIGEST = "1.2.840.113549.1.9.4"     # id-messageDigest signed attr
+_TSP_OID_SHA256 = "2.16.840.1.101.3.4.2.1"
+_TSP_OID_SHA384 = "2.16.840.1.101.3.4.2.2"
+_TSP_OID_SHA512 = "2.16.840.1.101.3.4.2.3"
+_TSP_OID_RSA_ENCRYPTION = "1.2.840.113549.1.1.1"     # rsaEncryption (PKCS1 v1.5)
+_TSP_OID_ECDSA_SHA256 = "1.2.840.10045.4.3.2"
+_TSP_OID_ECDSA_SHA384 = "1.2.840.10045.4.3.3"
+_TSP_OID_ECDSA_SHA512 = "1.2.840.10045.4.3.4"
+
+# SHA-2 only, deliberately (a TSA still issuing SHA-1 tokens is itself a refuse
+# signal): a SHA-1 digest OID refuses with unsupported_digest_algorithm.
+_TSP_DIGEST_OID_TO_NAME = {
+    _TSP_OID_SHA256: "sha256",
+    _TSP_OID_SHA384: "sha384",
+    _TSP_OID_SHA512: "sha512",
+}
+_TSP_HASHLIB = {"sha256": hashlib.sha256, "sha384": hashlib.sha384, "sha512": hashlib.sha512}
+_TSP_HASH_CLS = {"sha256": _hashes.SHA256, "sha384": _hashes.SHA384, "sha512": _hashes.SHA512}
+
+
+class _TspDerError(Exception):
+    """Any structural malformation — caught at the top level as a fail-closed
+    unparseable_token refusal (mirrors DerError in the JS reference)."""
+
+
+class _TspNode:
+    __slots__ = ("cls", "constructed", "tag", "header_len", "content_start", "content_end", "buf")
+
+    def __init__(self, cls, constructed, tag, header_len, content_start, content_end, buf):
+        self.cls = cls
+        self.constructed = constructed
+        self.tag = tag
+        self.header_len = header_len
+        self.content_start = content_start
+        self.content_end = content_end
+        self.buf = buf
+
+    def content(self) -> bytes:
+        return self.buf[self.content_start:self.content_end]
+
+    def raw(self) -> bytes:
+        # header + content bytes (used to re-hash eContent / re-encode signedAttrs)
+        return self.buf[self.content_start - self.header_len:self.content_end]
+
+
+def _tsp_read_tlv(buf: bytes, offset: int) -> _TspNode:
+    """Minimal DER TLV reader; every bound validated so a truncated/over-long
+    field raises _TspDerError (mirrors readTLV in the JS reference)."""
+    if offset + 2 > len(buf):
+        raise _TspDerError("truncated TLV header")
+    first = buf[offset]
+    cls = (first & 0xC0) >> 6
+    constructed = (first & 0x20) != 0
+    tag = first & 0x1F
+    p = offset + 1
+    if tag == 0x1F:
+        # high-tag-number form: parse but EP tokens do not use it.
+        tag = 0
+        while True:
+            if p >= len(buf):
+                raise _TspDerError("truncated high tag")
+            b = buf[p]
+            p += 1
+            tag = (tag << 7) | (b & 0x7F)
+            if not (b & 0x80):
+                break
+    if p >= len(buf):
+        raise _TspDerError("truncated length")
+    length = buf[p]
+    p += 1
+    if length & 0x80:
+        num_bytes = length & 0x7F
+        if num_bytes == 0:
+            raise _TspDerError("indefinite length not allowed in DER")
+        if num_bytes > 4:
+            raise _TspDerError("length too large")
+        if p + num_bytes > len(buf):
+            raise _TspDerError("truncated long length")
+        length = 0
+        for _ in range(num_bytes):
+            length = (length << 8) | buf[p]
+            p += 1
+    content_start = p
+    content_end = p + length
+    if content_end > len(buf):
+        raise _TspDerError("content exceeds buffer")
+    return _TspNode(cls, constructed, tag, content_start - offset, content_start, content_end, buf)
+
+
+def _tsp_children(node: _TspNode):
+    p = node.content_start
+    while p < node.content_end:
+        child = _tsp_read_tlv(node.buf, p)
+        yield child
+        p = child.content_end
+
+
+def _tsp_decode_oid(node: _TspNode) -> str:
+    if node.tag != 0x06 or node.cls != 0:
+        raise _TspDerError("expected OID")
+    b = node.content()
+    if len(b) == 0:
+        raise _TspDerError("empty OID")
+    first = b[0]
+    parts = [first // 40, first % 40]
+    value = 0
+    for i in range(1, len(b)):
+        value = (value << 7) | (b[i] & 0x7F)
+        if not (b[i] & 0x80):
+            parts.append(value)
+            value = 0
+    return ".".join(str(x) for x in parts)
+
+
+def _tsp_decode_generalized_time(node: _TspNode):
+    """GeneralizedTime (0x18) / UTCTime (0x17) -> RFC 3339 UTC iso string, or None
+    (fail-closed) on any non-conforming form. Mirrors decodeGeneralizedTime."""
+    import re as _re
+    s = node.content().decode("latin-1")
+    if node.tag == 0x18:
+        m = _re.match(r"^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\.\d+)?Z$", s)
+        if m:
+            frac = m.group(7) or ""
+            return f"{m.group(1)}-{m.group(2)}-{m.group(3)}T{m.group(4)}:{m.group(5)}:{m.group(6)}{frac}Z"
+    if node.tag == 0x17:
+        m = _re.match(r"^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})Z$", s)
+        if m:
+            yy = int(m.group(1))
+            year = 2000 + yy if yy < 50 else 1900 + yy
+            return f"{year}-{m.group(2)}-{m.group(3)}T{m.group(4)}:{m.group(5)}:{m.group(6)}Z"
+    return None
+
+
+def _tsp_hex_of(h: Any) -> str:
+    """Normalize a digest input ("sha256:<hex>" | "<hex>" | bytes) to lowercase
+    hex, or "" when malformed (comparisons fail closed). Mirrors hexOf."""
+    if isinstance(h, (bytes, bytearray)):
+        return bytes(h).hex().lower()
+    s = "" if h is None else str(h)
+    for pfx in ("sha256:", "sha384:", "sha512:"):
+        if s.lower().startswith(pfx):
+            s = s[len(pfx):]
+            break
+    s = s.lower()
+    import re as _re
+    if _re.fullmatch(r"[0-9a-f]+", s) and len(s) % 2 == 0 and len(s) >= 40:
+        return s
+    return ""
+
+
+def _tsp_key_id_of_spki(spki_der: bytes) -> str:
+    return "sha256:" + hashlib.sha256(spki_der).hexdigest()
+
+
+def _tsp_load_pinned_key(pinned: Any):
+    """Load one pinned TSA key. Accepts base64/base64url SPKI DER or a PEM string.
+    Returns (public_key, spki_der) or None (fail-closed). Mirrors loadPinnedKey."""
+    try:
+        if not pinned:
+            return None
+        if isinstance(pinned, str) and "-----BEGIN" in pinned:
+            from cryptography.hazmat.primitives.serialization import (
+                load_pem_public_key as _load_pem,
+                Encoding as _Enc,
+                PublicFormat as _PF,
+            )
+            key = _load_pem(pinned.encode("utf-8"))
+            return (key, key.public_bytes(_Enc.DER, _PF.SubjectPublicKeyInfo))
+        # base64 / base64url SPKI DER
+        raw = "".join(str(pinned).split())
+        try:
+            der = base64.b64decode(raw, validate=True)
+        except Exception:
+            der = _b64url_decode(raw)
+        if len(der) == 0:
+            return None
+        key = load_der_public_key(der)
+        from cryptography.hazmat.primitives.serialization import Encoding as _Enc, PublicFormat as _PF
+        return (key, key.public_bytes(_Enc.DER, _PF.SubjectPublicKeyInfo))
+    except Exception:
+        return None
+
+
+def _tsp_der_set_header(length: int) -> bytes:
+    if length < 0x80:
+        return bytes([0x31, length])
+    body = []
+    n = length
+    while n > 0:
+        body.insert(0, n & 0xFF)
+        n >>= 8
+    return bytes([0x31, 0x80 | len(body)] + body)
+
+
+def _tsp_parse_attributes(set_node: _TspNode) -> dict:
+    """SET OF Attribute -> { oid: [value_nodes...] }. Mirrors parseAttributes."""
+    out: dict = {}
+    for attr in _tsp_children(set_node):
+        if attr.tag != 0x10:
+            continue
+        kids = list(_tsp_children(attr))
+        if len(kids) < 2:
+            continue
+        oid = _tsp_decode_oid(kids[0])
+        out[oid] = list(_tsp_children(kids[1]))
+    return out
+
+
+def _tsp_parse_tstinfo(der: bytes):
+    """Mirrors parseTstInfo. Returns dict with messageImprintHex / genTime or
+    {'error': ...}."""
+    try:
+        seq = _tsp_read_tlv(der, 0)
+        if seq.tag != 0x10:
+            return {"error": "unparseable_token"}
+        kids = list(_tsp_children(seq))
+        if len(kids) < 5:
+            return {"error": "unparseable_token"}
+        mi = kids[2]
+        if mi.tag != 0x10:
+            return {"error": "unparseable_token"}
+        mi_kids = list(_tsp_children(mi))
+        if len(mi_kids) < 2:
+            return {"error": "unparseable_token"}
+        hash_alg_seq = mi_kids[0]
+        hash_alg_oid = _tsp_decode_oid(list(_tsp_children(hash_alg_seq))[0])
+        hashed_message = mi_kids[1]
+        if hashed_message.tag != 0x04:
+            return {"error": "unparseable_token"}
+        message_imprint_hex = hashed_message.content().hex().lower()
+        gen_time = None
+        for i in range(3, len(kids)):
+            if kids[i].tag in (0x18, 0x17):
+                t = _tsp_decode_generalized_time(kids[i])
+                if t:
+                    gen_time = t
+                break
+        return {"messageImprintHex": message_imprint_hex, "imprintAlgOid": hash_alg_oid, "genTime": gen_time}
+    except _TspDerError:
+        return {"error": "unparseable_token"}
+
+
+def _tsp_parse_signer_info(node: _TspNode):
+    """Mirrors parseSignerInfo."""
+    try:
+        if node.tag != 0x10:
+            return {"error": "unparseable_token"}
+        kids = list(_tsp_children(node))
+        idx = 0
+        if idx >= len(kids) or kids[idx].tag != 0x02:
+            return {"error": "unparseable_token"}
+        idx += 1  # version
+        if idx >= len(kids):
+            return {"error": "unparseable_token"}
+        idx += 1  # sid (IssuerAndSerialNumber SEQ or [0] SubjectKeyIdentifier)
+        if idx >= len(kids) or kids[idx].tag != 0x10:
+            return {"error": "unparseable_token"}
+        digest_alg = kids[idx]
+        idx += 1
+        digest_alg_oid = _tsp_decode_oid(list(_tsp_children(digest_alg))[0])
+        signed_attrs = None
+        if idx < len(kids) and kids[idx].cls == 2 and kids[idx].tag == 0 and kids[idx].constructed:
+            signed_attrs = kids[idx]
+            idx += 1
+        if idx >= len(kids) or kids[idx].tag != 0x10:
+            return {"error": "unparseable_token"}
+        sig_alg = kids[idx]
+        idx += 1
+        sig_alg_oid = _tsp_decode_oid(list(_tsp_children(sig_alg))[0])
+        if idx >= len(kids) or kids[idx].tag != 0x04:
+            return {"error": "unparseable_token"}
+        signature = kids[idx].content()
+        return {
+            "digestAlgOid": digest_alg_oid,
+            "digestName": _TSP_DIGEST_OID_TO_NAME.get(digest_alg_oid),
+            "signedAttrs": signed_attrs,
+            "sigAlgOid": sig_alg_oid,
+            "signature": signature,
+        }
+    except _TspDerError:
+        return {"error": "unparseable_token"}
+
+
+def _tsp_parse_token(der: bytes):
+    """Mirrors parseTimeStampToken. Returns dict {tstInfo, signerInfo,
+    eContentRaw} or {'error': ...}."""
+    content_info = _tsp_read_tlv(der, 0)
+    if content_info.tag != 0x10 or not content_info.constructed:
+        return {"error": "unparseable_token"}
+    ci_kids = list(_tsp_children(content_info))
+    if len(ci_kids) < 2:
+        return {"error": "unparseable_token"}
+    if _tsp_decode_oid(ci_kids[0]) != _TSP_OID_SIGNED_DATA:
+        return {"error": "not_signed_data"}
+    explicit0 = ci_kids[1]
+    if explicit0.cls != 2 or explicit0.tag != 0 or not explicit0.constructed:
+        return {"error": "unparseable_token"}
+    sd_list = list(_tsp_children(explicit0))
+    signed_data = sd_list[0] if sd_list else None
+    if not signed_data or signed_data.tag != 0x10:
+        return {"error": "unparseable_token"}
+    sd_kids = list(_tsp_children(signed_data))
+    if len(sd_kids) < 4:
+        return {"error": "unparseable_token"}
+    encap = sd_kids[2]
+    signer_infos = None
+    for i in range(len(sd_kids) - 1, 2, -1):
+        if sd_kids[i].tag == 0x11 and sd_kids[i].cls == 0:
+            signer_infos = sd_kids[i]
+            break
+    if not encap or encap.tag != 0x10:
+        return {"error": "unparseable_token"}
+    if not signer_infos:
+        return {"error": "unparseable_token"}
+    encap_kids = list(_tsp_children(encap))
+    if len(encap_kids) < 2:
+        return {"error": "unparseable_token"}
+    if _tsp_decode_oid(encap_kids[0]) != _TSP_OID_CT_TSTINFO:
+        return {"error": "not_a_timestamp_token"}
+    e_content_explicit = encap_kids[1]
+    if e_content_explicit.cls != 2 or e_content_explicit.tag != 0:
+        return {"error": "unparseable_token"}
+    octet_list = list(_tsp_children(e_content_explicit))
+    octet = octet_list[0] if octet_list else None
+    if not octet or octet.tag != 0x04:
+        return {"error": "unparseable_token"}
+    e_content_raw = octet.content()
+    tst_info = _tsp_parse_tstinfo(e_content_raw)
+    if tst_info.get("error"):
+        return {"error": tst_info["error"]}
+    si_list = list(_tsp_children(signer_infos))
+    if len(si_list) != 1:
+        return {"error": "unsupported_signerinfo_count"}
+    signer_info = _tsp_parse_signer_info(si_list[0])
+    if signer_info.get("error"):
+        return {"error": signer_info["error"]}
+    return {"tstInfo": tst_info, "signerInfo": signer_info, "eContentRaw": e_content_raw}
+
+
+def _tsp_verify_one(pub_key, sig_alg_oid: str, digest_name: str, signed_bytes: bytes, signature: bytes) -> bool:
+    """Verify signature under one pinned key. Enforces the same
+    signatureAlgorithm/key-type consistency guard as the JS reference."""
+    try:
+        is_rsa = isinstance(pub_key, _RSAPublicKey)
+        is_ec = isinstance(pub_key, _ECPublicKey)
+        if sig_alg_oid == _TSP_OID_RSA_ENCRYPTION or is_rsa:
+            if not is_rsa:
+                return False
+            halg = _TSP_HASH_CLS.get(digest_name)
+            if halg is None:
+                return False
+            pub_key.verify(signature, signed_bytes, _rsa_padding.PKCS1v15(), halg())
+            return True
+        ec_oids = (_TSP_OID_ECDSA_SHA256, _TSP_OID_ECDSA_SHA384, _TSP_OID_ECDSA_SHA512)
+        if sig_alg_oid in ec_oids:
+            if not is_ec:
+                return False
+            ec_hash = {
+                _TSP_OID_ECDSA_SHA256: "sha256",
+                _TSP_OID_ECDSA_SHA384: "sha384",
+                _TSP_OID_ECDSA_SHA512: "sha512",
+            }[sig_alg_oid]
+            pub_key.verify(signature, signed_bytes, _ECDSA(_TSP_HASH_CLS[ec_hash]()))
+            return True
+        return False
+    except InvalidSignature:
+        return False
+    except Exception:
+        return False
+
+
+def _tsp_verify_signer_info(signer_info: dict, e_content_raw: bytes, loaded_keys: list):
+    """Mirrors verifySignerInfo. Returns {'ok': True, 'tsaKeyId': ...} or
+    {'ok': False, 'reason': ...}."""
+    digest_name = signer_info["digestName"]
+    signed_attrs = signer_info["signedAttrs"]
+    sig_alg_oid = signer_info["sigAlgOid"]
+    signature = signer_info["signature"]
+    if not digest_name:
+        return {"ok": False, "reason": "unsupported_digest_algorithm"}
+
+    if signed_attrs is not None:
+        attrs = _tsp_parse_attributes(signed_attrs)
+        ct_nodes = attrs.get(_TSP_OID_CONTENT_TYPE)
+        if not ct_nodes or len(ct_nodes) != 1:
+            return {"ok": False, "reason": "missing_content_type_attr"}
+        try:
+            ct_oid = _tsp_decode_oid(ct_nodes[0])
+        except _TspDerError:
+            return {"ok": False, "reason": "unparseable_token"}
+        if ct_oid != _TSP_OID_CT_TSTINFO:
+            return {"ok": False, "reason": "content_type_attr_mismatch"}
+        md_nodes = attrs.get(_TSP_OID_MESSAGE_DIGEST)
+        if not md_nodes or len(md_nodes) != 1 or md_nodes[0].tag != 0x04:
+            return {"ok": False, "reason": "missing_message_digest_attr"}
+        attr_digest = md_nodes[0].content()
+        e_content_digest = _TSP_HASHLIB[digest_name](e_content_raw).digest()
+        if attr_digest != e_content_digest:
+            return {"ok": False, "reason": "message_digest_attr_mismatch"}
+        # Signature input: DER re-encoding of the attributes as an explicit SET
+        # (0x31), NOT the [0] IMPLICIT tag (RFC 5652 §5.4).
+        attrs_body = signed_attrs.raw()[signed_attrs.header_len:]
+        signed_bytes = _tsp_der_set_header(len(attrs_body)) + attrs_body
+    else:
+        signed_bytes = e_content_raw
+
+    for pub_key, spki_der in loaded_keys:
+        if _tsp_verify_one(pub_key, sig_alg_oid, digest_name, signed_bytes, signature):
+            return {"ok": True, "tsaKeyId": _tsp_key_id_of_spki(spki_der)}
+    return {"ok": False, "reason": "bad_signature"}
+
+
+def verify_timestamp_proof(timestamp_proof: Any, expected_digest: Any, pinned_tsa_keys: Any) -> dict:
+    """Parse + verify an RFC 3161 TimeStampToken against a PINNED TSA key.
+
+    Byte-for-byte behavioral parity with verifyTimestampProof in
+    packages/verify/timestamp-proof.js. FAIL-CLOSED: returns
+    {'verified': False, 'tsa_key_id': None, 'gen_time': None, 'reason': <str>} on
+    any refusal, and {'verified': True, 'tsa_key_id': <fp>, 'gen_time': <iso>} on
+    success. Never raises.
+
+    :param timestamp_proof: DER TimeStampToken as base64/base64url str or bytes.
+    :param expected_digest: the digest the token MUST timestamp ("sha256:<hex>",
+        bare hex, or raw digest bytes).
+    :param pinned_tsa_keys: the caller-supplied trust set — a single SPKI-DER key
+        (base64/base64url) or PEM, a list of such, or a dict {id: key}. The token
+        REFUSES unless its signature verifies under one of these pinned keys.
+    """
+    def refuse(reason):
+        return {"verified": False, "tsa_key_id": None, "gen_time": None, "reason": reason}
+
+    # Input gates (fail-closed on anything missing/blank).
+    if timestamp_proof is None or not isinstance(timestamp_proof, (str, bytes, bytearray)) \
+            or (isinstance(timestamp_proof, str) and timestamp_proof.strip() == ""):
+        return refuse("missing_token")
+    want_digest = _tsp_hex_of(expected_digest)
+    if not want_digest:
+        return refuse("missing_or_malformed_expected_digest")
+
+    # Assemble the pinned key set. An empty/absent set is an UNPINNED TSA.
+    pinned_list = []
+    if isinstance(pinned_tsa_keys, (list, tuple)):
+        pinned_list.extend(pinned_tsa_keys)
+    elif isinstance(pinned_tsa_keys, dict):
+        pinned_list.extend(pinned_tsa_keys.values())
+    elif pinned_tsa_keys:
+        pinned_list.append(pinned_tsa_keys)
+    loaded_keys = [k for k in (_tsp_load_pinned_key(p) for p in pinned_list) if k]
+    if len(loaded_keys) == 0:
+        return refuse("unpinned_tsa")
+
+    # Decode DER.
+    try:
+        if isinstance(timestamp_proof, (bytes, bytearray)):
+            der = bytes(timestamp_proof)
+        else:
+            raw = "".join(timestamp_proof.split())
+            try:
+                der = base64.b64decode(raw, validate=True)
+            except Exception:
+                der = _b64url_decode(raw)
+        if len(der) == 0:
+            return refuse("unparseable_token")
+    except Exception:
+        return refuse("unparseable_token")
+
+    try:
+        parsed = _tsp_parse_token(der)
+    except _TspDerError:
+        return refuse("unparseable_token")
+    except Exception:
+        return refuse("unparseable_token")
+    if parsed.get("error"):
+        return refuse(parsed["error"])
+
+    tst_info = parsed["tstInfo"]
+    signer_info = parsed["signerInfo"]
+    e_content_raw = parsed["eContentRaw"]
+
+    # messageImprint must equal the caller's expected digest (bound BEFORE the
+    # signature verdict is trusted).
+    if tst_info["messageImprintHex"] != want_digest:
+        return refuse("digest_mismatch")
+
+    if not tst_info["genTime"]:
+        return refuse("unparseable_token")
+
+    sig_result = _tsp_verify_signer_info(signer_info, e_content_raw, loaded_keys)
+    if not sig_result["ok"]:
+        return refuse(sig_result["reason"])
+
+    return {"verified": True, "tsa_key_id": sig_result["tsaKeyId"], "gen_time": tst_info["genTime"]}
+
+
+__all__.append("verify_timestamp_proof")
+__all__.append("TIMESTAMP_PROOF_ALG")

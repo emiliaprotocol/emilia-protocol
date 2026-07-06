@@ -74,6 +74,40 @@ type vec struct {
 	InitiatorAttestation map[string]any `json:"initiator_attestation"`
 	ConsumptionProof     map[string]any `json:"consumption_proof"`
 	WitnessQuorum        *witnessVec    `json:"witness_quorum"`
+	// EP-TIMESTAMP-PROOF-v1 (RFC 3161). TimestampProof is kept as a raw JSON
+	// token to distinguish an ABSENT field (route elsewhere) from an empty-string
+	// token (route to the verifier, which returns missing_token). PinnedTSAKeys
+	// is polymorphic (string | []string | {id:key}), decoded in main.
+	TimestampProof json.RawMessage `json:"timestamp_proof"`
+	ExpectedDigest string          `json:"expected_digest"`
+	PinnedTSAKeys  json.RawMessage `json:"pinned_tsa_keys"`
+}
+
+// pinnedTSAKeysFromRaw normalizes the polymorphic `pinned_tsa_keys` vector field
+// (a single string, an array of strings, or a {id: key} object) into the
+// []string VerifyTimestampProof takes. Mirrors the JS pinnedList assembly and the
+// Go test helper.
+func pinnedTSAKeysFromRaw(raw json.RawMessage) []string {
+	if len(raw) == 0 {
+		return nil
+	}
+	var s string
+	if json.Unmarshal(raw, &s) == nil {
+		return []string{s}
+	}
+	var arr []string
+	if json.Unmarshal(raw, &arr) == nil {
+		return arr
+	}
+	var obj map[string]string
+	if json.Unmarshal(raw, &obj) == nil {
+		out := make([]string, 0, len(obj))
+		for _, v := range obj {
+			out = append(out, v)
+		}
+		return out
+	}
+	return nil
 }
 
 // EP-CANONICALIZATION-v1 differential branch. Same gate as the JS runner
@@ -380,6 +414,15 @@ func main() {
 			}
 			k, kValid := witnessKFromRaw(w.K)
 			valid = emiliaverify.RequireWitnessQuorum(w.Checkpoint, cosigs, pinned, k, kValid).OK
+		case len(v.TimestampProof) > 0:
+			// EP-TIMESTAMP-PROOF-v1 (RFC 3161): valid iff the pinned TSA's
+			// TimeStampToken verifies over the expected digest (fail-closed). The
+			// field is PRESENT (len>0) even for the empty-string token, so a
+			// missing_token vector routes to the verifier, not the default.
+			var token string
+			_ = json.Unmarshal(v.TimestampProof, &token)
+			keys := pinnedTSAKeysFromRaw(v.PinnedTSAKeys)
+			valid = emiliaverify.VerifyTimestampProof(token, v.ExpectedDigest, keys).Verified
 		}
 		out = append(out, map[string]any{"id": v.ID, "valid": valid})
 	}

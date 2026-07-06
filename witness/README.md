@@ -19,6 +19,15 @@ When several independent witnesses each cosign whatever head they saw, two
 verifiers who later compare (gossip) their witness cosignatures can detect that
 the log presented divergent heads at the same tree size.
 
+This service is the REFERENCE witness EMITTER for EP-WITNESS-v1. It produces the
+cosignature that `verifyWitnessCosignature()` / `requireWitnessQuorum()` in
+`@emilia-protocol/verify` check, so the emit/verify loop is closed at reference
+level: the signing digest and domain tag are imported directly from the verify
+package (`witness.js`), meaning a cosignature this server emits is byte-identical
+to what the verifier expects. What remains is deployment, not reference code:
+the security value comes from RUNNING several of these under independent
+operators (see "Independence is the whole point" below).
+
 ## What a witness cosignature proves, and what it does NOT
 
 A cosignature says:

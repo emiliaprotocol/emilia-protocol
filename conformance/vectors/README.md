@@ -47,11 +47,11 @@ same canonical signer as `receipts.v1.json`).
 
 ## Opt-in profile suites (cross-language)
 
-Four opt-in verify profiles ship shared, cross-language vector suites that the
+Five opt-in verify profiles ship shared, cross-language vector suites that the
 JavaScript, Python, and Go verifiers all run in `conformance/run.mjs` and must
-agree on. Regenerate all four byte-identically with
+agree on. The first four regenerate byte-identically with
 `node generate-optin-profiles.mjs` (fixed Ed25519 seeds for the witness
-cosignatures):
+cosignatures); the timestamp-proof suite is minted separately (see below):
 
 - `currency.v1.json` — **EP-CURRENCY-v1**: valid iff
   `evaluateCurrency(currency.args).currency_at_T.status === currency.expect_status`.
@@ -69,9 +69,16 @@ cosignatures):
   witness_quorum.pinned, witness_quorum.k).ok`. k-of-n distinct pinned witnesses
   cosigning one checkpoint head (seeded Ed25519; the same committed bytes verify
   in all three languages).
-
-A fifth opt-in profile, **timestamp-proof (RFC 3161)**, is a **JavaScript-only**
-reference verifier: its Python and Go ports were deferred (no CMS/PKCS#7
-SignedData parser in the Python `cryptography` dependency or the zero-dependency
-Go module), so it has no cross-language vector suite here. See
-[`../../CONFORMANCE.md`](../../CONFORMANCE.md).
+- `timestamp-proof.v1.json` — **EP-TIMESTAMP-PROOF-v1** (RFC 3161): valid iff
+  `verifyTimestampProof(timestamp_proof, expected_digest, pinned_tsa_keys).verified`.
+  An INDEPENDENT proof of WHEN: a pinned external TSA's `TimeStampToken` (CMS
+  SignedData carrying a TSTInfo) over the caller's expected digest, fail-closed on
+  any refusal (unpinned TSA, digest mismatch, wrong pinned key, tampered
+  signature, non-SignedData, unparseable token). The JS minimal DER/CMS reader was
+  ported faithfully to pure Python (with `cryptography` used only for the
+  RSA/ECDSA signature verify, so no new dependency) and pure-stdlib Go, so all
+  three lanes agree over real `openssl`-minted tokens. Regenerate with
+  `node generate-timestamp-proof.mjs` (mints a fresh local test TSA + tokens and
+  self-checks against the JS reference before writing; requires `openssl` on
+  PATH). The suite is self-contained: the signer SPKI (pinned key) and a decoy
+  SPKI are embedded per vector, so no key material lives outside the file.

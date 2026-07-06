@@ -34,7 +34,8 @@
     "./breakglass": "./breakglass.js",
     "./store-postgres": "./store-postgres.js",
     "./reports/auditor-workpaper": "./reports/auditor-workpaper.js",
-    "./reports/reperform": "./reports/reperform.js"
+    "./reports/reperform": "./reports/reperform.js",
+    "./reports/external-verification": "./reports/external-verification.js"
   },
   "files": [
     "index.js",
@@ -91,7 +92,8 @@
     "deploy/terraform/versions.tf",
     "deploy/terraform/README.md",
     "reports/auditor-workpaper.js",
-    "reports/reperform.js"
+    "reports/reperform.js",
+    "reports/external-verification.js"
   ],
   "scripts": {
     "test": "node --test",

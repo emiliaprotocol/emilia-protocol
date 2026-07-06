@@ -121,15 +121,41 @@ Action Object, those fields are covered by the receipt's own signature.
 
 ## How the per-action receipt references grant_hash
 
-The per-action receipt SHOULD carry `grant_hash` so the binding-moment
-authorization is cryptographically tied to the standing grant it exercised. EP
-receipts do not have a dedicated top-level `grant_hash` field TODAY, so the
-verifier reads it, in precedence order, from `receipt.grant_hash`,
-`receipt.action.grant_hash`, then `receipt.action.consent_grant_hash`, and falls
-back to a caller-supplied override for the transitional case where a receipt does
-not yet carry one. Carrying `grant_hash` inside the signed Action Object is the
-recommended form: it binds the reference under the receipt's own signature. A
-future receipt revision SHOULD promote `grant_hash` to a named top-level field.
+The per-action receipt SHOULD carry `grant_hash` INSIDE its signed Action Object,
+so the binding-moment authorization is cryptographically tied to the standing
+grant it exercised and the reference is covered by the human signature over the
+action. The reference implementation now does exactly this: when a caller mints an
+action under a standing grant, the mint path
+([`lib/guard-adapter.js`](../lib/guard-adapter.js)) puts `grant_hash` into the
+canonical Action Object before hashing, so it is folded into the action hash and
+therefore into the receipt's signature. The field is OPTIONAL and
+backwards-compatible: an action minted without a standing grant canonicalizes and
+hashes exactly as before, and a malformed `grant_hash` is refused at mint time
+rather than folded into signed bytes.
+
+The verifier reads the reference, in precedence order, from
+`receipt.action.grant_hash`, then `receipt.action.consent_grant_hash`, then
+`receipt.grant_hash`, and falls back to a caller-supplied override
+(`opts.grantHash`) for the transitional case where a receipt does not carry a
+native one.
+
+The precedence prefers the SIGNED reference over the override on purpose, because
+the two bindings are NOT equally trustworthy:
+
+- A `grant_hash` read from the signed Action Object is the STRONG binding.
+  Tampering it breaks the action hash and thus the receipt's own signature, so a
+  verifier that re-runs the receipt's cryptography would reject the tamper.
+- A caller-supplied override is ADVISORY. Nothing in the receipt's cryptography
+  covers it, so a receipt without a native `grant_hash` can still be bound to a
+  grant, but that binding is then only as trustworthy as the caller who supplied
+  the hash.
+
+`verifyReceiptUnderGrant` surfaces which one applied as `binding_strength`
+(`signed_action` | `top_level` | `caller_override` | `none`) so a relying party
+can price the difference. `receiptGrantBindingStrength(receipt, override)` reports
+the same value without running the full composition. A future receipt revision
+SHOULD also promote `grant_hash` to a named top-level field for receipt profiles
+that fold top-level fields under their signature.
 
 ## Revocation and the offline currency bound
 

@@ -2,6 +2,7 @@
 // JS conformance runner: emits [{id, valid}] per vector. argv[2] = vectors path.
 // Polymorphic: receipt (document) | signoff | quorum.
 import { verifyReceipt, verifyWebAuthnSignoff, verifyQuorum, verifyRevocation, verifyTimeAttestation, verifyTrustReceipt, verifyProvenanceOffline, verifyEvidenceRecord, canonicalize, isCanonicalizable, evaluateCurrency, validateInitiatorAttestation, verifyConsumptionProof, requireWitnessQuorum } from '../../packages/verify/index.js';
+import { verifyTimestampProof } from '../../packages/verify/timestamp-proof.js';
 import { strictParseGate } from './strict-json.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -38,6 +39,9 @@ const out = vectors.map((v) => {
   if (v.consumption_proof) return { id: v.id, valid: verifyConsumptionProof(v.consumption_proof).valid };
   // EP-WITNESS-v1: valid iff k distinct pinned witnesses validly cosigned the head.
   if (v.witness_quorum) { const w = v.witness_quorum; return { id: v.id, valid: requireWitnessQuorum(w.checkpoint, w.cosignatures, w.pinned, w.k).ok }; }
+  // EP-TIMESTAMP-PROOF-v1 (RFC 3161): valid iff the pinned TSA's TimeStampToken
+  // verifies over the expected digest (fail-closed on any refusal).
+  if (v.timestamp_proof !== undefined) return { id: v.id, valid: verifyTimestampProof(v.timestamp_proof, v.expected_digest, v.pinned_tsa_keys).verified };
   return { id: v.id, valid: false };
 });
 process.stdout.write(JSON.stringify(out));

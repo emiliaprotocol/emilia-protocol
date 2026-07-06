@@ -27,13 +27,16 @@
  * nonce is BOTH absent-at-h1 under this log AND was already consumed earlier.
  *
  * HONESTY / SCOPE (this is a house rule, stated in code on purpose):
- *   - This module is the VERIFIER and the WIRE FORMAT only. The ISSUER-SIDE
- *     emission — actually maintaining the sparse consumption tree, inserting a
- *     nonce leaf at commit time, and PRODUCING the non-inclusion / inclusion /
- *     consistency proofs — is REFERENCE/SPEC here. The small tree helpers below
- *     (`emptyRoot`, `smtInsertAndProve`, ...) are a spec-faithful REFERENCE
- *     prover for tests and tooling; a production log emits equivalent proofs.
- *     They are NOT a production consumption ledger.
+ *   - This module ships BOTH sides at reference level: the VERIFIER
+ *     (`verifyConsumptionProof`) and the reference issuer-side EMITTER
+ *     (`ReferenceConsumptionTree`, exported). The emitter maintains a sparse
+ *     consumption tree, inserts a nonce leaf, and PRODUCES the non-inclusion /
+ *     inclusion sub-proofs in the exact wire format the verifier accepts, so a
+ *     third party can reproduce a bundle, not only check one. It is a
+ *     spec-faithful REFERENCE that pins the wire format; a production issuer
+ *     emits byte-equivalent proofs from its own ledger. The reference emitter is
+ *     NOT itself a production consumption ledger (in-memory present set, roots
+ *     recomputed by DFS). Running an independent issuer/log is deployment.
  *   - Offline verification of a bundle establishes append-only consistency
  *     between two OBSERVED heads. It does NOT establish CURRENCY (that h2 is the
  *     log's latest head) and does NOT by itself defeat split-view equivocation
@@ -265,12 +268,19 @@ export function verifyConsumptionProof(bundle) {
 }
 
 // =============================================================================
-// REFERENCE PROVER (test/tooling ONLY — NOT a production consumption ledger)
+// REFERENCE ISSUER-SIDE EMITTER (exported; NOT a production consumption ledger)
 // =============================================================================
-// A minimal, spec-faithful sparse Merkle tree over SMT_DEPTH bits, with an
-// empty-subtree cache so proofs are cheap. A production issuer emits equivalent
-// proofs from its own consumption ledger; these helpers exist so the VERIFIER
-// above can be tested against a real absent->present transition.
+// This is the reference EMITTER for EP-SMT-CONSUME-v1: the issuer-side half of
+// the loop whose verifier is verifyConsumptionProof() above. A minimal,
+// spec-faithful sparse Merkle tree over SMT_DEPTH bits, with an empty-subtree
+// cache so proofs are cheap. It is exported (see package.json
+// "./consumption-proof.js") so any third party can PRODUCE a bundle in the exact
+// wire format the verifier accepts, not only check one — closing the emit/verify
+// loop at reference level. A production issuer maintains its own sparse
+// consumption ledger and emits byte-equivalent proofs; this class is the
+// reference that pins the wire format and lets anyone reproduce a proof, and it
+// is deliberately NOT a production consumption ledger (it recomputes roots by
+// DFS and holds the present set in memory).
 
 /** Precomputed empty-subtree roots: EMPTY[level] = root of an all-default subtree
  *  of height (SMT_DEPTH - level). EMPTY[SMT_DEPTH] = the default leaf. */
@@ -284,8 +294,14 @@ function buildEmptyLevels(depth) {
 }
 
 /**
- * Reference sparse tree. Keys are hex SHA-256(nonce); only PRESENT leaves are
- * stored, everything else is the default. EXPERIMENTAL — tests/tooling only.
+ * Reference issuer-side consumption emitter. Keys are hex SHA-256(nonce); only
+ * PRESENT leaves are stored, everything else is the default. `insert(nonce)`
+ * consumes a nonce and `prove(nonce)` emits the non-inclusion / inclusion
+ * sub-proof in the wire format `verifyConsumptionProof()` accepts. Pairing two
+ * roots (before and after the insert) with a dense-log consistency proof yields
+ * a full bundle. This is the REFERENCE emitter that pins the wire format so a
+ * third party can reproduce a proof; a production issuer emits byte-equivalent
+ * proofs from its own ledger. EXPERIMENTAL / additive; not a production ledger.
  */
 export class ReferenceConsumptionTree {
   constructor(depth = SMT_DEPTH) {

@@ -57,7 +57,7 @@
       "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
     },
     "grant_hash": {
-      "description": "'sha256:' + hex over the JCS/RFC-8785 canonical bytes of this grant object with BOTH grant_hash and signature excluded (canonicalize + SHA-256, exactly as EP hashes elsewhere). The relying party binds a receipt to a grant by this value; a receipt SHOULD carry grant_hash (top-level, or in its signed Action Object) so the binding-moment authorization is cryptographically tied to the standing grant it exercised. A grant whose recomputed hash does not equal this value is refused (fail closed).",
+      "description": "'sha256:' + hex over the JCS/RFC-8785 canonical bytes of this grant object with BOTH grant_hash and signature excluded (canonicalize + SHA-256, exactly as EP hashes elsewhere). The relying party binds a receipt to a grant by this value; a receipt SHOULD carry grant_hash INSIDE its signed Action Object (the reference implementation mints it there, so it is covered by the action hash and the human signature over the action) so the binding-moment authorization is cryptographically tied to the standing grant it exercised. A receipt without a native grant_hash can still be bound by a caller-supplied hash, but that binding is then only as trustworthy as the caller (advisory, not covered by the receipt's signature). A grant whose recomputed hash does not equal this value is refused (fail closed).",
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$"
     },

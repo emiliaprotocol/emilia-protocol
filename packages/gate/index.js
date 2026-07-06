@@ -74,6 +74,13 @@ export {
 export { EXECUTION_BINDING_VERSION, canonicalize, hashCanonical, materialFieldsFor, verifyExecutionBinding } from './execution-binding.js';
 export { RELIANCE_PACKET_VERSION, ADMISSIBILITY_VERDICTS, buildReliancePacket } from './reliance-packet.js';
 export {
+  EXTERNAL_VERIFICATION_STATEMENT_VERSION,
+  EXTERNAL_VERIFICATION_DOMAIN,
+  externalVerificationDigest,
+  signExternalVerificationStatement,
+  verifyExternalVerificationStatement,
+} from './reports/external-verification.js';
+export {
   EG1_VERSION, EG1_CHECKS, EG1_DEFAULT_ACTION, EG1_DEFAULT_SELECTOR,
   createEg1Harness, makeGateInvoke, runEg1, mintDeviceSignoff, mintQuorumEvidence,
 } from './eg1-conformance.js';
