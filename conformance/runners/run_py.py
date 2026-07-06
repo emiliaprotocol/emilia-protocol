@@ -6,7 +6,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "packages
 from emilia_verify import (verify_receipt, verify_webauthn_signoff, verify_quorum,
                             verify_revocation, verify_time_attestation, verify_trust_receipt,
                             verify_provenance_offline, verify_evidence_record,
-                            canonicalize, is_canonicalizable)
+                            canonicalize, is_canonicalizable,
+                            evaluate_currency, validate_initiator_attestation,
+                            verify_consumption_proof, require_witness_quorum)
 vectors = json.load(open(sys.argv[1]))["vectors"]
 
 # EP-CANONICALIZATION-v1 differential branch. Same gate as the JS runner
@@ -67,5 +69,15 @@ def run(v):
     if "provenance_chain" in v: return verify_provenance_offline(v["provenance_chain"], {"delegationKeys": v.get("delegation_keys"), "now": v.get("now_ms")})["valid"]
     if "evidence_record" in v: return verify_evidence_record(v["evidence_record"], {"tsaKeys": v.get("tsa_keys"), "protectedHash": v.get("protected_hash")})["valid"]
     if "canonicalization" in v: return run_canonicalization(v["canonicalization"])
+    # EP-CURRENCY-v1: valid iff the two-valued currency status equals expect_status.
+    if "currency" in v: return evaluate_currency(v["currency"]["args"])["currency_at_T"]["status"] == v["currency"]["expect_status"]
+    # EP-INITIATOR-ATTESTATION-v1: valid iff the attestation validates (fail-closed).
+    if "initiator_attestation" in v: return validate_initiator_attestation(v["initiator_attestation"])["ok"]
+    # EP-SMT-CONSUME-v1: valid iff the sparse-Merkle absent->present transition verifies.
+    if "consumption_proof" in v: return verify_consumption_proof(v["consumption_proof"])["valid"]
+    # EP-WITNESS-v1: valid iff k distinct pinned witnesses validly cosigned the head.
+    if "witness_quorum" in v:
+        w = v["witness_quorum"]
+        return require_witness_quorum(w["checkpoint"], w["cosignatures"], w["pinned"], w["k"])["ok"]
     return False
 print(json.dumps([{"id": v["id"], "valid": run(v)} for v in vectors]))

@@ -78,9 +78,15 @@ package entry (`verifyWitnessCosignature`, `requireWitnessQuorum`,
 `INITIATOR_ATTESTATION_VERSION`, `INITIATOR_ATTESTATION_FIELD`,
 `INITIATOR_STATEMENT_MAX`), with TypeScript types in `index.d.ts`. Note: the
 in-repo JS reference verifiers are one team's cross-language ports, not
-clean-room independent implementations; the EP-CURRENCY-v1, EP-WITNESS-v1,
-EP-SMT-CONSUME-v1, and EP-INITIATOR-ATTESTATION-v1 checks have no Python or Go
-port yet (the JS reason strings and enums are written to be portable).
+clean-room independent implementations. EP-CURRENCY-v1, EP-WITNESS-v1,
+EP-SMT-CONSUME-v1, and EP-INITIATOR-ATTESTATION-v1 are now ported to Python
+(`packages/python-verify`) and Go (`packages/go-verify`) and run cross-language
+in `conformance/run.mjs` over shared vector suites (`currency.v1.json`,
+`initiator-attestation.v1.json`, `consumption-proof.v1.json`, `witness.v1.json`),
+where the JS, Python, and Go verifiers must agree. **Timestamp proof (RFC 3161)
+remains JavaScript-only** — its Python/Go ports were deferred because neither the
+Python `cryptography` dependency nor the zero-dependency Go module exposes a
+CMS/PKCS#7 SignedData / TSTInfo parser, so it has no cross-language vector suite.
 
 ## 3.4.0 (2026-07-05)
 

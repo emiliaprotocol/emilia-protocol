@@ -25,7 +25,23 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import load_der_public_key
 
-__all__ = ["canonicalize", "is_canonicalizable", "verify_receipt", "verify_merkle_anchor", "VerifyResult", "evaluate_agent_binding"]
+__all__ = [
+    "canonicalize", "is_canonicalizable", "verify_receipt", "verify_merkle_anchor",
+    "VerifyResult", "evaluate_agent_binding",
+    # EP-CURRENCY-v1
+    "evaluate_currency", "CURRENCY_VERSION", "CURRENCY_STATUS", "CURRENCY_REASON",
+    # EP-WITNESS-v1
+    "verify_witness_cosignature", "require_witness_quorum", "witness_signing_digest",
+    "WITNESS_VERSION", "WITNESS_DOMAIN_TAG",
+    # Checkpoint consistency (EP-MERKLE-v2)
+    "verify_checkpoint_consistency", "build_consistency_proof", "CONSISTENCY_ALG",
+    # EP-SMT-CONSUME-v1
+    "verify_consumption_proof", "ReferenceConsumptionTree",
+    "CONSUMPTION_PROFILE", "CONSUMPTION_LEAF_DOMAIN", "SMT_DEPTH",
+    # EP-INITIATOR-ATTESTATION-v1
+    "validate_initiator_attestation", "neutralize_statement", "normalize_digest", "bind_into",
+    "INITIATOR_ATTESTATION_VERSION", "INITIATOR_ATTESTATION_FIELD", "INITIATOR_STATEMENT_MAX",
+]
 
 SUPPORTED_VERSIONS = ("EP-RECEIPT-v1",)
 _SAFE_INT = 2 ** 53 - 1
@@ -1291,3 +1307,884 @@ def evaluate_agent_binding(context, max_age_sec=None, at=None):
             out["fresh"] = True
             out["reason"] = "fresh"
     return out
+
+
+# =============================================================================
+# EP-CURRENCY-v1 — two-valued verification result (currency.js port)
+# =============================================================================
+# Mirrors packages/verify/currency.js byte-for-byte. Offline verification alone
+# yields currency status 'unknown' (the honest, fail-safe default). 'fresh' is
+# reachable ONLY with a policy-satisfying freshHead. Honesty is a security
+# property: an offline-only check must NEVER report 'fresh'.
+
+CURRENCY_VERSION = "EP-CURRENCY-v1"
+CURRENCY_STATUS = ("fresh", "stale", "unknown")
+
+CURRENCY_REASON = {
+    # status: 'unknown'
+    "offline_only_no_fresh_head": "offline_only_no_fresh_head",
+    "fresh_head_malformed": "fresh_head_malformed",
+    "now_invalid": "now_invalid",
+    # status: 'stale'
+    "fresh_head_stale": "fresh_head_stale",
+    "fresh_head_required_but_absent": "fresh_head_required_but_absent",
+    "revoked_by_fresh_head": "revoked_by_fresh_head",
+    "max_staleness_invalid": "max_staleness_invalid",
+    # status: 'fresh'
+    "fresh_head_within_window": "fresh_head_within_window",
+}
+
+# 64-char SHA-256 validator: malformed -> '' so comparisons fail closed (never
+# match a real digest). Mirrors currency.js hexOf() exactly (leading "sha256:"
+# stripped once, lowercased, must be exactly 64 hex).
+_CURRENCY_HEX64 = _re.compile(r"^[0-9a-f]{64}$")
+
+
+def _currency_hex_of(h: Any) -> str:
+    s = str(h if h is not None else "")
+    if s.startswith("sha256:"):
+        s = s[len("sha256:"):]
+    s = s.lower()
+    return s if _CURRENCY_HEX64.match(s) else ""
+
+
+# currency.js uses JS Date.parse (lenient). We accept the RFC 3339 forms that
+# new Date(...).toISOString() emits (always "Z") plus explicit-offset forms, and
+# return None on anything unparseable — matching currency.js for every realistic
+# head/now value (all produced by toISOString) and for the 'not-a-time' edge.
+_CURRENCY_RFC3339 = _re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$"
+)
+
+
+def _currency_instant_ms(s: Any):
+    import datetime as _dt
+    if not isinstance(s, str) or not _CURRENCY_RFC3339.match(s):
+        return None
+    try:
+        return _dt.datetime.fromisoformat(s.replace("Z", "+00:00")).timestamp() * 1000
+    except Exception:
+        return None
+
+
+def _currency_iso(ms: float) -> str:
+    """Format epoch ms as new Date(ms).toISOString() does: millisecond-precision
+    UTC ("YYYY-MM-DDTHH:MM:SS.sssZ")."""
+    import datetime as _dt
+    dt = _dt.datetime.fromtimestamp(ms / 1000, _dt.timezone.utc)
+    return dt.strftime("%Y-%m-%dT%H:%M:%S.") + f"{int(round(ms)) % 1000:03d}Z"
+
+
+def _head_revokes_receipt(fresh_head: Any, receipt: Any) -> bool:
+    """Does this signed head revoke the given receipt? Fail-safe: any malformed
+    revocation field is treated as NON-revoking (mirrors currency.js)."""
+    if isinstance(fresh_head, dict) and fresh_head.get("revoked") is True:
+        return True
+    lst = fresh_head.get("revoked_target_hashes") if isinstance(fresh_head, dict) else None
+    if isinstance(lst, list) and len(lst) > 0:
+        targets = {t for t in (_currency_hex_of(x) for x in lst) if t}
+        if not targets:
+            return False
+        receipt_action_hash = _currency_hex_of((receipt or {}).get("action_hash")) if isinstance(receipt, dict) else ""
+        explicit_target = _currency_hex_of(fresh_head.get("target_hash")) if isinstance(fresh_head, dict) else ""
+        if receipt_action_hash and receipt_action_hash in targets:
+            return True
+        if explicit_target and explicit_target in targets:
+            return True
+    return False
+
+
+def evaluate_currency(args: Optional[dict] = None) -> dict:
+    """Compute the two-valued verification result: authentic_as_of_commit (from
+    the offline check the caller already ran) and currency_at_T (which offline
+    CANNOT establish and which is therefore 'unknown' by default).
+
+    Mirrors packages/verify/currency.js evaluateCurrency(args). Fail-closed:
+    anything not strictly ``authentic_as_of_commit is True`` records False; an
+    unparseable ``now`` yields 'unknown'; a freshHead with no policy bound yields
+    'stale'; only a recent, non-revoking head within the policy window is 'fresh'.
+    """
+    if not isinstance(args, dict):
+        args = {}
+    receipt = args.get("receipt")
+    now = args.get("now", _CURRENCY_NOW_SENTINEL)
+    max_staleness_seconds = args.get("maxStalenessSeconds")
+    fresh_head = args.get("freshHead", _CURRENCY_ABSENT)
+    fresh_head_required = args.get("freshHeadRequired")
+
+    # Pass the offline result through verbatim, fail-safe to False.
+    authentic = args.get("authentic_as_of_commit") is True
+
+    # Resolve reference time T. An unparseable now yields 'unknown'.
+    if now is _CURRENCY_NOW_SENTINEL:
+        import time as _t
+        now_ms: Optional[float] = _t.time() * 1000
+    elif isinstance(now, (int, float)) and not isinstance(now, bool):
+        now_ms = float(now)
+    else:
+        now_ms = _currency_instant_ms(now)
+    now_finite = now_ms is not None and math.isfinite(now_ms)
+    evaluated_at = _currency_iso(now_ms) if now_finite else None
+
+    def result(status: str, reason: str) -> dict:
+        return {
+            "authentic_as_of_commit": authentic,
+            "currency_at_T": {"status": status, "evaluated_at": evaluated_at, "reason": reason},
+        }
+
+    # No fresh head: offline CANNOT prove currency. Fail-safe path.
+    if fresh_head is _CURRENCY_ABSENT or fresh_head is None:
+        if fresh_head_required is True:
+            return result("stale", CURRENCY_REASON["fresh_head_required_but_absent"])
+        return result("unknown", CURRENCY_REASON["offline_only_no_fresh_head"])
+
+    # A fresh head was supplied. If T is unusable, we cannot compute age -> 'unknown'.
+    if not now_finite:
+        return result("unknown", CURRENCY_REASON["now_invalid"])
+
+    # The head must be a usable object carrying a well-formed observation instant.
+    if not isinstance(fresh_head, dict):
+        return result("unknown", CURRENCY_REASON["fresh_head_malformed"])
+    head_ms = _currency_instant_ms(fresh_head.get("observed_at"))
+    if head_ms is None:
+        head_ms = _currency_instant_ms(fresh_head.get("issued_at"))
+    if head_ms is None:
+        return result("unknown", CURRENCY_REASON["fresh_head_malformed"])
+
+    # maxStalenessSeconds is the action-policy bound; without a valid bound we
+    # refuse to certify freshness (fail-safe to 'stale').
+    if (not isinstance(max_staleness_seconds, (int, float))
+            or isinstance(max_staleness_seconds, bool)
+            or not math.isfinite(max_staleness_seconds)
+            or max_staleness_seconds < 0):
+        return result("stale", CURRENCY_REASON["max_staleness_invalid"])
+
+    # Revocation shown by the head dominates.
+    if _head_revokes_receipt(fresh_head, receipt):
+        return result("stale", CURRENCY_REASON["revoked_by_fresh_head"])
+
+    # Age gate. A future-dated head has negative age and is not stale on age alone.
+    age_seconds = (now_ms - head_ms) / 1000
+    if age_seconds > max_staleness_seconds:
+        return result("stale", CURRENCY_REASON["fresh_head_stale"])
+
+    return result("fresh", CURRENCY_REASON["fresh_head_within_window"])
+
+
+# Sentinels distinguishing "now omitted" (use wall clock) from an explicit value,
+# and "freshHead absent" from an explicit None (both map to the same 'unknown').
+_CURRENCY_NOW_SENTINEL = object()
+_CURRENCY_ABSENT = object()
+
+
+# =============================================================================
+# EP-WITNESS-v1 — witness cosignature verification (witness.js port)
+# =============================================================================
+# A witness re-signs the SAME committed checkpoint bytes the log signed, under a
+# DISTINCT domain tag, so several independent witnesses cosigning divergent heads
+# make a split view (equivocation) detectable. Byte-identical to witness.js: the
+# same EP-WITNESS-COSIGN-v1 domain tag and preimage construction, so a JS-produced
+# cosignature verifies here and vice versa. Ed25519 over the SHA-256 digest, with
+# the pinned key as base64url SPKI-DER. FAIL-CLOSED throughout.
+
+WITNESS_VERSION = "EP-WITNESS-v1"
+
+# Domain-separation tag prepended to the SHA-256 pre-image a witness signs. A
+# UTF-8 label with a trailing 0x00 (so it can never prefix the canonical JSON,
+# which begins with '{' 0x7b). The log's own signature has NO such prefix.
+WITNESS_DOMAIN_TAG = "EP-WITNESS-COSIGN-v1\x00"
+
+
+def _witness_committed_checkpoint(checkpoint: Any):
+    """The committed bytes: the checkpoint the log signed, i.e. WITHOUT its own
+    log_signature. Copy so we never mutate the caller's object. Returns None on a
+    non-object / array checkpoint (fail-closed)."""
+    if not isinstance(checkpoint, dict):
+        return None
+    signed = dict(checkpoint)
+    signed.pop("log_signature", None)
+    return signed
+
+
+def witness_signing_digest(checkpoint: Any):
+    """The exact bytes a witness signs / a verifier re-derives: the domain tag
+    followed by the canonical committed checkpoint, then SHA-256'd to a 32-byte
+    digest. Ed25519 is applied over this digest (matching the log-signature
+    convention). Returns the 32-byte digest, or None (fail-closed)."""
+    signed = _witness_committed_checkpoint(checkpoint)
+    if signed is None:
+        return None
+    preimage = WITNESS_DOMAIN_TAG.encode("utf-8") + canonicalize(signed).encode("utf-8")
+    return hashlib.sha256(preimage).digest()
+
+
+def _witness_hex_of(h: Any) -> str:
+    return _re.sub(r"^sha256:", "", str(h or ""), flags=_re.IGNORECASE).lower()
+
+
+def _ed25519_verify_bytes(digest: bytes, pub_b64u: Any) -> bool:
+    """Ed25519 verify the RAW 32-byte digest under a base64url SPKI-DER key. This
+    mirrors crypto.verify(null, digest, key) in witness.js (which signs/verifies
+    the digest, not the message)."""
+    def _inner(sig_b64u: Any) -> bool:
+        try:
+            if not pub_b64u or not sig_b64u:
+                return False
+            key = load_der_public_key(_b64url_decode(pub_b64u))
+            if not isinstance(key, Ed25519PublicKey):
+                return False
+            key.verify(_b64url_decode(sig_b64u), digest)
+            return True
+        except Exception:
+            return False
+    return _inner
+
+
+def verify_witness_cosignature(checkpoint: Any, cosignature: Any, pinned_witness_key: Any) -> dict:
+    """Verify a single witness cosignature over a checkpoint. Mirrors witness.js
+    verifyWitnessCosignature. Returns {verified, witness_id, reason?}. FAIL-CLOSED:
+    an unknown/unpinned witness refuses; a signature over different bytes refuses;
+    a cosignature echoed for a different checkpoint refuses before the crypto runs."""
+    def refuse(reason: str) -> dict:
+        return {"verified": False, "witness_id": None, "reason": reason}
+
+    if not isinstance(checkpoint, dict):
+        return refuse("checkpoint is missing or not an object")
+    if not isinstance(cosignature, dict):
+        return refuse("cosignature is missing or not an object")
+    if not isinstance(pinned_witness_key, dict):
+        return refuse("pinnedWitnessKey is missing")
+
+    pinned_id = pinned_witness_key.get("witness_id")
+    pinned_pub = pinned_witness_key.get("public_key")
+    if not isinstance(pinned_id, str) or not pinned_id:
+        return refuse("pinnedWitnessKey.witness_id is missing")
+    if not isinstance(pinned_pub, str) or not pinned_pub:
+        return refuse("pinnedWitnessKey.public_key is missing")
+
+    co_id = cosignature.get("witness_id")
+    if not isinstance(co_id, str) or not co_id:
+        return refuse("cosignature.witness_id is missing")
+    if co_id != pinned_id:
+        return refuse("cosignature witness_id is not the pinned witness (unpinned witness refused)")
+
+    if cosignature.get("alg") is not None and cosignature.get("alg") != WITNESS_VERSION:
+        return refuse(f"cosignature alg must be {WITNESS_VERSION} when present")
+
+    sig = cosignature.get("signature")
+    if not isinstance(sig, str) or not sig:
+        return refuse("cosignature.signature is missing")
+
+    # Echoed-head guards: a present-and-wrong echoed field refuses even before the
+    # crypto runs (absent is allowed — the signed digest already binds all bytes).
+    if "tree_size" in cosignature and cosignature.get("tree_size") is not None \
+            and cosignature.get("tree_size") != checkpoint.get("tree_size"):
+        return refuse("cosignature tree_size does not match the checkpoint (cosignature for a different head)")
+    if "root_hash" in cosignature and cosignature.get("root_hash") is not None \
+            and _witness_hex_of(cosignature.get("root_hash")) != _witness_hex_of(checkpoint.get("root_hash")):
+        return refuse("cosignature root_hash does not match the checkpoint (cosignature for a different head)")
+    if "log_key_id" in cosignature and cosignature.get("log_key_id") is not None \
+            and cosignature.get("log_key_id") != checkpoint.get("log_key_id"):
+        return refuse("cosignature log_key_id does not match the checkpoint (cosignature for a different log)")
+
+    digest = witness_signing_digest(checkpoint)
+    if digest is None:
+        return refuse("checkpoint could not be canonicalized")
+
+    if not _ed25519_verify_bytes(digest, pinned_pub)(sig):
+        return refuse("cosignature does not verify over the checkpoint committed bytes")
+    return {"verified": True, "witness_id": co_id}
+
+
+def require_witness_quorum(checkpoint: Any, cosignatures: Any, pinned_witness_keys: Any, k: Any) -> dict:
+    """Require >= k DISTINCT pinned witnesses to have validly cosigned the SAME
+    head. Mirrors witness.js requireWitnessQuorum. Duplicate witness_ids count
+    ONCE; unpinned / different-head / non-verifying cosignatures are ignored and
+    recorded in ``reasons``. FAIL-CLOSED: bad inputs return ok False."""
+    reasons: list = []
+
+    if not (isinstance(k, int) and not isinstance(k, bool)) or k < 1:
+        reasons.append("k must be an integer >= 1")
+        return {"ok": False, "met": 0, "required": (k if isinstance(k, (int, float)) and not isinstance(k, bool) else 0),
+                "witness_ids": [], "reasons": reasons}
+    if not isinstance(checkpoint, dict):
+        reasons.append("checkpoint is missing or not an object")
+        return {"ok": False, "met": 0, "required": k, "witness_ids": [], "reasons": reasons}
+    if not isinstance(cosignatures, list):
+        reasons.append("cosignatures must be an array")
+        return {"ok": False, "met": 0, "required": k, "witness_ids": [], "reasons": reasons}
+    if not isinstance(pinned_witness_keys, list):
+        reasons.append("pinnedWitnessKeys must be an array")
+        return {"ok": False, "met": 0, "required": k, "witness_ids": [], "reasons": reasons}
+
+    # Build the pinned-witness directory. A duplicated witness_id is ambiguous and
+    # is dropped rather than trusted (fail-closed).
+    pinned_by_id: dict = {}
+    seen_pinned: set = set()
+    dup_pinned: set = set()
+    for w in pinned_witness_keys:
+        wid = w.get("witness_id") if isinstance(w, dict) else None
+        if not isinstance(wid, str) or not wid:
+            reasons.append("a pinned witness entry is missing witness_id (dropped)")
+            continue
+        if wid in seen_pinned:
+            dup_pinned.add(wid)
+            continue
+        seen_pinned.add(wid)
+        pinned_by_id[wid] = w
+    for wid in dup_pinned:
+        pinned_by_id.pop(wid, None)
+        reasons.append(f'pinned witness_id "{wid}" appears more than once (dropped as ambiguous)')
+
+    met: set = set()
+    for cosig in cosignatures:
+        cid = cosig.get("witness_id") if isinstance(cosig, dict) else None
+        if not isinstance(cid, str) or not cid:
+            reasons.append("a cosignature is missing witness_id (ignored)")
+            continue
+        if cid in met:
+            reasons.append(f'duplicate cosignature from witness "{cid}" (counted once)')
+            continue
+        pinned = pinned_by_id.get(cid)
+        if not pinned:
+            reasons.append(f'cosignature from unpinned witness "{cid}" (ignored)')
+            continue
+        res = verify_witness_cosignature(checkpoint, cosig, pinned)
+        if res["verified"]:
+            met.add(res["witness_id"])
+        else:
+            reasons.append(f'cosignature from "{cid}" did not verify: {res.get("reason")}')
+
+    witness_ids = sorted(met)
+    return {"ok": len(met) >= k, "met": len(met), "required": k, "witness_ids": witness_ids, "reasons": reasons}
+
+
+# =============================================================================
+# Checkpoint CONSISTENCY proofs (consistency.js port) — EP-MERKLE-v2
+# =============================================================================
+# RFC 6962 §2.1.2 append-only consistency verifier + reference prover. Reused by
+# the consumption-proof profile below. Byte-identical to consistency.js: same
+# EP-MERKLE-v2 branch construction (SHA-256(0x01 || leftHex || rightHex) -> hex).
+
+CONSISTENCY_ALG = "EP-MERKLE-v2"
+
+
+def _consistency_hex_of(h: Any) -> str:
+    return _re.sub(r"^sha256:", "", str(h or ""), flags=_re.IGNORECASE).lower()
+
+
+def _is_power_of_two(n: int) -> bool:
+    return n > 0 and (n & (n - 1)) == 0
+
+
+def _largest_power_of_two_less_than(n: int) -> int:
+    k = 1
+    while k * 2 < n:
+        k *= 2
+    return k
+
+
+def verify_checkpoint_consistency(old_root: Any, old_size: Any, new_root: Any, new_size: Any, proof: Any) -> bool:
+    """Verify an RFC 6962 §2.1.2 checkpoint consistency proof: the size-newSize
+    tree is a prefix-preserving append-only extension of the size-oldSize tree.
+    Mirrors consistency.js verifyCheckpointConsistency. FAIL-CLOSED."""
+    if not (isinstance(old_size, int) and not isinstance(old_size, bool)):
+        return False
+    if not (isinstance(new_size, int) and not isinstance(new_size, bool)):
+        return False
+    if old_size < 0 or new_size < 0 or old_size > new_size:
+        return False
+    if not isinstance(proof, list):
+        return False
+    if len(proof) > 64:
+        return False
+    old_r = _consistency_hex_of(old_root)
+    new_r = _consistency_hex_of(new_root)
+    if not old_r or not new_r:
+        return False
+
+    if old_size == new_size:
+        return len(proof) == 0 and old_r == new_r
+    if old_size == 0:
+        return False
+    if len(proof) == 0:
+        return False
+
+    path = [_consistency_hex_of(h) for h in proof]
+    if any(not h for h in path):
+        return False
+
+    node = path
+    if _is_power_of_two(old_size):
+        seed = old_r
+    else:
+        seed = node[0]
+        node = node[1:]
+
+    fn = old_size - 1
+    sn = new_size - 1
+    while fn % 2 == 1:
+        fn //= 2
+        sn //= 2
+
+    fr = seed
+    sr = seed
+
+    for c in node:
+        if sn == 0:
+            return False
+        if fn % 2 == 1 or fn == sn:
+            fr = _hash_pair_v2(c, fr)
+            sr = _hash_pair_v2(c, sr)
+            while fn % 2 == 0 and fn != 0:
+                fn //= 2
+                sn //= 2
+        else:
+            sr = _hash_pair_v2(sr, c)
+        fn //= 2
+        sn //= 2
+
+    return sn == 0 and fr == old_r and sr == new_r
+
+
+def _consistency_merkle_root(leaves: list) -> str:
+    """Reference EP-MERKLE-v2 root over already-hashed leaf hex. EXPERIMENTAL —
+    test/tooling helper (mirrors consistency.js merkleRoot)."""
+    d = [_consistency_hex_of(x) for x in leaves]
+    if len(d) == 0:
+        raise ValueError("merkleRoot: empty tree has no defined EP root")
+    if len(d) == 1:
+        return d[0]
+    k = _largest_power_of_two_less_than(len(d))
+    return _hash_pair_v2(_consistency_merkle_root(d[:k]), _consistency_merkle_root(d[k:]))
+
+
+def _consistency_subproof(m: int, d: list, b: bool) -> list:
+    n = len(d)
+    if m == n:
+        return [] if b else [_consistency_merkle_root(d)]
+    k = _largest_power_of_two_less_than(n)
+    if m <= k:
+        return _consistency_subproof(m, d[:k], b) + [_consistency_merkle_root(d[k:n])]
+    return _consistency_subproof(m - k, d[k:n], False) + [_consistency_merkle_root(d[:k])]
+
+
+def build_consistency_proof(m: int, n: int, leaves: list) -> list:
+    """Reference RFC 6962 consistency proof between two sizes (test/tooling helper;
+    mirrors consistency.js buildConsistencyProof). EXPERIMENTAL."""
+    if not isinstance(leaves, list) or len(leaves) < n:
+        raise ValueError("buildConsistencyProof: need at least n leaf hashes")
+    if not (m >= 1 and m <= n):
+        raise ValueError("buildConsistencyProof: require 1 <= m <= n")
+    if m == n:
+        return []
+    return _consistency_subproof(m, [_consistency_hex_of(x) for x in leaves[:n]], True)
+
+
+# =============================================================================
+# EP-SMT-CONSUME-v1 — third-party consumption proofs (consumption-proof.js port)
+# =============================================================================
+# Sparse-Merkle-over-nonce one-time consumption. Proves a nonce transitioned
+# ABSENT -> PRESENT exactly once between two append-only-linked heads, so
+# double-consumption becomes offline-detectable. Byte-identical to
+# consumption-proof.js: REUSES the EP-MERKLE-v2 branch hashing above (does NOT
+# invent a second scheme) and the same distinct 0x02 (present) / 0x03 (default)
+# leaf domains. FAIL-CLOSED with a DISTINCT reason per failure.
+
+CONSUMPTION_PROFILE = "EP-SMT-CONSUME-v1"
+CONSUMPTION_LEAF_DOMAIN = "EP-SMT-CONSUME-v1"
+SMT_DEPTH = 32
+
+_SMT_HEX_ONLY = _re.compile(r"^[0-9a-f]+$")
+
+
+def _smt_hex_of(h: Any) -> str:
+    return _re.sub(r"^sha256:", "", str("" if h is None else h), flags=_re.IGNORECASE).lower()
+
+
+def _smt_is_hex64(h: Any) -> bool:
+    return isinstance(h, str) and len(h) == 64 and bool(_SMT_HEX_ONLY.match(h))
+
+
+# EP-MERKLE-v2 branch hash: SHA-256(0x01 || leftHex || rightHex) -> hex. Byte-
+# identical to _hash_pair_v2 above (kept in sync deliberately, not re-derived).
+def _smt_hash_branch(left: str, right: str) -> str:
+    return hashlib.sha256(b"\x01" + left.encode("utf-8") + right.encode("utf-8")).hexdigest()
+
+
+def _smt_present_leaf(key_hex: str, value_hex: str) -> str:
+    # PRESENT leaf: SHA-256(0x02 || keyHex || valueHex) -> hex.
+    return hashlib.sha256(b"\x02" + key_hex.encode("utf-8") + value_hex.encode("utf-8")).hexdigest()
+
+
+def _smt_default_leaf() -> str:
+    # DEFAULT (absent) leaf: SHA-256(0x03) -> hex.
+    return hashlib.sha256(b"\x03").hexdigest()
+
+
+def _smt_nonce_key_hex(nonce: Any) -> str:
+    return hashlib.sha256(str(nonce).encode("utf-8")).hexdigest()
+
+
+def _smt_path_bit(key_hex: str, i: int) -> int:
+    byte_index = i >> 3
+    byte = int(key_hex[byte_index * 2:byte_index * 2 + 2], 16)
+    return (byte >> (7 - (i & 7))) & 1
+
+
+def _smt_fold_to_root(leaf_hex: str, siblings: Any, key_hex: str, depth: int):
+    if not _smt_is_hex64(leaf_hex):
+        return None
+    if not isinstance(siblings, list) or len(siblings) != depth:
+        return None
+    node = leaf_hex
+    for level in range(depth - 1, -1, -1):
+        sib = _smt_hex_of(siblings[level])
+        if not _smt_is_hex64(sib):
+            return None
+        bit = _smt_path_bit(key_hex, level)
+        node = _smt_hash_branch(node, sib) if bit == 0 else _smt_hash_branch(sib, node)
+    return node
+
+
+def _smt_check_sub(sub: Any, key_hex: str, label: str) -> dict:
+    if not isinstance(sub, dict):
+        return {"ok": False, "reason": f"{label}_missing"}
+    root = _smt_hex_of(sub.get("root"))
+    if not _smt_is_hex64(root):
+        return {"ok": False, "reason": f"{label}_root_malformed"}
+    if not isinstance(sub.get("siblings"), list) or len(sub.get("siblings")) != SMT_DEPTH:
+        return {"ok": False, "reason": f"{label}_siblings_wrong_length"}
+    if sub.get("present") is True:
+        value = _smt_hex_of(sub.get("value"))
+        if not _smt_is_hex64(value):
+            return {"ok": False, "reason": f"{label}_present_value_malformed"}
+        leaf = _smt_present_leaf(key_hex, value)
+    elif sub.get("present") is False:
+        leaf = _smt_default_leaf()
+    else:
+        return {"ok": False, "reason": f"{label}_present_flag_missing"}
+    reconstructed = _smt_fold_to_root(leaf, sub.get("siblings"), key_hex, SMT_DEPTH)
+    if reconstructed is None:
+        return {"ok": False, "reason": f"{label}_sibling_malformed"}
+    if reconstructed != root:
+        return {"ok": False, "reason": f"{label}_does_not_reconstruct_root"}
+    return {"ok": True}
+
+
+def verify_consumption_proof(bundle: Any) -> dict:
+    """Verify a third-party CONSUMPTION proof bundle: a nonce transitioned ABSENT
+    -> PRESENT exactly once between two witnessed, append-only-linked heads.
+    Mirrors consumption-proof.js verifyConsumptionProof. FAIL-CLOSED with a
+    distinct reason; the ``present`` flag is never inferred."""
+    checks = {"non_inclusion": False, "inclusion": False, "consistency": False}
+
+    def fail(reason: str) -> dict:
+        return {"valid": False, "checks": checks, "reason": reason}
+
+    if not isinstance(bundle, dict):
+        return fail("bundle_missing")
+    if not isinstance(bundle.get("nonce"), str) or len(bundle.get("nonce")) == 0:
+        return fail("nonce_missing")
+
+    key_hex = _smt_nonce_key_hex(bundle["nonce"])
+
+    ni = bundle.get("non_inclusion_proof")
+    if not isinstance(ni, dict):
+        return fail("non_inclusion_proof_missing")
+    if ni.get("present") is not False:
+        return fail("non_inclusion_proof_must_assert_absent")
+    ni_res = _smt_check_sub(ni, key_hex, "non_inclusion")
+    if not ni_res["ok"]:
+        return fail(ni_res["reason"])
+    checks["non_inclusion"] = True
+
+    inc = bundle.get("inclusion_proof")
+    if not isinstance(inc, dict):
+        return fail("inclusion_proof_missing")
+    if inc.get("present") is not True:
+        return fail("inclusion_proof_must_assert_present")
+    inc_res = _smt_check_sub(inc, key_hex, "inclusion")
+    if not inc_res["ok"]:
+        return fail(inc_res["reason"])
+    checks["inclusion"] = True
+
+    if _smt_hex_of(ni.get("root")) == _smt_hex_of(inc.get("root")):
+        return fail("smt_root_unchanged_no_transition")
+
+    cps = bundle.get("checkpoints")
+    if not isinstance(cps, dict) or not cps.get("h1") or not cps.get("h2"):
+        return fail("checkpoints_missing")
+    h1 = cps.get("h1")
+    h2 = cps.get("h2")
+    h1_size = h1.get("tree_size") if isinstance(h1, dict) else None
+    h2_size = h2.get("tree_size") if isinstance(h2, dict) else None
+    h1_root = _smt_hex_of(h1.get("root_hash")) if isinstance(h1, dict) else ""
+    h2_root = _smt_hex_of(h2.get("root_hash")) if isinstance(h2, dict) else ""
+    if not (isinstance(h1_size, int) and not isinstance(h1_size, bool)) or h1_size < 1 or not _smt_is_hex64(h1_root):
+        return fail("checkpoint_h1_malformed")
+    if not (isinstance(h2_size, int) and not isinstance(h2_size, bool)) or h2_size < 1 or not _smt_is_hex64(h2_root):
+        return fail("checkpoint_h2_malformed")
+    if not (h1_size < h2_size):
+        return fail("checkpoint_h1_not_before_h2")
+    if not isinstance(bundle.get("consistency_proof"), list):
+        return fail("consistency_proof_missing")
+    if not verify_checkpoint_consistency(h1_root, h1_size, h2_root, h2_size, bundle.get("consistency_proof")):
+        return fail("consistency_proof_not_append_only")
+    checks["consistency"] = True
+
+    return {"valid": True, "checks": checks, "reason": None}
+
+
+# --- Reference sparse consumption tree (test/tooling ONLY) -------------------
+# Mirrors consumption-proof.js ReferenceConsumptionTree. NOT a production ledger.
+
+def _smt_build_empty_levels(depth: int) -> list:
+    empty = [None] * (depth + 1)
+    empty[depth] = _smt_default_leaf()
+    for level in range(depth - 1, -1, -1):
+        empty[level] = _smt_hash_branch(empty[level + 1], empty[level + 1])
+    return empty
+
+
+class ReferenceConsumptionTree:
+    """Reference sparse Merkle tree over SMT_DEPTH bits (keys = hex SHA-256(nonce);
+    only PRESENT leaves stored). EXPERIMENTAL — tests/tooling only."""
+
+    def __init__(self, depth: int = SMT_DEPTH):
+        self.depth = depth
+        self.empty = _smt_build_empty_levels(depth)
+        self.present: dict = {}
+
+    def insert(self, nonce: Any, value: Any = None) -> dict:
+        key_hex = _smt_nonce_key_hex(nonce)
+        vh = _smt_hex_of(value)
+        if vh and _smt_is_hex64(vh):
+            value_hex = vh
+        else:
+            src = value if value is not None else nonce
+            value_hex = hashlib.sha256(str(src).encode("utf-8")).hexdigest()
+        self.present[key_hex] = value_hex
+        return {"keyHex": key_hex, "valueHex": value_hex}
+
+    def _bits_of(self, key_hex: str, n: int) -> str:
+        return "".join(str(_smt_path_bit(key_hex, i)) for i in range(n))
+
+    def _root_rec(self, level: int, prefix_bits: str) -> str:
+        if level == self.depth:
+            for key_hex, value_hex in self.present.items():
+                if self._bits_of(key_hex, self.depth) == prefix_bits:
+                    return _smt_present_leaf(key_hex, value_hex)
+            return self.empty[self.depth]
+        any_present = False
+        for key_hex in self.present:
+            if self._bits_of(key_hex, level).startswith(prefix_bits) or prefix_bits == "":
+                any_present = True
+                break
+        if not any_present:
+            return self.empty[level]
+        left = self._root_rec(level + 1, prefix_bits + "0")
+        right = self._root_rec(level + 1, prefix_bits + "1")
+        return _smt_hash_branch(left, right)
+
+    def root(self) -> str:
+        return self._root_rec(0, "")
+
+    def prove(self, nonce: Any) -> dict:
+        key_hex = _smt_nonce_key_hex(nonce)
+        siblings = [None] * self.depth
+        for level in range(self.depth):
+            bit = _smt_path_bit(key_hex, level)
+            prefix = self._bits_of(key_hex, level)
+            sibling_prefix = prefix + ("1" if bit == 0 else "0")
+            siblings[level] = self._root_rec(level + 1, sibling_prefix)
+        value_hex = self.present.get(key_hex)
+        if value_hex is None:
+            return {"root": self.root(), "siblings": siblings, "present": False}
+        return {"root": self.root(), "siblings": siblings, "present": True, "value": value_hex}
+
+
+# =============================================================================
+# EP-INITIATOR-ATTESTATION-v1 — WHICH software asked (initiator-attestation.js)
+# =============================================================================
+# Field validation + HOSTILE free-text neutralization (strip/escape bidi + C0/C1
+# controls + zero-width/BOM; FLAG homoglyph risk). Byte-identical to
+# initiator-attestation.js. FAIL-CLOSED: any missing required field, wrong type,
+# unknown member, or malformed digest rejects; a malformed attestation is never
+# repaired into a passing one; a non-string statement is the empty statement.
+
+INITIATOR_ATTESTATION_VERSION = "EP-INITIATOR-ATTESTATION-v1"
+INITIATOR_ATTESTATION_FIELD = "initiator_software"
+INITIATOR_STATEMENT_MAX = 280
+
+_ATTESTATION_MEMBERS = ("@version", "model_id", "model_version", "tool_chain_digest", "statement")
+_ATTESTATION_MEMBER_SET = set(_ATTESTATION_MEMBERS)
+_REQUIRED_STRING_MEMBERS = ("model_id", "model_version")
+
+_INITIATOR_HEX64 = _re.compile(r"^[0-9a-f]{64}$")
+
+# Bidi controls (UBA formatting + isolates + marks): LRE RLE PDF LRO RLO (202A-E),
+# LRI RLI FSI PDI (2066-9), LRM RLM ALM (200E, 200F, 061C).
+_BIDI_CODEPOINTS = frozenset({
+    0x202a, 0x202b, 0x202c, 0x202d, 0x202e,
+    0x2066, 0x2067, 0x2068, 0x2069,
+    0x200e, 0x200f, 0x061c,
+})
+# Zero-width / joiners / BOM: ZWSP ZWNJ ZWJ (200B-D), WORD JOINER (2060), BOM (FEFF).
+_INVISIBLE_CODEPOINTS = frozenset({0x200b, 0x200c, 0x200d, 0x2060, 0xfeff})
+
+
+def normalize_digest(h: Any) -> str:
+    """Normalize a claimed SHA-256 to bare lowercase hex, or '' when malformed.
+    Accepts an OPTIONAL "sha256:" prefix. Mirrors initiator-attestation.js
+    normalizeDigest (fail-closed: a bad digest never compares-equal to a real one)."""
+    s = _re.sub(r"^sha256:", "", str("" if h is None else h), flags=_re.IGNORECASE).lower()
+    return s if _INITIATOR_HEX64.match(s) else ""
+
+
+def neutralize_statement(statement: Any) -> dict:
+    """Render a HOSTILE free-text statement into a form safe to place in front of a
+    human. Mirrors initiator-attestation.js neutralizeStatement. Non-string ->
+    empty. Dangerous codepoints are ESCAPED (visible ``<U+XXXX>``), not dropped;
+    a homoglyph / mixed-script risk is FLAGGED. Caps by codepoints BEFORE escaping."""
+    import unicodedata as _ud
+
+    raw = statement if isinstance(statement, str) else ""
+
+    cps = list(raw)  # Python iterates str by code point already
+    truncated = len(cps) > INITIATOR_STATEMENT_MAX
+    bounded = cps[:INITIATOR_STATEMENT_MAX] if truncated else cps
+
+    escaped: list = []
+    changed = False
+    has_non_ascii_letter = False
+    has_ascii_letter = False
+    has_confusable_script = False
+
+    out_chars: list = []
+    for ch in bounded:
+        cp = ord(ch)
+
+        if ("A" <= ch <= "Z") or ("a" <= ch <= "z"):
+            has_ascii_letter = True
+        if cp > 0x7f and _ud.category(ch).startswith("L"):
+            has_non_ascii_letter = True
+        # Cyrillic U+0400-04FF or Greek U+0370-03FF (matches CYRILLIC_RE/GREEK_RE).
+        if (0x0400 <= cp <= 0x04ff) or (0x0370 <= cp <= 0x03ff):
+            has_confusable_script = True
+
+        is_bidi = cp in _BIDI_CODEPOINTS
+        is_invisible = cp in _INVISIBLE_CODEPOINTS
+        # C0 controls 0x00-0x1F and C1 controls 0x80-0x9F, minus tab/newline/cr.
+        is_control = ((cp <= 0x1f and cp not in (0x09, 0x0a, 0x0d)) or (0x7f <= cp <= 0x9f))
+
+        if is_bidi or is_invisible or is_control:
+            changed = True
+            escaped.append(cp)
+            out_chars.append("<U+" + format(cp, "X").rjust(4, "0") + ">")
+        else:
+            out_chars.append(ch)
+
+    homoglyph_risk = has_confusable_script or (has_non_ascii_letter and has_ascii_letter)
+
+    return {
+        "safe": "".join(out_chars),
+        "changed": changed,
+        "homoglyph_risk": homoglyph_risk,
+        "escaped_codepoints": escaped,
+        "truncated": truncated,
+    }
+
+
+def validate_initiator_attestation(att: Any) -> dict:
+    """FAIL-CLOSED structural validation. Mirrors initiator-attestation.js
+    validateInitiatorAttestation. Enforces object shape, the closed member set
+    (unknown member => reject), required non-empty model_id/model_version, correct
+    @version when present, well-formed tool_chain_digest, and a string statement
+    within the cap. The ``normalized`` form carries a "sha256:"-prefixed digest and
+    the NEUTRALIZED statement. On any error: ok False, normalized None."""
+    errors: list = []
+
+    def fail() -> dict:
+        return {"ok": False, "normalized": None, "errors": errors, "statement_report": None}
+
+    if not isinstance(att, dict):
+        errors.append("initiator attestation must be a non-array object")
+        return fail()
+
+    for key in att.keys():
+        if key not in _ATTESTATION_MEMBER_SET:
+            errors.append(f'unknown member "{key}" (allowed: {", ".join(_ATTESTATION_MEMBERS)})')
+
+    if att.get("@version") is not None and att.get("@version") != INITIATOR_ATTESTATION_VERSION:
+        errors.append(f"@version must be {INITIATOR_ATTESTATION_VERSION} when present")
+
+    for key in _REQUIRED_STRING_MEMBERS:
+        v = att.get(key)
+        if not isinstance(v, str) or len(v) == 0:
+            errors.append(f"{key} is required and must be a non-empty string")
+
+    digest_hex = normalize_digest(att.get("tool_chain_digest"))
+    if att.get("tool_chain_digest") is None:
+        errors.append("tool_chain_digest is required")
+    elif digest_hex == "":
+        errors.append('tool_chain_digest must be a well-formed SHA-256 (optionally "sha256:"-prefixed 64-hex)')
+
+    statement_report = None
+    if "statement" in att and att.get("statement") is not None:
+        stmt = att.get("statement")
+        if not isinstance(stmt, str):
+            errors.append("statement, when present, must be a string")
+        elif len(list(stmt)) > INITIATOR_STATEMENT_MAX:
+            errors.append(f"statement exceeds the {INITIATOR_STATEMENT_MAX}-character cap")
+
+    if errors:
+        return fail()
+
+    if "statement" in att and att.get("statement") is not None:
+        statement_report = neutralize_statement(att.get("statement"))
+
+    normalized = {
+        "@version": INITIATOR_ATTESTATION_VERSION,
+        "model_id": att.get("model_id"),
+        "model_version": att.get("model_version"),
+        "tool_chain_digest": f"sha256:{digest_hex}",
+    }
+    if statement_report:
+        normalized["statement"] = statement_report["safe"]
+
+    return {"ok": True, "normalized": normalized, "errors": errors, "statement_report": statement_report}
+
+
+def bind_into(action: Any, att: Any) -> dict:
+    """Bind a validated initiator attestation into the ACTION digest domain so
+    model_id/model_version/tool_chain_digest are covered by the human's signature.
+    Mirrors initiator-attestation.js bindInto. Does NOT change the frozen action
+    hash: returns a NEW action with the normalized attestation under the reserved
+    member and a digest_preview computed the SAME way ("sha256:"+sha256(canonicalize)).
+    FAIL CLOSED: raises on a non-object action, an invalid attestation, or an
+    action already carrying a DIFFERENT value under the reserved member."""
+    if not isinstance(action, dict):
+        raise TypeError("bindInto requires the canonical Action Object")
+    v = validate_initiator_attestation(att)
+    if not v["ok"]:
+        raise ValueError(f"bindInto: invalid initiator attestation: {'; '.join(v['errors'])}")
+    existing = action.get(INITIATOR_ATTESTATION_FIELD)
+    if existing is not None and canonicalize(existing) != canonicalize(v["normalized"]):
+        raise ValueError(
+            f"bindInto: action already carries a different {INITIATOR_ATTESTATION_FIELD}; refusing to overwrite"
+        )
+    bound = dict(action)
+    bound[INITIATOR_ATTESTATION_FIELD] = v["normalized"]
+    digest_preview = f"sha256:{_sha256_hex(canonicalize(bound))}"
+    return {"action": bound, "attestation": v["normalized"], "digest_preview": digest_preview}
+
+
+# NOTE (honest scope): timestamp-proof (RFC 3161 / EP-TIMESTAMP-PROOF) is NOT
+# ported here. The JS reference (packages/verify/timestamp-proof.js) is a
+# purpose-built minimal DER/CMS reader in pure node:crypto. `cryptography` (this
+# package's only dependency) exposes no RFC 3161 TimeStampToken / TSTInfo API and
+# no generic CMS SignedData parser that returns the signed bytes for the
+# id-ct-TSTInfo eContentType, so a faithful port would require hand-rolling the
+# same DER/CMS parser from scratch. That is deferred rather than force-fit;
+# RFC 3161 timestamp verification remains JS-only for now.

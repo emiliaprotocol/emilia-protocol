@@ -22,33 +22,58 @@ type canonVec struct {
 	ExpectedDigest string `json:"expected_digest"`
 }
 
+// currencyVec is one EP-CURRENCY-v1 vector body: the raw args the JS/Python
+// runners pass to evaluateCurrency, plus the expected two-valued status. valid
+// iff EvaluateCurrency(args).currency_at_T.status == expect_status.
+type currencyVec struct {
+	Args         map[string]any `json:"args"`
+	ExpectStatus string         `json:"expect_status"`
+}
+
+// witnessVec is one EP-WITNESS-v1 k-of-n quorum vector body. valid iff
+// RequireWitnessQuorum(...).OK. `k` is kept raw so a non-integer/absent k drives
+// the same fail-closed refusal the JS/Python runners get.
+type witnessVec struct {
+	Checkpoint   map[string]any   `json:"checkpoint"`
+	Cosignatures []map[string]any `json:"cosignatures"`
+	Pinned       []struct {
+		WitnessID string `json:"witness_id"`
+		PublicKey string `json:"public_key"`
+	} `json:"pinned"`
+	K json.RawMessage `json:"k"`
+}
+
 type vec struct {
-	ID                string         `json:"id"`
-	PublicKey         string         `json:"public_key"`
-	Document          map[string]any `json:"document"`
-	Signoff           map[string]any `json:"signoff"`
-	ApproverPublicKey string         `json:"approver_public_key"`
-	RPID              string         `json:"rp_id"`
-	Quorum            map[string]any `json:"quorum"`
-	Revocation        map[string]any `json:"revocation"`
-	Target            map[string]any `json:"target"`
-	RevokerKeys       map[string]any `json:"revoker_keys"`
-	MaxAgeSeconds     *float64       `json:"max_age_seconds"`
-	Now               string         `json:"now"`
-	TimeAttestation   map[string]any `json:"time_attestation"`
-	TSAKeys           map[string]any `json:"tsa_keys"`
-	ExpectedHash      string         `json:"expected_hash"`
-	NotBefore         string         `json:"not_before"`
-	NotAfter          string         `json:"not_after"`
-	TrustReceipt      map[string]any `json:"trust_receipt"`
-	Verification      map[string]any `json:"verification"`
-	VerifyOpts        map[string]any `json:"verify_opts"`
-	ProvenanceChain   map[string]any `json:"provenance_chain"`
-	DelegationKeys    map[string]any `json:"delegation_keys"`
-	NowMs             *float64       `json:"now_ms"`
-	EvidenceRecord    map[string]any `json:"evidence_record"`
-	ProtectedHash     string         `json:"protected_hash"`
-	Canonicalization  *canonVec      `json:"canonicalization"`
+	ID                   string         `json:"id"`
+	PublicKey            string         `json:"public_key"`
+	Document             map[string]any `json:"document"`
+	Signoff              map[string]any `json:"signoff"`
+	ApproverPublicKey    string         `json:"approver_public_key"`
+	RPID                 string         `json:"rp_id"`
+	Quorum               map[string]any `json:"quorum"`
+	Revocation           map[string]any `json:"revocation"`
+	Target               map[string]any `json:"target"`
+	RevokerKeys          map[string]any `json:"revoker_keys"`
+	MaxAgeSeconds        *float64       `json:"max_age_seconds"`
+	Now                  string         `json:"now"`
+	TimeAttestation      map[string]any `json:"time_attestation"`
+	TSAKeys              map[string]any `json:"tsa_keys"`
+	ExpectedHash         string         `json:"expected_hash"`
+	NotBefore            string         `json:"not_before"`
+	NotAfter             string         `json:"not_after"`
+	TrustReceipt         map[string]any `json:"trust_receipt"`
+	Verification         map[string]any `json:"verification"`
+	VerifyOpts           map[string]any `json:"verify_opts"`
+	ProvenanceChain      map[string]any `json:"provenance_chain"`
+	DelegationKeys       map[string]any `json:"delegation_keys"`
+	NowMs                *float64       `json:"now_ms"`
+	EvidenceRecord       map[string]any `json:"evidence_record"`
+	ProtectedHash        string         `json:"protected_hash"`
+	Canonicalization     *canonVec      `json:"canonicalization"`
+	Currency             *currencyVec   `json:"currency"`
+	InitiatorAttestation map[string]any `json:"initiator_attestation"`
+	ConsumptionProof     map[string]any `json:"consumption_proof"`
+	WitnessQuorum        *witnessVec    `json:"witness_quorum"`
 }
 
 // EP-CANONICALIZATION-v1 differential branch. Same gate as the JS runner
@@ -203,6 +228,76 @@ func strictScanOK(raw string) bool {
 	return true
 }
 
+// currencyArgsFromMap converts a raw EP-CURRENCY-v1 args object (as the JS and
+// Python runners pass to evaluateCurrency) into the typed CurrencyArgs the Go
+// port takes, preserving the JS optional/undefined semantics: a missing field
+// stays nil/false so the verifier fails closed exactly as JS does. Mirrors the
+// conversion in optin_profile_vectors_test.go. Numbers arrive as float64 because
+// the runner decodes with the standard json.Unmarshal (no UseNumber).
+func currencyArgsFromMap(args map[string]any) emiliaverify.CurrencyArgs {
+	ca := emiliaverify.CurrencyArgs{}
+	if r, ok := args["receipt"].(map[string]any); ok {
+		ah, _ := r["action_hash"].(string)
+		ca.Receipt = &emiliaverify.CurrencyReceipt{ActionHash: ah}
+	}
+	if b, ok := args["authentic_as_of_commit"].(bool); ok {
+		ca.AuthenticAsOfCommit = b
+	}
+	if now, ok := args["now"].(string); ok {
+		ca.Now = &now
+	}
+	if v, present := args["maxStalenessSeconds"]; present {
+		if f, ok := v.(float64); ok {
+			ca.MaxStalenessSeconds = &f
+		} else {
+			// Present but non-numeric: model an invalid bound so the verifier
+			// fails closed exactly as JS does for a non-finite bound.
+			neg := -1.0
+			ca.MaxStalenessSeconds = &neg
+		}
+	}
+	if b, ok := args["freshHeadRequired"].(bool); ok {
+		ca.FreshHeadRequired = b
+	}
+	if fh, present := args["freshHead"]; present && fh != nil {
+		if fhm, ok := fh.(map[string]any); ok {
+			head := &emiliaverify.FreshHead{}
+			head.ObservedAt, _ = fhm["observed_at"].(string)
+			head.IssuedAt, _ = fhm["issued_at"].(string)
+			if b, ok := fhm["revoked"].(bool); ok {
+				head.Revoked = b
+			}
+			head.TargetHash, _ = fhm["target_hash"].(string)
+			if rl, ok := fhm["revoked_target_hashes"].([]any); ok {
+				for _, h := range rl {
+					if hs, ok := h.(string); ok {
+						head.RevokedTargetHashes = append(head.RevokedTargetHashes, hs)
+					}
+				}
+			}
+			ca.FreshHead = head
+		}
+	}
+	return ca
+}
+
+// witnessKFromRaw parses the vector's `k` from raw JSON. An absent, null, or
+// non-integer k yields (0, false) so RequireWitnessQuorum fails closed exactly
+// as the JS/Python runners do when k is not a valid integer.
+func witnessKFromRaw(raw json.RawMessage) (int, bool) {
+	if len(raw) == 0 {
+		return 0, false
+	}
+	var f float64
+	if err := json.Unmarshal(raw, &f); err != nil {
+		return 0, false
+	}
+	if f != float64(int(f)) {
+		return 0, false
+	}
+	return int(f), true
+}
+
 func main() {
 	data, err := os.ReadFile(os.Args[1])
 	if err != nil {
@@ -262,6 +357,29 @@ func main() {
 			valid = emiliaverify.VerifyEvidenceRecord(v.EvidenceRecord, opts).Valid
 		case v.Canonicalization != nil:
 			valid = runCanonicalization(v.Canonicalization)
+		case v.Currency != nil:
+			// EP-CURRENCY-v1: valid iff the two-valued status equals expect_status.
+			status := emiliaverify.EvaluateCurrency(currencyArgsFromMap(v.Currency.Args)).CurrencyAtT.Status
+			valid = status == v.Currency.ExpectStatus
+		case v.InitiatorAttestation != nil:
+			// EP-INITIATOR-ATTESTATION-v1: valid iff the attestation validates.
+			valid = emiliaverify.ValidateInitiatorAttestation(v.InitiatorAttestation).OK
+		case v.ConsumptionProof != nil:
+			// EP-SMT-CONSUME-v1: valid iff the absent->present transition verifies.
+			valid = emiliaverify.VerifyConsumptionProof(v.ConsumptionProof).Valid
+		case v.WitnessQuorum != nil:
+			// EP-WITNESS-v1: valid iff k distinct pinned witnesses validly cosigned.
+			w := v.WitnessQuorum
+			pinned := make([]emiliaverify.PinnedWitnessKey, 0, len(w.Pinned))
+			for _, p := range w.Pinned {
+				pinned = append(pinned, emiliaverify.PinnedWitnessKey{WitnessID: p.WitnessID, PublicKey: p.PublicKey})
+			}
+			cosigs := w.Cosignatures
+			if cosigs == nil {
+				cosigs = []map[string]any{}
+			}
+			k, kValid := witnessKFromRaw(w.K)
+			valid = emiliaverify.RequireWitnessQuorum(w.Checkpoint, cosigs, pinned, k, kValid).OK
 		}
 		out = append(out, map[string]any{"id": v.ID, "valid": valid})
 	}

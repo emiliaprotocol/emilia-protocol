@@ -52,8 +52,13 @@ EP-TRUST-RECEIPT-v1 ts-profile —  6 vectors   JavaScript ✓   Python ✓   Go
 EP-PROVENANCE-CHAIN-v1         —  6 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-EVIDENCE-RECORD-v1          —  5 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-CANONICALIZATION-v1         — 35 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-BOUNDARY-v1                 —  3 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-CURRENCY-v1                 — 12 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-INITIATOR-ATTESTATION-v1    — 11 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-SMT-CONSUME-v1              —  6 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-WITNESS-v1                  —  6 vectors   JavaScript ✓   Python ✓   Go ✓
 
-✅ 110 vectors · 11 suites — JavaScript, Python, and Go verifiers agree.
+✅ 145 vectors · 15 suites — JavaScript, Python, and Go verifiers agree.
    (One team's three-language ports in one repository: a consistency check,
     not independent reimplementations. Independent implementations remain future interoperability evidence.)
 ```
@@ -64,13 +69,26 @@ not only Ed25519 authorization **receipts**, but Class-A WebAuthn device
 "two-person rule," with a strong cryptographic ordering chain and distinct-key
 checks, fail-closed), portable **revocation** statements, **trusted-time
 attestations**, the full **§6.2 Trust Receipt** (signoff signatures + Merkle
-inclusion + Ed25519-signed checkpoint), and **provenance chains** (human-authority
-root → delegation chain → action, with scope containment). Publishing a public,
-cross-language conformance suite of this breadth, re-proven on every push
-(CI job `conformance`), is itself uncommon. Some artifacts remain outside the
-three-language run today (EP-AEC composition, WYSIWYS rendering,
-execution-integrity, the JWS profile) and are exercised in JavaScript only;
-bringing them into the cross-language run, and independent implementations,
+inclusion + Ed25519-signed checkpoint), **provenance chains** (human-authority
+root → delegation chain → action, with scope containment), and four **opt-in
+profiles**: **EP-CURRENCY-v1** (the two-valued authentic-as-of-commit vs
+currency-at-T result, where `unknown` is the honest offline default),
+**EP-INITIATOR-ATTESTATION-v1** (fail-closed field validation + hostile-text
+neutralization), **EP-SMT-CONSUME-v1** (sparse-Merkle one-time-consumption
+transition), and **EP-WITNESS-v1** (k-of-n witness cosignatures over one
+checkpoint head). Publishing a public, cross-language conformance suite of this
+breadth, re-proven on every push (CI job `conformance`), is itself uncommon.
+
+One opt-in profile is **not** yet in the cross-language run: **timestamp-proof
+(RFC 3161)** remains a **JavaScript-only** reference verifier. Its Python and Go
+ports were deferred for an honest reason — a faithful port needs a CMS/PKCS#7
+SignedData / TSTInfo parser that neither the Python dependency
+(`cryptography`) nor the zero-dependency Go module exposes, and hand-rolling a
+DER/CMS parser was out of scope. It has no vector suite in
+`conformance/run.mjs` and is not claimed as cross-language. Other artifacts also
+remain outside the three-language run today (EP-AEC composition, WYSIWYS
+rendering, execution-integrity, the JWS profile) and are exercised in JavaScript
+only; bringing them into the cross-language run, and independent implementations,
 are the next bar. The
 companion Internet-Drafts are
 [`draft-schrock-ep-authorization-receipts`](standards/) and

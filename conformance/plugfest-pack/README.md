@@ -108,7 +108,7 @@ Copy a row per (implementation, suite) pair:
 | Implementation (org / repo / language) | Suite | Pass/Fail | Notes |
 |---|---|---|---|
 | _example: acme-verify (Acme, Rust)_ | `receipts.v1.json` | pass (13/13) | anchor proofs not implemented; 2 anchor vectors skipped and counted as fail |
-| _example: repo reference set (JS+Py+Go, one repo)_ | all 11 suites | pass (110/110) | consistency check across three languages, single repository |
+| _example: repo reference set (JS+Py+Go, one repo)_ | all 15 suites | pass (145/145) | consistency check across three languages, single repository |
 |  |  |  |  |
 |  |  |  |  |
 

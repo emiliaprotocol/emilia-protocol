@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // JS conformance runner: emits [{id, valid}] per vector. argv[2] = vectors path.
 // Polymorphic: receipt (document) | signoff | quorum.
-import { verifyReceipt, verifyWebAuthnSignoff, verifyQuorum, verifyRevocation, verifyTimeAttestation, verifyTrustReceipt, verifyProvenanceOffline, verifyEvidenceRecord, canonicalize, isCanonicalizable } from '../../packages/verify/index.js';
+import { verifyReceipt, verifyWebAuthnSignoff, verifyQuorum, verifyRevocation, verifyTimeAttestation, verifyTrustReceipt, verifyProvenanceOffline, verifyEvidenceRecord, canonicalize, isCanonicalizable, evaluateCurrency, validateInitiatorAttestation, verifyConsumptionProof, requireWitnessQuorum } from '../../packages/verify/index.js';
 import { strictParseGate } from './strict-json.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -30,6 +30,14 @@ const out = vectors.map((v) => {
   if (v.provenance_chain) return { id: v.id, valid: verifyProvenanceOffline(v.provenance_chain, { delegationKeys: v.delegation_keys, now: v.now_ms }).valid };
   if (v.evidence_record) return { id: v.id, valid: verifyEvidenceRecord(v.evidence_record, { tsaKeys: v.tsa_keys, protectedHash: v.protected_hash }).valid };
   if (v.canonicalization) return { id: v.id, valid: runCanonicalization(v.canonicalization) };
+  // EP-CURRENCY-v1: valid iff the two-valued currency status equals expect_status.
+  if (v.currency) return { id: v.id, valid: evaluateCurrency(v.currency.args).currency_at_T.status === v.currency.expect_status };
+  // EP-INITIATOR-ATTESTATION-v1: valid iff the attestation validates (fail-closed).
+  if (v.initiator_attestation) return { id: v.id, valid: validateInitiatorAttestation(v.initiator_attestation).ok };
+  // EP-SMT-CONSUME-v1: valid iff the sparse-Merkle absent→present transition verifies.
+  if (v.consumption_proof) return { id: v.id, valid: verifyConsumptionProof(v.consumption_proof).valid };
+  // EP-WITNESS-v1: valid iff k distinct pinned witnesses validly cosigned the head.
+  if (v.witness_quorum) { const w = v.witness_quorum; return { id: v.id, valid: requireWitnessQuorum(w.checkpoint, w.cosignatures, w.pinned, w.k).ok }; }
   return { id: v.id, valid: false };
 });
 process.stdout.write(JSON.stringify(out));

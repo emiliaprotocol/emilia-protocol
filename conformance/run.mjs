@@ -2,14 +2,18 @@
 //
 // Cross-language conformance runner.
 //
-// Runs the SAME canonical vectors through three INDEPENDENT reference verifiers
-// — JavaScript, Python, and Go — and asserts they all agree with each other and
-// with the expected outcome, across every suite:
-//   • EP-RECEIPT-v1  (Ed25519 receipts)
-//   • EP-SIGNOFF-v1  (WebAuthn ECDSA P-256 device signoffs)
-//   • EP-QUORUM-v1   (multi-party M-of-N / ordered approval)
-// This is the IETF bar for a real standard: multiple independent interoperable
-// implementations. Exit 1 on any divergence.
+// Runs the SAME canonical vectors through the three cross-language reference
+// verifiers — JavaScript, Python, and Go (one team's ports, a consistency check,
+// NOT clean-room independent reimplementations) — and asserts they all agree
+// with each other and with the expected outcome, across every suite. Exit 1 on
+// any divergence. Suites (see the SUITES list below for the full set): receipts,
+// signoffs, quorum, revocation, time-attestation, trust-receipt, provenance,
+// evidence-record, canonicalization, boundary, and the opt-in profiles currency,
+// initiator-attestation, consumption-proof, and witness.
+//
+// timestamp-proof (RFC 3161) is intentionally NOT in the cross-language runner:
+// it remains a JavaScript-only reference verifier (see CONFORMANCE.md), so there
+// is no Python/Go lane to agree with and no vector suite here.
 //
 //   node conformance/run.mjs
 import { execFileSync } from 'node:child_process';
@@ -18,7 +22,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const SUITES = ['receipts.v1.json', 'signoffs.v1.json', 'quorum.v1.json', 'revocation.exec.v1.json', 'time-attestation.v1.json', 'trust-receipt.exec.v1.json', 'trust-receipt.timestamp-forms.v1.json', 'provenance.exec.v1.json', 'evidence-record.v1.json', 'canonicalization.v1.json', 'boundary.v1.json'];
+const SUITES = ['receipts.v1.json', 'signoffs.v1.json', 'quorum.v1.json', 'revocation.exec.v1.json', 'time-attestation.v1.json', 'trust-receipt.exec.v1.json', 'trust-receipt.timestamp-forms.v1.json', 'provenance.exec.v1.json', 'evidence-record.v1.json', 'canonicalization.v1.json', 'boundary.v1.json', 'currency.v1.json', 'initiator-attestation.v1.json', 'consumption-proof.v1.json', 'witness.v1.json'];
 
 const IMPLS = [
   { lang: 'JavaScript', run: (p) => execFileSync('node', ['conformance/runners/run-js.mjs', p], { cwd: root, encoding: 'utf8' }) },
@@ -84,5 +88,5 @@ if (missingImpls.size > 0) {
     + `Vectors agreed where run, but the cross-language interop claim requires all ${ALL_IMPLS.length} — install the missing toolchain(s) and re-run.`);
   process.exit(1);
 }
-console.log(`\n✅ all suites (receipts · signoffs · quorum · revocation · time-attestation · trust-receipt · provenance · evidence-record · canonicalization · boundary) — all ${ALL_IMPLS.length} cross-language implementations (${ALL_IMPLS.join(', ')}) agree. One team, one repository: a consistency check, not independent reimplementations.`);
+console.log(`\n✅ all suites (receipts · signoffs · quorum · revocation · time-attestation · trust-receipt · provenance · evidence-record · canonicalization · boundary · currency · initiator-attestation · consumption-proof · witness) — all ${ALL_IMPLS.length} cross-language implementations (${ALL_IMPLS.join(', ')}) agree. One team, one repository: a consistency check, not independent reimplementations.`);
 process.exit(0);

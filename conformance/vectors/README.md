@@ -44,3 +44,34 @@ reference verifier is `verifyReceiptJws` in
 `jose`-library cross-verification is proven in that package's `jws.test.js`.
 Regenerate byte-identically with `node generate-jws.mjs` (fixed Ed25519 seeds,
 same canonical signer as `receipts.v1.json`).
+
+## Opt-in profile suites (cross-language)
+
+Four opt-in verify profiles ship shared, cross-language vector suites that the
+JavaScript, Python, and Go verifiers all run in `conformance/run.mjs` and must
+agree on. Regenerate all four byte-identically with
+`node generate-optin-profiles.mjs` (fixed Ed25519 seeds for the witness
+cosignatures):
+
+- `currency.v1.json` — **EP-CURRENCY-v1**: valid iff
+  `evaluateCurrency(currency.args).currency_at_T.status === currency.expect_status`.
+  Pins the two-valued authentic-as-of-commit vs currency-at-T result; `unknown`
+  is the honest offline default (offline verification can NEVER prove currency).
+- `initiator-attestation.v1.json` — **EP-INITIATOR-ATTESTATION-v1**: valid iff
+  `validateInitiatorAttestation(initiator_attestation).ok`. Fail-closed field
+  validation plus hostile-text neutralization (bidi / C0-C1 / zero-width escaped,
+  codepoint-capped, homoglyph/mixed-script flagged).
+- `consumption-proof.v1.json` — **EP-SMT-CONSUME-v1**: valid iff
+  `verifyConsumptionProof(consumption_proof).valid`. Sparse-Merkle-over-nonce
+  one-time consumption (absent → present transition on an append-only tree).
+- `witness.v1.json` — **EP-WITNESS-v1**: valid iff
+  `requireWitnessQuorum(witness_quorum.checkpoint, witness_quorum.cosignatures,
+  witness_quorum.pinned, witness_quorum.k).ok`. k-of-n distinct pinned witnesses
+  cosigning one checkpoint head (seeded Ed25519; the same committed bytes verify
+  in all three languages).
+
+A fifth opt-in profile, **timestamp-proof (RFC 3161)**, is a **JavaScript-only**
+reference verifier: its Python and Go ports were deferred (no CMS/PKCS#7
+SignedData parser in the Python `cryptography` dependency or the zero-dependency
+Go module), so it has no cross-language vector suite here. See
+[`../../CONFORMANCE.md`](../../CONFORMANCE.md).

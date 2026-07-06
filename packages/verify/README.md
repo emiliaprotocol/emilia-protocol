@@ -181,7 +181,7 @@ Honesty boundaries (also stated in each module):
 - **Consumption proof** proves the tree-shaped consumption facts only. Checkpoint **signatures** and currency of the later head are the caller's responsibility.
 - **Initiator attestation** says **which** software asked; it does **not** prove the software behaved (the labels are self-asserted, and the digest is authentic-as-supplied, not proof of correct execution).
 
-These four new profiles (EP-WITNESS-v1, EP-CURRENCY-v1, EP-SMT-CONSUME-v1, EP-INITIATOR-ATTESTATION-v1) currently ship as JS reference verifiers only; there is no Python or Go port yet.
+Four of these five profiles — **EP-WITNESS-v1**, **EP-CURRENCY-v1**, **EP-SMT-CONSUME-v1**, and **EP-INITIATOR-ATTESTATION-v1** — are now ported to Python (`packages/python-verify`) and Go (`packages/go-verify`) and run cross-language in `conformance/run.mjs` over shared vector suites (`currency.v1.json`, `initiator-attestation.v1.json`, `consumption-proof.v1.json`, `witness.v1.json`), where the JavaScript, Python, and Go verifiers must agree. **Timestamp proof (RFC 3161) remains a JavaScript reference verifier only** — its Python and Go ports were deferred because neither the Python `cryptography` dependency nor the zero-dependency Go module exposes a CMS/PKCS#7 SignedData / TSTInfo parser, so it has no cross-language vector suite. As always, this is one team's three-language ports (a consistency check), not clean-room independent implementations.
 
 ### Federation (PIP-006) — *requires 1.3.0*
 
