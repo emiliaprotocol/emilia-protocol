@@ -45,7 +45,10 @@ single-handshake state machine, exhaustive at its bounded-exploration
 configuration (413,137 states, 26 invariants, no counterexample), a bounded
 two-handshake exploration, and Alloy
 checks of the composition predicate, with cryptographic operations treated as
-axioms at this level. The process also emits ceremony telemetry that lets an
+axioms at that level; and, going beyond the axiom for the base receipt, a first
+symbolic Dolev-Yao model in Tamarin verifies core authenticity and shows that
+removing the one-time-consumption check makes the prover construct the replay
+attack itself. The process also emits ceremony telemetry that lets an
 evidence layer downgrade rubber-stamped approvals. We state plainly what no
 composition of ceremonies can solve: collusion of the required number of
 humans, coercion, person-level Sybil enrollment, and the semantic correctness
@@ -504,10 +507,11 @@ repository's `formal/` directory, with tool and scope. The uniform honest
 scope: these are **state-machine level** results. Cryptographic operations are
 axioms at this level; signature unforgeability, WebAuthn internals, device
 binding, the approver directory, log checkpoints, and wall-clock time are not
-modeled. Symbolic-cryptography verification of the composed protocol (a
-Tamarin or ProVerif analysis with a Dolev-Yao adversary over the WebAuthn,
-directory, and log composition) is future work, and we do not substitute the
-results below for it.
+modeled. A first symbolic model in Tamarin (Section 5.3) goes further for the
+base receipt: it verifies the core authentication lemma against a Dolev-Yao
+adversary without axiomatizing the signature. Symbolic verification of the
+full composed protocol (WebAuthn, directory, and log together) remains future
+work, and we do not substitute the state-machine results below for it.
 
 ### 5.1 TLA+ / TLC: the handshake state machine, exhaustively; two handshakes, bounded
 
@@ -581,7 +585,40 @@ hash consistent across handshake, challenge, attestation, consumption),
 `SignoffConsumeOnce` (A13), `SignoffRequiresHandshake` (A14), and
 `FullChainIntegrity` (A15).
 
-### 5.3 Enforced in code, not model-checked
+### 5.3 Tamarin: the core receipt lemma against a Dolev-Yao adversary
+
+The models above treat the device signature as an uninterpreted verified event.
+`formal/tamarin/ep_receipt_core.spthy` (checked by tamarin-prover 1.10.0) does
+not: it runs a Dolev-Yao attacker who controls the network and can ask the human
+to sign other actions, with an explicit key-compromise rule, and models the
+user-verification event as a linear fact a signature cannot exist without. Its
+verbatim result:
+
+| Lemma | Result |
+|---|---|
+| `executable_honest_receipt` (exists-trace) | verified |
+| `core_authenticity_uv_gated` (all-traces) | verified |
+| `no_replay_across_actions` (all-traces) | verified |
+| `injective_acceptance_with_consumption` (all-traces) | verified |
+| `unchecked_acceptance_is_injective` (all-traces) | **falsified** |
+
+Core authenticity holds: an accepted receipt implies a user-verification-gated
+signature by the named human over exactly that action, with no replay onto a
+different action. The last row is falsified *by design*: it asserts injective
+acceptance *without* the one-time-consumption check, and the prover constructs
+the same-receipt replay trace itself (no forgery, no key reveal). That is a
+mechanical demonstration that one-time consumption (Section 3.5) is load-bearing,
+not defense-in-depth: remove it and the attack the prover finds is exactly the
+replay the composed decision must refuse.
+
+This model is scoped to the base single receipt. The approver directory, log,
+checkpoints, WebAuthn attestation internals, and crucially the m-of-n quorum and
+separation-of-duties composition of this paper are out of scope here (they are
+carried by the state-machine models of 5.1 and 5.2). Extending the symbolic
+model to the full WebAuthn / directory / log / quorum composition is the next
+step, and we claim no symbolic result beyond the base receipt.
+
+### 5.4 Enforced in code, not model-checked
 
 Two properties central to Sections 3.1 and 4.1 are deliberately *outside* the
 models and we do not count them as model-checked: the user-verification / MFA
