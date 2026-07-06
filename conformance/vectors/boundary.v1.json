@@ -1,0 +1,83 @@
+{
+ "suite": "EP-BOUNDARY-v1",
+ "vectors_version": "1.0.0",
+ "description": "Authorization/attribution boundary suite (claim-matrix C-011/C-012). Pre-execution authority and post-execution attribution are different claims: a validly signed attribution record presented as authorization is refused at the version gate, and a payload self-asserting authority over a bad signature is refused because conforming implementations consume the verifier result, never raw peer-provided claims.",
+ "algorithm": "Ed25519 over RFC 8785 (JCS) canonical payload bytes",
+ "count": 3,
+ "vectors": [
+  {
+   "id": "accept_pre_execution_receipt",
+   "description": "Control: a genuine EP-RECEIPT-v1 signed before execution over the canonical action verifies.",
+   "expect": {
+    "valid": true
+   },
+   "public_key": "MCowBQYDK2VwAyEAqR20SGHTYu97zvRhDcbjwegoMg-ueODqaqrusmwDKrM",
+   "document": {
+    "@version": "EP-RECEIPT-v1",
+    "payload": {
+     "receipt_id": "tr_boundary_pre",
+     "issuer": "ep:approver:boundary-demo",
+     "subject": "wire_transfer/vendor-482",
+     "action_digest": "sha256:7f9c2ba4e88f827d616045507605853ed73b8093f6efbc88eb1a6eacfa66ef26",
+     "created_at": "2026-07-05T12:00:00Z"
+    },
+    "signature": {
+     "algorithm": "Ed25519",
+     "value": "w5nk-c1ojHl5utgqZAcwoNQNRmJt3hFrwUnR1JY_N6kibpVdBlZRlE-5fajc77gMRRJbPdZJJYo-2K6FaJ0FCA"
+    }
+   }
+  },
+  {
+   "id": "attribution_substituted_for_authorization",
+   "description": "A post-execution attribution record (EP-ATTRIBUTION-v1), signed with a GENUINE key, presented in the pre-execution authorization slot. MUST be refused: the version gate rejects the artifact class even though the signature verifies. Attribution states who was recorded as executing; it never grants or proves authority (C-012).",
+   "expect": {
+    "valid": false
+   },
+   "public_key": "MCowBQYDK2VwAyEAqR20SGHTYu97zvRhDcbjwegoMg-ueODqaqrusmwDKrM",
+   "document": {
+    "@version": "EP-ATTRIBUTION-v1",
+    "payload": {
+     "attribution_id": "attr_boundary_post",
+     "executor": "ep:entity:payments-agent",
+     "executed_at": "2026-07-05T12:00:07Z",
+     "action_digest": "sha256:7f9c2ba4e88f827d616045507605853ed73b8093f6efbc88eb1a6eacfa66ef26",
+     "recorded_by": "ep:log:boundary-demo"
+    },
+    "signature": {
+     "algorithm": "Ed25519",
+     "value": "RLoMasM4aJsDpzCI7MqMzCcADrYnn8h4hj9ZEPOSA4sGyCQSQOrdZsiIP1d7OcrLdtBZeg5otHXZMUSYDTIoDg"
+    }
+   }
+  },
+  {
+   "id": "raw_claim_pass_through",
+   "description": "The payload self-asserts authority (\"authorized\": true, \"scope\": \"unlimited\") and embeds a forged verifier_result claiming valid — but the signature does not cover these bytes. MUST be refused. An implementation that consumes raw peer-provided claims instead of its own verifier’s constrained result answers true here and diverges (C-011).",
+   "expect": {
+    "valid": false
+   },
+   "public_key": "MCowBQYDK2VwAyEAqR20SGHTYu97zvRhDcbjwegoMg-ueODqaqrusmwDKrM",
+   "document": {
+    "@version": "EP-RECEIPT-v1",
+    "payload": {
+     "receipt_id": "tr_boundary_raw",
+     "issuer": "ep:approver:boundary-demo",
+     "subject": "wire_transfer/vendor-482",
+     "authorized": true,
+     "scope": "unlimited",
+     "verifier_result": {
+      "valid": true,
+      "checks": {
+       "version": true,
+       "signature": true
+      }
+     },
+     "created_at": "2026-07-05T12:00:00Z"
+    },
+    "signature": {
+     "algorithm": "Ed25519",
+     "value": "RLoMasM4aJsDpzCI7MqMzCcADrYnn8h4hj9ZEPOSA4sGyCQSQOrdZsiIP1d7OcrLdtBZeg5otHXZMUSYDTIoDg"
+    }
+   }
+  }
+ ]
+}

@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const SUITES = ['receipts.v1.json', 'signoffs.v1.json', 'quorum.v1.json', 'revocation.exec.v1.json', 'time-attestation.v1.json', 'trust-receipt.exec.v1.json', 'trust-receipt.timestamp-forms.v1.json', 'provenance.exec.v1.json', 'evidence-record.v1.json'];
+const SUITES = ['receipts.v1.json', 'signoffs.v1.json', 'quorum.v1.json', 'revocation.exec.v1.json', 'time-attestation.v1.json', 'trust-receipt.exec.v1.json', 'trust-receipt.timestamp-forms.v1.json', 'provenance.exec.v1.json', 'evidence-record.v1.json', 'canonicalization.v1.json', 'boundary.v1.json'];
 
 const IMPLS = [
   { lang: 'JavaScript', run: (p) => execFileSync('node', ['conformance/runners/run-js.mjs', p], { cwd: root, encoding: 'utf8' }) },
@@ -84,5 +84,5 @@ if (missingImpls.size > 0) {
     + `Vectors agreed where run, but the cross-language interop claim requires all ${ALL_IMPLS.length} — install the missing toolchain(s) and re-run.`);
   process.exit(1);
 }
-console.log(`\n✅ all suites (receipts · signoffs · quorum · revocation · time-attestation · trust-receipt · provenance) — all ${ALL_IMPLS.length} independent implementations (${ALL_IMPLS.join(', ')}) agree.`);
+console.log(`\n✅ all suites (receipts · signoffs · quorum · revocation · time-attestation · trust-receipt · provenance · evidence-record · canonicalization · boundary) — all ${ALL_IMPLS.length} cross-language implementations (${ALL_IMPLS.join(', ')}) agree. One team, one repository: a consistency check, not independent reimplementations.`);
 process.exit(0);

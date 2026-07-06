@@ -224,10 +224,12 @@ reimplementation agrees on the same vectors.
   verdict + recomputable replay digest), named reason codes in
   `conformance/vectors/receipts.v1.json` (`wrong_key`, `tampered_payload`,
   `tampered_anchor`).
-- **Becomes fully reviewable when**: a dedicated raw-claim-pass-through
-  negative case (Section 20) — a raw artifact consumed in place of the
-  result object, with an expected reject — lands in a cross-language
-  vector file under `conformance/vectors/`.
+- **Cross-language vector**: `conformance/vectors/boundary.v1.json`
+  case `raw_claim_pass_through` (the Section 20 raw-claim case): a payload
+  self-asserting authority with an embedded forged verifier_result, over a
+  signature that does not cover those bytes — expected reject. All three
+  implementations (JS, Python, Go) agree; an implementation that consumed
+  the raw claims would answer true and diverge.
 
 ## C-012 — Authorization and attribution boundary
 
@@ -286,13 +288,17 @@ reimplementation agrees on the same vectors.
   attestation is additive and grants no authority);
   `examples/scitt/observed-absence-vector.mjs` (a bare absence assertion
   is refused).
-- **Becomes fully reviewable when**: a named
-  attribution-substituted-for-authorization negative case (Section 20) —
-  a post-hoc ratification or attribution record presented as
-  pre-execution authority, with an expected reject reason — lands in a
-  cross-language vector file under `conformance/vectors/`. Today that
-  substitution is refused indirectly (`missing_who_when_required` +
-  `approval_contradiction`); the dedicated case is **not** yet written.
+- **Cross-language vector**: `conformance/vectors/boundary.v1.json`
+  case `attribution_substituted_for_authorization` (the Section 20
+  substitution case): a validly signed post-execution attribution record
+  (EP-ATTRIBUTION-v1) presented in the pre-execution authorization slot —
+  expected reject at the artifact-class (version) gate, with the signature
+  genuine, so the refusal is the boundary rule and not a broken signature.
+  All three implementations (JS, Python, Go) agree. A post-hoc-ratification
+  variant (a ratification record with pre-execution framing) remains future
+  work; today it is covered by this class gate plus
+  `missing_who_when_required` and `approval_contradiction` in the seam
+  vector.
 
 ## C-003 — Delegated scope (partial)
 
@@ -377,4 +383,4 @@ reviewers may expect them:
 *Maintained at `docs/standards-engagement/EP-CLAIM-MATRIX-MAPPING.md`.
 Re-keyed to -01's C-IDs 2026-07-04; updated to -02 (C-011, C-012,
 accepted-result + evidence-type fields, Section 18 composition-slots note)
-2026-07-05; will be PR'd to the registry repo when one exists.*
+2026-07-05; boundary.v1.json cross-language cases landed 2026-07-05; will be PR'd to the registry repo when one exists.*
