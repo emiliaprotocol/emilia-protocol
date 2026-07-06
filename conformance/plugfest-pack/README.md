@@ -116,7 +116,7 @@ Copy a row per (implementation, suite) pair:
 |---|---|---|---|
 | _example: acme-verify (Acme, Rust)_ | `receipts.v1.json` | pass (13/13) | anchor proofs not implemented; 2 anchor vectors skipped and counted as fail |
 | _example: repo reference set (JS+Py+Go, one repo)_ | all 16 suites | pass (158/158) | consistency check across three languages, single repository |
-|  |  |  |  |
+| COSA (J Diesel NY) | all 16 suites | pass (158/158) | signed external statement, `examples/external-verification/statements/cosa/`; run used emilia-verify, so external reproduction, not an independent implementation |
 |  |  |  |  |
 
 Notes worth recording: partial-suite coverage, vectors your implementation
