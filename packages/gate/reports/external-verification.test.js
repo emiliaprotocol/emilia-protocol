@@ -96,8 +96,55 @@ test('re-signing a changed result gets a different statement digest', () => {
   const b = statementFixture(k, { result: { status: 'refused', checks: [{ id: 'x', ok: false }] } });
 
   assert.notEqual(a.signature.statement_digest, b.signature.statement_digest);
-  assert.equal(verifyExternalVerificationStatement(a, { pinnedVerifierKeys: [{ public_key: k.public_key }] }).verified, true);
-  assert.equal(verifyExternalVerificationStatement(b, { pinnedVerifierKeys: [{ public_key: k.public_key }] }).verified, true);
+  const pins = [{ verifier_id: 'ext:auditor:alpha', public_key: k.public_key }];
+  assert.equal(verifyExternalVerificationStatement(a, { pinnedVerifierKeys: pins }).verified, true);
+  assert.equal(verifyExternalVerificationStatement(b, { pinnedVerifierKeys: pins }).verified, true);
+});
+
+test('a pin without verifier_id never grants the claimed identity', () => {
+  const k = verifierKey();
+  const s = statementFixture(k);
+  const r = verifyExternalVerificationStatement(s, {
+    pinnedVerifierKeys: [{ public_key: k.public_key }],
+  });
+
+  assert.equal(r.verified, false);
+  assert.equal(r.accepted, false);
+  assert.equal(r.reason, 'pin_missing_or_mismatched_verifier_id');
+});
+
+test('a pinned key cannot vouch for a different claimed verifier identity', () => {
+  const k = verifierKey();
+  const s = statementFixture(k, { verifier: { id: 'ext:auditor:GOLDMAN' } });
+  const r = verifyExternalVerificationStatement(s, {
+    pinnedVerifierKeys: [{ verifier_id: 'ext:auditor:alpha', public_key: k.public_key }],
+  });
+
+  assert.equal(r.verified, false);
+  assert.equal(r.accepted, false);
+  assert.equal(r.reason, 'pin_missing_or_mismatched_verifier_id');
+});
+
+test('a tampered envelope key_id is refused and the accepted key_id is derived from the public key', () => {
+  const k = verifierKey();
+  const s = statementFixture(k);
+  const pins = [{ verifier_id: 'ext:auditor:alpha', public_key: k.public_key }];
+
+  const tampered = { ...s, signature: { ...s.signature, key_id: 'ep:external-verifier-key:sha256:deadbeefcafebabe' } };
+  const r = verifyExternalVerificationStatement(tampered, { pinnedVerifierKeys: pins });
+  assert.equal(r.verified, false);
+  assert.equal(r.reason, 'key_id_mismatch');
+
+  const ok = verifyExternalVerificationStatement(s, { pinnedVerifierKeys: pins });
+  assert.equal(ok.verified, true);
+  assert.equal(ok.key_id, s.signature.key_id);
+});
+
+test('default limitations disclose the replay and freshness non-claims', () => {
+  const k = verifierKey();
+  const s = statementFixture(k);
+  assert.match(s.limitations.join(' '), /no expiry and no consumer binding/);
+  assert.match(s.limitations.join(' '), /generated_at is asserted by the signer, not verified/);
 });
 
 test('malformed version and signature fail closed', () => {

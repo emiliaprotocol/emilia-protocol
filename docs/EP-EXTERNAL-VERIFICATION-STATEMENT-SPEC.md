@@ -43,11 +43,20 @@ Verification is fail-closed:
 - missing or malformed signature: refused;
 - digest mismatch after canonical recomputation: refused;
 - valid signature from an unpinned verifier key: refused;
-- invalid signature under the pinned verifier key: refused.
+- invalid signature under the pinned verifier key: refused;
+- a pin that matches the key but omits or contradicts the statement's
+  `verifier.id`: refused (a pin vouches for an identity, not just a key);
+- an envelope `key_id` that differs from the value derived from the carried
+  public key: refused (the envelope is outside the signed bytes, so the
+  verifier recomputes `key_id` and never trusts the carried one).
 
 A relying party accepts the statement only by pinning the external verifier key
-out of band. The statement's carried key is evidence to check against that pin,
-not a trust root by itself.
+out of band, and every pin entry must name the `verifier_id` it vouches for.
+The statement's carried key is evidence to check against that pin, not a trust
+root by itself. Note that `checks.signature` is evaluated only after the key is
+pinned; a pinning refusal reports `signature: false` in the sense of "not
+established," not "cryptographically invalid" (the `reason` field
+disambiguates).
 
 ## Non-Claims
 
@@ -55,6 +64,12 @@ The statement deliberately does not authorize the action. It does not certify
 business correctness, legal compliance, human understanding, or wisdom. It says
 only: this external verifier, under this pinned key, signed this exact procedure,
 inputs, result, and limitations.
+
+It also carries no freshness or scope guarantees: there is no expiry, nothing
+binds a statement to a particular consumer, a valid statement is replayable
+verbatim, and `generated_at` is asserted by the signer, not verified. A relying
+party that needs freshness must ask the verifier for a new statement over a new
+subject digest. The default `limitations` array states this in-band.
 
 That narrowness is the point. An auditor, standards reviewer, COSA implementer,
 or design partner can now issue a durable artifact saying what they checked
@@ -83,3 +98,16 @@ const result = verifyExternalVerificationStatement(statement, {
 
 The focused conformance tests are in
 [`packages/gate/reports/external-verification.test.js`](../packages/gate/reports/external-verification.test.js).
+
+## Turnkey Harness
+
+A step-by-step harness for issuing this statement over a conformance run,
+from a fresh clone with only Node installed, lives in
+[`examples/external-verification/`](../examples/external-verification/). It
+keeps the two possible procedures honestly distinct: signing over YOUR OWN
+verifier's results against the public vectors
+(`EP-CONFORMANCE-RUN-OWN-IMPLEMENTATION-v1`, the meaningful one) versus
+re-executing this repository's own reference runner on your machine
+(`EP-CONFORMANCE-RUN-REFERENCE-RUNNER-v1`, a consistency check that is never
+an independent implementation, and whose statement says so in its
+limitations).

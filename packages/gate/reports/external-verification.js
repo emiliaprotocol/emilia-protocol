@@ -14,7 +14,9 @@
  *   - acceptance is by a relying party pinning the external verifier key.
  */
 import crypto from 'node:crypto';
-import { canonicalize } from '../../../lib/canonical-json.js';
+// In-package canonicalize (byte-identical to lib/canonical-json.js): reports must
+// never import outside the package root or the published tarball cannot resolve it.
+import { canonicalize } from '../execution-binding.js';
 
 export const EXTERNAL_VERIFICATION_STATEMENT_VERSION = 'EP-EXTERNAL-VERIFICATION-STATEMENT-v1';
 export const EXTERNAL_VERIFICATION_DOMAIN = 'EP-EXTERNAL-VERIFICATION-STATEMENT-v1\0';
@@ -100,6 +102,7 @@ export function signExternalVerificationStatement(args, privateKey) {
         'This statement records the external verifier procedure and result; it does not authorize the action.',
         'It does not certify business correctness, legal compliance, or human wisdom.',
         'Acceptance depends on the relying party pinning the verifier key out of band.',
+        'The statement carries no expiry and no consumer binding; it is replayable verbatim, and generated_at is asserted by the signer, not verified.',
       ],
   };
 
@@ -161,17 +164,25 @@ export function verifyExternalVerificationStatement(statement, opts = {}) {
 
   const pinned = Array.isArray(opts.pinnedVerifierKeys) ? opts.pinnedVerifierKeys : [];
   const verifierId = statement.verifier?.id ?? null;
-  const keyId = sig.key_id ?? keyIdFor(sig.public_key);
-  const pin = pinned.find((k) =>
-    k?.public_key === sig.public_key
-    && (k.verifier_id === undefined || k.verifier_id === verifierId)
+  // key_id is always DERIVED from the carried public key. The envelope's key_id is
+  // outside the signed bytes, so it is attacker-malleable; if present it must match
+  // the derived value or the statement is refused.
+  const keyId = keyIdFor(sig.public_key);
+  if (sig.key_id !== undefined && sig.key_id !== keyId) {
+    return fail('key_id_mismatch', { statement_digest: digest });
+  }
+  // A pin grants an identity, not just a key: every usable pin entry must name the
+  // verifier_id it vouches for. A pin that matches the key but omits verifier_id
+  // (or names a different one) never binds the statement's claimed identity.
+  const keyMatched = pinned.filter((k) => k?.public_key === sig.public_key
     && (k.key_id === undefined || k.key_id === keyId));
+  const pin = keyMatched.find((k) => typeof k.verifier_id === 'string' && k.verifier_id === verifierId);
   if (!pin) {
     return {
       verified: false,
       accepted: false,
       checks: { version: true, signature: false, pinned_verifier_key: false, statement_digest: true },
-      reason: 'verifier_key_not_pinned',
+      reason: keyMatched.length ? 'pin_missing_or_mismatched_verifier_id' : 'verifier_key_not_pinned',
       statement_digest: digest,
     };
   }
