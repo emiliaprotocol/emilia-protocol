@@ -18,6 +18,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import crypto from 'node:crypto';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────
 
@@ -87,6 +88,7 @@ function makeChain(resolveValue) {
   const chain = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
+    is: vi.fn().mockReturnThis(),
     in: vi.fn().mockReturnThis(),
     order: vi.fn().mockReturnThis(),
     limit: vi.fn().mockReturnThis(),
@@ -118,6 +120,77 @@ function authedAs(entity, extra = {}) {
 }
 
 const VALID_RECEIPT_ID = 'tr_' + 'c'.repeat(32);
+
+// Byte-identical to lib/webauthn.js canonicalize / packages/verify canonicalize.
+function canonForTest(v) {
+  if (v === null || v === undefined) return JSON.stringify(v);
+  if (Array.isArray(v)) return `[${v.map(canonForTest).join(',')}]`;
+  if (typeof v === 'object') {
+    return `{${Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + canonForTest(v[k])).join(',')}}`;
+  }
+  return JSON.stringify(v);
+}
+
+/**
+ * Build a REAL Class-A signoff decision + its enrolled credential row, the way
+ * the approve-webauthn route records them. The signed context binds `actionHash`
+ * and the authenticator-data flags byte controls the user-verification signal:
+ *   flags 0x05 = UP|UV  → a genuine user-verified (biometric/PIN) assertion
+ *   flags 0x01 = UP only → present-but-not-verified (must be refused at consume)
+ * rpId defaults to 'emiliaprotocol.ai' — what getRpConfig() resolves to under
+ * NODE_ENV=test — so the consume route's rpId scope check matches.
+ */
+function makeClassASignoffEvidence({
+  approverId = 'ap_controller',
+  actionHash = 'a',
+  flags = 0x05,
+  rpId = 'emiliaprotocol.ai',
+  credentialId = 'cred_ap_controller',
+} = {}) {
+  const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  const context = {
+    ep_version: '1.0',
+    context_type: 'ep.signoff.v1',
+    action_hash: actionHash,
+    approver: approverId,
+    initiator: 'user_1',
+    nonce: 'sig_' + 'c'.repeat(32),
+    issued_at: '2026-06-09T17:21:05.000Z',
+    expires_at: '2026-06-09T17:26:05.000Z',
+    display_hash: 'd'.repeat(64),
+  };
+  const challenge = crypto.createHash('sha256').update(canonForTest(context), 'utf8').digest().toString('base64url');
+  const clientData = Buffer.from(
+    JSON.stringify({ type: 'webauthn.get', challenge, origin: 'https://www.emiliaprotocol.ai' }),
+    'utf8',
+  );
+  const authData = Buffer.concat([
+    crypto.createHash('sha256').update(rpId, 'utf8').digest(),
+    Buffer.from([flags]),
+    Buffer.from([0, 0, 0, 9]),
+  ]);
+  const signed = Buffer.concat([authData, crypto.createHash('sha256').update(clientData).digest()]);
+  const signature = crypto.sign('sha256', signed, privateKey);
+  const spki = publicKey.export({ type: 'spki', format: 'der' }).toString('base64url');
+  return {
+    // guard.signoff.approved after_state, as approve-webauthn writes it.
+    approvedAfterState: {
+      signoff_id: 'sig_1',
+      approver_id: approverId,
+      key_class: 'A',
+      context,
+      context_hash: crypto.createHash('sha256').update(canonForTest(context), 'utf8').digest('hex'),
+      webauthn: {
+        credential_id: credentialId,
+        authenticator_data: authData.toString('base64url'),
+        client_data_json: clientData.toString('base64url'),
+        signature: signature.toString('base64url'),
+      },
+    },
+    // approver_credentials row the consume route loads to get the SPKI key.
+    credentialRow: { credential_id: credentialId, public_key_spki: spki, revoked_at: null },
+  };
+}
 
 beforeEach(() => {
   mockGetGuardedClient.mockReset();
@@ -425,7 +498,7 @@ describe('GET /api/v1/trust-receipts/:id', () => {
 // ─── POST /api/v1/trust-receipts/:id/consume ─────────────────────────────
 
 describe('POST /api/v1/trust-receipts/:id/consume', () => {
-  function setupConsume(events, authorityRows = []) {
+  function setupConsume(events, authorityRows = [], credentialRows = []) {
     const scopedEvents = events.map((e) => {
       if (e.event_type !== 'guard.trust_receipt.created') return e;
       return {
@@ -440,6 +513,7 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
     mockGetGuardedClient.mockReturnValue(makeSupabase({
       audit_events: { resolve: { data: scopedEvents, error: null } },
       authorities: { resolve: { data: authorityRows, error: null } },
+      approver_credentials: { resolve: { data: credentialRows, error: null } },
     }));
   }
 
@@ -604,12 +678,14 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
     expect((await res.json()).type).toContain('authority_invalid');
   });
 
-  it('records consume when a Class-A approval has an active sufficient authority', async () => {
+  it('records consume when a Class-A approval carries a real UV-verified assertion and active authority', async () => {
     authedAs('user_1');
+    // A genuine user-verified (UV) WebAuthn assertion bound to action_hash 'a'.
+    const { approvedAfterState, credentialRow } = makeClassASignoffEvidence({ actionHash: 'a', flags: 0x05 });
     const events = [
       { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { organization_id: 'org_1', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: true, required_assurance: 'A' } },
       { event_type: 'guard.signoff.requested', actor_id: 'user_1', after_state: { signoff_id: 'sig_1', initiator_id: 'user_1', approver_id: 'ap_controller', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), required_assurance: 'A' } },
-      { event_type: 'guard.signoff.approved', actor_id: 'ap_controller', after_state: { signoff_id: 'sig_1', approver_id: 'ap_controller', key_class: 'A' } },
+      { event_type: 'guard.signoff.approved', actor_id: 'ap_controller', after_state: approvedAfterState },
     ];
     setupConsume(events, [{
       authority_id: 'auth_1',
@@ -620,9 +696,47 @@ describe('POST /api/v1/trust-receipts/:id/consume', () => {
       valid_from: '2020-01-01T00:00:00.000Z',
       valid_to: '2999-01-01T00:00:00.000Z',
       revoked_at: null,
-    }]);
+    }], [credentialRow]);
     const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
     expect(res.status).toBe(200);
+  });
+
+  it('refuses consume when a Class-A label lacks a real UV signal (assertion present but UV flag unset)', async () => {
+    authedAs('user_1');
+    // Same enrolled key + action binding, but the authenticator asserted user
+    // PRESENCE only (0x01), NOT user verification. The label says key_class:'A'
+    // but the real signal is absent — consume must fail closed.
+    const { approvedAfterState, credentialRow } = makeClassASignoffEvidence({ actionHash: 'a', flags: 0x01 });
+    const events = [
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { organization_id: 'org_1', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: true, required_assurance: 'A' } },
+      { event_type: 'guard.signoff.requested', actor_id: 'user_1', after_state: { signoff_id: 'sig_1', initiator_id: 'user_1', approver_id: 'ap_controller', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), required_assurance: 'A' } },
+      { event_type: 'guard.signoff.approved', actor_id: 'ap_controller', after_state: approvedAfterState },
+    ];
+    setupConsume(events, [{
+      authority_id: 'auth_1', status: 'active', subject_ref: 'ap_controller', role: null,
+      assurance_class: 'A', valid_from: '2020-01-01T00:00:00.000Z', valid_to: '2999-01-01T00:00:00.000Z', revoked_at: null,
+    }], [credentialRow]);
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
+    expect(res.status).toBe(403);
+    expect((await res.json()).type).toContain('insufficient_assurance');
+  });
+
+  it('refuses consume when a Class-A label has NO stored assertion evidence', async () => {
+    authedAs('user_1');
+    // The pre-hardening shape: a bare key_class:'A' label with no signed context
+    // or WebAuthn assertion. The label alone is an assumption, not a signal.
+    const events = [
+      { event_type: 'guard.trust_receipt.created', actor_id: 'user_1', after_state: { organization_id: 'org_1', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), signoff_required: true, required_assurance: 'A' } },
+      { event_type: 'guard.signoff.requested', actor_id: 'user_1', after_state: { signoff_id: 'sig_1', initiator_id: 'user_1', approver_id: 'ap_controller', action_hash: 'a', expires_at: new Date(Date.now() + 1e6).toISOString(), required_assurance: 'A' } },
+      { event_type: 'guard.signoff.approved', actor_id: 'ap_controller', after_state: { signoff_id: 'sig_1', approver_id: 'ap_controller', key_class: 'A' } },
+    ];
+    setupConsume(events, [{
+      authority_id: 'auth_1', status: 'active', subject_ref: 'ap_controller', role: null,
+      assurance_class: 'A', valid_from: '2020-01-01T00:00:00.000Z', valid_to: '2999-01-01T00:00:00.000Z', revoked_at: null,
+    }]);
+    const res = await consumeReceipt(req({ action_hash: 'a', executing_system: 'sys' }), { params: Promise.resolve({ receiptId: VALID_RECEIPT_ID }) });
+    expect(res.status).toBe(403);
+    expect((await res.json()).type).toContain('insufficient_assurance');
   });
 
   it('does not treat an unbound quorum rejection as the receipt rejection', async () => {

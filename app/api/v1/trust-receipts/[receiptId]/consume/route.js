@@ -20,6 +20,7 @@ import { quorumGate } from '@/lib/signoff/quorum-session.js';
 import { decisionsToMembers } from '@/lib/signoff/attestation-members.js';
 import { getRpConfig } from '@/lib/webauthn.js';
 import { boundSignoffDecisionEvents, findBoundSignoffDecision } from '@/lib/guard-signoff-binding.js';
+import { deriveSignoffUserVerification } from '@/lib/guard-signoff-uv.js';
 import { resolveGuardAuthority } from '@/lib/guard-authority.js';
 import { isTierQuorumEnforced } from '@/lib/env';
 import { countDistinctValidApprovers, requiredApprovalsForTier } from '@/lib/guard-tier.js';
@@ -204,6 +205,52 @@ export async function POST(request, { params }) {
             'Receipt requires a Class-A WebAuthn/passkey signoff before consume',
           );
         }
+
+        // ── Real WebAuthn user-verification (UV) signal ────────────────────
+        // key_class:'A' is a LABEL written by the approve-webauthn route. The
+        // security property is the UV flag actually set in the authenticator
+        // data the approver's device signed. Do not admit a Class-A receipt on
+        // the label alone: re-derive the REAL signal from the stored assertion
+        // with the same offline EP primitive the quorum gate uses
+        // (verifyWebAuthnSignoff → user_verified from the auth-data flags byte),
+        // and fail closed if the assertion is missing, does not bind this
+        // action, does not verify against the approver's enrolled key, or does
+        // not assert user verification. This is where the genuine WebAuthn UV
+        // flag — which lives at signoff time, not at the bearer-authenticated
+        // mint — is threaded into the decision that consumes it.
+        if (base.required_assurance === 'A') {
+          const credentialId = approved.after_state?.webauthn?.credential_id || null;
+          let approverPublicKeySpki = null;
+          if (credentialId) {
+            const { data: credRows, error: credErr } = await supabase
+              .from('approver_credentials')
+              .select('credential_id, public_key_spki')
+              .eq('organization_id', base.organization_id)
+              .eq('credential_id', credentialId)
+              .is('revoked_at', null)
+              .limit(1);
+            if (credErr) {
+              logger.error('[guard] consume: approver credential load failed:', credErr);
+              return epProblem(500, 'internal_error', 'Failed to load approver credential for signoff verification');
+            }
+            approverPublicKeySpki = (credRows || [])[0]?.public_key_spki || null;
+          }
+          const { rpID } = getRpConfig();
+          const uv = deriveSignoffUserVerification({
+            decision: approved.after_state,
+            approverPublicKeySpki,
+            expectedActionHash: base.action_hash,
+            rpId: rpID,
+          });
+          if (!uv.verified) {
+            return epProblem(
+              403,
+              'insufficient_assurance',
+              `Class-A signoff does not carry a verified WebAuthn user-verification signal (${uv.reason})`,
+            );
+          }
+        }
+
         // #5 Authority: credentials prove control; the registry proves permission.
         // The approver must hold a valid authority (in-org, in-role, in-window,
         // not revoked, sufficient assurance). Fail closed when no authority is
@@ -223,6 +270,8 @@ export async function POST(request, { params }) {
           authority_id: authority.authority_id || null,
           assurance_class: authority.assurance_class || null,
           authority_check: authority.reason,
+          // Real WebAuthn UV signal re-derived above (only set for Class-A).
+          user_verification: base.required_assurance === 'A' ? 'verified' : null,
         };
 
         // Assurance-tier escalation (flag-gated, default off): a 'dual' value tier
