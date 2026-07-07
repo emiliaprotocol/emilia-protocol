@@ -164,7 +164,7 @@ Eye observes. Handshake verifies. Signoff owns. Commit seals.
 | Red-team cases cataloged | 85 — [RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |
 | Security findings remediated | 31 |
 | Conformance (7/7) | `node conformance/ep-conformance-test.js https://www.emiliaprotocol.ai` |
-| Cross-language conformance | 161 vectors · 16 suites: receipts · device signoffs · multi-party quorum · revocation · time-attestation · trust-receipt (×2 profiles) · provenance · evidence-record · canonicalization · boundary · currency · initiator-attestation · consumption-proof · witness · timestamp-proof (RFC 3161). JS / Python / Go verifiers agree (`node conformance/run.mjs`), including the RFC 3161 timestamp-proof over `openssl`-minted TimeStampTokens. See [CONFORMANCE.md](CONFORMANCE.md). |
+| Cross-language conformance | 162 vectors · 16 suites: receipts · device signoffs · multi-party quorum · revocation · time-attestation · trust-receipt (×2 profiles) · provenance · evidence-record · canonicalization · boundary · currency · initiator-attestation · consumption-proof · witness · timestamp-proof (RFC 3161). JS / Python / Go verifiers agree (`node conformance/run.mjs`), including the RFC 3161 timestamp-proof over `openssl`-minted TimeStampTokens. See [CONFORMANCE.md](CONFORMANCE.md). |
 | Handshake create p95 | 575ms at 50 VUs — [PERFORMANCE_PROOF.md](docs/operations/PERFORMANCE_PROOF.md) |
 
 ---

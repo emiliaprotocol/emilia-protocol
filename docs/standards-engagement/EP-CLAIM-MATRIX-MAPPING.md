@@ -259,6 +259,14 @@ reimplementation agrees on the same vectors.
   signature that does not cover those bytes — expected reject. All three
   implementations (JS, Python, Go) agree; an implementation that consumed
   the raw claims would answer true and diverge.
+- **Cross-language vector**: `conformance/vectors/boundary.v1.json`
+  case `same_party_evidence_presented_as_independent`: a payload embeds an
+  `independent_verification` block whose `verifier_key` is the issuer's OWN
+  signing key, asserting `independent: true`, over a signature that does not
+  cover those bytes — expected reject. This is the reproduction-versus-
+  independent line as a runnable case: same-party evidence is not independent
+  verification, and an implementation that elevated the embedded same-key
+  claim would answer true and diverge. JS, Python, Go agree.
 
 ## C-012 — Authorization and attribution boundary
 
@@ -471,7 +479,7 @@ reviewers may expect them:
 *Maintained at `docs/standards-engagement/EP-CLAIM-MATRIX-MAPPING.md`.
 Re-keyed to -01's C-IDs 2026-07-04; updated to -02 (C-011, C-012,
 accepted-result + evidence-type fields, Section 18 composition-slots note)
-2026-07-05; boundary.v1.json cross-language cases landed 2026-07-05; new
+2026-07-05; boundary.v1.json cross-language cases landed 2026-07-05 (same_party_evidence_presented_as_independent added 2026-07-07, reproduction-vs-independent); new
 carriers added 2026-07-06 (EP-ADMISSIBILITY-PROFILE named/pinnable reliance
 bar under C-005/C-011; `effect_attestation` and `ceremony_evidence` AEG nodes
 under C-005/C-012; EP-WITNESS-v1 witness cosignatures under C-007; RFC-3161

@@ -4,7 +4,7 @@
 // (claim-matrix rows C-011 accepted-result and C-012 authorization/attribution
 // boundary; see docs/standards-engagement/EP-CLAIM-MATRIX-MAPPING.md).
 //
-// Two named negative cases the mapping promised:
+// The named negative cases the mapping promised:
 //   • attribution_substituted_for_authorization — a VALIDLY SIGNED
 //     post-execution attribution record presented in the pre-execution
 //     authorization (receipt) slot MUST be refused. The signature is genuine;
@@ -14,6 +14,9 @@
 //     signature that does not verify. An implementation that consumes raw
 //     peer-provided claims instead of its own verifier's constrained result
 //     answers true here and diverges from every conforming implementation.
+//   • same_party_evidence_presented_as_independent — a payload embedding an
+//     independent_verification block signed by the ISSUER'S OWN key. Same-party
+//     evidence is not independent verification (reproduction is not independence).
 //
 //   node conformance/vectors/generate-boundary.mjs
 import crypto from 'node:crypto';
@@ -63,18 +66,44 @@ const passThroughPayload = {
   created_at: '2026-07-05T12:00:00Z',
 };
 
+// A payload that embeds an "independent verification" block whose verifier key
+// is the ISSUER'S OWN signing key — the same administrative party. Same-party
+// evidence laundered as independent verification (reproduction-versus-
+// independent, C-011). The signature below is again computed over DIFFERENT
+// bytes, so a conforming verifier refuses; only an implementation that elevates
+// the embedded same-key "independent_verification" block would answer valid.
+const sameePartyPayload = {
+  receipt_id: 'tr_boundary_sameparty',
+  issuer: 'ep:approver:boundary-demo',
+  subject: 'wire_transfer/vendor-482',
+  action_digest: 'sha256:7f9c2ba4e88f827d616045507605853ed73b8093f6efbc88eb1a6eacfa66ef26',
+  independent_verification: {
+    // verifier_key equals this vector's own public_key: the "independent"
+    // verifier and the authorizing signer are the same key, i.e. the same
+    // administrative party. Independence is NOT established by a self-signed,
+    // same-key claim; it requires a distinct signer or a declared, accepted
+    // relationship.
+    verifier: 'ep:approver:boundary-demo',
+    verifier_key: publicKeyB64u,
+    result: 'verified',
+    independent: true,
+  },
+  created_at: '2026-07-05T12:00:00Z',
+};
+
 const suite = {
   suite: 'EP-BOUNDARY-v1',
-  vectors_version: '1.0.0',
+  vectors_version: '1.1.0',
   description:
     'Authorization/attribution boundary suite (claim-matrix C-011/C-012). ' +
     'Pre-execution authority and post-execution attribution are different claims: ' +
     'a validly signed attribution record presented as authorization is refused at ' +
-    'the version gate, and a payload self-asserting authority over a bad signature ' +
-    'is refused because conforming implementations consume the verifier result, ' +
+    'the version gate, and a payload self-asserting authority (or self-asserting ' +
+    'independent verification by its own signing key) over a bad signature is ' +
+    'refused because conforming implementations consume the verifier result, ' +
     'never raw peer-provided claims.',
   algorithm: 'Ed25519 over RFC 8785 (JCS) canonical payload bytes',
-  count: 3,
+  count: 4,
   vectors: [
     {
       id: 'accept_pre_execution_receipt',
@@ -120,8 +149,27 @@ const suite = {
         signature: { algorithm: 'Ed25519', value: sign(attributionPayload) },
       },
     },
+    {
+      id: 'same_party_evidence_presented_as_independent',
+      description:
+        'The payload embeds an "independent_verification" block whose verifier_key is the ' +
+        'issuer’s OWN signing key — the same administrative party — asserting independent: true. ' +
+        'The signature does not cover these bytes, so MUST be refused. Two distinct failures ' +
+        'converge: the signature does not verify, and even if it did, a self-signed same-key ' +
+        'attestation never establishes independence (reproduction is not independent verification, ' +
+        'C-011). An implementation that elevates the embedded same-key claim answers valid and diverges.',
+      expect: { valid: false },
+      public_key: publicKeyB64u,
+      document: {
+        '@version': 'EP-RECEIPT-v1',
+        payload: sameePartyPayload,
+        // Real signature, wrong bytes (signed over the attribution payload):
+        // the embedded independent_verification block is a self-asserted lie.
+        signature: { algorithm: 'Ed25519', value: sign(attributionPayload) },
+      },
+    },
   ],
 };
 
 writeFileSync(resolve(here, 'boundary.v1.json'), JSON.stringify(suite, null, 1) + '\n');
-console.log('wrote boundary.v1.json (3 vectors)');
+console.log('wrote boundary.v1.json (4 vectors)');

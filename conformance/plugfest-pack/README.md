@@ -23,7 +23,7 @@ network, no shared state. Reject vectors are adversarial: each one pins a
 single invariant (tampered payload, wrong key, malformed signature, broken
 anchor, missing user verification, quorum-ordering violation, …).
 
-Suites and vector counts as of 2026-07-07 (16 suites, 161 vectors; the `SUITES`
+Suites and vector counts as of 2026-07-07 (16 suites, 162 vectors; the `SUITES`
 list in [`../run.mjs`](../run.mjs) is authoritative if this table drifts):
 
 | Suite file | Format | Vectors |
@@ -38,7 +38,7 @@ list in [`../run.mjs`](../run.mjs) is authoritative if this table drifts):
 | `provenance.exec.v1.json` | EP-PROVENANCE-CHAIN-v1 | 6 |
 | `evidence-record.v1.json` | EP-EVIDENCE-RECORD-v1 | 5 |
 | `canonicalization.v1.json` | EP-CANONICALIZATION-v1 (differential RFC 8785 / I-JSON battery, digest-pinned) | 35 |
-| `boundary.v1.json` | EP-BOUNDARY-v1 (verifier trust-boundary refusals) | 3 |
+| `boundary.v1.json` | EP-BOUNDARY-v1 (verifier trust-boundary refusals) | 4 |
 | `currency.v1.json` | EP-CURRENCY-v1 (two-valued currency-at-T, unknown when offline) | 12 |
 | `initiator-attestation.v1.json` | EP-INITIATOR-ATTESTATION-v1 (validation + hostile-text neutralization) | 11 |
 | `consumption-proof.v1.json` | EP-CONSUMPTION-PROOF-v1 (sparse-Merkle one-time nonce) | 6 |
@@ -115,7 +115,7 @@ Copy a row per (implementation, suite) pair:
 | Implementation (org / repo / language) | Suite | Pass/Fail | Notes |
 |---|---|---|---|
 | _example: acme-verify (Acme, Rust)_ | `receipts.v1.json` | pass (13/13) | anchor proofs not implemented; 2 anchor vectors skipped and counted as fail |
-| _example: repo reference set (JS+Py+Go, one repo)_ | all 16 suites | pass (161/161) | consistency check across three languages, single repository |
+| _example: repo reference set (JS+Py+Go, one repo)_ | all 16 suites | pass (162/162) | consistency check across three languages, single repository |
 | COSA (J Diesel NY) | all 16 suites | pass (158/158) | signed external statement, `examples/external-verification/statements/cosa/`; run used emilia-verify, so external reproduction, not an independent implementation |
 |  |  |  |  |
 
