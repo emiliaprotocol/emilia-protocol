@@ -19,7 +19,7 @@
 // app is "protected." It reduces the plumbing to near-zero and makes the one
 // irreducible step — declaring which actions need a human — a review, not a
 // research project.
-import { HIGH_RISK_ACTION_PACKS, DEFAULT_PASS_THROUGH_ACTIONS, createDefaultActionRiskManifest } from '../gate/action-packs.js';
+import { HIGH_RISK_ACTION_PACKS, DEFAULT_PASS_THROUGH_ACTIONS, createDefaultActionRiskManifest } from './risk-packs.js';
 
 // Keyword signals per risk category, keyed to the EP risk-pack ids so a matched
 // action inherits that pack's assurance_class, required_fields, and rationale.

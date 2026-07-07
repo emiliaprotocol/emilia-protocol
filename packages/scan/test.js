@@ -2,6 +2,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { classifyAction, scanActions } from './index.js';
+import { HIGH_RISK_ACTION_PACKS as VENDORED } from './risk-packs.js';
+// Monorepo-only: gate is a sibling here, never shipped with this package. This
+// guards the vendored risk packs against drifting from the authoritative Gate copy.
+import { HIGH_RISK_ACTION_PACKS as GATE } from '../gate/action-packs.js';
+
+test('DRIFT GUARD: vendored risk-packs match the authoritative Gate action packs', () => {
+  assert.deepEqual(JSON.parse(JSON.stringify(VENDORED)), JSON.parse(JSON.stringify(GATE)),
+    'packages/scan/risk-packs.js drifted from packages/gate/action-packs.js — re-sync it');
+});
 
 test('recognized high-risk actions are gated at the right tier', () => {
   const wire = classifyAction({ name: 'sendWire', description: 'outgoing wire to a beneficiary' });
