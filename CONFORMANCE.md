@@ -52,7 +52,7 @@ EP-TRUST-RECEIPT-v1 ts-profile —  6 vectors   JavaScript ✓   Python ✓   Go
 EP-PROVENANCE-CHAIN-v1         —  6 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-EVIDENCE-RECORD-v1          —  5 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-CANONICALIZATION-v1         — 35 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-BOUNDARY-v1                 —  3 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-BOUNDARY-v1                 —  4 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-CURRENCY-v1                 — 12 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-INITIATOR-ATTESTATION-v1    — 11 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-SMT-CONSUME-v1              —  6 vectors   JavaScript ✓   Python ✓   Go ✓
