@@ -23,6 +23,7 @@ import {
   loadSuite,
   suiteNameForResultsFile,
 } from './sign-statement.mjs';
+import { externalVerificationDigest } from '../../packages/gate/reports/external-verification.js';
 import {
   signExternalVerificationStatement,
   verifyExternalVerificationStatement,
@@ -174,6 +175,19 @@ try {
     commit: 'unknown',
   }), (e) => e instanceof Refusal && e.reason === 'reference_runner_incomplete');
   ok('MODE B refuses to sign an incomplete reference run (reference_runner_incomplete)');
+
+  // 10. Golden digest test vector reproduces. This is the #1 independent-integration
+  //     wall: a signer that builds the digest differently produces a statement that
+  //     will never verify. digest-test-vector.json lets any implementer check their
+  //     construction in isolation; this asserts it stays authoritative on our side.
+  const goldenPath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'digest-test-vector.json');
+  const golden = JSON.parse(fs.readFileSync(goldenPath, 'utf8'));
+  assert.equal(
+    externalVerificationDigest(golden.statement),
+    golden.expected_statement_digest,
+    'digest-test-vector.json expected_statement_digest is stale — regenerate it',
+  );
+  ok('golden statement_digest test vector reproduces (digest-test-vector.json)');
 
   process.stdout.write(`\nself-test PASS (${passed} checks)\n`);
 } finally {

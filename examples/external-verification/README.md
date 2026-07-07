@@ -121,6 +121,22 @@ your key together with your identity, never the key alone. Exit code 0 and
 will accept the signature. Acceptance is about the signature, not the run:
 always read `result.status` too.
 
+### Building your own signer? Two walls to clear first
+
+Real implementers hit these two before anything else, so clear them in isolation:
+
+1. **Digest construction.** Check your `statement_digest` code against
+   [`digest-test-vector.json`](digest-test-vector.json) — a fixed statement and
+   its expected digest. If you do not reproduce `sha256:d771c82a...`, your signed
+   bytes are wrong (usual causes: signing over the whole statement including the
+   `signature` block, or writing the domain separator as two characters instead
+   of a single `0x00` NUL byte). `verify-statement.mjs` prints this diagnostic on
+   a `statement_digest_mismatch`.
+2. **Line endings.** `suite_digest` is SHA-256 over the raw bytes of each vector
+   file. On Windows, `core.autocrlf=true` rewrites them to CRLF on checkout and
+   silently changes every digest. The repo `.gitattributes` pins them to LF; if
+   you clone or copy the vectors yourself, keep them LF (`core.autocrlf=false`).
+
 ## MODE B: re-running the repository's own reference runner
 
 If you have not built your own verifier yet, you can still sign a much weaker

@@ -48,6 +48,22 @@ construction. A digest that diverges here is refused before the signature is
 checked, so a signer that gets these bytes wrong will not verify even with a
 valid key.
 
+**Golden test vector.** Reproduce the digest construction in isolation, in any
+language, before integrating: `examples/external-verification/digest-test-vector.json`
+carries a fixed example statement and its `expected_statement_digest`
+(`sha256:d771c82a...`). If your independent signer does not reproduce that value
+for that input, your construction diverges from this section and your statements
+will not verify regardless of your verifier logic. This is the most common
+integration wall.
+
+**Line endings (a separate, silent trap).** `suite_digest` is SHA-256 over the
+**raw bytes** of each conformance vector file, so a checkout that rewrites line
+endings (Windows Git with the default `core.autocrlf=true`) changes the digest
+without changing the vectors. The repository ships a `.gitattributes` pinning
+`conformance/vectors/**` to verbatim LF; an implementer cloning independently
+must keep those files LF (`core.autocrlf=false`) or reproduce the digests over
+the canonicalized JSON value rather than the raw bytes.
+
 ## Acceptance
 
 Verification is fail-closed:

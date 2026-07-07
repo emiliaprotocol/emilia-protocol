@@ -1,0 +1,19 @@
+# Line-ending policy. Some files here are CRYPTOGRAPHICALLY SIGNIFICANT: the
+# external-verification suite_digest is SHA-256 over the RAW BYTES of each
+# conformance vector file. A Windows clone with the default core.autocrlf=true
+# rewrites those files to CRLF on checkout, silently breaking the digest for any
+# external verifier (this bit a real implementer twice). Pin them to verbatim
+# bytes so every clone, on every OS, reproduces our published digests.
+conformance/vectors/** -text
+examples/external-verification/statements/** -text
+
+# Everything else: normalize to LF in the repo and on checkout.
+* text=auto eol=lf
+
+# Binaries: never touch.
+*.pdf binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.mp4 binary
+*.woff2 binary
