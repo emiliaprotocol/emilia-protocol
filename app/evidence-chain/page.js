@@ -86,9 +86,10 @@ const FAQ = [
     + 'trust in the issuer or operator. A chain stays verifiable even if EMILIA disappears.'],
   ['Is this real, or just a draft?',
     'It is filed as an IETF Internet-Draft (draft-schrock-ep-authorization-evidence-chain), with '
-    + 'a reference verifier in three languages (JavaScript, Python, Go) that agree over portable '
-    + 'conformance vectors. An outside implementer has independently run the EP artifacts from a '
-    + 'clean machine and reported it on the IETF SecDispatch list.'],
+    + 'a reference verifier in three languages (JavaScript, Python, Go) — one team’s ports in one '
+    + 'repository, a cross-language consistency check, not independent reimplementations — that '
+    + 'agree over portable conformance vectors. An outside party has reproduced the EP conformance '
+    + 'suite against our published vectors and reported it on the IETF SecDispatch list.'],
 ];
 
 const jsonLd = {
@@ -208,13 +209,15 @@ export default function EvidenceChainPage() {
 
         <section style={styles.sectionWide}>
           <div style={styles.eyebrow}>STANDING</div>
-          <h2 style={{ ...styles.h2, maxWidth: 760 }}>Filed, implemented, independently run.</h2>
+          <h2 style={{ ...styles.h2, maxWidth: 760 }}>Filed, implemented, externally reproduced.</h2>
           <p style={{ ...styles.body, maxWidth: 760 }}>
             EP-AEC is filed as an IETF Internet-Draft,{' '}
             <a href={DT} target="_blank" rel="noopener noreferrer" style={{ color: color.gold, textDecoration: 'none' }}>draft-schrock-ep-authorization-evidence-chain</a>,
-            with a reference verifier in three languages — JavaScript, Python, and Go — that agree
-            over portable conformance vectors. An outside implementer has independently run the EP
-            artifacts from a clean machine and reported the result on the IETF SecDispatch list.
+            with a reference verifier in three languages — JavaScript, Python, and Go, one team’s
+            ports in one repository, a cross-language consistency check, not independent
+            reimplementations — that agree over portable conformance vectors. An outside party has
+            reproduced the EP conformance suite against our published vectors and reported the
+            result on the IETF SecDispatch list.
             It composes with the receipts already published across the cluster, including the EP{' '}
             <a href="/spec" style={{ color: color.gold, textDecoration: 'none' }}>authorization-receipts</a>{' '}
             and <a href="/quorum" style={{ color: color.gold, textDecoration: 'none' }}>quorum</a> drafts.

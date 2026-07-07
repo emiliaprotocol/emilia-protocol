@@ -35,7 +35,7 @@ const WORKPAPER_FIELDS = [
   ['receipt_id / signoff id', 'The artifact’s identifier, from the evidence packet'],
   ['action / context hash', 'The digest the approval is bound to'],
   ['key_class', 'A = approver-held device key (highest); C = platform-held'],
-  ['verifier + version', 'e.g. @emilia-protocol/verify 1.2.0 (record the version you ran)'],
+  ['verifier + version', 'e.g. @emilia-protocol/verify 3.6.2 (record the version you ran)'],
   ['result', 'valid: true/false and each individual check'],
   ['verified on / by', 'Date and team member — the verification is reproducible by anyone'],
 ];

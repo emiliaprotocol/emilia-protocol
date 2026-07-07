@@ -123,6 +123,14 @@ export default function QuorumPage() {
             an ordered three-party signoff and rejects a duplicate signer in front of you.
           </p>
           <p style={{ ...styles.body, maxWidth: 760 }}>
+            A recent hardening release closes the quorum failure modes behind predicates{' '}
+            <strong style={{ color: color.t1 }}>3</strong> and <strong style={{ color: color.t1 }}>6</strong>:
+            an offline quorum no longer accepts the initiator&rsquo;s own approval, one device key can no
+            longer fill two seats (key-uniqueness is unconditional), and a satisfied gate decision is
+            consumed once &mdash; it cannot be replayed for a second high-stakes issuance. Each is pinned by
+            a negative conformance vector that passes identically across JavaScript, Python, and Go.
+          </p>
+          <p style={{ ...styles.body, maxWidth: 760 }}>
             It is also <strong>verified end-to-end</strong>: an automated test drives three independent
             devices through an ordered signoff and proves a quorum-gated action cannot be consumed until
             every required human has signed. What is deliberately still ahead: a production deployment of

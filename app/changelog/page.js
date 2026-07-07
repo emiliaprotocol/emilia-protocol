@@ -36,6 +36,16 @@ const RELEASES = [
     ],
   },
   {
+    version: '1.1.1',
+    date: '2026-07-07',
+    tag: 'Security hardening',
+    points: [
+      'Closed a set of authorization-path hardening findings, each with a negative conformance vector, green across JS / Python / Go: a Class-A (WebAuthn) approver could be downgraded to a bare signature; offline quorum accepted self-approval (initiator now excluded) and one device key could fill two seats (key-uniqueness now unconditional); a gate decision could be replayed for unlimited high-stakes issuances (now one-time-consumed).',
+      'RLS / grant drift on the revocation and replay tables journaled to prod (migrations 129–130).',
+      'Published packages: @emilia-protocol/verify 3.6.2, @emilia-protocol/gate 0.9.3 (npm); emilia-verify 2.4.2 (PyPI); go packages/go-verify/v2.1.2.',
+    ],
+  },
+  {
     version: '1.1.0',
     date: '2026-04-04',
     tag: 'Protocol hardening',

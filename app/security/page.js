@@ -38,7 +38,7 @@ export default function SecurityPage() {
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
         <h2 className="ep-reveal" style={styles.h2}>Shipped</h2>
         <p className="ep-reveal" style={styles.body}>
-          Each item below is verifiable today — independently reproducible from the public repo or directly inspectable on this site.
+          Each item below is verifiable today — reproducible by anyone from the public repo or directly inspectable on this site.
         </p>
         <div className="ep-reveal" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {COMPLIANCE_ROADMAP.current.map((c, i) => (
@@ -128,6 +128,9 @@ export default function SecurityPage() {
         </p>
         <p className="ep-reveal" style={styles.body}>
           Both run in CI on every change to the formal models. A counterexample fails the build. The model is part of the codebase, not a paper attached to it.
+        </p>
+        <p className="ep-reveal" style={styles.body}>
+          On 2026-07-07 we shipped an authorization-path hardening release: the closures are covered by machine-checked negative conformance vectors, green across the JS, Python, and Go reference verifiers.
         </p>
         <div className="ep-reveal" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <a href="/spec" className="ep-cta-secondary" style={cta.secondary}>Read the spec</a>
