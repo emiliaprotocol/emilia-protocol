@@ -93,6 +93,31 @@ export async function POST(request) {
       return epProblem(403, 'not_authorized', authz.reason);
     }
 
+    // === GATE CONSUMPTION: a gate_ref authorizes at most ONE high-stakes issuance ===
+    // The gate was validated above; claim it atomically now, AFTER authorization so an
+    // unauthorized caller can never burn a victim's gate. The PRIMARY KEY on
+    // consumed_gate_refs.gate_ref makes this exactly-once: a replay of the same gate_ref
+    // hits a unique_violation (23505) and is refused, closing the gate-bypass-via-replay
+    // hole where one 'allow' decision could authorize unlimited high-stakes issuances.
+    if (GATE_REQUIRED_ACTIONS.has(body.action_type) && body.gate_ref) {
+      const guarded = getGuardedClient();
+      const { error: consumeErr } = await guarded
+        .from('consumed_gate_refs')
+        .insert({
+          gate_ref: body.gate_ref,
+          consumed_by_entity: body.entity_id,
+          consumed_for_action: body.action_type,
+        });
+      if (consumeErr) {
+        if (consumeErr.code === '23505') {
+          return epProblem(403, 'gate_already_consumed',
+            'gate_ref has already been used to issue a commit; obtain a fresh /api/trust/gate decision');
+        }
+        logger.error('gate_ref consumption failed', { code: consumeErr.code, message: consumeErr.message });
+        return epProblem(500, 'gate_consume_failed', 'could not record gate consumption');
+      }
+    }
+
     // === ISSUE COMMIT (via protocolWrite) ===
     const commit = await protocolWrite({
       type: COMMAND_TYPES.ISSUE_COMMIT,

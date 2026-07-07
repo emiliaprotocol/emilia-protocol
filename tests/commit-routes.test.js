@@ -58,7 +58,7 @@ vi.mock('@/lib/commit-auth', () => ({
   authorizeCommitAccess: vi.fn(),
 }));
 
-import { authenticateRequest } from '@/lib/supabase';
+import { authenticateRequest, getServiceClient } from '@/lib/supabase';
 import {
   issueCommit,
   verifyCommit,
@@ -195,6 +195,28 @@ describe('POST /api/commit/issue — response shape', () => {
 
     expect(data.decision).toBe('deny');
     expect(data.commit.decision).toBe('deny');
+  });
+
+  it('refuses a REPLAYED gate_ref — one-time consumption (gate-bypass-via-replay fix)', async () => {
+    issueCommit.mockResolvedValue(MOCK_COMMIT);
+    // The consumed_gate_refs PRIMARY KEY rejects the second use of a gate_ref
+    // with a unique_violation (23505); the route must refuse and never issue.
+    getServiceClient().from('consumed_gate_refs').insert
+      .mockResolvedValueOnce({ error: { code: '23505', message: 'duplicate key' } });
+
+    const req = makeRequest({
+      action_type: 'transact',
+      entity_id: 'test-entity',
+      gate_ref: 'epc_gate_allow',
+    });
+
+    const res = await issueRoute(req);
+    const data = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(JSON.stringify(data)).toMatch(/gate_already_consumed/);
+    // A replayed gate must NOT reach issuance.
+    expect(issueCommit).not.toHaveBeenCalled();
   });
 });
 
