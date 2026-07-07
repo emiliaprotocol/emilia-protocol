@@ -23,17 +23,17 @@ network, no shared state. Reject vectors are adversarial: each one pins a
 single invariant (tampered payload, wrong key, malformed signature, broken
 anchor, missing user verification, quorum-ordering violation, …).
 
-Suites and vector counts as of 2026-07-06 (16 suites, 158 vectors; the `SUITES`
+Suites and vector counts as of 2026-07-07 (16 suites, 161 vectors; the `SUITES`
 list in [`../run.mjs`](../run.mjs) is authoritative if this table drifts):
 
 | Suite file | Format | Vectors |
 |---|---|---|
 | `receipts.v1.json` | EP-RECEIPT-v1 (Ed25519 receipts) | 13 |
 | `signoffs.v1.json` | EP-SIGNOFF-v1 (WebAuthn ECDSA P-256 device signoffs) | 9 |
-| `quorum.v1.json` | EP-QUORUM-v1 (M-of-N / ordered multi-party approval) | 11 |
+| `quorum.v1.json` | EP-QUORUM-v1 (M-of-N / ordered multi-party approval) | 13 |
 | `revocation.exec.v1.json` | EP-REVOCATION-v1 | 6 |
 | `time-attestation.v1.json` | EP-TIME-ATTESTATION-v1 | 6 |
-| `trust-receipt.exec.v1.json` | EP-TRUST-RECEIPT-v1 (§6.2) | 10 |
+| `trust-receipt.exec.v1.json` | EP-TRUST-RECEIPT-v1 (§6.2) | 11 |
 | `trust-receipt.timestamp-forms.v1.json` | EP-TRUST-RECEIPT-v1 timestamp profile (§6.2/§6.3) | 6 |
 | `provenance.exec.v1.json` | EP-PROVENANCE-CHAIN-v1 | 6 |
 | `evidence-record.v1.json` | EP-EVIDENCE-RECORD-v1 | 5 |
@@ -115,7 +115,7 @@ Copy a row per (implementation, suite) pair:
 | Implementation (org / repo / language) | Suite | Pass/Fail | Notes |
 |---|---|---|---|
 | _example: acme-verify (Acme, Rust)_ | `receipts.v1.json` | pass (13/13) | anchor proofs not implemented; 2 anchor vectors skipped and counted as fail |
-| _example: repo reference set (JS+Py+Go, one repo)_ | all 16 suites | pass (158/158) | consistency check across three languages, single repository |
+| _example: repo reference set (JS+Py+Go, one repo)_ | all 16 suites | pass (161/161) | consistency check across three languages, single repository |
 | COSA (J Diesel NY) | all 16 suites | pass (158/158) | signed external statement, `examples/external-verification/statements/cosa/`; run used emilia-verify, so external reproduction, not an independent implementation |
 |  |  |  |  |
 
