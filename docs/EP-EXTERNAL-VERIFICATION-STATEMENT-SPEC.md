@@ -23,10 +23,15 @@ A statement records:
 - the limitations and non-claims.
 
 The signature covers every field above, excluding only the signature envelope.
-The signed bytes are:
+`statement_without_signature` is the statement JSON object with the **entire
+top-level `signature` member removed** (not merely `signature_b64u` or
+`statement_digest`). The signed bytes are the domain-separation label, whose
+final byte is a single NUL (`0x00`, one byte, not the two characters backslash
+and zero), byte-concatenated with the RFC 8785 (JCS) canonicalization of that
+object:
 
 ```text
-"EP-EXTERNAL-VERIFICATION-STATEMENT-v1\0" || JCS(statement_without_signature)
+"EP-EXTERNAL-VERIFICATION-STATEMENT-v1" || 0x00 || JCS(statement_without_signature)
 ```
 
 The resulting `statement_digest` is:
@@ -34,6 +39,14 @@ The resulting `statement_digest` is:
 ```text
 "sha256:" || hex(SHA-256(signed_bytes))
 ```
+
+An independent signer MUST reproduce these exact bytes; the normative reference
+is `externalVerificationDigest` / `signingBytes` in
+`packages/gate/reports/external-verification.js`, and
+`examples/external-verification/sign-statement.mjs` signs correctly by
+construction. A digest that diverges here is refused before the signature is
+checked, so a signer that gets these bytes wrong will not verify even with a
+valid key.
 
 ## Acceptance
 
