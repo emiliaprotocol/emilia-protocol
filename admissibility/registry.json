@@ -1,0 +1,48 @@
+{
+  "@version": "EP-ADMISSIBILITY-INVARIANT-REGISTRY-v1",
+  "doctrine": [
+    "signed_is_not_trusted",
+    "verified_is_not_accepted",
+    "accepted_requires_pinned_policy"
+  ],
+  "conformance_langs": ["js", "py", "go"],
+  "note": "Every claim carries all five invariants. scripts/check-admissibility-registry.mjs resolves each verifier_behavior and negative_vector against the tree and fails the build on any gap. Claims that cannot yet satisfy all five (e.g. gate-layer reporting artifacts pending a negative conformance vector) are NOT listed until they can.",
+  "claims": [
+    {
+      "claim_id": "class-a-human-presence-signoff",
+      "claim": "A named human with a device-bound passkey approved this exact action under user verification (biometric or PIN).",
+      "pinned_authority": "The approver's credential public key, pinned from server-side enrollment (approver_credentials). Never a key carried in the receipt, and the pinned key's class governs the verification routine.",
+      "verifier_behavior": { "file": "packages/verify/index.js", "symbol": "verifyTrustReceipt" },
+      "negative_vector": { "suite": "signoffs.v1.json", "must": "reject", "case": "pinned Class-A key presented with a key_class:B bare signature (downgrade) is refused" },
+      "parity": ["js", "py", "go"],
+      "acceptance_semantics": "VERIFIED = the WebAuthn assertion and signature chain check out. ACCEPTED = the verifying key was pinned from enrollment and its pinned class was enforced, so a receipt-supplied or downgraded key can never elevate to Class-A."
+    },
+    {
+      "claim_id": "quorum-m-of-n-distinct-humans",
+      "claim": "M distinct named humans, none of them the initiator, each bound their own device assertion to the same exact action within a time window.",
+      "pinned_authority": "The quorum policy from an org-pinned template keyed by (org, action_type) (lib/guard-quorum-template.js), and each approver_public_key from enrollment. Both sourced out of band, never from the quorum document.",
+      "verifier_behavior": { "file": "packages/verify/quorum.js", "symbol": "verifyQuorum" },
+      "negative_vector": { "suite": "quorum.v1.json", "must": "reject", "case": "initiator counted as an approver, and one device key filling two seats when distinct_humans is disabled, are both refused" },
+      "parity": ["js", "py", "go"],
+      "acceptance_semantics": "VERIFIED = the members are internally consistent with the policy and keys handed to the verifier (threshold, distinct humans, distinct keys, initiator excluded, roster, window, order). ACCEPTED = that policy is the org's real one from the pinned template and the keys came from enrollment. Internal consistency against creator-declared inputs is not authorization."
+    },
+    {
+      "claim_id": "revocation-bounded-staleness",
+      "claim": "The authority, delegation, or key backing this action is still current within a stated freshness bound.",
+      "pinned_authority": "The revocation authority's signing key, pinned by the relying party. The staleness bound itself is a relying-party policy input, graded per consequence.",
+      "verifier_behavior": { "file": "packages/verify/revocation.js", "symbol": "verifyRevocation" },
+      "negative_vector": { "suite": "revocation.exec.v1.json", "must": "reject", "case": "a revoked target and a stale/expired revocation statement fail safe rather than open" },
+      "parity": ["js", "py", "go"],
+      "acceptance_semantics": "VERIFIED = the revocation statement is authentic under the pinned authority key. ACCEPTED = the relying party's own staleness bound is met; stale material fails closed, never open."
+    },
+    {
+      "claim_id": "timestamp-proof-pinned-tsa",
+      "claim": "This receipt existed no later than a specific time, proven by an RFC 3161 token from a trusted timestamp authority.",
+      "pinned_authority": "The TSA's public key, pinned by the relying party. An unpinned or unknown TSA is refused.",
+      "verifier_behavior": { "file": "packages/verify/timestamp-proof.js", "symbol": "verifyTimestampProof" },
+      "negative_vector": { "suite": "timestamp-proof.v1.json", "must": "reject", "case": "a token from an unpinned TSA and a messageImprint that does not match the receipt digest are refused" },
+      "parity": ["js", "py", "go"],
+      "acceptance_semantics": "VERIFIED = the RFC 3161 token is well-formed and its messageImprint matches the receipt digest. ACCEPTED = the token was issued by a TSA the relying party pinned; time from an untrusted TSA carries no weight."
+    }
+  ]
+}
