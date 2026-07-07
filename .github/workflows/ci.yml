@@ -335,9 +335,10 @@ jobs:
 
   # ── Job 11b: Cross-language conformance ──────────────────────────
   # Proves the JavaScript, Python, and Go reference verifiers all agree with
-  # each other and the expected outcome on the canonical EP-RECEIPT-v1 vectors.
-  # This is the IETF bar for a standard — multiple independent interoperable
-  # implementations — enforced on every push.
+  # each other and the expected outcome on the canonical EP vectors. These are
+  # one team's ports in one repository: a consistency check, not independent
+  # clean-room implementations. Independent implementations remain future
+  # interoperability evidence.
   conformance:
     runs-on: ubuntu-latest
     steps:
@@ -354,6 +355,8 @@ jobs:
       - run: pip install cryptography
       - name: Cross-language conformance (EP-RECEIPT-v1, JS + Python + Go)
         run: node conformance/run.mjs
+      - name: Conformance docs count guard
+        run: npm run check:conformance-docs
       - name: Class-A signoff conformance (EP-SIGNOFF-v1, Node + Web Crypto)
         run: node conformance/run-signoffs.mjs
 
