@@ -6,10 +6,18 @@ consequential actions. Point it at what your agent can do; it tells you what
 should require a named human, and hands you the config and the one wrap to add.
 
 ```bash
-node cli.mjs --sample                       # see it work on a built-in sample
-node cli.mjs ./tools.json --emit manifest.json   # your MCP tool list
-node cli.mjs ./openapi.json --emit manifest.json # your API surface
+node cli.mjs --sample                        # see it work on a built-in sample
+node cli.mjs ./tools.json --emit manifest.json    # your MCP tool list
+node cli.mjs ./openapi.json --emit manifest.json  # your HTTP API surface
+
+# generate drop-in files (dry-run by default; --apply to write, never overwrites)
+node codemod.mjs ./tools.json --apply        # MCP -> guard.mjs (withMcpGuard)
+node codemod.mjs ./openapi.json --apply      # OpenAPI -> http-guard.mjs (Express 428 receipt gate)
 ```
+
+`emilia-harden` reads the surface and generates the matching guard: an MCP
+`withMcpGuard` wrap for a tool list, or an Express middleware (`requireEmiliaReceipt`,
+`428 Receipt-Required` per consequential route) for an OpenAPI spec.
 
 It does exactly three things, and never more:
 

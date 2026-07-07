@@ -1,6 +1,6 @@
 {
   "name": "@emilia-protocol/scan",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Scan an AI app's actions (MCP tools / OpenAPI), classify which need a human-authorization receipt at which assurance tier, and emit a proposed EMILIA action-control manifest. It proposes and reports; it enforces nothing and edits no code on its own.",
   "license": "Apache-2.0",
   "type": "module",

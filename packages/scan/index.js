@@ -30,10 +30,10 @@ const CATEGORY_SIGNALS = [
   { pack: 'money_movement.bank_details_change', any: ['bank_detail', 'bankdetail', 'payee', 'beneficiary', 'routing', 'ach_detail', 'payroll_account', 'vendor_account', 'account_number', 'iban'] },
   { pack: 'money_movement.release', any: ['payment', 'wire', 'transfer', 'remit', 'disburse', 'payout', 'send_money', 'sendmoney', 'settle', 'refund', 'charge', 'invoice_pay', 'pay'] },
   { pack: 'production.deploy', any: ['deploy', 'release_prod', 'rollout', 'ship_prod', 'promote', 'publish_release', 'terraform_apply', 'infra_apply', 'production_push'] },
-  { pack: 'iam.role_grant', any: ['grant', 'role', 'privilege', 'permission', 'entitlement', 'iam', 'make_admin', 'add_admin', 'assign_role', 'elevate', 'sudo_grant'] },
-  { pack: 'data.export', any: ['export', 'download_all', 'bulk_export', 'dump', 'extract_pii', 'data_export', 'exfil', 'share_dataset', 'send_records'] },
-  { pack: 'record.delete', any: ['delete', 'remove', 'purge', 'destroy', 'drop_table', 'wipe', 'erase', 'hard_delete'] },
-  { pack: 'decision.override', any: ['override', 'adjudicate', 'dispose', 'approve_case', 'final_decision', 'waive', 'exception_approve'] },
+  { pack: 'permissions.admin_change', any: ['grant', 'role', 'privilege', 'permission', 'entitlement', 'iam', 'make_admin', 'add_admin', 'assign_role', 'elevate', 'sudo_grant'] },
+  { pack: 'data.bulk_export', any: ['export', 'download_all', 'bulk_export', 'dump', 'extract_pii', 'data_export', 'exfil', 'share_dataset', 'send_records'] },
+  { pack: 'records.delete', any: ['delete', 'remove', 'purge', 'destroy', 'drop_table', 'wipe', 'erase', 'hard_delete'] },
+  { pack: 'regulated.decision_override', any: ['override', 'adjudicate', 'dispose', 'approve_case', 'final_decision', 'waive', 'exception_approve'] },
 ];
 
 const READ_ONLY_SIGNALS = ['get', 'list', 'read', 'search', 'lookup', 'fetch', 'query', 'describe', 'view', 'count', 'status', 'summary', 'preview', 'health', 'ping'];

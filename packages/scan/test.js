@@ -1,7 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyAction, scanActions } from './index.js';
+import { classifyAction, scanActions, KNOWN_CATEGORIES, HIGH_RISK_ACTION_PACKS } from './index.js';
+
+test('STRUCTURAL: every category maps to a real risk pack (no guessed ids)', () => {
+  const realIds = new Set(HIGH_RISK_ACTION_PACKS.map((p) => p.id));
+  for (const cat of KNOWN_CATEGORIES) {
+    assert.ok(realIds.has(cat), `category "${cat}" does not match any risk-pack id — it would lose its tier and required_fields`);
+  }
+});
+
+test('tiers are correct, not defaulted (quorum stays quorum)', () => {
+  assert.equal(classifyAction({ name: 'grantAdminRole', description: 'give admin privileges' }).assurance_class, 'quorum');
+  assert.equal(classifyAction({ name: 'overrideRegulatedDecision', description: 'override a benefits decision' }).assurance_class, 'quorum');
+  const del = classifyAction({ name: 'deleteCustomer', description: 'permanently remove a record' });
+  assert.equal(del.category, 'records.delete');
+  assert.ok(del.required_fields.includes('before_state_hash'), 'record delete must bind the pre-state, not fall back to just action_type');
+});
 import { HIGH_RISK_ACTION_PACKS as VENDORED } from './risk-packs.js';
 // Monorepo-only: gate is a sibling here, never shipped with this package. This
 // guards the vendored risk packs against drifting from the authoritative Gate copy.
