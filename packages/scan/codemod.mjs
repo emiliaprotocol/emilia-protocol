@@ -117,6 +117,7 @@ export { manifest };
 
 const integrationMd = `# EMILIA integration (generated)
 
+0. Install the runtime guard: \`npm install @emilia-protocol/mcp-guard\`
 1. Review \`action-control.manifest.json\` and the \`annotations\` in \`guard.mjs\`.
    Downgrade any false positive; confirm every action marked REVIEW.
 2. Add ONE line at your MCP tool-call dispatch site:
@@ -173,6 +174,7 @@ export function applyEmiliaGates(app) {
 
 const httpIntegrationMd = `# EMILIA integration (generated, HTTP / OpenAPI)
 
+0. Install the runtime guard: \`npm install @emilia-protocol/require-receipt\`
 1. Review \`action-control.manifest.json\` and \`GATED_ROUTES\` in \`http-guard.mjs\`.
    ${reviewCount ? `Confirm the ${reviewCount} route(s) marked review (mutating, unrecognized category — defaulted fail-closed).` : 'Downgrade any false positive.'}
 2. Apply the gates BEFORE your route handlers:
