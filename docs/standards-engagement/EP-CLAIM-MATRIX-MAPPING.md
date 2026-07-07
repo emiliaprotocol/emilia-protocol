@@ -333,6 +333,61 @@ reimplementation agrees on the same vectors.
   `missing_who_when_required` and `approval_contradiction` in the seam
   vector.
 
+## C-013 — Scoped standing grant (provisional, per -03 working text)
+
+- **Claim**: a named human principal granted, ahead of time, standing
+  authority to exercise one control verb on one named asset until an
+  expiry, under stated constraints, independently revocable. This is a
+  DIFFERENT claim from per-action human authority (C-002) and from
+  delegated scope (C-003), and EP states it separately.
+- **Carrier**: EP-CONSENT-GRANT-v1 — a signed, content-addressed JSON
+  artifact. `grant_hash` = sha256 over the RFC 8785 canonical bytes of the
+  grant body with `grant_hash` and `signature` excluded; the principal's
+  Ed25519 signature covers the same bytes. Tampering any field (asset,
+  control verb, constraints, expiry) breaks the hash and the signature.
+- **Verifier / rule**: `verifyConsentGrant(grant, pinnedPrincipalKey,
+  opts)` in `@emilia-protocol/verify` (3.6.0+). Composition with C-002:
+  `verifyReceiptUnderGrant` — a per-action receipt acts under a grant only
+  by carrying the grant's `grant_hash`; since 3.6.1 the binding sits
+  natively inside the signed action, so tampering it breaks the action
+  hash AND the receipt signature (strong binding); a caller-supplied
+  binding remains available and is labeled advisory.
+- **Binding / freshness**: binding = content address plus pinned principal
+  key; the expiry window is checked at verification (`within_window`). A
+  revocation statement that binds this exact `grant_hash` under a pinned
+  revoker key refuses the grant (`grant_revoked`); an unpinned revoker
+  cannot revoke (fail-closed on the revoker); a revocation bound to a
+  different grant does not revoke (revoke-A-for-B rejected). Stated
+  freshness limit: offline verification proves authenticity and window,
+  never currency — the absence of a revocation statement is NOT proof of
+  not-revoked; currency requires a consulted revocation source.
+- **Accepted result**: `{ valid, checks: { hash, signature,
+  within_window }, reason }` — "this grant covers this request under its
+  stated constraints." It is NOT "this action was separately approved at
+  execution time" (C-002's result), and it is NOT proof that a delegation
+  chain was correctly attenuated (C-003).
+- **Failure behavior**: fail-closed with a distinct reason per class:
+  no grant presented, hash mismatch, `grant_signature_invalid`, unpinned
+  principal, expired window, `asset_mismatch`, `verb_mismatch`,
+  `grant_binding_mismatch`, `grant_revoked`.
+- **The two C-013 negative tests hold in EP today**: a per-action receipt
+  presented as a standing grant is refused at the grant verifier's
+  profile gate (`unsupported profile`; a receipt is not a grant), and a standing grant
+  consumed as per-action authority is refused by the receipt verifier (a
+  grant is not a receipt); cross-binding cases additionally reject with
+  `grant_binding_mismatch`.
+- **Dependency**: pinned principal key (out-of-band); optional pinned
+  revoker key; the per-action composition depends on the C-002 row.
+- **Evidence**: `packages/verify/consent-grant.js` +
+  `packages/verify/consent-grant.test.js` (unit tests covering the accept
+  path, both negative directions, tamper, wrong-key, unpinned-principal,
+  window, revocation, unpinned-revoker, and revoke-A-for-B cases).
+- **Evidence type**: unit-level, single language — the JavaScript
+  reference verifier only. HONEST STATUS: implemented (JavaScript);
+  none (Python, Go); no cross-language conformance suite for this
+  artifact yet (planned). Specification is package-level documentation;
+  a dedicated draft section is planned, not published.
+
 ## C-003 — Delegated scope (partial)
 
 - **Claim**: bounded delegation from a named principal to a delegate, with
@@ -420,4 +475,6 @@ accepted-result + evidence-type fields, Section 18 composition-slots note)
 carriers added 2026-07-06 (EP-ADMISSIBILITY-PROFILE named/pinnable reliance
 bar under C-005/C-011; `effect_attestation` and `ceremony_evidence` AEG nodes
 under C-005/C-012; EP-WITNESS-v1 witness cosignatures under C-007; RFC-3161
-timestamp proof under C-008); will be PR'd to the registry repo when one exists.*
+timestamp proof under C-008); C-013 scoped-standing-grant row added 2026-07-07
+per the -03 provisional class (EP-CONSENT-GRANT-v1, unit-level JS evidence);
+will be PR'd to the registry repo when one exists.*
