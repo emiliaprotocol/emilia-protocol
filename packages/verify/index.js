@@ -260,6 +260,14 @@ export function verifyReceipt(doc, publicKeyBase64url, opts = {}) {
     const payloadBytes = Buffer.from(canonicalize(doc.payload), 'utf8');
     const publicKeyDer = Buffer.from(publicKeyBase64url, 'base64url');
     const keyObject = crypto.createPublicKey({ key: publicKeyDer, format: 'der', type: 'spki' });
+    // EP-RECEIPT-v1 is Ed25519 over JCS. crypto.verify(null, ...) dispatches on the
+    // key type, so without this guard a non-Ed25519 pinned key (EC/RSA) would be
+    // verified under a different algorithm than the receipt declares. Pin the curve
+    // here to match the hardcoded Ed25519 of the web verifier (verify-web.js) and
+    // reject any other key type fail-closed.
+    if (keyObject.asymmetricKeyType !== 'ed25519') {
+      return { valid: false, checks, error: `Unsupported issuer key type '${keyObject.asymmetricKeyType}'; EP-RECEIPT-v1 requires Ed25519` };
+    }
     const sigBytes = Buffer.from(doc.signature.value, 'base64url');
     checks.signature = crypto.verify(null, payloadBytes, keyObject, sigBytes);
   } catch (e) {
