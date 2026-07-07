@@ -9,6 +9,7 @@ import {
   buildContexts, collectSignoffs, assembleAuthorizationReceipt,
   assembleAuthorizationReceiptLegacyV1,
   policyHash as computePolicyHash, generateEd25519KeyPair,
+  softwareSignerFromPrivateKey,
 } from '../../packages/issue/index.js';
 import { canonicalize } from '../../packages/verify/index.js';
 
@@ -33,14 +34,34 @@ function classASigner({ approverKeyId, privateKey, signedAt }) {
   };
 }
 
-async function mint(actionParams, { legacy = false } = {}) {
+async function mint(actionParams, { legacy = false, downgradeClassA = false } = {}) {
   const action = { action_type: 'payment.release', policy_id: 'pol:test', initiator: 'ep:agent:1', params: actionParams };
-  const kp = newP256(); const logKp = generateEd25519KeyPair();
+  const logKp = generateEd25519KeyPair();
   const contexts = buildContexts({ action, policyHash: computePolicyHash({ policy_id: action.policy_id }), approvers: ['ep:approver:dir'], requiredApprovals: 1, issuedAt: ISSUED_AT, expiresAt: EXPIRES_AT });
-  const signoffs = await collectSignoffs(contexts, [classASigner({ approverKeyId: 'ep:key:dir#1', signedAt: ISSUED_AT, privateKey: kp.privateKey })]);
+
+  // Downgrade-attack construction: the signoff is a bare Ed25519 Class-B software
+  // signature (NO WebAuthn), but the verifier PINS the same key as Class-A. A
+  // verifier that lets the attacker-declared signoff key_class win would take the
+  // Class-B path and accept the bare signature; the correct rule is that the
+  // PINNED key class is authoritative, forcing the Class-A WebAuthn path, which
+  // finds no assertion and rejects. See index.js verifyTrustReceipt.
+  let signoffs; let approverPublicKeyB64u; let pinnedKeyClass;
+  if (downgradeClassA) {
+    const edKp = generateEd25519KeyPair();
+    signoffs = await collectSignoffs(contexts, [softwareSignerFromPrivateKey({
+      privateKey: edKp.privateKey, approverKeyId: 'ep:key:dir#1', signedAt: ISSUED_AT, keyClass: 'B',
+    })]);
+    approverPublicKeyB64u = edKp.publicKeyB64u;
+    pinnedKeyClass = 'A'; // pinned Class-A; the signoff declares 'B' with a bare signature
+  } else {
+    const kp = newP256();
+    signoffs = await collectSignoffs(contexts, [classASigner({ approverKeyId: 'ep:key:dir#1', signedAt: ISSUED_AT, privateKey: kp.privateKey })]);
+    approverPublicKeyB64u = kp.publicKeyB64u;
+    pinnedKeyClass = 'A';
+  }
   const assemble = legacy ? assembleAuthorizationReceiptLegacyV1 : assembleAuthorizationReceipt;
   const receipt = assemble({ receiptId: `ep:receipt:${crypto.randomBytes(8).toString('base64url')}`, action, contexts, signoffs, committedAt: COMMITTED_AT, log: { privateKey: logKp.privateKey, logKeyId: 'ep:log:test#1' } });
-  const verification = { approver_keys: { 'ep:key:dir#1': { public_key: kp.publicKeyB64u, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2036-01-01T00:00:00Z' } }, log_public_key: logKp.publicKeyB64u };
+  const verification = { approver_keys: { 'ep:key:dir#1': { public_key: approverPublicKeyB64u, key_class: pinnedKeyClass, valid_from: '2026-01-01T00:00:00Z', valid_to: '2036-01-01T00:00:00Z' } }, log_public_key: logKp.publicKeyB64u };
   return { receipt, verification, logPrivateKey: logKp.privateKey };
 }
 
@@ -113,6 +134,19 @@ add('accept_valid_receipt', true, valid.receipt, valid.verification);
   if (m.receipt.log_proof.inclusion_path.length !== 0) throw new Error('expected single-leaf receipt (empty inclusion_path)');
   m.receipt.log_proof.leaf_index = 1;
   add('reject_empty_path_nonzero_leaf_index', false, m.receipt, m.verification);
+}
+{ // Class-A downgrade: the pinned key entry is Class-A, but the signoff declares
+  // key_class:'B' and carries only a bare Ed25519 signature (no WebAuthn). The
+  // PINNED class is authoritative, so the verifier MUST take the Class-A WebAuthn
+  // path, find no assertion, and reject. A verifier that let the attacker-declared
+  // signoff key_class win would accept the bare signature — the downgrade this
+  // vector locks out. Every OTHER check (action_hash, commitments, inclusion,
+  // checkpoint, windows) is intact; the ONLY refusing check is signoff_signatures.
+  const m = await mint({ amount: 82000, currency: 'USD' }, { downgradeClassA: true });
+  if (m.receipt.signoffs[0].key_class !== 'B') throw new Error('expected signoff to declare key_class B');
+  if (m.receipt.signoffs[0].webauthn) throw new Error('expected a bare (non-WebAuthn) Class-B signoff');
+  if (m.verification.approver_keys['ep:key:dir#1'].key_class !== 'A') throw new Error('expected the pinned key to be Class-A');
+  add('reject_pinned_class_a_bare_signature_downgrade', false, m.receipt, m.verification);
 }
 
 const suite = {

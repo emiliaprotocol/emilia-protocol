@@ -223,9 +223,17 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 			signaturesOK = false
 			continue
 		}
-		keyClass := getStr(s, "key_class")
+		// The PINNED key entry's class is authoritative and takes precedence over
+		// the attacker-controlled signoff's declared key_class. Otherwise an
+		// attacker pins a Class-A (WebAuthn, user-presence/user-verification)
+		// approver but declares key_class:"B" and supplies a bare Ed25519 signature
+		// over the digest, downgrading to raw-signature verification with NO
+		// WebAuthn proof. A pinned Class-A key MUST be satisfied by a real WebAuthn
+		// assertion and is rejected if it only carries a raw signature. Mirrors
+		// index.js verifyTrustReceipt.
+		keyClass := getStr(keyEntry, "key_class")
 		if keyClass == "" {
-			keyClass = getStr(keyEntry, "key_class")
+			keyClass = getStr(s, "key_class")
 		}
 		if keyClass == "" {
 			keyClass = "B"

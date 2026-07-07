@@ -28,9 +28,11 @@ export async function GET(request, { params }) {
       .select(`
         receipt_id, entity_id, submitted_by,
         transaction_ref, transaction_type,
+        context,
         delivery_accuracy, product_accuracy,
         price_integrity, return_processing,
         agent_satisfaction, agent_behavior,
+        claims, submitter_score, submitter_established,
         composite_score, evidence,
         receipt_hash, previous_hash,
         anchor_batch_id, merkle_proof, merkle_leaf_index,
@@ -43,18 +45,27 @@ export async function GET(request, { params }) {
       return epProblem(404, 'receipt_not_found', 'Receipt not found');
     }
 
-    // Recompute hash to verify integrity
+    // Recompute hash to verify integrity.
+    // This MUST pass the exact same field set that create-receipt.js binds via
+    // computeReceiptHash (context, agent_behavior, claims, submitter_score,
+    // submitter_established included), or authentic receipts carrying those
+    // fields recompute to a different hash and falsely report hash_valid:false.
     const recomputedHash = await computeReceiptHash({
       entity_id: receipt.entity_id,
       submitted_by: receipt.submitted_by,
       transaction_ref: receipt.transaction_ref,
       transaction_type: receipt.transaction_type,
+      context: receipt.context,
       delivery_accuracy: receipt.delivery_accuracy,
       product_accuracy: receipt.product_accuracy,
       price_integrity: receipt.price_integrity,
       return_processing: receipt.return_processing,
       agent_satisfaction: receipt.agent_satisfaction,
+      agent_behavior: receipt.agent_behavior,
+      claims: receipt.claims,
       evidence: receipt.evidence,
+      submitter_score: receipt.submitter_score,
+      submitter_established: receipt.submitter_established,
     }, receipt.previous_hash);
 
     const hashValid = recomputedHash === receipt.receipt_hash;

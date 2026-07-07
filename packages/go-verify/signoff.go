@@ -127,8 +127,9 @@ func parseMillis(ts string) (int64, bool) {
 func VerifyQuorum(quorum map[string]any, rpID string) QuorumResult {
 	checks := map[string]bool{
 		"all_signatures_valid": false, "action_binding": false, "distinct_humans": false,
-		"distinct_keys": false, "roles_admitted": false, "threshold_met": false,
-		"order_satisfied": false, "chain_linked": false, "within_window": false,
+		"distinct_keys": false, "initiator_excluded": false, "roles_admitted": false,
+		"threshold_met": false, "order_satisfied": false, "chain_linked": false,
+		"within_window": false,
 	}
 	if quorum == nil {
 		return QuorumResult{false, checks}
@@ -206,11 +207,38 @@ func VerifyQuorum(quorum map[string]any, rpID string) QuorumResult {
 	dh := len(seen) == len(counted)
 	checks["distinct_humans"] = !distinctHumans || dh
 
+	// Distinct device keys: no single public key may fill two counted slots.
+	// Key-uniqueness is a cryptographic floor, NOT a separation-of-duties
+	// preference: it holds UNCONDITIONALLY, even when distinct_humans is disabled.
+	// One key in two counted seats is one signer, never a quorum. Mirrors quorum.js.
 	countedKeys := map[string]int{}
 	for _, c := range counted {
 		countedKeys[getStr(c.m, "approver_public_key")]++
 	}
-	checks["distinct_keys"] = !distinctHumans || len(countedKeys) == len(counted)
+	checks["distinct_keys"] = len(countedKeys) == len(counted)
+
+	// Initiator excluded (separation of duties): the human/agent that INITIATED
+	// the action must never also approve it. Require context.initiator to be
+	// present, the SAME across all counted members, and to differ from every
+	// counted member's own approver identity. Mirrors quorum.js and
+	// verifyTrustReceipt's initiator SoD check.
+	initiatorExcluded := len(counted) > 0
+	quorumInitiator := ""
+	if len(counted) > 0 {
+		quorumInitiator = getStr(ctxOf(counted[0].m), "initiator")
+	}
+	if quorumInitiator == "" {
+		initiatorExcluded = false
+	}
+	for _, c := range counted {
+		if getStr(ctxOf(c.m), "initiator") != quorumInitiator {
+			initiatorExcluded = false
+		}
+		if getStr(ctxOf(c.m), "approver") == quorumInitiator {
+			initiatorExcluded = false
+		}
+	}
+	checks["initiator_excluded"] = initiatorExcluded
 
 	eligibleSet := map[string]bool{}
 	for _, e := range eligible {
@@ -295,7 +323,8 @@ func VerifyQuorum(quorum map[string]any, rpID string) QuorumResult {
 	}
 
 	valid := checks["all_signatures_valid"] && checks["action_binding"] && checks["distinct_humans"] &&
-		checks["distinct_keys"] && checks["roles_admitted"] && checks["threshold_met"] &&
-		checks["order_satisfied"] && checks["chain_linked"] && checks["within_window"]
+		checks["distinct_keys"] && checks["initiator_excluded"] && checks["roles_admitted"] &&
+		checks["threshold_met"] && checks["order_satisfied"] && checks["chain_linked"] &&
+		checks["within_window"]
 	return QuorumResult{valid, checks}
 }

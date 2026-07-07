@@ -617,6 +617,69 @@ test('strict verifier — rejects unsigned critical signoff fields', () => {
   assert.match(r.strict.errors.join(' '), /Ed25519 signoff signature/);
 });
 
+// ── class-downgrade attack: pinned Class-A key can't be met by a bare sig ────
+// The signoff's declared key_class is ATTACKER-CONTROLLED. If the verifier let
+// that value choose the verify routine, an attacker could pin a Class-A
+// (WebAuthn, user-presence/user-verification) approver, declare key_class:'B',
+// and hand over a bare raw signature over the digest — verifying with NO
+// human-presence proof. The PINNED key entry's class MUST win: a pinned Class-A
+// key is always verified as a real WebAuthn assertion and rejected if it only
+// carries a raw signature. This must hold in BOTH the default and strict paths.
+
+// A pinned Class-A key whose SPKI is Ed25519. This is the sharp witness: a bare
+// Ed25519 signature over the raw digest WOULD verify on the raw-signature path
+// (verifyEd25519OverDigest), so if the attacker-declared key_class:'B' were
+// allowed to choose that path, the downgrade would succeed with NO WebAuthn
+// proof. Only the pinned-class-wins rule (which forces the WebAuthn path for a
+// pinned-A key) stops it. This makes the test a true red/green witness of the
+// defense rather than passing incidentally on a P-256/Ed25519 key mismatch.
+const approverAEd = ed25519();
+const KEYS_A_ED = {
+  ...KEYS,
+  'ep:key:cfo#1': { public_key: approverAEd.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+};
+const OPTS_A_ED = { approverKeys: KEYS_A_ED, logPublicKey: logKey.pub };
+const STRICT_OPTS_A_ED = { ...OPTS_A_ED, strict: true, rpId: 'www.emiliaprotocol.ai', expectedPolicyHash: 'sha256:77ab1234' };
+
+// Build a receipt where the CFO (pinned Class-A key ep:key:cfo#1) signs off with
+// a DOWNGRADED signoff: declared key_class:'B' and a bare Ed25519 signature over
+// the context digest produced by the pinned key's OWN private half, and NO
+// webauthn assertion. Under the vulnerable code this raw signature verifies and
+// the receipt is accepted with zero user-presence/user-verification proof.
+function buildDowngradedReceipt() {
+  const receipt = buildReceipt();
+  const ctx2 = receipt.contexts[1];               // the CFO context
+  const d2 = sha256hex(canonicalize(ctx2));
+  const bareSig = crypto.sign(null, Buffer.from(d2, 'hex'), approverAEd.privateKey).toString('base64url');
+  receipt.signoffs[1] = {
+    context_hash: `sha256:${d2}`,
+    signature: bareSig,                           // bare Ed25519 over the digest
+    key_class: 'B',                               // attacker-declared downgrade
+    approver_key_id: 'ep:key:cfo#1',              // pinned as Class-A (Ed25519 SPKI)
+    signed_at: '2026-06-09T17:25:01Z',
+    // NB: no `webauthn` — a real Class-A assertion is absent.
+  };
+  return receipt;
+}
+
+test('class-downgrade — pinned Class-A + declared key_class B + bare signature is REJECTED (default path)', () => {
+  const r = verifyTrustReceipt(buildDowngradedReceipt(), OPTS_A_ED);
+  assert.equal(r.checks.signoff_signatures, false, JSON.stringify(r.errors));
+  assert.equal(r.valid, false);
+});
+
+test('class-downgrade — pinned Class-A downgrade is REJECTED under the strict gate too', () => {
+  const r = verifyTrustReceipt(buildDowngradedReceipt(), STRICT_OPTS_A_ED);
+  // Base signature verification fails closed (pinned class wins → WebAuthn path,
+  // no assertion present).
+  assert.equal(r.checks.signoff_signatures, false, JSON.stringify(r.errors));
+  // And the strict no_unsigned gate keys on the pinned class, so it demands the
+  // Class-A WebAuthn fields that the downgraded signoff does not carry.
+  assert.equal(r.strict.checks.no_unsigned, false);
+  assert.match(r.strict.errors.join(' '), /Class-A/);
+  assert.equal(r.valid, false);
+});
+
 // ── step 5c: opt-in priorCheckpoint consistency knob ─────────────────────────
 // The caller pins a previously-observed checkpoint head; the receipt's
 // checkpoint must be proven an append-only extension of it (RFC 6962 §2.1.2

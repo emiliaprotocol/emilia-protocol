@@ -668,7 +668,10 @@ function evaluateTrustReceiptStrict(report, receipt, contexts, signoffs, context
       pinnedKeysOk = false;
       report.errors.push(`strict pinned_keys has no pinned public key for ${s.approver_key_id}`);
     }
-    const keyClass = s.key_class || keyEntry?.key_class || 'B';
+    // Pinned key class is authoritative (see default path): a pinned Class-A key
+    // is always evaluated as Class-A even if the signoff declares key_class:'B',
+    // so its WebAuthn UP/UV checks below cannot be downgraded away.
+    const keyClass = keyEntry?.key_class || s.key_class || 'B';
     if (keyClass === 'A') classASignoffs.push({ signoff: s, keyEntry });
   }
   markStrict(report, 'pinned_keys', pinnedKeysOk);
@@ -779,7 +782,10 @@ function evaluateTrustReceiptStrict(report, receipt, contexts, signoffs, context
     requireField(s?.approver_key_id, 'strict no_unsigned requires every signoff to carry approver_key_id');
     requireField(s?.key_class, 'strict no_unsigned requires every signoff to carry key_class');
     requireField(s?.signed_at, 'strict no_unsigned requires every signoff to carry signed_at');
-    const keyClass = s?.key_class || approverKeys[s?.approver_key_id]?.key_class || 'B';
+    // Pinned key class is authoritative: a pinned Class-A key must carry a full
+    // WebAuthn assertion; the attacker cannot declare key_class:'B' to reduce the
+    // no_unsigned requirement to a bare Ed25519 signature.
+    const keyClass = approverKeys[s?.approver_key_id]?.key_class || s?.key_class || 'B';
     if (keyClass === 'A') {
       requireField(s?.webauthn?.authenticator_data, 'strict no_unsigned requires Class-A authenticator_data');
       requireField(s?.webauthn?.client_data_json, 'strict no_unsigned requires Class-A client_data_json');
@@ -1056,7 +1062,14 @@ export function verifyTrustReceipt(receipt, opts = {}) {
       continue;
     }
     const digestBytes = Buffer.from(digestHex, 'hex');
-    const keyClass = s.key_class || keyEntry.key_class || 'B';
+    // The PINNED key entry's class is authoritative and takes precedence over the
+    // attacker-controlled signoff's declared key_class. Otherwise an attacker
+    // pins a Class-A (WebAuthn, user-presence/user-verification) approver but
+    // declares key_class:'B' and supplies a bare ECDSA/Ed25519 signature over the
+    // digest, downgrading to raw-signature verification with NO WebAuthn proof.
+    // A pinned Class-A key MUST be satisfied by a real WebAuthn assertion and is
+    // rejected if it only carries a raw signature.
+    const keyClass = keyEntry.key_class || s.key_class || 'B';
     const sigOk = keyClass === 'A'
       ? Boolean(s.webauthn) && verifyClassAOverDigest(s.webauthn, digestBytes, keyEntry.public_key)
       : verifyEd25519OverDigest(s.signature, digestBytes, keyEntry.public_key);

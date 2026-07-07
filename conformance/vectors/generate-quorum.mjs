@@ -23,7 +23,7 @@ const chainHash = (ctx) => crypto.createHash('sha256').update(canon(ctx), 'utf8'
 // Mint one real member assertion. Bend exactly one thing per negative vector.
 // prevContextHash !== null  -> bind this signoff to its predecessor (ordered chain).
 // sharedSigner provided      -> reuse a device key across slots (distinct-keys negative).
-function member({ role, approver, issuedAt, actionHash = ACTION, wrongKey = false, malformSig = false, prevContextHash = null, sharedSigner = null }) {
+function member({ role, approver, issuedAt, actionHash = ACTION, wrongKey = false, malformSig = false, prevContextHash = null, sharedSigner = null, initiator = 'ent_agent_7' }) {
   const signer = sharedSigner || crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
   const verifierKey = wrongKey ? crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' }).publicKey : signer.publicKey;
   const context = {
@@ -31,7 +31,7 @@ function member({ role, approver, issuedAt, actionHash = ACTION, wrongKey = fals
     action_hash: actionHash,
     policy: 'policy_aegis_quorum',
     nonce: 'sig_' + crypto.randomBytes(16).toString('hex'),
-    approver, initiator: 'ent_agent_7',
+    approver, initiator,
     issued_at: issuedAt, expires_at: '2026-06-11T01:00:00.000Z',
   };
   if (prevContextHash !== null) context.prev_context_hash = prevContextHash;
@@ -189,6 +189,38 @@ add('reject_duplicate_key', 'Two distinct approver identities sign with the same
   members: [
     member({ ...PO, issuedAt: t(1), sharedSigner: dupKey }),
     member({ ...IG, issuedAt: t(2), sharedSigner: dupKey }),
+  ],
+});
+
+// REJECT — the action's INITIATOR is also a counted approver (separation of
+// duties). The PO's own identity is reused as the initiator in every signed
+// context, so a member who INITIATED the action also approves it. Every other
+// predicate passes (valid signatures, distinct humans, distinct keys, eligible
+// roles, threshold met, window); the ONLY failing check is initiator_excluded.
+// The eligible roster INCLUDES the PO so roles_admitted is not the failing check.
+const initiatorId = PO.approver;
+add('reject_initiator_is_approver', 'The action initiator is also a counted approver — one party both initiates and approves (SoD violation)', 'initiator-excluded', false, {
+  '@type': 'ep.quorum', action_hash: ACTION,
+  policy: { mode: 'threshold', required: 2, approvers: ROSTER, distinct_humans: true, window_sec: 900 },
+  members: [
+    member({ ...PO, issuedAt: t(1), initiator: initiatorId }),
+    member({ ...AO, issuedAt: t(2), initiator: initiatorId }),
+  ],
+});
+
+// REJECT — distinct_humans DISABLED, yet a single device key fills two seats.
+// distinct_humans:false switches OFF the by-name separation, but key-uniqueness
+// is a cryptographic floor that holds UNCONDITIONALLY: one key in two counted
+// seats is one signer, never a quorum. The initiator (ent_agent_7, the default)
+// differs from both approvers so initiator_excluded passes; the ONLY failing
+// check is distinct_keys.
+const sharedNoDistinct = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+add('reject_distinct_humans_false_shared_key', 'distinct_humans:false with one device key across two seats — distinct_keys is unconditional and must still reject', 'distinct-keys', false, {
+  '@type': 'ep.quorum', action_hash: ACTION,
+  policy: { mode: 'threshold', required: 2, approvers: ROSTER, distinct_humans: false, window_sec: 900 },
+  members: [
+    member({ ...PO, issuedAt: t(1), sharedSigner: sharedNoDistinct }),
+    member({ ...IG, issuedAt: t(2), sharedSigner: sharedNoDistinct }),
   ],
 });
 

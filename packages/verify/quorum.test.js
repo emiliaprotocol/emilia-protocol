@@ -9,7 +9,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
+import crypto from 'node:crypto';
 import { verifyQuorum } from './quorum.js';
+import { canonicalize } from './index.js';
 
 const suite = JSON.parse(
   readFileSync(new URL('../../conformance/vectors/quorum.v1.json', import.meta.url), 'utf8'),
@@ -57,4 +59,102 @@ test('EP-QUORUM-v1: malformed input fails closed without throwing', () => {
     const r = verifyQuorum(bad, OPTS);
     assert.strictEqual(r.valid, false);
   }
+});
+
+// ── Synthetic-signer harness ────────────────────────────────────────────────
+// Mints REAL P-256 WebAuthn-style signoffs (the same recipe used to bake the
+// conformance vectors) so the members below genuinely COUNT toward the quorum —
+// proving the initiator-exclusion and unconditional key-uniqueness predicates
+// reject on real counted members, not vacuously on rejected signatures.
+const RP_ID = 'emiliaprotocol.ai';
+const spkiB64u = (pub) => pub.export({ type: 'spki', format: 'der' }).toString('base64url');
+const ACTION_HASH = 'a'.repeat(64);
+
+function mintSignoff(context, privateKey) {
+  const challenge = crypto.createHash('sha256')
+    .update(canonicalize(context), 'utf8').digest().toString('base64url');
+  const clientDataJson = Buffer.from(
+    JSON.stringify({ type: 'webauthn.get', challenge, origin: `https://${RP_ID}` }), 'utf8');
+  const authData = Buffer.concat([
+    crypto.createHash('sha256').update(RP_ID, 'utf8').digest(), // rpIdHash (32)
+    Buffer.from([0x05, 0, 0, 0, 0]),                            // flags UP|UV + signCount
+  ]);
+  const signedData = Buffer.concat([authData, crypto.createHash('sha256').update(clientDataJson).digest()]);
+  return {
+    '@type': 'ep.signoff.webauthn',
+    context,
+    webauthn: {
+      authenticator_data: authData.toString('base64url'),
+      client_data_json: clientDataJson.toString('base64url'),
+      signature: crypto.sign('sha256', signedData, privateKey).toString('base64url'),
+    },
+  };
+}
+const ctx = (approver, initiator, issued_at, nonce) => ({
+  ep_version: '1.0', context_type: 'ep.signoff.v1', action_hash: ACTION_HASH,
+  policy: 'p', nonce, approver, initiator, issued_at, expires_at: '2026-06-11T01:00:00.000Z',
+});
+
+// (A) Initiator-as-approver => reject. The action's initiator (alice) also
+// occupies an approver seat; the two-person rule requires the initiator to be
+// excluded from the approver set. Every other predicate is satisfied, so this
+// rejects ONLY via initiator_excluded — the exact case that slipped through
+// before the fix.
+test('EP-QUORUM-v1: initiator sitting in an approver seat is rejected', () => {
+  const k1 = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  const k2 = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+  const s1 = mintSignoff(ctx('ep:approver:alice', 'ep:approver:alice', '2026-06-11T00:01:00.000Z', 'n1'), k1.privateKey);
+  const s2 = mintSignoff(ctx('ep:approver:bob', 'ep:approver:alice', '2026-06-11T00:02:00.000Z', 'n2'), k2.privateKey);
+  const quorum = {
+    '@type': 'ep.quorum', action_hash: ACTION_HASH,
+    policy: {
+      mode: 'threshold', required: 2, distinct_humans: true, window_sec: 900,
+      approvers: [
+        { role: 'r1', approver: 'ep:approver:alice' },
+        { role: 'r2', approver: 'ep:approver:bob' },
+      ],
+    },
+    members: [
+      { role: 'r1', approver_public_key: spkiB64u(k1.publicKey), signoff: s1 },
+      { role: 'r2', approver_public_key: spkiB64u(k2.publicKey), signoff: s2 },
+    ],
+  };
+  const { valid, checks } = verifyQuorum(quorum, OPTS);
+  assert.strictEqual(valid, false, 'initiator-as-approver must reject');
+  assert.strictEqual(checks.initiator_excluded, false, 'initiator_excluded must trip');
+  // Prove it is the SOLE failing predicate (the pre-fix gap): everything else holds.
+  for (const [k, v] of Object.entries(checks)) {
+    if (k !== 'initiator_excluded') assert.strictEqual(v, true, `check ${k} should be true`);
+  }
+});
+
+// (B) distinct_humans:false + one device key in two counted seats => reject.
+// Key-uniqueness is a cryptographic floor, not a separation-of-duties
+// preference: even with distinct_humans disabled (so distinct_humans passes),
+// one signer cannot fill two seats. Rejects via distinct_keys.
+test('EP-QUORUM-v1: one key in two seats is rejected even with distinct_humans:false', () => {
+  const k = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' }); // ONE key, two seats
+  const key = spkiB64u(k.publicKey);
+  const s1 = mintSignoff(ctx('ep:approver:alice', 'ent_agent_7', '2026-06-11T00:01:00.000Z', 'n1'), k.privateKey);
+  const s2 = mintSignoff(ctx('ep:approver:bob', 'ent_agent_7', '2026-06-11T00:02:00.000Z', 'n2'), k.privateKey);
+  const quorum = {
+    '@type': 'ep.quorum', action_hash: ACTION_HASH,
+    policy: {
+      mode: 'threshold', required: 2, distinct_humans: false, window_sec: 900,
+      approvers: [
+        { role: 'r1', approver: 'ep:approver:alice' },
+        { role: 'r2', approver: 'ep:approver:bob' },
+      ],
+    },
+    members: [
+      { role: 'r1', approver_public_key: key, signoff: s1 },
+      { role: 'r2', approver_public_key: key, signoff: s2 },
+    ],
+  };
+  const { valid, checks } = verifyQuorum(quorum, OPTS);
+  assert.strictEqual(valid, false, 'shared key must reject regardless of distinct_humans');
+  assert.strictEqual(checks.distinct_keys, false, 'distinct_keys must trip unconditionally');
+  // distinct_humans is DISABLED, so that check passes — proving key-uniqueness
+  // is enforced independently, not as a side effect of separation-of-duties.
+  assert.strictEqual(checks.distinct_humans, true, 'distinct_humans is off, so it passes');
 });

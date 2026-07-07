@@ -303,8 +303,9 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
     fail-closed; composes verify_webauthn_signoff per member."""
     opts = opts or {}
     checks = {"all_signatures_valid": False, "action_binding": False, "distinct_humans": False,
-              "distinct_keys": False, "roles_admitted": False, "threshold_met": False,
-              "order_satisfied": False, "chain_linked": False, "within_window": False}
+              "distinct_keys": False, "initiator_excluded": False, "roles_admitted": False,
+              "threshold_met": False, "order_satisfied": False, "chain_linked": False,
+              "within_window": False}
     members_out = []
     try:
         policy = quorum.get("policy") if isinstance(quorum, dict) else None
@@ -347,8 +348,24 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
                    if members_out[i]["valid"] and ((m.get("signoff") or {}).get("context") or {}).get("action_hash") == action_hash]
         counted_apprs = [((m.get("signoff") or {}).get("context") or {}).get("approver") for _, m in counted]
         checks["distinct_humans"] = (len(set(counted_apprs)) == len(counted_apprs)) if distinct_humans else True
+        # Distinct device keys: no single public key may fill two counted slots.
+        # Key-uniqueness is a cryptographic floor, NOT a separation-of-duties
+        # preference: it holds UNCONDITIONALLY, even when distinct_humans is
+        # disabled. One key in two counted seats is one signer, never a quorum.
+        # Mirrors quorum.js.
         counted_keys = [m.get("approver_public_key") for _, m in counted]
-        checks["distinct_keys"] = (len(set(counted_keys)) == len(counted_keys)) if distinct_humans else True
+        checks["distinct_keys"] = len(set(counted_keys)) == len(counted_keys)
+        # Initiator excluded (separation of duties): the human/agent that
+        # INITIATED the action must never also approve it. Require context.initiator
+        # to be present, the SAME across all counted members, and to differ from
+        # every counted member's own approver identity. Mirrors quorum.js and
+        # verifyTrustReceipt's initiator SoD check.
+        counted_initiators = [((m.get("signoff") or {}).get("context") or {}).get("initiator") for _, m in counted]
+        initiator = counted_initiators[0] if counted_initiators else None
+        checks["initiator_excluded"] = (len(counted) > 0
+                                        and isinstance(initiator, str) and len(initiator) > 0
+                                        and all(v == initiator for v in counted_initiators)
+                                        and initiator not in counted_apprs)
         eligible_set = {f"{e.get('role')} {e.get('approver')}" for e in eligible}
         checks["roles_admitted"] = len(counted) > 0 and all(
             f"{m.get('role')} {((m.get('signoff') or {}).get('context') or {}).get('approver')}" in eligible_set for _, m in counted)
@@ -386,8 +403,9 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
     except Exception:
         return {"valid": False, "checks": checks, "members": members_out}
     valid = all([checks["all_signatures_valid"], checks["action_binding"], checks["distinct_humans"],
-                 checks["distinct_keys"], checks["roles_admitted"], checks["threshold_met"],
-                 checks["order_satisfied"], checks["chain_linked"], checks["within_window"]])
+                 checks["distinct_keys"], checks["initiator_excluded"], checks["roles_admitted"],
+                 checks["threshold_met"], checks["order_satisfied"], checks["chain_linked"],
+                 checks["within_window"]])
     return {"valid": valid, "checks": checks, "members": members_out}
 
 
@@ -718,7 +736,15 @@ def verify_trust_receipt(receipt: Any, opts: Optional[dict] = None) -> dict:
             signatures_ok = False
             continue
         digest_bytes = bytes.fromhex(_hex_of(s.get("context_hash")))
-        key_class = s.get("key_class") or key_entry.get("key_class") or "B"
+        # The PINNED key entry's class is authoritative and takes precedence over
+        # the attacker-controlled signoff's declared key_class. Otherwise an
+        # attacker pins a Class-A (WebAuthn, user-presence/user-verification)
+        # approver but declares key_class:'B' and supplies a bare Ed25519
+        # signature over the digest, downgrading to raw-signature verification
+        # with NO WebAuthn proof. A pinned Class-A key MUST be satisfied by a
+        # real WebAuthn assertion and is rejected if it only carries a raw
+        # signature. Mirrors index.js verifyTrustReceipt.
+        key_class = key_entry.get("key_class") or s.get("key_class") or "B"
         if key_class == "A":
             sig_ok = bool(s.get("webauthn")) and _verify_class_a_over_digest(s["webauthn"], digest_bytes, key_entry["public_key"])
         else:

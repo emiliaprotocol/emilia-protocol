@@ -163,9 +163,26 @@ export function verifyAdmissibilityAgainstPinnedProfile(pinned, presented) {
  *      verifyWebAuthnSignoff earns `class_a`. Used where the approver keys travel
  *      with the receipt rather than being pinned by the relying party.
  *
+ *      TRUST-LAUNDERING GUARD: an approver key carried INSIDE the receipt proves
+ *      only that whoever minted the receipt also holds that key — it is NOT proof
+ *      the relying party trusts that human. Crediting an elevated tier off such a
+ *      key would collapse VERIFIED into ACCEPTED (any party can mint a fresh
+ *      keypair, self-sign a signoff, and embed both). So path (b) elevates the
+ *      tier ONLY when either: (i) the caller explicitly opts in with
+ *      `allowEmbeddedApproverKeys:true` (the documented self-contained mode,
+ *      DEFAULT OFF); or (ii) every embedded approver key that would earn the
+ *      credit is present in the relying party's PINNED approver key set
+ *      (opts.approverKeys). With no pin and no opt-in, path (b) may still VERIFY
+ *      the signoff/quorum, but it does NOT elevate above `software`. Fail-closed.
+ *
  * @param {object} doc  the EP-RECEIPT-v1 document
  * @param {object} [opts]
- * @param {object} [opts.approverKeys] pinned approver keys for path (a)
+ * @param {object} [opts.approverKeys] pinned approver keys for path (a) and the
+ *   path-(b) fallback: a receipt-embedded approver key elevates the tier only if
+ *   it is one of these pinned keys (unless allowEmbeddedApproverKeys is set)
+ * @param {boolean} [opts.allowEmbeddedApproverKeys=false] explicit opt-in to the
+ *   self-contained mode where an UNPINNED approver key carried inside the receipt
+ *   may still elevate the path-(b) tier. DEFAULT OFF (fail-closed).
  * @param {function} [opts.verifyAssurance] custom assurance verifier for path (a)
  * @param {string} [opts.rpId]  bind embedded device assertions to this WebAuthn RP id (path b)
  * @param {boolean} [opts.detail] return a {tier, quorum, signoff} object instead of the string
@@ -185,35 +202,76 @@ export function receiptAssuranceTier(doc, opts = {}) {
   // --- Path (b): self-contained embedded per-signer evidence (DoD audit fix). ---
   const p = doc?.payload || {};
   const verifyOpts = opts.rpId ? { rpId: opts.rpId } : {};
+  // The relying party's PINNED approver public keys (base64url SPKI-DER strings).
+  // An embedded approver key elevates the tier only if it is in this set, unless
+  // the caller explicitly opts into the self-contained mode.
+  const allowEmbedded = opts.allowEmbeddedApproverKeys === true;
+  const pinnedKeys = pinnedApproverKeySet(opts.approverKeys);
+  const keyIsTrusted = (k) => allowEmbedded || (typeof k === 'string' && pinnedKeys.has(k));
 
   // quorum: a real, self-contained EP-QUORUM-v1 evidence document. Accept it
   // under payload.quorum or payload.claim.quorum. It only counts if it is a full
   // quorum document (policy + members with WebAuthn signoffs) AND verifyQuorum
   // returns valid. A bare {signers,threshold} block has no members to verify and
-  // therefore CANNOT be credited quorum.
+  // therefore CANNOT be credited quorum. The cryptographic verification runs
+  // regardless (so `detail.quorum` reports validity), but the tier elevates only
+  // when every member's embedded approver key is pinned (or the caller opted in).
   const q = p.quorum || p.claim?.quorum;
   if (detail.tier !== 'quorum' && isQuorumEvidence(q)) {
     const qr = verifyQuorum(q, verifyOpts);
-    detail.quorum = { valid: qr.valid, checks: qr.checks };
-    if (qr.valid) detail.tier = 'quorum';
+    const membersTrusted = allowEmbedded
+      || (Array.isArray(q.members) && q.members.length > 0
+          && q.members.every((m) => keyIsTrusted(m?.approver_public_key)));
+    detail.quorum = { valid: qr.valid, checks: qr.checks, embedded_keys_trusted: membersTrusted };
+    if (qr.valid && membersTrusted) detail.tier = 'quorum';
   }
 
   // class_a: a verifiable WebAuthn device signoff. The signoff evidence is
   // {context, webauthn}; the approver key travels with it (signoff.approver_public_key)
-  // or alongside it (payload.approver_public_key).
+  // or alongside it (payload.approver_public_key). That key elevates the tier only
+  // when it is pinned by the relying party (or the caller opted into embedded keys).
   if ((TIER_RANK[detail.tier] ?? 0) < TIER_RANK.class_a) {
     const so = p.signoff || p.claim?.signoff;
     if (isSignoffEvidence(so)) {
       const key = so.approver_public_key || p.approver_public_key || p.claim?.approver_public_key;
       if (key) {
         const sr = verifyWebAuthnSignoff(so, key, verifyOpts);
-        detail.signoff = { valid: sr.valid, checks: sr.checks };
-        if (sr.valid && (TIER_RANK[detail.tier] ?? 0) < TIER_RANK.class_a) detail.tier = 'class_a';
+        const trusted = keyIsTrusted(key);
+        detail.signoff = { valid: sr.valid, checks: sr.checks, embedded_key_trusted: trusted };
+        if (sr.valid && trusted && (TIER_RANK[detail.tier] ?? 0) < TIER_RANK.class_a) detail.tier = 'class_a';
       }
     }
   }
 
   return opts.detail ? detail : detail.tier;
+}
+
+/**
+ * The set of PINNED approver public keys (base64url SPKI-DER strings) a relying
+ * party trusts, from the same `approverKeys` map path (a) uses. Accepts either a
+ * map of { keyId: { public_key } } (the EP-ASSURANCE-PROOF-v1 shape) or a plain
+ * array/set of key strings. Used to decide whether a receipt-embedded approver
+ * key may elevate the path-(b) tier. Never throws.
+ */
+function pinnedApproverKeySet(approverKeys) {
+  const out = new Set();
+  if (!approverKeys) return out;
+  if (approverKeys instanceof Set) {
+    for (const k of approverKeys) if (typeof k === 'string' && k) out.add(k);
+    return out;
+  }
+  if (Array.isArray(approverKeys)) {
+    for (const k of approverKeys) if (typeof k === 'string' && k) out.add(k);
+    return out;
+  }
+  if (typeof approverKeys === 'object') {
+    for (const entry of Object.values(approverKeys)) {
+      if (typeof entry === 'string' && entry) { out.add(entry); continue; }
+      const pk = entry && typeof entry === 'object' ? entry.public_key : null;
+      if (typeof pk === 'string' && pk) out.add(pk);
+    }
+  }
+  return out;
 }
 
 /** A quorum evidence doc must carry members with per-signer signoffs to be verifiable. */
@@ -238,8 +296,16 @@ function isSignoffEvidence(s) {
  * @param {object} [opts.keyRegistry] a key registry (createKeyRegistry) for rotation + revocation;
  *   if given it supersedes trustedKeys — a receipt is verified only against keys valid (and not
  *   revoked) at its issuance time.
+ * @param {object} [opts.approverKeys] PINNED approver keys ({ keyId: { public_key, key_class } }).
+ *   Used both for the pinned assurance-proof path and to authorize receipt-embedded
+ *   approver keys under the self-contained embedded-evidence path.
+ * @param {boolean} [opts.allowEmbeddedApproverKeys=false] opt into the self-contained
+ *   embedded-evidence mode: when true, a class_a/quorum tier may be credited from an
+ *   approver key carried INSIDE the receipt even if that key is not pinned. DEFAULT OFF
+ *   — with no pinned approverKeys and no opt-in, embedded evidence verifies but does not
+ *   elevate above 'software' (prevents VERIFIED collapsing into ACCEPTED / trust-laundering).
  */
-export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null, requiredAdmissibilityProfile = null } = {}) {
+export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900, store, log, allowInlineKey = false, allowEphemeralStore = false, strictEvidence = true, now = Date.now, keyRegistry = null, approverKeys = {}, approver_keys = null, verifyAssurance = null, rpId = null, requiredAdmissibilityProfile = null, allowEmbeddedApproverKeys = false } = {}) {
   // Production key custody: a registry (rotation + revocation) supersedes a flat
   // trustedKeys list. A flat list is coerced to an always-valid registry, so
   // existing callers are unchanged.
@@ -367,6 +433,10 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
     });
     const tierResult = receiptAssuranceTier(receipt, {
       rpId, detail: true, approverKeys: approver_keys || approverKeys, verifyAssurance,
+      // Trust-laundering guard: a receipt-embedded approver key does NOT elevate
+      // the tier unless it is in the pinned approverKeys set, or the operator
+      // explicitly opted into the self-contained embedded-evidence mode. DEFAULT OFF.
+      allowEmbeddedApproverKeys,
     });
     // Take the strongest tier either path proves.
     const have = (TIER_RANK[assurance.have] ?? 0) >= (TIER_RANK[tierResult.tier] ?? 0)

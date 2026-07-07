@@ -70,7 +70,10 @@ const T = Date.parse('2026-07-04T00:00:00.000Z');
 async function realGateEntries() {
   const { pub, privateKey } = makeKey();
   const log = createEvidenceLog();
-  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub], log });
+  // Self-contained embedded-evidence mode: the receipt carries a genuine WebAuthn
+  // signoff plus its approver key. That mode is now opt-in (allowEmbeddedApproverKeys)
+  // so an unpinned embedded key does not launder trust by default.
+  const g = createGate({ manifest: MANIFEST, trustedKeys: [pub], log, allowEmbeddedApproverKeys: true });
   const r = receipt(privateKey, { outcome: 'allow_with_signoff' });
   const passthrough = await g.check({ selector: READ });
   assert.equal(passthrough.reason, 'not_guarded');

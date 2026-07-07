@@ -25,7 +25,7 @@ function rawToDer(raw) {
 // Mint a stored-decision record exactly as the approve route persists it.
 async function mkDecision(role, approver, i, action) {
   const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
-  const context = { action_hash: action, policy: 'p', role, approver, nonce: b64u(crypto.getRandomValues(new Uint8Array(16))), issued_at: new Date(Date.UTC(2026, 5, 11, 0, i)).toISOString() };
+  const context = { action_hash: action, policy: 'p', role, approver, initiator: 'ent_agent_7', nonce: b64u(crypto.getRandomValues(new Uint8Array(16))), issued_at: new Date(Date.UTC(2026, 5, 11, 0, i)).toISOString() };
   const ch = b64u(await sha(utf8(canon(context))));
   const cd = utf8(JSON.stringify({ type: 'webauthn.get', challenge: ch, origin: `https://${HOST}`, crossOrigin: false }));
   const ad = new Uint8Array(37); ad.set(await sha(utf8(HOST)), 0); ad[32] = 0x05;

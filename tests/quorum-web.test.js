@@ -40,7 +40,8 @@ const ROSTER = [
   { role: 'inspector_general', approver: 'ep:ig' },
 ];
 let ACTION;
-const ctx = (slot, i, appr, ah) => ({ action_hash: ah ?? ACTION, policy: 'p', role: slot.role, approver: appr ?? slot.approver, nonce: b64u(crypto.getRandomValues(new Uint8Array(16))), issued_at: new Date(Date.UTC(2026, 5, 11, 0, i) ).toISOString() });
+const INITIATOR = 'ent_agent_7'; // distinct from every roster approver (initiator-exclusion SoD)
+const ctx = (slot, i, appr, ah) => ({ action_hash: ah ?? ACTION, policy: 'p', role: slot.role, approver: appr ?? slot.approver, initiator: INITIATOR, nonce: b64u(crypto.getRandomValues(new Uint8Array(16))), issued_at: new Date(Date.UTC(2026, 5, 11, 0, i) ).toISOString() });
 const ordered = () => ({ mode: 'ordered', required: 3, approvers: ROSTER.map((r) => ({ role: r.role, approver: r.approver })), distinct_humans: true, window_sec: 900 });
 const quorum = (members, policy) => ({ '@type': 'ep.quorum', action_hash: ACTION, policy: policy ?? ordered(), members });
 const member = async (i, opts, appr, ah) => ({ ...await signSim(ctx(ROSTER[i], i, appr, ah), opts), role: ROSTER[i].role });
