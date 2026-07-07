@@ -32,18 +32,22 @@ import { spawnSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { signExternalVerificationStatement } from '../../packages/gate/reports/external-verification.js';
+import { canonicalize } from '../../packages/gate/execution-binding.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, '..', '..');
 const VECTORS_DIR = path.join(REPO_ROOT, 'conformance', 'vectors');
 
+// v2: suite_digest / results_digest are over the CANONICAL (JCS) value, not raw
+// file bytes. v1 hashed raw bytes and was silently broken by line-ending rewrites
+// on Windows checkouts. The published v1 COSA statement stays interpretable as v1.
 export const MODE_A_PROCEDURE = Object.freeze({
   id: 'ep-conformance-own-implementation',
-  version: 'EP-CONFORMANCE-RUN-OWN-IMPLEMENTATION-v1',
+  version: 'EP-CONFORMANCE-RUN-OWN-IMPLEMENTATION-v2',
 });
 export const MODE_B_PROCEDURE = Object.freeze({
   id: 'ep-conformance-reference-runner',
-  version: 'EP-CONFORMANCE-RUN-REFERENCE-RUNNER-v1',
+  version: 'EP-CONFORMANCE-RUN-REFERENCE-RUNNER-v2',
 });
 
 export const REFERENCE_RUNNER_LIMITATION =
@@ -119,7 +123,13 @@ export function loadSuite(suiteFile, vectorsDir = VECTORS_DIR) {
   if (vectors.size === 0) {
     throw new Refusal('malformed_suite', `${suiteFile}: zero vectors`);
   }
-  return { file: suiteFile, digest: sha256hexOf(raw), vectors, json };
+  // suite_digest is over the CANONICAL (RFC 8785 / JCS) value, NOT the raw file
+  // bytes. Hashing raw bytes made the digest sensitive to line endings, so a
+  // Windows checkout (core.autocrlf) silently broke it. The canonical value is
+  // invariant to line endings, indentation, and key order, and leans on the same
+  // JCS every EP verifier already implements. (v1 of this procedure hashed raw
+  // bytes; v2 hashes the canonical value.)
+  return { file: suiteFile, digest: sha256hexOf(canonicalize(json)), vectors, json };
 }
 
 /** Map a results file name to its suite file name in conformance/vectors/. */
@@ -163,7 +173,8 @@ export function loadResults(resultsPath) {
     }
     results.set(entry.id, entry.valid);
   }
-  return { digest: sha256hexOf(raw), results };
+  // Canonical (JCS) digest, same reasoning as suite_digest above.
+  return { digest: sha256hexOf(canonicalize(json)), results };
 }
 
 /**

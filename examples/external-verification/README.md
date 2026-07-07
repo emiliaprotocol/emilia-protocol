@@ -132,10 +132,12 @@ Real implementers hit these two before anything else, so clear them in isolation
    `signature` block, or writing the domain separator as two characters instead
    of a single `0x00` NUL byte). `verify-statement.mjs` prints this diagnostic on
    a `statement_digest_mismatch`.
-2. **Line endings.** `suite_digest` is SHA-256 over the raw bytes of each vector
-   file. On Windows, `core.autocrlf=true` rewrites them to CRLF on checkout and
-   silently changes every digest. The repo `.gitattributes` pins them to LF; if
-   you clone or copy the vectors yourself, keep them LF (`core.autocrlf=false`).
+2. **Line endings — fixed in procedure v2.** `suite_digest` is now SHA-256 over
+   the JCS-canonical value of each vector file, so it is invariant to line endings:
+   a Windows CRLF checkout no longer changes it, and you reproduce it with the same
+   JCS you already use for receipts. (Procedure v1 hashed raw bytes and did have
+   this trap, which cost a real implementer several rounds; the repo `.gitattributes`
+   still pins the vectors to LF as defense in depth.)
 
 ## MODE B: re-running the repository's own reference runner
 

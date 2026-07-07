@@ -56,13 +56,16 @@ for that input, your construction diverges from this section and your statements
 will not verify regardless of your verifier logic. This is the most common
 integration wall.
 
-**Line endings (a separate, silent trap).** `suite_digest` is SHA-256 over the
-**raw bytes** of each conformance vector file, so a checkout that rewrites line
-endings (Windows Git with the default `core.autocrlf=true`) changes the digest
-without changing the vectors. The repository ships a `.gitattributes` pinning
-`conformance/vectors/**` to verbatim LF; an implementer cloning independently
-must keep those files LF (`core.autocrlf=false`) or reproduce the digests over
-the canonicalized JSON value rather than the raw bytes.
+**suite_digest is canonical, not raw bytes (procedure v2).** `suite_digest` (and
+`results_digest`) is SHA-256 over the RFC 8785 (JCS) **canonical value** of each
+vector file, so it is invariant to line endings, indentation, and key order. A
+relying party reproduces it with the same JCS every EP verifier already
+implements, over the parsed file. This closes the silent trap that procedure v1
+had, where `suite_digest` was SHA-256 over the **raw file bytes** and a Windows
+checkout (`core.autocrlf=true`) changed the digest without changing the vectors.
+The published v1 COSA statement stays interpretable as v1 (raw bytes); v2 is the
+current method. The repository also ships a `.gitattributes` pinning
+`conformance/vectors/**` to verbatim LF as defense in depth.
 
 ## Acceptance
 
