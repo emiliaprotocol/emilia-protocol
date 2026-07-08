@@ -37,6 +37,9 @@
     },
     "./reliance-profile-registry": {
       "import": "./reliance-profile-registry.js"
+    },
+    "./reliance-gap": {
+      "import": "./reliance-gap.js"
     }
   },
   "files": [
@@ -59,6 +62,7 @@
     "authority-proof.js",
     "reliance.js",
     "reliance-profile-registry.js",
+    "reliance-gap.js",
     "cli.js",
     "index.d.ts",
     "README.md",

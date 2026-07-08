@@ -42,8 +42,111 @@ advisory report (present / consistent across contexts / any §1 issues) is
 printed beneath the cryptographic checks. It never affects whether the receipt
 verifies.
 
+Subcommands:
+  reliance-gap <packet.json> (--profile <profile.json> | --profiles <dir>)
+               [--now <rfc3339>] [--out <path>]
+    Acceptance preflight: run the reliance kernel over a de-identified action
+    packet under one pinned EP-RELIANCE-PROFILE-v1 (or every profile in a
+    directory) and emit a deterministic reliance gap report.
+    Exit 0 = rely (all rely in --profiles mode); 2 = any do_not_rely_*;
+    1 = operational error.
+  revocation <statement.json> --target <target.json> --revoker-keys <keys.json>
+    Offline revocation check (see below).
+
 Exit code 0 = every document verified; 1 = any failure.`);
   process.exit(args.length === 0 ? 1 : 0);
+}
+
+// Subcommand: acceptance preflight. Builds an EP-RELIANCE-GAP-REPORT-v1 (or the
+// combined EP-RELIANCE-GAP-MULTI-v1 with --profiles) over a de-identified action
+// packet: the kernel verdict, the missing-evidence list, the action and profile
+// digests, a plain-language control mapping, and the exact reproduction command.
+// Fully offline and deterministic: local files only, no network, no wall clock
+// (the evaluation time comes from --now or the packet's evaluated_at).
+//   verify reliance-gap <packet.json> --profile <profile.json> [--now <rfc3339>] [--out <path>]
+//   verify reliance-gap <packet.json> --profiles <dir>         [--now <rfc3339>] [--out <path>]
+// Exit 0 = rely (all rely in multi mode); 2 = any do_not_rely_*; 1 = operational error.
+if (args[0] === 'reliance-gap') {
+  const { buildRelianceGapReport, buildMultiPartyRelianceGapReport } = await import('./reliance-gap.js');
+  const { readdirSync, writeFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+
+  const sub = args.slice(1);
+  let packetPath = null; let profilePath = null; let profilesDir = null; let nowStr = null; let outPath = null;
+  for (let i = 0; i < sub.length; i++) {
+    if (sub[i] === '--profile') profilePath = sub[++i];
+    else if (sub[i] === '--profiles') profilesDir = sub[++i];
+    else if (sub[i] === '--now') nowStr = sub[++i];
+    else if (sub[i] === '--out') outPath = sub[++i];
+    else packetPath = sub[i];
+  }
+  if (!packetPath || (!profilePath && !profilesDir) || (profilePath && profilesDir)) {
+    console.error('usage: verify reliance-gap <packet.json> (--profile <profile.json> | --profiles <dir>) [--now <rfc3339>] [--out <path>]');
+    process.exit(1);
+  }
+  const load = (p) => JSON.parse(readFileSync(p, 'utf8'));
+  let packet;
+  try { packet = load(packetPath); } catch (err) {
+    console.error(`error: packet not readable JSON (${err.message})`);
+    process.exit(1);
+  }
+
+  let report;
+  try {
+    if (profilePath) {
+      const profile = load(profilePath);
+      report = buildRelianceGapReport(packet, profile, {
+        now: nowStr ?? undefined, packet_path: packetPath, profile_path: profilePath,
+      });
+    } else {
+      const names = readdirSync(profilesDir).filter((f) => f.endsWith('.json')).sort();
+      if (names.length === 0) {
+        console.error(`error: no .json profiles found in ${profilesDir}`);
+        process.exit(1);
+      }
+      const profiles = names.map((name) => ({
+        label: name, profile: load(join(profilesDir, name)), path: join(profilesDir, name),
+      }));
+      report = buildMultiPartyRelianceGapReport(packet, profiles, {
+        now: nowStr ?? undefined, packet_path: packetPath, profiles_path: profilesDir,
+      });
+    }
+  } catch (err) {
+    console.error(`error: ${err.message}`);
+    process.exit(1);
+  }
+  if (report.refused === true) {
+    console.error(`refused: ${report.refusal_reason}`);
+    process.exit(1);
+  }
+
+  // Human-readable summary. It goes to stderr when the JSON occupies stdout, so
+  // pipes and CI capture clean JSON either way.
+  const human = [];
+  const summarize = (label, r) => {
+    human.push(`${r.kernel_verdict === 'rely' ? 'RELY        ' : 'DO NOT RELY '}${label} -> ${r.kernel_verdict}`);
+    for (const gap of r.missing_evidence) human.push(`  gap: ${gap.requirement} -- ${gap.how_to_close}`);
+  };
+  let exitCode;
+  if (profilePath) {
+    summarize(profilePath, report);
+    exitCode = report.kernel_verdict === 'rely' ? 0 : 2;
+  } else {
+    for (const { label, report: r } of report.reports) summarize(label, r);
+    human.push(`${report.all_rely ? 'ALL RELY' : 'GAPS FOUND'}: ${report.summary.filter((s) => s.verdict === 'rely').length}/${report.profiles_evaluated} profiles rely on this packet`);
+    exitCode = report.all_rely ? 0 : 2;
+  }
+
+  const json = JSON.stringify(report, null, 2) + '\n';
+  if (outPath) {
+    writeFileSync(outPath, json);
+    for (const l of human) console.log(l);
+    console.log(`report written to ${outPath}`);
+  } else {
+    process.stdout.write(json);
+    for (const l of human) console.error(l);
+  }
+  process.exit(exitCode);
 }
 
 // Subcommand: offline revocation check. Answers "do these statements revoke the

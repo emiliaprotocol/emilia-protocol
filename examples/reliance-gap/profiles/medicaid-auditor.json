@@ -1,0 +1,27 @@
+{
+  "@type": "EP-RELIANCE-PROFILE-v1",
+  "profile_id": "ep:profile:demo:medicaid-auditor@v1",
+  "party": "Medicaid program auditor",
+  "description": "Accepts an exhibit only with a device-bound signoff, scoped authority, the pinned benefit policy, a one-time authorization, and an eligibility check no older than fifteen minutes.",
+  "required_assurance": "class_a",
+  "required_authority": true,
+  "max_revocation_staleness_sec": 900,
+  "accepted_registry_keys": [
+    {
+      "issuer_id": "auth_demo_payer_reviewer",
+      "public_key": "MCowBQYDK2VwAyEA1AS8RFZa7buJkVDlsLOzK5RBvwy3iEwzEw2o28J90s8"
+    }
+  ],
+  "accepted_issuer_keys": [
+    "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU"
+  ],
+  "accepted_policy_hashes": [
+    "sha256:d1337b441edaf3f007a56f7eeb50bfb1f89f036fa709952553471d59c5945715"
+  ],
+  "required_evidence": [
+    "receipt",
+    "authority_proof",
+    "revocation_freshness",
+    "consumption_proof"
+  ]
+}

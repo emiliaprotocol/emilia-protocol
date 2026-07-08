@@ -1,0 +1,202 @@
+{
+  "note": "Fully synthetic specialty prior-auth demo packet. All identifiers are fake, all digests are of synthetic strings, and no PHI shapes are present.",
+  "evaluated_at": "2026-07-08T15:00:00Z",
+  "action": {
+    "ep_version": "1.0",
+    "action_type": "rx.prior_auth.approve",
+    "target": {
+      "system": "pbm.adjudication",
+      "resource": "pa/specialty/PA-DEMO-0001"
+    },
+    "parameters": {
+      "drug": "DEMODRUG 40MG SYRINGE (synthetic)",
+      "ncpdp_txn": "sha256:2fb9557ba8aafb4374b00140c54f8b2f0e950e7762bcd8a9d98a73b31b96c82f",
+      "pa_case": "PA-DEMO-0001"
+    },
+    "initiator": "ep:entity:demo-intake-agent",
+    "policy_id": "ep:policy:demo-specialty-tier4@v1",
+    "requested_at": "2026-07-08T14:00:00Z",
+    "action_hash": "sha256:62f8c01a5b5fe5c367f85d8bcd5d7f572b61a0099b098dd35b5ae7725e6cccb1",
+    "policy_hash": "sha256:d1337b441edaf3f007a56f7eeb50bfb1f89f036fa709952553471d59c5945715"
+  },
+  "evidence": [
+    {
+      "type": "receipt",
+      "artifact": {
+        "receipt_id": "ep:receipt:demo-pa-specialty-0001",
+        "action": {
+          "ep_version": "1.0",
+          "action_type": "rx.prior_auth.approve",
+          "target": {
+            "system": "pbm.adjudication",
+            "resource": "pa/specialty/PA-DEMO-0001"
+          },
+          "parameters": {
+            "drug": "DEMODRUG 40MG SYRINGE (synthetic)",
+            "ncpdp_txn": "sha256:2fb9557ba8aafb4374b00140c54f8b2f0e950e7762bcd8a9d98a73b31b96c82f",
+            "pa_case": "PA-DEMO-0001"
+          },
+          "initiator": "ep:entity:demo-intake-agent",
+          "policy_id": "ep:policy:demo-specialty-tier4@v1",
+          "requested_at": "2026-07-08T14:00:00Z"
+        },
+        "action_hash": "sha256:62f8c01a5b5fe5c367f85d8bcd5d7f572b61a0099b098dd35b5ae7725e6cccb1",
+        "contexts": [
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:62f8c01a5b5fe5c367f85d8bcd5d7f572b61a0099b098dd35b5ae7725e6cccb1",
+            "policy_id": "ep:policy:demo-specialty-tier4@v1",
+            "policy_hash": "sha256:d1337b441edaf3f007a56f7eeb50bfb1f89f036fa709952553471d59c5945715",
+            "initiator": "ep:entity:demo-intake-agent",
+            "required_approvals": 2,
+            "issued_at": "2026-07-08T14:00:05Z",
+            "expires_at": "2026-07-08T14:30:05Z",
+            "approver": "ep:approver:demo-intake-agent",
+            "approver_index": 1,
+            "nonce": "demo-n-1"
+          },
+          {
+            "ep_version": "1.0",
+            "context_type": "ep.signoff.v1",
+            "action_hash": "sha256:62f8c01a5b5fe5c367f85d8bcd5d7f572b61a0099b098dd35b5ae7725e6cccb1",
+            "policy_id": "ep:policy:demo-specialty-tier4@v1",
+            "policy_hash": "sha256:d1337b441edaf3f007a56f7eeb50bfb1f89f036fa709952553471d59c5945715",
+            "initiator": "ep:entity:demo-intake-agent",
+            "required_approvals": 2,
+            "issued_at": "2026-07-08T14:00:05Z",
+            "expires_at": "2026-07-08T14:30:05Z",
+            "approver": "ep:approver:demo-payer-reviewer",
+            "approver_index": 2,
+            "nonce": "demo-n-2"
+          }
+        ],
+        "signoffs": [
+          {
+            "context_hash": "sha256:92912a69cd5167766e17d329db454ac0a106090ee1330515f6a9948f02adad3b",
+            "signature": "y7YxJ6Pd5byopyyDlIlnzm4h8_vud4fC3NaCF3wAcLmZ_x2h61ZyqKoHv7sgueGjCryinE_6ly4H2OacZ-dcBw",
+            "key_class": "B",
+            "approver_key_id": "ep:key:demo-intake#1",
+            "signed_at": "2026-07-08T14:03:40Z"
+          },
+          {
+            "context_hash": "sha256:9745f7765e68394ae956294ee3d7a87b367bcfd6ba76b55666860cefb0e6fbdc",
+            "signature": "unused",
+            "key_class": "A",
+            "approver_key_id": "ep:key:demo-reviewer#1",
+            "signed_at": "2026-07-08T14:04:01Z",
+            "webauthn": {
+              "authenticator_data": "EJY-NCPfIABNHTVtLbqqS_bQY6MwdNdfSV1Hl1E-5F0FAAAAAA",
+              "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoibDBYM2RsNW9PVXJwVmlsTzQ5ZW9lelo3ejlhNmRyVldab1lNNzdEbS05dyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+              "signature": "MEUCIA4u8hDD-HpLqYFv1d2n7qczJ8B7ouNZi_49DLAmGb40AiEA5EeC787f_EFYYSi8rOvSEUBSY-RMjx5R9wZLLlRpgJ8"
+            }
+          }
+        ],
+        "consumption": {
+          "nonce": "demo-n-pa-consume",
+          "state": "COMMITTED",
+          "committed_at": "2026-07-08T14:04:02Z"
+        },
+        "log_proof": {
+          "alg": "EP-MERKLE-v2",
+          "leaf_hash": "sha256:ab88e1da3d3ff329ce6972b983ed43b23ab05b89c0386f2e88538f32bc10ce69",
+          "leaf_index": 0,
+          "inclusion_path": [
+            {
+              "hash": "7a9aa4de851a5f6675a8df939814c6f555266155f513dad91d3fa948c1f41cc7",
+              "position": "right"
+            },
+            {
+              "hash": "419615af1484bad140ea0fc13838ea3567c97c669b8f1d1154ce1a3ad75399f8",
+              "position": "right"
+            }
+          ],
+          "checkpoint": {
+            "tree_size": 4,
+            "root_hash": "sha256:81346ed63c7318248a5fad5f82032e3f549e2dfac0d5359c6fb5c760a29829b4",
+            "log_key_id": "ep:log:demo-hub#1",
+            "merkle_alg": "EP-MERKLE-v2",
+            "log_signature": "UihY3YwR8iJXTkvqZPLPGaPkd5DNf0YdISunlWzH7mywPpsafxvshECy79T2ZXiQ0rs-S5GQNLTEnJVTH2jcAQ"
+          }
+        }
+      }
+    },
+    {
+      "type": "authority_proof",
+      "artifact": {
+        "@type": "EP-AUTHORITY-PROOF-v1",
+        "authority_id": "auth_demo_payer_reviewer",
+        "subject": "ep:approver:demo-payer-reviewer",
+        "organization_id": "plan-demo",
+        "role": "payer_medical_reviewer",
+        "scope": [
+          "rx.prior_auth.approve"
+        ],
+        "limits": {
+          "max_amount_usd": null,
+          "currency": "USD"
+        },
+        "validity": {
+          "from": "2026-01-01T00:00:00.000Z",
+          "to": "2027-01-01T00:00:00.000Z"
+        },
+        "revocation": {
+          "status": "not_revoked",
+          "checked_at": "2026-07-08T13:59:00.000Z"
+        },
+        "registry_head": "sha256:d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4",
+        "registry_epoch": 3,
+        "policy_hash": "sha256:d1337b441edaf3f007a56f7eeb50bfb1f89f036fa709952553471d59c5945715",
+        "issued_at": "2026-07-08T13:59:00.000Z",
+        "limitations": [
+          "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
+          "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
+          "Acceptance requires the relying party to pin the registry issuer key out of band; verification alone is not acceptance."
+        ],
+        "signature": {
+          "algorithm": "Ed25519",
+          "key_id": "ep:authority-registry-key:sha256:b7930d6b9678bdda",
+          "public_key": "MCowBQYDK2VwAyEA1AS8RFZa7buJkVDlsLOzK5RBvwy3iEwzEw2o28J90s8",
+          "proof_digest": "sha256:ba491c19110d7d8dae219bdb9d16682c0ccf12f7bb716ce290038e6ae05041bd",
+          "signature_b64u": "pcq0wCnEbuSBXOrLvwkE2EF-ezhcqtCQmKPjdRjXCVlxSG9b5sFakrL4wNWNnWds57elPas3yJ7Yev7Y8hiqCQ"
+        }
+      }
+    },
+    {
+      "type": "revocation_state",
+      "artifact": {
+        "checked_at": "2026-07-08T14:30:00Z"
+      }
+    },
+    {
+      "type": "consumption",
+      "artifact": {
+        "consumed": false
+      }
+    },
+    {
+      "@type": "x-demo-fax-confirmation",
+      "pages": 3,
+      "sent_at": "2026-07-08T13:45:00Z",
+      "note": "legacy artifact with no registered verifier; the report records it as unverifiable presence and never counts it as evidence"
+    }
+  ],
+  "context": {
+    "approver_keys": {
+      "ep:key:demo-intake#1": {
+        "public_key": "MCowBQYDK2VwAyEAVRVPQgZepaG-oFRjgmviaE65LfksEAAnqrquV8pVQgc",
+        "key_class": "B",
+        "valid_from": "2026-01-01T00:00:00Z",
+        "valid_to": "2027-01-01T00:00:00Z"
+      },
+      "ep:key:demo-reviewer#1": {
+        "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEva7VEla1PIwZOaXRlYOPDQfce8BU_aDi14keAs9zDoueFOQXAEJ4aZmbRBvvMLe_y8Tiv3VI8a_xg7uNbS4LGQ",
+        "key_class": "A",
+        "valid_from": "2026-01-01T00:00:00Z",
+        "valid_to": "2027-01-01T00:00:00Z"
+      }
+    },
+    "log_public_key": "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU",
+    "rp_id": "www.emiliaprotocol.ai"
+  }
+}

@@ -250,6 +250,60 @@ Signer public keys are discoverable at `/.well-known/ep-keys.json` on any EP ope
 curl https://ep.example.com/.well-known/ep-keys.json
 ```
 
+## Reliance gap reports (acceptance preflight)
+
+`reliance-gap.js` wraps the reliance kernel (`reliance.js`) into a diagnostic:
+given a de-identified action packet and a relying party's pinned
+EP-RELIANCE-PROFILE-v1, it emits one deterministic EP-RELIANCE-GAP-REPORT-v1
+with the kernel verdict passed through verbatim, a missing-evidence list
+(each entry: requirement, why it matters, how to close it), the JCS+sha256
+action digest, the pinned profile digest, a plain-language control mapping
+(authority, identity, freshness, revocation, consumption, signoff, audit
+trail), a closed limitations list, and the exact command that reproduces the
+report offline.
+
+```js
+import { buildRelianceGapReport } from '@emilia-protocol/verify/reliance-gap';
+
+const report = buildRelianceGapReport(
+  { action, evidence, context },       // the packet
+  profile,                             // the relying party's pinned rule
+  { now: '2026-07-08T15:00:00Z' },     // evaluation time (never the wall clock)
+);
+```
+
+The packet's `evidence` is an array of artifacts, either `{ type, artifact }`
+envelopes or bare artifacts detected by shape (`receipt`, `quorum`,
+`authority_proof`, `revocation_state`, `consumption`). Artifact types with no
+registered verifier are recorded as `unverifiable_present` and never count
+toward satisfaction. The packet's `context` carries the relying party's
+verification material: `approver_keys`, `log_public_key`, `rp_id`,
+`revoker_keys`. The `profile` argument accepts a bare profile or a signed
+EP-RELIANCE-PROFILE-REGISTRY-v1 entry (unwrapped; the entry's `profile_id` is
+reported).
+
+Determinism contract: no wall-clock reads (evaluation time comes only from
+`opts.now` or `packet.evaluated_at`; absent both, the builder refuses with a
+reason), keys sorted, arrays stable, so the same inputs reproduce the same
+bytes. `buildMultiPartyRelianceGapReport` evaluates the SAME packet against
+several profiles and emits one combined EP-RELIANCE-GAP-MULTI-v1 report.
+
+From the CLI:
+
+```bash
+npx @emilia-protocol/verify reliance-gap packet.json --profile profile.json
+npx @emilia-protocol/verify reliance-gap packet.json --profiles ./profiles \
+  --now 2026-07-08T15:00:00Z --out report.json
+```
+
+Exit codes: 0 = `rely` (all rely in `--profiles` mode), 2 = any
+`do_not_rely_*`, 1 = operational error. Fully offline; no network access.
+A worked five-relying-party example lives in `examples/reliance-gap/` at the
+repository root. A single gap report is the per-action preflight;
+EP-ASSURANCE-PACKAGE-v1 (`packages/gate/reports/assurance-package.js`)
+bundles a population of such reliance decisions so an independent assurer can
+re-perform every verdict offline.
+
 ## License
 
 Apache-2.0

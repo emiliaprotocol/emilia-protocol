@@ -1,0 +1,18 @@
+{
+  "@type": "EP-RELIANCE-PROFILE-v1",
+  "profile_id": "ep:profile:demo:hub-vendor@v1",
+  "party": "specialty hub vendor",
+  "description": "Holds or releases shipments under its own contracted dispensing policy; the action must cite the policy hash the hub contracted for, not the payer benefit policy.",
+  "required_assurance": "signed",
+  "required_authority": false,
+  "accepted_registry_keys": [],
+  "accepted_issuer_keys": [
+    "MCowBQYDK2VwAyEAvHy8tWNjdfodgkNNRmck2SN39TuYBpXdSdJtDOEiBaU"
+  ],
+  "accepted_policy_hashes": [
+    "sha256:1e6adc0def7b953720bdbf22644db19f101f32b32b6c819f60260a0e602ab79b"
+  ],
+  "required_evidence": [
+    "receipt"
+  ]
+}
