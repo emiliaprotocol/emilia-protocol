@@ -279,6 +279,7 @@ const SAFE_HOSTS = new Set([
   "treasury.gov",
   "cms.gov",
   "hhs.gov",
+  "ncpdp.org", // NCPDP standards-body public URLs cited in the Rx-reliance companion (standards.ncpdp.org)
   "fiscal.treasury.gov",
   // Buyer-domain examples cited illustratively in federation / pilot docs.
   // These are real corporate hosts but their use here is illustrative

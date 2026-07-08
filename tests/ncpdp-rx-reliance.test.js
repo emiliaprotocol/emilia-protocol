@@ -12,7 +12,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
-import { evaluateRxReliance, signRxArtifact, buildRxAppealBundle, RX_VERDICTS } from '../lib/ncpdp/rx-reliance.js';
+import { evaluateRxReliance, signRxArtifact, verifyRxArtifact, buildRxAppealBundle, RX_VERDICTS } from '../lib/ncpdp/rx-reliance.js';
 import { signAuthorityProof } from '../lib/authority/proof.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -132,5 +132,73 @@ describe('EP-NCPDP-RX-RELIANCE unit invariants', () => {
   it('no pinned challenge fails closed', () => {
     const r = evaluateRxReliance({ challenge: {}, packet: applyBreak('none'), now: NOW }, OPTS);
     expect(r.rely).toBe(false);
+  });
+});
+
+describe('EP-NCPDP-RX-RELIANCE branch coverage', () => {
+  it('verifyRxArtifact: an artifact older than the staleness bound is verified-but-not-accepted', () => {
+    const old = signRxArtifact({ '@type': 'EP-RX-CONSENT-v1', action_hash: receipt.action_hash, consent_digest: 'sha256:' + sha('c'), issued_at: '2026-01-01T00:00:00.000Z' }, consentKey.privateKey);
+    const r = verifyRxArtifact(old, { expectType: 'EP-RX-CONSENT-v1', pinnedKeys: [consentKey.pub], now: NOW, maxStalenessSec: 3600 });
+    expect(r.verified).toBe(true);
+    expect(r.accepted).toBe(false);
+    expect(r.reason).toBe('stale');
+  });
+  it('verifyRxArtifact: a valid signature under an unpinned key is verified, not accepted', () => {
+    const r = verifyRxArtifact(consent(), { expectType: 'EP-RX-CONSENT-v1', pinnedKeys: [clinicalKey.pub] });
+    expect(r.verified).toBe(true);
+    expect(r.accepted).toBe(false);
+    expect(r.reason).toBe('issuer_key_not_pinned');
+  });
+  it('toMs accepts an ISO string, an omitted, and an unparseable now', () => {
+    expect(evaluateRxReliance({ challenge: CHALLENGE, packet: applyBreak('none'), now: '2026-07-08T14:05:00.000Z' }, OPTS).verdict).toBe('rx_rely');
+    // omitted now -> Date.now(); unparseable now -> Date.now(); both clock-dependent, so only assert closed-set membership.
+    expect(RX_VERDICTS).toContain(evaluateRxReliance({ challenge: CHALLENGE, packet: applyBreak('none') }, OPTS).verdict);
+    expect(RX_VERDICTS).toContain(evaluateRxReliance({ challenge: CHALLENGE, packet: applyBreak('none'), now: 'not-a-date' }, OPTS).verdict);
+  });
+  it('a benefit check citing a different formulary policy is policy_mismatch', () => {
+    const p = { ...base(), benefit_check: { checked_at: '2026-07-08T14:00:00.000Z', policy_hash: 'sha256:' + sha('other-formulary') } };
+    expect(evaluateRxReliance({ challenge: CHALLENGE, packet: p, now: NOW }, OPTS).verdict).toBe('rx_do_not_rely_policy_mismatch');
+  });
+  it('a deny with signed_denial_required:false relies without a denial artifact', () => {
+    const ch = { ...CHALLENGE, required: { ...CHALLENGE.required, signed_denial_required: false } };
+    const r = evaluateRxReliance({ challenge: ch, packet: { ...base(), determination: 'deny' }, now: NOW }, OPTS);
+    expect(r.verdict).toBe('rx_rely');
+    expect(r.determination).toBe('deny');
+  });
+  it('a malformed or absent packet fails closed', () => {
+    expect(evaluateRxReliance({ challenge: CHALLENGE, packet: { '@type': 'wrong' }, now: NOW }, OPTS).rely).toBe(false);
+    expect(evaluateRxReliance({ challenge: CHALLENGE, packet: null, now: NOW }, OPTS).rely).toBe(false);
+  });
+  it('signRxArtifact rejects a body without an @type', () => {
+    expect(() => signRxArtifact({ action_hash: receipt.action_hash }, consentKey.privateKey)).toThrow(/@type/);
+  });
+  it('verifyRxArtifact fails closed on a malformed signature envelope', () => {
+    const r = verifyRxArtifact({ '@type': 'EP-RX-CONSENT-v1', signature: { algorithm: 'RSA' } });
+    expect(r.verified).toBe(false);
+    expect(r.reason).toBe('signature_malformed');
+  });
+  it('verifyRxArtifact fails closed when the signing key is unparseable (verify throws)', () => {
+    const a = consent();
+    a.signature = { ...a.signature, public_key: 'not-valid-der-key-data' }; // body/digest unchanged; createPublicKey throws
+    const r = verifyRxArtifact(a, { expectType: 'EP-RX-CONSENT-v1' });
+    expect(r.verified).toBe(false);
+    expect(r.reason).toBe('signature_invalid');
+  });
+  it('buildRxAppealBundle fills nulls when inputs are missing and stays content-addressed', () => {
+    const b = buildRxAppealBundle({});
+    expect(b['@type']).toBe('EP-RX-RELIANCE-BUNDLE-v1');
+    expect(b.transaction).toBe(null);
+    expect(b.action_hash).toBe(null);
+    expect(b.verdict).toBe(null);
+    expect(b.determination).toBe(null);
+    expect(b.reasons).toEqual([]);
+    expect(b.checks).toBe(null);
+    expect(b.bundle_digest).toMatch(/^sha256:[0-9a-f]{64}$/);
+  });
+  it('evaluateRxReliance without prescriber_authority required skips the authority leg', () => {
+    const ch = { ...CHALLENGE, required: { ...CHALLENGE.required, prescriber_authority: false, revocation_freshness_sec: undefined } };
+    const p = { ...base(), authority_proof: undefined, revocation_state: undefined };
+    const r = evaluateRxReliance({ challenge: ch, packet: p, now: NOW }, OPTS);
+    expect(RX_VERDICTS).toContain(r.verdict);
   });
 });
