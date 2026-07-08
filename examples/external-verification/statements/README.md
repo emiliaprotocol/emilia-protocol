@@ -38,12 +38,12 @@ the vector pass, which is a real and useful data point.
 **What this is not.** The statement's own `inputs.implementation` field reads
 `COSA Node (Python/emilia-verify)`, so this run used the `emilia-verify` package
 from this project, not a separate verifier. It therefore does not establish an
-INDEPENDENT implementation agreeing on the vectors. The independent clean-room
-reimplementation (COSA's own verifier, not wrapping ours) remains the
-independent-implementation data point, and it is still underway. When a statement
-arrives whose `implementation` names a verifier that does not depend on this
-repository's code, that one is the independence milestone, and it will be recorded
-here as such.
+INDEPENDENT implementation agreeing on the vectors. A COSA-authored clean-room
+verifier that does not wrap ours would be a further such data point. The
+independence milestone itself has now arrived by another route: an externally
+authored from-spec Rust verifier whose `implementation` names a verifier that does
+not depend on this repository's code, agreeing on all 162 published vectors, is
+recorded in the Rust cleanroom entry below.
 
 ### Rust cleanroom verifier / J Diesel NY — 2026-07-07 (the independence milestone)
 

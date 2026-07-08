@@ -55,7 +55,7 @@ The [Neutrality Covenant](https://github.com/emiliaprotocol/emilia-protocol/blob
 - `@emilia-protocol/gate` · `@emilia-protocol/verify` · `@emilia-protocol/openai-guard` · `@emilia-protocol/mcp-server` (`npx -y @emilia-protocol/mcp-server`) · `@emilia-protocol/fire-drill` · `@emilia-protocol/langchain`.
 
 ## Security & formal analysis (stated precisely)
-- ~4,900 automated tests; 8 cross-language conformance suites (JavaScript, Python, and Go in one repository — a consistency check, not independent implementations; an independent clean-room reimplementation is underway).
+- 4,821 automated tests; 16 cross-language conformance suites over 162 vectors (JavaScript, Python, and Go in one repository, a consistency check, not independent implementations); an externally authored from-spec Rust implementation (source public) agrees on all 162 published vectors. Construction independence is the implementer's attestation, auditable in the public source.
 - Machine-checked models: TLA+ (26 theorems) and Alloy cover the core protocol state machine and quorum — not WebAuthn binding, directories, or log checkpoints. What the proofs do and do not cover: https://www.emiliaprotocol.ai/security
 - Preprint: "Authorization Receipts: Offline-Verifiable Evidence of Named-Human Authorization for Irreversible AI-Agent Actions" (Cryptology ePrint Archive, 2026).
 

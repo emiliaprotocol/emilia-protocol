@@ -50,7 +50,9 @@ inclusion proof reconstructs the claimed root.
 
 Cross-implementation note: the JavaScript, Python, and Go verifiers live in one
 repository — a consistency check, not independent implementations; an
-independent clean-room reimplementation (COSA) is underway. The EP receipt
+externally authored from-spec Rust implementation (source public) agrees on all
+162 published vectors, with construction independence the implementer's
+attestation, auditable in the public source. The EP receipt
 formats are specified in active INDIVIDUAL Internet-Drafts, not IETF-adopted or
 endorsed.
 

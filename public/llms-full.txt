@@ -120,8 +120,10 @@ or a fraud loss (treasury/payments, benefits integrity, SOX-scoped controls).
   log integrity — never business correctness. Formal models (TLA+ 26
   theorems, Alloy) cover the core state machine and quorum only. The three
   reference verifiers (JavaScript, Python, Go) share one repository — a
-  consistency check, not independent implementations; an independent
-  clean-room reimplementation is underway. EMILIA is not an auditor,
+  consistency check, not independent implementations; an externally
+  authored from-spec Rust implementation (source public) agrees on all 162
+  published vectors. Construction independence is the implementer's
+  attestation, auditable in the public source. EMILIA is not an auditor,
   regulator, or insurer.
 
 ## The standards cluster (active INDIVIDUAL Internet-Drafts, not IETF-adopted)
