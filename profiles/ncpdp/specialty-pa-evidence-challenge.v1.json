@@ -1,0 +1,26 @@
+{
+  "@type": "EP-RX-EVIDENCE-CHALLENGE-v1",
+  "_comment": "Illustrative payer/PBM challenge for a specialty-medication prior auth. Keys are per-deployment placeholders; a live challenge carries base64url SPKI keys the relying party pins out of band. This challenge rides beside an NCPDP ePA/SCRIPT transaction and states what evidence the payer needs before it will rely on the request.",
+  "transaction": "ncpdp.epa",
+  "action_type": "rx.prior_auth.approve",
+  "required_assurance": "class_a",
+  "required": {
+    "prescriber_authority": true,
+    "patient_consent": true,
+    "clinical_evidence": true,
+    "benefit_policy_hash": "sha256:<payer formulary policy hash for this drug/plan>",
+    "benefit_freshness_sec": 3600,
+    "revocation_freshness_sec": 3600,
+    "signed_denial_required": true
+  },
+  "accepted_registry_keys": [{ "issuer_id": "auth_prescriber", "public_key": "<base64url SPKI: payer/PBM-pinned prescriber authority registry key>" }],
+  "accepted_issuer_keys": ["<base64url SPKI: hub/EHR transparency-log checkpoint key>"],
+  "accepted_consent_keys": ["<base64url SPKI: patient-consent service key>"],
+  "accepted_clinical_keys": ["<base64url SPKI: EHR/lab clinical-attestation key>"],
+  "accepted_payer_keys": ["<base64url SPKI: payer denial-signing key>"],
+  "notes": {
+    "phi": "No PHI in the sidecar. patient_consent and clinical_evidence are satisfied by EP-RX-CONSENT-v1 / EP-RX-CLINICAL-v1 artifacts carrying signed digests of the underlying records.",
+    "denial": "If the determination is a denial, signed_denial_required means an EP-RX-DENIAL-v1 (reason code + reason digest + appeal URL, signed by a pinned payer key) must be present for the denial to be relied on and appealed.",
+    "runnable": "See examples/ncpdp/specialty-pa-reliance-flow.mjs for a full offline flow against this challenge."
+  }
+}

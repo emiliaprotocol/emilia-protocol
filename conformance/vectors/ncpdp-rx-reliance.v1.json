@@ -1,0 +1,16 @@
+{
+  "suite": "EP-NCPDP-RX-RELIANCE-PROFILE-v1",
+  "profile": "ncpdp-rx-reliance",
+  "vectors_version": "2026-07-08",
+  "note": "Rx reliance verdicts over an EP-RX-RELIANCE-PACKET-v1 evaluated against an EP-RX-EVIDENCE-CHALLENGE-v1, composing the shipped EP-RELIANCE-KERNEL for the prescriber-authority/policy/revocation legs and adding Rx-specific signed-evidence legs (patient consent, diagnosis/lab, RTBP benefit freshness, signed denial). Scenario-driven: because a valid receipt + authority proof + signed artifacts require live signatures, each vector names a `break` applied to a fully-valid base packet, then asserts the closed rx verdict. expect.valid mirrors verdict==='rx_rely'. Two positives (a dispensable approve and a signed appeal-ready deny) plus a reject for every rx_do_not_rely_* verdict. PHI-free: consent and clinical evidence are signed digests.",
+  "vectors": [
+    { "id": "rx_rely_approve_composes", "break": "none", "expect": { "valid": true, "verdict": "rx_rely" } },
+    { "id": "rx_rely_signed_denial_is_relyable", "break": "signed_deny", "expect": { "valid": true, "verdict": "rx_rely" } },
+    { "id": "reject_missing_prescriber_authority", "break": "authority_wrong_scope", "expect": { "valid": false, "verdict": "rx_do_not_rely_missing_prescriber_authority" } },
+    { "id": "reject_missing_patient_consent", "break": "no_consent", "expect": { "valid": false, "verdict": "rx_do_not_rely_missing_patient_consent" } },
+    { "id": "reject_missing_clinical_evidence", "break": "no_clinical", "expect": { "valid": false, "verdict": "rx_do_not_rely_missing_clinical_evidence" } },
+    { "id": "reject_policy_mismatch", "break": "wrong_formulary_policy", "expect": { "valid": false, "verdict": "rx_do_not_rely_policy_mismatch" } },
+    { "id": "reject_stale_benefit", "break": "stale_benefit", "expect": { "valid": false, "verdict": "rx_do_not_rely_stale_benefit" } },
+    { "id": "reject_signed_denial_required", "break": "deny_unsigned", "expect": { "valid": false, "verdict": "rx_do_not_rely_signed_denial_required" } }
+  ]
+}
