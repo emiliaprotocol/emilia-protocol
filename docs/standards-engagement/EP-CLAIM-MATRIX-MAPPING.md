@@ -21,9 +21,14 @@ local-harness, interop, deployment, document); per the draft, an evidence
 type is a boundary, not an assurance level. All EP Internet-Drafts are
 active **individual** submissions, not IETF-adopted or endorsed. Reference
 verifiers exist in JavaScript, Python, and Go in one repository — a
-consistency check, **not** independent implementations; an independent
-clean-room reimplementation (COSA) is underway and its result will be
-recorded either way.
+consistency check, **not** independent implementations. As of 2026-07-07 an
+externally authored, from-spec Rust implementation (J Diesel NY, source
+public at `jdieselny/ecr-wg`) agrees on all 162 published vectors: signed
+statement at `examples/external-verification/statements/rust-cleanroom/`,
+suite digests bound to this repository's bytes, and the maintainer rebuilt
+the source and re-ran every suite with zero divergences. Construction
+independence (written from the drafts, not from this repository's code) is
+the implementer's attestation, auditable in the public source.
 
 Repo root for evidence references:
 `https://github.com/emiliaprotocol/emilia-protocol/blob/main/`
@@ -32,10 +37,13 @@ Per -02's accepted-result machinery (the Section 3 definition, matrix
 review rules 3 and 8, and the Security Considerations): each mapped row
 below states its ACCEPTED RESULT — the constrained, verifier-produced
 output an application may consume, never raw peer-provided claims —
-including what that output does NOT authorize. Because the JS/Python/Go
-verifiers live in one repository, EP labels its vector evidence
-local-harness, **not** interop, until the independent COSA
-reimplementation agrees on the same vectors.
+including what that output does NOT authorize. The JS/Python/Go
+verifiers live in one repository, so alone they are local-harness evidence.
+With the from-spec Rust implementation agreeing on the same vectors (above),
+rows whose evidence cites the `conformance/vectors/` suites now meet the
+two-independent-implementation-sets bar and may be read as interop-level;
+rows citing only unit tests or `examples/` vectors (for example C-013)
+remain at their stated lower evidence types.
 
 ---
 

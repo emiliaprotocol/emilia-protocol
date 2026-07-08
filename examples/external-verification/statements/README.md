@@ -44,3 +44,35 @@ independent-implementation data point, and it is still underway. When a statemen
 arrives whose `implementation` names a verifier that does not depend on this
 repository's code, that one is the independence milestone, and it will be recorded
 here as such.
+
+### Rust cleanroom verifier / J Diesel NY — 2026-07-07 (the independence milestone)
+
+- Directory: [`rust-cleanroom/`](rust-cleanroom/)
+- Verifier: `ext:verifier:emilia-cleanroom-rust` (J Diesel NY), key_id
+  `ep:external-verifier-key:sha256:87c8c5029475f53a`
+- Procedure: `ep-conformance-own-implementation`
+- Result: `verified`, all 16 suites, 162 of 162 vectors pass, zero divergences,
+  including `same_party_evidence_presented_as_independent` correctly rejected.
+- Implementation: `emilia-rust-verifier 0.1.0 (cleanroom, Rust)` — a from-scratch
+  Rust verifier whose source is public at
+  [`jdieselny/ecr-wg/rust/ep-cleanroom-verifier`](https://github.com/jdieselny/ecr-wg/tree/main/rust/ep-cleanroom-verifier),
+  built on `ed25519-dalek`/`p256`/`rsa`/`sha2` with its own RFC 8785 JCS and
+  RFC 3161 DER/CMS handling. It does not wrap or import any package from this
+  repository.
+
+**Verified by the maintainer, each step re-run here.** The signature is accepted
+under the pinned key with `verify-statement.mjs`; all 16 `suite_digests` match
+this repository's published vector bytes exactly (the statement's `commit` field
+lags one commit; the digests are what bind, and they bind to the 162-vector set);
+and the maintainer cloned the public source, built it with a local Rust
+toolchain, and re-ran all 16 suites: 162/162 with zero divergences, measured
+independently of the numbers in the statement.
+
+**What remains attestation.** That the implementation was written only from the
+Internet-Drafts and the vector schemas, without reading this repository's
+verifier code, is the implementer's stated construction process. Publishing the
+source makes that claim auditable by anyone; no output can prove it. Stated
+precisely: one implementation set from this repository (JavaScript, Python, Go,
+one team) and one externally authored from-spec Rust implementation agree on all
+162 published vectors.
+

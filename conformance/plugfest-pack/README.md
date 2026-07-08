@@ -97,9 +97,10 @@ node conformance/run.mjs
 
 That command feeds every suite through the repository's JavaScript, Python, and
 Go verifiers. These are three languages in one repository, a consistency check,
-not independent implementations; an independent clean-room reimplementation
-(COSA) is underway. They are simply one participating implementation set,
-reported in the matrix like everyone else's.
+not independent implementations. They are simply one participating
+implementation set, reported in the matrix like everyone else's. A second,
+externally authored from-spec Rust implementation (J Diesel NY, source public)
+now participates with its own row and signed statement below.
 
 ## Self-reported results matrix
 
@@ -117,6 +118,7 @@ Copy a row per (implementation, suite) pair:
 | _example: acme-verify (Acme, Rust)_ | `receipts.v1.json` | pass (13/13) | anchor proofs not implemented; 2 anchor vectors skipped and counted as fail |
 | _example: repo reference set (JS+Py+Go, one repo)_ | all 16 suites | pass (162/162) | consistency check across three languages, single repository |
 | COSA (J Diesel NY) | all 16 suites | pass (158/158) | signed external statement, `examples/external-verification/statements/cosa/`; run used emilia-verify, so external reproduction, not an independent implementation |
+| ep-cleanroom-verifier (J Diesel NY, Rust) | all 16 suites | pass (162/162) | from-spec Rust implementation, source public (`jdieselny/ecr-wg`); signed statement at `examples/external-verification/statements/rust-cleanroom/`, suite digests bound to this repo's bytes; maintainer independently rebuilt the source and re-ran all suites: 162/162, zero divergences |
 |  |  |  |  |
 
 Notes worth recording: partial-suite coverage, vectors your implementation
