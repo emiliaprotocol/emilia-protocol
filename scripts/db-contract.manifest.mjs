@@ -42,6 +42,11 @@ export const contract = {
     receipts: ['receipt_id'],
     authorities: ['key_id', 'public_key', 'role', 'status', 'valid_from', 'valid_to',
       'revoked_at', 'organization_id', 'subject_type', 'subject_ref', 'assurance_class'],
+    // commits: verifyCommit resolves the verification key by `kid`, so a missing
+    // kid column silently breaks issuance/verification (mig 132). Guard the
+    // signature-verification dependency here so the drift check catches it.
+    commits: ['commit_id', 'kid', 'signature', 'public_key', 'nonce',
+      'entity_id', 'action_type', 'decision', 'expires_at', 'created_at'],
   },
 
   // Tables that MUST have RLS enabled. RLS off => hard FAIL.
