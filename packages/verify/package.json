@@ -28,6 +28,12 @@
     },
     "./consumption-proof.js": {
       "import": "./consumption-proof.js"
+    },
+    "./authority-proof": {
+      "import": "./authority-proof.js"
+    },
+    "./reliance": {
+      "import": "./reliance.js"
     }
   },
   "files": [
@@ -47,6 +53,8 @@
     "initiator-attestation.js",
     "consent-grant.js",
     "pq-hybrid.js",
+    "authority-proof.js",
+    "reliance.js",
     "cli.js",
     "index.d.ts",
     "README.md",

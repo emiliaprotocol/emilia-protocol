@@ -35,7 +35,8 @@
     "./store-postgres": "./store-postgres.js",
     "./reports/auditor-workpaper": "./reports/auditor-workpaper.js",
     "./reports/reperform": "./reports/reperform.js",
-    "./reports/external-verification": "./reports/external-verification.js"
+    "./reports/external-verification": "./reports/external-verification.js",
+    "./reliance-kernel": "./reliance-kernel.js"
   },
   "files": [
     "index.js",
@@ -45,6 +46,7 @@
     "action-control-manifest.js",
     "execution-binding.js",
     "reliance-packet.js",
+    "reliance-kernel.js",
     "key-registry.js",
     "retention.js",
     "eg1-conformance.js",
