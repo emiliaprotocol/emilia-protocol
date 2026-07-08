@@ -73,6 +73,11 @@ export async function POST(request) {
     const parsed = await readLimitedJson(request, MAX_TRUST_RECEIPT_CREATE_BYTES, { invalidValue: {} });
     if (!parsed.ok) return epProblem(parsed.status, parsed.code, parsed.detail);
     const body = parsed.value;
+    // A valid top-level JSON null / array / scalar parses cleanly (invalidValue only
+    // catches parse errors), so guard the shape before any field dereference below.
+    if (body === null || typeof body !== 'object' || Array.isArray(body)) {
+      return epProblem(400, 'invalid_body', 'request body must be a JSON object');
+    }
 
     // ── Tenant binding: derive org from the AUTHENTICATED entity, not the body.
     // An authenticated caller must not be able to scope a receipt to another

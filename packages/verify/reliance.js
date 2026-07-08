@@ -88,6 +88,10 @@ function pubKeyB64u(pub) {
  * @returns {{ verdict:string, rely:boolean, reasons:string[], checks:object, profile:object }}
  */
 export function evaluateReliance(input = {}, opts = {}) {
+  // The `= {}` default only fires for undefined; a literal null (e.g. JSON.parse('null'))
+  // would reach the destructure and throw. Normalize any non-object to {} so the
+  // SDK entry point fails closed to a refusal, matching the gate wrappers.
+  if (input === null || typeof input !== 'object') input = {};
   const {
     action = {}, receipt, quorum, authority_proof: authorityProof,
     revocation_state: revocationState, consumption, relying_party_profile: profile,

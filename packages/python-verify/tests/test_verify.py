@@ -97,10 +97,30 @@ def test_tampered_anchor_fails():
     assert r.checks["anchor"] is False
 
 
+def test_scope_containment_nonnumeric_cap_does_not_crash():
+    """Regression (surface audit P0): a non-numeric max_value_usd must not raise
+    an uncaught ValueError in the verifier. It coerces to NaN (JS Number() /
+    Go toFloat() parity) so the comparison is false rather than crashing."""
+    import math
+    from emilia_verify import _num, _js_min, _scope_containment_violations
+    assert math.isnan(_num("abc"))
+    assert _num("1850") == 1850.0
+    assert _num("") == 0.0
+    assert (_num("abc") > _num(100)) is False
+    assert math.isnan(_js_min(_num("abc"), 100.0))
+    assert _js_min(50.0, 100.0) == 50.0
+    # end to end through the containment check: attacker cap must not crash
+    parent = {"scope": ["*"], "max_value_usd": 100}
+    child = {"scope": ["*"], "max_value_usd": "not-a-number"}
+    viol = _scope_containment_violations(parent, child)  # must return, not raise
+    assert isinstance(viol, list)
+
+
 if __name__ == "__main__":
     test_valid_receipt_from_js()
     test_canonicalize_consensus_split_edge_vector_matches_js()
     test_tampered_payload_fails()
     test_wrong_key_fails()
     test_tampered_anchor_fails()
+    test_scope_containment_nonnumeric_cap_does_not_crash()
     print("ALL PASS — JS-signed receipt verified in Python; tamper / wrong-key / bad-anchor rejected.")

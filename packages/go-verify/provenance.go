@@ -222,10 +222,14 @@ func VerifyProvenanceOffline(doc map[string]any, opts map[string]any) Provenance
 	}
 	allowUnsigned, _ := opts["allowUnsignedDelegations"].(bool)
 	requireAlways, _ := opts["requireActionApprovalAlways"].(bool)
-	now := float64(0)
-	hasNow := false
-	if nowMs, ok := opts["now"].(float64); ok {
-		now, hasNow = nowMs, true
+	// Parity with JS (opts.now ?? Date.now()) and Python (opts["now"] or
+	// time.time()*1000): when the caller omits `now`, expiry is enforced against
+	// wall-clock, never skipped. toFloat also accepts json.Number from the
+	// UseNumber decode path, so the expiry gate is never silently disabled just
+	// because `now` arrived as json.Number (the fail-open class of 0623bf8).
+	now := float64(time.Now().UnixMilli())
+	if nowMs, ok := toFloat(opts["now"]); ok {
+		now = nowMs
 	}
 
 	root := getMap(doc["root_signoff"])
@@ -291,7 +295,7 @@ func VerifyProvenanceOffline(doc map[string]any, opts map[string]any) Provenance
 				fail("chain_links_bound")
 			}
 		}
-		if exp, ok := parseMillis(getStr(link, "expires_at")); !ok || (hasNow && float64(exp) < now) {
+		if exp, ok := parseMillis(getStr(link, "expires_at")); !ok || float64(exp) < now {
 			fail("delegations_not_expired")
 		}
 		if proof := getMap(link["proof"]); proof != nil {

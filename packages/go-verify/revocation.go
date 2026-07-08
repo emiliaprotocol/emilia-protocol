@@ -138,7 +138,7 @@ func VerifyRevocation(target, statement, opts map[string]any) CheckResult {
 		}
 	}
 
-	if maxAge, ok := opts["maxAgeSeconds"].(float64); ok && revokedOK {
+	if maxAge, ok := toFloat(opts["maxAgeSeconds"]); ok && revokedOK {
 		if nowMs, nowOK := parseMillis(getStr(opts, "now")); nowOK {
 			if float64(nowMs-revokedMs)/1000 > maxAge {
 				fail("freshness")

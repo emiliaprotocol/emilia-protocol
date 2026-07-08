@@ -882,6 +882,34 @@ def _scope_permits(scope, action_type):
     return False
 
 
+def _num(v):
+    """Mirror JS Number() / Go toFloat() for the numeric fields the verifier compares:
+    numbers and numeric strings coerce to float; anything else (including a
+    non-numeric string) becomes NaN so comparisons are false rather than raising.
+    Attacker-controlled caps must never crash a verify path (max_value_usd:'abc')."""
+    if isinstance(v, bool):
+        return float("nan")
+    if isinstance(v, (int, float)):
+        return float(v)
+    if isinstance(v, str):
+        s = v.strip()
+        if s == "":
+            return 0.0
+        try:
+            return float(s)
+        except ValueError:
+            return float("nan")
+    return float("nan")
+
+
+def _js_min(a, b):
+    """Math.min parity: NaN if either operand is NaN. Python's builtin min is
+    order-dependent with NaN; JS Math.min always propagates NaN."""
+    if a != a or b != b:
+        return float("nan")
+    return a if a < b else b
+
+
 def _scope_containment_violations(parent, child):
     viol = []
     for token in child.get("scope") or []:
@@ -893,7 +921,7 @@ def _scope_containment_violations(parent, child):
     if child_cap is None:
         child_cap = parent_cap
     if parent_cap is not None:
-        if child_cap is None or float(child_cap) > float(parent_cap):
+        if child_cap is None or _num(child_cap) > _num(parent_cap):
             viol.append("cap exceeds parent")
     p_exp = _instant_ms(parent.get("expires_at"))
     c_exp = _instant_ms(child.get("expires_at"))
@@ -1029,7 +1057,7 @@ def verify_provenance_offline(doc, opts=None):
         elif parent.get("max_value_usd") is None:
             eff = link.get("max_value_usd")
         else:
-            eff = min(float(link["max_value_usd"]), float(parent["max_value_usd"]))
+            eff = _js_min(_num(link["max_value_usd"]), _num(parent["max_value_usd"]))
         parent = {**link, "max_value_usd": eff}
         prev_delegatee = link.get("delegatee")
 
