@@ -199,10 +199,22 @@ export function reperformAssurancePackage(pkg, { approverKeys = {}, logPublicKey
     if (r.control_id) byControl[r.control_id] = (byControl[r.control_id] || 0) + 1;
   }
 
+  // Recompute the package digest from the package's OWN contents rather than
+  // trusting pkg.package_digest. "No value the package asserts is trusted" has to
+  // include the digest: copying the stated one verbatim would let a tampered
+  // package carry a lying content-address through re-performance unchecked. Mirror
+  // buildAssurancePackage's digestScope exactly (body minus assembled_at and the
+  // digest field itself), then compare.
+  const { assembled_at: _statedAt, package_digest: _statedDigest, ...digestScope } = pkg;
+  const recomputedPackageDigest = hashCanonical(digestScope);
+  const packageDigestVerified = pkg.package_digest != null && recomputedPackageDigest === pkg.package_digest;
+
   const doc = {
     '@version': ASSURANCE_REPERFORMANCE_VERSION,
     product: 'EMILIA Reliance Assurance',
-    package_digest: pkg.package_digest ?? null,
+    package_digest: recomputedPackageDigest,
+    stated_package_digest: pkg.package_digest ?? null,
+    package_digest_verified: packageDigestVerified,
     profile_hash: pkg.profile_hash ?? null,
     generated_at: toIso(now),
     honesty: {
@@ -250,7 +262,8 @@ export function renderAssuranceWorkpaper(doc) {
   const p = doc.population;
   const lines = [];
   lines.push(`EMILIA Reliance Assurance — re-performance workpaper (${doc['@version']})`);
-  lines.push(`package_digest:       ${doc.package_digest}`);
+  lines.push(`package_digest:       ${doc.package_digest} (recomputed)`);
+  lines.push(`package_digest match: ${doc.package_digest_verified ? 'YES — recomputed digest equals the package\'s stated digest' : 'NO — stated digest does NOT match recomputed contents (tamper or drift)'}`);
   lines.push(`reperformance_digest: ${doc.reperformance_digest}`);
   lines.push('');
   lines.push(`Population: ${p.decisions} decisions | admissible(rely): ${p.admissible} | refused: ${p.refused} | drift: ${p.drift}`);

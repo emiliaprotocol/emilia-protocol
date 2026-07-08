@@ -143,13 +143,19 @@ export function evaluateReliance(input = {}, opts = {}) {
   // the human who ACTUALLY approved, not merely to some approver on the receipt.
   const approverKeys = opts.approverKeys || {};
   const contexts = Array.isArray(receipt.contexts) ? receipt.contexts : [];
+  // Join signoffs to contexts on NORMALIZED hex, exactly as verifyTrustReceipt
+  // does (hexOf: strip any "sha256:" prefix, lowercase). Keying on a fixed
+  // "sha256:"-prefixed form would miss a bare-hex or upper-case context_hash that
+  // the base verifier accepts, silently emptying verifiedApprovers and denying
+  // reliance on a receipt that actually verified.
+  const hexOf = (h) => String(h || '').replace(/^sha256:/i, '').toLowerCase();
   const ctxByHash = new Map();
   for (const c of contexts) {
-    try { ctxByHash.set(`sha256:${crypto.createHash('sha256').update(canonicalize(c), 'utf8').digest('hex')}`, c); } catch { /* skip uncanonicalizable */ }
+    try { ctxByHash.set(crypto.createHash('sha256').update(canonicalize(c), 'utf8').digest('hex'), c); } catch { /* skip uncanonicalizable */ }
   }
   const verifiedApprovers = [];
   for (const s of (Array.isArray(receipt.signoffs) ? receipt.signoffs : [])) {
-    const ctx = ctxByHash.get(s?.context_hash);
+    const ctx = ctxByHash.get(hexOf(s?.context_hash));
     if (!ctx?.approver) continue;
     verifiedApprovers.push({ approver: ctx.approver, key_class: approverKeys[s?.approver_key_id]?.key_class || s?.key_class || 'B' });
   }

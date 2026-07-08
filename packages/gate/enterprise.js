@@ -73,7 +73,10 @@ export function mintEntitlement(privateKey, {
   if (toMs(not_before) == null) throw new Error('entitlement: not_before is required (ISO or ms)');
   if (toMs(expires_at) == null) throw new Error('entitlement: expires_at is required (ISO or ms)');
   if (!kid || typeof kid !== 'string') throw new Error('entitlement: kid is required');
-  const payload = { org, tier, features, limits, not_before, expires_at, kid };
+  // Snapshot features/limits into the signed payload: embedding the caller's live
+  // array/object would let a licensing service mutate them after minting and
+  // diverge the entitlement from its signature.
+  const payload = { org, tier, features: structuredClone(features), limits: structuredClone(limits), not_before, expires_at, kid };
   const value = crypto.sign(null, Buffer.from(canonical(payload), 'utf8'), privateKey).toString('base64url');
   return { '@version': ENTITLEMENT_VERSION, payload, signature: { algorithm: 'Ed25519', value } };
 }

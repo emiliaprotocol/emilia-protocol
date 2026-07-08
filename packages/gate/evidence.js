@@ -40,7 +40,11 @@ export function createEvidenceLog({ sink, strict = false } = {}) {
 
   return {
     async record(entry) {
-      const body = { seq: records.length, prev_hash: prev, ...entry };
+      // Deep-copy the caller's entry: a shallow spread embeds live references to
+      // nested objects, so a caller mutating them after record() would silently
+      // corrupt the hash-chained evidence record (and anything a sink persisted).
+      const snapshot = entry && typeof entry === 'object' ? structuredClone(entry) : entry;
+      const body = { seq: records.length, prev_hash: prev, ...snapshot };
       const hash = sha256hex(canonical(body));
       const rec = { ...body, hash };
       if (sink) {
