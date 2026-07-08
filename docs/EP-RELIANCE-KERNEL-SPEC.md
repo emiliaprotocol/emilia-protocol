@@ -49,11 +49,13 @@ refusal:
 | Verdict | Cause |
 |---|---|
 | `rely` | Every pinned requirement is satisfied. |
+| `do_not_rely_no_profile` | No pinned EP-RELIANCE-PROFILE-v1 was supplied. Verification can pass; reliance cannot without a rule. |
 | `do_not_rely_unsigned` | The receipt did not cryptographically verify (or does not attest this action). |
 | `do_not_rely_untrusted_issuer` | The transparency checkpoint was not signed by a pinned issuer key. |
 | `do_not_rely_no_class_a` | Profile requires Class-A and no valid device-bound signoff is present. |
 | `do_not_rely_quorum_unsatisfied` | Profile requires quorum and no satisfied EP-QUORUM-v1 bound to the action is present. |
 | `do_not_rely_authority_missing` | Authority required, but no (or an unverifiable) EP-AUTHORITY-PROOF-v1. |
+| `do_not_rely_authority_subject_mismatch` | The authority proof belongs to a subject who is not the verified approver of this action. |
 | `do_not_rely_authority_revoked` | The authority proof (or a bound revocation statement) shows revoked. |
 | `do_not_rely_authority_expired` | The authority is outside its validity window at reliance time. |
 | `do_not_rely_scope_mismatch` | The action is not within the authority's scope. |
@@ -62,6 +64,23 @@ refusal:
 | `do_not_rely_stale_revocation` | The revocation check is older than the pinned freshness bound. |
 | `do_not_rely_already_consumed` | The one-time authorization has already been consumed. |
 | `do_not_rely_registry_unavailable` | The authority registry key is not pinned / the registry head is stale or equivocates. |
+
+## Two invariants the composition enforces
+
+**No pinned profile, no reliance.** The kernel never returns `rely` without a
+relying-party-pinned `EP-RELIANCE-PROFILE-v1`. A packet can VERIFY (all crypto
+checks out) with no profile; it can never be RELIED ON without a rule. An absent
+or unrecognized profile is `do_not_rely_no_profile`, evaluated before anything
+else.
+
+**Authority is bound to the human who actually approved.** Proving "a valid
+Class-A ceremony happened" and "a valid authority proof exists" is not enough if
+they belong to two different people. The kernel joins them: the authority proof
+`subject` MUST be the verified approver of THIS action. Under `class_a` the
+subject must be the Class-A signer; under `quorum` it must be a verified quorum
+member; under `signed` it must be a verified approver on the receipt. Otherwise
+Alice's signoff plus Bob-CFO's authority proof would compose to `rely` though
+Bob never approved. That is `do_not_rely_authority_subject_mismatch`.
 
 ## Composition (pure, offline, fail-closed)
 

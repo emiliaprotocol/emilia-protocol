@@ -5,11 +5,13 @@
   "note": "Reliance verdicts over a composed evidence packet against a pinned EP-RELIANCE-PROFILE-v1. Scenario-driven: because a valid trust receipt + authority proof require live signatures, each vector names a `break` the test applies to a fully-valid base packet, then asserts the closed verdict. expect.valid mirrors verdict==='rely' so the admissibility checker recognizes the refusal cases. Positive + a reject for every do_not_rely_* verdict.",
   "vectors": [
     { "id": "rely_full_packet_composes", "break": "none", "expect": { "valid": true, "verdict": "rely" } },
+    { "id": "reject_no_profile", "break": "no_profile", "expect": { "valid": false, "verdict": "do_not_rely_no_profile" } },
     { "id": "reject_unsigned_receipt", "break": "tamper_signoff", "expect": { "valid": false, "verdict": "do_not_rely_unsigned" } },
     { "id": "reject_untrusted_issuer", "break": "unpinned_issuer", "expect": { "valid": false, "verdict": "do_not_rely_untrusted_issuer" } },
     { "id": "reject_no_class_a", "break": "class_b_only", "expect": { "valid": false, "verdict": "do_not_rely_no_class_a" } },
     { "id": "reject_quorum_unsatisfied", "break": "require_quorum_absent", "expect": { "valid": false, "verdict": "do_not_rely_quorum_unsatisfied" } },
     { "id": "reject_authority_missing", "break": "no_authority_proof", "expect": { "valid": false, "verdict": "do_not_rely_authority_missing" } },
+    { "id": "reject_authority_subject_not_signer", "break": "authority_subject_not_signer", "expect": { "valid": false, "verdict": "do_not_rely_authority_subject_mismatch" } },
     { "id": "reject_authority_revoked", "break": "authority_revoked", "expect": { "valid": false, "verdict": "do_not_rely_authority_revoked" } },
     { "id": "reject_authority_expired", "break": "authority_expired", "expect": { "valid": false, "verdict": "do_not_rely_authority_expired" } },
     { "id": "reject_scope_mismatch", "break": "authority_scope_wrong", "expect": { "valid": false, "verdict": "do_not_rely_scope_mismatch" } },

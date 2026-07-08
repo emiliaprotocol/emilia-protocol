@@ -143,6 +143,12 @@ function assemble(brk) {
 
   switch (brk) {
     case 'none': break;
+    case 'no_profile':
+      delete profile['@type']; // present object, but not a pinned EP-RELIANCE-PROFILE-v1
+      break;
+    case 'authority_subject_not_signer':
+      proofArgs = { ...proofArgs, subject: 'ep:approver:eve-not-a-signer' }; // valid authority, wrong human
+      break;
     case 'tamper_signoff':
       receipt.signoffs[0].signature = crypto.sign(null, Buffer.from('00'.repeat(32), 'hex'), ed25519().privateKey).toString('base64url');
       break;
@@ -213,15 +219,24 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
     expect(r.rely).toBe(true);
   });
 
-  it('an empty/absent profile fails closed (no accidental rely)', () => {
+  it('no pinned profile → no reliance (verification can pass, reliance cannot)', () => {
     const { input, opts } = assemble('none');
+    // Absent profile: even a fully-valid packet must NOT rely without a pinned rule.
     const r = evaluateReliance({ ...input, relying_party_profile: undefined }, opts);
-    // With no profile, required_assurance defaults to signed and no authority is
-    // required; but the receipt still gates. It must never spuriously deny a valid
-    // receipt, nor rely without the receipt.
-    expect(r.verdict).toBe('rely');
-    const r2 = evaluateReliance({ ...input, receipt: null, relying_party_profile: undefined }, opts);
-    expect(r2.verdict).toBe('do_not_rely_unsigned');
+    expect(r.verdict).toBe('do_not_rely_no_profile');
+    expect(r.rely).toBe(false);
+    // A present object that is not an EP-RELIANCE-PROFILE-v1 is equally unpinned.
+    const r2 = evaluateReliance({ ...input, relying_party_profile: { required_assurance: 'signed' } }, opts);
+    expect(r2.verdict).toBe('do_not_rely_no_profile');
+  });
+
+  it('authority must be BOUND to the actual signer (no compose-across-humans)', () => {
+    // Alice signs (Class-A), but the packet carries an authority proof for a
+    // different subject. This must never compose to rely.
+    const { input, opts } = assemble('authority_subject_not_signer');
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('do_not_rely_authority_subject_mismatch');
+    expect(r.rely).toBe(false);
   });
 
   it('authority is an INPUT: same receipt, stricter profile can flip rely→do_not_rely', () => {

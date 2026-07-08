@@ -26,7 +26,8 @@
  * verifyRevocation, verifyConsumptionProof, verifyAuthorityProof) — the kernel
  * composes their results into ONE verdict from a fixed, closed set.
  */
-import { verifyTrustReceipt, verifyQuorum } from './index.js';
+import crypto from 'node:crypto';
+import { verifyTrustReceipt, verifyQuorum, canonicalize } from './index.js';
 import { verifyRevocation } from './revocation.js';
 import { verifyConsumptionProof } from './consumption-proof.js';
 import { verifyAuthorityProof } from './authority-proof.js';
@@ -37,11 +38,13 @@ export const RELIANCE_PROFILE_VERSION = 'EP-RELIANCE-PROFILE-v1';
 /** The CLOSED reliance verdict set. `rely` is the only success. */
 export const RELIANCE_VERDICTS = Object.freeze([
   'rely',
+  'do_not_rely_no_profile',
   'do_not_rely_unsigned',
   'do_not_rely_untrusted_issuer',
   'do_not_rely_no_class_a',
   'do_not_rely_quorum_unsatisfied',
   'do_not_rely_authority_missing',
+  'do_not_rely_authority_subject_mismatch',
   'do_not_rely_authority_revoked',
   'do_not_rely_authority_expired',
   'do_not_rely_scope_mismatch',
@@ -97,6 +100,17 @@ export function evaluateReliance(input = {}, opts = {}) {
   };
 
   const prof = profile && typeof profile === 'object' ? profile : {};
+
+  // ── 0. PINNED PROFILE — no rule, no reliance ───────────────────────────────
+  // Verification can pass without a profile; RELIANCE cannot. A relying party
+  // must pin its OWN EP-RELIANCE-PROFILE-v1 before the kernel will ever say
+  // `rely`. An absent or unrecognized profile is a fail-closed refusal, never a
+  // default-permissive pass.
+  if (prof['@type'] !== RELIANCE_PROFILE_VERSION) {
+    reasons.push('no pinned EP-RELIANCE-PROFILE-v1 supplied; verification can pass but reliance cannot');
+    return { verdict: 'do_not_rely_no_profile', rely: false, reasons, checks, profile: { id: RELIANCE_PROFILE_VERSION, pinned: false } };
+  }
+
   const requiredEvidence = new Set(Array.isArray(prof.required_evidence) ? prof.required_evidence : []);
   const requiredAssurance = ASSURANCE_LEVELS.includes(prof.required_assurance) ? prof.required_assurance : 'signed';
   const acceptedIssuerKeys = Array.isArray(prof.accepted_issuer_keys) ? prof.accepted_issuer_keys.map(pubKeyB64u).filter(Boolean) : [];
@@ -119,6 +133,25 @@ export function evaluateReliance(input = {}, opts = {}) {
     return deny('do_not_rely_unsigned', 'receipt does not attest the action being relied on (action_hash mismatch)');
   }
 
+  // Verified approvers — the human↔ceremony join. Because the receipt is valid,
+  // every signoff verified; map each back to the approver of its context and the
+  // pinned class of the key that signed. This is what lets authority be bound to
+  // the human who ACTUALLY approved, not merely to some approver on the receipt.
+  const approverKeys = opts.approverKeys || {};
+  const contexts = Array.isArray(receipt.contexts) ? receipt.contexts : [];
+  const ctxByHash = new Map();
+  for (const c of contexts) {
+    try { ctxByHash.set(`sha256:${crypto.createHash('sha256').update(canonicalize(c), 'utf8').digest('hex')}`, c); } catch { /* skip uncanonicalizable */ }
+  }
+  const verifiedApprovers = [];
+  for (const s of (Array.isArray(receipt.signoffs) ? receipt.signoffs : [])) {
+    const ctx = ctxByHash.get(s?.context_hash);
+    if (!ctx?.approver) continue;
+    verifiedApprovers.push({ approver: ctx.approver, key_class: approverKeys[s?.approver_key_id]?.key_class || s?.key_class || 'B' });
+  }
+  const classASigners = verifiedApprovers.filter((a) => a.key_class === 'A').map((a) => a.approver);
+  const allSigners = verifiedApprovers.map((a) => a.approver);
+
   // ── 2. ISSUER TRUST — the checkpoint key must be one the RP pinned ─────────
   // A receipt without a transparency checkpoint is trusted only through the
   // pinned approver keys (already enforced by verifyTrustReceipt); when a
@@ -135,10 +168,9 @@ export function evaluateReliance(input = {}, opts = {}) {
   }
 
   // ── 3. ASSURANCE — the ceremony the RP demands ─────────────────────────────
+  let quorumMembers = []; // verified quorum members, for authority subject binding
   if (requiredAssurance === 'class_a') {
-    const approverKeys = opts.approverKeys || {};
-    const signoffs = Array.isArray(receipt.signoffs) ? receipt.signoffs : [];
-    const hasClassA = signoffs.some((s) => approverKeys[s?.approver_key_id]?.key_class === 'A');
+    const hasClassA = classASigners.length > 0;
     checks.assurance = hasClassA ? 'class_a' : false;
     if (!hasClassA) return deny('do_not_rely_no_class_a', 'a valid Class-A device-bound signoff is required and none is present');
   } else if (requiredAssurance === 'quorum') {
@@ -146,6 +178,7 @@ export function evaluateReliance(input = {}, opts = {}) {
     const quorumOk = Boolean(q?.valid) && quorum?.action_hash === receipt.action_hash;
     checks.assurance = quorumOk ? 'quorum' : false;
     if (!quorumOk) return deny('do_not_rely_quorum_unsatisfied', 'a satisfied EP-QUORUM-v1 bound to this action is required');
+    quorumMembers = (Array.isArray(q.members) ? q.members : []).filter((m) => m?.valid && m?.approver).map((m) => m.approver);
   } else {
     checks.assurance = 'signed';
   }
@@ -187,7 +220,19 @@ export function evaluateReliance(input = {}, opts = {}) {
     if (p.policy_hash && action.policy_hash && p.policy_hash !== action.policy_hash) {
       return deny('do_not_rely_policy_mismatch', 'authority is pinned to a different policy than the action');
     }
-    checks.authority = { accepted: true, authority_id: p.authority_id };
+    // SUBJECT BINDING — the authority proof must belong to the human who ACTUALLY
+    // approved this action, not merely ride alongside someone else's signoff.
+    // Otherwise Alice's valid Class-A signoff + Bob-CFO's valid authority proof
+    // would compose to `rely` though Bob never approved. Under class_a the subject
+    // MUST be the Class-A signer; under quorum it MUST be a verified quorum
+    // member; under signed it must be a verified approver on the receipt.
+    const eligibleSubjects = requiredAssurance === 'quorum' ? quorumMembers
+      : requiredAssurance === 'class_a' ? classASigners
+        : allSigners;
+    if (!p.subject || !eligibleSubjects.includes(p.subject)) {
+      return deny('do_not_rely_authority_subject_mismatch', 'the authority proof subject is not the verified approver of this action');
+    }
+    checks.authority = { accepted: true, authority_id: p.authority_id, subject: p.subject, bound_to: requiredAssurance };
   } else {
     checks.authority = 'not_required';
   }
