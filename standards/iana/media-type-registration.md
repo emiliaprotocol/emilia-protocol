@@ -73,8 +73,9 @@ machine-readable statement of the evidence required; agents that parse the
 challenge to obtain and present that evidence. Reference implementation:
 `packages/gate` and `packages/require-receipt` in the EMILIA Protocol
 repository (JavaScript, Python, and Go verifiers live in one repository — a
-consistency check, not independent implementations; an independent clean-room
-reimplementation (COSA) is underway).
+consistency check, not independent implementations; an externally authored
+from-spec Rust implementation, source public, separately agrees on all 162
+published vectors).
 
 **Fragment identifier considerations:** As specified for `+json` in RFC 6839,
 Section 3.1. No type-specific fragment identifier syntax is defined.

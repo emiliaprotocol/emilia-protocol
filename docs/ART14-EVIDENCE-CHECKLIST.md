@@ -207,8 +207,10 @@ pack is a pure function over that log for a stated reporting period.
 Status framing for anyone citing this implementation:
 
 - The verification code paths exist in **JavaScript, Python, and Go in one repository — a
-  consistency check, not independent implementations; an independent clean-room
-  reimplementation (COSA) is underway.**
+  consistency check, not independent implementations. Separately, an externally
+  authored from-spec Rust implementation (source public) agrees on all 162
+  published vectors; construction independence is the implementer's attestation,
+  auditable in the public source.**
 - The underlying formats are described in **active INDIVIDUAL Internet-Drafts — not
   IETF-adopted or endorsed.**
 - Formal models (TLA+, Alloy) cover the **core state machine and quorum logic only — not the
