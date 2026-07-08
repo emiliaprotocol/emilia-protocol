@@ -23,7 +23,7 @@ active **individual** submissions, not IETF-adopted or endorsed. Reference
 verifiers exist in JavaScript, Python, and Go in one repository — a
 consistency check, **not** independent implementations. As of 2026-07-07 an
 externally authored, from-spec Rust implementation (J Diesel NY, source
-public at `jdieselny/ecr-wg`) agrees on all 162 published vectors: signed
+public at `jdieselny/ecr-wg`) agrees on all 162 vectors it was run against (the tri-language suite is now 163): signed
 statement at `examples/external-verification/statements/rust-cleanroom/`,
 suite digests bound to this repository's bytes, and the maintainer rebuilt
 the source and re-ran every suite with zero divergences. Construction
