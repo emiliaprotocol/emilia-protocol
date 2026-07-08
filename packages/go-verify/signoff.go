@@ -153,7 +153,7 @@ func VerifyQuorum(quorum map[string]any, rpID string) QuorumResult {
 		distinctHumans = v
 	}
 	windowSec := 900.0
-	if v, ok := policy["window_sec"].(float64); ok {
+	if v, ok := toFloat(policy["window_sec"]); ok {
 		windowSec = v
 	}
 	eligAny, _ := policy["approvers"].([]any)
@@ -164,7 +164,7 @@ func VerifyQuorum(quorum map[string]any, rpID string) QuorumResult {
 	var required int
 	if mode == "ordered" {
 		required = len(eligible)
-	} else if v, ok := policy["required"].(float64); ok && int(v) > 0 {
+	} else if v, ok := toFloat(policy["required"]); ok && int(v) > 0 {
 		required = int(v)
 	}
 	if required <= 0 || len(eligible) == 0 {

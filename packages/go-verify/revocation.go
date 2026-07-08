@@ -24,7 +24,7 @@ type CheckResult struct {
 
 func hexStrip(h any) string {
 	s, _ := h.(string)
-	return strings.ToLower(strings.Replace(s, "sha256:", "", 1))
+	return strings.ToLower(strings.TrimPrefix(s, "sha256:"))
 }
 
 func ed25519VerifyBytes(data []byte, pubB64u, sigB64u string) bool {

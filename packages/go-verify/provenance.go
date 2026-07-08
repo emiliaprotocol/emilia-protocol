@@ -157,6 +157,9 @@ func toFloat(v any) (float64, bool) {
 		return n, true
 	case int:
 		return float64(n), true
+	case interface{ Float64() (float64, error) }: // json.Number from the package's UseNumber decode path
+		f, err := n.Float64()
+		return f, err == nil
 	default:
 		return 0, false
 	}

@@ -270,7 +270,7 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 		if !present || v == nil {
 			continue
 		}
-		ra, ok := v.(float64)
+		ra, ok := toFloat(v)
 		if !ok || ra != float64(int(ra)) || int(ra) < 1 {
 			sodOK = false // non-integer threshold is malformed -> fail-closed
 			continue
