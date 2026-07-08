@@ -57,13 +57,13 @@ async function buildBundle() {
 
 // Two-hop chain: root -> agentA (constraints {max_calls:5}) -> agentB. The leaf
 // either NARROWS (max_calls<=5, accept) or RELAXES (max_calls>5, reject).
-async function buildTwoHop(leafMaxCalls) {
+async function buildTwoHop(leafMaxCalls, leafCap = 500) {
   const root = await mintReceipt('ep:approver:dir', 'ep:key:dir#1');
   const approval = await mintReceipt('ep:approver:dir', 'ep:key:dir#1');
   const dirKp = generateEd25519KeyPair();
   const agentAKp = generateEd25519KeyPair();
   const link1 = signedLink({ delegation_id: 'dlg:1', parent_ref: 'ep:approver:dir', delegator: 'ep:approver:dir', delegatee: 'ep:agent:A', scope: ['payment.release'], max_value_usd: 1000, expires_at: EXPIRES_AT, constraints: { max_calls: 5 } }, dirKp);
-  const link2 = signedLink({ delegation_id: 'dlg:2', parent_ref: 'ep:agent:A', delegator: 'ep:agent:A', delegatee: 'ep:agent:1', scope: ['payment.release'], max_value_usd: 500, expires_at: EXPIRES_AT, constraints: { max_calls: leafMaxCalls } }, agentAKp);
+  const link2 = signedLink({ delegation_id: 'dlg:2', parent_ref: 'ep:agent:A', delegator: 'ep:agent:A', delegatee: 'ep:agent:1', scope: ['payment.release'], max_value_usd: leafCap, expires_at: EXPIRES_AT, constraints: { max_calls: leafMaxCalls } }, agentAKp);
   const doc = assembleProvenance({ rootSignoff: root, delegationChain: [link1, link2], actionApproval: approval, execution: { action_hash: approval.receipt.action_hash, irreversible: true, executed_at: ISSUED_AT } });
   return { doc, delegation_keys: { 'ep:approver:dir': { public_key: dirKp.publicKeyB64u }, 'ep:agent:A': { public_key: agentAKp.publicKeyB64u } } };
 }
@@ -77,6 +77,10 @@ add('accept_valid_chain', true, await buildBundle());
 { const b = await buildBundle(); b.delegation_keys = {}; add('reject_unpinned_delegator', false, b); }
 add('accept_two_hop_constraints_narrowed', true, await buildTwoHop(3));
 add('reject_constraints_relaxed', false, await buildTwoHop(50));
+// Leaf validly SIGNED over a non-numeric cap under a numeric parent: the signature
+// checks out but cap containment must fail closed in all three ports (the JS-sibling
+// value-cap fail-open the sweep found). Constraints are narrowed so ONLY the cap fails.
+add('reject_nonnumeric_child_cap', false, await buildTwoHop(3, 'abc'));
 
 const suite = {
   suite: 'EP-PROVENANCE-CHAIN-v1',

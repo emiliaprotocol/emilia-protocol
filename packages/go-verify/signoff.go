@@ -164,7 +164,10 @@ func VerifyQuorum(quorum map[string]any, rpID string) QuorumResult {
 	var required int
 	if mode == "ordered" {
 		required = len(eligible)
-	} else if v, ok := toFloat(policy["required"]); ok && int(v) > 0 {
+	} else if v, ok := toFloat(policy["required"]); ok && v == float64(int(v)) && int(v) > 0 {
+		// Integrality guard (mirrors trust_receipt.go and coerceRequiredApprovals):
+		// a fractional threshold like 2.5 must NOT be truncated to 2, and a bool
+		// (toFloat has no bool case, so ok=false) must NOT be read as 1.
 		required = int(v)
 	}
 	if required <= 0 || len(eligible) == 0 {

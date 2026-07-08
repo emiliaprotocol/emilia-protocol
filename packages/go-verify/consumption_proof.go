@@ -216,12 +216,19 @@ func jsonInt(v any) (int, bool) {
 			return int(n), true
 		}
 		return 0, false
-	case interface{ Int64() (int64, error) }: // json.Number
-		i, err := n.Int64()
-		if err != nil {
-			return 0, false
+	case interface {
+		Int64() (int64, error)
+		Float64() (float64, error)
+	}: // json.Number
+		if i, err := n.Int64(); err == nil {
+			return int(i), true
 		}
-		return int(i), true
+		// Integral-valued decimal ("3.0"): Int64() rejects it, but it equals 3.
+		// Accept via Float64 to match the float64 branch and the JS/Python ports.
+		if f, err := n.Float64(); err == nil && f == float64(int(f)) {
+			return int(f), true
+		}
+		return 0, false
 	}
 	return 0, false
 }

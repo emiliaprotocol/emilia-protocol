@@ -116,6 +116,25 @@ def test_scope_containment_nonnumeric_cap_does_not_crash():
     assert isinstance(viol, list)
 
 
+def test_coercion_class_failclosed_parity():
+    """Regression (surface sweep): the type-coercion class must fail closed and
+    coerce identically to JS/Go."""
+    from emilia_verify import _scope_containment_violations as sc, _coerce_required_approvals as cra
+    P = {"scope": ["pay"], "max_value_usd": 100}
+    assert sc(P, {"scope": ["pay"], "max_value_usd": "abc"})      # non-numeric child cap -> violation
+    assert sc(P, {"scope": ["pay"], "max_value_usd": {}})         # object cap -> violation
+    assert sc(P, {"scope": ["pay"], "max_value_usd": 1000000})    # exceeds parent
+    assert not sc(P, {"scope": ["pay"], "max_value_usd": 50})     # within
+    assert not sc(P, {"scope": ["pay"]})                          # absent inherits
+    # required_approvals coercion parity with JS/Go
+    assert cra(2) == 2
+    assert cra(2.0) == 2       # integral float accepted
+    assert cra(2.5) is None    # non-integral rejected
+    assert cra(True) is None   # bool rejected (subclasses int)
+    assert cra("2") is None    # string rejected
+    assert cra(None) == 1      # default
+
+
 if __name__ == "__main__":
     test_valid_receipt_from_js()
     test_canonicalize_consensus_split_edge_vector_matches_js()
@@ -123,4 +142,5 @@ if __name__ == "__main__":
     test_wrong_key_fails()
     test_tampered_anchor_fails()
     test_scope_containment_nonnumeric_cap_does_not_crash()
+    test_coercion_class_failclosed_parity()
     print("ALL PASS — JS-signed receipt verified in Python; tamper / wrong-key / bad-anchor rejected.")

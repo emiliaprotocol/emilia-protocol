@@ -93,12 +93,21 @@ function scopeContainmentViolations(parent, child) {
       violations.push(`child scope "${token}" exceeds parent scope [${(parent.scope || []).join(', ')}]`);
     }
   }
+  // Cap containment, fail-closed on a non-numeric child cap. When the parent has a
+  // finite cap, the child must be absent/null (inherits) OR a finite number <= parent.
+  // A present-but-non-numeric child cap (e.g. "abc", {}, true) previously coerced to
+  // NaN and the `NaN > parent` comparison was false, so it PASSED containment — a
+  // fail-open (the JS sibling of the Go value-cap bug). Now it is a violation,
+  // matching the Python and Go ports.
   const parentCap = parent.max_value_usd;
-  let childCap = child.max_value_usd;
-  if (childCap === null || childCap === undefined) childCap = parentCap;
-  if (parentCap !== null && parentCap !== undefined) {
-    if (childCap === null || childCap === undefined || Number(childCap) > Number(parentCap)) {
-      violations.push(`child max_value_usd ${childCap} exceeds parent cap ${parentCap}`);
+  const parentCapNum = Number(parentCap);
+  if (parentCap !== null && parentCap !== undefined && Number.isFinite(parentCapNum)) {
+    const childCap = child.max_value_usd;
+    if (childCap !== null && childCap !== undefined) {
+      const childCapNum = Number(childCap);
+      if (!Number.isFinite(childCapNum) || childCapNum > parentCapNum) {
+        violations.push(`child max_value_usd ${childCap} is not a valid cap within parent cap ${parentCap}`);
+      }
     }
   }
   const pExp = Date.parse(parent.expires_at);

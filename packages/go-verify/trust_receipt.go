@@ -254,6 +254,12 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 
 	action := getMap(receipt["action"])
 	initiator := getStr(action, "initiator")
+	// A present-but-non-string initiator (e.g. ["alice"] or {"id":"alice"}) coerces
+	// to "" via getStr, which would SKIP the separation-of-duties check below and let
+	// the initiator double as the sole approver. Treat it as malformed -> fail-closed.
+	initiatorRaw, initiatorPresent := action["initiator"]
+	_, initiatorIsString := initiatorRaw.(string)
+	initiatorMalformed := initiatorPresent && initiatorRaw != nil && !initiatorIsString
 	approvers := make([]string, 0, len(validApprovals))
 	for _, a := range validApprovals {
 		approvers = append(approvers, a.approver)
@@ -279,7 +285,7 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 			required = int(ra)
 		}
 	}
-	if initiator != "" && contains(approvers, initiator) {
+	if initiatorMalformed || (initiator != "" && contains(approvers, initiator)) {
 		sodOK = false
 	}
 	seen := map[string]bool{}

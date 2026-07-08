@@ -99,14 +99,19 @@ func provScopeContained(parent, child map[string]any) bool {
 			return false
 		}
 	}
+	// Cap containment, fail-closed on a present-but-non-numeric child cap (parity
+	// with JS/Go). toFloat conflates "key absent" with "present but non-numeric"
+	// (both ok=false), so a non-numeric child cap was treated as absent and inherited
+	// the parent, passing containment — a fail-open. Distinguish key presence: a
+	// null/absent child inherits (OK); a present non-numeric child cap is a violation.
 	parentCap, parentHas := toFloat(parent["max_value_usd"])
-	childCap, childHas := toFloat(child["max_value_usd"])
-	if !childHas {
-		childCap, childHas = parentCap, parentHas
-	}
 	if parentHas {
-		if !childHas || childCap > parentCap {
-			return false
+		childRaw, keyThere := child["max_value_usd"]
+		if keyThere && childRaw != nil {
+			childCap, childNum := toFloat(childRaw)
+			if !childNum || childCap > parentCap {
+				return false
+			}
 		}
 	}
 	if pExp, ok := parseMillis(getStr(parent, "expires_at")); ok {

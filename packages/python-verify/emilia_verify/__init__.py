@@ -315,12 +315,20 @@ def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
             return {"valid": False, "checks": checks, "members": members_out}
         mode = "ordered" if policy.get("mode") == "ordered" else "threshold"
         distinct_humans = policy.get("distinct_humans") is not False
-        window_sec = policy["window_sec"] if isinstance(policy.get("window_sec"), (int, float)) else 900
+        _ws = policy.get("window_sec")
+        # exclude bool: isinstance(True,(int,float)) is True in Python, so a JSON
+        # boolean window_sec would be read as 1/0 seconds instead of the 900 default.
+        window_sec = _ws if isinstance(_ws, (int, float)) and not isinstance(_ws, bool) else 900
         eligible = policy.get("approvers") if isinstance(policy.get("approvers"), list) else []
+        _req = policy.get("required")
         if mode == "ordered":
             required = len(eligible)
+        elif isinstance(_req, bool):
+            required = None  # a JSON boolean is not a valid threshold (True is not 1)
+        elif isinstance(_req, (int, float)) and float(_req).is_integer() and _req >= 1:
+            required = int(_req)  # integer or integral float (2.0 -> 2); rejects 2.5
         else:
-            required = policy.get("required") if isinstance(policy.get("required"), int) and policy.get("required") > 0 else None
+            required = None
         if not isinstance(required, int) or required <= 0 or not eligible:
             return {"valid": False, "checks": checks, "members": members_out}
 
@@ -599,14 +607,16 @@ def verify_time_attestation(att: Any, opts: Optional[dict] = None) -> dict:
 
 def _coerce_required_approvals(value: Any):
     """Canonical required_approvals coercion (fail-closed; mirrors packages/verify
-    coerceRequiredApprovals and the Go verifier). The threshold MUST be an
-    integer-typed JSON number. A string ("2"), float, bool, or any non-integer is
+    coerceRequiredApprovals and the Go verifier). Accepts an integer or an
+    integral-valued JSON number (2.0 -> 2, since JS JSON.parse cannot distinguish
+    2.0 from 2). A string ("2"), a non-integral float (2.5), a bool, or < 1 is
     malformed and returns None (forcing the receipt to fail). Missing/None -> 1.
     NEVER raises (bool excluded because it subclasses int)."""
     if value is None:
         return 1
-    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not float(value).is_integer() or value < 1:
         return None
+    value = int(value)
     return value
 
 
@@ -916,13 +926,19 @@ def _scope_containment_violations(parent, child):
         probe = token[:-2] if isinstance(token, str) and token.endswith(".*") else token
         if not _scope_permits(parent.get("scope"), probe):
             viol.append("scope exceeds parent")
+    # Cap containment, fail-closed on a non-numeric child cap (parity with JS/Go).
+    # When the parent has a finite cap, the child must be absent/None (inherits) OR a
+    # finite number <= parent. A present-but-non-numeric child cap coerces to NaN;
+    # previously NaN > parent was False so it PASSED containment (fail-open). Now it
+    # is a violation.
     parent_cap = parent.get("max_value_usd")
-    child_cap = child.get("max_value_usd")
-    if child_cap is None:
-        child_cap = parent_cap
-    if parent_cap is not None:
-        if child_cap is None or _num(child_cap) > _num(parent_cap):
-            viol.append("cap exceeds parent")
+    parent_cap_num = _num(parent_cap) if parent_cap is not None else float("nan")
+    if parent_cap is not None and math.isfinite(parent_cap_num):
+        child_cap = child.get("max_value_usd")
+        if child_cap is not None:
+            child_cap_num = _num(child_cap)
+            if not math.isfinite(child_cap_num) or child_cap_num > parent_cap_num:
+                viol.append("cap exceeds parent")
     p_exp = _instant_ms(parent.get("expires_at"))
     c_exp = _instant_ms(child.get("expires_at"))
     if p_exp is not None and c_exp is not None and c_exp > p_exp:
