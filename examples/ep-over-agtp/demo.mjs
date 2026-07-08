@@ -3,9 +3,11 @@
 /**
  * EP-receipt-over-AGTP — composition demo (draft-hood-independent-agtp-09 × EP receipts).
  *
- * draft-hood-agtp-composition-01 defines three profile families; the
- * "external IdP" family is the human-authorization layer. This demo shows
- * EMILIA Protocol (EP) as one concrete realization of that profile:
+ * draft-hood-agtp-composition-01 defines an "external IdP" / human-authorization
+ * profile family (its published sources are OAuth/OIDC/SPIFFE; it does not name
+ * EP). This demo is EMILIA's PROPOSED realization of that slot, showing EP
+ * composing over AGTP as an ep-receipt-v1 candidate, not a profile the draft
+ * has adopted:
  *
  *   AGTP (draft-hood-independent-agtp-09)
  *     — proves WHICH agent sent the message, bound to its Owner-ID and
