@@ -34,6 +34,9 @@
     },
     "./reliance": {
       "import": "./reliance.js"
+    },
+    "./reliance-profile-registry": {
+      "import": "./reliance-profile-registry.js"
     }
   },
   "files": [
@@ -55,6 +58,7 @@
     "pq-hybrid.js",
     "authority-proof.js",
     "reliance.js",
+    "reliance-profile-registry.js",
     "cli.js",
     "index.d.ts",
     "README.md",

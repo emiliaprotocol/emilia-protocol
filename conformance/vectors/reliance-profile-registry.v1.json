@@ -1,0 +1,15 @@
+{
+  "suite": "EP-RELIANCE-PROFILE-REGISTRY-v1",
+  "profile": "signed-pinnable-reliance-profile",
+  "vectors_version": "2026-07-07",
+  "note": "A registrar signs a regulated EP-RELIANCE-PROFILE-v1 into a registry entry; a relying party pins the registrar key + profile_id + epoch and resolves the profile offline. verified≠accepted. Scenario-driven: each vector names a `break` applied to a validly-signed seed entry, then asserts (verified, accepted). expect.valid mirrors `accepted` so the admissibility checker recognizes the refusal cases.",
+  "vectors": [
+    { "id": "accept_pinned_ncpdp_specialty_pa", "break": "none", "expect": { "valid": true, "verified": true, "accepted": true } },
+    { "id": "verified_but_unpinned_registrar_key", "break": "unpin_key", "expect": { "valid": false, "verified": true, "accepted": false, "reason": "registry_key_not_pinned" } },
+    { "id": "reject_tampered_profile_body", "break": "tamper_profile", "expect": { "valid": false, "verified": false, "accepted": false } },
+    { "id": "reject_profile_hash_mismatch", "break": "tamper_profile_hash", "expect": { "valid": false, "verified": false, "accepted": false } },
+    { "id": "reject_signature_invalid", "break": "tamper_signature", "expect": { "valid": false, "verified": false, "accepted": false } },
+    { "id": "reject_profile_id_mismatch", "break": "expect_wrong_id", "expect": { "valid": false, "verified": false, "accepted": false } },
+    { "id": "reject_stale_registry_epoch", "break": "expect_higher_epoch", "expect": { "valid": false, "verified": false, "accepted": false } }
+  ]
+}
