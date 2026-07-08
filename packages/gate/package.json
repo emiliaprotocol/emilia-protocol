@@ -36,7 +36,11 @@
     "./reports/auditor-workpaper": "./reports/auditor-workpaper.js",
     "./reports/reperform": "./reports/reperform.js",
     "./reports/external-verification": "./reports/external-verification.js",
+    "./reports/assurance-package": "./reports/assurance-package.js",
     "./reliance-kernel": "./reliance-kernel.js"
+  },
+  "bin": {
+    "ep-assure": "./ep-assure.mjs"
   },
   "files": [
     "index.js",
@@ -47,6 +51,8 @@
     "execution-binding.js",
     "reliance-packet.js",
     "reliance-kernel.js",
+    "reports/assurance-package.js",
+    "ep-assure.mjs",
     "key-registry.js",
     "retention.js",
     "eg1-conformance.js",

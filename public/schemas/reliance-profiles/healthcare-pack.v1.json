@@ -1,0 +1,11 @@
+{
+  "@type": "EP-RELIANCE-PROFILE-PACK-v1",
+  "pack_id": "healthcare.v1",
+  "description": "Regulated reliance profiles for high-consequence automated healthcare actions. Each rides beside the existing transaction rail (NCPDP/FHIR/X12); none replaces one. Trust anchors are the relying party's own — the published bodies pin only the regulatory bar.",
+  "profiles": [
+    { "profile_id": "cms.prior-auth.v1", "flow": "CMS prior authorization (medical)", "body": "cms-prior-auth.v1.json" },
+    { "profile_id": "ncpdp.specialty-pa.v1", "flow": "NCPDP specialty medication prior auth", "body": "ncpdp-specialty-pa.v1.json" },
+    { "profile_id": "medicaid.pharmacy.v1", "flow": "Medicaid pharmacy benefit adjudication", "body": "medicaid-pharmacy.v1.json" }
+  ],
+  "note": "Individual, versioned artifacts. Not a regulatory endorsement."
+}
