@@ -3,6 +3,7 @@ import { join } from 'path';
 import { JetBrains_Mono, Outfit, Space_Grotesk } from 'next/font/google';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
+import { safeHref } from '@/lib/safe-href';
 
 // Self-host the spec page's three custom fonts so the spec renders without
 // blocking on Google Fonts CSS and so the @next/next/no-page-custom-font
@@ -85,7 +86,7 @@ function inlineFormat(text) {
   text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
   text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
-  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, label, url) => `<a href="${safeHref(url)}">${label}</a>`);
   return text;
 }
 
