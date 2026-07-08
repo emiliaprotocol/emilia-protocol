@@ -33,7 +33,10 @@ import {
 } from '@/lib/guard-policies';
 import { evaluateAction as evaluateRulesEngineV0 } from '@/lib/rules-engine.js';
 import { logger } from '@/lib/logger.js';
-import { isRulesEngineV0Enabled, isQuorumTemplateRequired } from '@/lib/env.js';
+import { isRulesEngineV0Enabled, isQuorumTemplateRequired, authorityEnforcementMode } from '@/lib/env.js';
+import { supabaseAuthorityStore, resolveAuthority } from '@/lib/authority/store.js';
+import { authorityBinding } from '@/lib/authority/resolver.js';
+import { applyAuthorityEnforcement } from '@/lib/authority/enforcement.js';
 import { resolveOrgQuorumTemplate, evaluateQuorumAgainstTemplate } from '@/lib/guard-quorum-template.js';
 import { readLimitedJson } from '@/lib/http/body-limit';
 import {
@@ -182,6 +185,28 @@ export async function POST(request) {
     const policyId = body.policy_id || `policy_default_${body.action_type}`;
     const policyHash = computeGuardPolicyHash(policyId); // #4: binds full rule content
 
+    // ── EP-AUTHORITY-REGISTRY-v1: resolve the INITIATOR's scoped authority ───
+    // This replaces the fabricated stub authority (max_amount_usd:
+    // MAX_SAFE_INTEGER, scope: the requested action) that used to short-circuit
+    // every authority-side check. We resolve REAL authority from the registry —
+    // role, scope, amount ceiling, validity, revocation, delegation, policy pin
+    // — as of `now`, and bind the closed verdict into the receipt so an offline
+    // verifier sees exactly which authority was relied on. Fail-closed: an
+    // unreadable/absent registry yields `registry_unavailable`, never allow.
+    // (The APPROVER's authority is resolved separately at consume time via
+    // resolveGuardAuthority; mint binds the initiator leg of the same chain.)
+    const authorityInput = {
+      organization_id: body.organization_id,
+      principal_id: actor_id,
+      action_type: body.action_type,
+      amount: typeof body.amount === 'number' ? body.amount : undefined,
+      currency: body.currency || undefined,
+      policy_hash: policyHash,
+      issued_at: now.toISOString(),
+    };
+    const authorityResult = await resolveAuthority(supabaseAuthorityStore(supabase), authorityInput);
+    const authorityBindingFields = authorityBinding(authorityResult);
+
     const canonicalActionBase = {
       organization_id: body.organization_id,
       actor_id,
@@ -191,6 +216,11 @@ export async function POST(request) {
       after_state_hash: afterHash,
       policy_id: policyId,
       policy_hash: policyHash,
+      // The six authority-binding fields are folded into the canonical action,
+      // so they are covered by action_hash and, transitively, by every
+      // approver signature over context_hash. They cannot be altered after the
+      // fact to pretend a different authority decision was relied on.
+      authority: authorityBindingFields,
       nonce,
       expires_at: expiresAt.toISOString(),
       requested_at: now.toISOString(),
@@ -225,6 +255,58 @@ export async function POST(request) {
       return epProblem(400, 'invalid_enforcement_mode', `mode must be one of ${Object.values(ENFORCEMENT_MODES).join(', ')}`);
     }
     const decision = applyEnforcementMode(baseDecision, mode);
+
+    // ── EP-AUTHORITY-REGISTRY-v1: staged enforcement (server-pinned) ─────────
+    // The guard enforcement `mode` above is caller-selected and can downgrade a
+    // block to observe. Authority enforcement runs on its OWN axis, resolved
+    // from the environment and NEVER from the request body, so a caller cannot
+    // opt out of it. An action is "critical" (fails closed once
+    // enforce_critical is on) when the guard requires a named human (Class-A
+    // assurance) or any signoff. Under 'shadow' (the default) nothing is
+    // blocked — the verdict is bound + logged only.
+    const authorityMode = authorityEnforcementMode();
+    const isCriticalAction = decision.requiredAssurance === 'A' || decision.signoffRequired === true;
+    const authorityEnforcement = applyAuthorityEnforcement({
+      verdict: authorityResult.verdict,
+      isCritical: isCriticalAction,
+      mode: authorityMode,
+    });
+    if (authorityEnforcement.block) {
+      // Fail closed: record the refusal as evidence, then refuse. An unresolved
+      // or insufficient authority is NOT "unknown but allow."
+      try {
+        await supabase.from('audit_events').insert({
+          event_type: 'guard.authority.denied',
+          actor_id,
+          actor_type: 'system',
+          target_type: 'trust_receipt',
+          target_id: receiptId,
+          action: 'authority_deny',
+          before_state: null,
+          after_state: {
+            organization_id: body.organization_id,
+            action_type: body.action_type,
+            authority_verdict: authorityResult.verdict,
+            authority_detail: authorityResult.detail,
+            authority_code: authorityEnforcement.code,
+            authority_mode: authorityMode,
+            authority_result_hash: authorityBindingFields.authority_result_hash,
+            authority_registry_head: authorityBindingFields.authority_registry_head,
+            authority_registry_epoch: authorityBindingFields.authority_registry_epoch,
+            policy_hash: policyHash,
+            is_critical: isCriticalAction,
+          },
+        });
+      } catch (e) {
+        logger.warn('[authority] denial audit insert failed:', e?.message);
+      }
+      return epProblem(
+        403,
+        `not_admissible:${authorityEnforcement.code}`,
+        `Authority not admissible for this action (${authorityResult.verdict}); ${authorityMode} enforcement fails closed for critical actions.`,
+      );
+    }
+
     const executionBinding = buildExecutionBindingContract({
       canonicalAction,
       actionDetails,
@@ -277,6 +359,16 @@ export async function POST(request) {
           // action is persisted with the receipt — not re-described later.
           canonical_action: canonicalAction,
           execution_binding: executionBinding,
+          // EP-AUTHORITY-REGISTRY-v1: the resolved authority verdict + binding.
+          authority_verdict: authorityResult.verdict,
+          authority_detail: authorityResult.detail,
+          authority_binding: authorityBindingFields,
+          authority_enforcement: {
+            mode: authorityMode,
+            admissibility: authorityEnforcement.admissibility,
+            code: authorityEnforcement.code,
+            is_critical: isCriticalAction,
+          },
           // Display-material parameters for the approval surface.
           amount: typeof body.amount === 'number' ? body.amount : null,
           currency: body.currency || null,
@@ -306,27 +398,19 @@ export async function POST(request) {
     // reversible (drop the flag to disable). Nothing here can throw out
     // of the route — every failure is swallowed + logged.
     //
-    // KNOWN LIMITATIONS — be honest about what this signal does and
-    // doesn't tell you:
+    // AUTHORITY is now REAL (EP-AUTHORITY-REGISTRY-v1). The former stub
+    // authority (max_amount_usd: MAX_SAFE_INTEGER, scope: the requested
+    // action) that short-circuited AMOUNT_EXCEEDS_AUTHORITY /
+    // AUTHORITY_REVOKED / AUTHORITY_EXPIRED / ACTION_OUTSIDE_AUTHORITY_SCOPE
+    // is gone: the block below feeds the rules engine the SAME resolved
+    // authority the live authority layer bound into the receipt, so the
+    // shadow diff finally covers the authority-side hard-deny rules too.
     //
-    //  1. STUB AUTHORITY. The rules-engine input below uses a stub
-    //     authority with max_amount_usd: Number.MAX_SAFE_INTEGER and
-    //     scope: [body.action_type], because no authority registry
-    //     exists yet. This SHORT-CIRCUITS 4 of the 9 hard-deny rules
-    //     in §4.5: AMOUNT_EXCEEDS_AUTHORITY, AUTHORITY_REVOKED,
-    //     AUTHORITY_EXPIRED, ACTION_OUTSIDE_AUTHORITY_SCOPE. The
-    //     shadow signal cannot tell you whether the new evaluator
-    //     would have caught authority-side issues — only signoff,
-    //     quorum, separation-of-duty, and risk-score issues. Until a
-    //     real authority registry is wired here, treat shadow data as
-    //     partial.
-    //
-    //  2. ARBITRARY RISK WEIGHTS. §4.9's risk-score weights (15, 15,
-    //     10, 15, 20, 25, 10, 20, 30) and thresholds (≥80, ≥50, ≥30)
-    //     are heuristics from an external doc, not data-calibrated.
-    //     Real fraud-detection thresholds need labeled outcomes.
-    //     Pitch this as "pre-calibration scaffold" not "production
-    //     fraud engine."
+    //  NOTE — ARBITRARY RISK WEIGHTS. §4.9's risk-score weights (15, 15,
+    //  10, 15, 20, 25, 10, 20, 30) and thresholds (≥80, ≥50, ≥30) are
+    //  heuristics from an external doc, not data-calibrated. Real
+    //  fraud-detection thresholds need labeled outcomes. Pitch this as
+    //  "pre-calibration scaffold," not "production fraud engine."
     if (isRulesEngineV0Enabled()) {
       try {
         const rulesEngineInput = {
@@ -368,16 +452,17 @@ export async function POST(request) {
             action_type: body.action_type,
             amount_usd: typeof body.amount === 'number' ? body.amount : undefined,
           },
-          // Until an authority registry exists, supply a stub authority
-          // that passes every hard-deny check. The engine's useful shadow
-          // signal here is risk-scoring + signoff + quorum, not authority
-          // (which the live evaluator handles via its own path). When the
-          // registry lands, replace this stub with a real lookup.
+          // REAL authority (EP-AUTHORITY-REGISTRY-v1) — the exact grant the
+          // live authority layer resolved and bound into this receipt. A
+          // missing/insufficient authority now flows through to the rules
+          // engine's authority hard-deny rules instead of being fabricated
+          // away. A null authority_id means the registry had no grant for the
+          // initiator, which the engine correctly reads as AUTHORITY_MISSING.
           authority: {
-            authority_id: 'shadow_default_authority',
-            scope: [body.action_type],
-            max_amount_usd: Number.MAX_SAFE_INTEGER,
-            revoked: false,
+            authority_id: authorityResult.authority_id || undefined,
+            scope: Array.isArray(authorityResult.scope) ? authorityResult.scope : undefined,
+            max_amount_usd: typeof authorityResult.max_amount_usd === 'number' ? authorityResult.max_amount_usd : undefined,
+            revoked: authorityResult.verdict === 'revoked_authority',
           },
           context: {
             business_hours: typeof body.business_hours === 'boolean' ? body.business_hours : true,
@@ -438,6 +523,15 @@ export async function POST(request) {
         receipt_status,
         enforcement_mode: mode,
         evidence_status: evidenceStatus,
+        // EP-AUTHORITY-REGISTRY-v1: the scoped-authority verdict bound into the
+        // receipt, and how the staged rollout treated it (observed vs enforced).
+        authority: {
+          ...authorityBindingFields,
+          detail: authorityResult.detail,
+          admissibility: authorityEnforcement.admissibility,
+          enforcement_mode: authorityMode,
+          is_critical: isCriticalAction,
+        },
         reasons: decision.reasons,
         // Hint for callers: the canonical action they must use at consume.
         canonical_action: canonicalAction,

@@ -18,6 +18,16 @@
       "acceptance_semantics": "VERIFIED = the WebAuthn assertion and signature chain check out. ACCEPTED = the verifying key was pinned from enrollment and its pinned class was enforced, so a receipt-supplied or downgraded key can never elevate to Class-A."
     },
     {
+      "claim_id": "scoped-human-authority-valid-at-authorization",
+      "claim": "Scoped human authority was valid for this exact action at authorization time: the subject held an active, in-window, non-revoked authority whose role, action scope, amount ceiling (in the stated currency), delegation chain, and pinned policy all admit this action.",
+      "pinned_authority": "The organization's authority registry, committed as (authority_registry_epoch, authority_registry_head) and bound into the receipt. For portable acceptance without trusting EP's live database, the relying party pins the registry issuer key out of band and accepts an EP-AUTHORITY-PROOF-v1 signed under it; the receipt's epoch/head let the relying party refuse a stale or equivocating registry.",
+      "verifier_behavior": { "file": "lib/authority/resolver.js", "symbol": "evaluateAuthorityVerdict" },
+      "negative_vector": { "suite": "authority.v1.json", "must": "reject", "case": "an unknown, revoked, expired, not-yet-valid, out-of-scope, wrong-role, over-limit, currency-mismatched, policy-mismatched, delegation-broken, or unresolved-registry authority is refused (verdict is never 'authorized'), and an EP-AUTHORITY-PROOF-v1 signed by an unpinned registry key, or with a mismatched head/epoch, is not accepted" },
+      "parity": ["js"],
+      "parity_exception": "JS reference implementation shipped first (same land-grab sequencing as EP-AEC and EP-ADMISSIBILITY, which also landed JS-first). The resolver and proof verifier are pure and canonicalize byte-identically to the JS trust-receipt verifier; Python/Go ports are a tracked fast-follow. Until they land, this claim is asserted for the JS verifier only.",
+      "acceptance_semantics": "VERIFIED = the resolver returns a closed verdict (one of AUTHORITY_VERDICTS) over the registry snapshot it was handed, and any EP-AUTHORITY-PROOF-v1 signature checks out. ACCEPTED = that snapshot is the org's real registry — the relying party pinned the registry issuer key out of band, and the receipt's authority_registry_epoch/head meet the relying party's freshness pin. A closed verdict against an unpinned or stale registry is verified, not accepted."
+    },
+    {
       "claim_id": "quorum-m-of-n-distinct-humans",
       "claim": "M distinct named humans, none of them the initiator, each bound their own device assertion to the same exact action within a time window.",
       "pinned_authority": "The quorum policy from an org-pinned template keyed by (org, action_type) (lib/guard-quorum-template.js), and each approver_public_key from enrollment. Both sourced out of band, never from the quorum document.",

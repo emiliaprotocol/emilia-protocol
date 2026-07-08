@@ -232,6 +232,9 @@ jobs:
       - name: Admissibility invariant registry (every claim maps to code, negative vector, parity, pinned acceptance)
         run: node scripts/check-admissibility-registry.mjs
 
+      - name: Authority-claim guard (no public "authority enforced"/"scoped authority" claim without registry entry + passing vectors)
+        run: node scripts/check-authority-claims.mjs
+
       - name: No direct receipt inserts outside canonical path
         run: |
           hits=$(grep -rn "\.from('receipts')\.insert\|\.from(\"receipts\")\.insert" app/ lib/ mcp-server/ --include='*.js' --include='*.mjs' | grep -v "lib/create-receipt.js" | grep -v "lib/canonical-writer.js" || true)

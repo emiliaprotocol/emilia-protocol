@@ -1,0 +1,90 @@
+{
+  "suite": "EP-AUTHORITY-REGISTRY-v1",
+  "profile": "authority-resolution+proof",
+  "vectors_version": "2026-07-07",
+  "note": "Scoped human authority: resolver verdicts (pure) + EP-AUTHORITY-PROOF-v1 signature/pin checks. Every failure mode is a reject case (expect.valid === false). Resolve vectors run against base_snapshot unless they carry unavailable/expected_min_epoch. Proof vectors are signed at load time from seed_hex so signatures are reproducible without embedding raw bytes.",
+  "base_snapshot": {
+    "epoch": 17,
+    "entries": [
+      { "authority_id": "auth_cfo", "subject_type": "human_approver", "subject_ref": "ada", "organization_id": "org1", "role": "cfo", "assurance_class": "A", "status": "active", "valid_from": "2026-01-01T00:00:00.000Z", "valid_to": "2027-01-01T00:00:00.000Z", "revoked_at": null, "action_scopes": ["large_payment_release"], "max_amount_usd": 50000, "currency": "USD", "delegation_parent": null, "policy_hash": null },
+      { "authority_id": "auth_expired", "subject_type": "human_approver", "subject_ref": "bob", "organization_id": "org1", "role": "approver", "assurance_class": "A", "status": "active", "valid_from": "2024-01-01T00:00:00.000Z", "valid_to": "2025-01-01T00:00:00.000Z", "revoked_at": null, "action_scopes": ["large_payment_release"], "max_amount_usd": 50000, "currency": "USD", "delegation_parent": null, "policy_hash": null },
+      { "authority_id": "auth_future", "subject_type": "human_approver", "subject_ref": "cara", "organization_id": "org1", "role": "approver", "assurance_class": "A", "status": "active", "valid_from": "2027-06-01T00:00:00.000Z", "valid_to": "2028-06-01T00:00:00.000Z", "revoked_at": null, "action_scopes": ["large_payment_release"], "max_amount_usd": 50000, "currency": "USD", "delegation_parent": null, "policy_hash": null },
+      { "authority_id": "auth_revoked", "subject_type": "human_approver", "subject_ref": "dan", "organization_id": "org1", "role": "approver", "assurance_class": "A", "status": "active", "valid_from": "2026-01-01T00:00:00.000Z", "valid_to": "2027-01-01T00:00:00.000Z", "revoked_at": "2026-05-01T00:00:00.000Z", "action_scopes": ["large_payment_release"], "max_amount_usd": 50000, "currency": "USD", "delegation_parent": null, "policy_hash": null },
+      { "authority_id": "auth_policy", "subject_type": "human_approver", "subject_ref": "pat", "organization_id": "org1", "role": "approver", "assurance_class": "A", "status": "active", "valid_from": "2026-01-01T00:00:00.000Z", "valid_to": "2027-01-01T00:00:00.000Z", "revoked_at": null, "action_scopes": ["large_payment_release"], "max_amount_usd": 50000, "currency": "USD", "delegation_parent": null, "policy_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+      { "authority_id": "auth_dept", "subject_type": "human_approver", "subject_ref": "dept", "organization_id": "org1", "role": "controller", "assurance_class": "A", "status": "active", "valid_from": "2026-01-01T00:00:00.000Z", "valid_to": "2027-01-01T00:00:00.000Z", "revoked_at": null, "action_scopes": ["large_payment_release"], "max_amount_usd": 50000, "currency": "USD", "delegation_parent": null, "policy_hash": null },
+      { "authority_id": "auth_deleg", "subject_type": "human_approver", "subject_ref": "deleg", "organization_id": "org1", "role": "approver", "assurance_class": "A", "status": "active", "valid_from": "2026-01-01T00:00:00.000Z", "valid_to": "2027-01-01T00:00:00.000Z", "revoked_at": null, "action_scopes": ["large_payment_release"], "max_amount_usd": 100000, "currency": "USD", "delegation_parent": "auth_dept", "policy_hash": null },
+      { "authority_id": "auth_orphan", "subject_type": "human_approver", "subject_ref": "orphan", "organization_id": "org1", "role": "approver", "assurance_class": "A", "status": "active", "valid_from": "2026-01-01T00:00:00.000Z", "valid_to": "2027-01-01T00:00:00.000Z", "revoked_at": null, "action_scopes": ["large_payment_release"], "max_amount_usd": 50000, "currency": "USD", "delegation_parent": "auth_missing", "policy_hash": null },
+      { "authority_id": "auth_cclass", "subject_type": "human_approver", "subject_ref": "cass", "organization_id": "org1", "role": "approver", "assurance_class": "C", "status": "active", "valid_from": "2026-01-01T00:00:00.000Z", "valid_to": "2027-01-01T00:00:00.000Z", "revoked_at": null, "action_scopes": ["large_payment_release"], "max_amount_usd": 50000, "currency": "USD", "delegation_parent": null, "policy_hash": null }
+    ]
+  },
+  "vectors": [
+    { "id": "authorized_within_scope_and_limit", "kind": "resolve", "expect": { "valid": true, "verdict": "authorized" },
+      "input": { "organization_id": "org1", "approver_id": "ada", "action_type": "large_payment_release", "amount": 40000, "currency": "USD", "issued_at": "2026-07-07T00:00:00.000Z" } },
+
+    { "id": "reject_amount_exceeded", "kind": "resolve", "expect": { "valid": false, "verdict": "amount_exceeded" },
+      "input": { "organization_id": "org1", "approver_id": "ada", "action_type": "large_payment_release", "amount": 60000, "currency": "USD", "issued_at": "2026-07-07T00:00:00.000Z" } },
+
+    { "id": "reject_currency_mismatch", "kind": "resolve", "expect": { "valid": false, "verdict": "amount_exceeded" },
+      "input": { "organization_id": "org1", "approver_id": "ada", "action_type": "large_payment_release", "amount": 100, "currency": "EUR", "issued_at": "2026-07-07T00:00:00.000Z" } },
+
+    { "id": "reject_wrong_scope", "kind": "resolve", "expect": { "valid": false, "verdict": "wrong_scope" },
+      "input": { "organization_id": "org1", "approver_id": "ada", "action_type": "production_delete", "amount": 1, "issued_at": "2026-07-07T00:00:00.000Z" } },
+
+    { "id": "reject_wrong_role", "kind": "resolve", "expect": { "valid": false, "verdict": "wrong_role" },
+      "input": { "organization_id": "org1", "approver_id": "ada", "action_type": "large_payment_release", "amount": 1, "required_role": "ceo", "issued_at": "2026-07-07T00:00:00.000Z" } },
+
+    { "id": "reject_unknown_authority", "kind": "resolve", "expect": { "valid": false, "verdict": "unknown_authority" },
+      "input": { "organization_id": "org1", "approver_id": "nobody", "action_type": "large_payment_release", "amount": 1, "issued_at": "2026-07-07T00:00:00.000Z" } },
+
+    { "id": "reject_revoked_authority", "kind": "resolve", "expect": { "valid": false, "verdict": "revoked_authority" },
+      "input": { "organization_id": "org1", "approver_id": "dan", "action_type": "large_payment_release", "amount": 1, "issued_at": "2026-07-07T00:00:00.000Z" } },
+
+    { "id": "reject_expired_authority", "kind": "resolve", "expect": { "valid": false, "verdict": "expired_authority" },
+      "input": { "organization_id": "org1", "approver_id": "bob", "action_type": "large_payment_release", "amount": 1, "issued_at": "2026-07-07T00:00:00.000Z" } },
+
+    { "id": "reject_not_yet_valid", "kind": "resolve", "expect": { "valid": false, "verdict": "not_yet_valid" },
+      "input": { "organization_id": "org1", "approver_id": "cara", "action_type": "large_payment_release", "amount": 1, "issued_at": "2026-07-07T00:00:00.000Z" } },
+
+    { "id": "reject_policy_mismatch", "kind": "resolve", "expect": { "valid": false, "verdict": "policy_mismatch" },
+      "input": { "organization_id": "org1", "approver_id": "pat", "action_type": "large_payment_release", "amount": 1, "policy_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "issued_at": "2026-07-07T00:00:00.000Z" } },
+
+    { "id": "reject_delegation_widened_amount", "kind": "resolve", "expect": { "valid": false, "verdict": "delegation_broken" },
+      "input": { "organization_id": "org1", "approver_id": "deleg", "action_type": "large_payment_release", "amount": 1, "issued_at": "2026-07-07T00:00:00.000Z" } },
+
+    { "id": "reject_delegation_parent_missing", "kind": "resolve", "expect": { "valid": false, "verdict": "delegation_broken" },
+      "input": { "organization_id": "org1", "approver_id": "orphan", "action_type": "large_payment_release", "amount": 1, "issued_at": "2026-07-07T00:00:00.000Z" } },
+
+    { "id": "reject_insufficient_assurance", "kind": "resolve", "expect": { "valid": false, "verdict": "insufficient_assurance" },
+      "input": { "organization_id": "org1", "approver_id": "cass", "action_type": "large_payment_release", "amount": 1, "requiredAssurance": "A", "issued_at": "2026-07-07T00:00:00.000Z" } },
+
+    { "id": "reject_registry_unavailable", "kind": "resolve", "unavailable": true, "expect": { "valid": false, "verdict": "registry_unavailable" },
+      "input": { "organization_id": "org1", "approver_id": "ada", "action_type": "large_payment_release", "amount": 1, "issued_at": "2026-07-07T00:00:00.000Z" } },
+
+    { "id": "reject_stale_registry", "kind": "resolve", "expect": { "valid": false, "verdict": "registry_unavailable" },
+      "input": { "organization_id": "org1", "approver_id": "ada", "action_type": "large_payment_release", "amount": 1, "expected_min_epoch": 99, "issued_at": "2026-07-07T00:00:00.000Z" } },
+
+    { "id": "proof_accepted_when_pinned", "kind": "proof", "seed_hex": "0101010101010101010101010101010101010101010101010101010101010101",
+      "proof_args": { "authority_id": "auth_cfo", "subject": "ada", "organization_id": "org1", "role": "cfo", "scope": ["large_payment_release"], "limits": { "max_amount_usd": 50000, "currency": "USD" }, "validity": { "from": "2026-01-01T00:00:00.000Z", "to": "2027-01-01T00:00:00.000Z" }, "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "registry_epoch": 17, "issued_at": "2026-07-07T00:00:00.000Z" },
+      "verify": { "pin": true }, "expect": { "valid": true, "reason": "accepted" } },
+
+    { "id": "reject_proof_unpinned_key", "kind": "proof", "seed_hex": "0101010101010101010101010101010101010101010101010101010101010101",
+      "proof_args": { "authority_id": "auth_cfo", "subject": "ada", "organization_id": "org1", "role": "cfo", "scope": ["large_payment_release"], "limits": { "max_amount_usd": 50000, "currency": "USD" }, "validity": { "from": "2026-01-01T00:00:00.000Z", "to": "2027-01-01T00:00:00.000Z" }, "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "registry_epoch": 17, "issued_at": "2026-07-07T00:00:00.000Z" },
+      "verify": { "pin": false }, "expect": { "valid": false, "reason": "registry_key_not_pinned" } },
+
+    { "id": "reject_proof_tampered_role", "kind": "proof", "seed_hex": "0101010101010101010101010101010101010101010101010101010101010101",
+      "proof_args": { "authority_id": "auth_cfo", "subject": "ada", "organization_id": "org1", "role": "cfo", "scope": ["large_payment_release"], "limits": { "max_amount_usd": 50000, "currency": "USD" }, "validity": { "from": "2026-01-01T00:00:00.000Z", "to": "2027-01-01T00:00:00.000Z" }, "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "registry_epoch": 17, "issued_at": "2026-07-07T00:00:00.000Z" },
+      "verify": { "pin": true, "tamper": { "role": "ceo" } }, "expect": { "valid": false, "reason": "proof_digest_mismatch" } },
+
+    { "id": "reject_proof_registry_head_mismatch", "kind": "proof", "seed_hex": "0101010101010101010101010101010101010101010101010101010101010101",
+      "proof_args": { "authority_id": "auth_cfo", "subject": "ada", "organization_id": "org1", "role": "cfo", "scope": ["large_payment_release"], "limits": { "max_amount_usd": 50000, "currency": "USD" }, "validity": { "from": "2026-01-01T00:00:00.000Z", "to": "2027-01-01T00:00:00.000Z" }, "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "registry_epoch": 17, "issued_at": "2026-07-07T00:00:00.000Z" },
+      "verify": { "pin": true, "expectRegistryHead": "sha256:2222222222222222222222222222222222222222222222222222222222222222" }, "expect": { "valid": false, "reason": "registry_head_mismatch" } },
+
+    { "id": "reject_proof_stale_epoch", "kind": "proof", "seed_hex": "0101010101010101010101010101010101010101010101010101010101010101",
+      "proof_args": { "authority_id": "auth_cfo", "subject": "ada", "organization_id": "org1", "role": "cfo", "scope": ["large_payment_release"], "limits": { "max_amount_usd": 50000, "currency": "USD" }, "validity": { "from": "2026-01-01T00:00:00.000Z", "to": "2027-01-01T00:00:00.000Z" }, "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "registry_epoch": 17, "issued_at": "2026-07-07T00:00:00.000Z" },
+      "verify": { "pin": true, "expectMinEpoch": 99 }, "expect": { "valid": false, "reason": "stale_registry" } },
+
+    { "id": "reject_proof_forged_key_id", "kind": "proof", "seed_hex": "0101010101010101010101010101010101010101010101010101010101010101",
+      "proof_args": { "authority_id": "auth_cfo", "subject": "ada", "organization_id": "org1", "role": "cfo", "scope": ["large_payment_release"], "limits": { "max_amount_usd": 50000, "currency": "USD" }, "validity": { "from": "2026-01-01T00:00:00.000Z", "to": "2027-01-01T00:00:00.000Z" }, "registry_head": "sha256:1111111111111111111111111111111111111111111111111111111111111111", "registry_epoch": 17, "issued_at": "2026-07-07T00:00:00.000Z" },
+      "verify": { "pin": true, "tamperKeyId": "ep:authority-registry-key:sha256:deadbeefdeadbeef" }, "expect": { "valid": false, "reason": "key_id_mismatch" } }
+  ]
+}

@@ -109,15 +109,22 @@ describe('rules-engine v0 shadow signal — wiring', () => {
     expect(typeof shadow.guard_policy_decision).toBe('string');
   });
 
-  it('shadow event hard-denies a bearer-only vendor_bank_account_change with MFA_REQUIRED (stronger than REQUIRE_SECOND_APPROVAL)', async () => {
-    // Hardened behavior: the mint route no longer fabricates an MFA-strong actor
-    // for a bearer request. A bearer API key carries no MFA / WebAuthn UV signal,
-    // so the shadow input now uses the fail-safe weakest values
-    // (mfa_verified: false, assurance_level: 'low'). The §4.5 hard-deny gate
-    // fires MFA_REQUIRED and short-circuits BEFORE the §4.6 quorum layer, so the
-    // engine returns DENY (required_approvals 0, no required_signoff). DENY is
-    // strictly stronger than REQUIRE_SECOND_APPROVAL — the escalation intent is
-    // preserved: a bearer-only critical change is never waved through.
+  it('shadow event hard-denies a bearer-only vendor_bank_account_change (AUTHORITY_MISSING, stronger than REQUIRE_SECOND_APPROVAL)', async () => {
+    // Hardened behavior across two layers:
+    //  (1) The mint route no longer fabricates an MFA-strong actor for a bearer
+    //      request; the shadow input uses the fail-safe weakest values
+    //      (mfa_verified: false, assurance_level: 'low').
+    //  (2) EP-AUTHORITY-REGISTRY-v1 now feeds the shadow engine REAL resolved
+    //      authority instead of the old stub (max_amount_usd: MAX_SAFE_INTEGER,
+    //      self-scoped). The test's mocked supabase exposes no `authorities`
+    //      table, so the authority store fails closed to `registry_unavailable`
+    //      and the shadow engine sees NO authority for the actor.
+    // The §4.5 hard-deny gate therefore fires AUTHORITY_MISSING (an even more
+    // fundamental deny than MFA_REQUIRED) and short-circuits BEFORE the §4.6
+    // quorum layer, so the engine returns DENY (required_approvals 0, no
+    // required_signoff). DENY is strictly stronger than REQUIRE_SECOND_APPROVAL:
+    // a bearer-only critical change with no resolvable authority is never waved
+    // through — which is exactly the closure the stub used to hide.
     process.env.EP_RULES_ENGINE_V0 = 'enabled';
     const { client, inserts } = makeAuditCapture();
     mockGetGuardedClient.mockReturnValue(client);
@@ -126,7 +133,7 @@ describe('rules-engine v0 shadow signal — wiring', () => {
     const shadow = inserts[1].after_state;
 
     expect(shadow.rules_engine_decision).toBe('DENY');
-    expect(shadow.rules_engine_reason_codes).toContain('MFA_REQUIRED');
+    expect(shadow.rules_engine_reason_codes).toContain('AUTHORITY_MISSING');
     // Hard-deny short-circuits before the quorum layer, so there is no
     // per-signoff quorum requirement and no accumulated approval count.
     expect(shadow.rules_engine_required_approvals).toBe(0);
