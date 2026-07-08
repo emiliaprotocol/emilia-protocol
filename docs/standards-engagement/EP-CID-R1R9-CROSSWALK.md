@@ -8,7 +8,7 @@ Three authorities, three lanes, kept distinct here on purpose:
 
 - **C-ID criterion text** is authoritative from
   [`draft-bu-agentproto-security-principal-binding-02`](https://datatracker.ietf.org/doc/html/draft-bu-agentproto-security-principal-binding-02)
-  Section 9 (Songbo Du holds the pen; the quoted question for each claim is
+  Section 9 (Songbo Bu holds the pen; the quoted question for each claim is
   verbatim from that section, not an EP paraphrase).
 - **R1-R9 anchors** are from
   [`draft-reece-wimse-cross-org-delegation-00`](https://datatracker.ietf.org/doc/draft-reece-wimse-cross-org-delegation/)
