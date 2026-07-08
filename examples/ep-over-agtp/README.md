@@ -1,8 +1,15 @@
 # EP-receipt-over-AGTP — composition demo
 
-A self-contained, runnable demo showing **EMILIA Protocol (EP)** as the
-**external-IdP / human-authorization profile** in
-**draft-hood-agtp-composition-01** (AGTP v09 × EP receipts).
+A self-contained, runnable demo showing **EMILIA Protocol (EP)** as a
+**candidate human-authorization realization** for the external-IdP composition
+slot introduced in **draft-hood-agtp-composition-01** (AGTP v09 × EP receipts).
+
+> **Standing (verified against the published draft):** `agtp-composition-01`
+> defines an external-IdP / human-authorization profile family and names its
+> credential sources as OAuth, OIDC, SPIFFE, and enterprise IdPs. It does **not**
+> name EP. This directory is EMILIA's own proposed `ep-receipt-v1` realization of
+> that slot and a runnable proof it composes, not a profile registered in the AGTP
+> draft. We propose EP for that slot; the draft has not adopted it.
 
 ```bash
 node demo.mjs
@@ -39,5 +46,6 @@ this?"*; EP answers *"which human authorized this exact action?"*:
 - Composition: `draft-hood-agtp-composition`
 
 > Demo only — illustrative keys/values, no network. The external-IdP
-> credential slot is defined in `agtp-composition-01`; EP occupies that
-> slot as the `ep-receipt-v1` profile.
+> credential slot is defined in `agtp-composition-01`; this demo proposes EP
+> as an `ep-receipt-v1` realization of that slot. The published draft names
+> OAuth/OIDC/SPIFFE for the slot and does not name EP.
