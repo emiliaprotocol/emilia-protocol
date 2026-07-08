@@ -1,0 +1,24 @@
+{
+  "suite": "EP-RELIANCE-AGREEMENT-v1",
+  "profile": "signed-reliance-agreement-and-event",
+  "vectors_version": "2026-07-08",
+  "note": "A signed, machine-readable agreement conditioning a liability transfer or indemnity on authorization-evidence sufficiency (reliance profile referenced by digest), plus the per-action RELIANCE EVENT binding one action's reliance verdict to the agreement. Scenario-driven: each vector names a `break` applied to a validly-signed seed agreement/event built by the test harness from deterministic Ed25519 keys, then asserts the fail-closed refusal. Monetary amounts are decimal strings, never JSON numbers. required_signers[] is the agreement's own effectiveness rule: any required signature missing, unpinned, or invalid refuses. Verifying the agreement proves WHO agreed to WHAT terms over WHICH evidence conditions; it does not prove enforceability and does not escrow the caps.",
+  "vectors": [
+    { "id": "accept_fully_signed_agreement", "object": "agreement", "break": "none", "expect": { "valid": true } },
+    { "id": "reject_missing_required_signer", "object": "agreement", "break": "drop_relying_party_signature", "expect": { "valid": false, "reason_contains": "required signature" } },
+    { "id": "reject_expired_validity_window", "object": "agreement", "break": "now_after_expiry", "expect": { "valid": false, "reason_contains": "validity window" } },
+    { "id": "reject_tampered_cap_amount", "object": "agreement", "break": "tamper_cap_amount", "expect": { "valid": false, "reason_contains": "does not verify" } },
+    { "id": "reject_cap_amount_as_number", "object": "agreement", "break": "cap_amount_as_number", "expect": { "valid": false, "reason_contains": "decimal string" } },
+    { "id": "reject_unknown_terms_mode", "object": "agreement", "break": "unknown_terms_mode", "expect": { "valid": false, "reason_contains": "closed set" } },
+    { "id": "reject_unpinned_required_signer_key", "object": "agreement", "break": "unpin_issuer_key", "expect": { "valid": false, "reason_contains": "no pinned key" } },
+    { "id": "reject_underwriter_required_but_undeclared", "object": "agreement", "break": "require_undeclared_underwriter", "expect": { "valid": false, "reason_contains": "declares no such party" } },
+    { "id": "accept_bound_reliance_event", "object": "event", "break": "none", "expect": { "valid": true } },
+    { "id": "reject_event_wrong_agreement_digest", "object": "event", "break": "wrong_agreement_digest", "expect": { "valid": false, "reason_contains": "different agreement" } },
+    { "id": "reject_event_signed_by_non_relying_party", "object": "event", "break": "sign_event_as_issuer", "expect": { "valid": false, "reason_contains": "relying_party" } },
+    { "id": "reject_result_for_different_action", "object": "event", "break": "result_for_different_action", "expect": { "valid": false, "reason_contains": "different action" } },
+    { "id": "reject_action_family_out_of_scope", "object": "event", "break": "result_family_out_of_scope", "expect": { "valid": false, "reason_contains": "outside the agreement scope" } },
+    { "id": "reject_tampered_reliance_result", "object": "event", "break": "tamper_reliance_result", "expect": { "valid": false, "reason_contains": "reliance_result_digest" } },
+    { "id": "reject_event_outside_agreement_validity", "object": "event", "break": "relied_at_after_expiry", "expect": { "valid": false, "reason_contains": "validity window" } },
+    { "id": "reject_result_under_different_profile", "object": "event", "break": "result_different_profile_digest", "expect": { "valid": false, "reason_contains": "different reliance profile" } }
+  ]
+}

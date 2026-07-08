@@ -169,6 +169,63 @@ failure, and we hold ourselves to the rule first.
 - `draft-schrock-emilia-eye-00.xml` — the xml2rfc v3 source.
 - `draft-schrock-emilia-eye-00.txt` — the rendered I-D.
 
+## draft-schrock-ep-outcome-binding-00
+
+**Outcome Binding: Predicted-Effect Approval and Effect-Divergence Evidence** —
+the layer above exact-action approval. The receipt payload carries
+`predicted_effects` (a closed predicate set: eq / lte / gte / range / set_eq /
+count_lte / absent, amounts as strings), the executor attests
+`observed_effects` after the effect boundary, and a deterministic offline
+comparison yields a closed result set: `in_bounds` / `divergent` /
+`incomparable` (fail-closed; a missing or malformed observation is a refusal
+with a reason, never a pass). A divergent or incomparable result drives the
+evidence-graph verdict to `conflicted`. Bounds the "the human approved bytes,
+not consequences" residual; does not claim to close it (a dishonest executor
+defeats observation, and the draft says so). Differentiates in-toto
+(supply-chain, bit-exact, no tolerance semantics), permit-before-commit
+receipts (pre-execution only), and post-execution outcome attestation (whose
+Section 8.3 leaves expected-vs-actual comparison out of scope — the gap this
+draft fills).
+
+**Status: written + render-clean (xml2rfc v3), NOT yet filed (Informational,
+individual submission).** Reference implementation:
+`lib/evidence/effect-predicates.js` + the predicate path in
+`lib/evidence/evidence-graph.js`; vectors
+`conformance/vectors/outcome-binding.v1.json`; tests
+`tests/outcome-binding.test.js`.
+
+### Source artifacts
+
+- `draft-schrock-ep-outcome-binding-00.xml` — the xml2rfc v3 source.
+- `draft-schrock-ep-outcome-binding-00.txt` — the rendered I-D.
+
+## draft-schrock-ep-reliance-agreement-00
+
+**Reliance Agreements: Evidence-Conditioned Liability Terms for Agent Actions
+(EP-RELIANCE-AGREEMENT-v1)** — a machine-readable, multi-party-signed object
+expressing "if the presented authorization evidence satisfies the referenced
+reliance profile, these liability terms apply (liability_shift or indemnity,
+caps as strings)". Companion RELIANCE EVENT object binds one action's
+evidence verdict to the agreement (`agreement_digest` + `action_digest` +
+`reliance_result_digest`, signed by the relying party). Both verify offline
+against pinned keys, fail-closed. The draft states plainly that this is the
+machine-readable EXPRESSION of an agreement designed to be incorporated by
+reference into a prose master agreement; enforceability is
+jurisdiction-dependent and out of scope. Precedents cited: ETSI
+machine-processable signature policies, the defunct IdenTrust four-corner
+warranty model, LegalRuleML/Accord as substrates.
+
+**Status: written + render-clean (xml2rfc v3), NOT yet filed (Informational,
+individual submission).** Reference implementation:
+`packages/verify/reliance-agreement.js`; vectors
+`conformance/vectors/reliance-agreement.v1.json`; tests
+`tests/reliance-agreement.test.js`.
+
+### Source artifacts
+
+- `draft-schrock-ep-reliance-agreement-00.xml` — the xml2rfc v3 source.
+- `draft-schrock-ep-reliance-agreement-00.txt` — the rendered I-D.
+
 ## draft-schrock-scitt-authorization-evidence-00 (ABSORBED)
 
 **Absorbed into `draft-schrock-human-authorization-binding-00` (2026-07-03),

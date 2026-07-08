@@ -1,0 +1,672 @@
+
+
+
+
+Network Working Group                                         I. Schrock
+Internet-Draft                                     EMILIA Protocol, Inc.
+Intended status: Informational                               8 July 2026
+Expires: 9 January 2027
+
+
+ Outcome Binding: Approval over Predicted Effects, Executor Attestation
+         of Observed Effects, and Machine-Detectable Divergence
+                  draft-schrock-ep-outcome-binding-00
+
+Abstract
+
+   Every signed-authorization format for agent actions proves approval
+   of BYTES: the exact canonical action a human signed.  What the action
+   then did to the world is unproven.  Permit formats stop at the moment
+   before execution; outcome-attestation formats record what an executor
+   claims happened afterward and explicitly leave the comparison between
+   expected and actual to the relying party.  This document specifies
+   the comparison.  A PREDICTED-EFFECTS object, signed inside the
+   authorization payload, states the approved consequences as typed
+   predicates with tolerance bounds (equality, upper and lower bounds,
+   ranges, set equality, count ceilings, and required absence).  An
+   OBSERVED-EFFECTS attestation, signed by the executor after execution,
+   states what happened.  A deterministic evaluation compares the two
+   and yields a closed result: in_bounds, divergent, or incomparable.  A
+   divergent or incomparable result is itself machine-readable, signed
+   evidence that feeds action evidence graphs, where it forces the
+   verdict to 'conflicted'.  This BOUNDS the residual between approval
+   and consequence; it does not close it.  The observed effects are an
+   executor claim: a lying executor defeats observation.  Divergence
+   becomes detectable and attributable, not impossible.
+
+Status of This Memo
+
+   This Internet-Draft is submitted in full conformance with the
+   provisions of BCP 78 and BCP 79.
+
+   Internet-Drafts are working documents of the Internet Engineering
+   Task Force (IETF).  Note that other groups may also distribute
+   working documents as Internet-Drafts.  The list of current Internet-
+   Drafts is at https://datatracker.ietf.org/drafts/current/.
+
+   Internet-Drafts are draft documents valid for a maximum of six months
+   and may be updated, replaced, or obsoleted by other documents at any
+   time.  It is inappropriate to use Internet-Drafts as reference
+   material or to cite them other than as "work in progress."
+
+   This Internet-Draft will expire on 9 January 2027.
+
+
+
+Schrock                  Expires 9 January 2027                 [Page 1]
+
+Internet-Draft             EP Outcome Binding                  July 2026
+
+
+Copyright Notice
+
+   Copyright (c) 2026 IETF Trust and the persons identified as the
+   document authors.  All rights reserved.
+
+   This document is subject to BCP 78 and the IETF Trust's Legal
+   Provisions Relating to IETF Documents (https://trustee.ietf.org/
+   license-info) in effect on the date of publication of this document.
+   Please review these documents carefully, as they describe your rights
+   and restrictions with respect to this document.  Code Components
+   extracted from this document must include Revised BSD License text as
+   described in Section 4.e of the Trust Legal Provisions and are
+   provided without warranty as described in the Revised BSD License.
+
+Table of Contents
+
+   1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
+     1.1.  Terminology . . . . . . . . . . . . . . . . . . . . . . .   3
+   2.  The Predicted-Effects Object  . . . . . . . . . . . . . . . .   4
+   3.  The Observed-Effects Attestation  . . . . . . . . . . . . . .   5
+   4.  Divergence Evaluation . . . . . . . . . . . . . . . . . . . .   6
+   5.  The Divergence Result as Evidence . . . . . . . . . . . . . .   7
+   6.  Relationship to Prior Work  . . . . . . . . . . . . . . . . .   8
+   7.  Security Considerations . . . . . . . . . . . . . . . . . . .   9
+   8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  10
+   9.  References  . . . . . . . . . . . . . . . . . . . . . . . . .  10
+     9.1.  Normative References  . . . . . . . . . . . . . . . . . .  10
+     9.2.  Informative References  . . . . . . . . . . . . . . . . .  10
+   Appendix A.  Implementation Status  . . . . . . . . . . . . . . .  11
+   Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  12
+
+1.  Introduction
+
+   An authorization receipt proves that a named human approved an exact
+   action representation: canonical bytes, digested and signed
+   [I-D.schrock-ep-authorization-receipts].  That proof is necessary and
+   it is not sufficient, because the world does not execute bytes; it
+   executes consequences.  "Pay vendor 9" as approved bytes can become a
+   payment of a different amount, to a different account, accompanied by
+   a file deletion nobody approved.  Today no artifact makes that gap
+   machine-detectable: the approval names no consequences, the execution
+   record names no approval bar, and the comparison between the two is
+   everyone's job and therefore nobody's.
+
+   This document defines the three pieces of that comparison:
+
+
+
+
+
+
+Schrock                  Expires 9 January 2027                 [Page 2]
+
+Internet-Draft             EP Outcome Binding                  July 2026
+
+
+   1.  The PREDICTED-EFFECTS object (Section 2): an array inside the
+       receipt payload the human signs, stating the approved
+       consequences as typed predicates with tolerance bounds.  The
+       human no longer approves only "these bytes"; the human approves
+       "these bytes, whose effects will stay inside these bounds".
+
+   2.  The OBSERVED-EFFECTS attestation (Section 3): a statement, signed
+       by the executor AFTER execution, of the effects that actually
+       occurred, bound to the receipt it executed under.
+
+   3.  DIVERGENCE EVALUATION (Section 4): a deterministic, offline,
+       replayable comparison of the two, with a closed result set.  The
+       result is signed evidence in its own right (Section 5) and drives
+       the evidence-graph verdict [I-D.schrock-ep-action-evidence-graph]
+       to 'conflicted' whenever effects diverged or could not be
+       compared.
+
+   Honest scope, stated up front: this mechanism BOUNDS the residual
+   between approval and consequence.  It does not close it.  The
+   observed effects are a claim by the executor, and an executor that
+   lies about what it did defeats observation entirely; what this
+   document makes impossible is SILENT divergence by an executor whose
+   attestations are later checked against reality, because its signed
+   claim is then the contradiction.  Predictions are only as good as the
+   material fields the deployment chooses to predict, and tolerance
+   bounds are policy: a bound wide enough to admit anything proves
+   nothing.  These limits are restated with their consequences in
+   Section 7.
+
+1.1.  Terminology
+
+   The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+   "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+   "OPTIONAL" in this document are to be interpreted as described in BCP
+   14 [RFC2119] [RFC8174] when, and only when, they appear in all
+   capitals, as shown here.
+
+   EFFECT: a discrete, observable consequence of executing an action,
+   identified by an effect_type (the kind of consequence, e.g.
+   "payment", "file_delete", "role_grant") and a target (the thing acted
+   on).  PREDICATE: a machine-evaluable constraint over the observed
+   effects matching one (effect_type, target) pair.  EXECUTOR: the party
+   that carries out the approved action and signs the observed-effects
+   attestation.  RELYING PARTY: the party that evaluates divergence
+   before relying on the action's evidence.
+
+
+
+
+
+
+Schrock                  Expires 9 January 2027                 [Page 3]
+
+Internet-Draft             EP Outcome Binding                  July 2026
+
+
+2.  The Predicted-Effects Object
+
+   predicted_effects is a JSON array carried INSIDE the receipt payload
+   the human signs, so the predictions are covered by the same
+   signature, the same canonicalization, and the same one-time
+   consumption as the action itself.  Each entry names one constraint:
+
+   "predicted_effects": [
+     { "effect_type": "payment",
+       "target": "acct:vendor-9",
+       "predicate": { "op": "lte", "value": "25000.00" } },
+     { "effect_type": "record_update",
+       "target": "crm:contact-113",
+       "predicate": { "op": "eq", "value": "status=closed" } },
+     { "effect_type": "file_delete",
+       "target": "bucket:reports/2025/*",
+       "predicate": { "op": "count_lte", "value": "3" } },
+     { "effect_type": "role_grant",
+       "target": "iam:svc-deploy",
+       "predicate": { "op": "set_eq",
+                      "values": ["deploy:staging", "read:logs"] } },
+     { "effect_type": "account_close",
+       "target": "acct:*",
+       "predicate": { "op": "absent" } }
+   ]
+
+   The predicate op set is CLOSED in this version:
+
+   eq  the observed value is exactly the predicted string.
+
+   lte / gte  the observed value, as an exact decimal string, is at most
+      / at least the predicted value.
+
+   range  min <= observed <= max, both bounds inclusive, min MUST NOT
+      exceed max.
+
+   set_eq  the observed values, as a set, equal the predicted set
+      (order- and duplicate-insensitive).  A grant of MORE scopes than
+      predicted is divergence, not surplus.
+
+   count_lte  the NUMBER of observed effects matching (effect_type,
+      target) is at most the predicted value.  Zero matches is a valid
+      count of zero, not a missing observation.
+
+   absent  NO observed effect may match (effect_type, target).  This is
+      how an approval states "and nothing of this destructive kind
+      happens at all".
+
+
+
+
+Schrock                  Expires 9 January 2027                 [Page 4]
+
+Internet-Draft             EP Outcome Binding                  July 2026
+
+
+   Comparison values are STRINGS, never JSON numbers.  This is the same
+   canonicalization-malleability rule monetary amounts follow throughout
+   this receipt family: a JSON number can re-serialize into different
+   bytes across implementations; a string is the byte sequence the human
+   signed.  An implementation encountering a numeric comparison value
+   anywhere in a predicate or an observation MUST treat the evaluation
+   as incomparable (Section 4), never as a pass.  Ordered comparisons
+   (lte, gte, range, count_lte) are performed as exact decimal-string
+   comparisons: no floating point, so values beyond 2^53 and sub-cent
+   fractions compare correctly and identically in every implementation.
+
+   Unknown predicate ops, and unknown members inside a prediction entry
+   or a predicate object, MUST make the predicted_effects array
+   malformed (evaluated as incomparable).  The signer may have intended
+   a constraint this evaluator would otherwise silently ignore; silently
+   ignoring a signed constraint is a pass the human never granted.
+
+   The array is canonicalized with JCS [RFC8785] and digested:
+   predicted_effects_digest is the sha256 over the canonical bytes.
+   Verifiers that transport the array separately from the payload MUST
+   recompute this digest and refuse on mismatch.
+
+3.  The Observed-Effects Attestation
+
+   After execution, the executor signs an effect attestation bound to
+   the receipt it executed under.  This document extends the existing
+   effect_attestation evidence node: today that node carries a single
+   observed_effect_digest compared for exact equality against the
+   approved committed effect digest.  That path remains valid and
+   unchanged; it is the degenerate case of this specification, a single
+   eq predicate over one digest.  The extension adds an observed_effects
+   array:
+
+   {
+     "receipt_id": "tr_8f3a...",
+     "observed_effects": [
+       { "effect_type": "payment",
+         "target": "acct:vendor-9",
+         "value": "24999.99",
+         "observed_at": "2026-07-08T00:00:41Z" },
+       { "effect_type": "record_update",
+         "target": "crm:contact-113",
+         "value": "status=closed" }
+     ]
+   }
+
+
+
+
+
+
+Schrock                  Expires 9 January 2027                 [Page 5]
+
+Internet-Draft             EP Outcome Binding                  July 2026
+
+
+   Each observed entry carries effect_type and target (matched exactly
+   against predictions), plus value (a string) for scalar predicates or
+   values (an array of strings) for set_eq.  Observed entries MAY carry
+   additional members (timestamps, system-of-record references); only
+   the compared fields are read.  The asymmetry is deliberate: the
+   SIGNED prediction is strict because it encodes intent, while the
+   observation is a report that may carry operational metadata.
+
+   The attestation MUST be signed by the executor and verified against a
+   key the relying party has pinned.  As everywhere in this receipt
+   family, VERIFIED (the signature holds over the canonical bytes) is
+   never ACCEPTED (the executor key is trusted under a pinned root);
+   they are separate checks and implementations MUST keep them separate.
+   An attestation whose signature does not verify, or whose executor key
+   is not pinned, is not weighed as effect evidence at all: at the
+   evidence-graph layer it is inadmissible ('unverifiable'), which takes
+   precedence over any divergence finding it might otherwise have
+   produced.
+
+   The predictions the evaluation runs against are never taken from the
+   presenter of the evidence.  They are either read by the verifier out
+   of the approved, signature-covered receipt payload, or pinned
+   directly by the relying party's policy.  A presenter cannot
+   substitute looser predictions after the fact, because the predictions
+   it would need to alter are inside the bytes the human signed.
+
+4.  Divergence Evaluation
+
+   Evaluation is a pure function of (predicted_effects,
+   observed_effects) with a CLOSED result set.  Same inputs give the
+   same result and the same reasons in the same order, so any third
+   party can replay the comparison offline.
+
+   Matching: for each prediction entry, the matching observations are
+   those whose effect_type and target are exactly equal to the entry's.
+   Per-op evaluation then proceeds:
+
+   *  absent: zero matches is in_bounds; any match is divergent.
+
+   *  count_lte: the match count is compared to the bound; over the
+      bound is divergent.  A count is derived, so this op is always
+      comparable.
+
+   *  All other ops require EXACTLY ONE matching observation.  Zero
+      matches is incomparable ("no observed effect for the predicate").
+      More than one is incomparable ("ambiguous").  A matching
+      observation whose compared field is missing, non-string, or (for
+      ordered ops) not an exact decimal string is incomparable.
+
+
+
+Schrock                  Expires 9 January 2027                 [Page 6]
+
+Internet-Draft             EP Outcome Binding                  July 2026
+
+
+   Each result is one of:
+
+   in_bounds  every predicate evaluated and held.
+
+   divergent  at least one predicate evaluated and failed.  The result
+      carries a per-predicate reason of the form "predicted X, observed
+      Y" for each failed predicate.
+
+   incomparable  at least one predicate could not be evaluated: the
+      observation is missing, ambiguous, or malformed, or the
+      predicted_effects array itself is malformed.  This is a REFUSAL
+      with a reason.  It MUST NOT be treated as a pass: an executor that
+      omits or mangles the observation for an inconvenient predicate has
+      not satisfied it.
+
+   Result precedence when predicates disagree: divergent over
+   incomparable over in_bounds.  A proven divergence is never masked by
+   a neighboring predicate that merely could not be evaluated.  Both
+   non-pass classes drive the same downstream downgrade (Section 5), so
+   this precedence never converts a refusal into a pass; it only chooses
+   which finding leads the report.
+
+   Note on the term "divergence": published academic work uses "bounded
+   divergence" for the property that a re-execution replays within
+   bounds of a recorded run [BOUNDED-DIV].  The relation in this
+   document is different: it compares an approved PREDICTION against an
+   attested OBSERVATION of one execution, not one execution against its
+   replay.  The two are complementary and unrelated in mechanism.
+
+5.  The Divergence Result as Evidence
+
+   A divergence result is not a log line; it is evidence.  When the
+   effect attestation is presented as a node in an action evidence graph
+   [I-D.schrock-ep-action-evidence-graph], the evaluation runs during
+   policy replay and its result binds into the replayable verdict:
+
+   *  divergent adds a machine-readable effect_divergence reason
+      (carrying the per-predicate "predicted X, observed Y" details) and
+      forces the graph verdict to 'conflicted'.
+
+   *  incomparable adds an effect_incomparable reason and likewise
+      forces 'conflicted'.  Missing or malformed observation is never a
+      silent pass.
+
+   *  Both downgrades follow the existing verdict precedence:
+      'unverifiable' (for example, a bad executor signature) is strictly
+      worse and is never softened to 'conflicted'; no finding ever moves
+      a verdict toward 'admissible'.
+
+
+
+Schrock                  Expires 9 January 2027                 [Page 7]
+
+Internet-Draft             EP Outcome Binding                  July 2026
+
+
+   *  The pre-existing exact-digest comparison keeps its
+      effect_divergence and effect_commitment_missing semantics
+      unchanged, and when an attestation carries both the digests and
+      the arrays, both comparisons run: an in-bounds predicate result
+      never masks a diverging exact digest.
+
+   Because the verdict is replayable, "the executor exceeded the
+   approved bounds" becomes a claim any third party can recompute from
+   the signed receipt, the signed attestation, and the policy, with no
+   trust in the party that first noticed.  Which action classes require
+   an effect attestation at all, and within what deadline after
+   execution, is declared per action in the action manifest
+   [I-D.schrock-agent-action-manifest]; an attestation that never
+   arrives is missing evidence under the relying party's policy, not an
+   in-bounds outcome.
+
+6.  Relationship to Prior Work
+
+   in-toto [IN-TOTO] is the closest structural prior art: an expected
+   layout signed in advance, link metadata attested by the parties that
+   performed each step, and a verifier that compares the two.  It is
+   scoped to software supply chains, its comparisons are bit-exact
+   artifact hashes and rule matches, and it has no tolerance semantics:
+   there is no way to sign "the payment stays at or below 25000.00" and
+   detect 26000.00 as a bounded violation.  This document applies the
+   expected-versus-attested shape to agent-action consequences, with
+   typed predicates and tolerance bounds as the comparison language.
+
+   [I-D.lee-orprg-permit-receipts] issues permits BEFORE execution over
+   an exact digest of the intended operation.  It carries no prediction
+   of consequences and nothing post-execution to compare against; the
+   permit's job ends at the property line this document starts from.
+
+   [I-D.morrow-sogomonian-exec-outcome-attest] defines post-execution
+   outcome-claim receipts, the other half of the pair.  Its Section 8.3
+   states plainly that comparing an outcome claim against what was
+   expected is "the responsibility of the relying party's verification
+   logic, not the receipt format".  That is a reasonable boundary for a
+   receipt-format document to draw, and it is exactly the layer
+   specified here: the signed prediction object, the deterministic
+   comparison, and the closed result set that make every relying party's
+   "verification logic" the same replayable computation.  An outcome-
+   claim receipt of that family could serve as the observed-effects
+   carrier for this evaluation, provided its claims map to (effect_type,
+   target, value) and its executor key is pinned by the relying party.
+
+
+
+
+
+
+Schrock                  Expires 9 January 2027                 [Page 8]
+
+Internet-Draft             EP Outcome Binding                  July 2026
+
+
+   Checkout-mandate protocols in the payments space bind an exact cart,
+   which is the eq case over one composite value; they do not express
+   bounds, counts, or required absence.  And as noted in Section 4, the
+   "bounded divergence" of [BOUNDED-DIV] is a replay-determinism
+   property, not this document's approved-prediction-versus-observed-
+   effect relation.
+
+7.  Security Considerations
+
+   Executor honesty is a trust assumption, and this document states it
+   plainly rather than engineering around it: the observed effects are
+   whatever the executor signs.  A lying executor defeats observation.
+   What the mechanism changes is the executor's position afterward: its
+   claim is signed, bound to the receipt, and comparable against systems
+   of record, so a false attestation is durable, attributable evidence
+   of the lie.  Deployments that need more than accountability SHOULD
+   obtain observations from a party other than the executor (the system
+   of record itself, or an independent observer) and pin that party's
+   key instead.
+
+   Predictions are only as good as the material fields.  A prediction
+   over fields that do not determine the action's real consequence binds
+   nothing that matters; deployments MUST derive predicted_effects from
+   the same material-field discipline the action's canonical
+   representation uses.  An absent predicate covers only the
+   (effect_type, target) pattern it names: unpredicted effects outside
+   every named pattern are NOT detected by this mechanism.  A deployment
+   that wants "and nothing else happened" must say so with absent
+   predicates over the destructive effect types it fears, and accept
+   that the enumeration is policy, not proof of a closed world.
+
+   Tolerance bounds are policy, and wide bounds prove little.  An lte of
+   one billion over a thousand-dollar payment is compliance theater with
+   a signature on it.  Relying parties SHOULD treat the tightness of the
+   bounds as part of what they are relying on, not only the in_bounds
+   result; the bounds are in the signed payload precisely so that they
+   can be judged.
+
+   Fail-closed means a refusal with a reason.  Malformed predictions,
+   missing observations, ambiguous matches, and numeric values where
+   strings are required all yield incomparable with a stated reason, and
+   incomparable forces 'conflicted' downstream.  None of these
+   conditions may crash the evaluator or pass silently.  Implementations
+   MUST prove this against hostile input; the conformance suite for the
+   reference implementation includes each such case as a reject vector.
+
+
+
+
+
+
+Schrock                  Expires 9 January 2027                 [Page 9]
+
+Internet-Draft             EP Outcome Binding                  July 2026
+
+
+   The evaluation compares execution against approval; it does not
+   revisit whether the approval was sufficient.  An in_bounds result
+   over a receipt that fails verification, binds a different action, or
+   lacks required companion evidence rescues nothing: divergence
+   evaluation composes with, and never substitutes for, the
+   admissibility decision of the evidence-graph layer.
+
+8.  IANA Considerations
+
+   This document has no IANA actions.
+
+9.  References
+
+9.1.  Normative References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119,
+              DOI 10.17487/RFC2119, March 1997,
+              <https://www.rfc-editor.org/info/rfc2119>.
+
+   [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
+              2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
+              May 2017, <https://www.rfc-editor.org/info/rfc8174>.
+
+   [RFC8785]  Rundgren, A., Jordan, B., and S. Erdtman, "JSON
+              Canonicalization Scheme (JCS)", RFC 8785,
+              DOI 10.17487/RFC8785, June 2020,
+              <https://www.rfc-editor.org/info/rfc8785>.
+
+9.2.  Informative References
+
+   [BOUNDED-DIV]
+              Zhou, Z., "Governing Dynamic Capabilities: Cryptographic
+              Binding and Reproducibility Verification for AI Agent Tool
+              Use", March 2026, <https://arxiv.org/abs/2603.14332>.
+
+   [I-D.lee-orprg-permit-receipts]
+              Lee, Y. B., "Permit Receipts for Permit-Before-Commit
+              Authorization of AI-Agent and Workload External Effects",
+              Work in Progress, Internet-Draft, draft-lee-orprg-permit-
+              receipts-00, July 2026, <https://datatracker.ietf.org/doc/
+              draft-lee-orprg-permit-receipts/>.
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 9 January 2027                [Page 10]
+
+Internet-Draft             EP Outcome Binding                  July 2026
+
+
+   [I-D.morrow-sogomonian-exec-outcome-attest]
+              morrow.run and A. Sogomonian, "Execution Outcome
+              Attestation for AI Agents and Automated Systems", Work in
+              Progress, Internet-Draft, draft-morrow-sogomonian-exec-
+              outcome-attest-00, July 2026,
+              <https://datatracker.ietf.org/doc/draft-morrow-sogomonian-
+              exec-outcome-attest/>.
+
+   [I-D.schrock-agent-action-manifest]
+              Schrock, I., "Agent Action Manifests: Declaring Control
+              and Consequences for Agent-Reachable Actions", Work in
+              Progress, Internet-Draft, draft-schrock-agent-action-
+              manifest-00, July 2026, <https://datatracker.ietf.org/doc/
+              draft-schrock-agent-action-manifest/>.
+
+   [I-D.schrock-ep-action-evidence-graph]
+              Schrock, I., "Action Evidence Graphs and Evidence Policy
+              Replay for High-Risk Agent Actions (EP-AEG)", Work in
+              Progress, Internet-Draft, draft-schrock-ep-action-
+              evidence-graph-00, July 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-action-
+              evidence-graph/>.
+
+   [I-D.schrock-ep-authorization-receipts]
+              Schrock, I., "Authorization Receipts for High-Risk Agent
+              Actions", Work in Progress, Internet-Draft, draft-schrock-
+              ep-authorization-receipts-00, June 2026,
+              <https://datatracker.ietf.org/doc/draft-schrock-ep-
+              authorization-receipts/>.
+
+   [IN-TOTO]  in-toto project, "in-toto: A framework to secure the
+              integrity of software supply chains", 2019,
+              <https://in-toto.io/>.
+
+Appendix A.  Implementation Status
+
+   A reference implementation is published Apache-2.0 in the EMILIA
+   Protocol repository: the pure predicate evaluator with the closed op
+   and result sets, exact decimal-string comparison, and the strict-
+   prediction / tolerant-observation validation split (lib/evidence/
+   effect-predicates.js), and the evidence-graph wiring in which
+   divergent and incomparable results force the 'conflicted' verdict
+   alongside the unchanged exact-digest path (lib/evidence/evidence-
+   graph.js).  A conformance suite (conformance/vectors/outcome-
+   binding.v1.json) covers every predicate op passing and failing,
+   numeric-instead-of-string rejection on both the prediction and
+   observation sides, missing and ambiguous observations refusing as
+   incomparable, an unpredicted destructive effect caught by an absent
+
+
+
+Schrock                  Expires 9 January 2027                [Page 11]
+
+Internet-Draft             EP Outcome Binding                  July 2026
+
+
+   predicate, the divergent-over-incomparable precedence, the exact-
+   digest backward-compatibility cases, and the relying-party pin
+   overriding verifier-read predictions; a test harness runs every
+   vector.
+
+Author's Address
+
+   Iman Schrock
+   EMILIA Protocol, Inc.
+   United States of America
+   Email: team@emiliaprotocol.ai
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Schrock                  Expires 9 January 2027                [Page 12]
