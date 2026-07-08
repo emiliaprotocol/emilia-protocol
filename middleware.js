@@ -91,6 +91,8 @@ const ROUTE_POLICIES = {
   'POST /api/v1/trust-receipts/*/consume':         { rateCategory: 'submit', useAuth: true }, // one-time consume
   'POST /api/v1/trust-receipts/*/execution':       { rateCategory: 'submit', useAuth: true }, // post-mutation execution attestation
   'GET /api/v1/trust-receipts/*/evidence':         { rateCategory: 'read',   useAuth: true }, // evidence packet
+  'POST /api/v1/rx-reliance/evaluate':             { rateCategory: 'submit', useAuth: true }, // Rx reliance verdict over a submitted packet (stateless, no PHI)
+  'POST /api/v1/rx-reliance/profiles':             { rateCategory: 'submit', useAuth: true }, // content-hash pin of a relying-party reliance profile
   'POST /api/v1/signoffs/request':                 { rateCategory: 'submit', useAuth: true }, // request human signoff
   'POST /api/v1/signoffs/*/approve':               { rateCategory: 'submit', useAuth: true }, // approver acts
   'POST /api/v1/signoffs/*/reject':                { rateCategory: 'submit', useAuth: true }, // approver acts

@@ -38,6 +38,8 @@ tags:
     description: Experimental / legacy install-preflight surfaces; not the primary company wedge
   - name: Receipts
     description: Transaction receipt submission and verification
+  - name: Rx Reliance
+    description: Pharmacy reliance verdicts and profile pinning (EP-NCPDP-RX-RELIANCE-PROFILE-v1)
   - name: Entities
     description: Entity registration and search
   - name: Disputes
@@ -614,6 +616,113 @@ paths:
           description: Receipt not found.
         '409':
           description: Receipt not consumed or execution already attested.
+
+  /api/v1/rx-reliance/evaluate:
+    post:
+      tags: [Rx Reliance]
+      summary: Evaluate a pharmacy reliance packet
+      description: |
+        Returns one closed Rx reliance verdict (rx_rely or an rx_do_not_rely_*
+        reason) over a submitted evidence packet (EP-RX-RELIANCE-PACKET-v1)
+        evaluated against a pinned challenge (EP-RX-EVIDENCE-CHALLENGE-v1).
+        Composes the EP reliance kernel: stateless, fail-closed, and carries
+        signed digests only, never PHI. The relying party supplies its own pinned
+        verifier keys in opts; EMILIA is never in the trust path.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challenge, packet]
+              properties:
+                challenge:
+                  type: object
+                  description: EP-RX-EVIDENCE-CHALLENGE-v1 the relying party pins.
+                packet:
+                  type: object
+                  description: EP-RX-RELIANCE-PACKET-v1 to evaluate.
+                opts:
+                  type: object
+                  description: Pinned verifier keys (approverKeys, logPublicKey, rpId, revokerKeys).
+                now:
+                  type: string
+                  description: Optional reference time (ISO 8601 or epoch ms).
+                appeal_bundle:
+                  type: boolean
+                  description: When true, include a re-verifiable EP-RX-RELIANCE-BUNDLE-v1.
+      responses:
+        '200':
+          description: A closed reliance verdict.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  verdict:
+                    type: string
+                  rely:
+                    type: boolean
+                  determination:
+                    type: string
+                  reasons:
+                    type: array
+                    items:
+                      type: string
+                  checks:
+                    type: object
+                  appeal_bundle:
+                    type: object
+        '400':
+          description: Missing challenge or packet.
+        '401':
+          description: Authentication required.
+
+  /api/v1/rx-reliance/profiles:
+    post:
+      tags: [Rx Reliance]
+      summary: Pin a relying-party reliance profile
+      description: |
+        Validates an EP-RELIANCE-PROFILE-v1 and returns its content-addressed
+        profile_hash, so every party pins the same rule by hash before
+        submission. Validation only: nothing is stored and no PHI is processed.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [profile]
+              properties:
+                profile:
+                  type: object
+                  description: EP-RELIANCE-PROFILE-v1 to validate and hash.
+      responses:
+        '200':
+          description: Validation result and content hash.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  issues:
+                    type: array
+                    items:
+                      type: string
+                  profile_hash:
+                    type: string
+                  profile:
+                    type: object
+        '400':
+          description: Missing profile.
+        '401':
+          description: Authentication required.
 
   /api/receipts/submit:
     post:
