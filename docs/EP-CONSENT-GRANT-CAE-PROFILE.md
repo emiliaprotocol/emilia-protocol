@@ -119,7 +119,7 @@ other, so a grant and an acceptance profile cannot drift apart.
 The standing grant is its own claim class in the agentproto verifier matrix,
 distinct from the per-action class (Songbo's C-002) and the delegated-scope
 class (C-003). A conforming row records the grant object, its `grant_hash`, the
-seven refusals as the pass/fail behavior, and the `binding_strength` reported
+seven refusals as the accept-or-refuse behavior, and the `binding_strength` reported
 for the receipt that acts under it.
 
 ## References

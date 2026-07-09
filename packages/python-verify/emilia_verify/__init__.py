@@ -1037,7 +1037,9 @@ def verify_provenance_offline(doc, opts=None):
 
     if chain:
         head = chain[0]
-        checks["chain_anchored"] = head.get("parent_ref") in root_approvers or head.get("delegator") in root_approvers
+        # Anchor ONLY on the SIGNED delegator. parent_ref is not in
+        # _DELEGATION_PROOF_FIELDS (unsigned, attacker-controlled).
+        checks["chain_anchored"] = head.get("delegator") in root_approvers
         if not checks["chain_anchored"]:
             errors.append("chain head not anchored to a root approver")
 

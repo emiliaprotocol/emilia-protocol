@@ -289,7 +289,9 @@ func VerifyProvenanceOffline(doc map[string]any, opts map[string]any) Provenance
 
 	if len(chain) > 0 {
 		head := chain[0]
-		checks["chain_anchored"] = rootApprovers[getStr(head, "parent_ref")] || rootApprovers[getStr(head, "delegator")]
+		// Anchor ONLY on the SIGNED delegator. parent_ref is not in
+		// provenanceProofFields (unsigned, attacker-controlled).
+		checks["chain_anchored"] = rootApprovers[getStr(head, "delegator")]
 	}
 
 	prevDelegatee := ""

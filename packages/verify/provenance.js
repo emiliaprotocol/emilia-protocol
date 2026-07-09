@@ -247,8 +247,12 @@ export function verifyProvenanceOffline(doc, opts = {}) {
 
   if (chain.length > 0) {
     const head = chain[0];
-    checks.chain_anchored = rootApprovers.has(head.parent_ref) || rootApprovers.has(head.delegator);
-    if (!checks.chain_anchored) errors.push(`delegation chain head parent_ref "${head.parent_ref}" does not name a root-receipt approver`);
+    // Anchor ONLY on the SIGNED delegator. parent_ref is not in
+    // DELEGATION_PROOF_FIELDS, so it is unsigned and attacker-controlled;
+    // trusting it here let a stranger's link claim a root approver as its
+    // parent and falsely attribute the chain to a human who never delegated.
+    checks.chain_anchored = rootApprovers.has(head.delegator);
+    if (!checks.chain_anchored) errors.push(`delegation chain head delegator "${head.delegator}" does not name a root-receipt approver`);
   }
 
   let prevDelegatee = null;
