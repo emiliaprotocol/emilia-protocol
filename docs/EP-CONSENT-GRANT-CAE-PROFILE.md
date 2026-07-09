@@ -40,10 +40,10 @@ with the same Ed25519 convention EP uses everywhere.
 **Verification** (`verifyConsentGrant(grant, pinnedPrincipalKey, opts)`), all
 fail-closed with a distinct reason:
 
-- `hash` — `grant_hash` recomputes over the canonical body.
-- `signature` — verifies against the **relying-party-pinned** principal key. A
+- `hash`: `grant_hash` recomputes over the canonical body.
+- `signature`: verifies against the **relying-party-pinned** principal key. A
   self-asserted key confers nothing.
-- `within_window` — `issued_at <= now < expires_at`; a not-yet-valid or expired
+- `within_window`: `issued_at <= now < expires_at`; a not-yet-valid or expired
   grant refuses.
 
 **Revocation is not folded into the grant.** A grant is revoked by an EP
@@ -60,13 +60,13 @@ by `grant_hash`. Composition is `verifyReceiptUnderGrant(receipt, grant, opts)`.
 **The seven distinct fail-closed refusals** (the conformance points for the CAE
 rows):
 
-1. `grant_signature_invalid` — the grant does not verify under the pinned key.
-2. `grant_not_yet_valid` — the grant's window has not opened.
-3. `grant_expired` — the grant's window has closed.
-4. `grant_revoked` — a verified revocation binds this `grant_hash`.
-5. `asset_mismatch` — the receipt's asset is not covered by the grant.
-6. `verb_mismatch` — the receipt's control verb is not covered by the grant.
-7. `grant_binding_mismatch` — the receipt does not reference this grant.
+1. `grant_signature_invalid`: the grant does not verify under the pinned key.
+2. `grant_not_yet_valid`: the grant's window has not opened.
+3. `grant_expired`: the grant's window has closed.
+4. `grant_revoked`: a verified revocation binds this `grant_hash`.
+5. `asset_mismatch`: the receipt's asset is not covered by the grant.
+6. `verb_mismatch`: the receipt's control verb is not covered by the grant.
+7. `grant_binding_mismatch`: the receipt does not reference this grant.
 
 **Binding strength is surfaced, not hidden.** The result carries
 `binding_strength`: `signed_action` (the grant reference is inside the signed
@@ -124,8 +124,8 @@ for the receipt that acts under it.
 
 ## References
 
-- `draft-schrock-human-authorization-binding` — the binding-moment carrier.
+- `draft-schrock-human-authorization-binding`: the binding-moment carrier.
 - `packages/verify/consent-grant.js`, `docs/EP-CONSENT-GRANT-SPEC.md`,
-  `public/schemas/ep-consent-grant.schema.json` — the running implementation.
-- `draft-morrison-ot-command-authority` — the Command Authority Envelope this
+  `public/schemas/ep-consent-grant.schema.json`: the running implementation.
+- `draft-morrison-ot-command-authority`: the Command Authority Envelope this
   profile fills bindings 3 and 4 of.
