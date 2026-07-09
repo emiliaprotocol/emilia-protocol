@@ -3,6 +3,36 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.7.1 (2026-07-09)
+
+### Security
+Delegation-chain head anchoring no longer trusts `parent_ref`. `parent_ref` is
+not in `DELEGATION_PROOF_FIELDS`, so it is unsigned and attacker-controlled: a
+validly-signed head link whose delegator is a stranger could set `parent_ref`
+to a real root approver and falsely attribute the whole chain to a human who
+never delegated (authority laundering / false attribution). The
+`chain_anchored` check now anchors ONLY on the SIGNED `head.delegator`. Breaks
+zero legitimate chains (a valid head's delegator is always the root approver).
+Fixed uniformly in this package, `lib/provenance`, `emilia-verify` (Python
+2.4.4), and `go-verify` (v2.1.4). Regression vector
+`reject_forged_parent_ref_anchor` in `conformance/vectors/delegation-integrity.v1.json`
+locks it in all three languages.
+
+## 3.7.0 (2026-07-08)
+
+### Added
+The reliance layer: `EP-RELIANCE-KERNEL-v1` (the closed rely / do_not_rely_*
+verdict set), `EP-RELIANCE-PROFILE-v1` and the signed, pinnable
+`EP-RELIANCE-PROFILE-REGISTRY-v1` for regulated profiles, and the reliance-gap
+acceptance preflight (library + CLI). Authority subject is bound to the
+verified signer and a pinned profile is required.
+
+### Security
+Closed the type-coercion / assertion class across all three ports; closed 6
+digest-divergence / mutation-after-sign holes and 6 malformed-input /
+type-coercion holes from the surface audit; `verifyReceipt` pins the Ed25519
+issuer key (Node/web parity).
+
 ## 3.6.1 (2026-07-06)
 
 ### Added
