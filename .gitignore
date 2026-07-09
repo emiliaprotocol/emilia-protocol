@@ -101,7 +101,9 @@ docs/EP-EVOLUTION-VISION-v2.md
 docs/VISION-BITCOIN-OF-TRUST.md
 docs/LAUNCH.md
 
-# Fundraising / investor decks are private — never in the public served path (docs/strategy-private/decks/)
-public/briefs/emilia-seed-deck.pdf
+# Fundraising / investor decks are private — never in the public served path (docs/strategy-private/decks/).
+# EXCEPTION (2026-07-09, Iman's call): emilia-seed-deck.pdf is a PUBLIC-SAFE overview
+# (no raise amount, no use-of-funds, no target lists) whose link was sent to investors,
+# so it is served publicly. The confidential raise deck stays in docs/strategy-private/decks/.
 public/briefs/emilia-informational-deck.pdf
 public/briefs/emilia-investor-onepager.pdf
