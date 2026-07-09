@@ -8,7 +8,7 @@
 **Requires:** PIP-001 (EP Core v1.0 Freeze), EP-RECEIPT-v1
 (`standards/draft-schrock-ep-authorization-receipts-03.md` §3, §6.3)
 **Wire tag:** `EP-REVOCATION-v1`
-**Reference implementation:** `lib/revocation/statement.js`
+**Reference implementation:** `lib/revocation/revocation.js`
 **Conformance vectors:** `conformance/vectors/revocation.v1.json`
 **Conformance tests:** `tests/revocation.test.js`
 
@@ -64,7 +64,7 @@ The EP Core is frozen under **PIP-001**. This profile:
 - **Does not** modify `packages/verify` or `packages/issue`, nor the existing
   server-state revocation (`lib/commit.js`, `lib/signoff/revoke.js`).
 - **Imports** the frozen `canonicalize()` as the single source of
-  canonicalization truth (`lib/revocation/statement.js` →
+  canonicalization truth (`lib/revocation/revocation.js` →
   `../../packages/issue/index.js`), exactly as `lib/provenance/chain.js`,
   `lib/execution/integrity.js`, and `lib/wysiwys/render.js` do.
 - Stores / transports the statement **alongside** the receipt (e.g. in a
@@ -145,7 +145,7 @@ revokes the **(target_id, action_hash)** pair, never just an id.
 - `revoker_key_id` names the revoker key; the verifier pins it via
   `opts.revokerKeys` and rejects a proof under any other key (§5.3).
 
-The signing-side helper is `buildRevocation({ target, revoker, revokedAt,
+The signing-side helper is `buildRevocation({ target, revoker_id, revoked_at,
 reason, signer })`; it refuses to mint a statement that does not bind a complete
 target (honesty gate — a signed claim asserts a fact that was structurally
 well-formed at signing time).

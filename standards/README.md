@@ -327,3 +327,34 @@ no endorsement.
 
 - `draft-schrock-ep-enforcement-point-00.xml` — the xml2rfc v3 source.
 - `draft-schrock-ep-enforcement-point-00.txt` — the rendered I-D.
+
+## draft-schrock-ep-revocation-statement-00
+
+**Portable Revocation Statements for Digest-Addressed Authorization Artifacts
+(EP-REVOCATION-v1)** — the lifecycle end the artifact drafts leave open.
+Revocation today is server state (a status flag behind a live query); this
+defines the portable, offline-verifiable form of the same fact: a signed
+statement binding the exact `(target_type, target_id, action_hash)` triple
+(receipt | commit | delegation), carrying `revoker_id` + `revoked_at` +
+`reason`, verified fail-closed under a key the relying party PINNED for the
+revoker (a self-asserted key confers nothing). Seven named checks: `version`,
+`target_bound` (both id AND digest — revoking A never revokes B),
+`revoker_key_pinned`, `revoked_at_present`, `revoker_signature_valid`,
+`signature_binds_statement` (verifier recomputes the signed bytes from the
+presented fields, never trusts the carried payload blob), `freshness`
+(optional bounded staleness). Honest scope stated plainly: the statement
+proves the revoker revoked; it does not prove every relying party saw it, and
+offline verification cannot prove the absence of a later revocation — bounded
+staleness is the mitigation, a revocation feed / transparency log is the
+liveness layer above. The CRL/OCSP *response*, not the CRL/OCSP *service*.
+
+**Status: written + render-clean (xml2rfc v3), NOT yet filed (Informational,
+individual submission).** Reference implementation:
+`lib/revocation/revocation.js`; vectors
+`conformance/vectors/revocation.v1.json`; tests `tests/revocation.test.js`;
+spec proposal `docs/EP-REVOCATION-SPEC.md`.
+
+### Source artifacts
+
+- `draft-schrock-ep-revocation-statement-00.xml` — the xml2rfc v3 source.
+- `draft-schrock-ep-revocation-statement-00.txt` — the rendered I-D.
