@@ -3,6 +3,35 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## 3.8.0 (2026-07-09)
+
+### Security (please upgrade)
+An adversarial audit found and this release closes a class of verifier
+acceptance holes. Reproduced with running exploits, fixed across all four ports
+(this package, `lib/`, `emilia-verify` Python 2.5.0, `go-verify` v2.2.0).
+
+- **Principal substitution (critical).** `verifyTrustReceipt` attributed an
+  approval to the signer-controlled `ctx.approver` while only checking the
+  signature against `approverKeys[approver_key_id]`, with nothing binding the
+  key to the named approver. A single low-privilege pinned key could name itself
+  any approver (e.g. the CFO) and forge a full multi-party quorum. **Breaking,
+  required migration:** each entry in the `approverKeys` directory MUST now carry
+  `approver_id`, and a signoff verifies as that approver only when
+  `keyEntry.approver_id === ctx.approver`. Directories without `approver_id` will
+  now refuse. This is the fix; add the owning approver to every pinned key.
+- **Issuer-pin scope bypass (high).** `verifyAuthorityProof` fell back to the
+  first public-key match when the issuer-scoped match failed, so a key pinned
+  for one authority authenticated another's proof and `pin_mismatched_issuer`
+  was unreachable. The issuer pin is now authoritative and fail-closed.
+- **Missing action binding (high).** `evaluateReliance` skipped the action-hash
+  join when either side was absent, so a valid receipt for one action could be
+  relied on for another. The join is now mandatory.
+- **Amount ceiling and evidence requirements (high).** The authority amount
+  ceiling is now a decimal comparison (numeric-string amounts enforced,
+  unprovable amounts refused), and an unknown `required_evidence` name is
+  rejected instead of silently ignored.
+- Hostile-input hardening of every public verifier entry point.
+
 ## 3.7.1 (2026-07-09)
 
 ### Security
