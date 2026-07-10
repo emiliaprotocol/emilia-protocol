@@ -90,7 +90,7 @@
     },
     {
       "id": "reject_legacy_v1_anchor_by_default",
-      "description": "A legacy EP-MERKLE-v1 (sorted-pair, unbound) anchor is refused by default — production requires v2. Verifiable only via an explicit allowLegacyMerkle opt-in (see the per-language unit tests).",
+      "description": "A legacy EP-MERKLE-v1 (sorted-pair, unbound) anchor is refused by default, production requires v2. Verifiable only via an explicit allowLegacyMerkle opt-in (see the per-language unit tests).",
       "expect": {
         "valid": false
       },
