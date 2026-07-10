@@ -195,6 +195,22 @@ export {
   INITIATOR_STATEMENT_MAX,
 } from './initiator-attestation.js';
 
+// EP-SURFACE-BINDING-v1: the possession-row join. The signed action object
+// references the approval-surface evidence (condition-bounded credential
+// presentation, platform attestation) as an opaque digest, so the possession
+// row and the authorization row join by digest equality, each verified in its
+// own trust boundary. EP never verifies the possession-row evidence itself,
+// and possession evidence never substitutes for the authorization signature.
+export {
+  validateSurfaceBinding,
+  bindSurfaceInto,
+  receiptSurfaceBinding,
+  verifySurfaceBinding,
+  normalizeSurfaceDigest,
+  SURFACE_BINDING_VERSION,
+  SURFACE_BINDING_FIELD,
+} from './surface-binding.js';
+
 // EP-MERKLE-v1 (legacy): sorted-pair, no domain separation. Kept verifying
 // forever for already-anchored receipts. Do NOT use for new anchors.
 function hashPair(a, b) {

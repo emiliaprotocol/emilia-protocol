@@ -1,0 +1,202 @@
+{
+  "suite": "EP-SURFACE-BINDING-v1",
+  "description": "The possession-row join: a receipt's signed action object references the approval-surface evidence (a WIMSE condition-bounded credential presentation, a LIT assertion, a platform attestation) as an opaque digest. These vectors pin the join check only: EP never verifies the possession-row evidence itself, and possession evidence never substitutes for the authorization signature. Evidence strings are UTF-8 hashed with SHA-256.",
+  "vectors": [
+    {
+      "id": "accept_signed_surface_binding_matching_evidence",
+      "kind": "join",
+      "expect": { "valid": true, "checks": { "present": true, "digest_match": true } },
+      "input": {
+        "receipt": {
+          "action": {
+            "type": "grid.curtailment",
+            "params": { "feeder": "F-12", "mw": 3 },
+            "approval_surface": {
+              "@version": "EP-SURFACE-BINDING-v1",
+              "surface_kind": "wimse-condition-bounded",
+              "attestation_digest": "sha256:4689f45727b0dd95265203acdfadb83ebcf3e1a2cfbb88b54ff494cb460ed63f"
+            }
+          }
+        },
+        "evidence": "lit-assertion:device=sound;user=present;session=af31",
+        "require": true
+      }
+    },
+    {
+      "id": "accept_platform_attestation_kind_with_hint",
+      "kind": "join",
+      "note": "Evidence is always the RAW possession-row bytes, hashed here. A precomputed digest is never accepted: the bound digest is public, so echoing it would prove nothing (see reject_echoed_public_digest_as_evidence).",
+      "expect": { "valid": true, "checks": { "present": true, "digest_match": true } },
+      "input": {
+        "receipt": {
+          "action": {
+            "type": "payments.transfer",
+            "params": { "amount": 40, "currency": "USD" },
+            "approval_surface": {
+              "@version": "EP-SURFACE-BINDING-v1",
+              "surface_kind": "platform-attestation",
+              "attestation_digest": "sha256:4689f45727b0dd95265203acdfadb83ebcf3e1a2cfbb88b54ff494cb460ed63f",
+              "verifier_hint": "possession-row verifier, relying-party pinned"
+            }
+          }
+        },
+        "evidence": "lit-assertion:device=sound;user=present;session=af31",
+        "require": true
+      }
+    },
+    {
+      "id": "reject_echoed_public_digest_as_evidence",
+      "kind": "replay",
+      "note": "THE REPLAY GUARD. The bound attestation_digest is public (it sits in the receipt). An attacker who never held the possession-row evidence echoes that digest string back as 'evidence'. It is hashed as bytes like any other input, so it cannot equal the digest it is the hash-preimage claim for. Refuses surface_digest_mismatch. Only the party that holds the real evidence bytes can produce a match.",
+      "expect": { "valid": false, "reason": "surface_digest_mismatch" },
+      "input": {
+        "receipt": {
+          "action": {
+            "type": "payments.transfer",
+            "params": { "amount": 40, "currency": "USD" },
+            "approval_surface": {
+              "@version": "EP-SURFACE-BINDING-v1",
+              "surface_kind": "platform-attestation",
+              "attestation_digest": "sha256:4689f45727b0dd95265203acdfadb83ebcf3e1a2cfbb88b54ff494cb460ed63f"
+            }
+          }
+        },
+        "evidence": "sha256:4689f45727b0dd95265203acdfadb83ebcf3e1a2cfbb88b54ff494cb460ed63f",
+        "require": true
+      }
+    },
+    {
+      "id": "accept_absent_binding_when_profile_does_not_require_it",
+      "kind": "join",
+      "expect": { "valid": true, "checks": { "present": false, "digest_match": null } },
+      "input": {
+        "receipt": { "action": { "type": "docs.share", "params": { "doc": "d-9" } } },
+        "evidence": "irrelevant",
+        "require": false
+      }
+    },
+    {
+      "id": "reject_absent_binding_when_required",
+      "kind": "join",
+      "expect": { "valid": false, "reason": "surface_binding_absent" },
+      "input": {
+        "receipt": { "action": { "type": "docs.share", "params": { "doc": "d-9" } } },
+        "evidence": "lit-assertion:device=sound;user=present;session=af31",
+        "require": true
+      }
+    },
+    {
+      "id": "reject_evidence_digest_mismatch",
+      "kind": "join",
+      "expect": { "valid": false, "reason": "surface_digest_mismatch" },
+      "input": {
+        "receipt": {
+          "action": {
+            "type": "grid.curtailment",
+            "params": { "feeder": "F-12", "mw": 3 },
+            "approval_surface": {
+              "@version": "EP-SURFACE-BINDING-v1",
+              "surface_kind": "wimse-condition-bounded",
+              "attestation_digest": "sha256:4689f45727b0dd95265203acdfadb83ebcf3e1a2cfbb88b54ff494cb460ed63f"
+            }
+          }
+        },
+        "evidence": "lit-assertion:device=sound;user=present;session=DIFFERENT",
+        "require": true
+      }
+    },
+    {
+      "id": "reject_malformed_bound_digest",
+      "kind": "join",
+      "expect": { "valid": false, "reason": "surface_binding_malformed" },
+      "input": {
+        "receipt": {
+          "action": {
+            "type": "grid.curtailment",
+            "params": { "feeder": "F-12", "mw": 3 },
+            "approval_surface": {
+              "@version": "EP-SURFACE-BINDING-v1",
+              "surface_kind": "wimse-condition-bounded",
+              "attestation_digest": "sha256:not-a-digest"
+            }
+          }
+        },
+        "evidence": "lit-assertion:device=sound;user=present;session=af31",
+        "require": true
+      }
+    },
+    {
+      "id": "reject_unknown_member_smuggled_into_binding",
+      "kind": "join",
+      "expect": { "valid": false, "reason": "surface_binding_malformed" },
+      "input": {
+        "receipt": {
+          "action": {
+            "type": "grid.curtailment",
+            "params": { "feeder": "F-12", "mw": 3 },
+            "approval_surface": {
+              "@version": "EP-SURFACE-BINDING-v1",
+              "surface_kind": "wimse-condition-bounded",
+              "attestation_digest": "sha256:4689f45727b0dd95265203acdfadb83ebcf3e1a2cfbb88b54ff494cb460ed63f",
+              "authorization": "granted"
+            }
+          }
+        },
+        "evidence": "lit-assertion:device=sound;user=present;session=af31",
+        "require": true
+      }
+    },
+    {
+      "id": "reject_wrong_version_label",
+      "kind": "join",
+      "expect": { "valid": false, "reason": "surface_binding_malformed" },
+      "input": {
+        "receipt": {
+          "action": {
+            "type": "grid.curtailment",
+            "params": { "feeder": "F-12", "mw": 3 },
+            "approval_surface": {
+              "@version": "EP-SURFACE-BINDING-v2",
+              "surface_kind": "wimse-condition-bounded",
+              "attestation_digest": "sha256:4689f45727b0dd95265203acdfadb83ebcf3e1a2cfbb88b54ff494cb460ed63f"
+            }
+          }
+        },
+        "evidence": "lit-assertion:device=sound;user=present;session=af31",
+        "require": true
+      }
+    },
+    {
+      "id": "possession_substituted_for_authorization",
+      "kind": "substitution",
+      "expect": { "valid": false, "reason": "surface_binding_absent" },
+      "note": "THE GUARDRAIL. A live key, a present human, an attested endpoint: none of these are an approval. Here the possession row presents its own evidence with no surface binding in any signed action object, claiming presence as authorization. The join check refuses because there is nothing on the authorization row to join to. The base EP verifier refuses such input independently (no receipt, no signature); this vector pins that the SEAM refuses it too, so a permissive integrator cannot treat possession evidence alone as an approved action.",
+      "input": {
+        "receipt": {
+          "possession_evidence": "lit-assertion:device=sound;user=present;session=af31",
+          "claim": "user was present and key was live, therefore action was approved"
+        },
+        "evidence": "lit-assertion:device=sound;user=present;session=af31",
+        "require": true
+      }
+    },
+    {
+      "id": "reject_binding_outside_signed_action_object",
+      "kind": "substitution",
+      "expect": { "valid": false, "reason": "surface_binding_absent" },
+      "note": "A binding placed at the receipt top level is caller-visible but NOT covered by the human's signature over the action object. It never upgrades to a signed claim: the join check only honors approval_surface inside receipt.action.",
+      "input": {
+        "receipt": {
+          "approval_surface": {
+            "@version": "EP-SURFACE-BINDING-v1",
+            "surface_kind": "wimse-condition-bounded",
+            "attestation_digest": "sha256:4689f45727b0dd95265203acdfadb83ebcf3e1a2cfbb88b54ff494cb460ed63f"
+          },
+          "action": { "type": "grid.curtailment", "params": { "feeder": "F-12", "mw": 3 } }
+        },
+        "evidence": "lit-assertion:device=sound;user=present;session=af31",
+        "require": true
+      }
+    }
+  ]
+}
