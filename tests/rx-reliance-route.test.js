@@ -12,7 +12,12 @@ const { POST: profilesPOST } = await import('@/app/api/v1/rx-reliance/profiles/r
 
 const req = (body) => new Request('https://x/api', { method: 'POST', headers: { authorization: 'Bearer ep_live_test', 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
-beforeEach(() => { authenticateRequest.mockReset(); authenticateRequest.mockResolvedValue({ entity: { entity_id: 'e' }, permissions: [] }); });
+beforeEach(() => {
+  authenticateRequest.mockReset();
+  authenticateRequest.mockResolvedValue({ entity: { entity_id: 'e' }, permissions: [] });
+  delete process.env.EP_RX_PRIVACY_KEY_B64U;
+  delete process.env.EP_RX_PRIVACY_KEY_ID;
+});
 
 describe('POST /api/v1/rx-reliance/evaluate', () => {
   it('401 without a valid API key', async () => {
@@ -29,6 +34,25 @@ describe('POST /api/v1/rx-reliance/evaluate', () => {
     const j = await res.json();
     expect(j.rely).toBe(false);
     expect(j.verdict.startsWith('rx_do_not_rely')).toBe(true);
+  });
+  it('refuses appeal export when the deployment privacy key is unavailable', async () => {
+    const res = await evaluatePOST(req({
+      challenge: { '@type': 'EP-RX-EVIDENCE-CHALLENGE-v1', required: {} },
+      packet: { '@type': 'EP-RX-RELIANCE-PACKET-v1' },
+      appeal_bundle: true,
+    }));
+    expect(res.status).toBe(503);
+    expect((await res.json()).type).toMatch(/rx_privacy_key_unavailable/);
+  });
+  it('refuses a non-canonical or undersized deployment privacy key', async () => {
+    process.env.EP_RX_PRIVACY_KEY_B64U = Buffer.alloc(16).toString('base64url');
+    process.env.EP_RX_PRIVACY_KEY_ID = 'rx-privacy-test';
+    const res = await evaluatePOST(req({
+      challenge: { '@type': 'EP-RX-EVIDENCE-CHALLENGE-v1', required: {} },
+      packet: { '@type': 'EP-RX-RELIANCE-PACKET-v1' },
+      appeal_bundle: true,
+    }));
+    expect(res.status).toBe(503);
   });
 });
 

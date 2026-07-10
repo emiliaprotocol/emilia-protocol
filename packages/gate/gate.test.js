@@ -181,20 +181,51 @@ test('guard() emits an execution receipt after a guarded run', async () => {
   assert.equal(g.evidence.verify().ok, true);
 });
 
-test('run() releases a reserved receipt when the side effect fails before mutation', async () => {
+test('run() consumes an indeterminate attempt when the executor throws', async () => {
   const { pub, privateKey } = makeKey();
   const g = createGate(gateOpts({ manifest: MANIFEST, trustedKeys: [pub] }));
   const r = receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff' });
+  let externalEffects = 0;
   await assert.rejects(
     () => g.run({ selector: PAY, receipt: r }, async () => {
-      throw new Error('bank API unavailable');
+      externalEffects += 1; // The bank applied it, but its response was lost.
+      throw new Error('bank response lost for SECRET-ACCOUNT-448193');
     }),
-    /bank API unavailable/,
+    /bank response lost/,
   );
-  assert.equal(g.store.size, 0, 'failed pre-mutation run must not consume approval');
-  const retry = await g.run({ selector: PAY, receipt: r }, async () => 'sent');
-  assert.equal(retry.ok, true);
-  assert.equal(retry.result, 'sent');
+  assert.equal(g.store.size, 1, 'an attempted effect must consume the approval');
+  const retry = await g.run({ selector: PAY, receipt: r }, async () => {
+    externalEffects += 1;
+    return 'sent-again';
+  });
+  assert.equal(retry.ok, false);
+  assert.match(retry.authorization.reason, /replay/);
+  assert.equal(externalEffects, 1, 'the ambiguous external effect is never repeated');
+  const indeterminate = g.evidence.all().find((entry) => entry.kind === 'execution');
+  assert.equal(indeterminate?.outcome, 'indeterminate');
+  assert.deepEqual(indeterminate?.detail, { code: 'effect_attempted_outcome_unknown' });
+  assert.doesNotMatch(JSON.stringify(indeterminate), /SECRET-ACCOUNT-448193/);
+});
+
+test('run() commits a successful effect and permanently refuses replay', async () => {
+  const { pub, privateKey } = makeKey();
+  const g = createGate(gateOpts({ manifest: MANIFEST, trustedKeys: [pub] }));
+  const r = receipt(privateKey, { action: 'payment.release', outcome: 'allow_with_signoff' });
+  let executions = 0;
+  const first = await g.run({ selector: PAY, receipt: r }, async () => {
+    executions += 1;
+    return 'settled';
+  });
+  assert.equal(first.ok, true);
+  assert.equal(first.result, 'settled');
+
+  const replay = await g.run({ selector: PAY, receipt: r }, async () => {
+    executions += 1;
+    return 'settled-again';
+  });
+  assert.equal(replay.ok, false);
+  assert.match(replay.authorization.reason, /replay/);
+  assert.equal(executions, 1);
 });
 
 test('receiptAssuranceTier is cryptographically verified, not payload-inferred (DoD audit)', () => {

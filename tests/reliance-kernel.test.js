@@ -12,8 +12,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
-import { evaluateReliance, RELIANCE_VERDICTS } from '../packages/verify/reliance.js';
-import { signAuthorityProof } from '../lib/authority/proof.js';
+import { evaluateReliance, RELIANCE_VERDICTS, validateRelianceProfile } from '../packages/verify/reliance.js';
+import { authorityProofDigest, signAuthorityProof } from '../lib/authority/proof.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SUITE = JSON.parse(readFileSync(resolve(HERE, '../conformance/vectors/reliance.v1.json'), 'utf8'));
@@ -52,29 +52,85 @@ const registryPub = crypto.createPublicKey(registryKey).export({ type: 'spki', f
 function signBWith(priv, digestHex) {
   return crypto.sign(null, Buffer.from(digestHex, 'hex'), priv).toString('base64url');
 }
-function signA(digestHex, { rpId = 'www.emiliaprotocol.ai', flags = 0x05 } = {}) {
+function webauthnForDigest(privateKey, digestHex, { rpId = 'www.emiliaprotocol.ai', flags = 0x05 } = {}) {
   const challenge = Buffer.from(digestHex, 'hex').toString('base64url');
   const clientDataJSON = Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge, origin: 'https://www.emiliaprotocol.ai' }), 'utf8');
   const rpIdHash = crypto.createHash('sha256').update(rpId).digest();
   const authData = Buffer.concat([rpIdHash, Buffer.from([flags]), Buffer.from([0, 0, 0, 0])]);
   const signedData = Buffer.concat([authData, crypto.createHash('sha256').update(clientDataJSON).digest()]);
-  const signature = crypto.sign('sha256', signedData, approverA.privateKey);
+  const signature = crypto.sign('sha256', signedData, privateKey);
   return { authenticator_data: authData.toString('base64url'), client_data_json: clientDataJSON.toString('base64url'), signature: signature.toString('base64url') };
+}
+function signA(digestHex, options) {
+  return webauthnForDigest(approverA.privateKey, digestHex, options);
+}
+
+function buildQuorum(actionHash) {
+  const first = p256();
+  const second = p256();
+  const contexts = [
+    {
+      ep_version: '1.0', context_type: 'ep.signoff.v1', action_hash: actionHash,
+      policy_hash: 'sha256:77ab1234', nonce: 'q-1', approver: 'ep:approver:quorum-one',
+      initiator: 'ep:entity:agent-recon-7', issued_at: '2026-06-09T17:24:00Z', expires_at: '2026-06-09T17:36:00Z',
+    },
+    {
+      ep_version: '1.0', context_type: 'ep.signoff.v1', action_hash: actionHash,
+      policy_hash: 'sha256:77ab1234', nonce: 'q-2', approver: 'ep:approver:quorum-two',
+      initiator: 'ep:entity:agent-recon-7', issued_at: '2026-06-09T17:25:00Z', expires_at: '2026-06-09T17:36:00Z',
+    },
+  ];
+  const member = (role, context, key) => ({
+    role,
+    approver_public_key: key.pub,
+    signoff: {
+      '@type': 'ep.signoff.webauthn', context,
+      webauthn: webauthnForDigest(key.privateKey, sha256hex(canonicalize(context))),
+    },
+  });
+  return {
+    '@type': 'ep.quorum', action_hash: actionHash,
+    policy: {
+      mode: 'threshold', required: 2, distinct_humans: true, window_sec: 300,
+      approvers: [
+        { role: 'controller', approver: contexts[0].approver },
+        { role: 'treasurer', approver: contexts[1].approver },
+      ],
+    },
+    members: [member('controller', contexts[0], first), member('treasurer', contexts[1], second)],
+  };
+}
+
+function buildRevocationStatement(target, signer) {
+  const fields = {
+    '@version': 'EP-REVOCATION-v1', action_hash: target.action_hash,
+    reason: 'authority withdrawn', revoked_at: '2026-07-06T23:59:30.000Z',
+    revoker_id: 'ep:revoker:test', target_id: target.target_id, target_type: target.target_type,
+  };
+  return {
+    ...fields,
+    proof: {
+      algorithm: 'Ed25519', revoker_key_id: 'revoker-key-1', public_key: signer.pub,
+      signature_b64u: crypto.sign(null, Buffer.from(canonicalize(fields), 'utf8'), signer.privateKey).toString('base64url'),
+    },
+  };
 }
 
 // Build a valid trust receipt. classAForCfo=false makes both signoffs Class-B.
-function buildReceipt({ classAForCfo = true } = {}) {
-  const action = {
+function buildReceipt({ classAForCfo = true, amount = '50000.00', currency = 'USD', policyHash = 'sha256:77ab1234', actionOverrides = {} } = {}) {
+  const baseAction = {
     ep_version: '1.0', action_type: 'wire.release',
+    organization_id: 'acme',
     target: { system: 'treasury.example', resource: 'wire/8841' },
-    parameters: { amount: '50000.00', currency: 'USD' },
+    parameters: { amount, currency },
     initiator: 'ep:entity:agent-recon-7', policy_id: 'ep:policy:wires-over-100k@v12',
     requested_at: '2026-06-09T17:21:04Z',
   };
+  const action = { ...baseAction, ...actionOverrides };
   const action_hash = `sha256:${sha256hex(canonicalize(action))}`;
   const baseCtx = {
     ep_version: '1.0', context_type: 'ep.signoff.v1', action_hash,
-    policy_id: 'ep:policy:wires-over-100k@v12', policy_hash: 'sha256:77ab1234',
+    policy_id: 'ep:policy:wires-over-100k@v12', policy_hash: policyHash,
     initiator: action.initiator, required_approvals: 2,
     issued_at: '2026-06-09T17:21:05Z', expires_at: '2026-06-09T17:36:05Z',
   };
@@ -121,18 +177,45 @@ function baseAuthorityProofArgs(receipt) {
   };
 }
 
+function resignAuthorityProof(proof, overrides) {
+  const { signature, ...originalBody } = structuredClone(proof);
+  const body = { ...originalBody, ...overrides };
+  const proofDigest = authorityProofDigest(body);
+  const signingBytes = Buffer.from(`EP-AUTHORITY-PROOF-v1\0${canonicalize(body)}`, 'utf8');
+  return {
+    ...body,
+    signature: {
+      ...signature,
+      proof_digest: proofDigest,
+      signature_b64u: crypto.sign(null, signingBytes, registryKey).toString('base64url'),
+    },
+  };
+}
+
 // Assemble a packet + apply a break, return { input, opts }.
 function assemble(brk) {
-  const receipt = buildReceipt({ classAForCfo: brk !== 'class_b_only' });
-  const opts = { approverKeys: KEYS, logPublicKey: logKey.pub, rpId: 'www.emiliaprotocol.ai' };
-  const action = { action_type: 'wire.release', amount: 50000, currency: 'USD', policy_hash: 'sha256:77ab1234', action_hash: receipt.action_hash };
+  const signedAmount = brk === 'amount_over_ceiling' ? '90000.00' : '50000.00';
+  const signedPolicy = brk === 'policy_not_accepted' ? 'sha256:deadbeef' : 'sha256:77ab1234';
+  const receipt = buildReceipt({
+    classAForCfo: brk !== 'class_b_only',
+    amount: signedAmount,
+    policyHash: signedPolicy,
+  });
+  const opts = {
+    approverKeys: KEYS,
+    logPublicKey: logKey.pub,
+    rpId: 'www.emiliaprotocol.ai',
+    isConsumed: () => false,
+  };
+  const action = { action_type: 'wire.release', amount: Number(signedAmount), currency: 'USD', organization_id: 'acme', policy_hash: signedPolicy, action_hash: receipt.action_hash };
   let proofArgs = baseAuthorityProofArgs(receipt);
+  if (brk === 'policy_not_accepted') proofArgs = { ...proofArgs, policy_hash: signedPolicy };
   const profile = {
     '@type': 'EP-RELIANCE-PROFILE-v1',
     required_assurance: 'class_a',
     required_authority: true,
     max_revocation_staleness_sec: 300,
-    accepted_registry_keys: [{ issuer_id: 'auth_cfo', public_key: registryPub }],
+    accepted_registry_keys: [{ issuer_id: 'auth_cfo', organization_id: 'acme', public_key: registryPub, min_epoch: 17, registry_head: 'sha256:' + '11'.repeat(32) }],
     accepted_issuer_keys: [logKey.pub],
     accepted_policy_hashes: ['sha256:77ab1234'],
     required_evidence: ['receipt', 'class_a_or_quorum', 'authority_proof', 'revocation_freshness', 'consumption_proof'],
@@ -148,6 +231,9 @@ function assemble(brk) {
       break;
     case 'authority_subject_not_signer':
       proofArgs = { ...proofArgs, subject: 'ep:approver:eve-not-a-signer' }; // valid authority, wrong human
+      break;
+    case 'authority_organization_wrong':
+      proofArgs = { ...proofArgs, organization_id: 'attacker-org' };
       break;
     case 'tamper_signoff':
       receipt.signoffs[0].signature = crypto.sign(null, Buffer.from('00'.repeat(32), 'hex'), ed25519().privateKey).toString('base64url');
@@ -173,13 +259,13 @@ function assemble(brk) {
       proofArgs = { ...proofArgs, scope: ['production_delete'] };
       break;
     case 'amount_over_ceiling':
-      action.amount = 90000; // ceiling is 50000
-      break;
     case 'policy_not_accepted':
-      action.policy_hash = 'sha256:deadbeef';
-      break;
+      break; // signed receipt material was selected before assembly
     case 'revocation_stale':
-      revocation_state.checked_at = '2026-01-01T00:00:00.000Z'; // far older than 300s
+      proofArgs = {
+        ...proofArgs,
+        revocation: { ...proofArgs.revocation, checked_at: '2026-01-01T00:00:00.000Z' },
+      };
       break;
     case 'already_consumed':
       consumption = { consumed: true };
@@ -217,6 +303,20 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
     const r = evaluateReliance(input, opts);
     expect(r.verdict).toBe('rely');
     expect(r.rely).toBe(true);
+    expect(r.checks).toEqual({
+      receipt: true,
+      issuer: true,
+      assurance: 'class_a',
+      authority: { accepted: true, authority_id: 'auth_cfo', subject: 'ep:approver:mrios-cfo', bound_to: 'class_a' },
+      policy: true,
+      revocation: 'fresh',
+      consumption: 'unconsumed',
+    });
+    expect(r.profile).toEqual({
+      id: 'EP-RELIANCE-PROFILE-v1',
+      required_assurance: 'class_a',
+      required_authority: true,
+    });
   });
 
   it('no pinned profile → no reliance (verification can pass, reliance cannot)', () => {
@@ -239,11 +339,76 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
     expect(r.rely).toBe(false);
   });
 
+  it('reports a missing authority proof through the exact closed refusal contract', () => {
+    const { input, opts } = assemble('no_authority_proof');
+    const r = evaluateReliance(input, opts);
+    expect(r).toMatchObject({ verdict: 'do_not_rely_authority_missing', rely: false });
+    expect(r.reasons.at(-1)).toBe('scoped authority is required but no EP-AUTHORITY-PROOF-v1 was supplied');
+    expect(r.checks.authority).toBe(null);
+  });
+
+  it('binds authority organization to signed action material and the pinned registry key', () => {
+    const { input, opts } = assemble('authority_organization_wrong');
+    expect(evaluateReliance(input, opts).verdict).toBe('do_not_rely_authority_organization_mismatch');
+
+    const missingPinScope = assemble('none');
+    delete missingPinScope.input.relying_party_profile.accepted_registry_keys[0].organization_id;
+    expect(evaluateReliance(missingPinScope.input, missingPinScope.opts).verdict).toBe('do_not_rely_no_profile');
+
+    const missingSignedOrganization = assemble('none');
+    const receipt = buildReceipt({ actionOverrides: { organization_id: null } });
+    missingSignedOrganization.input.receipt = receipt;
+    missingSignedOrganization.input.action.action_hash = receipt.action_hash;
+    delete missingSignedOrganization.input.action.organization_id;
+    missingSignedOrganization.input.authority_proof = signAuthorityProof(baseAuthorityProofArgs(receipt), registryKey);
+    expect(evaluateReliance(missingSignedOrganization.input, missingSignedOrganization.opts).verdict)
+      .toBe('do_not_rely_authority_organization_mismatch');
+  });
+
+  it('pins the authority registry head and minimum epoch at reliance time', () => {
+    const wrongHead = assemble('none');
+    wrongHead.input.relying_party_profile.accepted_registry_keys[0].registry_head = 'sha256:' + '22'.repeat(32);
+    expect(evaluateReliance(wrongHead.input, wrongHead.opts).verdict).toBe('do_not_rely_registry_unavailable');
+
+    const staleEpoch = assemble('none');
+    staleEpoch.input.relying_party_profile.accepted_registry_keys[0].min_epoch = 18;
+    expect(evaluateReliance(staleEpoch.input, staleEpoch.opts).verdict).toBe('do_not_rely_registry_unavailable');
+  });
+
+  it('selects the exact registry pin despite same-key and same-issuer decoys', () => {
+    const { input, opts } = assemble('none');
+    input.relying_party_profile.accepted_registry_keys.unshift(
+      {
+        issuer_id: 'wrong-authority', organization_id: 'acme', public_key: registryPub,
+        min_epoch: 999, registry_head: 'sha256:' + '99'.repeat(32),
+      },
+      {
+        issuer_id: 'auth_cfo', organization_id: 'acme', public_key: ed25519().pub,
+        min_epoch: 999, registry_head: 'sha256:' + '88'.repeat(32),
+      },
+    );
+    expect(evaluateReliance(input, opts).verdict).toBe('rely');
+  });
+
   it('authority is an INPUT: same receipt, stricter profile can flip rely→do_not_rely', () => {
     const { input, opts } = assemble('none');
-    const relaxed = evaluateReliance({ ...input, relying_party_profile: { '@type': 'EP-RELIANCE-PROFILE-v1', required_assurance: 'signed', required_evidence: [] } }, opts);
+    const relaxed = evaluateReliance({
+      ...input,
+      relying_party_profile: {
+        '@type': 'EP-RELIANCE-PROFILE-v1',
+        required_assurance: 'signed',
+        accepted_issuer_keys: [logKey.pub],
+        required_evidence: [],
+      },
+    }, opts);
     expect(relaxed.verdict).toBe('rely');
-    const strict = evaluateReliance({ ...input, action: { ...input.action, amount: 999999 } }, opts);
+    const strict = evaluateReliance({
+      ...input,
+      authority_proof: signAuthorityProof({
+        ...baseAuthorityProofArgs(input.receipt),
+        limits: { max_amount_usd: 1000, currency: 'USD' },
+      }, registryKey),
+    }, opts);
     expect(strict.verdict).toBe('do_not_rely_amount_exceeded');
   });
 
@@ -276,46 +441,245 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
   });
 
   it('does not skip an authority ceiling when the JSON amount is a decimal string', () => {
-    const { input, opts } = assemble('none');
-    input.action.amount = '90000.00';
+    const { input, opts } = assemble('amount_over_ceiling');
     const r = evaluateReliance(input, opts);
     expect(r.verdict).toBe('do_not_rely_amount_exceeded');
     expect(r.rely).toBe(false);
   });
 
-  it('fails closed when a capped authority is presented without an action amount', () => {
+  it('derives authority material fields from the signed receipt when the caller summary omits them', () => {
     const { input, opts } = assemble('none');
     delete input.action.amount;
-    const r = evaluateReliance(input, opts);
-    expect(r.verdict).toBe('do_not_rely_amount_exceeded');
-    expect(r.rely).toBe(false);
-  });
-
-  it('fails closed when scoped authority is presented without an action type', () => {
-    const { input, opts } = assemble('none');
+    delete input.action.currency;
     delete input.action.action_type;
+    delete input.action.policy_hash;
     const r = evaluateReliance(input, opts);
-    expect(r.verdict).toBe('do_not_rely_scope_mismatch');
+    expect(r.verdict).toBe('rely');
+    expect(r.rely).toBe(true);
+  });
+
+  it('refuses caller material fields that disagree with the signed receipt', () => {
+    for (const override of [
+      { amount: 1 },
+      { currency: 'EUR' },
+      { action_type: 'wire.preview' },
+      { policy_hash: 'sha256:attacker-policy' },
+    ]) {
+      const { input, opts } = assemble('none');
+      input.action = { ...input.action, ...override };
+      const r = evaluateReliance(input, opts);
+      expect(r.verdict).toBe('do_not_rely_unsigned');
+      expect(r.rely).toBe(false);
+    }
+  });
+
+  it('refuses ambiguous or malformed material inside the signed receipt itself', () => {
+    for (const actionOverrides of [
+      { amount: '50000.00', parameters: { amount: '1.00', currency: 'USD' } },
+      { currency: 'EUR', parameters: { amount: '50000.00', currency: 'USD' } },
+      { policy_hash: 'sha256:different-from-signed-context' },
+      { parameters: { amount: '-1', currency: 'USD' } },
+      { parameters: { amount: '01', currency: 'USD' } },
+      { action_type: null },
+    ]) {
+      const { input, opts } = assemble('none');
+      const receipt = buildReceipt({ actionOverrides });
+      input.receipt = receipt;
+      input.action.action_hash = receipt.action_hash;
+      input.authority_proof = signAuthorityProof(baseAuthorityProofArgs(receipt), registryKey);
+      const r = evaluateReliance(input, opts);
+      expect(r.verdict).toBe('do_not_rely_unsigned');
+      expect(r.rely).toBe(false);
+    }
+  });
+
+  it('accepts a signed amount_usd material field only as USD', () => {
+    const { input, opts } = assemble('none');
+    const receipt = buildReceipt({ actionOverrides: { parameters: { amount_usd: '50000.00' } } });
+    input.receipt = receipt;
+    input.action = {
+      action_type: 'wire.release', amount: 50000, currency: 'USD',
+      policy_hash: 'sha256:77ab1234', action_hash: receipt.action_hash,
+    };
+    input.authority_proof = signAuthorityProof(baseAuthorityProofArgs(receipt), registryKey);
+    expect(evaluateReliance(input, opts).verdict).toBe('rely');
+
+    input.action.currency = 'EUR';
+    expect(evaluateReliance(input, opts).verdict).toBe('do_not_rely_unsigned');
+  });
+
+  it('compares decimal material exactly without exponent, prefix, or suffix smuggling', () => {
+    for (const amount of ['50000', '50000.0', '50000.0000']) {
+      const { input, opts } = assemble('none');
+      input.action.amount = amount;
+      expect(evaluateReliance(input, opts).verdict).toBe('rely');
+    }
+    for (const amount of ['x50000', '50000x', '5e4', '-50000', Number.NaN, Number.POSITIVE_INFINITY]) {
+      const { input, opts } = assemble('none');
+      input.action.amount = amount;
+      expect(evaluateReliance(input, opts).verdict).toBe('do_not_rely_unsigned');
+    }
+
+    const { input, opts } = assemble('none');
+    const receipt = buildReceipt({
+      actionOverrides: { amount: '50000.0', parameters: { amount: '50000.00', currency: 'USD' } },
+    });
+    input.receipt = receipt;
+    input.action.action_hash = receipt.action_hash;
+    input.authority_proof = signAuthorityProof(baseAuthorityProofArgs(receipt), registryKey);
+    expect(evaluateReliance(input, opts).verdict).toBe('rely');
+  });
+
+  it('accepts numeric zero as exact signed material and rejects isolated invalid signed decimals', () => {
+    const zero = assemble('none');
+    const zeroReceipt = buildReceipt({ amount: 0 });
+    zero.input.receipt = zeroReceipt;
+    zero.input.action = { ...zero.input.action, amount: 0, action_hash: zeroReceipt.action_hash };
+    zero.input.authority_proof = signAuthorityProof(baseAuthorityProofArgs(zeroReceipt), registryKey);
+    expect(evaluateReliance(zero.input, zero.opts).verdict).toBe('rely');
+
+    for (const amount of ['-1', '01', '1e2', 'x1', '1x']) {
+      const isolated = assemble('none');
+      const receipt = buildReceipt({ amount });
+      isolated.input.receipt = receipt;
+      isolated.input.action = { ...isolated.input.action, amount, action_hash: receipt.action_hash };
+      isolated.input.authority_proof = signAuthorityProof({
+        ...baseAuthorityProofArgs(receipt), limits: { max_amount_usd: null, currency: 'USD' },
+      }, registryKey);
+      const result = evaluateReliance(isolated.input, isolated.opts);
+      expect(result.verdict).toBe('do_not_rely_unsigned');
+      expect(result.reasons.at(-1)).toMatch(/inconsistent signed action material/);
+    }
+  });
+
+  it('cannot substitute an accepted authority and policy over a receipt signed under another policy', () => {
+    const { input, opts } = assemble('none');
+    const substituted = 'sha256:substituted-policy';
+    input.action.policy_hash = substituted;
+    input.relying_party_profile.accepted_policy_hashes = [substituted];
+    input.authority_proof = signAuthorityProof({
+      ...baseAuthorityProofArgs(input.receipt),
+      policy_hash: substituted,
+    }, registryKey);
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('do_not_rely_unsigned');
     expect(r.rely).toBe(false);
   });
 
-  it('fails closed when a policy-bound authority is presented without an action policy hash', () => {
+  it('enforces an authority policy pin independently of profile policy admission', () => {
     const { input, opts } = assemble('none');
-    delete input.action.policy_hash;
+    input.authority_proof = signAuthorityProof({
+      ...baseAuthorityProofArgs(input.receipt),
+      policy_hash: 'sha256:different-authority-policy',
+    }, registryKey);
     const r = evaluateReliance(input, opts);
     expect(r.verdict).toBe('do_not_rely_policy_mismatch');
     expect(r.rely).toBe(false);
   });
 
-  it('rejects malformed signed authority validity windows', () => {
+  it('binds authority to the ceremony that actually satisfied class_a_or_quorum', () => {
+    const { input, opts } = assemble('none');
+    input.relying_party_profile.required_assurance = 'signed';
+    input.authority_proof = signAuthorityProof({
+      ...baseAuthorityProofArgs(input.receipt),
+      subject: 'ep:approver:jchen-controller',
+    }, registryKey);
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('do_not_rely_authority_subject_mismatch');
+    expect(r.rely).toBe(false);
+  });
+
+  it('a checkpointed receipt cannot rely when the profile pins no issuer key', () => {
+    const { input, opts } = assemble('none');
+    input.relying_party_profile.accepted_issuer_keys = [];
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('do_not_rely_untrusted_issuer');
+    expect(r.rely).toBe(false);
+  });
+
+  it('rejects malformed and impossible signed authority validity windows', () => {
+    for (const to of ['not-a-date', '2026-02-30T00:00:00.000Z']) {
+      const { input, opts } = assemble('none');
+      input.authority_proof = signAuthorityProof({
+        ...baseAuthorityProofArgs(input.receipt),
+        validity: { from: '2026-01-01T00:00:00.000Z', to },
+      }, registryKey);
+      const r = evaluateReliance(input, opts);
+      expect(r.verdict).toBe('do_not_rely_authority_expired');
+      expect(r.rely).toBe(false);
+    }
+  });
+
+  it('accepts optional and exact-boundary authority windows but rejects inverted windows', () => {
+    for (const validity of [
+      {}, { from: null, to: null },
+      { from: '2026-01-01T00:00:00.000Z' },
+      { to: '2027-01-01T00:00:00.000Z' },
+      {
+      from: '2026-07-07T00:00:00.000Z', to: '2026-07-07T00:00:00.000Z',
+      },
+    ]) {
+      const { input, opts } = assemble('none');
+      input.authority_proof = signAuthorityProof({ ...baseAuthorityProofArgs(input.receipt), validity }, registryKey);
+      expect(evaluateReliance(input, opts).verdict).toBe('rely');
+    }
+
     const { input, opts } = assemble('none');
     input.authority_proof = signAuthorityProof({
       ...baseAuthorityProofArgs(input.receipt),
-      validity: { from: '2026-01-01T00:00:00.000Z', to: 'not-a-date' },
+      validity: { from: '2026-08-01T00:00:00.000Z', to: '2026-01-01T00:00:00.000Z' },
     }, registryKey);
-    const r = evaluateReliance(input, opts);
-    expect(r.verdict).toBe('do_not_rely_authority_expired');
-    expect(r.rely).toBe(false);
+    expect(evaluateReliance(input, opts).verdict).toBe('do_not_rely_authority_expired');
+  });
+
+  it('fails closed on validly signed malformed authority shapes and accepts genuinely unbounded limits', () => {
+    for (const scope of [null, [], 'wire.release']) {
+      const { input, opts } = assemble('none');
+      input.authority_proof = resignAuthorityProof(input.authority_proof, { scope });
+      const result = evaluateReliance(input, opts);
+      expect(result.verdict).toBe('do_not_rely_scope_mismatch');
+      expect(result.reasons.at(-1)).toMatch(/not within the authority scope/);
+    }
+    for (const limits of [null, {}]) {
+      const { input, opts } = assemble('none');
+      input.authority_proof = resignAuthorityProof(input.authority_proof, { limits });
+      expect(evaluateReliance(input, opts).verdict).toBe('rely');
+    }
+    for (const validity of [null, {}]) {
+      const { input, opts } = assemble('none');
+      input.authority_proof = resignAuthorityProof(input.authority_proof, { validity });
+      expect(evaluateReliance(input, opts).verdict).toBe('rely');
+    }
+
+    const euro = assemble('none');
+    const euroReceipt = buildReceipt({ currency: 'EUR' });
+    euro.input.receipt = euroReceipt;
+    euro.input.action = { ...euro.input.action, currency: 'EUR', action_hash: euroReceipt.action_hash };
+    euro.input.authority_proof = signAuthorityProof(baseAuthorityProofArgs(euroReceipt), registryKey);
+    expect(evaluateReliance(euro.input, euro.opts).verdict).toBe('do_not_rely_amount_exceeded');
+  });
+
+  it('strictly rejects malformed reliance instants and calendar rollovers', () => {
+    const invalid = [
+      null, Number.NaN, Number.POSITIVE_INFINITY, [], {}, '2026-00-01T00:00:00Z', '2026-13-01T00:00:00Z',
+      '2026-01-00T00:00:00Z', '2026-04-31T00:00:00Z', '1900-02-29T00:00:00Z',
+      '2026-01-01T24:00:00Z', '2026-01-01T00:60:00Z', '2026-01-01T00:00:60Z',
+      '2026-01-01T00:00:00+24:00', '2026-01-01T00:00:00+00:60',
+      '2026-01-01T00:00:00',
+    ];
+    for (const now of invalid) {
+      const { input, opts } = assemble('none');
+      input.now = now;
+      expect(evaluateReliance(input, opts).verdict).toBe('do_not_rely_unsigned');
+    }
+
+    for (const from of ['2000-02-29T00:00:00Z', '2024-02-29T00:00:00+23:59']) {
+      const { input, opts } = assemble('none');
+      input.authority_proof = signAuthorityProof({
+        ...baseAuthorityProofArgs(input.receipt), validity: { from, to: '2027-01-01T00:00:00Z' },
+      }, registryKey);
+      expect(evaluateReliance(input, opts).verdict).toBe('rely');
+    }
   });
 
   it('rejects an invalid assurance label instead of downgrading it to signed', () => {
@@ -336,6 +700,67 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
     }
   });
 
+  it('validates every security-bearing reliance profile field fail-closed', () => {
+    const { input } = assemble('none');
+    const valid = input.relying_party_profile;
+    expect(validateRelianceProfile(valid)).toEqual({ ok: true, issues: [] });
+    expect(validateRelianceProfile({ ...valid, max_revocation_staleness_sec: 0 }).ok).toBe(true);
+
+    const withoutFreshnessBound = { ...valid };
+    delete withoutFreshnessBound.max_revocation_staleness_sec;
+    const invalid = [
+      null,
+      [],
+      { ...valid, '@type': 'wrong' },
+      { ...valid, required_assurance: 'CLASS_A' },
+      { ...valid, required_authority: 'true' },
+      { ...valid, required_evidence: {} },
+      { ...valid, required_evidence: [1] },
+      { ...valid, required_evidence: ['unknown_evidence'] },
+      { ...valid, accepted_issuer_keys: {} },
+      { ...valid, accepted_issuer_keys: [null] },
+      { ...valid, accepted_issuer_keys: [{ public_key: 1 }] },
+      { ...valid, accepted_registry_keys: {} },
+      { ...valid, accepted_registry_keys: [null] },
+      { ...valid, accepted_registry_keys: [{ public_key: 1 }] },
+      { ...valid, accepted_registry_keys: [{ issuer_id: 'auth_cfo', organization_id: 'acme', public_key: registryPub, min_epoch: -1, registry_head: 'sha256:' + '11'.repeat(32) }] },
+      { ...valid, accepted_registry_keys: [{ issuer_id: 'auth_cfo', organization_id: 'acme', public_key: registryPub, min_epoch: 17, registry_head: 'not-a-head' }] },
+      { ...valid, accepted_policy_hashes: {} },
+      { ...valid, accepted_policy_hashes: [null] },
+      { ...valid, accepted_policy_hashes: [''] },
+      { ...valid, max_revocation_staleness_sec: -1 },
+      { ...valid, max_revocation_staleness_sec: Number.POSITIVE_INFINITY },
+      withoutFreshnessBound,
+    ];
+    for (const profile of invalid) {
+      const result = validateRelianceProfile(profile);
+      expect(result.ok).toBe(false);
+      expect(result.issues.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('returns exact profile-validation issues for each malformed field family', () => {
+    const { input } = assemble('none');
+    const valid = input.relying_party_profile;
+    const cases = [
+      [null, 'profile is not an object'],
+      [{ ...valid, '@type': 'wrong' }, '@type must be EP-RELIANCE-PROFILE-v1'],
+      [{ ...valid, required_assurance: 'CLASS_A' }, 'required_assurance must be one of signed, class_a, quorum'],
+      [{ ...valid, required_authority: 'true' }, 'required_authority must be a boolean'],
+      [{ ...valid, required_evidence: {} }, 'required_evidence must be an array'],
+      [{ ...valid, required_evidence: ['unknown'] }, 'unsupported required_evidence entry: unknown'],
+      [{ ...valid, accepted_issuer_keys: {} }, 'accepted_issuer_keys must be an array'],
+      [{ ...valid, accepted_issuer_keys: [null] }, 'accepted_issuer_keys contains an invalid key entry'],
+      [{ ...valid, accepted_registry_keys: [null] }, 'accepted_registry_keys contains an invalid key entry'],
+      [{ ...valid, accepted_policy_hashes: [null] }, 'accepted_policy_hashes contains an invalid policy hash'],
+      [{ ...valid, max_revocation_staleness_sec: -1 }, 'max_revocation_staleness_sec must be a finite non-negative number'],
+      [{ ...valid, max_revocation_staleness_sec: undefined }, 'revocation_freshness requires max_revocation_staleness_sec'],
+    ];
+    for (const [profile, issue] of cases) {
+      expect(validateRelianceProfile(profile).issues).toContain(issue);
+    }
+  });
+
   it('honors class_a_or_quorum even when required_assurance is misconfigured lower', () => {
     const { input, opts } = assemble('none');
     const receipt = buildReceipt({ classAForCfo: false });
@@ -348,5 +773,169 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
     const r = evaluateReliance(input, opts);
     expect(r.verdict).toBe('do_not_rely_no_class_a');
     expect(r.rely).toBe(false);
+  });
+
+  it('accepts a real two-device quorum and binds authority to a counted member', () => {
+    const { input, opts } = assemble('none');
+    input.quorum = buildQuorum(input.receipt.action_hash);
+    input.relying_party_profile.required_assurance = 'quorum';
+    input.authority_proof = signAuthorityProof({
+      ...baseAuthorityProofArgs(input.receipt), subject: 'ep:approver:quorum-one',
+    }, registryKey);
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('rely');
+    expect(r.checks.assurance).toBe('quorum');
+    expect(r.checks.authority).toMatchObject({ subject: 'ep:approver:quorum-one', bound_to: 'quorum' });
+  });
+
+  it('uses a valid quorum as the class_a_or_quorum fallback for a Class-B receipt', () => {
+    const { input, opts } = assemble('none');
+    const receipt = buildReceipt({ classAForCfo: false });
+    input.receipt = receipt;
+    input.action.action_hash = receipt.action_hash;
+    input.quorum = buildQuorum(receipt.action_hash);
+    input.relying_party_profile.required_assurance = 'signed';
+    input.authority_proof = signAuthorityProof({
+      ...baseAuthorityProofArgs(receipt), subject: 'ep:approver:quorum-two',
+    }, registryKey);
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('rely');
+    expect(r.checks.assurance).toBe('quorum');
+    expect(r.checks.authority).toMatchObject({ subject: 'ep:approver:quorum-two', bound_to: 'quorum' });
+  });
+
+  it('refuses a valid quorum whose document is not bound to the receipt action', () => {
+    const { input, opts } = assemble('none');
+    input.quorum = buildQuorum(input.receipt.action_hash);
+    input.quorum.action_hash = 'sha256:' + '9'.repeat(64);
+    input.relying_party_profile.required_assurance = 'quorum';
+    expect(evaluateReliance(input, opts).verdict).toBe('do_not_rely_quorum_unsatisfied');
+  });
+
+  it('does not accept a presenter-supplied revocation timestamp as authenticated freshness', () => {
+    const { input, opts } = assemble('none');
+    input.authority_proof = signAuthorityProof({
+      ...baseAuthorityProofArgs(input.receipt),
+      revocation: { status: 'unknown', checked_at: new Date(NOW).toISOString() },
+    }, registryKey);
+    input.revocation_state = { checked_at: new Date(NOW).toISOString() };
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('do_not_rely_stale_revocation');
+    expect(r.rely).toBe(false);
+  });
+
+  it('requires relying-party-owned consumption state; presenter false is not proof', () => {
+    const { input, opts } = assemble('none');
+    delete opts.isConsumed;
+    input.consumption = { consumed: false };
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('do_not_rely_already_consumed');
+    expect(r.rely).toBe(false);
+    expect(r.reasons.at(-1)).toBe('relying-party consumption state is unavailable');
+  });
+
+  it('fails closed for consumed, indeterminate, throwing, and async consumption lookups', () => {
+    for (const [isConsumed, reason] of [
+      [() => true, 'relying-party consumption state is consumed or indeterminate'],
+      [() => undefined, 'relying-party consumption state is consumed or indeterminate'],
+      [() => { throw new Error('store down'); }, 'relying-party consumption lookup failed'],
+      [async () => false, 'relying-party consumption state is consumed or indeterminate'],
+    ]) {
+      const { input, opts } = assemble('none');
+      opts.isConsumed = isConsumed;
+      const r = evaluateReliance(input, opts);
+      expect(r.verdict).toBe('do_not_rely_already_consumed');
+      expect(r.rely).toBe(false);
+      expect(r.reasons.at(-1)).toBe(reason);
+    }
+  });
+
+  it('passes the exact stable receipt/action identity to the local consumption lookup', () => {
+    const { input, opts } = assemble('none');
+    let key;
+    opts.isConsumed = (presented) => { key = presented; return false; };
+    input.consumption = undefined;
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('rely');
+    expect(key).toEqual({ receipt_id: input.receipt.receipt_id, action_hash: input.receipt.action_hash.slice('sha256:'.length) });
+  });
+
+  it('refuses malformed or positive presenter consumption evidence', () => {
+    for (const consumption of [{ proof: null }, { proof: {} }, { consumed: true }]) {
+      const { input, opts } = assemble('none');
+      input.consumption = consumption;
+      const r = evaluateReliance(input, opts);
+      expect(r.verdict).toBe('do_not_rely_already_consumed');
+      expect(r.rely).toBe(false);
+      if (Object.hasOwn(consumption, 'proof')) {
+        const reason = consumption.proof === null ? 'bundle_missing' : 'nonce_missing';
+        expect(r.reasons.at(-1)).toBe(`consumption evidence did not verify: ${reason}`);
+      }
+    }
+  });
+
+  it('refuses partial or invalid signed revocation artifacts instead of ignoring them', () => {
+    for (const revocation_state of [
+      { statement: {} },
+      { target: {} },
+      { statement: {}, target: {} },
+    ]) {
+      const { input, opts } = assemble('none');
+      input.revocation_state = revocation_state;
+      const r = evaluateReliance(input, opts);
+      expect(r.verdict).toBe('do_not_rely_stale_revocation');
+      expect(r.rely).toBe(false);
+      if (!revocation_state.statement || !revocation_state.target) {
+        expect(r.reasons.at(-1)).toBe('revocation evidence is incomplete');
+      }
+    }
+  });
+
+  it('recognizes an authentic pinned revocation artifact as a positive revocation', () => {
+    const { input, opts } = assemble('none');
+    const signer = ed25519();
+    const target = {
+      target_type: 'receipt', target_id: input.receipt.receipt_id,
+      action_hash: input.receipt.action_hash,
+    };
+    input.revocation_state = { target, statement: buildRevocationStatement(target, signer) };
+    opts.revokerKeys = { 'ep:revoker:test': { public_key: signer.pub } };
+    expect(evaluateReliance(input, opts).verdict).toBe('do_not_rely_authority_revoked');
+
+    input.revocation_state.target = { ...target, target_id: 'different-receipt' };
+    expect(evaluateReliance(input, opts).verdict).toBe('do_not_rely_stale_revocation');
+  });
+
+  it('reports every optional reliance leg as not required under a minimal pinned profile', () => {
+    const { input, opts } = assemble('none');
+    delete input.authority_proof;
+    delete input.revocation_state;
+    delete input.consumption;
+    input.relying_party_profile = {
+      '@type': 'EP-RELIANCE-PROFILE-v1', required_assurance: 'signed',
+      accepted_issuer_keys: [logKey.pub], required_evidence: [],
+    };
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('rely');
+    expect(r.checks).toMatchObject({
+      assurance: 'signed', authority: 'not_required', policy: 'not_pinned',
+      revocation: 'not_required', consumption: 'not_required',
+    });
+  });
+
+  it('treats the authenticated revocation freshness boundary as inclusive and future checks as invalid', () => {
+    const atBoundary = new Date(NOW - 300_000).toISOString();
+    const { input, opts } = assemble('none');
+    input.authority_proof = signAuthorityProof({
+      ...baseAuthorityProofArgs(input.receipt),
+      revocation: { status: 'not_revoked', checked_at: atBoundary },
+    }, registryKey);
+    expect(evaluateReliance(input, opts).verdict).toBe('rely');
+
+    input.authority_proof = signAuthorityProof({
+      ...baseAuthorityProofArgs(input.receipt),
+      revocation: { status: 'not_revoked', checked_at: new Date(NOW + 1).toISOString() },
+    }, registryKey);
+    expect(evaluateReliance(input, opts).verdict).toBe('do_not_rely_stale_revocation');
   });
 });

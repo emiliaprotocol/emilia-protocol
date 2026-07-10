@@ -74,27 +74,37 @@ describe('createSupabaseBackend', () => {
     });
   });
 
-  describe('set', () => {
-    it('resolves when the update succeeds', async () => {
-      const be = createSupabaseBackend(fakeSupabase({ error: null }));
-      await expect(be.set('k', 'committed')).resolves.toBeUndefined();
+  describe('compareAndSet', () => {
+    it('returns true only when the owned state was updated', async () => {
+      const be = createSupabaseBackend(fakeSupabase({ data: { consume_key: 'k' }, error: null }));
+      await expect(be.compareAndSet('k', 'reserved:owner', 'committed')).resolves.toBe(true);
     });
 
     it('throws (fail closed) when the update errors', async () => {
       const be = createSupabaseBackend(fakeSupabase({ error: { message: 'boom' } }));
-      await expect(be.set('k', 'committed')).rejects.toThrow(/set failed/);
+      await expect(be.compareAndSet('k', 'reserved:owner', 'committed')).rejects.toThrow(/compare-and-set failed/);
+    });
+
+    it('returns false when the reservation owner does not match', async () => {
+      const be = createSupabaseBackend(fakeSupabase({ data: null, error: null }));
+      await expect(be.compareAndSet('k', 'reserved:stale', 'committed')).resolves.toBe(false);
     });
   });
 
-  describe('delete', () => {
-    it('resolves when the delete succeeds', async () => {
-      const be = createSupabaseBackend(fakeSupabase({ error: null }));
-      await expect(be.delete('k')).resolves.toBeUndefined();
+  describe('deleteIfValue', () => {
+    it('returns true only when the owned state was deleted', async () => {
+      const be = createSupabaseBackend(fakeSupabase({ data: { consume_key: 'k' }, error: null }));
+      await expect(be.deleteIfValue('k', 'reserved:owner')).resolves.toBe(true);
     });
 
     it('throws (fail closed) when the delete errors', async () => {
       const be = createSupabaseBackend(fakeSupabase({ error: { message: 'boom' } }));
-      await expect(be.delete('k')).rejects.toThrow(/delete failed/);
+      await expect(be.deleteIfValue('k', 'reserved:owner')).rejects.toThrow(/conditional delete failed/);
+    });
+
+    it('returns false when a stale owner tries to delete a newer reservation', async () => {
+      const be = createSupabaseBackend(fakeSupabase({ data: null, error: null }));
+      await expect(be.deleteIfValue('k', 'reserved:stale')).resolves.toBe(false);
     });
   });
 

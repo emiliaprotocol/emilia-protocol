@@ -1,0 +1,235 @@
+/*
+ * EP-RELIANCE-COMPOSED-v1
+ *
+ * One symbolic model for the complete acceptance path:
+ * signed RP challenge -> UV-gated human approval -> scoped authority proof ->
+ * fresh non-revocation statement -> pinned receipt issuer -> one-time consume ->
+ * execution. Signatures use Tamarin's Dolev-Yao signing theory. WebAuthn,
+ * canonical encodings, clocks, directory transparency, and the correctness of
+ * the relying party's profile remain explicit external assumptions.
+ */
+
+theory ep_reliance_composed
+begin
+
+builtins: signing, hashing
+
+/* ---------------------------- key enrollment ---------------------------- */
+
+rule Register_Relying_Party:
+    [ Fr(~ltk) ]
+  --[ RegisterRP($RP) ]->
+    [ !RPLtk($RP, ~ltk), !RPPk($RP, pk(~ltk)), Out(pk(~ltk)) ]
+
+rule Register_Human:
+    [ Fr(~ltk) ]
+  --[ RegisterHuman($H) ]->
+    [ !HumanLtk($H, ~ltk), !HumanPk($H, pk(~ltk)), Out(pk(~ltk)) ]
+
+rule Register_Issuer:
+    [ Fr(~ltk) ]
+  --[ RegisterIssuer($I) ]->
+    [ !IssuerLtk($I, ~ltk), !IssuerPk($I, pk(~ltk)), Out(pk(~ltk)) ]
+
+rule Register_Authority:
+    [ Fr(~ltk) ]
+  --[ RegisterAuthority($A) ]->
+    [ !AuthorityLtk($A, ~ltk), !AuthorityPk($A, pk(~ltk)), Out(pk(~ltk)) ]
+
+rule Register_Revoker:
+    [ Fr(~ltk) ]
+  --[ RegisterRevoker($R) ]->
+    [ !RevokerLtk($R, ~ltk), !RevokerPk($R, pk(~ltk)), Out(pk(~ltk)) ]
+
+/* Verifier roots arrive out of band, never from receipt-carried key fields. */
+rule Pin_Roots:
+    [ In(V), !RPPk(RP, pkRP), !HumanPk(H, pkH), !IssuerPk(I, pkI)
+    , !AuthorityPk(A, pkA), !RevokerPk(R, pkR) ]
+  --[ RootsPinned(V, RP, H, I, A, R) ]->
+    [ !PinnedRPPk(V, RP, pkRP), !PinnedHumanPk(V, H, pkH)
+    , !PinnedIssuerPk(V, I, pkI), !PinnedAuthorityPk(V, A, pkA)
+    , !PinnedRevokerPk(V, R, pkR) ]
+
+/* -------------------------- challenge and proof ------------------------- */
+
+rule RP_Issue_Challenge:
+    [ !RPLtk(RP, ltkRP), In(action), In(profile), In(audience), Fr(~nonce) ]
+  --[ ChallengeIssued(RP, action, profile, audience, ~nonce) ]->
+    [ !OpenChallenge(RP, action, profile, audience, ~nonce)
+    , Out(<RP, action, profile, audience, ~nonce,
+           sign(<'ep_challenge_v1', RP, h(action), profile, audience, ~nonce>, ltkRP)>) ]
+
+rule Human_Inspect_And_UV:
+    [ In(<RP, action, profile, audience, nonce, challengeSig>)
+    , !RPPk(RP, pkRP), !HumanPk(H, pkH) ]
+  --[ Eq(verify(challengeSig,
+               <'ep_challenge_v1', RP, h(action), profile, audience, nonce>,
+               pkRP), true)
+    , UV(H, RP, action, profile, audience, nonce) ]->
+    [ UVDone(H, RP, action, profile, audience, nonce) ]
+
+rule Human_Sign_Approval:
+    [ UVDone(H, RP, action, profile, audience, nonce), !HumanLtk(H, ltkH) ]
+  --[ HumanSigned(H, RP, action, profile, audience, nonce) ]->
+    [ Out(<H, sign(<'ep_approval_v1', H, RP, h(action), profile, audience, nonce>, ltkH)>) ]
+
+/* The attacker can request honest authority and revocation artifacts for any
+ * tuple. Security rests on exact tuple binding, not on hiding other proofs. */
+rule Authority_Issue_Scoped_Proof:
+    [ !AuthorityLtk(A, ltkA), In(<H, RP, action, profile, audience, nonce>) ]
+  --[ AuthorityIssued(A, H, RP, action, profile, audience, nonce) ]->
+    [ Out(<A, sign(<'ep_authority_v1', A, H, RP, h(action), profile, audience, nonce>, ltkA)>) ]
+
+rule Revoker_Issue_Fresh_State:
+    [ !RevokerLtk(R, ltkR), In(<H, RP, action, profile, audience, nonce>) ]
+  --[ RevocationCurrent(R, H, RP, action, profile, audience, nonce) ]->
+    [ Out(<R, sign(<'ep_revocation_v1', R, H, RP, h(action), profile, audience, nonce, 'current'>, ltkR)>) ]
+
+/* ----------------------------- receipt issue ---------------------------- */
+
+rule Issuer_Assemble_Receipt:
+    [ In(<RP, action, profile, audience, nonce, challengeSig>)
+    , In(<H, humanSig>), In(<A, authoritySig>), In(<R, revocationSig>)
+    , !RPPk(RP, pkRP), !HumanPk(H, pkH), !AuthorityPk(A, pkA)
+    , !RevokerPk(R, pkR), !IssuerLtk(I, ltkI) ]
+  --[ Eq(verify(challengeSig,
+               <'ep_challenge_v1', RP, h(action), profile, audience, nonce>, pkRP), true)
+    , Eq(verify(humanSig,
+               <'ep_approval_v1', H, RP, h(action), profile, audience, nonce>, pkH), true)
+    , Eq(verify(authoritySig,
+               <'ep_authority_v1', A, H, RP, h(action), profile, audience, nonce>, pkA), true)
+    , Eq(verify(revocationSig,
+               <'ep_revocation_v1', R, H, RP, h(action), profile, audience, nonce, 'current'>, pkR), true)
+    , IssuerReceipt(I, H, RP, action, profile, audience, nonce) ]->
+    [ Out(<I, H, RP, A, R, action, profile, audience, nonce,
+           challengeSig, humanSig, authoritySig, revocationSig,
+           sign(<'ep_receipt_v1', I, H, RP, A, R, h(action), profile,
+                 audience, nonce, challengeSig, humanSig, authoritySig,
+                 revocationSig>, ltkI)>) ]
+
+/* ------------------------ acceptance and execution ---------------------- */
+
+rule Verify_Consume_And_Execute:
+    [ In(<I, H, RP, A, R, action, profile, audience, nonce,
+          challengeSig, humanSig, authoritySig, revocationSig, issuerSig>)
+    , !PinnedRPPk(V, RP, pkRP), !PinnedHumanPk(V, H, pkH)
+    , !PinnedIssuerPk(V, I, pkI), !PinnedAuthorityPk(V, A, pkA)
+    , !PinnedRevokerPk(V, R, pkR) ]
+  --[ Eq(V, audience)
+    , Eq(verify(challengeSig,
+               <'ep_challenge_v1', RP, h(action), profile, audience, nonce>, pkRP), true)
+    , Eq(verify(humanSig,
+               <'ep_approval_v1', H, RP, h(action), profile, audience, nonce>, pkH), true)
+    , Eq(verify(authoritySig,
+               <'ep_authority_v1', A, H, RP, h(action), profile, audience, nonce>, pkA), true)
+    , Eq(verify(revocationSig,
+               <'ep_revocation_v1', R, H, RP, h(action), profile, audience, nonce, 'current'>, pkR), true)
+    , Eq(verify(issuerSig,
+               <'ep_receipt_v1', I, H, RP, A, R, h(action), profile,
+                 audience, nonce, challengeSig, humanSig, authoritySig,
+                 revocationSig>, pkI), true)
+    , Consume(<RP, nonce>)
+    , Accepted(V, I, H, RP, A, R, action, profile, nonce)
+    , Executed(V, I, H, RP, A, R, action, profile, nonce) ]->
+    [ ]
+
+/* Deliberately unsafe comparison path. It performs every cryptographic and
+ * pinning check but omits Consume. The final lemma is expected to be falsified
+ * by same-challenge replay, demonstrating that consumption is load-bearing. */
+rule Verify_And_Execute_Without_Consumption:
+    [ In(<I, H, RP, A, R, action, profile, audience, nonce,
+          challengeSig, humanSig, authoritySig, revocationSig, issuerSig>)
+    , !PinnedRPPk(V, RP, pkRP), !PinnedHumanPk(V, H, pkH)
+    , !PinnedIssuerPk(V, I, pkI), !PinnedAuthorityPk(V, A, pkA)
+    , !PinnedRevokerPk(V, R, pkR) ]
+  --[ Eq(V, audience)
+    , Eq(verify(challengeSig,
+               <'ep_challenge_v1', RP, h(action), profile, audience, nonce>, pkRP), true)
+    , Eq(verify(humanSig,
+               <'ep_approval_v1', H, RP, h(action), profile, audience, nonce>, pkH), true)
+    , Eq(verify(authoritySig,
+               <'ep_authority_v1', A, H, RP, h(action), profile, audience, nonce>, pkA), true)
+    , Eq(verify(revocationSig,
+               <'ep_revocation_v1', R, H, RP, h(action), profile, audience, nonce, 'current'>, pkR), true)
+    , Eq(verify(issuerSig,
+               <'ep_receipt_v1', I, H, RP, A, R, h(action), profile,
+                 audience, nonce, challengeSig, humanSig, authoritySig,
+                 revocationSig>, pkI), true)
+    , ExecutedUnchecked(V, I, H, RP, A, R, action, profile, nonce) ]->
+    [ ]
+
+/* ----------------------------- compromise ------------------------------- */
+
+rule Reveal_Human_Key:
+    [ !HumanLtk(H, ltk) ] --[ RevealHuman(H) ]-> [ Out(ltk) ]
+
+rule Reveal_Issuer_Key:
+    [ !IssuerLtk(I, ltk) ] --[ RevealIssuer(I) ]-> [ Out(ltk) ]
+
+rule Reveal_Authority_Key:
+    [ !AuthorityLtk(A, ltk) ] --[ RevealAuthority(A) ]-> [ Out(ltk) ]
+
+rule Reveal_Revoker_Key:
+    [ !RevokerLtk(R, ltk) ] --[ RevealRevoker(R) ]-> [ Out(ltk) ]
+
+rule Reveal_RP_Key:
+    [ !RPLtk(RP, ltk) ] --[ RevealRP(RP) ]-> [ Out(ltk) ]
+
+restriction Equality:
+  "All x y #i. Eq(x, y) @ #i ==> x = y"
+
+restriction ConsumeOnce:
+  "All x #i #j. Consume(x) @ #i & Consume(x) @ #j ==> #i = #j"
+
+/* -------------------------------- lemmas -------------------------------- */
+
+lemma executable_composed_reliance:
+  exists-trace
+  "Ex V I H RP A R action profile nonce #i.
+      Executed(V, I, H, RP, A, R, action, profile, nonce) @ #i
+    & not (Ex #r. RevealHuman(H) @ #r)
+    & not (Ex #r. RevealIssuer(I) @ #r)
+    & not (Ex #r. RevealAuthority(A) @ #r)
+    & not (Ex #r. RevealRevoker(R) @ #r)
+    & not (Ex #r. RevealRP(RP) @ #r)"
+
+lemma execution_requires_full_composition:
+  "All V I H RP A R action profile nonce #i.
+      Executed(V, I, H, RP, A, R, action, profile, nonce) @ #i
+    & not (Ex #r. RevealHuman(H) @ #r & #r < #i)
+    & not (Ex #r. RevealIssuer(I) @ #r & #r < #i)
+    & not (Ex #r. RevealAuthority(A) @ #r & #r < #i)
+    & not (Ex #r. RevealRevoker(R) @ #r & #r < #i)
+    & not (Ex #r. RevealRP(RP) @ #r & #r < #i)
+    ==> (Ex #c #h #a #r #s.
+          ChallengeIssued(RP, action, profile, V, nonce) @ #c
+        & HumanSigned(H, RP, action, profile, V, nonce) @ #h
+        & AuthorityIssued(A, H, RP, action, profile, V, nonce) @ #a
+        & RevocationCurrent(R, H, RP, action, profile, V, nonce) @ #r
+        & IssuerReceipt(I, H, RP, action, profile, V, nonce) @ #s
+        & #c < #h & #h < #s & #a < #s & #r < #s & #s < #i)"
+
+lemma no_cross_action_profile_or_audience_replay:
+  "not (Ex V I H RP A R action profile nonce #i.
+      Executed(V, I, H, RP, A, R, action, profile, nonce) @ #i
+    & not (Ex #r. RevealHuman(H) @ #r & #r < #i)
+    & not (Ex #r. RevealIssuer(I) @ #r & #r < #i)
+    & not (Ex #r. RevealAuthority(A) @ #r & #r < #i)
+    & not (Ex #r. RevealRevoker(R) @ #r & #r < #i)
+    & not (Ex #r. RevealRP(RP) @ #r & #r < #i)
+    & not (Ex #c. ChallengeIssued(RP, action, profile, V, nonce) @ #c & #c < #i))"
+
+lemma injective_execution_with_consumption:
+  "All V I H RP A R action profile nonce #i.
+      Executed(V, I, H, RP, A, R, action, profile, nonce) @ #i
+    ==> not (Ex V2 I2 H2 A2 R2 action2 profile2 #j.
+          Executed(V2, I2, H2, RP, A2, R2, action2, profile2, nonce) @ #j
+        & not (#j = #i))"
+
+lemma unchecked_composition_is_injective:
+  "All V1 V2 I1 I2 H1 H2 RP A1 A2 R1 R2 action1 action2 profile1 profile2 nonce #i #j.
+      ExecutedUnchecked(V1, I1, H1, RP, A1, R1, action1, profile1, nonce) @ #i
+    & ExecutedUnchecked(V2, I2, H2, RP, A2, R2, action2, profile2, nonce) @ #j
+    ==> #i = #j"
+
+end

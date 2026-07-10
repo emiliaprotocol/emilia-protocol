@@ -339,14 +339,25 @@ func main() {
 		os.Exit(1)
 	}
 	var f struct {
-		Vectors []vec `json:"vectors"`
+		Vectors []json.RawMessage `json:"vectors"`
 	}
 	if err := json.Unmarshal(data, &f); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	out := make([]map[string]any, 0, len(f.Vectors))
-	for _, v := range f.Vectors {
+	for _, rawVector := range f.Vectors {
+		// Decode each vector independently. A hostile type in one vector must be
+		// a false verdict for that vector, never a batch-wide availability failure.
+		var header struct {
+			ID string `json:"id"`
+		}
+		_ = json.Unmarshal(rawVector, &header)
+		var v vec
+		if err := json.Unmarshal(rawVector, &v); err != nil {
+			out = append(out, map[string]any{"id": header.ID, "valid": false})
+			continue
+		}
 		var valid bool
 		switch {
 		case v.Document != nil:

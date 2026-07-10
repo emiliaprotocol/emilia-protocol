@@ -71,6 +71,7 @@ function signClassA(digestHex) {
 const innerAction = {
   ep_version: '1.0',
   action_type: 'rx.prior_auth.approve',
+  organization_id: 'plan-demo',
   target: { system: 'pbm.adjudication', resource: 'pa/specialty/PA-DEMO-0001' },
   parameters: { drug: 'DEMODRUG 40MG SYRINGE (synthetic)', ncpdp_txn: NCPDP_TXN_DIGEST, pa_case: 'PA-DEMO-0001' },
   initiator: 'ep:entity:demo-intake-agent',
@@ -120,11 +121,11 @@ const authorityProof = signAuthorityProof({
   scope: ['rx.prior_auth.approve'],
   limits: {},
   validity: { from: '2026-01-01T00:00:00.000Z', to: '2027-01-01T00:00:00.000Z' },
-  revocation: { status: 'not_revoked', checked_at: '2026-07-08T13:59:00.000Z' },
+  revocation: { status: 'not_revoked', checked_at: '2026-07-08T14:30:00.000Z' },
   registry_head: 'sha256:' + 'd4'.repeat(32),
   registry_epoch: 3,
   policy_hash: BENEFIT_POLICY_HASH,
-  issued_at: '2026-07-08T13:59:00.000Z',
+  issued_at: '2026-07-08T14:30:00.000Z',
 }, registry.privateKey);
 
 const packet = {
@@ -154,20 +155,23 @@ const packet = {
 };
 
 // Five relying parties, five pinned profiles, genuinely different requirements.
-const REGISTRY_PIN = [{ issuer_id: 'auth_demo_payer_reviewer', public_key: registry.pub }];
+const REGISTRY_PIN = [{
+  issuer_id: 'auth_demo_payer_reviewer', organization_id: 'plan-demo', public_key: registry.pub,
+  min_epoch: 3, registry_head: 'sha256:' + 'd4'.repeat(32),
+}];
 const profiles = {
   'pharmacy.json': {
     '@type': 'EP-RELIANCE-PROFILE-v1',
     profile_id: 'ep:profile:demo:dispensing-pharmacy@v1',
     party: 'dispensing pharmacy',
-    description: 'Dispenses only on a device-bound reviewer signoff, scoped payer authority, an eligibility check within the last hour, the pinned benefit policy, and a one-time unconsumed authorization.',
+    description: 'Rates evidence on a device-bound reviewer signoff, scoped payer authority, an authenticated registry check within the last hour, and the pinned benefit policy. The dispensing firewall enforces one-time consumption locally.',
     required_assurance: 'class_a',
     required_authority: true,
     max_revocation_staleness_sec: 3600,
     accepted_registry_keys: REGISTRY_PIN,
     accepted_issuer_keys: [logKey.pub],
     accepted_policy_hashes: [BENEFIT_POLICY_HASH],
-    required_evidence: ['receipt', 'authority_proof', 'revocation_freshness', 'consumption_proof'],
+    required_evidence: ['receipt', 'authority_proof', 'revocation_freshness'],
   },
   'payer-pbm.json': {
     '@type': 'EP-RELIANCE-PROFILE-v1',

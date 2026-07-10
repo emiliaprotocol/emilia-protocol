@@ -1,0 +1,58 @@
+name: Security Kernel Mutation Gate
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    paths:
+      - 'packages/gate/store.js'
+      - 'packages/verify/reliance.js'
+      - 'lib/authority/resolver.js'
+      - 'tests/mutation-security-kernel.test.js'
+      - 'tests/reliance-kernel.test.js'
+      - 'tests/authority-registry.test.js'
+      - 'tests/audit-regression.test.js'
+      - 'stryker.security.config.js'
+      - 'security/MUTATION_STATUS.md'
+      - '.github/workflows/security-mutation.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'packages/gate/store.js'
+      - 'packages/verify/reliance.js'
+      - 'lib/authority/resolver.js'
+      - 'tests/mutation-security-kernel.test.js'
+      - 'tests/reliance-kernel.test.js'
+      - 'tests/authority-registry.test.js'
+      - 'tests/audit-regression.test.js'
+      - 'stryker.security.config.js'
+      - 'security/MUTATION_STATUS.md'
+      - '.github/workflows/security-mutation.yml'
+  schedule:
+    - cron: '23 6 * * 0'
+  workflow_dispatch:
+
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run test:mutation:security
+      - name: Upload mutation report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: security-mutation-report
+          path: reports/mutation/security-kernel.json
+          retention-days: 90
+          if-no-files-found: error

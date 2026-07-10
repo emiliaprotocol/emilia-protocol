@@ -21,10 +21,10 @@
  * EMILIA never asks the relying party to trust its receipt; it lets the relying
  * party pin its own rule and returns a closed, portable verdict.
  *
- * PURE. OFFLINE. FAIL-CLOSED. No DB, no network, no operator trust. Every leg is
- * delegated to the frozen offline verifiers (verifyTrustReceipt, verifyQuorum,
- * verifyRevocation, verifyConsumptionProof, verifyAuthorityProof) — the kernel
- * composes their results into ONE verdict from a fixed, closed set.
+ * DETERMINISTIC. FAIL-CLOSED. Cryptographic checks are offline and delegated to
+ * the frozen verifiers. A profile that requires one-time-use also injects the
+ * relying party's synchronous local consumption lookup; presenter state can
+ * never prove the negative "unconsumed" claim.
  */
 import crypto from 'node:crypto';
 import { verifyTrustReceipt, verifyQuorum, canonicalize } from './index.js';
@@ -45,6 +45,7 @@ export const RELIANCE_VERDICTS = Object.freeze([
   'do_not_rely_quorum_unsatisfied',
   'do_not_rely_authority_missing',
   'do_not_rely_authority_subject_mismatch',
+  'do_not_rely_authority_organization_mismatch',
   'do_not_rely_authority_revoked',
   'do_not_rely_authority_expired',
   'do_not_rely_scope_mismatch',
@@ -64,13 +65,30 @@ const REQUIRED_EVIDENCE_TYPES = Object.freeze([
   'consumption_proof',
 ]);
 const SHA256_DIGEST = /^(?:sha256:)?([0-9a-f]{64})$/i;
+const RFC3339_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:Z|([+-])(\d{2}):(\d{2}))$/;
+
+function strictInstantMs(value) {
+  if (typeof value !== 'string') return NaN;
+  const match = value.match(RFC3339_INSTANT);
+  if (!match) return NaN;
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , offsetHourText, offsetMinuteText] = match;
+  const localText = `${yearText}-${monthText}-${dayText}T${hourText}:${minuteText}:${secondText}`;
+  const calendar = new Date(0);
+  calendar.setUTCFullYear(Number(yearText), Number(monthText) - 1, Number(dayText));
+  calendar.setUTCHours(Number(hourText), Number(minuteText), Number(secondText), 0);
+  if (calendar.toISOString().slice(0, 19) !== localText) return NaN;
+  if (offsetHourText !== undefined
+    && (Number(offsetHourText) > 23 || Number(offsetMinuteText) > 59)) return NaN;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : NaN;
+}
 
 function toMs(t) {
   if (t === undefined) return Date.now();
   if (t instanceof Date) return t.getTime();
   if (typeof t === 'number') return Number.isFinite(t) ? t : NaN;
   if (typeof t !== 'string') return NaN;
-  return Date.parse(t);
+  return strictInstantMs(t);
 }
 
 function pubKeyB64u(pub) {
@@ -87,9 +105,13 @@ function digestHex(value) {
 }
 
 function parseNonNegativeDecimal(value) {
-  const text = typeof value === 'number' && Number.isFinite(value) && value >= 0
-    ? String(value)
-    : typeof value === 'string' ? value : null;
+  let text = null;
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value) || value < 0) return null;
+    text = String(value);
+  } else if (typeof value === 'string') {
+    text = value;
+  }
   if (text === null || !/^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/.test(text)) return null;
   const [whole, fraction = ''] = text.split('.');
   return { coefficient: BigInt(`${whole}${fraction}`), scale: fraction.length };
@@ -105,6 +127,55 @@ function decimalGreaterThan(left, right) {
   return lc > rc;
 }
 
+function decimalEqual(left, right) {
+  const greater = decimalGreaterThan(left, right);
+  const less = decimalGreaterThan(right, left);
+  return greater === null || less === null ? null : !greater && !less;
+}
+
+function exactMaterial(candidates) {
+  const present = candidates.filter((value) => value !== undefined && value !== null);
+  if (present.length === 0) return { value: null, ambiguous: false };
+  return { value: present[0], ambiguous: present.some((value) => value !== present[0]) };
+}
+
+function decimalMaterial(candidates) {
+  const present = candidates.filter((value) => value !== undefined && value !== null);
+  if (present.length === 0) return { value: null, ambiguous: false };
+  if (present.some((value) => parseNonNegativeDecimal(value) === null)) return { value: null, ambiguous: true };
+  return { value: present[0], ambiguous: present.some((value) => decimalEqual(value, present[0]) !== true) };
+}
+
+/** Extract authority/policy material only from bytes already covered by receipt verification. */
+function signedActionMaterial(receipt, contexts) {
+  // verifyTrustReceipt has already authenticated receipt.action. Any malformed
+  // material below still refuses through missing/ambiguous action fields.
+  const signed = receipt.action ?? {};
+  const parameters = signed.parameters ?? {};
+  const amount = decimalMaterial([signed.amount, signed.amount_usd, parameters.amount, parameters.amount_usd]);
+  const currency = exactMaterial([
+    signed.currency,
+    parameters.currency,
+    ...(signed.amount_usd !== undefined || parameters.amount_usd !== undefined ? ['USD'] : []),
+  ]);
+  const policy = exactMaterial([
+    signed.policy_hash,
+    ...contexts.map((context) => context?.policy_hash),
+  ]);
+  const organization = exactMaterial([
+    signed.organization_id,
+    ...contexts.map((context) => context?.organization_id),
+  ]);
+  return {
+    action_type: typeof signed.action_type === 'string' ? signed.action_type : null,
+    amount: amount.value,
+    currency: currency.value,
+    organization_id: organization.value,
+    policy_hash: policy.value,
+    ambiguous: amount.ambiguous || currency.ambiguous || organization.ambiguous || policy.ambiguous,
+  };
+}
+
 /**
  * Evaluate whether a relying party may rely on an evidence packet under its own
  * pinned profile. Returns a single closed verdict, fail-closed, deterministic.
@@ -118,7 +189,8 @@ function decimalGreaterThan(left, right) {
  * @param {object} [input.consumption]        { consumed:boolean, proof?:<EP-SMT-CONSUME bundle> }
  * @param {object} input.relying_party_profile EP-RELIANCE-PROFILE-v1 (the pins)
  * @param {number|string|Date} [input.now]
- * @param {object} [opts]                     { approverKeys, logPublicKey, rpId, revokerKeys }
+ * @param {object} [opts]                     { approverKeys, logPublicKey, rpId, revokerKeys,
+ *                                              isConsumed({receipt_id, action_hash}): boolean }
  * @returns {{ verdict:string, rely:boolean, reasons:string[], checks:object, profile:object }}
  */
 export function evaluateReliance(input = {}, opts = {}) {
@@ -131,7 +203,7 @@ export function evaluateReliance(input = {}, opts = {}) {
     action: rawAction = {}, receipt, quorum, authority_proof: authorityProof,
     revocation_state: revocationState, consumption, relying_party_profile: profile,
   } = input;
-  const action = rawAction && typeof rawAction === 'object' && !Array.isArray(rawAction) ? rawAction : {};
+  const presentedAction = rawAction && typeof rawAction === 'object' && !Array.isArray(rawAction) ? rawAction : {};
   const now = toMs(input.now);
   const reasons = [];
   const checks = {
@@ -179,7 +251,7 @@ export function evaluateReliance(input = {}, opts = {}) {
   const rc = verifyTrustReceipt(receipt, opts);
   checks.receipt = rc.valid === true;
   if (!rc.valid) return deny('do_not_rely_unsigned', `receipt did not verify: ${(rc.errors || []).join('; ') || 'invalid'}`);
-  const relyingActionHash = digestHex(action.action_hash);
+  const relyingActionHash = digestHex(presentedAction.action_hash);
   const receiptActionHash = digestHex(receipt.action_hash);
   if (!relyingActionHash || !receiptActionHash || relyingActionHash !== receiptActionHash) {
     return deny('do_not_rely_unsigned', 'receipt does not attest the action being relied on (action_hash mismatch)');
@@ -191,6 +263,25 @@ export function evaluateReliance(input = {}, opts = {}) {
   // the human who ACTUALLY approved, not merely to some approver on the receipt.
   const approverKeys = opts.approverKeys || {};
   const contexts = Array.isArray(receipt.contexts) ? receipt.contexts : [];
+  const signedMaterial = signedActionMaterial(receipt, contexts);
+  if (signedMaterial.ambiguous || !signedMaterial.action_type) {
+    return deny('do_not_rely_unsigned', 'receipt carries missing or internally inconsistent signed action material');
+  }
+  if ((presentedAction.action_type !== undefined && presentedAction.action_type !== signedMaterial.action_type)
+    || (presentedAction.amount !== undefined && decimalEqual(presentedAction.amount, signedMaterial.amount) !== true)
+    || (presentedAction.currency !== undefined && presentedAction.currency !== signedMaterial.currency)
+    || (presentedAction.organization_id !== undefined && presentedAction.organization_id !== signedMaterial.organization_id)
+    || (presentedAction.policy_hash !== undefined && presentedAction.policy_hash !== signedMaterial.policy_hash)) {
+    return deny('do_not_rely_unsigned', 'caller action fields do not match the material fields covered by the receipt');
+  }
+  const action = {
+    action_type: signedMaterial.action_type,
+    amount: signedMaterial.amount,
+    currency: signedMaterial.currency,
+    organization_id: signedMaterial.organization_id,
+    policy_hash: signedMaterial.policy_hash,
+    action_hash: relyingActionHash,
+  };
   // Join signoffs to contexts on NORMALIZED hex, exactly as verifyTrustReceipt
   // does (hexOf: strip any "sha256:" prefix, lowercase). Keying on a fixed
   // "sha256:"-prefixed form would miss a bare-hex or upper-case context_hash that
@@ -216,7 +307,11 @@ export function evaluateReliance(input = {}, opts = {}) {
   // checkpoint IS present and the RP pinned issuer keys, the log key used must
   // be among them, or the issuer is untrusted.
   const hasCheckpoint = Boolean(receipt?.log_proof?.checkpoint);
-  if (acceptedIssuerKeys.length > 0 && hasCheckpoint) {
+  if (hasCheckpoint) {
+    if (acceptedIssuerKeys.length === 0) {
+      checks.issuer = false;
+      return deny('do_not_rely_untrusted_issuer', 'receipt has a transparency checkpoint but the profile pins no accepted issuer key');
+    }
     const logKey = pubKeyB64u(opts.logPublicKey);
     const issuerOk = logKey !== null && acceptedIssuerKeys.includes(logKey);
     checks.issuer = issuerOk;
@@ -228,6 +323,7 @@ export function evaluateReliance(input = {}, opts = {}) {
   // ── 3. ASSURANCE — the ceremony the RP demands ─────────────────────────────
   let quorumMembers = []; // verified quorum members, for authority subject binding
   let quorumResult;
+  let achievedAssurance = 'signed';
   const boundQuorum = () => {
     if (quorumResult !== undefined) return quorumResult;
     const q = quorum && verifyQuorum(quorum, opts);
@@ -241,30 +337,49 @@ export function evaluateReliance(input = {}, opts = {}) {
     const hasClassA = classASigners.length > 0;
     checks.assurance = hasClassA ? 'class_a' : false;
     if (!hasClassA) return deny('do_not_rely_no_class_a', 'a valid Class-A device-bound signoff is required and none is present');
+    achievedAssurance = 'class_a';
   } else if (requiredAssurance === 'quorum') {
     const { q, ok: quorumOk } = boundQuorum();
     checks.assurance = quorumOk ? 'quorum' : false;
     if (!quorumOk) return deny('do_not_rely_quorum_unsatisfied', 'a satisfied EP-QUORUM-v1 bound to this action is required');
-    quorumMembers = (Array.isArray(q.members) ? q.members : []).filter((m) => m?.valid && m?.approver).map((m) => m.approver);
+    quorumMembers = q.members.map((m) => m.approver);
+    achievedAssurance = 'quorum';
   } else if (requiredEvidence.has('class_a_or_quorum')) {
     if (classASigners.length > 0) {
       checks.assurance = 'class_a';
+      achievedAssurance = 'class_a';
     } else {
       const { q, ok: quorumOk } = boundQuorum();
       if (!quorumOk) return deny('do_not_rely_no_class_a', 'required evidence demands a valid Class-A signoff or quorum, but neither is present');
       checks.assurance = 'quorum';
-      quorumMembers = (Array.isArray(q.members) ? q.members : []).filter((m) => m?.valid && m?.approver).map((m) => m.approver);
+      quorumMembers = q.members.map((m) => m.approver);
+      achievedAssurance = 'quorum';
     }
   } else {
     checks.assurance = 'signed';
   }
 
   // ── 4. AUTHORITY — an admissibility INPUT, checked against the pinned registry
+  let authenticatedRevocation = null;
   if (prof.required_authority === true || requiredEvidence.has('authority_proof')) {
     if (!authorityProof || typeof authorityProof !== 'object') {
       return deny('do_not_rely_authority_missing', 'scoped authority is required but no EP-AUTHORITY-PROOF-v1 was supplied');
     }
-    const ap = verifyAuthorityProof(authorityProof, { pinnedRegistryKeys: acceptedRegistryKeys });
+    if (typeof action.organization_id !== 'string' || action.organization_id.length === 0) {
+      return deny('do_not_rely_authority_organization_mismatch', 'signed action material carries no organization_id for authority binding');
+    }
+    const organizationRegistryKeys = acceptedRegistryKeys.filter(
+      (key) => key?.organization_id === action.organization_id,
+    );
+    if (organizationRegistryKeys.length === 0) {
+      return deny('do_not_rely_registry_unavailable', 'no authority registry key is pinned for the signed action organization');
+    }
+    const registryPin = organizationRegistryKeys.find((key) => key?.public_key === authorityProof?.signature?.public_key
+      && (key.issuer_id === authorityProof?.authority_id || key.issuer_id === authorityProof?.signature?.key_id));
+    const ap = verifyAuthorityProof(authorityProof, {
+      pinnedRegistryKeys: organizationRegistryKeys,
+      ...(registryPin ? { expectRegistryHead: registryPin.registry_head, expectMinEpoch: registryPin.min_epoch } : {}),
+    });
     if (!ap.accepted) {
       const registryReasons = new Set(['registry_key_not_pinned', 'pin_mismatched_issuer', 'stale_registry', 'registry_head_mismatch']);
       checks.authority = { accepted: false, reason: ap.reason };
@@ -276,11 +391,14 @@ export function evaluateReliance(input = {}, opts = {}) {
     // Accepted: now judge the SNAPSHOT against the action, offline.
     const p = authorityProof;
     if (!p.authority_id) return deny('do_not_rely_authority_missing', 'authority proof carries no authority_id');
+    if (p.organization_id !== action.organization_id) {
+      return deny('do_not_rely_authority_organization_mismatch', 'authority proof organization does not match the signed action organization');
+    }
     if (p.revocation?.status === 'revoked') return deny('do_not_rely_authority_revoked', 'authority was revoked as of the proof check');
     const fromPresent = p.validity?.from !== undefined && p.validity?.from !== null;
     const toPresent = p.validity?.to !== undefined && p.validity?.to !== null;
-    const from = fromPresent ? Date.parse(p.validity.from) : null;
-    const to = toPresent ? Date.parse(p.validity.to) : null;
+    const from = fromPresent ? strictInstantMs(p.validity.from) : null;
+    const to = toPresent ? strictInstantMs(p.validity.to) : null;
     if ((fromPresent && !Number.isFinite(from)) || (toPresent && !Number.isFinite(to))
       || (from !== null && to !== null && from > to)
       || (to !== null && now > to) || (from !== null && now < from)) {
@@ -308,13 +426,16 @@ export function evaluateReliance(input = {}, opts = {}) {
     // would compose to `rely` though Bob never approved. Under class_a the subject
     // MUST be the Class-A signer; under quorum it MUST be a verified quorum
     // member; under signed it must be a verified approver on the receipt.
-    const eligibleSubjects = requiredAssurance === 'quorum' ? quorumMembers
-      : requiredAssurance === 'class_a' ? classASigners
+    const eligibleSubjects = achievedAssurance === 'quorum' ? quorumMembers
+      : achievedAssurance === 'class_a' ? classASigners
         : allSigners;
     if (!p.subject || !eligibleSubjects.includes(p.subject)) {
       return deny('do_not_rely_authority_subject_mismatch', 'the authority proof subject is not the verified approver of this action');
     }
-    checks.authority = { accepted: true, authority_id: p.authority_id, subject: p.subject, bound_to: requiredAssurance };
+    if (p.revocation?.status === 'not_revoked' && typeof p.revocation.checked_at === 'string') {
+      authenticatedRevocation = p.revocation;
+    }
+    checks.authority = { accepted: true, authority_id: p.authority_id, subject: p.subject, bound_to: achievedAssurance };
   } else {
     checks.authority = 'not_required';
   }
@@ -330,16 +451,25 @@ export function evaluateReliance(input = {}, opts = {}) {
 
   // ── 6. REVOCATION FRESHNESS — a recent not-revoked check the RP demands ────
   if (requiredEvidence.has('revocation_freshness')) {
-    if (!revocationState || typeof revocationState !== 'object') {
-      return deny('do_not_rely_stale_revocation', 'a fresh revocation check is required but none was supplied');
-    }
     // A validly-presented revocation statement that binds this target means the
-    // authorization IS revoked — not merely stale.
-    if (revocationState.statement && revocationState.target) {
+    // authorization IS revoked. A partial or invalid statement is untrusted,
+    // never silently ignored in favor of a presenter-supplied timestamp.
+    const hasStatement = revocationState && typeof revocationState === 'object' && Object.hasOwn(revocationState, 'statement');
+    const hasTarget = revocationState && typeof revocationState === 'object' && Object.hasOwn(revocationState, 'target');
+    if (hasStatement || hasTarget) {
+      if (!hasStatement || !hasTarget) {
+        return deny('do_not_rely_stale_revocation', 'revocation evidence is incomplete');
+      }
       const rv = verifyRevocation(revocationState.target, revocationState.statement, { revokerKeys: opts.revokerKeys, now });
-      if (rv.valid) return deny('do_not_rely_authority_revoked', 'a valid revocation statement binds this authorization');
+      if (!rv.valid) return deny('do_not_rely_stale_revocation', 'revocation evidence did not verify under a pinned revoker');
+      return deny('do_not_rely_authority_revoked', 'a valid revocation statement binds this authorization');
     }
-    const checkedAt = revocationState.checked_at ? Date.parse(revocationState.checked_at) : NaN;
+    // Non-revocation freshness must come from evidence already authenticated by
+    // a pinned registry key. A bare `{checked_at}` supplied by the presenter has
+    // no evidentiary value and cannot satisfy this leg.
+    const checkedAt = authenticatedRevocation?.checked_at
+      ? strictInstantMs(authenticatedRevocation.checked_at)
+      : NaN;
     const fresh = !Number.isNaN(checkedAt)
       && (maxRevStaleSec === null || (now - checkedAt) <= maxRevStaleSec * 1000)
       && checkedAt <= now;
@@ -351,20 +481,35 @@ export function evaluateReliance(input = {}, opts = {}) {
 
   // ── 7. ONE-TIME CONSUMPTION — the authorization must be UNCONSUMED ─────────
   if (requiredEvidence.has('consumption_proof')) {
-    if (!consumption || typeof consumption !== 'object') {
-      return deny('do_not_rely_already_consumed', 'proof of an unconsumed authorization is required but none was supplied');
-    }
     // A valid EP-SMT-CONSUME bundle is EVIDENCE a consumption event occurred, so
     // it fails the "still unconsumed" gate; a malformed bundle cannot establish
     // state, so it also fails closed.
-    let consumed = consumption.consumed === true;
-    if (consumption.proof) {
+    if (consumption?.consumed === true) {
+      checks.consumption = 'consumed';
+      return deny('do_not_rely_already_consumed', 'the authorization has already been consumed');
+    }
+    if (consumption && typeof consumption === 'object' && Object.hasOwn(consumption, 'proof')) {
       const cp = verifyConsumptionProof(consumption.proof);
       if (!cp.valid) return deny('do_not_rely_already_consumed', `consumption evidence did not verify: ${cp.reason || 'invalid'}`);
-      consumed = true;
+      checks.consumption = 'consumed';
+      return deny('do_not_rely_already_consumed', 'the authorization has already been consumed');
     }
-    checks.consumption = consumed ? 'consumed' : 'unconsumed';
-    if (consumed) return deny('do_not_rely_already_consumed', 'the authorization has already been consumed');
+    // Absence can only be established from the relying party's own atomic
+    // consumption state, injected out of band. Presenter-controlled
+    // `{consumed:false}` is deliberately ignored.
+    if (typeof opts.isConsumed !== 'function') {
+      return deny('do_not_rely_already_consumed', 'relying-party consumption state is unavailable');
+    }
+    let locallyConsumed;
+    try {
+      locallyConsumed = opts.isConsumed({ receipt_id: receipt.receipt_id ?? null, action_hash: receiptActionHash });
+    } catch {
+      return deny('do_not_rely_already_consumed', 'relying-party consumption lookup failed');
+    }
+    if (locallyConsumed !== false) {
+      return deny('do_not_rely_already_consumed', 'relying-party consumption state is consumed or indeterminate');
+    }
+    checks.consumption = 'unconsumed';
   } else {
     checks.consumption = 'not_required';
   }
@@ -373,7 +518,7 @@ export function evaluateReliance(input = {}, opts = {}) {
   return { verdict: 'rely', rely: true, reasons, checks, profile: profileMeta };
 }
 
-/** Structural validation of an EP-RELIANCE-PROFILE-v1. Advisory (does not gate). */
+/** Structural validation of an EP-RELIANCE-PROFILE-v1. Evaluation gates on this. */
 export function validateRelianceProfile(profile) {
   const issues = [];
   if (!profile || typeof profile !== 'object' || Array.isArray(profile)) return { ok: false, issues: ['profile is not an object'] };
@@ -403,7 +548,11 @@ export function validateRelianceProfile(profile) {
     issues.push('accepted_issuer_keys contains an invalid key entry');
   }
   if (Array.isArray(profile.accepted_registry_keys)
-    && profile.accepted_registry_keys.some((k) => !k || typeof k !== 'object' || typeof k.public_key !== 'string')) {
+    && profile.accepted_registry_keys.some((k) => !k || typeof k !== 'object'
+      || typeof k.issuer_id !== 'string' || k.issuer_id.length === 0
+      || typeof k.public_key !== 'string' || typeof k.organization_id !== 'string' || k.organization_id.length === 0
+      || !Number.isSafeInteger(k.min_epoch) || k.min_epoch < 0
+      || typeof k.registry_head !== 'string' || !/^sha256:[0-9a-f]{64}$/i.test(k.registry_head))) {
     issues.push('accepted_registry_keys contains an invalid key entry');
   }
   if (Array.isArray(profile.accepted_policy_hashes)

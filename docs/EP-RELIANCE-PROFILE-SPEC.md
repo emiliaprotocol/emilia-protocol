@@ -17,7 +17,7 @@ never authors the bar; the relying party does.
   "required_assurance": "quorum",
   "required_authority": true,
   "max_revocation_staleness_sec": 300,
-  "accepted_registry_keys": [{ "issuer_id": "auth_cfo", "public_key": "…base64url SPKI…" }],
+  "accepted_registry_keys": [{ "issuer_id": "auth_cfo", "organization_id": "acme", "public_key": "…base64url SPKI…", "min_epoch": 17, "registry_head": "sha256:…" }],
   "accepted_issuer_keys": ["…base64url SPKI transparency-log key…"],
   "accepted_policy_hashes": ["sha256:…"],
   "required_evidence": [
@@ -37,7 +37,7 @@ never authors the bar; the relying party does.
 | `required_assurance` | The ceremony floor: `signed` (a valid receipt), `class_a` (a device-bound named-human signoff), or `quorum` (a satisfied M-of-N bound to the action). |
 | `required_authority` | When true, a valid, accepted `EP-AUTHORITY-PROOF-v1` is required and its scope/limit/validity/revocation are judged against the action. |
 | `max_revocation_staleness_sec` | The freshness bound on the revocation check (when `revocation_freshness` is required). |
-| `accepted_registry_keys` | The authority-registry issuer keys the relying party pins. An authority proof signed by any other key yields `do_not_rely_registry_unavailable`. |
+| `accepted_registry_keys` | The authority-registry issuer keys the relying party pins. Every entry binds `issuer_id`, `organization_id`, `public_key`, `min_epoch`, and an exact `registry_head`; another key, organization, stale epoch, or different head yields a refusal. |
 | `accepted_issuer_keys` | The transparency-log / checkpoint keys the relying party trusts. A checkpoint signed by any other key yields `do_not_rely_untrusted_issuer`. |
 | `accepted_policy_hashes` | The policy hashes the relying party will act under. An action outside the list yields `do_not_rely_policy_mismatch`. |
 | `required_evidence` | Which legs must be present: `receipt`, `class_a_or_quorum`, `authority_proof`, `revocation_freshness`, `consumption_proof`. A required-but-absent leg fails closed to the leg's verdict. |

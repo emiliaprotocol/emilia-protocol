@@ -47,6 +47,8 @@ def _canon_depth(v):
     return 0
 
 def run_canonicalization(c):
+    if not isinstance(c, dict):
+        return False
     raw = c.get("input_json")
     if not isinstance(raw, str):
         return False
@@ -60,7 +62,7 @@ def run_canonicalization(c):
         return False
     digest = hashlib.sha256(canonicalize(value).encode("utf-8", "strict")).hexdigest()
     return digest == c.get("expected_digest")
-def run(v):
+def _run(v):
     if "document" in v: return verify_receipt(v["document"], v["public_key"]).valid
     if "signoff" in v: return verify_webauthn_signoff(v["signoff"], v["approver_public_key"], {"rpId": v.get("rp_id")})["valid"]
     if "quorum" in v: return verify_quorum(v["quorum"], {"rpId": "emiliaprotocol.ai"})["valid"]
@@ -85,4 +87,13 @@ def run(v):
     if "timestamp_proof" in v:
         return verify_timestamp_proof(v["timestamp_proof"], v.get("expected_digest"), v.get("pinned_tsa_keys"))["verified"]
     return False
+
+def run(v):
+    # A conformance verifier must turn every hostile input into a typed refusal,
+    # never terminate the whole batch. Individual library functions are also
+    # hardened, but this boundary is the final availability guard.
+    try:
+        return bool(_run(v))
+    except Exception:
+        return False
 print(json.dumps([{"id": v["id"], "valid": run(v)} for v in vectors]))

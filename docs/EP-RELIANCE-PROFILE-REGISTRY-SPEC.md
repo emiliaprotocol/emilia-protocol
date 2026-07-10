@@ -42,7 +42,8 @@ is even checked.
 A published profile fixes the **regulatory requirements** (assurance floor,
 whether scoped authority is required, revocation-freshness bound, required
 evidence). The **trust anchors are the relying party's own**: it overlays
-`accepted_registry_keys`, `accepted_issuer_keys`, and `accepted_policy_hashes`
+organization-scoped `accepted_registry_keys` (with minimum epoch and exact
+head), `accepted_issuer_keys`, and `accepted_policy_hashes`
 onto the resolved profile before calling `evaluateReliance`. The published key
 arrays are empty by construction. The regulator (or registrar) fixes the bar;
 the relying party fixes whom it trusts.

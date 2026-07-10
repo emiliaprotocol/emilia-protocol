@@ -12,7 +12,7 @@ Maps each protocol invariant to its enforcement in code, test coverage, and form
 | **Tested** | Unit/integration test that proves the invariant holds |
 | **Modeled (TLA+)** | Property in `formal/ep_handshake.tla` that captures this invariant |
 | **Modeled (Alloy)** | Fact/assertion in `formal/ep_relations.als` that captures this invariant |
-| **CI Gate** | Checked by `scripts/check-invariant-coverage.js` |
+| **CI Gate** | Exact symbols, vectors, tests, proof results, assumptions, exclusions, and release hashes are executed and resolved by `scripts/verify-security-case.mjs` |
 | **Status** | Current coverage level |
 
 ---
@@ -110,7 +110,7 @@ Maps each protocol invariant to its enforcement in code, test coverage, and form
 
 | Script | Purpose | Exit code |
 |--------|---------|-----------|
-| `scripts/check-invariant-coverage.js` | Verifies all 26 verified safety invariants (T1–T26) have coverage across 4 layers: code guard, test, formal model, documentation | `0` = all covered, `1` = missing coverage |
+| `scripts/verify-security-case.mjs` | Executes every exact claim in `security/claims.v1.json` and binds it to reproducible release artifacts | `0` = every cited artifact and execution passed, `1` = missing, stale, or failing evidence |
 
 The CI gate checks each invariant for:
 1. **Code guard**: literal term found in `lib/` source files
@@ -204,5 +204,5 @@ If any critical invariant loses any coverage layer, CI fails with a detailed rep
 4. Add signoff test coverage for S14-S19
 5. Add TLA+ coverage for D3-D5 (idempotency, party uniqueness, binding hash integrity)
 6. Add Alloy coverage for T8-T9 (interaction binding, role spoofing)
-7. Update `scripts/check-invariant-coverage.js` to include S14-S19 invariants in CI pipeline
+7. Add any new security claim to `security/claims.v1.json`; the executable gate rejects missing symbols, positive/negative vectors, language status, formal status, assumptions, exclusions, or release bindings.
 8. Consider property-based testing to bridge formal models and runtime behavior

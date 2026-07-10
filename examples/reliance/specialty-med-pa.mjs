@@ -52,6 +52,7 @@ function signA(digestHex) {
 function buildPaReceipt() {
   const action = {
     ep_version: '1.0', action_type: 'rx.prior_auth.approve',
+    organization_id: 'planX',
     target: { system: 'pbm.adjudication', resource: 'pa/specialty/synthetic-001' },
     parameters: { drug: 'SYNTHETIC-SPECIALTY-DRUG', ncpdp_txn: NCPDP_TXN_DIGEST },
     initiator: 'ep:entity:pa-intake-agent', policy_id: 'ep:policy:specialty-tier4-planX@v7',
@@ -81,7 +82,7 @@ const KEYS = {
   'ep:key:intake#1': { approver_id: 'ep:approver:intake-agent', public_key: intake.pub, key_class: 'B', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
   'ep:key:reviewer#1': { approver_id: 'ep:approver:payer-reviewer', public_key: reviewer.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
 };
-const opts = { approverKeys: KEYS, logPublicKey: logKey.pub, rpId: 'www.emiliaprotocol.ai' };
+const opts = { approverKeys: KEYS, logPublicKey: logKey.pub, rpId: 'www.emiliaprotocol.ai', isConsumed: () => false };
 
 // The PHARMACY's / hub's pinned rule for relying on a PA determination before dispensing.
 const pharmacyProfile = {
@@ -89,13 +90,13 @@ const pharmacyProfile = {
   required_assurance: 'class_a',            // a device-bound reviewer signoff, not a bare token
   required_authority: true,                 // scoped payer/prescriber authority for THIS drug
   max_revocation_staleness_sec: 3600,       // eligibility checked within the last hour
-  accepted_registry_keys: [{ issuer_id: 'auth_payer_reviewer', public_key: registryPub }],
+  accepted_registry_keys: [{ issuer_id: 'auth_payer_reviewer', organization_id: 'planX', public_key: registryPub, min_epoch: 9, registry_head: 'sha256:' + '22'.repeat(32) }],
   accepted_issuer_keys: [logKey.pub],
   accepted_policy_hashes: [BENEFIT_POLICY_HASH],
   required_evidence: ['receipt', 'class_a_or_quorum', 'authority_proof', 'revocation_freshness', 'consumption_proof'],
 };
 
-const action = { action_type: 'rx.prior_auth.approve', policy_hash: BENEFIT_POLICY_HASH, action_hash: receipt.action_hash };
+const action = { action_type: 'rx.prior_auth.approve', organization_id: 'planX', policy_hash: BENEFIT_POLICY_HASH, action_hash: receipt.action_hash };
 
 // The payer reviewer's scoped authority: may approve specialty PA for this drug family, under this benefit policy.
 const reviewerAuthority = (overrides = {}) => signAuthorityProof({
@@ -117,8 +118,8 @@ const fresh = { checked_at: '2026-07-07T14:00:00.000Z' };
 const attempts = [
   ['determination receipt only, no scoped authority', { action, receipt, revocation_state: fresh, consumption: { consumed: false } }],
   ['reviewer authority is for a different action', { action, receipt, authority_proof: reviewerAuthority({ scope: ['rx.refill.approve'] }), revocation_state: fresh, consumption: { consumed: false } }],
-  ['determination cites the wrong benefit policy', { action: { ...action, policy_hash: 'sha256:' + sha('wrong-policy') }, receipt, authority_proof: reviewerAuthority(), revocation_state: fresh, consumption: { consumed: false } }],
-  ['member eligibility check is stale', { action, receipt, authority_proof: reviewerAuthority(), revocation_state: { checked_at: '2026-07-01T00:00:00.000Z' }, consumption: { consumed: false } }],
+  ['reviewer authority cites the wrong benefit policy', { action, receipt, authority_proof: reviewerAuthority({ policy_hash: 'sha256:' + sha('wrong-policy') }), revocation_state: fresh, consumption: { consumed: false } }],
+  ['member eligibility check is stale', { action, receipt, authority_proof: reviewerAuthority({ revocation: { status: 'not_revoked', checked_at: '2026-07-01T00:00:00.000Z' } }), consumption: { consumed: false } }],
   ['authorization already filled once', { action, receipt, authority_proof: reviewerAuthority(), revocation_state: fresh, consumption: { consumed: true } }],
   ['ALL legs compose', { action, receipt, authority_proof: reviewerAuthority(), revocation_state: fresh, consumption: { consumed: false } }],
 ];

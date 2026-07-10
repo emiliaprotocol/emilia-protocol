@@ -29,6 +29,7 @@ jobs:
     permissions:
       contents: read
       id-token: write   # REQUIRED for npm trusted publishing (OIDC) + provenance
+      attestations: write
 
     defaults:
       run:
@@ -48,7 +49,7 @@ jobs:
         # --min-release-age=0: the repo .npmrc age-gates app dependencies (supply-
         # chain defense); the trusted first-party npm tool is exempt so publish
         # tooling always installs a current npm with full provenance support.
-        run: npm install -g npm@latest --min-release-age=0
+        run: npm install -g npm@11.18.0 --min-release-age=0
 
       # Zero-dependency package — no install step. The package.json "files"
       # array controls exactly what ships: index.js plus every module it
@@ -59,8 +60,49 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Verify package contents
-        run: npm pack --dry-run
+      - name: Verify repository security case
+        working-directory: ${{ github.workspace }}
+        run: npm run check:security-case
 
-      - name: Publish to npm (OIDC trusted publishing + provenance)
-        run: npm publish --access public --provenance
+      - name: Verify reproducible package bytes
+        working-directory: ${{ github.workspace }}
+        run: npm run release:verify:reproducible
+
+      - name: Pack the exact publication artifact
+        id: pack
+        run: |
+          mkdir -p ../../release-artifacts
+          npm pack --json --pack-destination ../../release-artifacts > ../../release-artifacts/pack.json
+          TARBALL=$(node -e "const r=require('../../release-artifacts/pack.json'); if(r.length!==1) process.exit(2); process.stdout.write(r[0].filename)")
+          sha256sum "../../release-artifacts/$TARBALL" > "../../release-artifacts/$TARBALL.sha256"
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+
+      - name: Attest exact package bytes
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
+        with:
+          subject-path: release-artifacts/${{ steps.pack.outputs.tarball }}
+
+      - name: Upload exact package and checksum
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: verify-package-${{ github.ref_name }}
+          path: |
+            release-artifacts/${{ steps.pack.outputs.tarball }}
+            release-artifacts/${{ steps.pack.outputs.tarball }}.sha256
+          retention-days: 90
+
+      - name: Publish the attested tarball (OIDC + npm provenance)
+        run: npm publish "../../release-artifacts/${{ steps.pack.outputs.tarball }}" --access public --provenance
+
+      - name: Verify registry bytes match the attested tarball
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          mkdir -p ../../registry-copy
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if npm pack "@emilia-protocol/verify@$VERSION" --json --pack-destination ../../registry-copy > ../../registry-copy/pack.json; then
+              break
+            fi
+            sleep 5
+          done
+          REGISTRY_TARBALL=$(node -e "const r=require('../../registry-copy/pack.json'); if(r.length!==1) process.exit(2); process.stdout.write(r[0].filename)")
+          cmp "../../release-artifacts/${{ steps.pack.outputs.tarball }}" "../../registry-copy/$REGISTRY_TARBALL"

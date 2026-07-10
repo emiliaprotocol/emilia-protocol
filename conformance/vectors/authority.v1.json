@@ -46,16 +46,34 @@
       "input": { "organization_id": "org1", "approver_id": "cara", "action_type": "large_payment_release", "amount": 1, "issued_at": "2026-07-07T00:00:00.000Z" } },
 
     { "id": "reject_policy_mismatch", "kind": "resolve", "expect": { "valid": false, "verdict": "policy_mismatch" },
-      "input": { "organization_id": "org1", "approver_id": "pat", "action_type": "large_payment_release", "amount": 1, "policy_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "issued_at": "2026-07-07T00:00:00.000Z" } },
+      "input": { "organization_id": "org1", "approver_id": "pat", "action_type": "large_payment_release", "amount": 1, "currency": "USD", "policy_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "issued_at": "2026-07-07T00:00:00.000Z" } },
 
     { "id": "reject_delegation_widened_amount", "kind": "resolve", "expect": { "valid": false, "verdict": "delegation_broken" },
-      "input": { "organization_id": "org1", "approver_id": "deleg", "action_type": "large_payment_release", "amount": 1, "issued_at": "2026-07-07T00:00:00.000Z" } },
+      "input": { "organization_id": "org1", "approver_id": "deleg", "action_type": "large_payment_release", "amount": 1, "currency": "USD", "issued_at": "2026-07-07T00:00:00.000Z" } },
 
     { "id": "reject_delegation_parent_missing", "kind": "resolve", "expect": { "valid": false, "verdict": "delegation_broken" },
-      "input": { "organization_id": "org1", "approver_id": "orphan", "action_type": "large_payment_release", "amount": 1, "issued_at": "2026-07-07T00:00:00.000Z" } },
+      "input": { "organization_id": "org1", "approver_id": "orphan", "action_type": "large_payment_release", "amount": 1, "currency": "USD", "issued_at": "2026-07-07T00:00:00.000Z" } },
 
     { "id": "reject_insufficient_assurance", "kind": "resolve", "expect": { "valid": false, "verdict": "insufficient_assurance" },
-      "input": { "organization_id": "org1", "approver_id": "cass", "action_type": "large_payment_release", "amount": 1, "requiredAssurance": "A", "issued_at": "2026-07-07T00:00:00.000Z" } },
+      "input": { "organization_id": "org1", "approver_id": "cass", "action_type": "large_payment_release", "amount": 1, "currency": "USD", "requiredAssurance": "A", "issued_at": "2026-07-07T00:00:00.000Z" } },
+
+    { "id": "reject_policy_omitted", "kind": "resolve", "expect": { "valid": false, "verdict": "policy_mismatch" },
+      "input": { "organization_id": "org1", "approver_id": "pat", "action_type": "large_payment_release", "amount": 1, "currency": "USD", "issued_at": "2026-07-07T00:00:00.000Z" } },
+
+    { "id": "reject_capped_amount_omitted", "kind": "resolve", "expect": { "valid": false, "verdict": "amount_exceeded" },
+      "input": { "organization_id": "org1", "approver_id": "ada", "action_type": "large_payment_release", "currency": "USD", "issued_at": "2026-07-07T00:00:00.000Z" } },
+
+    { "id": "reject_capped_currency_omitted", "kind": "resolve", "expect": { "valid": false, "verdict": "amount_exceeded" },
+      "input": { "organization_id": "org1", "approver_id": "ada", "action_type": "large_payment_release", "amount": 1, "issued_at": "2026-07-07T00:00:00.000Z" } },
+
+    { "id": "reject_malformed_issued_at", "kind": "resolve", "expect": { "valid": false, "verdict": "expired_authority" },
+      "input": { "organization_id": "org1", "approver_id": "ada", "action_type": "large_payment_release", "amount": 1, "currency": "USD", "issued_at": "not-a-time" } },
+
+    { "id": "reject_impossible_calendar_date", "kind": "resolve", "expect": { "valid": false, "verdict": "expired_authority" },
+      "input": { "organization_id": "org1", "approver_id": "ada", "action_type": "large_payment_release", "amount": 1, "currency": "USD", "issued_at": "2026-02-30T00:00:00.000Z" } },
+
+    { "id": "reject_unknown_assurance_label", "kind": "resolve", "expect": { "valid": false, "verdict": "insufficient_assurance" },
+      "input": { "organization_id": "org1", "approver_id": "ada", "action_type": "large_payment_release", "amount": 1, "currency": "USD", "requiredAssurance": "CLASS_A", "issued_at": "2026-07-07T00:00:00.000Z" } },
 
     { "id": "reject_registry_unavailable", "kind": "resolve", "unavailable": true, "expect": { "valid": false, "verdict": "registry_unavailable" },
       "input": { "organization_id": "org1", "approver_id": "ada", "action_type": "large_payment_release", "amount": 1, "issued_at": "2026-07-07T00:00:00.000Z" } },

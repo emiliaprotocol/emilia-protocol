@@ -1,0 +1,125 @@
+{
+  "@version": "EP-CLEAN-ROOM-EVALUATION-v1",
+  "implementation": {
+    "implementation_id": "emilia-js-reference",
+    "organization": "EMILIA Protocol",
+    "language": "JavaScript",
+    "version": "workspace",
+    "source_repository": "https://github.com/emiliaprotocol/emilia-protocol",
+    "source_commit": "workspace",
+    "license_spdx": "Apache-2.0"
+  },
+  "conformance": {
+    "status": "pass",
+    "bundle": "EP-CLEAN-ROOM-VECTOR-BUNDLE-v1",
+    "suites": 16,
+    "vectors": 163
+  },
+  "independence": {
+    "claimed": false,
+    "status": "not_claimed_reference_port",
+    "attestation": {
+      "status": "not_claimed"
+    }
+  },
+  "manifest_sha256": "27fa84ff7cabf78e1b3eb013fee1ebb9fbe098f4b6fa69e14efa3b205dfbc4cf",
+  "suites": [
+    {
+      "path": "conformance/vectors/receipts.v1.json",
+      "sha256": "888fc3a1e3e0fb5ec73e2d5cb6244869c2bb7673f42587635c64f5736b3a1fad",
+      "vectors": 13,
+      "status": "pass"
+    },
+    {
+      "path": "conformance/vectors/signoffs.v1.json",
+      "sha256": "836bb3c742b625ffdea3b82cdba4e0e3a1a87635522bfbc4de447e977a62ab05",
+      "vectors": 9,
+      "status": "pass"
+    },
+    {
+      "path": "conformance/vectors/quorum.v1.json",
+      "sha256": "5fb57ed6d732f2509614818ab58bb5bef74a05d98345ddeaf1c644bae291627a",
+      "vectors": 13,
+      "status": "pass"
+    },
+    {
+      "path": "conformance/vectors/revocation.exec.v1.json",
+      "sha256": "9e45d2188309302bb74eeb7eeae5d5f90a1ce99cfa7c0a8648182fe21cd3ba4b",
+      "vectors": 6,
+      "status": "pass"
+    },
+    {
+      "path": "conformance/vectors/time-attestation.v1.json",
+      "sha256": "15f3c7cd3219fd2c2a5ed1dca90fb79c2c0e750e3f8a5046e59d7a2d481cd4af",
+      "vectors": 6,
+      "status": "pass"
+    },
+    {
+      "path": "conformance/vectors/trust-receipt.exec.v1.json",
+      "sha256": "0475a4f3ed8e477f5674b8a97d558700a4d820fa49055c5aae1aaa01b19a40b3",
+      "vectors": 11,
+      "status": "pass"
+    },
+    {
+      "path": "conformance/vectors/trust-receipt.timestamp-forms.v1.json",
+      "sha256": "e01ca5bd3bc7fecdd16ae3eb07fb58c4acf50aa595aaef87dcf40be8716a39f2",
+      "vectors": 6,
+      "status": "pass"
+    },
+    {
+      "path": "conformance/vectors/provenance.exec.v1.json",
+      "sha256": "22543e23de07c4ca7f1c53c8c3a6dc3ea6a711164f8f7c5b4d8480d68232ac75",
+      "vectors": 7,
+      "status": "pass"
+    },
+    {
+      "path": "conformance/vectors/evidence-record.v1.json",
+      "sha256": "946550657c4dbc0375aa6f55f95301cfd43878113e1c7bcc4436db301f6de46a",
+      "vectors": 5,
+      "status": "pass"
+    },
+    {
+      "path": "conformance/vectors/canonicalization.v1.json",
+      "sha256": "d72a1de506def5b5dcc20f60301987654ef5b5bb6ea476af926054f300c2eee2",
+      "vectors": 35,
+      "status": "pass"
+    },
+    {
+      "path": "conformance/vectors/boundary.v1.json",
+      "sha256": "6351954db0a88b023c3914cda12a425c5217cb1ba96509472b9c53979b9a16ea",
+      "vectors": 4,
+      "status": "pass"
+    },
+    {
+      "path": "conformance/vectors/currency.v1.json",
+      "sha256": "a6f7d81767cfaf7920b11ab25127b6e8872017eb0b1c69c06a09b3a1e7cf033d",
+      "vectors": 12,
+      "status": "pass"
+    },
+    {
+      "path": "conformance/vectors/initiator-attestation.v1.json",
+      "sha256": "2274dded455f289e36ad4c9bb2225708ff8bfd66edd034b99ed98298484073e6",
+      "vectors": 11,
+      "status": "pass"
+    },
+    {
+      "path": "conformance/vectors/consumption-proof.v1.json",
+      "sha256": "9b0ff706a2c77262131f2658e81d448a7755ba0e466405259590e8faff3f4115",
+      "vectors": 6,
+      "status": "pass"
+    },
+    {
+      "path": "conformance/vectors/witness.v1.json",
+      "sha256": "4a226aa0605701eb7f148d6303bc6a0796bce9e8ef5343cb5f53ebd395554673",
+      "vectors": 6,
+      "status": "pass"
+    },
+    {
+      "path": "conformance/vectors/timestamp-proof.v1.json",
+      "sha256": "b07944ca95931e20ff92f15a7830972a013812ea739cc29ff9b36adfd4ffa791",
+      "vectors": 13,
+      "status": "pass"
+    }
+  ],
+  "result_sha256": "db33b3eda6f6a374628664ad2d1b60419b47a5ea0f884ff6622c133544a6b66a"
+}

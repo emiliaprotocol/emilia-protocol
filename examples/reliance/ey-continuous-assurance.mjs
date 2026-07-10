@@ -43,7 +43,7 @@ function signA(digestHex) {
   return { authenticator_data: authData.toString('base64url'), client_data_json: clientDataJSON.toString('base64url'), signature: crypto.sign('sha256', signedData, reviewer.privateKey).toString('base64url') };
 }
 function receipt(nonce) {
-  const action = { ep_version: '1.0', action_type: 'rx.prior_auth.approve', target: { system: 'pbm', resource: `pa/${nonce}` }, parameters: { ncpdp: nonce }, initiator: 'ep:entity:pa-agent', policy_id: 'ep:policy:tier4', requested_at: '2026-07-07T14:00:00Z' };
+  const action = { ep_version: '1.0', action_type: 'rx.prior_auth.approve', organization_id: 'planX', target: { system: 'pbm', resource: `pa/${nonce}` }, parameters: { ncpdp: nonce }, initiator: 'ep:entity:pa-agent', policy_id: 'ep:policy:tier4', requested_at: '2026-07-07T14:00:00Z' };
   const action_hash = `sha256:${sha(canon(action))}`;
   const base = { ep_version: '1.0', context_type: 'ep.signoff.v1', action_hash, policy_id: 'ep:policy:tier4', policy_hash: 'sha256:benef', initiator: action.initiator, required_approvals: 2, issued_at: '2026-07-07T14:00:05Z', expires_at: '2026-07-07T14:15:05Z' };
   const c1 = { ...base, approver: 'ep:approver:intake', approver_index: 1, nonce: `${nonce}-1` };
@@ -74,11 +74,11 @@ const authority = (over = {}) => signAuthorityProof({
 }, registryKey);
 const PROFILE = {
   '@type': 'EP-RELIANCE-PROFILE-v1', required_assurance: 'class_a', required_authority: true, max_revocation_staleness_sec: 3600,
-  accepted_registry_keys: [{ issuer_id: 'auth_reviewer', public_key: registryPub }], accepted_issuer_keys: [logKey.pub],
+  accepted_registry_keys: [{ issuer_id: 'auth_reviewer', organization_id: 'planX', public_key: registryPub, min_epoch: 9, registry_head: 'sha256:' + '22'.repeat(32) }], accepted_issuer_keys: [logKey.pub],
   accepted_policy_hashes: ['sha256:benef'], required_evidence: ['receipt', 'class_a_or_quorum', 'authority_proof', 'revocation_freshness', 'consumption_proof'],
 };
 const fresh = { checked_at: '2026-07-07T14:00:00.000Z' };
-const act = (r, amount) => ({ action_type: 'rx.prior_auth.approve', amount, currency: 'USD', policy_hash: 'sha256:benef', action_hash: r.action_hash });
+const act = (r, amount) => ({ action_type: 'rx.prior_auth.approve', amount, currency: 'USD', organization_id: 'planX', policy_hash: 'sha256:benef', action_hash: r.action_hash });
 
 // A month of automated PA decisions the payer's runtime acted on. Most are clean;
 // three are not, and one of those the runtime WRONGLY recorded as reliable.

@@ -16,7 +16,7 @@
 // no real member / prescriber / drug / plan; consent and clinical evidence are
 // carried as signed DIGESTS, never raw records.
 import crypto from 'node:crypto';
-import { evaluateRxReliance, signRxArtifact, buildRxAppealBundle, RX_VERDICTS } from '../../lib/ncpdp/rx-reliance.js';
+import { buildRxAppealBundle, commitRxEvidence, derivePairwisePatientRef, evaluateRxReliance, signRxArtifact, RX_VERDICTS } from '../../lib/ncpdp/rx-reliance.js';
 import { signAuthorityProof } from '../../lib/authority/proof.js';
 
 const canon = (v) => (v === null || v === undefined ? JSON.stringify(v)
@@ -44,6 +44,9 @@ const payerKey = ed();
 const NCPDP_TXN_DIGEST = 'sha256:' + sha('ncpdp:epa:synthetic-pa-request:2026-07-08');
 const BENEFIT_POLICY_HASH = 'sha256:' + sha('payer:formulary:specialty-tier4:planX@v7');
 const NOW = Date.parse('2026-07-08T14:05:00.000Z');
+const privacyKey = Buffer.from('61'.repeat(32), 'hex');
+const privacyKeyId = 'payer-example-rx-privacy-2026-01';
+const patientRef = derivePairwisePatientRef({ patientIdentifier: 'synthetic-member-001', relyingPartyId: 'payer.example', privacyKeyId, sectorSecret: privacyKey });
 
 function signA(digestHex) {
   const challenge = Buffer.from(digestHex, 'hex').toString('base64url');
@@ -54,7 +57,7 @@ function signA(digestHex) {
 }
 
 function buildReceipt() {
-  const action = { ep_version: '1.0', action_type: 'rx.prior_auth.approve', target: { system: 'pbm.adjudication', resource: 'pa/specialty/synthetic-001' }, parameters: { drug: 'SYNTHETIC-SPECIALTY-DRUG', ncpdp_txn: NCPDP_TXN_DIGEST }, initiator: 'ep:entity:pa-intake-agent', policy_id: 'ep:policy:specialty-tier4-planX@v7', requested_at: '2026-07-08T14:00:00Z' };
+  const action = { ep_version: '1.0', action_type: 'rx.prior_auth.approve', organization_id: 'clinicX', target: { system: 'pbm.adjudication', resource: 'pa/specialty/synthetic-001' }, parameters: { drug: 'SYNTHETIC-SPECIALTY-DRUG', ncpdp_txn: NCPDP_TXN_DIGEST }, initiator: 'ep:entity:pa-intake-agent', policy_id: 'ep:policy:specialty-tier4-planX@v7', requested_at: '2026-07-08T14:00:00Z' };
   const action_hash = `sha256:${sha(canon(action))}`;
   const base = { ep_version: '1.0', context_type: 'ep.signoff.v1', action_hash, policy_id: 'ep:policy:specialty-tier4-planX@v7', policy_hash: BENEFIT_POLICY_HASH, initiator: action.initiator, required_approvals: 2, issued_at: '2026-07-08T14:00:05Z', expires_at: '2026-07-08T14:15:05Z' };
   const ctx1 = { ...base, approver: 'ep:approver:intake-agent', approver_index: 1, nonce: 'n-1' };
@@ -74,7 +77,7 @@ function buildReceipt() {
 }
 
 const receipt = buildReceipt();
-const ACTION = { action_type: 'rx.prior_auth.approve', policy_hash: BENEFIT_POLICY_HASH, action_hash: receipt.action_hash };
+const ACTION = { action_type: 'rx.prior_auth.approve', organization_id: 'clinicX', policy_hash: BENEFIT_POLICY_HASH, action_hash: receipt.action_hash };
 const KEYS = {
   'ep:key:intake#1': { approver_id: 'ep:approver:intake-agent', public_key: intake.pub, key_class: 'B', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
   'ep:key:prescriber#1': { approver_id: 'ep:approver:prescriber', public_key: prescriber.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
@@ -95,7 +98,7 @@ const challenge = {
     revocation_freshness_sec: 3600,
     signed_denial_required: true,
   },
-  accepted_registry_keys: [{ issuer_id: 'auth_prescriber', public_key: registryPub }],
+  accepted_registry_keys: [{ issuer_id: 'auth_prescriber', organization_id: 'clinicX', public_key: registryPub, min_epoch: 9, registry_head: 'sha256:' + '22'.repeat(32) }],
   accepted_issuer_keys: [logKey.pub],
   accepted_consent_keys: [consentKey.pub],
   accepted_clinical_keys: [clinicalKey.pub],
@@ -110,9 +113,9 @@ const prescriberAuthority = () => signAuthorityProof({
   revocation: { status: 'not_revoked', checked_at: '2026-07-08T13:59:00.000Z' },
   registry_head: 'sha256:' + '22'.repeat(32), registry_epoch: 9, policy_hash: BENEFIT_POLICY_HASH, issued_at: '2026-07-08T13:59:00.000Z',
 }, registryKey);
-const consent = () => signRxArtifact({ '@type': 'EP-RX-CONSENT-v1', action_hash: receipt.action_hash, subject_ref: 'ep:patient:synthetic-001', consent_digest: 'sha256:' + sha('consent-record'), issued_at: '2026-07-08T13:50:00.000Z' }, consentKey.privateKey);
-const clinical = () => signRxArtifact({ '@type': 'EP-RX-CLINICAL-v1', action_hash: receipt.action_hash, evidence_digest: 'sha256:' + sha('dx+lab-bundle'), criteria: 'step-therapy-met', issued_at: '2026-07-08T13:52:00.000Z' }, clinicalKey.privateKey);
-const denial = () => signRxArtifact({ '@type': 'EP-RX-DENIAL-v1', action_hash: receipt.action_hash, reason_code: 'NCPDP:step-therapy-not-met', reason_digest: 'sha256:' + sha('denial-rationale'), appeal_url: 'https://payer.example/appeal/synthetic-001', issued_at: '2026-07-08T14:04:30.000Z' }, payerKey.privateKey);
+const consent = () => signRxArtifact({ '@type': 'EP-RX-CONSENT-v1', action_hash: receipt.action_hash, privacy_key_id: privacyKeyId, subject_ref: patientRef, consent_digest: commitRxEvidence({ evidenceType: 'consent', record: { synthetic: 'consent-record' }, privacyKeyId, sectorSecret: privacyKey }), issued_at: '2026-07-08T13:50:00.000Z' }, consentKey.privateKey);
+const clinical = () => signRxArtifact({ '@type': 'EP-RX-CLINICAL-v1', action_hash: receipt.action_hash, privacy_key_id: privacyKeyId, evidence_digest: commitRxEvidence({ evidenceType: 'clinical', record: { synthetic: 'dx-lab-bundle' }, privacyKeyId, sectorSecret: privacyKey }), criteria: 'step-therapy-met', issued_at: '2026-07-08T13:52:00.000Z' }, clinicalKey.privateKey);
+const denial = () => signRxArtifact({ '@type': 'EP-RX-DENIAL-v1', action_hash: receipt.action_hash, privacy_key_id: privacyKeyId, reason_code: 'NCPDP:step-therapy-not-met', reason_digest: commitRxEvidence({ evidenceType: 'denial', record: { synthetic: 'denial-rationale' }, privacyKeyId, sectorSecret: privacyKey }), appeal_url: 'https://payer.example/appeals', issued_at: '2026-07-08T14:04:30.000Z' }, payerKey.privateKey);
 const freshBenefit = { checked_at: '2026-07-08T14:00:00.000Z', policy_hash: BENEFIT_POLICY_HASH };
 
 function packet(over = {}) {
@@ -134,7 +137,7 @@ const attempts = [
   ['resubmit missing patient consent', packet({ patient_consent: undefined })],
   ['resubmit missing diagnosis/lab evidence', packet({ clinical_evidence: undefined })],
   ['prescriber authority scoped to a different action', packet({ authority_proof: signAuthorityProof({ authority_id: 'auth_prescriber', subject: 'ep:approver:prescriber', organization_id: 'clinicX', role: 'prescriber', scope: ['rx.refill.approve'], limits: {}, validity: { from: '2026-01-01T00:00:00.000Z', to: '2027-01-01T00:00:00.000Z' }, revocation: { status: 'not_revoked', checked_at: '2026-07-08T13:59:00.000Z' }, registry_head: 'sha256:' + '22'.repeat(32), registry_epoch: 9, policy_hash: BENEFIT_POLICY_HASH, issued_at: '2026-07-08T13:59:00.000Z' }, registryKey) })],
-  ['request cites the wrong formulary policy', packet({ action: { ...ACTION, policy_hash: 'sha256:' + sha('wrong-formulary') } })],
+  ['RTBP check cites the wrong formulary policy', packet({ benefit_check: { ...freshBenefit, policy_hash: 'sha256:' + sha('wrong-formulary') } })],
   ['RTBP benefit check is stale', packet({ benefit_check: { checked_at: '2026-07-01T00:00:00.000Z', policy_hash: BENEFIT_POLICY_HASH } })],
   ['payer denies but the denial is not signed', packet({ determination: 'deny', signed_denial: undefined })],
   ['APPROVE: all evidence composes', packet()],
@@ -147,8 +150,8 @@ const expected = ['rx_do_not_rely_missing_patient_consent', 'rx_do_not_rely_miss
 // The appeal / audit bundle for the approved determination.
 const approved = packet();
 const approvedResult = run(approved);
-const bundle = buildRxAppealBundle({ challenge, packet: approved, result: approvedResult, now: '2026-07-08T14:05:00.000Z' });
-console.log(`\nAppeal/audit bundle exported: ${bundle['@type']} ${bundle.bundle_digest.slice(0, 26)}... (${bundle.reasons.length} reason lines, re-verifiable offline).`);
+const bundle = buildRxAppealBundle({ challenge, packet: approved, result: approvedResult, now: '2026-07-08T14:05:00.000Z', privacyKey, privacyKeyId });
+console.log(`\nAppeal/audit bundle exported: ${bundle['@type']} ${bundle.bundle_digest.slice(0, 26)}... (PHI-minimized, keyed evidence references).`);
 
 const ok = results.every((v, i) => v === expected[i]) && RX_VERDICTS.includes(approvedResult.verdict);
 console.log(`\n${ok ? 'OK — one closed reliance verdict per submission; rx_rely covers both a dispensable approval and a signed, appeal-ready denial. NCPDP transaction untouched, EMILIA sidecar carries the admissibility.' : 'FAILED — Rx reliance flow is wrong.'}`);

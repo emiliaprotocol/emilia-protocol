@@ -12,7 +12,8 @@ verdict over the same automated action as every other party pinning that profile
 The published body fixes the **regulatory requirements**: the assurance floor,
 whether scoped authority is required, the revocation-freshness bound, and the
 required evidence legs. The **trust anchors are the relying party's own**: it
-overlays `accepted_registry_keys`, `accepted_issuer_keys`, and
+overlays organization-scoped `accepted_registry_keys` (including minimum epoch
+and exact head), `accepted_issuer_keys`, and
 `accepted_policy_hashes` (the specific keys and policy hashes it trusts) onto the
 resolved profile before evaluation. The published arrays are therefore empty.
 

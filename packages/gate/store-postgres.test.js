@@ -33,13 +33,16 @@ function createFakePg({ failOn } = {}) {
         table.set(key, { state, consumed_at: consumedAt, expires_at: expiresAt });
         return { rowCount: 1, rows: [] };
       }
-      case CONSUMPTION_SQL.set: {
-        const [key, state, consumedAt, expiresAt] = params;
-        table.set(key, { state, consumed_at: consumedAt, expires_at: expiresAt });
+      case CONSUMPTION_SQL.compareAndSet: {
+        const [key, expected, replacement, consumedAt, expiresAt] = params;
+        if (table.get(key)?.state !== expected) return { rowCount: 0, rows: [] };
+        table.set(key, { state: replacement, consumed_at: consumedAt, expires_at: expiresAt });
         return { rowCount: 1, rows: [] };
       }
-      case CONSUMPTION_SQL.delete: {
-        return { rowCount: table.delete(params[0]) ? 1 : 0, rows: [] };
+      case CONSUMPTION_SQL.deleteIfValue: {
+        const [key, expected] = params;
+        if (table.get(key)?.state !== expected) return { rowCount: 0, rows: [] };
+        return { rowCount: table.delete(key) ? 1 : 0, rows: [] };
       }
       case CONSUMPTION_SQL.has: {
         return table.has(params[0])
@@ -50,7 +53,7 @@ function createFakePg({ failOn } = {}) {
         const [nowArg] = params;
         let n = 0;
         for (const [k, v] of table) {
-          if (v.expires_at != null && v.expires_at <= nowArg) { table.delete(k); n += 1; }
+          if (v.state.startsWith('committed:') && v.expires_at != null && v.expires_at <= nowArg) { table.delete(k); n += 1; }
         }
         return { rowCount: n, rows: [] };
       }
@@ -69,7 +72,7 @@ function makeBackend(opts = {}) {
 }
 
 test('version + DDL: single table, PK on consumption key, consumed_at, expires_at', () => {
-  assert.equal(PG_CONSUMPTION_VERSION, 'EP-GATE-PG-CONSUMPTION-v1');
+  assert.equal(PG_CONSUMPTION_VERSION, 'EP-GATE-PG-CONSUMPTION-v2');
   assert.match(CONSUMPTION_TABLE_DDL, /CREATE TABLE IF NOT EXISTS ep_gate_consumption/);
   assert.match(CONSUMPTION_TABLE_DDL, /consumption_key TEXT PRIMARY KEY/);
   assert.match(CONSUMPTION_TABLE_DDL, /consumed_at\s+BIGINT NOT NULL/);
@@ -101,15 +104,16 @@ test('durable store contract: consume once, replay refused across the full store
   assert.equal(await store.has('rcpt_a'), true);
 });
 
-test('durable store contract: reserve/commit/release map onto addIfAbsent/set/delete', async () => {
+test('durable store contract: reserve/commit/release use ownership-fenced transitions', async () => {
   const { backend, fake } = makeBackend();
   const store = createDurableConsumptionStore(backend);
   // reserve blocks a concurrent replay, commit makes it permanent
   assert.equal(await store.reserve('rcpt_b'), true);
   assert.equal(await store.reserve('rcpt_b'), false);
-  assert.equal(fake.table.get('rcpt_b').state, 'reserved');
+  assert.match(fake.table.get('rcpt_b').state, /^reserved:v2:/);
+  assert.equal(fake.table.get('rcpt_b').expires_at, null, 'in-flight reservations never expire automatically');
   assert.equal(await store.commit('rcpt_b'), true);
-  assert.equal(fake.table.get('rcpt_b').state, 'committed');
+  assert.equal(fake.table.get('rcpt_b').state, 'committed:v2');
   assert.equal(await store.consume('rcpt_b'), false); // still consumed
   // release after a FAILED action leaves the approval retryable
   assert.equal(await store.reserve('rcpt_c'), true);
@@ -128,14 +132,43 @@ test('concurrent duplicate consume: two racing calls, exactly one wins', async (
   assert.deepEqual(r2.sort(), [false, true]);
 });
 
+test('crash/failover: another store cannot commit or release a reservation it does not own', async () => {
+  const { backend } = makeBackend();
+  const owner = createDurableConsumptionStore(backend, { reservationTokenFactory: () => 'owner-token-00000001' });
+  const failover = createDurableConsumptionStore(backend, { reservationTokenFactory: () => 'failover-token-0001' });
+  assert.equal(await owner.reserve('rcpt_crash'), true);
+  assert.equal(await failover.reserve('rcpt_crash'), false);
+  await assert.rejects(failover.commit('rcpt_crash'), /does not own reservation/);
+  await assert.rejects(failover.release('rcpt_crash'), /does not own reservation/);
+  assert.equal(await backend.has('rcpt_crash'), true, 'the uncertain reservation remains fail closed');
+});
+
+test('stale release cannot delete a reservation whose ownership changed', async () => {
+  const { backend, fake } = makeBackend();
+  const stale = createDurableConsumptionStore(backend, { reservationTokenFactory: () => 'stale-owner-token01' });
+  assert.equal(await stale.reserve('rcpt_fenced'), true);
+  assert.equal(
+    await backend.compareAndSet(
+      'rcpt_fenced',
+      'reserved:v2:stale-owner-token01',
+      'reserved:v2:newer-owner-token01',
+    ),
+    true,
+  );
+  await assert.rejects(stale.release('rcpt_fenced'), /ownership was lost/);
+  assert.equal(fake.table.get('rcpt_fenced').state, 'reserved:v2:newer-owner-token01');
+});
+
 test('FAIL-CLOSED: backend error PROPAGATES — never treated as not-consumed', async () => {
   const { backend } = makeBackend({ fake: { failOn: () => true } });
   const store = createDurableConsumptionStore(backend);
   // Every path rejects; none resolves to a false ("replay") or true ("fresh") verdict.
   await assert.rejects(store.consume('rcpt_x'), /pg_unavailable/);
   await assert.rejects(store.reserve('rcpt_x'), /pg_unavailable/);
-  await assert.rejects(store.commit('rcpt_x'), /pg_unavailable/);
-  await assert.rejects(store.release('rcpt_x'), /pg_unavailable/);
+  await assert.rejects(store.commit('rcpt_x'), /does not own reservation/);
+  await assert.rejects(store.release('rcpt_x'), /does not own reservation/);
+  await assert.rejects(backend.compareAndSet('rcpt_x', 'reserved:a', 'committed:v2'), /pg_unavailable/);
+  await assert.rejects(backend.deleteIfValue('rcpt_x', 'reserved:a'), /pg_unavailable/);
   await assert.rejects(store.has('rcpt_x'), /pg_unavailable/);
   await assert.rejects(backend.cleanupExpired(0), /pg_unavailable/);
 });
@@ -143,6 +176,8 @@ test('FAIL-CLOSED: backend error PROPAGATES — never treated as not-consumed', 
 test('FAIL-CLOSED: malformed driver result (no rowCount) throws instead of guessing', async () => {
   const backend = createPostgresBackend({ query: async () => ({ rows: [] }) });
   await assert.rejects(backend.addIfAbsent('rcpt_y', 'committed'), /cannot prove one-time use/);
+  await assert.rejects(backend.compareAndSet('rcpt_y', 'a', 'b'), /cannot prove reservation ownership/);
+  await assert.rejects(backend.deleteIfValue('rcpt_y', 'a'), /cannot prove reservation ownership/);
 });
 
 test('ttlSeconds stamps expires_at from the injected clock; no TTL -> NULL', async () => {
@@ -152,16 +187,16 @@ test('ttlSeconds stamps expires_at from the injected clock; no TTL -> NULL', asy
   await store.consume('rcpt_ttl');
   assert.equal(fake.table.get('rcpt_ttl').expires_at, 5_000_000 + 60_000);
   assert.equal(fake.table.get('rcpt_ttl').consumed_at, 5_000_000);
-  await backend.addIfAbsent('rcpt_forever', 'committed'); // no opt -> never expires
+  await backend.addIfAbsent('rcpt_forever', 'committed:v2'); // no opt -> never expires
   assert.equal(fake.table.get('rcpt_forever').expires_at, null);
 });
 
 test('cleanupExpired removes ONLY expired rows', async () => {
   const { backend, fake, clock } = makeBackend();
   clock.t = 0;
-  await backend.addIfAbsent('rcpt_short', 'committed', { ttlSeconds: 60 });     // expires at 60s
-  await backend.addIfAbsent('rcpt_long', 'committed', { ttlSeconds: 3600 });    // expires at 1h
-  await backend.addIfAbsent('rcpt_forever', 'committed');                       // never expires
+  await backend.addIfAbsent('rcpt_short', 'committed:v2', { ttlSeconds: 60 });     // expires at 60s
+  await backend.addIfAbsent('rcpt_long', 'committed:v2', { ttlSeconds: 3600 });    // expires at 1h
+  await backend.addIfAbsent('rcpt_forever', 'committed:v2');                       // never expires
   clock.t = 61_000; // 61s later
   const removed = await backend.cleanupExpired();
   assert.equal(removed, 1);
@@ -186,7 +221,7 @@ test('expired-but-uncleaned row STILL refuses: TTL is garbage collection, never 
 test('cleanupExpired with explicit `at` uses the given instant, not the clock', async () => {
   const { backend, clock } = makeBackend();
   clock.t = 0;
-  await backend.addIfAbsent('rcpt_z', 'committed', { ttlSeconds: 10 });
+  await backend.addIfAbsent('rcpt_z', 'committed:v2', { ttlSeconds: 10 });
   assert.equal(await backend.cleanupExpired(9_999), 0);  // one ms early — kept
   assert.equal(await backend.cleanupExpired(10_000), 1); // boundary — removed
 });

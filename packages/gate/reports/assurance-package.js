@@ -44,7 +44,7 @@ export { RELIANCE_VERDICTS };
  * the control working, not the control failing.
  */
 export const RELIANCE_CONTROL_CATALOG = Object.freeze({
-  'RC-1': { objective: 'Only a human with valid scoped authority for THIS exact action may authorize it', verdicts: ['do_not_rely_authority_missing', 'do_not_rely_authority_subject_mismatch', 'do_not_rely_authority_revoked', 'do_not_rely_authority_expired', 'do_not_rely_scope_mismatch', 'do_not_rely_amount_exceeded', 'do_not_rely_registry_unavailable'] },
+  'RC-1': { objective: 'Only a human with valid organization-bound, scoped authority for THIS exact action may authorize it', verdicts: ['do_not_rely_authority_missing', 'do_not_rely_authority_subject_mismatch', 'do_not_rely_authority_organization_mismatch', 'do_not_rely_authority_revoked', 'do_not_rely_authority_expired', 'do_not_rely_scope_mismatch', 'do_not_rely_amount_exceeded', 'do_not_rely_registry_unavailable'] },
   'RC-2': { objective: 'Authorization uses a device-bound named-human ceremony (Class-A or quorum)', verdicts: ['do_not_rely_no_class_a', 'do_not_rely_quorum_unsatisfied'] },
   'RC-3': { objective: 'The action conforms to a pinned, accepted policy', verdicts: ['do_not_rely_policy_mismatch'] },
   'RC-4': { objective: 'Authorization is consumed exactly once (no replay)', verdicts: ['do_not_rely_already_consumed'] },
@@ -141,13 +141,14 @@ export function buildAssurancePackage(decisions = [], { profile, organization = 
  * @param {string} [opts.logPublicKey]  auditor-pinned transparency-log key
  * @param {string} [opts.rpId]
  * @param {object} [opts.revokerKeys]
+ * @param {(key:object)=>boolean} [opts.isConsumed] auditor-owned consumption lookup
  * @param {number|string|Date} [opts.now]  reliance-evaluation clock (pin for determinism)
  * @returns {object} EP-ASSURANCE-REPERFORMANCE-v1
  */
-export function reperformAssurancePackage(pkg, { approverKeys = {}, logPublicKey = null, rpId = null, revokerKeys = {}, now = 0 } = {}) {
+export function reperformAssurancePackage(pkg, { approverKeys = {}, logPublicKey = null, rpId = null, revokerKeys = {}, isConsumed, now = 0 } = {}) {
   if (!pkg || pkg['@version'] !== ASSURANCE_PACKAGE_VERSION) throw new Error('assurance-reperform: not an EP-ASSURANCE-PACKAGE-v1');
   const profile = pkg.reliance_profile;
-  const evalOpts = { approverKeys, logPublicKey, rpId, revokerKeys };
+  const evalOpts = { approverKeys, logPublicKey, rpId, revokerKeys, ...(typeof isConsumed === 'function' ? { isConsumed } : {}) };
   const relianceNow = typeof now === 'function' ? now() : now;
 
   const results = (Array.isArray(pkg.decisions) ? pkg.decisions : []).map((it) => {

@@ -34,8 +34,8 @@ function signA(digestHex) {
   const signedData = Buffer.concat([authData, crypto.createHash('sha256').update(clientDataJSON).digest()]);
   return { authenticator_data: authData.toString('base64url'), client_data_json: clientDataJSON.toString('base64url'), signature: crypto.sign('sha256', signedData, reviewer.privateKey).toString('base64url') };
 }
-function buildReceipt(nonce) {
-  const action = { ep_version: '1.0', action_type: 'rx.prior_auth.approve', target: { system: 'pbm', resource: `pa/${nonce}` }, parameters: { drug: 'SYN', ncpdp: nonce }, initiator: 'ep:entity:pa-agent', policy_id: 'ep:policy:tier4', requested_at: '2026-07-07T14:00:00Z' };
+function buildReceipt(nonce, amount = 40000) {
+  const action = { ep_version: '1.0', action_type: 'rx.prior_auth.approve', organization_id: 'planX', target: { system: 'pbm', resource: `pa/${nonce}` }, parameters: { drug: 'SYN', ncpdp: nonce, amount, currency: 'USD' }, initiator: 'ep:entity:pa-agent', policy_id: 'ep:policy:tier4', requested_at: '2026-07-07T14:00:00Z' };
   const action_hash = `sha256:${sha(canon(action))}`;
   const base = { ep_version: '1.0', context_type: 'ep.signoff.v1', action_hash, policy_id: 'ep:policy:tier4', policy_hash: 'sha256:benef', initiator: action.initiator, required_approvals: 2, issued_at: '2026-07-07T14:00:05Z', expires_at: '2026-07-07T14:15:05Z' };
   const ctx1 = { ...base, approver: 'ep:approver:intake', approver_index: 1, nonce: `${nonce}-1` };
@@ -67,14 +67,14 @@ const authority = (over = {}) => signAuthorityProof({
 
 const PROFILE = {
   '@type': 'EP-RELIANCE-PROFILE-v1', required_assurance: 'class_a', required_authority: true, max_revocation_staleness_sec: 3600,
-  accepted_registry_keys: [{ issuer_id: 'auth_reviewer', public_key: registryPub }], accepted_issuer_keys: [logKey.pub],
+  accepted_registry_keys: [{ issuer_id: 'auth_reviewer', organization_id: 'planX', public_key: registryPub, min_epoch: 9, registry_head: 'sha256:' + '22'.repeat(32) }], accepted_issuer_keys: [logKey.pub],
   accepted_policy_hashes: ['sha256:benef'], required_evidence: ['receipt', 'class_a_or_quorum', 'authority_proof', 'revocation_freshness', 'consumption_proof'],
 };
 const fresh = { checked_at: '2026-07-07T14:00:00.000Z' };
-const baseAction = (rc, amount) => ({ action_type: 'rx.prior_auth.approve', amount, currency: 'USD', policy_hash: 'sha256:benef', action_hash: rc.action_hash });
+const baseAction = (rc, amount) => ({ action_type: 'rx.prior_auth.approve', amount, currency: 'USD', organization_id: 'planX', policy_hash: 'sha256:benef', action_hash: rc.action_hash });
 
 function population() {
-  const r1 = buildReceipt('n1'); const r2 = buildReceipt('n2'); const r3 = buildReceipt('n3');
+  const r1 = buildReceipt('n1', 40000); const r2 = buildReceipt('n2', 40000); const r3 = buildReceipt('n3', 90000);
   return [
     // honest admissible
     { decision_id: 'd1', action: baseAction(r1, 40000), receipt: r1, authority_proof: authority(), revocation_state: fresh, consumption: { consumed: false }, stated_verdict: 'rely' },
@@ -84,7 +84,7 @@ function population() {
     { decision_id: 'd3', action: baseAction(r3, 90000), receipt: r3, authority_proof: authority(), revocation_state: fresh, consumption: { consumed: false }, stated_verdict: 'rely' },
   ];
 }
-const OPTS = { approverKeys: KEYS, logPublicKey: logKey.pub, rpId: 'www.emiliaprotocol.ai', now: NOW };
+const OPTS = { approverKeys: KEYS, logPublicKey: logKey.pub, rpId: 'www.emiliaprotocol.ai', isConsumed: () => false, now: NOW };
 
 describe('EP-ASSURANCE-PACKAGE-v1', () => {
   it('bundles decisions into a content-addressed package', () => {

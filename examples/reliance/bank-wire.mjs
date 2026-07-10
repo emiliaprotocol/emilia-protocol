@@ -41,7 +41,7 @@ function signA(digestHex) {
 }
 
 function buildReceipt() {
-  const action = { ep_version: '1.0', action_type: 'wire.release', target: { system: 'treasury', resource: 'wire/8841' }, parameters: { amount: '50000.00', currency: 'USD' }, initiator: 'ep:entity:agent-treasury-7', policy_id: 'ep:policy:wires-over-100k@v12', requested_at: '2026-06-09T17:21:04Z' };
+  const action = { ep_version: '1.0', action_type: 'wire.release', organization_id: 'acme', target: { system: 'treasury', resource: 'wire/8841' }, parameters: { amount: '50000.00', currency: 'USD' }, initiator: 'ep:entity:agent-treasury-7', policy_id: 'ep:policy:wires-over-100k@v12', requested_at: '2026-06-09T17:21:04Z' };
   const action_hash = `sha256:${sha(canon(action))}`;
   const base = { ep_version: '1.0', context_type: 'ep.signoff.v1', action_hash, policy_id: 'ep:policy:wires-over-100k@v12', policy_hash: 'sha256:77ab1234', initiator: action.initiator, required_approvals: 2, issued_at: '2026-06-09T17:21:05Z', expires_at: '2026-06-09T17:36:05Z' };
   const ctx1 = { ...base, approver: 'ep:approver:jchen-controller', approver_index: 1, nonce: 'n-1' };
@@ -66,7 +66,7 @@ const KEYS = {
   'ep:key:controller#1': { approver_id: 'ep:approver:jchen-controller', public_key: controller.pub, key_class: 'B', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
   'ep:key:cfo#1': { approver_id: 'ep:approver:mrios-cfo', public_key: cfo.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
 };
-const opts = { approverKeys: KEYS, logPublicKey: logKey.pub, rpId: 'www.emiliaprotocol.ai' };
+const opts = { approverKeys: KEYS, logPublicKey: logKey.pub, rpId: 'www.emiliaprotocol.ai', isConsumed: () => false };
 
 // The BANK's pinned reliance rule for releasing a wire.
 const bankProfile = {
@@ -74,18 +74,32 @@ const bankProfile = {
   required_assurance: 'class_a',
   required_authority: true,
   max_revocation_staleness_sec: 300,
-  accepted_registry_keys: [{ issuer_id: 'auth_cfo', public_key: registryPub }],
+  accepted_registry_keys: [{ issuer_id: 'auth_cfo', organization_id: 'acme', public_key: registryPub, min_epoch: 17, registry_head: 'sha256:' + '11'.repeat(32) }],
   accepted_issuer_keys: [logKey.pub],
   accepted_policy_hashes: ['sha256:77ab1234'],
   required_evidence: ['receipt', 'class_a_or_quorum', 'authority_proof', 'revocation_freshness', 'consumption_proof'],
 };
 
-const action = { action_type: 'wire.release', amount: 50000, currency: 'USD', policy_hash: 'sha256:77ab1234', action_hash: receipt.action_hash };
+const action = { action_type: 'wire.release', amount: 50000, currency: 'USD', organization_id: 'acme', policy_hash: 'sha256:77ab1234', action_hash: receipt.action_hash };
 const cfoAuthorityProof = signAuthorityProof({
   authority_id: 'auth_cfo', subject: 'ep:approver:mrios-cfo', organization_id: 'acme', role: 'cfo',
   scope: ['wire.release'], limits: { max_amount_usd: 50000, currency: 'USD' },
   validity: { from: '2026-01-01T00:00:00.000Z', to: '2027-01-01T00:00:00.000Z' },
   revocation: { status: 'not_revoked', checked_at: '2026-07-06T23:59:00.000Z' },
+  registry_head: 'sha256:' + '11'.repeat(32), registry_epoch: 17, policy_hash: 'sha256:77ab1234', issued_at: '2026-07-06T23:59:00.000Z',
+}, registryKey);
+const underScopedCfoAuthorityProof = signAuthorityProof({
+  authority_id: 'auth_cfo', subject: 'ep:approver:mrios-cfo', organization_id: 'acme', role: 'cfo',
+  scope: ['wire.release'], limits: { max_amount_usd: 40000, currency: 'USD' },
+  validity: { from: '2026-01-01T00:00:00.000Z', to: '2027-01-01T00:00:00.000Z' },
+  revocation: { status: 'not_revoked', checked_at: '2026-07-06T23:59:00.000Z' },
+  registry_head: 'sha256:' + '11'.repeat(32), registry_epoch: 17, policy_hash: 'sha256:77ab1234', issued_at: '2026-07-06T23:59:00.000Z',
+}, registryKey);
+const staleCfoAuthorityProof = signAuthorityProof({
+  authority_id: 'auth_cfo', subject: 'ep:approver:mrios-cfo', organization_id: 'acme', role: 'cfo',
+  scope: ['wire.release'], limits: { max_amount_usd: 50000, currency: 'USD' },
+  validity: { from: '2026-01-01T00:00:00.000Z', to: '2027-01-01T00:00:00.000Z' },
+  revocation: { status: 'not_revoked', checked_at: '2026-01-01T00:00:00.000Z' },
   registry_head: 'sha256:' + '11'.repeat(32), registry_epoch: 17, policy_hash: 'sha256:77ab1234', issued_at: '2026-07-06T23:59:00.000Z',
 }, registryKey);
 
@@ -97,8 +111,8 @@ console.log('\n$50,000 wire release — the bank relies only when the whole pack
 // Each attempt is the same wire, missing exactly one leg the bank pinned.
 const attempts = [
   ['receipt only, no scoped authority', { action, receipt, revocation_state: { checked_at: '2026-07-06T23:58:00.000Z' }, consumption: { consumed: false } }],
-  ['authority present but amount over ceiling', { action: { ...action, amount: 90000 }, receipt, authority_proof: cfoAuthorityProof, revocation_state: { checked_at: '2026-07-06T23:58:00.000Z' }, consumption: { consumed: false } }],
-  ['authority ok but revocation check is stale', { action, receipt, authority_proof: cfoAuthorityProof, revocation_state: { checked_at: '2026-01-01T00:00:00.000Z' }, consumption: { consumed: false } }],
+  ['signed amount exceeds authority ceiling', { action, receipt, authority_proof: underScopedCfoAuthorityProof, revocation_state: { checked_at: '2026-07-06T23:58:00.000Z' }, consumption: { consumed: false } }],
+  ['authority ok but revocation check is stale', { action, receipt, authority_proof: staleCfoAuthorityProof, consumption: { consumed: false } }],
   ['everything ok but already consumed', { action, receipt, authority_proof: cfoAuthorityProof, revocation_state: { checked_at: '2026-07-06T23:58:00.000Z' }, consumption: { consumed: true } }],
   ['ALL legs compose', { action, receipt, authority_proof: cfoAuthorityProof, revocation_state: { checked_at: '2026-07-06T23:58:00.000Z' }, consumption: { consumed: false } }],
 ];

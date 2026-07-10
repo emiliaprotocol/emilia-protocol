@@ -37,7 +37,7 @@ flowchart TD
     PK["EP-RX-RELIANCE-PACKET-v1\n(prescriber authority · patient consent ·\ndiagnosis/lab · benefit check · signed denial)"]
     K["Rx reliance kernel\n(composes EP-RELIANCE-KERNEL-v1)"]
     V["one closed rx verdict"]
-    B["EP-RX-RELIANCE-BUNDLE-v1\n(audit / appeal, re-verifiable offline)"]
+    B["EP-RX-RELIANCE-BUNDLE-v2\n(PHI-minimized audit / appeal projection)"]
   end
   TX -. action digest .-> PK
   CH --> K
@@ -51,7 +51,9 @@ flowchart TD
 1. A prescriber agent submits the drug request (riding beside an NCPDP ePA / SCRIPT transaction).
 2. The payer/PBM returns an **EP-RX-EVIDENCE-CHALLENGE-v1**: prescriber authority, patient consent, diagnosis/lab evidence, the formulary/benefit policy, revocation freshness, and a signed reason if the determination is a denial.
 3. The prescriber / pharmacy / hub resubmits an **EP-RX-RELIANCE-PACKET-v1**.
-4. The kernel returns exactly one closed verdict, and the whole packet exports as an appeal/audit bundle any party can re-verify offline.
+4. The kernel returns exactly one closed verdict. A privacy-safe appeal/audit
+   projection carries keyed references to the evidence retained in the holder's
+   controlled vault; it does not recursively copy the transaction.
 
 ## The closed verdict set
 
@@ -80,8 +82,13 @@ the action digest and verified under a relying-party-pinned key.
 
 - **VERIFIED vs ACCEPTED stays separate.** A signature checking out is not the
   same as the issuer key being one the relying party pinned.
-- **No PHI in the sidecar.** Consent and clinical legs carry signed digests of the
-  underlying records, never the records.
+- **Minimized portable data.** `EP-NCPDP-RX-PRIVACY-PROFILE-v1` requires
+  pairwise patient references, exact signed-artifact field sets, coded values,
+  and domain-separated keyed commitments to underlying records. Bare hashes of
+  low-entropy clinical facts are not accepted.
+- **Key rotation remains reproducible.** Every artifact and appeal projection
+  names its non-secret privacy-key identifier; the key itself remains in the
+  deployment's controlled key store.
 - **Fail-closed.** A required leg that is absent, unverifiable, mis-bound, stale,
   or from an unpinned issuer yields the matching `rx_do_not_rely_*` verdict.
 
@@ -99,10 +106,13 @@ cryptographically verifiable proof of the evidence behind the decision.
 ## What is in the repo
 
 - `profiles/ncpdp/rx-reliance-profile.v1.json` — the profile descriptor.
+- `profiles/ncpdp/privacy-profile.v1.json` — the data-minimization and key-rotation contract.
 - `profiles/ncpdp/specialty-pa-evidence-challenge.v1.json` — an illustrative payer challenge.
 - `lib/ncpdp/rx-reliance.js` — the reference evaluator (`evaluateRxReliance`, `verifyRxArtifact`, `buildRxAppealBundle`).
 - `examples/ncpdp/specialty-pa-reliance-flow.mjs` — a full offline flow (`node examples/ncpdp/specialty-pa-reliance-flow.mjs`).
 - `conformance/vectors/ncpdp-rx-reliance.v1.json` + `tests/ncpdp-rx-reliance.test.js` — a positive approve, a positive signed deny, and a reject for every `rx_do_not_rely_*` verdict.
+- `tests/ncpdp-privacy.test.js` — pairwise-linkability, bare-hash, direct-field,
+  free-text, future-timestamp, signed-envelope-smuggling, and planted-PHI export attacks.
 
 ## Sources
 

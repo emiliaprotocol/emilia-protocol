@@ -1,0 +1,21 @@
+EP-RELIANCE-COMPOSED-v1 proof record
+Run date: 2026-07-10
+Tamarin: 1.10.0
+Maude: 3.4
+Container: lmandrelli/tamarin-prover-and-batch@sha256:dff2af961e192e2b8eef3faa0484a0075c380b476bd0e79c160a5619b2519083
+Model SHA-256: f411d7cd9bd6d3c4097f2f46c135c8e42b1e9f862d04458ab288f8e67c3eb1fc
+Command: tamarin-prover --derivcheck-timeout=60 --prove ep_reliance_composed.spthy
+
+All wellformedness checks were successful.
+
+summary of summaries:
+
+analyzed: ep_reliance_composed.spthy
+
+  processing time: 14.26s
+
+  executable_composed_reliance (exists-trace): verified (14 steps)
+  execution_requires_full_composition (all-traces): verified (22 steps)
+  no_cross_action_profile_or_audience_replay (all-traces): verified (10 steps)
+  injective_execution_with_consumption (all-traces): verified (2 steps)
+  unchecked_composition_is_injective (all-traces): falsified - found trace (26 steps)

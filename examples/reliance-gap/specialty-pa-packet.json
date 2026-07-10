@@ -4,6 +4,7 @@
   "action": {
     "ep_version": "1.0",
     "action_type": "rx.prior_auth.approve",
+    "organization_id": "plan-demo",
     "target": {
       "system": "pbm.adjudication",
       "resource": "pa/specialty/PA-DEMO-0001"
@@ -16,7 +17,7 @@
     "initiator": "ep:entity:demo-intake-agent",
     "policy_id": "ep:policy:demo-specialty-tier4@v1",
     "requested_at": "2026-07-08T14:00:00Z",
-    "action_hash": "sha256:62f8c01a5b5fe5c367f85d8bcd5d7f572b61a0099b098dd35b5ae7725e6cccb1",
+    "action_hash": "sha256:c5b1200fa4304e8b8c838a1e075e4be8cc82870d7477994165f5a341fee6d8ec",
     "policy_hash": "sha256:d1337b441edaf3f007a56f7eeb50bfb1f89f036fa709952553471d59c5945715"
   },
   "evidence": [
@@ -27,6 +28,7 @@
         "action": {
           "ep_version": "1.0",
           "action_type": "rx.prior_auth.approve",
+          "organization_id": "plan-demo",
           "target": {
             "system": "pbm.adjudication",
             "resource": "pa/specialty/PA-DEMO-0001"
@@ -40,12 +42,12 @@
           "policy_id": "ep:policy:demo-specialty-tier4@v1",
           "requested_at": "2026-07-08T14:00:00Z"
         },
-        "action_hash": "sha256:62f8c01a5b5fe5c367f85d8bcd5d7f572b61a0099b098dd35b5ae7725e6cccb1",
+        "action_hash": "sha256:c5b1200fa4304e8b8c838a1e075e4be8cc82870d7477994165f5a341fee6d8ec",
         "contexts": [
           {
             "ep_version": "1.0",
             "context_type": "ep.signoff.v1",
-            "action_hash": "sha256:62f8c01a5b5fe5c367f85d8bcd5d7f572b61a0099b098dd35b5ae7725e6cccb1",
+            "action_hash": "sha256:c5b1200fa4304e8b8c838a1e075e4be8cc82870d7477994165f5a341fee6d8ec",
             "policy_id": "ep:policy:demo-specialty-tier4@v1",
             "policy_hash": "sha256:d1337b441edaf3f007a56f7eeb50bfb1f89f036fa709952553471d59c5945715",
             "initiator": "ep:entity:demo-intake-agent",
@@ -59,7 +61,7 @@
           {
             "ep_version": "1.0",
             "context_type": "ep.signoff.v1",
-            "action_hash": "sha256:62f8c01a5b5fe5c367f85d8bcd5d7f572b61a0099b098dd35b5ae7725e6cccb1",
+            "action_hash": "sha256:c5b1200fa4304e8b8c838a1e075e4be8cc82870d7477994165f5a341fee6d8ec",
             "policy_id": "ep:policy:demo-specialty-tier4@v1",
             "policy_hash": "sha256:d1337b441edaf3f007a56f7eeb50bfb1f89f036fa709952553471d59c5945715",
             "initiator": "ep:entity:demo-intake-agent",
@@ -73,22 +75,22 @@
         ],
         "signoffs": [
           {
-            "context_hash": "sha256:92912a69cd5167766e17d329db454ac0a106090ee1330515f6a9948f02adad3b",
-            "signature": "y7YxJ6Pd5byopyyDlIlnzm4h8_vud4fC3NaCF3wAcLmZ_x2h61ZyqKoHv7sgueGjCryinE_6ly4H2OacZ-dcBw",
+            "context_hash": "sha256:39120e3687dc7ccdda2e852a72007b5c350d3d7acc91d082d01308da25c3d484",
+            "signature": "El9tfMPOwgKTpARB02wz9XNpHrRlMf_edYQhn3kh-xZbx86Zyj9ubGQyaX37N254ZS3NlvXjS2yJ-SNeDVeZDQ",
             "key_class": "B",
             "approver_key_id": "ep:key:demo-intake#1",
             "signed_at": "2026-07-08T14:03:40Z"
           },
           {
-            "context_hash": "sha256:9745f7765e68394ae956294ee3d7a87b367bcfd6ba76b55666860cefb0e6fbdc",
+            "context_hash": "sha256:af0e532f5fa2565259c1d0e67fc38d554566c53bd37ec10a132ad7f88026e6de",
             "signature": "unused",
             "key_class": "A",
             "approver_key_id": "ep:key:demo-reviewer#1",
             "signed_at": "2026-07-08T14:04:01Z",
             "webauthn": {
               "authenticator_data": "EJY-NCPfIABNHTVtLbqqS_bQY6MwdNdfSV1Hl1E-5F0FAAAAAA",
-              "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoibDBYM2RsNW9PVXJwVmlsTzQ5ZW9lelo3ejlhNmRyVldab1lNNzdEbS05dyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-              "signature": "MEUCIQCmxnnUgCOMZ9kRhAlf4Xhbtb5PHvI5VzPHiyB_tZkNoAIgI7FqGhW_IvqjwhbRWogcgIA-2iNSAKkQue58vM-O_B8"
+              "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoicnc1VEwxLWlWbEpad2REbWY4T05WVVZteFR2VGZzRUtFeXJYLUlBbTV0NCIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
+              "signature": "MEUCIQDWBgIlPolZgdqCM4SOaDR2DN4qHmXyKmsXJLMMKS3eMwIgRT6WB4ZaUiLASOzXSidWfsgxYoGTVagl-L1klzgQML4"
             }
           }
         ],
@@ -99,7 +101,7 @@
         },
         "log_proof": {
           "alg": "EP-MERKLE-v2",
-          "leaf_hash": "sha256:6bc7d7248b9437a27e1580eafeb649b7e8fea1b0c75e1c6ccfbd54de7c4556f0",
+          "leaf_hash": "sha256:cdd64edc4b82390723bb5bc354dea62b60f35107426d40d9c6038d576952d73d",
           "leaf_index": 0,
           "inclusion_path": [
             {
@@ -113,10 +115,10 @@
           ],
           "checkpoint": {
             "tree_size": 4,
-            "root_hash": "sha256:0579ba263b53682d6ae8ccaf6f57dd05c9280352678e4dd8de4a99e61982c923",
+            "root_hash": "sha256:b2cecd22e7bf69d805a99d34a61d63a2fec906861f4b8443b4ec1cc72f3023fe",
             "log_key_id": "ep:log:demo-hub#1",
             "merkle_alg": "EP-MERKLE-v2",
-            "log_signature": "Y9axUpsQtUCZSQSL-MpboPKzb_pzkI3VQ0Ek7gGVJtggR3JExjNQAos4uCJUhrhvgc6P-rBUBXf-EYOUa6AcCA"
+            "log_signature": "IgO3BuQURhujgTsI4syLvDXsfQXJh9vY5JmY2pD7EbRrwp7SW2ACxskAH5Yy0l3REZ0xYrxHktui9jeRPituBQ"
           }
         }
       }
@@ -142,12 +144,12 @@
         },
         "revocation": {
           "status": "not_revoked",
-          "checked_at": "2026-07-08T13:59:00.000Z"
+          "checked_at": "2026-07-08T14:30:00.000Z"
         },
         "registry_head": "sha256:d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4",
         "registry_epoch": 3,
         "policy_hash": "sha256:d1337b441edaf3f007a56f7eeb50bfb1f89f036fa709952553471d59c5945715",
-        "issued_at": "2026-07-08T13:59:00.000Z",
+        "issued_at": "2026-07-08T14:30:00.000Z",
         "limitations": [
           "This proof records what the authority registry held for the subject at issuance; it does not itself authorize the action.",
           "It is a snapshot: revocation.status is as of checked_at, and a later revocation is not reflected here.",
@@ -157,8 +159,8 @@
           "algorithm": "Ed25519",
           "key_id": "ep:authority-registry-key:sha256:b7930d6b9678bdda",
           "public_key": "MCowBQYDK2VwAyEA1AS8RFZa7buJkVDlsLOzK5RBvwy3iEwzEw2o28J90s8",
-          "proof_digest": "sha256:ba491c19110d7d8dae219bdb9d16682c0ccf12f7bb716ce290038e6ae05041bd",
-          "signature_b64u": "pcq0wCnEbuSBXOrLvwkE2EF-ezhcqtCQmKPjdRjXCVlxSG9b5sFakrL4wNWNnWds57elPas3yJ7Yev7Y8hiqCQ"
+          "proof_digest": "sha256:15ff776efb4b795bf8a718d9c66c131bd81c8bdfb80730e6f78329b2eaeb29db",
+          "signature_b64u": "mH-rE7YSSKVuSkb9uolS3BK6rsrnbxCHB_bH9qSEJvj9zHtMixEG5OrZ1MTSQRO-40haylVRfUh3Hfw3S3mKCg"
         }
       }
     },
@@ -192,7 +194,7 @@
       },
       "ep:key:demo-reviewer#1": {
         "approver_id": "ep:approver:demo-payer-reviewer",
-        "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOqgHa-6KqibA9prQMwlvtLKOFD7ZHKEIm4XRUoPj_Oh6ndC1IJC00kflsr3KHx7TO95vF3GsZp9I6IOxe-iTnw",
+        "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEW_iwr3g5YTLP2Ah-tO-ilbiZcEtelRn_s623NmFiK-FJO7mA3zj4Y8HMZ_IWJvBuCTuG-ArnJC6BbI7gE75LGg",
         "key_class": "A",
         "valid_from": "2026-01-01T00:00:00Z",
         "valid_to": "2027-01-01T00:00:00Z"

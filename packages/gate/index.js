@@ -55,7 +55,7 @@ import { classifyRetention, buildRetentionExport } from './retention.js';
 import { createDefaultActionControlManifest, findActionControl, validateActionControlManifest } from './action-control-manifest.js';
 
 export { MemoryConsumptionStore, createEvidenceLog };
-export { createDurableConsumptionStore, createMemoryBackend } from './store.js';
+export { createDurableConsumptionStore, createMemoryBackend, DURABLE_CONSUMPTION_VERSION } from './store.js';
 export { createKeyRegistry, asKeyRegistry } from './key-registry.js';
 export { classifyRetention, buildRetentionExport, RETENTION_EXPORT_VERSION } from './retention.js';
 export { DEFAULT_GATE_MANIFEST, HIGH_RISK_ACTION_PACKS, createDefaultActionRiskManifest };
@@ -572,8 +572,11 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
   /**
    * Recommended end-to-end path. Reserves the receipt, runs the side effect,
    * commits one-time consumption only after success, and records execution.
-   * If the side effect throws, the reservation is released so the approval can
-   * be retried safely.
+   * Once the executor is invoked, an exception is an INDETERMINATE outcome: the
+   * external effect may have happened before its response was lost. The receipt
+   * is therefore committed (or left reserved if the store is unavailable),
+   * never released automatically. Callers that need retries must make the
+   * downstream effect idempotent under the receipt id and reconcile its result.
    */
   async function run({ selector = {}, receipt = null, observedAction = null, admissibilityProfile = null, reliancePacket: presentedPacket = null, admissibility = null } = {}, fn, opts = {}) {
     if (typeof fn !== 'function') throw new Error('EMILIA Gate run(): fn is required');
@@ -582,23 +585,49 @@ export function createGate({ manifest = null, trustedKeys = [], maxAgeSec = 900,
       return { ok: false, status: authorization.status, body: authorization.challenge, authorization };
     }
     const receiptId = authorization.evidence?.receipt_id;
-    let actionRan = false;
+    let phase = 'reserved';
+    let consumptionCommitted = false;
     try {
+      phase = 'effect_attempted';
       const result = await fn(authorization);
-      actionRan = true;
+      phase = 'effect_returned';
       if (typeof consumption.commit === 'function') await consumption.commit(receiptId);
+      consumptionCommitted = true;
+      phase = 'consumed';
       if (opts.recordExecution === false) return { ok: true, result, authorization, execution: null, packet: null };
+      phase = 'recording_execution';
       const execution = await recordExecution({ authorization, outcome: 'executed', observedAction });
       return { ok: true, result, authorization, execution, packet: reliancePacket({ authorization, execution }) };
     } catch (e) {
-      if (!actionRan && typeof consumption.release === 'function') await consumption.release(receiptId);
-      if (opts.recordExecution !== false) {
-        await recordExecution({
-          authorization,
-          outcome: 'failed',
-          detail: actionRan ? `post_execution_failure:${String(e?.message ?? e)}` : String(e?.message ?? e),
-          observedAction,
-        });
+      // An exception after invoking fn() cannot establish that no external
+      // effect occurred. Burn the approval if possible; if storage is down, the
+      // ownership-fenced reservation remains and still blocks replay.
+      let consumptionError = null;
+      if (!consumptionCommitted && phase !== 'reserved' && typeof consumption.commit === 'function') {
+        try {
+          await consumption.commit(receiptId);
+          consumptionCommitted = true;
+        } catch (commitError) {
+          consumptionError = commitError;
+        }
+      }
+      if (opts.recordExecution !== false && phase !== 'recording_execution') {
+        try {
+          await recordExecution({
+            authorization,
+            outcome: 'indeterminate',
+            // Exception text frequently contains provider payloads, record IDs,
+            // or secrets. The caller still receives the original exception;
+            // the portable evidence record carries only the closed outcome.
+            detail: { code: 'effect_attempted_outcome_unknown' },
+            observedAction,
+          });
+        } catch (recordError) {
+          if (!consumptionError) consumptionError = recordError;
+        }
+      }
+      if (consumptionError && e && typeof e === 'object') {
+        e.consumption_error = String(consumptionError?.message ?? consumptionError);
       }
       throw e;
     }

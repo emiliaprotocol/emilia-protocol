@@ -30,12 +30,12 @@
       "no_authority_verdict": "rx_do_not_rely_missing_prescriber_authority"
     },
     "patient_consent": {
-      "carrier": "EP-RX-CONSENT-v1 (Ed25519-signed, carries a consent DIGEST, no PHI), bound to the action digest",
+      "carrier": "EP-RX-CONSENT-v1 (Ed25519-signed, carries a pairwise patient reference and keyed consent commitment, no source record), bound to the action digest",
       "verified_by": "verifyRxArtifact under an accepted_consent_keys pin",
       "no_evidence_verdict": "rx_do_not_rely_missing_patient_consent"
     },
     "clinical_evidence": {
-      "carrier": "EP-RX-CLINICAL-v1 (Ed25519-signed diagnosis/lab attestation, carries an evidence DIGEST, no PHI), bound to the action digest",
+      "carrier": "EP-RX-CLINICAL-v1 (Ed25519-signed diagnosis/lab attestation, carries a keyed evidence commitment and coded criterion, no source record), bound to the action digest",
       "verified_by": "verifyRxArtifact under an accepted_clinical_keys pin",
       "no_evidence_verdict": "rx_do_not_rely_missing_clinical_evidence"
     },
@@ -51,14 +51,14 @@
       "note": "a stale or revoked authority reads as rx_do_not_rely_missing_prescriber_authority"
     },
     "signed_denial": {
-      "carrier": "EP-RX-DENIAL-v1 (Ed25519-signed reason code + reason digest + appeal URL), bound to the action digest",
+      "carrier": "EP-RX-DENIAL-v1 (Ed25519-signed reason code + keyed reason commitment + generic appeal route), bound to the action digest",
       "verified_by": "verifyRxArtifact under an accepted_payer_keys pin, required only when determination is 'deny'",
       "missing_verdict": "rx_do_not_rely_signed_denial_required"
     }
   },
   "acceptance_discipline": "VERIFIED (signature and digest checks pass) is kept separate from ACCEPTED (issuer key pinned by the relying party). The relying party pins its own keys and policy; EMILIA authors no bar and is never in the trust path.",
-  "phi": "No PHI travels in the sidecar. Consent and clinical legs carry signed digests of the underlying records, not the records.",
-  "exports": "EP-RX-RELIANCE-BUNDLE-v1 — a content-addressed audit/appeal bundle (challenge + packet + verdict + reasons) any party can re-verify offline.",
+  "privacy_profile": "EP-NCPDP-RX-PRIVACY-PROFILE-v1. Signed artifacts have exact allowlists, patient references are pairwise, and source records use keyed commitments. This is a minimization control, not a legal-compliance claim.",
+  "exports": "EP-RX-RELIANCE-BUNDLE-v2 — a content-addressed, PHI-minimized projection with keyed references to evidence retained in the holder's controlled vault.",
   "conformance": "conformance/vectors/ncpdp-rx-reliance.v1.json (positive approve + positive signed deny + a reject for every rx_do_not_rely_* verdict); tests/ncpdp-rx-reliance.test.js.",
   "wedge": "CMS-0057-F pushes medical prior auth through FHIR APIs but repeatedly excludes drugs from those requirements, leaving drug PA / pharmacy benefit authorization as the NCPDP-owned gap this profile targets.",
   "standards_status": "Candidate companion profile. No EP Internet-Draft is IETF-adopted or endorsed; this profile is not an NCPDP standard or operating rule until NCPDP adopts it."

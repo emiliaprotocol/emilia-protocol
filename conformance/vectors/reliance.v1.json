@@ -12,6 +12,7 @@
     { "id": "reject_quorum_unsatisfied", "break": "require_quorum_absent", "expect": { "valid": false, "verdict": "do_not_rely_quorum_unsatisfied" } },
     { "id": "reject_authority_missing", "break": "no_authority_proof", "expect": { "valid": false, "verdict": "do_not_rely_authority_missing" } },
     { "id": "reject_authority_subject_not_signer", "break": "authority_subject_not_signer", "expect": { "valid": false, "verdict": "do_not_rely_authority_subject_mismatch" } },
+    { "id": "reject_authority_organization_mismatch", "break": "authority_organization_wrong", "expect": { "valid": false, "verdict": "do_not_rely_authority_organization_mismatch" } },
     { "id": "reject_authority_revoked", "break": "authority_revoked", "expect": { "valid": false, "verdict": "do_not_rely_authority_revoked" } },
     { "id": "reject_authority_expired", "break": "authority_expired", "expect": { "valid": false, "verdict": "do_not_rely_authority_expired" } },
     { "id": "reject_scope_mismatch", "break": "authority_scope_wrong", "expect": { "valid": false, "verdict": "do_not_rely_scope_mismatch" } },

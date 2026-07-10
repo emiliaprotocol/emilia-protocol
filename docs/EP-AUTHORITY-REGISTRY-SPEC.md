@@ -39,7 +39,7 @@ a relying party can switch on it exhaustively:
 | `wrong_scope` | The action_type is not in the authority's `action_scopes`. |
 | `amount_exceeded` | The amount is above the ceiling, or is in a currency the ceiling is not denominated in (no FX oracle → fail closed). |
 | `policy_mismatch` | The authority is pinned to a policy hash that differs from the action's. |
-| `delegation_broken` | A delegated authority widened its parent's scope/ceiling, or an ancestor is missing/revoked/expired, or the chain cycles or is too deep. |
+| `delegation_broken` | A delegated authority widened its parent's organization, scope, ceiling/currency, policy, or assurance; an ancestor is missing/revoked/out-of-window/malformed; or the chain cycles or is too deep. |
 | `insufficient_assurance` | The record's assurance class is below the required class. |
 | `registry_unavailable` | The registry could not be read, or is staler than the relying party's pinned minimum epoch. |
 
@@ -62,7 +62,7 @@ substrate. 131 adds the scope/limit/delegation/policy columns:
 | `action_scopes TEXT[]` | action_type values this grant covers; NULL = unscoped |
 | `max_amount_usd NUMERIC` | amount ceiling in `currency`; NULL = unbounded |
 | `currency TEXT` | denomination of the ceiling (default `USD`) |
-| `delegation_parent TEXT` | the authority this one narrows; a child may only narrow, never widen |
+| `delegation_parent TEXT` | the authority this one narrows; constrained dimensions are inherited, so omission cannot reopen them |
 | `policy_hash TEXT` | when set, pins the grant to a specific policy |
 
 ## Registry epoch and head

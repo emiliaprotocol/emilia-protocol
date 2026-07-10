@@ -33,6 +33,7 @@ integrations/langchain-emilia/dist/
 .serena/
 coverage/
 test-results/
+reports/mutation/
 
 # Supabase CLI local cache — these change per-developer and per-link
 supabase/.temp/

@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 import { snapshotStore, resolveAuthority } from '../lib/authority/store.js';
-import { evaluateAuthorityVerdict, AUTHORITY_VERDICTS, authorityResultHash, authorityBinding } from '../lib/authority/resolver.js';
+import { evaluateAuthorityVerdict, AUTHORITY_VERDICTS, authorityResultHash, authorityBinding, normalizeAuthorityRecord } from '../lib/authority/resolver.js';
 import { computeRegistryHead } from '../lib/authority/registry-head.js';
 import { signAuthorityProof, verifyAuthorityProof } from '../lib/authority/proof.js';
 import { applyAuthorityEnforcement, authorityAdmissibilityCode } from '../lib/authority/enforcement.js';
@@ -166,5 +166,202 @@ describe('EP-AUTHORITY-REGISTRY-v1 unit invariants', () => {
     const unscoped = { record: { authority_id: 'a1', subject_ref: 's', organization_id: 'o', role: 'r', status: 'active', assurance_class: 'A', action_scopes: null }, snapshot: { epoch: 1, head: 'sha256:' + '0'.repeat(64) } };
     const r = evaluateAuthorityVerdict(unscoped, { organization_id: 'o', approver_id: 's', action_type: 'anything', issued_at: '2026-07-07T00:00:00.000Z' });
     expect(r.verdict).toBe('authorized');
+  });
+
+  it('joins the resolved grant back to the requested subject and organization', () => {
+    const record = {
+      authority_id: 'a1', subject_ref: 'alice', organization_id: 'org-a', role: 'cfo',
+      status: 'active', assurance_class: 'A', action_scopes: ['wire.release'],
+    };
+    const ctx = { record, snapshot: { epoch: 1, head: 'sha256:' + '0'.repeat(64) } };
+    const input = { organization_id: 'org-a', approver_id: 'alice', action_type: 'wire.release', issued_at: '2026-07-07T00:00:00.000Z' };
+    expect(evaluateAuthorityVerdict(ctx, { ...input, approver_id: 'mallory' }).verdict).toBe('unknown_authority');
+    expect(evaluateAuthorityVerdict(ctx, { ...input, organization_id: 'org-b' }).verdict).toBe('unknown_authority');
+  });
+
+  it('does not fall back to a cached snapshot when the authority store reports unavailable', () => {
+    const record = {
+      authority_id: 'a1', subject_ref: 'alice', organization_id: 'org-a', role: 'cfo',
+      status: 'active', assurance_class: 'A', action_scopes: ['wire.release'],
+    };
+    const result = evaluateAuthorityVerdict(
+      { unavailable: true, record, snapshot: { epoch: 99, head: 'sha256:' + '9'.repeat(64) } },
+      { organization_id: 'org-a', approver_id: 'alice', action_type: 'wire.release', issued_at: '2026-07-07T00:00:00.000Z' },
+    );
+    expect(result.verdict).toBe('registry_unavailable');
+    expect(result.authorized).toBe(false);
+    expect(result.registry_epoch).toBe(null);
+    expect(result.registry_head).toBe(null);
+  });
+
+  it('refuses non-active status and malformed grant validity even under a fresh snapshot', () => {
+    const baseRecord = {
+      authority_id: 'a1', subject_ref: 'alice', organization_id: 'org-a', role: 'cfo',
+      status: 'active', assurance_class: 'A', action_scopes: ['wire.release'],
+    };
+    const snapshot = { epoch: 1, head: 'sha256:' + '0'.repeat(64) };
+    const input = { organization_id: 'org-a', approver_id: 'alice', action_type: 'wire.release', issued_at: '2026-07-07T00:00:00.000Z' };
+    expect(evaluateAuthorityVerdict({ record: { ...baseRecord, status: 'suspended' }, snapshot }, input).verdict).toBe('revoked_authority');
+    expect(evaluateAuthorityVerdict({ record: { ...baseRecord, valid_to: '2026-02-30T00:00:00.000Z' }, snapshot }, input).verdict).toBe('expired_authority');
+  });
+
+  it('fails closed on an omitted policy, amount, currency, or malformed time', () => {
+    const record = {
+      authority_id: 'a1', subject_ref: 'alice', organization_id: 'org-a', role: 'cfo',
+      status: 'active', assurance_class: 'A', action_scopes: ['wire.release'],
+      max_amount_usd: 50000, currency: 'USD', policy_hash: 'sha256:policy-a',
+      valid_from: '2026-01-01T00:00:00.000Z', valid_to: '2027-01-01T00:00:00.000Z',
+    };
+    const ctx = { record, snapshot: { epoch: 1, head: 'sha256:' + '0'.repeat(64) } };
+    const input = {
+      organization_id: 'org-a', approver_id: 'alice', action_type: 'wire.release',
+      amount: 50000, currency: 'USD', policy_hash: 'sha256:policy-a',
+      issued_at: '2026-07-07T00:00:00.000Z', requiredAssurance: 'A',
+    };
+    expect(evaluateAuthorityVerdict(ctx, { ...input, policy_hash: undefined }).verdict).toBe('policy_mismatch');
+    expect(evaluateAuthorityVerdict(ctx, { ...input, amount: undefined }).verdict).toBe('amount_exceeded');
+    expect(evaluateAuthorityVerdict(ctx, { ...input, currency: undefined }).verdict).toBe('amount_exceeded');
+    expect(evaluateAuthorityVerdict(ctx, { ...input, issued_at: 'not-a-time' }).verdict).toBe('expired_authority');
+  });
+
+  it('refuses unknown assurance labels and accepts exact amount/time boundaries', () => {
+    const record = {
+      authority_id: 'a1', subject_ref: 'alice', organization_id: 'org-a', role: 'cfo',
+      status: 'active', assurance_class: 'A', action_scopes: ['wire.release'],
+      max_amount_usd: 50000, currency: 'USD',
+      valid_from: '2026-07-07T00:00:00.000Z', valid_to: '2026-07-07T00:00:00.000Z',
+    };
+    const ctx = { record, snapshot: { epoch: 1, head: 'sha256:' + '0'.repeat(64) } };
+    const input = {
+      organization_id: 'org-a', approver_id: 'alice', action_type: 'wire.release',
+      amount: 50000, currency: 'USD', issued_at: '2026-07-07T00:00:00.000Z',
+    };
+    expect(evaluateAuthorityVerdict(ctx, { ...input, requiredAssurance: 'CLASS_A' }).verdict).toBe('insufficient_assurance');
+    const accepted = evaluateAuthorityVerdict(ctx, { ...input, requiredAssurance: 'A' });
+    expect(accepted).toMatchObject({
+      action_type: 'wire.release', amount: 50000, currency: 'USD', issued_at: input.issued_at,
+      subject_ref: 'alice', registry_epoch: 1, authority_id: 'a1', role: 'cfo',
+      scope: ['wire.release'], max_amount_usd: 50000, verdict: 'authorized',
+      authorized: true, detail: 'ok', assurance_class: 'A',
+    });
+  });
+
+  it('delegation cannot widen by omitting scope, ceiling, currency, policy, assurance, lifecycle, or organization', () => {
+    const snapshot = { epoch: 1, head: 'sha256:' + '0'.repeat(64) };
+    const input = {
+      organization_id: 'org-a', approver_id: 'alice', action_type: 'wire.release',
+      amount: 100, currency: 'USD', policy_hash: 'sha256:policy-a',
+      issued_at: '2026-07-07T00:00:00.000Z', requiredAssurance: 'A',
+    };
+    const parent = {
+      authority_id: 'parent', subject_ref: 'director', organization_id: 'org-a',
+      status: 'active', assurance_class: 'A', action_scopes: ['wire.release'],
+      max_amount_usd: 1000, currency: 'USD', policy_hash: 'sha256:policy-a',
+      valid_from: '2026-01-01T00:00:00.000Z', valid_to: '2027-01-01T00:00:00.000Z',
+    };
+    const child = {
+      authority_id: 'child', subject_ref: 'alice', organization_id: 'org-a',
+      status: 'active', assurance_class: 'A', action_scopes: ['wire.release'],
+      max_amount_usd: 500, currency: 'USD', policy_hash: 'sha256:policy-a',
+      valid_from: '2026-01-01T00:00:00.000Z', valid_to: '2027-01-01T00:00:00.000Z',
+      delegation_parent: 'parent',
+    };
+    const evaluate = (childOverride = {}, parentOverride = {}, resolve = true, inputOverride = {}) => evaluateAuthorityVerdict(
+      {
+        record: { ...child, ...childOverride }, snapshot,
+        resolveParent: resolve ? () => ({ ...parent, ...parentOverride }) : () => null,
+      },
+      { ...input, ...inputOverride },
+    );
+
+    expect(evaluate().verdict).toBe('authorized');
+    for (const result of [
+      evaluate({ action_scopes: null }),
+      evaluate({ action_scopes: ['wire.release', 'admin.delete'] }),
+      evaluate({ max_amount_usd: null }),
+      evaluate({ max_amount_usd: 1001 }),
+      evaluate({ currency: 'EUR' }, {}, true, { currency: 'EUR' }),
+      evaluate({ policy_hash: null }),
+      evaluate({ assurance_class: 'A' }, { assurance_class: 'B' }),
+      evaluate({ assurance_class: 'UNKNOWN' }),
+      evaluate({}, { assurance_class: 'UNKNOWN' }),
+      evaluate({}, { organization_id: 'org-b' }),
+      evaluate({}, { status: 'suspended' }),
+      evaluate({}, { revoked_at: '2026-07-01T00:00:00.000Z' }),
+      evaluate({}, { max_amount_usd: Number.POSITIVE_INFINITY }),
+      evaluate({}, { valid_from: 'not-a-date' }),
+      evaluate({}, { valid_to: '2026-02-30T00:00:00.000Z' }),
+      evaluate({}, { valid_from: '2026-08-01T00:00:00.000Z' }),
+      evaluate({}, { valid_to: '2026-06-01T00:00:00.000Z' }),
+      evaluate({}, {}, false),
+      evaluate({}, { authority_id: 'child' }),
+    ]) {
+      expect(result.verdict).toBe('delegation_broken');
+      expect(result.authorized).toBe(false);
+    }
+
+    expect(evaluate({ max_amount_usd: 1000 }).verdict).toBe('authorized');
+  });
+
+  it('fails closed on over-deep delegation and normalizes legacy scalar fields deterministically', () => {
+    const normalized = normalizeAuthorityRecord({
+      authority_id: 'legacy', subject_ref: 'alice', organization_id: 'org-a',
+      scope: 'wire.release', max_amount_usd: '500', currency: null,
+    });
+    expect(normalized).toMatchObject({
+      authority_id: 'legacy', action_scopes: ['wire.release'], max_amount_usd: 500,
+      currency: 'USD', status: 'active', delegation_parent: null,
+    });
+    expect(normalizeAuthorityRecord(null)).toBe(null);
+
+    let depth = 0;
+    const result = evaluateAuthorityVerdict({
+      record: {
+        authority_id: 'leaf', subject_ref: 'alice', organization_id: 'org-a', status: 'active',
+        assurance_class: 'A', action_scopes: ['wire.release'], max_amount_usd: 100,
+        currency: 'USD', delegation_parent: 'p0',
+      },
+      resolveParent: () => {
+        const id = `p${depth++}`;
+        return {
+          authority_id: id, subject_ref: id, organization_id: 'org-a', status: 'active',
+          assurance_class: 'A', action_scopes: ['wire.release'], max_amount_usd: 100,
+          currency: 'USD', delegation_parent: `p${depth}`,
+        };
+      },
+      snapshot: { epoch: 1, head: 'sha256:' + '0'.repeat(64) },
+    }, {
+      organization_id: 'org-a', approver_id: 'alice', action_type: 'wire.release',
+      amount: 1, currency: 'USD', issued_at: '2026-07-07T00:00:00.000Z',
+    });
+    expect(result.verdict).toBe('delegation_broken');
+    expect(result.detail).toBe('delegation_too_deep');
+  });
+
+  it('strictly validates authority instants, leap years, offsets, epoch, and zero boundaries', () => {
+    const record = {
+      authority_id: 'a1', subject_ref: 'alice', organization_id: 'org-a', role: 'cfo',
+      status: 'active', assurance_class: 'A', action_scopes: ['wire.release'],
+      max_amount_usd: 0, currency: 'USD',
+    };
+    const ctx = { record, snapshot: { epoch: 7, head: 'sha256:' + '0'.repeat(64) } };
+    const base = {
+      organization_id: 'org-a', approver_id: 'alice', action_type: 'wire.release',
+      amount: 0, currency: 'USD', expected_min_epoch: 7, requiredAssurance: 'A',
+    };
+    for (const issued_at of [
+      null, 0, [], {}, '2026-00-01T00:00:00Z', '2026-13-01T00:00:00Z',
+      '2026-01-00T00:00:00Z', '2026-04-31T00:00:00Z', '1900-02-29T00:00:00Z',
+      '2026-01-01T24:00:00Z', '2026-01-01T00:60:00Z', '2026-01-01T00:00:60Z',
+      '2026-01-01T00:00:00+24:00', '2026-01-01T00:00:00+00:60',
+      '2026-01-01T00:00:00',
+    ]) {
+      expect(evaluateAuthorityVerdict(ctx, { ...base, issued_at }).verdict).toBe('expired_authority');
+    }
+    for (const issued_at of ['2000-02-29T00:00:00Z', '2024-02-29T23:59:59+23:59']) {
+      expect(evaluateAuthorityVerdict(ctx, { ...base, issued_at }).verdict).toBe('authorized');
+    }
+    expect(evaluateAuthorityVerdict(ctx, { ...base, issued_at: '2026-01-01T00:00:00Z', expected_min_epoch: 8 }).verdict).toBe('registry_unavailable');
+    expect(evaluateAuthorityVerdict(ctx, { ...base, issued_at: '2026-01-01T00:00:00Z', amount: -1 }).verdict).toBe('amount_exceeded');
   });
 });

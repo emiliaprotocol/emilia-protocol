@@ -1,0 +1,19 @@
+{
+  "@version": "EP-CLEAN-ROOM-SUBMISSION-v1",
+  "implementation": {
+    "implementation_id": "emilia-js-reference",
+    "organization": "EMILIA Protocol",
+    "language": "JavaScript",
+    "version": "workspace",
+    "source_repository": "https://github.com/emiliaprotocol/emilia-protocol",
+    "source_commit": "workspace",
+    "license_spdx": "Apache-2.0"
+  },
+  "independence": {
+    "claimed": false,
+    "authors": ["EMILIA maintainers"],
+    "specification_inputs": ["EMILIA specifications", "EMILIA reference source"],
+    "reference_source_access": "reference_port",
+    "statement": "This manifest exercises the intake harness only and makes no clean-room or independence claim."
+  }
+}

@@ -83,9 +83,12 @@ passes. A bare `@emilia-protocol/require-receipt` gate binds the action type/tar
 this package when parameter drift (amount, beneficiary, commit, role, …) must be caught.
 
 Prefer `gate.run(...)` for mutations: it reserves the receipt, runs the side effect, commits
-one-time consumption only after success, releases the reservation if the action fails before
-mutation, and emits the execution receipt + reliance packet. Use lower-level `gate.check(...)` only
-when your framework has to separate authorization from execution.
+one-time consumption after success, and emits the execution receipt + reliance packet. Once the
+executor is invoked, a thrown error is an **indeterminate effect**, not proof that nothing happened:
+the approval is burned (or its no-TTL reservation remains frozen if the store is unavailable) so a
+blind retry cannot duplicate the side effect. Retryable integrations should make the downstream
+operation idempotent under `receipt_id` and reconcile the result. Use lower-level `gate.check(...)`
+only when your framework has to separate authorization from execution.
 
 Use your own manifest when you need custom policy:
 
@@ -251,14 +254,19 @@ registry.revoke('issuer-1'); // compromised — refused immediately, live, no re
 ```
 
 **Fleet-safe replay defense.** The in-memory store is per-process. In production, back the
-consumption store with a shared key-value store whose insert-if-absent is atomic:
+consumption store with a shared key-value store whose insert-if-absent, compare-and-set, and
+conditional delete operations are atomic:
 
 ```js
 import { createDurableConsumptionStore } from '@emilia-protocol/gate';
-const store = createDurableConsumptionStore(redisBackend); // backend.addIfAbsent MUST be atomic (Redis SET NX)
+const store = createDurableConsumptionStore(redisBackend); // addIfAbsent + compareAndSet + deleteIfValue + has
 const gate = createGate({ manifest, keyRegistry, store });
 // A receipt consumed on one pod cannot be replayed on another.
 ```
+
+Reservations carry an opaque owner token and have no TTL. Only that owner may commit or release;
+an abandoned reservation requires reconciliation because automatically reopening it after a crash
+could repeat an effect whose response was lost. A TTL may apply only to committed rows.
 
 **Evidence retention.** Classify the evidence log into hot/cold/expired with legal hold, and
 export the auditor/SIEM manifest (tied to the evidence head). `EP_AUDIT_HOT_DAYS` /

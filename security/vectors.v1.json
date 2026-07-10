@@ -1,0 +1,46 @@
+{
+  "@version": "EP-SECURITY-CASE-VECTORS-v1",
+  "suite": "Executable vectors for claims whose acceptance path is stateful or release-operational",
+  "vectors": [
+    {
+      "id": "accept_single_reservation_winner",
+      "expect": { "valid": true },
+      "execution": { "runner": "node-test", "file": "packages/gate/store-faults.test.js", "title": "fault: a 100-way reservation storm admits exactly one worker" }
+    },
+    {
+      "id": "reject_stale_reservation_owner",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/store-faults.test.js", "title": "fault: stale owner cannot erase or commit a replacement owner" }
+    },
+    {
+      "id": "accept_successful_effect_once",
+      "expect": { "valid": true },
+      "execution": { "runner": "node-test", "file": "packages/gate/gate.test.js", "title": "run() commits a successful effect and permanently refuses replay" }
+    },
+    {
+      "id": "reject_ambiguous_effect_retry",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/gate.test.js", "title": "run() consumes an indeterminate attempt when the executor throws" }
+    },
+    {
+      "id": "accept_phi_minimized_projection",
+      "expect": { "valid": true },
+      "execution": { "runner": "vitest", "file": "tests/ncpdp-privacy.test.js", "title": "projects an appeal bundle without recursively copying planted PHI" }
+    },
+    {
+      "id": "reject_direct_patient_data",
+      "expect": { "valid": false },
+      "execution": { "runner": "vitest", "file": "tests/ncpdp-privacy.test.js", "title": "refuses direct identifiers, bare hashes, free text, and instance-specific appeal URLs" }
+    },
+    {
+      "id": "accept_byte_identical_registry_artifact",
+      "expect": { "valid": true },
+      "execution": { "runner": "vitest", "file": "tests/release-reproducibility.test.js", "title": "accepts a registry artifact only when every published byte matches" }
+    },
+    {
+      "id": "reject_registry_byte_substitution",
+      "expect": { "valid": false },
+      "execution": { "runner": "vitest", "file": "tests/release-reproducibility.test.js", "title": "rejects a one-byte registry artifact substitution" }
+    }
+  ]
+}

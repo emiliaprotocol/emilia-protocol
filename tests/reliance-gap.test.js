@@ -150,7 +150,7 @@ describe('foreign artifacts fail closed', () => {
       { '@type': 'x-legacy-fax', pages: 2 },
       { '@type': 'x-pdf-exhibit', uri: 'file://synthetic' },
     ];
-    const report = buildRelianceGapReport(pkt, profile('pharmacy.json'));
+    const report = buildRelianceGapReport(pkt, profile('medicaid-auditor.json'));
     expect(report.evidence_inventory.every((e) => e.status === 'unverifiable_present')).toBe(true);
     // No receipt slot filled: the kernel refuses as unsigned.
     expect(report.kernel_verdict).toBe('do_not_rely_unsigned');

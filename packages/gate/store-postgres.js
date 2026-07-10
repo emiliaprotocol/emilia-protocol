@@ -1,26 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 /**
  * EMILIA Gate — reference DURABLE consumption backend: Postgres
- * (EP-GATE-PG-CONSUMPTION-v1).
+ * (EP-GATE-PG-CONSUMPTION-v2).
  *
  * Replay defense that survives restarts. This module implements the backend
  * contract consumed by `createDurableConsumptionStore` in ./store.js:
  *
  *   backend = {
  *     async addIfAbsent(key, value, { ttlSeconds }?) : boolean  // true iff inserted
- *     async set(key, value, { ttlSeconds }?)         : void     // overwrite
- *     async delete(key)                              : void
+ *     async compareAndSet(key, expected, replacement, { ttlSeconds }?) : boolean
+ *     async deleteIfValue(key, expected)             : boolean
  *     async has(key)                                 : boolean
  *   }
  *
  * plus a `cleanupExpired(now)` garbage-collection statement.
  *
- * THE ONE CORRECTNESS PRIMITIVE — atomic insert-if-absent. `addIfAbsent` is a
- * SINGLE statement: `INSERT ... ON CONFLICT (consumption_key) DO NOTHING`, and
- * the returned row count decides consumed-vs-replay. There is no read-then-
- * write, so there is no race: when two pods consume the same receipt id
- * concurrently, Postgres serializes the inserts on the primary key and exactly
- * one caller sees rowCount === 1. Everyone else is a replay.
+ * Each transition is one SQL statement. `addIfAbsent` decides first use;
+ * `compareAndSet` and `deleteIfValue` bind commit/release to the opaque owner of
+ * the current reservation. There is no read-then-write interval in which a
+ * delayed worker can overwrite or remove a newer worker's reservation.
  *
  * FAIL-CLOSED CONTRACT: if the injected `query` THROWS (connection down,
  * timeout, constraint other than the PK, ...) the error PROPAGATES to the
@@ -37,7 +35,7 @@
  * fake with real ON CONFLICT semantics — no network, no database.
  */
 
-export const PG_CONSUMPTION_VERSION = 'EP-GATE-PG-CONSUMPTION-v1';
+export const PG_CONSUMPTION_VERSION = 'EP-GATE-PG-CONSUMPTION-v2';
 
 /** Single consumption table. Timestamps are epoch milliseconds (BIGINT) so the
  * injected JS clock maps 1:1 onto column values with no timezone ambiguity. */
@@ -58,16 +56,16 @@ export const CONSUMPTION_SQL = {
   /** $1 key, $2 state, $3 consumed_at ms, $4 expires_at ms|null. rowCount 1 = consumed, 0 = replay. */
   addIfAbsent: `INSERT INTO ${CONSUMPTION_TABLE} (consumption_key, state, consumed_at, expires_at) `
     + 'VALUES ($1, $2, $3, $4) ON CONFLICT (consumption_key) DO NOTHING',
-  /** $1 key, $2 state, $3 consumed_at ms, $4 expires_at ms|null. Upsert (overwrite). */
-  set: `INSERT INTO ${CONSUMPTION_TABLE} (consumption_key, state, consumed_at, expires_at) `
-    + 'VALUES ($1, $2, $3, $4) ON CONFLICT (consumption_key) DO UPDATE '
-    + 'SET state = EXCLUDED.state, consumed_at = EXCLUDED.consumed_at, expires_at = EXCLUDED.expires_at',
-  /** $1 key. */
-  delete: `DELETE FROM ${CONSUMPTION_TABLE} WHERE consumption_key = $1`,
+  /** $1 key, $2 expected state, $3 replacement, $4 consumed_at ms, $5 expires_at ms|null. */
+  compareAndSet: `UPDATE ${CONSUMPTION_TABLE} SET state = $3, consumed_at = $4, expires_at = $5 `
+    + 'WHERE consumption_key = $1 AND state = $2',
+  /** $1 key, $2 expected state. */
+  deleteIfValue: `DELETE FROM ${CONSUMPTION_TABLE} WHERE consumption_key = $1 AND state = $2`,
   /** $1 key. Any row — even an expired one — counts as consumed until cleaned. */
   has: `SELECT 1 FROM ${CONSUMPTION_TABLE} WHERE consumption_key = $1`,
   /** $1 now ms. Removes ONLY rows whose TTL has elapsed; NULL expires_at never expires. */
-  cleanupExpired: `DELETE FROM ${CONSUMPTION_TABLE} WHERE expires_at IS NOT NULL AND expires_at <= $1`,
+  cleanupExpired: `DELETE FROM ${CONSUMPTION_TABLE} WHERE state LIKE 'committed:%' `
+    + 'AND expires_at IS NOT NULL AND expires_at <= $1',
 };
 
 /**
@@ -102,14 +100,22 @@ export function createPostgresBackend({ query, now = Date.now } = {}) {
       return res.rowCount === 1;
     },
 
-    /** Overwrite (used by commit(): 'reserved' -> 'committed'). */
-    async set(key, value, opt) {
-      await query(CONSUMPTION_SQL.set, [key, value, nowMs(), expiryFor(opt)]);
+    /** Ownership-fenced reserved -> committed transition. */
+    async compareAndSet(key, expected, replacement, opt) {
+      const res = await query(CONSUMPTION_SQL.compareAndSet, [key, expected, replacement, nowMs(), expiryFor(opt)]);
+      if (!res || typeof res.rowCount !== 'number') {
+        throw new Error('compareAndSet: query result has no numeric rowCount — cannot prove reservation ownership');
+      }
+      return res.rowCount === 1;
     },
 
-    /** Remove (used by release(): a failed action leaves the approval retryable). */
-    async delete(key) {
-      await query(CONSUMPTION_SQL.delete, [key]);
+    /** Remove only the reservation owned by the caller. */
+    async deleteIfValue(key, expected) {
+      const res = await query(CONSUMPTION_SQL.deleteIfValue, [key, expected]);
+      if (!res || typeof res.rowCount !== 'number') {
+        throw new Error('deleteIfValue: query result has no numeric rowCount — cannot prove reservation ownership');
+      }
+      return res.rowCount === 1;
     },
 
     /** Present = consumed. Expired-but-uncleaned rows still count (conservative). */

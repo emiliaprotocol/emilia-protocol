@@ -255,6 +255,32 @@ by their conjunction.
 
 ---
 
+## Tamarin (symbolic, Dolev-Yao) : `tamarin/ep_reliance_composed.spthy`
+
+**Status: composed acceptance path, machine-checked 2026-07-10.** This model
+puts signed challenge, exact action/profile/audience binding, UV-gated human
+approval, authority proof, revocation state, pinned receipt issuer, one-time
+consumption, and execution in one trace. The pinned container digest, model
+SHA-256, command, and exact output summary are recorded in
+`formal/tamarin/results/ep_reliance_composed.summary.txt` and re-run by CI.
+
+```
+executable_composed_reliance (exists-trace): verified (14 steps)
+execution_requires_full_composition (all-traces): verified (22 steps)
+no_cross_action_profile_or_audience_replay (all-traces): verified (10 steps)
+injective_execution_with_consumption (all-traces): verified (2 steps)
+unchecked_composition_is_injective (all-traces): falsified - found trace (26 steps)
+```
+
+The falsified comparison lemma omits only consumption and demonstrates a
+same-challenge replay. The checked path is injective. The model proves exact
+binding and required composition under uncompromised pinned roots; it does not
+prove WebAuthn internals, canonical parsers, amount arithmetic, policy authorship,
+clock freshness, transparency-log completeness, collusion resistance, or
+downstream exactly-once effects.
+
+---
+
 When a property is verified by a model checker:
 1. Update its status from `Specified — not yet verified` to `Verified (TLC/Alloy, YYYY-MM-DD)`
 2. Commit the `.cfg` / Alloy result file alongside the status update
@@ -262,4 +288,4 @@ When a property is verified by a model checker:
 
 ---
 
-*Last updated: 2026-07-06 (Tamarin quorum model `ep_quorum_core.spthy` added: 2-of-2 distinct UV-gated signatures + no self-approval, 5 lemmas verified; falsification-then-fix history recorded). Prior: 2026-07-05 (Tamarin core-receipt model added; two-handshake TLC bounded result recorded). Prior: 2026-06-11 — 26 TLA+ properties verified: T1–T20 (2026-04-02) and T21–T26 EP-IX continuity (2026-04-30) all verified by TLC 2.19 across 413,137 states with 0 errors; all 15 `ep_relations.als` assertions + 35 facts, and all 7 `ep_federation.als` (PIP-006) assertions, verified by Alloy 6.0.0 with 0 counterexamples*
+*Last updated: 2026-07-10 (composed reliance-path Tamarin model added: 4 lemmas verified, no-consumption comparison falsified with replay, all well-formedness checks clean). Prior: 2026-07-06 (Tamarin quorum model added: 5 lemmas verified). Prior: 2026-07-05 (Tamarin core-receipt model added). Prior: 2026-06-11 — 26 TLA+ properties verified across 413,137 states with 0 errors; 15 relation assertions and 7 federation assertions verified with 0 counterexamples.*

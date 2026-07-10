@@ -26,10 +26,28 @@ jobs:
         with:
           node-version: 20
 
+      - name: Pin release package tooling
+        run: npm install -g npm@11.18.0 --min-release-age=0
+
       - run: npm ci --ignore-scripts
 
+      - name: Verify exact security case
+        run: npm run security-case:emit
+
+      - name: Verify reproducible package bytes
+        run: npm run release:verify:reproducible
+
+      - name: Pack verify SDK release artifact
+        id: pack-verify
+        run: |
+          mkdir -p release-artifacts
+          npm pack ./packages/verify --json --pack-destination release-artifacts > release-artifacts/pack.json
+          TARBALL=$(node -e "const r=require('./release-artifacts/pack.json'); if(r.length!==1) process.exit(2); process.stdout.write(r[0].filename)")
+          sha256sum "release-artifacts/$TARBALL" > "release-artifacts/$TARBALL.sha256"
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+
       - name: Generate SBOM
-        run: npx @cyclonedx/cyclonedx-npm --output-file sbom.json
+        run: npm sbom --sbom-format=cyclonedx --omit=dev > sbom.json
 
       - name: Upload SBOM
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
@@ -38,11 +56,31 @@ jobs:
           path: sbom.json
           retention-days: 90
 
+      - name: Attest verify SDK package bytes
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
+        with:
+          subject-path: release-artifacts/${{ steps.pack-verify.outputs.tarball }}
+
+      - name: Attest machine-verifiable security case
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
+        with:
+          subject-path: security/security-case.json
+
+      - name: Upload release evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: release-evidence-${{ github.ref_name }}
+          path: |
+            release-artifacts/${{ steps.pack-verify.outputs.tarball }}
+            release-artifacts/${{ steps.pack-verify.outputs.tarball }}.sha256
+            security/security-case.json
+          retention-days: 90
+
       - name: Generate MCP server SBOM
         working-directory: mcp-server
         run: |
           npm ci --ignore-scripts
-          npx @cyclonedx/cyclonedx-npm --output-file sbom.json
+          npm sbom --sbom-format=cyclonedx --omit=dev > sbom.json
 
       - name: Upload MCP SBOM
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1

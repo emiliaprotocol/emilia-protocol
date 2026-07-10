@@ -100,7 +100,7 @@ flowchart TD
 
     DB[("Supabase\n(Trust Tables)\nreceipts · commits · disputes\nhandshakes · handshake_parties\nhandshake_presentations\nhandshake_bindings · handshake_results\nhandshake_events · protocol_events\nsignoff_challenges · signoff_attestations\nsignoff_consumptions")]
 
-    CI["CI Enforcement\ncheck-write-discipline.js\ncheck-protocol-discipline.js\ncheck-invariant-coverage.js"]
+    CI["CI Enforcement\ncheck-write-discipline.js\ncheck-protocol-discipline.js\nverify-security-case.mjs"]
 
     Client --> MW
     MW --> RH

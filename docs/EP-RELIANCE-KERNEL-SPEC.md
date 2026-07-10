@@ -56,6 +56,7 @@ refusal:
 | `do_not_rely_quorum_unsatisfied` | Profile requires quorum and no satisfied EP-QUORUM-v1 bound to the action is present. |
 | `do_not_rely_authority_missing` | Authority required, but no (or an unverifiable) EP-AUTHORITY-PROOF-v1. |
 | `do_not_rely_authority_subject_mismatch` | The authority proof belongs to a subject who is not the verified approver of this action. |
+| `do_not_rely_authority_organization_mismatch` | The signed action, authority proof, and organization-scoped registry pin do not name the same organization. |
 | `do_not_rely_authority_revoked` | The authority proof (or a bound revocation statement) shows revoked. |
 | `do_not_rely_authority_expired` | The authority is outside its validity window at reliance time. |
 | `do_not_rely_scope_mismatch` | The action is not within the authority's scope. |
@@ -82,20 +83,52 @@ member; under `signed` it must be a verified approver on the receipt. Otherwise
 Alice's signoff plus Bob-CFO's authority proof would compose to `rely` though
 Bob never approved. That is `do_not_rely_authority_subject_mismatch`.
 
-## Composition (pure, offline, fail-closed)
+**Authority is evaluated against signed action material.** Action type, amount,
+currency, organization, and policy are extracted from the verified receipt and its signed
+contexts. A caller may repeat those fields as a convenience, but a mismatch is
+`do_not_rely_unsigned`; the caller's summary is never an authority input. This
+prevents a receipt for a high-value action from being tested against a lower
+caller-supplied amount, or an accepted authority and policy from being composed
+over a receipt signed under another policy.
+
+**Authority is organization-bound three ways.** The organization in the signed
+action, the organization in the signed authority proof, and the organization on
+the relying party's pinned registry-key entry MUST match. A registry key pin
+without `organization_id` is structurally invalid. This prevents a valid grant
+from one tenant or legal entity being composed over another entity's action.
+
+**Registry state is pinned, not merely signed.** The matching organization key
+pin also supplies `min_epoch` and the exact `registry_head`. The authority-proof
+verifier enforces both, so an authentic but stale snapshot or a different head at
+the expected trust point is `do_not_rely_registry_unavailable`.
+
+## Composition (deterministic, fail-closed)
 
 The kernel introduces **no new cryptography**. Every leg is delegated to a frozen
 offline verifier and the results are composed into one verdict:
 
 - receipt + Class-A + consumption/currency → `verifyTrustReceipt`
 - quorum → `verifyQuorum`
-- revocation → `verifyRevocation`
-- one-time consumption evidence → `verifyConsumptionProof`
+- revocation statements → `verifyRevocation`
+- positive consumption evidence → `verifyConsumptionProof`
 - scoped authority → `verifyAuthorityProof` (the offline port in `packages/verify/authority-proof.js`, byte-identical to the reference `lib/authority/proof.js`)
 
-No database, no network, no operator trust. Evaluation follows a fixed
-precedence and returns the first failing gate, so the verdict is deterministic
-across implementations.
+Revocation freshness is accepted only from an already verified, pinned
+authority proof carrying `not_revoked` and `checked_at`, or from a complete
+signed revocation artifact verified under a pinned revoker. A presenter-supplied
+bare timestamp is not evidence.
+
+An unconsumed claim is inherently relying-party state, not portable presenter
+evidence. When a profile requires `consumption_proof`, the kernel requires a
+synchronous `isConsumed({ receipt_id, action_hash })` callback owned by the
+relying party. Missing, throwing, asynchronous, or indeterminate lookups refuse.
+A presenter can prove that a receipt *was* consumed; it cannot prove the
+negative by sending `{ consumed: false }`.
+
+All cryptographic verification remains offline. The decision core has no
+network client and follows a fixed precedence, but profiles that require
+one-time-use necessarily inject the relying party's local consumption-state
+lookup. That trust boundary is explicit rather than hidden in the packet.
 
 ## Runtime enforcement
 
@@ -123,4 +156,6 @@ Registered as `evidence-admissible-under-pinned-reliance-profile` in the
 `conformance/vectors/reliance.v1.json` carries a positive `rely` and a reject
 vector for every `do_not_rely_*` verdict; `tests/reliance-kernel.test.js`
 assembles a fully-valid packet with live signatures and breaks exactly one leg
-per vector.
+per vector. Unit invariants additionally pin the joins between signed action
+material, authority policy, the ceremony that achieved assurance, and the
+checkpoint issuer key.

@@ -1,0 +1,31 @@
+{
+  "@type": "EP-NCPDP-RX-PRIVACY-PROFILE-v1",
+  "status": "candidate companion profile",
+  "purpose": "Keep portable Rx reliance evidence useful without turning the sidecar into a second clinical or patient-identification database.",
+  "wire_rules": {
+    "patient_reference": "HMAC-derived pairwise reference scoped to one relying party; direct patient, member, prescription, and medical-record identifiers are forbidden.",
+    "source_records": "Consent, diagnosis, laboratory, denial-rationale, and other source records remain in the holder's access-controlled evidence vault.",
+    "commitments": "Low-entropy source records use domain-separated HMAC-SHA-256 commitments, not bare hashes, and every signed artifact names the privacy-key identifier needed for rotation.",
+    "signed_artifacts": "Each artifact type has an exact field allowlist. Unknown fields are rejected before signing and before acceptance.",
+    "appeal_route": "The portable denial artifact may carry only a generic HTTPS portal route without a query, fragment, credentials, or instance identifier.",
+    "errors": "Closed verdicts and coded checks may cross the boundary; raw caller values and free-text clinical reasons may not."
+  },
+  "appeal_bundle": {
+    "type": "EP-RX-RELIANCE-BUNDLE-v2",
+    "shape": "A privacy-safe projection with keyed references to the challenge, packet, receipt, authority proof, and trust roots; it never recursively embeds the submitted transaction.",
+    "default_retention_days": 30,
+    "retention_note": "The relying party sets retention and legal-hold policy. Thirty days is an implementation default, not a legal recommendation."
+  },
+  "key_requirements": {
+    "minimum_secret_bytes": 32,
+    "separation": "Use deployment-managed sector keys distinct from receipt, authority, and artifact signing keys.",
+    "rotation": "Every artifact and appeal projection carries a non-secret key identifier. Retain old keys only for the authorized evidence-retention period."
+  },
+  "limitations": [
+    "A malicious issuer can encode sensitive data into an otherwise permitted opaque token; issuer governance and output monitoring remain required.",
+    "Keyed commitments are independently comparable only by parties authorized to possess the sector key or the underlying source record.",
+    "This profile is a data-minimization control, not a claim of legal compliance or an NCPDP-adopted standard."
+  ],
+  "reference_implementation": "lib/ncpdp/privacy.js",
+  "tests": "tests/ncpdp-privacy.test.js"
+}
