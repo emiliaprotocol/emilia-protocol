@@ -79,6 +79,7 @@ function verifyEd25519(bytes, publicKeyB64u, signatureB64u) {
  * @returns {{valid:boolean, checks:object, errors:string[]}}
  */
 export function verifyTimeAttestation(att, opts = {}) {
+  opts = opts && typeof opts === 'object' ? opts : {};
   const tsaKeys = opts.tsaKeys || {};
   const checks = {
     version: true,

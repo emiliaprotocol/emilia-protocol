@@ -65,8 +65,8 @@ function buildReceipt() {
 const receipt = buildReceipt();
 const ACTION = { action_type: 'rx.prior_auth.approve', policy_hash: BENEFIT_POLICY_HASH, action_hash: receipt.action_hash };
 const KEYS = {
-  'ep:key:intake#1': { public_key: intake.pub, key_class: 'B', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
-  'ep:key:prescriber#1': { public_key: prescriber.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+  'ep:key:intake#1': { approver_id: 'ep:approver:intake-agent', public_key: intake.pub, key_class: 'B', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+  'ep:key:prescriber#1': { approver_id: 'ep:approver:prescriber', public_key: prescriber.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
 };
 const OPTS = { approverKeys: KEYS, logPublicKey: logKey.pub, rpId: 'www.emiliaprotocol.ai' };
 const CHALLENGE = {

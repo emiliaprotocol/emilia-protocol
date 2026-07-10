@@ -131,7 +131,7 @@ func trustReceiptCanonicalProfileOK(receipt map[string]any) bool {
 }
 
 // VerifyTrustReceipt verifies an EP §6.2 Trust Receipt offline. opts keys:
-// approverKeys (map of approver_key_id -> {public_key,key_class,valid_from,valid_to}),
+// approverKeys (map of approver_key_id -> {approver_id,public_key,key_class,valid_from,valid_to}),
 // logPublicKey (string).
 func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceiptResult {
 	checks := map[string]bool{
@@ -210,11 +210,19 @@ func VerifyTrustReceipt(receipt map[string]any, opts map[string]any) TrustReceip
 		}
 		keyEntry := getMap(approverKeys[getStr(s, "approver_key_id")])
 		pub := getStr(keyEntry, "public_key")
-		if pub == "" {
-			signaturesOK = false
-			continue
-		}
-		if !withinWindowGo(getStr(ctx, "issued_at"), getStr(keyEntry, "valid_from"), getStr(keyEntry, "valid_to")) {
+			if pub == "" {
+				signaturesOK = false
+				continue
+			}
+			// The pinned directory entry must bind this key to the approver named
+			// by the signed context. A valid key signature without this identity
+			// join cannot establish which principal approved.
+			boundApprover := getStr(keyEntry, "approver_id")
+			if boundApprover == "" || boundApprover != getStr(ctx, "approver") {
+				signaturesOK = false
+				continue
+			}
+			if !withinWindowGo(getStr(ctx, "issued_at"), getStr(keyEntry, "valid_from"), getStr(keyEntry, "valid_to")) {
 			signaturesOK = false
 			continue
 		}

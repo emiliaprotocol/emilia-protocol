@@ -88,6 +88,7 @@ function isWellFormedSignature(sigB64u) {
  * @returns {{valid:boolean, checks:object, errors:string[]}}
  */
 export function verifyRevocation(target, statement, opts = {}) {
+  opts = opts && typeof opts === 'object' ? opts : {};
   const revokerKeys = opts.revokerKeys || {};
   const checks = {
     version: true,

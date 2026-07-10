@@ -61,7 +61,7 @@ async function mint(actionParams, { legacy = false, downgradeClassA = false } = 
   }
   const assemble = legacy ? assembleAuthorizationReceiptLegacyV1 : assembleAuthorizationReceipt;
   const receipt = assemble({ receiptId: `ep:receipt:${crypto.randomBytes(8).toString('base64url')}`, action, contexts, signoffs, committedAt: COMMITTED_AT, log: { privateKey: logKp.privateKey, logKeyId: 'ep:log:test#1' } });
-  const verification = { approver_keys: { 'ep:key:dir#1': { public_key: approverPublicKeyB64u, key_class: pinnedKeyClass, valid_from: '2026-01-01T00:00:00Z', valid_to: '2036-01-01T00:00:00Z' } }, log_public_key: logKp.publicKeyB64u };
+  const verification = { approver_keys: { 'ep:key:dir#1': { approver_id: 'ep:approver:dir', public_key: approverPublicKeyB64u, key_class: pinnedKeyClass, valid_from: '2026-01-01T00:00:00Z', valid_to: '2036-01-01T00:00:00Z' } }, log_public_key: logKp.publicKeyB64u };
   return { receipt, verification, logPrivateKey: logKp.privateKey };
 }
 

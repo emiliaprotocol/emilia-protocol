@@ -126,6 +126,7 @@ function mintReceipt({
       '@version': 'EP-AUTHORIZATION-RECEIPT-VERIFICATION-v1',
       approver_keys: {
         [approverKeyId]: {
+          approver_id: approver,
           public_key: approverKp.publicKeyB64u,
           key_class: keyClass,
           valid_from: '2026-01-01T00:00:00Z',

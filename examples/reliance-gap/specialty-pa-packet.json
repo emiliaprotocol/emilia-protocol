@@ -88,7 +88,7 @@
             "webauthn": {
               "authenticator_data": "EJY-NCPfIABNHTVtLbqqS_bQY6MwdNdfSV1Hl1E-5F0FAAAAAA",
               "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoibDBYM2RsNW9PVXJwVmlsTzQ5ZW9lelo3ejlhNmRyVldab1lNNzdEbS05dyIsIm9yaWdpbiI6Imh0dHBzOi8vd3d3LmVtaWxpYXByb3RvY29sLmFpIn0",
-              "signature": "MEUCIA4u8hDD-HpLqYFv1d2n7qczJ8B7ouNZi_49DLAmGb40AiEA5EeC787f_EFYYSi8rOvSEUBSY-RMjx5R9wZLLlRpgJ8"
+              "signature": "MEUCIQCmxnnUgCOMZ9kRhAlf4Xhbtb5PHvI5VzPHiyB_tZkNoAIgI7FqGhW_IvqjwhbRWogcgIA-2iNSAKkQue58vM-O_B8"
             }
           }
         ],
@@ -99,7 +99,7 @@
         },
         "log_proof": {
           "alg": "EP-MERKLE-v2",
-          "leaf_hash": "sha256:ab88e1da3d3ff329ce6972b983ed43b23ab05b89c0386f2e88538f32bc10ce69",
+          "leaf_hash": "sha256:6bc7d7248b9437a27e1580eafeb649b7e8fea1b0c75e1c6ccfbd54de7c4556f0",
           "leaf_index": 0,
           "inclusion_path": [
             {
@@ -113,10 +113,10 @@
           ],
           "checkpoint": {
             "tree_size": 4,
-            "root_hash": "sha256:81346ed63c7318248a5fad5f82032e3f549e2dfac0d5359c6fb5c760a29829b4",
+            "root_hash": "sha256:0579ba263b53682d6ae8ccaf6f57dd05c9280352678e4dd8de4a99e61982c923",
             "log_key_id": "ep:log:demo-hub#1",
             "merkle_alg": "EP-MERKLE-v2",
-            "log_signature": "UihY3YwR8iJXTkvqZPLPGaPkd5DNf0YdISunlWzH7mywPpsafxvshECy79T2ZXiQ0rs-S5GQNLTEnJVTH2jcAQ"
+            "log_signature": "Y9axUpsQtUCZSQSL-MpboPKzb_pzkI3VQ0Ek7gGVJtggR3JExjNQAos4uCJUhrhvgc6P-rBUBXf-EYOUa6AcCA"
           }
         }
       }
@@ -184,13 +184,15 @@
   "context": {
     "approver_keys": {
       "ep:key:demo-intake#1": {
+        "approver_id": "ep:approver:demo-intake-agent",
         "public_key": "MCowBQYDK2VwAyEAVRVPQgZepaG-oFRjgmviaE65LfksEAAnqrquV8pVQgc",
         "key_class": "B",
         "valid_from": "2026-01-01T00:00:00Z",
         "valid_to": "2027-01-01T00:00:00Z"
       },
       "ep:key:demo-reviewer#1": {
-        "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEva7VEla1PIwZOaXRlYOPDQfce8BU_aDi14keAs9zDoueFOQXAEJ4aZmbRBvvMLe_y8Tiv3VI8a_xg7uNbS4LGQ",
+        "approver_id": "ep:approver:demo-payer-reviewer",
+        "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEOqgHa-6KqibA9prQMwlvtLKOFD7ZHKEIm4XRUoPj_Oh6ndC1IJC00kflsr3KHx7TO95vF3GsZp9I6IOxe-iTnw",
         "key_class": "A",
         "valid_from": "2026-01-01T00:00:00Z",
         "valid_to": "2027-01-01T00:00:00Z"

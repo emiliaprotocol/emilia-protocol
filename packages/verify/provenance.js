@@ -175,6 +175,7 @@ function constraintsMonotonic(parentC, childC) {
  * now, requireActionApprovalAlways).
  */
 export function verifyProvenanceOffline(doc, opts = {}) {
+  opts = opts && typeof opts === 'object' ? opts : {};
   const humanKeyClasses = opts.humanKeyClasses || DEFAULT_HUMAN_KEY_CLASSES;
   const allowUnsignedDelegations = opts.allowUnsignedDelegations === true;
   const now = typeof opts.now === 'number' ? opts.now : Date.now();

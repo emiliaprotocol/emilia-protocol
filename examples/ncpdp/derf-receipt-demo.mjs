@@ -71,7 +71,7 @@ function mint(a, ah) {
 }
 
 // The pharmacy pins ONE approver directory + its log key. This is the whole root.
-const PINNED = { approverKeys: { 'ep:key:pharmacist-jchen#1': { public_key: pharmacist.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' } }, logPublicKey: logKey.pub, rpId: 'www.emiliaprotocol.ai' };
+const PINNED = { approverKeys: { 'ep:key:pharmacist-jchen#1': { approver_id: 'ep:approver:pharmacist-jchen', public_key: pharmacist.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' } }, logPublicKey: logKey.pub, rpId: 'www.emiliaprotocol.ai' };
 
 async function main() {
   console.clear?.();

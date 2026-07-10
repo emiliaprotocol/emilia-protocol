@@ -69,8 +69,9 @@
               "minProperties": 1,
               "additionalProperties": {
                 "type": "object",
-                "required": ["public_key"],
+                "required": ["approver_id", "public_key"],
                 "properties": {
+                  "approver_id": { "type": "string", "minLength": 1 },
                   "public_key": { "type": "string" },
                   "key_class": { "type": "string", "enum": ["A", "B", "C"] },
                   "valid_from": { "type": "string", "format": "date-time" },

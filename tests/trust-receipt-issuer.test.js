@@ -17,19 +17,19 @@ const RP_ID = 'www.emiliaprotocol.ai';
 const ORIGIN = 'https://www.emiliaprotocol.ai';
 
 // Class B software signer (Ed25519 over the raw context digest).
-function classBSigner(approverKeyId, signedAt) {
+function classBSigner(approverKeyId, approverId, signedAt) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   return {
-    keyEntry: { public_key: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'), key_class: 'B', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+    keyEntry: { approver_id: approverId, public_key: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'), key_class: 'B', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
     signer: { approverKeyId, keyClass: 'B', signedAt, sign: (digest) => crypto.sign(null, digest, privateKey).toString('base64url') },
   };
 }
 
 // Class A WebAuthn signer (challenge = b64u(context digest)).
-function classASigner(approverKeyId, signedAt) {
+function classASigner(approverKeyId, approverId, signedAt) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
   return {
-    keyEntry: { public_key: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'), key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+    keyEntry: { approver_id: approverId, public_key: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'), key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
     signer: {
       approverKeyId, keyClass: 'A', signedAt,
       signWebAuthn: (digest) => {
@@ -63,8 +63,8 @@ const action = {
 };
 
 async function issueDual() {
-  const a = classASigner('ep:key:cfo#1', '2026-06-09T17:24:40Z');
-  const b = classBSigner('ep:key:controller#1', '2026-06-09T17:24:55Z');
+  const a = classASigner('ep:key:cfo#1', 'ep:approver:mrios-cfo', '2026-06-09T17:24:40Z');
+  const b = classBSigner('ep:key:controller#1', 'ep:approver:jchen-controller', '2026-06-09T17:24:55Z');
   const receipt = await issueTrustReceipt({
     receiptId: 'ep:receipt:01JISSUE',
     action,
@@ -90,7 +90,7 @@ describe('Trust Receipt issuer', () => {
   });
 
   it('a receipt anchored in a log with prior leaves still verifies (real inclusion proof)', async () => {
-    const a = classBSigner('ep:key:k1', '2026-06-09T17:24:40Z');
+    const a = classBSigner('ep:key:k1', 'ep:approver:solo', '2026-06-09T17:24:40Z');
     const contexts = buildContexts({ action, policyHash: 'sha256:aa', approvers: ['ep:approver:solo'], requiredApprovals: 1, issuedAt: '2026-06-09T17:21:05Z', expiresAt: new Date(Date.now() + 3600_000).toISOString() });
     const signoffs = await collectSignoffs(contexts, [a.signer]);
     const priorLeaves = Array.from({ length: 6 }, (_, i) => crypto.createHash('sha256').update(`leaf-${i}`).digest('hex'));
@@ -114,7 +114,7 @@ describe('Trust Receipt issuer', () => {
   });
 
   it('a single-approver receipt verifies (required_approvals respected)', async () => {
-    const a = classASigner('ep:key:solo#1', '2026-06-09T17:24:40Z');
+    const a = classASigner('ep:key:solo#1', 'ep:approver:solo', '2026-06-09T17:24:40Z');
     const receipt = await issueTrustReceipt({
       receiptId: 'ep:receipt:solo', action, policyHash: 'sha256:bb',
       approvers: ['ep:approver:solo'], requiredApprovals: 1,

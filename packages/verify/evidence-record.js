@@ -55,6 +55,7 @@ function hashHexWith(alg, bytes) {
  * @returns {{valid:boolean, checks:object, errors:string[], protected_since?:string, last_renewed?:string}}
  */
 export function verifyEvidenceRecord(record, opts = {}) {
+  opts = opts && typeof opts === 'object' ? opts : {};
   const tsaKeys = opts.tsaKeys || {};
   const checks = {
     version: false,

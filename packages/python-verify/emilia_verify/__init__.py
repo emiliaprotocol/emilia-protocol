@@ -742,6 +742,15 @@ def verify_trust_receipt(receipt: Any, opts: Optional[dict] = None) -> dict:
         if not key_entry or not key_entry.get("public_key"):
             signatures_ok = False
             continue
+        # The pinned directory entry must bind this key to the approver named by
+        # the signed context. Otherwise any pinned key can impersonate any named
+        # approver while still producing a valid cryptographic signature.
+        if not isinstance(key_entry.get("approver_id"), str) or not key_entry.get("approver_id"):
+            signatures_ok = False
+            continue
+        if key_entry.get("approver_id") != ctx.get("approver"):
+            signatures_ok = False
+            continue
         if not _within_window(ctx.get("issued_at"), key_entry.get("valid_from"), key_entry.get("valid_to")):
             signatures_ok = False
             continue

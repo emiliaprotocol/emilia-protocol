@@ -63,8 +63,8 @@ function buildReceipt() {
 const receipt = buildReceipt();
 const NOW = Date.parse('2026-07-07T00:00:00.000Z');
 const KEYS = {
-  'ep:key:controller#1': { public_key: controller.pub, key_class: 'B', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
-  'ep:key:cfo#1': { public_key: cfo.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+  'ep:key:controller#1': { approver_id: 'ep:approver:jchen-controller', public_key: controller.pub, key_class: 'B', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+  'ep:key:cfo#1': { approver_id: 'ep:approver:mrios-cfo', public_key: cfo.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
 };
 const opts = { approverKeys: KEYS, logPublicKey: logKey.pub, rpId: 'www.emiliaprotocol.ai' };
 

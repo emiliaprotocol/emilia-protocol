@@ -62,8 +62,8 @@ function receipt(nonce) {
   return r;
 }
 const KEYS = {
-  'ep:key:intake#1': { public_key: intake.pub, key_class: 'B', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
-  'ep:key:reviewer#1': { public_key: reviewer.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+  'ep:key:intake#1': { approver_id: 'ep:approver:intake', public_key: intake.pub, key_class: 'B', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+  'ep:key:reviewer#1': { approver_id: 'ep:approver:reviewer', public_key: reviewer.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
 };
 const authority = (over = {}) => signAuthorityProof({
   authority_id: 'auth_reviewer', subject: 'ep:approver:reviewer', organization_id: 'planX', role: 'payer_medical_reviewer',

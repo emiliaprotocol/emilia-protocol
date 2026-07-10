@@ -922,7 +922,7 @@ function trustReceiptCanonicalProfileError(receipt) {
  *
  * @param {object} receipt - Section 6.2 Trust Receipt
  * @param {object} opts
- * @param {Record<string, {public_key:string, key_class?:string, valid_from?:string, valid_to?:string}>} opts.approverKeys
+ * @param {Record<string, {approver_id:string, public_key:string, key_class?:string, valid_from?:string, valid_to?:string}>} opts.approverKeys
  *   - pinned approver key entries by approver_key_id (or a directory extract)
  * @param {string} opts.logPublicKey - trusted log Ed25519 key (base64url SPKI DER)
  * @param {boolean} [opts.strict=false] - require deployment-grade strict checks
@@ -990,6 +990,7 @@ function trustReceiptCanonicalProfileError(receipt) {
  *   respective option was supplied.
  */
 export function verifyTrustReceipt(receipt, opts = {}) {
+  opts = opts && typeof opts === 'object' ? opts : {};
   const checks = {
     action_hash: false,        // step 1
     context_commitments: false, // step 2
@@ -1077,6 +1078,22 @@ export function verifyTrustReceipt(receipt, opts = {}) {
     if (!keyEntry?.public_key) {
       signaturesOk = false;
       errors.push(`no pinned key entry for ${s.approver_key_id}`);
+      continue;
+    }
+    // A pinned key proves a principal only when the directory entry names that
+    // principal. Without this join, any pinned low-privilege key can sign a
+    // context that self-asserts a CFO/clinician/admin approver and the receipt
+    // falsely reports that the named human approved. The Approver Directory
+    // contract requires approver_id; missing or mismatched identity is a hard
+    // signature failure, not advisory metadata.
+    if (typeof keyEntry.approver_id !== 'string' || keyEntry.approver_id.length === 0) {
+      signaturesOk = false;
+      errors.push(`pinned key ${s.approver_key_id} is missing approver_id`);
+      continue;
+    }
+    if (keyEntry.approver_id !== ctx.approver) {
+      signaturesOk = false;
+      errors.push(`pinned key ${s.approver_key_id} belongs to ${keyEntry.approver_id}, not context approver ${ctx.approver}`);
       continue;
     }
     // Key validity window must contain the context's issued_at (Section 5.2).

@@ -55,8 +55,8 @@ const approverB = ed25519();       // Class B software key (controller)
 const approverA = p256();          // Class A device key (CFO, WebAuthn)
 
 const KEYS = {
-  'ep:key:controller#1': { public_key: approverB.pub, key_class: 'B', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
-  'ep:key:cfo#1': { public_key: approverA.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+  'ep:key:controller#1': { approver_id: 'ep:approver:jchen-controller', public_key: approverB.pub, key_class: 'B', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+  'ep:key:cfo#1': { approver_id: 'ep:approver:mrios-cfo', public_key: approverA.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
 };
 
 // Class B signs the raw context digest with Ed25519.
@@ -258,21 +258,24 @@ test('step 3 — an unknown approver_key_id fails (no pinned key)', () => {
 // ── step 4: separation of duties ─────────────────────────────────────────────
 
 test('step 4 — the initiator appearing as an approver fails SoD', () => {
-  const receipt = buildReceipt({ ctx1: { approver: 'ep:entity:agent-recon-7' } }); // initiator
-  // Re-sign ctx1 under its new content so the signature itself is valid —
-  // SoD must fail on its own, not via a broken signature.
-  const ctx1 = receipt.contexts[0];
-  const d1 = sha256hex(canonicalize(ctx1));
-  receipt.signoffs[0] = { context_hash: `sha256:${d1}`, signature: signB(d1), key_class: 'B', approver_key_id: 'ep:key:controller#1', signed_at: '2026-06-09T17:24:40Z' };
+  // The initiator IS one of the bound approvers (jchen), so every signoff passes
+  // the key↔approver binding and SoD must fail on its own: the initiator cannot
+  // also be an approver. buildReceipt re-signs the contexts under the new
+  // initiator, so the signatures and the log leaf are valid.
+  const receipt = buildReceipt({ action: { initiator: 'ep:approver:jchen-controller' } });
   const r = verifyTrustReceipt(receipt, OPTS);
   assert.equal(r.checks.sod, false);
   assert.match(r.errors.join(' '), /initiator appears in an approver slot/);
 });
 
 test('step 4 — duplicate approvers fail SoD', () => {
-  const receipt = buildReceipt({ ctx2: { approver: 'ep:approver:jchen-controller' } }); // same as ctx1
-  const ctx2 = receipt.contexts[1];
-  const d2 = sha256hex(canonicalize(ctx2));
+  // Both contexts name the CFO and are BOTH signed by the CFO's own bound key,
+  // so the key↔approver binding passes and SoD must fail purely on name
+  // distinctness (the same approver cannot fill two slots).
+  const receipt = buildReceipt({ ctx1: { approver: 'ep:approver:mrios-cfo' }, ctx2: { approver: 'ep:approver:mrios-cfo' } });
+  const ctx1 = receipt.contexts[0]; const d1 = sha256hex(canonicalize(ctx1));
+  const ctx2 = receipt.contexts[1]; const d2 = sha256hex(canonicalize(ctx2));
+  receipt.signoffs[0] = { context_hash: `sha256:${d1}`, signature: 'x', key_class: 'A', approver_key_id: 'ep:key:cfo#1', signed_at: '2026-06-09T17:24:40Z', webauthn: signA(d1) };
   receipt.signoffs[1] = { context_hash: `sha256:${d2}`, signature: 'x', key_class: 'A', approver_key_id: 'ep:key:cfo#1', signed_at: '2026-06-09T17:25:01Z', webauthn: signA(d2) };
   const r = verifyTrustReceipt(receipt, OPTS);
   assert.equal(r.checks.sod, false);
@@ -597,8 +600,8 @@ test('strict verifier — requires Class-A WebAuthn user presence as well as UV'
 
 test('strict verifier — requires explicit approver key validity windows', () => {
   const keys = {
-    'ep:key:controller#1': { public_key: approverB.pub, key_class: 'B' },
-    'ep:key:cfo#1': { public_key: approverA.pub, key_class: 'A' },
+    'ep:key:controller#1': { approver_id: 'ep:approver:jchen-controller', public_key: approverB.pub, key_class: 'B' },
+    'ep:key:cfo#1': { approver_id: 'ep:approver:mrios-cfo', public_key: approverA.pub, key_class: 'A' },
   };
   const r = verifyTrustReceipt(buildReceipt(), { ...STRICT_OPTS, approverKeys: keys });
   assert.equal(r.checks.signoff_signatures, true, JSON.stringify(r.errors));
@@ -636,7 +639,7 @@ test('strict verifier — rejects unsigned critical signoff fields', () => {
 const approverAEd = ed25519();
 const KEYS_A_ED = {
   ...KEYS,
-  'ep:key:cfo#1': { public_key: approverAEd.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+  'ep:key:cfo#1': { approver_id: 'ep:approver:mrios-cfo', public_key: approverAEd.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
 };
 const OPTS_A_ED = { approverKeys: KEYS_A_ED, logPublicKey: logKey.pub };
 const STRICT_OPTS_A_ED = { ...OPTS_A_ED, strict: true, rpId: 'www.emiliaprotocol.ai', expectedPolicyHash: 'sha256:77ab1234' };

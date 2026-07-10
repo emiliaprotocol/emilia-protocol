@@ -120,6 +120,7 @@ function evalRequirement(expr, satisfied) {
  * @returns {{allow:boolean, action_digest:string|null, components:Array, reasons:string[], requirement_source:string}}
  */
 export function verifyAuthorizationChain(aec, opts = {}) {
+  opts = opts && typeof opts === 'object' ? opts : {};
   const reasons = [];
   const pinned = typeof opts.requirement === 'string' && opts.requirement.trim() ? opts.requirement : null;
   const requirementSource = pinned ? 'relying_party' : 'presenter';

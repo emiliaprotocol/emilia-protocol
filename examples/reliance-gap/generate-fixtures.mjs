@@ -145,8 +145,8 @@ const packet = {
   ],
   context: {
     approver_keys: {
-      'ep:key:demo-intake#1': { public_key: intake.pub, key_class: 'B', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
-      'ep:key:demo-reviewer#1': { public_key: reviewer.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+      'ep:key:demo-intake#1': { approver_id: 'ep:approver:demo-intake-agent', public_key: intake.pub, key_class: 'B', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
+      'ep:key:demo-reviewer#1': { approver_id: 'ep:approver:demo-payer-reviewer', public_key: reviewer.pub, key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z' },
     },
     log_public_key: logKey.pub,
     rp_id: RP_ID,

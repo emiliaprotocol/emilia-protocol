@@ -778,6 +778,7 @@ export function verificationMaterialFromKeyBundle(keys) {
     '@version': 'EP-AUTHORIZATION-RECEIPT-VERIFICATION-v1',
     approver_keys: {
       [keys.approver.key_id]: {
+        approver_id: keys.approver.id,
         public_key: keys.approver.public_key,
         key_class: keys.approver.key_class || 'B',
         valid_from: keys.approver.valid_from,

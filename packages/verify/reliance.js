@@ -56,12 +56,21 @@ export const RELIANCE_VERDICTS = Object.freeze([
 ]);
 
 const ASSURANCE_LEVELS = Object.freeze(['signed', 'class_a', 'quorum']);
+const REQUIRED_EVIDENCE_TYPES = Object.freeze([
+  'receipt',
+  'class_a_or_quorum',
+  'authority_proof',
+  'revocation_freshness',
+  'consumption_proof',
+]);
+const SHA256_DIGEST = /^(?:sha256:)?([0-9a-f]{64})$/i;
 
 function toMs(t) {
-  if (t == null) return Date.now();
-  if (typeof t === 'number') return t;
-  const ms = Date.parse(t);
-  return Number.isNaN(ms) ? Date.now() : ms;
+  if (t === undefined) return Date.now();
+  if (t instanceof Date) return t.getTime();
+  if (typeof t === 'number') return Number.isFinite(t) ? t : NaN;
+  if (typeof t !== 'string') return NaN;
+  return Date.parse(t);
 }
 
 function pubKeyB64u(pub) {
@@ -69,6 +78,31 @@ function pubKeyB64u(pub) {
   if (typeof pub === 'string') return pub;
   if (pub && typeof pub.public_key === 'string') return pub.public_key;
   return null;
+}
+
+function digestHex(value) {
+  if (typeof value !== 'string') return null;
+  const match = value.match(SHA256_DIGEST);
+  return match ? match[1].toLowerCase() : null;
+}
+
+function parseNonNegativeDecimal(value) {
+  const text = typeof value === 'number' && Number.isFinite(value) && value >= 0
+    ? String(value)
+    : typeof value === 'string' ? value : null;
+  if (text === null || !/^(?:0|[1-9][0-9]*)(?:\.[0-9]+)?$/.test(text)) return null;
+  const [whole, fraction = ''] = text.split('.');
+  return { coefficient: BigInt(`${whole}${fraction}`), scale: fraction.length };
+}
+
+function decimalGreaterThan(left, right) {
+  const l = parseNonNegativeDecimal(left);
+  const r = parseNonNegativeDecimal(right);
+  if (!l || !r) return null;
+  const scale = Math.max(l.scale, r.scale);
+  const lc = l.coefficient * (10n ** BigInt(scale - l.scale));
+  const rc = r.coefficient * (10n ** BigInt(scale - r.scale));
+  return lc > rc;
 }
 
 /**
@@ -92,10 +126,12 @@ export function evaluateReliance(input = {}, opts = {}) {
   // would reach the destructure and throw. Normalize any non-object to {} so the
   // SDK entry point fails closed to a refusal, matching the gate wrappers.
   if (input === null || typeof input !== 'object') input = {};
+  opts = opts && typeof opts === 'object' ? opts : {};
   const {
-    action = {}, receipt, quorum, authority_proof: authorityProof,
+    action: rawAction = {}, receipt, quorum, authority_proof: authorityProof,
     revocation_state: revocationState, consumption, relying_party_profile: profile,
   } = input;
+  const action = rawAction && typeof rawAction === 'object' && !Array.isArray(rawAction) ? rawAction : {};
   const now = toMs(input.now);
   const reasons = [];
   const checks = {
@@ -115,8 +151,14 @@ export function evaluateReliance(input = {}, opts = {}) {
     return { verdict: 'do_not_rely_no_profile', rely: false, reasons, checks, profile: { id: RELIANCE_PROFILE_VERSION, pinned: false } };
   }
 
+  const profileValidation = validateRelianceProfile(prof);
+  if (!profileValidation.ok) {
+    reasons.push(`invalid pinned EP-RELIANCE-PROFILE-v1: ${profileValidation.issues.join('; ')}`);
+    return { verdict: 'do_not_rely_no_profile', rely: false, reasons, checks, profile: { id: RELIANCE_PROFILE_VERSION, pinned: false } };
+  }
+
   const requiredEvidence = new Set(Array.isArray(prof.required_evidence) ? prof.required_evidence : []);
-  const requiredAssurance = ASSURANCE_LEVELS.includes(prof.required_assurance) ? prof.required_assurance : 'signed';
+  const requiredAssurance = prof.required_assurance ?? 'signed';
   const acceptedIssuerKeys = Array.isArray(prof.accepted_issuer_keys) ? prof.accepted_issuer_keys.map(pubKeyB64u).filter(Boolean) : [];
   const acceptedRegistryKeys = Array.isArray(prof.accepted_registry_keys) ? prof.accepted_registry_keys : [];
   const acceptedPolicyHashes = Array.isArray(prof.accepted_policy_hashes) ? prof.accepted_policy_hashes : [];
@@ -128,12 +170,18 @@ export function evaluateReliance(input = {}, opts = {}) {
     return { verdict, rely: false, reasons, checks, profile: profileMeta };
   };
 
+  if (!Number.isFinite(now)) {
+    return deny('do_not_rely_unsigned', 'reliance evaluation time is missing or malformed');
+  }
+
   // ── 1. RECEIPT — cryptographically valid and bound to THIS action ──────────
   if (!receipt || typeof receipt !== 'object') return deny('do_not_rely_unsigned', 'no receipt supplied');
   const rc = verifyTrustReceipt(receipt, opts);
   checks.receipt = rc.valid === true;
   if (!rc.valid) return deny('do_not_rely_unsigned', `receipt did not verify: ${(rc.errors || []).join('; ') || 'invalid'}`);
-  if (action.action_hash && receipt.action_hash && action.action_hash !== receipt.action_hash) {
+  const relyingActionHash = digestHex(action.action_hash);
+  const receiptActionHash = digestHex(receipt.action_hash);
+  if (!relyingActionHash || !receiptActionHash || relyingActionHash !== receiptActionHash) {
     return deny('do_not_rely_unsigned', 'receipt does not attest the action being relied on (action_hash mismatch)');
   }
 
@@ -179,16 +227,34 @@ export function evaluateReliance(input = {}, opts = {}) {
 
   // ── 3. ASSURANCE — the ceremony the RP demands ─────────────────────────────
   let quorumMembers = []; // verified quorum members, for authority subject binding
+  let quorumResult;
+  const boundQuorum = () => {
+    if (quorumResult !== undefined) return quorumResult;
+    const q = quorum && verifyQuorum(quorum, opts);
+    const ok = Boolean(q?.valid)
+      && digestHex(quorum?.action_hash) !== null
+      && digestHex(quorum?.action_hash) === receiptActionHash;
+    quorumResult = { q, ok };
+    return quorumResult;
+  };
   if (requiredAssurance === 'class_a') {
     const hasClassA = classASigners.length > 0;
     checks.assurance = hasClassA ? 'class_a' : false;
     if (!hasClassA) return deny('do_not_rely_no_class_a', 'a valid Class-A device-bound signoff is required and none is present');
   } else if (requiredAssurance === 'quorum') {
-    const q = quorum && verifyQuorum(quorum, opts);
-    const quorumOk = Boolean(q?.valid) && quorum?.action_hash === receipt.action_hash;
+    const { q, ok: quorumOk } = boundQuorum();
     checks.assurance = quorumOk ? 'quorum' : false;
     if (!quorumOk) return deny('do_not_rely_quorum_unsatisfied', 'a satisfied EP-QUORUM-v1 bound to this action is required');
     quorumMembers = (Array.isArray(q.members) ? q.members : []).filter((m) => m?.valid && m?.approver).map((m) => m.approver);
+  } else if (requiredEvidence.has('class_a_or_quorum')) {
+    if (classASigners.length > 0) {
+      checks.assurance = 'class_a';
+    } else {
+      const { q, ok: quorumOk } = boundQuorum();
+      if (!quorumOk) return deny('do_not_rely_no_class_a', 'required evidence demands a valid Class-A signoff or quorum, but neither is present');
+      checks.assurance = 'quorum';
+      quorumMembers = (Array.isArray(q.members) ? q.members : []).filter((m) => m?.valid && m?.approver).map((m) => m.approver);
+    }
   } else {
     checks.assurance = 'signed';
   }
@@ -211,23 +277,29 @@ export function evaluateReliance(input = {}, opts = {}) {
     const p = authorityProof;
     if (!p.authority_id) return deny('do_not_rely_authority_missing', 'authority proof carries no authority_id');
     if (p.revocation?.status === 'revoked') return deny('do_not_rely_authority_revoked', 'authority was revoked as of the proof check');
-    const from = p.validity?.from ? Date.parse(p.validity.from) : null;
-    const to = p.validity?.to ? Date.parse(p.validity.to) : null;
-    if ((to !== null && now > to) || (from !== null && now < from)) {
+    const fromPresent = p.validity?.from !== undefined && p.validity?.from !== null;
+    const toPresent = p.validity?.to !== undefined && p.validity?.to !== null;
+    const from = fromPresent ? Date.parse(p.validity.from) : null;
+    const to = toPresent ? Date.parse(p.validity.to) : null;
+    if ((fromPresent && !Number.isFinite(from)) || (toPresent && !Number.isFinite(to))
+      || (from !== null && to !== null && from > to)
+      || (to !== null && now > to) || (from !== null && now < from)) {
       return deny('do_not_rely_authority_expired', 'authority is outside its validity window at reliance time');
     }
-    if (Array.isArray(p.scope) && action.action_type && !p.scope.includes(action.action_type)) {
+    if (!Array.isArray(p.scope) || p.scope.length === 0
+      || typeof action.action_type !== 'string' || !p.scope.includes(action.action_type)) {
       return deny('do_not_rely_scope_mismatch', 'the action is not within the authority scope');
     }
-    if (typeof action.amount === 'number' && typeof p.limits?.max_amount_usd === 'number') {
+    if (p.limits?.max_amount_usd !== null && p.limits?.max_amount_usd !== undefined) {
+      const exceeds = decimalGreaterThan(action.amount, p.limits.max_amount_usd);
       const ceilingCur = p.limits.currency || 'USD';
-      const amtCur = action.currency || ceilingCur;
-      if (amtCur !== ceilingCur || action.amount > p.limits.max_amount_usd) {
+      const amtCur = typeof action.currency === 'string' ? action.currency : null;
+      if (exceeds === null || amtCur !== ceilingCur || exceeds) {
         return deny('do_not_rely_amount_exceeded', 'the amount exceeds the authority ceiling (or is in an unprovable currency)');
       }
     }
     // Authority pinned to a policy must match the action's policy.
-    if (p.policy_hash && action.policy_hash && p.policy_hash !== action.policy_hash) {
+    if (p.policy_hash && (!action.policy_hash || p.policy_hash !== action.policy_hash)) {
       return deny('do_not_rely_policy_mismatch', 'authority is pinned to a different policy than the action');
     }
     // SUBJECT BINDING — the authority proof must belong to the human who ACTUALLY
@@ -304,13 +376,48 @@ export function evaluateReliance(input = {}, opts = {}) {
 /** Structural validation of an EP-RELIANCE-PROFILE-v1. Advisory (does not gate). */
 export function validateRelianceProfile(profile) {
   const issues = [];
-  if (!profile || typeof profile !== 'object') return { ok: false, issues: ['profile is not an object'] };
+  if (!profile || typeof profile !== 'object' || Array.isArray(profile)) return { ok: false, issues: ['profile is not an object'] };
   if (profile['@type'] !== RELIANCE_PROFILE_VERSION) issues.push(`@type must be ${RELIANCE_PROFILE_VERSION}`);
   if (profile.required_assurance !== undefined && !ASSURANCE_LEVELS.includes(profile.required_assurance)) {
     issues.push(`required_assurance must be one of ${ASSURANCE_LEVELS.join(', ')}`);
   }
-  if (profile.required_evidence !== undefined && !Array.isArray(profile.required_evidence)) {
-    issues.push('required_evidence must be an array');
+  if (profile.required_authority !== undefined && typeof profile.required_authority !== 'boolean') {
+    issues.push('required_authority must be a boolean');
+  }
+  if (profile.required_evidence !== undefined) {
+    if (!Array.isArray(profile.required_evidence)) {
+      issues.push('required_evidence must be an array');
+    } else {
+      for (const item of profile.required_evidence) {
+        if (typeof item !== 'string' || !REQUIRED_EVIDENCE_TYPES.includes(item)) {
+          issues.push(`unsupported required_evidence entry: ${String(item)}`);
+        }
+      }
+    }
+  }
+  for (const field of ['accepted_issuer_keys', 'accepted_registry_keys', 'accepted_policy_hashes']) {
+    if (profile[field] !== undefined && !Array.isArray(profile[field])) issues.push(`${field} must be an array`);
+  }
+  if (Array.isArray(profile.accepted_issuer_keys)
+    && profile.accepted_issuer_keys.some((k) => pubKeyB64u(k) === null)) {
+    issues.push('accepted_issuer_keys contains an invalid key entry');
+  }
+  if (Array.isArray(profile.accepted_registry_keys)
+    && profile.accepted_registry_keys.some((k) => !k || typeof k !== 'object' || typeof k.public_key !== 'string')) {
+    issues.push('accepted_registry_keys contains an invalid key entry');
+  }
+  if (Array.isArray(profile.accepted_policy_hashes)
+    && profile.accepted_policy_hashes.some((h) => typeof h !== 'string' || h.length === 0)) {
+    issues.push('accepted_policy_hashes contains an invalid policy hash');
+  }
+  if (profile.max_revocation_staleness_sec !== undefined
+    && (!Number.isFinite(profile.max_revocation_staleness_sec) || profile.max_revocation_staleness_sec < 0)) {
+    issues.push('max_revocation_staleness_sec must be a finite non-negative number');
+  }
+  if (Array.isArray(profile.required_evidence)
+    && profile.required_evidence.includes('revocation_freshness')
+    && (!Number.isFinite(profile.max_revocation_staleness_sec) || profile.max_revocation_staleness_sec < 0)) {
+    issues.push('revocation_freshness requires max_revocation_staleness_sec');
   }
   return { ok: issues.length === 0, issues };
 }

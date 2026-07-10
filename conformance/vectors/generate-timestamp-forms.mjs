@@ -46,7 +46,7 @@ async function mint({ issuedAt, expiresAt, committedAt, keyFrom, keyTo, required
   const contexts = buildContexts({ action, policyHash: computePolicyHash({ policy_id: action.policy_id }), approvers: ['ep:approver:dir'], requiredApprovals, issuedAt, expiresAt });
   const signoffs = await collectSignoffs(contexts, [classASigner({ approverKeyId: 'ep:key:dir#1', signedAt: issuedAt, privateKey: kp.privateKey })]);
   const receipt = assembleAuthorizationReceipt({ receiptId: `ep:receipt:${crypto.randomBytes(8).toString('base64url')}`, action, contexts, signoffs, committedAt, log: { privateKey: logKp.privateKey, logKeyId: 'ep:log:test#1' } });
-  const verification = { approver_keys: { 'ep:key:dir#1': { public_key: kp.publicKeyB64u, key_class: 'A', valid_from: keyFrom, valid_to: keyTo } }, log_public_key: logKp.publicKeyB64u };
+  const verification = { approver_keys: { 'ep:key:dir#1': { approver_id: 'ep:approver:dir', public_key: kp.publicKeyB64u, key_class: 'A', valid_from: keyFrom, valid_to: keyTo } }, log_public_key: logKp.publicKeyB64u };
   return { receipt, verification };
 }
 

@@ -105,6 +105,8 @@ export function verifyWebAuthnSignoff(
 // ── Trust Receipt — full offline verification (I-D Section 6.3) ─────────────
 
 export interface ApproverKeyEntry {
+  /** Principal this pinned key belongs to; must equal the signed context approver. */
+  approver_id: string;
   public_key: string;
   key_class?: 'A' | 'B' | 'C';
   valid_from?: string;

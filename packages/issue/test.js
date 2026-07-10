@@ -63,10 +63,11 @@ const log = (() => {
 })();
 
 // Class B software signer (Ed25519 over the raw context digest).
-function classBSigner(approverKeyId, signedAt) {
+function classBSigner(approverKeyId, approverId, signedAt) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ed25519');
   return {
     keyEntry: {
+      approver_id: approverId,
       public_key: publicKeyToSpkiB64u(publicKey),
       key_class: 'B', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z',
     },
@@ -77,10 +78,11 @@ function classBSigner(approverKeyId, signedAt) {
 // Class A WebAuthn signer (challenge = b64u(context digest)). The hosted
 // ceremony produces this in production; here we synthesize it to prove the
 // issuer's assembly accepts a Class-A signoff that the verifier validates.
-function classASigner(approverKeyId, signedAt) {
+function classASigner(approverKeyId, approverId, signedAt) {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
   return {
     keyEntry: {
+      approver_id: approverId,
       public_key: publicKey.export({ type: 'spki', format: 'der' }).toString('base64url'),
       key_class: 'A', valid_from: '2026-01-01T00:00:00Z', valid_to: '2027-01-01T00:00:00Z',
     },
@@ -102,8 +104,8 @@ function classASigner(approverKeyId, signedAt) {
 }
 
 async function issueDual() {
-  const a = classASigner('ep:key:cfo#1', '2026-06-09T17:24:40Z');
-  const b = classBSigner('ep:key:controller#1', '2026-06-09T17:24:55Z');
+  const a = classASigner('ep:key:cfo#1', 'ep:approver:mrios-cfo', '2026-06-09T17:24:40Z');
+  const b = classBSigner('ep:key:controller#1', 'ep:approver:jchen-controller', '2026-06-09T17:24:55Z');
   const receipt = await issueAuthorizationReceipt({
     receiptId: 'ep:receipt:01JISSUE',
     action,
@@ -145,7 +147,7 @@ test('a dual-approval (Class A + Class B) receipt passes all seven §6.3 checks'
 });
 
 test('a receipt anchored in a log with prior leaves verifies (real inclusion proof)', async () => {
-  const a = classBSigner('ep:key:k1', '2026-06-09T17:24:40Z');
+  const a = classBSigner('ep:key:k1', 'ep:approver:solo', '2026-06-09T17:24:40Z');
   const contexts = buildContexts({
     action, policyHash: 'sha256:aa', approvers: ['ep:approver:solo'], requiredApprovals: 1,
     issuedAt: '2026-06-09T17:21:05Z', expiresAt: new Date(Date.now() + 3600_000).toISOString(),
@@ -289,8 +291,8 @@ test('PIP-007 — issue WITH attestation round-trips; verifier reports it presen
 });
 
 test('PIP-007 — a dual-approval receipt carries the IDENTICAL attestation in every context (canonical-identical)', async () => {
-  const a = classBSigner('ep:key:k1', '2026-06-09T17:24:40Z');
-  const b = classBSigner('ep:key:k2', '2026-06-09T17:24:55Z');
+  const a = classBSigner('ep:key:k1', 'ep:approver:cfo', '2026-06-09T17:24:40Z');
+  const b = classBSigner('ep:key:k2', 'ep:approver:controller', '2026-06-09T17:24:55Z');
   const initiatorAttestation = { escalation_trigger: 'magnitude', policy_basis: 'ep:policy:wires-over-100k@v12/rule:dual-auth' };
   const contexts = buildContexts({
     action, policyHash: 'sha256:aa', approvers: ['ep:approver:cfo', 'ep:approver:controller'], requiredApprovals: 2,
@@ -396,8 +398,8 @@ test('PIP-008 — issue WITH agent_binding round-trips; receipt still fully veri
 });
 
 test('PIP-008 — a dual-approval receipt carries the IDENTICAL agent_binding in every context', () => {
-  const a = classBSigner('ep:key:k1', '2026-06-09T17:24:40Z');
-  const b = classBSigner('ep:key:k2', '2026-06-09T17:24:55Z');
+  const a = classBSigner('ep:key:k1', 'ep:approver:cfo', '2026-06-09T17:24:40Z');
+  const b = classBSigner('ep:key:k2', 'ep:approver:controller', '2026-06-09T17:24:55Z');
   void a; void b;
   const agentBinding = { agent_id: 'urn:agent:recon-7', delegation: { scheme: 'WIMSE', ref: 'wimse:cred:9' } };
   const contexts = buildContexts({
@@ -465,7 +467,7 @@ test('buildReceiptAnchorV2: a v2-anchored document verifies under verifyReceipt 
 });
 
 test('issuer refuses non-I-JSON signed material before minting Trust Receipts or anchors', async () => {
-  const a = classBSigner('ep:key:k1', new Date().toISOString());
+  const a = classBSigner('ep:key:k1', 'ep:approver:cfo', new Date().toISOString());
   const badAction = { ...action, parameters: { amount: 2400000.25, currency: 'USD' } };
   const contexts = buildContexts({
     action: badAction,
