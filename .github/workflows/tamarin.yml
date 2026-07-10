@@ -19,7 +19,10 @@ on:
 
 jobs:
   composed-reliance:
-    runs-on: ubuntu-latest
+    # The pinned prover digest is a linux/arm64-only manifest (checked against the
+    # registry), so this job runs on GitHub's arm64 runner and CI executes the exact
+    # same image bytes the proof was verified with locally.
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
@@ -28,6 +31,9 @@ jobs:
         run: echo 'f411d7cd9bd6d3c4097f2f46c135c8e42b1e9f862d04458ab288f8e67c3eb1fc  ep_reliance_composed.spthy' | sha256sum -c -
       - name: Run composed proof with pinned prover image
         working-directory: formal/tamarin
+        # Explicit bash => -eo pipefail, so a docker/pull failure fails this step
+        # instead of being swallowed by tee and surfacing as a grep miss downstream.
+        shell: bash
         run: |
           docker run --rm \
             -v "$PWD:/work" -w /work \
