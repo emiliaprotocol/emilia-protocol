@@ -133,6 +133,7 @@ comparison. A pushed tag never starts a package publication workflow.
 
 - tested npm tarball or Python wheel and source distribution;
 - SHA-256/reproducibility manifest;
+- canonical npm file modes (`0644` for regular files, `0755` for declared package binaries);
 - `security/security-case.json`;
 - `conformance/conformance-manifest.json`;
 - GitHub artifact attestations bound to the workflow identity and source ref;

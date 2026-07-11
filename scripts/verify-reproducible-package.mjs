@@ -26,15 +26,15 @@ export function verifyReproduciblePackage(packagePath = 'packages/verify', { out
   const packageDir = path.resolve(ROOT, packagePath);
   const packageJsonPath = path.join(packageDir, 'package.json');
   if (!fs.existsSync(packageJsonPath)) throw new Error(`package.json not found: ${packageJsonPath}`);
+  const metadata = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-repro-pack-'));
+  const packEnv = { ...process.env, npm_config_ignore_scripts: 'true' };
 
-  function pack(label) {
-    const destination = path.join(scratch, label);
-    fs.mkdirSync(destination);
-    const run = spawnSync(npm, ['pack', packageDir, '--json', '--pack-destination', destination], {
+  function runPack(args, label) {
+    const run = spawnSync(npm, ['pack', ...args, '--json'], {
       cwd: ROOT,
       encoding: 'utf8',
-      env: { ...process.env, npm_config_ignore_scripts: 'true' },
+      env: packEnv,
     });
     if (run.status !== 0) {
       throw new Error(`npm pack ${label} failed:\n${run.stderr || run.stdout}`);
@@ -48,24 +48,62 @@ export function verifyReproduciblePackage(packagePath = 'packages/verify', { out
     if (!Array.isArray(report) || report.length !== 1 || typeof report[0].filename !== 'string') {
       throw new Error(`npm pack ${label} returned an unexpected report`);
     }
-    const bytes = fs.readFileSync(path.join(destination, report[0].filename));
+    return report[0];
+  }
+
+  function stageCanonicalPackage() {
+    const inventory = runPack([packageDir, '--dry-run'], 'inventory');
+    const stage = path.join(scratch, 'canonical-input');
+    const binValues = typeof metadata.bin === 'string'
+      ? [metadata.bin]
+      : metadata.bin && typeof metadata.bin === 'object'
+        ? Object.values(metadata.bin)
+        : [];
+    const executablePaths = new Set(binValues.map((value) => String(value).replace(/^\.\//, '')));
+    fs.mkdirSync(stage, { recursive: true, mode: 0o755 });
+    for (const entry of inventory.files || []) {
+      if (!entry || typeof entry.path !== 'string' || path.isAbsolute(entry.path)) {
+        throw new Error('npm pack inventory contains a malformed path');
+      }
+      const relative = entry.path.split('/').join(path.sep);
+      const source = path.resolve(packageDir, relative);
+      if (!source.startsWith(`${packageDir}${path.sep}`)) {
+        throw new Error(`npm pack inventory escapes package root: ${entry.path}`);
+      }
+      const sourceStat = fs.lstatSync(source);
+      if (!sourceStat.isFile()) {
+        throw new Error(`npm pack inventory requires a regular file: ${entry.path}`);
+      }
+      const target = path.join(stage, relative);
+      fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o755 });
+      fs.copyFileSync(source, target);
+      fs.chmodSync(target, executablePaths.has(entry.path) ? 0o755 : 0o644);
+    }
+    return stage;
+  }
+
+  function pack(packageInput, label) {
+    const destination = path.join(scratch, label);
+    fs.mkdirSync(destination);
+    const report = runPack([packageInput, '--pack-destination', destination], label);
+    const bytes = fs.readFileSync(path.join(destination, report.filename));
     return {
       bytes,
-      filename: report[0].filename,
-      files: (report[0].files || []).map((entry) => `${entry.path}:${entry.size}`).sort(),
+      filename: report.filename,
+      files: (report.files || []).map((entry) => `${entry.path}:${entry.size}:${entry.mode}`).sort(),
       sha256: crypto.createHash('sha256').update(bytes).digest('hex'),
     };
   }
 
   try {
-    const first = pack('first');
-    const second = pack('second');
+    const canonicalInput = stageCanonicalPackage();
+    const first = pack(canonicalInput, 'first');
+    const second = pack(canonicalInput, 'second');
     if (first.filename !== second.filename) throw new Error('pack filenames differ');
     if (JSON.stringify(first.files) !== JSON.stringify(second.files)) throw new Error('pack file manifests differ');
     if (!first.bytes.equals(second.bytes)) {
       throw new Error(`package bytes differ: ${first.sha256} != ${second.sha256}`);
     }
-    const metadata = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
     let artifactPath = null;
     if (outDir) {
       const destination = path.resolve(ROOT, outDir);
