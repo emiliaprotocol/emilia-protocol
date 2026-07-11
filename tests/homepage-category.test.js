@@ -31,6 +31,7 @@ describe('homepage category contract', () => {
     expect(proofStats.tests.files).toBeGreaterThan(200);
     expect(proofStats.tla.invariants).toBe(26);
     expect(proofStats.alloy.facts).toBe(35);
+    expect(page).not.toContain('TESTS_PASSED');
     expect(proofStats.redTeamCases).toBe(85);
 
     expect(page).toContain("proofStats from '@/lib/proof-stats.json'");
