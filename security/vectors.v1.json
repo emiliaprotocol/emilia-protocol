@@ -116,6 +116,16 @@
       "id": "reject_unapproved_release_dispatch",
       "expect": { "valid": false },
       "execution": { "runner": "vitest", "file": "tests/release-approval.test.js", "title": "rejects automatic events, other actors, tag drift, and weak confirmation" }
+    },
+    {
+      "id": "accept_model_to_matter_once",
+      "expect": { "valid": true },
+      "execution": { "runner": "vitest", "file": "tests/model-to-matter.test.js", "title": "admits at most one clearance across distinct challenges for the same action" }
+    },
+    {
+      "id": "reject_model_to_matter_without_revocation_state",
+      "expect": { "valid": false },
+      "execution": { "runner": "vitest", "file": "tests/model-to-matter.test.js", "title": "fails before challenge consumption when explicit revocation state is absent" }
     }
   ]
 }

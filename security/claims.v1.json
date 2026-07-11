@@ -471,6 +471,56 @@
       "assumptions": ["each npm and PyPI project has the matching trusted publisher enabled", "GitHub enforces the required reviewer or records an explicit administrator bypass on registry-publishing-approval", "release tags are protected against update and deletion", "the release registry is updated whenever a publish workflow is added or removed"],
       "exclusions": ["static workflow coverage cannot prove registry-side trusted-publisher settings until a real owner-approved publish succeeds", "a credential acting as FutureEnterprises is operationally equivalent to the owner, so account security remains an external root"],
       "release_artifacts": ["security-evidence"]
+    },
+    {
+      "claim_id": "model-to-matter-clearance-is-exact-and-single-use",
+      "statement": "A Model-to-Matter presentation clears at most once only when all six evidence types verify under the executor's pinned profile, bind the same exact digest-only action, satisfy freshness and explicit revocation state, and survive durable challenge consumption.",
+      "acceptance_roots": [
+        "the executor provisions the authentic Model-to-Matter profile and issuer keys",
+        "the runtime supplies explicit revocation state from its trusted source",
+        "the challenge backend provides atomic registration and compare-and-set consumption"
+      ],
+      "enforcement_path": [
+        { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "createModelToMatterProfile", "exported": true },
+        { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "verifyModelToMatterEvidence", "exported": true },
+        { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "evaluateRegisteredModelToMatterPresentation", "exported": true },
+        { "language": "javascript", "file": "lib/negotiate/evidence-challenge.js", "symbol": "evaluateRegisteredPresentation", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "export": "evaluateRegisteredModelToMatterPresentation" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "tests/model-to-matter.test.js" },
+        "python": { "status": "gap", "reason": "No Python Model-to-Matter profile implementation or conformance claim exists." },
+        "go": { "status": "gap", "reason": "No Go Model-to-Matter profile implementation or conformance claim exists." }
+      },
+      "vectors": [
+        { "suite": "security/vectors.v1.json", "case_id": "accept_model_to_matter_once", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_model_to_matter_without_revocation_state", "polarity": "negative", "expect": { "valid": false } }
+      ],
+      "tests": [
+        { "file": "tests/model-to-matter.test.js", "title": "admits at most one clearance across distinct challenges for the same action", "runner": "vitest" },
+        { "file": "tests/model-to-matter.test.js", "title": "snapshots the action, profile, and graph before awaiting durable consumption", "runner": "vitest" },
+        { "file": "tests/model-to-matter.test.js", "title": "fails before challenge consumption when explicit revocation state is absent", "runner": "vitest" },
+        { "file": "tests/model-to-matter.test.js", "title": "refuses tampering, issuer laundering, cross-action replay, and impossible timestamps", "runner": "vitest" }
+      ],
+      "formal": [
+        { "status": "not_modeled", "gap": "The six-leg frontier-science profile, closed adapter schemas, and executor effect statement are executable but not represented in the current symbolic models." }
+      ],
+      "assumptions": [
+        "the relying party's profile and issuer pins are authentic and correctly configured",
+        "the supplied revocation view is current and complete for the presented artifacts",
+        "source systems compute opaque commitments over the intended content with agreed canonicalization",
+        "the durable challenge backend linearizes consumption",
+        "the action-level clearance store is shared by all workers and does not TTL-reopen consumed action digests"
+      ],
+      "exclusions": [
+        "the profile does not perform sequence screening or determine scientific safety",
+        "signature acceptance does not establish issuer judgment quality or physical truth",
+        "this version does not authenticate or prove completeness of the host's non-revocation view",
+        "no Python or Go implementation, wet-lab deployment, or external scientific validation is claimed"
+      ],
+      "release_artifacts": ["security-evidence"]
     }
   ]
 }

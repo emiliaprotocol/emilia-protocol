@@ -1,9 +1,9 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "96cf5698e49bcdf8d01f90d5315c7bb8131c6bf74330ba4697e51d799d86b875",
-  "claim_count": 13,
-  "evidence_file_count": 62,
+  "evidence_bundle_sha256": "7d800bac6f6abae656866d75738c6c93d7875d903148143bb176c22c77f9e2a7",
+  "claim_count": 14,
+  "evidence_file_count": 64,
   "execution": {
     "required": true,
     "status": "passed",
@@ -153,6 +153,17 @@
       },
       {
         "runner": "vitest",
+        "file": "tests/model-to-matter.test.js",
+        "titles": [
+          "admits at most one clearance across distinct challenges for the same action",
+          "fails before challenge consumption when explicit revocation state is absent",
+          "refuses tampering, issuer laundering, cross-action replay, and impossible timestamps",
+          "snapshots the action, profile, and graph before awaiting durable consumption"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
         "file": "tests/ncpdp-privacy.test.js",
         "titles": [
           "discloses only to the pinned audience and purpose within the retention budget",
@@ -225,8 +236,8 @@
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "96cf5698e49bcdf8d01f90d5315c7bb8131c6bf74330ba4697e51d799d86b875",
-      "file_count": 62
+      "sha256": "7d800bac6f6abae656866d75738c6c93d7875d903148143bb176c22c77f9e2a7",
+      "file_count": 64
     },
     "verify-sdk": {
       "kind": "npm-tarball",
@@ -342,7 +353,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "96cf5698e49bcdf8d01f90d5315c7bb8131c6bf74330ba4697e51d799d86b875"
+          "sha256": "7d800bac6f6abae656866d75738c6c93d7875d903148143bb176c22c77f9e2a7"
         }
       ]
     },
@@ -464,7 +475,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "96cf5698e49bcdf8d01f90d5315c7bb8131c6bf74330ba4697e51d799d86b875"
+          "sha256": "7d800bac6f6abae656866d75738c6c93d7875d903148143bb176c22c77f9e2a7"
         }
       ]
     },
@@ -608,7 +619,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "96cf5698e49bcdf8d01f90d5315c7bb8131c6bf74330ba4697e51d799d86b875"
+          "sha256": "7d800bac6f6abae656866d75738c6c93d7875d903148143bb176c22c77f9e2a7"
         }
       ]
     },
@@ -754,7 +765,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "96cf5698e49bcdf8d01f90d5315c7bb8131c6bf74330ba4697e51d799d86b875"
+          "sha256": "7d800bac6f6abae656866d75738c6c93d7875d903148143bb176c22c77f9e2a7"
         }
       ]
     },
@@ -863,7 +874,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "96cf5698e49bcdf8d01f90d5315c7bb8131c6bf74330ba4697e51d799d86b875"
+          "sha256": "7d800bac6f6abae656866d75738c6c93d7875d903148143bb176c22c77f9e2a7"
         }
       ]
     },
@@ -972,7 +983,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "96cf5698e49bcdf8d01f90d5315c7bb8131c6bf74330ba4697e51d799d86b875"
+          "sha256": "7d800bac6f6abae656866d75738c6c93d7875d903148143bb176c22c77f9e2a7"
         }
       ]
     },
@@ -1104,7 +1115,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "96cf5698e49bcdf8d01f90d5315c7bb8131c6bf74330ba4697e51d799d86b875"
+          "sha256": "7d800bac6f6abae656866d75738c6c93d7875d903148143bb176c22c77f9e2a7"
         }
       ]
     },
@@ -1211,7 +1222,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "96cf5698e49bcdf8d01f90d5315c7bb8131c6bf74330ba4697e51d799d86b875"
+          "sha256": "7d800bac6f6abae656866d75738c6c93d7875d903148143bb176c22c77f9e2a7"
         }
       ]
     },
@@ -1314,7 +1325,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "96cf5698e49bcdf8d01f90d5315c7bb8131c6bf74330ba4697e51d799d86b875"
+          "sha256": "7d800bac6f6abae656866d75738c6c93d7875d903148143bb176c22c77f9e2a7"
         }
       ]
     },
@@ -1448,7 +1459,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "96cf5698e49bcdf8d01f90d5315c7bb8131c6bf74330ba4697e51d799d86b875"
+          "sha256": "7d800bac6f6abae656866d75738c6c93d7875d903148143bb176c22c77f9e2a7"
         }
       ]
     },
@@ -1564,7 +1575,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "96cf5698e49bcdf8d01f90d5315c7bb8131c6bf74330ba4697e51d799d86b875"
+          "sha256": "7d800bac6f6abae656866d75738c6c93d7875d903148143bb176c22c77f9e2a7"
         }
       ]
     },
@@ -1698,7 +1709,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "96cf5698e49bcdf8d01f90d5315c7bb8131c6bf74330ba4697e51d799d86b875"
+          "sha256": "7d800bac6f6abae656866d75738c6c93d7875d903148143bb176c22c77f9e2a7"
         }
       ]
     },
@@ -1950,7 +1961,131 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "96cf5698e49bcdf8d01f90d5315c7bb8131c6bf74330ba4697e51d799d86b875"
+          "sha256": "7d800bac6f6abae656866d75738c6c93d7875d903148143bb176c22c77f9e2a7"
+        }
+      ]
+    },
+    {
+      "claim_id": "model-to-matter-clearance-is-exact-and-single-use",
+      "statement": "A Model-to-Matter presentation clears at most once only when all six evidence types verify under the executor's pinned profile, bind the same exact digest-only action, satisfy freshness and explicit revocation state, and survive durable challenge consumption.",
+      "acceptance_roots": [
+        "the executor provisions the authentic Model-to-Matter profile and issuer keys",
+        "the runtime supplies explicit revocation state from its trusted source",
+        "the challenge backend provides atomic registration and compare-and-set consumption"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "lib/frontier/model-to-matter.js",
+          "symbol": "createModelToMatterProfile",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/frontier/model-to-matter.js",
+          "symbol": "verifyModelToMatterEvidence",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/frontier/model-to-matter.js",
+          "symbol": "evaluateRegisteredModelToMatterPresentation",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/negotiate/evidence-challenge.js",
+          "symbol": "evaluateRegisteredPresentation",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "lib/frontier/model-to-matter.js",
+          "export": "evaluateRegisteredModelToMatterPresentation"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "tests/model-to-matter.test.js"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python Model-to-Matter profile implementation or conformance claim exists."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go Model-to-Matter profile implementation or conformance claim exists."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_model_to_matter_once",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_model_to_matter_without_revocation_state",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/model-to-matter.test.js",
+          "title": "admits at most one clearance across distinct challenges for the same action",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/model-to-matter.test.js",
+          "title": "snapshots the action, profile, and graph before awaiting durable consumption",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/model-to-matter.test.js",
+          "title": "fails before challenge consumption when explicit revocation state is absent",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/model-to-matter.test.js",
+          "title": "refuses tampering, issuer laundering, cross-action replay, and impossible timestamps",
+          "runner": "vitest"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The six-leg frontier-science profile, closed adapter schemas, and executor effect statement are executable but not represented in the current symbolic models."
+        }
+      ],
+      "assumptions": [
+        "the relying party's profile and issuer pins are authentic and correctly configured",
+        "the supplied revocation view is current and complete for the presented artifacts",
+        "source systems compute opaque commitments over the intended content with agreed canonicalization",
+        "the durable challenge backend linearizes consumption",
+        "the action-level clearance store is shared by all workers and does not TTL-reopen consumed action digests"
+      ],
+      "exclusions": [
+        "the profile does not perform sequence screening or determine scientific safety",
+        "signature acceptance does not establish issuer judgment quality or physical truth",
+        "this version does not authenticate or prove completeness of the host's non-revocation view",
+        "no Python or Go implementation, wet-lab deployment, or external scientific validation is claimed"
+      ],
+      "release_artifacts": [
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "7d800bac6f6abae656866d75738c6c93d7875d903148143bb176c22c77f9e2a7"
         }
       ]
     }
@@ -1982,7 +2117,7 @@
     },
     {
       "path": ".github/workflows/publish-python-sdk.yml",
-      "sha256": "25f329de8de749300f73fd97e8b784cc8b64318a56b330c5457b131ab8407f90"
+      "sha256": "dc6dc8b82d8d24ea42913e2b48442adef3cc314833c59885f322b936ba13b86c"
     },
     {
       "path": ".github/workflows/publish-python-verify.yml",
@@ -2047,6 +2182,10 @@
     {
       "path": "lib/authority/resolver.js",
       "sha256": "515378cd153a2d95e7d885622ea96671512af091e4fc4028cfde29d32a351faf"
+    },
+    {
+      "path": "lib/frontier/model-to-matter.js",
+      "sha256": "d368e7385e53a0f1f3a040c3ca7f63baa3ed547f8ec0401cd25ba2dc695258b8"
     },
     {
       "path": "lib/ncpdp/privacy.js",
@@ -2170,11 +2309,11 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "74f9a695512f04a076fff0ccd396d8f4508ff9110e3b3d3b00ca3ede517bccd5"
+      "sha256": "31ffa53c4b9086e497a5a9e4a3e22f361399952d37c64d166a9220d250ec68ae"
     },
     {
       "path": "security/vectors.v1.json",
-      "sha256": "e58887177df7836e5176a540767a1fe857b1c9be73165c86d79b055884c1c9ef"
+      "sha256": "4b113e321cbdf660b4471876182abf4d724047478681e61433ae09d3827b3dd8"
     },
     {
       "path": "tests/authority-registry.test.js",
@@ -2183,6 +2322,10 @@
     {
       "path": "tests/evidence-challenge-durable.test.js",
       "sha256": "17466f71be88b3fb2962df6fb90b4e252d89a780360a63e4903cbe8fec2898b4"
+    },
+    {
+      "path": "tests/model-to-matter.test.js",
+      "sha256": "46820a8921d722979c183da05f31299863e00dda2857525ea0b87455050b36ea"
     },
     {
       "path": "tests/ncpdp-privacy.test.js",
