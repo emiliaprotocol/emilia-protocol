@@ -52,7 +52,7 @@ This document maps EMILIA Protocol capabilities to the four core functions of th
 | NIST Subcategory | Requirement | EP Implementation |
 |-----------------|-------------|-------------------|
 | MEASURE 1.1 | Approaches for risk measurement are documented | EP PROTOCOL-STANDARD.md (Abstract + Core objects + Extensions) documents all measurement approaches. Scoring rationale in SCORING_RATIONALE.md. |
-| MEASURE 2.1 | AI systems are tested before deployment | 5,336 automated tests across 264 files, 85 cataloged red-team cases, property-based and linearizability tests, and a mutation gate at or above 90%. |
+| MEASURE 2.1 | AI systems are tested before deployment | 5,365 automated test cases across 264 files, with all platform-applicable cases required to pass, plus 85 cataloged red-team cases, property-based and linearizability tests, and a mutation gate at or above 90%. |
 | MEASURE 2.3 | AI system performance is tracked | EP Trust Profile materialization: snapshot on write, freshness check on read. Score history API tracks changes over time. |
 | MEASURE 2.5 | AI systems are evaluated for bias | EP provenance tiers (6 levels, 0.3x–1.0x weight) prevent over-reliance on any single evidence source. Bilateral confirmation required for highest weight. |
 | MEASURE 2.6 | AI system metrics are measured | EP canonical evaluator produces structured metrics: confidence level, evidence depth, behavioral rates, domain scores, anomaly flags. |

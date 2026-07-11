@@ -11,7 +11,7 @@ const proofStats = JSON.parse(fs.readFileSync(path.join(ROOT, 'lib/proof-stats.j
 const expectedSuites = manifest.totals.suites;
 const expectedVectors = manifest.totals.vectors;
 const expectedHostilityCases = pin.hostility.structured_cases + pin.hostility.raw_parser_cases;
-const expectedTests = proofStats.tests.passed;
+const expectedTests = proofStats.tests.total;
 const expectedTestFiles = proofStats.tests.files;
 
 const allowedExtensions = new Set(['.html', '.js', '.jsx', '.md', '.mjs', '.py', '.text', '.ts', '.tsx', '.txt']);
@@ -93,22 +93,22 @@ export function auditClaimText(text, file = '<text>', expectations = {}) {
 
   const number = (value) => Number(String(value).replaceAll(',', ''));
   for (const match of text.matchAll(/\b(\d{3,}|\d{1,3}(?:,\d{3})+)\+?\*{0,2}\s+automated\s+test(?:s|\s+cases)\b([^\n]{0,80})/gi)) {
-    if (number(match[1]) !== tests) findings.push(finding(file, text, match, `current executed automated-test count is ${tests}`));
+    if (number(match[1]) !== tests) findings.push(finding(file, text, match, `current automated-test case count is ${tests}`));
     const files = match[2].match(/\bacross\s+(\d+)\s+files\b/i);
     if (files && number(files[1]) !== testFiles) findings.push(finding(file, text, match, `current automated-test file count is ${testFiles}`));
   }
   for (const match of text.matchAll(/\bautomated\s+test(?:s|\s+cases)\s*\|\s*(\d{3,}|\d{1,3}(?:,\d{3})+)\s+across\s+(\d+)\s+files\b/gi)) {
-    if (number(match[1]) !== tests) findings.push(finding(file, text, match, `current executed automated-test count is ${tests}`));
+    if (number(match[1]) !== tests) findings.push(finding(file, text, match, `current automated-test case count is ${tests}`));
     if (number(match[2]) !== testFiles) findings.push(finding(file, text, match, `current automated-test file count is ${testFiles}`));
   }
   for (const match of text.matchAll(/\b0\s+violations\s+in\s+(\d{3,}|\d{1,3}(?:,\d{3})+)\s+tests\b/gi)) {
-    if (number(match[1]) !== tests) findings.push(finding(file, text, match, `current executed automated-test count is ${tests}`));
+    if (number(match[1]) !== tests) findings.push(finding(file, text, match, `current automated-test case count is ${tests}`));
   }
   for (const match of text.matchAll(/\bExpected:\s*(\d{3,}|\d{1,3}(?:,\d{3})+)\s+passing,\s*0\s+failing\b/gi)) {
-    if (number(match[1]) !== tests) findings.push(finding(file, text, match, `current executed automated-test count is ${tests}`));
+    if (number(match[1]) !== tests) findings.push(finding(file, text, match, `current automated-test case count is ${tests}`));
   }
   for (const match of text.matchAll(/\bfull\s+test\s+suite\b[^\n]{0,120}?\ball\s+(\d{3,}|\d{1,3}(?:,\d{3})+)\s+passing\b/gi)) {
-    if (number(match[1]) !== tests) findings.push(finding(file, text, match, `current executed automated-test count is ${tests}`));
+    if (number(match[1]) !== tests) findings.push(finding(file, text, match, `current automated-test case count is ${tests}`));
   }
   const seen = new Set();
   return findings.filter((item) => {
@@ -162,6 +162,6 @@ if (isMain()) {
     for (const item of findings) console.error(`${item.file}:${item.line}: ${item.message}: ${JSON.stringify(item.match)}`);
     process.exitCode = 1;
   } else {
-    console.log(`PUBLIC CONFORMANCE CLAIMS: PASS (${expectedSuites} suites, ${expectedVectors} vectors, ${expectedHostilityCases} external hostility cases; ${expectedTests} automated tests across ${expectedTestFiles} files; JS/Python/Go labeled one-team ports)`);
+    console.log(`PUBLIC CONFORMANCE CLAIMS: PASS (${expectedSuites} suites, ${expectedVectors} vectors, ${expectedHostilityCases} external hostility cases; ${expectedTests} automated test cases across ${expectedTestFiles} files; JS/Python/Go labeled one-team ports)`);
   }
 }

@@ -40,7 +40,7 @@ describe('public conformance claim guard', () => {
       suites: 16, vectors: 163, tests: 5334, testFiles: 264,
     });
     expect(findings.map((item) => item.message)).toEqual([
-      'current executed automated-test count is 5334',
+      'current automated-test case count is 5334',
       'current automated-test file count is 264',
     ]);
   });
