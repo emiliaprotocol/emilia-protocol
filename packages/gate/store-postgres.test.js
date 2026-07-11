@@ -170,7 +170,7 @@ test('FAIL-CLOSED: backend error PROPAGATES — never treated as not-consumed', 
   await assert.rejects(backend.compareAndSet('rcpt_x', 'reserved:a', 'committed:v2'), /pg_unavailable/);
   await assert.rejects(backend.deleteIfValue('rcpt_x', 'reserved:a'), /pg_unavailable/);
   await assert.rejects(store.has('rcpt_x'), /pg_unavailable/);
-  await assert.rejects(backend.cleanupExpired(0), /pg_unavailable/);
+  await assert.rejects(backend.cleanupExpired(1_000_000), /pg_unavailable/);
 });
 
 test('FAIL-CLOSED: malformed driver result (no rowCount) throws instead of guessing', async () => {
@@ -224,6 +224,30 @@ test('cleanupExpired with explicit `at` uses the given instant, not the clock', 
   await backend.addIfAbsent('rcpt_z', 'committed:v2', { ttlSeconds: 10 });
   assert.equal(await backend.cleanupExpired(9_999), 0);  // one ms early — kept
   assert.equal(await backend.cleanupExpired(10_000), 1); // boundary — removed
+});
+
+test('clock regression fails closed before any expiry-bearing write or cleanup', async () => {
+  const { backend, fake, clock } = makeBackend();
+  clock.t = 50_000;
+  assert.equal(await backend.addIfAbsent('clock-a', 'committed:v2', { ttlSeconds: 60 }), true);
+  const before = new Map(fake.table);
+
+  clock.t = 49_999;
+  await assert.rejects(
+    backend.addIfAbsent('clock-b', 'committed:v2', { ttlSeconds: 60 }),
+    /clock regression refused/,
+  );
+  await assert.rejects(backend.cleanupExpired(49_000), /clock regression refused/);
+  assert.deepEqual(fake.table, before, 'clock regression must not mutate durable state');
+});
+
+test('malformed clock values fail closed instead of creating immortal or premature rows', async () => {
+  for (const bad of [Number.NaN, Number.POSITIVE_INFINITY, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+    const fake = createFakePg();
+    const backend = createPostgresBackend({ query: fake.query, now: () => bad });
+    await assert.rejects(backend.addIfAbsent('bad-clock', 'committed:v2', { ttlSeconds: 1 }), /safe-integer/);
+    assert.equal(fake.table.size, 0);
+  }
 });
 
 test('table name constant matches the DDL and every statement', () => {

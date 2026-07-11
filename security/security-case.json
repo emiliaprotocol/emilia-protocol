@@ -1,9 +1,9 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "fa125f61537b0c5f0a858eed2e72734c8dae310c6b3ad1886ee42a3f09d1402b",
-  "claim_count": 10,
-  "evidence_file_count": 42,
+  "evidence_bundle_sha256": "222df50df515f10a6d0bc472a53130904f3931306374b1f622354e1d0065deae",
+  "claim_count": 13,
+  "evidence_file_count": 60,
   "execution": {
     "required": true,
     "status": "passed",
@@ -78,8 +78,16 @@
         "file": "packages/gate/store-faults.test.js",
         "titles": [
           "fault: a 100-way reservation storm admits exactly one worker",
-          "fault: a restarted process can neither release nor commit an abandoned reservation",
-          "fault: stale owner cannot erase or commit a replacement owner"
+          "fault: a restarted process can neither release nor commit an abandoned reservation"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/gate/store-linearizability.test.js",
+        "titles": [
+          "generated model: 5000 schedules preserve linearizable at-most-once effects",
+          "stale replica promotion and rollback attempts fail closed"
         ],
         "result": "passed"
       },
@@ -133,10 +141,33 @@
       },
       {
         "runner": "vitest",
+        "file": "tests/evidence-challenge-durable.test.js",
+        "titles": [
+          "atomically registers one exact challenge across 100 concurrent workers",
+          "binds registration to the entire challenge body, not only id and nonce",
+          "propagates backend outage without an in-memory fallback",
+          "refuses policy drift without consuming the registered challenge",
+          "survives restart and admits exactly one concurrent presentation"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
         "file": "tests/ncpdp-privacy.test.js",
         "titles": [
+          "discloses only to the pinned audience and purpose within the retention budget",
           "projects an appeal bundle without recursively copying planted PHI",
-          "refuses direct identifiers, bare hashes, free text, and instance-specific appeal URLs"
+          "refuses direct identifiers, bare hashes, free text, and instance-specific appeal URLs",
+          "refuses purpose, audience, retention, artifact, and field-smuggling attacks"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
+        "file": "tests/release-chain-coverage.test.js",
+        "titles": [
+          "every declared npm and PyPI package uses the complete verifiable release chain",
+          "refuses a reusable publisher with its post-registry byte comparison removed"
         ],
         "result": "passed"
       },
@@ -144,8 +175,13 @@
         "runner": "vitest",
         "file": "tests/release-reproducibility.test.js",
         "titles": [
+          "PyPI workflow builds twice, attests, publishes, and registry-compares the same wheel and sdist",
+          "accepts a PyPI sdist only when every published byte matches",
+          "accepts a PyPI wheel only when every published byte matches",
           "accepts a registry artifact only when every published byte matches",
           "packs @emilia-protocol/verify twice to byte-identical tarballs",
+          "rejects a one-byte PyPI sdist substitution",
+          "rejects a one-byte PyPI wheel substitution",
           "rejects a one-byte registry artifact substitution"
         ],
         "result": "passed"
@@ -172,21 +208,21 @@
       "package": "@emilia-protocol/gate",
       "version": "0.9.3",
       "filename": "emilia-protocol-gate-0.9.3.tgz",
-      "sha256": "32b14f4ee02f1a0bc3602e0c3615db87938fe250637cfeded9a9ce8db8efa28a",
-      "file_count": 60
+      "sha256": "e9380991e24259df5695f1f8064c3b4ddb4383b050fca21ec97887c428f605a2",
+      "file_count": 61
     },
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "fa125f61537b0c5f0a858eed2e72734c8dae310c6b3ad1886ee42a3f09d1402b",
-      "file_count": 42
+      "sha256": "222df50df515f10a6d0bc472a53130904f3931306374b1f622354e1d0065deae",
+      "file_count": 60
     },
     "verify-sdk": {
       "kind": "npm-tarball",
       "package": "@emilia-protocol/verify",
       "version": "3.8.0",
       "filename": "emilia-protocol-verify-3.8.0.tgz",
-      "sha256": "eade51f6601601cec30e3a205955ffcd1097fa6bcb62ac06bdda6d5c9b9aa9b7",
+      "sha256": "2453af572f53ec54a6046887e3dc324f7980a8c5768bf06f2baf534bcfd80de0",
       "file_count": 27
     }
   },
@@ -269,11 +305,12 @@
       ],
       "formal": [
         {
-          "status": "verified",
-          "model": "formal/tamarin/ep_receipt_core.spthy",
-          "lemma": "core_authenticity_uv_gated",
-          "result_evidence": "formal/tamarin/README.md",
-          "scope": "Symbolic UV gating and pinned public key; WebAuthn internals and key-directory operation are assumptions."
+          "status": "partial",
+          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "runner": "formal/tamarin/run-composed.sh",
+          "lemma": "execution_has_honest_approvals_or_prior_compromise",
+          "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
+          "scope": "The composed model proves UV-gated approvals under pinned keys or prior compromise; concrete key_class parsing, WebAuthn internals, and key-directory operation remain executable or external assumptions."
         }
       ],
       "assumptions": [
@@ -290,11 +327,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "eade51f6601601cec30e3a205955ffcd1097fa6bcb62ac06bdda6d5c9b9aa9b7"
+          "sha256": "2453af572f53ec54a6046887e3dc324f7980a8c5768bf06f2baf534bcfd80de0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "fa125f61537b0c5f0a858eed2e72734c8dae310c6b3ad1886ee42a3f09d1402b"
+          "sha256": "222df50df515f10a6d0bc472a53130904f3931306374b1f622354e1d0065deae"
         }
       ]
     },
@@ -383,16 +420,18 @@
       "formal": [
         {
           "status": "verified",
-          "model": "formal/tamarin/ep_quorum_core.spthy",
+          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "runner": "formal/tamarin/run-composed.sh",
           "lemma": "initiator_cannot_self_approve",
-          "result_evidence": "formal/tamarin/README.md",
-          "scope": "Smallest non-trivial 2-of-2 symbolic instance."
+          "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
+          "scope": "Smallest non-trivial 2-of-2 symbolic instance in the composed reliance path."
         },
         {
           "status": "verified",
-          "model": "formal/tamarin/ep_quorum_core.spthy",
+          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "runner": "formal/tamarin/run-composed.sh",
           "lemma": "no_single_signer_fills_quorum",
-          "result_evidence": "formal/tamarin/README.md",
+          "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
           "scope": "Distinct enrolled identities and keys; collusion and enrollment fraud are out of scope."
         }
       ],
@@ -410,11 +449,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "eade51f6601601cec30e3a205955ffcd1097fa6bcb62ac06bdda6d5c9b9aa9b7"
+          "sha256": "2453af572f53ec54a6046887e3dc324f7980a8c5768bf06f2baf534bcfd80de0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "fa125f61537b0c5f0a858eed2e72734c8dae310c6b3ad1886ee42a3f09d1402b"
+          "sha256": "222df50df515f10a6d0bc472a53130904f3931306374b1f622354e1d0065deae"
         }
       ]
     },
@@ -539,6 +578,7 @@
         {
           "status": "partial",
           "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "runner": "formal/tamarin/run-composed.sh",
           "lemma": "execution_requires_full_composition",
           "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
           "scope": "Symbolic issuer and authority pins are composed; concrete registry scope algebra remains executable rather than symbolically modeled."
@@ -557,7 +597,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "fa125f61537b0c5f0a858eed2e72734c8dae310c6b3ad1886ee42a3f09d1402b"
+          "sha256": "222df50df515f10a6d0bc472a53130904f3931306374b1f622354e1d0065deae"
         }
       ]
     },
@@ -679,6 +719,7 @@
         {
           "status": "partial",
           "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "runner": "formal/tamarin/run-composed.sh",
           "lemma": "execution_requires_full_composition",
           "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
           "scope": "Challenge, approval, authority, revocation, issuer pinning, consumption, and execution are composed. Assurance arithmetic, policy authorship, clocks, and transparency completeness remain external."
@@ -698,11 +739,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "eade51f6601601cec30e3a205955ffcd1097fa6bcb62ac06bdda6d5c9b9aa9b7"
+          "sha256": "2453af572f53ec54a6046887e3dc324f7980a8c5768bf06f2baf534bcfd80de0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "fa125f61537b0c5f0a858eed2e72734c8dae310c6b3ad1886ee42a3f09d1402b"
+          "sha256": "222df50df515f10a6d0bc472a53130904f3931306374b1f622354e1d0065deae"
         }
       ]
     },
@@ -807,11 +848,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "eade51f6601601cec30e3a205955ffcd1097fa6bcb62ac06bdda6d5c9b9aa9b7"
+          "sha256": "2453af572f53ec54a6046887e3dc324f7980a8c5768bf06f2baf534bcfd80de0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "fa125f61537b0c5f0a858eed2e72734c8dae310c6b3ad1886ee42a3f09d1402b"
+          "sha256": "222df50df515f10a6d0bc472a53130904f3931306374b1f622354e1d0065deae"
         }
       ]
     },
@@ -916,11 +957,143 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "eade51f6601601cec30e3a205955ffcd1097fa6bcb62ac06bdda6d5c9b9aa9b7"
+          "sha256": "2453af572f53ec54a6046887e3dc324f7980a8c5768bf06f2baf534bcfd80de0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "fa125f61537b0c5f0a858eed2e72734c8dae310c6b3ad1886ee42a3f09d1402b"
+          "sha256": "222df50df515f10a6d0bc472a53130904f3931306374b1f622354e1d0065deae"
+        }
+      ]
+    },
+    {
+      "claim_id": "evidence-challenge-is-durably-registered-and-consumed",
+      "statement": "An AE-CHALLENGE binds the canonical action and governing policy, is exposed only after atomic durable registration of its exact body, and is consumed on the first valid evaluation attempt across workers and restarts.",
+      "acceptance_roots": [
+        "an atomic shared backend implementing insert-if-absent and compare-and-set"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "lib/negotiate/evidence-challenge.js",
+          "symbol": "createRegisteredEvidenceChallenge",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/challenge-store.js",
+          "symbol": "createDurableChallengeStore",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/negotiate/evidence-challenge.js",
+          "symbol": "evaluateRegisteredPresentation",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "packages/gate/challenge-store.js",
+          "export": "createDurableChallengeStore"
+        },
+        {
+          "language": "javascript",
+          "file": "lib/negotiate/evidence-challenge.js",
+          "export": "evaluateRegisteredPresentation"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "tests/evidence-challenge-durable.test.js"
+        },
+        "python": {
+          "status": "not_applicable",
+          "reason": "Challenge lifecycle state belongs to the Node relying-party enforcement service, not the offline Python verifier."
+        },
+        "go": {
+          "status": "not_applicable",
+          "reason": "Challenge lifecycle state belongs to the Node relying-party enforcement service, not the offline Go verifier."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_durable_challenge_after_restart",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_tampered_registered_challenge",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_challenge_policy_drift",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/evidence-challenge-durable.test.js",
+          "title": "atomically registers one exact challenge across 100 concurrent workers",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/evidence-challenge-durable.test.js",
+          "title": "survives restart and admits exactly one concurrent presentation",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/evidence-challenge-durable.test.js",
+          "title": "refuses policy drift without consuming the registered challenge",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/evidence-challenge-durable.test.js",
+          "title": "propagates backend outage without an in-memory fallback",
+          "runner": "vitest"
+        }
+      ],
+      "formal": [
+        {
+          "status": "partial",
+          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "runner": "formal/tamarin/run-composed.sh",
+          "lemma": "injective_execution_with_consumption",
+          "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
+          "scope": "The symbolic model binds and consumes a fresh relying-party challenge; durable registration and crash behavior are exercised by executable fault tests."
+        }
+      ],
+      "assumptions": [
+        "the backend linearizes registration and compare-and-set",
+        "the challenge-store backend is shared by all relying-party workers"
+      ],
+      "exclusions": [
+        "the legacy Set-based evaluator remains only for compatibility and is not a durable production path"
+      ],
+      "release_artifacts": [
+        "gate-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "gate-sdk",
+          "sha256": "e9380991e24259df5695f1f8064c3b4ddb4383b050fca21ec97887c428f605a2"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "222df50df515f10a6d0bc472a53130904f3931306374b1f622354e1d0065deae"
         }
       ]
     },
@@ -962,7 +1135,7 @@
       "vectors": [
         {
           "suite": "security/vectors.v1.json",
-          "case_id": "accept_single_reservation_winner",
+          "case_id": "accept_5000_linearizable_schedules",
           "polarity": "positive",
           "expect": {
             "valid": true
@@ -970,7 +1143,7 @@
         },
         {
           "suite": "security/vectors.v1.json",
-          "case_id": "reject_stale_reservation_owner",
+          "case_id": "reject_stale_replica_promotion",
           "polarity": "negative",
           "expect": {
             "valid": false
@@ -978,6 +1151,16 @@
         }
       ],
       "tests": [
+        {
+          "file": "packages/gate/store-linearizability.test.js",
+          "title": "generated model: 5000 schedules preserve linearizable at-most-once effects",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/store-linearizability.test.js",
+          "title": "stale replica promotion and rollback attempts fail closed",
+          "runner": "node-test"
+        },
         {
           "file": "packages/gate/store-faults.test.js",
           "title": "fault: a 100-way reservation storm admits exactly one worker",
@@ -992,10 +1175,11 @@
       "formal": [
         {
           "status": "verified",
-          "model": "formal/tamarin/ep_receipt_core.spthy",
-          "lemma": "injective_acceptance_with_consumption",
-          "result_evidence": "formal/tamarin/README.md",
-          "scope": "Symbolic one-time consumption; storage crashes and conditional-write semantics are covered by executable fault tests, not Tamarin."
+          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "runner": "formal/tamarin/run-composed.sh",
+          "lemma": "injective_execution_with_consumption",
+          "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
+          "scope": "Symbolic one-time consumption in the composed reliance path; storage crashes and conditional-write semantics are covered by executable fault tests, not Tamarin."
         }
       ],
       "assumptions": [
@@ -1012,11 +1196,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "32b14f4ee02f1a0bc3602e0c3615db87938fe250637cfeded9a9ce8db8efa28a"
+          "sha256": "e9380991e24259df5695f1f8064c3b4ddb4383b050fca21ec97887c428f605a2"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "fa125f61537b0c5f0a858eed2e72734c8dae310c6b3ad1886ee42a3f09d1402b"
+          "sha256": "222df50df515f10a6d0bc472a53130904f3931306374b1f622354e1d0065deae"
         }
       ]
     },
@@ -1094,10 +1278,11 @@
       "formal": [
         {
           "status": "partial",
-          "model": "formal/tamarin/ep_receipt_core.spthy",
-          "lemma": "injective_acceptance_with_consumption",
-          "result_evidence": "formal/tamarin/README.md",
-          "scope": "The lemma proves injective checked acceptance but does not model an external system whose effect succeeds before its response is lost."
+          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "runner": "formal/tamarin/run-composed.sh",
+          "lemma": "injective_execution_with_consumption",
+          "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
+          "scope": "The composed lemma proves injective checked execution but does not model an external system whose effect succeeds before its response is lost."
         }
       ],
       "assumptions": [
@@ -1114,20 +1299,21 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "32b14f4ee02f1a0bc3602e0c3615db87938fe250637cfeded9a9ce8db8efa28a"
+          "sha256": "e9380991e24259df5695f1f8064c3b4ddb4383b050fca21ec97887c428f605a2"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "fa125f61537b0c5f0a858eed2e72734c8dae310c6b3ad1886ee42a3f09d1402b"
+          "sha256": "222df50df515f10a6d0bc472a53130904f3931306374b1f622354e1d0065deae"
         }
       ]
     },
     {
       "claim_id": "rx-sidecar-minimizes-patient-data",
-      "statement": "Rx evidence artifacts reject unknown or direct patient and clinical fields, use pairwise patient references and keyed source-record commitments, and export an appeal projection rather than recursively copying the transaction.",
+      "statement": "Rx evidence artifacts reject unknown or direct patient and clinical fields, use pairwise patient references and keyed source-record commitments, export a projection rather than recursively copying the transaction, and disclose it only under a pinned audience, purpose, policy, retention, artifact, and key-scope profile.",
       "acceptance_roots": [
         "a deployment-managed sector privacy key of at least 256 bits",
-        "issuer adherence to the exact artifact schemas"
+        "issuer adherence to the exact artifact schemas",
+        "a relying-party-pinned EP-HEALTH-DISCLOSURE-PROFILE-v1"
       ],
       "enforcement_path": [
         {
@@ -1141,6 +1327,12 @@
           "file": "lib/ncpdp/privacy.js",
           "symbol": "assertRxSignedArtifactPrivacy",
           "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/ncpdp/privacy.js",
+          "symbol": "evaluateRxDisclosure",
+          "exported": true
         }
       ],
       "implementations": [
@@ -1148,6 +1340,11 @@
           "language": "javascript",
           "file": "lib/ncpdp/privacy.js",
           "export": "buildPrivateRxAppealBundle"
+        },
+        {
+          "language": "javascript",
+          "file": "lib/ncpdp/privacy.js",
+          "export": "evaluateRxDisclosure"
         }
       ],
       "language_coverage": {
@@ -1180,6 +1377,22 @@
           "expect": {
             "valid": false
           }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_purpose_bound_disclosure",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_health_disclosure_substitution",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
         }
       ],
       "tests": [
@@ -1192,6 +1405,16 @@
           "file": "tests/ncpdp-privacy.test.js",
           "title": "refuses direct identifiers, bare hashes, free text, and instance-specific appeal URLs",
           "runner": "vitest"
+        },
+        {
+          "file": "tests/ncpdp-privacy.test.js",
+          "title": "discloses only to the pinned audience and purpose within the retention budget",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/ncpdp-privacy.test.js",
+          "title": "refuses purpose, audience, retention, artifact, and field-smuggling attacks",
+          "runner": "vitest"
         }
       ],
       "formal": [
@@ -1202,7 +1425,8 @@
       ],
       "assumptions": [
         "the sector privacy key is isolated from signing keys and protected from disclosure",
-        "issuers do not encode sensitive data into permitted opaque tokens"
+        "issuers do not encode sensitive data into permitted opaque tokens",
+        "the relying party pins the correct audience, purpose, privacy policy, and retention limit"
       ],
       "exclusions": [
         "this is a data-minimization profile, not a legal-compliance or NCPDP-adoption claim"
@@ -1213,7 +1437,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "fa125f61537b0c5f0a858eed2e72734c8dae310c6b3ad1886ee42a3f09d1402b"
+          "sha256": "222df50df515f10a6d0bc472a53130904f3931306374b1f622354e1d0065deae"
         }
       ]
     },
@@ -1320,19 +1544,391 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "eade51f6601601cec30e3a205955ffcd1097fa6bcb62ac06bdda6d5c9b9aa9b7"
+          "sha256": "2453af572f53ec54a6046887e3dc324f7980a8c5768bf06f2baf534bcfd80de0"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "fa125f61537b0c5f0a858eed2e72734c8dae310c6b3ad1886ee42a3f09d1402b"
+          "sha256": "222df50df515f10a6d0bc472a53130904f3931306374b1f622354e1d0065deae"
+        }
+      ]
+    },
+    {
+      "claim_id": "python-release-artifacts-are-byte-reproducible",
+      "statement": "The Python verifier builds its wheel and source distribution twice under a pinned source epoch, attests and publishes those exact bytes, and refuses a downloaded PyPI wheel or source distribution whose bytes differ.",
+      "acceptance_roots": [
+        "GitHub Actions OIDC identity",
+        "PyPI trusted-publisher configuration",
+        "pinned build and GitHub Action revisions"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "scripts/python-artifact-integrity.mjs",
+          "symbol": "assertPythonArtifactBytesMatch",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "scripts/python-artifact-integrity.mjs",
+          "export": "assertPythonArtifactBytesMatch"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "tests/release-reproducibility.test.js"
+        },
+        "python": {
+          "status": "not_applicable",
+          "reason": "Python and Hatchling construct the artifacts; the byte-identity acceptance check is a release-control function implemented in JavaScript and cmp."
+        },
+        "go": {
+          "status": "not_applicable",
+          "reason": "The Go verifier is not published as a PyPI artifact."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_byte_identical_pypi_wheel",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_pypi_wheel_substitution",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_byte_identical_pypi_sdist",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_pypi_sdist_substitution",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/release-reproducibility.test.js",
+          "title": "accepts a PyPI wheel only when every published byte matches",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/release-reproducibility.test.js",
+          "title": "rejects a one-byte PyPI wheel substitution",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/release-reproducibility.test.js",
+          "title": "accepts a PyPI sdist only when every published byte matches",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/release-reproducibility.test.js",
+          "title": "rejects a one-byte PyPI sdist substitution",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/release-reproducibility.test.js",
+          "title": "PyPI workflow builds twice, attests, publishes, and registry-compares the same wheel and sdist",
+          "runner": "vitest"
+        }
+      ],
+      "operational_evidence": [
+        {
+          "file": ".github/workflows/publish-python-verify.yml",
+          "contains": [
+            "verify-reproducible-wheel.mjs packages/python-verify",
+            "subject-path: ${{ steps.build.outputs.wheel }}",
+            "subject-path: ${{ steps.build.outputs.sdist }}",
+            "packages-dir: release-artifacts/python-verify/",
+            "cmp \"${{ steps.build.outputs.wheel }}\" \"$REGISTRY_WHEEL\"",
+            "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""
+          ]
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "Hosted CI identity, PyPI storage, and trusted-publisher configuration are operational trust assumptions rather than protocol-state properties."
+        }
+      ],
+      "assumptions": [
+        "the PyPI trusted-publisher link is configured out of band",
+        "tag and workflow protections prevent unauthorized release invocation"
+      ],
+      "exclusions": [
+        "a reproducible local wheel does not prove that the PyPI project has enabled trusted publishing"
+      ],
+      "release_artifacts": [
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "222df50df515f10a6d0bc472a53130904f3931306374b1f622354e1d0065deae"
+        }
+      ]
+    },
+    {
+      "claim_id": "all-package-releases-use-verifiable-bytes",
+      "statement": "Every declared npm and PyPI package release tests its source, constructs reproducible package bytes, attests the exact artifact plus security and conformance manifests, publishes through OIDC, and compares every registry artifact byte-for-byte after publication.",
+      "acceptance_roots": [
+        "the checked-in EP-RELEASE-PACKAGE-REGISTRY-v1 inventory",
+        "GitHub Actions OIDC identity",
+        "registry trusted-publisher configuration for each package"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "scripts/check-release-chain.mjs",
+          "symbol": "auditReleaseChain",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "scripts/verify-reproducible-package.mjs",
+          "symbol": "verifyReproduciblePackage",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "scripts/verify-reproducible-wheel.mjs",
+          "symbol": "build",
+          "exported": false
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "scripts/check-release-chain.mjs",
+          "export": "auditReleaseChain"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "tests/release-chain-coverage.test.js"
+        },
+        "python": {
+          "status": "not_applicable",
+          "reason": "Python packages are built by pinned Python tooling, while the release inventory and workflow audit are repository controls implemented in JavaScript."
+        },
+        "go": {
+          "status": "not_applicable",
+          "reason": "The Go verifier is source-distributed in this repository and is not currently declared as a registry package."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_all_declared_release_chains",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_release_chain_without_registry_comparison",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/release-chain-coverage.test.js",
+          "title": "every declared npm and PyPI package uses the complete verifiable release chain",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/release-chain-coverage.test.js",
+          "title": "refuses a reusable publisher with its post-registry byte comparison removed",
+          "runner": "vitest"
+        }
+      ],
+      "operational_evidence": [
+        {
+          "file": ".github/workflows/_publish-npm-package.yml",
+          "contains": [
+            "npm run security-case:emit",
+            "npm run conformance:manifest",
+            "verify-reproducible-package.mjs",
+            "actions/attest@a1948c3f048ba23858d222213b7c278aabede763",
+            "npm publish \"${{ steps.pack.outputs.tarball }}\" --access public --provenance",
+            "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""
+          ]
+        },
+        {
+          "file": ".github/workflows/publish-gate.yml",
+          "contains": [
+            "uses: ./.github/workflows/_publish-npm-package.yml",
+            "package_name: '@emilia-protocol/gate'"
+          ]
+        },
+        {
+          "file": ".github/workflows/publish-issue.yml",
+          "contains": [
+            "uses: ./.github/workflows/_publish-npm-package.yml",
+            "package_name: '@emilia-protocol/issue'"
+          ]
+        },
+        {
+          "file": ".github/workflows/publish-langchain.yml",
+          "contains": [
+            "uses: ./.github/workflows/_publish-npm-package.yml",
+            "package_name: '@emilia-protocol/langchain'"
+          ]
+        },
+        {
+          "file": ".github/workflows/publish-mcp.yml",
+          "contains": [
+            "uses: ./.github/workflows/_publish-npm-package.yml",
+            "package_name: '@emilia-protocol/mcp-server'"
+          ]
+        },
+        {
+          "file": ".github/workflows/publish-require-receipt.yml",
+          "contains": [
+            "uses: ./.github/workflows/_publish-npm-package.yml",
+            "package_name: '@emilia-protocol/require-receipt'"
+          ]
+        },
+        {
+          "file": ".github/workflows/publish-typescript-sdk.yml",
+          "contains": [
+            "uses: ./.github/workflows/_publish-npm-package.yml",
+            "package_name: '@emilia-protocol/sdk'"
+          ]
+        },
+        {
+          "file": ".github/workflows/publish-verify-sdk.yml",
+          "contains": [
+            "npm run security-case:emit",
+            "npm publish \"../../release-artifacts/${{ steps.pack.outputs.tarball }}\" --access public --provenance"
+          ]
+        },
+        {
+          "file": ".github/workflows/publish-python-verify.yml",
+          "contains": [
+            "verify-reproducible-wheel.mjs packages/python-verify",
+            "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""
+          ]
+        },
+        {
+          "file": ".github/workflows/publish-python-sdk.yml",
+          "contains": [
+            "verify-reproducible-wheel.mjs sdks/python",
+            "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""
+          ]
+        },
+        {
+          "file": ".github/workflows/publish-langchain-python.yml",
+          "contains": [
+            "verify-reproducible-wheel.mjs integrations/langchain-emilia",
+            "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""
+          ]
+        },
+        {
+          "file": "release/release-packages.v1.json",
+          "contains": [
+            "EP-RELEASE-PACKAGE-REGISTRY-v1",
+            "@emilia-protocol/verify",
+            "langchain-emilia"
+          ]
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "Registry account state, hosted CI identity, and artifact storage are operational controls rather than symbolic protocol properties."
+        }
+      ],
+      "assumptions": [
+        "each npm and PyPI project has the matching trusted publisher enabled",
+        "protected tags and workflows prevent unauthorized release invocation",
+        "the release registry is updated whenever a publish workflow is added or removed"
+      ],
+      "exclusions": [
+        "static workflow coverage cannot prove registry-side trusted-publisher settings until a real tagged publish succeeds"
+      ],
+      "release_artifacts": [
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "222df50df515f10a6d0bc472a53130904f3931306374b1f622354e1d0065deae"
         }
       ]
     }
   ],
   "evidence_files": [
     {
+      "path": ".github/workflows/_publish-npm-package.yml",
+      "sha256": "1221d72ca3179d716e348495deb618f8bca4bb399d7772537bf3e173c4a60fdb"
+    },
+    {
+      "path": ".github/workflows/publish-gate.yml",
+      "sha256": "db61574dec12fa38a7abb4020fbe141d16bc5bd7a04e5f3d80a8d7209651407e"
+    },
+    {
+      "path": ".github/workflows/publish-issue.yml",
+      "sha256": "339d4656f34295ac4fed9aee49606b9bbbaa09b872e1cabe85b42e18b0db63d2"
+    },
+    {
+      "path": ".github/workflows/publish-langchain-python.yml",
+      "sha256": "01b5c07b9888ccbb58764e36fbfc1b0ac4508ab701a144bb6ab0b1985a609573"
+    },
+    {
+      "path": ".github/workflows/publish-langchain.yml",
+      "sha256": "697c66afb23e8465f4c72b00c727af009f3ce0f2a0a1b58a41e92b749f9c7712"
+    },
+    {
+      "path": ".github/workflows/publish-mcp.yml",
+      "sha256": "9f3d42b621e29ed8308c5f7de9fe2efa65c1f3100c0dd5d6e7ac7607587a653c"
+    },
+    {
+      "path": ".github/workflows/publish-python-sdk.yml",
+      "sha256": "ea2a6a8ef749612eb4eb8f7d8553003dd89a9a9b5aa3ab9d9a8e306e8b10275a"
+    },
+    {
+      "path": ".github/workflows/publish-python-verify.yml",
+      "sha256": "1d8236a1af555bff7b14d6c4bfd06b46cdea21724dae0668ab31f0a4f4e7199b"
+    },
+    {
+      "path": ".github/workflows/publish-require-receipt.yml",
+      "sha256": "181ecdf86abfcb2e7e4563bbed9bfcec79d9bb6b3c02c774b020bb40a79e8fd0"
+    },
+    {
+      "path": ".github/workflows/publish-typescript-sdk.yml",
+      "sha256": "08972df3dafd581c6c4b797dc3125510a74e97baffcc5f24139ca8f339f34a0f"
+    },
+    {
       "path": ".github/workflows/publish-verify-sdk.yml",
-      "sha256": "bc758036485ede59f02024d3529ce0b9696aed7d37c4b10e0c7f43a9040ec4a2"
+      "sha256": "7ae65c20759348667d74427c19097f265013589baa9c4a3852a39c6987a45f9e"
+    },
+    {
+      "path": "conformance/runners/strict-json.mjs",
+      "sha256": "5b2e52e7fc84e81fe5e37228b2ba5e078c8ee1a3754b00d453f07781035ab040"
     },
     {
       "path": "conformance/vectors/authority.v1.json",
@@ -1359,24 +1955,16 @@
       "sha256": "0475a4f3ed8e477f5674b8a97d558700a4d820fa49055c5aae1aaa01b19a40b3"
     },
     {
-      "path": "formal/tamarin/README.md",
-      "sha256": "85b3f747f7a86837c68b835d72cb2e1cd264f2aa45a2729a1da9c71ec26d90b1"
-    },
-    {
-      "path": "formal/tamarin/ep_quorum_core.spthy",
-      "sha256": "399e4f739b6bfbecb9a7fc83bdbe12ecb0f900dc77aaecaf790b8cb36d152dbb"
-    },
-    {
-      "path": "formal/tamarin/ep_receipt_core.spthy",
-      "sha256": "de5eee9b40790baadb22d42cdfff921c5fb2edf10ac6e041d3f8a786f0f0343e"
-    },
-    {
       "path": "formal/tamarin/ep_reliance_composed.spthy",
-      "sha256": "f411d7cd9bd6d3c4097f2f46c135c8e42b1e9f862d04458ab288f8e67c3eb1fc"
+      "sha256": "174c27c35b302a9dd096eb28b40ad7df84cf0c1633a93eff829c3de3fc8bbbd3"
     },
     {
       "path": "formal/tamarin/results/ep_reliance_composed.summary.txt",
-      "sha256": "081f0422c6768a4c83f81055bac3586a300f303def2aade102c631b2ee63ddcb"
+      "sha256": "8b428e674d10dd46d0d709fed5fa903ac045cc32c60c62d8404be0937aeff876"
+    },
+    {
+      "path": "formal/tamarin/run-composed.sh",
+      "sha256": "c3708440114c4447616e237ceb0694c68dc8217e43824e5151270b286f6f35d2"
     },
     {
       "path": "lib/authority/proof.js",
@@ -1384,11 +1972,19 @@
     },
     {
       "path": "lib/authority/resolver.js",
-      "sha256": "495edf2532da51bc9f55f3c551f447238f35c1c81844ef3e5886bbda99e89290"
+      "sha256": "515378cd153a2d95e7d885622ea96671512af091e4fc4028cfde29d32a351faf"
     },
     {
       "path": "lib/ncpdp/privacy.js",
-      "sha256": "cd81f06be456fbb60d1ec4f5aaef26a4608ecf3a9dedd73259f35bdef9294ab7"
+      "sha256": "df292a2464e9162fdda2bdc62e1d1fe7bec843af2dc3471e1c36780ffcce5333"
+    },
+    {
+      "path": "lib/negotiate/evidence-challenge.js",
+      "sha256": "5fbf1fba0ee5438aa4735da45dda7ee0f2c4cec39811afed68c9ce166479d327"
+    },
+    {
+      "path": "packages/gate/challenge-store.js",
+      "sha256": "15166629c0f73e38e0a600e6064bcdeb22135d3b65cece65e2661d7f61945c42"
     },
     {
       "path": "packages/gate/gate.test.js",
@@ -1396,11 +1992,15 @@
     },
     {
       "path": "packages/gate/index.js",
-      "sha256": "a171e5db04fd48c345959df1361ceb06b37dbd9c5391ad2cb73cb53fd4ffbd9f"
+      "sha256": "e7a1f6294a16c83f53a2722fb4c4d6e6d75b6a8de2c6f57e6e1402b80709439c"
     },
     {
       "path": "packages/gate/store-faults.test.js",
       "sha256": "2340963dfe8848689851b189db400d6904c6124d83696db3d44e47a57bd48712"
+    },
+    {
+      "path": "packages/gate/store-linearizability.test.js",
+      "sha256": "9917325b77e69fbcdfbc7e9b01fd9a12b00eba92d77b2b27a211ef3dbaf14797"
     },
     {
       "path": "packages/gate/store.js",
@@ -1444,7 +2044,7 @@
     },
     {
       "path": "packages/verify/reliance.js",
-      "sha256": "cdbbe7027d5362831a2f64c89fc524f34ead2e79b911a6393794ebdb26ce67be"
+      "sha256": "f07a59767667ba688c33bd36c763b84d963b67e026962fcdabaa8ebdea053445"
     },
     {
       "path": "packages/verify/revocation.js",
@@ -1467,36 +2067,60 @@
       "sha256": "b681118669020ad0d172655ceb0388ab0dc65d7c64fcdeed41fb30abba994f14"
     },
     {
+      "path": "release/release-packages.v1.json",
+      "sha256": "299bc2740512cd316cf8bc762c667adfc83e2ad7977ef2820695e088cba30acb"
+    },
+    {
+      "path": "scripts/check-release-chain.mjs",
+      "sha256": "a78b4e13db743ef4d7a47427d22f689527ee059f706ebf52bd54304bc2e110a4"
+    },
+    {
+      "path": "scripts/python-artifact-integrity.mjs",
+      "sha256": "e1780de8be1b50984c185b4c97bc23841fc698558b5d66b7ef3f1187e30a0a62"
+    },
+    {
       "path": "scripts/verify-reproducible-package.mjs",
-      "sha256": "16ab878d06ad999d02db73453b1497d2ac8703f241a7efc6232413e0b774184e"
+      "sha256": "6b4604555e6968beac82cca563522699e11846eea567c75636b83b232c2f0362"
+    },
+    {
+      "path": "scripts/verify-reproducible-wheel.mjs",
+      "sha256": "0fa629f1973beb5db22327536e775d0d8728fc12f67f3676c5cb4d4db0baaac7"
     },
     {
       "path": "scripts/verify-security-case.mjs",
-      "sha256": "b291bfddc8fcec1cfd12e846e4fa817634ca2dfaf7ed846b266f0b7494bede61"
+      "sha256": "be690f801fe555b8d28a815e15e1ce8d1c214d4bdac9bc66c8ad45f83a5fe791"
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "fd11420d56c65a183f4ff61b8ea72c3fcad4c1fb483271950928fb9cea109ad4"
+      "sha256": "8ee4651565a7371e518a8f1017507ce07a49cb2fcacfd5e38b163aec343dcf1e"
     },
     {
       "path": "security/vectors.v1.json",
-      "sha256": "8081d3182fa6ee7e1001b308951a8fac3ef5c0ae30e8a3900eb7e3c7ff0fa574"
+      "sha256": "f55b641681e3d32af989175d77361643943c85ef5b30b5fe31d4ac3387d79fc3"
     },
     {
       "path": "tests/authority-registry.test.js",
-      "sha256": "f2568a72b17284f5567ebf7e225271edab2c10a1b73f444f503c3f2c8a59507a"
+      "sha256": "2eff50146fb38f9e8aaa995fbbefbde59bc4a2be2966c2f3c077c70138317bac"
+    },
+    {
+      "path": "tests/evidence-challenge-durable.test.js",
+      "sha256": "17466f71be88b3fb2962df6fb90b4e252d89a780360a63e4903cbe8fec2898b4"
     },
     {
       "path": "tests/ncpdp-privacy.test.js",
-      "sha256": "8eb602b0535f8d44f22f99fe0e24dc1d75b127939694cb5ed95e250bb02b1959"
+      "sha256": "933e787c626fbab87ebeb29db439994376133353ae316a1b136f3049dfc00e43"
+    },
+    {
+      "path": "tests/release-chain-coverage.test.js",
+      "sha256": "aae1aa3bb7cb3e4159b540e1b57bcee6400687010378c3317d2267cf25f97bf1"
     },
     {
       "path": "tests/release-reproducibility.test.js",
-      "sha256": "5a35e28d76eb27f91e75a564c617cbdd8c4df3d021497d106273815e17a36ad1"
+      "sha256": "718443bbc7a524fd06a38ba5cb77864ac93da0ce0bb61ddd1f82192b4c5f1f6a"
     },
     {
       "path": "tests/reliance-kernel.test.js",
-      "sha256": "268754e2e452ca7c03d87410a9fa7c97a6ccc4e873d9009ee04435653a4d71e6"
+      "sha256": "d31a6353a5b73a2a3a9e13c7f14b547a9aa7e647f543e52d1aea39d1398e5a54"
     }
   ]
 }

@@ -570,3 +570,18 @@ export function validateRelianceProfile(profile) {
   }
   return { ok: issues.length === 0, issues };
 }
+
+// Test-only visibility for mutation/property oracles. These are deliberately
+// not re-exported from package index.js and are not protocol API surface.
+export const __relianceSecurityInternals = Object.freeze({
+  strictInstantMs,
+  toMs,
+  pubKeyB64u,
+  digestHex,
+  parseNonNegativeDecimal,
+  decimalGreaterThan,
+  decimalEqual,
+  exactMaterial,
+  decimalMaterial,
+  signedActionMaterial,
+});

@@ -16,6 +16,23 @@
     "default_retention_days": 30,
     "retention_note": "The relying party sets retention and legal-hold policy. Thirty days is an implementation default, not a legal recommendation."
   },
+  "disclosure_gate": {
+    "type": "EP-HEALTH-DISCLOSURE-PROFILE-v1",
+    "decision": "A bundle is disclosed only when its audience, purpose of use, privacy-policy hash, retention window, allowed artifact classes, and privacy-key scope match a relying-party-pinned profile.",
+    "exact_shape": "Unknown top-level or nested bundle fields are refused before disclosure so the projection cannot become a PHI tunnel.",
+    "closed_verdicts": [
+      "disclose",
+      "refuse_no_profile",
+      "refuse_malformed_bundle",
+      "refuse_audience_mismatch",
+      "refuse_purpose_mismatch",
+      "refuse_policy_mismatch",
+      "refuse_retention_exceeded",
+      "refuse_expired",
+      "refuse_artifact_not_allowed",
+      "refuse_key_scope_mismatch"
+    ]
+  },
   "key_requirements": {
     "minimum_secret_bytes": 32,
     "separation": "Use deployment-managed sector keys distinct from receipt, authority, and artifact signing keys.",
@@ -24,6 +41,7 @@
   "limitations": [
     "A malicious issuer can encode sensitive data into an otherwise permitted opaque token; issuer governance and output monitoring remain required.",
     "Keyed commitments are independently comparable only by parties authorized to possess the sector key or the underlying source record.",
+    "A disclosure verdict is a technical minimum-necessary policy decision, not a claim of HIPAA compliance, legal authorization, or NCPDP adoption.",
     "This profile is a data-minimization control, not a claim of legal compliance or an NCPDP-adopted standard."
   ],
   "reference_implementation": "lib/ncpdp/privacy.js",

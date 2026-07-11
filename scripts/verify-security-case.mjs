@@ -9,6 +9,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { verifyReproduciblePackage } from './verify-reproducible-package.mjs';
+import { strictParseGate } from '../conformance/runners/strict-json.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE = path.join(ROOT, 'security', 'claims.v1.json');
@@ -21,7 +22,11 @@ const emitPath = emitIndex >= 0 ? args[emitIndex + 1] : null;
 if (emitIndex >= 0 && !emitPath) throw new Error('--emit requires a path');
 
 const errors = [];
-const evidenceFiles = new Set([path.relative(ROOT, SOURCE), path.relative(ROOT, SELF)]);
+const evidenceFiles = new Set([
+  path.relative(ROOT, SOURCE),
+  path.relative(ROOT, SELF),
+  'conformance/runners/strict-json.mjs',
+]);
 const executionPlan = new Map();
 const crossLanguageCases = new Map();
 const executionEvidence = [];
@@ -55,6 +60,13 @@ function deepSubset(actual, expected) {
   }
   return actual !== null && typeof actual === 'object'
     && Object.entries(expected).every(([key, value]) => deepSubset(actual[key], value));
+}
+
+function parseStrictJson(text, label) {
+  const gate = strictParseGate(text);
+  if (!gate.ok) throw new Error(`${label}: ${gate.reason}`);
+  try { return JSON.parse(text); }
+  catch (error) { throw new Error(`${label}: ${error.message}`); }
 }
 
 function hasNamedDeclaration(source, language, symbol) {
@@ -113,6 +125,7 @@ function runChecked(command, commandArgs, options, label) {
     encoding: 'utf8',
     env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' },
     maxBuffer: 32 * 1024 * 1024,
+    timeout: 180_000,
   });
   if (run.status !== 0) {
     throw new Error(`${label} failed (${run.status}):\n${run.stdout || ''}${run.stderr || ''}`);
@@ -147,9 +160,18 @@ function executeCrossLanguage() {
         { cwd: implementation.cwd },
         `${implementation.language} conformance ${suite}`,
       );
-      let results;
-      try { results = JSON.parse(stdout); } catch { throw new Error(`${implementation.language} emitted non-JSON for ${suite}`); }
-      const byId = new Map(results.map((result) => [result.id, result.valid]));
+      const results = parseStrictJson(stdout, `${implementation.language} emitted invalid JSON for ${suite}`);
+      if (!Array.isArray(results)) throw new Error(`${implementation.language} emitted a non-array result for ${suite}`);
+      const byId = new Map();
+      for (const result of results) {
+        if (!result || typeof result !== 'object' || Array.isArray(result)
+          || Object.keys(result).length !== 2 || !Object.hasOwn(result, 'id') || !Object.hasOwn(result, 'valid')
+          || typeof result.id !== 'string' || typeof result.valid !== 'boolean') {
+          throw new Error(`${implementation.language} emitted a malformed result for ${suite}`);
+        }
+        if (byId.has(result.id)) throw new Error(`${implementation.language} emitted duplicate result ${result.id} for ${suite}`);
+        byId.set(result.id, result.valid);
+      }
       for (const [caseId, ref] of cases) {
         if (!byId.has(caseId)) throw new Error(`${implementation.language} omitted ${suite}#${caseId}`);
         if (byId.get(caseId) !== ref.expect.valid) {
@@ -164,7 +186,7 @@ function executeCrossLanguage() {
 
 let sourceCase;
 try {
-  sourceCase = JSON.parse(fs.readFileSync(SOURCE, 'utf8'));
+  sourceCase = parseStrictJson(fs.readFileSync(SOURCE, 'utf8'), 'security case source');
 } catch (error) {
   console.error(`SECURITY CASE: cannot parse ${SOURCE}: ${error.message}`);
   process.exit(2);
@@ -243,7 +265,7 @@ for (const claim of sourceCase.claims ?? []) {
     const suiteFile = resolveFile(id, vectorRef.suite);
     if (!suiteFile) continue;
     let suite;
-    try { suite = JSON.parse(fs.readFileSync(suiteFile, 'utf8')); } catch (error) {
+    try { suite = parseStrictJson(fs.readFileSync(suiteFile, 'utf8'), `vector suite ${vectorRef.suite}`); } catch (error) {
       fail(id, `cannot parse vector suite ${vectorRef.suite}: ${error.message}`);
       continue;
     }
@@ -297,10 +319,19 @@ for (const claim of sourceCase.claims ?? []) {
       continue;
     }
     const modelFile = resolveFile(id, formal.model);
+    const runnerFile = resolveFile(id, formal.runner);
     const resultFile = resolveFile(id, formal.result_evidence);
-    if (!modelFile || !resultFile) continue;
-    if (!nonEmpty(formal.lemma) || !hasFormalLemma(fs.readFileSync(modelFile, 'utf8'), formal.lemma)) fail(id, `${formal.model} has no exact lemma ${formal.lemma}`);
-    if (!hasVerifiedResult(fs.readFileSync(resultFile, 'utf8'), formal.lemma)) fail(id, `${formal.result_evidence} has no verified result for ${formal.lemma}`);
+    if (!modelFile || !runnerFile || !resultFile) continue;
+    const modelSource = fs.readFileSync(modelFile, 'utf8');
+    const runnerSource = fs.readFileSync(runnerFile, 'utf8');
+    const resultSource = fs.readFileSync(resultFile, 'utf8');
+    const modelSha256 = crypto.createHash('sha256').update(fs.readFileSync(modelFile)).digest('hex');
+    const runnerSha256 = crypto.createHash('sha256').update(fs.readFileSync(runnerFile)).digest('hex');
+    if (!resultSource.includes(`Model SHA-256: ${modelSha256}`)) fail(id, `${formal.result_evidence} is not bound to the current ${formal.model} bytes`);
+    if (!resultSource.includes(`Runner SHA-256: ${runnerSha256}`)) fail(id, `${formal.result_evidence} is not bound to the current ${formal.runner} bytes`);
+    if (!nonEmpty(formal.lemma) || !hasFormalLemma(modelSource, formal.lemma)) fail(id, `${formal.model} has no exact lemma ${formal.lemma}`);
+    if (!runnerSource.includes(formal.lemma)) fail(id, `${formal.runner} does not execute exact lemma ${formal.lemma}`);
+    if (!hasVerifiedResult(resultSource, formal.lemma)) fail(id, `${formal.result_evidence} has no verified result for ${formal.lemma}`);
     if (!nonEmpty(formal.scope)) fail(id, `${formal.lemma} requires an explicit scope boundary`);
   }
 

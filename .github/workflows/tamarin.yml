@@ -23,37 +23,24 @@ jobs:
     # registry), so this job runs on GitHub's arm64 runner and CI executes the exact
     # same image bytes the proof was verified with locally.
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
       - name: Verify pinned model bytes
         working-directory: formal/tamarin
-        run: echo 'f411d7cd9bd6d3c4097f2f46c135c8e42b1e9f862d04458ab288f8e67c3eb1fc  ep_reliance_composed.spthy' | sha256sum -c -
-      - name: Run composed proof with pinned prover image
+        run: |
+          echo '174c27c35b302a9dd096eb28b40ad7df84cf0c1633a93eff829c3de3fc8bbbd3  ep_reliance_composed.spthy' | sha256sum -c -
+          echo 'c3708440114c4447616e237ceb0694c68dc8217e43824e5151270b286f6f35d2  run-composed.sh' | sha256sum -c -
+      - name: Run every composed proof obligation independently
         working-directory: formal/tamarin
-        # Explicit bash => -eo pipefail, so a docker/pull failure fails this step
-        # instead of being swallowed by tee and surfacing as a grep miss downstream.
         shell: bash
-        run: |
-          docker run --rm \
-            -v "$PWD:/work" -w /work \
-            lmandrelli/tamarin-prover-and-batch@sha256:dff2af961e192e2b8eef3faa0484a0075c380b476bd0e79c160a5619b2519083 \
-            tamarin-prover --derivcheck-timeout=60 --prove ep_reliance_composed.spthy \
-            2>&1 | tee composed-output.txt
-      - name: Enforce clean well-formedness and exact results
-        working-directory: formal/tamarin
-        run: |
-          grep -Fq 'All wellformedness checks were successful.' composed-output.txt
-          grep -Fq 'executable_composed_reliance (exists-trace): verified' composed-output.txt
-          grep -Fq 'execution_requires_full_composition (all-traces): verified' composed-output.txt
-          grep -Fq 'no_cross_action_profile_or_audience_replay (all-traces): verified' composed-output.txt
-          grep -Fq 'injective_execution_with_consumption (all-traces): verified' composed-output.txt
-          grep -Fq 'unchecked_composition_is_injective (all-traces): falsified - found trace' composed-output.txt
-          if grep -Fq 'wellformedness check failed' composed-output.txt; then exit 1; fi
+        run: sh ./run-composed.sh | tee composed-output.txt
       - name: Upload complete prover output
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: tamarin-composed-output
-          path: formal/tamarin/composed-output.txt
+          path: |
+            formal/tamarin/composed-output.txt
+            formal/tamarin/run-output/*.txt
           retention-days: 90

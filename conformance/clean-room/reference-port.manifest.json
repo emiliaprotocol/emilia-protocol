@@ -7,13 +7,23 @@
     "version": "workspace",
     "source_repository": "https://github.com/emiliaprotocol/emilia-protocol",
     "source_commit": "workspace",
-    "license_spdx": "Apache-2.0"
+    "license_spdx": "Apache-2.0",
+    "build_instructions": "Use the checked-in JavaScript conformance runner.",
+    "dependencies": ["EMILIA reference source"]
+  },
+  "runner": {
+    "protocol": "EP-CONFORMANCE-FILE-RUNNER-v1",
+    "artifact_argument_index": 0,
+    "artifact_sha256": "2e32892e998e81eec1b2f7ebe2b2997a9021fb3f73807f25f50f8b339b80277f",
+    "fixed_arguments": ["conformance/runners/run-js.mjs"]
   },
   "independence": {
     "claimed": false,
     "authors": ["EMILIA maintainers"],
     "specification_inputs": ["EMILIA specifications", "EMILIA reference source"],
+    "specification_bundle_sha256": "8fbed86c768a4deabacbc9299909e6868f844243c9465bf70b09ad83c4681a4d",
     "reference_source_access": "reference_port",
+    "emilia_affiliation": "maintainer",
     "statement": "This manifest exercises the intake harness only and makes no clean-room or independence claim."
   }
 }

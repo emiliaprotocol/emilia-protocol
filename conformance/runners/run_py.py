@@ -10,8 +10,6 @@ from emilia_verify import (verify_receipt, verify_webauthn_signoff, verify_quoru
                             evaluate_currency, validate_initiator_attestation,
                             verify_consumption_proof, require_witness_quorum,
                             verify_timestamp_proof)
-vectors = json.load(open(sys.argv[1]))["vectors"]
-
 # EP-CANONICALIZATION-v1 differential branch. Same gate as the JS runner
 # (conformance/runners/strict-json.mjs) and the Go runner: standard parse, then
 # duplicate member names / unpaired surrogates / depth > 64 reject, then the EP
@@ -45,6 +43,14 @@ def _canon_depth(v):
     if isinstance(v, list):
         return 1 + max([_canon_depth(x) for x in v] + [0])
     return 0
+
+with open(sys.argv[1], encoding="utf-8") as corpus_file:
+    corpus = json.loads(corpus_file.read(), object_pairs_hook=_canon_dup_hook)
+if _canon_lone_surrogate(corpus) or _canon_depth(corpus) > _CANON_MAX_DEPTH:
+    raise ValueError("strict corpus JSON refused")
+vectors = corpus.get("vectors")
+if not isinstance(vectors, list):
+    raise ValueError("conformance corpus must contain a vectors array")
 
 def run_canonicalization(c):
     if not isinstance(c, dict):

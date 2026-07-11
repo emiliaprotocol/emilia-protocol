@@ -104,23 +104,39 @@ jobs:
         with:
           node-version: 20
           cache: npm
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6
+        with:
+          go-version: '1.22'
+      - run: python -m pip install cryptography==46.0.6
       - run: npm ci --ignore-scripts
       - name: Execute exact claims and bind reproducible release artifacts
         run: npm run security-case:emit
       - name: Run deterministic cross-language hostile corpus
         run: npm run conformance:hostility
       - name: Exercise external implementation intake protocol
-        run: npm run conformance:clean-room:selftest
+        run: npm run conformance:clean-room:contract
+      - name: Resolve exact cross-language conformance manifest
+        run: npm run conformance:manifest
       - name: Attest exact security case on protected-branch runs
         if: github.event_name != 'pull_request'
         uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
         with:
           subject-path: security/security-case.json
-      - name: Upload resolved security case
+      - name: Attest exact conformance manifest on protected-branch runs
+        if: github.event_name != 'pull_request'
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
+        with:
+          subject-path: conformance/conformance-manifest.json
+      - name: Upload resolved security and conformance cases
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: security-case
-          path: security/security-case.json
+          name: security-and-conformance-case
+          path: |
+            security/security-case.json
+            conformance/conformance-manifest.json
           retention-days: 90
 
   # ── Job 5: Language governance ───────────────────────────────────

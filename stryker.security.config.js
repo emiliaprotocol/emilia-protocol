@@ -19,11 +19,11 @@ export default {
     'tests/audit-regression.test.js',
   ],
   thresholds: {
-    // Ratcheted over the full ranges above: 81.55% total / 82.19% covered.
-    // CI may improve it, but may never silently fall below the 80% floor.
-    high: 85,
-    low: 80,
-    break: 80,
+    // Ratcheted over the full ranges above: 90.11% total / 90.62% covered.
+    // CI may improve it, but may never silently fall below the 90% floor.
+    high: 95,
+    low: 90,
+    break: 90,
   },
   reporters: ['clear-text', 'progress', 'json'],
   jsonReporter: { fileName: 'reports/mutation/security-kernel.json' },
@@ -31,7 +31,10 @@ export default {
   timeoutMS: 30000,
   tempDirName: '.stryker-security-tmp',
   cleanTempDir: true,
-  coverageAnalysis: 'perTest',
+  // Run the complete security suite against every mutant. Table-driven and
+  // dynamically assembled protocol vectors cross helper boundaries that
+  // per-test instrumentation can under-attribute.
+  coverageAnalysis: 'all',
   mutator: {
     // Reason-message wording is not a security oracle; closed verdict values
     // are already asserted exactly by conformance vectors.

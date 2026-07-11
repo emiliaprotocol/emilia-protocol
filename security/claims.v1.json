@@ -36,7 +36,7 @@
         { "file": "packages/verify/trust-receipt.test.js", "title": "class-downgrade — pinned Class-A + declared key_class B + bare signature is REJECTED (default path)", "runner": "node-test" }
       ],
       "formal": [
-        { "status": "verified", "model": "formal/tamarin/ep_receipt_core.spthy", "lemma": "core_authenticity_uv_gated", "result_evidence": "formal/tamarin/README.md", "scope": "Symbolic UV gating and pinned public key; WebAuthn internals and key-directory operation are assumptions." }
+        { "status": "partial", "model": "formal/tamarin/ep_reliance_composed.spthy", "runner": "formal/tamarin/run-composed.sh", "lemma": "execution_has_honest_approvals_or_prior_compromise", "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt", "scope": "The composed model proves UV-gated approvals under pinned keys or prior compromise; concrete key_class parsing, WebAuthn internals, and key-directory operation remain executable or external assumptions." }
       ],
       "assumptions": ["the enrolled approver key and class are authentic", "the device key is not compromised before acceptance"],
       "exclusions": ["enrollment fraud and compromised authenticators are outside this verifier claim"],
@@ -68,8 +68,8 @@
         { "file": "packages/verify/quorum.test.js", "title": "EP-QUORUM-v1: one key in two seats is rejected even with distinct_humans:false", "runner": "node-test" }
       ],
       "formal": [
-        { "status": "verified", "model": "formal/tamarin/ep_quorum_core.spthy", "lemma": "initiator_cannot_self_approve", "result_evidence": "formal/tamarin/README.md", "scope": "Smallest non-trivial 2-of-2 symbolic instance." },
-        { "status": "verified", "model": "formal/tamarin/ep_quorum_core.spthy", "lemma": "no_single_signer_fills_quorum", "result_evidence": "formal/tamarin/README.md", "scope": "Distinct enrolled identities and keys; collusion and enrollment fraud are out of scope." }
+        { "status": "verified", "model": "formal/tamarin/ep_reliance_composed.spthy", "runner": "formal/tamarin/run-composed.sh", "lemma": "initiator_cannot_self_approve", "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt", "scope": "Smallest non-trivial 2-of-2 symbolic instance in the composed reliance path." },
+        { "status": "verified", "model": "formal/tamarin/ep_reliance_composed.spthy", "runner": "formal/tamarin/run-composed.sh", "lemma": "no_single_signer_fills_quorum", "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt", "scope": "Distinct enrolled identities and keys; collusion and enrollment fraud are out of scope." }
       ],
       "assumptions": ["the roster maps one enrolled identity to its authentic key", "distinct identities may still collude"],
       "exclusions": ["collusion between distinct enrolled humans is not prevented"],
@@ -103,7 +103,7 @@
         { "file": "tests/authority-registry.test.js", "title": "delegation cannot widen by omitting scope, ceiling, currency, policy, assurance, lifecycle, or organization", "runner": "vitest" }
       ],
       "formal": [
-        { "status": "partial", "model": "formal/tamarin/ep_reliance_composed.spthy", "lemma": "execution_requires_full_composition", "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt", "scope": "Symbolic issuer and authority pins are composed; concrete registry scope algebra remains executable rather than symbolically modeled." }
+        { "status": "partial", "model": "formal/tamarin/ep_reliance_composed.spthy", "runner": "formal/tamarin/run-composed.sh", "lemma": "execution_requires_full_composition", "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt", "scope": "Symbolic issuer and authority pins are composed; concrete registry scope algebra remains executable rather than symbolically modeled." }
       ],
       "assumptions": ["the relying party provisions the correct registry root", "registry completeness requires transparency controls outside the resolver"],
       "exclusions": ["a colluding registry quorum outside the pinned fault model remains an external trust failure"],
@@ -138,7 +138,7 @@
         { "file": "tests/reliance-kernel.test.js", "title": "refuses caller material fields that disagree with the signed receipt", "runner": "vitest" }
       ],
       "formal": [
-        { "status": "partial", "model": "formal/tamarin/ep_reliance_composed.spthy", "lemma": "execution_requires_full_composition", "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt", "scope": "Challenge, approval, authority, revocation, issuer pinning, consumption, and execution are composed. Assurance arithmetic, policy authorship, clocks, and transparency completeness remain external." }
+        { "status": "partial", "model": "formal/tamarin/ep_reliance_composed.spthy", "runner": "formal/tamarin/run-composed.sh", "lemma": "execution_requires_full_composition", "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt", "scope": "Challenge, approval, authority, revocation, issuer pinning, consumption, and execution are composed. Assurance arithmetic, policy authorship, clocks, and transparency completeness remain external." }
       ],
       "assumptions": ["the relying party's profile is authentic and correctly configured", "evidence sources satisfy their separately stated trust assumptions"],
       "exclusions": ["profile-policy correctness is not inferred from cryptographic validity"],
@@ -209,6 +209,42 @@
       "release_artifacts": ["verify-sdk", "security-evidence"]
     },
     {
+      "claim_id": "evidence-challenge-is-durably-registered-and-consumed",
+      "statement": "An AE-CHALLENGE binds the canonical action and governing policy, is exposed only after atomic durable registration of its exact body, and is consumed on the first valid evaluation attempt across workers and restarts.",
+      "acceptance_roots": ["an atomic shared backend implementing insert-if-absent and compare-and-set"],
+      "enforcement_path": [
+        { "language": "javascript", "file": "lib/negotiate/evidence-challenge.js", "symbol": "createRegisteredEvidenceChallenge", "exported": true },
+        { "language": "javascript", "file": "packages/gate/challenge-store.js", "symbol": "createDurableChallengeStore", "exported": true },
+        { "language": "javascript", "file": "lib/negotiate/evidence-challenge.js", "symbol": "evaluateRegisteredPresentation", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "packages/gate/challenge-store.js", "export": "createDurableChallengeStore" },
+        { "language": "javascript", "file": "lib/negotiate/evidence-challenge.js", "export": "evaluateRegisteredPresentation" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "tests/evidence-challenge-durable.test.js" },
+        "python": { "status": "not_applicable", "reason": "Challenge lifecycle state belongs to the Node relying-party enforcement service, not the offline Python verifier." },
+        "go": { "status": "not_applicable", "reason": "Challenge lifecycle state belongs to the Node relying-party enforcement service, not the offline Go verifier." }
+      },
+      "vectors": [
+        { "suite": "security/vectors.v1.json", "case_id": "accept_durable_challenge_after_restart", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_tampered_registered_challenge", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_challenge_policy_drift", "polarity": "negative", "expect": { "valid": false } }
+      ],
+      "tests": [
+        { "file": "tests/evidence-challenge-durable.test.js", "title": "atomically registers one exact challenge across 100 concurrent workers", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-durable.test.js", "title": "survives restart and admits exactly one concurrent presentation", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-durable.test.js", "title": "refuses policy drift without consuming the registered challenge", "runner": "vitest" },
+        { "file": "tests/evidence-challenge-durable.test.js", "title": "propagates backend outage without an in-memory fallback", "runner": "vitest" }
+      ],
+      "formal": [
+        { "status": "partial", "model": "formal/tamarin/ep_reliance_composed.spthy", "runner": "formal/tamarin/run-composed.sh", "lemma": "injective_execution_with_consumption", "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt", "scope": "The symbolic model binds and consumes a fresh relying-party challenge; durable registration and crash behavior are exercised by executable fault tests." }
+      ],
+      "assumptions": ["the backend linearizes registration and compare-and-set", "the challenge-store backend is shared by all relying-party workers"],
+      "exclusions": ["the legacy Set-based evaluator remains only for compatibility and is not a durable production path"],
+      "release_artifacts": ["gate-sdk", "security-evidence"]
+    },
+    {
       "claim_id": "durable-consumption-is-owner-fenced",
       "statement": "Across concurrent workers and process restarts, one receipt has at most one active reservation, and only its opaque owner token can commit or release it.",
       "acceptance_roots": ["an atomic shared backend implementing insert-if-absent, compare-and-set, and conditional delete"],
@@ -224,15 +260,17 @@
         "go": { "status": "not_applicable", "reason": "The production gate package is a Node package; Go verifiers do not own its storage transaction." }
       },
       "vectors": [
-        { "suite": "security/vectors.v1.json", "case_id": "accept_single_reservation_winner", "polarity": "positive", "expect": { "valid": true } },
-        { "suite": "security/vectors.v1.json", "case_id": "reject_stale_reservation_owner", "polarity": "negative", "expect": { "valid": false } }
+        { "suite": "security/vectors.v1.json", "case_id": "accept_5000_linearizable_schedules", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_stale_replica_promotion", "polarity": "negative", "expect": { "valid": false } }
       ],
       "tests": [
+        { "file": "packages/gate/store-linearizability.test.js", "title": "generated model: 5000 schedules preserve linearizable at-most-once effects", "runner": "node-test" },
+        { "file": "packages/gate/store-linearizability.test.js", "title": "stale replica promotion and rollback attempts fail closed", "runner": "node-test" },
         { "file": "packages/gate/store-faults.test.js", "title": "fault: a 100-way reservation storm admits exactly one worker", "runner": "node-test" },
         { "file": "packages/gate/store-faults.test.js", "title": "fault: a restarted process can neither release nor commit an abandoned reservation", "runner": "node-test" }
       ],
       "formal": [
-        { "status": "verified", "model": "formal/tamarin/ep_receipt_core.spthy", "lemma": "injective_acceptance_with_consumption", "result_evidence": "formal/tamarin/README.md", "scope": "Symbolic one-time consumption; storage crashes and conditional-write semantics are covered by executable fault tests, not Tamarin." }
+        { "status": "verified", "model": "formal/tamarin/ep_reliance_composed.spthy", "runner": "formal/tamarin/run-composed.sh", "lemma": "injective_execution_with_consumption", "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt", "scope": "Symbolic one-time consumption in the composed reliance path; storage crashes and conditional-write semantics are covered by executable fault tests, not Tamarin." }
       ],
       "assumptions": ["the backend linearizes each conditional operation", "abandoned reservations require reconciliation and are never reopened automatically"],
       "exclusions": ["business-level exactly-once effects still require downstream idempotency or reconciliation"],
@@ -263,7 +301,7 @@
         { "file": "packages/gate/gate.test.js", "title": "run() consumes an indeterminate attempt when the executor throws", "runner": "node-test" }
       ],
       "formal": [
-        { "status": "partial", "model": "formal/tamarin/ep_receipt_core.spthy", "lemma": "injective_acceptance_with_consumption", "result_evidence": "formal/tamarin/README.md", "scope": "The lemma proves injective checked acceptance but does not model an external system whose effect succeeds before its response is lost." }
+        { "status": "partial", "model": "formal/tamarin/ep_reliance_composed.spthy", "runner": "formal/tamarin/run-composed.sh", "lemma": "injective_execution_with_consumption", "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt", "scope": "The composed lemma proves injective checked execution but does not model an external system whose effect succeeds before its response is lost." }
       ],
       "assumptions": ["the guarded effect is invoked only through gate.run", "the durable backend remains fail-closed"],
       "exclusions": ["the protocol cannot infer whether an unavailable external system applied an effect"],
@@ -271,14 +309,16 @@
     },
     {
       "claim_id": "rx-sidecar-minimizes-patient-data",
-      "statement": "Rx evidence artifacts reject unknown or direct patient and clinical fields, use pairwise patient references and keyed source-record commitments, and export an appeal projection rather than recursively copying the transaction.",
-      "acceptance_roots": ["a deployment-managed sector privacy key of at least 256 bits", "issuer adherence to the exact artifact schemas"],
+      "statement": "Rx evidence artifacts reject unknown or direct patient and clinical fields, use pairwise patient references and keyed source-record commitments, export a projection rather than recursively copying the transaction, and disclose it only under a pinned audience, purpose, policy, retention, artifact, and key-scope profile.",
+      "acceptance_roots": ["a deployment-managed sector privacy key of at least 256 bits", "issuer adherence to the exact artifact schemas", "a relying-party-pinned EP-HEALTH-DISCLOSURE-PROFILE-v1"],
       "enforcement_path": [
         { "language": "javascript", "file": "lib/ncpdp/privacy.js", "symbol": "buildPrivateRxAppealBundle", "exported": true },
-        { "language": "javascript", "file": "lib/ncpdp/privacy.js", "symbol": "assertRxSignedArtifactPrivacy", "exported": true }
+        { "language": "javascript", "file": "lib/ncpdp/privacy.js", "symbol": "assertRxSignedArtifactPrivacy", "exported": true },
+        { "language": "javascript", "file": "lib/ncpdp/privacy.js", "symbol": "evaluateRxDisclosure", "exported": true }
       ],
       "implementations": [
-        { "language": "javascript", "file": "lib/ncpdp/privacy.js", "export": "buildPrivateRxAppealBundle" }
+        { "language": "javascript", "file": "lib/ncpdp/privacy.js", "export": "buildPrivateRxAppealBundle" },
+        { "language": "javascript", "file": "lib/ncpdp/privacy.js", "export": "evaluateRxDisclosure" }
       ],
       "language_coverage": {
         "javascript": { "status": "covered", "evidence": "tests/ncpdp-privacy.test.js" },
@@ -287,16 +327,20 @@
       },
       "vectors": [
         { "suite": "security/vectors.v1.json", "case_id": "accept_phi_minimized_projection", "polarity": "positive", "expect": { "valid": true } },
-        { "suite": "security/vectors.v1.json", "case_id": "reject_direct_patient_data", "polarity": "negative", "expect": { "valid": false } }
+        { "suite": "security/vectors.v1.json", "case_id": "reject_direct_patient_data", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "accept_purpose_bound_disclosure", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_health_disclosure_substitution", "polarity": "negative", "expect": { "valid": false } }
       ],
       "tests": [
         { "file": "tests/ncpdp-privacy.test.js", "title": "projects an appeal bundle without recursively copying planted PHI", "runner": "vitest" },
-        { "file": "tests/ncpdp-privacy.test.js", "title": "refuses direct identifiers, bare hashes, free text, and instance-specific appeal URLs", "runner": "vitest" }
+        { "file": "tests/ncpdp-privacy.test.js", "title": "refuses direct identifiers, bare hashes, free text, and instance-specific appeal URLs", "runner": "vitest" },
+        { "file": "tests/ncpdp-privacy.test.js", "title": "discloses only to the pinned audience and purpose within the retention budget", "runner": "vitest" },
+        { "file": "tests/ncpdp-privacy.test.js", "title": "refuses purpose, audience, retention, artifact, and field-smuggling attacks", "runner": "vitest" }
       ],
       "formal": [
         { "status": "not_modeled", "gap": "Data-flow noninterference and malicious covert channels are not formally modeled; exact schemas and planted-data leakage attacks are executable tests." }
       ],
-      "assumptions": ["the sector privacy key is isolated from signing keys and protected from disclosure", "issuers do not encode sensitive data into permitted opaque tokens"],
+      "assumptions": ["the sector privacy key is isolated from signing keys and protected from disclosure", "issuers do not encode sensitive data into permitted opaque tokens", "the relying party pins the correct audience, purpose, privacy policy, and retention limit"],
       "exclusions": ["this is a data-minimization profile, not a legal-compliance or NCPDP-adoption claim"],
       "release_artifacts": ["security-evidence"]
     },
@@ -333,6 +377,90 @@
       "assumptions": ["the npm trusted-publisher link is configured out of band", "tag and workflow protections prevent unauthorized release invocation"],
       "exclusions": ["a successful local reproducibility check does not prove the npm account configuration is enabled"],
       "release_artifacts": ["verify-sdk", "security-evidence"]
+    },
+    {
+      "claim_id": "python-release-artifacts-are-byte-reproducible",
+      "statement": "The Python verifier builds its wheel and source distribution twice under a pinned source epoch, attests and publishes those exact bytes, and refuses a downloaded PyPI wheel or source distribution whose bytes differ.",
+      "acceptance_roots": ["GitHub Actions OIDC identity", "PyPI trusted-publisher configuration", "pinned build and GitHub Action revisions"],
+      "enforcement_path": [
+        { "language": "javascript", "file": "scripts/python-artifact-integrity.mjs", "symbol": "assertPythonArtifactBytesMatch", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "scripts/python-artifact-integrity.mjs", "export": "assertPythonArtifactBytesMatch" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "tests/release-reproducibility.test.js" },
+        "python": { "status": "not_applicable", "reason": "Python and Hatchling construct the artifacts; the byte-identity acceptance check is a release-control function implemented in JavaScript and cmp." },
+        "go": { "status": "not_applicable", "reason": "The Go verifier is not published as a PyPI artifact." }
+      },
+      "vectors": [
+        { "suite": "security/vectors.v1.json", "case_id": "accept_byte_identical_pypi_wheel", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_pypi_wheel_substitution", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "accept_byte_identical_pypi_sdist", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_pypi_sdist_substitution", "polarity": "negative", "expect": { "valid": false } }
+      ],
+      "tests": [
+        { "file": "tests/release-reproducibility.test.js", "title": "accepts a PyPI wheel only when every published byte matches", "runner": "vitest" },
+        { "file": "tests/release-reproducibility.test.js", "title": "rejects a one-byte PyPI wheel substitution", "runner": "vitest" },
+        { "file": "tests/release-reproducibility.test.js", "title": "accepts a PyPI sdist only when every published byte matches", "runner": "vitest" },
+        { "file": "tests/release-reproducibility.test.js", "title": "rejects a one-byte PyPI sdist substitution", "runner": "vitest" },
+        { "file": "tests/release-reproducibility.test.js", "title": "PyPI workflow builds twice, attests, publishes, and registry-compares the same wheel and sdist", "runner": "vitest" }
+      ],
+      "operational_evidence": [
+        { "file": ".github/workflows/publish-python-verify.yml", "contains": ["verify-reproducible-wheel.mjs packages/python-verify", "subject-path: ${{ steps.build.outputs.wheel }}", "subject-path: ${{ steps.build.outputs.sdist }}", "packages-dir: release-artifacts/python-verify/", "cmp \"${{ steps.build.outputs.wheel }}\" \"$REGISTRY_WHEEL\"", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] }
+      ],
+      "formal": [
+        { "status": "not_modeled", "gap": "Hosted CI identity, PyPI storage, and trusted-publisher configuration are operational trust assumptions rather than protocol-state properties." }
+      ],
+      "assumptions": ["the PyPI trusted-publisher link is configured out of band", "tag and workflow protections prevent unauthorized release invocation"],
+      "exclusions": ["a reproducible local wheel does not prove that the PyPI project has enabled trusted publishing"],
+      "release_artifacts": ["security-evidence"]
+    },
+    {
+      "claim_id": "all-package-releases-use-verifiable-bytes",
+      "statement": "Every declared npm and PyPI package release tests its source, constructs reproducible package bytes, attests the exact artifact plus security and conformance manifests, publishes through OIDC, and compares every registry artifact byte-for-byte after publication.",
+      "acceptance_roots": ["the checked-in EP-RELEASE-PACKAGE-REGISTRY-v1 inventory", "GitHub Actions OIDC identity", "registry trusted-publisher configuration for each package"],
+      "enforcement_path": [
+        { "language": "javascript", "file": "scripts/check-release-chain.mjs", "symbol": "auditReleaseChain", "exported": true },
+        { "language": "javascript", "file": "scripts/verify-reproducible-package.mjs", "symbol": "verifyReproduciblePackage", "exported": true },
+        { "language": "javascript", "file": "scripts/verify-reproducible-wheel.mjs", "symbol": "build", "exported": false }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "scripts/check-release-chain.mjs", "export": "auditReleaseChain" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "tests/release-chain-coverage.test.js" },
+        "python": { "status": "not_applicable", "reason": "Python packages are built by pinned Python tooling, while the release inventory and workflow audit are repository controls implemented in JavaScript." },
+        "go": { "status": "not_applicable", "reason": "The Go verifier is source-distributed in this repository and is not currently declared as a registry package." }
+      },
+      "vectors": [
+        { "suite": "security/vectors.v1.json", "case_id": "accept_all_declared_release_chains", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_release_chain_without_registry_comparison", "polarity": "negative", "expect": { "valid": false } }
+      ],
+      "tests": [
+        { "file": "tests/release-chain-coverage.test.js", "title": "every declared npm and PyPI package uses the complete verifiable release chain", "runner": "vitest" },
+        { "file": "tests/release-chain-coverage.test.js", "title": "refuses a reusable publisher with its post-registry byte comparison removed", "runner": "vitest" }
+      ],
+      "operational_evidence": [
+        { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["npm run security-case:emit", "npm run conformance:manifest", "verify-reproducible-package.mjs", "actions/attest@a1948c3f048ba23858d222213b7c278aabede763", "npm publish \"${{ steps.pack.outputs.tarball }}\" --access public --provenance", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
+        { "file": ".github/workflows/publish-gate.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/gate'"] },
+        { "file": ".github/workflows/publish-issue.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/issue'"] },
+        { "file": ".github/workflows/publish-langchain.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/langchain'"] },
+        { "file": ".github/workflows/publish-mcp.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/mcp-server'"] },
+        { "file": ".github/workflows/publish-require-receipt.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/require-receipt'"] },
+        { "file": ".github/workflows/publish-typescript-sdk.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/sdk'"] },
+        { "file": ".github/workflows/publish-verify-sdk.yml", "contains": ["npm run security-case:emit", "npm publish \"../../release-artifacts/${{ steps.pack.outputs.tarball }}\" --access public --provenance"] },
+        { "file": ".github/workflows/publish-python-verify.yml", "contains": ["verify-reproducible-wheel.mjs packages/python-verify", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] },
+        { "file": ".github/workflows/publish-python-sdk.yml", "contains": ["verify-reproducible-wheel.mjs sdks/python", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] },
+        { "file": ".github/workflows/publish-langchain-python.yml", "contains": ["verify-reproducible-wheel.mjs integrations/langchain-emilia", "cmp \"${{ steps.build.outputs.sdist }}\" \"$REGISTRY_SDIST\""] },
+        { "file": "release/release-packages.v1.json", "contains": ["EP-RELEASE-PACKAGE-REGISTRY-v1", "@emilia-protocol/verify", "langchain-emilia"] }
+      ],
+      "formal": [
+        { "status": "not_modeled", "gap": "Registry account state, hosted CI identity, and artifact storage are operational controls rather than symbolic protocol properties." }
+      ],
+      "assumptions": ["each npm and PyPI project has the matching trusted publisher enabled", "protected tags and workflows prevent unauthorized release invocation", "the release registry is updated whenever a publish workflow is added or removed"],
+      "exclusions": ["static workflow coverage cannot prove registry-side trusted-publisher settings until a real tagged publish succeeds"],
+      "release_artifacts": ["security-evidence"]
     }
   ]
 }

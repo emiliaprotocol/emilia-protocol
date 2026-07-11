@@ -59,6 +59,7 @@ describe('AE-CHALLENGE — the negotiation loop', () => {
     const ch = createEvidenceChallenge(ACTION, policy, { expires_at: EXPIRES, nonce: 'n1' });
     expect(ch['@version']).toBe(CHALLENGE_VERSION);
     expect(ch.action_digest).toBe(artifactDigest(ACTION));
+    expect(ch.policy_digest).toBe(artifactDigest(policy));
 
     const partial = evaluatePresentation(ch, graphFor(['authorization_receipt']), policy,
       { verifiers, as_of: AS_OF, consumedNonces: nonces, nonce: 'n2' });
@@ -190,6 +191,7 @@ describe('mintChallengeForDigest guards (via createEvidenceChallenge/createFollo
     const ch = createEvidenceChallenge(ACTION, null, { expires_at: EXPIRES, nonce: 'n1' });
     expect(ch.reliance_purpose).toBeNull();
     expect(ch.policy_id).toBeNull();
+    expect(ch.policy_digest).toBe(artifactDigest(null));
     expect(ch.required_evidence).toEqual([]); // no requirement string -> empty go-get list
   });
 });
@@ -213,6 +215,13 @@ describe('createFollowupEvidenceChallenge guards', () => {
     expect(next.nonce).not.toBe('n1');
     expect(typeof next.nonce).toBe('string');
     expect(next.nonce.length).toBeGreaterThan(0);
+  });
+
+  it('refuses to carry a challenge into a changed policy', () => {
+    const ch = createEvidenceChallenge(ACTION, policy, { expires_at: EXPIRES, nonce: 'n1' });
+    const weakened = { ...policy, requirement: 'authorization_receipt' };
+    expect(() => createFollowupEvidenceChallenge(ch, weakened, null, { nonce: 'n2' }))
+      .toThrow(/policy changed/);
   });
 });
 
@@ -256,6 +265,24 @@ describe('evaluatePresentation — structural refusals before any policy runs', 
       { verifiers, as_of: AS_OF, consumedNonces: nonces });
     expect(r.verdict).toBe('refused');
     expect(r.reasons.join(' ')).toContain('action_digest missing or invalid');
+    expect(nonces.size).toBe(0);
+  });
+
+  it('refuses policy drift and impossible calendar instants before consuming the nonce', () => {
+    const nonces = new Set();
+    const ch = createEvidenceChallenge(ACTION, policy, { expires_at: EXPIRES, nonce: 'n1' });
+    const weakened = { ...policy, requirement: 'authorization_receipt' };
+    const drift = evaluatePresentation(ch, graphFor(['authorization_receipt']), weakened,
+      { verifiers, as_of: AS_OF, consumedNonces: nonces });
+    expect(drift.verdict).toBe('refused');
+    expect(drift.reasons.join(' ')).toContain('policy');
+    expect(nonces.size).toBe(0);
+
+    const impossibleExpiry = evaluatePresentation({ ...ch, expires_at: '2026-02-30T12:00:00Z' },
+      graphFor(['authorization_receipt']), policy,
+      { verifiers, as_of: AS_OF, consumedNonces: nonces });
+    expect(impossibleExpiry.verdict).toBe('refused');
+    expect(impossibleExpiry.reasons.join(' ')).toContain('expires_at');
     expect(nonces.size).toBe(0);
   });
 });

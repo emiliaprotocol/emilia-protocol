@@ -6,9 +6,12 @@ import {
   buildRxAppealBundle,
   commitRxEvidence,
   derivePairwisePatientRef,
+  evaluateRxDisclosure,
+  RX_DISCLOSURE_PROFILE_VERSION,
   signRxArtifact,
   verifyRxArtifact,
 } from '../lib/ncpdp/rx-reliance.js';
+import { canonicalize } from '../packages/verify/index.js';
 
 const privacyKey = Buffer.from('71'.repeat(32), 'hex');
 const otherPrivacyKey = Buffer.from('72'.repeat(32), 'hex');
@@ -43,6 +46,16 @@ describe('EP-NCPDP-RX-PRIVACY-PROFILE-v1', () => {
     expect(derivePairwisePatientRef({ ...input, relyingPartyId: 'payer-b.example' })).not.toBe(a);
     expect(derivePairwisePatientRef({ ...input, sectorSecret: otherPrivacyKey })).not.toBe(a);
     expect(a).not.toContain('MEMBER-448193');
+  });
+
+  it('length-binds pairwise inputs so delimiter placement cannot alias identities', () => {
+    const a = derivePairwisePatientRef({
+      patientIdentifier: 'member', relyingPartyId: 'payer-a\0segment', privacyKeyId, sectorSecret: privacyKey,
+    });
+    const b = derivePairwisePatientRef({
+      patientIdentifier: 'segment\0member', relyingPartyId: 'payer-a', privacyKeyId, sectorSecret: privacyKey,
+    });
+    expect(a).not.toBe(b);
   });
 
   it('requires a 256-bit privacy key for references and commitments', () => {
@@ -135,5 +148,101 @@ describe('EP-NCPDP-RX-PRIVACY-PROFILE-v1', () => {
       result: { verdict: 'rx_rely', determination: 'approve', checks: {} },
       privacyKey, privacyKeyId,
     })).toThrow(/forbids artifact field/);
+  });
+
+  it('refuses to export a result with an open-ended determination', () => {
+    expect(() => buildRxAppealBundle({
+      challenge: { '@type': 'EP-RX-EVIDENCE-CHALLENGE-v1', transaction: 'ncpdp.epa', required: {} },
+      packet: { action: { action_type: 'rx.prior_auth.approve', action_hash: actionHash } },
+      result: { verdict: 'rx_rely', determination: 'approved', checks: {} },
+      privacyKey, privacyKeyId,
+    })).toThrow(/determination/);
+  });
+
+  it('discloses only to the pinned audience and purpose within the retention budget', () => {
+    const signed = artifacts();
+    const challenge = {
+      '@type': 'EP-RX-EVIDENCE-CHALLENGE-v1', transaction: 'ncpdp.epa', required_assurance: 'class_a',
+      required: { patient_consent: true, clinical_evidence: true },
+      privacy_context: { audience: 'payer-a.example', purpose_of_use: 'payment', privacy_policy_hash: policyHash },
+    };
+    const bundle = buildRxAppealBundle({
+      challenge,
+      packet: {
+        action: { action_type: 'rx.prior_auth.approve', action_hash: actionHash, policy_hash: policyHash },
+        patient_consent: signed.consent, clinical_evidence: signed.clinical,
+      },
+      result: { verdict: 'rx_rely', determination: 'approve', checks: {} },
+      now: '2026-07-10T10:05:00.000Z', privacyKey, privacyKeyId, retentionDays: 7,
+    });
+    const profile = {
+      '@type': RX_DISCLOSURE_PROFILE_VERSION,
+      audience: 'payer-a.example', purpose_of_use: 'payment', privacy_policy_hash: policyHash,
+      max_retention_days: 7,
+      allowed_artifact_types: ['EP-RX-CONSENT-v1', 'EP-RX-CLINICAL-v1'],
+    };
+    const result = evaluateRxDisclosure({ bundle, profile, now: '2026-07-10T10:06:00.000Z' });
+    expect(result.verdict).toBe('disclose');
+    expect(result.disclose).toBe(true);
+    expect(Object.values(result.checks).every(Boolean)).toBe(true);
+  });
+
+  it('refuses purpose, audience, retention, artifact, and field-smuggling attacks', () => {
+    const signed = artifacts();
+    const challenge = {
+      '@type': 'EP-RX-EVIDENCE-CHALLENGE-v1', transaction: 'ncpdp.epa', required: {},
+      privacy_context: { audience: 'payer-a.example', purpose_of_use: 'payment', privacy_policy_hash: policyHash },
+    };
+    const packet = {
+      action: { action_type: 'rx.prior_auth.approve', action_hash: actionHash, policy_hash: policyHash },
+      patient_consent: signed.consent, clinical_evidence: signed.clinical,
+    };
+    const bundle = buildRxAppealBundle({
+      challenge, packet, result: { verdict: 'rx_rely', determination: 'approve', checks: {} },
+      now: '2026-07-10T10:05:00.000Z', privacyKey, privacyKeyId, retentionDays: 7,
+    });
+    const profile = {
+      '@type': RX_DISCLOSURE_PROFILE_VERSION,
+      audience: 'payer-a.example', purpose_of_use: 'payment', privacy_policy_hash: policyHash,
+      max_retention_days: 7,
+      allowed_artifact_types: ['EP-RX-CONSENT-v1', 'EP-RX-CLINICAL-v1'],
+    };
+    expect(evaluateRxDisclosure({ bundle, profile: { ...profile, audience: 'payer-b.example' } }).verdict)
+      .toBe('refuse_audience_mismatch');
+    expect(evaluateRxDisclosure({ bundle, profile: { ...profile, purpose_of_use: 'research' } }).verdict)
+      .toBe('refuse_purpose_mismatch');
+    expect(evaluateRxDisclosure({ bundle, profile: { ...profile, privacy_policy_hash: `sha256:${'ef'.repeat(32)}` } }).verdict)
+      .toBe('refuse_policy_mismatch');
+    expect(evaluateRxDisclosure({ bundle, profile: { ...profile, max_retention_days: 1 } }).verdict)
+      .toBe('refuse_retention_exceeded');
+    expect(evaluateRxDisclosure({ bundle, profile, now: '2026-07-18T10:05:00.001Z' }).verdict)
+      .toBe('refuse_expired');
+    expect(evaluateRxDisclosure({ bundle, profile: { ...profile, allowed_artifact_types: [] }, now: '2026-07-10T10:06:00.000Z' }).verdict)
+      .toBe('refuse_artifact_not_allowed');
+
+    const smuggled = structuredClone(bundle);
+    smuggled.patient_name = 'Ada Patient';
+    expect(evaluateRxDisclosure({ bundle: smuggled, profile }).verdict).toBe('refuse_malformed_bundle');
+
+    const openCheck = structuredClone(bundle);
+    openCheck.checks.base = 'Ada Patient';
+    delete openCheck.bundle_digest;
+    openCheck.bundle_digest = `sha256:${crypto.createHash('sha256').update(canonicalize(openCheck), 'utf8').digest('hex')}`;
+    expect(evaluateRxDisclosure({ bundle: openCheck, profile }).verdict).toBe('refuse_malformed_bundle');
+
+    const otherKeyId = 'payer-a-rx-privacy-2026-02';
+    const mismatchedConsent = signRxArtifact({
+      '@type': 'EP-RX-CONSENT-v1', action_hash: actionHash, privacy_key_id: otherKeyId,
+      subject_ref: derivePairwisePatientRef({ patientIdentifier: 'MEMBER-448193', relyingPartyId: 'payer-a.example', privacyKeyId: otherKeyId, sectorSecret: privacyKey }),
+      consent_digest: commitRxEvidence({ evidenceType: 'consent', record: {}, privacyKeyId: otherKeyId, sectorSecret: privacyKey }),
+      issued_at: '2026-07-10T10:00:00.000Z',
+    }, issuer.privateKey);
+    const mixedBundle = buildRxAppealBundle({
+      challenge, packet: { ...packet, patient_consent: mismatchedConsent },
+      result: { verdict: 'rx_rely', determination: 'approve', checks: {} },
+      now: '2026-07-10T10:05:00.000Z', privacyKey, privacyKeyId, retentionDays: 7,
+    });
+    expect(evaluateRxDisclosure({ bundle: mixedBundle, profile, now: '2026-07-10T10:06:00.000Z' }).verdict)
+      .toBe('refuse_key_scope_mismatch');
   });
 });

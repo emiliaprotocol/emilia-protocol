@@ -1,135 +1,105 @@
-# `@emilia-protocol/verify` — npm Publish Checklist (1.0.1)
+# Trusted release checklist
 
-**Status:** READY TO PUBLISH — execute now if you haven't already.
-**Why:** v1.0.0 on npm has the shallow-canonicalization regression. Until
-1.0.1 publishes, every cold buyer running `npm install
-@emilia-protocol/verify` gets the buggy version. The whole "verify
-yourself" pitch on `/r/example` falls apart on day one of outreach.
+Long-lived npm/PyPI tokens and manual package rebuilds are not part of the
+release path. A tag invokes a pinned GitHub Actions workflow, the workflow tests
+the source, creates one reproducible artifact, attests those exact bytes through
+GitHub OIDC, publishes that same file through registry trusted publishing, then
+downloads and byte-compares the registry copy.
 
----
+## One-time owner configuration
 
-## Pre-flight (already done, double-check)
+These settings live at the registries and cannot be established or verified by
+repository code.
 
-- [x] `packages/verify/package.json` version is `1.0.1`
-- [x] `packages/verify/index.js` uses recursive `canonicalize()`
-- [x] `packages/verify/test.js` exists with 11 passing tests
-- [x] `cd packages/verify && node --test test.js` → all green
-- [x] `node scripts/verify-demo-receipt.js` → all green
+### npm
 
----
+For each `@emilia-protocol/*` package, add a GitHub Actions trusted publisher:
 
-## Publish (do this now)
+- organization: `emiliaprotocol`
+- repository: `emilia-protocol`
+- workflow: the package's `publish-*.yml` filename
+- environment: blank unless the workflow is later changed to use one
+- allowed action: `npm publish`
 
-```bash
-cd /Users/imanschrock/Documents/GitHub.nosync/emilia-protocol/packages/verify
+The complete package/workflow inventory is machine-checked in
+`release/release-packages.v1.json`. The six smaller npm workflows call the
+shared `_publish-npm-package.yml`, but npm validates the package's calling
+`publish-*.yml` filename. The core verifier uses `publish-verify-sdk.yml`. Do not add `NPM_TOKEN` as a
+fallback: a broken OIDC link must fail closed instead of silently changing the
+release identity.
 
-# 1. Sanity-check the version one more time
-cat package.json | grep '"version"'
-# → "version": "1.0.1",
+### PyPI
 
-# 2. Confirm npm identity
-npm whoami
-# → emiliaprotocol
+For `emilia-verify`, `emilia-protocol`, and `langchain-emilia`, add matching
+GitHub trusted publishers under each project's Publishing settings. The
+workflow filenames are `publish-python-verify.yml`, `publish-python-sdk.yml`,
+and `publish-langchain-python.yml`.
 
-# 3. Publish
-npm publish --access public --provenance
-# → 2FA prompt: enter OTP from authenticator app
-# → "+ @emilia-protocol/verify@1.0.1"
+## Core verifier release
 
-# 4. Verify it landed
-curl -s https://registry.npmjs.org/@emilia-protocol/verify | \
-  python3 -c "import sys,json; d=json.load(sys.stdin); print('latest:', d['dist-tags']['latest']); print('versions:', list(d['versions'].keys()))"
-# → latest: 1.0.1
-# → versions: ['1.0.0', '1.0.1']
-```
+1. Bump `packages/verify/package.json`.
+2. Run the local release gates:
 
----
-
-## Deprecate the broken 1.0.0
-
-The 1.0.0 release stays on npm forever (npm policy). Anyone with
-a pinned `"@emilia-protocol/verify": "1.0.0"` (no caret) keeps getting
-the bug unless we mark the version deprecated. **Do this immediately
-after the 1.0.1 publish:**
-
-```bash
-npm deprecate '@emilia-protocol/verify@1.0.0' \
-  'Shallow canonicalization regression — nested fields not deterministically signed. Upgrade to >=1.0.1.'
-```
-
-Anyone who pinned `==1.0.0` will see a yellow warning when they install.
-Anyone using `^1.0.0` semver auto-upgrades to 1.0.1.
-
----
-
-## Smoke-test the published package
-
-After the publish + deprecate land, do a 1-minute smoke test from a
-clean directory to prove a cold buyer's flow works:
-
-```bash
-mkdir -p /tmp/ep-verify-smoketest && cd /tmp/ep-verify-smoketest
-npm init -y >/dev/null
-npm install @emilia-protocol/verify@^1.0.1 2>&1 | tail -3
-
-cat > smoke.mjs <<'EOF'
-import { verifyReceipt } from '@emilia-protocol/verify';
-
-const evidence = await fetch(
-  'https://emiliaprotocol.ai/api/demo/trust-receipts/tr_example/evidence'
-).then(r => r.json());
-
-const result = verifyReceipt(evidence.document, evidence.public_key);
-console.log('Verify:', result);
-EOF
-
-node smoke.mjs
-# Expected: { valid: true, checks: { version: true, signature: true, anchor: null } }
-
-cd / && rm -rf /tmp/ep-verify-smoketest
-```
-
-If the smoke test passes, the "verify yourself" pitch on `/r/example`
-is genuinely live for any cold buyer who follows it.
-
----
-
-## After publish
-
-1. Tag the release in git:
-   ```bash
-   cd /Users/imanschrock/Documents/GitHub.nosync/emilia-protocol
-   git tag -a 'verify-v1.0.1' -m '@emilia-protocol/verify@1.0.1 — recursive canonicalize'
-   git push origin verify-v1.0.1
+   ```sh
+   npm run security-case:emit
+   npm run conformance:manifest:check
+   npm run check:release-chain
+   npm run release:verify:reproducible
+   npm run test:mutation:security
    ```
 
-2. Post a one-line update wherever you track shipped artifacts (the
-   AAIF working-group thread, the AWS application supplement, the
-   /partners design-partner page once that exists).
+3. Push `verify-v<version>`. The workflow publishes the already-tested tarball;
+   it never runs `npm publish` against a directory.
+4. Confirm the workflow's post-publication `cmp` step and provenance
+   attestation both passed.
 
-3. Archived grant/application drafts live under
-   `docs/archive/grants-and-applications-2026-06-29/`. Do not update them as
-   release blockers; create a fresh submission packet from current positioning
-   if a grant or standards application reopens.
+## Python release
 
----
+1. Bump the relevant `pyproject.toml` version.
+2. Run with pinned build tooling:
 
-## What goes wrong and what to do
+   ```sh
+   python -m pip install build==1.3.0 hatchling==1.27.0
+   npm run release:verify:python
+   ```
 
-| Symptom | Cause | Fix |
-|---|---|---|
-| `npm publish` returns 403 | Token missing publish scope | Use a granular token with write access on `@emilia-protocol/*` |
-| `npm publish` returns 401 | 2FA OTP wrong / expired | Generate a fresh OTP from the authenticator app, retry |
-| `npm publish` says "you cannot publish over the previously published versions" | Version already exists | You already published; check `npm view @emilia-protocol/verify version` |
-| Smoke test returns `valid: false` | Demo deploy not picked up canonicalize fix | Confirm latest deploy includes commit `b320101` or later |
-| Registry propagation delay | npm CDN lag | Wait 60s, retry — the publish itself succeeded if no error |
+3. Push `python-verify-v<version>`, `py-sdk-v<version>`, or
+   `langchain-emilia-v<version>`.
+4. Confirm PyPI returned the exact attested wheel and source-distribution bytes
+   in the final `cmp` steps.
 
----
+## Other npm package releases
 
-## Why this isn't automated
+The Gate, Issue, LangChain, MCP server, Require-Receipt, and TypeScript SDK
+workflows all call `_publish-npm-package.yml`. Each caller still has its own npm
+trusted-publisher identity. Before tagging, run `npm run check:release-chain`;
+it refuses an undeclared publisher or a workflow missing tests, version binding,
+reproducible packing, exact-byte attestation, OIDC publication, or registry
+comparison.
 
-`npm publish` requires a 2FA OTP (deliberate). Wiring an automation
-flow that bypasses 2FA defeats the security model the OTP exists to
-enforce, and the threat model EMILIA's protocol is designed for is
-"don't trust packages without a human authorizing the publish." Eat
-your own dogfood — keep this manual.
+## Evidence retained per tag
+
+- tested npm tarball or Python wheel and source distribution;
+- SHA-256/reproducibility manifest;
+- `security/security-case.json`;
+- `conformance/conformance-manifest.json`;
+- GitHub artifact attestations bound to the workflow identity and source ref;
+- a post-publication byte comparison against npm or PyPI.
+
+`release.yml` also runs for every `*-v*` tag as a repository-level provenance
+record. Every individual package workflow now carries the full artifact,
+security-case, and conformance chain itself.
+
+## Failure doctrine
+
+| Failure | Required response |
+|---|---|
+| OIDC/trusted-publisher refusal | Fix the registry publisher link; do not publish manually. |
+| Reproducible builds differ | Stop; inspect source epoch, build backend, and included files. |
+| Registry bytes differ | Treat as a release-integrity incident; do not mark the release complete. |
+| Security or conformance manifest is stale | Regenerate and rerun before tagging. |
+| Existing version | Bump the version; immutable registries must not be overwritten. |
+
+Repository workflows prove the build and publication path. They do not prove
+that registry-side trusted-publisher settings are currently enabled until a
+tagged workflow succeeds.

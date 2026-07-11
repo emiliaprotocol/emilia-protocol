@@ -13,6 +13,31 @@
       "execution": { "runner": "node-test", "file": "packages/gate/store-faults.test.js", "title": "fault: stale owner cannot erase or commit a replacement owner" }
     },
     {
+      "id": "accept_5000_linearizable_schedules",
+      "expect": { "valid": true },
+      "execution": { "runner": "node-test", "file": "packages/gate/store-linearizability.test.js", "title": "generated model: 5000 schedules preserve linearizable at-most-once effects" }
+    },
+    {
+      "id": "reject_stale_replica_promotion",
+      "expect": { "valid": false },
+      "execution": { "runner": "node-test", "file": "packages/gate/store-linearizability.test.js", "title": "stale replica promotion and rollback attempts fail closed" }
+    },
+    {
+      "id": "accept_durable_challenge_after_restart",
+      "expect": { "valid": true },
+      "execution": { "runner": "vitest", "file": "tests/evidence-challenge-durable.test.js", "title": "survives restart and admits exactly one concurrent presentation" }
+    },
+    {
+      "id": "reject_tampered_registered_challenge",
+      "expect": { "valid": false },
+      "execution": { "runner": "vitest", "file": "tests/evidence-challenge-durable.test.js", "title": "binds registration to the entire challenge body, not only id and nonce" }
+    },
+    {
+      "id": "reject_challenge_policy_drift",
+      "expect": { "valid": false },
+      "execution": { "runner": "vitest", "file": "tests/evidence-challenge-durable.test.js", "title": "refuses policy drift without consuming the registered challenge" }
+    },
+    {
       "id": "accept_successful_effect_once",
       "expect": { "valid": true },
       "execution": { "runner": "node-test", "file": "packages/gate/gate.test.js", "title": "run() commits a successful effect and permanently refuses replay" }
@@ -33,6 +58,16 @@
       "execution": { "runner": "vitest", "file": "tests/ncpdp-privacy.test.js", "title": "refuses direct identifiers, bare hashes, free text, and instance-specific appeal URLs" }
     },
     {
+      "id": "accept_purpose_bound_disclosure",
+      "expect": { "valid": true },
+      "execution": { "runner": "vitest", "file": "tests/ncpdp-privacy.test.js", "title": "discloses only to the pinned audience and purpose within the retention budget" }
+    },
+    {
+      "id": "reject_health_disclosure_substitution",
+      "expect": { "valid": false },
+      "execution": { "runner": "vitest", "file": "tests/ncpdp-privacy.test.js", "title": "refuses purpose, audience, retention, artifact, and field-smuggling attacks" }
+    },
+    {
       "id": "accept_byte_identical_registry_artifact",
       "expect": { "valid": true },
       "execution": { "runner": "vitest", "file": "tests/release-reproducibility.test.js", "title": "accepts a registry artifact only when every published byte matches" }
@@ -41,6 +76,36 @@
       "id": "reject_registry_byte_substitution",
       "expect": { "valid": false },
       "execution": { "runner": "vitest", "file": "tests/release-reproducibility.test.js", "title": "rejects a one-byte registry artifact substitution" }
+    },
+    {
+      "id": "accept_byte_identical_pypi_wheel",
+      "expect": { "valid": true },
+      "execution": { "runner": "vitest", "file": "tests/release-reproducibility.test.js", "title": "accepts a PyPI wheel only when every published byte matches" }
+    },
+    {
+      "id": "reject_pypi_wheel_substitution",
+      "expect": { "valid": false },
+      "execution": { "runner": "vitest", "file": "tests/release-reproducibility.test.js", "title": "rejects a one-byte PyPI wheel substitution" }
+    },
+    {
+      "id": "accept_byte_identical_pypi_sdist",
+      "expect": { "valid": true },
+      "execution": { "runner": "vitest", "file": "tests/release-reproducibility.test.js", "title": "accepts a PyPI sdist only when every published byte matches" }
+    },
+    {
+      "id": "reject_pypi_sdist_substitution",
+      "expect": { "valid": false },
+      "execution": { "runner": "vitest", "file": "tests/release-reproducibility.test.js", "title": "rejects a one-byte PyPI sdist substitution" }
+    },
+    {
+      "id": "accept_all_declared_release_chains",
+      "expect": { "valid": true },
+      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.js", "title": "every declared npm and PyPI package uses the complete verifiable release chain" }
+    },
+    {
+      "id": "reject_release_chain_without_registry_comparison",
+      "expect": { "valid": false },
+      "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.js", "title": "refuses a reusable publisher with its post-registry byte comparison removed" }
     }
   ]
 }

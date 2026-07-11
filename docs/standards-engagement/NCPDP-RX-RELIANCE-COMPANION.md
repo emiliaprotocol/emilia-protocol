@@ -71,6 +71,7 @@ holding an appeal-ready record). `result.determination` says which.
 | `rx_do_not_rely_policy_mismatch` | The request or the RTBP benefit check cites a formulary policy other than the pinned one. |
 | `rx_do_not_rely_stale_benefit` | The RTBP benefit/formulary check is missing or older than the pinned freshness bound. |
 | `rx_do_not_rely_signed_denial_required` | A denial was presented without a signed, bound reason, so it cannot be relied on or appealed. |
+| `rx_do_not_rely_malformed_packet` | The packet uses an unknown or missing determination, or the challenge carries a malformed requirement profile. |
 
 ## How it composes (honestly)
 
@@ -86,6 +87,10 @@ the action digest and verified under a relying-party-pinned key.
   pairwise patient references, exact signed-artifact field sets, coded values,
   and domain-separated keyed commitments to underlying records. Bare hashes of
   low-entropy clinical facts are not accepted.
+- **Purpose-bound disclosure.** A separate, relying-party-pinned
+  `EP-HEALTH-DISCLOSURE-PROFILE-v1` must match the bundle's audience, purpose of
+  use, privacy-policy hash, retention window, allowed artifact classes, and
+  privacy-key scope. Unknown bundle fields are refused before export.
 - **Key rotation remains reproducible.** Every artifact and appeal projection
   names its non-secret privacy-key identifier; the key itself remains in the
   deployment's controlled key store.
@@ -112,7 +117,9 @@ cryptographically verifiable proof of the evidence behind the decision.
 - `examples/ncpdp/specialty-pa-reliance-flow.mjs` — a full offline flow (`node examples/ncpdp/specialty-pa-reliance-flow.mjs`).
 - `conformance/vectors/ncpdp-rx-reliance.v1.json` + `tests/ncpdp-rx-reliance.test.js` — a positive approve, a positive signed deny, and a reject for every `rx_do_not_rely_*` verdict.
 - `tests/ncpdp-privacy.test.js` — pairwise-linkability, bare-hash, direct-field,
-  free-text, future-timestamp, signed-envelope-smuggling, and planted-PHI export attacks.
+  free-text, future-timestamp, signed-envelope-smuggling, planted-PHI export,
+  purpose/audience substitution, over-retention, artifact over-disclosure, and
+  key-scope attacks.
 
 ## Sources
 

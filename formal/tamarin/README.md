@@ -267,12 +267,12 @@ nothing about:
 
 ## Composition boundary
 
-`ep_receipt_core.spthy` and `ep_quorum_core.spthy` remain separate models. The
-new `ep_reliance_composed.spthy` below composes challenge, human approval,
-authority, revocation, issuer pinning, consumption, and execution in one model,
-but does not absorb the quorum instance, WebAuthn internals, directory
-transparency, Merkle log, or wall-clock semantics. Those boundaries remain
-explicit; a single model of every EP subsystem is not claimed.
+`ep_receipt_core.spthy` and `ep_quorum_core.spthy` remain useful focused models.
+`ep_reliance_composed.spthy` v2 below re-derives the abstract 2-of-2 quorum and
+consumption properties while composing CAID, authority, registry-view,
+revocation, issuer pinning, and execution. It still does not model WebAuthn
+internals, directory publication, Merkle-log mechanics, arbitrary k-of-n, or
+wall-clock semantics. A single model of every EP subsystem is not claimed.
 
 ## How to re-run
 
@@ -294,42 +294,51 @@ verification.
 
 # Tamarin model: composed reliance path (`ep_reliance_composed.spthy`)
 
-This model closes the prior composition gap for the acceptance path. It carries
-one action, profile, audience, and fresh challenge nonce through five separately
-signed/pinned legs: relying-party challenge, UV-gated human approval, scoped
-authority proof, fresh revocation state, and receipt issuer. The verifier checks
-every leg, enforces the audience, consumes the challenge once, and only then
-emits `Executed`.
+This model closes the prior composition gap for the high-assurance acceptance
+path. It carries a computed CAID, profile, audience, initiator, and fresh
+challenge nonce through a signed relying-party challenge, two distinct UV-gated
+human approvals, scoped authority bound to an exact registry epoch/head, fresh
+revocation state, and a pinned receipt issuer. The verifier enforces initiator
+exclusion and distinct keys, consumes the challenge once, and only then emits
+`Executed`.
 
 Machine-checked on 2026-07-10 with Tamarin 1.10.0 and Maude 3.4. The image is
 pinned by digest in `.github/workflows/tamarin.yml`; the exact summary and model
 hash are in `results/ep_reliance_composed.summary.txt`.
 
 ```
-executable_composed_reliance (exists-trace): verified (14 steps)
-execution_requires_full_composition (all-traces): verified (22 steps)
-no_cross_action_profile_or_audience_replay (all-traces): verified (10 steps)
+executable_composed_reliance (exists-trace): verified (19 steps)
+execution_requires_full_composition (all-traces): verified (97 steps)
+caid_binds_family_and_material (all-traces): verified (2 steps)
+initiator_cannot_self_approve (all-traces): verified (4 steps)
+no_single_signer_fills_quorum (all-traces): verified (2 steps)
+no_issuer_laundering (all-traces): verified (781 steps)
+strict_registry_view_is_exact (all-traces): verified (25 steps)
+no_cross_action_profile_or_audience_replay (all-traces): verified (37 steps)
+execution_has_honest_approvals_or_prior_compromise (all-traces): verified (170 steps)
 injective_execution_with_consumption (all-traces): verified (2 steps)
-unchecked_composition_is_injective (all-traces): falsified - found trace (26 steps)
+unchecked_composition_is_injective (all-traces): falsified - found trace (31 steps)
+unchecked_registry_view_is_current (all-traces): falsified - found trace (20 steps)
 ```
 
-The final falsification is deliberate: it runs the same fully verified and
-pinned composition through a comparison rule that omits `Consume`. Tamarin
-finds a same-challenge double execution. The checked path is injective.
+The two falsifications are deliberate. One omits `Consume`, and Tamarin finds a
+same-receipt double execution. The other accepts a signed authority artifact
+without joining its epoch/head to the verifier-pinned checkpoint, and Tamarin
+finds a stale/equivocating-view execution. Both strict paths verify.
 
 **Scope boundary:** signatures are perfect Dolev-Yao primitives; WebAuthn and
-canonical parsers are not modeled. Authority scope and profile are opaque terms,
-so the proof establishes exact binding and required presence, not correctness of
-amount arithmetic or policy authorship. Revocation freshness is an authenticated
-`current` assertion, not a clock model. Root provisioning, directory/log
-transparency, endpoint compromise, collusion, and downstream business-system
-idempotency remain external assumptions.
+canonical parsers are not modeled. CAID construction is symbolic and injective;
+authority scope and profile are opaque terms, so the proof establishes exact
+binding and required presence, not amount arithmetic or policy authorship.
+Revocation freshness is an authenticated `current` assertion, not a clock model.
+The model proves use of the exact pinned registry checkpoint but not that the
+external checkpoint is complete or honestly selected. Root provisioning,
+directory transparency, collusion, and downstream business-system idempotency
+remain external assumptions.
 
 Re-run:
 
 ```
-docker run --rm \
-  -v /path/to/emilia-protocol/formal/tamarin:/work -w /work \
-  lmandrelli/tamarin-prover-and-batch@sha256:dff2af961e192e2b8eef3faa0484a0075c380b476bd0e79c160a5619b2519083 \
-  tamarin-prover --derivcheck-timeout=60 --prove ep_reliance_composed.spthy
+cd /path/to/emilia-protocol/formal/tamarin
+sh ./run-composed.sh
 ```

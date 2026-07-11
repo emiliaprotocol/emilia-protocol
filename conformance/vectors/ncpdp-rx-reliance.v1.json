@@ -11,6 +11,7 @@
     { "id": "reject_missing_clinical_evidence", "break": "no_clinical", "expect": { "valid": false, "verdict": "rx_do_not_rely_missing_clinical_evidence" } },
     { "id": "reject_policy_mismatch", "break": "wrong_formulary_policy", "expect": { "valid": false, "verdict": "rx_do_not_rely_policy_mismatch" } },
     { "id": "reject_stale_benefit", "break": "stale_benefit", "expect": { "valid": false, "verdict": "rx_do_not_rely_stale_benefit" } },
-    { "id": "reject_signed_denial_required", "break": "deny_unsigned", "expect": { "valid": false, "verdict": "rx_do_not_rely_signed_denial_required" } }
+    { "id": "reject_signed_denial_required", "break": "deny_unsigned", "expect": { "valid": false, "verdict": "rx_do_not_rely_signed_denial_required" } },
+    { "id": "reject_malformed_determination", "break": "malformed_determination", "expect": { "valid": false, "verdict": "rx_do_not_rely_malformed_packet" } }
   ]
 }

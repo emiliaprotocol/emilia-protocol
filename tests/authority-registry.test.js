@@ -16,9 +16,39 @@ import { evaluateAuthorityVerdict, AUTHORITY_VERDICTS, authorityResultHash, auth
 import { computeRegistryHead } from '../lib/authority/registry-head.js';
 import { signAuthorityProof, verifyAuthorityProof } from '../lib/authority/proof.js';
 import { applyAuthorityEnforcement, authorityAdmissibilityCode } from '../lib/authority/enforcement.js';
+import { canonicalize } from '../lib/canonical-json.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SUITE = JSON.parse(readFileSync(resolve(HERE, '../conformance/vectors/authority.v1.json'), 'utf8'));
+const COMPLETE_RESULT_DIGESTS = Object.freeze({
+  authorized_within_scope_and_limit: '77761fbb35d71604a7d5cceb3654bfe385972608aee81031bf810c9614d52459',
+  reject_amount_exceeded: '1a26c1d10b15a691943573c845d8562e414fd6a0620e7bca7d2fab40880de8cf',
+  reject_currency_mismatch: 'd622c695b9565d03b1c371aa631cfd093cb623d888afbb0121b607281088f728',
+  reject_wrong_scope: '5d954b16c5258b9e5faeb9944af47264b8a2c296c95886bf19e9284d28062893',
+  reject_wrong_role: '09d307b19c1cd261ff735dd1c30bd972847df149a2c31ea6efcd6e40fe30ee4f',
+  reject_unknown_authority: '8746818c36c3d83013f5b4eb7679727e8bd746ff416bf9b0ef3a51ad3d8b16c9',
+  reject_revoked_authority: '93bc5b09857497b1497de7b02e3b7dee1b92e15f33fdea6bbebadc361712888e',
+  reject_expired_authority: 'aff52fb751d551b8ef956e88230b85900a8145ce0f72badb0b87f00a7d17297a',
+  reject_not_yet_valid: '860eba870eea5d69bdad3e29f16a903767ae4d29afa9a61a5964ef6e54b74667',
+  reject_policy_mismatch: '9c08139ade209eaec7aed981c6c39795b6ba255130794aa81339563f207d1828',
+  reject_delegation_widened_amount: '974a0f61449c72cca56d11f02d89bc83bc1d68d382e74e7d1fd5510683908eb9',
+  reject_delegation_parent_missing: '7917b81d104e12937c68f7f43fc76116a6a3448b868b8e579bb2bee40b6f1cd8',
+  reject_insufficient_assurance: '844676cbc02a372a01bd592ae0a6791a22f6763af02c44c62eb1660139530c33',
+  reject_policy_omitted: '09e477cbbd3357a19ee46f6d39ccd645577450ee0b21817df5fc4b80b78977d0',
+  reject_capped_amount_omitted: '64e911605c8f6fad7b7ba642b3737ffdfc8a3c1173d03df8dee532947e02f1c8',
+  reject_capped_currency_omitted: 'e35aff9b69bb3bff26f0717460155846693c88d8f9ebff2e7460da1cbede7b68',
+  reject_malformed_issued_at: 'b774fef09a2c4b26ba6b6baa243e57236ce8919176241b7fb0b5ce310f2695da',
+  reject_impossible_calendar_date: 'bf846fb6b15c97e8423958b1ec411b66fff3bc831f01debebc3095dbff879aef',
+  reject_unknown_assurance_label: '1f91e6b55be9d28ad267a8012a3bc9b4f1a35c2651e20bd99f6d1395b8dca9a6',
+  reject_registry_unavailable: '2e50aba2187b40466a59db11c2548e545e308e84419007728dbd169da673fd77',
+  reject_stale_registry: 'ce36cab7a58887bb480e4ee0d139a9c143a85cc2dd3eedbbe53fa7b4d9640b46',
+  proof_accepted_when_pinned: 'a9f64e8d766bf15d9a367722683a9f8573fc90ebaf69302dc8f416c03ca8df36',
+  reject_proof_unpinned_key: '75c1017fd5d55710afc1b191364da0490066e8a3df1325d1717d0dd5954476c1',
+  reject_proof_tampered_role: 'bbd3599e3b2898e1b37e54dd2591a771fb22df77cac5857513f28ca92350c5db',
+  reject_proof_registry_head_mismatch: '3bf462f69cd4ee1ebf36ccfee53ec42deeea6c7428604c3070e33b12f13139e3',
+  reject_proof_stale_epoch: '65d39a7340106f6a8ac1bf4b6d3dbc0d50d0897af4c40097cb58d3257903d7b7',
+  reject_proof_forged_key_id: '4e1cc9a0dc410ed9ed0d2a8ecab512cd9dbb0605038cd1fba4273074bc090e70',
+});
 
 function keyFromSeedHex(hex) {
   const seed = Buffer.from(hex, 'hex');
@@ -27,6 +57,22 @@ function keyFromSeedHex(hex) {
 }
 function pubB64u(privateKey) {
   return crypto.createPublicKey(privateKey).export({ type: 'spki', format: 'der' }).toString('base64url');
+}
+const resultDigest = (value) => crypto.createHash('sha256').update(canonicalize(value), 'utf8').digest('hex');
+
+function runProofVector(v) {
+  const priv = keyFromSeedHex(v.seed_hex);
+  let proof = signAuthorityProof(v.proof_args, priv);
+  if (v.verify.tamper) proof = { ...proof, ...v.verify.tamper };
+  if (v.verify.tamperKeyId) proof = { ...proof, signature: { ...proof.signature, key_id: v.verify.tamperKeyId } };
+  const pinnedRegistryKeys = v.verify.pin
+    ? [{ issuer_id: proof.signature.key_id, public_key: pubB64u(priv) }]
+    : [];
+  return verifyAuthorityProof(proof, {
+    pinnedRegistryKeys,
+    ...(v.verify.expectRegistryHead ? { expectRegistryHead: v.verify.expectRegistryHead } : {}),
+    ...(v.verify.expectMinEpoch !== undefined ? { expectMinEpoch: v.verify.expectMinEpoch } : {}),
+  });
 }
 
 // An "unavailable" store, to drive the registry_unavailable vector.
@@ -48,19 +94,7 @@ describe('EP-AUTHORITY-REGISTRY-v1 conformance suite', () => {
 
   for (const v of SUITE.vectors.filter((x) => x.kind === 'proof')) {
     it(`proof: ${v.id}`, () => {
-      const priv = keyFromSeedHex(v.seed_hex);
-      let proof = signAuthorityProof(v.proof_args, priv);
-      if (v.verify.tamper) proof = { ...proof, ...v.verify.tamper };
-      if (v.verify.tamperKeyId) proof = { ...proof, signature: { ...proof.signature, key_id: v.verify.tamperKeyId } };
-
-      const pinnedRegistryKeys = v.verify.pin
-        ? [{ issuer_id: proof.signature.key_id, public_key: pubB64u(priv) }]
-        : [];
-      const res = verifyAuthorityProof(proof, {
-        pinnedRegistryKeys,
-        ...(v.verify.expectRegistryHead ? { expectRegistryHead: v.verify.expectRegistryHead } : {}),
-        ...(v.verify.expectMinEpoch !== undefined ? { expectMinEpoch: v.verify.expectMinEpoch } : {}),
-      });
+      const res = runProofVector(v);
       expect(res.accepted).toBe(v.expect.valid);
       if (v.expect.valid) {
         expect(res.verified).toBe(true);
@@ -77,6 +111,18 @@ describe('EP-AUTHORITY-REGISTRY-v1 conformance suite', () => {
     for (const verdict of ['unknown_authority', 'revoked_authority', 'expired_authority', 'not_yet_valid', 'wrong_scope', 'wrong_role', 'amount_exceeded', 'policy_mismatch', 'delegation_broken', 'registry_unavailable', 'insufficient_assurance', 'authorized']) {
       expect(seen.has(verdict)).toBe(true);
     }
+  });
+
+  it('pins the complete resolver and proof result for every vector', async () => {
+    const store = snapshotStore(SUITE.base_snapshot);
+    const digests = {};
+    for (const v of SUITE.vectors) {
+      const result = v.kind === 'resolve'
+        ? await resolveAuthority(v.unavailable ? unavailableStore : store, v.input)
+        : runProofVector(v);
+      digests[v.id] = resultDigest(result);
+    }
+    expect(digests).toEqual(COMPLETE_RESULT_DIGESTS);
   });
 });
 
