@@ -61,27 +61,37 @@
       (m-of-n distinct signers).</t>
       <t>An order draws against a SEASONAL ENVELOPE: a prior EP-RECEIPT-v1
       in which a named human (or quorum) authorizes bounded participation
-      for a program period -- a maximum aggregate <tt>target_delta_kw</tt>,
-      a participation <tt>window</tt>, a per-event <tt>max_duration</tt>,
-      and a minimum notice. The envelope is the human authorization; an
-      individual order is a machine dispatch that must fit inside it. This
-      is what lets curtailment run at machine speed while a compromised or
-      erroneous dispatcher key can never exceed what a human already
-      authorized.</t>
+      for a program period. The envelope's bounds are dimensioned so no
+      check ever compares mixed units: <tt>max_event_kw</tt> (a per-event
+      instantaneous power cap), <tt>max_period_kwh</tt> (a cumulative
+      energy budget for the period), <tt>max_events</tt> (an event-count
+      budget), <tt>max_event_hours</tt> (a cumulative event-hours budget),
+      a participation <tt>window</tt>, and a minimum notice. The envelope
+      is the human authorization; an individual order is a machine
+      dispatch that must fit inside it. This is what lets curtailment run
+      at machine speed while a compromised or erroneous dispatcher key can
+      never exceed what a human already authorized.</t>
     </section>
     <section anchor="gate"><name>Gate Predicates (Fail-Closed)</name>
       <t>A facility controller changes posture only if all hold: the order
       verifies (Ed25519 over RFC 8785 / JCS, <xref target="RFC8785"/>) against the
       <em>pinned</em> authority key; <tt>action_type</tt> is "grid.curtailment";
       the current time is within <tt>window</tt>; and the current time is before
-      <tt>expires_at</tt>. In addition, and load-bearing: the order's
-      <tt>target_delta_kw</tt> <bcp14>MUST NOT</bcp14> exceed the seasonal
-      envelope's UNSPENT balance (the envelope's authorized aggregate minus
-      the sum of already-settled events under it), and the order
-      <bcp14>MUST</bcp14> fit the envelope's window, per-event duration, and
-      notice bounds. An order that exceeds the remaining balance is refused
-      even under a validly signed authority key -- the envelope, not any
-      single order, is the ceiling.</t>
+      <tt>expires_at</tt>. In addition, and load-bearing: the order
+      <bcp14>MUST</bcp14> fit every envelope dimension in that dimension's
+      own unit. The order's <tt>target_delta_kw</tt> <bcp14>MUST
+      NOT</bcp14> exceed <tt>max_event_kw</tt> (power against power); the
+      event's projected energy (<tt>target_delta_kw</tt> times the window
+      duration) <bcp14>MUST NOT</bcp14> exceed the envelope's remaining
+      energy budget (<tt>max_period_kwh</tt> minus the energy already
+      settled under it); and the event count and cumulative event-hours,
+      counting this event, <bcp14>MUST</bcp14> fit their remaining
+      budgets. The order <bcp14>MUST</bcp14> also fit the envelope's
+      window and notice bounds. A bound or spent-accounting value that a
+      check needs and that is missing or unparseable is itself a gate
+      failure, never an unlimited default. An order that exceeds any
+      remaining budget is refused even under a validly signed authority
+      key -- the envelope, not any single order, is the ceiling.</t>
       <t>A refused order is not silent. On any gate-predicate failure or a
       protected-lane conflict, the controller <bcp14>MUST</bcp14> emit a
       signed REFUSAL receipt (an EP-RECEIPT-v1 over the refused order's
@@ -91,26 +101,45 @@
       offline-verifiable by the same parties.</t>
     </section>
     <section anchor="bundle"><name>Telemetry Attestation and the Proof-of-Curtailment Bundle</name>
-      <t>Power telemetry is signed by an attested meter (an EP-RECEIPT-v1 over
-      {<tt>meter_id</tt>, <tt>unit</tt>, <tt>baseline_method_hash</tt>,
-      <tt>samples</tt>}), so any altered sample breaks verification. The
+      <t>Power telemetry is signed by an attested meter, and the meter signs
+      ONLY physical measurement data: an EP-RECEIPT-v1 over
+      {<tt>meter_id</tt>, <tt>unit</tt>, <tt>samples</tt>}, each sample
+      carrying a timestamp, a quality flag, and a sequence number. Any
+      altered sample breaks verification. The meter is a physical witness
+      and <bcp14>MUST NOT</bcp14> carry market rules: a meter payload that
+      includes <tt>baseline_method_hash</tt> <bcp14>MUST</bcp14> be
+      refused. Changing a program's baseline method never requires
+      re-provisioning meters. The method binding lives one level up: the
       Proof-of-Curtailment Bundle composes the order, the facility
-      acknowledgment, the attested telemetry, and the computed delivered kW*h,
-      with the pinning keys. Verification (all <bcp14>MUST</bcp14> pass): the
-      order verifies against the authority key; the acknowledgment against the
-      facility key; the telemetry against the meter key;
-      <tt>telemetry.baseline_method_hash</tt> equals
-      <tt>order.baseline_method_hash</tt>; and recomputing delivered kW*h from the
-      signed samples equals the claimed value. Anyone can run this offline, with
+      acknowledgment, the attested telemetry, and the computed delivered
+      kW*h, with the pinning keys, and itself binds
+      <tt>order.baseline_method_hash</tt> together with the digest of the
+      signed meter payload. Verification (all <bcp14>MUST</bcp14> pass):
+      the order verifies against the authority key; the acknowledgment
+      against the facility key; the telemetry against the meter key; the
+      meter payload carries no <tt>baseline_method_hash</tt>;
+      <tt>bundle.baseline_method_hash</tt> equals
+      <tt>order.baseline_method_hash</tt>;
+      <tt>bundle.meter_payload_digest</tt> equals the digest of the signed
+      meter payload; and recomputing delivered kW*h from the signed
+      samples equals the claimed value. Anyone can run this offline, with
       no account.</t>
-      <t>The meter's signature over <tt>baseline_method_hash</tt> binds the
-      settlement bundle to a single event under a single program method, so
-      the same physical power reduction cannot be sold into two programs: a
-      second bundle claiming the same meter samples under a different
-      method hash fails the equality check, and a second claim under the
-      same method resolves to the same event digest. Settlement is
-      single-use per event by construction, the demand-response analogue of
-      one-time receipt consumption.</t>
+      <t>Settlement is single-use by consumption, not by convention. A
+      settlement consumes a one-time entitlement keyed by
+      {<tt>entitlement_id</tt> (the envelope being drawn against),
+      <tt>event_id</tt> (from the order), <tt>meter_window_digest</tt>
+      (the digest of the signed meter payload for the settled window)}. A
+      second settlement presenting the same key tuple <bcp14>MUST</bcp14>
+      be refused with a typed reason -- the same curtailment event cannot
+      be sold twice. The key is the nonce for EP's one-time consumption
+      discipline (the sparse-Merkle consumption profile), so a settlement
+      authority operating a witnessed consumption log makes double
+      settlement offline-detectable by third parties, the same way
+      receipt-nonce double-spend is. Scope: the consumption check runs
+      against the settling authority's own log; reuse of the same metered
+      window across programs or authorities is detected by comparing
+      <tt>meter_window_digest</tt> values across logs -- an audit
+      function, not a property any single log provides.</t>
     </section>
     <section anchor="related"><name>Relationship to Other Work</name>
       <t>This is a profile of
@@ -127,10 +156,14 @@
       telemetry integrity against a pinned method, not that the baseline is
       physically correct (baseline estimation belongs to the program). Spoofed,
       stale, and replayed orders are refused fail-closed, as are orders
-      exceeding the human-authorized envelope balance -- a compromised
+      exceeding any human-authorized envelope budget (per-event power,
+      period energy, event count, event-hours) -- a compromised
       dispatcher key spends only what the envelope already authorized,
-      never more. Double-counting the same reduction across programs is
-      defeated by the meter-signed method binding. EP is a necessary, not
+      never more. Double settlement of the same event is refused by
+      one-time entitlement consumption keyed by {<tt>entitlement_id</tt>,
+      <tt>event_id</tt>, <tt>meter_window_digest</tt>}; reuse of the same
+      metered window across programs is auditable by comparing meter
+      window digests across consumption logs. EP is a necessary, not
       sufficient, condition for trustworthy demand response.</t>
     </section>
     <section anchor="iana"><name>IANA Considerations</name>

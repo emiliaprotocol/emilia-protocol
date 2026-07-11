@@ -12,15 +12,20 @@
  *     -> facility presents the evidence graph
  *     -> policy replay -> admissible -> signed reliance result
  *     -> compliance computed from the METER leg -> what should be paid
+ *     -> settlement CONSUMES the one-time entitlement (never twice)
  *
- * Negatives enforced: out-of-bounds order refused pre-execution; missing
- * meter leg -> missing_evidence; tampered order -> unverifiable; facility
+ * Negatives enforced: order over the per-event MW cap refused pre-execution;
+ * order that would blow the period MWh energy budget refused; event-count
+ * budget exhaustion refused; short notice refused; meter statement carrying
+ * market rules (baseline_method_hash) refused; missing meter leg ->
+ * missing_evidence; tampered order -> unverifiable; duplicate settlement of
+ * the same {entitlement, event, meter window} refused. Facility
  * self-attestation can never substitute for the meter.
  */
 import crypto from 'node:crypto';
 import { EVIDENCE_GRAPH_VERSION, artifactDigest, evaluateEvidenceGraph, signRelianceResult, verifyRelianceResult } from '../../lib/evidence/evidence-graph.js';
 import { createEvidenceChallenge, evaluatePresentation } from '../../lib/negotiate/evidence-challenge.js';
-import { FLEX_ENVELOPE_VERSION, CURTAILMENT_SETTLEMENT_POLICY, checkOrderWithinEnvelope, computeCompliance } from '../../lib/grace/curtailment.js';
+import { FLEX_ENVELOPE_VERSION, CURTAILMENT_SETTLEMENT_POLICY, checkOrderWithinEnvelope, computeCompliance, checkSettlementConsumption } from '../../lib/grace/curtailment.js';
 
 // Deterministic keys (vector stability; NEVER this pattern for real keys).
 const PKCS8 = Buffer.from('302e020100300506032b657004220420', 'hex');
@@ -41,14 +46,19 @@ const EVENT = {
 const EVENT_DIGEST = artifactDigest(EVENT);
 
 // ── The envelope a named human authorized once, for the season ──────────────
+// Bounds are DIMENSIONED: power caps power, energy budgets energy, counts
+// budget counts, hours budget hours — per-event MW are never summed against
+// an instantaneous ceiling.
 export const envelope = {
   '@version': FLEX_ENVELOPE_VERSION,
   facility: 'dc-west-04.example',
   program: 'ercot-flex-2026-summer',
   bounds: {
-    max_mw: 15,
+    max_event_mw: 15,      // per-event instantaneous cap (MW)
+    max_period_mwh: 120,   // cumulative energy budget for the season (MWh)
+    max_events: 10,        // event-count budget for the season
+    max_event_hours: 40,   // cumulative event-hours budget for the season
     min_notice_minutes: 10,
-    max_event_hours: 6,
     window: { start: '2026-06-01T00:00:00Z', end: '2026-09-30T23:59:59Z' },
   },
   authorized_by: 'vp-infrastructure@dc-west.example',
@@ -129,10 +139,19 @@ const verifiers = Object.fromEntries(['curtailment_order', 'authorization_receip
 const AS_OF = '2026-07-16T09:00:00Z';
 
 // ── 1. Fail-closed BEFORE execution: Order ⊆ Envelope ───────────────────────
+// The 12 MW × 4 h order fits every dimension: 12 ≤ 15 MW per event,
+// 48 ≤ 120 MWh energy budget, 1 ≤ 10 events, 4 ≤ 40 event-hours.
 const within = checkOrderWithinEnvelope(orderPayload, envelope);
 if (!within.within) throw new Error('in-bounds order refused: ' + within.violations);
 const oversized = checkOrderWithinEnvelope({ ...orderPayload, mw: '22.0' }, envelope);
-if (oversized.within) throw new Error('OUT-OF-BOUNDS ORDER NOT REFUSED');
+if (oversized.within) throw new Error('OUT-OF-BOUNDS ORDER NOT REFUSED (per-event MW cap)');
+// Same order, but 100 of the 120 MWh already settled this season: the
+// projected 48 MWh would blow the remaining 20 MWh energy budget.
+const overBudget = checkOrderWithinEnvelope(orderPayload, envelope, { spent_mwh: 100 });
+if (overBudget.within) throw new Error('ENERGY-BUDGET-BLOWING ORDER NOT REFUSED');
+// Event-count budget exhausted: 10 of 10 events already settled.
+const overCount = checkOrderWithinEnvelope(orderPayload, envelope, { spent_events: 10 });
+if (overCount.within) throw new Error('EVENT-COUNT-EXHAUSTED ORDER NOT REFUSED');
 const shortNotice = checkOrderWithinEnvelope({ ...orderPayload, notice_minutes: 3 }, envelope);
 if (shortNotice.within) throw new Error('SHORT-NOTICE ORDER NOT REFUSED');
 
@@ -150,6 +169,10 @@ if (!check.accepted) throw new Error('reliance result failed verification');
 // ── 4. Compliance from the METER leg (independent telemetry) ────────────────
 export const compliance = computeCompliance(orderPayload, meterPayload);
 if (!compliance.computable || !compliance.compliant) throw new Error('expected compliant event: ' + JSON.stringify(compliance));
+// the meter is a physical witness: a meter statement smuggling market rules
+// (baseline_method_hash) is refused, never quietly accepted —
+const marketMeter = computeCompliance(orderPayload, { ...meterPayload, baseline_method_hash: 'sha256:' + 'c'.repeat(64) });
+if (marketMeter.computable) throw new Error('METER STATEMENT CARRYING MARKET RULES NOT REFUSED');
 // facility self-attestation can never substitute for the meter:
 const noMeter = { ...graph, nodes: graph.nodes.filter((n) => n.type !== 'meter_statement'), edges: graph.edges.filter((e) => e.rel !== 'records') };
 const insufficient = evaluateEvidenceGraph(noMeter, CURTAILMENT_SETTLEMENT_POLICY, { verifiers, as_of: AS_OF });
@@ -161,7 +184,25 @@ tampered.nodes[0].artifact.payload.price_usd_per_mwh = '985.00';
 const broken = evaluateEvidenceGraph(tampered, CURTAILMENT_SETTLEMENT_POLICY, { verifiers, as_of: AS_OF });
 if (broken.verdict === 'admissible') throw new Error('tampered order accepted');
 
-if (process.argv.includes('--emit')) {
-  console.log(JSON.stringify({ event: EVENT, envelope, graph, policy: CURTAILMENT_SETTLEMENT_POLICY, verdict: presented.verdict, replay_digest: presented.replay_digest, compliance, reliance }, null, 2));
+// ── 6. One-time settlement consumption: the same event can never settle twice ─
+// The settlement consumes a unique entitlement keyed by {entitlement_id
+// (the envelope), event_id (the order), meter_window_digest (the signed
+// meter payload)}. A second settlement over the same tuple is refused with
+// a typed reason — double-selling the same flexibility is structurally out.
+const consumed = new Set(); // the settlement authority's consumption registry
+const settlementClaim = {
+  entitlement_id: artifactDigest(envelope),
+  event_id: EVENT.event_id,
+  meter_window_digest: artifactDigest(meterPayload),
+};
+const settled = checkSettlementConsumption(settlementClaim, consumed);
+if (!settled.settled) throw new Error('first settlement refused: ' + settled.reason);
+const doubleSell = checkSettlementConsumption(settlementClaim, consumed);
+if (doubleSell.settled || doubleSell.reason !== 'settlement_already_consumed') {
+  throw new Error('DUPLICATE SETTLEMENT NOT REFUSED: ' + JSON.stringify(doubleSell));
 }
-console.error(`PROOF-OF-CURTAILMENT OK — ordered ${compliance.ordered_mw} MW, meter-verified ${compliance.delivered_mw} MW (ratio ${compliance.compliance_ratio}); verdict admissible; out-of-bounds/meterless/tampered all refused.`);
+
+if (process.argv.includes('--emit')) {
+  console.log(JSON.stringify({ event: EVENT, envelope, graph, policy: CURTAILMENT_SETTLEMENT_POLICY, verdict: presented.verdict, replay_digest: presented.replay_digest, compliance, reliance, settlement_key: settled.key }, null, 2));
+}
+console.error(`PROOF-OF-CURTAILMENT OK — ordered ${compliance.ordered_mw} MW, meter-verified ${compliance.delivered_mw} MW (ratio ${compliance.compliance_ratio}); verdict admissible; oversized/over-budget/count-exhausted/short-notice/market-rules-meter/meterless/tampered/duplicate-settlement all refused.`);
