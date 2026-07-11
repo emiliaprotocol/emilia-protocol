@@ -43,6 +43,7 @@
     "conformance:hostility": "node scripts/differential-hostility.mjs",
     "check:public-conformance-claims": "node scripts/check-public-conformance-claims.mjs",
     "check:proof-stats": "node scripts/generate-proof-stats.mjs --check",
+    "sync:proof-stats": "node scripts/generate-proof-stats.mjs",
     "conformance:external:evaluate": "node scripts/evaluate-external-implementation.mjs",
     "conformance:clean-room:selftest": "node scripts/verify-clean-room-submission.mjs --manifest conformance/clean-room/reference-port.manifest.json -- node conformance/runners/run-js.mjs",
     "conformance:clean-room:contract": "node scripts/test-clean-room-intake.mjs",

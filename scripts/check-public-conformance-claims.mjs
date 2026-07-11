@@ -92,14 +92,31 @@ export function auditClaimText(text, file = '<text>', expectations = {}) {
   }
 
   const number = (value) => Number(String(value).replaceAll(',', ''));
-  for (const match of text.matchAll(/\b(\d{3,}|\d{1,3}(?:,\d{3})+)\+?\*{0,2}\s+automated\s+test(?:s|\s+cases)\b([^\n]{0,80})/gi)) {
-    if (number(match[1]) !== tests) findings.push(finding(file, text, match, `current automated-test case count is ${tests}`));
-    const files = match[2].match(/\bacross\s+(\d+)\s+files\b/i);
-    if (files && number(files[1]) !== testFiles) findings.push(finding(file, text, match, `current automated-test file count is ${testFiles}`));
+  // The automated-test case and file counts grow every time anyone adds a test,
+  // so docs state them as a FLOOR ("over N", "at least N", "N+") rather than an
+  // exact figure that goes stale on the next commit. A floor passes when the true
+  // count is >= N; a bare exact number must still equal the true count, so this
+  // only relaxes understatement (safe) and still catches overstatement. The exact
+  // number lives once in lib/proof-stats.json and is rendered by app/page.js.
+  const floorWordBefore = (idx) =>
+    /\b(?:over|at least|more than|at minimum|minimum of|upwards of|north of)\s+$/i.test(text.slice(Math.max(0, idx - 24), idx));
+  const countOk = (n, plusSign, numIdx, actual) =>
+    (plusSign === '+' || floorWordBefore(numIdx)) ? actual >= n : actual === n;
+
+  for (const match of text.matchAll(/\b(\d{3,}|\d{1,3}(?:,\d{3})+)(\+?)\*{0,2}\s+automated\s+test(?:s|\s+cases)\b([^\n]{0,80})/gi)) {
+    const numIdx = match.index + match[0].indexOf(match[1]);
+    if (!countOk(number(match[1]), match[2], numIdx, tests)) findings.push(finding(file, text, match, `current automated-test case count is ${tests}`));
+    const files = match[3].match(/\bacross\s+(\d+)(\+?)\s+files\b/i);
+    if (files) {
+      const fileIdx = match.index + match[0].indexOf(files[0]) + files[0].indexOf(files[1]);
+      if (!countOk(number(files[1]), files[2], fileIdx, testFiles)) findings.push(finding(file, text, match, `current automated-test file count is ${testFiles}`));
+    }
   }
-  for (const match of text.matchAll(/\bautomated\s+test(?:s|\s+cases)\s*\|\s*(\d{3,}|\d{1,3}(?:,\d{3})+)\s+across\s+(\d+)\s+files\b/gi)) {
-    if (number(match[1]) !== tests) findings.push(finding(file, text, match, `current automated-test case count is ${tests}`));
-    if (number(match[2]) !== testFiles) findings.push(finding(file, text, match, `current automated-test file count is ${testFiles}`));
+  for (const match of text.matchAll(/\bautomated\s+test(?:s|\s+cases)\s*\|\s*(\d{3,}|\d{1,3}(?:,\d{3})+)(\+?)\s+across\s+(\d+)(\+?)\s+files\b/gi)) {
+    const numIdx = match.index + match[0].indexOf(match[1]);
+    if (!countOk(number(match[1]), match[2], numIdx, tests)) findings.push(finding(file, text, match, `current automated-test case count is ${tests}`));
+    const fileIdx = match.index + match[0].lastIndexOf(match[3]);
+    if (!countOk(number(match[3]), match[4], fileIdx, testFiles)) findings.push(finding(file, text, match, `current automated-test file count is ${testFiles}`));
   }
   for (const match of text.matchAll(/\b0\s+violations\s+in\s+(\d{3,}|\d{1,3}(?:,\d{3})+)\s+tests\b/gi)) {
     if (number(match[1]) !== tests) findings.push(finding(file, text, match, `current automated-test case count is ${tests}`));

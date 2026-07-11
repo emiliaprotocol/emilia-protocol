@@ -36,7 +36,7 @@ Government fraud and unauthorized action often occur inside approved-looking wor
 - 329 complete chains executed with zero correctness violations
 - 11/11 post-load-test DB integrity checks passing
 - Atomic transactions: all endpoints use single-roundtrip atomic RPCs, no partial state; handshake p95 87ms at 500 concurrent users
-- 5,400 automated test cases across 265 files, with all platform-applicable cases required to pass; Stryker.js mutation gate ≥90%; property-based and linearizability testing included
+- 5,000+ automated test cases across 250+ files, with all platform-applicable cases required to pass; Stryker.js mutation gate ≥90%; property-based and linearizability testing included
 - 85 red team cases documented; 31 security findings identified and remediated
 - 26 TLA+ safety properties verified (TLC 2.19, 413,137 states, 0 errors); 35 Alloy facts + 22 assertions verified (Alloy 6.0.0, 0 counterexamples) — both enforced in CI on every change
 - Zero duplicate consumptions, zero orphaned bindings, zero missing events

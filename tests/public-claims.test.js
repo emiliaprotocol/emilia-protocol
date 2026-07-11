@@ -531,18 +531,20 @@ describe('Crypto / ZK claims', () => {
 
 // ── 8. Test-count freshness (README ↔ proof-stats) ──────────────────────────
 // Regression guard for finding #1: the README "Automated test cases | N across M
-// files" line drifted from ground truth. Bind it to lib/proof-stats.json so it
-// can never silently go stale again — regenerate with
-// `node scripts/generate-proof-stats.mjs`.
+// files" line drifted from ground truth. The count grows on every added test, so
+// the README states it as a FLOOR ("N+ across M+ files") that stays true as the
+// suite grows; a floor passes when the true count in lib/proof-stats.json is >= N.
+// A bare exact number must still equal proof-stats exactly (backstop). The exact
+// number lives once in lib/proof-stats.json, rendered by app/page.js.
 
 describe('README test-count freshness', () => {
   const readme = readFile('README.md');
   const proofStats = JSON.parse(readFile('lib/proof-stats.json'));
 
-  it('"Automated test cases | N across M files" matches lib/proof-stats.json', () => {
-    // Parse the Proof-points row: | Automated test cases | 5,400 across 265 files |
+  it('"Automated test cases | N(+) across M(+) files" is consistent with lib/proof-stats.json', () => {
+    // Proof-points row: | Automated test cases | 5,000+ across 250+ files |
     const match = readme.match(
-      /Automated test cases\s*\|\s*([\d,]+)\s+across\s+([\d,]+)\s+files/i
+      /Automated test cases\s*\|\s*([\d,]+)(\+?)\s+across\s+([\d,]+)(\+?)\s+files/i
     );
     expect(
       match,
@@ -550,10 +552,24 @@ describe('README test-count freshness', () => {
     ).not.toBeNull();
 
     const claimedTests = Number(match[1].replace(/,/g, ''));
-    const claimedFiles = Number(match[2].replace(/,/g, ''));
+    const testsIsFloor = match[2] === '+';
+    const claimedFiles = Number(match[3].replace(/,/g, ''));
+    const filesIsFloor = match[4] === '+';
 
-    expect(claimedTests).toBe(proofStats.tests.total);
-    expect(claimedFiles).toBe(proofStats.tests.files);
+    if (testsIsFloor) {
+      expect(
+        proofStats.tests.total,
+        `README states a floor of ${claimedTests}+ tests; true count ${proofStats.tests.total} must be >= it`
+      ).toBeGreaterThanOrEqual(claimedTests);
+    } else {
+      expect(claimedTests).toBe(proofStats.tests.total);
+    }
+
+    if (filesIsFloor) {
+      expect(proofStats.tests.files).toBeGreaterThanOrEqual(claimedFiles);
+    } else {
+      expect(claimedFiles).toBe(proofStats.tests.files);
+    }
   });
 });
 

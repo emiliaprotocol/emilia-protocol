@@ -58,6 +58,8 @@ if (check) {
   if (!isDeepStrictEqual(measured, recorded)) {
     console.error('PROOF STATS: FAIL — lib/proof-stats.json does not match the executed suite');
     console.error(JSON.stringify({ recorded, measured }, null, 2));
+    console.error('\nFix: run `npm run sync:proof-stats` and commit lib/proof-stats.json.');
+    console.error('(Docs state the count as a floor, so no doc edits are needed — only this one file.)');
     process.exitCode = 1;
   } else {
     console.log(`PROOF STATS: PASS (${stats.tests.total} test cases, ${stats.tests.files} files, all platform-applicable cases passed; ${stats.tla.invariants} TLA+ invariants, ${stats.alloy.facts} Alloy facts, ${stats.redTeamCases} red-team cases)`);

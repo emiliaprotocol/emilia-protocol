@@ -45,6 +45,37 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     echo "" >&2
     exit 1
   fi
+
+  # Proof-stats staleness guard. lib/proof-stats.json holds the exact automated-test
+  # count that CI (check:proof-stats) compares against a live suite run, and that
+  # app/page.js renders. If a push changes the number of tests but does not
+  # regenerate that file, CI reds main and someone scrambles (it happened 3x in a
+  # day). Docs state the count as a floor, so they never need syncing; only this one
+  # file does. Block with the one-command fix when test defs changed net but the
+  # file was not updated. Heuristic (cheap, no suite run); override with the escape.
+  case "$remote_sha" in
+    *[!0]*)
+      changed=$(git diff --name-only "$remote_sha" "$local_sha" 2>/dev/null)
+      if ! printf '%s\n' "$changed" | grep -q '^lib/proof-stats\.json$'; then
+        diff_body=$(git diff "$remote_sha" "$local_sha" -- '*.test.js' '*.test.mjs' '*.test.ts' 'tests/' 2>/dev/null)
+        added=$(printf '%s\n' "$diff_body" | grep -cE '^\+[^+].*\b(it|test)\s*\(')
+        removed=$(printf '%s\n' "$diff_body" | grep -cE '^-[^-].*\b(it|test)\s*\(')
+        if [ "${added:-0}" -ne "${removed:-0}" ]; then
+          echo "" >&2
+          echo "✗ pre-push BLOCKED — test definitions changed but lib/proof-stats.json was not regenerated." >&2
+          echo "  CI (check:proof-stats) compares that file to a live suite run and will red main." >&2
+          echo "" >&2
+          echo "  Fix (one command, one file):" >&2
+          echo "    npm run sync:proof-stats && git add lib/proof-stats.json" >&2
+          echo "    git commit --amend --no-edit   # or a fresh commit, then re-push" >&2
+          echo "  Docs state the count as a floor, so no doc edits are needed." >&2
+          echo "  Deliberate override: EP_ALLOW_MAIN_PUSH=1 git push ..." >&2
+          echo "" >&2
+          exit 1
+        fi
+      fi
+      ;;
+  esac
 done
 
 exit 0

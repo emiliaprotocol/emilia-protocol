@@ -44,4 +44,27 @@ describe('public conformance claim guard', () => {
       'current automated-test file count is 264',
     ]);
   });
+
+  const floorExpectations = { suites: 16, vectors: 163, tests: 5334, testFiles: 264 };
+
+  it('accepts a floor stated with a "+" suffix that the true count exceeds', () => {
+    expect(auditClaimText('5,000+ automated test cases across 250+ files.', 'floor.md', floorExpectations)).toEqual([]);
+    expect(auditClaimText('| Automated test cases | 5,000+ across 250+ files |', 'table.md', floorExpectations)).toEqual([]);
+  });
+
+  it('accepts a floor stated with a floor word ("over N") that the true count exceeds', () => {
+    expect(auditClaimText('over 5,000 automated test cases across 250+ files.', 'floor-word.md', floorExpectations)).toEqual([]);
+  });
+
+  it('still refuses a floor the true count does NOT meet (overstatement is caught)', () => {
+    const findings = auditClaimText('6,000+ automated test cases across 300+ files.', 'toohigh.md', floorExpectations);
+    expect(findings.map((item) => item.message)).toEqual([
+      'current automated-test case count is 5334',
+      'current automated-test file count is 264',
+    ]);
+  });
+
+  it('still requires an exact bare number to match exactly', () => {
+    expect(auditClaimText('5,334 automated test cases across 264 files.', 'exact-ok.md', floorExpectations)).toEqual([]);
+  });
 });
