@@ -63,6 +63,22 @@ export function validateReusableNpmWorkflowText(text) {
   return true;
 }
 
+export function validateCredentialRotationGuideText(text) {
+  const normalized = text.replace(/\s+/g, ' ');
+  requireText(normalized, [
+    'A local or CI write token is not a supported fallback.',
+    'Do not create a replacement publish token.',
+    "npm config delete //registry.npmjs.org/:_authToken --location=user",
+    'A broken OIDC relationship must fail closed.',
+  ], 'credential rotation guide');
+  if (/Create a fresh[^\n]*Access Token/i.test(text)
+    || /_authToken=NEW_TOKEN/i.test(text)
+    || /New granular token created/i.test(text)) {
+    throw new Error('credential rotation guide reintroduces a publication-token fallback');
+  }
+  return true;
+}
+
 function validateNpmDirect(text, label) {
   requireText(text, [
     'npm run security-case:emit',
@@ -107,6 +123,10 @@ export function auditReleaseChain(root = ROOT) {
   }
   const pythonReadme = fs.readFileSync(path.join(root, 'packages/python-verify/README.md'), 'utf8');
   if (/\btwine\s+upload\b/.test(pythonReadme)) throw new Error('direct local PyPI upload instructions are forbidden');
+  validateCredentialRotationGuideText(fs.readFileSync(
+    path.join(root, 'docs/operations/CREDENTIAL-ROTATION-CHECKLIST.md'),
+    'utf8',
+  ));
   const registryPath = path.join(root, REGISTRY);
   const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
   if (registry['@version'] !== 'EP-RELEASE-PACKAGE-REGISTRY-v1' || !Array.isArray(registry.packages)) {
