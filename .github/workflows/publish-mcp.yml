@@ -3,8 +3,15 @@ name: Publish MCP Server to npm
 # npm trusted publisher: @emilia-protocol/mcp-server -> this workflow filename.
 on:
   workflow_dispatch:
-  push:
-    tags: ['mcp-v*']
+    inputs:
+      release_tag:
+        description: Exact tag, for example mcp-v1.0.1
+        required: true
+        type: string
+      confirmation:
+        description: Type PUBLISH @emilia-protocol/mcp-server@<version>
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -12,7 +19,15 @@ permissions:
   attestations: write
 
 jobs:
+  approval:
+    runs-on: ubuntu-latest
+    environment: registry-publishing-approval
+    permissions: {}
+    steps:
+      - run: echo "Owner approved registry publication."
+
   publish:
+    needs: approval
     permissions:
       contents: read
       id-token: write
@@ -23,3 +38,6 @@ jobs:
       package_name: '@emilia-protocol/mcp-server'
       artifact_id: mcp-server
       local_install: true
+      release_tag: ${{ inputs.release_tag }}
+      confirmation: ${{ inputs.confirmation }}
+      tag_prefix: mcp-v

@@ -9,14 +9,31 @@ env:
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - "py-sdk-v*"
+    inputs:
+      release_tag:
+        description: Exact tag, for example py-sdk-v1.0.1
+        required: true
+        type: string
+      confirmation:
+        description: Type PUBLISH emilia-protocol@<version>
+        required: true
+        type: string
 
 jobs:
+  approval:
+    runs-on: ubuntu-latest
+    environment: registry-publishing-approval
+    permissions: {}
+    steps:
+      - run: echo "Owner approved registry publication."
+
   publish:
+    needs: approval
     name: Publish emilia-protocol
     runs-on: ubuntu-latest
+    concurrency:
+      group: registry-publish-pypi-emilia-protocol
+      cancel-in-progress: false
     permissions:
       id-token: write
       contents: read
@@ -25,6 +42,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
@@ -52,12 +73,19 @@ jobs:
         working-directory: sdks/python
         run: python -m pytest tests -q
 
-      - name: Require tag and package versions to agree
-        if: github.ref_type == 'tag'
+      - name: Require owner approval bound to tag, package, version, and main
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
         run: |
           VERSION=$(python -c "import tomllib; print(tomllib.load(open('sdks/python/pyproject.toml','rb'))['project']['version'])")
-          TAG_VERSION=${GITHUB_REF_NAME##*-v}
-          test "$VERSION" = "$TAG_VERSION"
+          node scripts/require-release-approval.mjs \
+            --allowed-actor FutureEnterprises \
+            --tag "$RELEASE_TAG" \
+            --tag-prefix py-sdk-v \
+            --package emilia-protocol \
+            --version "$VERSION" \
+            --confirmation "$RELEASE_CONFIRMATION"
 
       - name: Generate signed-evidence inputs
         run: |
@@ -101,7 +129,7 @@ jobs:
       - name: Upload exact release evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: python-sdk-release-${{ github.ref_name }}
+          name: python-sdk-release-${{ inputs.release_tag }}
           path: |
             release-artifacts/python/
             release-artifacts/python-sdk-reproducible.json

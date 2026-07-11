@@ -3,8 +3,15 @@ name: Publish langchain-emilia to PyPI
 # PyPI trusted publisher: langchain-emilia -> this workflow filename.
 on:
   workflow_dispatch:
-  push:
-    tags: ['langchain-emilia-v*']
+    inputs:
+      release_tag:
+        description: Exact tag, for example langchain-emilia-v0.1.1
+        required: true
+        type: string
+      confirmation:
+        description: Type PUBLISH langchain-emilia@<version>
+        required: true
+        type: string
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -17,6 +24,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version: '3.12'
@@ -25,9 +36,20 @@ jobs:
       - name: Test adapter
         run: python -m pytest -q integrations/langchain-emilia/tests
 
-  publish:
+  approval:
     needs: test
     runs-on: ubuntu-latest
+    environment: registry-publishing-approval
+    permissions: {}
+    steps:
+      - run: echo "Owner approved registry publication."
+
+  publish:
+    needs: approval
+    runs-on: ubuntu-latest
+    concurrency:
+      group: registry-publish-pypi-langchain-emilia
+      cancel-in-progress: false
     permissions:
       id-token: write
       contents: read
@@ -35,6 +57,10 @@ jobs:
     steps:
       - name: Fresh checkout for artifact construction
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+          persist-credentials: false
 
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
@@ -55,12 +81,19 @@ jobs:
       - name: Install locked repository tooling
         run: npm ci --ignore-scripts
 
-      - name: Require tag and package versions to agree
-        if: github.ref_type == 'tag'
+      - name: Require owner approval bound to tag, package, version, and main
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
         run: |
           VERSION=$(python -c "import tomllib; print(tomllib.load(open('integrations/langchain-emilia/pyproject.toml','rb'))['project']['version'])")
-          TAG_VERSION=${GITHUB_REF_NAME##*-v}
-          test "$VERSION" = "$TAG_VERSION"
+          node scripts/require-release-approval.mjs \
+            --allowed-actor FutureEnterprises \
+            --tag "$RELEASE_TAG" \
+            --tag-prefix langchain-emilia-v \
+            --package langchain-emilia \
+            --version "$VERSION" \
+            --confirmation "$RELEASE_CONFIRMATION"
 
       - name: Execute security and conformance evidence
         run: |
@@ -104,7 +137,7 @@ jobs:
       - name: Upload exact release evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: langchain-emilia-release-${{ github.ref_name }}
+          name: langchain-emilia-release-${{ inputs.release_tag }}
           path: |
             release-artifacts/langchain-emilia/
             release-artifacts/langchain-emilia-reproducible.json

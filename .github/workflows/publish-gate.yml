@@ -3,8 +3,15 @@ name: Publish Gate
 # npm trusted publisher: @emilia-protocol/gate -> this workflow filename.
 on:
   workflow_dispatch:
-  push:
-    tags: ['gate-v*']
+    inputs:
+      release_tag:
+        description: Exact tag, for example gate-v0.9.4
+        required: true
+        type: string
+      confirmation:
+        description: Type PUBLISH @emilia-protocol/gate@<version>
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -12,7 +19,15 @@ permissions:
   attestations: write
 
 jobs:
+  approval:
+    runs-on: ubuntu-latest
+    environment: registry-publishing-approval
+    permissions: {}
+    steps:
+      - run: echo "Owner approved registry publication."
+
   publish:
+    needs: approval
     permissions:
       contents: read
       id-token: write
@@ -22,3 +37,6 @@ jobs:
       package_dir: packages/gate
       package_name: '@emilia-protocol/gate'
       artifact_id: gate
+      release_tag: ${{ inputs.release_tag }}
+      confirmation: ${{ inputs.confirmation }}
+      tag_prefix: gate-v

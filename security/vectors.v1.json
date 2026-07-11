@@ -106,6 +106,16 @@
       "id": "reject_release_chain_without_registry_comparison",
       "expect": { "valid": false },
       "execution": { "runner": "vitest", "file": "tests/release-chain-coverage.test.js", "title": "refuses a reusable publisher with its post-registry byte comparison removed" }
+    },
+    {
+      "id": "accept_owner_approved_release_dispatch",
+      "expect": { "valid": true },
+      "execution": { "runner": "vitest", "file": "tests/release-approval.test.js", "title": "accepts an owner dispatch bound to the exact package version and tag" }
+    },
+    {
+      "id": "reject_unapproved_release_dispatch",
+      "expect": { "valid": false },
+      "execution": { "runner": "vitest", "file": "tests/release-approval.test.js", "title": "rejects automatic events, other actors, tag drift, and weak confirmation" }
     }
   ]
 }
