@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { canonicalize } from '../packages/verify/index.js';
+import { verifyExternalVerificationStatement } from '../packages/gate/reports/external-verification.js';
 import { strictParseGate } from '../conformance/runners/strict-json.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -41,17 +42,52 @@ if (pin['@version'] !== 'EP-EXTERNAL-IMPLEMENTATION-PIN-v1') throw new Error('un
 if (!/^[0-9a-f]{40}$/.test(pin.source?.commit || '') || !/^[0-9a-f]{40}$/.test(pin.source?.tree_oid || '')) {
   throw new Error('external source commit and tree must be immutable Git object IDs');
 }
-if (!fs.statSync(runnerAbsolute).isFile()) throw new Error('external runner is not a file');
-const implementationRoot = path.resolve(sourceAbsolute, pin.source.tree_path);
-if (runnerAbsolute !== implementationRoot && !runnerAbsolute.startsWith(`${implementationRoot}${path.sep}`)) {
+const sourceReal = fs.realpathSync(sourceAbsolute);
+const implementationRoot = fs.realpathSync(path.resolve(sourceReal, pin.source.tree_path));
+const runnerReal = fs.realpathSync(runnerAbsolute);
+if (!fs.statSync(runnerReal).isFile()) throw new Error('external runner is not a file');
+if (runnerReal !== implementationRoot && !runnerReal.startsWith(`${implementationRoot}${path.sep}`)) {
   throw new Error('external runner is outside the pinned implementation tree');
 }
 
-const git = (...args) => execFileSync('git', ['-C', sourceAbsolute, ...args], { encoding: 'utf8' }).trim();
+const git = (...args) => execFileSync('git', ['-C', sourceReal, ...args], { encoding: 'utf8' }).trim();
 const sourceCommit = git('rev-parse', 'HEAD');
 if (sourceCommit !== pin.source.commit) throw new Error(`external source commit drift: ${sourceCommit}`);
 const sourceTree = git('rev-parse', `${sourceCommit}:${pin.source.tree_path}`);
 if (sourceTree !== pin.source.tree_oid) throw new Error(`external source tree drift: ${sourceTree}`);
+
+function pinnedEvidenceFile(relativePath, expectedHash, label) {
+  const target = path.resolve(ROOT, relativePath || '');
+  if (target !== ROOT && !target.startsWith(`${ROOT}${path.sep}`)) throw new Error(`${label} escapes the evaluator repository`);
+  const bytes = fs.readFileSync(target);
+  if (sha256(bytes) !== expectedHash) throw new Error(`${label} hash mismatch`);
+  return { target, bytes };
+}
+
+const statementFile = pinnedEvidenceFile(
+  pin.construction_evidence?.statement,
+  pin.construction_evidence?.statement_sha256,
+  'construction statement',
+);
+const publicKeyFile = pinnedEvidenceFile(
+  pin.construction_evidence?.public_key,
+  pin.construction_evidence?.public_key_sha256,
+  'construction statement public key',
+);
+const statementGate = strictParseGate(statementFile.bytes.toString('utf8'));
+if (!statementGate.ok) throw new Error(`construction statement: ${statementGate.reason}`);
+const statement = JSON.parse(statementFile.bytes);
+const statementVerification = verifyExternalVerificationStatement(statement, {
+  pinnedVerifierKeys: [{
+    verifier_id: pin.construction_evidence.verifier_id,
+    key_id: pin.construction_evidence.key_id,
+    public_key: publicKeyFile.bytes.toString('utf8').trim(),
+  }],
+});
+if (!statementVerification.accepted || statement.result?.status !== 'verified'
+  || statement.verifier?.organization !== pin.implementation.organization) {
+  throw new Error(`construction statement refused: ${statementVerification.reason || statement.result?.status || 'organization_mismatch'}`);
+}
 
 const { bytes: bundleBytes, value: bundle } = readStrictJson(BUNDLE_PATH, 'vector bundle');
 if (bundle['@version'] !== 'EP-CLEAN-ROOM-VECTOR-BUNDLE-v1' || !Array.isArray(bundle.suites)) {
@@ -65,7 +101,7 @@ for (const suiteRef of bundle.suites) {
   if (sha256(bytes) !== suiteRef.sha256) throw new Error(`vector bundle drift: ${suiteRef.path}`);
   let stdout;
   try {
-    stdout = execFileSync(runnerAbsolute, [suitePath], {
+    stdout = execFileSync(runnerReal, [suitePath], {
       cwd: implementationRoot,
       encoding: 'utf8',
       timeout: 180_000,
@@ -104,9 +140,15 @@ const report = {
   source: { ...pin.source, verified: true },
   build: {
     ...pin.build,
-    runner_sha256: sha256(fs.readFileSync(runnerAbsolute)),
+    runner_sha256: sha256(fs.readFileSync(runnerReal)),
   },
-  construction_evidence: pin.construction_evidence,
+  construction_evidence: {
+    ...pin.construction_evidence,
+    signature_verified: true,
+    signed_result_status: statement.result.status,
+    signed_vectors: statement.subject?.vectors ?? null,
+    statement_digest: statementVerification.statement_digest,
+  },
   evaluator: {
     repository: 'https://github.com/emiliaprotocol/emilia-protocol',
     commit: evaluatorCommit,

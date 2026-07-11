@@ -21,7 +21,11 @@
   "construction_evidence": {
     "status": "implementation_organization_signed_legacy_statement",
     "statement": "examples/external-verification/statements/rust-cleanroom/statement.json",
+    "statement_sha256": "fdf43611dc7b7d41e40ccfd15d6e4d25457578d98be0f0e3a83796fdd3d9638a",
     "public_key": "examples/external-verification/statements/rust-cleanroom/public.key",
+    "public_key_sha256": "d6d08b75ea6520be91857ccf92440de3ebcddafabaab6e3331e45894d4277cb1",
+    "verifier_id": "ext:verifier:emilia-cleanroom-rust",
+    "key_id": "ep:external-verifier-key:sha256:87c8c5029475f53a",
     "third_party_attestation": false,
     "strict_clean_room_acceptance": false
   }
