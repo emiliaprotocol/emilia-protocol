@@ -18,14 +18,31 @@ env:
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - "verify-v*"
+    inputs:
+      release_tag:
+        description: Exact tag, for example verify-v3.9.0
+        required: true
+        type: string
+      confirmation:
+        description: Type PUBLISH @emilia-protocol/verify@<version>
+        required: true
+        type: string
 
 jobs:
+  approval:
+    runs-on: ubuntu-latest
+    environment: registry-publishing-approval
+    permissions: {}
+    steps:
+      - run: echo "Owner approved registry publication."
+
   publish:
+    needs: approval
     name: Publish @emilia-protocol/verify
     runs-on: ubuntu-latest
+    concurrency:
+      group: registry-publish-npm-verify
+      cancel-in-progress: false
     permissions:
       contents: read
       id-token: write   # REQUIRED for npm trusted publishing (OIDC) + provenance
@@ -38,6 +55,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
@@ -74,12 +95,20 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Require tag and package versions to agree
-        if: github.ref_type == 'tag'
+      - name: Require owner approval bound to tag, package, version, and main
+        working-directory: ${{ github.workspace }}
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_CONFIRMATION: ${{ inputs.confirmation }}
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          TAG_VERSION=${GITHUB_REF_NAME##*-v}
-          test "$VERSION" = "$TAG_VERSION"
+          VERSION=$(node -p "require('./packages/verify/package.json').version")
+          node scripts/require-release-approval.mjs \
+            --allowed-actor FutureEnterprises \
+            --tag "$RELEASE_TAG" \
+            --tag-prefix verify-v \
+            --package @emilia-protocol/verify \
+            --version "$VERSION" \
+            --confirmation "$RELEASE_CONFIRMATION"
 
       - name: Resolve repository security and conformance manifests
         working-directory: ${{ github.workspace }}
@@ -115,7 +144,7 @@ jobs:
       - name: Upload exact package and checksum
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: verify-package-${{ github.ref_name }}
+          name: verify-package-${{ inputs.release_tag }}
           path: |
             release-artifacts/${{ steps.pack.outputs.tarball }}
             release-artifacts/${{ steps.pack.outputs.tarball }}.sha256

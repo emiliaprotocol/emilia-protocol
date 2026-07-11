@@ -1,10 +1,13 @@
 # Trusted release checklist
 
-Long-lived npm/PyPI tokens and manual package rebuilds are not part of the
-release path. A tag invokes a pinned GitHub Actions workflow, the workflow tests
-the source, creates one reproducible artifact, attests those exact bytes through
-GitHub OIDC, publishes that same file through registry trusted publishing, then
-downloads and byte-compares the registry copy.
+Long-lived npm/PyPI tokens, direct local publication, and automatic tag-triggered
+publication are not part of the release path. A release requires two explicit
+owner actions after the matching tag exists on `main`: manually dispatch the
+package workflow with a version-bound confirmation, then approve its protected
+`registry-publishing-approval` job. Only then does the workflow test the source,
+create one reproducible artifact, attest those exact bytes through GitHub OIDC,
+publish that same file through registry trusted publishing, and download and
+byte-compare the registry copy.
 
 ## One-time owner configuration
 
@@ -12,6 +15,26 @@ These settings live at the registries. Repository checks prove the intended
 mapping and workflow behavior, but live activation requires an authenticated
 registry readback. npm 11.15.0 and later expose that operation through
 `npm trust`; PyPI currently exposes it through each project's Publishing page.
+
+### GitHub owner gate
+
+The repository has two live controls in addition to the workflow checks:
+
+- environment `registry-publishing-approval` requires approval by
+  `FutureEnterprises` before any package build receives permission to proceed;
+- active ruleset `Immutable registry release tags` (ID `18796507`) blocks update
+  and deletion of every tag prefix declared in
+  `release/release-packages.v1.json`, with no bypass actor.
+
+These controls were created and read back through the GitHub API on 2026-07-10.
+Self-review remains enabled because this is a solo-founder repository; the
+manual dispatch, exact typed confirmation, environment review, immutable tag,
+and registry OIDC identity are separate recorded events. A credential acting as
+`FutureEnterprises` remains an external account-security root and must never be
+treated as an autonomous release mandate. GitHub currently reports
+`can_admins_bypass: true`; using that escape hatch is itself an explicit,
+audited owner action and does not bypass the workflow's actor, tag, version, or
+typed-confirmation checks.
 
 ### npm
 
@@ -40,7 +63,9 @@ repository, workflow filename, and publish permission must exactly match
 `release/release-packages.v1.json`. All seven npm relationships were created
 and read back with that procedure on 2026-07-10.
 
-The complete package/workflow inventory is machine-checked in
+The actual npm publish jobs do not declare an environment; a separate job uses
+the protected approval environment before the publish job can start. The
+complete package/workflow inventory is machine-checked in
 `release/release-packages.v1.json`. The six smaller npm workflows call the
 shared `_publish-npm-package.yml`, but npm validates the package's calling
 `publish-*.yml` filename. The core verifier uses `publish-verify-sdk.yml`. Do not add `NPM_TOKEN` as a
@@ -52,8 +77,9 @@ release identity.
 For `emilia-verify`, `emilia-protocol`, and `langchain-emilia`, add matching
 GitHub trusted publishers under each project's Publishing settings. The
 workflow filenames are `publish-python-verify.yml`, `publish-python-sdk.yml`,
-and `publish-langchain-python.yml`. Leave the environment blank because the
-workflows do not declare one. Live activation and first-release proof are
+and `publish-langchain-python.yml`. Leave the registry publisher's environment
+blank because the OIDC-bearing publish jobs do not declare one; their separate
+approval jobs do. Live activation and first-release proof are
 tracked in GitHub issue #251.
 
 ## Core verifier release
@@ -69,9 +95,12 @@ tracked in GitHub issue #251.
    npm run test:mutation:security
    ```
 
-3. Push `verify-v<version>`. The workflow publishes the already-tested tarball;
-   it never runs `npm publish` against a directory.
-4. Confirm the workflow's post-publication `cmp` step and provenance
+3. Create and push `verify-v<version>` from the merged `main` commit. A tag push
+   does not publish anything.
+4. Manually dispatch `publish-verify-sdk.yml` with that exact tag and the exact
+   confirmation `PUBLISH @emilia-protocol/verify@<version>`, then approve the
+   `registry-publishing-approval` job in GitHub.
+5. Confirm the workflow's post-publication `cmp` step and provenance
    attestation both passed.
 
 ## Python release
@@ -84,9 +113,11 @@ tracked in GitHub issue #251.
    npm run release:verify:python
    ```
 
-3. Push `python-verify-v<version>`, `py-sdk-v<version>`, or
-   `langchain-emilia-v<version>`.
-4. Confirm PyPI returned the exact attested wheel and source-distribution bytes
+3. Create and push `python-verify-v<version>`, `py-sdk-v<version>`, or
+   `langchain-emilia-v<version>` from the merged `main` commit.
+4. Manually dispatch the matching workflow with that exact tag and
+   `PUBLISH <registry-package-name>@<version>`, then approve the protected job.
+5. Confirm PyPI returned the exact attested wheel and source-distribution bytes
    in the final `cmp` steps.
 
 ## Other npm package releases
@@ -96,9 +127,9 @@ workflows all call `_publish-npm-package.yml`. Each caller still has its own npm
 trusted-publisher identity. Before tagging, run `npm run check:release-chain`;
 it refuses an undeclared publisher or a workflow missing tests, version binding,
 reproducible packing, exact-byte attestation, OIDC publication, or registry
-comparison.
+comparison. A pushed tag never starts a package publication workflow.
 
-## Evidence retained per tag
+## Evidence retained per approved release
 
 - tested npm tarball or Python wheel and source distribution;
 - SHA-256/reproducibility manifest;
@@ -119,8 +150,10 @@ security-case, and conformance chain itself.
 | Reproducible builds differ | Stop; inspect source epoch, build backend, and included files. |
 | Registry bytes differ | Treat as a release-integrity incident; do not mark the release complete. |
 | Security or conformance manifest is stale | Regenerate and rerun before tagging. |
-| Existing version | Bump the version; immutable registries must not be overwritten. |
+| Missing or incorrect owner confirmation | Refuse the run; do not bypass the approval script. |
+| Unapproved protected-environment job | No publication is authorized; leave it waiting or reject it. |
+| Existing version | Bump the version; immutable registries and protected release tags must not be overwritten. |
 
 Repository workflows prove the build and publication path. They do not prove
-that registry-side trusted-publisher settings are currently enabled until a
-tagged workflow succeeds.
+that registry-side trusted-publisher settings are currently enabled until an
+owner-approved workflow succeeds.

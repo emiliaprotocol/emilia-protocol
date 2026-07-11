@@ -3,8 +3,15 @@ name: Publish TypeScript SDK
 # npm trusted publisher: @emilia-protocol/sdk -> this workflow filename.
 on:
   workflow_dispatch:
-  push:
-    tags: ['ts-sdk-v*']
+    inputs:
+      release_tag:
+        description: Exact tag, for example ts-sdk-v0.9.1
+        required: true
+        type: string
+      confirmation:
+        description: Type PUBLISH @emilia-protocol/sdk@<version>
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -12,7 +19,15 @@ permissions:
   attestations: write
 
 jobs:
+  approval:
+    runs-on: ubuntu-latest
+    environment: registry-publishing-approval
+    permissions: {}
+    steps:
+      - run: echo "Owner approved registry publication."
+
   publish:
+    needs: approval
     permissions:
       contents: read
       id-token: write
@@ -24,3 +39,6 @@ jobs:
       artifact_id: typescript-sdk
       local_install: true
       build: true
+      release_tag: ${{ inputs.release_tag }}
+      confirmation: ${{ inputs.confirmation }}
+      tag_prefix: ts-sdk-v

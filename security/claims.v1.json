@@ -418,31 +418,40 @@
     },
     {
       "claim_id": "all-package-releases-use-verifiable-bytes",
-      "statement": "Every declared npm and PyPI package release tests its source, constructs reproducible package bytes, attests the exact artifact plus security and conformance manifests, publishes through OIDC, and compares every registry artifact byte-for-byte after publication.",
-      "acceptance_roots": ["the checked-in EP-RELEASE-PACKAGE-REGISTRY-v1 inventory", "GitHub Actions OIDC identity", "registry trusted-publisher configuration for each package"],
+      "statement": "Every declared npm and PyPI package release requires a version-bound owner dispatch and protected-environment approval or explicit recorded administrator bypass, tests source from an immutable tag on main, constructs reproducible package bytes, attests the exact artifact plus security and conformance manifests, publishes through OIDC, and compares every registry artifact byte-for-byte after publication.",
+      "acceptance_roots": ["the checked-in EP-RELEASE-PACKAGE-REGISTRY-v1 inventory", "the FutureEnterprises owner identity", "the protected registry-publishing-approval environment", "GitHub Actions OIDC identity", "registry trusted-publisher configuration for each package"],
       "enforcement_path": [
         { "language": "javascript", "file": "scripts/check-release-chain.mjs", "symbol": "auditReleaseChain", "exported": true },
+        { "language": "javascript", "file": "scripts/require-release-approval.mjs", "symbol": "validateReleaseApproval", "exported": true },
+        { "language": "javascript", "file": "scripts/require-release-approval.mjs", "symbol": "verifyReleaseGitState", "exported": true },
         { "language": "javascript", "file": "scripts/verify-reproducible-package.mjs", "symbol": "verifyReproduciblePackage", "exported": true },
         { "language": "javascript", "file": "scripts/verify-reproducible-wheel.mjs", "symbol": "build", "exported": false }
       ],
       "implementations": [
-        { "language": "javascript", "file": "scripts/check-release-chain.mjs", "export": "auditReleaseChain" }
+        { "language": "javascript", "file": "scripts/check-release-chain.mjs", "export": "auditReleaseChain" },
+        { "language": "javascript", "file": "scripts/require-release-approval.mjs", "export": "validateReleaseApproval" },
+        { "language": "javascript", "file": "scripts/require-release-approval.mjs", "export": "verifyReleaseGitState" }
       ],
       "language_coverage": {
-        "javascript": { "status": "covered", "evidence": "tests/release-chain-coverage.test.js" },
+        "javascript": { "status": "covered", "evidence": "tests/release-approval.test.js" },
         "python": { "status": "not_applicable", "reason": "Python packages are built by pinned Python tooling, while the release inventory and workflow audit are repository controls implemented in JavaScript." },
         "go": { "status": "not_applicable", "reason": "The Go verifier is source-distributed in this repository and is not currently declared as a registry package." }
       },
       "vectors": [
         { "suite": "security/vectors.v1.json", "case_id": "accept_all_declared_release_chains", "polarity": "positive", "expect": { "valid": true } },
-        { "suite": "security/vectors.v1.json", "case_id": "reject_release_chain_without_registry_comparison", "polarity": "negative", "expect": { "valid": false } }
+        { "suite": "security/vectors.v1.json", "case_id": "reject_release_chain_without_registry_comparison", "polarity": "negative", "expect": { "valid": false } },
+        { "suite": "security/vectors.v1.json", "case_id": "accept_owner_approved_release_dispatch", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_unapproved_release_dispatch", "polarity": "negative", "expect": { "valid": false } }
       ],
       "tests": [
         { "file": "tests/release-chain-coverage.test.js", "title": "every declared npm and PyPI package uses the complete verifiable release chain", "runner": "vitest" },
-        { "file": "tests/release-chain-coverage.test.js", "title": "refuses a reusable publisher with its post-registry byte comparison removed", "runner": "vitest" }
+        { "file": "tests/release-chain-coverage.test.js", "title": "refuses a reusable publisher with its post-registry byte comparison removed", "runner": "vitest" },
+        { "file": "tests/release-approval.test.js", "title": "accepts an owner dispatch bound to the exact package version and tag", "runner": "vitest" },
+        { "file": "tests/release-approval.test.js", "title": "rejects automatic events, other actors, tag drift, and weak confirmation", "runner": "vitest" },
+        { "file": "tests/release-approval.test.js", "title": "binds the checked-out commit to a tag contained in main", "runner": "vitest" }
       ],
       "operational_evidence": [
-        { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["npm run security-case:emit", "npm run conformance:manifest", "verify-reproducible-package.mjs", "actions/attest@a1948c3f048ba23858d222213b7c278aabede763", "npm publish \"${{ steps.pack.outputs.tarball }}\" --access public --provenance", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
+        { "file": ".github/workflows/_publish-npm-package.yml", "contains": ["scripts/require-release-approval.mjs", "npm run security-case:emit", "npm run conformance:manifest", "verify-reproducible-package.mjs", "actions/attest@a1948c3f048ba23858d222213b7c278aabede763", "npm publish \"${{ steps.pack.outputs.tarball }}\" --access public --provenance", "cmp \"$TESTED_TARBALL\" \"registry-copy/$REGISTRY_TARBALL\""] },
         { "file": ".github/workflows/publish-gate.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/gate'"] },
         { "file": ".github/workflows/publish-issue.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/issue'"] },
         { "file": ".github/workflows/publish-langchain.yml", "contains": ["uses: ./.github/workflows/_publish-npm-package.yml", "package_name: '@emilia-protocol/langchain'"] },
@@ -458,8 +467,8 @@
       "formal": [
         { "status": "not_modeled", "gap": "Registry account state, hosted CI identity, and artifact storage are operational controls rather than symbolic protocol properties." }
       ],
-      "assumptions": ["each npm and PyPI project has the matching trusted publisher enabled", "protected tags and workflows prevent unauthorized release invocation", "the release registry is updated whenever a publish workflow is added or removed"],
-      "exclusions": ["static workflow coverage cannot prove registry-side trusted-publisher settings until a real tagged publish succeeds"],
+      "assumptions": ["each npm and PyPI project has the matching trusted publisher enabled", "GitHub enforces the required reviewer or records an explicit administrator bypass on registry-publishing-approval", "release tags are protected against update and deletion", "the release registry is updated whenever a publish workflow is added or removed"],
+      "exclusions": ["static workflow coverage cannot prove registry-side trusted-publisher settings until a real owner-approved publish succeeds", "a credential acting as FutureEnterprises is operationally equivalent to the owner, so account security remains an external root"],
       "release_artifacts": ["security-evidence"]
     }
   ]

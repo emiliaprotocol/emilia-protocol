@@ -1,15 +1,15 @@
 {
   "@version": "EP-RELEASE-PACKAGE-REGISTRY-v1",
   "packages": [
-    { "package": "@emilia-protocol/verify", "ecosystem": "npm", "path": "packages/verify", "workflow": "publish-verify-sdk.yml", "mode": "npm_direct" },
-    { "package": "@emilia-protocol/gate", "ecosystem": "npm", "path": "packages/gate", "workflow": "publish-gate.yml", "mode": "npm_reusable" },
-    { "package": "@emilia-protocol/issue", "ecosystem": "npm", "path": "packages/issue", "workflow": "publish-issue.yml", "mode": "npm_reusable" },
-    { "package": "@emilia-protocol/langchain", "ecosystem": "npm", "path": "packages/langchain", "workflow": "publish-langchain.yml", "mode": "npm_reusable" },
-    { "package": "@emilia-protocol/mcp-server", "ecosystem": "npm", "path": "mcp-server", "workflow": "publish-mcp.yml", "mode": "npm_reusable" },
-    { "package": "@emilia-protocol/require-receipt", "ecosystem": "npm", "path": "packages/require-receipt", "workflow": "publish-require-receipt.yml", "mode": "npm_reusable" },
-    { "package": "@emilia-protocol/sdk", "ecosystem": "npm", "path": "sdks/typescript", "workflow": "publish-typescript-sdk.yml", "mode": "npm_reusable" },
-    { "package": "emilia-verify", "ecosystem": "pypi", "path": "packages/python-verify", "workflow": "publish-python-verify.yml", "mode": "pypi_direct" },
-    { "package": "emilia-protocol", "ecosystem": "pypi", "path": "sdks/python", "workflow": "publish-python-sdk.yml", "mode": "pypi_direct" },
-    { "package": "langchain-emilia", "ecosystem": "pypi", "path": "integrations/langchain-emilia", "workflow": "publish-langchain-python.yml", "mode": "pypi_direct" }
+    { "package": "@emilia-protocol/verify", "ecosystem": "npm", "path": "packages/verify", "workflow": "publish-verify-sdk.yml", "tag_prefix": "verify-v", "mode": "npm_direct" },
+    { "package": "@emilia-protocol/gate", "ecosystem": "npm", "path": "packages/gate", "workflow": "publish-gate.yml", "tag_prefix": "gate-v", "mode": "npm_reusable" },
+    { "package": "@emilia-protocol/issue", "ecosystem": "npm", "path": "packages/issue", "workflow": "publish-issue.yml", "tag_prefix": "issue-v", "mode": "npm_reusable" },
+    { "package": "@emilia-protocol/langchain", "ecosystem": "npm", "path": "packages/langchain", "workflow": "publish-langchain.yml", "tag_prefix": "langchain-v", "mode": "npm_reusable" },
+    { "package": "@emilia-protocol/mcp-server", "ecosystem": "npm", "path": "mcp-server", "workflow": "publish-mcp.yml", "tag_prefix": "mcp-v", "mode": "npm_reusable" },
+    { "package": "@emilia-protocol/require-receipt", "ecosystem": "npm", "path": "packages/require-receipt", "workflow": "publish-require-receipt.yml", "tag_prefix": "require-receipt-v", "mode": "npm_reusable" },
+    { "package": "@emilia-protocol/sdk", "ecosystem": "npm", "path": "sdks/typescript", "workflow": "publish-typescript-sdk.yml", "tag_prefix": "ts-sdk-v", "mode": "npm_reusable" },
+    { "package": "emilia-verify", "ecosystem": "pypi", "path": "packages/python-verify", "workflow": "publish-python-verify.yml", "tag_prefix": "python-verify-v", "mode": "pypi_direct" },
+    { "package": "emilia-protocol", "ecosystem": "pypi", "path": "sdks/python", "workflow": "publish-python-sdk.yml", "tag_prefix": "py-sdk-v", "mode": "pypi_direct" },
+    { "package": "langchain-emilia", "ecosystem": "pypi", "path": "integrations/langchain-emilia", "workflow": "publish-langchain-python.yml", "tag_prefix": "langchain-emilia-v", "mode": "pypi_direct" }
   ]
 }
