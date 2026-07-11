@@ -158,7 +158,7 @@ Eye observes. Handshake verifies. Signoff owns. Commit seals.
 
 | Metric | Value |
 |---|---|
-| Automated test cases | 5,365 across 264 files; all platform-applicable cases must pass |
+| Automated test cases | 5,378 across 264 files; all platform-applicable cases must pass |
 | TLA+ safety properties | 26 verified (T1–T26), 0 errors — see [PROOF_STATUS.md](formal/PROOF_STATUS.md) |
 | Alloy relational assertions | 35 facts + 22 assertions across two models — verified in CI |
 | Red-team cases cataloged | 85 — [RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |

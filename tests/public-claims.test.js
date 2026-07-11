@@ -540,7 +540,7 @@ describe('README test-count freshness', () => {
   const proofStats = JSON.parse(readFile('lib/proof-stats.json'));
 
   it('"Automated test cases | N across M files" matches lib/proof-stats.json', () => {
-    // Parse the Proof-points row: | Automated test cases | 5,365 across 264 files |
+    // Parse the Proof-points row: | Automated test cases | 5,378 across 264 files |
     const match = readme.match(
       /Automated test cases\s*\|\s*([\d,]+)\s+across\s+([\d,]+)\s+files/i
     );

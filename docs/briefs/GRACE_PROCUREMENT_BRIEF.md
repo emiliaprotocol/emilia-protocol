@@ -84,7 +84,7 @@ verifies for settlement review; auto-revert. (This stage requires a host facilit
 - **IETF Internet-Drafts** (authorization receipts; multi-party quorum); the `grid.curtailment`
   profile is specified as PIP-014 on top of the receipts draft.
 - **Formal verification:** 26 TLA+ invariants (TLC model checker) and 35 Alloy facts with 22
-  assertions; 85 adversarial red-team cases; **5,365 automated test cases across 264 files, with every platform-applicable case required to pass**.
+  assertions; 85 adversarial red-team cases; **5,378 automated test cases across 264 files, with every platform-applicable case required to pass**.
 - **Cross-language verifiers:** JavaScript, Python, and Go reference verifiers agreeing byte-for-byte
   across the conformance suite, so auditors verify a bundle against source and mathematics, not a
   vendor's word. This is a consistency check, not a clean-room independent-implementation claim.
