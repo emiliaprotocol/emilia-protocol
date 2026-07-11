@@ -1,9 +1,11 @@
 # Credential Rotation Checklist
 
-**Status:** PENDING — do these in order, do them today.
+**Status:** PARTIAL — npm write credentials closed 2026-07-10; database
+password rotation remains pending.
 **Why:** Two credentials leaked in conversation transcript during the
-2026-04-26 Supabase wipe + npm publish work. Both are valid until
-rotated.
+2026-04-26 Supabase wipe + npm publish work. The npm credential can no longer
+authenticate; the database credential still requires owner verification and
+rotation.
 
 ---
 
@@ -59,8 +61,9 @@ identify which credential to revoke.
 **Leaked value:** redacted — appears in the 2026-04-26 conversation
 transcript inside an `.npmrc` paste during the
 `@emilia-protocol/verify@1.0.0` publish work. The literal token is
-**NOT** stored in this file. Use the npm dashboard to find and revoke
-the most recent classic token in your account.
+**NOT** stored in this file. The leaked April token is expired. The only newer
+active write token was deleted from the npm dashboard on 2026-07-10, and the
+dashboard then showed only expired token rows.
 **Scope:** `@emilia-protocol/*` packages
 
 Package publication uses GitHub Actions OIDC trusted publishing and the
@@ -86,8 +89,8 @@ write token is not a supported fallback.
    registry write credential. A broken OIDC relationship must fail closed.
 
 ### Confirm done
-- [ ] Old token revoked on npmjs.com
-- [ ] All unneeded package/org write tokens revoked
+- [x] Leaked token is expired and cannot authenticate (verified 2026-07-10)
+- [x] No active package/org write token remains (verified 2026-07-10)
 - [x] No replacement publish token created
 - [x] Local `~/.npmrc` contains no registry auth token (verified 2026-07-10)
 - [x] All seven OIDC trusted-publisher mappings read back correctly (verified 2026-07-10)
