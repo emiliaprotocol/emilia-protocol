@@ -27,6 +27,7 @@ jobs:
     permissions:
       id-token: write   # REQUIRED for PyPI trusted publishing (OIDC)
       contents: read
+      attestations: write
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
@@ -36,15 +37,104 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Build sdist + wheel
-        working-directory: packages/python-verify
-        run: |
-          python -m pip install --upgrade build
-          python -m build
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: '24'
+          cache: npm
 
-      - name: Publish to PyPI
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6
+        with:
+          go-version: '1.22'
+
+      - name: Install pinned build and verification tooling
+        run: python -m pip install build==1.3.0 hatchling==1.27.0 twine==6.2.0 cryptography==46.0.6 pytest==8.4.2
+
+      - name: Install JavaScript test tooling
+        run: npm ci --ignore-scripts
+
+      - name: Test Python verifier
+        working-directory: packages/python-verify
+        run: python -m pytest tests -q
+
+      - name: Require tag and package versions to agree
+        if: github.ref_type == 'tag'
+        run: |
+          VERSION=$(python -c "import tomllib; print(tomllib.load(open('packages/python-verify/pyproject.toml','rb'))['project']['version'])")
+          TAG_VERSION=${GITHUB_REF_NAME##*-v}
+          test "$VERSION" = "$TAG_VERSION"
+
+      - name: Generate signed-evidence inputs
+        run: |
+          npm run security-case:emit
+          npm run conformance:manifest
+
+      - name: Build twice and retain the exact reproducible artifacts
+        id: build
+        run: |
+          export SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)"
+          node scripts/verify-reproducible-wheel.mjs packages/python-verify \
+            --emit release-artifacts/python-verify-reproducible.json \
+            --outdir release-artifacts
+          WHEEL=$(find release-artifacts/python-verify -maxdepth 1 -name '*.whl' -print -quit)
+          SDIST=$(find release-artifacts/python-verify -maxdepth 1 -name '*.tar.gz' -print -quit)
+          test -n "$WHEEL" && test -n "$SDIST"
+          echo "wheel=$WHEEL" >> "$GITHUB_OUTPUT"
+          echo "sdist=$SDIST" >> "$GITHUB_OUTPUT"
+
+      - name: Check exact distributions
+        run: python -m twine check release-artifacts/python-verify/*.whl release-artifacts/python-verify/*.tar.gz
+
+      - name: Attest exact wheel
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
+        with:
+          subject-path: ${{ steps.build.outputs.wheel }}
+
+      - name: Attest exact source distribution
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
+        with:
+          subject-path: ${{ steps.build.outputs.sdist }}
+
+      - name: Attest conformance and security manifests
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
+        with:
+          subject-path: |
+            security/security-case.json
+            conformance/conformance-manifest.json
+            release-artifacts/python-verify-reproducible.json
+
+      - name: Upload exact release evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: python-verify-release-${{ github.ref_name }}
+          path: |
+            release-artifacts/python-verify/
+            release-artifacts/python-verify-reproducible.json
+            security/security-case.json
+            conformance/conformance-manifest.json
+          retention-days: 90
+
+      - name: Publish the exact artifacts to PyPI
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # v1.14.0
         with:
-          packages-dir: packages/python-verify/dist/
+          packages-dir: release-artifacts/python-verify/
           print-hash: true
           skip-existing: true   # re-runs / dispatch on an already-published version exit green
+
+      - name: Verify PyPI wheel and sdist bytes match the attested artifacts
+        run: |
+          VERSION=$(python -c "import tomllib; print(tomllib.load(open('packages/python-verify/pyproject.toml','rb'))['project']['version'])")
+          mkdir -p registry-copy
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if python -m pip download --no-deps --only-binary=:all: --dest registry-copy "emilia-verify==$VERSION" \
+              && python -m pip download --no-deps --no-binary=:all: --no-build-isolation --dest registry-copy "emilia-verify==$VERSION"; then
+              break
+            fi
+            sleep 5
+          done
+          REGISTRY_WHEEL=$(find registry-copy -maxdepth 1 -name '*.whl' -print -quit)
+          REGISTRY_SDIST=$(find registry-copy -maxdepth 1 -name '*.tar.gz' -print -quit)
+          test -n "$REGISTRY_WHEEL" && test -n "$REGISTRY_SDIST"
+          cmp "${{ steps.build.outputs.wheel }}" "$REGISTRY_WHEEL"
+          cmp "${{ steps.build.outputs.sdist }}" "$REGISTRY_SDIST"

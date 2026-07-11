@@ -1,0 +1,150 @@
+name: Reusable verified package release
+
+on:
+  workflow_call:
+    inputs:
+      package_dir:
+        description: Repository-relative package directory
+        required: true
+        type: string
+      package_name:
+        description: Exact npm registry package name
+        required: true
+        type: string
+      artifact_id:
+        description: Filesystem-safe release evidence identifier
+        required: true
+        type: string
+      local_install:
+        description: Run npm ci inside the package directory
+        required: false
+        default: false
+        type: boolean
+      build:
+        description: Run the package build before packing
+        required: false
+        default: false
+        type: boolean
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Checkout exact release source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+
+      - name: Setup Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.12'
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16  # v6
+        with:
+          go-version: '1.22'
+
+      - name: Install pinned release tooling
+        run: |
+          npm install -g npm@11.18.0 --min-release-age=0
+          python -m pip install cryptography==46.0.6
+
+      - name: Install locked repository tooling
+        run: npm ci --ignore-scripts
+
+      - name: Install locked package tooling
+        if: inputs.local_install
+        working-directory: ${{ inputs.package_dir }}
+        run: npm ci --ignore-scripts
+
+      - name: Test package
+        working-directory: ${{ inputs.package_dir }}
+        run: npm test
+
+      - name: Build package
+        if: inputs.build
+        working-directory: ${{ inputs.package_dir }}
+        run: npm run build
+
+      - name: Require tag and package versions to agree
+        if: github.ref_type == 'tag'
+        env:
+          PACKAGE_DIR: ${{ inputs.package_dir }}
+        run: |
+          VERSION=$(node -p "require('./${PACKAGE_DIR}/package.json').version")
+          TAG_VERSION=${GITHUB_REF_NAME##*-v}
+          test "$VERSION" = "$TAG_VERSION"
+
+      - name: Execute security and conformance evidence
+        run: |
+          npm run security-case:emit
+          npm run conformance:manifest
+
+      - name: Pack twice and retain the exact reproducible tarball
+        id: pack
+        env:
+          PACKAGE_DIR: ${{ inputs.package_dir }}
+          ARTIFACT_ID: ${{ inputs.artifact_id }}
+        run: |
+          node scripts/verify-reproducible-package.mjs "$PACKAGE_DIR" \
+            --outdir "release-artifacts/$ARTIFACT_ID" \
+            --emit "release-artifacts/$ARTIFACT_ID-reproducible.json"
+          TARBALL=$(find "release-artifacts/$ARTIFACT_ID" -maxdepth 1 -name '*.tgz' -print -quit)
+          test -n "$TARBALL"
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+
+      - name: Attest exact npm package bytes
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
+        with:
+          subject-path: ${{ steps.pack.outputs.tarball }}
+
+      - name: Attest release evidence
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
+        with:
+          subject-path: |
+            security/security-case.json
+            conformance/conformance-manifest.json
+            release-artifacts/${{ inputs.artifact_id }}-reproducible.json
+
+      - name: Upload exact release evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: ${{ inputs.artifact_id }}-release-${{ github.ref_name }}
+          path: |
+            ${{ steps.pack.outputs.tarball }}
+            release-artifacts/${{ inputs.artifact_id }}-reproducible.json
+            security/security-case.json
+            conformance/conformance-manifest.json
+          retention-days: 90
+
+      - name: Publish the attested tarball through npm OIDC
+        run: npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance
+
+      - name: Verify registry bytes match the attested tarball
+        env:
+          PACKAGE_DIR: ${{ inputs.package_dir }}
+          PACKAGE_NAME: ${{ inputs.package_name }}
+          TESTED_TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: |
+          VERSION=$(node -p "require('./${PACKAGE_DIR}/package.json').version")
+          mkdir -p registry-copy
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+            if npm pack "${PACKAGE_NAME}@${VERSION}" --json --pack-destination registry-copy > registry-copy/pack.json; then
+              break
+            fi
+            sleep 5
+          done
+          REGISTRY_TARBALL=$(node -e "const r=require('./registry-copy/pack.json'); if(r.length!==1) process.exit(2); process.stdout.write(r[0].filename)")
+          cmp "$TESTED_TARBALL" "registry-copy/$REGISTRY_TARBALL"

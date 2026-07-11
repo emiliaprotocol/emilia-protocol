@@ -17,6 +17,26 @@ import { authorityProofDigest, signAuthorityProof } from '../lib/authority/proof
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SUITE = JSON.parse(readFileSync(resolve(HERE, '../conformance/vectors/reliance.v1.json'), 'utf8'));
+const CONSUMPTION_SUITE = JSON.parse(readFileSync(resolve(HERE, '../conformance/vectors/consumption-proof.v1.json'), 'utf8'));
+const COMPLETE_RESULT_DIGESTS = Object.freeze({
+  rely_full_packet_composes: 'a4c6d44742247dd1228da471ef0f1a02217a6a5ae6c9ee93f9a060133b9a88f3',
+  reject_no_profile: '2c7acaa1fbf071aba461959dea04e7d4f3d19924d6d23fba06a6f18697cea144',
+  reject_unsigned_receipt: '5080d5a7c78cbbc50fba629f9c234f16617608eef8ecbd00aa68c38826bce4ba',
+  reject_untrusted_issuer: '9daf22097be3329ba38354b52a022e9b62dfe18264a0e762bd738ab4f69df0a9',
+  reject_no_class_a: 'acb2df48b7019c925c8b85394e21097911e81b83ba084f919313f3bf76d005a6',
+  reject_quorum_unsatisfied: 'e8718cd9994076148a5edfe34b6c0aa03ab2eb5948a549eada805023fe0c4b34',
+  reject_authority_missing: '7763522aee01f451ac2047ad2f6ce138a48830e46ed6c1ee32c49736eadb1b0b',
+  reject_authority_subject_not_signer: 'c42775973e07caf04cf0b8480bd753b4b81866f05cfbccab046e5594907bfb66',
+  reject_authority_organization_mismatch: 'b505a6afb77e0eff54549a94ce376b50b87acf3d6429278122fb3684d8af6e2c',
+  reject_authority_revoked: '46a997d08d86349425b8674aff80e3d475070be5a8c30b26c28b4a5af9ed234a',
+  reject_authority_expired: '3ccb46bb8a4a852dbf66666e42eb1a14c0a36effd24837e6786122d202bdf490',
+  reject_scope_mismatch: '1026a380c8b3423b86019701d4657fcee43b5bc05c9310e2fd0d5fa6d0099670',
+  reject_amount_exceeded: 'a328e14d7cc8a7bd4318f1b9b31f68b7074ba30ade0fc9f6137bb8de68a2ae13',
+  reject_policy_mismatch: '117aa427e46eca13426a24e63c88ef2809241f41836e21d32a18d9a4d69f6047',
+  reject_stale_revocation: '6c74a3c8e915bab595f7fb1db6e52d7a4888a05c8da416c5842ea31f597eb898',
+  reject_already_consumed: '629deee2388215ca02f80553c9f062ca0dc49c1a615b158c033c601c740370b6',
+  reject_registry_unavailable: '05865b85e6342ca874e311889effcabf7e567b06405f8524bf8066b571cca875',
+});
 
 // ── canonicalization + hashing (byte-identical to the verifier) ──────────────
 function canonicalize(v) {
@@ -294,6 +314,15 @@ describe('EP-RELIANCE-KERNEL-v1 conformance suite', () => {
   it('covers every closed verdict at least once', () => {
     const covered = new Set(SUITE.vectors.map((v) => v.expect.verdict));
     for (const verdict of RELIANCE_VERDICTS) expect(covered.has(verdict)).toBe(true);
+  });
+
+  it('pins the complete result shape for every conformance vector', () => {
+    const digests = {};
+    for (const v of SUITE.vectors) {
+      const { input, opts } = assemble(v.break);
+      digests[v.id] = sha256hex(canonicalize(evaluateReliance(input, opts)));
+    }
+    expect(digests).toEqual(COMPLETE_RESULT_DIGESTS);
   });
 });
 
@@ -937,5 +966,161 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
       revocation: { status: 'not_revoked', checked_at: new Date(NOW + 1).toISOString() },
     }, registryKey);
     expect(evaluateReliance(input, opts).verdict).toBe('do_not_rely_stale_revocation');
+  });
+
+  it('treats primitive optional evidence as absent, never as an implicit positive claim', () => {
+    for (const revocation_state of [null, false, 0, '', 'not-an-evidence-object']) {
+      const { input, opts } = assemble('none');
+      input.revocation_state = revocation_state;
+      expect(evaluateReliance(input, opts).verdict).toBe('rely');
+    }
+    for (const consumption of [null, false, 0, '', 'not-an-evidence-object']) {
+      const { input, opts } = assemble('none');
+      input.consumption = consumption;
+      expect(evaluateReliance(input, opts).verdict).toBe('rely');
+    }
+  });
+
+  it('distinguishes a valid positive consumption proof from malformed evidence', () => {
+    const validProof = CONSUMPTION_SUITE.vectors.find((vector) => vector.expect.valid).consumption_proof;
+    const { input, opts } = assemble('none');
+    input.consumption = { proof: validProof };
+    const result = evaluateReliance(input, opts);
+    expect(result).toMatchObject({
+      verdict: 'do_not_rely_already_consumed', rely: false,
+      checks: { consumption: 'consumed' },
+    });
+    expect(result.reasons.at(-1)).toBe('the authorization has already been consumed');
+  });
+
+  it('accepts a revocation check performed at the exact reliance instant', () => {
+    const { input, opts } = assemble('none');
+    input.authority_proof = signAuthorityProof({
+      ...baseAuthorityProofArgs(input.receipt),
+      revocation: { status: 'not_revoked', checked_at: new Date(NOW).toISOString() },
+    }, registryKey);
+    expect(evaluateReliance(input, opts).verdict).toBe('rely');
+  });
+
+  it('defaults an authority ceiling currency to USD only when the signed action is USD', () => {
+    const { input, opts } = assemble('none');
+    input.authority_proof = signAuthorityProof({
+      ...baseAuthorityProofArgs(input.receipt), limits: { max_amount_usd: 50000 },
+    }, registryKey);
+    expect(evaluateReliance(input, opts).verdict).toBe('rely');
+
+    const euro = assemble('none');
+    const receipt = buildReceipt({ currency: 'EUR' });
+    euro.input.receipt = receipt;
+    euro.input.action = { ...euro.input.action, currency: 'EUR', action_hash: receipt.action_hash };
+    euro.input.authority_proof = signAuthorityProof({
+      ...baseAuthorityProofArgs(receipt), limits: { max_amount_usd: 50000 },
+    }, registryKey);
+    expect(evaluateReliance(euro.input, euro.opts).verdict).toBe('do_not_rely_amount_exceeded');
+  });
+
+  it('normalizes hostile top-level argument shapes to a closed refusal', () => {
+    for (const input of [null, false, 0, 'packet']) {
+      const result = evaluateReliance(input, null);
+      expect(result).toEqual({
+        verdict: 'do_not_rely_no_profile', rely: false,
+        reasons: ['no pinned EP-RELIANCE-PROFILE-v1 supplied; verification can pass but reliance cannot'],
+        checks: {
+          receipt: false, issuer: null, assurance: null, authority: null,
+          policy: null, revocation: null, consumption: null,
+        },
+        profile: { id: 'EP-RELIANCE-PROFILE-v1', pinned: false },
+      });
+    }
+  });
+
+  it('refuses a receipt without a transparency checkpoint before reliance can downgrade issuer trust', () => {
+    const { input, opts } = assemble('none');
+    delete input.receipt.log_proof;
+    const result = evaluateReliance(input, opts);
+    expect(result.verdict).toBe('do_not_rely_unsigned');
+    expect(result.checks).toMatchObject({ receipt: false, issuer: null });
+    expect(result.reasons.at(-1)).toMatch(/missing log_proof/);
+  });
+
+  it('returns the exact no-pinned-issuer refusal for a checkpointed receipt', () => {
+    const { input, opts } = assemble('none');
+    input.relying_party_profile.accepted_issuer_keys = [];
+    const result = evaluateReliance(input, opts);
+    expect(result).toMatchObject({
+      verdict: 'do_not_rely_untrusted_issuer', rely: false,
+      checks: { receipt: true, issuer: false },
+    });
+    expect(result.reasons.at(-1)).toBe(
+      'receipt has a transparency checkpoint but the profile pins no accepted issuer key',
+    );
+  });
+
+  it('refuses a correctly action-bound quorum whose threshold is unsatisfied', () => {
+    const { input, opts } = assemble('none');
+    input.quorum = buildQuorum(input.receipt.action_hash);
+    input.quorum.policy.required = 3;
+    input.relying_party_profile.required_assurance = 'quorum';
+    const result = evaluateReliance(input, opts);
+    expect(result).toMatchObject({
+      verdict: 'do_not_rely_quorum_unsatisfied', rely: false,
+      checks: { assurance: false },
+    });
+  });
+
+  it('requires authority when the evidence list requests it even if the boolean is false', () => {
+    const { input, opts } = assemble('none');
+    input.relying_party_profile.required_authority = false;
+    input.relying_party_profile.required_evidence = ['authority_proof'];
+    delete input.authority_proof;
+    const result = evaluateReliance(input, opts);
+    expect(result.verdict).toBe('do_not_rely_authority_missing');
+    expect(result.reasons.at(-1)).toBe(
+      'scoped authority is required but no EP-AUTHORITY-PROOF-v1 was supplied',
+    );
+  });
+
+  it('never accepts a registry key pinned for another organization', () => {
+    const { input, opts } = assemble('none');
+    input.relying_party_profile.accepted_registry_keys[0].organization_id = 'other-org';
+    const result = evaluateReliance(input, opts);
+    expect(result).toMatchObject({ verdict: 'do_not_rely_registry_unavailable', rely: false });
+    expect(result.reasons.at(-1)).toBe(
+      'no authority registry key is pinned for the signed action organization',
+    );
+  });
+
+  it('classifies a tampered authority signature as missing authority, not a registry outage', () => {
+    const { input, opts } = assemble('none');
+    input.authority_proof.signature.signature_b64u = 'AA';
+    const result = evaluateReliance(input, opts);
+    expect(result).toMatchObject({ verdict: 'do_not_rely_authority_missing', rely: false });
+    expect(result.reasons.at(-1)).toMatch(/^authority proof did not verify:/);
+  });
+
+  it('allows an optional revocation field to be absent when freshness is not required', () => {
+    const { input, opts } = assemble('none');
+    input.relying_party_profile.required_evidence = ['receipt', 'authority_proof', 'consumption_proof'];
+    input.authority_proof = signAuthorityProof({
+      ...baseAuthorityProofArgs(input.receipt), revocation: null,
+    }, registryKey);
+    expect(evaluateReliance(input, opts).verdict).toBe('rely');
+  });
+
+  it('binds signed assurance authority to any verified signer, including Class-B', () => {
+    const { input, opts } = assemble('none');
+    const receipt = buildReceipt({ classAForCfo: false });
+    input.receipt = receipt;
+    input.action.action_hash = receipt.action_hash;
+    input.relying_party_profile.required_assurance = 'signed';
+    input.relying_party_profile.required_evidence = ['receipt', 'authority_proof', 'consumption_proof'];
+    input.authority_proof = signAuthorityProof({
+      ...baseAuthorityProofArgs(receipt), subject: 'ep:approver:jchen-controller',
+    }, registryKey);
+    const result = evaluateReliance(input, opts);
+    expect(result.verdict).toBe('rely');
+    expect(result.checks.authority).toMatchObject({
+      subject: 'ep:approver:jchen-controller', bound_to: 'signed',
+    });
   });
 });

@@ -51,7 +51,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/emiliaprotocol/emilia-protocol"
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git"
   },
   "homepage": "https://emiliaprotocol.ai",
   "bugs": {

@@ -16,7 +16,8 @@
     "rx_do_not_rely_missing_clinical_evidence",
     "rx_do_not_rely_policy_mismatch",
     "rx_do_not_rely_stale_benefit",
-    "rx_do_not_rely_signed_denial_required"
+    "rx_do_not_rely_signed_denial_required",
+    "rx_do_not_rely_malformed_packet"
   ],
   "verdict_semantics": {
     "rx_rely": "The determination is admissible to rely on. Covers BOTH a dispensable APPROVE (all evidence composes) and a signed, reasoned, appeal-ready DENY. Reliance is not approval; result.determination says which.",

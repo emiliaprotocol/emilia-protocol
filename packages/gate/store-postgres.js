@@ -82,7 +82,18 @@ export function createPostgresBackend({ query, now = Date.now } = {}) {
     throw new Error('createPostgresBackend: query must be an async (text, params) => { rowCount } function '
       + '(e.g. pg pool.query). It must THROW on failure — a backend error must never look like a verdict.');
   }
-  const nowMs = () => (typeof now === 'function' ? now() : now);
+  let lastObservedNow = Number.NEGATIVE_INFINITY;
+  const checkedNow = (candidate) => {
+    if (!Number.isSafeInteger(candidate) || candidate < 0) {
+      throw new Error('consumption clock must return a non-negative safe-integer epoch millisecond');
+    }
+    if (candidate < lastObservedNow) {
+      throw new Error(`consumption clock regression refused: ${candidate} < ${lastObservedNow}`);
+    }
+    lastObservedNow = candidate;
+    return candidate;
+  };
+  const nowMs = () => checkedNow(typeof now === 'function' ? now() : now);
   const expiryFor = (opt) => {
     const ttl = Number(opt?.ttlSeconds);
     return Number.isFinite(ttl) && ttl > 0 ? nowMs() + ttl * 1000 : null;
@@ -125,8 +136,9 @@ export function createPostgresBackend({ query, now = Date.now } = {}) {
     },
 
     /** Garbage-collect rows whose TTL elapsed. Returns the number removed. */
-    async cleanupExpired(at = nowMs()) {
-      const res = await query(CONSUMPTION_SQL.cleanupExpired, [at]);
+    async cleanupExpired(at) {
+      const cleanupAt = at === undefined ? nowMs() : checkedNow(at);
+      const res = await query(CONSUMPTION_SQL.cleanupExpired, [cleanupAt]);
       return res?.rowCount ?? 0;
     },
   };

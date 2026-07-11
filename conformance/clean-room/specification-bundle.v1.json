@@ -1,0 +1,20 @@
+{
+  "@version": "EP-CLEAN-ROOM-SPECIFICATION-BUNDLE-v1",
+  "policy": {
+    "reference_source_permitted": false,
+    "network_during_evaluation": false,
+    "generated_code_from_emilia_source_permitted": false
+  },
+  "documents": [
+    { "path": "standards/posted/draft-schrock-ep-authorization-receipts-06.txt", "sha256": "c02556a380398edbce300a682f44ca589db2df2fa994439e595aace7bbc154e8", "bytes": 71562 },
+    { "path": "standards/posted/draft-schrock-ep-quorum-02.txt", "sha256": "263ca172b65a156475dbe5c92cd088ce2b730927c165a1b0c4ac5e6f17bf87c8", "bytes": 39790 },
+    { "path": "standards/posted/draft-schrock-ep-evidence-record-01.txt", "sha256": "57e2c4cbd066638ded289e31e8c118058887e9a73d7a651799d6df0aa8683fb5", "bytes": 24149 },
+    { "path": "standards/posted/draft-schrock-ep-authorization-evidence-chain-02.txt", "sha256": "4bfc3b3479c79629b4d7163e06ab969e83373ab56f106241682ba5163a56095d", "bytes": 32909 },
+    { "path": "docs/EP-REVOCATION-SPEC.md", "sha256": "8619a166e495c75cfb260a959ba96ff50358107142f2bdee5ad269d3598fdc9b", "bytes": 17714 },
+    { "path": "docs/EP-TIME-ATTESTATION-SPEC.md", "sha256": "a8782681148f6485eda0eb1c60ef128fa2e71d7f3a81bc610da7128e6c114f69", "bytes": 3224 },
+    { "path": "docs/EP-PROVENANCE-RECEIPT-SPEC.md", "sha256": "e772b296e809113e315bc63aab1fd81b380e8886173c6ff0e2d20764a5509193", "bytes": 22813 },
+    { "path": "docs/EP-EVIDENCE-RECORD-SPEC.md", "sha256": "406c6cbf88f1bbd71b96ebf5aa590bb847d8320b1937ef85cab7a2a0a3498619", "bytes": 3400 },
+    { "path": "conformance/vectors/README.md", "sha256": "4707af25291b052c9194e4363381d8c625b8cd506841940459bedf4e3aa72adf", "bytes": 4986 },
+    { "path": "conformance/clean-room/bundle.v1.json", "sha256": "3cb74cfad6b9d54c8f824547b6d413ff25d5759c61bcc49fa7c1ec3a17a29971", "bytes": 2361 }
+  ]
+}

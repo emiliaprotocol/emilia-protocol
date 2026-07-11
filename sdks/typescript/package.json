@@ -38,7 +38,7 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/emiliaprotocol/emilia-protocol",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
     "directory": "sdks/typescript"
   },
   "homepage": "https://emiliaprotocol.ai",

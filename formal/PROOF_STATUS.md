@@ -247,34 +247,43 @@ Directory / Merkle log / checkpoints (pinning is one out-of-band step); WebAuthn
 internals (UV assumed as the spec's MUST, not proven); general m-of-n for arbitrary m,n (only the
 2-of-2 instance is modeled); expiry / policy-hash / one-time consumption of the committed quorum
 (consumption is `ep_receipt_core.spthy`'s subject, G3); JCS canonicalization and any computational
-claim. `ep_receipt_core.spthy` and `ep_quorum_core.spthy` are TWO SEPARATE models: the quorum model
-assumes rather than re-derives the core lemmas, and both abstract key pinning. The full WebAuthn /
-directory / log / quorum composition as a SINGLE symbolic model, with the directory trust root and
-receipt log modeled rather than abstracted, remains future work and is proven by neither model nor
-by their conjunction.
+claim. `ep_receipt_core.spthy` and `ep_quorum_core.spthy` are TWO focused models: the quorum model
+assumes rather than re-derives the core lemmas, and both abstract key pinning. The composed v2 model
+below now re-derives an abstract 2-of-2 quorum together with consumption, CAID, authority,
+registry-view, revocation, issuer pinning, and execution. Full WebAuthn internals, directory
+publication, Merkle-log mechanics, arbitrary k-of-n, and wall-clock semantics remain unmodeled.
 
 ---
 
 ## Tamarin (symbolic, Dolev-Yao) : `tamarin/ep_reliance_composed.spthy`
 
 **Status: composed acceptance path, machine-checked 2026-07-10.** This model
-puts signed challenge, exact action/profile/audience binding, UV-gated human
-approval, authority proof, revocation state, pinned receipt issuer, one-time
-consumption, and execution in one trace. The pinned container digest, model
+puts signed challenge, computed CAID, exact profile/audience/initiator binding,
+two distinct UV-gated approvals, scoped authority under an exact pinned registry
+epoch/head, revocation state, pinned receipt issuer, one-time consumption, and
+execution in one trace. The pinned container digest, model
 SHA-256, command, and exact output summary are recorded in
 `formal/tamarin/results/ep_reliance_composed.summary.txt` and re-run by CI.
 
 ```
-executable_composed_reliance (exists-trace): verified (14 steps)
-execution_requires_full_composition (all-traces): verified (22 steps)
-no_cross_action_profile_or_audience_replay (all-traces): verified (10 steps)
+executable_composed_reliance (exists-trace): verified (19 steps)
+execution_requires_full_composition (all-traces): verified (97 steps)
+caid_binds_family_and_material (all-traces): verified (2 steps)
+initiator_cannot_self_approve (all-traces): verified (4 steps)
+no_single_signer_fills_quorum (all-traces): verified (2 steps)
+no_issuer_laundering (all-traces): verified (781 steps)
+strict_registry_view_is_exact (all-traces): verified (25 steps)
+no_cross_action_profile_or_audience_replay (all-traces): verified (37 steps)
+execution_has_honest_approvals_or_prior_compromise (all-traces): verified (170 steps)
 injective_execution_with_consumption (all-traces): verified (2 steps)
-unchecked_composition_is_injective (all-traces): falsified - found trace (26 steps)
+unchecked_composition_is_injective (all-traces): falsified - found trace (31 steps)
+unchecked_registry_view_is_current (all-traces): falsified - found trace (20 steps)
 ```
 
-The falsified comparison lemma omits only consumption and demonstrates a
-same-challenge replay. The checked path is injective. The model proves exact
-binding and required composition under uncompromised pinned roots; it does not
+The falsified comparison lemmas demonstrate same-receipt replay without
+consumption and stale/equivocating registry-view acceptance without exact head
+binding. The strict paths verify. The model proves exact binding and required
+composition under uncompromised pinned roots; it does not
 prove WebAuthn internals, canonical parsers, amount arithmetic, policy authorship,
 clock freshness, transparency-log completeness, collusion resistance, or
 downstream exactly-once effects.
@@ -288,4 +297,4 @@ When a property is verified by a model checker:
 
 ---
 
-*Last updated: 2026-07-10 (composed reliance-path Tamarin model added: 4 lemmas verified, no-consumption comparison falsified with replay, all well-formedness checks clean). Prior: 2026-07-06 (Tamarin quorum model added: 5 lemmas verified). Prior: 2026-07-05 (Tamarin core-receipt model added). Prior: 2026-06-11 — 26 TLA+ properties verified across 413,137 states with 0 errors; 15 relation assertions and 7 federation assertions verified with 0 counterexamples.*
+*Last updated: 2026-07-10 (composed reliance-path v2: 10 strict lemmas verified; no-consumption and unpinned-registry-view comparisons falsified with concrete traces; all well-formedness checks clean). Prior: 2026-07-06 (Tamarin quorum model added: 5 lemmas verified). Prior: 2026-07-05 (Tamarin core-receipt model added). Prior: 2026-06-11 — 26 TLA+ properties verified across 413,137 states with 0 errors; 15 relation assertions and 7 federation assertions verified with 0 counterexamples.*

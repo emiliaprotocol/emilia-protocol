@@ -6,7 +6,12 @@ import { verifyTimestampProof } from '../../packages/verify/timestamp-proof.js';
 import { strictParseGate } from './strict-json.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-const { vectors } = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+const corpusText = new TextDecoder('utf-8', { fatal: true }).decode(readFileSync(process.argv[2]));
+const corpus = JSON.parse(corpusText);
+const corpusGate = strictParseGate(corpusText);
+if (!corpusGate.ok) throw new Error(`strict corpus JSON refused: ${corpusGate.reason}`);
+const { vectors } = corpus;
+if (!Array.isArray(vectors)) throw new Error('conformance corpus must contain a vectors array');
 
 // EP-CANONICALIZATION-v1 differential branch. Contract (see the suite profile):
 // standard parse, then the strict-parse gate (duplicate member names, unpaired

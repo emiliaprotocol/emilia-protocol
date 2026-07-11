@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode/utf16"
+	"unicode/utf8"
 
 	emiliaverify "github.com/emiliaprotocol/emilia-protocol/packages/go-verify"
 )
@@ -338,11 +339,19 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+	if !utf8.Valid(data) {
+		fmt.Fprintln(os.Stderr, "conformance corpus is not valid UTF-8")
+		os.Exit(1)
+	}
 	var f struct {
 		Vectors []json.RawMessage `json:"vectors"`
 	}
 	if err := json.Unmarshal(data, &f); err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	if !strictScanOK(string(data)) {
+		fmt.Fprintln(os.Stderr, "strict corpus JSON refused")
 		os.Exit(1)
 	}
 	out := make([]map[string]any, 0, len(f.Vectors))

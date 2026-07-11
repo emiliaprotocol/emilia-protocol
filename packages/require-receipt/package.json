@@ -16,7 +16,7 @@
     "README.md"
   ],
   "scripts": {
-    "test": "node --test test.js jws.test.js gate.test.js",
+    "test": "node --test",
     "build:drop-in": "node build-drop-in.mjs"
   },
   "devDependencies": {
@@ -41,7 +41,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/emiliaprotocol/emilia-protocol.git",
+    "url": "https://github.com/emiliaprotocol/emilia-protocol.git",
     "directory": "packages/require-receipt"
   },
   "homepage": "https://www.emiliaprotocol.ai/agent-guard",

@@ -15,20 +15,22 @@ decision ranges in `stryker.security.config.js`, is:
 |---|---:|
 | Instrumented mutants | 1,662 |
 | Classified mutants | 1,415 |
-| Killed | 1,153 |
-| Timed out | 1 |
-| Survived | 250 |
-| No coverage | 11 |
-| Total mutation score | 81.55% |
-| Covered mutation score | 82.19% |
+| Killed | 1,275 |
+| Timed out | 0 |
+| Survived | 132 |
+| No coverage | 8 |
+| Total mutation score | 90.11% |
+| Covered mutation score | 90.62% |
 
-`stryker.security.config.js` enforces an 80% breaking floor. Raising the floor
+`stryker.security.config.js` enforces a 90% breaking floor. Raising the floor
 requires a checked-in test that kills meaningful decision mutations; excluding
 a mutation merely to improve the score is not an acceptable change.
 String-literal mutations are excluded because reason prose is not the security
 decision; exact closed verdicts and selected refusal contracts are asserted by
-the conformance and unit tests. The one timeout is the detected `depth++` to
-`depth--` mutation in bounded delegation traversal.
+the conformance and unit tests. The full security suite runs against every
+mutant so table-driven protocol vectors cannot be under-attributed by per-test
+coverage analysis. The bounded-delegation decrement mutation is now killed by
+the exact seven-edge/eight-edge boundary oracle rather than timing out.
 
 Run the gate with:
 

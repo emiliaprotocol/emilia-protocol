@@ -1,38 +1,25 @@
 name: Publish MCP Server to npm
 
-# Opt every JavaScript-based action into the Node.js 24 runner.
-# GitHub forces this default in June 2026; doing it now eliminates the
-# deprecation-warning noise on every run and surfaces any Node-24 incompat
-# early. Affects actions/checkout, actions/setup-node, actions/upload-artifact, etc.
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
-# Uses npm Trusted Publishing (OIDC) + provenance — NO NPM_TOKEN.
-# Configure the trusted publisher once at:
-#   npmjs.com -> (mcp-server package) -> Settings -> Trusted Publishing
-#   Repository: emilia-protocol | Workflow: publish-mcp.yml
-# Requires npm >= 11.5.1 (installed below).
+# npm trusted publisher: @emilia-protocol/mcp-server -> this workflow filename.
 on:
+  workflow_dispatch:
   push:
-    tags:
-      - 'mcp-v*'  # Trigger on tags like mcp-v1.0.0
+    tags: ['mcp-v*']
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
 
 jobs:
   publish:
-    runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write   # REQUIRED for npm trusted publishing (OIDC) + provenance
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
-        with:
-          node-version: "24"
-          registry-url: 'https://registry.npmjs.org'
-      - name: Upgrade npm (>= 11.5.1 for OIDC trusted publishing + provenance)
-        # --min-release-age=0: the repo .npmrc age-gates app dependencies (supply-
-        # chain defense); the trusted first-party npm tool is exempt so publish
-        # tooling always installs a current npm with full provenance support.
-        run: npm install -g npm@11.18.0 --min-release-age=0
-      - run: cd mcp-server && npm ci --ignore-scripts
-      - run: cd mcp-server && npm publish --access public --provenance
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/_publish-npm-package.yml
+    with:
+      package_dir: mcp-server
+      package_name: '@emilia-protocol/mcp-server'
+      artifact_id: mcp-server
+      local_install: true

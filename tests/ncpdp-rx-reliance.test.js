@@ -106,6 +106,7 @@ function applyBreak(brk) {
     case 'wrong_formulary_policy': return { ...p, benefit_check: { ...p.benefit_check, policy_hash: 'sha256:' + sha('wrong') } };
     case 'stale_benefit': return { ...p, benefit_check: { checked_at: '2026-07-01T00:00:00.000Z', policy_hash: BENEFIT_POLICY_HASH } };
     case 'deny_unsigned': return { ...p, determination: 'deny', signed_denial: undefined };
+    case 'malformed_determination': return { ...p, determination: 'approved' };
     default: throw new Error(`unknown break ${brk}`);
   }
 }
@@ -154,17 +155,32 @@ describe('EP-NCPDP-RX-RELIANCE branch coverage', () => {
     expect(r.accepted).toBe(false);
     expect(r.reason).toBe('stale');
   });
+  it('verifyRxArtifact rejects a future artifact even without a maximum staleness bound', () => {
+    const future = signRxArtifact({
+      '@type': 'EP-RX-CONSENT-v1', action_hash: receipt.action_hash, privacy_key_id: privacyKeyId,
+      subject_ref: patientRef,
+      consent_digest: commitRxEvidence({ evidenceType: 'consent', record: { test: 'future' }, privacyKeyId, sectorSecret: privacyKey }),
+      issued_at: '2026-07-08T15:00:00.000Z',
+    }, consentKey.privateKey);
+    const r = verifyRxArtifact(future, { expectType: 'EP-RX-CONSENT-v1', pinnedKeys: [consentKey.pub], now: NOW });
+    expect(r.verified).toBe(true);
+    expect(r.accepted).toBe(false);
+    expect(r.reason).toBe('stale');
+  });
   it('verifyRxArtifact: a valid signature under an unpinned key is verified, not accepted', () => {
     const r = verifyRxArtifact(consent(), { expectType: 'EP-RX-CONSENT-v1', pinnedKeys: [clinicalKey.pub] });
     expect(r.verified).toBe(true);
     expect(r.accepted).toBe(false);
     expect(r.reason).toBe('issuer_key_not_pinned');
   });
-  it('toMs accepts an ISO string, an omitted, and an unparseable now', () => {
+  it('accepts an ISO instant, permits an omitted local clock, and refuses an unparseable clock', () => {
     expect(evaluateRxReliance({ challenge: CHALLENGE, packet: applyBreak('none'), now: '2026-07-08T14:05:00.000Z' }, OPTS).verdict).toBe('rx_rely');
-    // omitted now -> Date.now(); unparseable now -> Date.now(); both clock-dependent, so only assert closed-set membership.
+    // An omitted clock uses local time by API contract; a presented malformed
+    // clock can never silently fall back to local wall time.
     expect(RX_VERDICTS).toContain(evaluateRxReliance({ challenge: CHALLENGE, packet: applyBreak('none') }, OPTS).verdict);
-    expect(RX_VERDICTS).toContain(evaluateRxReliance({ challenge: CHALLENGE, packet: applyBreak('none'), now: 'not-a-date' }, OPTS).verdict);
+    const malformed = evaluateRxReliance({ challenge: CHALLENGE, packet: applyBreak('none'), now: 'not-a-date' }, OPTS);
+    expect(malformed.verdict).toBe('rx_do_not_rely_missing_prescriber_authority');
+    expect(malformed.rely).toBe(false);
   });
   it('a benefit check citing a different formulary policy is policy_mismatch', () => {
     const p = { ...base(), benefit_check: { checked_at: '2026-07-08T14:00:00.000Z', policy_hash: 'sha256:' + sha('other-formulary') } };
@@ -182,6 +198,15 @@ describe('EP-NCPDP-RX-RELIANCE branch coverage', () => {
   });
   it('signRxArtifact rejects a body without an @type', () => {
     expect(() => signRxArtifact({ action_hash: receipt.action_hash }, consentKey.privateKey)).toThrow(/@type/);
+  });
+  it('signRxArtifact refuses a non-Ed25519 private key', () => {
+    const rsa = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+    expect(() => signRxArtifact({
+      '@type': 'EP-RX-CONSENT-v1', action_hash: receipt.action_hash, privacy_key_id: privacyKeyId,
+      subject_ref: patientRef,
+      consent_digest: commitRxEvidence({ evidenceType: 'consent', record: {}, privacyKeyId, sectorSecret: privacyKey }),
+      issued_at: '2026-07-08T13:50:00.000Z',
+    }, rsa.privateKey)).toThrow(/Ed25519/);
   });
   it('verifyRxArtifact fails closed on a malformed signature envelope', () => {
     const r = verifyRxArtifact({ '@type': 'EP-RX-CONSENT-v1', signature: { algorithm: 'RSA' } });
@@ -203,5 +228,17 @@ describe('EP-NCPDP-RX-RELIANCE branch coverage', () => {
     const p = { ...base(), authority_proof: undefined, revocation_state: undefined };
     const r = evaluateRxReliance({ challenge: ch, packet: p, now: NOW }, OPTS);
     expect(RX_VERDICTS).toContain(r.verdict);
+  });
+  it('zero-second revocation freshness remains a required evidence leg', () => {
+    const ch = { ...CHALLENGE, required: { ...CHALLENGE.required, revocation_freshness_sec: 0 } };
+    const r = evaluateRxReliance({ challenge: ch, packet: base(), now: NOW }, OPTS);
+    expect(r.rely).toBe(false);
+    expect(r.verdict).toBe('rx_do_not_rely_missing_prescriber_authority');
+  });
+  it('an impossible benefit-check date is stale rather than normalized by Date.parse', () => {
+    const ch = { ...CHALLENGE, required: { ...CHALLENGE.required, benefit_freshness_sec: 20_000_000 } };
+    const p = { ...base(), benefit_check: { checked_at: '2026-02-30T12:00:00Z', policy_hash: BENEFIT_POLICY_HASH } };
+    expect(evaluateRxReliance({ challenge: ch, packet: p, now: NOW }, OPTS).verdict)
+      .toBe('rx_do_not_rely_stale_benefit');
   });
 });

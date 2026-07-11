@@ -267,6 +267,10 @@ const gate = createGate({ manifest, keyRegistry, store });
 Reservations carry an opaque owner token and have no TTL. Only that owner may commit or release;
 an abandoned reservation requires reconciliation because automatically reopening it after a crash
 could repeat an effect whose response was lost. A TTL may apply only to committed rows.
+The Postgres adapter rejects malformed or regressing clocks before expiry-bearing state changes.
+The model-based fault gate runs 5,000 generated schedules across crash, lag, rollback, failover,
+duplicate delivery, and before/after-linearization response loss; see
+`security/CONSUMPTION_FAULT_STATUS.md`.
 
 **Evidence retention.** Classify the evidence log into hot/cold/expired with legal hold, and
 export the auditor/SIEM manifest (tied to the evidence head). `EP_AUDIT_HOT_DAYS` /
