@@ -400,9 +400,9 @@ jobs:
 
   # ── Job 11c: Pinned external Rust implementation evidence ────────
   # Rebuilds an externally authored verifier from an immutable source tree and
-  # evaluates it with this repository's current vectors. Hostility remains a
-  # recorded, explicitly non-accepting result until the upstream defects close;
-  # the job fails if that known result is hidden, omitted, or changes silently.
+  # evaluates it with this repository's current vectors and hostility corpus.
+  # Both lanes must pass; a green standard suite cannot conceal parser or
+  # type-confusion failures in the adversarial corpus.
   external-rust-evidence:
     runs-on: ubuntu-latest
     permissions:
@@ -416,7 +416,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           repository: jdieselny/ecr-wg
-          ref: 80d191dc2b770a3d54e09eede86ffdea26b029e0
+          ref: 7faba36010e7590727bebbc5b9dcceee60539b9b
           path: .external/ecr-wg
           persist-credentials: false
       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
@@ -444,20 +444,21 @@ jobs:
             test-results/external-rust-runner.json \
             "$GITHUB_WORKSPACE/.external/ecr-wg/rust/ep-cleanroom-verifier/target/release/conformance"
       - name: Run external differential hostility campaign
-        id: external_hostility
-        continue-on-error: true
         run: >-
           node scripts/differential-hostility.mjs
           --external-runners test-results/external-rust-runner.json
           --emit test-results/external-rust-hostility.json
-      - name: Enforce explicit non-accepting baseline
+      - name: Enforce pinned accepting hostility result
         run: |
           node --input-type=module -e '
             import fs from "node:fs";
+            const pin = JSON.parse(fs.readFileSync("conformance/external/rust-cleanroom-jdieselny.v1.json", "utf8"));
             const report = JSON.parse(fs.readFileSync("test-results/external-rust-hostility.json", "utf8"));
-            if (report.status !== "fail" || report.divergences.length !== 15) throw new Error("external hostility baseline changed; review and update the pin instead of hiding it");
-            if (!report.divergences.some((finding) => finding.id === "duplicate-root-member")) throw new Error("duplicate-root refusal finding disappeared without a reviewed pin update");
-            if (report.divergences.filter((finding) => finding.reason === "runner_crash").length !== 14) throw new Error("external panic baseline changed; review the exact result");
+            const expected = pin.hostility;
+            if (report.status !== expected.required_status || report.divergences.length !== 0) throw new Error("external hostility campaign is not clean");
+            if (report.corpus?.suite !== expected.suite || report.corpus?.sha256 !== expected.corpus_sha256) throw new Error("external hostility corpus drifted from the reviewed pin");
+            if (report.corpus?.structured_cases !== expected.structured_cases || report.corpus?.raw_parser_cases !== expected.raw_parser_cases) throw new Error("external hostility case counts drifted from the reviewed pin");
+            if (!report.implementations?.some((implementation) => implementation.name === expected.runner_name && implementation.relationship === "external-submission")) throw new Error("external implementation is absent from hostility report");
           '
       - name: Upload external evidence
         if: always()

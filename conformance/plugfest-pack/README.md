@@ -118,7 +118,7 @@ Copy a row per (implementation, suite) pair:
 | _example: acme-verify (Acme, Rust)_ | `receipts.v1.json` | pass (13/13) | anchor proofs not implemented; 2 anchor vectors skipped and counted as fail |
 | _example: repo reference set (JS+Py+Go, one repo)_ | all 16 suites | pass (163/163) | consistency check across three languages, single repository |
 | COSA (J Diesel NY) | all 16 suites | pass (158/158) | signed external statement, `examples/external-verification/statements/cosa/`; run used emilia-verify, so external reproduction, not an independent implementation |
-| ep-cleanroom-verifier (J Diesel NY, Rust) | all 16 suites | pass (163/163) | from-spec Rust implementation, source public (`jdieselny/ecr-wg`); original 162-vector signed statement at `examples/external-verification/statements/rust-cleanroom/`; evaluator-controlled rebuild at pinned source commit now passes 163/163. That public commit is not strict-accepted: 15 differential-hostility findings and no checked-in separate third-party construction attestation. A newer GUV'NOR attestation is pending its corrected manifest and public source commit. |
+| ep-cleanroom-verifier (J Diesel NY, Rust) | all 16 suites | pass (163/163) | from-spec Rust implementation, source public (`jdieselny/ecr-wg`); original 162-vector signed statement at `examples/external-verification/statements/rust-cleanroom/`; evaluator-controlled rebuild at pinned source commit passes 163/163 plus 353 structured hostility cases and 6 raw-parser refusals with zero divergences. Strict clean-room acceptance still awaits the corrected third-party-attested manifest and independently pinned attestor key. |
 |  |  |  |  |
 
 Notes worth recording: partial-suite coverage, vectors your implementation
