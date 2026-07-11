@@ -153,6 +153,8 @@ async function evaluateOnce(label, artifacts, extra = {}) {
 }
 
 console.log('\nMODEL-TO-MATTER: frontier proposal -> physical executor\n');
+console.log(`STRUCTURE PASS  action is well-formed (${modelToMatterActionDigest(action).slice(0, 27)}...)`);
+console.log('                Structural validity is not permission to execute.\n');
 
 const rows = [];
 const missing = await evaluateOnce(
@@ -171,6 +173,29 @@ const revoked = await evaluateOnce('revoked-human', allEvidence(), {
   revokedEvidenceDigests: new Set([evidence.human_authorization.signature.evidence_digest]),
 });
 rows.push(['human authorization revoked', revoked.verdict, 'do_not_execute_stale_evidence']);
+
+const mutationBackend = createMemoryBackend();
+const mutationChallengeStore = createDurableChallengeStore(mutationBackend);
+const mutationChallenge = await createRegisteredModelToMatterChallenge(action, profile, {
+  challengeStore: mutationChallengeStore,
+  expires_at: CHALLENGE_EXPIRES,
+  nonce: 'model-to-matter-action-mutation',
+});
+const mutatedAction = createModelToMatterAction({
+  ...structuredClone(action),
+  destination_digest: digest('substituted-destination'),
+});
+const mutationResult = await evaluateRegisteredModelToMatterPresentation({
+  action: mutatedAction,
+  challenge: mutationChallenge,
+  graph: buildModelToMatterGraph(action, allEvidence()),
+  profile,
+  as_of: NOW,
+  challengeStore: mutationChallengeStore,
+  clearanceStore: createDurableConsumptionStore(actionClearanceBackend),
+  revokedEvidenceDigests: new Set(),
+});
+rows.push(['destination changed after challenge', mutationResult.verdict, 'do_not_execute_action_mismatch']);
 
 const backend = createMemoryBackend();
 const challengeStore = createDurableChallengeStore(backend);
@@ -223,6 +248,6 @@ for (const [label, actual] of rows) {
 }
 
 const ok = rows.every(([, actual, expected]) => actual === expected);
-console.log(`\n${ok ? 'OK' : 'FAILED'}: one exact action cleared once; every missing, substituted, revoked, replayed, or tampered path refused.`);
+console.log(`\n${ok ? 'OK' : 'FAILED'}: one exact action cleared once; every missing, substituted, revoked, mutated, replayed, or tampered path refused.`);
 console.log('Boundary: the effect receipt proves what the pinned executor signed, not independent physical truth.\n');
 process.exit(ok ? 0 : 1);
