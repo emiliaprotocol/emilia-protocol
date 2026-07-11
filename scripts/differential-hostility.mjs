@@ -16,6 +16,8 @@ const option = (name) => {
   const index = argv.indexOf(name);
   return index >= 0 ? argv[index + 1] : null;
 };
+const emitPath = option('--emit');
+if (argv.includes('--emit') && !emitPath) throw new Error('--emit requires a path');
 const BUNDLE = JSON.parse(fs.readFileSync(path.join(ROOT, 'conformance/clean-room/bundle.v1.json'), 'utf8'));
 const PRIMARY_FIELDS = [
   'document', 'signoff', 'quorum', 'revocation', 'time_attestation',
@@ -97,10 +99,12 @@ function reverseObjectOrder(value) {
 
 const cases = [];
 const expectations = new Map();
+const caseSuites = new Map();
 const categoryCounts = new Map();
-function addCase(value, category, expectation) {
+function addCase(value, category, expectation, suite) {
   cases.push(value);
   expectations.set(value.id, expectation);
+  caseSuites.set(value.id, suite);
   categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1);
 }
 
@@ -120,45 +124,45 @@ for (const suiteRef of BUNDLE.suites) {
     const inert = clone(source);
     inert.id = `${prefix}__unknown_wrapper`;
     inert._ep_hostility = { ignored: true, unicode: 'replacement-�-astral-🙂' };
-    addCase(inert, 'unknown-wrapper', { kind: 'metamorphic', expected: source.expect.valid });
+    addCase(inert, 'unknown-wrapper', { kind: 'metamorphic', expected: source.expect.valid }, suite.suite);
 
     const unicode = clone(source);
     unicode.id = `${prefix}__unicode_aliases`;
     unicode._ep_hostility = { 'caf\u00e9': 'caf\u00e9', 'cafe\u0301': 'cafe\u0301', bidi: '\u202ereliance' };
-    addCase(unicode, 'unicode', { kind: 'metamorphic', expected: source.expect.valid });
+    addCase(unicode, 'unicode', { kind: 'metamorphic', expected: source.expect.valid }, suite.suite);
 
     const permuted = reverseObjectOrder(source);
     permuted.id = `${prefix}__object_permutation`;
-    addCase(permuted, 'action-permutation', { kind: 'metamorphic', expected: source.expect.valid });
+    addCase(permuted, 'action-permutation', { kind: 'metamorphic', expected: source.expect.valid }, suite.suite);
 
     for (let i = 0; i < destructiveValues.length; i += 1) {
       const hostile = clone(source);
       hostile.id = `${prefix}__type_${i}`;
       hostile[primary] = clone(destructiveValues[i]);
-      addCase(hostile, 'hostile-type', { kind: 'reject' });
+      addCase(hostile, 'hostile-type', { kind: 'reject' }, suite.suite);
     }
 
     if (source[primary] && typeof source[primary] === 'object') {
       const nested = clone(source);
       nested.id = `${prefix}__nested_leaf`;
-      if (mutateFirstLeaf(nested[primary])) addCase(nested, 'nested-leaf', { kind: 'consensus' });
+      if (mutateFirstLeaf(nested[primary])) addCase(nested, 'nested-leaf', { kind: 'consensus' }, suite.suite);
     }
 
     const timestamp = clone(source);
     timestamp.id = `${prefix}__impossible_timestamp`;
     if (mutateNamed(timestamp[primary], timestampNames, '2026-02-30T25:61:61Z')) {
-      addCase(timestamp, 'timestamp', { kind: primary === 'currency' ? 'consensus' : 'reject' });
+      addCase(timestamp, 'timestamp', { kind: primary === 'currency' ? 'consensus' : 'reject' }, suite.suite);
     }
 
     const spki = clone(source);
     spki.id = `${prefix}__invalid_spki`;
     if (mutateAllNamed(spki, publicKeyNames, '***not-base64url-spki***') > 0) {
-      addCase(spki, 'spki', { kind: 'reject' });
+      addCase(spki, 'spki', { kind: 'reject' }, suite.suite);
     }
 
     const graph = clone(source);
     graph.id = `${prefix}__duplicate_graph_node`;
-    if (duplicateNamedGraphNode(graph[primary])) addCase(graph, 'evidence-graph', { kind: 'consensus' });
+    if (duplicateNamedGraphNode(graph[primary])) addCase(graph, 'evidence-graph', { kind: 'consensus' }, suite.suite);
   }
 }
 
@@ -190,10 +194,14 @@ if (externalPath) {
     implementations.push({
       name: runner.name,
       kind: 'external-submission',
+      dispatch: runner.dispatch || 'mixed',
       command: runner.command,
       args: runner.args || [],
       cwd: path.resolve(ROOT, runner.cwd || '.'),
     });
+    if (!['mixed', 'suite'].includes(implementations.at(-1).dispatch)) {
+      throw new Error(`external runner ${runner.name} has unsupported dispatch mode`);
+    }
   }
 }
 if (new Set(implementations.map((implementation) => implementation.name)).size !== implementations.length) {
@@ -203,16 +211,64 @@ if (new Set(implementations.map((implementation) => implementation.name)).size !
 let deep = { leaf: true };
 for (let i = 0; i < 66; i += 1) deep = { nested: deep };
 const rawParserCases = [
-  { id: 'truncated-json', bytes: Buffer.from('{"vectors":[') },
-  { id: 'duplicate-root-member', bytes: Buffer.from('{"vectors":[],"vectors":[]}') },
-  { id: 'duplicate-vector-member', bytes: Buffer.from('{"vectors":[{"id":"a","id":"b"}]}') },
-  { id: 'unpaired-surrogate', bytes: Buffer.from('{"vectors":[{"id":"\\ud800"}]}') },
-  { id: 'over-depth', bytes: Buffer.from(JSON.stringify({ vectors: [{ id: 'deep', document: deep }] })) },
-  { id: 'invalid-utf8', bytes: Buffer.concat([Buffer.from('{"vectors":[],"x":"'), Buffer.from([0xc3, 0x28]), Buffer.from('"}')]) },
+  { id: 'truncated-json', bytes: Buffer.from('{"suite":"EP-RECEIPT-v1","vectors":[') },
+  { id: 'duplicate-root-member', bytes: Buffer.from('{"suite":"EP-RECEIPT-v1","vectors":[],"vectors":[]}') },
+  { id: 'duplicate-vector-member', bytes: Buffer.from('{"suite":"EP-RECEIPT-v1","vectors":[{"id":"a","id":"b"}]}') },
+  { id: 'unpaired-surrogate', bytes: Buffer.from('{"suite":"EP-RECEIPT-v1","vectors":[{"id":"\\ud800"}]}') },
+  { id: 'over-depth', bytes: Buffer.from(JSON.stringify({ suite: 'EP-RECEIPT-v1', vectors: [{ id: 'deep', document: deep }] })) },
+  { id: 'invalid-utf8', bytes: Buffer.concat([Buffer.from('{"suite":"EP-RECEIPT-v1","vectors":[],"x":"'), Buffer.from([0xc3, 0x28]), Buffer.from('"}')]) },
 ];
+
+function executeCorpus(implementation, inputPath, expectedCount, label) {
+  let stdout;
+  try {
+    stdout = execFileSync(implementation.command, [...implementation.args, inputPath], {
+      cwd: implementation.cwd,
+      encoding: 'utf8',
+      timeout: 180_000,
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+  } catch (error) {
+    throw new Error(`${implementation.name} crashed on ${label}: ${error.stderr || error.message}`);
+  }
+  let parsed;
+  try { parsed = JSON.parse(stdout); } catch (error) { throw new Error(`${implementation.name} emitted invalid JSON for ${label}: ${error.message}`); }
+  if (!Array.isArray(parsed) || parsed.length !== expectedCount) {
+    throw new Error(`${implementation.name} returned ${parsed?.length} results for ${expectedCount} ${label} cases`);
+  }
+  return parsed;
+}
+
+function writeReport(status, divergences) {
+  if (!emitPath) return;
+  const report = {
+    '@version': 'EP-DIFFERENTIAL-HOSTILITY-REPORT-v1',
+    status,
+    corpus: {
+      suite: corpus.suite,
+      seed: corpus.seed,
+      sha256: corpusHash,
+      structured_cases: cases.length,
+      raw_parser_cases: rawParserCases.length,
+      categories: Object.fromEntries([...categoryCounts.entries()].sort()),
+    },
+    implementations: implementations.map((implementation) => ({
+      name: implementation.name,
+      relationship: implementation.kind,
+      dispatch: implementation.dispatch || 'mixed',
+    })),
+    divergences,
+  };
+  report.report_sha256 = crypto.createHash('sha256').update(JSON.stringify(report)).digest('hex');
+  const target = path.resolve(emitPath);
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.writeFileSync(target, `${JSON.stringify(report, null, 2)}\n`);
+}
 
 try {
   const divergences = [];
+  const executionFailures = new Map(implementations.map((implementation) => [implementation.name, new Set()]));
   for (const rawCase of rawParserCases) {
     const rawPath = path.join(dir, `${rawCase.id}.json`);
     fs.writeFileSync(rawPath, rawCase.bytes);
@@ -226,27 +282,55 @@ try {
       });
       if (result.status === 0) {
         divergences.push({ id: rawCase.id, implementation: implementation.name, reason: 'malformed_raw_json_accepted' });
+      } else if (result.signal || /panicked at/.test(result.stderr || '')) {
+        divergences.push({ id: rawCase.id, implementation: implementation.name, reason: 'runner_crash' });
       }
     }
   }
 
   const outputs = new Map();
   for (const implementation of implementations) {
-    let stdout;
-    try {
-      stdout = execFileSync(implementation.command, [...implementation.args, corpusPath], {
-        cwd: implementation.cwd,
-        encoding: 'utf8',
-        timeout: 180_000,
-        maxBuffer: 64 * 1024 * 1024,
-        stdio: ['ignore', 'pipe', 'pipe'],
-      });
-    } catch (error) {
-      throw new Error(`${implementation.name} crashed on hostile corpus: ${error.stderr || error.message}`);
-    }
     let parsed;
-    try { parsed = JSON.parse(stdout); } catch (error) { throw new Error(`${implementation.name} emitted invalid JSON: ${error.message}`); }
-    if (!Array.isArray(parsed) || parsed.length !== cases.length) throw new Error(`${implementation.name} returned ${parsed?.length} results for ${cases.length} cases`);
+    if (implementation.dispatch === 'suite') {
+      parsed = [];
+      const bySuite = new Map();
+      for (const hostile of cases) {
+        const suite = caseSuites.get(hostile.id);
+        if (!bySuite.has(suite)) bySuite.set(suite, []);
+        bySuite.get(suite).push(hostile);
+      }
+      let suiteIndex = 0;
+      for (const [suite, suiteCases] of bySuite) {
+        const suitePath = path.join(dir, `suite-${suiteIndex}.json`);
+        fs.writeFileSync(suitePath, `${JSON.stringify({ suite, seed: corpus.seed, vectors: suiteCases })}\n`);
+        try {
+          parsed.push(...executeCorpus(implementation, suitePath, suiteCases.length, `hostile ${suite} corpus`));
+        } catch {
+          for (let caseIndex = 0; caseIndex < suiteCases.length; caseIndex += 1) {
+            const hostile = suiteCases[caseIndex];
+            const singlePath = path.join(dir, `suite-${suiteIndex}-case-${caseIndex}.json`);
+            fs.writeFileSync(singlePath, `${JSON.stringify({ suite, seed: corpus.seed, vectors: [hostile] })}\n`);
+            try {
+              parsed.push(...executeCorpus(implementation, singlePath, 1, `hostile ${suite} case ${hostile.id}`));
+            } catch (error) {
+              executionFailures.get(implementation.name).add(hostile.id);
+              const detail = String(error.message)
+                .replace(/\(\d+\) panicked at/g, '(process) panicked at')
+                .split('\n').map((line) => line.trim()).filter(Boolean).slice(0, 2).join(' | ');
+              divergences.push({
+                id: hostile.id,
+                implementation: implementation.name,
+                reason: 'runner_crash',
+                detail,
+              });
+            }
+          }
+        }
+        suiteIndex += 1;
+      }
+    } else {
+      parsed = executeCorpus(implementation, corpusPath, cases.length, 'hostile mixed-suite corpus');
+    }
     const map = new Map();
     for (const result of parsed) {
       if (map.has(result.id) || typeof result.valid !== 'boolean') throw new Error(`${implementation.name} emitted malformed or duplicate result ${result.id}`);
@@ -256,6 +340,7 @@ try {
   }
 
   for (const hostile of cases) {
+    if (implementations.some((implementation) => executionFailures.get(implementation.name).has(hostile.id))) continue;
     const values = implementations.map((implementation) => outputs.get(implementation.name).get(hostile.id));
     if (values.some((value) => typeof value !== 'boolean')) {
       divergences.push({ id: hostile.id, reason: 'missing_result', values });
@@ -273,12 +358,14 @@ try {
     }
   }
   if (divergences.length) {
+    writeReport('fail', divergences);
     console.error(`DIFFERENTIAL HOSTILITY: FAIL (${divergences.length} divergence(s))`);
     for (const divergence of divergences.slice(0, 50)) console.error(JSON.stringify(divergence));
     process.exitCode = 1;
   } else {
     const externalCount = implementations.filter((implementation) => implementation.kind === 'external-submission').length;
     const categories = Object.fromEntries([...categoryCounts.entries()].sort());
+    writeReport('pass', []);
     console.log(`DIFFERENTIAL HOSTILITY: PASS (${cases.length} structured cases + ${rawParserCases.length} raw parser refusals; ${implementations.length} implementations; ${externalCount} external; corpus sha256:${corpusHash})`);
     console.log(`  categories ${JSON.stringify(categories)}`);
   }

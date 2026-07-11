@@ -1,0 +1,41 @@
+{
+  "@version": "EP-EXTERNAL-IMPLEMENTATION-PIN-v1",
+  "implementation": {
+    "implementation_id": "jdieselny-rust-cleanroom",
+    "organization": "J Diesel NY",
+    "language": "Rust",
+    "version": "0.1.0",
+    "license_spdx": "Apache-2.0"
+  },
+  "source": {
+    "repository": "https://github.com/jdieselny/ecr-wg",
+    "commit": "7faba36010e7590727bebbc5b9dcceee60539b9b",
+    "tree_path": "rust/ep-cleanroom-verifier",
+    "tree_oid": "0553c5fa0a5c4b566703e0d8ef9864dc33e5176d"
+  },
+  "build": {
+    "rustc": "1.94.1",
+    "cargo_locked": true,
+    "binary": "target/release/conformance"
+  },
+  "construction_evidence": {
+    "status": "implementation_organization_signed_legacy_statement_for_ancestor",
+    "source_scope": "The signed statement predates the pinned hardening commit and does not attest that commit.",
+    "statement": "examples/external-verification/statements/rust-cleanroom/statement.json",
+    "statement_sha256": "fdf43611dc7b7d41e40ccfd15d6e4d25457578d98be0f0e3a83796fdd3d9638a",
+    "public_key": "examples/external-verification/statements/rust-cleanroom/public.key",
+    "public_key_sha256": "d6d08b75ea6520be91857ccf92440de3ebcddafabaab6e3331e45894d4277cb1",
+    "verifier_id": "ext:verifier:emilia-cleanroom-rust",
+    "key_id": "ep:external-verifier-key:sha256:87c8c5029475f53a",
+    "third_party_attestation": false,
+    "strict_clean_room_acceptance": false
+  },
+  "hostility": {
+    "suite": "EP-DIFFERENTIAL-HOSTILITY-v2",
+    "runner_name": "rust-cleanroom-jdieselny",
+    "corpus_sha256": "ae350173f474ece17b16bb3925d82dd3302bffff96c1f86ba8ee3bc527939e3c",
+    "structured_cases": 353,
+    "raw_parser_cases": 6,
+    "required_status": "pass"
+  }
+}

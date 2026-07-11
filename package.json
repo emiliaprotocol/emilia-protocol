@@ -41,6 +41,7 @@
     "conformance:manifest": "node scripts/generate-conformance-manifest.mjs --emit conformance/conformance-manifest.json",
     "conformance:manifest:check": "node scripts/generate-conformance-manifest.mjs --check",
     "conformance:hostility": "node scripts/differential-hostility.mjs",
+    "conformance:external:evaluate": "node scripts/evaluate-external-implementation.mjs",
     "conformance:clean-room:selftest": "node scripts/verify-clean-room-submission.mjs --manifest conformance/clean-room/reference-port.manifest.json -- node conformance/runners/run-js.mjs",
     "conformance:clean-room:contract": "node scripts/test-clean-room-intake.mjs",
     "conformance:clean-room:kit": "node scripts/build-clean-room-kit.mjs",
