@@ -1,7 +1,7 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "be7a930a686096e4046567e4fda4dc12fccf0f54fca5527a05bfb3ef14ddaf9e",
+  "evidence_bundle_sha256": "40fa566ec63981a56170e5988069e553895456f548a89a741cb991c28787f67c",
   "claim_count": 13,
   "evidence_file_count": 62,
   "execution": {
@@ -189,6 +189,7 @@
           "accepts a PyPI sdist only when every published byte matches",
           "accepts a PyPI wheel only when every published byte matches",
           "accepts a registry artifact only when every published byte matches",
+          "normalizes source file modes across independent package checkouts",
           "packs @emilia-protocol/verify twice to byte-identical tarballs",
           "rejects a one-byte PyPI sdist substitution",
           "rejects a one-byte PyPI wheel substitution",
@@ -224,7 +225,7 @@
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "be7a930a686096e4046567e4fda4dc12fccf0f54fca5527a05bfb3ef14ddaf9e",
+      "sha256": "40fa566ec63981a56170e5988069e553895456f548a89a741cb991c28787f67c",
       "file_count": 62
     },
     "verify-sdk": {
@@ -341,7 +342,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "be7a930a686096e4046567e4fda4dc12fccf0f54fca5527a05bfb3ef14ddaf9e"
+          "sha256": "40fa566ec63981a56170e5988069e553895456f548a89a741cb991c28787f67c"
         }
       ]
     },
@@ -463,7 +464,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "be7a930a686096e4046567e4fda4dc12fccf0f54fca5527a05bfb3ef14ddaf9e"
+          "sha256": "40fa566ec63981a56170e5988069e553895456f548a89a741cb991c28787f67c"
         }
       ]
     },
@@ -607,7 +608,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "be7a930a686096e4046567e4fda4dc12fccf0f54fca5527a05bfb3ef14ddaf9e"
+          "sha256": "40fa566ec63981a56170e5988069e553895456f548a89a741cb991c28787f67c"
         }
       ]
     },
@@ -753,7 +754,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "be7a930a686096e4046567e4fda4dc12fccf0f54fca5527a05bfb3ef14ddaf9e"
+          "sha256": "40fa566ec63981a56170e5988069e553895456f548a89a741cb991c28787f67c"
         }
       ]
     },
@@ -862,7 +863,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "be7a930a686096e4046567e4fda4dc12fccf0f54fca5527a05bfb3ef14ddaf9e"
+          "sha256": "40fa566ec63981a56170e5988069e553895456f548a89a741cb991c28787f67c"
         }
       ]
     },
@@ -971,7 +972,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "be7a930a686096e4046567e4fda4dc12fccf0f54fca5527a05bfb3ef14ddaf9e"
+          "sha256": "40fa566ec63981a56170e5988069e553895456f548a89a741cb991c28787f67c"
         }
       ]
     },
@@ -1103,7 +1104,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "be7a930a686096e4046567e4fda4dc12fccf0f54fca5527a05bfb3ef14ddaf9e"
+          "sha256": "40fa566ec63981a56170e5988069e553895456f548a89a741cb991c28787f67c"
         }
       ]
     },
@@ -1210,7 +1211,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "be7a930a686096e4046567e4fda4dc12fccf0f54fca5527a05bfb3ef14ddaf9e"
+          "sha256": "40fa566ec63981a56170e5988069e553895456f548a89a741cb991c28787f67c"
         }
       ]
     },
@@ -1313,7 +1314,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "be7a930a686096e4046567e4fda4dc12fccf0f54fca5527a05bfb3ef14ddaf9e"
+          "sha256": "40fa566ec63981a56170e5988069e553895456f548a89a741cb991c28787f67c"
         }
       ]
     },
@@ -1447,13 +1448,13 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "be7a930a686096e4046567e4fda4dc12fccf0f54fca5527a05bfb3ef14ddaf9e"
+          "sha256": "40fa566ec63981a56170e5988069e553895456f548a89a741cb991c28787f67c"
         }
       ]
     },
     {
       "claim_id": "verify-package-is-byte-reproducible",
-      "statement": "The verify SDK packs twice to byte-identical tarballs, and the publish workflow attests and publishes that exact tarball before comparing the registry copy byte-for-byte.",
+      "statement": "The verify SDK canonicalizes package file modes, packs twice to byte-identical tarballs, and the publish workflow attests and publishes that exact tarball before comparing the registry copy byte-for-byte.",
       "acceptance_roots": [
         "GitHub Actions OIDC identity",
         "npm trusted-publisher configuration",
@@ -1520,6 +1521,11 @@
         },
         {
           "file": "tests/release-reproducibility.test.js",
+          "title": "normalizes source file modes across independent package checkouts",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/release-reproducibility.test.js",
           "title": "rejects a one-byte registry artifact substitution",
           "runner": "vitest"
         }
@@ -1558,7 +1564,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "be7a930a686096e4046567e4fda4dc12fccf0f54fca5527a05bfb3ef14ddaf9e"
+          "sha256": "40fa566ec63981a56170e5988069e553895456f548a89a741cb991c28787f67c"
         }
       ]
     },
@@ -1692,7 +1698,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "be7a930a686096e4046567e4fda4dc12fccf0f54fca5527a05bfb3ef14ddaf9e"
+          "sha256": "40fa566ec63981a56170e5988069e553895456f548a89a741cb991c28787f67c"
         }
       ]
     },
@@ -1944,7 +1950,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "be7a930a686096e4046567e4fda4dc12fccf0f54fca5527a05bfb3ef14ddaf9e"
+          "sha256": "40fa566ec63981a56170e5988069e553895456f548a89a741cb991c28787f67c"
         }
       ]
     }
@@ -2152,7 +2158,7 @@
     },
     {
       "path": "scripts/verify-reproducible-package.mjs",
-      "sha256": "6b4604555e6968beac82cca563522699e11846eea567c75636b83b232c2f0362"
+      "sha256": "8ecab8e057e95dfcdb2451196f712d38eb2379538b3653fa0af0d08465faf841"
     },
     {
       "path": "scripts/verify-reproducible-wheel.mjs",
@@ -2164,7 +2170,7 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "37e33d1266741bc7ead4798c8c4c4ca9472d5739ae838fe98f5bab3e72683373"
+      "sha256": "74f9a695512f04a076fff0ccd396d8f4508ff9110e3b3d3b00ca3ede517bccd5"
     },
     {
       "path": "security/vectors.v1.json",
@@ -2192,7 +2198,7 @@
     },
     {
       "path": "tests/release-reproducibility.test.js",
-      "sha256": "718443bbc7a524fd06a38ba5cb77864ac93da0ce0bb61ddd1f82192b4c5f1f6a"
+      "sha256": "63e7bab42d6d671c2bee2dd0a462bc959218dd7686a4f6da69878704da479571"
     },
     {
       "path": "tests/reliance-kernel.test.js",

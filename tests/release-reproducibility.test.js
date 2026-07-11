@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { assertArtifactBytesMatch, verifyReproduciblePackage } from '../scripts/verify-reproducible-package.mjs';
 import { assertPythonArtifactBytesMatch } from '../scripts/python-artifact-integrity.mjs';
 
@@ -11,6 +13,36 @@ describe('release byte reproducibility', () => {
     expect(result.filename).toBe(`emilia-protocol-verify-${result.version}.tgz`);
     expect(result.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(result.fileCount).toBeGreaterThan(0);
+  });
+
+  it('normalizes source file modes across independent package checkouts', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'ep-pack-modes-'));
+    const makePackage = (name, sourceMode, binMode) => {
+      const target = path.join(root, name);
+      mkdirSync(target);
+      writeFileSync(path.join(target, 'package.json'), JSON.stringify({
+        name: 'mode-stability-fixture',
+        version: '1.0.0',
+        files: ['index.js', 'cli.js'],
+        bin: { fixture: 'cli.js' },
+      }));
+      writeFileSync(path.join(target, 'index.js'), 'export const value = 1;\n');
+      writeFileSync(path.join(target, 'cli.js'), '#!/usr/bin/env node\nconsole.log("ok");\n');
+      chmodSync(path.join(target, 'index.js'), sourceMode);
+      chmodSync(path.join(target, 'cli.js'), binMode);
+      return target;
+    };
+    try {
+      const restricted = makePackage('restricted', 0o600, 0o700);
+      const conventional = makePackage('conventional', 0o644, 0o755);
+      const first = verifyReproduciblePackage(restricted);
+      const second = verifyReproduciblePackage(conventional);
+      expect(first.sha256).toBe(second.sha256);
+      expect(statSync(path.join(restricted, 'index.js')).mode & 0o777).toBe(0o600);
+      expect(statSync(path.join(restricted, 'cli.js')).mode & 0o777).toBe(0o700);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('accepts a registry artifact only when every published byte matches', () => {

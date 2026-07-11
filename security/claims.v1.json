@@ -346,7 +346,7 @@
     },
     {
       "claim_id": "verify-package-is-byte-reproducible",
-      "statement": "The verify SDK packs twice to byte-identical tarballs, and the publish workflow attests and publishes that exact tarball before comparing the registry copy byte-for-byte.",
+      "statement": "The verify SDK canonicalizes package file modes, packs twice to byte-identical tarballs, and the publish workflow attests and publishes that exact tarball before comparing the registry copy byte-for-byte.",
       "acceptance_roots": ["GitHub Actions OIDC identity", "npm trusted-publisher configuration", "pinned GitHub Actions revisions"],
       "enforcement_path": [
         { "language": "javascript", "file": "scripts/verify-reproducible-package.mjs", "symbol": "verifyReproduciblePackage", "exported": true },
@@ -366,6 +366,7 @@
       ],
       "tests": [
         { "file": "tests/release-reproducibility.test.js", "title": "packs @emilia-protocol/verify twice to byte-identical tarballs", "runner": "vitest" },
+        { "file": "tests/release-reproducibility.test.js", "title": "normalizes source file modes across independent package checkouts", "runner": "vitest" },
         { "file": "tests/release-reproducibility.test.js", "title": "rejects a one-byte registry artifact substitution", "runner": "vitest" }
       ],
       "operational_evidence": [
