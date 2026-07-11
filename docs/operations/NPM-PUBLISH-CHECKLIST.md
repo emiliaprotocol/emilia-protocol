@@ -8,8 +8,10 @@ downloads and byte-compares the registry copy.
 
 ## One-time owner configuration
 
-These settings live at the registries and cannot be established or verified by
-repository code.
+These settings live at the registries. Repository checks prove the intended
+mapping and workflow behavior, but live activation requires an authenticated
+registry readback. npm 11.15.0 and later expose that operation through
+`npm trust`; PyPI currently exposes it through each project's Publishing page.
 
 ### npm
 
@@ -20,6 +22,23 @@ For each `@emilia-protocol/*` package, add a GitHub Actions trusted publisher:
 - workflow: the package's `publish-*.yml` filename
 - environment: blank unless the workflow is later changed to use one
 - allowed action: `npm publish`
+
+Use npm 11.18.0 or later. Earlier trust clients do not send the required
+permission field and can fail with an unhelpful `400 Bad Request`:
+
+```sh
+npx --yes npm@11.18.0 trust github <package> \
+  --repo emiliaprotocol/emilia-protocol \
+  --file <publish-workflow.yml> \
+  --allow-publish --yes
+npx --yes npm@11.18.0 trust list <package> --json
+```
+
+Both commands require maintainer authentication and proof of presence. A
+successful create response is followed by `trust list`; the returned
+repository, workflow filename, and publish permission must exactly match
+`release/release-packages.v1.json`. All seven npm relationships were created
+and read back with that procedure on 2026-07-10.
 
 The complete package/workflow inventory is machine-checked in
 `release/release-packages.v1.json`. The six smaller npm workflows call the
@@ -33,7 +52,9 @@ release identity.
 For `emilia-verify`, `emilia-protocol`, and `langchain-emilia`, add matching
 GitHub trusted publishers under each project's Publishing settings. The
 workflow filenames are `publish-python-verify.yml`, `publish-python-sdk.yml`,
-and `publish-langchain-python.yml`.
+and `publish-langchain-python.yml`. Leave the environment blank because the
+workflows do not declare one. Live activation and first-release proof are
+tracked in GitHub issue #251.
 
 ## Core verifier release
 
