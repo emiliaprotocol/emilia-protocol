@@ -26,8 +26,8 @@ what actually produced the per-vector results.
 - Verifier: `ext:verifier:cosa` (COSA, J Diesel NY), key_id
   `ep:external-verifier-key:sha256:d20b9e48115ee89a`
 - Procedure: `ep-conformance-own-implementation` (MODE A)
-- Result: `verified`, all 16 suites, 158 of 158 vectors pass, zero divergences,
-  bound to commit `4c15586`.
+- Historical signed result: `verified`, all 16 suites, 158 of 158 vectors pass,
+  zero divergences, bound to commit `4c15586` and that input set.
 - Verified against the pinned key with `verify-statement.mjs`: accepted.
 
 **What this is, stated precisely.** This is the first external verification
@@ -40,21 +40,22 @@ the vector pass, which is a real and useful data point.
 from this project, not a separate verifier. It therefore does not establish an
 INDEPENDENT implementation agreeing on the vectors. A COSA-authored clean-room
 verifier that does not wrap ours would be a further such data point. The
-independence milestone itself has now arrived by another route: an externally
-authored from-spec Rust verifier whose `implementation` names a verifier that does
-not depend on this repository's code, agreeing on all 162 published vectors, is
-recorded in the Rust cleanroom entry below.
+external-implementation milestone has now arrived by another route: a Rust
+verifier authored outside this project is rebuilt from pinned public source and
+passes the current evaluator's conformance and hostility campaigns. Its strict
+construction-independence status remains separately and explicitly unresolved.
 
-### Rust cleanroom verifier / J Diesel NY — 2026-07-07 (the independence milestone)
+### Rust verifier / J Diesel NY — 2026-07-07 (external implementation milestone)
 
 - Directory: [`rust-cleanroom/`](rust-cleanroom/)
 - Verifier: `ext:verifier:emilia-cleanroom-rust` (J Diesel NY), key_id
   `ep:external-verifier-key:sha256:87c8c5029475f53a`
 - Procedure: `ep-conformance-own-implementation`
-- Result: `verified`, all 16 suites, 162 of 162 vectors pass, zero divergences,
-  including `same_party_evidence_presented_as_independent` correctly rejected.
-- Implementation: `emilia-rust-verifier 0.1.0 (cleanroom, Rust)` — a from-scratch
-  Rust verifier whose source is public at
+- Historical signed result: `verified`, all 16 suites, 162 of 162 vectors pass,
+  zero divergences, including `same_party_evidence_presented_as_independent`
+  correctly rejected; this remains bound to the statement's 162-vector input set.
+- Implementation: `emilia-rust-verifier 0.1.0 (cleanroom, Rust)` — described by
+  its author as a from-scratch Rust verifier, with source public at
   [`jdieselny/ecr-wg/rust/ep-cleanroom-verifier`](https://github.com/jdieselny/ecr-wg/tree/main/rust/ep-cleanroom-verifier),
   built on `ed25519-dalek`/`p256`/`rsa`/`sha2` with its own RFC 8785 JCS and
   RFC 3161 DER/CMS handling. It does not wrap or import any package from this
@@ -75,9 +76,9 @@ of this signed 162-vector statement. The later commit also passes the pinned
 differential-hostility campaign: 353 structured attacks and 6 raw-parser
 refusals with zero divergences. It remains external interoperability and
 hostility evidence, not strict clean-room acceptance, until a separate attestor
-signs the corrected GUV'NOR manifest under an independently pinned key. That
-result will be recorded separately rather than retroactively changing this
-statement.
+signs a current-schema manifest under an independently pinned key. That result
+requires a new aggregate evidence schema and will be recorded separately rather
+than retroactively changing this statement.
 
 **What remains attestation.** That the implementation was written only from the
 Internet-Drafts and the vector schemas, without reading this repository's

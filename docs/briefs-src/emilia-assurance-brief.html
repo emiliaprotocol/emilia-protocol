@@ -353,14 +353,13 @@
       <li><b>Open standard, individual drafts.</b> EMILIA Protocol is an open, Apache-2.0
       specification. Its Internet-Drafts are active on the IETF's individual stream: drafts by
       their authors, not IETF-endorsed and not adopted standards.</li>
-      <li><b>Reference verifiers.</b> Verifiers exist in JavaScript, Python, and Go, maintained
-      in one repository. Cross-language agreement is a consistency check, not full independence;
-      an independent clean-room reimplementation is underway.</li>
-      <li><b>External reproduction, not independent implementation.</b> An outside party (COSA)
-      ran the published conformance harness against EMILIA's exact published vector files and
-      reproduced all 158 vectors at a pinned commit — the first outside party to run the harness.
-      This confirms the published bytes reproduce elsewhere; it is not an independent
-      reimplementation, which remains the future evidence noted above.</li>
+      <li><b>Reference verifiers.</b> JavaScript, Python, and Go same-team ports agree across
+      16 suites and 163 vectors. This is cross-language consistency evidence, not three
+      independent implementations.</li>
+      <li><b>External implementation, precise boundary.</b> CI rebuilds an externally authored
+      Rust verifier from a pinned public commit and tree. It passes all 163 current vectors and
+      359 hostile cases. The construction statement is implementer-signed and predates the
+      current source pin, so strict independently attested clean-room acceptance remains zero.</li>
       <li><b>What verification proves.</b> Signature validity, action binding, tier crediting,
       and log integrity — not the business correctness of an authorized action. Principal
       identities are as pinned by the deployer, not independently verified.</li>

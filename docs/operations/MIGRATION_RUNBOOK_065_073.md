@@ -30,7 +30,7 @@ Before starting:
 2. Confirm you have `supabase db push` access or direct Postgres access with the `service_role` key.
 3. Verify the current migration head matches 064 (`key_rotation`): `SELECT filename FROM supabase_migrations.schema_migrations ORDER BY filename DESC LIMIT 1;`
 4. Ensure load is at minimum (ideally maintenance window or off-peak hours) before applying 069–073.
-5. Run the full test suite against the current `main` to confirm baseline: `npm test` → all 3277 passing.
+5. Run the full test suite against the current `main` to confirm baseline: `npm test` → all 5,336 passing.
 
 ---
 
@@ -293,7 +293,7 @@ After all 9 migrations are applied, run the full protocol test suite:
 
 ```bash
 npm test
-# Expected: 3277 passing, 0 failing
+# Expected: 5,336 passing, 0 failing
 ```
 
 Then run the smoke test sequence:

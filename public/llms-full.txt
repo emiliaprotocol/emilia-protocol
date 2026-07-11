@@ -121,9 +121,9 @@ or a fraud loss (treasury/payments, benefits integrity, SOX-scoped controls).
   theorems, Alloy) cover the core state machine and quorum only. The three
   reference verifiers (JavaScript, Python, Go) share one repository — a
   consistency check, not independent implementations; an externally
-  authored from-spec Rust implementation (source public) agrees on all 162
-  published vectors. Construction independence is the implementer's
-  attestation, auditable in the public source. EMILIA is not an auditor,
+  authored Rust implementation is rebuilt from a pinned public source tree and
+  passes all 163 current vectors plus 359 hostile cases. Strict independently
+  attested clean-room acceptance remains zero. EMILIA is not an auditor,
   regulator, or insurer.
 
 ## The standards cluster (active INDIVIDUAL Internet-Drafts, not IETF-adopted)

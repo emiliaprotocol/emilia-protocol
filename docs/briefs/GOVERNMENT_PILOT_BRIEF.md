@@ -1,7 +1,7 @@
 # Government Pilot Brief
 
 ## What's new (June 2026)
-- **3 languages / 8 conformance suites**, independently re-run and confirmed by an outside implementer this month — audit evidence a relying party can check without trusting the vendor.
+- **16 suites / 163 vectors across three same-team language ports**, plus a separately authored Rust verifier rebuilt from pinned public source and tested against 359 hostile cases — external interoperability evidence a relying party can reproduce without trusting the vendor.
 - **Composition (EP-AEC):** EP composes delegation + policy-permit + human-authorization receipts into one offline ALLOW/DENY — the convergence layer for the emerging IETF agent-authorization standards, not one of a dozen competing formats.
 - **Regulated-domain reach:** EU AI Act Article 14 alignment plus a healthcare profile (the mandated independent double-check, PHI-free receipts) extend the same primitive across oversight regimes.
 
@@ -36,7 +36,7 @@ Government fraud and unauthorized action often occur inside approved-looking wor
 - 329 complete chains executed with zero correctness violations
 - 11/11 post-load-test DB integrity checks passing
 - Atomic transactions: all endpoints use single-roundtrip atomic RPCs, no partial state; handshake p95 87ms at 500 concurrent users
-- 4,689 automated tests across 226 files; Stryker.js mutation testing ≥80% kill threshold; 19 fast-check property-based tests
+- 5,336 automated tests across 264 files; Stryker.js mutation gate ≥90%; property-based and linearizability testing included
 - 85 red team cases documented; 31 security findings identified and remediated
 - 26 TLA+ safety properties verified (TLC 2.19, 413,137 states, 0 errors); 35 Alloy facts + 22 assertions verified (Alloy 6.0.0, 0 counterexamples) — both enforced in CI on every change
 - Zero duplicate consumptions, zero orphaned bindings, zero missing events
