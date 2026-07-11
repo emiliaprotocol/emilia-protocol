@@ -61,8 +61,22 @@ EP-TIMESTAMP-PROOF-v1          — 13 vectors   JavaScript ✓   Python ✓   Go
 
 ✅ 163 vectors · 16 suites — JavaScript, Python, and Go verifiers agree.
    (One team's three-language ports in one repository: a consistency check,
-    not independent reimplementations. Independent implementations remain future interoperability evidence.)
+    not independent reimplementations.)
 ```
+
+An externally authored Rust verifier is evaluated in a separate CI lane from
+the immutable source commit pinned in
+[`conformance/external/rust-cleanroom-jdieselny.v1.json`](conformance/external/rust-cleanroom-jdieselny.v1.json).
+It passes the current 163-vector suite. That is external interoperability
+evidence, but not yet strict clean-room acceptance: the construction claim is
+signed by the implementation organization rather than a separate attestor, and
+the differential-hostility campaign against that pinned public commit records
+15 unresolved findings (one duplicate-root parse acceptance, two raw-parser
+crashes, and twelve malformed canonicalization inputs that panic the runner).
+CI uploads both results and refuses to let the passing conformance count conceal
+the failing hostility result. A newer third-party-attested GUV'NOR result is not
+counted here until its corrected manifest and public source commit are available
+to this evaluator and the executable has faced the same hostility campaign.
 
 The three cross-language verifiers agree across the core artifact surface:
 not only Ed25519 authorization **receipts**, but Class-A WebAuthn device

@@ -1,0 +1,28 @@
+{
+  "@version": "EP-EXTERNAL-IMPLEMENTATION-PIN-v1",
+  "implementation": {
+    "implementation_id": "jdieselny-rust-cleanroom",
+    "organization": "J Diesel NY",
+    "language": "Rust",
+    "version": "0.1.0",
+    "license_spdx": "Apache-2.0"
+  },
+  "source": {
+    "repository": "https://github.com/jdieselny/ecr-wg",
+    "commit": "80d191dc2b770a3d54e09eede86ffdea26b029e0",
+    "tree_path": "rust/ep-cleanroom-verifier",
+    "tree_oid": "fcdc8f426b8eb0638e884c8daa1bb5622a8484db"
+  },
+  "build": {
+    "rustc": "1.94.1",
+    "cargo_locked": true,
+    "binary": "target/release/conformance"
+  },
+  "construction_evidence": {
+    "status": "implementation_organization_signed_legacy_statement",
+    "statement": "examples/external-verification/statements/rust-cleanroom/statement.json",
+    "public_key": "examples/external-verification/statements/rust-cleanroom/public.key",
+    "third_party_attestation": false,
+    "strict_clean_room_acceptance": false
+  }
+}

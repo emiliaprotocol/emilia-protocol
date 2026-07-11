@@ -375,8 +375,8 @@ jobs:
   # Proves the JavaScript, Python, and Go reference verifiers all agree with
   # each other and the expected outcome on the canonical EP vectors. These are
   # one team's ports in one repository: a consistency check, not independent
-  # clean-room implementations. Independent implementations remain future
-  # interoperability evidence.
+  # clean-room implementations. The separately pinned Rust implementation runs
+  # in the external-rust-evidence job below.
   conformance:
     runs-on: ubuntu-latest
     steps:
@@ -397,6 +397,75 @@ jobs:
         run: npm run check:conformance-docs
       - name: Class-A signoff conformance (EP-SIGNOFF-v1, Node + Web Crypto)
         run: node conformance/run-signoffs.mjs
+
+  # ── Job 11c: Pinned external Rust implementation evidence ────────
+  # Rebuilds an externally authored verifier from an immutable source tree and
+  # evaluates it with this repository's current vectors. Hostility remains a
+  # recorded, explicitly non-accepting result until the upstream defects close;
+  # the job fails if that known result is hidden, omitted, or changes silently.
+  external-rust-evidence:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out EMILIA evaluator
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - name: Check out pinned external implementation
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          repository: jdieselny/ecr-wg
+          ref: 80d191dc2b770a3d54e09eede86ffdea26b029e0
+          path: .external/ecr-wg
+          persist-credentials: false
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: 20
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.94.1 --profile minimal --no-self-update
+      - name: Rebuild external verifier from Cargo.lock
+        run: >-
+          cargo +1.94.1 build --release --locked
+          --manifest-path .external/ecr-wg/rust/ep-cleanroom-verifier/Cargo.toml
+          --bin conformance
+      - name: Evaluate current byte-pinned conformance bundle
+        run: |
+          mkdir -p test-results
+          node scripts/evaluate-external-implementation.mjs \
+            --pin conformance/external/rust-cleanroom-jdieselny.v1.json \
+            --source .external/ecr-wg \
+            --runner .external/ecr-wg/rust/ep-cleanroom-verifier/target/release/conformance \
+            --emit test-results/external-rust-conformance.json
+      - name: Prepare suite-dispatch hostility runner
+        run: |
+          node --input-type=module -e \
+            'import fs from "node:fs"; fs.writeFileSync(process.argv[1], `${JSON.stringify({ runners: [{ name: "rust-cleanroom-jdieselny", command: process.argv[2], args: [], cwd: ".", dispatch: "suite" }] }, null, 2)}\n`);' \
+            test-results/external-rust-runner.json \
+            "$GITHUB_WORKSPACE/.external/ecr-wg/rust/ep-cleanroom-verifier/target/release/conformance"
+      - name: Run external differential hostility campaign
+        id: external_hostility
+        continue-on-error: true
+        run: >-
+          node scripts/differential-hostility.mjs
+          --external-runners test-results/external-rust-runner.json
+          --emit test-results/external-rust-hostility.json
+      - name: Enforce explicit non-accepting baseline
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const report = JSON.parse(fs.readFileSync("test-results/external-rust-hostility.json", "utf8"));
+            if (report.status !== "fail" || report.divergences.length !== 15) throw new Error("external hostility baseline changed; review and update the pin instead of hiding it");
+            if (!report.divergences.some((finding) => finding.id === "duplicate-root-member")) throw new Error("duplicate-root refusal finding disappeared without a reviewed pin update");
+            if (report.divergences.filter((finding) => finding.reason === "runner_crash").length !== 14) throw new Error("external panic baseline changed; review the exact result");
+          '
+      - name: Upload external evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: external-rust-evidence
+          path: |
+            test-results/external-rust-conformance.json
+            test-results/external-rust-hostility.json
+          retention-days: 90
 
   # ── langchain-emilia (Python) — executor-side guard for LangChain tools ──
   langchain-emilia:

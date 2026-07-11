@@ -68,11 +68,22 @@ and the maintainer cloned the public source, built it with a local Rust
 toolchain, and re-ran all 16 suites: 162/162 with zero divergences, measured
 independently of the numbers in the statement.
 
+The same immutable external source tree has since been rebuilt by the current
+evaluator and passes the expanded 163-vector bundle. That newer result is an
+evaluator-generated CI artifact, not a rewrite of this signed 162-vector
+statement. The stronger differential-hostility campaign is not green: it finds
+one accepted duplicate-root JSON member, two raw-parser crashes, and twelve
+malformed canonicalization inputs that panic the runner. The pinned public
+implementation therefore remains external interoperability evidence, not
+strict-clean-room accepted evidence. A newer third-party-attested GUV'NOR run is
+pending its corrected signed manifest and public source commit; it will be
+recorded separately rather than retroactively changing this statement.
+
 **What remains attestation.** That the implementation was written only from the
 Internet-Drafts and the vector schemas, without reading this repository's
 verifier code, is the implementer's stated construction process. Publishing the
 source makes that claim auditable by anyone; no output can prove it. Stated
 precisely: one implementation set from this repository (JavaScript, Python, Go,
 one team) and one externally authored from-spec Rust implementation agree on all
-162 published vectors.
-
+163 current vectors; the original signed statement remains bound to its
+162-vector input set.
