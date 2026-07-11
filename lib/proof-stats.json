@@ -1,10 +1,9 @@
 {
-  "generatedAt": "2026-07-03T00:17:29.611Z",
+  "generatedAt": "2026-07-11T04:22:35.868Z",
   "tests": {
-    "passed": 4821,
-    "skipped": 29,
-    "total": 4850,
-    "files": 234
+    "total": 5365,
+    "files": 264,
+    "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
   },
   "tla": {
     "invariants": 26,

@@ -27,10 +27,11 @@ describe('homepage category contract', () => {
     const page = read('app/page.js');
     const proofBlock = read('components/ProofBlock.js');
 
-    expect(proofStats.tests.passed).toBeGreaterThan(4500);
+    expect(proofStats.tests.total).toBeGreaterThan(4500);
     expect(proofStats.tests.files).toBeGreaterThan(200);
     expect(proofStats.tla.invariants).toBe(26);
     expect(proofStats.alloy.facts).toBe(35);
+    expect(page).not.toContain('TESTS_PASSED');
     expect(proofStats.redTeamCases).toBe(85);
 
     expect(page).toContain("proofStats from '@/lib/proof-stats.json'");

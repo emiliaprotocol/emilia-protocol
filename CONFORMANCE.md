@@ -77,6 +77,15 @@ graphs, with zero divergences. CI requires both results to pass. A separate
 third-party-attested GUV'NOR result is not counted until its corrected manifest
 and independently pinned attestor key are checked in and re-evaluated.
 
+The CI job `aggregate-conformance-case` waits for both the same-team manifest
+and the external Rust campaign, revalidates their source pins, suite hashes,
+hostility corpus, evaluator commit, and construction-attestation boundary, then
+emits and GitHub-attests `EP-CONFORMANCE-CASE-v1`. The current case reports three
+same-team ports, one externally authored implementation passing 163 vectors and
+359 hostile cases, and zero strict independently attested clean-room
+acceptances. That counter can change only when checked-in evidence passes the
+strict intake; prose cannot promote it.
+
 The three cross-language verifiers agree across the core artifact surface:
 not only Ed25519 authorization **receipts**, but Class-A WebAuthn device
 **signoffs**, **EP-QUORUM-v1 multi-party approval** (M-of-N / ordered — the

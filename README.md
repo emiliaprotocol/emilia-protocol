@@ -135,7 +135,7 @@ EMILIA is an open standard, not a product moat. The core is Apache-2.0 and track
 | **MCP registries** | Official MCP registry · Glama (Grade A, Official badge) · Smithery |
 | **License** | Apache-2.0 |
 
-Three cross-language implementations (JS / Python / Go) proven to agree — a consistency check across one team's ports, not independent reimplementations. An externally authored from-spec Rust implementation (source public) separately agrees on all 162 vectors it was run against (the suite is now 163). See [CONFORMANCE.md](CONFORMANCE.md), or verify a receipt yourself at [emiliaprotocol.ai/verify](https://www.emiliaprotocol.ai/verify).
+Three same-team reference ports (JS / Python / Go) agree across all 16 suites and 163 vectors. Separately, an externally authored Rust implementation rebuilt from a pinned public source tree passes the same 163 vectors and a 359-case hostility campaign. That is external interoperability evidence, not strict clean-room construction acceptance; the aggregate CI case records the strict acceptance count as zero pending independent attestation. See [CONFORMANCE.md](CONFORMANCE.md), or verify a receipt yourself at [emiliaprotocol.ai/verify](https://www.emiliaprotocol.ai/verify).
 
 ---
 
@@ -158,7 +158,7 @@ Eye observes. Handshake verifies. Signoff owns. Commit seals.
 
 | Metric | Value |
 |---|---|
-| Automated tests | 4,821 across 234 files |
+| Automated test cases | 5,365 across 264 files; all platform-applicable cases must pass |
 | TLA+ safety properties | 26 verified (T1–T26), 0 errors — see [PROOF_STATUS.md](formal/PROOF_STATUS.md) |
 | Alloy relational assertions | 35 facts + 22 assertions across two models — verified in CI |
 | Red-team cases cataloged | 85 — [RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |

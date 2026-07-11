@@ -49,10 +49,10 @@ inclusion proof reconstructs the claimed root.
   output supports a decision, it never concludes one.
 
 Cross-implementation note: the JavaScript, Python, and Go verifiers live in one
-repository — a consistency check, not independent implementations; an
-externally authored from-spec Rust implementation (source public) agrees on all
-162 published vectors, with construction independence the implementer's
-attestation, auditable in the public source. The EP receipt
+repository — a consistency check, not independent implementations. A separately
+authored Rust verifier is rebuilt from a pinned public commit and tree and passes
+all 163 current vectors plus 359 hostile cases. Strict independently attested
+construction acceptance remains zero. The EP receipt
 formats are specified in active INDIVIDUAL Internet-Drafts, not IETF-adopted or
 endorsed.
 

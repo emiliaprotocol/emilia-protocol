@@ -48,10 +48,10 @@ const scittChecks = [
 ];
 
 const proofStats = [
-  [proofStatsData.tests.passed.toLocaleString('en-US'), 'automated tests'],
+  [proofStatsData.tests.total.toLocaleString('en-US'), 'automated test cases'],
   ['26', 'TLA+ safety properties'],
   ['35 / 22', 'Alloy facts / assertions'],
-  ['9', 'cross-language conformance suites'],
+  ['16', 'cross-language conformance suites'],
 ];
 
 const capabilityCards = [

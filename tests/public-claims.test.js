@@ -530,7 +530,7 @@ describe('Crypto / ZK claims', () => {
 });
 
 // ── 8. Test-count freshness (README ↔ proof-stats) ──────────────────────────
-// Regression guard for finding #1: the README "Automated tests | N across M
+// Regression guard for finding #1: the README "Automated test cases | N across M
 // files" line drifted from ground truth. Bind it to lib/proof-stats.json so it
 // can never silently go stale again — regenerate with
 // `node scripts/generate-proof-stats.mjs`.
@@ -539,20 +539,20 @@ describe('README test-count freshness', () => {
   const readme = readFile('README.md');
   const proofStats = JSON.parse(readFile('lib/proof-stats.json'));
 
-  it('"Automated tests | N across M files" matches lib/proof-stats.json', () => {
-    // Parse the Proof-points row: | Automated tests | 4,583 across 216 files |
+  it('"Automated test cases | N across M files" matches lib/proof-stats.json', () => {
+    // Parse the Proof-points row: | Automated test cases | 5,365 across 264 files |
     const match = readme.match(
-      /Automated tests\s*\|\s*([\d,]+)\s+across\s+([\d,]+)\s+files/i
+      /Automated test cases\s*\|\s*([\d,]+)\s+across\s+([\d,]+)\s+files/i
     );
     expect(
       match,
-      'README must contain an "Automated tests | N across M files" claim'
+      'README must contain an "Automated test cases | N across M files" claim'
     ).not.toBeNull();
 
     const claimedTests = Number(match[1].replace(/,/g, ''));
     const claimedFiles = Number(match[2].replace(/,/g, ''));
 
-    expect(claimedTests).toBe(proofStats.tests.passed);
+    expect(claimedTests).toBe(proofStats.tests.total);
     expect(claimedFiles).toBe(proofStats.tests.files);
   });
 });

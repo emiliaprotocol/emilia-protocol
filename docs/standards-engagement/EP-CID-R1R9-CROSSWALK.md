@@ -23,9 +23,10 @@ Three authorities, three lanes, kept distinct here on purpose:
 Honesty carried through, per the registry's own discipline: the JavaScript,
 Python, and Go reference verifiers live in one repository and are a
 cross-language consistency check, **not** independent implementations. An
-externally authored from-spec Rust implementation (source public) now agrees on
-all 162 vectors it was run against (the tri-language suite is now 163); construction independence is the implementer's
-attestation, auditable in the public source. That external agreement is what the
+externally authored Rust implementation (source public) is rebuilt from a pinned
+commit and tree and passes all 163 current vectors plus 359 hostile cases. Its
+legacy construction statement is implementer-signed, so strict independently
+attested clean-room acceptance remains zero. That external agreement is what the
 earlier local-harness caveat was waiting on: the single-repository JS/Py/Go set
 remains a consistency check, and the cross-implementation agreement now comes
 from the external Rust verifier.

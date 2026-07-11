@@ -19,21 +19,21 @@ import proofStats from '@/lib/proof-stats.json';
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Stats — independently verifiable in the repo:
-//   tests passing (per lib/proof-stats.json) — `node scripts/generate-proof-stats.mjs`
+//   test cases (per lib/proof-stats.json) — `node scripts/generate-proof-stats.mjs`
 //   26 TLA+ invariants verified — formal/PROOF_STATUS.md (T1–T26)
 //   35 Alloy facts — formal/Alloy/EP.als
 //   85 red team cases — docs/conformance/RED_TEAM_CASES.md
 //   Apache 2.0 — LICENSE
-const TESTS_PASSED = Number(proofStats.tests?.passed || 0).toLocaleString('en-US');
+const TEST_CASES = Number(proofStats.tests?.total || 0).toLocaleString('en-US');
 const TEST_FILES = Number(proofStats.tests?.files || 0).toLocaleString('en-US');
 const TLA_INVARIANTS = String(proofStats.tla?.invariants || 26);
 const ALLOY_FACTS = String(proofStats.alloy?.facts || 35);
 
 const STATS = [
-  { value: TESTS_PASSED, label: 'Automated Tests',  sub: `passing across ${TEST_FILES} files`, accent: color.t1 },
+  { value: TEST_CASES, label: 'Automated Test Cases', sub: `${TEST_FILES} files; applicable cases pass`, accent: color.t1 },
   { value: TLA_INVARIANTS, label: 'TLA+ Theorems',  sub: 'TLC 2.19, zero errors',             accent: color.blue },
   { value: ALLOY_FACTS, label: 'Alloy Facts',       sub: '22 assertions verified',            accent: color.gold },
-  { value: '3',         label: 'Cross-language Verifiers', sub: 'JS · Python · Go, proven to agree', accent: color.t1 },
+  { value: '3 + 1',     label: 'Verifier Evidence', sub: '3 same-team ports + pinned external Rust', accent: color.t1 },
   { value: 'Apache 2.0', label: 'License',          sub: 'Open specification',            accent: color.green },
 ];
 
@@ -207,7 +207,7 @@ export default function HomePage() {
                 display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 52,
                 paddingTop: 28, borderTop: `1px solid ${color.border}`,
               }}>
-                {['Apache-2.0', 'JS/Python/Go verifiers', 'SCITT profile', 'CF-1 conformance', `${TESTS_PASSED} tests`].map((chip) => (
+                {['Apache-2.0', 'JS/Python/Go verifiers', 'SCITT profile', 'CF-1 conformance', `${TEST_CASES} test cases`].map((chip) => (
                   <span key={chip} style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, letterSpacing: 0.5, border: `1px solid ${color.border}`, borderRadius: 999, padding: '5px 11px' }}>
                     {chip}
                   </span>
@@ -824,7 +824,7 @@ export default function HomePage() {
           color: 'rgba(255,255,255,0.22)', letterSpacing: 1.5, textTransform: 'uppercase',
         }}>
           <span>Compliance: NIST AI RMF · EU AI ACT</span>
-          <span>Tests: {TESTS_PASSED} passing · 0 failing</span>
+          <span>Test cases: {TEST_CASES} · all applicable pass</span>
           <span>Formal verification: {TLA_INVARIANTS} theorems · 0 errors</span>
         </div>
       </section>

@@ -1,7 +1,7 @@
 # EP Cloud / Enterprise / Vertical Packs: Commercial Brief
 
 ## What's new (June 2026)
-- **3 languages / 8 conformance suites:** JavaScript, Python, and Go verifiers agree on a public adversarial conformance suite — independently re-run and confirmed by an outside implementer this month (the first external reliance event).
+- **16 suites / 163 vectors:** JavaScript, Python, and Go same-team ports agree on the public suite; a separately authored Rust verifier rebuilt from pinned public source passes it plus 359 hostile cases. Strict independently attested construction acceptance remains pending.
 - **Composition (EP-AEC):** EP now composes delegation, policy-permit, and human-authorization receipts into one offline ALLOW/DENY — the convergence layer for the emerging IETF agent-authorization standards, not one of a dozen competing formats. Strong basis for vertical packs that combine a policy gate with a named-human gate.
 - **Regulated-domain reach:** EU AI Act Article 14 alignment plus a healthcare profile (mandated double-check, PHI-free) extend the same primitive across verticals.
 

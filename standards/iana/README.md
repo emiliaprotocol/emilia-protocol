@@ -112,10 +112,10 @@ registry, not IANA's.
   IETF-adopted or endorsed**; "posted" means accepted and published on the
   datatracker, nothing more.
 - Reference verifiers are **JavaScript, Python, and Go in one repository — a
-  consistency check, not independent implementations; an externally
-  authored from-spec Rust implementation (source public) agrees on all 162
-  published vectors, with construction independence the implementer's
-  attestation, auditable in the public source**.
+  consistency check, not independent implementations. A separately authored
+  Rust verifier is rebuilt from a pinned public commit and tree and passes all
+  163 current vectors plus 359 hostile cases. Strict independently attested
+  construction acceptance remains zero**.
 - Formal models (TLA+/Alloy) cover the core state machine and quorum, **not**
   WebAuthn binding or log checkpoints.
 - Verification proves signature, binding, and log integrity — **never

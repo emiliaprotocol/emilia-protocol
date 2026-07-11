@@ -77,9 +77,9 @@ named-human authorization apex those layers reference but do not produce.
 
 ## The standards posture
 
-EP stakes this ground openly: published Apache-2.0 standard, IETF Internet-Drafts (receipts, quorum,
-enforcement-point, evidence-chain, evidence-record, architecture), three independent cross-language
-verifiers, formal models. When harmonized standards and implementing acts are written for the
+EP stakes this ground openly: published Apache-2.0 standard, individual IETF Internet-Drafts (receipts, quorum,
+enforcement-point, evidence-chain, evidence-record, architecture), three same-team language ports over
+16 suites / 163 vectors, a pinned external Rust verifier over the same suite plus 359 hostile cases, and formal models with explicit scope. When harmonized standards and implementing acts are written for the
 requirements above, the intent is that EP is the obvious, already-running reference — not a proposal.
 
 *See also: `docs/compliance/HUMAN_CONTROL_CROSSWALK.md` (defense/autonomy), `docs/strategy/AGENT-AUTHORIZATION-LANDSCAPE-2026.md` (competitive/IETF field map), `PIPs/PIP-013` (human-oversight), `PIPs/PIP-014` (grid.curtailment).*

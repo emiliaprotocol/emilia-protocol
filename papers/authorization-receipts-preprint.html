@@ -172,7 +172,6 @@
   </style>
 </head>
 <body>
-
 <nav id="TOC" role="doc-toc">
 <ul>
 <li><a
@@ -242,30 +241,28 @@ window; the enforcement point consumes the authorization at most once;
 and the receipt carries its own Merkle inclusion proof against a signed
 log checkpoint, so a relying party can verify it with no network access
 to the operator, the log, or any API. The primary contribution is a
-symbolic-security analysis: two Tamarin models, under a Dolev-Yao
-attacker who controls the network and may request honest human
-signatures over arbitrary actions, machine-check the receipt core and a
-2-of-2 quorum instance. In these models signature validity is a derived
-fact rather than an axiom. The verified lemmas establish that acceptance
-implies a prior user-verified signature over exactly the accepted
-action, that no honest signature can be transplanted across actions,
-that one-time consumption is what restores injective acceptance, and
-that a satisfied quorum requires two distinct user-verified signatures
-over the same action bound to the same initiator with no self-approval.
-We report the falsification results that make the checks load-bearing:
-the prover finds a replay when the consumption check is removed, and an
-earlier quorum revision was falsified until the initiator was bound into
-the signed context. We state the scope of the symbolic analysis exactly:
-two separate models, an explicit exclusion list, and the full
-composition left as future work. Complementary TLA+ (26 invariants over
-413,137 states) and Alloy relational models cover the surrounding state
-machine. Around this analyzed core we describe a host-agnostic binding
-profile and a purpose-relative evidence-sufficiency layer with
-deterministic, replayable verdicts. Verification establishes signature,
-binding, and log-inclusion integrity as of commit time; it never
-establishes that the authorized action was correct, and we bound the
-residual risks, including presentation attacks, that cryptography
-narrows but does not remove.</p>
+three-model symbolic-security analysis under a Dolev-Yao attacker who
+controls the network and may request honest human signatures over
+arbitrary actions. Two focused Tamarin models machine-check the receipt
+core and a 2-of-2 quorum instance. A third model composes signed
+challenge, computed action identifier, profile/audience/initiator
+binding, two distinct user-verified approvals, scoped authority under an
+exact pinned registry view, revocation state, pinned issuer, one-time
+consumption, and execution in one trace. Ten strict composed lemmas
+verify; comparison lemmas without consumption and without exact
+registry-view binding are deliberately falsified with concrete replay
+and stale-view traces. Complementary TLA+ (26 invariants over 413,137
+states) and Alloy relational models cover the surrounding state machine.
+We state the exclusions exactly: WebAuthn internals, canonical parsers,
+policy authorship and amount arithmetic, clock freshness,
+transparency-log completeness, collusion, and downstream exactly-once
+effects are not proven by the symbolic model. Around this analyzed core
+we describe a host-agnostic binding profile and a purpose-relative
+evidence-sufficiency layer with deterministic, replayable verdicts.
+Verification establishes signature, binding, and log-inclusion integrity
+as of commit time; it never establishes that the authorized action was
+correct, and we bound the residual risks, including presentation
+attacks, that cryptography narrows but does not remove.</p>
 <hr />
 <h2 id="introduction">1. Introduction</h2>
 <h3 id="the-testimony-versus-evidence-problem">1.1 The
@@ -326,23 +323,20 @@ support the judgments of such parties and conclude nothing on their
 own.</p>
 <h3 id="contributions">1.3 Contributions</h3>
 <ul>
-<li><strong>A symbolic-security analysis of the core construction
-(Section 7), the paper’s primary contribution.</strong> Two Tamarin
-models, in which “the signature verifies” is a derived fact and not an
-axiom, machine-check the receipt core and a 2-of-2 quorum instance
-against a Dolev-Yao attacker who controls the network and may obtain
-honest signatures over arbitrary actions of its choice. The verified
-lemmas are: acceptance is gated on a prior user-verification event and
-signature over exactly the accepted action (authenticity); no honest
-signature can be transplanted onto a different action (no replay across
-actions); one-time consumption is exactly what restores injective
-acceptance, demonstrated by the prover falsifying injectivity when the
-check is removed; and, for quorum, that commitment requires two distinct
-user-verified signatures over the same action bound to the same
-initiator, that the initiator cannot self-approve, and that no single
-signer fills the quorum. We report the falsification-then-fix history
-that makes the bindings load-bearing, and we bound the scope
-exactly.</li>
+<li><strong>A three-model symbolic-security analysis (Section 7), the
+paper’s primary contribution.</strong> Two focused Tamarin models, in
+which “the signature verifies” is a derived fact and not an axiom,
+machine-check the receipt core and a 2-of-2 quorum instance against a
+Dolev-Yao attacker who controls the network and may obtain honest
+signatures over arbitrary actions. A third model composes the acceptance
+path from challenge and computed action identifier through approvals,
+authority, exact registry view, revocation, issuer pinning, consumption,
+and execution. The strict lemmas establish exact-action authenticity, no
+cross-action/profile/audience replay, no initiator self-approval, no
+one-signer quorum, no issuer laundering, exact registry-view use, and
+injective execution under consumption. Deliberately weakened comparison
+lemmas produce concrete replay and stale-view traces. We report that
+falsification history and bound the model’s exclusions exactly.</li>
 <li><strong>The adversary model, and the argument that it is the
 interesting one (Section 2).</strong> A threat model for named-human
 authorization in which the party that renders the action, routes the
@@ -363,9 +357,10 @@ host-agnostic binding profile for carrying the evidence in other
 agent-action record formats without redefining it per host (Section 5),
 and a purpose-relative evidence-sufficiency layer with a closed verdict
 set and deterministic replay (Section 6).</li>
-<li>A cross-language conformance battery (16 suites, 158 vectors) whose
-JavaScript, Python, and Go verifiers agree, with the
-independent-implementation status stated precisely (Section 8).</li>
+<li>A cross-language conformance battery (16 suites, 163 vectors) whose
+JavaScript, Python, and Go same-team ports agree, plus a separately
+authored Rust verifier evaluated from pinned public source, with the
+independence boundary stated precisely (Section 8).</li>
 </ul>
 <h2 id="threat-model">2. Threat Model</h2>
 <p>Three adversarial settings drive the design. They are treated
@@ -867,25 +862,27 @@ protocol token naming sufficiency under the stated policy; it carries no
 legal meaning.</p>
 <h2 id="formal-analysis">7. Formal Analysis</h2>
 <p>The central formal contribution of this work is a symbolic-security
-analysis, under a Dolev-Yao attacker, of the receipt core and a 2-of-2
-quorum instance. We present that analysis first (Sections 7.1 through
-7.4), then the complementary state-machine and relational model checking
-that surrounds it (Section 7.5), and finally the discipline that keeps
-<em>specified</em> separate from <em>verified</em> (Section 7.6).</p>
+analysis, under a Dolev-Yao attacker, of the receipt core, a 2-of-2
+quorum instance, and their composed acceptance path through authority,
+registry view, revocation, consumption, and execution. We present that
+analysis first (Sections 7.1 through 7.4), then the complementary
+state-machine and relational model checking that surrounds it (Section
+7.5), and finally the discipline that keeps <em>specified</em> separate
+from <em>verified</em> (Section 7.6).</p>
 <h3 id="the-symbolic-model-and-its-attacker">7.1 The symbolic model and
 its attacker</h3>
-<p>The two Tamarin models are the first EP models in which “the
-signature verifies” is a <em>derived</em> fact rather than an axiom.
-Signatures are terms in Tamarin’s standard <code>signing</code>
-equational theory, <code>verify(sign(m, k), m, pk(k)) = true</code>, and
-the adversary is the standard Dolev-Yao network attacker: full control
-of the network, sees every message, may apply all function symbols, may
-extract a device key through an explicit compromise rule, and may
-additionally request an honest human to sign arbitrary actions of the
-attacker’s own choosing. The attacker’s ability to collect honest
-signatures over any actions it likes is what makes the
-no-replay-across-actions results meaningful: the prover must rule out
-repurposing any of those honest signatures onto a different action.</p>
+<p>The three Tamarin models are the EP models in which “the signature
+verifies” is a <em>derived</em> fact rather than an axiom. Signatures
+are terms in Tamarin’s standard <code>signing</code> equational theory,
+<code>verify(sign(m, k), m, pk(k)) = true</code>, and the adversary is
+the standard Dolev-Yao network attacker: full control of the network,
+sees every message, may apply all function symbols, may extract a device
+key through an explicit compromise rule, and may additionally request an
+honest human to sign arbitrary actions of the attacker’s own choosing.
+The attacker’s ability to collect honest signatures over any actions it
+likes is what makes the no-replay-across-actions results meaningful: the
+prover must rule out repurposing any of those honest signatures onto a
+different action.</p>
 <p>The interesting part is the adversary, not the tool. A symbolic
 analysis usually lets honest principals sign only what a correct
 protocol run dictates. Here the party running the protocol is untrusted
@@ -904,16 +901,16 @@ contribution is the security argument about them under this adversary,
 which is the adversary that the evidence-versus-testimony problem of
 Section 1 actually presents.</p>
 <p>The models were checked with tamarin-prover 1.10.0 (Maude 3.4), all
-well-formedness checks passing, each terminating in under a second. They
-are two <em>separate</em> models. <code>ep_receipt_core.spthy</code>
+well-formedness checks passing. <code>ep_receipt_core.spthy</code>
 analyzes a single user-verified signature, its acceptance, and one-time
 consumption. <code>ep_quorum_core.spthy</code> layers a 2-of-2 quorum on
-top of the same user-verification-gated signature discipline; it does
-not re-derive the single-signature core lemmas but assumes them and asks
-the next question about quorum composition. The full
-WebAuthn-plus-directory-plus-log-plus-quorum composition under one
-symbolic prover is explicitly not one of these models and is stated
-future work (Section 7.4).</p>
+top of the same user-verification-gated signature discipline.
+<code>ep_reliance_composed.spthy</code> then re-derives an abstract
+2-of-2 approval path together with challenge, action identifier, profile
+and audience, initiator, authority, exact registry view, revocation,
+issuer pinning, consumption, and execution. It does not model full
+WebAuthn internals, directory publication, or transparency-log
+mechanics; Section 7.4 states the exact composition and exclusions.</p>
 <h3
 id="receipt-core-verified-lemmas-and-the-consumption-falsification">7.2
 Receipt core: verified lemmas and the consumption falsification</h3>
@@ -1040,52 +1037,67 @@ falsification identified a load-bearing binding, and the model now shows
 that binding is what carries the property. This mirrors the core model’s
 consumption result exactly: a check the design depends on is shown to be
 depended upon.</p>
-<h3 id="the-exact-scope-of-the-symbolic-analysis">7.4 The exact scope of
-the symbolic analysis</h3>
-<p>The honest scope statement matters as much as the lemma list, and it
-is stated exactly rather than left to marketing judgment. The two models
-cover the receipt core and a 2-of-2 quorum instance. They do
-<strong>not</strong> model, and therefore prove nothing about:</p>
+<h3 id="composed-acceptance-path-and-the-exact-scope">7.4 Composed
+acceptance path and the exact scope</h3>
+<p>The third model, <code>ep_reliance_composed.spthy</code>, puts the
+following in one symbolic trace: a signed reliance challenge; a computed
+action identifier binding family and material fields; exact profile,
+audience, and initiator binding; two distinct user-verification-gated
+approvals; scoped authority under an exact pinned registry epoch and
+head; revocation state; a pinned receipt issuer; one-time consumption;
+and execution. Its machine-checked summary is:</p>
+<pre><code>executable_composed_reliance (exists-trace): verified (19 steps)
+execution_requires_full_composition (all-traces): verified (97 steps)
+caid_binds_family_and_material (all-traces): verified (2 steps)
+initiator_cannot_self_approve (all-traces): verified (4 steps)
+no_single_signer_fills_quorum (all-traces): verified (2 steps)
+no_issuer_laundering (all-traces): verified (781 steps)
+strict_registry_view_is_exact (all-traces): verified (25 steps)
+no_cross_action_profile_or_audience_replay (all-traces): verified (37 steps)
+execution_has_honest_approvals_or_prior_compromise (all-traces): verified (170 steps)
+injective_execution_with_consumption (all-traces): verified (2 steps)
+unchecked_composition_is_injective (all-traces): falsified - found trace (31 steps)
+unchecked_registry_view_is_current (all-traces): falsified - found trace (20 steps)</code></pre>
+<p>The two falsified lemmas are deliberately weakened comparisons.
+Without consumption, the prover produces a same-receipt replay. Without
+exact registry-head binding, it produces acceptance under a stale or
+equivocating authority view. The strict paths verify, demonstrating that
+both checks are load-bearing.</p>
+<p>The honest scope statement matters as much as the lemma list. Across
+the three models, the analysis does <strong>not</strong> model, and
+therefore proves nothing about:</p>
 <ul>
-<li>The <strong>approver directory</strong>, the <strong>Merkle receipt
-log</strong>, <strong>checkpoints</strong>, or <strong>inclusion
-proofs</strong>. Key pinning is a single out-of-band step; the directory
-protocol and its trust root are a later model’s job.</li>
+<li><strong>Approver-directory publication</strong>, <strong>Merkle-log
+mechanics</strong>, <strong>checkpoints</strong>, <strong>inclusion
+proofs</strong>, or transparency-log completeness. The composed model
+binds an exact pinned registry view as a symbolic value; it does not
+prove how that view was published or discovered.</li>
 <li><strong>WebAuthn internals</strong>, authenticator hardware, or
 clientDataJSON parsing. User verification is an atomic gating event: the
-model <em>assumes</em> the authenticator enforces user verification
-before releasing a signature. It does not prove WebAuthn.</li>
-<li><strong>Arbitrary k-of-n.</strong> The quorum model fixes the 2-of-2
+models assume the authenticator enforces user verification before
+releasing a signature. They do not prove WebAuthn.</li>
+<li><strong>Arbitrary k-of-n.</strong> The quorum path fixes the 2-of-2
 instance, the smallest case that exhibits distinctness and
 self-approval. The parametric k-of-n statement is not proven.</li>
 <li><strong>Collusion, coercion, and one-human-many-identities.</strong>
 Separation of duties defeats unilateral self-approval and guarantees
-pairwise-distinct signing <em>identities</em>; it does not defeat two
-distinct enrolled humans who choose to collude, one operator who
-controls two enrolled credentials, or a coerced approver. The model
-proves the distinct-identity and no-self-approval property and nothing
-about whether two identities are two independent wills; the
-one-human-to-one-identity binding is the directory’s job, out of scope
-here.</li>
-<li>The <strong>full composition.</strong>
-<code>ep_receipt_core.spthy</code> and <code>ep_quorum_core.spthy</code>
-are two separate models. The quorum model assumes rather than re-derives
-the core lemmas, and both abstract key pinning as a single out-of-band
-step. The full WebAuthn-plus-directory-plus-log-plus-quorum composition
-under a single symbolic prover, with the directory trust root and the
-receipt log modeled rather than abstracted, remains future work and is
-proven by neither model individually nor by their conjunction.</li>
-<li><strong>Canonicalization</strong> (assumed to be injective encoding,
-the standard symbolic assumption; exercised instead by the
-canonicalization vector suite of Section 8) and <strong>any
-computational or algorithm-specific property</strong>. <code>sign</code>
-is the abstract Dolev-Yao signature with perfect cryptography; no claim
-is made about ES256, Ed25519, or ML-DSA as algorithms, and no
-computational reduction is offered.</li>
+pairwise-distinct signing <em>identities</em>; it does not establish
+that two identities are two independent wills.</li>
+<li><strong>Canonicalization, amount arithmetic, policy authorship, or
+wall-clock freshness.</strong> Canonical encoding is symbolic and
+injective; amount and policy semantics are abstract; no clock model is
+present. Those surfaces require parser, arithmetic, policy-governance,
+and freshness evidence outside this proof.</li>
+<li><strong>Computational or algorithm-specific security, and downstream
+exactly-once effects.</strong> <code>sign</code> is the abstract
+Dolev-Yao signature with perfect cryptography; no reduction is offered
+for ES256, Ed25519, or ML-DSA. Consumption is proven within the modeled
+acceptance path, not across an arbitrary downstream side-effect
+system.</li>
 </ul>
-<p>Symbolic verification also does not prove the current validity of any
-real receipt; it proves properties of the construction under the stated
-abstraction.</p>
+<p>Symbolic verification does not prove the current validity or business
+correctness of any real receipt; it proves properties of the
+construction under these abstractions.</p>
 <h3 id="complementary-state-machine-and-relational-model-checking">7.5
 Complementary state-machine and relational model checking</h3>
 <p>The symbolic analysis above is about the protocol under a network
@@ -1162,7 +1174,7 @@ deployment topologies or components it does not model.</p>
 Conformance</h2>
 <p>A reference implementation of the receipt, quorum, evidence-chain,
 binding, and evidence-graph layers is published under Apache-2.0,
-together with a conformance battery of 16 suites comprising 158 vectors.
+together with a conformance battery of 16 suites comprising 163 vectors.
 The receipt vectors are self-contained (each carries its own public key
 and document, requiring no server and no shared state), adversarial
 (reject vectors each pin one invariant: tampered bytes, wrong key,
@@ -1177,28 +1189,31 @@ battery, the offline-verification boundary, currency
 field validation, sparse-Merkle one-time-consumption transitions,
 witness cosignatures over a checkpoint head, and an independent RFC 3161
 timestamp-proof profile.</p>
-<p>The independent-implementation status is stated precisely, because it
-is the most tempting place to overclaim. The reference verifiers are
-JavaScript, Python, and Go in <em>one repository</em>: a cross-language
-consistency check that all 158 vectors agree across the three languages,
-not three independent implementations. A separate, third-party signed
-conformance statement exists and should be described exactly: an
-external party (COSA, at J Diesel NY) issued an Ed25519-signed
-<code>EP-EXTERNAL-VERIFICATION-STATEMENT-v1</code> recording that all
-158 vectors across all 16 suites verified against a pinned repository
-commit. That statement is external <em>reproduction</em>, not an
-independent implementation: its own recorded implementation string is
-“COSA Node (Python/emilia-verify),” meaning the run used our own
-<code>emilia-verify</code> package, and the statement carries an
-explicit limitation that its per-vector results are self-reported and
-only compared against each vector’s expected outcome. It is therefore
-evidence that a third party reproduced the published result against a
-pinned commit with our verifier, and no more than that. The genuinely
-independent, clean-room reimplementation (also COSA) that reimplements
-the receipt and quorum verification path directly from the specification
-is underway and not complete; its result will be reported either way. We
-do not upgrade the reproduction into an independent implementation, and
-neither should a reader.</p>
+<p>The implementation status is stated precisely, because it is the most
+tempting place to overclaim. The JavaScript, Python, and Go reference
+verifiers live in <em>one repository</em>: they are same-team ports
+whose agreement across all 163 current vectors is cross-language
+consistency evidence, not three independent implementations. A
+historical Ed25519-signed
+<code>EP-EXTERNAL-VERIFICATION-STATEMENT-v1</code> from COSA / J Diesel
+NY records external reproduction of 158 vectors against a pinned commit
+using this project’s own <code>emilia-verify</code> package; it remains
+exactly that historical reproduction result.</p>
+<p>Separately, a Rust verifier authored by J Diesel NY is rebuilt by CI
+from immutable public source commit
+<code>7faba36010e7590727bebbc5b9dcceee60539b9b</code> and tree
+<code>0553c5fa0a5c4b566703e0d8ef9864dc33e5176d</code>. The evaluator
+runs it over all 163 current vectors and a pinned hostility campaign of
+353 structured attacks plus 6 raw-parser refusals, with zero
+divergences. The aggregate conformance case binds both campaigns to the
+same runner bytes. This is external interoperability and
+parser-robustness evidence. Its construction statement is signed by the
+implementation organization and predates the pinned source, not by a
+distinct attestor over the current source; consequently
+<code>EP-CONFORMANCE-CASE-v1</code> structurally reports zero strict
+independently attested clean-room acceptances. We do not upgrade that
+evidence into a construction-independence claim, and neither should a
+reader.</p>
 <p>The evidence-graph layer ships with a test suite covering the
 fail-closed invariants of Section 6, including disclosure-independent
 graph identity, unbacked-edge poisoning, required-edge stripping,
@@ -1384,43 +1399,46 @@ replay that appears when consumption is dropped and the quorum break
 that appears when the initiator is not signed over, are the strongest
 evidence that these bindings are load-bearing rather than
 decorative.</p>
-<p>We have been equally deliberate about the boundary of the claims. The
-symbolic models cover the receipt core and a 2-of-2 quorum instance in
-two separate models, they exclude the directory, the log, WebAuthn
-internals, arbitrary k-of-n, collusion and coercion, and the full
-composition, and they leave that composition as future work. The
-complementary TLA+ and Alloy models cover the surrounding state machine
-with signatures assumed. The cross-language verifiers are a consistency
-check, not independence; the one third-party signed statement is
-external reproduction using our own verifier, with an independent
-clean-room reimplementation still in progress. Rendering fidelity is
-enforced by controls rather than mathematics. And verification,
-everywhere in this design, proves signature, binding, and log-inclusion
-integrity as of commit time, never that the authorized action was
-correct. Evidence of authorization is not a verdict on conduct. It is
-the input that lets whoever must reach such a verdict, an auditor, an
-insurer, a court, do so from artifacts rather than testimony, and that
-is the entire ambition of the design.</p>
+<p>We have been equally deliberate about the boundary of the claims. Two
+focused symbolic models cover the receipt core and a 2-of-2 quorum
+instance; a third composes challenge, action identifier, approvals,
+authority, exact registry view, revocation, issuer pinning, consumption,
+and execution. It still excludes WebAuthn internals, directory
+publication and log mechanics, arbitrary k-of-n, canonical parsing and
+amount arithmetic, policy authorship, clock freshness, collusion,
+coercion, and downstream effects. The complementary TLA+ and Alloy
+models cover the surrounding state machine with signatures assumed. The
+cross-language ports are a consistency check, while the pinned external
+Rust verifier supplies separately authored interoperability and
+hostility evidence; its construction statement is implementer-signed, so
+strict independently attested acceptance remains zero. Rendering
+fidelity is enforced by controls rather than mathematics. And
+verification, everywhere in this design, proves signature, binding, and
+log-inclusion integrity as of commit time, never that the authorized
+action was correct. Evidence of authorization is not a verdict on
+conduct. It is the input that lets whoever must reach such a verdict, an
+auditor, an insurer, a court, do so from artifacts rather than
+testimony, and that is the entire ambition of the design.</p>
 <hr />
 <h2 id="artifact-availability">Artifact Availability</h2>
 <p>The following are published under the Apache-2.0 license in the
-EMILIA Protocol repository: the two Tamarin symbolic models
-(<code>ep_receipt_core.spthy</code> and
-<code>ep_quorum_core.spthy</code>) with their model headers, verbatim
-tool output, falsification history, and re-run instructions; the TLA+
-and Alloy models with their checked configurations and a proof-status
+EMILIA Protocol repository: three Tamarin symbolic models
+(<code>ep_receipt_core.spthy</code>, <code>ep_quorum_core.spthy</code>,
+and <code>ep_reliance_composed.spthy</code>) with model headers,
+verbatim tool output, falsification history, and re-run instructions;
+the TLA+ and Alloy models with checked configurations and a proof-status
 ledger that keeps <em>specified</em> and <em>verified</em> separate; the
 reference implementation (receipt, quorum, evidence-chain, host-record
-binding, and evidence-graph layers, with the JavaScript, Python, and Go
-verifiers); the 16-suite / 158-vector conformance battery with
-deterministic regeneration scripts; the third-party
-external-verification statement and the turnkey harness that produced
-it; and the worked vectors referenced in this paper (binding,
-observed-absence, and evidence-graph). The construction is also
-specified, in engineering form, as individual Internet-Drafts via the
-IETF Datatracker (draft-schrock-ep-authorization-receipts and companion
-documents); Internet-Drafts are working documents and should be cited as
-work in progress.</p>
+binding, and evidence-graph layers, with JavaScript, Python, and Go
+same-team ports); the 16-suite / 163-vector conformance battery with
+deterministic regeneration scripts; the pinned external Rust source and
+evaluator; the 359-case hostility campaign; the aggregate conformance
+case; the historical third-party reproduction statement; and the worked
+vectors referenced in this paper. The construction is also specified, in
+engineering form, as individual Internet-Drafts via the IETF Datatracker
+(draft-schrock-ep-authorization-receipts and companion documents);
+Internet-Drafts are working documents and should be cited as work in
+progress.</p>
 <h2 id="references">References</h2>
 <ul>
 <li>I. Schrock, “Authorization Receipts for High-Risk Agent Actions,”

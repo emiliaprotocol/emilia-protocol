@@ -191,13 +191,17 @@ if (externalPath) {
     if (typeof runner?.name !== 'string' || typeof runner.command !== 'string' || !Array.isArray(runner.args || [])) {
       throw new Error('external runner config contains a malformed runner');
     }
+    if (!path.isAbsolute(runner.command)) throw new Error(`external runner ${runner.name} command must be absolute`);
+    const commandReal = fs.realpathSync(runner.command);
+    if (!fs.statSync(commandReal).isFile()) throw new Error(`external runner ${runner.name} command is not a file`);
     implementations.push({
       name: runner.name,
       kind: 'external-submission',
       dispatch: runner.dispatch || 'mixed',
-      command: runner.command,
+      command: commandReal,
       args: runner.args || [],
       cwd: path.resolve(ROOT, runner.cwd || '.'),
+      artifactSha256: crypto.createHash('sha256').update(fs.readFileSync(commandReal)).digest('hex'),
     });
     if (!['mixed', 'suite'].includes(implementations.at(-1).dispatch)) {
       throw new Error(`external runner ${runner.name} has unsupported dispatch mode`);
@@ -257,6 +261,7 @@ function writeReport(status, divergences) {
       name: implementation.name,
       relationship: implementation.kind,
       dispatch: implementation.dispatch || 'mixed',
+      ...(implementation.artifactSha256 ? { artifact_sha256: implementation.artifactSha256 } : {}),
     })),
     divergences,
   };
