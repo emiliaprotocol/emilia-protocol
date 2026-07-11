@@ -105,6 +105,12 @@ docs/EP-EVOLUTION-VISION-v2.md
 docs/VISION-BITCOIN-OF-TRUST.md
 docs/LAUNCH.md
 
+# 2026-07-11 (Fable): two files slipped past the 2026-07-05 sweep and sat public.
+# The sweep ignored docs/outreach/ but not TOP-LEVEL outreach/, and INVESTOR_ONE_PAGER
+# lived in the otherwise-public docs/briefs/ collateral dir. Both now untracked.
+outreach/
+docs/briefs/INVESTOR_ONE_PAGER.md
+
 # Fundraising / investor decks are private — never in the public served path (docs/strategy-private/decks/).
 # EXCEPTION (2026-07-09, Iman's call): emilia-seed-deck.pdf is a PUBLIC-SAFE overview
 # (no raise amount, no use-of-funds, no target lists) whose link was sent to investors,
