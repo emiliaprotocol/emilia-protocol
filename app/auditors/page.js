@@ -35,7 +35,7 @@ const WORKPAPER_FIELDS = [
   ['receipt_id / signoff id', 'The artifact’s identifier, from the evidence packet'],
   ['action / context hash', 'The digest the approval is bound to'],
   ['key_class', 'A = approver-held device key (highest); C = platform-held'],
-  ['verifier + version', 'e.g. @emilia-protocol/verify 3.6.2 (record the version you ran)'],
+  ['verifier + version', 'e.g. @emilia-protocol/verify 3.8.0 (record the version you ran)'],
   ['result', 'valid: true/false and each individual check'],
   ['verified on / by', 'Date and team member — the verification is reproducible by anyone'],
 ];
@@ -92,6 +92,12 @@ export default function AuditorsPage() {
             tab — open the network panel and observe that nothing uploads), or fully offline in a terminal:
             <pre style={preStyle}>npx @emilia-protocol/verify receipt.json</pre>
             The verifier is open source (Apache-2.0, published on npm) — your firm can pin and review the exact code it ran.
+            Firms standardizing on Python or Go can use the equivalent reference verifiers
+            (<a href="https://github.com/emiliaprotocol/emilia-protocol/tree/main/packages/python-verify" style={lnk} target="_blank" rel="noopener noreferrer">Python</a>,{' '}
+            <a href="https://github.com/emiliaprotocol/emilia-protocol/tree/main/packages/go-verify" style={lnk} target="_blank" rel="noopener noreferrer">Go</a>) in the same
+            public repository — three independent implementations, all held to the same published conformance
+            suites (33 public vector files, more than 350 accept/refuse cases), so the verdict does not depend on
+            which language your team runs.
           </li>
           <li style={{ marginBottom: 14 }}>
             <strong style={{ color: color.t1 }}>Read the checks.</strong> Each line is one verified property (table below).
@@ -176,6 +182,13 @@ export default function AuditorsPage() {
           <li><a href="/compliance/emilia-eu-ai-act-government.pdf" style={lnk}>EU AI Act mapping — government programs</a></li>
           <li><a href="/compliance/emilia-eu-ai-act-healthcare.pdf" style={lnk}>EU AI Act mapping — healthcare</a></li>
           <li><a href="/compliance/emilia-soc2-evidence-map.pdf" style={lnk}>SOC 2 evidence map — authorization receipts → CC6.1 / CC6.2 / CC7.2 / CC7.3</a></li>
+          <li><a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/compliance/EMILIA-FOR-SOX-CONTROLS.md" style={lnk} target="_blank" rel="noopener noreferrer">SOX ICFR mapping — receipts as authorization evidence in key controls (§302/404)</a></li>
+          <li><a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/compliance/EMILIA-FOR-TREASURY-PAYMENT-CONTROLS.md" style={lnk} target="_blank" rel="noopener noreferrer">Treasury and payment controls mapping — wires, beneficiary changes, releases</a></li>
+          <li><a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/compliance/NIST-AI-RMF-MAPPING.md" style={lnk} target="_blank" rel="noopener noreferrer">NIST AI RMF mapping — MEASURE / MANAGE subcategories, per-subcategory evidence</a></li>
+          <li><a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/compliance/EMILIA-FOR-AGENTIC-AI-RUNTIME-CONTROLS.md" style={lnk} target="_blank" rel="noopener noreferrer">Agentic AI runtime controls — evidence for agent-action oversight testing</a></li>
+          <li><a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/compliance/EMILIA-FOR-PUBLIC-BENEFITS-INTEGRITY.md" style={lnk} target="_blank" rel="noopener noreferrer">Public benefits integrity — improper-payment and disbursement controls</a></li>
+          <li><a href="/human-control" style={lnk}>Human-control crosswalk — EU AI Act Art. 14, NIST, ISO/IEC 42001 side by side</a></li>
+          <li><a href="https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/AUDITOR-CONTROL-CATALOG.md" style={lnk} target="_blank" rel="noopener noreferrer">Auditor control catalog — copy-paste RCM rows with executable test commands</a></li>
         </ul>
 
         <div style={{ background: color.card, border: `1px solid ${color.border}`, borderRadius: radius.base, padding: '22px 24px' }}>
