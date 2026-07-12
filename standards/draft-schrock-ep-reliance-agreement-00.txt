@@ -4,8 +4,8 @@
 
 Network Working Group                                         I. Schrock
 Internet-Draft                                     EMILIA Protocol, Inc.
-Intended status: Informational                               8 July 2026
-Expires: 9 January 2027
+Intended status: Informational                              12 July 2026
+Expires: 13 January 2027
 
 
        Reliance Agreements: Signed Liability Terms Conditioned on
@@ -53,7 +53,7 @@ Status of This Memo
 
 
 
-Schrock                  Expires 9 January 2027                 [Page 1]
+Schrock                  Expires 13 January 2027                [Page 1]
 
 Internet-Draft             Reliance Agreement                  July 2026
 
@@ -63,7 +63,7 @@ Internet-Draft             Reliance Agreement                  July 2026
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 9 January 2027.
+   This Internet-Draft will expire on 13 January 2027.
 
 Copyright Notice
 
@@ -109,7 +109,7 @@ Table of Contents
 
 
 
-Schrock                  Expires 9 January 2027                 [Page 2]
+Schrock                  Expires 13 January 2027                [Page 2]
 
 Internet-Draft             Reliance Agreement                  July 2026
 
@@ -165,7 +165,7 @@ Internet-Draft             Reliance Agreement                  July 2026
 
 
 
-Schrock                  Expires 9 January 2027                 [Page 3]
+Schrock                  Expires 13 January 2027                [Page 3]
 
 Internet-Draft             Reliance Agreement                  July 2026
 
@@ -221,7 +221,7 @@ Internet-Draft             Reliance Agreement                  July 2026
 
 
 
-Schrock                  Expires 9 January 2027                 [Page 4]
+Schrock                  Expires 13 January 2027                [Page 4]
 
 Internet-Draft             Reliance Agreement                  July 2026
 
@@ -246,7 +246,7 @@ Internet-Draft             Reliance Agreement                  July 2026
      },
      "condition": {
        "reliance_profile_digest": "sha256:<64 hex>",
-       "min_assurance_class": "A",
+       "min_assurance_class": "V",
        "max_staleness_sec": 300
      },
      "terms": {
@@ -277,7 +277,7 @@ Internet-Draft             Reliance Agreement                  July 2026
 
 
 
-Schrock                  Expires 9 January 2027                 [Page 5]
+Schrock                  Expires 13 January 2027                [Page 5]
 
 Internet-Draft             Reliance Agreement                  July 2026
 
@@ -316,7 +316,7 @@ Internet-Draft             Reliance Agreement                  July 2026
    and never restates it; the profile itself is exchanged, pinned, and
    replayed through the existing evidence machinery.
    condition.min_assurance_class OPTIONALLY names the minimum assurance
-   class [I-D.schrock-ep-assurance-classes] from the closed set C, B, A,
+   class [I-D.schrock-ep-assurance-classes] from the closed set S, H, V,
    Q. condition.max_staleness_sec OPTIONALLY bounds the acceptable age
    of the evidence verdict, in seconds.
 
@@ -333,7 +333,7 @@ Internet-Draft             Reliance Agreement                  July 2026
 
 
 
-Schrock                  Expires 9 January 2027                 [Page 6]
+Schrock                  Expires 13 January 2027                [Page 6]
 
 Internet-Draft             Reliance Agreement                  July 2026
 
@@ -389,7 +389,7 @@ Internet-Draft             Reliance Agreement                  July 2026
 
 
 
-Schrock                  Expires 9 January 2027                 [Page 7]
+Schrock                  Expires 13 January 2027                [Page 7]
 
 Internet-Draft             Reliance Agreement                  July 2026
 
@@ -445,7 +445,7 @@ Internet-Draft             Reliance Agreement                  July 2026
 
 
 
-Schrock                  Expires 9 January 2027                 [Page 8]
+Schrock                  Expires 13 January 2027                [Page 8]
 
 Internet-Draft             Reliance Agreement                  July 2026
 
@@ -501,7 +501,7 @@ Internet-Draft             Reliance Agreement                  July 2026
 
 
 
-Schrock                  Expires 9 January 2027                 [Page 9]
+Schrock                  Expires 13 January 2027                [Page 9]
 
 Internet-Draft             Reliance Agreement                  July 2026
 
@@ -557,7 +557,7 @@ Internet-Draft             Reliance Agreement                  July 2026
 
 
 
-Schrock                  Expires 9 January 2027                [Page 10]
+Schrock                  Expires 13 January 2027               [Page 10]
 
 Internet-Draft             Reliance Agreement                  July 2026
 
@@ -613,7 +613,7 @@ Internet-Draft             Reliance Agreement                  July 2026
 
 
 
-Schrock                  Expires 9 January 2027                [Page 11]
+Schrock                  Expires 13 January 2027               [Page 11]
 
 Internet-Draft             Reliance Agreement                  July 2026
 
@@ -669,7 +669,7 @@ Internet-Draft             Reliance Agreement                  July 2026
 
 
 
-Schrock                  Expires 9 January 2027                [Page 12]
+Schrock                  Expires 13 January 2027               [Page 12]
 
 Internet-Draft             Reliance Agreement                  July 2026
 
@@ -692,7 +692,7 @@ Internet-Draft             Reliance Agreement                  July 2026
    [I-D.schrock-ep-authorization-receipts]
               Schrock, I., "Authorization Receipts for High-Risk Agent
               Actions", Work in Progress, Internet-Draft, draft-schrock-
-              ep-authorization-receipts-00, June 2026,
+              ep-authorization-receipts-06, July 2026,
               <https://datatracker.ietf.org/doc/draft-schrock-ep-
               authorization-receipts/>.
 
@@ -725,7 +725,7 @@ Appendix A.  Implementation Status
 
 
 
-Schrock                  Expires 9 January 2027                [Page 13]
+Schrock                  Expires 13 January 2027               [Page 13]
 
 Internet-Draft             Reliance Agreement                  July 2026
 
@@ -781,4 +781,4 @@ Author's Address
 
 
 
-Schrock                  Expires 9 January 2027                [Page 14]
+Schrock                  Expires 13 January 2027               [Page 14]

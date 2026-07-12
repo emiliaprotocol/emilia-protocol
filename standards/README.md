@@ -271,13 +271,17 @@ declaration-only `EP-ACTION-RISK-MANIFEST-v0.1`. Requests registration of the
 
 **Assurance Classes for Authorization Receipts** — the policy primitive for
 *how strong* the human authorization must be. Defines an ordered taxonomy —
-Class C (software signer) < Class B (authenticated human, reserved/optional) <
-Class A (device user-verified human) < Class Q (quorum of distinct humans) —
+Class S (software signer) < Class H (authenticated human, reserved/optional) <
+Class V (device user-verified human) < Class Q (quorum of distinct humans) —
 mapped to the receipt assurance values `software` / `class_a` / `quorum`; the
 monotonic comparison rule (required class satisfied iff proven class ≥ it); and
-the anti-forgery invariant that a **claimed** class is treated as Class C until
+the anti-forgery invariant that a **claimed** class is treated as Class S until
 **proof-backed** (matches the shipped gate: `TIER_RANK` + self-asserted tier =
-software floor). Consumed by the manifest, enforcement-point, and authority-registry profiles.
+software floor). The identifiers are deliberately disjoint from the flagship's
+key-custody Classes A/B/C (receipts -06 Section 5.1), which classify who holds
+the signing key; the receipt value `class_a` is a frozen wire string naming the
+custody Class A ceremony, not a taxonomy identifier. Consumed by the manifest,
+enforcement-point, and authority-registry profiles.
 
 **Status: written + render-clean (xml2rfc v3), NOT yet filed (Informational, individual submission).**
 

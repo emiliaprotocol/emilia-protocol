@@ -15,7 +15,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="July" day="2"/>
+    <date year="2026" month="July" day="12"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>authorization</keyword>
@@ -31,8 +31,8 @@
       consequential action needs to say which level it demands.</t>
       <t>This document defines a small, ordered taxonomy of assurance
       classes for authorization receipts
-      <xref target="I-D.schrock-ep-authorization-receipts"/> — Class C,
-      Class B, Class A, and Class Q — the monotonic comparison rule by
+      <xref target="I-D.schrock-ep-authorization-receipts"/> — Class S,
+      Class H, Class V, and Class Q — the monotonic comparison rule by
       which a required class is satisfied, and the central anti-forgery
       invariant that a class asserted in a receipt payload is treated as
       the lowest class until it is proof-backed. The taxonomy is the
@@ -76,28 +76,40 @@
       <name>The Assurance Classes</name>
       <t>Four assurance classes are defined, in increasing order of
       assurance. Each maps to a concrete assurance value carried in a
-      receipt's assurance field.</t>
+      receipt's assurance field. The identifiers are mnemonic (S for
+      software, H for authenticated human, V for device-verified human,
+      Q for quorum) and are deliberately disjoint from the key-custody
+      classes (Class A, Class B, Class C) of
+      <xref target="I-D.schrock-ep-authorization-receipts"/>, which
+      classify who holds the approver's signing key, not how strong the
+      authorization ceremony behind a receipt was.</t>
       <dl>
-        <dt>Class C — software / automation signer (receipt assurance value: "software")</dt>
+        <dt>Class S — software / automation signer (receipt assurance value: "software")</dt>
         <dd>The authorization is asserted by a software component or
         automation key, not by a human completing an interactive
         ceremony. This is the lowest class and the default floor
         (<xref target="floor"/>). Appropriate for low-risk or read-mostly
         actions.</dd>
-        <dt>Class B — authenticated human, no device user verification (RESERVED, OPTIONAL)</dt>
+        <dt>Class H — authenticated human, no device user verification (RESERVED, OPTIONAL)</dt>
         <dd>A human authenticated to the approving system approved the
         action, but without a hardware user-verification ceremony bound
-        to the signing key. Class B is defined for deployments that
+        to the signing key. Class H is defined for deployments that
         distinguish an authenticated-human approval from a device-verified
         one; a deployment that does not make this distinction need not
-        implement Class B.</dd>
-        <dt>Class A — device user-verified human (receipt assurance value: "class_a")</dt>
+        implement Class H.</dd>
+        <dt>Class V — device user-verified human (receipt assurance value: "class_a")</dt>
         <dd>A named human completed a device user-verification ceremony
         (for example WebAuthn user verification / passkey with a local
         gesture) whose result is bound to the signing key that produced
-        the receipt. This is the baseline for high-risk actions.</dd>
+        the receipt. This is the baseline for high-risk actions. The
+        receipt assurance value "class_a" is retained unchanged for
+        compatibility with deployed receipts; it names the key-custody
+        Class A ceremony of
+        <xref target="I-D.schrock-ep-authorization-receipts"/> that
+        proves this assurance class, and is a value string, not an
+        identifier of this taxonomy.</dd>
         <dt>Class Q — quorum of distinct humans (receipt assurance value: "quorum")</dt>
-        <dd>Two or more distinct humans, each meeting at least Class A,
+        <dd>Two or more distinct humans, each meeting at least Class V,
         authorized the same action under an m-of-n rule with distinct-human
         enforcement. Class Q is the highest class and the appropriate
         floor for critical, separation-of-duties actions.</dd>
@@ -107,7 +119,7 @@
     <section anchor="compare">
       <name>The Comparison Rule</name>
       <t>The classes form a total order:</t>
-      <t><tt>Class C &lt; Class B &lt; Class A &lt; Class Q</tt></t>
+      <t><tt>Class S &lt; Class H &lt; Class V &lt; Class Q</tt></t>
       <t>A policy states the minimum class an action requires. A receipt
       satisfies the requirement if and only if its <em>proven</em> class
       (<xref target="floor"/>) is greater than or equal to the required
@@ -123,12 +135,12 @@
       <tt>"quorum"</tt> into it as easily as <tt>"software"</tt>.
       Therefore:</t>
       <t>A verifier MUST treat a claimed assurance class as the lowest
-      class (Class C) until the class is proof-backed by evidence the
+      class (Class S) until the class is proof-backed by evidence the
       verifier independently checks — for example a device
-      user-verification attestation for Class A, or the required number
+      user-verification attestation for Class V, or the required number
       of distinct, individually verified human signatures for Class Q. A
-      receipt that asserts Class A or Class Q without the corresponding
-      proof MUST be treated as Class C for the comparison in
+      receipt that asserts Class V or Class Q without the corresponding
+      proof MUST be treated as Class S for the comparison in
       <xref target="compare"/>.</t>
       <t>This inverts the trust default: assurance is earned by proof, not
       granted by assertion. It is the difference between a system that can
@@ -198,7 +210,7 @@
           <author fullname="I. Schrock" initials="I." surname="Schrock"/>
           <date year="2026" month="July"/>
         </front>
-        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-05"/>
+        <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-06"/>
       </reference>
     </references>
   </back>

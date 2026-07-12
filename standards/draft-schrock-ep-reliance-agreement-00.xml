@@ -15,7 +15,7 @@
         <email>team@emiliaprotocol.ai</email>
       </address>
     </author>
-    <date year="2026" month="July" day="8"/>
+    <date year="2026" month="July" day="12"/>
     <area>sec</area>
     <keyword>AI agents</keyword>
     <keyword>evidence</keyword>
@@ -142,7 +142,7 @@
   },
   "condition": {
     "reliance_profile_digest": "sha256:<64 hex>",
-    "min_assurance_class": "A",
+    "min_assurance_class": "V",
     "max_staleness_sec": 300
   },
   "terms": {
@@ -200,7 +200,7 @@
         machinery. condition.min_assurance_class OPTIONALLY names the
         minimum assurance class
         <xref target="I-D.schrock-ep-assurance-classes"/> from the
-        closed set C, B, A, Q. condition.max_staleness_sec OPTIONALLY
+        closed set S, H, V, Q. condition.max_staleness_sec OPTIONALLY
         bounds the acceptable age of the evidence verdict, in
         seconds.</t>
         <t>terms.mode is from the closed set liability_shift (the
@@ -467,9 +467,9 @@
           <front>
             <title>Authorization Receipts for High-Risk Agent Actions</title>
             <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
-            <date year="2026" month="June"/>
+            <date year="2026" month="July"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-00"/>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-06"/>
         </reference>
         <reference anchor="I-D.schrock-ep-action-evidence-graph" target="https://datatracker.ietf.org/doc/draft-schrock-ep-action-evidence-graph/">
           <front>

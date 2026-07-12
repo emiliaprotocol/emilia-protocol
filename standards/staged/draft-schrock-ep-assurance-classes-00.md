@@ -5,8 +5,8 @@
 
 ```
 Network Working Group                                         I. Schrock
-Intended status: Informational                               2 July 2026
-Expires: 3 January 2027
+Intended status: Informational                              12 July 2026
+Expires: 13 January 2027
 
               Assurance Classes for Authorization Receipts
                  draft-schrock-ep-assurance-classes-00
@@ -22,7 +22,7 @@ Abstract
 
    This document defines a small, ordered taxonomy of assurance classes
    for authorization receipts [I-D.schrock-ep-authorization-receipts] —
-   Class C, Class B, Class A, and Class Q — the monotonic comparison
+   Class S, Class H, Class V, and Class Q — the monotonic comparison
    rule by which a required class is satisfied, and the central anti-
    forgery invariant that a class asserted in a receipt payload is
    treated as the lowest class until it is proof-backed.  The taxonomy
@@ -45,7 +45,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 3 January 2027.
+   This Internet-Draft will expire on 13 January 2027.
 
 Copyright Notice
 
@@ -66,10 +66,10 @@ Table of Contents
    1.  Introduction  . . . . . . . . . . . . . . . . . . . . . . . .   2
    2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   3
    3.  The Assurance Classes . . . . . . . . . . . . . . . . . . . .   3
-   4.  The Comparison Rule . . . . . . . . . . . . . . . . . . . . .   3
+   4.  The Comparison Rule . . . . . . . . . . . . . . . . . . . . .   4
    5.  Proof-Backed Assurance (the Anti-Forgery Invariant) . . . . .   4
    6.  Relationship to Other Profiles  . . . . . . . . . . . . . . .   4
-   7.  Security Considerations . . . . . . . . . . . . . . . . . . .   4
+   7.  Security Considerations . . . . . . . . . . . . . . . . . . .   5
    8.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .   5
    9.  Normative References  . . . . . . . . . . . . . . . . . . . .   5
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .   5
@@ -105,31 +105,42 @@ Table of Contents
 
    Four assurance classes are defined, in increasing order of assurance.
    Each maps to a concrete assurance value carried in a receipt's
-   assurance field.
+   assurance field.  The identifiers are mnemonic (S for software, H for
+   authenticated human, V for device-verified human, Q for quorum) and
+   are deliberately disjoint from the key-custody classes (Class A,
+   Class B, Class C) of [I-D.schrock-ep-authorization-receipts], which
+   classify who holds the approver's signing key, not how strong the
+   authorization ceremony behind a receipt was.
 
-   Class C — software / automation signer (receipt assurance value:
+   Class S — software / automation signer (receipt assurance value:
    "software")  The authorization is asserted by a software component or
       automation key, not by a human completing an interactive ceremony.
       This is the lowest class and the default floor (Section 5).
       Appropriate for low-risk or read-mostly actions.
 
-   Class B — authenticated human, no device user verification
+   Class H — authenticated human, no device user verification
    (RESERVED, OPTIONAL)  A human authenticated to the approving system
       approved the action, but without a hardware user-verification
-      ceremony bound to the signing key.  Class B is defined for
+      ceremony bound to the signing key.  Class H is defined for
       deployments that distinguish an authenticated-human approval from
       a device-verified one; a deployment that does not make this
-      distinction need not implement Class B.
+      distinction need not implement Class H.
 
-   Class A — device user-verified human (receipt assurance value:
+   Class V — device user-verified human (receipt assurance value:
    "class_a")  A named human completed a device user-verification
       ceremony (for example WebAuthn user verification / passkey with a
       local gesture) whose result is bound to the signing key that
       produced the receipt.  This is the baseline for high-risk actions.
+      The receipt assurance value "class_a" is retained unchanged for
+      compatibility with deployed receipts; it names the key-custody
+      Class A ceremony of [I-D.schrock-ep-authorization-receipts] that
+      proves this assurance class, and is a value string, not an
+      identifier of this taxonomy.
 
    Class Q — quorum of distinct humans (receipt assurance value:
    "quorum")  Two or more distinct humans, each meeting at least Class
-      A, authorized the same action under an m-of-n rule with distinct-
+
+      V, authorized the same action under an m-of-n rule with distinct-
       human enforcement.  Class Q is the highest class and the
       appropriate floor for critical, separation-of-duties actions.
 
@@ -137,7 +148,7 @@ Table of Contents
 
    The classes form a total order:
 
-   Class C < Class B < Class A < Class Q
+   Class S < Class H < Class V < Class Q
 
    A policy states the minimum class an action requires.  A receipt
    satisfies the requirement if and only if its _proven_ class
@@ -153,12 +164,12 @@ Table of Contents
    into it as easily as "software".  Therefore:
 
    A verifier MUST treat a claimed assurance class as the lowest class
-   (Class C) until the class is proof-backed by evidence the verifier
+   (Class S) until the class is proof-backed by evidence the verifier
    independently checks — for example a device user-verification
-   attestation for Class A, or the required number of distinct,
+   attestation for Class V, or the required number of distinct,
    individually verified human signatures for Class Q.  A receipt that
-   asserts Class A or Class Q without the corresponding proof MUST be
-   treated as Class C for the comparison in Section 4.
+   asserts Class V or Class Q without the corresponding proof MUST be
+   treated as Class S for the comparison in Section 4.
 
    This inverts the trust default: assurance is earned by proof, not
    granted by assertion.  It is the difference between a system that can
@@ -203,9 +214,9 @@ Table of Contents
    [I-D.schrock-ep-authorization-receipts]
               Schrock, I., "Authorization Receipts for High-Risk Agent
               Actions (EP)", Work in Progress, Internet-Draft, draft-
-              schrock-ep-authorization-receipts-05, July 2026,
+              schrock-ep-authorization-receipts-06, July 2026,
               <https://datatracker.ietf.org/doc/html/draft-schrock-ep-
-              authorization-receipts-05>.
+              authorization-receipts-06>.
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119, March 1997,

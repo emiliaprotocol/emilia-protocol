@@ -65,7 +65,7 @@ function basePayload() {
       jurisdictions: ['US-NY'],
       validity: { not_before: '2026-01-01T00:00:00.000Z', not_after: '2027-01-01T00:00:00.000Z' },
     },
-    condition: { reliance_profile_digest: PROFILE_DIGEST, min_assurance_class: 'A', max_staleness_sec: 300 },
+    condition: { reliance_profile_digest: PROFILE_DIGEST, min_assurance_class: 'V', max_staleness_sec: 300 },
     terms: {
       mode: 'indemnity',
       cap_amount: '1000000.00',
