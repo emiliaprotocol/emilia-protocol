@@ -95,7 +95,7 @@ export default function AuditorsPage() {
             Firms standardizing on Python or Go can use the equivalent reference verifiers
             (<a href="https://github.com/emiliaprotocol/emilia-protocol/tree/main/packages/python-verify" style={lnk} target="_blank" rel="noopener noreferrer">Python</a>,{' '}
             <a href="https://github.com/emiliaprotocol/emilia-protocol/tree/main/packages/go-verify" style={lnk} target="_blank" rel="noopener noreferrer">Go</a>) in the same
-            public repository — three independent implementations, all held to the same published conformance
+            public repository — three same-team reference ports, all held to the same published conformance
             suites (33 public vector files, more than 350 accept/refuse cases), so the verdict does not depend on
             which language your team runs.
           </li>
