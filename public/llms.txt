@@ -2,7 +2,7 @@
 
 > EMILIA is an open protocol and enforcement toolkit for requiring, verifying, and preserving evidence that an enrolled accountable approver authorized one exact consequential action before execution.
 
-This is a generated discovery index following the llms.txt proposal. Evidence snapshot: 2026-07-12T20:57:39.674Z. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.
+This is a generated discovery index following the llms.txt proposal. Evidence snapshot: 2026-07-12T21:46:57.831Z. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.
 
 ## Engineering Evidence
 

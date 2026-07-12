@@ -19,6 +19,8 @@ const COL_PRODUCT = [
 
 const COL_RESOURCES = [
   ['/docs', 'Docs'],
+  ['/observatory', 'Standards Observatory'],
+  ['/standards', 'Standards Map'],
   ['/changelog', 'Changelog'],
   ['/blog', 'Blog'],
   ['/essays', 'Essays'],

@@ -31,7 +31,8 @@ the exact error the covenant and the auditor catalog refuse.
 ### 1. The conformance suite (the gate)
 
 The public vector suites (accept/refuse per receipt, quorum, revocation, evidence chain,
-timestamp, admissibility, plus the differential hostility corpus) are the pass/fail bar. An
+timestamp, admissibility, plus the differential hostility corpus) are the bar every
+implementation must clear. An
 implementation earns a conformance record by running the versioned suite and producing a
 signed result matching the expected verdicts byte for byte. Because the suite is public and
 Apache-2.0, anyone can self-test; because the *record* is signed and versioned, a third
