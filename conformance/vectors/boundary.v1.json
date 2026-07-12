@@ -1,9 +1,9 @@
 {
  "suite": "EP-BOUNDARY-v1",
- "vectors_version": "1.1.0",
- "description": "Authorization/attribution boundary suite (claim-matrix C-011/C-012). Pre-execution authority and post-execution attribution are different claims: a validly signed attribution record presented as authorization is refused at the version gate, and a payload self-asserting authority (or self-asserting independent verification by its own signing key) over a bad signature is refused because conforming implementations consume the verifier result, never raw peer-provided claims.",
+ "vectors_version": "1.2.0",
+ "description": "Authorization/attribution boundary suite (claim-matrix C-011/C-012). Pre-execution authority and post-execution attribution are different claims: a validly signed attribution record presented as authorization is refused at the version gate, and a payload self-asserting authority (or self-asserting independent verification by its own signing key) over a bad signature is refused because conforming implementations consume the verifier result, never raw peer-provided claims. A validly signed machine policy decision presented as human-authorization evidence is likewise refused: machine policy allowed is never named human approved.",
  "algorithm": "Ed25519 over RFC 8785 (JCS) canonical payload bytes",
- "count": 4,
+ "count": 5,
  "vectors": [
   {
    "id": "accept_pre_execution_receipt",
@@ -11,7 +11,7 @@
    "expect": {
     "valid": true
    },
-   "public_key": "MCowBQYDK2VwAyEAwVOFFWCIMmLtL6qKZQ5tcFm8Hadk8Nl8FG0hIGn6M5E",
+   "public_key": "MCowBQYDK2VwAyEAKGXd23CAEz9yS7Zi1SL7FnD4a0mSPxdO0SEIcDlzgZE",
    "document": {
     "@version": "EP-RECEIPT-v1",
     "payload": {
@@ -23,7 +23,7 @@
     },
     "signature": {
      "algorithm": "Ed25519",
-     "value": "VujwShkqdMom-CUF43M3pdY7n-ABGkGxjiQU0HwFu2kUCjoLc9jCWFlCKaMiIsP62GatxEwVhOp5ptJMcSTiCQ"
+     "value": "qDoPt9oRkmv8TTnt3CzRk7-8v7V8gTITIT_IMXfXjILNtGMKZftwGhm9w0-x6y1pfEqqrcOeZ6YsMIur3a8tDQ"
     }
    }
   },
@@ -33,7 +33,7 @@
    "expect": {
     "valid": false
    },
-   "public_key": "MCowBQYDK2VwAyEAwVOFFWCIMmLtL6qKZQ5tcFm8Hadk8Nl8FG0hIGn6M5E",
+   "public_key": "MCowBQYDK2VwAyEAKGXd23CAEz9yS7Zi1SL7FnD4a0mSPxdO0SEIcDlzgZE",
    "document": {
     "@version": "EP-ATTRIBUTION-v1",
     "payload": {
@@ -45,7 +45,7 @@
     },
     "signature": {
      "algorithm": "Ed25519",
-     "value": "uheVsQiiGsoKhNSI59JIpJW-EfblYF2Bl6cf1ai86yyWfPdiTvcPeEhj8qXMHru800MjylLQG-s9fL-cOk1zAg"
+     "value": "8_QvOxoMiPOlQmkIEQjcU2qH1g6w_mh2CysrRuPgBfKp4MGOLcEKIkgD4A--1SM0zC-gKyRF9UlXzV-4aJZyDQ"
     }
    }
   },
@@ -55,7 +55,7 @@
    "expect": {
     "valid": false
    },
-   "public_key": "MCowBQYDK2VwAyEAwVOFFWCIMmLtL6qKZQ5tcFm8Hadk8Nl8FG0hIGn6M5E",
+   "public_key": "MCowBQYDK2VwAyEAKGXd23CAEz9yS7Zi1SL7FnD4a0mSPxdO0SEIcDlzgZE",
    "document": {
     "@version": "EP-RECEIPT-v1",
     "payload": {
@@ -75,7 +75,7 @@
     },
     "signature": {
      "algorithm": "Ed25519",
-     "value": "uheVsQiiGsoKhNSI59JIpJW-EfblYF2Bl6cf1ai86yyWfPdiTvcPeEhj8qXMHru800MjylLQG-s9fL-cOk1zAg"
+     "value": "8_QvOxoMiPOlQmkIEQjcU2qH1g6w_mh2CysrRuPgBfKp4MGOLcEKIkgD4A--1SM0zC-gKyRF9UlXzV-4aJZyDQ"
     }
    }
   },
@@ -85,7 +85,7 @@
    "expect": {
     "valid": false
    },
-   "public_key": "MCowBQYDK2VwAyEAwVOFFWCIMmLtL6qKZQ5tcFm8Hadk8Nl8FG0hIGn6M5E",
+   "public_key": "MCowBQYDK2VwAyEAKGXd23CAEz9yS7Zi1SL7FnD4a0mSPxdO0SEIcDlzgZE",
    "document": {
     "@version": "EP-RECEIPT-v1",
     "payload": {
@@ -95,7 +95,7 @@
      "action_digest": "sha256:7f9c2ba4e88f827d616045507605853ed73b8093f6efbc88eb1a6eacfa66ef26",
      "independent_verification": {
       "verifier": "ep:approver:boundary-demo",
-      "verifier_key": "MCowBQYDK2VwAyEAwVOFFWCIMmLtL6qKZQ5tcFm8Hadk8Nl8FG0hIGn6M5E",
+      "verifier_key": "MCowBQYDK2VwAyEAKGXd23CAEz9yS7Zi1SL7FnD4a0mSPxdO0SEIcDlzgZE",
       "result": "verified",
       "independent": true
      },
@@ -103,7 +103,32 @@
     },
     "signature": {
      "algorithm": "Ed25519",
-     "value": "uheVsQiiGsoKhNSI59JIpJW-EfblYF2Bl6cf1ai86yyWfPdiTvcPeEhj8qXMHru800MjylLQG-s9fL-cOk1zAg"
+     "value": "8_QvOxoMiPOlQmkIEQjcU2qH1g6w_mh2CysrRuPgBfKp4MGOLcEKIkgD4A--1SM0zC-gKyRF9UlXzV-4aJZyDQ"
+    }
+   }
+  },
+  {
+   "id": "policy_decision_presented_as_human_authorization",
+   "description": "A machine access-control decision record — the artifact class adjacent decision-record formats standardize — signed GENUINELY over its own canonical bytes and presented where human-authorization evidence is required. MUST be refused: the version gate rejects the artifact class even though the signature verifies. \"decision\": \"allow\" and \"approval_state\": \"granted\" record what a policy engine decided; they are machine assertions, not evidence that a named human, holding their own key, approved this exact action before execution. Machine policy allowed is never named human approved (C-012).",
+   "expect": {
+    "valid": false
+   },
+   "public_key": "MCowBQYDK2VwAyEAKGXd23CAEz9yS7Zi1SL7FnD4a0mSPxdO0SEIcDlzgZE",
+   "document": {
+    "@version": "ACCESS-DECISION-RECORD-v1",
+    "payload": {
+     "decision_id": "dec_boundary_policy",
+     "decision": "allow",
+     "decision_maker": "policy-engine:gateway-7",
+     "tool": "wire_transfer",
+     "approval_state": "granted",
+     "policy_epoch": 42,
+     "action_digest": "sha256:7f9c2ba4e88f827d616045507605853ed73b8093f6efbc88eb1a6eacfa66ef26",
+     "issued_at": "2026-07-05T11:59:58Z"
+    },
+    "signature": {
+     "algorithm": "Ed25519",
+     "value": "8ZEmuMrrmVEOOpA-jl7LJX3PtfvutW-f4ZDXS3sRIhShLp5-gIapEPwsLKiUrZMAsU6ygLyDyR_NrTJaYFWbDg"
     }
    }
   }

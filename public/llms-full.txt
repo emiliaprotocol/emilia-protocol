@@ -122,7 +122,7 @@ or a fraud loss (treasury/payments, benefits integrity, SOX-scoped controls).
   reference verifiers (JavaScript, Python, Go) share one repository — a
   consistency check, not independent implementations; an externally
   authored Rust implementation is rebuilt from a pinned public source tree and
-  passes all 163 current vectors plus 359 hostile cases. Strict independently
+  passes all 164 current vectors plus 359 hostile cases. Strict independently
   attested clean-room acceptance remains zero. EMILIA is not an auditor,
   regulator, or insurer.
 

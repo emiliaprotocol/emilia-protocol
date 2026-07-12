@@ -12,7 +12,7 @@
     { "path": "conformance/vectors/provenance.exec.v1.json", "sha256": "22543e23de07c4ca7f1c53c8c3a6dc3ea6a711164f8f7c5b4d8480d68232ac75" },
     { "path": "conformance/vectors/evidence-record.v1.json", "sha256": "946550657c4dbc0375aa6f55f95301cfd43878113e1c7bcc4436db301f6de46a" },
     { "path": "conformance/vectors/canonicalization.v1.json", "sha256": "d72a1de506def5b5dcc20f60301987654ef5b5bb6ea476af926054f300c2eee2" },
-    { "path": "conformance/vectors/boundary.v1.json", "sha256": "6351954db0a88b023c3914cda12a425c5217cb1ba96509472b9c53979b9a16ea" },
+    { "path": "conformance/vectors/boundary.v1.json", "sha256": "5a7bec6ed7446fadf898c5e943336c64d3a7568dc2806fe47180a18d126d5507" },
     { "path": "conformance/vectors/currency.v1.json", "sha256": "a6f7d81767cfaf7920b11ab25127b6e8872017eb0b1c69c06a09b3a1e7cf033d" },
     { "path": "conformance/vectors/initiator-attestation.v1.json", "sha256": "2274dded455f289e36ad4c9bb2225708ff8bfd66edd034b99ed98298484073e6" },
     { "path": "conformance/vectors/consumption-proof.v1.json", "sha256": "9b0ff706a2c77262131f2658e81d448a7755ba0e466405259590e8faff3f4115" },

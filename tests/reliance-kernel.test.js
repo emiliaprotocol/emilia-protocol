@@ -469,6 +469,26 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
     expect(r.rely).toBe(false);
   });
 
+  it('refuses a validly signed machine policy decision presented as human authorization evidence', () => {
+    // The differential the boundary suite pins cross-language
+    // (policy_decision_presented_as_human_authorization): "decision": "allow" and
+    // "approval_state": "granted" record what a policy engine decided, never that
+    // a named human approved this exact action. The vector's signature verifies
+    // over its own canonical bytes; the artifact class is what the kernel refuses.
+    const boundary = JSON.parse(readFileSync(resolve(HERE, '../conformance/vectors/boundary.v1.json'), 'utf8'));
+    const vector = boundary.vectors.find((v) => v.id === 'policy_decision_presented_as_human_authorization');
+    expect(vector).toBeDefined();
+    expect(vector.expect.valid).toBe(false);
+    expect(vector.document.payload.decision).toBe('allow');
+    expect(vector.document.payload.approval_state).toBe('granted');
+
+    const { input, opts } = assemble('none');
+    input.receipt = vector.document;
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('do_not_rely_unsigned');
+    expect(r.rely).toBe(false);
+  });
+
   it('does not skip an authority ceiling when the JSON amount is a decimal string', () => {
     const { input, opts } = assemble('amount_over_ceiling');
     const r = evaluateReliance(input, opts);

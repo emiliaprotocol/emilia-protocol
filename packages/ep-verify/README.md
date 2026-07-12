@@ -51,7 +51,7 @@ inclusion proof reconstructs the claimed root.
 Cross-implementation note: the JavaScript, Python, and Go verifiers live in one
 repository — a consistency check, not independent implementations. A separately
 authored Rust verifier is rebuilt from a pinned public commit and tree and passes
-all 163 current vectors plus 359 hostile cases. Strict independently attested
+all 164 current vectors plus 359 hostile cases. Strict independently attested
 construction acceptance remains zero. The EP receipt
 formats are specified in active INDIVIDUAL Internet-Drafts, not IETF-adopted or
 endorsed.

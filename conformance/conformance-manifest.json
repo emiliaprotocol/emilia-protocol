@@ -4,7 +4,7 @@
   "vector_bundle": {
     "version": "EP-CLEAN-ROOM-VECTOR-BUNDLE-v1",
     "path": "conformance/clean-room/bundle.v1.json",
-    "sha256": "3cb74cfad6b9d54c8f824547b6d413ff25d5759c61bcc49fa7c1ec3a17a29971"
+    "sha256": "b884c727a51da1a7d12e234a119020430526fadd73e0f86eff1ded3e063e72f5"
   },
   "suites": [
     {
@@ -59,8 +59,8 @@
     },
     {
       "path": "conformance/vectors/boundary.v1.json",
-      "sha256": "6351954db0a88b023c3914cda12a425c5217cb1ba96509472b9c53979b9a16ea",
-      "vectors": 4
+      "sha256": "5a7bec6ed7446fadf898c5e943336c64d3a7568dc2806fe47180a18d126d5507",
+      "vectors": 5
     },
     {
       "path": "conformance/vectors/currency.v1.json",
@@ -90,7 +90,7 @@
   ],
   "totals": {
     "suites": 16,
-    "vectors": 163,
+    "vectors": 164,
     "implementations": 3
   },
   "implementations": [
@@ -108,8 +108,8 @@
         "tree_sha256": "542fa4d9efe2156b816950e82ba76fbae821f4a9892ded10ddbf9155eb8d600a"
       },
       "suites": 16,
-      "vectors": 163,
-      "normalized_results_sha256": "f6b4d4196df8913a21076403452753b1131301cbadc3bbd3398d8ef6fee02b03",
+      "vectors": 164,
+      "normalized_results_sha256": "74d3c8f192dcde7ab23d969b6369b1fe50ee29727f8c5a4e5349a03ee6175d31",
       "status": "pass"
     },
     {
@@ -126,8 +126,8 @@
         "tree_sha256": "da3d1a06192253402282ad07936458afc7efb1d16381f486f2b28a0e58436c34"
       },
       "suites": 16,
-      "vectors": 163,
-      "normalized_results_sha256": "f6b4d4196df8913a21076403452753b1131301cbadc3bbd3398d8ef6fee02b03",
+      "vectors": 164,
+      "normalized_results_sha256": "74d3c8f192dcde7ab23d969b6369b1fe50ee29727f8c5a4e5349a03ee6175d31",
       "status": "pass"
     },
     {
@@ -144,10 +144,10 @@
         "tree_sha256": "088ad71bb58041a4f1894ec0f3f5b0017c90a384e4fd461280e04a0e6acd1072"
       },
       "suites": 16,
-      "vectors": 163,
-      "normalized_results_sha256": "f6b4d4196df8913a21076403452753b1131301cbadc3bbd3398d8ef6fee02b03",
+      "vectors": 164,
+      "normalized_results_sha256": "74d3c8f192dcde7ab23d969b6369b1fe50ee29727f8c5a4e5349a03ee6175d31",
       "status": "pass"
     }
   ],
-  "manifest_sha256": "6de7fed67e7e0a108daf8c63115bc5c4accab584464d7a45017c96668fd5f4c9"
+  "manifest_sha256": "b7a312a5ad5fe41f66f5e97ae795bf20d4281a5a4f6da0211d579144021fbbfc"
 }

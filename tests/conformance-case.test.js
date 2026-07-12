@@ -88,7 +88,7 @@ describe('aggregate conformance case', () => {
     const result = assemble();
     expect(result.totals).toMatchObject({
       suites: 16,
-      vectors: 163,
+      vectors: 164,
       one_team_ports: 3,
       external_implementations_tested: 1,
       external_conformance_acceptances: 1,

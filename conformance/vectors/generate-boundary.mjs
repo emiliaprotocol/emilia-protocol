@@ -17,6 +17,11 @@
 //   • same_party_evidence_presented_as_independent — a payload embedding an
 //     independent_verification block signed by the ISSUER'S OWN key. Same-party
 //     evidence is not independent verification (reproduction is not independence).
+//   • policy_decision_presented_as_human_authorization — a VALIDLY SIGNED
+//     machine access-control decision record ("decision": "allow",
+//     "approval_state": "granted") presented in the human-authorization slot
+//     MUST be refused at the version gate. Machine policy allowed is never
+//     named human approved.
 //
 //   node conformance/vectors/generate-boundary.mjs
 import crypto from 'node:crypto';
@@ -91,9 +96,25 @@ const sameePartyPayload = {
   created_at: '2026-07-05T12:00:00Z',
 };
 
+// A machine access-control decision record: what a policy engine decided,
+// post-evaluation, in the shape adjacent decision-record formats standardize.
+// Signed with the SAME genuine key and convention — the signature verifies;
+// the artifact class is what must be refused when it is presented where
+// human-authorization evidence is required.
+const policyDecisionPayload = {
+  decision_id: 'dec_boundary_policy',
+  decision: 'allow',
+  decision_maker: 'policy-engine:gateway-7',
+  tool: 'wire_transfer',
+  approval_state: 'granted',
+  policy_epoch: 42,
+  action_digest: 'sha256:7f9c2ba4e88f827d616045507605853ed73b8093f6efbc88eb1a6eacfa66ef26',
+  issued_at: '2026-07-05T11:59:58Z',
+};
+
 const suite = {
   suite: 'EP-BOUNDARY-v1',
-  vectors_version: '1.1.0',
+  vectors_version: '1.2.0',
   description:
     'Authorization/attribution boundary suite (claim-matrix C-011/C-012). ' +
     'Pre-execution authority and post-execution attribution are different claims: ' +
@@ -101,9 +122,11 @@ const suite = {
     'the version gate, and a payload self-asserting authority (or self-asserting ' +
     'independent verification by its own signing key) over a bad signature is ' +
     'refused because conforming implementations consume the verifier result, ' +
-    'never raw peer-provided claims.',
+    'never raw peer-provided claims. A validly signed machine policy decision ' +
+    'presented as human-authorization evidence is likewise refused: machine ' +
+    'policy allowed is never named human approved.',
   algorithm: 'Ed25519 over RFC 8785 (JCS) canonical payload bytes',
-  count: 4,
+  count: 5,
   vectors: [
     {
       id: 'accept_pre_execution_receipt',
@@ -168,8 +191,26 @@ const suite = {
         signature: { algorithm: 'Ed25519', value: sign(attributionPayload) },
       },
     },
+    {
+      id: 'policy_decision_presented_as_human_authorization',
+      description:
+        'A machine access-control decision record — the artifact class adjacent decision-record ' +
+        'formats standardize — signed GENUINELY over its own canonical bytes and presented where ' +
+        'human-authorization evidence is required. MUST be refused: the version gate rejects the ' +
+        'artifact class even though the signature verifies. "decision": "allow" and ' +
+        '"approval_state": "granted" record what a policy engine decided; they are machine ' +
+        'assertions, not evidence that a named human, holding their own key, approved this exact ' +
+        'action before execution. Machine policy allowed is never named human approved (C-012).',
+      expect: { valid: false },
+      public_key: publicKeyB64u,
+      document: {
+        '@version': 'ACCESS-DECISION-RECORD-v1',
+        payload: policyDecisionPayload,
+        signature: { algorithm: 'Ed25519', value: sign(policyDecisionPayload) },
+      },
+    },
   ],
 };
 
 writeFileSync(resolve(here, 'boundary.v1.json'), JSON.stringify(suite, null, 1) + '\n');
-console.log('wrote boundary.v1.json (4 vectors)');
+console.log('wrote boundary.v1.json (5 vectors)');

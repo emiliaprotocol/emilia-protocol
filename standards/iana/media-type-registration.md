@@ -74,7 +74,7 @@ challenge to obtain and present that evidence. Reference implementation:
 `packages/gate` and `packages/require-receipt` in the EMILIA Protocol
 repository (JavaScript, Python, and Go verifiers live in one repository — a
 consistency check, not independent implementations; a separately authored Rust
-verifier rebuilt from pinned public source passes all 163 current vectors plus
+verifier rebuilt from pinned public source passes all 164 current vectors plus
 359 hostile cases, while strict independently attested construction acceptance
 remains zero).
 
