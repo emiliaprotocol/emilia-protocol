@@ -135,7 +135,7 @@ EMILIA is an open standard, not a product moat. The core is Apache-2.0 and track
 | **MCP registries** | Official MCP registry · Glama (Grade A, Official badge) · Smithery |
 | **License** | Apache-2.0 |
 
-Three same-team reference ports (JS / Python / Go) agree across all 16 suites and 164 vectors. Separately, an externally authored Rust implementation rebuilt from a pinned public source tree passes the same 163 vectors and a 359-case hostility campaign. That is external interoperability evidence, not strict clean-room construction acceptance; the aggregate CI case records the strict acceptance count as zero pending independent attestation. See [CONFORMANCE.md](CONFORMANCE.md), or verify a receipt yourself at [emiliaprotocol.ai/verify](https://www.emiliaprotocol.ai/verify).
+Three same-team reference ports (JS / Python / Go) agree across all 16 suites and 164 vectors. Separately, an externally authored Rust implementation rebuilt from a pinned public source tree passes the 163-vector set current at the time of that run and a 359-case hostility campaign. That is external interoperability evidence, not strict clean-room construction acceptance; the aggregate CI case records the strict acceptance count as zero pending independent attestation. See [CONFORMANCE.md](CONFORMANCE.md), or verify a receipt yourself at [emiliaprotocol.ai/verify](https://www.emiliaprotocol.ai/verify).
 
 ---
 
