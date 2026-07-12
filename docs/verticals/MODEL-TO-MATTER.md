@@ -91,6 +91,14 @@ After an admissible evaluation, a separate atomic store consumes the action
 digest itself, so two different challenges cannot each clear the same
 `max_executions: 1` action.
 
+Production integrations use `createModelToMatterExecutor()`. It snapshots the
+relying-party profile, captures the validated challenge/action-store methods,
+and pins a revocation provider at construction. Transaction input may carry
+only the action, registered challenge, and evidence graph; a profile, store,
+clock, revocation set, or verifier supplied with that presentation is refused.
+Its `run()` method obtains one clearance before invoking the effect adapter and
+passes only a frozen pre-await action snapshot to that adapter.
+
 A successful evaluation returns `clear_to_execute`. Every other result is a
 closed `do_not_execute_*` verdict. After execution, the pinned executor may sign
 an `EP-MODEL-TO-MATTER-EFFECT-v1` statement binding the action, clearance replay
@@ -121,6 +129,10 @@ Run:
 node examples/model-to-matter/demo.mjs
 npx vitest run tests/model-to-matter.test.js
 ```
+
+An informational Internet-Draft source is staged at
+`standards/staged/draft-schrock-model-to-matter-00.xml`. It specifies the
+executor-side lifecycle and explicit non-goals; it is not yet filed.
 
 ## Integration shape
 
@@ -157,6 +169,10 @@ trusted keys, or turn a refusal into clearance.
 - The action-level clearance store must be shared, durable, and retained without
   automatic TTL reopening. A lost clearance response remains consumed and needs
   operator reconciliation; availability never silently becomes a second grant.
+- The low-level evaluator accepts executor dependencies as explicit arguments
+  for testing and advanced composition. Applications should expose the pinned
+  executor factory, not map an untrusted request body directly into that
+  low-level function.
 - This profile has not been deployed in a wet lab and claims no commercial or
   research partnership.
 

@@ -58,7 +58,7 @@ export default function SiteNav({ activePage }) {
       }}>
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          width: '100%', maxWidth: 1280, padding: '0 32px', gap: 24,
+          width: '100%', maxWidth: 1280, padding: '0 32px', gap: 24, boxSizing: 'border-box',
         }}>
           {/* Logo */}
           <Link href="/" className="ep-logo-link" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flexShrink: 0 }}>

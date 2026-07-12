@@ -120,6 +120,8 @@ jobs:
         run: npm run conformance:clean-room:contract
       - name: Resolve exact cross-language conformance manifest
         run: npm run conformance:manifest
+      - name: Resolve exact frozen clean-room conformance manifest
+        run: npm run conformance:manifest:clean-room
       - name: Attest exact security case on protected-branch runs
         if: github.event_name != 'pull_request'
         uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
@@ -130,6 +132,11 @@ jobs:
         uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
         with:
           subject-path: conformance/conformance-manifest.json
+      - name: Attest exact frozen clean-room manifest on protected-branch runs
+        if: github.event_name != 'pull_request'
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763  # v4.1.1
+        with:
+          subject-path: conformance/clean-room/conformance-manifest.v1.json
       - name: Upload resolved security and conformance cases
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
@@ -137,6 +144,7 @@ jobs:
           path: |
             security/security-case.json
             conformance/conformance-manifest.json
+            conformance/clean-room/conformance-manifest.v1.json
           retention-days: 90
 
   # ── Job 5: Language governance ───────────────────────────────────
@@ -477,7 +485,7 @@ jobs:
           retention-days: 90
 
   # ── Job 11d: Aggregate, attested conformance acceptance case ─────
-  # Joins the same-team manifest and separately produced external evidence
+  # Joins the same-team manifest over the frozen external bundle and separately produced external evidence
   # only after both jobs pass. The assembler revalidates every source pin,
   # suite hash, hostility result, evaluator commit, and attestation boundary;
   # it cannot promote implementer-signed legacy evidence to strict independent
@@ -507,7 +515,7 @@ jobs:
       - name: Assemble strict aggregate conformance case
         run: >-
           node scripts/assemble-conformance-case.mjs
-          --manifest .ci/base/conformance/conformance-manifest.json
+          --manifest .ci/base/conformance/clean-room/conformance-manifest.v1.json
           --pin conformance/external/rust-cleanroom-jdieselny.v1.json
           --external-conformance .ci/external/external-rust-conformance.json
           --external-hostility .ci/external/external-rust-hostility.json

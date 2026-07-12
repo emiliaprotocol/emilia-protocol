@@ -375,8 +375,11 @@ describe('Model-to-Matter defensive branch contract', () => {
       pinnedIssuerKeys: null,
     })).reason).toBe('issuer_key_not_pinned');
 
-    const weakerHuman = signedEvidence(a, 'human_authorization', {
+    expect(() => signedEvidence(a, 'human_authorization', {
       claims: { assurance_class: 'class_b' },
+    })).toThrow(/assurance/i);
+    const weakerHuman = signedEvidence(a, 'human_authorization', {
+      claims: { assurance_class: 'software' },
     });
     expect(verifyModelToMatterEvidence(weakerHuman, evidenceOptions(a, 'human_authorization', {
       requiredHumanAssurance: 'quorum',

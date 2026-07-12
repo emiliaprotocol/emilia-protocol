@@ -39,11 +39,13 @@
     "./breakglass": "./breakglass.js",
     "./challenge-store": "./challenge-store.js",
     "./store-postgres": "./store-postgres.js",
+    "./evidence": "./evidence.js",
     "./reports/auditor-workpaper": "./reports/auditor-workpaper.js",
     "./reports/reperform": "./reports/reperform.js",
     "./reports/external-verification": "./reports/external-verification.js",
     "./reports/assurance-package": "./reports/assurance-package.js",
-    "./reliance-kernel": "./reliance-kernel.js"
+    "./reliance-kernel": "./reliance-kernel.js",
+    "./aec-execution": "./aec-execution.js"
   },
   "bin": {
     "ep-assure": "./ep-assure.mjs"
@@ -58,6 +60,7 @@
     "execution-binding.js",
     "reliance-packet.js",
     "reliance-kernel.js",
+    "aec-execution.js",
     "reports/assurance-package.js",
     "ep-assure.mjs",
     "key-registry.js",

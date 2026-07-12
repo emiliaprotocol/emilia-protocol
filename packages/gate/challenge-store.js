@@ -41,6 +41,10 @@ export function createDurableChallengeStore(backend) {
   }
 
   return {
+    durable: backend.durable === true,
+    atomicRegistration: true,
+    bodyBound: true,
+    permanentConsumption: true,
     async register(challenge) {
       const key = challengeStorageKey(challenge);
       const digest = challengeBodyDigest(challenge);

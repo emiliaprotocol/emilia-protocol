@@ -9,21 +9,28 @@ function read(relPath) {
 }
 
 describe('homepage category contract', () => {
-  it('leads with the Consequence Firewall category and secure-agent-action promise', () => {
+  it('leads with the trust mission and keeps technical proof in a restrained band', () => {
     const page = read('app/page.js');
     const layout = read('app/layout.js');
 
     expect(layout).toContain('The Consequence Firewall for AI Agents');
     expect(layout).toContain('secure agent actions');
     expect(layout).toContain('AI agent firewall');
-    expect(page).toContain('The open Consequence Firewall for AI agents');
-    expect(page).toContain('Stop AI agents from executing irreversible actions');
+    expect(page).toContain('Building the foundation of trust for the agentic era.');
+    expect(page).toContain('AI is moving from answering questions to taking consequential action.');
+    expect(page).toContain('EMILIA is the open trust layer');
+    expect(page).toContain('Technical foundation');
+    expect(page).toContain('IETF Internet-Drafts');
     expect(page).toContain('CF-1 conformance');
-    expect(page).toContain('/try/receipt-required');
+    expect(page).toContain('href="/protocol"');
+    expect(page).toContain('href="/proof"');
+    expect(page).not.toContain('<CrashTestDemo />');
+    expect(page).not.toContain('emilia-sequence.mp4');
   });
 
   it('binds public proof counts to generated repo evidence instead of stale literals', () => {
     const proofStats = JSON.parse(read('lib/proof-stats.json'));
+    const securityCase = JSON.parse(read('security/security-case.json'));
     const page = read('app/page.js');
     const proofBlock = read('components/ProofBlock.js');
 
@@ -31,6 +38,11 @@ describe('homepage category contract', () => {
     expect(proofStats.tests.files).toBeGreaterThan(200);
     expect(proofStats.tla.invariants).toBe(26);
     expect(proofStats.alloy.facts).toBe(35);
+    expect(proofStats.tamarin.verifiedObligations).toBe(10);
+    expect(proofStats.tamarin.deliberatelyUnsafeCounterexamples).toBe(2);
+    expect(proofStats.securityCase.claims).toBe(securityCase.claim_count);
+    expect(proofStats.conformance.vectors).toBeGreaterThan(150);
+    expect(proofStats.externalImplementation.hostilityCases).toBeGreaterThan(350);
     expect(page).not.toContain('TESTS_PASSED');
     expect(proofStats.redTeamCases).toBe(85);
 

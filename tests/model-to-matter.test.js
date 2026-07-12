@@ -8,6 +8,7 @@ import {
   M2M_EVIDENCE_TYPES,
   M2M_PROFILE_VERSION,
   buildModelToMatterGraph,
+  createModelToMatterExecutor,
   createModelToMatterAction,
   createModelToMatterProfile,
   createRegisteredModelToMatterChallenge,
@@ -213,6 +214,7 @@ describe('EP Model-to-Matter action and profile', () => {
       challengeStore: store(), expires_at: CHALLENGE_EXPIRES,
     })).rejects.toThrow(/action agreement/i);
     expect(() => profile({ required_human_assurance: 'toString' })).toThrow(/assurance/i);
+    expect(() => profile({ required_human_assurance: 'class_b' })).toThrow(/assurance/i);
   });
 });
 
@@ -572,6 +574,126 @@ describe('EP Model-to-Matter clearance lifecycle', () => {
         revokedEvidenceDigests: new Set(),
       });
       expect(result.verdict).not.toBe('clear_to_execute');
+    }
+  });
+});
+
+describe('EP Model-to-Matter pinned executor boundary', () => {
+  function executor(overrides = {}) {
+    return createModelToMatterExecutor({
+      profile: profile(),
+      challengeStore: store(),
+      clearanceStore: actionStore(),
+      revocationProvider: async () => new Set(),
+      allowEphemeralState: true,
+      now: () => Date.parse(NOW),
+      ...overrides,
+    });
+  }
+
+  it('pins all trust configuration and runs one frozen action exactly once', async () => {
+    const a = action();
+    const challengeStore = store();
+    const clearanceStore = actionStore();
+    const gate = executor({ challengeStore, clearanceStore });
+    const challenge = await gate.issueChallenge(a, { nonce: 'm2m-pinned-executor' });
+    const graph = buildModelToMatterGraph(a, evidenceSet(a));
+    const presentation = { action: structuredClone(a), challenge, graph };
+    let effects = 0;
+    let seenAction;
+
+    const injected = await gate.run({ ...presentation, profile: profile() }, async () => { effects++; });
+    expect(injected).toMatchObject({
+      ok: false,
+      allow: false,
+      clearance: { verdict: 'do_not_execute_refused', clear_to_execute: false },
+    });
+
+    challengeStore.consume = async () => true;
+    clearanceStore.consume = async () => true;
+    const firstPending = gate.run(presentation, async ({ action: executedAction }) => {
+      effects++;
+      seenAction = executedAction;
+      return 'executed';
+    });
+    presentation.action.destination_digest = digest('mutated-after-run');
+    const first = await firstPending;
+    const replay = await gate.run({ action: a, challenge, graph }, async () => { effects++; });
+
+    expect(first).toMatchObject({ ok: true, allow: true, value: 'executed' });
+    expect(replay).toMatchObject({ ok: false, allow: false });
+    expect(effects).toBe(1);
+    expect(seenAction.destination_digest).toBe(a.destination_digest);
+    expect(Object.isFrozen(seenAction)).toBe(true);
+    expect(Object.isFrozen(seenAction.experiment)).toBe(true);
+  });
+
+  it('refuses every transaction-scoped trust field before challenge consumption', async () => {
+    const a = action();
+    for (const field of [
+      'profile', 'challengeStore', 'clearanceStore', 'revokedEvidenceDigests',
+      'revocationProvider', 'as_of', 'next_expires_at', 'next_nonce',
+    ]) {
+      const gate = executor();
+      const challenge = await gate.issueChallenge(a, { nonce: `m2m-injected-${field}` });
+      const result = await gate.evaluate({
+        action: a,
+        challenge,
+        graph: buildModelToMatterGraph(a, evidenceSet(a)),
+        [field]: {},
+      });
+      expect(result.verdict, field).toBe('do_not_execute_refused');
+      expect(result.reasons.join('; '), field).toContain('transaction-scoped trust configuration refused');
+    }
+  });
+
+  it('fails closed when its pinned clock or revocation provider is unavailable', async () => {
+    const a = action();
+    const badClock = executor({ now: () => { throw new Error('clock unavailable'); } });
+    await expect(badClock.issueChallenge(a)).rejects.toThrow(/clock/i);
+
+    const badRevocation = executor({ revocationProvider: async () => null });
+    const challenge = await badRevocation.issueChallenge(a, { nonce: 'm2m-bad-revocation-provider' });
+    const result = await badRevocation.evaluate({
+      action: a,
+      challenge,
+      graph: buildModelToMatterGraph(a, evidenceSet(a)),
+    });
+    expect(result).toMatchObject({
+      verdict: 'do_not_execute_refused',
+      clear_to_execute: false,
+      reasons: ['revocation state is unavailable or malformed'],
+    });
+  });
+
+  it('requires explicit durable custody in production mode', () => {
+    const p = profile();
+    const revocationProvider = async () => new Set();
+    expect(() => createModelToMatterExecutor({
+      profile: p,
+      challengeStore: store(),
+      clearanceStore: actionStore(),
+      revocationProvider,
+    })).toThrow(/durable body-bound atomic challenge custody/);
+
+    const challengeBackend = Object.assign(createMemoryBackend(), { durable: true });
+    const clearanceBackend = Object.assign(createMemoryBackend(), { durable: true });
+    expect(() => createModelToMatterExecutor({
+      profile: p,
+      challengeStore: createDurableChallengeStore(challengeBackend),
+      clearanceStore: createDurableConsumptionStore(clearanceBackend),
+      revocationProvider,
+    })).not.toThrow();
+
+    for (const config of [
+      { profile: null },
+      { challengeStore: null },
+      { clearanceStore: null },
+      { revocationProvider: null },
+      { challengeTtlSec: 0 },
+      { challengeTtlSec: 86401 },
+    ]) {
+      expect(() => executor(config)).toThrow();
     }
   });
 });

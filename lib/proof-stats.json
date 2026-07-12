@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-07-12T05:30:21.598Z",
+  "generatedAt": "2026-07-12T15:11:05.414Z",
   "tests": {
-    "total": 5427,
-    "files": 268,
+    "total": 5542,
+    "files": 276,
     "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
   },
   "tla": {
@@ -13,6 +13,31 @@
     "facts": 35,
     "assertions": 22,
     "version": "6.0.0 (CI)"
+  },
+  "tamarin": {
+    "model": "EP-RELIANCE-COMPOSED-v2",
+    "verifiedObligations": 10,
+    "deliberatelyUnsafeCounterexamples": 2,
+    "version": "1.10.0",
+    "modelSha256": "174c27c35b302a9dd096eb28b40ad7df84cf0c1633a93eff829c3de3fc8bbbd3"
+  },
+  "securityCase": {
+    "status": "passed",
+    "claims": 16,
+    "evidenceFiles": 73,
+    "evidenceBundleSha256": "e51c53b5c98ccba1fcbed6b65351e44d3656f9a3a4eb3a5488b1e69bd294c043"
+  },
+  "conformance": {
+    "suites": 17,
+    "vectors": 192,
+    "referencePorts": 3,
+    "relationship": "same_team_ports"
+  },
+  "externalImplementation": {
+    "language": "Rust",
+    "vectors": 164,
+    "hostilityCases": 359,
+    "strictCleanRoomAcceptance": false
   },
   "redTeamCases": 85
 }

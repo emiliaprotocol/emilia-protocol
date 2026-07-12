@@ -1175,6 +1175,18 @@ def verify_evidence_record(record, opts=None):
 
 # ── EP-AEC-v1 — Authorization Evidence Chain (composition verifier) ──────────
 AEC_VERSION = "EP-AEC-v1"
+_AEC_MAX_COMPONENTS = 64
+_AEC_MAX_REQUIREMENT_LENGTH = 4096
+_AEC_MAX_REQUIREMENT_TOKENS = 256
+_AEC_MAX_REQUIREMENT_DEPTH = 32
+_AEC_MAX_QUORUM_MEMBERS = 32
+_AEC_MAX_JSON_DEPTH = 64
+_AEC_MAX_JSON_NODES = 50000
+_AEC_MAX_JSON_STRING_BYTES = 1024 * 1024
+_AEC_RESERVED_TYPES = {"ep-quorum", "ep-receipt"}
+_AEC_IDENT = _re.compile(r"^[A-Za-z0-9_.:-]+$")
+_AEC_IDENT_CHAR = _re.compile(r"[A-Za-z0-9_.:-]")
+_AEC_HEX_256 = _re.compile(r"^[0-9a-f]{64}$")
 
 
 def action_digest(action: Any) -> str:
@@ -1185,61 +1197,262 @@ def action_digest(action: Any) -> str:
 def _norm_digest(d: Any) -> Optional[str]:
     if not isinstance(d, str):
         return None
-    return d[7:].lower() if d.lower().startswith("sha256:") else d.lower()
+    bare = d[7:].lower() if d.lower().startswith("sha256:") else d.lower()
+    return bare if _AEC_HEX_256.fullmatch(bare) else None
+
+
+def _aec_fresh_at(context: Any, verification_time: Any, max_age_sec: Any) -> bool:
+    if (not isinstance(context, dict) or isinstance(max_age_sec, bool)
+            or not isinstance(max_age_sec, int) or max_age_sec < 0):
+        return False
+    at = _instant_ms(verification_time)
+    issued = _instant_ms(context.get("issued_at"))
+    expires = _instant_ms(context.get("expires_at"))
+    return (at is not None and issued is not None and expires is not None
+            and issued <= at <= expires and at - issued <= max_age_sec * 1000)
+
+
+def _aec_fresh_registry_snapshot(profile: Any, verification_time: Any) -> bool:
+    if (not isinstance(profile, dict) or isinstance(profile.get("max_registry_age_sec"), bool)
+            or not isinstance(profile.get("max_registry_age_sec"), int)
+            or profile.get("max_registry_age_sec") < 0):
+        return False
+    at = _instant_ms(verification_time)
+    checked = _instant_ms(profile.get("registry_checked_at"))
+    return (at is not None and checked is not None and checked <= at
+            and at - checked <= profile["max_registry_age_sec"] * 1000)
+
+
+def _aec_active_directory_entry(entry: Any, verification_time: Any) -> bool:
+    if not isinstance(entry, dict) or entry.get("status") != "active":
+        return False
+    at = _instant_ms(verification_time)
+    start = _instant_ms(entry.get("valid_from"))
+    end = _instant_ms(entry.get("valid_to"))
+    if at is None or start is None or end is None or at < start or at > end:
+        return False
+    if entry.get("revoked_at") is None:
+        return True
+    revoked = _instant_ms(entry.get("revoked_at"))
+    return revoked is not None and at < revoked
+
+
+def _aec_allowed_origins(profile: Any):
+    origins = profile.get("allowed_origins") if isinstance(profile, dict) else None
+    if (not isinstance(origins, list) or not origins or len(origins) > 16
+            or any(not isinstance(origin, str) or not origin or len(origin) > 2048 for origin in origins)):
+        return None
+    return set(origins)
+
+
+def _aec_webauthn_origin(webauthn: Any):
+    try:
+        if not isinstance(webauthn, dict):
+            return None
+        encoded = webauthn.get("client_data_json")
+        if not isinstance(encoded, str) or not encoded or any(
+                ch not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-" for ch in encoded):
+            return None
+        client_data = json.loads(_b64url_decode(encoded).decode("utf-8"))
+        origin = client_data.get("origin") if isinstance(client_data, dict) else None
+        return origin if isinstance(origin, str) else None
+    except Exception:
+        return None
+
+
+def _aec_bounded_json(value: Any) -> bool:
+    stack = [(value, 0)]
+    seen = set()
+    nodes = 0
+    string_bytes = 0
+    while stack:
+        current, depth = stack.pop()
+        nodes += 1
+        if nodes > _AEC_MAX_JSON_NODES or depth > _AEC_MAX_JSON_DEPTH:
+            return False
+        if current is None or isinstance(current, bool):
+            continue
+        if isinstance(current, str):
+            try:
+                string_bytes += len(current.encode("utf-8"))
+            except UnicodeEncodeError:
+                return False
+            if string_bytes > _AEC_MAX_JSON_STRING_BYTES:
+                return False
+            continue
+        if isinstance(current, int) and not isinstance(current, bool):
+            if abs(current) > _SAFE_INT:
+                return False
+            continue
+        if isinstance(current, float):
+            if not math.isfinite(current) or not current.is_integer() or abs(current) > _SAFE_INT:
+                return False
+            continue
+        if not isinstance(current, (dict, list)):
+            return False
+        marker = id(current)
+        if marker in seen:
+            return False
+        seen.add(marker)
+        if isinstance(current, list):
+            stack.extend((child, depth + 1) for child in current)
+        else:
+            for key, child in current.items():
+                if not isinstance(key, str):
+                    return False
+                try:
+                    string_bytes += len(key.encode("utf-8"))
+                except UnicodeEncodeError:
+                    return False
+                if string_bytes > _AEC_MAX_JSON_STRING_BYTES:
+                    return False
+                stack.append((child, depth + 1))
+    return True
 
 
 def _builtin_aec_verifiers() -> dict:
     def ep_quorum(ev, ctx):
-        # Every counted approver key MUST be pinned FOR the ep-quorum role.
-        # verify_quorum checks only INTERNAL consistency against the quorum's OWN
-        # declared keys and policy; without pinning an attacker forges an entire
-        # distinct-human quorum under device keys it generated. Require every member
-        # key to be pinned under keysByType['ep-quorum']; fail closed otherwise.
-        scoped = (ctx.get("keysByType") or {}).get("ep-quorum") or {}
+        # Internal quorum consistency is not acceptance. Require an RP-owned
+        # profile that pins the exact policy, WebAuthn RP ID, context policy, and
+        # key -> approver -> role directory.
+        profile = (ctx.get("policiesByType") or {}).get("ep-quorum") or {}
+        allowed_origins = _aec_allowed_origins(profile)
         members = (ev or {}).get("members")
-        if not scoped or not isinstance(members, list) or not members:
+        if (not isinstance(profile, dict) or not isinstance(profile.get("policy"), dict)
+                or not isinstance(profile.get("rp_id"), str) or not profile.get("rp_id")
+                or not isinstance(profile.get("context_policy"), str) or not profile.get("context_policy")
+                or allowed_origins is None
+                or isinstance(profile.get("max_age_sec"), bool)
+                or not isinstance(profile.get("max_age_sec"), int) or profile.get("max_age_sec") < 0
+                or not _aec_fresh_registry_snapshot(profile, ctx.get("verificationTime"))
+                or not isinstance(profile.get("approvers"), dict)
+                or not isinstance(members, list) or not members or len(members) > _AEC_MAX_QUORUM_MEMBERS):
             return {"valid": False, "action_digest": None}
-        for m in members:
-            k = (m or {}).get("approver_public_key")
-            if not isinstance(k, str) or k not in scoped:
+
+        policy = profile["policy"]
+        mode = policy.get("mode")
+        if mode not in ("threshold", "ordered"):
+            return {"valid": False, "action_digest": None}
+        req = len(policy.get("approvers") or []) if mode == "ordered" else policy.get("required")
+        if (isinstance(req, bool) or not isinstance(req, int) or req < 2
+                or policy.get("distinct_humans") is not True
+                or (mode == "ordered" and policy.get("ordered_chain") is not True)):
+            return {"valid": False, "action_digest": None}
+        try:
+            if not isinstance((ev or {}).get("policy"), dict) or canonicalize(ev["policy"]) != canonicalize(policy):
                 return {"valid": False, "action_digest": None}
-        # Keys are pinned humans; verify_quorum then confirms threshold, distinct
-        # humans, initiator exclusion, ordering/window, and action_binding.
-        r = verify_quorum(ev) or {}
+        except Exception:
+            return {"valid": False, "action_digest": None}
+
+        for m in members:
+            if not isinstance(m, dict) or not isinstance(m.get("signoff"), dict) or not isinstance(m["signoff"].get("context"), dict):
+                return {"valid": False, "action_digest": None}
+            k = m.get("approver_public_key")
+            entry = profile["approvers"].get(k) if isinstance(k, str) else None
+            signed_ctx = m["signoff"]["context"]
+            if (not _aec_active_directory_entry(entry, ctx.get("verificationTime")) or entry.get("public_key") != k
+                    or not isinstance(entry.get("approver_id"), str)
+                    or entry.get("approver_id") != signed_ctx.get("approver")
+                    or not isinstance(entry.get("roles"), list) or m.get("role") not in entry.get("roles")
+                    or signed_ctx.get("policy") != profile["context_policy"]
+                    or _aec_webauthn_origin(m["signoff"].get("webauthn")) not in allowed_origins
+                    or not _aec_fresh_at(signed_ctx, ctx.get("verificationTime"), profile["max_age_sec"])):
+                return {"valid": False, "action_digest": None}
+        r = verify_quorum(ev, {"rpId": profile["rp_id"]}) or {}
         valid = bool(r.get("valid"))
         return {"valid": valid, "action_digest": ((ev or {}).get("action_hash") if valid else None)}
 
     def ep_receipt(ev, ctx):
-        # The signing key MUST be pinned FOR THE ep-receipt ROLE. A globally pinned
-        # key is not enough: a relying party that also pins its policy engine's key
-        # would otherwise let that machine relabel its own signed object
-        # EP-RECEIPT-v1, name its own (pinned) key, and fill the human role
-        # (cross-role key confusion). Trust anchors are role-scoped: keysByType maps
-        # a component type to the keys accepted FOR THAT ROLE ONLY. No key pinned for
-        # ep-receipt => fail closed.
-        named = (ev or {}).get("operator_public_key")
-        scoped = (ctx.get("keysByType") or {}).get("ep-receipt") or {}
-        pinned = scoped.get(named) if isinstance(named, str) else None
-        if not pinned:
+        # A bare operator-signed envelope is not human authorization. Require the
+        # Section 6.2 Trust Receipt's Class-A WebAuthn ceremony and RP-owned pins.
+        profile = (ctx.get("policiesByType") or {}).get("ep-receipt") or {}
+        allowed_origins = _aec_allowed_origins(profile)
+        contexts = ev.get("contexts") if isinstance(ev, dict) else None
+        signoffs = ev.get("signoffs") if isinstance(ev, dict) else None
+        if (not isinstance(profile, dict) or not isinstance(profile.get("approver_keys"), dict)
+                or not isinstance(profile.get("log_public_key"), str) or not profile.get("log_public_key")
+                or not isinstance(profile.get("rp_id"), str) or not profile.get("rp_id")
+                or allowed_origins is None
+                or _norm_digest(profile.get("expected_policy_hash")) is None
+                or isinstance(profile.get("max_age_sec"), bool)
+                or not isinstance(profile.get("max_age_sec"), int) or profile.get("max_age_sec") < 0
+                or not _aec_fresh_registry_snapshot(profile, ctx.get("verificationTime"))
+                or not isinstance(contexts, list) or not contexts
+                or not isinstance(signoffs, list) or not signoffs):
             return {"valid": False, "action_digest": None}
+
         try:
-            r = verify_receipt(ev, pinned)
-            valid = bool(r.get("valid") if isinstance(r, dict) else getattr(r, "valid", False))
+            context_by_hash = {}
+            for receipt_context in contexts:
+                if (not isinstance(receipt_context, dict)
+                        or _norm_digest(receipt_context.get("policy_hash"))
+                        != _norm_digest(profile["expected_policy_hash"])):
+                    return {"valid": False, "action_digest": None}
+                context_by_hash[_sha256_hex(canonicalize(receipt_context))] = receipt_context
         except Exception:
-            valid = False
-        # Bind from the SIGNED payload only, never the unsigned top-level
-        # action_hash (attacker-malleable: a receipt signed over a DIFFERENT
-        # action could otherwise pass as binding this one).
-        payload = (ev or {}).get("payload") or {}
-        bound = payload.get("action_digest") or payload.get("action_hash")
-        return {"valid": valid, "action_digest": (bound if valid else None)}
+            return {"valid": False, "action_digest": None}
+
+        expected_rp_hash = hashlib.sha256(profile["rp_id"].encode("utf-8")).digest()
+        for signoff in signoffs:
+            if not isinstance(signoff, dict):
+                return {"valid": False, "action_digest": None}
+            key_entry = profile["approver_keys"].get(signoff.get("approver_key_id"))
+            signed_context = context_by_hash.get(_norm_digest(signoff.get("context_hash")))
+            try:
+                auth_data = _b64url_decode(((signoff.get("webauthn") or {}).get("authenticator_data")))
+            except Exception:
+                auth_data = b""
+            if (not _aec_active_directory_entry(key_entry, ctx.get("verificationTime")) or key_entry.get("key_class") != "A"
+                    or not isinstance(signed_context, dict)
+                    or key_entry.get("approver_id") != signed_context.get("approver")
+                    or len(auth_data) < 37 or auth_data[:32] != expected_rp_hash
+                    or _aec_webauthn_origin(signoff.get("webauthn")) not in allowed_origins
+                    or not _aec_fresh_at(signed_context, ctx.get("verificationTime"), profile["max_age_sec"])):
+                return {"valid": False, "action_digest": None}
+
+        r = verify_trust_receipt(ev, {
+            "approverKeys": profile["approver_keys"],
+            "logPublicKey": profile["log_public_key"],
+        })
+        valid = isinstance(r, dict) and r.get("valid") is True
+        return {"valid": valid, "action_digest": (ev.get("action_hash") if valid else None)}
 
     return {"ep-quorum": ep_quorum, "ep-receipt": ep_receipt}
 
 
-def _eval_requirement(expr: str, satisfied: set) -> bool:
-    import re as _re
-    toks = _re.findall(r"\(|\)|[A-Za-z0-9_.:-]+", str(expr))
+def _tokenize_aec_requirement(expr: Any):
+    if not isinstance(expr, str) or not expr or len(expr) > _AEC_MAX_REQUIREMENT_LENGTH:
+        return None
+    toks = []
+    i = 0
+    while i < len(expr):
+        ch = expr[i]
+        if ch in " \t\r\n":
+            i += 1
+            continue
+        if ch in "()":
+            toks.append(ch)
+            i += 1
+        elif ch in "&|" and i + 1 < len(expr) and expr[i + 1] == ch:
+            toks.append(ch + ch)
+            i += 2
+        elif _AEC_IDENT_CHAR.fullmatch(ch):
+            j = i + 1
+            while j < len(expr) and _AEC_IDENT_CHAR.fullmatch(expr[j]):
+                j += 1
+            toks.append(expr[i:j])
+            i = j
+        else:
+            return None
+        if len(toks) > _AEC_MAX_REQUIREMENT_TOKENS:
+            return None
+    return toks or None
+
+
+def _eval_requirement(expr: str, satisfied: set) -> dict:
+    toks = _tokenize_aec_requirement(expr)
+    if toks is None:
+        return {"valid": False, "value": False}
     pos = {"i": 0}
 
     def peek():
@@ -1250,44 +1463,58 @@ def _eval_requirement(expr: str, satisfied: set) -> bool:
         pos["i"] += 1
         return t
 
-    def parse_expr():
-        v = parse_term()
+    def parse_expr(depth=0):
+        if depth > _AEC_MAX_REQUIREMENT_DEPTH:
+            raise ValueError("requirement nesting limit exceeded")
+        v = parse_term(depth)
         while peek() in ("AND", "OR", "&&", "||"):
             op = eat()
-            r = parse_term()
+            r = parse_term(depth)
             v = (v and r) if op in ("AND", "&&") else (v or r)
         return v
 
-    def parse_term():
+    def parse_term(depth):
         if peek() == "(":
             eat()
-            v = parse_expr()
-            if peek() == ")":
-                eat()
+            v = parse_expr(depth + 1)
+            if peek() != ")":
+                raise ValueError("unclosed requirement group")
+            eat()
             return v
         ident = eat()
-        return False if ident is None else (ident in satisfied)
+        if ident is None or ident in (")", "AND", "OR", "&&", "||") or not _AEC_IDENT.fullmatch(ident):
+            raise ValueError("invalid requirement term")
+        return ident in satisfied
 
     try:
         v = parse_expr()
-        return bool(v) if pos["i"] == len(toks) else False
+        valid = pos["i"] == len(toks)
+        return {"valid": valid, "value": bool(v) if valid else False}
     except Exception:
-        return False
+        return {"valid": False, "value": False}
 
 
 def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None,
                                 keys_by_type: Optional[dict] = None,
-                                requirement: Optional[str] = None) -> dict:
+                                requirement: Optional[str] = None,
+                                policies_by_type: Optional[dict] = None,
+                                expected_action_digest: Optional[str] = None,
+                                expected_action: Optional[dict] = None,
+                                verification_time: Optional[str] = None) -> dict:
     """Verify an EP-AEC chain offline. Fail-closed. Mirrors JS verifyAuthorizationChain().
 
     TRUST BOUNDARY: the chain document's ``requirement`` is PRESENTER-supplied — a
     claim of what the bundle satisfies, never the relying party's bar. Pass
-    ``requirement=`` to pin the RELYING PARTY's own requirement; it takes
-    precedence and the result records ``requirement_source``.
+    ``requirement=`` to pin the RELYING PARTY's own requirement. Without it,
+    the presenter expression is descriptive only and ``allow`` remains false.
 
-    TRUST ANCHORS ARE ROLE-SCOPED: ``keys_by_type`` maps a component type to the
-    keys accepted FOR THAT ROLE ONLY, e.g. ``{"ep-receipt": {spki: spki}}``. A key
-    pinned for one role cannot satisfy another (no cross-role key confusion).
+    ``policies_by_type`` follows ``requirement`` to preserve the original
+    positional API; callers should pass both by keyword.
+
+    ``keys_by_type`` is retained for compatibility and custom verifiers. Built-in
+    human acceptance is profile-scoped through ``policies_by_type``: ep-receipt
+    requires a fresh Class-A Trust Receipt profile and ep-quorum an exact fresh
+    quorum policy, audience, and enrolled approver directory.
     """
     reasons: list = []
     pinned = requirement if isinstance(requirement, str) and requirement.strip() else None
@@ -1295,11 +1522,14 @@ def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None,
 
     def fail(why):
         reasons.append(why)
-        return {"allow": False, "action_digest": None, "components": [], "reasons": reasons,
+        return {"allow": False, "action_digest": None, "expected_action_bound": False,
+                "components": [], "reasons": reasons,
                 "requirement_source": requirement_source}
 
     if not isinstance(aec, dict):
         return fail("chain is not an object")
+    if not _aec_bounded_json(aec):
+        return fail("chain exceeds the canonical JSON safety profile or resource limits")
     if aec.get("@version") != AEC_VERSION:
         return fail("unexpected @version")
     if not isinstance(aec.get("action"), dict):
@@ -1307,56 +1537,104 @@ def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None,
     comps_in = aec.get("components")
     if not isinstance(comps_in, list) or not comps_in:
         return fail("no components")
+    if len(comps_in) > _AEC_MAX_COMPONENTS:
+        return fail(f"too many components (maximum {_AEC_MAX_COMPONENTS})")
     req = pinned if pinned is not None else aec.get("requirement")
     if not isinstance(req, str) or not req.strip():
         return fail("missing requirement expression")
+    if len(req) > _AEC_MAX_REQUIREMENT_LENGTH:
+        return fail("requirement expression exceeds size limit")
 
-    chain_digest = action_digest(aec["action"])
+    try:
+        chain_digest = action_digest(aec["action"])
+    except Exception:
+        return fail("action is not canonicalizable")
+
+    # Components agreeing with one another does not bind them to the action the
+    # executor is actually about to perform. Require a relying-party-owned
+    # expected action or digest before allow can become true.
+    expected_digest = None
+    if expected_action is not None:
+        if not isinstance(expected_action, dict) or not _aec_bounded_json(expected_action):
+            return fail("expected_action is not a bounded canonical JSON object")
+        try:
+            expected_digest = action_digest(expected_action)
+        except Exception:
+            return fail("expected_action is not canonicalizable")
+    if expected_action_digest is not None:
+        supplied = _norm_digest(expected_action_digest)
+        if supplied is None:
+            return fail("expected_action_digest is malformed")
+        if expected_digest is not None and supplied != expected_digest:
+            return fail("expected_action and expected_action_digest disagree")
+        expected_digest = supplied
+    if expected_digest is not None and expected_digest != chain_digest:
+        return fail("chain action does not match the relying-party expected action")
     if aec.get("action_digest") is not None and _norm_digest(aec.get("action_digest")) != chain_digest:
         return fail("declared action_digest does not match canonical digest of the action")
 
     vmap = dict(_builtin_aec_verifiers())
-    vmap.update(verifiers or {})
+    if isinstance(verifiers, dict):
+        vmap.update({k: v for k, v in verifiers.items()
+                     if k not in _AEC_RESERVED_TYPES and callable(v)})
     satisfied: set = set()
     components = []
     for idx, c in enumerate(comps_in):
+        if not isinstance(c, dict):
+            components.append({"type": None, "label": f"#{idx}", "valid": False,
+                               "bound": False, "reason": "component is not an object"})
+            continue
         label = c.get("label") or c.get("type") or f"#{idx}"
         row = {"type": c.get("type"), "label": label, "valid": False, "bound": False, "reason": None}
-        v = vmap.get(c.get("type"))
+        typ = c.get("type")
+        if (not isinstance(typ, str) or len(typ) > 128 or not _AEC_IDENT.fullmatch(typ)
+                or not isinstance(c.get("evidence"), dict)):
+            row["reason"] = "component type or evidence is malformed"
+            components.append(row)
+            continue
+        v = vmap.get(typ)
         if not callable(v):
             row["reason"] = f'no verifier registered for type "{c.get("type")}"'
             components.append(row)
             continue
         try:
-            res = v(c.get("evidence"), {"keysByType": keys_by_type, "action": aec["action"]}) or {}
+            res = v(c.get("evidence"), {"keysByType": keys_by_type,
+                                        "policiesByType": policies_by_type,
+                                        "verificationTime": verification_time,
+                                        "action": aec["action"]}) or {}
         except Exception as e:
             row["reason"] = f"verifier raised: {e}"
             components.append(row)
             continue
-        row["valid"] = bool(res.get("valid"))
+        row["valid"] = isinstance(res, dict) and res.get("valid") is True
         row["bound"] = _norm_digest(res.get("action_digest")) == chain_digest
         if not row["valid"]:
             row["reason"] = "component evidence did not verify"
         elif not row["bound"]:
             row["reason"] = "component binds a DIFFERENT action than the chain"
         if row["valid"] and row["bound"]:
-            satisfied.add(c.get("type"))
-            # A presenter-controlled label must never satisfy a requirement token
-            # that names a registered verifier type (that would let a policy leg
-            # labeled 'ep-receipt' fill the human role). Skip label-vs-type collisions.
-            lbl = c.get("label")
-            if lbl and lbl not in vmap:
-                satisfied.add(lbl)
+            satisfied.add(typ)
+            # Presenter-controlled labels are display metadata only.
         components.append(row)
 
-    allow = _eval_requirement(req, satisfied)
-    if not allow:
+    evaluated = _eval_requirement(req, satisfied)
+    allow = (requirement_source == "relying_party" and expected_digest is not None
+             and evaluated["valid"] and evaluated["value"])
+    if not evaluated["valid"]:
+        reasons.append("requirement expression is malformed or exceeds parser limits")
+    elif not evaluated["value"]:
         reasons.append(f'requirement not satisfied: "{req}"')
+    if requirement_source != "relying_party":
+        reasons.append("presenter requirement is descriptive only; relying-party requirement is required for allow")
+    if expected_digest is None:
+        reasons.append("relying-party expected action is required for allow")
     presenter_req = aec.get("requirement")
     if pinned and isinstance(presenter_req, str) and presenter_req.strip() and presenter_req != pinned:
         reasons.append(
             f'presenter requirement ignored in favor of relying-party requirement (presenter claimed: "{presenter_req}")')
-    return {"allow": allow, "action_digest": chain_digest, "components": components, "reasons": reasons,
+    return {"allow": allow, "action_digest": chain_digest,
+            "expected_action_bound": expected_digest == chain_digest,
+            "components": components, "reasons": reasons,
             "requirement_source": requirement_source}
 
 

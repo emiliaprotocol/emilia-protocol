@@ -1,7 +1,13 @@
 import { headers } from 'next/headers';
 import { IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
 import EuAiActBanner from '@/components/EuAiActBanner';
+import proofStats from '@/lib/proof-stats.json';
 import './ep.css';
+
+const TEST_CASES = Number(proofStats.tests.total).toLocaleString('en-US');
+const PROOF_SUMMARY = `${proofStats.securityCase.claims} executable security claims, `
+  + `${proofStats.tamarin.verifiedObligations} composed Tamarin obligations, `
+  + `${proofStats.conformance.vectors} current conformance vectors, and ${TEST_CASES} automated tests`;
 
 // Self-host IBM Plex via next/font so the browser does not block on the
 // Google Fonts CSS request and so we eliminate the @next/next/no-page-custom-font
@@ -30,9 +36,8 @@ export const metadata = {
     template: '%s | EMILIA Protocol',
   },
   description:
-    'The open consequence firewall for secure agent actions. Before an AI agent does anything '
-    + 'irreversible, EMILIA requires a verifiable authorization receipt proving who approved '
-    + 'the exact action, under which policy, offline.',
+    `The open consequence firewall for secure agent actions, backed by ${PROOF_SUMMARY}. `
+    + 'Before an AI agent acts irreversibly, EMILIA requires verifiable, exact-action authorization.',
   applicationName: 'EMILIA Protocol',
   keywords: [
     'AI agent authorization',
@@ -66,7 +71,7 @@ export const metadata = {
     siteName: 'EMILIA Protocol',
     title: 'EMILIA Protocol — The Consequence Firewall for AI Agents',
     description:
-      'The open control layer for secure agent actions: no valid authorization receipt, no irreversible execution. Formally verified, Apache 2.0, production-oriented reference runtime.',
+      `No valid authorization receipt, no irreversible execution. Machine-verifiable evidence: ${PROOF_SUMMARY}.`,
     images: [
       {
         url: '/og-sequence.jpg',
@@ -80,7 +85,7 @@ export const metadata = {
     card: 'summary_large_image',
     title: 'EMILIA Protocol — The Consequence Firewall for AI Agents',
     description:
-      'No valid authorization receipt, no irreversible agent action. Open, offline-verifiable, formally checked.',
+      `No valid receipt, no irreversible agent action. ${PROOF_SUMMARY}.`,
     images: ['/og-sequence.jpg'],
   },
   robots: {
@@ -156,11 +161,13 @@ const SOFTWARE_APPLICATION_JSONLD = {
   description:
     'Open protocol and Apache-2.0 reference runtime for secure agent actions. ' +
     'EMILIA acts as a consequence firewall: it cryptographically binds actor ' +
-    'identity, authority, policy, and action context before irreversible execution.',
+    `identity, authority, policy, and action context before irreversible execution. Current evidence: ${PROOF_SUMMARY}.`,
   url: 'https://www.emiliaprotocol.ai',
   downloadUrl: 'https://www.npmjs.com/package/@emilia-protocol/sdk',
   softwareVersion: '1.0',
   releaseNotes: 'https://github.com/emiliaprotocol/emilia-protocol/blob/main/CHANGELOG.md',
+  codeRepository: 'https://github.com/emiliaprotocol/emilia-protocol',
+  softwareHelp: 'https://www.emiliaprotocol.ai/proof',
   license: 'https://www.apache.org/licenses/LICENSE-2.0',
   author: { '@type': 'Organization', name: 'EMILIA Protocol' },
   offers: {
@@ -172,8 +179,11 @@ const SOFTWARE_APPLICATION_JSONLD = {
   featureList: [
     'Named human signoff with device-held WebAuthn keys (Face ID / passkey)',
     'Pre-action authorization for AI agents',
-    'Formal verification (26 TLA+ theorems, 35 Alloy facts)',
-    'Cross-language conformance: JS, Python, and Go reference verifiers proven interoperable',
+    `Machine-verifiable security case (${proofStats.securityCase.claims} executable claims, ${proofStats.securityCase.evidenceFiles} hashed evidence files)`,
+    `Composed Tamarin Dolev-Yao model (${proofStats.tamarin.verifiedObligations} verified obligations; ${proofStats.tamarin.deliberatelyUnsafeCounterexamples} deliberately unsafe variants produce attack traces)`,
+    `Formal state and relational models (${proofStats.tla.invariants} TLA+ invariants, ${proofStats.alloy.facts} Alloy facts, ${proofStats.alloy.assertions} Alloy assertions)`,
+    `Cross-language conformance (${proofStats.conformance.vectors} vectors across same-team JS, Python, and Go reference ports)`,
+    `Externally authored Rust verifier tested over ${proofStats.externalImplementation.vectors} vectors and ${proofStats.externalImplementation.hostilityCases} hostility cases`,
     'Cryptographic action binding (Ed25519 + Merkle)',
     'Self-verifying trust receipts (offline verifiable)',
     'NIST AI RMF and EU AI Act compliance mappings',
@@ -181,6 +191,18 @@ const SOFTWARE_APPLICATION_JSONLD = {
     'LangChain, CrewAI, and AutoGen integrations',
     'Offline receipt verification in JavaScript, Python, and Go',
     'TypeScript and Python SDKs',
+  ],
+  subjectOf: [
+    {
+      '@type': 'TechArticle',
+      name: 'EMILIA Protocol Engineering Evidence',
+      url: 'https://www.emiliaprotocol.ai/proof',
+    },
+    {
+      '@type': 'Dataset',
+      name: 'EMILIA Machine-Verifiable Security Case',
+      url: 'https://www.emiliaprotocol.ai/.well-known/emilia-context.json',
+    },
   ],
 };
 

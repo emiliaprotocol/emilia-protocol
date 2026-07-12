@@ -55,7 +55,7 @@ const out = vectors.map((v) => {
     const stub = (ev) => ({ valid: ev?.valid !== false, action_digest: ev?.action_digest });
     const verifiers = {};
     for (const t of (v.stub_types || [])) verifiers[t] = stub;
-    return { id: v.id, valid: verifyAuthorizationChain(v.aec_chain, { keysByType: v.keys_by_type, verifiers, requirement: v.requirement }).allow };
+    return { id: v.id, valid: verifyAuthorizationChain(v.aec_chain, { keysByType: v.keys_by_type, policiesByType: v.policies_by_type, verifiers, requirement: v.requirement, expectedActionDigest: v.expected_action_digest, verificationTime: v.verification_time }).allow };
   }
   return { id: v.id, valid: false };
 });

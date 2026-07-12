@@ -101,6 +101,7 @@ describe('EP-AEC bridge — chain in, classified verdict out', () => {
   const rpPolicy = {
     policy_id: 'ep:evpolicy:test:v1', reliance_purpose: 'money_movement',
     requirement: 'policy_permit AND authorization_receipt',
+    expected_action_digest: D,
   };
 
   it('a good chain classifies admissible, with the relying-party requirement pinned', () => {

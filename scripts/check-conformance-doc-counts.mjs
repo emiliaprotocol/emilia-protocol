@@ -6,17 +6,12 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { LIVE_SUITE_FILES } from '../conformance/suites.mjs';
 
 const root = resolve(import.meta.dirname, '..');
-const runText = readFileSync(resolve(root, 'conformance/run.mjs'), 'utf8');
-const suitesMatch = runText.match(/const\s+SUITES\s*=\s*\[([\s\S]*?)\];/);
-if (!suitesMatch) {
-  throw new Error('could not locate SUITES in conformance/run.mjs');
-}
-
-const suiteFiles = [...suitesMatch[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+const suiteFiles = [...LIVE_SUITE_FILES];
 if (suiteFiles.length === 0) {
-  throw new Error('conformance/run.mjs SUITES list is empty');
+  throw new Error('conformance/suites.mjs LIVE_SUITE_FILES is empty');
 }
 
 const tableLabels = new Map([
@@ -26,11 +21,12 @@ const tableLabels = new Map([
   ['revocation.exec.v1.json', 'EP-REVOCATION-v1'],
   ['time-attestation.v1.json', 'EP-TIME-ATTESTATION-v1'],
   ['trust-receipt.exec.v1.json', 'EP-TRUST-RECEIPT-v1 (§6.2)'],
-  ['trust-receipt.timestamp-forms.v1.json', 'EP-TRUST-RECEIPT-v1 ts-profile'],
+  ['trust-receipt.timestamp-forms.v2.json', 'EP-TRUST-RECEIPT-v1 ts-profile'],
   ['provenance.exec.v1.json', 'EP-PROVENANCE-CHAIN-v1'],
   ['evidence-record.v1.json', 'EP-EVIDENCE-RECORD-v1'],
   ['canonicalization.v1.json', 'EP-CANONICALIZATION-v1'],
   ['boundary.v1.json', 'EP-BOUNDARY-v1'],
+  ['aec-role.v1.json', 'EP-AEC-ROLE-v1'],
   ['currency.v1.json', 'EP-CURRENCY-v1'],
   ['initiator-attestation.v1.json', 'EP-INITIATOR-ATTESTATION-v1'],
   ['consumption-proof.v1.json', 'EP-SMT-CONSUME-v1'],

@@ -23,8 +23,8 @@ active **individual** submissions, not IETF-adopted or endorsed. Reference
 verifiers exist in JavaScript, Python, and Go in one repository — a
 consistency check, **not** independent implementations. As of 2026-07-11 an
 externally authored Rust implementation (J Diesel NY, source public at
-`jdieselny/ecr-wg`) is rebuilt from a pinned commit and tree and passes all 164
-current vectors plus 359 hostile cases. Its legacy construction statement at
+`jdieselny/ecr-wg`) is rebuilt from a pinned commit and tree and passes the pinned
+16-suite/164-vector clean-room bundle plus 359 hostile cases. Its legacy construction statement at
 `examples/external-verification/statements/rust-cleanroom/` is implementer-signed;
 suite digests bind to this repository's bytes, and the maintainer rebuilt
 the source and re-ran every suite with zero divergences. Construction

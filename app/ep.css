@@ -135,6 +135,143 @@
   color: #0C0A09;
 }
 
+/* ─── Homepage Mission Hero ─────────────────────────────── */
+.ep-home-calm-hero {
+  box-sizing: border-box;
+  min-height: 680px;
+  padding: 132px 0 104px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #E7E5E4;
+}
+.ep-home-calm-hero > div {
+  width: 100%;
+}
+.ep-home-calm-copy {
+  max-width: 980px;
+}
+.ep-home-calm-kicker {
+  margin-bottom: 28px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #B08D35;
+}
+.ep-home-calm-copy h1 {
+  max-width: 940px;
+  margin: 0;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 72px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.08;
+  color: #0C0A09;
+}
+.ep-home-calm-lede {
+  max-width: 760px;
+  margin: 38px 0 0;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.45;
+  color: #292524;
+}
+.ep-home-calm-detail {
+  max-width: 720px;
+  margin: 14px 0 0;
+  font-size: 17px;
+  letter-spacing: 0;
+  line-height: 1.7;
+  color: #57534E;
+}
+.ep-home-calm-actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-top: 38px;
+  flex-wrap: wrap;
+}
+
+/* The homepage earns attention with the mission first. Technical depth stays
+   in one restrained line and expands only when a visitor asks for it. */
+.ep-home-technical-band {
+  border-bottom: 1px solid #E7E5E4;
+  background: #F5F5F4;
+}
+.ep-home-technical-line {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.ep-home-technical-title {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  padding-right: 24px;
+  border-right: 1px solid #D6D3D1;
+}
+.ep-home-technical-title strong,
+.ep-home-technical-title span,
+.ep-home-technical-facts span,
+.ep-home-technical-link {
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0;
+}
+.ep-home-technical-title strong {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: #0C0A09;
+}
+.ep-home-technical-title span {
+  margin-top: 3px;
+  font-size: 9px;
+  color: #78716C;
+}
+.ep-home-technical-facts {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex: 1;
+  flex-wrap: wrap;
+}
+.ep-home-technical-facts span {
+  position: relative;
+  padding-left: 12px;
+  font-size: 9px;
+  line-height: 1.4;
+  color: #57534E;
+  white-space: nowrap;
+}
+.ep-home-technical-facts span::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 0;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #B08D35;
+}
+.ep-home-technical-link {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 500;
+  color: #8A6D28;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.ep-home-technical-link:hover,
+.ep-home-technical-link:focus-visible {
+  color: #0C0A09;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
 /* ─── Endpoint/State Rows ────────────────────────────────── */
 .ep-row {
   transition: background 0.15s;
@@ -249,6 +386,114 @@
   }
   .ep-mobile-menu a[data-active="true"] {
     color: #0C0A09;
+  }
+
+  .ep-home-calm-hero {
+    min-height: 580px;
+    padding: 92px 0 76px;
+  }
+  .ep-home-calm-copy h1 {
+    font-size: 52px;
+    line-height: 1.1;
+  }
+  .ep-home-calm-lede {
+    margin-top: 30px;
+    font-size: 20px;
+  }
+  .ep-home-technical-line {
+    min-height: 0;
+    align-items: flex-start;
+    padding: 18px 0;
+    flex-wrap: wrap;
+    gap: 14px 20px;
+  }
+  .ep-home-technical-title {
+    padding-right: 20px;
+  }
+  .ep-home-technical-facts {
+    flex-basis: 70%;
+  }
+  .ep-home-technical-link {
+    margin-left: auto;
+  }
+
+  /* Homepage sections use inline desktop grids. These named overrides keep
+     the mobile document at viewport width without weakening desktop layout. */
+  .ep-home-grid-hero,
+  .ep-home-grid-regret,
+  .ep-home-grid-step,
+  .ep-home-grid-2,
+  .ep-home-grid-tools,
+  .ep-home-grid-cta {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  .ep-home-grid-hero,
+  .ep-home-grid-regret,
+  .ep-home-grid-2 {
+    gap: 36px !important;
+  }
+  .ep-home-grid-step {
+    gap: 14px !important;
+  }
+  .ep-home-sticky {
+    position: static !important;
+  }
+  .ep-home-footer-ticker {
+    display: none !important;
+  }
+  .ep-home-section-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+  .ep-home-section-header p {
+    max-width: none !important;
+    text-align: left !important;
+    flex-shrink: 1 !important;
+  }
+  .ep-home-grid-cta .ep-cta,
+  .ep-home-grid-cta .ep-cta-secondary {
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 560px) {
+  .ep-home-calm-hero {
+    min-height: 0;
+    padding: 54px 0 50px;
+  }
+  .ep-home-calm-kicker {
+    margin-bottom: 22px;
+  }
+  .ep-home-calm-copy h1 {
+    font-size: 42px;
+    line-height: 1.12;
+  }
+  .ep-home-calm-lede {
+    margin-top: 26px;
+    font-size: 18px;
+  }
+  .ep-home-calm-detail {
+    font-size: 16px;
+  }
+  .ep-home-calm-actions {
+    margin-top: 32px;
+  }
+  .ep-home-technical-title {
+    width: 100%;
+    padding: 0 0 12px;
+    border-right: 0;
+    border-bottom: 1px solid #D6D3D1;
+  }
+  .ep-home-technical-facts {
+    flex-basis: 100%;
+    gap: 10px 16px;
+  }
+  .ep-home-technical-facts span {
+    white-space: normal;
+  }
+  .ep-home-technical-link {
+    width: 100%;
+    margin: 4px 0 0;
   }
 }
 

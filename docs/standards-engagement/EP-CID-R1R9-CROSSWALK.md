@@ -24,7 +24,7 @@ Honesty carried through, per the registry's own discipline: the JavaScript,
 Python, and Go reference verifiers live in one repository and are a
 cross-language consistency check, **not** independent implementations. An
 externally authored Rust implementation (source public) is rebuilt from a pinned
-commit and tree and passes all 164 current vectors plus 359 hostile cases. Its
+commit and tree and passes the pinned 16-suite/164-vector clean-room bundle plus 359 hostile cases. Its
 legacy construction statement is implementer-signed, so strict independently
 attested clean-room acceptance remains zero. That external agreement is what the
 earlier local-harness caveat was waiting on: the single-repository JS/Py/Go set

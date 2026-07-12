@@ -33,6 +33,14 @@ describe('EMILIA-REPO-CONTEXT-v1', () => {
     expect(context.security_claims).toHaveLength(securityCase.claim_count);
   });
 
+  it('surfaces the composed attacker model before an engineering judgment', () => {
+    expect(context.current_evidence.formal.tamarin_composed.verifiedObligations).toBe(10);
+    expect(context.current_evidence.formal.tamarin_composed.deliberatelyUnsafeCounterexamples).toBe(2);
+    expect(llms).toContain('implemented security infrastructure, not architecture-only');
+    expect(llms).toContain('composed Tamarin model');
+    expect(llms).toContain('/proof');
+  });
+
   it('makes the machine-policy versus human-authorization boundary explicit', () => {
     expect(context.canonical_definitions.some((entry) =>
       entry.term === 'machine policy decision versus human authorization')).toBe(true);

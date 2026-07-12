@@ -68,7 +68,8 @@ def test_positive_policy_in_own_role():
     r = verify_authorization_chain(
         {"@version": AEC, "action": ACTION, "requirement": "policy_decision",
          "components": [{"type": "policy_decision", "evidence": POLICY_DOC}]},
-        verifiers=VERIFIERS, keys_by_type=KEYS_BY_TYPE)
+        verifiers=VERIFIERS, keys_by_type=KEYS_BY_TYPE, requirement="policy_decision",
+        expected_action_digest=DIGEST)
     assert r["allow"] is True
     assert r["components"][0]["valid"] and r["components"][0]["bound"]
 
@@ -150,7 +151,7 @@ def test_negative_forged_quorum_unpinned_keys():
     assert r["allow"] is False
 
 
-def test_control_pinned_human_receipt():
+def test_negative_bare_operator_receipt_is_not_human():
     receipt_payload = {"receipt_id": "r1", "issuer": "ep:approver:cfo", "subject": "wire-8841",
                        "action_digest": DIGEST, "created_at": "2026-07-11T12:00:02Z"}
     receipt = {"@version": "EP-RECEIPT-v1", "payload": receipt_payload,
@@ -160,8 +161,10 @@ def test_control_pinned_human_receipt():
         {"@version": AEC, "action": ACTION, "requirement": "policy_decision",
          "components": [{"type": "policy_decision", "evidence": POLICY_DOC},
                         {"type": "ep-receipt", "evidence": receipt}]},
-        verifiers=VERIFIERS, keys_by_type=KEYS_BY_TYPE, requirement=BAR)
-    assert r["allow"] is True
+        verifiers=VERIFIERS, keys_by_type=KEYS_BY_TYPE, requirement=BAR,
+        expected_action_digest=DIGEST)
+    assert r["allow"] is False
+    assert r["components"][1]["valid"] is False
 
 
 if __name__ == "__main__":

@@ -9,6 +9,9 @@
  */
 export class MemoryConsumptionStore {
   constructor() {
+    this.durable = false;
+    this.ownershipFenced = false;
+    this.permanentConsumption = false;
     this.seen = new Set();
     this.reserved = new Set();
   }
@@ -98,6 +101,10 @@ export function createDurableConsumptionStore(backend, { ttlSeconds, reservation
   if (typeof reservationTokenFactory !== 'function') {
     throw new Error('createDurableConsumptionStore: reservationTokenFactory must be a function');
   }
+  if (ttlSeconds !== undefined && ttlSeconds !== null
+      && (!Number.isSafeInteger(ttlSeconds) || ttlSeconds <= 0)) {
+    throw new Error('createDurableConsumptionStore: ttlSeconds must be a positive safe integer when supplied');
+  }
   const opt = ttlSeconds ? { ttlSeconds } : undefined;
   const ownedReservations = new Map();
 
@@ -110,6 +117,10 @@ export function createDurableConsumptionStore(backend, { ttlSeconds, reservation
   }
 
   return {
+    durable: backend.durable === true,
+    ownershipFenced: true,
+    permanentConsumption: ttlSeconds === undefined || ttlSeconds === null,
+    retentionSeconds: ttlSeconds ?? null,
     async reserve(key) {
       const token = reservationTokenFactory();
       if (typeof token !== 'string' || token.length < 16) {
@@ -146,6 +157,7 @@ export function createDurableConsumptionStore(backend, { ttlSeconds, reservation
 export function createMemoryBackend() {
   const map = new Map();
   return {
+    durable: false,
     async addIfAbsent(key, value) { if (map.has(key)) return false; map.set(key, value); return true; },
     async compareAndSet(key, expected, replacement) {
       if (map.get(key) !== expected) return false;

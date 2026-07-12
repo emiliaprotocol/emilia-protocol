@@ -33,6 +33,7 @@ const COL_RESOURCES = [
 ];
 
 const COL_TRUST = [
+  ['/proof', 'Engineering Evidence'],
   ['/security', 'Trust & Security'],
   ['/about', 'About'],
   ['/.well-known/security.txt', 'Responsible Disclosure'],

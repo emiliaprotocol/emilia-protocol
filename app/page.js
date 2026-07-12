@@ -5,17 +5,15 @@ import { motion } from 'motion/react';
 import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import EmailCapture from '@/components/EmailCapture';
-import CrashTestDemo from '@/components/CrashTestDemo';
 import ProofBlock from '@/components/ProofBlock';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
 import proofStats from '@/lib/proof-stats.json';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Homepage — buyer-facing flow.
-// The technical depth (8 binding properties, 4-step rollout schematic, MFA
-// comparison, DEPLOY_LAYERS table, protocol-properties grid) lives one click
-// away on /protocol. The homepage's only job is to convert a cold reader
-// into someone who clicks "See Live Example" or "Request Pilot" within 30s.
+// Homepage — mission-led buyer flow.
+// The first viewport establishes why the agentic era needs shared trust
+// infrastructure. Detailed mechanics and machine-verifiable evidence remain
+// available one click away on /protocol and /proof.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Stats — independently verifiable in the repo:
@@ -25,17 +23,10 @@ import proofStats from '@/lib/proof-stats.json';
 //   85 red team cases — docs/conformance/RED_TEAM_CASES.md
 //   Apache 2.0 — LICENSE
 const TEST_CASES = Number(proofStats.tests?.total || 0).toLocaleString('en-US');
-const TEST_FILES = Number(proofStats.tests?.files || 0).toLocaleString('en-US');
 const TLA_INVARIANTS = String(proofStats.tla?.invariants || 26);
-const ALLOY_FACTS = String(proofStats.alloy?.facts || 35);
-
-const STATS = [
-  { value: TEST_CASES, label: 'Automated Test Cases', sub: `${TEST_FILES} files; applicable cases pass`, accent: color.t1 },
-  { value: TLA_INVARIANTS, label: 'TLA+ Theorems',  sub: 'TLC 2.19, zero errors',             accent: color.blue },
-  { value: ALLOY_FACTS, label: 'Alloy Facts',       sub: '22 assertions verified',            accent: color.gold },
-  { value: '3 + 1',     label: 'Verifier Evidence', sub: '3 same-team ports + pinned external Rust', accent: color.t1 },
-  { value: 'Apache 2.0', label: 'License',          sub: 'Open specification',            accent: color.green },
-];
+const TAMARIN_OBLIGATIONS = String(proofStats.tamarin?.verifiedObligations || 0);
+const SECURITY_CLAIMS = String(proofStats.securityCase?.claims || 0);
+const CONFORMANCE_VECTORS = String(proofStats.conformance?.vectors || 0);
 
 const PROBLEMS = [
   { num: '01', title: 'The vendor wire that passed',     body: 'A payment destination changed inside a valid session, approved through the normal process, to a vendor whose bank details quietly moved. Business email compromise — not a hack.' },
@@ -123,105 +114,43 @@ export default function HomePage() {
     <div style={styles.page}>
       <SiteNav activePage="" />
 
-      {/* ── HERO ─────────────────────────────────────────────── */}
-      <section style={{ paddingTop: 120 }}>
+      {/* ── HERO — one quiet idea before any machinery ───────── */}
+      <section className="ep-home-calm-hero">
         <C>
-          {/* Cinematic hero film — automated agent control: scan → authorize/deny → EMILIA */}
-          <motion.div {...heroIn(0)} style={{ marginBottom: 52 }}>
-            <video
-              autoPlay muted loop playsInline preload="metadata"
-              poster="/hero/emilia-sequence-poster.jpg"
-              aria-label="Automated agent control: high-risk actions are scanned, then AUTHORIZED with a named human authorizer or DENIED when no human authorizer is available."
-              style={{
-                width: '100%', aspectRatio: '16 / 9', objectFit: 'cover',
-                borderRadius: 16, border: `1px solid ${color.border}`,
-                display: 'block', background: '#0b0b0d',
-              }}
-            >
-              <source src="/hero/emilia-sequence.mp4" type="video/mp4" />
-            </video>
-          </motion.div>
-
-          {/* Metadata strip — flat, mono, no widget chrome */}
-          <motion.div {...heroIn(0)} style={{
-            display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap',
-            marginBottom: 52, paddingBottom: 24,
-            borderBottom: `1px solid ${color.border}`,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 5, height: 5, borderRadius: '50%', background: color.gold, display: 'inline-block', flexShrink: 0 }} />
-              <span style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, letterSpacing: 1.5, textTransform: 'uppercase' }}>
-                Consequence firewall · secure agent actions
-              </span>
+          <motion.div className="ep-home-calm-copy" {...heroIn(0)}>
+            <div className="ep-home-calm-kicker">EMILIA Protocol</div>
+            <h1>Building the foundation of trust for the agentic era.</h1>
+            <p className="ep-home-calm-lede">
+              AI is moving from answering questions to taking consequential action.
+            </p>
+            <p className="ep-home-calm-detail">
+              EMILIA is the open trust layer that binds identity, authority, and approval
+              to the exact action before execution, then leaves evidence anyone can verify.
+            </p>
+            <div className="ep-home-calm-actions">
+              <Link href="/protocol" className="ep-cta" style={cta.primary}>Explore the protocol</Link>
             </div>
-            <span style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, letterSpacing: 0.5 }}>
-              No receipt, no mutation
-            </span>
-            <span style={{ flex: 1 }} />
-            <a href="/spec" style={{ fontFamily: font.mono, fontSize: 10, color: color.gold, letterSpacing: 1.5, textTransform: 'uppercase', textDecoration: 'none' }}>
-              View Spec →
-            </a>
-            <a href="/security" style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, letterSpacing: 1.5, textTransform: 'uppercase', textDecoration: 'none' }}>
-              Trust Model →
-            </a>
           </motion.div>
+        </C>
+      </section>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 0.88fr', gap: 72, alignItems: 'start' }}>
-            {/* Left — editorial headline */}
-            <motion.div {...heroIn(0.06)}>
-              <div style={{
-                fontFamily: font.mono, fontSize: 11, fontWeight: 500,
-                letterSpacing: 2.5, textTransform: 'uppercase',
-                color: color.gold, marginBottom: 28,
-              }}>
-                The open Consequence Firewall for AI agents
-              </div>
-
-              <h1 style={{
-                fontFamily: font.sans, fontWeight: 700,
-                fontSize: 'clamp(40px, 5vw, 68px)',
-                letterSpacing: -2.5, lineHeight: 1.02,
-                color: color.t1, margin: '0 0 32px',
-              }}>
-                Stop AI agents from executing irreversible actions without{' '}
-                <em style={{ fontStyle: 'normal', color: color.gold }}>accountable approval.</em>
-              </h1>
-
-              <p style={{
-                fontSize: 17, color: color.t2,
-                maxWidth: 520, lineHeight: 1.72, margin: '0 0 40px',
-              }}>
-                EMILIA is an open control layer for secure agent actions. It plugs into MCP,
-                agent runtimes, SCITT, and systems of record so high-risk actions require
-                verifiable authorization before execution. If the action runs, anyone can verify
-                who approved exactly what, under which policy, offline.
-              </p>
-
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <Link href="/try/receipt-required" className="ep-cta" style={cta.primary}>Try to break the gate →</Link>
-                <Link href="/quickstart" className="ep-cta-secondary" style={cta.secondary}>Wrap one dangerous action</Link>
-              </div>
-
-              {/* Proof strip — trust chips (formal proof lives below the fold) */}
-              <div style={{
-                display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 52,
-                paddingTop: 28, borderTop: `1px solid ${color.border}`,
-              }}>
-                {['Apache-2.0', 'JS/Python/Go verifiers', 'SCITT profile', 'CF-1 conformance', `${TEST_CASES} test cases`].map((chip) => (
-                  <span key={chip} style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, letterSpacing: 0.5, border: `1px solid ${color.border}`, borderRadius: 999, padding: '5px 11px' }}>
-                    {chip}
-                  </span>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* Right — live crash test */}
-            <motion.div {...heroIn(0.12)} style={{ paddingTop: 12 }}>
-              <CrashTestDemo />
-              <div style={{ marginTop: 12, fontFamily: font.mono, fontSize: 12, color: color.t3, letterSpacing: 0.3 }}>
-                Or run it yourself, offline: <span style={{ color: color.t1 }}>npx -y @emilia-protocol/crash-test</span>
-              </div>
-            </motion.div>
+      {/* ── TECHNICAL FOUNDATION — a quiet proof line, not the story ─ */}
+      <section className="ep-home-technical-band" aria-label="Technical foundation">
+        <C>
+          <div className="ep-home-technical-line">
+            <div className="ep-home-technical-title">
+              <strong>Technical foundation</strong>
+              <span>Open protocol</span>
+            </div>
+            <div className="ep-home-technical-facts">
+              <span>IETF Internet-Drafts</span>
+              <span>Apache 2.0</span>
+              <span>{TAMARIN_OBLIGATIONS} composed attack-model obligations</span>
+              <span>{SECURITY_CLAIMS} executable security claims</span>
+              <span>{CONFORMANCE_VECTORS} conformance vectors</span>
+              <span>CF-1 conformance</span>
+            </div>
+            <Link href="/proof" className="ep-home-technical-link">Inspect the proof →</Link>
           </div>
         </C>
       </section>
@@ -337,9 +266,9 @@ export default function HomePage() {
       {/* ── THE WALL OF REGRET (buyer emotion — before the math) ─ */}
       <section style={{ padding: '104px 0 0' }}>
         <C>
-          <div style={{ display: 'grid', gridTemplateColumns: '5fr 7fr', gap: 80, alignItems: 'start' }}>
+          <div className="ep-home-grid-regret" style={{ display: 'grid', gridTemplateColumns: '5fr 7fr', gap: 80, alignItems: 'start' }}>
             {/* Sticky editorial label */}
-            <motion.div {...reveal()} style={{ position: 'sticky', top: 96 }}>
+            <motion.div className="ep-home-sticky" {...reveal()} style={{ position: 'sticky', top: 96 }}>
               <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>
                 The Wall of Regret
               </div>
@@ -402,47 +331,6 @@ export default function HomePage() {
         </C>
       </section>
 
-      {/* ── STATS STRIP — left-bar pattern (Fingerprint reference) ─ */}
-      <motion.div {...reveal()} style={{
-        borderTop: `1px solid ${color.border}`,
-        borderBottom: `1px solid ${color.border}`,
-        background: 'rgba(245,244,240,0.45)',
-        marginTop: 96,
-      }}>
-        <C>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)' }}>
-            {STATS.map((s, i) => (
-              <div key={i} style={{
-                display: 'flex', gap: 14, alignItems: 'flex-start',
-                padding: '28px 24px',
-                paddingLeft: i === 0 ? 0 : 24,
-                borderRight: i < STATS.length - 1 ? `1px solid ${color.border}` : 'none',
-              }}>
-                {/* Left accent bar */}
-                <div style={{
-                  width: 3, height: 38, borderRadius: 2,
-                  background: s.accent, flexShrink: 0, marginTop: 1,
-                }} />
-                <div>
-                  <div style={{
-                    fontFamily: font.sans, fontSize: 26, fontWeight: 700,
-                    color: s.accent, letterSpacing: -0.5, lineHeight: 1, marginBottom: 7,
-                  }}>
-                    {s.value}
-                  </div>
-                  <div style={{ fontFamily: font.mono, fontSize: 9, letterSpacing: 1.5, textTransform: 'uppercase', color: color.t3, lineHeight: 1.4 }}>
-                    {s.label}
-                  </div>
-                  <div style={{ fontFamily: font.mono, fontSize: 9, color: color.t3, letterSpacing: 0.3, marginTop: 2, opacity: 0.7 }}>
-                    {s.sub}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </C>
-      </motion.div>
-
       {/* ── PROOF — formal-verification anchor (the spear tip) ─── */}
       <section style={{ padding: '96px 0', borderBottom: `1px solid ${color.border}` }}>
         <C>
@@ -471,6 +359,7 @@ export default function HomePage() {
             {HOW_IT_WORKS.map((item, i) => (
               <motion.div
                 key={i}
+                className="ep-home-grid-step"
                 {...reveal(i * 0.06)}
                 style={{
                   display: 'grid', gridTemplateColumns: '140px 1fr',
@@ -536,7 +425,7 @@ export default function HomePage() {
             </p>
           </motion.div>
 
-          <div style={{
+          <div className="ep-home-grid-2" style={{
             display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
             borderTop: `1px solid ${color.border}`, borderLeft: `1px solid ${color.border}`,
           }}>
@@ -574,7 +463,7 @@ export default function HomePage() {
       {/* ── DEVELOPER WEDGE — MCP tool-call enforcement (the crank) ─ */}
       <section style={{ padding: '104px 0', background: '#1C1917', color: '#FAFAF9' }}>
         <C>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'center' }}>
+          <div className="ep-home-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'center' }}>
             <motion.div {...reveal()}>
               <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>
                 The developer wedge
@@ -655,7 +544,7 @@ export default function HomePage() {
             </a>
           </motion.div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
+          <div className="ep-home-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
             {SURFACES.map((s, i) => (
               <motion.a
                 key={i}
@@ -705,7 +594,7 @@ export default function HomePage() {
             <div style={{ fontFamily: font.mono, fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', color: color.gold, marginBottom: 16 }}>
               Implementation Surface
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 32 }}>
+            <div className="ep-home-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 32 }}>
               <h2 style={{
                 fontFamily: font.sans, fontWeight: 700,
                 fontSize: 'clamp(24px, 2.8vw, 38px)',
@@ -719,7 +608,7 @@ export default function HomePage() {
             </div>
           </motion.div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          <div className="ep-home-grid-tools" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
             {DEV_TOOLS.map((item, i) => (
               <motion.a key={i} href={item.href} className="ep-card-lift" {...reveal(i * 0.07)} style={{
                 background: color.card,
@@ -790,7 +679,7 @@ export default function HomePage() {
             </p>
           </motion.div>
 
-          <motion.div {...reveal(0.08)} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 44 }}>
+          <motion.div className="ep-home-grid-cta" {...reveal(0.08)} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 44 }}>
             {[
               { kind: 'Developer', accent: color.green, title: 'Start with EP Core', body: 'Free and Apache 2.0. Grab a sandbox API key in 30 seconds — or self-host the SDK, MCP server, and Agent Guard.', label: 'Start free', href: '/signup', btn: { background: '#FAFAF9', color: '#1C1917' } },
               { kind: 'Team', accent: color.blue, title: 'Run it on EP Cloud', body: 'Hosted control plane — managed policy registry, signoff orchestration, and auditor-grade evidence, no infrastructure to run.', label: 'See pricing', href: '/pricing', btn: { background: color.gold, color: '#FAFAF9' } },
@@ -815,7 +704,7 @@ export default function HomePage() {
         </C>
 
         {/* Footer data ticker */}
-        <div aria-hidden style={{
+        <div className="ep-home-footer-ticker" aria-hidden style={{
           position: 'absolute', bottom: 0, left: 0, right: 0,
           borderTop: '1px solid rgba(255,255,255,0.07)',
           padding: '10px 32px',

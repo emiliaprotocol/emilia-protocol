@@ -1,9 +1,9 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db",
-  "claim_count": 15,
-  "evidence_file_count": 68,
+  "evidence_bundle_sha256": "e51c53b5c98ccba1fcbed6b65351e44d3656f9a3a4eb3a5488b1e69bd294c043",
+  "claim_count": 16,
+  "evidence_file_count": 73,
   "execution": {
     "required": true,
     "status": "passed",
@@ -14,11 +14,21 @@
         "cases": [
           "accept_pinned_human_receipt",
           "accept_policy_plus_human",
-          "reject_cross_role_key",
-          "reject_forged_quorum_unpinned_keys",
+          "accept_profile_bound_quorum",
+          "reject_bare_operator_receipt_as_human",
           "reject_label_collision",
-          "reject_unpinned_key",
-          "reject_unsigned_binding"
+          "reject_presenter_chosen_requirement",
+          "reject_quorum_approver_alias",
+          "reject_reserved_verifier_override",
+          "reject_revoked_class_a_approver",
+          "reject_stale_approver_registry",
+          "reject_stale_human_receipt",
+          "reject_stale_quorum",
+          "reject_weaker_presented_quorum_policy",
+          "reject_wrong_expected_action",
+          "reject_wrong_quorum_origin",
+          "reject_wrong_quorum_rp_id",
+          "reject_wrong_receipt_origin"
         ],
         "languages": [
           "javascript",
@@ -80,6 +90,18 @@
           "javascript",
           "python",
           "go"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/gate/evidence-atomic.test.js",
+        "titles": [
+          "atomic evidence: a backend cannot claim success without persisting the record",
+          "atomic evidence: altered persisted bytes fail verification",
+          "atomic evidence: concurrent replicas append one linear chain",
+          "atomic evidence: readback must equal the exact submitted sequence and predecessor",
+          "atomic evidence: response loss after append recovers the same record id"
         ],
         "result": "passed"
       },
@@ -147,6 +169,29 @@
       },
       {
         "runner": "vitest",
+        "file": "tests/aec-execution-gate.test.js",
+        "titles": [
+          "burns an indeterminate authorization after the effect starts",
+          "cannot mint a fresh replay key with an invalid decoy component",
+          "captures validated store and logger methods against post-construction replacement",
+          "executes a Class-A chain once and refuses replay",
+          "never accepts presenter-supplied verifier code as relying-party evidence policy",
+          "passes a frozen pre-await action snapshot to the effect",
+          "refuses expiring consumption and process-local evidence in production mode",
+          "treats false commit and malformed log acknowledgements as failures"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
+        "file": "tests/aec-safety-critical.test.js",
+        "titles": [
+          "requires the executor to pin the expected action independently of the chain"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "vitest",
         "file": "tests/authority-registry.test.js",
         "titles": [
           "delegation cannot widen by omitting scope, ceiling, currency, policy, assurance, lifecycle, or organization",
@@ -176,7 +221,10 @@
         "titles": [
           "admits at most one clearance across distinct challenges for the same action",
           "fails before challenge consumption when explicit revocation state is absent",
+          "pins all trust configuration and runs one frozen action exactly once",
+          "refuses every transaction-scoped trust field before challenge consumption",
           "refuses tampering, issuer laundering, cross-action replay, and impossible timestamps",
+          "requires explicit durable custody in production mode",
           "snapshots the action, profile, and graph before awaiting durable consumption"
         ],
         "result": "passed"
@@ -244,7 +292,7 @@
         "runner": "vitest",
         "file": "tests/role-non-substitution.test.js",
         "titles": [
-          "NEGATIVE (cross-role key confusion): a machine key pinned for ANOTHER role cannot fill ep-receipt"
+          "NEGATIVE: a bare operator-signed envelope is not a human ceremony"
         ],
         "result": "passed"
       }
@@ -257,22 +305,22 @@
       "package": "@emilia-protocol/gate",
       "version": "0.9.3",
       "filename": "emilia-protocol-gate-0.9.3.tgz",
-      "sha256": "e9380991e24259df5695f1f8064c3b4ddb4383b050fca21ec97887c428f605a2",
-      "file_count": 61
+      "sha256": "9795f4d49f7acb7cc340db28d3b3e153d2e8220fb938f902f1f5525bb8939ffd",
+      "file_count": 62
     },
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db",
-      "file_count": 68
+      "sha256": "e51c53b5c98ccba1fcbed6b65351e44d3656f9a3a4eb3a5488b1e69bd294c043",
+      "file_count": 73
     },
     "verify-sdk": {
       "kind": "npm-tarball",
       "package": "@emilia-protocol/verify",
       "version": "3.8.0",
       "filename": "emilia-protocol-verify-3.8.0.tgz",
-      "sha256": "2453af572f53ec54a6046887e3dc324f7980a8c5768bf06f2baf534bcfd80de0",
-      "file_count": 27
+      "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96",
+      "file_count": 28
     }
   },
   "claims": [
@@ -376,11 +424,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "2453af572f53ec54a6046887e3dc324f7980a8c5768bf06f2baf534bcfd80de0"
+          "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
+          "sha256": "e51c53b5c98ccba1fcbed6b65351e44d3656f9a3a4eb3a5488b1e69bd294c043"
         }
       ]
     },
@@ -498,11 +546,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "2453af572f53ec54a6046887e3dc324f7980a8c5768bf06f2baf534bcfd80de0"
+          "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
+          "sha256": "e51c53b5c98ccba1fcbed6b65351e44d3656f9a3a4eb3a5488b1e69bd294c043"
         }
       ]
     },
@@ -646,7 +694,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
+          "sha256": "e51c53b5c98ccba1fcbed6b65351e44d3656f9a3a4eb3a5488b1e69bd294c043"
         }
       ]
     },
@@ -788,11 +836,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "2453af572f53ec54a6046887e3dc324f7980a8c5768bf06f2baf534bcfd80de0"
+          "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
+          "sha256": "e51c53b5c98ccba1fcbed6b65351e44d3656f9a3a4eb3a5488b1e69bd294c043"
         }
       ]
     },
@@ -897,11 +945,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "2453af572f53ec54a6046887e3dc324f7980a8c5768bf06f2baf534bcfd80de0"
+          "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
+          "sha256": "e51c53b5c98ccba1fcbed6b65351e44d3656f9a3a4eb3a5488b1e69bd294c043"
         }
       ]
     },
@@ -1006,11 +1054,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "2453af572f53ec54a6046887e3dc324f7980a8c5768bf06f2baf534bcfd80de0"
+          "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
+          "sha256": "e51c53b5c98ccba1fcbed6b65351e44d3656f9a3a4eb3a5488b1e69bd294c043"
         }
       ]
     },
@@ -1138,11 +1186,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "e9380991e24259df5695f1f8064c3b4ddb4383b050fca21ec97887c428f605a2"
+          "sha256": "9795f4d49f7acb7cc340db28d3b3e153d2e8220fb938f902f1f5525bb8939ffd"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
+          "sha256": "e51c53b5c98ccba1fcbed6b65351e44d3656f9a3a4eb3a5488b1e69bd294c043"
         }
       ]
     },
@@ -1245,11 +1293,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "e9380991e24259df5695f1f8064c3b4ddb4383b050fca21ec97887c428f605a2"
+          "sha256": "9795f4d49f7acb7cc340db28d3b3e153d2e8220fb938f902f1f5525bb8939ffd"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
+          "sha256": "e51c53b5c98ccba1fcbed6b65351e44d3656f9a3a4eb3a5488b1e69bd294c043"
         }
       ]
     },
@@ -1268,6 +1316,12 @@
         },
         {
           "language": "javascript",
+          "file": "packages/gate/aec-execution.js",
+          "symbol": "createAECExecutionGate",
+          "exported": true
+        },
+        {
+          "language": "javascript",
           "file": "packages/gate/store.js",
           "symbol": "createDurableConsumptionStore",
           "exported": true
@@ -1278,6 +1332,11 @@
           "language": "javascript",
           "file": "packages/gate/index.js",
           "export": "createGate"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/aec-execution.js",
+          "export": "createAECExecutionGate"
         }
       ],
       "language_coverage": {
@@ -1322,6 +1381,16 @@
           "file": "packages/gate/gate.test.js",
           "title": "run() consumes an indeterminate attempt when the executor throws",
           "runner": "node-test"
+        },
+        {
+          "file": "tests/aec-execution-gate.test.js",
+          "title": "executes a Class-A chain once and refuses replay",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/aec-execution-gate.test.js",
+          "title": "burns an indeterminate authorization after the effect starts",
+          "runner": "vitest"
         }
       ],
       "formal": [
@@ -1335,7 +1404,7 @@
         }
       ],
       "assumptions": [
-        "the guarded effect is invoked only through gate.run",
+        "the guarded effect is invoked only through gate.run or the AEC execution gate run method",
         "the durable backend remains fail-closed"
       ],
       "exclusions": [
@@ -1348,11 +1417,185 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "e9380991e24259df5695f1f8064c3b4ddb4383b050fca21ec97887c428f605a2"
+          "sha256": "9795f4d49f7acb7cc340db28d3b3e153d2e8220fb938f902f1f5525bb8939ffd"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
+          "sha256": "e51c53b5c98ccba1fcbed6b65351e44d3656f9a3a4eb3a5488b1e69bd294c043"
+        }
+      ]
+    },
+    {
+      "claim_id": "aec-execution-is-action-keyed-and-fleet-fail-closed",
+      "statement": "The stateful AEC execution gate pins custom component verifiers, verifier keys, human profiles, and the requirement at construction, captures the validated store and logger methods, and refuses transaction-scoped trust configuration. It reserves one non-expiring key derived only from the executor-bound canonical action digest before effect, so presenter-controlled decoy components, alternate proof forms, or post-construction method replacement cannot mint a fresh replay key for the same action. Production construction also requires an ownership-fenced durable consumption backend and a strict atomic shared-head evidence log that continues across replicas and restarts; the gate independently rehashes and exactly matches each acknowledgment, and successful atomic append readback must equal the submitted sequence, predecessor, identifier, and content.",
+      "acceptance_roots": [
+        "the executor independently constructs the exact action and includes a unique action-instance identifier whenever identical effects may recur",
+        "the relying party pins custom component verifier code and verifier keys at gate construction rather than accepting them with presenter evidence",
+        "the consumption backend truthfully asserts durable atomic conditional-write semantics and never expires committed action keys",
+        "the evidence backend truthfully asserts durable atomic compare-and-append semantics for one shared stream head"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/gate/aec-execution.js",
+          "symbol": "createAECExecutionGate",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/store.js",
+          "symbol": "createDurableConsumptionStore",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/evidence.js",
+          "symbol": "createAtomicEvidenceLog",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "packages/gate/aec-execution.js",
+          "export": "createAECExecutionGate"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/store.js",
+          "export": "createDurableConsumptionStore"
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/evidence.js",
+          "export": "createAtomicEvidenceLog"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "tests/aec-execution-gate.test.js"
+        },
+        "python": {
+          "status": "not_applicable",
+          "reason": "Python implements offline AEC verification but does not own the stateful external-effect transaction."
+        },
+        "go": {
+          "status": "not_applicable",
+          "reason": "Go implements offline AEC verification but does not own the stateful external-effect transaction."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_atomic_aec_evidence_across_replicas",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          }
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_aec_replay_via_decoy_component",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/aec-execution-gate.test.js",
+          "title": "executes a Class-A chain once and refuses replay",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/aec-execution-gate.test.js",
+          "title": "cannot mint a fresh replay key with an invalid decoy component",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/aec-execution-gate.test.js",
+          "title": "never accepts presenter-supplied verifier code as relying-party evidence policy",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/aec-execution-gate.test.js",
+          "title": "captures validated store and logger methods against post-construction replacement",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/aec-execution-gate.test.js",
+          "title": "refuses expiring consumption and process-local evidence in production mode",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/aec-execution-gate.test.js",
+          "title": "treats false commit and malformed log acknowledgements as failures",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/aec-execution-gate.test.js",
+          "title": "passes a frozen pre-await action snapshot to the effect",
+          "runner": "vitest"
+        },
+        {
+          "file": "packages/gate/evidence-atomic.test.js",
+          "title": "atomic evidence: concurrent replicas append one linear chain",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/evidence-atomic.test.js",
+          "title": "atomic evidence: response loss after append recovers the same record id",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/evidence-atomic.test.js",
+          "title": "atomic evidence: a backend cannot claim success without persisting the record",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/evidence-atomic.test.js",
+          "title": "atomic evidence: readback must equal the exact submitted sequence and predecessor",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/gate/evidence-atomic.test.js",
+          "title": "atomic evidence: altered persisted bytes fail verification",
+          "runner": "node-test"
+        }
+      ],
+      "formal": [
+        {
+          "status": "partial",
+          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "runner": "formal/tamarin/run-composed.sh",
+          "lemma": "injective_execution_with_consumption",
+          "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
+          "scope": "The symbolic model proves injective execution with consumption; atomic shared-head storage, restart continuity, response loss, and backend durability are covered by executable fault tests and deployment assumptions."
+        }
+      ],
+      "assumptions": [
+        "all paths to the consequential effect pass through this gate and the backend capability assertions are truthful",
+        "the canonical action uniquely identifies one intended effect instance and the backend does not roll back, evict, or equivocate outside its contract"
+      ],
+      "exclusions": [
+        "the software cannot prove physical storage durability or prevent a privileged backend operator from violating the asserted contract",
+        "business-level exactly-once effects still require downstream idempotency and reconciliation after indeterminate outcomes",
+        "the gate proves authorization and recorded execution state, not the semantic correctness, legality, or physical truth of the action"
+      ],
+      "release_artifacts": [
+        "gate-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "gate-sdk",
+          "sha256": "9795f4d49f7acb7cc340db28d3b3e153d2e8220fb938f902f1f5525bb8939ffd"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "e51c53b5c98ccba1fcbed6b65351e44d3656f9a3a4eb3a5488b1e69bd294c043"
         }
       ]
     },
@@ -1486,7 +1729,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
+          "sha256": "e51c53b5c98ccba1fcbed6b65351e44d3656f9a3a4eb3a5488b1e69bd294c043"
         }
       ]
     },
@@ -1598,11 +1841,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "2453af572f53ec54a6046887e3dc324f7980a8c5768bf06f2baf534bcfd80de0"
+          "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
+          "sha256": "e51c53b5c98ccba1fcbed6b65351e44d3656f9a3a4eb3a5488b1e69bd294c043"
         }
       ]
     },
@@ -1736,7 +1979,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
+          "sha256": "e51c53b5c98ccba1fcbed6b65351e44d3656f9a3a4eb3a5488b1e69bd294c043"
         }
       ]
     },
@@ -1988,16 +2231,16 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
+          "sha256": "e51c53b5c98ccba1fcbed6b65351e44d3656f9a3a4eb3a5488b1e69bd294c043"
         }
       ]
     },
     {
       "claim_id": "model-to-matter-clearance-is-exact-and-single-use",
-      "statement": "A Model-to-Matter presentation clears at most once only when all six evidence types verify under the executor's pinned profile, bind the same exact digest-only action, satisfy freshness and explicit revocation state, and survive durable challenge consumption.",
+      "statement": "A Model-to-Matter presentation clears at most once only when all six evidence types verify under the executor's constructor-pinned profile, bind the same exact digest-only action, satisfy freshness and the pinned revocation provider, and survive durable challenge and action consumption. The production executor refuses transaction-scoped profile, store, revocation, time, and retry configuration and captures validated state methods against post-construction replacement.",
       "acceptance_roots": [
         "the executor provisions the authentic Model-to-Matter profile and issuer keys",
-        "the runtime supplies explicit revocation state from its trusted source",
+        "the executor pins a revocation provider that supplies an explicit current view",
         "the challenge backend provides atomic registration and compare-and-set consumption"
       ],
       "enforcement_path": [
@@ -2016,6 +2259,12 @@
         {
           "language": "javascript",
           "file": "lib/frontier/model-to-matter.js",
+          "symbol": "createModelToMatterExecutor",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/frontier/model-to-matter.js",
           "symbol": "evaluateRegisteredModelToMatterPresentation",
           "exported": true
         },
@@ -2027,6 +2276,11 @@
         }
       ],
       "implementations": [
+        {
+          "language": "javascript",
+          "file": "lib/frontier/model-to-matter.js",
+          "export": "createModelToMatterExecutor"
+        },
         {
           "language": "javascript",
           "file": "lib/frontier/model-to-matter.js",
@@ -2085,6 +2339,21 @@
           "file": "tests/model-to-matter.test.js",
           "title": "refuses tampering, issuer laundering, cross-action replay, and impossible timestamps",
           "runner": "vitest"
+        },
+        {
+          "file": "tests/model-to-matter.test.js",
+          "title": "pins all trust configuration and runs one frozen action exactly once",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/model-to-matter.test.js",
+          "title": "refuses every transaction-scoped trust field before challenge consumption",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/model-to-matter.test.js",
+          "title": "requires explicit durable custody in production mode",
+          "runner": "vitest"
         }
       ],
       "formal": [
@@ -2098,7 +2367,8 @@
         "the supplied revocation view is current and complete for the presented artifacts",
         "source systems compute opaque commitments over the intended content with agreed canonicalization",
         "the durable challenge backend linearizes consumption",
-        "the action-level clearance store is shared by all workers and does not TTL-reopen consumed action digests"
+        "the action-level clearance store is shared by all workers and does not TTL-reopen consumed action digests",
+        "the relying-party revocation provider returns an authentic current view and all physical effect paths traverse the pinned executor run method"
       ],
       "exclusions": [
         "the profile does not perform sequence screening or determine scientific safety",
@@ -2112,17 +2382,17 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
+          "sha256": "e51c53b5c98ccba1fcbed6b65351e44d3656f9a3a4eb3a5488b1e69bd294c043"
         }
       ]
     },
     {
       "claim_id": "aec-role-substitution-refused",
-      "statement": "In the EP-AEC composition verifier, an attacker cannot satisfy a human-authorization requirement without a relying-party-pinned human: a presenter label cannot impersonate a registered verifier type (type provenance); BOTH built-in human-authorization legs are role-scoped — the ep-receipt signing key must be pinned under keysByType['ep-receipt'] and every ep-quorum approver key must be pinned under keysByType['ep-quorum'], so a forged quorum built entirely from attacker-generated device keys fails closed; and the ep-receipt leg binds the exact action from the SIGNED receipt payload — verified identically in JavaScript, Python, and Go.",
+      "statement": "EP-AEC returns allow only when the relying party independently pins both its requirement and the exact executor action. Presenter labels are non-authoritative. The ep-receipt human leg requires a fresh Section 6.2 Trust Receipt with Class-A WebAuthn, a pinned approver directory, RP audience, signed WebAuthn origin allowlist, policy hash, and log key; a bare operator-signed envelope is refused. The ep-quorum leg requires a fresh exact pinned policy plus RP audience, signed WebAuthn origin allowlist, context policy, and key-to-identity-to-role directory. These predicates execute identically in JavaScript, Python, and Go.",
       "acceptance_roots": [
-        "single human-authorization keys pinned per role via keysByType['ep-receipt']",
-        "quorum approver keys pinned per role via keysByType['ep-quorum']",
-        "the exact canonical action digest carried in the signed receipt payload"
+        "relying-party requirement and executor-computed expected action digest",
+        "Class-A approver directory, RP ID, allowed WebAuthn origins, policy hash, log key, freshness time, and max age for ep-receipt",
+        "exact quorum policy, RP ID, allowed WebAuthn origins, signed context policy, approver identity-role directory, freshness time, and max age for ep-quorum"
       ],
       "enforcement_path": [
         {
@@ -2188,7 +2458,18 @@
         },
         {
           "suite": "conformance/vectors/aec-role.v1.json",
-          "case_id": "reject_cross_role_key",
+          "case_id": "accept_profile_bound_quorum",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_presenter_chosen_requirement",
           "polarity": "negative",
           "expect": {
             "valid": false
@@ -2199,18 +2480,7 @@
         },
         {
           "suite": "conformance/vectors/aec-role.v1.json",
-          "case_id": "reject_unpinned_key",
-          "polarity": "negative",
-          "expect": {
-            "valid": false
-          },
-          "execution": {
-            "runner": "cross-language"
-          }
-        },
-        {
-          "suite": "conformance/vectors/aec-role.v1.json",
-          "case_id": "reject_unsigned_binding",
+          "case_id": "reject_wrong_expected_action",
           "polarity": "negative",
           "expect": {
             "valid": false
@@ -2232,7 +2502,117 @@
         },
         {
           "suite": "conformance/vectors/aec-role.v1.json",
-          "case_id": "reject_forged_quorum_unpinned_keys",
+          "case_id": "reject_reserved_verifier_override",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_bare_operator_receipt_as_human",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_weaker_presented_quorum_policy",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_wrong_quorum_rp_id",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_wrong_quorum_origin",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_quorum_approver_alias",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_stale_quorum",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_stale_approver_registry",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_stale_human_receipt",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_wrong_receipt_origin",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_revoked_class_a_approver",
           "polarity": "negative",
           "expect": {
             "valid": false
@@ -2245,24 +2625,29 @@
       "tests": [
         {
           "file": "tests/role-non-substitution.test.js",
-          "title": "NEGATIVE (cross-role key confusion): a machine key pinned for ANOTHER role cannot fill ep-receipt",
+          "title": "NEGATIVE: a bare operator-signed envelope is not a human ceremony",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/aec-safety-critical.test.js",
+          "title": "requires the executor to pin the expected action independently of the chain",
           "runner": "vitest"
         }
       ],
       "formal": [
         {
           "status": "not_modeled",
-          "gap": "The AEC composition and role-scoping logic is outside the Tamarin/TLA+ models; it is covered by cross-language conformance vectors (aec-role.v1.json) and per-port unit tests."
+          "gap": "The AEC acceptance-profile composition is outside the Tamarin/TLA+ models; it is covered by cross-language real-crypto vectors and per-port unit/property tests."
         }
       ],
       "assumptions": [
-        "the relying party pins single-human keys under keysByType['ep-receipt'] and quorum approver keys under keysByType['ep-quorum'], and pins no attacker-controlled key",
-        "verifyReceipt's Ed25519-over-JCS signature check and verifyQuorum's per-member device-assertion checks are sound"
+        "the relying-party requirement, expected action, profiles, verification time, approver directory, policy, RP ID, allowed WebAuthn origins, and log key are authentic configuration",
+        "verifyTrustReceipt and verifyQuorum cryptographic checks are sound, and enrolled authenticators are uncompromised before acceptance"
       ],
       "exclusions": [
-        "a key the relying party itself pins for a role is trusted for that role by definition; misconfiguration of role scoping is out of scope",
+        "misconfiguration or compromise of the relying party's own profiles and enrolled keys is outside this verifier claim",
         "this claim covers the AEC composition verifier, not the standalone reliance kernel",
-        "quorum POLICY pinning (roster/threshold) is the relying party's responsibility; this claim anchors the approver KEYS, so a forged roster under unpinned keys is already refused"
+        "offline AEC verification does not prove current revocation status or atomic one-time consumption; an execution gate must enforce those stateful properties separately"
       ],
       "release_artifacts": [
         "security-evidence"
@@ -2270,7 +2655,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
+          "sha256": "e51c53b5c98ccba1fcbed6b65351e44d3656f9a3a4eb3a5488b1e69bd294c043"
         }
       ]
     }
@@ -2326,7 +2711,7 @@
     },
     {
       "path": "conformance/vectors/aec-role.v1.json",
-      "sha256": "8935324478c0c4d648be70ea8060b7911f3787c2f708b31e499ccbe12aace359"
+      "sha256": "79ef1b206f4ac4d3ee39e42c4d5e7852abefcc4d3a761984a908e8e4dcd7a0af"
     },
     {
       "path": "conformance/vectors/authority.v1.json",
@@ -2374,7 +2759,7 @@
     },
     {
       "path": "lib/frontier/model-to-matter.js",
-      "sha256": "d368e7385e53a0f1f3a040c3ca7f63baa3ed547f8ec0401cd25ba2dc695258b8"
+      "sha256": "71f94f0aedb5dae2f0bb7ffc2af286cd17237655be3614c83ba4869bc260dbb4"
     },
     {
       "path": "lib/ncpdp/privacy.js",
@@ -2385,8 +2770,20 @@
       "sha256": "5fbf1fba0ee5438aa4735da45dda7ee0f2c4cec39811afed68c9ce166479d327"
     },
     {
+      "path": "packages/gate/aec-execution.js",
+      "sha256": "2726c422d457cca136668acfb4d7e3b2dc8387c1ea2c2ca0f85f995dafc2928f"
+    },
+    {
       "path": "packages/gate/challenge-store.js",
-      "sha256": "15166629c0f73e38e0a600e6064bcdeb22135d3b65cece65e2661d7f61945c42"
+      "sha256": "e64ffa948c9d073f0900bb2152eb59d78fdaa207305af60659d75401c04ea3c8"
+    },
+    {
+      "path": "packages/gate/evidence-atomic.test.js",
+      "sha256": "1b6ff5dbd575756aed0a2f1bba8c8a15812206ef6ebaaaff3d3bb317dc7e5787"
+    },
+    {
+      "path": "packages/gate/evidence.js",
+      "sha256": "d036538b52c23a780493a856228d2020f006ce8bbf48769c9cf2e8e2881042af"
     },
     {
       "path": "packages/gate/gate.test.js",
@@ -2394,7 +2791,7 @@
     },
     {
       "path": "packages/gate/index.js",
-      "sha256": "e7a1f6294a16c83f53a2722fb4c4d6e6d75b6a8de2c6f57e6e1402b80709439c"
+      "sha256": "dc9a9f788a8e22406cddce7a16897ed34a160dbed7f00abd1b008f4b4f84405c"
     },
     {
       "path": "packages/gate/store-faults.test.js",
@@ -2406,11 +2803,11 @@
     },
     {
       "path": "packages/gate/store.js",
-      "sha256": "32b4a721cfda7fcf8a41a1db9721c52d473c7523490393f8647f90cd61b0cfca"
+      "sha256": "3500a7870f644bcfad1ad1247f054851f28a7fd682abc7624e30fb4bae1a928b"
     },
     {
       "path": "packages/go-verify/evidence_chain.go",
-      "sha256": "e620355443c9630763fa7c8bf9ab8c8e2d367a7a546a319b30047b5506449be2"
+      "sha256": "2c1416ad111780b6004e5fd91d084ea0f58ab4456022f26623d61b8304f2028d"
     },
     {
       "path": "packages/go-verify/revocation.go",
@@ -2430,7 +2827,7 @@
     },
     {
       "path": "packages/python-verify/emilia_verify/__init__.py",
-      "sha256": "deb047c69f3157550532c299192c407edf005252de5a2308ee126c1fba690c2b"
+      "sha256": "df7db65d9d95df54c478c0ae1f5a06b05c7551cc7fdc0038df7e5b0eefc2cf20"
     },
     {
       "path": "packages/verify/authority-proof.js",
@@ -2438,11 +2835,11 @@
     },
     {
       "path": "packages/verify/evidence-chain.js",
-      "sha256": "bc11bd050e61cca78c2b052d21c55b0127d649e2bd95d14234f83e18997ad810"
+      "sha256": "938f34392dc5af6f73805b94c24520f5a29dffc8fcd3c73e6c451496e69878d0"
     },
     {
       "path": "packages/verify/index.js",
-      "sha256": "7a4ffa58ded30bc3e4a5f391f38480887636677a4bef2ab8fc4631f961a0a638"
+      "sha256": "e81cfb587411e05a5e6d14387929b6e71eaecc79d8d083a9b062a583d4b9f650"
     },
     {
       "path": "packages/verify/quorum.js",
@@ -2506,11 +2903,19 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "1ce603c63a3acfbc3b52b6154a892c82d3c6f3779be2ae76c882ac9a00ca7ebb"
+      "sha256": "50667c563c859c805252960b9440f25f78fde0ca08951e577405ca8a30495d2a"
     },
     {
       "path": "security/vectors.v1.json",
-      "sha256": "4b113e321cbdf660b4471876182abf4d724047478681e61433ae09d3827b3dd8"
+      "sha256": "c7fb351790af5b609e7054813e4c4d37fe793f5a4ffc55abdb184e14c2045a8a"
+    },
+    {
+      "path": "tests/aec-execution-gate.test.js",
+      "sha256": "592bc5ca305503adf3f7ca6704d618e3b52be19da6ac2414141dcae71f74754d"
+    },
+    {
+      "path": "tests/aec-safety-critical.test.js",
+      "sha256": "9afedb2175cc12c85a83456cf44446d86bb77f3e722b6fa9af2781bd0385f6a1"
     },
     {
       "path": "tests/authority-registry.test.js",
@@ -2522,7 +2927,7 @@
     },
     {
       "path": "tests/model-to-matter.test.js",
-      "sha256": "46820a8921d722979c183da05f31299863e00dda2857525ea0b87455050b36ea"
+      "sha256": "8c8e481ee5b39bad2341bf216c335a873fcfebac9059e68a035aa16ab92ee822"
     },
     {
       "path": "tests/ncpdp-privacy.test.js",
@@ -2546,7 +2951,7 @@
     },
     {
       "path": "tests/role-non-substitution.test.js",
-      "sha256": "065159c0a88b3e4ff7a1149f1d6016d2347896bc515b9d9ee27c96cf75227057"
+      "sha256": "6dbc42fe57390bc990b6f2c0554125cdff6f158de93ac722a4ebf1006d66e57b"
     }
   ]
 }

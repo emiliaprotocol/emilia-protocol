@@ -282,10 +282,12 @@
       "acceptance_roots": ["the gate's durable consumption store"],
       "enforcement_path": [
         { "language": "javascript", "file": "packages/gate/index.js", "symbol": "createGate", "exported": true },
+        { "language": "javascript", "file": "packages/gate/aec-execution.js", "symbol": "createAECExecutionGate", "exported": true },
         { "language": "javascript", "file": "packages/gate/store.js", "symbol": "createDurableConsumptionStore", "exported": true }
       ],
       "implementations": [
-        { "language": "javascript", "file": "packages/gate/index.js", "export": "createGate" }
+        { "language": "javascript", "file": "packages/gate/index.js", "export": "createGate" },
+        { "language": "javascript", "file": "packages/gate/aec-execution.js", "export": "createAECExecutionGate" }
       ],
       "language_coverage": {
         "javascript": { "status": "covered", "evidence": "packages/gate/gate.test.js" },
@@ -298,13 +300,71 @@
       ],
       "tests": [
         { "file": "packages/gate/gate.test.js", "title": "run() commits a successful effect and permanently refuses replay", "runner": "node-test" },
-        { "file": "packages/gate/gate.test.js", "title": "run() consumes an indeterminate attempt when the executor throws", "runner": "node-test" }
+        { "file": "packages/gate/gate.test.js", "title": "run() consumes an indeterminate attempt when the executor throws", "runner": "node-test" },
+        { "file": "tests/aec-execution-gate.test.js", "title": "executes a Class-A chain once and refuses replay", "runner": "vitest" },
+        { "file": "tests/aec-execution-gate.test.js", "title": "burns an indeterminate authorization after the effect starts", "runner": "vitest" }
       ],
       "formal": [
         { "status": "partial", "model": "formal/tamarin/ep_reliance_composed.spthy", "runner": "formal/tamarin/run-composed.sh", "lemma": "injective_execution_with_consumption", "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt", "scope": "The composed lemma proves injective checked execution but does not model an external system whose effect succeeds before its response is lost." }
       ],
-      "assumptions": ["the guarded effect is invoked only through gate.run", "the durable backend remains fail-closed"],
+      "assumptions": ["the guarded effect is invoked only through gate.run or the AEC execution gate run method", "the durable backend remains fail-closed"],
       "exclusions": ["the protocol cannot infer whether an unavailable external system applied an effect"],
+      "release_artifacts": ["gate-sdk", "security-evidence"]
+    },
+    {
+      "claim_id": "aec-execution-is-action-keyed-and-fleet-fail-closed",
+      "statement": "The stateful AEC execution gate pins custom component verifiers, verifier keys, human profiles, and the requirement at construction, captures the validated store and logger methods, and refuses transaction-scoped trust configuration. It reserves one non-expiring key derived only from the executor-bound canonical action digest before effect, so presenter-controlled decoy components, alternate proof forms, or post-construction method replacement cannot mint a fresh replay key for the same action. Production construction also requires an ownership-fenced durable consumption backend and a strict atomic shared-head evidence log that continues across replicas and restarts; the gate independently rehashes and exactly matches each acknowledgment, and successful atomic append readback must equal the submitted sequence, predecessor, identifier, and content.",
+      "acceptance_roots": [
+        "the executor independently constructs the exact action and includes a unique action-instance identifier whenever identical effects may recur",
+        "the relying party pins custom component verifier code and verifier keys at gate construction rather than accepting them with presenter evidence",
+        "the consumption backend truthfully asserts durable atomic conditional-write semantics and never expires committed action keys",
+        "the evidence backend truthfully asserts durable atomic compare-and-append semantics for one shared stream head"
+      ],
+      "enforcement_path": [
+        { "language": "javascript", "file": "packages/gate/aec-execution.js", "symbol": "createAECExecutionGate", "exported": true },
+        { "language": "javascript", "file": "packages/gate/store.js", "symbol": "createDurableConsumptionStore", "exported": true },
+        { "language": "javascript", "file": "packages/gate/evidence.js", "symbol": "createAtomicEvidenceLog", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "packages/gate/aec-execution.js", "export": "createAECExecutionGate" },
+        { "language": "javascript", "file": "packages/gate/store.js", "export": "createDurableConsumptionStore" },
+        { "language": "javascript", "file": "packages/gate/evidence.js", "export": "createAtomicEvidenceLog" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "tests/aec-execution-gate.test.js" },
+        "python": { "status": "not_applicable", "reason": "Python implements offline AEC verification but does not own the stateful external-effect transaction." },
+        "go": { "status": "not_applicable", "reason": "Go implements offline AEC verification but does not own the stateful external-effect transaction." }
+      },
+      "vectors": [
+        { "suite": "security/vectors.v1.json", "case_id": "accept_atomic_aec_evidence_across_replicas", "polarity": "positive", "expect": { "valid": true } },
+        { "suite": "security/vectors.v1.json", "case_id": "reject_aec_replay_via_decoy_component", "polarity": "negative", "expect": { "valid": false } }
+      ],
+      "tests": [
+        { "file": "tests/aec-execution-gate.test.js", "title": "executes a Class-A chain once and refuses replay", "runner": "vitest" },
+        { "file": "tests/aec-execution-gate.test.js", "title": "cannot mint a fresh replay key with an invalid decoy component", "runner": "vitest" },
+        { "file": "tests/aec-execution-gate.test.js", "title": "never accepts presenter-supplied verifier code as relying-party evidence policy", "runner": "vitest" },
+        { "file": "tests/aec-execution-gate.test.js", "title": "captures validated store and logger methods against post-construction replacement", "runner": "vitest" },
+        { "file": "tests/aec-execution-gate.test.js", "title": "refuses expiring consumption and process-local evidence in production mode", "runner": "vitest" },
+        { "file": "tests/aec-execution-gate.test.js", "title": "treats false commit and malformed log acknowledgements as failures", "runner": "vitest" },
+        { "file": "tests/aec-execution-gate.test.js", "title": "passes a frozen pre-await action snapshot to the effect", "runner": "vitest" },
+        { "file": "packages/gate/evidence-atomic.test.js", "title": "atomic evidence: concurrent replicas append one linear chain", "runner": "node-test" },
+        { "file": "packages/gate/evidence-atomic.test.js", "title": "atomic evidence: response loss after append recovers the same record id", "runner": "node-test" },
+        { "file": "packages/gate/evidence-atomic.test.js", "title": "atomic evidence: a backend cannot claim success without persisting the record", "runner": "node-test" },
+        { "file": "packages/gate/evidence-atomic.test.js", "title": "atomic evidence: readback must equal the exact submitted sequence and predecessor", "runner": "node-test" },
+        { "file": "packages/gate/evidence-atomic.test.js", "title": "atomic evidence: altered persisted bytes fail verification", "runner": "node-test" }
+      ],
+      "formal": [
+        { "status": "partial", "model": "formal/tamarin/ep_reliance_composed.spthy", "runner": "formal/tamarin/run-composed.sh", "lemma": "injective_execution_with_consumption", "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt", "scope": "The symbolic model proves injective execution with consumption; atomic shared-head storage, restart continuity, response loss, and backend durability are covered by executable fault tests and deployment assumptions." }
+      ],
+      "assumptions": [
+        "all paths to the consequential effect pass through this gate and the backend capability assertions are truthful",
+        "the canonical action uniquely identifies one intended effect instance and the backend does not roll back, evict, or equivocate outside its contract"
+      ],
+      "exclusions": [
+        "the software cannot prove physical storage durability or prevent a privileged backend operator from violating the asserted contract",
+        "business-level exactly-once effects still require downstream idempotency and reconciliation after indeterminate outcomes",
+        "the gate proves authorization and recorded execution state, not the semantic correctness, legality, or physical truth of the action"
+      ],
       "release_artifacts": ["gate-sdk", "security-evidence"]
     },
     {
@@ -474,19 +534,21 @@
     },
     {
       "claim_id": "model-to-matter-clearance-is-exact-and-single-use",
-      "statement": "A Model-to-Matter presentation clears at most once only when all six evidence types verify under the executor's pinned profile, bind the same exact digest-only action, satisfy freshness and explicit revocation state, and survive durable challenge consumption.",
+      "statement": "A Model-to-Matter presentation clears at most once only when all six evidence types verify under the executor's constructor-pinned profile, bind the same exact digest-only action, satisfy freshness and the pinned revocation provider, and survive durable challenge and action consumption. The production executor refuses transaction-scoped profile, store, revocation, time, and retry configuration and captures validated state methods against post-construction replacement.",
       "acceptance_roots": [
         "the executor provisions the authentic Model-to-Matter profile and issuer keys",
-        "the runtime supplies explicit revocation state from its trusted source",
+        "the executor pins a revocation provider that supplies an explicit current view",
         "the challenge backend provides atomic registration and compare-and-set consumption"
       ],
       "enforcement_path": [
         { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "createModelToMatterProfile", "exported": true },
         { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "verifyModelToMatterEvidence", "exported": true },
+        { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "createModelToMatterExecutor", "exported": true },
         { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "symbol": "evaluateRegisteredModelToMatterPresentation", "exported": true },
         { "language": "javascript", "file": "lib/negotiate/evidence-challenge.js", "symbol": "evaluateRegisteredPresentation", "exported": true }
       ],
       "implementations": [
+        { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "export": "createModelToMatterExecutor" },
         { "language": "javascript", "file": "lib/frontier/model-to-matter.js", "export": "evaluateRegisteredModelToMatterPresentation" }
       ],
       "language_coverage": {
@@ -502,7 +564,10 @@
         { "file": "tests/model-to-matter.test.js", "title": "admits at most one clearance across distinct challenges for the same action", "runner": "vitest" },
         { "file": "tests/model-to-matter.test.js", "title": "snapshots the action, profile, and graph before awaiting durable consumption", "runner": "vitest" },
         { "file": "tests/model-to-matter.test.js", "title": "fails before challenge consumption when explicit revocation state is absent", "runner": "vitest" },
-        { "file": "tests/model-to-matter.test.js", "title": "refuses tampering, issuer laundering, cross-action replay, and impossible timestamps", "runner": "vitest" }
+        { "file": "tests/model-to-matter.test.js", "title": "refuses tampering, issuer laundering, cross-action replay, and impossible timestamps", "runner": "vitest" },
+        { "file": "tests/model-to-matter.test.js", "title": "pins all trust configuration and runs one frozen action exactly once", "runner": "vitest" },
+        { "file": "tests/model-to-matter.test.js", "title": "refuses every transaction-scoped trust field before challenge consumption", "runner": "vitest" },
+        { "file": "tests/model-to-matter.test.js", "title": "requires explicit durable custody in production mode", "runner": "vitest" }
       ],
       "formal": [
         { "status": "not_modeled", "gap": "The six-leg frontier-science profile, closed adapter schemas, and executor effect statement are executable but not represented in the current symbolic models." }
@@ -512,7 +577,8 @@
         "the supplied revocation view is current and complete for the presented artifacts",
         "source systems compute opaque commitments over the intended content with agreed canonicalization",
         "the durable challenge backend linearizes consumption",
-        "the action-level clearance store is shared by all workers and does not TTL-reopen consumed action digests"
+        "the action-level clearance store is shared by all workers and does not TTL-reopen consumed action digests",
+        "the relying-party revocation provider returns an authentic current view and all physical effect paths traverse the pinned executor run method"
       ],
       "exclusions": [
         "the profile does not perform sequence screening or determine scientific safety",
@@ -524,11 +590,11 @@
     },
     {
       "claim_id": "aec-role-substitution-refused",
-      "statement": "In the EP-AEC composition verifier, an attacker cannot satisfy a human-authorization requirement without a relying-party-pinned human: a presenter label cannot impersonate a registered verifier type (type provenance); BOTH built-in human-authorization legs are role-scoped — the ep-receipt signing key must be pinned under keysByType['ep-receipt'] and every ep-quorum approver key must be pinned under keysByType['ep-quorum'], so a forged quorum built entirely from attacker-generated device keys fails closed; and the ep-receipt leg binds the exact action from the SIGNED receipt payload — verified identically in JavaScript, Python, and Go.",
+      "statement": "EP-AEC returns allow only when the relying party independently pins both its requirement and the exact executor action. Presenter labels are non-authoritative. The ep-receipt human leg requires a fresh Section 6.2 Trust Receipt with Class-A WebAuthn, a pinned approver directory, RP audience, signed WebAuthn origin allowlist, policy hash, and log key; a bare operator-signed envelope is refused. The ep-quorum leg requires a fresh exact pinned policy plus RP audience, signed WebAuthn origin allowlist, context policy, and key-to-identity-to-role directory. These predicates execute identically in JavaScript, Python, and Go.",
       "acceptance_roots": [
-        "single human-authorization keys pinned per role via keysByType['ep-receipt']",
-        "quorum approver keys pinned per role via keysByType['ep-quorum']",
-        "the exact canonical action digest carried in the signed receipt payload"
+        "relying-party requirement and executor-computed expected action digest",
+        "Class-A approver directory, RP ID, allowed WebAuthn origins, policy hash, log key, freshness time, and max age for ep-receipt",
+        "exact quorum policy, RP ID, allowed WebAuthn origins, signed context policy, approver identity-role directory, freshness time, and max age for ep-quorum"
       ],
       "enforcement_path": [
         {
@@ -563,33 +629,48 @@
       "vectors": [
         { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "accept_pinned_human_receipt", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "cross-language" } },
         { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "accept_policy_plus_human", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "cross-language" } },
-        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_cross_role_key", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
-        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_unpinned_key", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
-        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_unsigned_binding", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "accept_profile_bound_quorum", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_presenter_chosen_requirement", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_wrong_expected_action", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
         { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_label_collision", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
-        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_forged_quorum_unpinned_keys", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } }
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_reserved_verifier_override", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_bare_operator_receipt_as_human", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_weaker_presented_quorum_policy", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_wrong_quorum_rp_id", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_wrong_quorum_origin", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_quorum_approver_alias", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_stale_quorum", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_stale_approver_registry", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_stale_human_receipt", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_wrong_receipt_origin", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_revoked_class_a_approver", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } }
       ],
       "tests": [
         {
           "file": "tests/role-non-substitution.test.js",
-          "title": "NEGATIVE (cross-role key confusion): a machine key pinned for ANOTHER role cannot fill ep-receipt",
+          "title": "NEGATIVE: a bare operator-signed envelope is not a human ceremony",
+          "runner": "vitest"
+        },
+        {
+          "file": "tests/aec-safety-critical.test.js",
+          "title": "requires the executor to pin the expected action independently of the chain",
           "runner": "vitest"
         }
       ],
       "formal": [
         {
           "status": "not_modeled",
-          "gap": "The AEC composition and role-scoping logic is outside the Tamarin/TLA+ models; it is covered by cross-language conformance vectors (aec-role.v1.json) and per-port unit tests."
+          "gap": "The AEC acceptance-profile composition is outside the Tamarin/TLA+ models; it is covered by cross-language real-crypto vectors and per-port unit/property tests."
         }
       ],
       "assumptions": [
-        "the relying party pins single-human keys under keysByType['ep-receipt'] and quorum approver keys under keysByType['ep-quorum'], and pins no attacker-controlled key",
-        "verifyReceipt's Ed25519-over-JCS signature check and verifyQuorum's per-member device-assertion checks are sound"
+        "the relying-party requirement, expected action, profiles, verification time, approver directory, policy, RP ID, allowed WebAuthn origins, and log key are authentic configuration",
+        "verifyTrustReceipt and verifyQuorum cryptographic checks are sound, and enrolled authenticators are uncompromised before acceptance"
       ],
       "exclusions": [
-        "a key the relying party itself pins for a role is trusted for that role by definition; misconfiguration of role scoping is out of scope",
+        "misconfiguration or compromise of the relying party's own profiles and enrolled keys is outside this verifier claim",
         "this claim covers the AEC composition verifier, not the standalone reliance kernel",
-        "quorum POLICY pinning (roster/threshold) is the relying party's responsibility; this claim anchors the approver KEYS, so a forged roster under unpinned keys is already refused"
+        "offline AEC verification does not prove current revocation status or atomic one-time consumption; an execution gate must enforce those stateful properties separately"
       ],
       "release_artifacts": ["security-evidence"]
     }

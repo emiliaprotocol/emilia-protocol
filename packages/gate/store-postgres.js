@@ -100,6 +100,7 @@ export function createPostgresBackend({ query, now = Date.now } = {}) {
   };
 
   return {
+    durable: true,
     /** True iff THIS call inserted the row — the atomic consumed-vs-replay decision. */
     async addIfAbsent(key, value, opt) {
       const res = await query(CONSUMPTION_SQL.addIfAbsent, [key, value, nowMs(), expiryFor(opt)]);

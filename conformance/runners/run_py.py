@@ -101,7 +101,10 @@ def _run(v):
         verifiers = {t: _stub for t in (v.get("stub_types") or [])}
         return verify_authorization_chain(v["aec_chain"], verifiers=verifiers,
                                           keys_by_type=v.get("keys_by_type"),
-                                          requirement=v.get("requirement"))["allow"]
+                                          policies_by_type=v.get("policies_by_type"),
+                                          requirement=v.get("requirement"),
+                                          expected_action_digest=v.get("expected_action_digest"),
+                                          verification_time=v.get("verification_time"))["allow"]
     return False
 
 def run(v):

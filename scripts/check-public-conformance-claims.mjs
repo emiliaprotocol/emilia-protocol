@@ -10,6 +10,8 @@ const pin = JSON.parse(fs.readFileSync(path.join(ROOT, 'conformance/external/rus
 const proofStats = JSON.parse(fs.readFileSync(path.join(ROOT, 'lib/proof-stats.json'), 'utf8'));
 const expectedSuites = manifest.totals.suites;
 const expectedVectors = manifest.totals.vectors;
+const expectedExternalSuites = pin.conformance.suites;
+const expectedExternalVectors = pin.conformance.vectors;
 const expectedHostilityCases = pin.hostility.structured_cases + pin.hostility.raw_parser_cases;
 const expectedTests = proofStats.tests.total;
 const expectedTestFiles = proofStats.tests.files;
@@ -48,9 +50,24 @@ function isNegated(text, index) {
     || /\bnever\b[^.\n]{0,48}$/i.test(before);
 }
 
+function isExternalBaselineClaim(text, index) {
+  const before = text.slice(Math.max(0, index - 240), index);
+  const lastMatch = (pattern) => {
+    let last = -1;
+    for (const match of before.matchAll(pattern)) last = match.index;
+    return last;
+  };
+  const external = lastMatch(/\b(?:external(?:ly authored)?\s+(?:from-spec\s+)?(?:rust\s+)?(?:implementation|verifier)|rust\s+(?:implementation|verifier)|clean-room|time-pinned|frozen\s+(?:bundle|baseline|corpus)|pinned\s+(?:bundle|baseline|corpus|vector set))\b/gi);
+  const pinnedPrefix = /\bpinned\s*$/i.test(before) ? before.lastIndexOf('pinned') : -1;
+  const live = lastMatch(/\b(?:live(?:\s+same-team)?|same-team|current\s+(?:corpus|bundle)|javascript\s*,\s*python\s*,\s*(?:and\s+)?go)\b/gi);
+  return Math.max(external, pinnedPrefix) > live;
+}
+
 export function auditClaimText(text, file = '<text>', expectations = {}) {
   const suites = expectations.suites ?? expectedSuites;
   const vectors = expectations.vectors ?? expectedVectors;
+  const externalSuites = expectations.externalSuites ?? expectedExternalSuites;
+  const externalVectors = expectations.externalVectors ?? expectedExternalVectors;
   const tests = expectations.tests ?? expectedTests;
   const testFiles = expectations.testFiles ?? expectedTestFiles;
   const findings = [];
@@ -70,7 +87,10 @@ export function auditClaimText(text, file = '<text>', expectations = {}) {
   }
 
   for (const match of text.matchAll(/\b(\d+)\s+(?:cross-language\s+)?conformance\s+suites?\b/gi)) {
-    if (Number(match[1]) !== suites) findings.push(finding(file, text, match, `current conformance suite count is ${suites}`));
+    const external = isExternalBaselineClaim(text, match.index);
+    const expected = external ? externalSuites : suites;
+    const scope = external ? 'externally pinned' : 'current';
+    if (Number(match[1]) !== expected) findings.push(finding(file, text, match, `${scope} conformance suite count is ${expected}`));
   }
 
   const countPairs = [
@@ -83,14 +103,21 @@ export function auditClaimText(text, file = '<text>', expectations = {}) {
     for (const match of text.matchAll(rule)) {
       const nearby = text.slice(Math.max(0, match.index - 180), Math.min(text.length, match.index + match[0].length + 180));
       if (/\b(?:historical|legacy|signed statement|bound to (?:commit|its input)|input set)\b/i.test(nearby)) continue;
-      if (Number(match[1]) !== suites) findings.push(finding(file, text, match, `current conformance suite count is ${suites}`));
-      if (Number(match[2]) !== vectors) findings.push(finding(file, text, match, `current conformance vector count is ${vectors}`));
+      const external = isExternalBaselineClaim(text, match.index);
+      const expectedPairSuites = external ? externalSuites : suites;
+      const expectedPairVectors = external ? externalVectors : vectors;
+      const scope = external ? 'externally pinned' : 'current';
+      if (Number(match[1]) !== expectedPairSuites) findings.push(finding(file, text, match, `${scope} conformance suite count is ${expectedPairSuites}`));
+      if (Number(match[2]) !== expectedPairVectors) findings.push(finding(file, text, match, `${scope} conformance vector count is ${expectedPairVectors}`));
     }
   }
   for (const match of text.matchAll(/\ball\s+(\d+)(?:\/\d+)?\s+(?:published\s+|current\s+)?vectors?\b/gi)) {
     const nearby = text.slice(Math.max(0, match.index - 120), Math.min(text.length, match.index + match[0].length + 120));
     if (/\b(?:legacy|predates|signed statement)\b/i.test(nearby)) continue;
-    if (Number(match[1]) !== vectors) findings.push(finding(file, text, match, `current conformance vector count is ${vectors}`));
+    const external = isExternalBaselineClaim(text, match.index);
+    const expectedCount = external ? externalVectors : vectors;
+    const scope = external ? 'externally pinned' : 'current';
+    if (Number(match[1]) !== expectedCount) findings.push(finding(file, text, match, `${scope} conformance vector count is ${expectedCount}`));
   }
 
   for (const match of text.matchAll(/\b(?:an?\s+)?(?:genuinely\s+)?independent\s+clean-room\s+reimplementation\s+(?:is\s+)?(?:underway|not yet complete)\b/gi)) {

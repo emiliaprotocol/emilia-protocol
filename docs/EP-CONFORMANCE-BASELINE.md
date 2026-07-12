@@ -19,12 +19,12 @@ baseline turns the shared claim into a shared, checkable artifact.
 
 ## What EP already has (and offers as the seed)
 
-EP maintains a public, executable conformance suite spanning **16 suites and
-164 vectors**. JavaScript, Python, and Go reference verifiers maintained by the
+EP maintains a public, executable conformance suite spanning **17 suites and
+192 vectors**. JavaScript, Python, and Go reference verifiers maintained by the
 same project must agree on every result; this is cross-language consistency
 evidence, not three independent implementations. Separately, CI rebuilds an
 externally authored Rust verifier from an immutable public commit and tree. It
-passes all 164 vectors and a pinned 359-case hostility campaign. The checked-in
+passes the pinned 16-suite/164-vector clean-room bundle and a pinned 359-case hostility campaign. The checked-in
 construction statement is implementer-signed and predates the current source
 pin, so the aggregate case records strict independently attested clean-room
 acceptance as zero. That precise, executable baseline is a natural seed for a

@@ -57,14 +57,14 @@ func TestRoleNonSubstitution(t *testing.T) {
 
 	// POSITIVE: the machine decision verifies in its own role.
 	r := VerifyAuthorizationChain(map[string]any{"@version": AECVersion, "action": action, "requirement": "policy_decision",
-		"components": []any{map[string]any{"type": "policy_decision", "evidence": policyDoc}}}, verifiers, keysByType)
+		"components": []any{map[string]any{"type": "policy_decision", "evidence": policyDoc}}}, verifiers, keysByType, "policy_decision", digest)
 	if !r.Allow {
 		t.Errorf("POSITIVE: want allow; reasons=%v", r.Reasons)
 	}
 
 	// NEGATIVE: presenter label 'ep-receipt' on a policy leg must not fill the human token.
 	r = VerifyAuthorizationChain(map[string]any{"@version": AECVersion, "action": action, "requirement": "policy_decision",
-		"components": []any{map[string]any{"type": "policy_decision", "label": "ep-receipt", "evidence": policyDoc}}}, verifiers, keysByType, bar)
+		"components": []any{map[string]any{"type": "policy_decision", "label": "ep-receipt", "evidence": policyDoc}}}, verifiers, keysByType, bar, digest)
 	if r.Allow {
 		t.Errorf("NEGATIVE label: substitution allowed")
 	}
@@ -81,7 +81,7 @@ func TestRoleNonSubstitution(t *testing.T) {
 	smuggled["operator_public_key"] = machineKey
 	smuggled["action_hash"] = digest
 	r = VerifyAuthorizationChain(map[string]any{"@version": AECVersion, "action": action, "requirement": "ep-receipt",
-		"components": []any{map[string]any{"type": "ep-receipt", "evidence": smuggled}}}, verifiers, keysByType)
+		"components": []any{map[string]any{"type": "ep-receipt", "evidence": smuggled}}}, verifiers, keysByType, "ep-receipt", digest)
 	if r.Allow || r.Components[0].Valid {
 		t.Errorf("NEGATIVE relabel: unpinned machine key accepted as ep-receipt")
 	}
@@ -95,7 +95,7 @@ func TestRoleNonSubstitution(t *testing.T) {
 		"signature":           map[string]any{"algorithm": "Ed25519", "value": roleSign(otherPayload, humanPriv)},
 		"operator_public_key": humanKey, "action_hash": digest}
 	r = VerifyAuthorizationChain(map[string]any{"@version": AECVersion, "action": action, "requirement": "ep-receipt",
-		"components": []any{map[string]any{"type": "ep-receipt", "evidence": spoofed}}}, verifiers, keysByType)
+		"components": []any{map[string]any{"type": "ep-receipt", "evidence": spoofed}}}, verifiers, keysByType, "ep-receipt", digest)
 	if r.Allow || r.Components[0].Bound {
 		t.Errorf("NEGATIVE unsigned binding: receipt over a different action bound to this one")
 	}
@@ -114,14 +114,14 @@ func TestRoleNonSubstitution(t *testing.T) {
 		"policy_decision": {machineKey: machineKey},
 	}
 	r = VerifyAuthorizationChain(map[string]any{"@version": AECVersion, "action": action, "requirement": "ep-receipt",
-		"components": []any{map[string]any{"type": "ep-receipt", "evidence": confused}}}, verifiers, confusedKeys)
+		"components": []any{map[string]any{"type": "ep-receipt", "evidence": confused}}}, verifiers, confusedKeys, "ep-receipt", digest)
 	if r.Allow || r.Components[0].Valid {
 		t.Errorf("NEGATIVE cross-role: machine key pinned for another role accepted as ep-receipt")
 	}
 
 	// NEGATIVE: forged quorum — an attacker builds a distinct-human quorum under
 	// keys it generated. VerifyQuorum only checks internal consistency, so the
-	// ep-quorum leg must refuse it because no member key is pinned for ep-quorum.
+	// ep-quorum leg must refuse it because no relying-party quorum profile exists.
 	aPub, _, _ := ed25519.GenerateKey(rand.Reader)
 	bPub, _, _ := ed25519.GenerateKey(rand.Reader)
 	forgedQuorum := map[string]any{
@@ -135,12 +135,12 @@ func TestRoleNonSubstitution(t *testing.T) {
 	}
 	quorumKeys := map[string]map[string]string{"ep-quorum": {humanKey: humanKey}}
 	r = VerifyAuthorizationChain(map[string]any{"@version": AECVersion, "action": action, "requirement": "ep-quorum",
-		"components": []any{map[string]any{"type": "ep-quorum", "evidence": forgedQuorum}}}, verifiers, quorumKeys)
+		"components": []any{map[string]any{"type": "ep-quorum", "evidence": forgedQuorum}}}, verifiers, quorumKeys, "ep-quorum", digest)
 	if r.Allow || r.Components[0].Valid {
 		t.Errorf("NEGATIVE forged quorum: attacker-forged quorum accepted as ep-quorum")
 	}
 
-	// CONTROL: a genuine human receipt with a pinned key satisfies the same bar.
+	// NEGATIVE: a bare operator-signed envelope is not a Class-A human ceremony.
 	receiptPayload := map[string]any{"receipt_id": "r1", "issuer": "ep:approver:cfo", "subject": "wire-8841",
 		"action_digest": digest, "created_at": "2026-07-11T12:00:02Z"}
 	receipt := map[string]any{"@version": "EP-RECEIPT-v1", "payload": receiptPayload,
@@ -148,8 +148,8 @@ func TestRoleNonSubstitution(t *testing.T) {
 		"operator_public_key": humanKey}
 	r = VerifyAuthorizationChain(map[string]any{"@version": AECVersion, "action": action, "requirement": "policy_decision",
 		"components": []any{map[string]any{"type": "policy_decision", "evidence": policyDoc},
-			map[string]any{"type": "ep-receipt", "evidence": receipt}}}, verifiers, keysByType, bar)
-	if !r.Allow {
-		t.Errorf("CONTROL: pinned human receipt should satisfy the bar; reasons=%v", r.Reasons)
+			map[string]any{"type": "ep-receipt", "evidence": receipt}}}, verifiers, keysByType, bar, digest)
+	if r.Allow || r.Components[1].Valid {
+		t.Errorf("NEGATIVE bare envelope: operator signature accepted as human ceremony")
 	}
 }

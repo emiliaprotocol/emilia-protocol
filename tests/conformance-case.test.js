@@ -4,7 +4,7 @@ import { canonicalize } from '../packages/verify/index.js';
 import { assembleConformanceCase, sha256 } from '../scripts/assemble-conformance-case.mjs';
 
 const COMMIT = 'a'.repeat(40);
-const manifestBytes = fs.readFileSync(new URL('../conformance/conformance-manifest.json', import.meta.url));
+const manifestBytes = fs.readFileSync(new URL('../conformance/clean-room/conformance-manifest.v1.json', import.meta.url));
 const pinBytes = fs.readFileSync(new URL('../conformance/external/rust-cleanroom-jdieselny.v1.json', import.meta.url));
 const manifest = JSON.parse(manifestBytes);
 const pin = JSON.parse(pinBytes);

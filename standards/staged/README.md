@@ -14,6 +14,10 @@ decision — several overlap or are superseded by filed work:
 - `draft-schrock-ep-agent-trust-stack-00` — overlaps the architecture draft.
 - `draft-schrock-ep-human-oversight-profile-00`, `draft-schrock-ep-pqc-00` —
   fast-follow candidates, unscheduled.
+- `draft-schrock-model-to-matter-00` — informational executor-side profile for
+  model-directed physical execution; stages the public Model-to-Matter name and
+  challenge/clearance/consumption lifecycle without defining scientific safety
+  or screening criteria. Candidate for the July 18 filing wave after review.
 
 Top level holds only what is being posted now (the pre-126 batch) plus
 `draft-schrock-kintzele-grid-curtailment-00` (wave 2, ~Jul 18, co-authored).

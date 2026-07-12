@@ -48,6 +48,16 @@
       "execution": { "runner": "node-test", "file": "packages/gate/gate.test.js", "title": "run() consumes an indeterminate attempt when the executor throws" }
     },
     {
+      "id": "accept_atomic_aec_evidence_across_replicas",
+      "expect": { "valid": true },
+      "execution": { "runner": "node-test", "file": "packages/gate/evidence-atomic.test.js", "title": "atomic evidence: concurrent replicas append one linear chain" }
+    },
+    {
+      "id": "reject_aec_replay_via_decoy_component",
+      "expect": { "valid": false },
+      "execution": { "runner": "vitest", "file": "tests/aec-execution-gate.test.js", "title": "cannot mint a fresh replay key with an invalid decoy component" }
+    },
+    {
       "id": "accept_phi_minimized_projection",
       "expect": { "valid": true },
       "execution": { "runner": "vitest", "file": "tests/ncpdp-privacy.test.js", "title": "projects an appeal bundle without recursively copying planted PHI" }

@@ -13,9 +13,8 @@ import {
   M2M_EVIDENCE_TYPES,
   buildModelToMatterGraph,
   createModelToMatterAction,
+  createModelToMatterExecutor,
   createModelToMatterProfile,
-  createRegisteredModelToMatterChallenge,
-  evaluateRegisteredModelToMatterPresentation,
   modelToMatterActionDigest,
   signModelToMatterEffect,
   signModelToMatterEvidence,
@@ -25,7 +24,6 @@ import { createDurableChallengeStore } from '../../packages/gate/challenge-store
 import { createDurableConsumptionStore, createMemoryBackend } from '../../packages/gate/store.js';
 
 const NOW = '2026-07-11T16:00:00Z';
-const CHALLENGE_EXPIRES = '2026-07-11T16:05:00Z';
 const EVIDENCE_EXPIRES = '2026-07-11T16:10:00Z';
 const digest = (label) => `sha256:${crypto.createHash('sha256').update(label).digest('hex')}`;
 const keyPair = () => crypto.generateKeyPairSync('ed25519').privateKey;
@@ -132,23 +130,27 @@ const evidence = Object.fromEntries(M2M_EVIDENCE_TYPES.map((type) => [type, sign
 const allEvidence = () => M2M_EVIDENCE_TYPES.map((type) => evidence[type]);
 const actionClearanceBackend = createMemoryBackend();
 
-async function evaluateOnce(label, artifacts, extra = {}) {
-  const challengeStore = createDurableChallengeStore(createMemoryBackend());
-  const challenge = await createRegisteredModelToMatterChallenge(action, profile, {
+function executorFor(challengeStore, revokedEvidenceDigests = new Set()) {
+  return createModelToMatterExecutor({
+    profile,
     challengeStore,
-    expires_at: CHALLENGE_EXPIRES,
+    clearanceStore: createDurableConsumptionStore(actionClearanceBackend),
+    revocationProvider: async () => new Set(revokedEvidenceDigests),
+    allowEphemeralState: true,
+    now: () => Date.parse(NOW),
+  });
+}
+
+async function evaluateOnce(label, artifacts, revokedEvidenceDigests = new Set()) {
+  const challengeStore = createDurableChallengeStore(createMemoryBackend());
+  const executor = executorFor(challengeStore, revokedEvidenceDigests);
+  const challenge = await executor.issueChallenge(action, {
     nonce: `model-to-matter-${label.replaceAll(' ', '-')}`,
   });
-  return evaluateRegisteredModelToMatterPresentation({
+  return executor.evaluate({
     action,
     challenge,
     graph: buildModelToMatterGraph(action, artifacts),
-    profile,
-    as_of: NOW,
-    challengeStore,
-    clearanceStore: createDurableConsumptionStore(actionClearanceBackend),
-    revokedEvidenceDigests: new Set(),
-    ...extra,
   });
 }
 
@@ -169,51 +171,41 @@ const unpinned = allEvidence().map((artifact) => artifact.evidence_type === 'dom
 const laundered = await evaluateOnce('issuer-laundering', unpinned);
 rows.push(['screening issuer key substituted', laundered.verdict, 'do_not_execute_unverifiable']);
 
-const revoked = await evaluateOnce('revoked-human', allEvidence(), {
-  revokedEvidenceDigests: new Set([evidence.human_authorization.signature.evidence_digest]),
-});
+const revoked = await evaluateOnce(
+  'revoked-human',
+  allEvidence(),
+  new Set([evidence.human_authorization.signature.evidence_digest]),
+);
 rows.push(['human authorization revoked', revoked.verdict, 'do_not_execute_stale_evidence']);
 
 const mutationBackend = createMemoryBackend();
 const mutationChallengeStore = createDurableChallengeStore(mutationBackend);
-const mutationChallenge = await createRegisteredModelToMatterChallenge(action, profile, {
-  challengeStore: mutationChallengeStore,
-  expires_at: CHALLENGE_EXPIRES,
+const mutationExecutor = executorFor(mutationChallengeStore);
+const mutationChallenge = await mutationExecutor.issueChallenge(action, {
   nonce: 'model-to-matter-action-mutation',
 });
 const mutatedAction = createModelToMatterAction({
   ...structuredClone(action),
   destination_digest: digest('substituted-destination'),
 });
-const mutationResult = await evaluateRegisteredModelToMatterPresentation({
+const mutationResult = await mutationExecutor.evaluate({
   action: mutatedAction,
   challenge: mutationChallenge,
   graph: buildModelToMatterGraph(action, allEvidence()),
-  profile,
-  as_of: NOW,
-  challengeStore: mutationChallengeStore,
-  clearanceStore: createDurableConsumptionStore(actionClearanceBackend),
-  revokedEvidenceDigests: new Set(),
 });
 rows.push(['destination changed after challenge', mutationResult.verdict, 'do_not_execute_action_mismatch']);
 
 const backend = createMemoryBackend();
 const challengeStore = createDurableChallengeStore(backend);
-const challenge = await createRegisteredModelToMatterChallenge(action, profile, {
-  challengeStore,
-  expires_at: CHALLENGE_EXPIRES,
+const executor = executorFor(challengeStore);
+const challenge = await executor.issueChallenge(action, {
   nonce: 'model-to-matter-one-time-clearance',
 });
 const graph = buildModelToMatterGraph(action, allEvidence());
-const presentations = await Promise.all([0, 1].map(() => evaluateRegisteredModelToMatterPresentation({
+const presentations = await Promise.all([0, 1].map(() => executor.evaluate({
   action,
   challenge,
   graph,
-  profile,
-  as_of: NOW,
-  challengeStore: createDurableChallengeStore(backend),
-  clearanceStore: createDurableConsumptionStore(actionClearanceBackend),
-  revokedEvidenceDigests: new Set(),
 })));
 const cleared = presentations.find((result) => result.verdict === 'clear_to_execute');
 const refused = presentations.find((result) => result.verdict === 'do_not_execute_refused');

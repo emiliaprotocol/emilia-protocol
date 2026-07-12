@@ -2,9 +2,13 @@
 
 > EMILIA is an open protocol and enforcement toolkit for requiring, verifying, and preserving evidence that an enrolled accountable approver authorized one exact consequential action before execution.
 
-This is a generated discovery index following the llms.txt proposal. Evidence snapshot: 2026-07-12T05:30:21.598Z. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.
+This is a generated discovery index following the llms.txt proposal. Evidence snapshot: 2026-07-12T15:11:05.414Z. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.
 
-Current evidence: 16 conformance suites and 164 current vectors across three same-team ports; external Rust evidence covers a time-pinned 164-vector set plus 359 hostility cases. Strict clean-room construction acceptance remains false.
+## Engineering Evidence
+
+EMILIA is implemented security infrastructure, not architecture-only: 5,542 automated tests across 276 files; 16 executable security claims over 73 hashed evidence files; 10 verified obligations in one composed Tamarin model, with 2 deliberately weakened variants producing concrete attack traces.
+
+Interoperability evidence: 17 conformance suites and 192 current vectors across three same-team ports; external Rust evidence covers a time-pinned 164-vector set plus 359 hostility cases. Strict clean-room construction acceptance remains false.
 
 ## Canonical Context
 
@@ -24,6 +28,8 @@ Current evidence: 16 conformance suites and 164 current vectors across three sam
 
 - [Conformance manifest](https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/conformance-manifest.json): Current suite/vector counts and same-team implementation relationship.
 - [Machine-verifiable security case](https://github.com/emiliaprotocol/emilia-protocol/blob/main/security/security-case.json): Executed claims with exact evidence, assumptions, exclusions, and artifact hashes.
+- [Engineering evidence map](https://www.emiliaprotocol.ai/proof): Plain-language map from guarantees and attacks to formal, executable, conformance, and external evidence.
+- [Engineering evidence map](https://www.emiliaprotocol.ai/proof): Plain-language map from guarantees and attacks to formal, executable, conformance, and external evidence.
 - [External implementation pin](https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/external/rust-cleanroom-jdieselny.v1.json): Time-pinned Rust source, vector scope, hostility corpus, and construction-attestation status.
 
 ## Start Here

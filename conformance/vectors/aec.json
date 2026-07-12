@@ -1,5 +1,5 @@
 {
-  "_about": "EP-AEC-v1 composition conformance vectors. Portable across JS/Python/Go. Each runner: (1) computes D = action_digest(chain.action); (2) substitutes the sentinel string 'SAME' -> 'sha256:'+D and 'OTHER' -> 'sha256:'+repeat('f',64) wherever it appears as an action_digest; (3) registers a STUB verifier for each type in {ep-quorum, ep-receipt, policy-permit, delegation} that returns {valid: evidence.valid !== false, action_digest: evidence.action_digest}; (4) runs verifyAuthorizationChain and asserts allow === expect_allow. Types NOT in that allow-list (e.g. 'mystery') are intentionally unregistered to exercise the no-verifier path.",
+  "_about": "EP-AEC-v1 composition conformance vectors. Portable across JS/Python/Go. Each runner: (1) computes D = action_digest(chain.action); (2) substitutes the sentinel string 'SAME' -> 'sha256:'+D and 'OTHER' -> 'sha256:'+repeat('f',64) wherever it appears as an action_digest; (3) registers a STUB verifier for each type in {test-quorum, test-receipt, policy-permit, delegation} that returns {valid: evidence.valid !== false, action_digest: evidence.action_digest}; (4) runs verifyAuthorizationChain and asserts allow === expect_allow. Types NOT in that allow-list (e.g. 'mystery') are intentionally unregistered to exercise the no-verifier path.",
   "action": {
     "ep_version": "1.0",
     "action_type": "disbursement.release",
@@ -7,8 +7,8 @@
     "payee": "Acme"
   },
   "stub_types": [
-    "ep-quorum",
-    "ep-receipt",
+    "test-quorum",
+    "test-receipt",
     "policy-permit",
     "delegation"
   ],
@@ -18,10 +18,10 @@
       "chain": {
         "@version": "EP-AEC-v1",
         "action_digest": "SAME",
-        "requirement": "ep-quorum AND policy-permit",
+        "requirement": "test-quorum AND policy-permit",
         "components": [
           {
-            "type": "ep-quorum",
+            "type": "test-quorum",
             "evidence": {
               "valid": true,
               "action_digest": "SAME"
@@ -43,10 +43,10 @@
       "chain": {
         "@version": "EP-AEC-v1",
         "action_digest": "SAME",
-        "requirement": "ep-quorum AND policy-permit",
+        "requirement": "test-quorum AND policy-permit",
         "components": [
           {
-            "type": "ep-quorum",
+            "type": "test-quorum",
             "evidence": {
               "valid": true,
               "action_digest": "SAME"
@@ -68,7 +68,7 @@
       "chain": {
         "@version": "EP-AEC-v1",
         "action_digest": "SAME",
-        "requirement": "ep-quorum AND policy-permit",
+        "requirement": "test-quorum AND policy-permit",
         "components": [
           {
             "type": "policy-permit",
@@ -86,10 +86,10 @@
       "chain": {
         "@version": "EP-AEC-v1",
         "action_digest": "SAME",
-        "requirement": "ep-quorum AND policy-permit",
+        "requirement": "test-quorum AND policy-permit",
         "components": [
           {
-            "type": "ep-quorum",
+            "type": "test-quorum",
             "evidence": {
               "valid": false,
               "action_digest": "SAME"
@@ -129,7 +129,7 @@
       "chain": {
         "@version": "EP-AEC-v1",
         "action_digest": "SAME",
-        "requirement": "ep-quorum OR policy-permit",
+        "requirement": "test-quorum OR policy-permit",
         "components": [
           {
             "type": "policy-permit",
@@ -147,10 +147,10 @@
       "chain": {
         "@version": "EP-AEC-v1",
         "action_digest": "SAME",
-        "requirement": "ep-quorum AND (policy-permit OR delegation)",
+        "requirement": "test-quorum AND (policy-permit OR delegation)",
         "components": [
           {
-            "type": "ep-quorum",
+            "type": "test-quorum",
             "evidence": {
               "valid": true,
               "action_digest": "SAME"
@@ -172,10 +172,10 @@
       "chain": {
         "@version": "EP-AEC-v1",
         "action_digest": "OTHER",
-        "requirement": "ep-quorum",
+        "requirement": "test-quorum",
         "components": [
           {
-            "type": "ep-quorum",
+            "type": "test-quorum",
             "evidence": {
               "valid": true,
               "action_digest": "SAME"
@@ -190,10 +190,10 @@
       "chain": {
         "@version": "nope",
         "action_digest": "SAME",
-        "requirement": "ep-quorum",
+        "requirement": "test-quorum",
         "components": [
           {
-            "type": "ep-quorum",
+            "type": "test-quorum",
             "evidence": {
               "valid": true,
               "action_digest": "SAME"
@@ -208,7 +208,7 @@
       "chain": {
         "@version": "EP-AEC-v1",
         "action_digest": "SAME",
-        "requirement": "ep-quorum",
+        "requirement": "test-quorum",
         "components": []
       },
       "expect_allow": false
@@ -220,7 +220,7 @@
         "action_digest": "SAME",
         "components": [
           {
-            "type": "ep-quorum",
+            "type": "test-quorum",
             "evidence": {
               "valid": true,
               "action_digest": "SAME"
@@ -235,10 +235,10 @@
       "chain": {
         "@version": "EP-AEC-v1",
         "action_digest": "SAME",
-        "requirement": "ep-quorum",
+        "requirement": "test-quorum",
         "components": [
           {
-            "type": "ep-quorum",
+            "type": "test-quorum",
             "evidence": {
               "valid": true,
               "action_digest": "SAME"
@@ -253,7 +253,7 @@
           }
         ]
       },
-      "relying_party_requirement": "ep-quorum AND delegation",
+      "relying_party_requirement": "test-quorum AND delegation",
       "expect_allow": false,
       "expect_requirement_source": "relying_party"
     },
@@ -265,7 +265,7 @@
         "requirement": "delegation",
         "components": [
           {
-            "type": "ep-quorum",
+            "type": "test-quorum",
             "evidence": {
               "valid": true,
               "action_digest": "SAME"
@@ -280,7 +280,7 @@
           }
         ]
       },
-      "relying_party_requirement": "ep-quorum AND policy-permit",
+      "relying_party_requirement": "test-quorum AND policy-permit",
       "expect_allow": true,
       "expect_requirement_source": "relying_party"
     },
@@ -291,7 +291,7 @@
         "action_digest": "SAME",
         "components": [
           {
-            "type": "ep-quorum",
+            "type": "test-quorum",
             "evidence": {
               "valid": true,
               "action_digest": "SAME"
@@ -306,19 +306,19 @@
           }
         ]
       },
-      "relying_party_requirement": "ep-quorum",
+      "relying_party_requirement": "test-quorum",
       "expect_allow": true,
       "expect_requirement_source": "relying_party"
     },
     {
-      "name": "SOURCE: unpinned verification records presenter as the requirement source",
+      "name": "DENY: presenter requirement is descriptive and never produces relying-party allow",
       "chain": {
         "@version": "EP-AEC-v1",
         "action_digest": "SAME",
-        "requirement": "ep-quorum",
+        "requirement": "test-quorum",
         "components": [
           {
-            "type": "ep-quorum",
+            "type": "test-quorum",
             "evidence": {
               "valid": true,
               "action_digest": "SAME"
@@ -333,7 +333,7 @@
           }
         ]
       },
-      "expect_allow": true,
+      "expect_allow": false,
       "expect_requirement_source": "presenter"
     }
   ]

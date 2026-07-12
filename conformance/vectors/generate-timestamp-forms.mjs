@@ -74,6 +74,13 @@ const add = (id, expectValid, reason, tr, verification) => V.push({ id, expect: 
   const m = await mint({ issuedAt: '2026-07-01', expiresAt: '2026-07-02', committedAt: '2026-07-01', keyFrom: '2026-01-01', keyTo: '2036-01-01' });
   add('reject_date_only', false, 'date-only form "2026-07-01" carries no time/zone; rejected identically (fail-closed)', m.receipt, m.verification);
 }
+// A4 syntactically shaped but impossible calendar date — MUST reject. Native
+// JavaScript Date.parse normalizes February 30 into March, so this vector pins
+// the calendar-validity check rather than accepting a different instant.
+{
+  const m = await mint({ issuedAt: '2026-02-30T11:00:00.000Z', expiresAt: '2026-03-03T18:00:00.000Z', committedAt: '2026-02-30T11:30:00.000Z', keyFrom: '2026-01-01T00:00:00Z', keyTo: '2036-01-01T00:00:00Z' });
+  add('reject_impossible_calendar_date', false, 'February 30 is not an RFC3339 instant and must not be normalized to March', m.receipt, m.verification);
+}
 
 // ── B: required_approvals type ──────────────────────────────────────────────────
 // B1 string "2" with a single signoff — MUST reject on all three (SoD bypass guard).
@@ -94,5 +101,8 @@ const suite = {
   count: V.length,
   vectors: V,
 };
-writeFileSync(new URL('./trust-receipt.timestamp-forms.v1.json', import.meta.url), JSON.stringify(suite, null, 2) + '\n');
-console.log(`wrote trust-receipt.timestamp-forms.v1.json — ${V.length} vectors`);
+// v1 is frozen by the externally attested 16-suite/164-vector clean-room
+// bundle. New cases go to v2 so advancing the live corpus never rewrites the
+// bytes an external implementation actually evaluated.
+writeFileSync(new URL('./trust-receipt.timestamp-forms.v2.json', import.meta.url), JSON.stringify(suite, null, 2) + '\n');
+console.log(`wrote trust-receipt.timestamp-forms.v2.json — ${V.length} vectors`);

@@ -64,7 +64,7 @@ function validateBaseManifest(manifest) {
   assert(manifest?.['@version'] === 'EP-CONFORMANCE-MANIFEST-v1', 'unsupported base manifest');
   verifyCanonicalSelfHash(manifest, 'manifest_sha256', 'base manifest');
   assert(
-    manifest.claim_scope === 'same-team cross-language consistency; not independent implementation evidence',
+    manifest.claim_scope === 'same-team consistency over the frozen external clean-room bundle; not independent implementation evidence',
     'base manifest claim scope drifted',
   );
   assert(Array.isArray(manifest.suites) && manifest.suites.length > 0, 'base manifest has no suites');
@@ -211,7 +211,7 @@ export function assembleConformanceCase({
       commit: expectedEvaluatorCommit,
     },
     base_manifest: {
-      path: 'conformance/conformance-manifest.json',
+      path: 'conformance/clean-room/conformance-manifest.v1.json',
       file_sha256: sha256(normalizedManifestBytes),
       manifest_sha256: manifest.manifest_sha256,
       suites: manifest.totals.suites,

@@ -40,6 +40,9 @@
     },
     "./reliance-gap": {
       "import": "./reliance-gap.js"
+    },
+    "./evidence-chain": {
+      "import": "./evidence-chain.js"
     }
   },
   "files": [
@@ -64,6 +67,7 @@
     "reliance.js",
     "reliance-profile-registry.js",
     "reliance-gap.js",
+    "evidence-chain.js",
     "cli.js",
     "index.d.ts",
     "README.md",

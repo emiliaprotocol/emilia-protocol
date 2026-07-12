@@ -8,7 +8,7 @@
 // with each other and with the expected outcome, across every suite. Exit 1 on
 // any divergence. Suites (see the SUITES list below for the full set): receipts,
 // signoffs, quorum, revocation, time-attestation, trust-receipt, provenance,
-// evidence-record, canonicalization, boundary, and the opt-in profiles currency,
+// evidence-record, canonicalization, boundary, AEC acceptance, and the opt-in profiles currency,
 // initiator-attestation, consumption-proof, witness, and timestamp-proof.
 //
 // timestamp-proof (RFC 3161) is now in the cross-language runner: the JS minimal
@@ -22,9 +22,10 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { LIVE_SUITE_FILES } from './suites.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const SUITES = ['receipts.v1.json', 'signoffs.v1.json', 'quorum.v1.json', 'revocation.exec.v1.json', 'time-attestation.v1.json', 'trust-receipt.exec.v1.json', 'trust-receipt.timestamp-forms.v1.json', 'provenance.exec.v1.json', 'evidence-record.v1.json', 'canonicalization.v1.json', 'boundary.v1.json', 'currency.v1.json', 'initiator-attestation.v1.json', 'consumption-proof.v1.json', 'witness.v1.json', 'timestamp-proof.v1.json'];
+const SUITES = LIVE_SUITE_FILES;
 
 const IMPLS = [
   { lang: 'JavaScript', run: (p) => execFileSync('node', ['conformance/runners/run-js.mjs', p], { cwd: root, encoding: 'utf8' }) },
@@ -90,5 +91,5 @@ if (missingImpls.size > 0) {
     + `Vectors agreed where run, but the cross-language interop claim requires all ${ALL_IMPLS.length} — install the missing toolchain(s) and re-run.`);
   process.exit(1);
 }
-console.log(`\n✅ all suites (receipts · signoffs · quorum · revocation · time-attestation · trust-receipt · provenance · evidence-record · canonicalization · boundary · currency · initiator-attestation · consumption-proof · witness · timestamp-proof) — all ${ALL_IMPLS.length} cross-language implementations (${ALL_IMPLS.join(', ')}) agree. One team, one repository: a consistency check, not independent reimplementations.`);
+console.log(`\n✅ all suites (receipts · signoffs · quorum · revocation · time-attestation · trust-receipt · provenance · evidence-record · canonicalization · boundary · AEC acceptance · currency · initiator-attestation · consumption-proof · witness · timestamp-proof) — all ${ALL_IMPLS.length} cross-language implementations (${ALL_IMPLS.join(', ')}) agree. One team, one repository: a consistency check, not independent reimplementations.`);
 process.exit(0);

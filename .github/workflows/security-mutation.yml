@@ -18,6 +18,27 @@ on:
       - 'tests/audit-regression.test.js'
       - 'stryker.security.config.js'
       - 'security/MUTATION_STATUS.md'
+      - 'packages/verify/evidence-chain.js'
+      - 'packages/gate/aec-execution.js'
+      - 'packages/gate/evidence.js'
+      - 'conformance/vectors/aec-role.v1.json'
+      - 'tests/aec-safety-critical.test.js'
+      - 'tests/aec-role-conformance.test.js'
+      - 'tests/aec-mutation-oracles.test.js'
+      - 'tests/aec-isolated-refusals.test.js'
+      - 'tests/aec-execution-gate.test.js'
+      - 'tests/role-non-substitution.test.js'
+      - 'tests/atomic-evidence-log.test.js'
+      - 'stryker.aec.config.js'
+      - 'security/AEC_MUTATION_STATUS.md'
+      - 'lib/frontier/model-to-matter.js'
+      - 'lib/negotiate/evidence-challenge.js'
+      - 'packages/gate/challenge-store.js'
+      - 'tests/model-to-matter.test.js'
+      - 'tests/model-to-matter-security-branches.test.js'
+      - 'tests/model-to-matter-mutation-oracles.test.js'
+      - 'stryker.model-to-matter.config.js'
+      - 'security/MODEL_TO_MATTER_MUTATION_STATUS.md'
       - '.github/workflows/security-mutation.yml'
   push:
     branches: [main]
@@ -31,6 +52,27 @@ on:
       - 'tests/audit-regression.test.js'
       - 'stryker.security.config.js'
       - 'security/MUTATION_STATUS.md'
+      - 'packages/verify/evidence-chain.js'
+      - 'packages/gate/aec-execution.js'
+      - 'packages/gate/evidence.js'
+      - 'conformance/vectors/aec-role.v1.json'
+      - 'tests/aec-safety-critical.test.js'
+      - 'tests/aec-role-conformance.test.js'
+      - 'tests/aec-mutation-oracles.test.js'
+      - 'tests/aec-isolated-refusals.test.js'
+      - 'tests/aec-execution-gate.test.js'
+      - 'tests/role-non-substitution.test.js'
+      - 'tests/atomic-evidence-log.test.js'
+      - 'stryker.aec.config.js'
+      - 'security/AEC_MUTATION_STATUS.md'
+      - 'lib/frontier/model-to-matter.js'
+      - 'lib/negotiate/evidence-challenge.js'
+      - 'packages/gate/challenge-store.js'
+      - 'tests/model-to-matter.test.js'
+      - 'tests/model-to-matter-security-branches.test.js'
+      - 'tests/model-to-matter-mutation-oracles.test.js'
+      - 'stryker.model-to-matter.config.js'
+      - 'security/MODEL_TO_MATTER_MUTATION_STATUS.md'
       - '.github/workflows/security-mutation.yml'
   schedule:
     - cron: '23 6 * * 0'
@@ -54,5 +96,45 @@ jobs:
         with:
           name: security-mutation-report
           path: reports/mutation/security-kernel.json
+          retention-days: 90
+          if-no-files-found: error
+
+  mutation-aec:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run test:mutation:aec
+      - name: Upload AEC mutation report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0  # v7.0.1
+        with:
+          name: aec-mutation-report
+          path: reports/mutation/aec-kernel.json
+          retention-days: 90
+          if-no-files-found: error
+
+  mutation-model-to-matter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run test:mutation:model-to-matter
+      - name: Upload Model-to-Matter mutation report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0  # v7.0.1
+        with:
+          name: model-to-matter-mutation-report
+          path: reports/mutation/model-to-matter.json
           retention-days: 90
           if-no-files-found: error

@@ -575,10 +575,19 @@ function sha256Bytes(input) {
 // forms are REJECTED — they are ambiguous (UTC vs local) and must never satisfy
 // a validity window. This is the single profile JS, Python, and Go all parse
 // identically and reject identically (fail-closed). Returns epoch ms or NaN.
-const RFC3339_OFFSET = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+const RFC3339_OFFSET = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|([+-])(\d{2}):(\d{2}))$/;
 function parseInstant(value) {
-  if (typeof value !== 'string' || !RFC3339_OFFSET.test(value)) return NaN;
-  return Date.parse(value);
+  if (typeof value !== 'string') return NaN;
+  const match = value.match(RFC3339_OFFSET);
+  if (!match) return NaN;
+  const [, year, month, day, hour, minute, second, , offsetHour, offsetMinute] = match;
+  const calendar = new Date(0);
+  calendar.setUTCFullYear(Number(year), Number(month) - 1, Number(day));
+  calendar.setUTCHours(Number(hour), Number(minute), Number(second), 0);
+  if (calendar.toISOString().slice(0, 19) !== `${year}-${month}-${day}T${hour}:${minute}:${second}`) return NaN;
+  if (offsetHour !== undefined && (Number(offsetHour) > 23 || Number(offsetMinute) > 59)) return NaN;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : NaN;
 }
 
 function withinWindow(t, from, to) {
@@ -1541,7 +1550,6 @@ export {
 // EP-QUORUM-v1 — multi-party (M-of-N / ordered) approval, additive over EP-SIGNOFF-v1.
 export { verifyQuorum } from './quorum.js';
 
-// EP-AEC-v1 (Authorization Evidence Chain) is an EXPERIMENTAL reference verifier in
-// ./evidence-chain.js. It is intentionally NOT re-exported here and NOT in package
-// "files" — it must not ship in the published SDK until its draft is posted. Import
-// it directly from './evidence-chain.js' for local/reference use.
+// EP-AEC-v1 is available through the explicit `./evidence-chain` package subpath.
+// It is not re-exported here because evidence-chain.js composes this module and a
+// main-entry re-export would create a circular initialization path.

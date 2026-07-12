@@ -3,8 +3,23 @@ import { auditClaimText } from '../scripts/check-public-conformance-claims.mjs';
 
 describe('public conformance claim guard', () => {
   it('accepts the current evidence boundary', () => {
-    const text = 'Three same-team ports agree over 16 conformance suites and 163 vectors. The external Rust verifier passes all 163 current vectors; strict independent construction attestation remains pending.';
-    expect(auditClaimText(text, 'current.md', { suites: 16, vectors: 163, tests: 5334, testFiles: 264 })).toEqual([]);
+    const text = 'Three same-team ports agree over 17 conformance suites and 192 vectors. The external Rust verifier passes the pinned 16-suite/164-vector clean-room bundle; strict independent construction attestation remains pending.';
+    expect(auditClaimText(text, 'current.md', {
+      suites: 17, vectors: 192, externalSuites: 16, externalVectors: 164,
+      tests: 5334, testFiles: 264,
+    })).toEqual([]);
+  });
+
+  it('refuses inflation of the externally pinned corpus', () => {
+    const text = 'The external Rust verifier passes the pinned 17-suite/192-vector clean-room bundle.';
+    const findings = auditClaimText(text, 'external-overclaim.md', {
+      suites: 17, vectors: 192, externalSuites: 16, externalVectors: 164,
+      tests: 5334, testFiles: 264,
+    });
+    expect(findings.map((item) => item.message)).toEqual([
+      'externally pinned conformance suite count is 16',
+      'externally pinned conformance vector count is 164',
+    ]);
   });
 
   it('refuses independence inflation for same-team ports', () => {

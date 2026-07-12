@@ -18,8 +18,8 @@
 //   4. NEGATIVE  — UNSIGNED binding: a genuine human receipt signed over a
 //      DIFFERENT action, with only the unsigned top-level action_hash spoofed
 //      to this action, does not bind this action.
-//   5. CONTROL   — a genuine EP receipt, signed over THIS action with a
-//      relying-party-pinned human key, DOES satisfy the same pinned bar.
+//   5. NEGATIVE  — a bare operator-signed envelope is not human evidence; the
+//      positive Class-A Trust Receipt control lives in aec-role.v1.json.
 import { describe, it, expect } from 'vitest';
 import crypto from 'node:crypto';
 
@@ -80,6 +80,7 @@ const epReceiptDoc = {
 const opts = {
   verifiers: { policy_decision: policyDecisionVerifier },
   keysByType: { 'ep-receipt': { [human.pub]: human.pub } },
+  expectedActionDigest: DIGEST,
 };
 const pinnedBar = 'policy_decision AND ep-receipt';
 
@@ -88,7 +89,7 @@ describe('role non-substitution: machine policy allowed is never named human app
     const r = verifyAuthorizationChain({
       '@version': AEC_VERSION, action, requirement: 'policy_decision',
       components: [{ type: 'policy_decision', evidence: policyDecisionDoc }],
-    }, opts);
+    }, { ...opts, requirement: 'policy_decision' });
     expect(r.allow).toBe(true);
     expect(r.components[0]).toMatchObject({ valid: true, bound: true });
   });
@@ -157,6 +158,7 @@ describe('role non-substitution: machine policy allowed is never named human app
         'ep-receipt': { [human.pub]: human.pub },
         policy_decision: { [machine.pub]: machine.pub },
       },
+      expectedActionDigest: DIGEST,
     });
     expect(r.components[0].valid).toBe(false);
     expect(r.allow).toBe(false);
@@ -166,7 +168,7 @@ describe('role non-substitution: machine policy allowed is never named human app
     // The stronger human leg. verifyQuorum only checks internal consistency
     // against the quorum's OWN declared keys, so an attacker can forge an entire
     // distinct-human quorum under keys it generated. The ep-quorum leg must
-    // refuse it because none of the member keys is pinned under keysByType['ep-quorum'].
+    // refuse it because the relying party supplied no exact quorum profile.
     const a = ed25519();
     const b = ed25519();
     const forged = {
@@ -177,12 +179,16 @@ describe('role non-substitution: machine policy allowed is never named human app
     const r = verifyAuthorizationChain({
       '@version': AEC_VERSION, action, requirement: 'ep-quorum',
       components: [{ type: 'ep-quorum', evidence: forged }],
-    }, { keysByType: { 'ep-quorum': { [human.pub]: human.pub } } }); // attacker member keys are pinned nowhere
+    }, {
+      keysByType: { 'ep-quorum': { [human.pub]: human.pub } },
+      requirement: 'ep-quorum',
+      expectedActionDigest: DIGEST,
+    });
     expect(r.components[0].valid).toBe(false);
     expect(r.allow).toBe(false);
   });
 
-  it('CONTROL: a genuine EP receipt with a pinned human key satisfies the same pinned bar', () => {
+  it('NEGATIVE: a bare operator-signed envelope is not a human ceremony', () => {
     const r = verifyAuthorizationChain({
       '@version': AEC_VERSION, action, requirement: 'policy_decision',
       components: [
@@ -190,10 +196,10 @@ describe('role non-substitution: machine policy allowed is never named human app
         { type: 'ep-receipt', evidence: epReceiptDoc },
       ],
     }, { ...opts, requirement: pinnedBar });
-    expect(r.allow).toBe(true);
+    expect(r.allow).toBe(false);
     expect(r.components.map((c) => [c.type, c.valid, c.bound])).toEqual([
       ['policy_decision', true, true],
-      ['ep-receipt', true, true],
+      ['ep-receipt', false, false],
     ]);
   });
 });

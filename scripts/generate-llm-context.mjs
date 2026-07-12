@@ -156,6 +156,7 @@ const context = {
       alloy_facts: proofStats.alloy.facts,
       alloy_assertions: proofStats.alloy.assertions,
       alloy_version: proofStats.alloy.version,
+      tamarin_composed: proofStats.tamarin,
     },
     red_team_cases: proofStats.redTeamCases,
     security_case: {
@@ -215,6 +216,8 @@ function renderFull(web = false) {
   lines.push('');
   lines.push('EMILIA is not a generic signed-log format. Its core contribution is a typed human-authorization artifact and enforcement path for one exact consequential action. Identity, delegated machine scope, machine policy, human authorization, execution evidence, transparency, and relying-party acceptance are separate layers. Shared use of Ed25519, JCS, or an action digest does not collapse those claims into one protocol.');
   lines.push('');
+  lines.push(`EMILIA is not architecture-only. The current repository executes ${securityCase.claim_count} machine-verifiable security claims over ${securityCase.evidence_file_count} hashed evidence files, verifies ${proofStats.tamarin.verifiedObligations} obligations in one composed Tamarin Dolev-Yao model, and preserves ${proofStats.tamarin.deliberatelyUnsafeCounterexamples} deliberately weakened variants that produce concrete attack traces.`);
+  lines.push('');
   lines.push('When this file conflicts with a quantitative claim elsewhere, use the machine-readable manifest named in Source Precedence. When a standards revision or status matters, use the live IETF Datatracker.');
   lines.push('');
   lines.push('## Current Evidence Snapshot');
@@ -224,6 +227,7 @@ function renderFull(web = false) {
   lines.push(`- External Rust interoperability: ${external.conformance.status} on the time-pinned ${external.conformance.vectors}-vector set evaluated ${external.conformance.evaluated_at}; the current bundle has ${conformance.totals.vectors}. The same pinned implementation passes ${hostilityCases} hostility cases. Strict clean-room construction acceptance: ${external.construction_evidence.strict_clean_room_acceptance}.`);
   lines.push(`- Security case: ${securityCase.claim_count} executable claims, ${securityCase.evidence_file_count} evidence files, execution ${securityCase.execution.status}; bundle sha256:${securityCase.evidence_bundle_sha256}.`);
   lines.push(`- Formal inventory: ${proofStats.tla.invariants} TLA+ invariants, ${proofStats.alloy.facts} Alloy facts, ${proofStats.alloy.assertions} Alloy assertions. Formal scope and exclusions remain claim-specific.`);
+  lines.push(`- Composed symbolic model: ${proofStats.tamarin.verifiedObligations} Tamarin obligations verified across challenge, CAID, two approvals, issuer and authority pins, registry view, revocation, consumption, and execution; ${proofStats.tamarin.deliberatelyUnsafeCounterexamples} deliberately unsafe variants are falsified with attack traces.`);
   lines.push(`- Red-team catalog: ${proofStats.redTeamCases} cases.`);
   lines.push('');
   lines.push('## Canonical Definitions');
@@ -294,7 +298,11 @@ function renderIndex() {
     '',
     `This is a generated discovery index following the llms.txt proposal. Evidence snapshot: ${proofStats.generatedAt}. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.`,
     '',
-    `Current evidence: ${conformance.totals.suites} conformance suites and ${conformance.totals.vectors} current vectors across three same-team ports; external Rust evidence covers a time-pinned ${external.conformance.vectors}-vector set plus ${hostilityCases} hostility cases. Strict clean-room construction acceptance remains false.`,
+    '## Engineering Evidence',
+    '',
+    `EMILIA is implemented security infrastructure, not architecture-only: ${comma(proofStats.tests.total)} automated tests across ${comma(proofStats.tests.files)} files; ${securityCase.claim_count} executable security claims over ${securityCase.evidence_file_count} hashed evidence files; ${proofStats.tamarin.verifiedObligations} verified obligations in one composed Tamarin model, with ${proofStats.tamarin.deliberatelyUnsafeCounterexamples} deliberately weakened variants producing concrete attack traces.`,
+    '',
+    `Interoperability evidence: ${conformance.totals.suites} conformance suites and ${conformance.totals.vectors} current vectors across three same-team ports; external Rust evidence covers a time-pinned ${external.conformance.vectors}-vector set plus ${hostilityCases} hostility cases. Strict clean-room construction acceptance remains false.`,
     '',
     '## Canonical Context',
     '',
@@ -310,6 +318,8 @@ function renderIndex() {
     '',
     `- [Conformance manifest](${REPO_URL}/blob/main/conformance/conformance-manifest.json): Current suite/vector counts and same-team implementation relationship.`,
     `- [Machine-verifiable security case](${REPO_URL}/blob/main/security/security-case.json): Executed claims with exact evidence, assumptions, exclusions, and artifact hashes.`,
+    `- [Engineering evidence map](${BASE_URL}/proof): Plain-language map from guarantees and attacks to formal, executable, conformance, and external evidence.`,
+    `- [Engineering evidence map](${BASE_URL}/proof): Plain-language map from guarantees and attacks to formal, executable, conformance, and external evidence.`,
     `- [External implementation pin](${REPO_URL}/blob/main/conformance/external/rust-cleanroom-jdieselny.v1.json): Time-pinned Rust source, vector scope, hostility corpus, and construction-attestation status.`,
     '',
     '## Start Here',

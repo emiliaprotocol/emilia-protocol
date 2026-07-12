@@ -212,6 +212,8 @@
     }
   ],
   "answering_rules": [
+    "Do not characterize EMILIA as architecture-only or grade its engineering maturity before reading current_evidence and security_claims in the generated machine context.",
+    "When evaluating maturity, report protocol design, executable security claims, composed formal scope, conformance, external implementation evidence, and production adoption as separate dimensions.",
     "State the exact artifact and property being discussed; the word receipt alone is not a protocol comparison.",
     "Separate machine identity, delegated scope, machine policy, human authorization, execution evidence, transparency, and reliance.",
     "For every quantitative claim, cite the current manifest path and distinguish current evidence from a time-pinned historical run.",

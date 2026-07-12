@@ -357,7 +357,7 @@ host-agnostic binding profile for carrying the evidence in other
 agent-action record formats without redefining it per host (Section 5),
 and a purpose-relative evidence-sufficiency layer with a closed verdict
 set and deterministic replay (Section 6).</li>
-<li>A cross-language conformance battery (16 suites, 164 vectors) whose
+<li>A cross-language conformance battery (17 suites, 192 vectors) whose
 JavaScript, Python, and Go same-team ports agree, plus a separately
 authored Rust verifier evaluated from pinned public source, with the
 independence boundary stated precisely (Section 8).</li>
@@ -1174,7 +1174,7 @@ deployment topologies or components it does not model.</p>
 Conformance</h2>
 <p>A reference implementation of the receipt, quorum, evidence-chain,
 binding, and evidence-graph layers is published under Apache-2.0,
-together with a conformance battery of 16 suites comprising 164 vectors.
+together with a conformance battery of 17 suites comprising 192 vectors.
 The receipt vectors are self-contained (each carries its own public key
 and document, requiring no server and no shared state), adversarial
 (reject vectors each pin one invariant: tampered bytes, wrong key,
@@ -1192,7 +1192,7 @@ timestamp-proof profile.</p>
 <p>The implementation status is stated precisely, because it is the most
 tempting place to overclaim. The JavaScript, Python, and Go reference
 verifiers live in <em>one repository</em>: they are same-team ports
-whose agreement across all 164 current vectors is cross-language
+whose agreement across all 192 current vectors is cross-language
 consistency evidence, not three independent implementations. A
 historical Ed25519-signed
 <code>EP-EXTERNAL-VERIFICATION-STATEMENT-v1</code> from COSA / J Diesel
@@ -1203,7 +1203,7 @@ exactly that historical reproduction result.</p>
 from immutable public source commit
 <code>7faba36010e7590727bebbc5b9dcceee60539b9b</code> and tree
 <code>0553c5fa0a5c4b566703e0d8ef9864dc33e5176d</code>. The evaluator
-runs it over all 164 current vectors and a pinned hostility campaign of
+runs it over the pinned 16-suite/164-vector clean-room bundle and a pinned hostility campaign of
 353 structured attacks plus 6 raw-parser refusals, with zero
 divergences. The aggregate conformance case binds both campaigns to the
 same runner bytes. This is external interoperability and
@@ -1430,7 +1430,7 @@ the TLA+ and Alloy models with checked configurations and a proof-status
 ledger that keeps <em>specified</em> and <em>verified</em> separate; the
 reference implementation (receipt, quorum, evidence-chain, host-record
 binding, and evidence-graph layers, with JavaScript, Python, and Go
-same-team ports); the 16-suite / 164-vector conformance battery with
+same-team ports); the 17-suite / 192-vector conformance battery with
 deterministic regeneration scripts; the pinned external Rust source and
 evaluator; the 359-case hostility campaign; the aggregate conformance
 case; the historical third-party reproduction statement; and the worked

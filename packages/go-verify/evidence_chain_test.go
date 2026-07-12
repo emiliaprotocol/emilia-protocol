@@ -81,10 +81,13 @@ func TestAECVectors(t *testing.T) {
 			}
 		}
 		var res AECResult
-		if v.RPRequirement != "" {
-			res = VerifyAuthorizationChain(chain, verifiers, nil, v.RPRequirement)
-		} else {
+		if v.ExpectSource == "presenter" {
 			res = VerifyAuthorizationChain(chain, verifiers, nil)
+		} else if v.RPRequirement != "" {
+			res = VerifyAuthorizationChain(chain, verifiers, nil, v.RPRequirement, "sha256:"+digest)
+		} else {
+			req, _ := chain["requirement"].(string)
+			res = VerifyAuthorizationChain(chain, verifiers, nil, req, "sha256:"+digest)
 		}
 		if res.Allow != v.ExpectAllow {
 			t.Errorf("%s: allow=%v want %v; reasons=%v", v.Name, res.Allow, v.ExpectAllow, res.Reasons)

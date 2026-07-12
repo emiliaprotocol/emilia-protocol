@@ -84,10 +84,13 @@ type vec struct {
 	PinnedTSAKeys  json.RawMessage `json:"pinned_tsa_keys"`
 	// EP-AEC-ROLE-v1: a chain run through the built-in ep-receipt with role-scoped
 	// pins (keys_by_type maps type -> {spki: spki}) and a permissive stub per type.
-	AECChain    map[string]any               `json:"aec_chain"`
-	KeysByType  map[string]map[string]string `json:"keys_by_type"`
-	StubTypes   []string                     `json:"stub_types"`
-	Requirement string                       `json:"requirement"`
+	AECChain             map[string]any               `json:"aec_chain"`
+	KeysByType           map[string]map[string]string `json:"keys_by_type"`
+	PoliciesByType       map[string]any               `json:"policies_by_type"`
+	StubTypes            []string                     `json:"stub_types"`
+	Requirement          string                       `json:"requirement"`
+	ExpectedActionDigest string                       `json:"expected_action_digest"`
+	VerificationTime     string                       `json:"verification_time"`
 }
 
 // pinnedTSAKeysFromRaw normalizes the polymorphic `pinned_tsa_keys` vector field
@@ -466,7 +469,10 @@ func main() {
 			for _, t := range v.StubTypes {
 				verifiers[t] = stub
 			}
-			valid = emiliaverify.VerifyAuthorizationChain(v.AECChain, verifiers, v.KeysByType, v.Requirement).Allow
+			valid = emiliaverify.VerifyAuthorizationChainWithOptions(v.AECChain, verifiers, v.KeysByType, emiliaverify.AECOptions{
+				Requirement: v.Requirement, ExpectedActionDigest: v.ExpectedActionDigest,
+				VerificationTime: v.VerificationTime, PoliciesByType: v.PoliciesByType,
+			}).Allow
 		}
 		out = append(out, map[string]any{"id": v.ID, "valid": valid})
 	}

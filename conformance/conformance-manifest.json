@@ -1,10 +1,10 @@
 {
   "@version": "EP-CONFORMANCE-MANIFEST-v1",
-  "claim_scope": "same-team cross-language consistency; not independent implementation evidence",
+  "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
   "vector_bundle": {
-    "version": "EP-CLEAN-ROOM-VECTOR-BUNDLE-v1",
-    "path": "conformance/clean-room/bundle.v1.json",
-    "sha256": "b884c727a51da1a7d12e234a119020430526fadd73e0f86eff1ded3e063e72f5"
+    "version": "EP-LIVE-CONFORMANCE-CATALOG-v1",
+    "path": "conformance/suites.mjs",
+    "sha256": "7606d60a22ef12587d19c4d90d626976523ed9dab3542b76911580ae9d93a563"
   },
   "suites": [
     {
@@ -38,9 +38,9 @@
       "vectors": 11
     },
     {
-      "path": "conformance/vectors/trust-receipt.timestamp-forms.v1.json",
-      "sha256": "e01ca5bd3bc7fecdd16ae3eb07fb58c4acf50aa595aaef87dcf40be8716a39f2",
-      "vectors": 6
+      "path": "conformance/vectors/trust-receipt.timestamp-forms.v2.json",
+      "sha256": "3b3540180ab0ee47beeb488ea026ce5ed4ba9b9efa95b8eb1d60ca0255ce779c",
+      "vectors": 7
     },
     {
       "path": "conformance/vectors/provenance.exec.v1.json",
@@ -61,6 +61,11 @@
       "path": "conformance/vectors/boundary.v1.json",
       "sha256": "5a7bec6ed7446fadf898c5e943336c64d3a7568dc2806fe47180a18d126d5507",
       "vectors": 5
+    },
+    {
+      "path": "conformance/vectors/aec-role.v1.json",
+      "sha256": "79ef1b206f4ac4d3ee39e42c4d5e7852abefcc4d3a761984a908e8e4dcd7a0af",
+      "vectors": 27
     },
     {
       "path": "conformance/vectors/currency.v1.json",
@@ -89,8 +94,8 @@
     }
   ],
   "totals": {
-    "suites": 16,
-    "vectors": 164,
+    "suites": 17,
+    "vectors": 192,
     "implementations": 3
   },
   "implementations": [
@@ -100,16 +105,16 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "conformance/runners/run-js.mjs",
-        "sha256": "6501a1620f1e957e218574f924db9f2b143d308ff8f4be65fcd9e2310529e9a8"
+        "sha256": "a30043c2b51a685083c51eb2125b9466461ee1c182557bfdbb1ca51012ce174d"
       },
       "source": {
         "files": 50,
-        "bytes": 756782,
-        "tree_sha256": "47ddaa330afd0f2a32d703f7c1e98fcdeff42035927c25689874b65b32a90a35"
+        "bytes": 771256,
+        "tree_sha256": "6d657c6c780c8ed33c48e5db389da376cbeca50696d3f397051b4b5dba790e84"
       },
-      "suites": 16,
-      "vectors": 164,
-      "normalized_results_sha256": "74d3c8f192dcde7ab23d969b6369b1fe50ee29727f8c5a4e5349a03ee6175d31",
+      "suites": 17,
+      "vectors": 192,
+      "normalized_results_sha256": "1e1f33dab3ce13dafffcdedd527f2046b3a96ba071e46031dd36fcc4cf404584",
       "status": "pass"
     },
     {
@@ -118,16 +123,16 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "conformance/runners/run_py.py",
-        "sha256": "a96e11a1327d9c76c814254d265ce6b1af29d9a9f865c8629b25b96b7d20d770"
+        "sha256": "3d6a7f8c088999dc086e68c62d6c3285542c81f9928d84b02ce97c628bec01fe"
       },
       "source": {
         "files": 1,
-        "bytes": 128831,
-        "tree_sha256": "d3dda89d7af2509ead67cf04c180e00f19c4bfa9165afa3e320c9377a98c0bc5"
+        "bytes": 142494,
+        "tree_sha256": "ab1a4fb3c0671282fff7771a439807c0445efa9ee04d94f4d469d1de0b937b28"
       },
-      "suites": 16,
-      "vectors": 164,
-      "normalized_results_sha256": "74d3c8f192dcde7ab23d969b6369b1fe50ee29727f8c5a4e5349a03ee6175d31",
+      "suites": 17,
+      "vectors": 192,
+      "normalized_results_sha256": "1e1f33dab3ce13dafffcdedd527f2046b3a96ba071e46031dd36fcc4cf404584",
       "status": "pass"
     },
     {
@@ -136,18 +141,18 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "packages/go-verify/cmd/conformance/main.go",
-        "sha256": "9ae9d01b4bc7628141c2d0b7053523f6a80a18dc209da193258baadc1fe04d9e"
+        "sha256": "afb678fe06dcad9545537e2aec25762140ac64e37d807eb73e178662d11c970e"
       },
       "source": {
         "files": 30,
-        "bytes": 239902,
-        "tree_sha256": "7921f8ee1b3df42208c39887fae2df4ec17d66c69002d0ad6a31306ed0b06d18"
+        "bytes": 251043,
+        "tree_sha256": "8e0c98972fc051b010757892cf3197abf06ec1ea803dcb07a344cc20cfd46ac2"
       },
-      "suites": 16,
-      "vectors": 164,
-      "normalized_results_sha256": "74d3c8f192dcde7ab23d969b6369b1fe50ee29727f8c5a4e5349a03ee6175d31",
+      "suites": 17,
+      "vectors": 192,
+      "normalized_results_sha256": "1e1f33dab3ce13dafffcdedd527f2046b3a96ba071e46031dd36fcc4cf404584",
       "status": "pass"
     }
   ],
-  "manifest_sha256": "b3d4494ab74559c4f65259fff55a4129009e78e1929c0e7a1cfd781651240f61"
+  "manifest_sha256": "69c7873a30dc967a056bb76608e644e356b8571dfbbf9fd5fa0a02a935c31f53"
 }

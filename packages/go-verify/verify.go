@@ -304,8 +304,26 @@ func IsCanonicalizable(v any) bool {
 		return err == nil && !math.IsNaN(f) && !math.IsInf(f, 0) && math.Trunc(f) == f && math.Abs(f) <= maxSafeInteger
 	case float64:
 		return !math.IsNaN(val) && !math.IsInf(val, 0) && math.Trunc(val) == val && math.Abs(val) <= maxSafeInteger
-	case int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
+	case int:
+		return int64(val) >= -maxSafeInteger && int64(val) <= maxSafeInteger
+	case int8:
 		return true
+	case int16:
+		return true
+	case int32:
+		return true
+	case int64:
+		return val >= -maxSafeInteger && val <= maxSafeInteger
+	case uint:
+		return uint64(val) <= maxSafeInteger
+	case uint8:
+		return true
+	case uint16:
+		return true
+	case uint32:
+		return true
+	case uint64:
+		return val <= maxSafeInteger
 	case map[string]any:
 		for _, e := range val {
 			if !IsCanonicalizable(e) {

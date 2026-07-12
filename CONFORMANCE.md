@@ -48,26 +48,30 @@ EP-QUORUM-v1                    — 13 vectors   JavaScript ✓   Python ✓   G
 EP-REVOCATION-v1               —  6 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-TIME-ATTESTATION-v1         —  6 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-TRUST-RECEIPT-v1 (§6.2)     — 11 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-TRUST-RECEIPT-v1 ts-profile —  6 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-TRUST-RECEIPT-v1 ts-profile —  7 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-PROVENANCE-CHAIN-v1         —  7 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-EVIDENCE-RECORD-v1          —  5 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-CANONICALIZATION-v1         — 35 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-BOUNDARY-v1                 —  5 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-AEC-ROLE-v1                 — 27 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-CURRENCY-v1                 — 12 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-INITIATOR-ATTESTATION-v1    — 11 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-SMT-CONSUME-v1              —  6 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-WITNESS-v1                  —  6 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-TIMESTAMP-PROOF-v1          — 13 vectors   JavaScript ✓   Python ✓   Go ✓
 
-✅ 164 vectors · 16 suites — JavaScript, Python, and Go verifiers agree.
+✅ 192 vectors · 17 suites — JavaScript, Python, and Go verifiers agree.
    (One team's three-language ports in one repository: a consistency check,
     not independent reimplementations.)
 ```
 
-An externally authored Rust verifier is evaluated in a separate CI lane from
+The externally portable clean-room bundle remains a separately pinned
+16-suite/164-vector baseline; the new 27-vector AEC acceptance suite has not
+been attributed to that external implementation. An externally authored Rust
+verifier is evaluated in a separate CI lane from
 the immutable source commit pinned in
 [`conformance/external/rust-cleanroom-jdieselny.v1.json`](conformance/external/rust-cleanroom-jdieselny.v1.json).
-It passes the current 164-vector suite. That is external interoperability
+It passes the pinned 16-suite/164-vector clean-room bundle. That is external interoperability
 evidence, but not yet strict clean-room acceptance: the construction claim is
 signed by the implementation organization rather than a separate attestor.
 The evaluator-controlled rebuild also passes the pinned differential-hostility
@@ -81,7 +85,7 @@ The CI job `aggregate-conformance-case` waits for both the same-team manifest
 and the external Rust campaign, revalidates their source pins, suite hashes,
 hostility corpus, evaluator commit, and construction-attestation boundary, then
 emits and GitHub-attests `EP-CONFORMANCE-CASE-v1`. The current case reports three
-same-team ports, one externally authored implementation passing 164 vectors and
+same-team ports, one externally authored implementation passing its pinned 164 vectors and
 359 hostile cases, and zero strict independently attested clean-room
 acceptances. That counter can change only when checked-in evidence passes the
 strict intake; prose cannot promote it.
@@ -93,7 +97,8 @@ not only Ed25519 authorization **receipts**, but Class-A WebAuthn device
 checks, fail-closed), portable **revocation** statements, **trusted-time
 attestations**, the full **§6.2 Trust Receipt** (signoff signatures + Merkle
 inclusion + Ed25519-signed checkpoint), **provenance chains** (human-authority
-root → delegation chain → action, with scope containment), and five **opt-in
+root → delegation chain → action, with scope containment), **EP-AEC acceptance**
+(executor-action binding, Class-A or quorum profiles, registry freshness), and five **opt-in
 profiles**: **EP-CURRENCY-v1** (the two-valued authentic-as-of-commit vs
 currency-at-T result, where `unknown` is the honest offline default),
 **EP-INITIATOR-ATTESTATION-v1** (fail-closed field validation + hostile-text
@@ -118,8 +123,8 @@ real `openssl`-minted TimeStampTokens in
 [`conformance/vectors/timestamp-proof.v1.json`](conformance/vectors/timestamp-proof.v1.json),
 including the exact per-vector refusal path (unpinned TSA, digest mismatch, wrong
 pinned key, tampered signature, non-SignedData, unparseable token). Other
-artifacts still remain outside the three-language run today (EP-AEC composition,
-WYSIWYS rendering, execution-integrity, the JWS profile) and are exercised in
+artifacts still remain outside the three-language run today (WYSIWYS rendering,
+execution-integrity, the JWS profile) and are exercised in
 JavaScript only; bringing them into the cross-language run, and independent
 implementations, are the next bar. The
 companion Internet-Drafts are

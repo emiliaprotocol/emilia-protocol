@@ -14,6 +14,21 @@
 > published at [EMILIA-REPO-CONTEXT-v1](public/.well-known/emilia-context.json).
 > Archived or staged documents do not establish current implementation or IETF status.
 
+## Engineering evidence, not architecture claims
+
+EMILIA ships a security case that reviewers can execute. The current repository resolves **16
+security claims over 73 hashed evidence files**, verifies **10 obligations in one composed Tamarin
+Dolev-Yao model**, and preserves **2 deliberately weakened variants that produce concrete replay
+and stale-registry attack traces**. The live same-team conformance corpus contains **17 suites and
+192 current vectors**. Separately, an externally authored Rust verifier is pinned to the frozen
+**16-suite/164-vector** bundle and a **359-case hostility campaign**. The broader suite contains
+**5,400+ automated tests across 260+ files**.
+
+Each security claim names the enforcement path, positive and negative vectors, language coverage,
+formal scope or explicit gap, assumptions, exclusions, and evidence hash. Start with the
+[human-readable evidence map](https://www.emiliaprotocol.ai/proof), then inspect the
+[resolved security case](security/security-case.json) or run `npm run check:security-case`.
+
 ## The engine without brakes
 
 For fifty years, software security answered one question: *who is allowed in?* Firewalls, OAuth, and passwords — all built to verify a human identity at the door.
@@ -134,13 +149,13 @@ EMILIA is an open standard, not a product moat. The core is Apache-2.0 and track
 
 | | |
 |---|---|
-| **IETF Internet-Drafts** | Posted: [authorization-receipts](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/) · [quorum](https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/). Staged in [`standards/`](standards/): authorization-evidence-chain (EP-AEC, composition) · evidence-record (EP-EVIDENCE-RECORD, long-term retention). |
-| **Cross-language verifiers** | JavaScript · Python · Go — all three proven to agree on adversarial conformance vectors, every push (`npm run conformance`). A consistency check across one team's ports, not clean-room independent implementations. Separately, an externally authored from-spec Rust implementation ([source public](https://github.com/jdieselny/ecr-wg/tree/main/rust/ep-cleanroom-verifier)) passes all 164 current vectors and the pinned 359-case hostility campaign under an evaluator-controlled rebuild from an immutable source tree. Its checked-in construction evidence remains implementer-signed, not third-party-attested ([signed statement](examples/external-verification/statements/rust-cleanroom/)); strict clean-room acceptance waits for the corrected third-party-attested manifest and independently pinned attestor key. |
+| **IETF Internet-Drafts** | Posted: [authorization-receipts](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/) · [quorum](https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/) · [authorization-evidence-chain](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/) · [evidence-record](https://datatracker.ietf.org/doc/draft-schrock-ep-evidence-record/). |
+| **Cross-language verifiers** | JavaScript · Python · Go — all three proven to agree on adversarial conformance vectors, every push (`npm run conformance`). A consistency check across one team's ports, not clean-room independent implementations. Separately, an externally authored from-spec Rust implementation ([source public](https://github.com/jdieselny/ecr-wg/tree/main/rust/ep-cleanroom-verifier)) passes the pinned 16-suite/164-vector bundle and the pinned 359-case hostility campaign under an evaluator-controlled rebuild from an immutable source tree. Its checked-in construction evidence remains implementer-signed, not third-party-attested ([signed statement](examples/external-verification/statements/rust-cleanroom/)); strict clean-room acceptance waits for the corrected third-party-attested manifest and independently pinned attestor key. |
 | **Formal verification** | 26 TLA+ safety properties (0 errors) · 35 Alloy facts, 22 assertions · a composed symbolic Dolev-Yao model covering challenge, CAID, two approvals, issuer and authority pins, registry view, revocation, consumption, and execution. Ten strict Tamarin lemmas verify; deliberately removing consumption or exact registry-view binding produces replay and stale/equivocating-view traces ([formal/tamarin/](formal/tamarin/)). |
 | **MCP registries** | Official MCP registry · Glama (Grade A, Official badge) · Smithery |
 | **License** | Apache-2.0 |
 
-Three same-team reference ports (JS / Python / Go) agree across all 16 suites and 164 vectors. Separately, an externally authored Rust implementation rebuilt from a pinned public source tree passes the current 164-vector set and a 359-case hostility campaign, re-run in its own CI lane on every change. That is external interoperability evidence, not strict clean-room construction acceptance; the aggregate CI case records the strict acceptance count as zero pending independent attestation. See [CONFORMANCE.md](CONFORMANCE.md), or verify a receipt yourself at [emiliaprotocol.ai/verify](https://www.emiliaprotocol.ai/verify).
+Three same-team reference ports (JS / Python / Go) agree across all 17 suites and 192 vectors. Separately, an externally authored Rust implementation rebuilt from a pinned public source tree passes the pinned 16-suite/164-vector clean-room bundle and a 359-case hostility campaign, re-run in its own CI lane on every change. The new AEC acceptance suite is not attributed to Rust. That is external interoperability evidence, not strict clean-room construction acceptance; the aggregate CI case records the strict acceptance count as zero pending independent attestation. See [CONFORMANCE.md](CONFORMANCE.md), or verify a receipt yourself at [emiliaprotocol.ai/verify](https://www.emiliaprotocol.ai/verify).
 
 ---
 
@@ -169,7 +184,7 @@ Eye observes. Handshake verifies. Signoff owns. Commit seals.
 | Red-team cases cataloged | 85 — [RED_TEAM_CASES.md](docs/conformance/RED_TEAM_CASES.md) |
 | Security findings remediated | 31 |
 | Conformance (7/7) | `node conformance/ep-conformance-test.js https://www.emiliaprotocol.ai` |
-| Cross-language conformance | 164 vectors · 16 suites: receipts · device signoffs · multi-party quorum · revocation · time-attestation · trust-receipt (×2 profiles) · provenance · evidence-record · canonicalization · boundary · currency · initiator-attestation · consumption-proof · witness · timestamp-proof (RFC 3161). JS / Python / Go verifiers agree (`node conformance/run.mjs`), including the RFC 3161 timestamp-proof over `openssl`-minted TimeStampTokens. See [CONFORMANCE.md](CONFORMANCE.md). |
+| Cross-language conformance | 192 vectors · 17 suites: receipts · device signoffs · multi-party quorum · revocation · time-attestation · trust-receipt (×2 profiles) · provenance · evidence-record · canonicalization · boundary · AEC acceptance · currency · initiator-attestation · consumption-proof · witness · timestamp-proof (RFC 3161). JS / Python / Go verifiers agree (`node conformance/run.mjs`). The external Rust baseline remains 164 vectors / 16 suites. See [CONFORMANCE.md](CONFORMANCE.md). |
 | Handshake create p95 | 575ms at 50 VUs — [PERFORMANCE_PROOF.md](docs/operations/PERFORMANCE_PROOF.md) |
 
 ---

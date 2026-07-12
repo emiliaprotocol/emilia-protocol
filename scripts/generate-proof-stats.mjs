@@ -27,6 +27,37 @@ const cfg = readFileSync('formal/ep_handshake.cfg', 'utf8');
 const als = readFileSync('formal/ep_relations.als', 'utf8');
 const fedAls = readFileSync('formal/ep_federation.als', 'utf8');
 const redTeam = readFileSync('docs/conformance/RED_TEAM_CASES.md', 'utf8');
+const tamarinSummary = readFileSync('formal/tamarin/results/ep_reliance_composed.summary.txt', 'utf8');
+const conformance = JSON.parse(readFileSync('conformance/conformance-manifest.json', 'utf8'));
+const external = JSON.parse(readFileSync('conformance/external/rust-cleanroom-jdieselny.v1.json', 'utf8'));
+const securityCase = JSON.parse(readFileSync('security/security-case.json', 'utf8'));
+
+const verifiedTamarinSection = tamarinSummary.match(
+  /Verified obligations:\n([\s\S]*?)\n\nDeliberately unsafe comparison obligations:/
+)?.[1];
+const unsafeTamarinSection = tamarinSummary.match(
+  /Deliberately unsafe comparison obligations:\n([\s\S]*?)\n\nThe first counterexample/
+)?.[1];
+if (!verifiedTamarinSection || !unsafeTamarinSection) {
+  throw new Error('Unable to parse the composed Tamarin proof summary');
+}
+
+const tamarinVerified = (verifiedTamarinSection.match(/:\s+verified\b/g) || []).length;
+const tamarinCounterexamples = (unsafeTamarinSection.match(/:\s+falsified\s+-\s+found trace\b/g) || []).length;
+const tamarinVersion = tamarinSummary.match(/^Tamarin:\s+(.+)$/m)?.[1];
+const tamarinModelSha256 = tamarinSummary.match(/^Model SHA-256:\s+([a-f0-9]{64})$/m)?.[1];
+if (!tamarinVersion || !tamarinModelSha256 || tamarinVerified === 0 || tamarinCounterexamples === 0) {
+  throw new Error('The composed Tamarin proof summary is incomplete');
+}
+if (securityCase.execution?.status !== 'passed') {
+  throw new Error('The machine-verifiable security case is not passing');
+}
+if (!conformance.implementations?.every((item) => item.relationship === 'one_team_port')) {
+  throw new Error('Reference verifier relationship is not uniformly one_team_port');
+}
+if (external.conformance?.status !== 'pass') {
+  throw new Error('The pinned external implementation does not report conformance pass');
+}
 
 const stats = {
   generatedAt: new Date().toISOString(),
@@ -46,6 +77,31 @@ const stats = {
     assertions: (als.match(/^assert/gm) || []).length + (fedAls.match(/^assert/gm) || []).length,
     version: '6.0.0 (CI)',
   },
+  tamarin: {
+    model: 'EP-RELIANCE-COMPOSED-v2',
+    verifiedObligations: tamarinVerified,
+    deliberatelyUnsafeCounterexamples: tamarinCounterexamples,
+    version: tamarinVersion,
+    modelSha256: tamarinModelSha256,
+  },
+  securityCase: {
+    status: securityCase.execution.status,
+    claims: securityCase.claim_count,
+    evidenceFiles: securityCase.evidence_file_count,
+    evidenceBundleSha256: securityCase.evidence_bundle_sha256,
+  },
+  conformance: {
+    suites: conformance.totals.suites,
+    vectors: conformance.totals.vectors,
+    referencePorts: conformance.totals.implementations,
+    relationship: 'same_team_ports',
+  },
+  externalImplementation: {
+    language: external.implementation.language,
+    vectors: external.conformance.vectors,
+    hostilityCases: external.hostility.structured_cases + external.hostility.raw_parser_cases,
+    strictCleanRoomAcceptance: external.construction_evidence.strict_clean_room_acceptance,
+  },
   redTeamCases: (redTeam.match(/^### /gm) || []).length,
 };
 
@@ -62,7 +118,7 @@ if (check) {
     console.error('(Docs state the count as a floor, so no doc edits are needed — only this one file.)');
     process.exitCode = 1;
   } else {
-    console.log(`PROOF STATS: PASS (${stats.tests.total} test cases, ${stats.tests.files} files, all platform-applicable cases passed; ${stats.tla.invariants} TLA+ invariants, ${stats.alloy.facts} Alloy facts, ${stats.redTeamCases} red-team cases)`);
+    console.log(`PROOF STATS: PASS (${stats.tests.total} test cases, ${stats.tests.files} files; ${stats.tamarin.verifiedObligations} composed Tamarin obligations; ${stats.securityCase.claims} executable security claims; ${stats.conformance.vectors} conformance vectors; ${stats.externalImplementation.hostilityCases} external hostility cases)`);
   }
 } else {
   writeFileSync('lib/proof-stats.json', `${JSON.stringify(stats, null, 2)}\n`);

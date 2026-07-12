@@ -5,6 +5,25 @@ import SiteNav from '@/components/SiteNav';
 import SiteFooter from '@/components/SiteFooter';
 import { styles, cta, color, font, radius } from '@/lib/tokens';
 import { ENTITY, COMPLIANCE_ROADMAP, isPlaceholder } from '@/lib/site-config';
+import proofStats from '@/lib/proof-stats.json';
+
+const TEST_CASES = Number(proofStats.tests.total).toLocaleString('en-US');
+const TEST_FILES = Number(proofStats.tests.files).toLocaleString('en-US');
+const SECURITY_CLAIMS = proofStats.securityCase.claims;
+const SECURITY_EVIDENCE_FILES = proofStats.securityCase.evidenceFiles;
+const TAMARIN_OBLIGATIONS = proofStats.tamarin.verifiedObligations;
+const TAMARIN_ATTACK_TRACES = proofStats.tamarin.deliberatelyUnsafeCounterexamples;
+const CONFORMANCE_VECTORS = proofStats.conformance.vectors;
+const CONFORMANCE_SUITES = proofStats.conformance.suites;
+const HOSTILITY_CASES = proofStats.externalImplementation.hostilityCases;
+
+const ENGINEERING_EVIDENCE = [
+  { value: TAMARIN_OBLIGATIONS, label: 'Composed Tamarin obligations', detail: `${TAMARIN_ATTACK_TRACES} deliberately unsafe variants yield traces` },
+  { value: SECURITY_CLAIMS, label: 'Executable security claims', detail: `${SECURITY_EVIDENCE_FILES} hashed evidence files` },
+  { value: CONFORMANCE_VECTORS, label: 'Current conformance vectors', detail: `${CONFORMANCE_SUITES} suites; same-team JS, Python, Go ports` },
+  { value: HOSTILITY_CASES, label: 'External hostility cases', detail: 'Pinned externally authored Rust implementation' },
+  { value: TEST_CASES, label: 'Automated test cases', detail: `${TEST_FILES} files; applicable cases pass` },
+];
 
 export default function SecurityPage() {
   useEffect(() => {
@@ -29,10 +48,35 @@ export default function SecurityPage() {
 
       <section style={{ ...styles.section, paddingTop: 100, paddingBottom: 56 }}>
         <div className="ep-tag ep-hero-badge">Trust &amp; Security</div>
-        <h1 className="ep-hero-text" style={styles.h1}>Security posture, transparently</h1>
+        <h1 className="ep-hero-text" style={styles.h1}>Security claims you can execute</h1>
         <p className="ep-hero-text" style={{ ...styles.body, maxWidth: 620 }}>
-          Procurement teams cannot evaluate a vendor without a real picture of where the security and compliance work stands today and where it is sequenced next. This page lists what is shipped, what is funded and in progress, and what is intent. We update it as commitments change. We never publish target dates we cannot hit.
+          EMILIA is implemented security infrastructure, not merely an architecture proposal. Its
+          current machine-verifiable case joins {SECURITY_CLAIMS} executable claims, a composed
+          Tamarin adversary model, cross-language negative vectors, fault-schedule testing, and
+          byte-pinned release evidence. Every engineering count on this page comes from generated
+          repository evidence.
         </p>
+        <div className="ep-hero-text" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 24 }}>
+          <a href="/proof" className="ep-cta" style={cta.primary}>Inspect the engineering evidence</a>
+          <a href="/.well-known/emilia-context.json" className="ep-cta-secondary" style={cta.secondary}>Read the machine context</a>
+        </div>
+      </section>
+
+      <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 64 }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))',
+          borderTop: `1px solid ${color.border}`,
+          borderBottom: `1px solid ${color.border}`,
+        }}>
+          {ENGINEERING_EVIDENCE.map((item) => (
+            <div key={item.label} style={{ padding: '24px 20px 24px 0' }}>
+              <div style={{ fontFamily: font.sans, fontSize: 28, fontWeight: 700, color: color.gold, lineHeight: 1, marginBottom: 8 }}>{item.value}</div>
+              <div style={{ fontFamily: font.mono, fontSize: 10, fontWeight: 600, letterSpacing: 1, textTransform: 'uppercase', color: color.t1, lineHeight: 1.45 }}>{item.label}</div>
+              <div style={{ fontFamily: font.mono, fontSize: 10, color: color.t3, lineHeight: 1.5, marginTop: 5 }}>{item.detail}</div>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
@@ -124,16 +168,26 @@ export default function SecurityPage() {
       <section style={{ ...styles.section, paddingTop: 0, paddingBottom: 56 }}>
         <h2 className="ep-reveal" style={styles.h2}>Formal verification</h2>
         <p className="ep-reveal" style={styles.body}>
-          The protocol is mathematically modeled in TLA+ and Alloy. The TLA+ specification declares 26 machine-checked safety invariants — handshake binding integrity, replay resistance, signoff accountability, delegation, and identity continuity. The Alloy model declares 35 facts and 22 assertions covering structural invariants the TLA+ time-domain doesn't reach.
+          The strongest result is compositional: one Tamarin Dolev-Yao model follows a signed
+          challenge through CAID, two distinct approvals, issuer and authority pins, an exact
+          registry view, revocation, one-time consumption, and execution. It verifies
+          {' '}{TAMARIN_OBLIGATIONS} obligations under its stated assumptions.
         </p>
         <p className="ep-reveal" style={styles.body}>
-          Both run in CI on every change to the formal models. A counterexample fails the build. The model is part of the codebase, not a paper attached to it.
+          The model also keeps {TAMARIN_ATTACK_TRACES} intentionally weakened comparison obligations.
+          Remove consumption and Tamarin finds same-receipt replay. Stop pinning the exact registry
+          head and epoch and it finds a stale or equivocating authority-view acceptance. Those
+          counterexamples demonstrate that the controls are load-bearing rather than decorative.
         </p>
         <p className="ep-reveal" style={styles.body}>
-          On 2026-07-07 we shipped an authorization-path hardening release: the closures are covered by machine-checked negative conformance vectors, green across the JS, Python, and Go reference verifiers.
+          Separately, TLA+ checks {proofStats.tla.invariants} authorization-state invariants and
+          Alloy checks {proofStats.alloy.facts} facts plus {proofStats.alloy.assertions} assertions.
+          These models run in CI alongside executable negative vectors. A model failure or security-case
+          mismatch fails the build; the proof record lives beside the implementation, not in a detached paper.
         </p>
         <div className="ep-reveal" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <a href="/spec" className="ep-cta-secondary" style={cta.secondary}>Read the spec</a>
+          <a href="/proof" className="ep-cta-secondary" style={cta.secondary}>Read the evidence map</a>
+          <a href="https://github.com/emiliaprotocol/emilia-protocol/tree/main/formal/tamarin" className="ep-cta-ghost" style={cta.ghost}>Inspect the Tamarin models →</a>
           <a href="/blog/how-formal-verification-works-for-protocols" className="ep-cta-ghost" style={cta.ghost}>How verification works →</a>
         </div>
       </section>

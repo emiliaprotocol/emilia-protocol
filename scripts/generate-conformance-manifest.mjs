@@ -7,11 +7,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { canonicalize } from '../packages/verify/index.js';
 import { strictParseGate } from '../conformance/runners/strict-json.mjs';
+import { LIVE_SUITE_FILES } from '../conformance/suites.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BUNDLE_PATH = path.join(ROOT, 'conformance/clean-room/bundle.v1.json');
-const DEFAULT_OUTPUT = path.join(ROOT, 'conformance/conformance-manifest.json');
+const CATALOG_PATH = path.join(ROOT, 'conformance/suites.mjs');
 const argv = process.argv.slice(2);
+const cleanRoom = argv.includes('--clean-room');
+const DEFAULT_OUTPUT = path.join(ROOT, cleanRoom
+  ? 'conformance/clean-room/conformance-manifest.v1.json'
+  : 'conformance/conformance-manifest.json');
 const emitIndex = argv.indexOf('--emit');
 const emitPath = emitIndex >= 0 ? path.resolve(argv[emitIndex + 1] || '') : null;
 const check = argv.includes('--check');
@@ -78,19 +83,34 @@ const implementations = [
   },
 ];
 
-const bundleBytes = fs.readFileSync(BUNDLE_PATH);
-const bundle = parseStrictJson(bundleBytes.toString('utf8'), 'conformance bundle');
-if (bundle['@version'] !== 'EP-CLEAN-ROOM-VECTOR-BUNDLE-v1') throw new Error('unsupported conformance bundle');
+let bundleBytes;
+let bundleVersion;
+let bundlePath;
+let suiteRefs;
+if (cleanRoom) {
+  bundlePath = BUNDLE_PATH;
+  bundleBytes = fs.readFileSync(bundlePath);
+  const bundle = parseStrictJson(bundleBytes.toString('utf8'), 'conformance bundle');
+  if (bundle['@version'] !== 'EP-CLEAN-ROOM-VECTOR-BUNDLE-v1') throw new Error('unsupported conformance bundle');
+  bundleVersion = bundle['@version'];
+  suiteRefs = bundle.suites;
+} else {
+  bundlePath = CATALOG_PATH;
+  bundleBytes = fs.readFileSync(bundlePath);
+  bundleVersion = 'EP-LIVE-CONFORMANCE-CATALOG-v1';
+  suiteRefs = LIVE_SUITE_FILES.map((file) => ({ path: `conformance/vectors/${file}` }));
+}
 const suites = [];
 let vectorCount = 0;
-for (const suiteRef of bundle.suites) {
+for (const suiteRef of suiteRefs) {
   const suitePath = path.resolve(ROOT, suiteRef.path);
   const bytes = fs.readFileSync(suitePath);
-  if (sha256(bytes) !== suiteRef.sha256) throw new Error(`conformance vector drift: ${suiteRef.path}`);
+  const suiteSha256 = sha256(bytes);
+  if (suiteRef.sha256 && suiteSha256 !== suiteRef.sha256) throw new Error(`conformance vector drift: ${suiteRef.path}`);
   const suite = parseStrictJson(bytes.toString('utf8'), `suite ${suiteRef.path}`);
   if (!Array.isArray(suite.vectors)) throw new Error(`suite has no vectors: ${suiteRef.path}`);
   vectorCount += suite.vectors.length;
-  suites.push({ path: suiteRef.path, sha256: suiteRef.sha256, vectors: suite.vectors.length });
+  suites.push({ path: suiteRef.path, sha256: suiteSha256, vectors: suite.vectors.length });
 }
 
 const implementationResults = [];
@@ -145,10 +165,12 @@ for (const implementation of implementations) {
 
 const manifest = {
   '@version': 'EP-CONFORMANCE-MANIFEST-v1',
-  claim_scope: 'same-team cross-language consistency; not independent implementation evidence',
+  claim_scope: cleanRoom
+    ? 'same-team consistency over the frozen external clean-room bundle; not independent implementation evidence'
+    : 'current same-team cross-language consistency; not independent implementation evidence',
   vector_bundle: {
-    version: bundle['@version'],
-    path: relative(BUNDLE_PATH),
+    version: bundleVersion,
+    path: relative(bundlePath),
     sha256: sha256(bundleBytes),
   },
   suites,
@@ -160,11 +182,11 @@ const output = `${JSON.stringify(manifest, null, 2)}\n`;
 
 if (check) {
   const expected = fs.readFileSync(DEFAULT_OUTPUT, 'utf8');
-  if (expected !== output) throw new Error('conformance/conformance-manifest.json is stale; run npm run conformance:manifest');
+  if (expected !== output) throw new Error(`${relative(DEFAULT_OUTPUT)} is stale; regenerate its conformance manifest`);
 }
 if (emitPath) {
   fs.mkdirSync(path.dirname(emitPath), { recursive: true });
   fs.writeFileSync(emitPath, output);
 }
 if (!check && !emitPath) process.stdout.write(output);
-console.error(`CONFORMANCE MANIFEST: PASS (${suites.length} suites, ${vectorCount} vectors, ${implementationResults.length} one-team ports; sha256:${manifest.manifest_sha256})`);
+console.error(`CONFORMANCE MANIFEST: PASS (${cleanRoom ? 'clean-room frozen' : 'live'}; ${suites.length} suites, ${vectorCount} vectors, ${implementationResults.length} one-team ports; sha256:${manifest.manifest_sha256})`);

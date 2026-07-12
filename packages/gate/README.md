@@ -226,8 +226,10 @@ challenge. The Gate composes that and adds the three things a firewall needs:
   verifier in `@emilia-protocol/verify`.
 - **One-time consumption** — a receipt authorizes one action, once. Replays are refused
   (`replay_refused`). Default store is in-memory; swap in Redis/DB for a fleet.
-- **Evidence log** — every decision is hash-chained (`evidence.verify()` detects any alteration).
-  This is the compliance / insurance artifact.
+- **Evidence log** — the local logger hash-chains decisions and detects alteration when given its
+  complete process history. It is not a fleet ledger: a sink cannot prevent restart-from-genesis or
+  cross-replica forks. Safety-critical deployments use `createAtomicEvidenceLog()` over a durable
+  backend whose compare-and-append transaction advances one shared head across replicas.
 - **Execution-field binding** — for high-risk packs, the signed claim must match the executor's
   observed mutation fields (`amount_usd`, `commit_sha`, `principal_id`, `record_id`, etc.). This
   closes "approved harmless X, executed dangerous Y."
@@ -237,6 +239,20 @@ challenge. The Gate composes that and adds the three things a firewall needs:
 ## Production custody
 
 The three things a serious buyer (CISO, auditor, insurer) asks after the demo:
+
+**AEC execution custody.** `createAECExecutionGate()` requires a relying-party requirement,
+executor-owned action, explicit human floor, and constructor-pinned custom verifier and key
+registries. Transaction input may carry evidence, but never verifier code, trust keys, or human
+acceptance profiles; attempts to do so are refused before verification. Production mode additionally refuses an expiring
+consumption store or a process-local evidence logger. It consumes
+`aec:action:<canonical-action-digest>` before the effect, passes the effect a frozen pre-await action
+snapshot, and conservatively burns or freezes the action after an indeterminate result. Every
+otherwise identical intended effect therefore needs a unique action-instance nonce inside the
+signed action. Use `createAtomicEvidenceLog()` from `@emilia-protocol/gate/evidence`; its backend
+must atomically compare and append against one durable shared head. The gate independently
+recomputes every logger acknowledgment and requires its entry bytes to equal the requested
+decision; the atomic logger also requires readback to equal the exact submitted sequence and
+predecessor.
 
 **Issuer key rotation + revocation.** A flat `trustedKeys` list can't revoke a leaked key
 or rotate without downtime. A key registry can — a receipt is verified only against keys

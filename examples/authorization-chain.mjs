@@ -48,7 +48,7 @@ function approveOnDevice({ role, approver, issuedAt }) {
 }
 const quorum = {
   '@type': 'ep.quorum', action_hash: ACTION_HASH,
-  policy: { mode: 'ordered', required: 2, distinct_humans: true, window_sec: 172800,
+  policy: { mode: 'threshold', required: 2, distinct_humans: true, window_sec: 172800,
     approvers: [{ role: 'department_director', approver: 'ep:approver:dir_alvarez' }, { role: 'cfo', approver: 'ep:approver:cfo_whitfield' }] },
   members: [approveOnDevice({ role: 'department_director', approver: 'ep:approver:dir_alvarez', issuedAt: '2026-02-03T17:55:00.000Z' }),
             approveOnDevice({ role: 'cfo', approver: 'ep:approver:cfo_whitfield', issuedAt: '2026-02-04T10:12:00.000Z' })],
@@ -82,11 +82,34 @@ const makeChain = (permitDigest) => ({
     { type: 'policy-permit', label: 'machine policy permit', evidence: mintPermit(permitDigest) },
   ],
 });
-// Role-scoped trust anchors: the relying party pins the enrolled human device
-// keys FOR the ep-quorum role. The built-in quorum leg refuses any member key it
-// did not pin, so an attacker cannot forge a quorum under keys it generated.
-const quorumKeys = Object.fromEntries(quorum.members.map((m) => [m.approver_public_key, m.approver_public_key]));
-const opts = { verifiers: { 'policy-permit': permitVerifier }, keysByType: { 'ep-quorum': quorumKeys } };
+// The relying party pins the entire acceptance profile: exact quorum policy,
+// WebAuthn audience, signed context policy, and key -> approver -> role mapping.
+const approvers = Object.fromEntries(quorum.members.map((m) => [m.approver_public_key, {
+  public_key: m.approver_public_key,
+  approver_id: m.signoff.context.approver,
+  roles: [m.role],
+  status: 'active',
+  valid_from: '2026-01-01T00:00:00.000Z',
+  valid_to: '2027-01-01T00:00:00.000Z',
+  revoked_at: null,
+}]));
+const opts = {
+  verifiers: { 'policy-permit': permitVerifier },
+  requirement: 'ep-quorum AND policy-permit',
+  expectedActionDigest: ACTION_HASH,
+  verificationTime: '2026-02-04T10:13:00.000Z',
+  policiesByType: {
+    'ep-quorum': {
+      policy: quorum.policy,
+      rp_id: 'emiliaprotocol.ai',
+      context_policy: POLICY_ID,
+      max_age_sec: 172800,
+      registry_checked_at: '2026-02-04T10:12:30.000Z',
+      max_registry_age_sec: 300,
+      approvers,
+    },
+  },
+};
 
 const C = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', b: '\x1b[1m', x: '\x1b[0m' };
 const show = (title, res) => {

@@ -25,11 +25,15 @@ const EASE = [0.23, 1, 0.32, 1];
 const TLA_INVARIANTS = String(proofStats.tla?.invariants ?? 26);
 const ALLOY_FACTS = String(proofStats.alloy?.facts ?? 35);
 const ALLOY_ASSERTIONS = String(proofStats.alloy?.assertions ?? 22);
+const TAMARIN_OBLIGATIONS = String(proofStats.tamarin?.verifiedObligations ?? 0);
+const TAMARIN_ATTACK_TRACES = String(proofStats.tamarin?.deliberatelyUnsafeCounterexamples ?? 0);
+const SECURITY_CLAIMS = String(proofStats.securityCase?.claims ?? 0);
 
 const STATS = [
+  { n: TAMARIN_OBLIGATIONS, label: `composed Tamarin obligations; ${TAMARIN_ATTACK_TRACES} attack traces` },
+  { n: SECURITY_CLAIMS, label: 'executable security claims' },
   { n: TLA_INVARIANTS, label: 'TLA+ invariants' },
   { n: ALLOY_FACTS, label: `Alloy facts + ${ALLOY_ASSERTIONS} assertions` },
-  { n: 'CI', label: 'machine-checked every commit' },
 ];
 
 // Plain-English property + its real source invariant name.
@@ -44,8 +48,8 @@ const INVARIANTS = [
 
 export default function ProofBlock() {
   const reveal = {
-    initial: { opacity: 0, y: 18 },
-    whileInView: { opacity: 1, y: 0 },
+    initial: { opacity: 1, y: 18 },
+    whileInView: { y: 0 },
     viewport: { once: true, margin: '-40px' },
     transition: { duration: 0.55, ease: EASE },
   };
@@ -63,15 +67,16 @@ export default function ProofBlock() {
           paddingLeft: 12,
         }}
       >
-        The proof
+        The machine-checkable case
       </div>
       <h2 style={{ fontFamily: font.sans, fontSize: 'clamp(26px,4vw,38px)', fontWeight: 700, letterSpacing: -0.5, margin: '0 0 12px', color: color.t1 }}>
-        We didn’t just claim it’s safe. We proved it — with machine-checked math.
+        We don’t ask reviewers to trust the architecture. We give them claims they can execute.
       </h2>
       <p style={{ fontFamily: font.sans, fontSize: 17, lineHeight: 1.6, color: color.t2, maxWidth: 640, marginBottom: 28 }}>
-        Most “AI governance” is policy documents and good intentions. EMILIA’s core guarantees are
-        written as formal specifications and verified by a model checker on every commit. The proofs
-        are open — read them, or try to break them.
+        EMILIA’s security case joins formal models, named code paths, positive and negative vectors,
+        language coverage, assumptions, exclusions, and artifact hashes. The composed Tamarin model
+        follows challenge through execution under a Dolev-Yao network attacker; deliberately remove
+        consumption or exact registry-view binding and it produces the corresponding attack trace.
       </p>
 
       {/* Stat strip */}
@@ -103,12 +108,15 @@ export default function ProofBlock() {
       </div>
 
       <p style={{ fontFamily: font.mono, fontSize: 11.5, color: color.t3, marginTop: 18, lineHeight: 1.6 }}>
-        Bounded model-checking of the authorization state machine (TLA+ / Alloy 6.0.0) — not a proof
-        of any AI model’s behavior. It proves the protocol logic cannot be replayed or partially
-        executed, given signature soundness.
+        Scope is explicit: TLA+ and Alloy model bounded state and relational properties; Tamarin uses
+        symbolic perfect cryptography and pinned-root assumptions. These are not proofs of AI behavior,
+        WebAuthn internals, parser correctness, legal compliance, or deployment completeness.
       </p>
 
       <div style={{ display: 'flex', gap: 18, marginTop: 18, flexWrap: 'wrap' }}>
+        <Link href="/proof" style={{ fontFamily: font.sans, fontSize: 14, fontWeight: 600, color: color.t1 }}>
+          Inspect the engineering evidence →
+        </Link>
         <Link href="/spec" style={{ fontFamily: font.sans, fontSize: 14, fontWeight: 600, color: color.t1 }}>
           Read the spec →
         </Link>
