@@ -1191,16 +1191,32 @@ def _norm_digest(d: Any) -> Optional[str]:
 def _builtin_aec_verifiers() -> dict:
     def ep_quorum(ev, ctx):
         r = verify_quorum(ev) or {}
-        return {"valid": bool(r.get("valid")), "action_digest": (ev or {}).get("action_hash")}
+        # verify_quorum enforces action_binding: every signoff is over THIS
+        # action_hash, so once valid the top-level digest is cryptographically
+        # bound. Surface it only on success, so a failed leg asserts no binding.
+        valid = bool(r.get("valid"))
+        return {"valid": valid, "action_digest": ((ev or {}).get("action_hash") if valid else None)}
 
     def ep_receipt(ev, ctx):
-        key = (ctx.get("keys") or {}).get((ev or {}).get("operator_public_key")) or (ev or {}).get("operator_public_key")
+        # The signing key MUST be relying-party-pinned. A key named inside the
+        # evidence is never trusted on its own: a machine could otherwise relabel
+        # its own signed object EP-RECEIPT-v1, name its own key, and fill the
+        # human-authorization role. No pinned key => fail closed.
+        named = (ev or {}).get("operator_public_key")
+        pinned = (ctx.get("keys") or {}).get(named) if isinstance(named, str) else None
+        if not pinned:
+            return {"valid": False, "action_digest": None}
         try:
-            r = verify_receipt(ev, key)
+            r = verify_receipt(ev, pinned)
             valid = bool(r.get("valid") if isinstance(r, dict) else getattr(r, "valid", False))
         except Exception:
             valid = False
-        return {"valid": valid, "action_digest": (ev or {}).get("action_hash")}
+        # Bind from the SIGNED payload only, never the unsigned top-level
+        # action_hash (attacker-malleable: a receipt signed over a DIFFERENT
+        # action could otherwise pass as binding this one).
+        payload = (ev or {}).get("payload") or {}
+        bound = payload.get("action_digest") or payload.get("action_hash")
+        return {"valid": valid, "action_digest": (bound if valid else None)}
 
     return {"ep-quorum": ep_quorum, "ep-receipt": ep_receipt}
 
@@ -1304,8 +1320,12 @@ def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None, keys:
             row["reason"] = "component binds a DIFFERENT action than the chain"
         if row["valid"] and row["bound"]:
             satisfied.add(c.get("type"))
-            if c.get("label"):
-                satisfied.add(c.get("label"))
+            # A presenter-controlled label must never satisfy a requirement token
+            # that names a registered verifier type (that would let a policy leg
+            # labeled 'ep-receipt' fill the human role). Skip label-vs-type collisions.
+            lbl = c.get("label")
+            if lbl and lbl not in vmap:
+                satisfied.add(lbl)
         components.append(row)
 
     allow = _eval_requirement(req, satisfied)

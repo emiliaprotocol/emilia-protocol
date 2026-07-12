@@ -65,15 +65,43 @@ func builtinAECVerifiers() map[string]ComponentVerifier {
 		"ep-quorum": func(ev any, ctx map[string]any) ComponentResult {
 			m, _ := ev.(map[string]any)
 			r := VerifyQuorum(m, "")
+			// VerifyQuorum enforces action_binding: every signoff is over THIS
+			// action_hash, so once valid the top-level digest is cryptographically
+			// bound. Surface it only on success, so a failed leg asserts no binding.
+			if !r.Valid {
+				return ComponentResult{Valid: false, ActionDigest: ""}
+			}
 			ad, _ := m["action_hash"].(string)
-			return ComponentResult{Valid: r.Valid, ActionDigest: ad}
+			return ComponentResult{Valid: true, ActionDigest: ad}
 		},
 		"ep-receipt": func(ev any, ctx map[string]any) ComponentResult {
 			m, _ := ev.(map[string]any)
-			key, _ := m["operator_public_key"].(string)
-			r := VerifyReceipt(m, key)
-			ad, _ := m["action_hash"].(string)
-			return ComponentResult{Valid: r.Valid, ActionDigest: ad}
+			// The signing key MUST be relying-party-pinned. A key named inside the
+			// evidence is never trusted on its own: a machine could otherwise relabel
+			// its own signed object EP-RECEIPT-v1, name its own key, and fill the
+			// human-authorization role. No pinned key => fail closed.
+			named, _ := m["operator_public_key"].(string)
+			keys, _ := ctx["keys"].(map[string]string)
+			pinned, ok := keys[named]
+			if named == "" || !ok || pinned == "" {
+				return ComponentResult{Valid: false, ActionDigest: ""}
+			}
+			r := VerifyReceipt(m, pinned)
+			if !r.Valid {
+				return ComponentResult{Valid: false, ActionDigest: ""}
+			}
+			// Bind from the SIGNED payload only, never the unsigned top-level
+			// action_hash (attacker-malleable: a receipt signed over a DIFFERENT
+			// action could otherwise pass as binding this one).
+			var bound string
+			if payload, ok := m["payload"].(map[string]any); ok {
+				if s, ok := payload["action_digest"].(string); ok {
+					bound = s
+				} else if s, ok := payload["action_hash"].(string); ok {
+					bound = s
+				}
+			}
+			return ComponentResult{Valid: true, ActionDigest: bound}
 		},
 	}
 }
@@ -165,7 +193,10 @@ func aecEvalRequirement(expr string, satisfied map[string]bool) bool {
 // claim of what the bundle satisfies, never the relying party's bar. Pass an
 // optional relying-party requirement as the trailing argument to pin it; it
 // takes precedence and RequirementSource records which was used.
-func VerifyAuthorizationChain(aec map[string]any, verifiers map[string]ComponentVerifier, relyingPartyRequirement ...string) AECResult {
+// keys is the relying party's pinned key set for built-in verifiers that require
+// pinning (ep-receipt): a map from a signer's SPKI (base64url) to the trusted SPKI
+// the relying party accepts. Pass nil when only custom/stub verifiers are used.
+func VerifyAuthorizationChain(aec map[string]any, verifiers map[string]ComponentVerifier, keys map[string]string, relyingPartyRequirement ...string) AECResult {
 	pinned := ""
 	if len(relyingPartyRequirement) > 0 {
 		pinned = strings.TrimSpace(relyingPartyRequirement[0])
@@ -229,7 +260,7 @@ func VerifyAuthorizationChain(aec map[string]any, verifiers map[string]Component
 			res.Components = append(res.Components, row)
 			continue
 		}
-		cr := v(c["evidence"], map[string]any{"action": action})
+		cr := v(c["evidence"], map[string]any{"action": action, "keys": keys})
 		row.Valid = cr.Valid
 		row.Bound = aecNormDigest(cr.ActionDigest) == chainDigest
 		if !row.Valid {
@@ -239,8 +270,15 @@ func VerifyAuthorizationChain(aec map[string]any, verifiers map[string]Component
 		}
 		if row.Valid && row.Bound {
 			satisfied[typ] = true
-			if label != "" {
-				satisfied[label] = true
+			// A presenter-controlled label must never satisfy a requirement token
+			// that names a registered verifier type (that would let a policy leg
+			// labeled 'ep-receipt' fill the human role). Use the RAW label and skip
+			// it when it collides with a registered type.
+			rawLabel, _ := c["label"].(string)
+			if rawLabel != "" {
+				if _, isType := vmap[rawLabel]; !isType {
+					satisfied[rawLabel] = true
+				}
 			}
 		}
 		res.Components = append(res.Components, row)

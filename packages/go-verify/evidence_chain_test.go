@@ -82,9 +82,9 @@ func TestAECVectors(t *testing.T) {
 		}
 		var res AECResult
 		if v.RPRequirement != "" {
-			res = VerifyAuthorizationChain(chain, verifiers, v.RPRequirement)
+			res = VerifyAuthorizationChain(chain, verifiers, nil, v.RPRequirement)
 		} else {
-			res = VerifyAuthorizationChain(chain, verifiers)
+			res = VerifyAuthorizationChain(chain, verifiers, nil)
 		}
 		if res.Allow != v.ExpectAllow {
 			t.Errorf("%s: allow=%v want %v; reasons=%v", v.Name, res.Allow, v.ExpectAllow, res.Reasons)
