@@ -9,19 +9,22 @@ function read(relPath) {
 }
 
 describe('homepage category contract', () => {
-  it('leads with the trust mission and keeps technical proof in a restrained band', () => {
+  it('leads with the shared-world trust mission and keeps technical proof in a restrained band', () => {
     const page = read('app/page.js');
     const layout = read('app/layout.js');
+    const css = read('app/ep.css');
 
     expect(layout).toContain('The Consequence Firewall for AI Agents');
     expect(layout).toContain('secure agent actions');
     expect(layout).toContain('AI agent firewall');
-    expect(page).toContain('Building the foundation of trust for the agentic era.');
-    expect(page).toContain('AI is moving from answering questions to taking consequential action.');
-    expect(page).toContain('EMILIA is the open trust layer');
-    expect(page).toContain('Technical foundation');
+    expect(page).toContain('Trust infrastructure for a world humans and machines share.');
+    expect(page).toContain('coexistence needs a shared way to establish');
+    expect(page).toContain('EMILIA binds identity, authority, and human intent');
+    expect(css).toContain('hero-human-machine-shoreline-v1.webp');
+    expect(page).toContain('Proof, not promises');
     expect(page).toContain('IETF Internet-Drafts');
-    expect(page).toContain('CF-1 conformance');
+    expect(page).toContain('verified lemmas');
+    expect(page).toContain('counterexample traces');
     expect(page).toContain('href="/protocol"');
     expect(page).toContain('href="/proof"');
     expect(page).not.toContain('<CrashTestDemo />');
@@ -53,6 +56,12 @@ describe('homepage category contract', () => {
     // the TLA/Alloy numbers were hardcoded literals that could silently drift).
     expect(proofBlock).toContain("proofStats from '@/lib/proof-stats.json'");
     expect(proofBlock).not.toContain('15 assertions');
+    expect(proofBlock).toContain('Anyone can copy a schema');
+    expect(proofBlock).toContain('execution_requires_full_composition');
+    expect(proofBlock).toContain('no_issuer_laundering');
+    expect(proofBlock).toContain('injective_execution_with_consumption');
+    expect(proofBlock).toContain('unchecked_composition_is_injective');
+    expect(proofBlock).toContain('Open does not mean interchangeable.');
     // The Alloy assertion count is now interpolated from proofStats, not a
     // hardcoded literal — but the generated stats must still be 22.
     expect(proofStats.alloy.assertions).toBe(22);

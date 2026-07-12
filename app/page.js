@@ -23,8 +23,8 @@ import proofStats from '@/lib/proof-stats.json';
 //   85 red team cases — docs/conformance/RED_TEAM_CASES.md
 //   Apache 2.0 — LICENSE
 const TEST_CASES = Number(proofStats.tests?.total || 0).toLocaleString('en-US');
-const TLA_INVARIANTS = String(proofStats.tla?.invariants || 26);
 const TAMARIN_OBLIGATIONS = String(proofStats.tamarin?.verifiedObligations || 0);
+const TAMARIN_ATTACK_TRACES = String(proofStats.tamarin?.deliberatelyUnsafeCounterexamples || 0);
 const SECURITY_CLAIMS = String(proofStats.securityCase?.claims || 0);
 const CONFORMANCE_VECTORS = String(proofStats.conformance?.vectors || 0);
 
@@ -115,20 +115,24 @@ export default function HomePage() {
       <SiteNav activePage="" />
 
       {/* ── HERO — one quiet idea before any machinery ───────── */}
-      <section className="ep-home-calm-hero">
+      <section className="ep-home-calm-hero" aria-labelledby="home-trust-thesis">
         <C>
           <motion.div className="ep-home-calm-copy" {...heroIn(0)}>
-            <div className="ep-home-calm-kicker">EMILIA Protocol</div>
-            <h1>Building the foundation of trust for the agentic era.</h1>
+            <div className="ep-home-calm-kicker">
+              EMILIA Protocol <span>· Open trust infrastructure</span>
+            </div>
+            <h1 id="home-trust-thesis">Trust infrastructure for a world humans and machines share.</h1>
             <p className="ep-home-calm-lede">
-              AI is moving from answering questions to taking consequential action.
+              As machines begin to act in the world, coexistence needs a shared way to establish
+              who may do what, under whose authority, before it happens.
             </p>
             <p className="ep-home-calm-detail">
-              EMILIA is the open trust layer that binds identity, authority, and approval
-              to the exact action before execution, then leaves evidence anyone can verify.
+              EMILIA binds identity, authority, and human intent to the exact action before
+              execution, then leaves evidence anyone can verify.
             </p>
             <div className="ep-home-calm-actions">
-              <Link href="/protocol" className="ep-cta" style={cta.primary}>Explore the protocol</Link>
+              <Link href="/protocol" className="ep-home-hero-primary">Explore the protocol</Link>
+              <Link href="/proof" className="ep-home-hero-secondary">Inspect the proof →</Link>
             </div>
           </motion.div>
         </C>
@@ -139,16 +143,16 @@ export default function HomePage() {
         <C>
           <div className="ep-home-technical-line">
             <div className="ep-home-technical-title">
-              <strong>Technical foundation</strong>
-              <span>Open protocol</span>
+              <strong>Proof, not promises</strong>
+              <span>Machine-checkable</span>
             </div>
             <div className="ep-home-technical-facts">
               <span>IETF Internet-Drafts</span>
               <span>Apache 2.0</span>
-              <span>{TAMARIN_OBLIGATIONS} composed attack-model obligations</span>
+              <span>Tamarin: {TAMARIN_OBLIGATIONS} verified lemmas</span>
+              <span>{TAMARIN_ATTACK_TRACES} counterexample traces</span>
               <span>{SECURITY_CLAIMS} executable security claims</span>
               <span>{CONFORMANCE_VECTORS} conformance vectors</span>
-              <span>CF-1 conformance</span>
             </div>
             <Link href="/proof" className="ep-home-technical-link">Inspect the proof →</Link>
           </div>
@@ -332,7 +336,7 @@ export default function HomePage() {
       </section>
 
       {/* ── PROOF — formal-verification anchor (the spear tip) ─── */}
-      <section style={{ padding: '96px 0', borderBottom: `1px solid ${color.border}` }}>
+      <section className="ep-home-proof-section">
         <C>
           <ProofBlock />
         </C>
@@ -714,7 +718,7 @@ export default function HomePage() {
         }}>
           <span>Compliance: NIST AI RMF · EU AI ACT</span>
           <span>Test cases: {TEST_CASES} · all applicable pass</span>
-          <span>Formal verification: {TLA_INVARIANTS} theorems · 0 errors</span>
+          <span>Tamarin: {TAMARIN_OBLIGATIONS} verified lemmas · {TAMARIN_ATTACK_TRACES} attack traces</span>
         </div>
       </section>
 
