@@ -14,6 +14,13 @@
 #
 # Escape hatch for a deliberate, understood push: EP_ALLOW_MAIN_PUSH=1 git push ...
 
+# husky runs hooks with `sh -e`. This hook manages its own exit codes, and several
+# lines are not errexit-safe: the env-var test below fails when the var is unset,
+# and `grep -c` returns 1 on zero matches. Under `set -e` that aborts the hook on
+# line 1 with code 1 before any guard runs (it blocked every normal push to main).
+# Disable errexit so the guard logic actually executes.
+set +e
+
 [ "$EP_ALLOW_MAIN_PUSH" = "1" ] && exit 0
 
 head_sha=$(git rev-parse HEAD 2>/dev/null) || exit 0
