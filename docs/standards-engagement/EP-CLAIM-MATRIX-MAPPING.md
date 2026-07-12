@@ -21,9 +21,9 @@ local-harness, interop, deployment, document); per the draft, an evidence
 type is a boundary, not an assurance level. All EP Internet-Drafts are
 active **individual** submissions, not IETF-adopted or endorsed. Reference
 verifiers exist in JavaScript, Python, and Go in one repository — a
-consistency check, **not** independent implementations. As of 2026-07-07 an
+consistency check, **not** independent implementations. As of 2026-07-11 an
 externally authored Rust implementation (J Diesel NY, source public at
-`jdieselny/ecr-wg`) is rebuilt from a pinned commit and tree and passes all 163
+`jdieselny/ecr-wg`) is rebuilt from a pinned commit and tree and passes all 164
 current vectors plus 359 hostile cases. Its legacy construction statement at
 `examples/external-verification/statements/rust-cleanroom/` is implementer-signed;
 suite digests bind to this repository's bytes, and the maintainer rebuilt

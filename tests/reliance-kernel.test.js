@@ -469,16 +469,18 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
     expect(r.rely).toBe(false);
   });
 
-  it('refuses a validly signed machine policy decision presented as human authorization evidence', () => {
-    // The differential the boundary suite pins cross-language
-    // (policy_decision_presented_as_human_authorization): "decision": "allow" and
-    // "approval_state": "granted" record what a policy engine decided, never that
-    // a named human approved this exact action. The vector's signature verifies
-    // over its own canonical bytes; the artifact class is what the kernel refuses.
+  it('will not accept a machine policy decision record in the receipt slot', () => {
+    // Honest scope: the reliance kernel expects an EP trust receipt (action +
+    // signoffs). A machine decision record — "decision": "allow",
+    // "approval_state": "granted" — is not a well-formed trust receipt, so the
+    // kernel refuses it at the receipt gate rather than weighing it as human
+    // authorization. This asserts the kernel does NOT have a code path that
+    // accepts a decision record here; the role-substitution proof against a
+    // *composed* artifact lives in tests/role-non-substitution.test.js, and the
+    // cross-language version-gate refusal is the boundary suite vector.
     const boundary = JSON.parse(readFileSync(resolve(HERE, '../conformance/vectors/boundary.v1.json'), 'utf8'));
     const vector = boundary.vectors.find((v) => v.id === 'policy_decision_presented_as_human_authorization');
     expect(vector).toBeDefined();
-    expect(vector.expect.valid).toBe(false);
     expect(vector.document.payload.decision).toBe('allow');
     expect(vector.document.payload.approval_state).toBe('granted');
 
@@ -489,24 +491,30 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
     expect(r.rely).toBe(false);
   });
 
-  it('does not let a machine policy decision stand in for a required Class-A signoff', () => {
-    // Exact-verdict variant of the same differential: the packet's receipt is
-    // fully valid but carries only Class-B signoffs, the profile demands
-    // class_a, and the presenter attaches a signed machine policy decision.
-    // The kernel counts device-bound human signoffs, so the verdict is exactly
-    // do_not_rely_no_class_a — the machine artifact fills nothing.
+  it('reaches the same refusal whether or not an unrelated machine decision is attached', () => {
+    // The kernel weighs only the receipt, its signoffs, and the pinned inputs —
+    // never a free-floating artifact a presenter attaches. Prove that directly:
+    // with a valid but Class-B-only receipt under a class_a profile, the verdict
+    // is do_not_rely_no_class_a, and it is BYTE-IDENTICAL with or without a
+    // signed machine decision attached. A machine ALLOW cannot buy a Class-A
+    // seat, and there is no side channel that even looks at it.
     const boundary = JSON.parse(readFileSync(resolve(HERE, '../conformance/vectors/boundary.v1.json'), 'utf8'));
-    const vector = boundary.vectors.find((v) => v.id === 'policy_decision_presented_as_human_authorization');
+    const decision = boundary.vectors.find((v) => v.id === 'policy_decision_presented_as_human_authorization').document;
 
-    const { input, opts } = assemble('none');
-    const receipt = buildReceipt({ classAForCfo: false });
-    input.receipt = receipt;
-    input.action.action_hash = receipt.action_hash;
-    input.relying_party_profile.required_assurance = 'class_a';
-    input.presented_evidence = [vector.document];
-    const r = evaluateReliance(input, opts);
-    expect(r.verdict).toBe('do_not_rely_no_class_a');
-    expect(r.rely).toBe(false);
+    const build = (attach) => {
+      const { input, opts } = assemble('none');
+      const receipt = buildReceipt({ classAForCfo: false });
+      input.receipt = receipt;
+      input.action.action_hash = receipt.action_hash;
+      input.relying_party_profile.required_assurance = 'class_a';
+      if (attach) input.presented_evidence = [decision];
+      return evaluateReliance(input, opts);
+    };
+    const without = build(false);
+    const withDecision = build(true);
+    expect(without.verdict).toBe('do_not_rely_no_class_a');
+    expect(withDecision.verdict).toBe('do_not_rely_no_class_a');
+    expect(withDecision).toEqual(without);
   });
 
   it('does not skip an authority ceiling when the JSON amount is a decimal string', () => {

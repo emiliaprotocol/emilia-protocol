@@ -60,14 +60,33 @@ function builtinVerifiers() {
     // A distinct-human quorum (EP-QUORUM-v1) — the two-person-rule leg.
     'ep-quorum': (evidence) => {
       const r = verifyQuorum(evidence) || {};
-      return { valid: !!r.valid, action_digest: evidence?.action_hash ?? null, detail: r.checks };
+      // verifyQuorum enforces action_binding: every member's device signoff is
+      // over THIS quorum's action_hash, so once valid the top-level action_hash
+      // is cryptographically bound (tampering it fails action_binding). Only
+      // surface the digest on success, so a failed leg cannot assert a binding.
+      return { valid: !!r.valid, action_digest: r.valid ? (evidence?.action_hash ?? null) : null, detail: r.checks };
     },
     // A single named-human authorization receipt (EP-RECEIPT-v1).
     'ep-receipt': (evidence, ctx) => {
-      const key = ctx?.keys?.[evidence?.operator_public_key] ?? evidence?.operator_public_key;
+      // The signing key MUST be relying-party-pinned. A presenter-named key is
+      // never trusted on its own: a machine (or any) signer could otherwise
+      // relabel its own signed object as EP-RECEIPT-v1, name its own key, and
+      // fill the human-authorization role. Without a pinned key set, or when the
+      // named key is not in it, this leg fails closed. (verifyReceipt then still
+      // checks the signature against the PINNED value, so naming someone else's
+      // pinned key does not help an attacker who cannot sign under it.)
+      const named = evidence?.operator_public_key;
+      const pinned = ctx?.keys && typeof named === 'string' ? ctx.keys[named] : undefined;
+      if (!pinned) return { valid: false, action_digest: null, detail: { reason: 'operator key is not relying-party-pinned' } };
       let r = {};
-      try { r = verifyReceipt(evidence, key) || {}; } catch { r = { valid: false }; }
-      return { valid: !!r.valid, action_digest: evidence?.action_hash ?? null, detail: r.checks };
+      try { r = verifyReceipt(evidence, pinned) || {}; } catch { r = { valid: false }; }
+      // The bound digest MUST come from the SIGNED payload, never an unsigned
+      // sibling field. verifyReceipt covers payload bytes only; a top-level
+      // action_hash is attacker-malleable and would let a receipt signed over a
+      // DIFFERENT action pass as binding this one. Absent a signed digest, the
+      // leg cannot bind an action and fails the chain's bound check.
+      const boundDigest = evidence?.payload?.action_digest ?? evidence?.payload?.action_hash ?? null;
+      return { valid: !!r.valid, action_digest: r.valid ? boundDigest : null, detail: r.checks };
     },
   };
 }
@@ -152,7 +171,16 @@ export function verifyAuthorizationChain(aec, opts = {}) {
     row.bound = normDigest(res.action_digest) === chainDigest;
     if (!row.valid) row.reason = 'component evidence did not verify';
     else if (!row.bound) row.reason = 'component binds a DIFFERENT action than the chain';
-    if (row.valid && row.bound) { satisfied.add(c.type); if (c.label) satisfied.add(c.label); }
+    if (row.valid && row.bound) {
+      satisfied.add(c.type);
+      // A presenter-controlled label MAY name a distinct leg of the same type
+      // (e.g. 'cfo' vs 'ceo' among two ep-receipt legs), but it must NEVER
+      // satisfy a requirement token that names a registered verifier TYPE.
+      // Otherwise a policy_decision leg labeled 'ep-receipt' would fill the
+      // human-authorization role by string alone. A label colliding with a type
+      // is ignored for satisfaction (the leg still counts under its own type).
+      if (c.label && !(c.label in verifiers)) satisfied.add(c.label);
+    }
     return row;
   });
 
