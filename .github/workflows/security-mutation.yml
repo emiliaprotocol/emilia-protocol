@@ -112,7 +112,7 @@ jobs:
       - run: npm run test:mutation:aec
       - name: Upload AEC mutation report
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0  # v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: aec-mutation-report
           path: reports/mutation/aec-kernel.json
@@ -132,7 +132,7 @@ jobs:
       - run: npm run test:mutation:model-to-matter
       - name: Upload Model-to-Matter mutation report
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0  # v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: model-to-matter-mutation-report
           path: reports/mutation/model-to-matter.json

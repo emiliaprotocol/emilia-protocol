@@ -45,6 +45,46 @@ describe('mutation oracles for the replay kernel', () => {
     expect(() => createDurableConsumptionStore(createMemoryBackend(), { reservationTokenFactory: 'not-a-function' })).toThrow(/must be a function/);
   });
 
+  it('rejects a non-positive, non-integer, or unsafe ttlSeconds and accepts a positive one', () => {
+    const good = { reservationTokenFactory: () => '1234567890abcdef' };
+    expect(() => createDurableConsumptionStore(createMemoryBackend(), { ttlSeconds: 0, ...good }))
+      .toThrow(/positive safe integer/);
+    expect(() => createDurableConsumptionStore(createMemoryBackend(), { ttlSeconds: -1, ...good }))
+      .toThrow(/positive safe integer/);
+    expect(() => createDurableConsumptionStore(createMemoryBackend(), { ttlSeconds: 1.5, ...good }))
+      .toThrow(/positive safe integer/);
+    expect(() => createDurableConsumptionStore(createMemoryBackend(), { ttlSeconds: Number.MAX_SAFE_INTEGER + 1, ...good }))
+      .toThrow(/positive safe integer/);
+    // A ttl of exactly 1 is the smallest legal value and MUST NOT throw.
+    expect(() => createDurableConsumptionStore(createMemoryBackend(), { ttlSeconds: 1, ...good })).not.toThrow();
+    // undefined/null are allowed (no ttl); they take the permanent-consumption path.
+    expect(() => createDurableConsumptionStore(createMemoryBackend(), { ttlSeconds: null, ...good })).not.toThrow();
+  });
+
+  it('surfaces exact capability flags: durability tracks the backend, ttl sets retention and permanence', () => {
+    const good = { reservationTokenFactory: () => '1234567890abcdef' };
+    const durableBackend = { ...createMemoryBackend(), durable: true };
+
+    const noTtl = createDurableConsumptionStore(createMemoryBackend(), good);
+    expect(noTtl.durable).toBe(false);            // memory backend is not durable
+    expect(noTtl.ownershipFenced).toBe(true);
+    expect(noTtl.permanentConsumption).toBe(true); // no ttl => permanent
+    expect(noTtl.retentionSeconds).toBe(null);
+
+    const withTtl = createDurableConsumptionStore(durableBackend, { ttlSeconds: 30, ...good });
+    expect(withTtl.durable).toBe(true);            // backend.durable === true propagates
+    expect(withTtl.permanentConsumption).toBe(false); // a ttl means consumption is not permanent
+    expect(withTtl.retentionSeconds).toBe(30);
+
+    // durability is strict-equality on the backend flag, never coerced from a truthy value.
+    const truthyDurable = { ...createMemoryBackend(), durable: 1 };
+    expect(createDurableConsumptionStore(truthyDurable, good).durable).toBe(false);
+  });
+
+  it('the in-memory backend declares itself non-durable', () => {
+    expect(createMemoryBackend().durable).toBe(false);
+  });
+
   it('commits only its exact opaque reservation and then refuses replay', async () => {
     const backend = createMemoryBackend();
     const store = createDurableConsumptionStore(backend, {
