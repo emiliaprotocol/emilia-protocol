@@ -67,7 +67,7 @@ EP-TIMESTAMP-PROOF-v1          — 13 vectors   JavaScript ✓   Python ✓   Go
 An externally authored Rust verifier is evaluated in a separate CI lane from
 the immutable source commit pinned in
 [`conformance/external/rust-cleanroom-jdieselny.v1.json`](conformance/external/rust-cleanroom-jdieselny.v1.json).
-It passes the current 163-vector suite. That is external interoperability
+It passes the current 164-vector suite. That is external interoperability
 evidence, but not yet strict clean-room acceptance: the construction claim is
 signed by the implementation organization rather than a separate attestor.
 The evaluator-controlled rebuild also passes the pinned differential-hostility
@@ -81,7 +81,7 @@ The CI job `aggregate-conformance-case` waits for both the same-team manifest
 and the external Rust campaign, revalidates their source pins, suite hashes,
 hostility corpus, evaluator commit, and construction-attestation boundary, then
 emits and GitHub-attests `EP-CONFORMANCE-CASE-v1`. The current case reports three
-same-team ports, one externally authored implementation passing 163 vectors and
+same-team ports, one externally authored implementation passing 164 vectors and
 359 hostile cases, and zero strict independently attested clean-room
 acceptances. That counter can change only when checked-in evidence passes the
 strict intake; prose cannot promote it.

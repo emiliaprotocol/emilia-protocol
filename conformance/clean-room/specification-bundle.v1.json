@@ -15,6 +15,6 @@
     { "path": "docs/EP-PROVENANCE-RECEIPT-SPEC.md", "sha256": "e772b296e809113e315bc63aab1fd81b380e8886173c6ff0e2d20764a5509193", "bytes": 22813 },
     { "path": "docs/EP-EVIDENCE-RECORD-SPEC.md", "sha256": "406c6cbf88f1bbd71b96ebf5aa590bb847d8320b1937ef85cab7a2a0a3498619", "bytes": 3400 },
     { "path": "conformance/vectors/README.md", "sha256": "4707af25291b052c9194e4363381d8c625b8cd506841940459bedf4e3aa72adf", "bytes": 4986 },
-    { "path": "conformance/clean-room/bundle.v1.json", "sha256": "3cb74cfad6b9d54c8f824547b6d413ff25d5759c61bcc49fa7c1ec3a17a29971", "bytes": 2361 }
+    { "path": "conformance/clean-room/bundle.v1.json", "sha256": "b884c727a51da1a7d12e234a119020430526fadd73e0f86eff1ded3e063e72f5", "bytes": 2361 }
   ]
 }

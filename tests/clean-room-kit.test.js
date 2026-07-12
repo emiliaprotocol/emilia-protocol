@@ -5,9 +5,11 @@ import os from 'node:os';
 import path from 'node:path';
 import { buildCleanRoomKit, collectCleanRoomKitFiles } from '../scripts/build-clean-room-kit.mjs';
 
+const repositoryRef = process.env.EP_CLEAN_ROOM_REF || 'HEAD';
+
 describe('external clean-room input kit', () => {
   it('contains only byte-pinned specifications, vectors, schemas, and instructions', () => {
-    const { files } = collectCleanRoomKitFiles();
+    const { files } = collectCleanRoomKitFiles(repositoryRef);
     const paths = files.map((entry) => entry.path);
     expect(paths).toContain('conformance/clean-room/specification-bundle.v1.json');
     expect(paths).toContain('conformance/vectors/receipts.v1.json');
@@ -17,7 +19,7 @@ describe('external clean-room input kit', () => {
   it('builds a reproducible archive and exact content report', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ep-clean-room-kit-test-'));
     try {
-      const report = buildCleanRoomKit({ output: path.join(dir, 'kit.tar.gz') });
+      const report = buildCleanRoomKit({ ref: repositoryRef, output: path.join(dir, 'kit.tar.gz') });
       expect(report.reference_implementation_included).toBe(false);
       expect(report.archive.reproducible).toBe(true);
       expect(report.archive.sha256).toMatch(/^[0-9a-f]{64}$/);

@@ -19,6 +19,10 @@ const allowedExtensions = new Set(['.html', '.js', '.jsx', '.md', '.mjs', '.py',
 // it locally produces false FAILs, e.g. a caution note quoting a banned phrase.
 const excludedDirectories = new Set(['.git', '.next', 'archive', 'node_modules', 'strategy-private']);
 const scanRoots = [
+  'AGENTS.md',
+  'AI_CONTEXT.md',
+  'CLAUDE.md',
+  'GEMINI.md',
   'README.md',
   'CONFORMANCE.md',
   'app',

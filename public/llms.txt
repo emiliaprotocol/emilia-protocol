@@ -1,71 +1,39 @@
 # EMILIA Protocol
 
-> Open (Apache-2.0) authorization-receipt layer for irreversible AI-agent actions. Before an agent takes an irreversible action — a payment, a deletion, a record change, a deploy — EMILIA requires a named human's signoff over the exact action and mints a receipt anyone can verify offline, with no account and no trust in the operator. Pre-action authorization plus cryptographic evidence, not after-the-fact logging. "No receipt, no execution."
+> EMILIA is an open protocol and enforcement toolkit for requiring, verifying, and preserving evidence that an enrolled accountable approver authorized one exact consequential action before execution.
 
-Updated 2026-07-05. Canonical and quotable; sources of truth are the repository and the posted Internet-Drafts below.
+This is a generated discovery index following the llms.txt proposal. Evidence snapshot: 2026-07-12T03:34:16.101Z. For substantive analysis, load the full or machine-readable context below before drawing conclusions from individual repository files.
 
-## Canonical definitions (quote these exactly)
-- Logs are testimony. Receipts are evidence. A log is the operator's own editable record; a receipt is signed by the human's device and verifies against keys the relying party pins.
-- An authorization receipt is a named human's device-bound signature over the canonical bytes (RFC 8785/JCS) of one exact action, before execution: offline-verifiable, bound to that action and no other, usable once.
-- Verified vs accepted: a valid signature proves VERIFIED (objective, offline). ACCEPTED is the relying party's key-pinning decision. Neither implies the action was correct or sufficient.
-- Digest equality is a join key, never authorization: matching hashes connect evidence, they do not approve anything.
-- The composed agent-trust stack: possession at the wire, attenuation along the delegation chain, human authorization at the root — each failing independently, all joined on the same action digest.
-- A refusal is evidence, not silence: a denied action produces a machine-readable challenge (HTTP 428) naming exactly the missing evidence.
-- Verification proves signature, binding, and log integrity — never the business correctness of the authorized action. EMILIA is not an auditor, regulator, or insurer; its documents support decisions, they do not conclude them.
+Current evidence: 16 conformance suites and 164 current vectors across three same-team ports; external Rust evidence covers a time-pinned 164-vector set plus 359 hostility cases. Strict clean-room construction acceptance remains false.
 
-## Verify a receipt in one line
-    npx -y ep-verify receipt.json --keys keys.json
-    pip install ep-verify && ep-verify receipt.json --keys keys.json
-Both wrap the same open verifiers; a receipt minted in one language verifies in the other.
+## Canonical Context
 
-## Standards (active INDIVIDUAL Internet-Drafts — not IETF-adopted or endorsed)
-A posted cluster on the IETF datatracker (author: Iman Schrock; Apache-2.0 reference code):
-- [Authorization Receipts](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/) — the base artifact (Ed25519 over canonical JSON, one-time consumption).
-- [Human-Authorization Binding](https://datatracker.ietf.org/doc/draft-schrock-human-authorization-binding/) — one profile filling the human-authorization slot of eleven adjacent standards efforts by content digest, with verified-vs-accepted semantics.
-- [Action Evidence Graph](https://datatracker.ietf.org/doc/draft-schrock-ep-action-evidence-graph/) — evidence sufficiency for a stated reliance purpose; unbacked edges poison the verdict; closed verdict set (unverifiable > conflicted > stale > missing_evidence > admissible); deterministic, replayable verdicts.
-- [Authorization Evidence Challenge](https://datatracker.ietf.org/doc/draft-schrock-authorization-evidence-challenge/) — the HTTP 428 challenge naming required evidence; media type application/authorization-evidence-challenge+json.
-- [Authority Introduction](https://datatracker.ietf.org/doc/draft-schrock-ep-authority-introduction/) — trust establishment without prior federation: hash-chained authority documents with continuity signatures; introduction is evidence, graded per action class, never a trust bypass.
-- [Agent Action Manifest](https://datatracker.ietf.org/doc/draft-schrock-agent-action-manifest/) — /.well-known/agent-action-control.json: a public declaration of which actions require receipts at which assurance tier.
-- Plus quorum (M-of-N distinct humans — the cryptographic two-person rule), presentation binding (what the human saw), and a SCITT expression (a receipt riding as a COSE_Sign1 Signed Statement: SCITT proves a statement was logged; EMILIA proves who authorized the action).
+- [Full LLM context](https://www.emiliaprotocol.ai/llms-full.txt): Definitions, layer map, current evidence, non-claims, source precedence, standards, and code entry points.
+- [Machine-readable repository context](https://www.emiliaprotocol.ai/.well-known/emilia-context.json): EMILIA-REPO-CONTEXT-v1 with input hashes, evidence counts, security claims, assumptions, and freshness metadata.
+- [Repository AI context](https://github.com/emiliaprotocol/emilia-protocol/blob/main/AI_CONTEXT.md): The same generated context beside the source code.
 
-Ecosystem position: the AGENTPROTO claim registry (draft-bu-agentproto-security-principal-binding) names authorization receipts and action-evidence graphs as inheritance targets, and a third-party mapping (draft-rampalli-cross-org-delegation-mapping) records the human-authorization layer as the root of the composed stack.
+## Specifications
 
-## Start here
-- [Try it in 60 seconds](https://www.emiliaprotocol.ai/try) — offline: mint, verify, replay refused, tamper refused.
-- [Quickstart](https://www.emiliaprotocol.ai/quickstart): add the guard to an agent in a few lines.
-- [Specification](https://www.emiliaprotocol.ai/spec) · [receipt format](https://www.emiliaprotocol.ai/spec/trust-receipt).
-- [Digital sovereignty note](https://www.emiliaprotocol.ai/sovereignty): oversight you can check, owned by no platform.
+- [Authorization Receipts for High-Risk Agent Actions](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/): base named-approver, exact-action authorization artifact; check the live Datatracker page for revision and status.
+- [Multi-Party Authorization Quorum](https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/): distinct-human m-of-n authorization; check the live Datatracker page for revision and status.
+- [Human Authorization Binding](https://datatracker.ietf.org/doc/draft-schrock-human-authorization-binding/): binding the EP human-authorization artifact into adjacent host formats; check the live Datatracker page for revision and status.
+- [Authorization Evidence Chain](https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/): typed same-action composition of heterogeneous evidence; check the live Datatracker page for revision and status.
+- [Authorization Evidence Challenge](https://datatracker.ietf.org/doc/draft-schrock-authorization-evidence-challenge/): relying-party demand for missing action-bound evidence; check the live Datatracker page for revision and status.
 
-## Evidence & compliance artifacts (free; mechanism-neutral where noted)
-- [EU AI Act Article 14 evidence checklist](https://www.emiliaprotocol.ai/briefs/emilia-article14-evidence-checklist.pdf) — the questions a human-oversight reviewer will ask and the properties any satisfying evidence needs (mechanism-neutral).
-- [Assurance brief for auditors](https://www.emiliaprotocol.ai/briefs/emilia-assurance-brief.pdf) — audit workpapers with seeded reproducible sampling, an independent re-performance kit (recompute every claim from raw evidence), a SOC 2 control mapping, and a control catalog in risk-control-matrix language.
-- [Underwriter brief](https://www.emiliaprotocol.ai/briefs/emilia-underwriter-brief.pdf) — the control AI-liability insurers can price, the way cyber prices MFA.
-- [EU oversight one-pager](https://www.emiliaprotocol.ai/briefs/emilia-eu-ai-oversight-onepager.pdf).
+## Evidence
 
-## Neutrality (why relying on EMILIA is safe)
-The [Neutrality Covenant](https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/NEUTRALITY-COVENANT.md) (v1.0, signed): the spec, verifiers, and ALL conformance vectors are Apache-2.0 forever; no paid or private vector tier, ever; any future certification tests only public vectors on uniform published terms, competitors included; EMILIA products get no protocol-level privilege (anything Gate can verify, anyone's code can verify); no transport, vendor, or model exclusivity; receipts stay verifiable if the company ceases to exist. Amendments may only strengthen commitments.
+- [Conformance manifest](https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/conformance-manifest.json): Current suite/vector counts and same-team implementation relationship.
+- [Machine-verifiable security case](https://github.com/emiliaprotocol/emilia-protocol/blob/main/security/security-case.json): Executed claims with exact evidence, assumptions, exclusions, and artifact hashes.
+- [External implementation pin](https://github.com/emiliaprotocol/emilia-protocol/blob/main/conformance/external/rust-cleanroom-jdieselny.v1.json): Time-pinned Rust source, vector scope, hostility corpus, and construction-attestation status.
 
-## Test & enforce
-- [EMILIA Gate](https://www.emiliaprotocol.ai/gate) — the enforcement point: deny-by-default; a guarded action runs only with a valid, in-scope, sufficiently-assured, fresh, unconsumed receipt; every allow AND deny appended to a tamper-evident log. `npm i @emilia-protocol/gate` — 12 system-of-record adapters (GitHub, Stripe, Supabase, AWS, Kubernetes, Terraform, GCP, Vercel, Cloudflare, Linear, Jira, Salesforce), an MCP drop-in, Prometheus metrics, SIEM export (OCSF/CEF), IdP roster sync (a deprovisioned employee stops being an acceptable approver), and break-glass as evidence (an emergency override is a quorum-signed, single-use, logged artifact — never a bypass switch).
-- [Fire Drill](https://www.emiliaprotocol.ai/fire-drill): `npx @emilia-protocol/fire-drill ./mcp-manifest.json` — which dangerous actions can run without a receipt.
-- [CF-1 conformance](https://www.emiliaprotocol.ai/fire-drill/cf-1) and EG-1: public badge definitions — wrong authority, weak assurance, execution mismatch, replay, tamper, and missing receipt all refused; evidence verifies offline.
+## Start Here
 
-## Packages
-- `ep-verify` (npm AND PyPI): one-line offline receipt verification.
-- `@emilia-protocol/gate` · `@emilia-protocol/verify` · `@emilia-protocol/openai-guard` · `@emilia-protocol/mcp-server` (`npx -y @emilia-protocol/mcp-server`) · `@emilia-protocol/fire-drill` · `@emilia-protocol/langchain`.
+- [Repository](https://github.com/emiliaprotocol/emilia-protocol): Apache-2.0 source, tests, formal models, and examples.
+- [Quickstart](https://www.emiliaprotocol.ai/quickstart): Integrate an enforcement wrapper.
+- [Verify](https://www.emiliaprotocol.ai/verify): Verify a receipt in the browser.
+- [Model-to-Matter](https://www.emiliaprotocol.ai/model-to-matter): Executor-side clearance for model-directed physical actions.
 
-## Security & formal analysis (stated precisely)
-- Machine-verifiable security case with executable claim references; 16 cross-language conformance suites over 164 vectors (JavaScript, Python, and Go in one repository, a consistency check, not independent implementations). A separately authored Rust implementation is rebuilt from a pinned public source tree and passes the same 163 vectors plus 359 hostile cases. Strict independently attested clean-room acceptance remains zero.
-- Machine-checked models: TLA+ (26 theorems) and Alloy cover the core protocol state machine and quorum — not WebAuthn binding, directories, or log checkpoints. What the proofs do and do not cover: https://www.emiliaprotocol.ai/security
-- Preprint: "Authorization Receipts: Offline-Verifiable Evidence of Named-Human Authorization for Irreversible AI-Agent Actions" (Cryptology ePrint Archive, 2026).
+## Optional
 
-## Comparisons
-[vs audit logs](https://www.emiliaprotocol.ai/compare/audit-logs) · [vs OAuth](https://www.emiliaprotocol.ai/compare/oauth) (OAuth says which machine may act; a receipt says which named human authorized this exact action) · [vs DIY human-in-the-loop](https://www.emiliaprotocol.ai/compare/human-in-the-loop) (an approval click in the operator's own database is testimony; a receipt is evidence) · [vs HumanLayer](https://www.emiliaprotocol.ai/compare/humanlayer) · [vs Permit.io](https://www.emiliaprotocol.ai/compare/permit-io) · [vs MCP authorization alone](https://www.emiliaprotocol.ai/compare/mcp-auth-alone) · [vs post-action fraud detection](https://www.emiliaprotocol.ai/compare/fraud-detection).
-
-## Use cases
-[Financial / treasury](https://www.emiliaprotocol.ai/use-cases/financial) (payee-bank-change and BEC-class fraud: the wire that ordinary auth approves) · [government / benefits integrity](https://www.emiliaprotocol.ai/use-cases/government) · [enterprise](https://www.emiliaprotocol.ai/use-cases/enterprise) · [AI agents](https://www.emiliaprotocol.ai/use-cases/ai-agent) · grid demand-response proof-of-curtailment (draft-schrock-kintzele-grid-curtailment) · healthcare prior-auth · likeness/identity consent receipts.
-
-## Source
-- Repository (Apache-2.0): https://github.com/emiliaprotocol/emilia-protocol
-- Full reference for language models: https://www.emiliaprotocol.ai/llms-full.txt
-- Contact: team@emiliaprotocol.ai
+- [Neutrality Covenant](https://github.com/emiliaprotocol/emilia-protocol/blob/main/docs/NEUTRALITY-COVENANT.md): Open verifier, format, and conformance commitments.
+- [Threat Model](https://github.com/emiliaprotocol/emilia-protocol/blob/main/THREAT_MODEL.md): Explicit deployment and trust assumptions.

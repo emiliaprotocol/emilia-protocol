@@ -21,7 +21,7 @@
     "claimed": false,
     "authors": ["EMILIA maintainers"],
     "specification_inputs": ["EMILIA specifications", "EMILIA reference source"],
-    "specification_bundle_sha256": "8fbed86c768a4deabacbc9299909e6868f844243c9465bf70b09ad83c4681a4d",
+    "specification_bundle_sha256": "2559c33d8f601f497379b54cbfdf1f2f17040ee5f6c286e01fa63b2153398201",
     "reference_source_access": "reference_port",
     "emilia_affiliation": "maintainer",
     "statement": "This manifest exercises the intake harness only and makes no clean-room or independence claim."

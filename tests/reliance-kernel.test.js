@@ -489,6 +489,26 @@ describe('EP-RELIANCE-KERNEL-v1 unit invariants', () => {
     expect(r.rely).toBe(false);
   });
 
+  it('does not let a machine policy decision stand in for a required Class-A signoff', () => {
+    // Exact-verdict variant of the same differential: the packet's receipt is
+    // fully valid but carries only Class-B signoffs, the profile demands
+    // class_a, and the presenter attaches a signed machine policy decision.
+    // The kernel counts device-bound human signoffs, so the verdict is exactly
+    // do_not_rely_no_class_a — the machine artifact fills nothing.
+    const boundary = JSON.parse(readFileSync(resolve(HERE, '../conformance/vectors/boundary.v1.json'), 'utf8'));
+    const vector = boundary.vectors.find((v) => v.id === 'policy_decision_presented_as_human_authorization');
+
+    const { input, opts } = assemble('none');
+    const receipt = buildReceipt({ classAForCfo: false });
+    input.receipt = receipt;
+    input.action.action_hash = receipt.action_hash;
+    input.relying_party_profile.required_assurance = 'class_a';
+    input.presented_evidence = [vector.document];
+    const r = evaluateReliance(input, opts);
+    expect(r.verdict).toBe('do_not_rely_no_class_a');
+    expect(r.rely).toBe(false);
+  });
+
   it('does not skip an authority ceiling when the JSON amount is a decimal string', () => {
     const { input, opts } = assemble('amount_over_ceiling');
     const r = evaluateReliance(input, opts);

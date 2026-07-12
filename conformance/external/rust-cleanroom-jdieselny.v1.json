@@ -18,6 +18,15 @@
     "cargo_locked": true,
     "binary": "target/release/conformance"
   },
+  "conformance": {
+    "status": "pass",
+    "evaluated_at": "2026-07-11",
+    "suites": 16,
+    "vectors": 164,
+    "vector_bundle_sha256": "b884c727a51da1a7d12e234a119020430526fadd73e0f86eff1ded3e063e72f5",
+    "manifest_sha256": "b7a312a5ad5fe41f66f5e97ae795bf20d4281a5a4f6da0211d579144021fbbfc",
+    "scope": "time_pinned_vector_set"
+  },
   "construction_evidence": {
     "status": "implementation_organization_signed_legacy_statement_for_ancestor",
     "source_scope": "The signed statement predates the pinned hardening commit and does not attest that commit.",
@@ -33,7 +42,7 @@
   "hostility": {
     "suite": "EP-DIFFERENTIAL-HOSTILITY-v2",
     "runner_name": "rust-cleanroom-jdieselny",
-    "corpus_sha256": "ae350173f474ece17b16bb3925d82dd3302bffff96c1f86ba8ee3bc527939e3c",
+    "corpus_sha256": "ce867caa8fc7e12d7514f6429f3fb8afd47805a66b61437a861bd84db6dc3296",
     "structured_cases": 353,
     "raw_parser_cases": 6,
     "required_status": "pass"

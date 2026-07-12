@@ -155,6 +155,8 @@ jobs:
         run: npm run check:public-conformance-claims
       - name: Check published proof statistics against an executed test run
         run: npm run check:proof-stats
+      - name: Check generated LLM context against current evidence manifests
+        run: npm run check:llm-context
 
   # ── Job 6a: License headers ──────────────────────────────────────
   license-headers:

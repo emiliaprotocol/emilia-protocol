@@ -1,0 +1,1317 @@
+{
+  "@version": "EMILIA-REPO-CONTEXT-v1",
+  "evidence_snapshot_at": "2026-07-12T03:34:16.101Z",
+  "provenance": {
+    "generator": "scripts/generate-llm-context.mjs",
+    "input_digest_sha256": "80537ed2e43812a571d470f89facd65e7f7ff7693d48831041ff57599d5e0ae7",
+    "generated_from": [
+      {
+        "path": "docs/ai/context-source.v1.json",
+        "sha256": "bbfff9eb56e118c7d0fcea5b989d1fe10a56cdbe59484866528fe3b642d29e51",
+        "bytes": 11472
+      },
+      {
+        "path": "scripts/generate-llm-context.mjs",
+        "sha256": "7ec8216cbfa163d773f20d2b11b8894d9f448ace01497285f7e573e7f381f0cd",
+        "bytes": 17290
+      },
+      {
+        "path": "lib/proof-stats.json",
+        "sha256": "253b6b383e8d6b9fe3d89466f8db410de424e17fc8db29b95f938701999c50cd",
+        "bytes": 364
+      },
+      {
+        "path": "conformance/conformance-manifest.json",
+        "sha256": "10f2d1a3f01ebddee8c0d94b758b3f5bf56d13df72a67f7666b9509905bec3e9",
+        "bytes": 5282
+      },
+      {
+        "path": "conformance/external/rust-cleanroom-jdieselny.v1.json",
+        "sha256": "f390e27dff0404a2cb34506270a6f7a979682e51e09b45fa09ab3e9c4f163860",
+        "bytes": 2031
+      },
+      {
+        "path": "security/claims.v1.json",
+        "sha256": "31ffa53c4b9086e497a5a9e4a3e22f361399952d37c64d166a9220d250ec68ae",
+        "bytes": 49507
+      },
+      {
+        "path": "security/security-case.json",
+        "sha256": "5a362d30fe52cff30365bdd900805ffac76ed1db50339f7681439a1918c45e1b",
+        "bytes": 83483
+      }
+    ],
+    "freshness_command": "npm run check:llm-context"
+  },
+  "identity": {
+    "name": "EMILIA Protocol",
+    "category": "authorization evidence and enforcement for consequential machine actions",
+    "summary": "EMILIA is an open protocol and enforcement toolkit for requiring, verifying, and preserving evidence that an enrolled accountable approver authorized one exact consequential action before execution.",
+    "repository": "https://github.com/emiliaprotocol/emilia-protocol",
+    "website": "https://www.emiliaprotocol.ai",
+    "license": "Apache-2.0"
+  },
+  "canonical_definitions": [
+    {
+      "term": "authorization receipt",
+      "definition": "A portable signed artifact binding an enrolled approver, an exact canonical action, a policy reference, a validity interval, and replay-resistant state. Class A additionally requires a device-bound WebAuthn ceremony with user verification."
+    },
+    {
+      "term": "verified versus accepted",
+      "definition": "VERIFIED means the artifact passed its cryptographic and structural checks. ACCEPTED or RELY means a relying party also accepted the issuer, authority, assurance, policy, freshness, and consumption state under its own pinned profile. Verification never silently implies acceptance."
+    },
+    {
+      "term": "machine policy decision versus human authorization",
+      "definition": "A machine policy result such as ALLOW, approval_state:granted, or a signed access-control decision is not evidence that an accountable human approved the action. A relying party requiring human authorization must receive and verify the human-authorization artifact separately."
+    },
+    {
+      "term": "digest join",
+      "definition": "Digest equality is a correlation and composition key, never authority. Two artifacts can name the same action without either artifact granting the other artifact's claim."
+    },
+    {
+      "term": "complete mediation",
+      "definition": "Enforcement is non-bypassable only when every protected action path reaches a verifier at the actual system of record or actuator. Middleware-only deployments provide evidence and agent-side enforcement but cannot constrain an operator who controls an alternate execution path."
+    }
+  ],
+  "layer_map": [
+    {
+      "layer": "identity and possession",
+      "question": "Which workload, agent, device, or user is presenting?",
+      "ep_role": "Composes with this layer; does not replace it.",
+      "adjacent_examples": "WIMSE, SPIFFE, OAuth, workload attestation"
+    },
+    {
+      "layer": "delegation and machine scope",
+      "question": "What authority was delegated to the agent or session?",
+      "ep_role": "Can reference the delegation as provenance; does not treat delegated possession as human approval.",
+      "adjacent_examples": "DRP, OAuth token exchange, AgentROA"
+    },
+    {
+      "layer": "machine policy decision",
+      "question": "Does policy permit this class of request under current machine state?",
+      "ep_role": "Consumes or records the result, while keeping it distinct from a human ceremony.",
+      "adjacent_examples": "ORPRG PermitReceipt, ACTA decision receipt, AgentROA policy envelope"
+    },
+    {
+      "layer": "human authorization",
+      "question": "Which accountable approver authorized this exact action, under what authority and ceremony?",
+      "ep_role": "This is the core EP receipt and quorum layer.",
+      "adjacent_examples": "EP-RECEIPT-v1, EP-QUORUM-v1"
+    },
+    {
+      "layer": "evidence composition and reliance",
+      "question": "Do all required artifacts bind the same action and satisfy the relying party's own rule?",
+      "ep_role": "EP-AEC composes typed evidence; the reliance kernel returns a closed rely or do_not_rely verdict.",
+      "adjacent_examples": "EP-AEC, EP-RELIANCE-PROFILE-v1"
+    },
+    {
+      "layer": "execution and transparency",
+      "question": "Was the action actually gated, executed, recorded, and optionally logged by an independent service?",
+      "ep_role": "Gate enforces at the boundary; execution evidence and SCITT-style transparency remain separate claims.",
+      "adjacent_examples": "system-of-record adapter, effect attestation, SCITT"
+    }
+  ],
+  "current_evidence": {
+    "automated_tests": {
+      "total": 5424,
+      "files": 268,
+      "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
+    },
+    "cross_language_conformance": {
+      "suites": 16,
+      "vectors": 164,
+      "implementations": 3,
+      "relationship": "same_team_ports",
+      "claim_scope": "same-team cross-language consistency; not independent implementation evidence",
+      "manifest_sha256": "b7a312a5ad5fe41f66f5e97ae795bf20d4281a5a4f6da0211d579144021fbbfc",
+      "vector_bundle_sha256": "b884c727a51da1a7d12e234a119020430526fadd73e0f86eff1ded3e063e72f5"
+    },
+    "formal": {
+      "tla_invariants": 26,
+      "tla_checker": "TLC 2.19",
+      "alloy_facts": 35,
+      "alloy_assertions": 22,
+      "alloy_version": "6.0.0 (CI)"
+    },
+    "red_team_cases": 85,
+    "security_case": {
+      "status": "passed",
+      "claims": 14,
+      "evidence_files": 64,
+      "evidence_bundle_sha256": "001433d830c4166e5e7735d67f965497cd8413a3998f4c42fd11a544f3d4d829"
+    }
+  },
+  "external_implementation": {
+    "implementation": {
+      "implementation_id": "jdieselny-rust-cleanroom",
+      "organization": "J Diesel NY",
+      "language": "Rust",
+      "version": "0.1.0",
+      "license_spdx": "Apache-2.0"
+    },
+    "source": {
+      "repository": "https://github.com/jdieselny/ecr-wg",
+      "commit": "7faba36010e7590727bebbc5b9dcceee60539b9b",
+      "tree_path": "rust/ep-cleanroom-verifier",
+      "tree_oid": "0553c5fa0a5c4b566703e0d8ef9864dc33e5176d"
+    },
+    "conformance": {
+      "status": "pass",
+      "evaluated_at": "2026-07-11",
+      "suites": 16,
+      "vectors": 164,
+      "vector_bundle_sha256": "b884c727a51da1a7d12e234a119020430526fadd73e0f86eff1ded3e063e72f5",
+      "manifest_sha256": "b7a312a5ad5fe41f66f5e97ae795bf20d4281a5a4f6da0211d579144021fbbfc",
+      "scope": "time_pinned_vector_set",
+      "relation_to_current_bundle": "current_vector_set",
+      "current_vectors": 164
+    },
+    "hostility": {
+      "suite": "EP-DIFFERENTIAL-HOSTILITY-v2",
+      "runner_name": "rust-cleanroom-jdieselny",
+      "corpus_sha256": "ce867caa8fc7e12d7514f6429f3fb8afd47805a66b61437a861bd84db6dc3296",
+      "structured_cases": 353,
+      "raw_parser_cases": 6,
+      "required_status": "pass",
+      "cases": 359
+    },
+    "construction_evidence": {
+      "status": "implementation_organization_signed_legacy_statement_for_ancestor",
+      "source_scope": "The signed statement predates the pinned hardening commit and does not attest that commit.",
+      "statement": "examples/external-verification/statements/rust-cleanroom/statement.json",
+      "statement_sha256": "fdf43611dc7b7d41e40ccfd15d6e4d25457578d98be0f0e3a83796fdd3d9638a",
+      "public_key": "examples/external-verification/statements/rust-cleanroom/public.key",
+      "public_key_sha256": "d6d08b75ea6520be91857ccf92440de3ebcddafabaab6e3331e45894d4277cb1",
+      "verifier_id": "ext:verifier:emilia-cleanroom-rust",
+      "key_id": "ep:external-verifier-key:sha256:87c8c5029475f53a",
+      "third_party_attestation": false,
+      "strict_clean_room_acceptance": false
+    }
+  },
+  "security_claims": [
+    {
+      "claim_id": "class-a-downgrade-refused",
+      "statement": "A receipt cannot turn a relying-party-pinned Class-A approver key into a bare Class-B signature path by self-declaring a weaker key class.",
+      "acceptance_roots": [
+        "approver credential key and key class pinned from enrollment"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/index.js",
+          "symbol": "verifyTrustReceipt",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/trust-receipt.exec.v1.json"
+        },
+        "python": {
+          "status": "covered",
+          "evidence": "conformance/vectors/trust-receipt.exec.v1.json"
+        },
+        "go": {
+          "status": "covered",
+          "evidence": "conformance/vectors/trust-receipt.exec.v1.json"
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/trust-receipt.exec.v1.json",
+          "case_id": "accept_valid_receipt",
+          "polarity": "positive"
+        },
+        {
+          "suite": "conformance/vectors/trust-receipt.exec.v1.json",
+          "case_id": "reject_pinned_class_a_bare_signature_downgrade",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "partial",
+          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "runner": "formal/tamarin/run-composed.sh",
+          "lemma": "execution_has_honest_approvals_or_prior_compromise",
+          "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
+          "scope": "The composed model proves UV-gated approvals under pinned keys or prior compromise; concrete key_class parsing, WebAuthn internals, and key-directory operation remain executable or external assumptions."
+        }
+      ],
+      "assumptions": [
+        "the enrolled approver key and class are authentic",
+        "the device key is not compromised before acceptance"
+      ],
+      "exclusions": [
+        "enrollment fraud and compromised authenticators are outside this verifier claim"
+      ]
+    },
+    {
+      "claim_id": "quorum-separation-of-duties",
+      "statement": "A quorum cannot count the initiator as an approver or let one device key fill two approval seats.",
+      "acceptance_roots": [
+        "organization-pinned quorum policy",
+        "enrollment-pinned approver keys"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/quorum.js",
+          "symbol": "verifyQuorum",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/quorum.v1.json"
+        },
+        "python": {
+          "status": "covered",
+          "evidence": "conformance/vectors/quorum.v1.json"
+        },
+        "go": {
+          "status": "covered",
+          "evidence": "conformance/vectors/quorum.v1.json"
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/quorum.v1.json",
+          "case_id": "accept_threshold_2of3",
+          "polarity": "positive"
+        },
+        {
+          "suite": "conformance/vectors/quorum.v1.json",
+          "case_id": "reject_initiator_is_approver",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "verified",
+          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "runner": "formal/tamarin/run-composed.sh",
+          "lemma": "initiator_cannot_self_approve",
+          "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
+          "scope": "Smallest non-trivial 2-of-2 symbolic instance in the composed reliance path."
+        },
+        {
+          "status": "verified",
+          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "runner": "formal/tamarin/run-composed.sh",
+          "lemma": "no_single_signer_fills_quorum",
+          "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
+          "scope": "Distinct enrolled identities and keys; collusion and enrollment fraud are out of scope."
+        }
+      ],
+      "assumptions": [
+        "the roster maps one enrolled identity to its authentic key",
+        "distinct identities may still collude"
+      ],
+      "exclusions": [
+        "collusion between distinct enrolled humans is not prevented"
+      ]
+    },
+    {
+      "claim_id": "scoped-authority-is-pinned",
+      "statement": "An authority proof is accepted only under a relying-party-pinned registry issuer and only within its action, role, policy, time, currency, amount, organization, and delegation scope.",
+      "acceptance_roots": [
+        "registry issuer key pinned by the relying party",
+        "registry epoch and head freshness policy"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "lib/authority/resolver.js",
+          "symbol": "evaluateAuthorityVerdict",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/authority/proof.js",
+          "symbol": "verifyAuthorityProof",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/authority.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No authority resolver port is claimed; the security case fails if this absence is omitted."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No authority resolver port is claimed; the security case fails if this absence is omitted."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/authority.v1.json",
+          "case_id": "authorized_within_scope_and_limit",
+          "polarity": "positive"
+        },
+        {
+          "suite": "conformance/vectors/authority.v1.json",
+          "case_id": "reject_amount_exceeded",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/authority.v1.json",
+          "case_id": "proof_accepted_when_pinned",
+          "polarity": "positive"
+        },
+        {
+          "suite": "conformance/vectors/authority.v1.json",
+          "case_id": "reject_proof_registry_head_mismatch",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "partial",
+          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "runner": "formal/tamarin/run-composed.sh",
+          "lemma": "execution_requires_full_composition",
+          "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
+          "scope": "Symbolic issuer and authority pins are composed; concrete registry scope algebra remains executable rather than symbolically modeled."
+        }
+      ],
+      "assumptions": [
+        "the relying party provisions the correct registry root",
+        "registry completeness requires transparency controls outside the resolver"
+      ],
+      "exclusions": [
+        "a colluding registry quorum outside the pinned fault model remains an external trust failure"
+      ]
+    },
+    {
+      "claim_id": "reliance-requires-pinned-profile",
+      "statement": "A cryptographically valid packet still refuses reliance unless signed action material satisfies the relying party's pinned assurance, organization-bound authority, exact registry head and epoch floor, policy, revocation, issuer, and consumption profile.",
+      "acceptance_roots": [
+        "EP-RELIANCE-PROFILE-v1 pinned by the relying party"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/reliance.js",
+          "symbol": "evaluateReliance",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/verify/index.js",
+          "symbol": "verifyTrustReceipt",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/verify/authority-proof.js",
+          "symbol": "verifyAuthorityProof",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/verify/revocation.js",
+          "symbol": "verifyRevocation",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/reliance.v1.json"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No reliance-kernel port is claimed; base receipt and revocation primitives remain covered separately."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No reliance-kernel port is claimed; base receipt and revocation primitives remain covered separately."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/reliance.v1.json",
+          "case_id": "rely_full_packet_composes",
+          "polarity": "positive"
+        },
+        {
+          "suite": "conformance/vectors/reliance.v1.json",
+          "case_id": "reject_no_profile",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/reliance.v1.json",
+          "case_id": "reject_authority_organization_mismatch",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "partial",
+          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "runner": "formal/tamarin/run-composed.sh",
+          "lemma": "execution_requires_full_composition",
+          "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
+          "scope": "Challenge, approval, authority, revocation, issuer pinning, consumption, and execution are composed. Assurance arithmetic, policy authorship, clocks, and transparency completeness remain external."
+        }
+      ],
+      "assumptions": [
+        "the relying party's profile is authentic and correctly configured",
+        "evidence sources satisfy their separately stated trust assumptions"
+      ],
+      "exclusions": [
+        "profile-policy correctness is not inferred from cryptographic validity"
+      ]
+    },
+    {
+      "claim_id": "revocation-is-pinned-and-fresh",
+      "statement": "Revocation state is accepted only under a pinned revoker key, for the exact target, and within the relying party's freshness window.",
+      "acceptance_roots": [
+        "revocation authority key and maximum staleness pinned by the relying party"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/revocation.js",
+          "symbol": "verifyRevocation",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/revocation.exec.v1.json"
+        },
+        "python": {
+          "status": "covered",
+          "evidence": "conformance/vectors/revocation.exec.v1.json"
+        },
+        "go": {
+          "status": "covered",
+          "evidence": "conformance/vectors/revocation.exec.v1.json"
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/revocation.exec.v1.json",
+          "case_id": "accept_pinned_exact_binding",
+          "polarity": "positive"
+        },
+        {
+          "suite": "conformance/vectors/revocation.exec.v1.json",
+          "case_id": "reject_stale_freshness",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "Wall-clock freshness and revocation publication are outside the current symbolic models."
+        }
+      ],
+      "assumptions": [
+        "the revoker key pin is current",
+        "the verifier's trusted clock is within the relying party's tolerance"
+      ],
+      "exclusions": [
+        "withheld revocation publications require external transparency or availability controls"
+      ]
+    },
+    {
+      "claim_id": "timestamp-proof-requires-pinned-tsa",
+      "statement": "A timestamp token carries weight only when its imprint binds the expected receipt digest and its signer matches a relying-party-pinned TSA key.",
+      "acceptance_roots": [
+        "TSA public key pinned by the relying party"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/timestamp-proof.js",
+          "symbol": "verifyTimestampProof",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/timestamp-proof.v1.json"
+        },
+        "python": {
+          "status": "covered",
+          "evidence": "conformance/vectors/timestamp-proof.v1.json"
+        },
+        "go": {
+          "status": "covered",
+          "evidence": "conformance/vectors/timestamp-proof.v1.json"
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/timestamp-proof.v1.json",
+          "case_id": "accept_authentic_pinned_rsa_sha256",
+          "polarity": "positive"
+        },
+        {
+          "suite": "conformance/vectors/timestamp-proof.v1.json",
+          "case_id": "reject_digest_mismatch",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "RFC 3161 parsing, wall-clock semantics, and TSA trust are executable but outside the current symbolic models."
+        }
+      ],
+      "assumptions": [
+        "the pinned TSA key belongs to the intended timestamp authority",
+        "the TSA's operational clock and key custody are trustworthy"
+      ],
+      "exclusions": [
+        "TSA operational compromise is not detected by token verification alone"
+      ]
+    },
+    {
+      "claim_id": "evidence-challenge-is-durably-registered-and-consumed",
+      "statement": "An AE-CHALLENGE binds the canonical action and governing policy, is exposed only after atomic durable registration of its exact body, and is consumed on the first valid evaluation attempt across workers and restarts.",
+      "acceptance_roots": [
+        "an atomic shared backend implementing insert-if-absent and compare-and-set"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "lib/negotiate/evidence-challenge.js",
+          "symbol": "createRegisteredEvidenceChallenge",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/challenge-store.js",
+          "symbol": "createDurableChallengeStore",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/negotiate/evidence-challenge.js",
+          "symbol": "evaluateRegisteredPresentation",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "tests/evidence-challenge-durable.test.js"
+        },
+        "python": {
+          "status": "not_applicable",
+          "reason": "Challenge lifecycle state belongs to the Node relying-party enforcement service, not the offline Python verifier."
+        },
+        "go": {
+          "status": "not_applicable",
+          "reason": "Challenge lifecycle state belongs to the Node relying-party enforcement service, not the offline Go verifier."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_durable_challenge_after_restart",
+          "polarity": "positive"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_tampered_registered_challenge",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_challenge_policy_drift",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "partial",
+          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "runner": "formal/tamarin/run-composed.sh",
+          "lemma": "injective_execution_with_consumption",
+          "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
+          "scope": "The symbolic model binds and consumes a fresh relying-party challenge; durable registration and crash behavior are exercised by executable fault tests."
+        }
+      ],
+      "assumptions": [
+        "the backend linearizes registration and compare-and-set",
+        "the challenge-store backend is shared by all relying-party workers"
+      ],
+      "exclusions": [
+        "the legacy Set-based evaluator remains only for compatibility and is not a durable production path"
+      ]
+    },
+    {
+      "claim_id": "durable-consumption-is-owner-fenced",
+      "statement": "Across concurrent workers and process restarts, one receipt has at most one active reservation, and only its opaque owner token can commit or release it.",
+      "acceptance_roots": [
+        "an atomic shared backend implementing insert-if-absent, compare-and-set, and conditional delete"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/gate/store.js",
+          "symbol": "createDurableConsumptionStore",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "packages/gate/store-faults.test.js"
+        },
+        "python": {
+          "status": "not_applicable",
+          "reason": "The production gate package is a Node package; Python verifiers do not own its storage transaction."
+        },
+        "go": {
+          "status": "not_applicable",
+          "reason": "The production gate package is a Node package; Go verifiers do not own its storage transaction."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_5000_linearizable_schedules",
+          "polarity": "positive"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_stale_replica_promotion",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "verified",
+          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "runner": "formal/tamarin/run-composed.sh",
+          "lemma": "injective_execution_with_consumption",
+          "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
+          "scope": "Symbolic one-time consumption in the composed reliance path; storage crashes and conditional-write semantics are covered by executable fault tests, not Tamarin."
+        }
+      ],
+      "assumptions": [
+        "the backend linearizes each conditional operation",
+        "abandoned reservations require reconciliation and are never reopened automatically"
+      ],
+      "exclusions": [
+        "business-level exactly-once effects still require downstream idempotency or reconciliation"
+      ]
+    },
+    {
+      "claim_id": "ambiguous-effect-is-never-auto-retried",
+      "statement": "After an external executor is invoked, an exception is treated as an indeterminate effect and the approval is consumed or frozen rather than made reusable.",
+      "acceptance_roots": [
+        "the gate's durable consumption store"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/gate/index.js",
+          "symbol": "createGate",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "packages/gate/store.js",
+          "symbol": "createDurableConsumptionStore",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "packages/gate/gate.test.js"
+        },
+        "python": {
+          "status": "not_applicable",
+          "reason": "The external-effect executor is implemented by the Node gate package, not the offline Python verifier."
+        },
+        "go": {
+          "status": "not_applicable",
+          "reason": "The external-effect executor is implemented by the Node gate package, not the offline Go verifier."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_successful_effect_once",
+          "polarity": "positive"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_ambiguous_effect_retry",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "partial",
+          "model": "formal/tamarin/ep_reliance_composed.spthy",
+          "runner": "formal/tamarin/run-composed.sh",
+          "lemma": "injective_execution_with_consumption",
+          "result_evidence": "formal/tamarin/results/ep_reliance_composed.summary.txt",
+          "scope": "The composed lemma proves injective checked execution but does not model an external system whose effect succeeds before its response is lost."
+        }
+      ],
+      "assumptions": [
+        "the guarded effect is invoked only through gate.run",
+        "the durable backend remains fail-closed"
+      ],
+      "exclusions": [
+        "the protocol cannot infer whether an unavailable external system applied an effect"
+      ]
+    },
+    {
+      "claim_id": "rx-sidecar-minimizes-patient-data",
+      "statement": "Rx evidence artifacts reject unknown or direct patient and clinical fields, use pairwise patient references and keyed source-record commitments, export a projection rather than recursively copying the transaction, and disclose it only under a pinned audience, purpose, policy, retention, artifact, and key-scope profile.",
+      "acceptance_roots": [
+        "a deployment-managed sector privacy key of at least 256 bits",
+        "issuer adherence to the exact artifact schemas",
+        "a relying-party-pinned EP-HEALTH-DISCLOSURE-PROFILE-v1"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "lib/ncpdp/privacy.js",
+          "symbol": "buildPrivateRxAppealBundle",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/ncpdp/privacy.js",
+          "symbol": "assertRxSignedArtifactPrivacy",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/ncpdp/privacy.js",
+          "symbol": "evaluateRxDisclosure",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "tests/ncpdp-privacy.test.js"
+        },
+        "python": {
+          "status": "not_applicable",
+          "reason": "This profile is enforced by the Node Rx sidecar; no Python wire emitter is claimed."
+        },
+        "go": {
+          "status": "not_applicable",
+          "reason": "This profile is enforced by the Node Rx sidecar; no Go wire emitter is claimed."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_phi_minimized_projection",
+          "polarity": "positive"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_direct_patient_data",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_purpose_bound_disclosure",
+          "polarity": "positive"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_health_disclosure_substitution",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "Data-flow noninterference and malicious covert channels are not formally modeled; exact schemas and planted-data leakage attacks are executable tests."
+        }
+      ],
+      "assumptions": [
+        "the sector privacy key is isolated from signing keys and protected from disclosure",
+        "issuers do not encode sensitive data into permitted opaque tokens",
+        "the relying party pins the correct audience, purpose, privacy policy, and retention limit"
+      ],
+      "exclusions": [
+        "this is a data-minimization profile, not a legal-compliance or NCPDP-adoption claim"
+      ]
+    },
+    {
+      "claim_id": "verify-package-is-byte-reproducible",
+      "statement": "The verify SDK canonicalizes package file modes, packs twice to byte-identical tarballs, and the publish workflow attests and publishes that exact tarball before comparing the registry copy byte-for-byte.",
+      "acceptance_roots": [
+        "GitHub Actions OIDC identity",
+        "npm trusted-publisher configuration",
+        "pinned GitHub Actions revisions"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "scripts/verify-reproducible-package.mjs",
+          "symbol": "verifyReproduciblePackage",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "scripts/verify-reproducible-package.mjs",
+          "symbol": "assertArtifactBytesMatch",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "tests/release-reproducibility.test.js"
+        },
+        "python": {
+          "status": "not_applicable",
+          "reason": "This claim concerns npm tarball construction; Python wheel reproducibility is a separate release claim."
+        },
+        "go": {
+          "status": "not_applicable",
+          "reason": "This claim concerns npm tarball construction; the Go verifier is not published through npm."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_byte_identical_registry_artifact",
+          "polarity": "positive"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_registry_byte_substitution",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "Hosted CI identity, npm registry behavior, and Sigstore availability are operational trust assumptions rather than protocol-state properties."
+        }
+      ],
+      "assumptions": [
+        "the npm trusted-publisher link is configured out of band",
+        "tag and workflow protections prevent unauthorized release invocation"
+      ],
+      "exclusions": [
+        "a successful local reproducibility check does not prove the npm account configuration is enabled"
+      ]
+    },
+    {
+      "claim_id": "python-release-artifacts-are-byte-reproducible",
+      "statement": "The Python verifier builds its wheel and source distribution twice under a pinned source epoch, attests and publishes those exact bytes, and refuses a downloaded PyPI wheel or source distribution whose bytes differ.",
+      "acceptance_roots": [
+        "GitHub Actions OIDC identity",
+        "PyPI trusted-publisher configuration",
+        "pinned build and GitHub Action revisions"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "scripts/python-artifact-integrity.mjs",
+          "symbol": "assertPythonArtifactBytesMatch",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "tests/release-reproducibility.test.js"
+        },
+        "python": {
+          "status": "not_applicable",
+          "reason": "Python and Hatchling construct the artifacts; the byte-identity acceptance check is a release-control function implemented in JavaScript and cmp."
+        },
+        "go": {
+          "status": "not_applicable",
+          "reason": "The Go verifier is not published as a PyPI artifact."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_byte_identical_pypi_wheel",
+          "polarity": "positive"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_pypi_wheel_substitution",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_byte_identical_pypi_sdist",
+          "polarity": "positive"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_pypi_sdist_substitution",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "Hosted CI identity, PyPI storage, and trusted-publisher configuration are operational trust assumptions rather than protocol-state properties."
+        }
+      ],
+      "assumptions": [
+        "the PyPI trusted-publisher link is configured out of band",
+        "tag and workflow protections prevent unauthorized release invocation"
+      ],
+      "exclusions": [
+        "a reproducible local wheel does not prove that the PyPI project has enabled trusted publishing"
+      ]
+    },
+    {
+      "claim_id": "all-package-releases-use-verifiable-bytes",
+      "statement": "Every declared npm and PyPI package release requires a version-bound owner dispatch and protected-environment approval or explicit recorded administrator bypass, tests source from an immutable tag on main, constructs reproducible package bytes, attests the exact artifact plus security and conformance manifests, publishes through OIDC, and compares every registry artifact byte-for-byte after publication.",
+      "acceptance_roots": [
+        "the checked-in EP-RELEASE-PACKAGE-REGISTRY-v1 inventory",
+        "the FutureEnterprises owner identity",
+        "the protected registry-publishing-approval environment",
+        "GitHub Actions OIDC identity",
+        "registry trusted-publisher configuration for each package"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "scripts/check-release-chain.mjs",
+          "symbol": "auditReleaseChain",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "scripts/require-release-approval.mjs",
+          "symbol": "validateReleaseApproval",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "scripts/require-release-approval.mjs",
+          "symbol": "verifyReleaseGitState",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "scripts/verify-reproducible-package.mjs",
+          "symbol": "verifyReproduciblePackage",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "scripts/verify-reproducible-wheel.mjs",
+          "symbol": "build",
+          "exported": false
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "tests/release-approval.test.js"
+        },
+        "python": {
+          "status": "not_applicable",
+          "reason": "Python packages are built by pinned Python tooling, while the release inventory and workflow audit are repository controls implemented in JavaScript."
+        },
+        "go": {
+          "status": "not_applicable",
+          "reason": "The Go verifier is source-distributed in this repository and is not currently declared as a registry package."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_all_declared_release_chains",
+          "polarity": "positive"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_release_chain_without_registry_comparison",
+          "polarity": "negative"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_owner_approved_release_dispatch",
+          "polarity": "positive"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_unapproved_release_dispatch",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "Registry account state, hosted CI identity, and artifact storage are operational controls rather than symbolic protocol properties."
+        }
+      ],
+      "assumptions": [
+        "each npm and PyPI project has the matching trusted publisher enabled",
+        "GitHub enforces the required reviewer or records an explicit administrator bypass on registry-publishing-approval",
+        "release tags are protected against update and deletion",
+        "the release registry is updated whenever a publish workflow is added or removed"
+      ],
+      "exclusions": [
+        "static workflow coverage cannot prove registry-side trusted-publisher settings until a real owner-approved publish succeeds",
+        "a credential acting as FutureEnterprises is operationally equivalent to the owner, so account security remains an external root"
+      ]
+    },
+    {
+      "claim_id": "model-to-matter-clearance-is-exact-and-single-use",
+      "statement": "A Model-to-Matter presentation clears at most once only when all six evidence types verify under the executor's pinned profile, bind the same exact digest-only action, satisfy freshness and explicit revocation state, and survive durable challenge consumption.",
+      "acceptance_roots": [
+        "the executor provisions the authentic Model-to-Matter profile and issuer keys",
+        "the runtime supplies explicit revocation state from its trusted source",
+        "the challenge backend provides atomic registration and compare-and-set consumption"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "lib/frontier/model-to-matter.js",
+          "symbol": "createModelToMatterProfile",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/frontier/model-to-matter.js",
+          "symbol": "verifyModelToMatterEvidence",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/frontier/model-to-matter.js",
+          "symbol": "evaluateRegisteredModelToMatterPresentation",
+          "exported": true
+        },
+        {
+          "language": "javascript",
+          "file": "lib/negotiate/evidence-challenge.js",
+          "symbol": "evaluateRegisteredPresentation",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "tests/model-to-matter.test.js"
+        },
+        "python": {
+          "status": "gap",
+          "reason": "No Python Model-to-Matter profile implementation or conformance claim exists."
+        },
+        "go": {
+          "status": "gap",
+          "reason": "No Go Model-to-Matter profile implementation or conformance claim exists."
+        }
+      },
+      "vectors": [
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "accept_model_to_matter_once",
+          "polarity": "positive"
+        },
+        {
+          "suite": "security/vectors.v1.json",
+          "case_id": "reject_model_to_matter_without_revocation_state",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The six-leg frontier-science profile, closed adapter schemas, and executor effect statement are executable but not represented in the current symbolic models."
+        }
+      ],
+      "assumptions": [
+        "the relying party's profile and issuer pins are authentic and correctly configured",
+        "the supplied revocation view is current and complete for the presented artifacts",
+        "source systems compute opaque commitments over the intended content with agreed canonicalization",
+        "the durable challenge backend linearizes consumption",
+        "the action-level clearance store is shared by all workers and does not TTL-reopen consumed action digests"
+      ],
+      "exclusions": [
+        "the profile does not perform sequence screening or determine scientific safety",
+        "signature acceptance does not establish issuer judgment quality or physical truth",
+        "this version does not authenticate or prove completeness of the host's non-revocation view",
+        "no Python or Go implementation, wet-lab deployment, or external scientific validation is claimed"
+      ]
+    }
+  ],
+  "non_claims": [
+    "A valid receipt does not prove that the action was wise, legal, safe, or successful.",
+    "A signature proves control of an enrolled key under the verified ceremony; it does not by itself prove a natural person's civil identity or comprehension.",
+    "The WYSIWYS presentation gap is mitigated by rendering and surface-binding controls, not eliminated by cryptography.",
+    "The protocol does not make an in-process or middleware gate physically non-bypassable by the operator controlling that process.",
+    "The JavaScript, Python, and Go implementations are same-team ports. Their agreement is cross-language consistency, not independent implementation evidence.",
+    "The external Rust result is time-pinned to the vector bundle evaluated at that run. It must not be silently upgraded when the current bundle grows.",
+    "Strict clean-room construction acceptance remains false until independent construction attestation is verified under a separately pinned attestor key.",
+    "The Internet-Drafts are individual submissions unless the live IETF Datatracker says otherwise. They are not RFCs and do not imply IETF endorsement.",
+    "Self-authored compliance mappings are mappings, not certifications or third-party assurance opinions.",
+    "The open protocol is intentionally reproducible; company defensibility is not a cryptographic claim."
+  ],
+  "source_precedence": [
+    {
+      "scope": "tested counts and security claims",
+      "sources": [
+        "conformance/conformance-manifest.json",
+        "security/security-case.json",
+        "security/claims.v1.json",
+        "lib/proof-stats.json",
+        "conformance/external/rust-cleanroom-jdieselny.v1.json"
+      ],
+      "rule": "Use machine-generated or machine-checked evidence. Do not copy counts from prose."
+    },
+    {
+      "scope": "runtime behavior",
+      "sources": [
+        "packages/verify",
+        "packages/gate",
+        "lib",
+        "tests",
+        "conformance/vectors"
+      ],
+      "rule": "Read the current implementation and its negative tests. A design document does not prove shipped behavior."
+    },
+    {
+      "scope": "standards status and current revision text",
+      "sources": [
+        "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
+        "https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/",
+        "https://datatracker.ietf.org/doc/draft-schrock-human-authorization-binding/"
+      ],
+      "rule": "Use the live IETF Datatracker. Local draft filenames and archived revisions are historical evidence, not current status."
+    },
+    {
+      "scope": "project explanation",
+      "sources": [
+        "AI_CONTEXT.md",
+        "README.md",
+        "CONFORMANCE.md",
+        "SECURITY.md",
+        "THREAT_MODEL.md"
+      ],
+      "rule": "Use maintained narrative only after checking it against the higher-precedence evidence for the claim being made."
+    }
+  ],
+  "excluded_as_current_authority": [
+    "standards/archive/** contains superseded revisions.",
+    "docs/strategy-private/** and gitignored drafts are private working material, not public project status.",
+    "A filename under standards/staged/** or standards/posted/** does not establish live IETF status; check Datatracker.",
+    "Decks, outreach drafts, comparison pages, and compliance crosswalks are secondary narrative, not proof.",
+    "Generated output from an earlier commit remains historical unless its input digest matches the current manifest."
+  ],
+  "standards": [
+    {
+      "name": "Authorization Receipts for High-Risk Agent Actions",
+      "identifier": "draft-schrock-ep-authorization-receipts",
+      "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
+      "role": "base named-approver, exact-action authorization artifact",
+      "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
+    },
+    {
+      "name": "Multi-Party Authorization Quorum",
+      "identifier": "draft-schrock-ep-quorum",
+      "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/",
+      "role": "distinct-human m-of-n authorization",
+      "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
+    },
+    {
+      "name": "Human Authorization Binding",
+      "identifier": "draft-schrock-human-authorization-binding",
+      "url": "https://datatracker.ietf.org/doc/draft-schrock-human-authorization-binding/",
+      "role": "binding the EP human-authorization artifact into adjacent host formats",
+      "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
+    },
+    {
+      "name": "Authorization Evidence Chain",
+      "identifier": "draft-schrock-ep-authorization-evidence-chain",
+      "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/",
+      "role": "typed same-action composition of heterogeneous evidence",
+      "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
+    },
+    {
+      "name": "Authorization Evidence Challenge",
+      "identifier": "draft-schrock-authorization-evidence-challenge",
+      "url": "https://datatracker.ietf.org/doc/draft-schrock-authorization-evidence-challenge/",
+      "role": "relying-party demand for missing action-bound evidence",
+      "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
+    }
+  ],
+  "code_entry_points": [
+    {
+      "path": "packages/verify/index.js",
+      "purpose": "receipt, signoff, trust-receipt, and core verification exports"
+    },
+    {
+      "path": "packages/verify/evidence-chain.js",
+      "purpose": "typed evidence composition under a relying-party-pinned requirement"
+    },
+    {
+      "path": "packages/verify/reliance.js",
+      "purpose": "closed portable reliance verdict under a pinned profile"
+    },
+    {
+      "path": "packages/gate/index.js",
+      "purpose": "deny-by-default enforcement wrapper"
+    },
+    {
+      "path": "lib/negotiate/evidence-challenge.js",
+      "purpose": "action-bound evidence challenge registration and evaluation"
+    },
+    {
+      "path": "lib/frontier/model-to-matter.js",
+      "purpose": "executor-side Model-to-Matter clearance profile"
+    }
+  ],
+  "commands": [
+    {
+      "command": "npm run conformance",
+      "purpose": "run the current cross-language conformance bundle"
+    },
+    {
+      "command": "npm run check:security-case",
+      "purpose": "execute every referenced security-case claim"
+    },
+    {
+      "command": "npm run check:public-conformance-claims",
+      "purpose": "reject stale or overstated public conformance language"
+    },
+    {
+      "command": "npm run sync:llm-context",
+      "purpose": "regenerate every LLM-facing context artifact"
+    },
+    {
+      "command": "npm run check:llm-context",
+      "purpose": "fail when any generated LLM context surface is stale"
+    }
+  ],
+  "answering_rules": [
+    "State the exact artifact and property being discussed; the word receipt alone is not a protocol comparison.",
+    "Separate machine identity, delegated scope, machine policy, human authorization, execution evidence, transparency, and reliance.",
+    "For every quantitative claim, cite the current manifest path and distinguish current evidence from a time-pinned historical run.",
+    "For every security claim, include assumptions and exclusions or link to the machine-verifiable security case.",
+    "For every IETF claim, distinguish individual submission, working-group adoption, RFC status, and implementation evidence.",
+    "When sources conflict, report the conflict and follow the domain-specific source-precedence rule rather than averaging the prose."
+  ]
+}

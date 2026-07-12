@@ -1,0 +1,222 @@
+{
+  "@version": "EMILIA-LLM-CONTEXT-SOURCE-v1",
+  "identity": {
+    "name": "EMILIA Protocol",
+    "category": "authorization evidence and enforcement for consequential machine actions",
+    "summary": "EMILIA is an open protocol and enforcement toolkit for requiring, verifying, and preserving evidence that an enrolled accountable approver authorized one exact consequential action before execution.",
+    "repository": "https://github.com/emiliaprotocol/emilia-protocol",
+    "website": "https://www.emiliaprotocol.ai",
+    "license": "Apache-2.0"
+  },
+  "canonical_definitions": [
+    {
+      "term": "authorization receipt",
+      "definition": "A portable signed artifact binding an enrolled approver, an exact canonical action, a policy reference, a validity interval, and replay-resistant state. Class A additionally requires a device-bound WebAuthn ceremony with user verification."
+    },
+    {
+      "term": "verified versus accepted",
+      "definition": "VERIFIED means the artifact passed its cryptographic and structural checks. ACCEPTED or RELY means a relying party also accepted the issuer, authority, assurance, policy, freshness, and consumption state under its own pinned profile. Verification never silently implies acceptance."
+    },
+    {
+      "term": "machine policy decision versus human authorization",
+      "definition": "A machine policy result such as ALLOW, approval_state:granted, or a signed access-control decision is not evidence that an accountable human approved the action. A relying party requiring human authorization must receive and verify the human-authorization artifact separately."
+    },
+    {
+      "term": "digest join",
+      "definition": "Digest equality is a correlation and composition key, never authority. Two artifacts can name the same action without either artifact granting the other artifact's claim."
+    },
+    {
+      "term": "complete mediation",
+      "definition": "Enforcement is non-bypassable only when every protected action path reaches a verifier at the actual system of record or actuator. Middleware-only deployments provide evidence and agent-side enforcement but cannot constrain an operator who controls an alternate execution path."
+    }
+  ],
+  "layer_map": [
+    {
+      "layer": "identity and possession",
+      "question": "Which workload, agent, device, or user is presenting?",
+      "ep_role": "Composes with this layer; does not replace it.",
+      "adjacent_examples": "WIMSE, SPIFFE, OAuth, workload attestation"
+    },
+    {
+      "layer": "delegation and machine scope",
+      "question": "What authority was delegated to the agent or session?",
+      "ep_role": "Can reference the delegation as provenance; does not treat delegated possession as human approval.",
+      "adjacent_examples": "DRP, OAuth token exchange, AgentROA"
+    },
+    {
+      "layer": "machine policy decision",
+      "question": "Does policy permit this class of request under current machine state?",
+      "ep_role": "Consumes or records the result, while keeping it distinct from a human ceremony.",
+      "adjacent_examples": "ORPRG PermitReceipt, ACTA decision receipt, AgentROA policy envelope"
+    },
+    {
+      "layer": "human authorization",
+      "question": "Which accountable approver authorized this exact action, under what authority and ceremony?",
+      "ep_role": "This is the core EP receipt and quorum layer.",
+      "adjacent_examples": "EP-RECEIPT-v1, EP-QUORUM-v1"
+    },
+    {
+      "layer": "evidence composition and reliance",
+      "question": "Do all required artifacts bind the same action and satisfy the relying party's own rule?",
+      "ep_role": "EP-AEC composes typed evidence; the reliance kernel returns a closed rely or do_not_rely verdict.",
+      "adjacent_examples": "EP-AEC, EP-RELIANCE-PROFILE-v1"
+    },
+    {
+      "layer": "execution and transparency",
+      "question": "Was the action actually gated, executed, recorded, and optionally logged by an independent service?",
+      "ep_role": "Gate enforces at the boundary; execution evidence and SCITT-style transparency remain separate claims.",
+      "adjacent_examples": "system-of-record adapter, effect attestation, SCITT"
+    }
+  ],
+  "non_claims": [
+    "A valid receipt does not prove that the action was wise, legal, safe, or successful.",
+    "A signature proves control of an enrolled key under the verified ceremony; it does not by itself prove a natural person's civil identity or comprehension.",
+    "The WYSIWYS presentation gap is mitigated by rendering and surface-binding controls, not eliminated by cryptography.",
+    "The protocol does not make an in-process or middleware gate physically non-bypassable by the operator controlling that process.",
+    "The JavaScript, Python, and Go implementations are same-team ports. Their agreement is cross-language consistency, not independent implementation evidence.",
+    "The external Rust result is time-pinned to the vector bundle evaluated at that run. It must not be silently upgraded when the current bundle grows.",
+    "Strict clean-room construction acceptance remains false until independent construction attestation is verified under a separately pinned attestor key.",
+    "The Internet-Drafts are individual submissions unless the live IETF Datatracker says otherwise. They are not RFCs and do not imply IETF endorsement.",
+    "Self-authored compliance mappings are mappings, not certifications or third-party assurance opinions.",
+    "The open protocol is intentionally reproducible; company defensibility is not a cryptographic claim."
+  ],
+  "source_precedence": [
+    {
+      "scope": "tested counts and security claims",
+      "sources": [
+        "conformance/conformance-manifest.json",
+        "security/security-case.json",
+        "security/claims.v1.json",
+        "lib/proof-stats.json",
+        "conformance/external/rust-cleanroom-jdieselny.v1.json"
+      ],
+      "rule": "Use machine-generated or machine-checked evidence. Do not copy counts from prose."
+    },
+    {
+      "scope": "runtime behavior",
+      "sources": [
+        "packages/verify",
+        "packages/gate",
+        "lib",
+        "tests",
+        "conformance/vectors"
+      ],
+      "rule": "Read the current implementation and its negative tests. A design document does not prove shipped behavior."
+    },
+    {
+      "scope": "standards status and current revision text",
+      "sources": [
+        "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
+        "https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/",
+        "https://datatracker.ietf.org/doc/draft-schrock-human-authorization-binding/"
+      ],
+      "rule": "Use the live IETF Datatracker. Local draft filenames and archived revisions are historical evidence, not current status."
+    },
+    {
+      "scope": "project explanation",
+      "sources": [
+        "AI_CONTEXT.md",
+        "README.md",
+        "CONFORMANCE.md",
+        "SECURITY.md",
+        "THREAT_MODEL.md"
+      ],
+      "rule": "Use maintained narrative only after checking it against the higher-precedence evidence for the claim being made."
+    }
+  ],
+  "excluded_as_current_authority": [
+    "standards/archive/** contains superseded revisions.",
+    "docs/strategy-private/** and gitignored drafts are private working material, not public project status.",
+    "A filename under standards/staged/** or standards/posted/** does not establish live IETF status; check Datatracker.",
+    "Decks, outreach drafts, comparison pages, and compliance crosswalks are secondary narrative, not proof.",
+    "Generated output from an earlier commit remains historical unless its input digest matches the current manifest."
+  ],
+  "standards": [
+    {
+      "name": "Authorization Receipts for High-Risk Agent Actions",
+      "identifier": "draft-schrock-ep-authorization-receipts",
+      "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-receipts/",
+      "role": "base named-approver, exact-action authorization artifact"
+    },
+    {
+      "name": "Multi-Party Authorization Quorum",
+      "identifier": "draft-schrock-ep-quorum",
+      "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-quorum/",
+      "role": "distinct-human m-of-n authorization"
+    },
+    {
+      "name": "Human Authorization Binding",
+      "identifier": "draft-schrock-human-authorization-binding",
+      "url": "https://datatracker.ietf.org/doc/draft-schrock-human-authorization-binding/",
+      "role": "binding the EP human-authorization artifact into adjacent host formats"
+    },
+    {
+      "name": "Authorization Evidence Chain",
+      "identifier": "draft-schrock-ep-authorization-evidence-chain",
+      "url": "https://datatracker.ietf.org/doc/draft-schrock-ep-authorization-evidence-chain/",
+      "role": "typed same-action composition of heterogeneous evidence"
+    },
+    {
+      "name": "Authorization Evidence Challenge",
+      "identifier": "draft-schrock-authorization-evidence-challenge",
+      "url": "https://datatracker.ietf.org/doc/draft-schrock-authorization-evidence-challenge/",
+      "role": "relying-party demand for missing action-bound evidence"
+    }
+  ],
+  "code_entry_points": [
+    {
+      "path": "packages/verify/index.js",
+      "purpose": "receipt, signoff, trust-receipt, and core verification exports"
+    },
+    {
+      "path": "packages/verify/evidence-chain.js",
+      "purpose": "typed evidence composition under a relying-party-pinned requirement"
+    },
+    {
+      "path": "packages/verify/reliance.js",
+      "purpose": "closed portable reliance verdict under a pinned profile"
+    },
+    {
+      "path": "packages/gate/index.js",
+      "purpose": "deny-by-default enforcement wrapper"
+    },
+    {
+      "path": "lib/negotiate/evidence-challenge.js",
+      "purpose": "action-bound evidence challenge registration and evaluation"
+    },
+    {
+      "path": "lib/frontier/model-to-matter.js",
+      "purpose": "executor-side Model-to-Matter clearance profile"
+    }
+  ],
+  "commands": [
+    {
+      "command": "npm run conformance",
+      "purpose": "run the current cross-language conformance bundle"
+    },
+    {
+      "command": "npm run check:security-case",
+      "purpose": "execute every referenced security-case claim"
+    },
+    {
+      "command": "npm run check:public-conformance-claims",
+      "purpose": "reject stale or overstated public conformance language"
+    },
+    {
+      "command": "npm run sync:llm-context",
+      "purpose": "regenerate every LLM-facing context artifact"
+    },
+    {
+      "command": "npm run check:llm-context",
+      "purpose": "fail when any generated LLM context surface is stale"
+    }
+  ],
+  "answering_rules": [
+    "State the exact artifact and property being discussed; the word receipt alone is not a protocol comparison.",
+    "Separate machine identity, delegated scope, machine policy, human authorization, execution evidence, transparency, and reliance.",
+    "For every quantitative claim, cite the current manifest path and distinguish current evidence from a time-pinned historical run.",
+    "For every security claim, include assumptions and exclusions or link to the machine-verifiable security case.",
+    "For every IETF claim, distinguish individual submission, working-group adoption, RFC status, and implementation evidence.",
+    "When sources conflict, report the conflict and follow the domain-specific source-precedence rule rather than averaging the prose."
+  ]
+}
