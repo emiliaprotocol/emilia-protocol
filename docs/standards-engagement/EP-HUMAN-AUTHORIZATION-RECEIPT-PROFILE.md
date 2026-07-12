@@ -68,6 +68,30 @@ SHA-256(COSE_Sign1 bytes)` (when the receipt is registered in a transparency
 service). Both are byte-reproducible in any language; the host record never
 restates the approval, it commits to it.
 
+## Verified sockets in adjacent receipt drafts
+
+Checked against the posted revisions on 2026-07-11. Each of these documents
+covers an adjacent layer well, and each — in its own text — leaves the human
+authorization artifact undefined or out of scope. That undefined slot is the
+socket this profile fills; none of the rows below is a competing definition of
+it. Every characterization here quotes or paraphrases the cited revision;
+re-verify against the current revision before external use.
+
+| Draft (revision read) | What it owns, in its own words | The socket, in its own words | EP fill |
+| --- | --- | --- | --- |
+| `draft-lee-orprg-permit-receipts-00` | "requirements and an abstract data model for PermitReceipts used in permit-before-commit authorization" evaluated "at an effect boundary" | "does not define a complete policy language, does not select a mandatory wire format"; asks for "at least one concrete wire profile"; the word *human* does not appear in the document | EP-RECEIPT-v1 as a concrete issuer-evidence artifact and wire profile for permits whose policy demands a named human; joined by the action digest the verifier already evaluates |
+| `draft-nelson-agent-delegation-receipts-10` (DRP) | a user delegates bounded session authority to an agent, with per-action Micro-Receipt confirmations from that same user | the delegating user's own confirmations; organizational approval semantics (multi-approver quorum, initiator exclusion) are not part of its model | complementary layer, not overlap: DRP evidences the *user's* delegation and in-session confirmations; EP evidences *organizational* accountable approval of one exact action (named approver, EP-QUORUM-v1 m-of-n, EP-INITIATOR-ATTESTATION-v1 initiator exclusion, one-time consumption). A delegated agent that hits a receipt-required effect boundary presents the EP receipt; the shared digest joins the two records |
+| `draft-farley-acta-signed-receipts-02` (ACTA) | a "format for recording machine-to-machine access control decisions" — Ed25519 (RFC 8032) over RFC 8785 canonical JSON, post-hoc, minimal disclosure | receipts "include an issued_at timestamp but do not include a nonce"; "implementations MAY add a nonce field" — no pre-execution one-time consumption semantics, by design | same primitives, different question: ACTA records *what was decided*; EP proves *a named human authorized this exact action before it ran, once*. An ACTA record for a decision escalated to a human can carry the EP receipt digest as payload metadata; a consumed EP receipt plus the ACTA decision record is a clean pre/post pair |
+| `draft-nivalto-agentroa-route-authorization-01` (AgentROA) | agent capability envelopes, delegation chains, and gateway execution receipts, with `approval_state` (`pending` / `granted` / `not_required`) | `approval_artifact_ref: String, OPTIONAL. Reference to the signed approval artifact` — the approval artifact itself is not defined anywhere in the document | EP-RECEIPT-v1 *is* a signed approval artifact: `approval_artifact_ref` carries `receipt_payload_digest` per the uniform composition rule above, and `approval_state: granted` becomes offline-checkable instead of asserted |
+
+The shared algorithms are not shared semantics: using Ed25519 and canonical
+JSON no more makes these documents one protocol than using TLS makes every web
+application the same application. The property bundle EP defines — named
+accountable human, key held by the human, exact canonical action bytes,
+initiator exclusion, m-of-n quorum, single consumption, offline verification —
+appears in none of the four documents above, and each of them has a place to
+reference it.
+
 ## What EP deliberately does not do
 
 - It is **not a log** — SCITT provides inclusion; EP provides authorization.
@@ -111,6 +135,16 @@ npm run conformance
 5. **AIR / Execution Profile (Emirdag)** — clean pre/post complement.
 6. **WIMSE / OAuth Transaction Tokens** — receipt-hash binding claims.
 7. **Article 50 profile (Dawkins)** — EU bridge: named accountable reviewer.
+8. **AgentROA (Nivalto)** — the most literal socket: a concrete profile for
+   `approval_artifact_ref`, making `approval_state: granted` verifiable.
+9. **ORPRG PermitReceipts (Lee)** — answer its open wire-profile question: EP
+   as a concrete issuer-evidence wire profile for human-required permits.
+10. **ACTA (Farley)** — pre/post pair: EP consumed receipt before the effect,
+    ACTA decision record after; EP digest as payload metadata on escalated
+    decisions.
+11. **DRP (Nelson)** — composition note: user-side delegation plus
+    organizational approval joined by the shared action digest (engagement
+    already active via the joint composition work).
 
 ## Relationship to the EP Internet-Drafts
 

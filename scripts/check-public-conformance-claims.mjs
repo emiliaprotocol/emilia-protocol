@@ -15,7 +15,9 @@ const expectedTests = proofStats.tests.total;
 const expectedTestFiles = proofStats.tests.files;
 
 const allowedExtensions = new Set(['.html', '.js', '.jsx', '.md', '.mjs', '.py', '.text', '.ts', '.tsx', '.txt']);
-const excludedDirectories = new Set(['.git', '.next', 'archive', 'node_modules']);
+// strategy-private is gitignored (never public, never in CI checkouts); scanning
+// it locally produces false FAILs, e.g. a caution note quoting a banned phrase.
+const excludedDirectories = new Set(['.git', '.next', 'archive', 'node_modules', 'strategy-private']);
 const scanRoots = [
   'README.md',
   'CONFORMANCE.md',
