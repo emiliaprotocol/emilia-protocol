@@ -631,6 +631,7 @@
         { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "accept_policy_plus_human", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "cross-language" } },
         { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "accept_profile_bound_quorum", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "cross-language" } },
         { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_presenter_chosen_requirement", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_presenter_weak_bar_rp_bar_unsatisfied", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
         { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_wrong_expected_action", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
         { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_label_collision", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
         { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_reserved_verifier_override", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },

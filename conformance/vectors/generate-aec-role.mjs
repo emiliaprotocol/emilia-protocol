@@ -171,6 +171,19 @@ const vectors = [
     aec_chain: chain('policy_decision', [policyLeg(null)]),
   },
   {
+    id: 'reject_presenter_weak_bar_rp_bar_unsatisfied',
+    description: 'The presenter\'s policy-plus-human bar passes, but the relying party also requires a quorum; the missing RP-required leg must deny.',
+    expect: { valid: false },
+    stub_types: ['policy_decision'],
+    policies_by_type: { 'ep-receipt': trustProfile },
+    verification_time: '2026-06-13T11:31:00.000Z',
+    relying_party_requirement: 'policy_decision AND ep-receipt AND ep-quorum',
+    aec_chain: chain('policy_decision AND ep-receipt', [
+      policyLeg(null, trustReceipt.action_hash),
+      { type: 'ep-receipt', evidence: trustReceipt },
+    ], trustAction),
+  },
+  {
     id: 'reject_missing_expected_action',
     description: 'Internal same-action agreement is not enough when the executor did not pin the action it will perform.',
     expect: { valid: false },
@@ -340,7 +353,9 @@ const vectors = [
 // `allow` is a relying-party acceptance result, so every vector pins the bar
 // out of band. The chain's own requirement remains a presenter claim only.
 for (const vector of vectors) {
-  if (!vector.no_requirement_pin) vector.requirement = vector.aec_chain.requirement;
+  if (!vector.no_requirement_pin) {
+    vector.requirement = vector.relying_party_requirement ?? vector.aec_chain.requirement;
+  }
   if (!vector.no_expected_action_pin && !vector.expected_action_digest) {
     vector.expected_action_digest = digest(vector.aec_chain.action);
   }
@@ -349,6 +364,7 @@ for (const vector of vectors) {
   }
   delete vector.no_requirement_pin;
   delete vector.no_expected_action_pin;
+  delete vector.relying_party_requirement;
 }
 
 const suite = {

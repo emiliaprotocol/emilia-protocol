@@ -79,7 +79,7 @@ named-human authorization apex those layers reference but do not produce.
 
 EP stakes this ground openly: published Apache-2.0 standard, individual IETF Internet-Drafts (receipts, quorum,
 enforcement-point, evidence-chain, evidence-record, architecture), three same-team language ports over
-17 suites / 192 vectors, a pinned external Rust verifier over its pinned 16-suite/164-vector clean-room bundle plus 359 hostile cases, and formal models with explicit scope. When harmonized standards and implementing acts are written for the
+17 suites / 193 vectors, a pinned external Rust verifier over its pinned 16-suite/164-vector clean-room bundle plus 359 hostile cases, and formal models with explicit scope. When harmonized standards and implementing acts are written for the
 requirements above, the intent is that EP is the obvious, already-running reference — not a proposal.
 
 *See also: `docs/compliance/HUMAN_CONTROL_CROSSWALK.md` (defense/autonomy), `docs/strategy/AGENT-AUTHORIZATION-LANDSCAPE-2026.md` (competitive/IETF field map), `PIPs/PIP-013` (human-oversight), `PIPs/PIP-014` (grid.curtailment).*

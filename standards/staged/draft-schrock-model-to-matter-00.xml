@@ -230,7 +230,10 @@
       <t>Challenge state MUST provide atomic first-presentation consumption
       across all executor replicas. Storage unavailability, rollback, or an
       ambiguous consumption result MUST yield refusal. An implementation MUST
-      NOT fall back to process-local state.</t>
+      NOT fall back to process-local state. At the clearance API boundary,
+      storage exceptions and ambiguous consume results MUST be mapped to
+      <tt>do_not_execute_refused</tt>; they MUST NOT escape as an untyped result
+      that a caller could mistake for authorization.</t>
       <t>A missing-evidence refusal MAY include a new registered challenge that
       names only the missing types. A follow-up challenge is a new transaction;
       it does not reopen the consumed challenge.</t>
@@ -271,8 +274,13 @@
       refusal.</t>
       <t>Consumption of the action digest MUST be non-expiring for as long as
       the action can be presented. An unavailable response after consumption
-      is an indeterminate outcome that requires reconciliation; availability
-      MUST NOT silently become a second clearance.</t>
+      is an indeterminate outcome that requires reconciliation. The executor
+      MUST return <tt>do_not_execute_refused</tt>, mark reconciliation as
+      required, and freeze execution; availability MUST NOT silently become a
+      second clearance. After an indeterminate storage outcome, the enforcing
+      executor MUST remain fail-stop and MUST NOT issue another challenge or
+      evaluate another presentation until an operator has reconciled the
+      durable challenge and action-consumption state.</t>
     </section>
 
     <section anchor="http"><name>HTTP Integration</name>

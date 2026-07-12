@@ -3,7 +3,7 @@
  "vectors_version": "1.0.0",
  "description": "EP-AEC acceptance suite with REAL Ed25519 and Class-A WebAuthn signatures plus RP-scoped profiles, run cross-language through the built-in verifiers. Each vector: build the stub verifiers named in stub_types (permissive: valid iff evidence.valid !== false, digest = evidence.action_digest), run verifyAuthorizationChain with the vector requirement, expected action, verification time, and profiles, then compare allow to expect.valid.",
  "algorithm": "Ed25519 and Class-A WebAuthn over RFC 8785 (JCS) canonical bytes; RP-scoped acceptance profiles",
- "count": 27,
+ "count": 28,
  "vectors": [
   {
    "id": "accept_pinned_human_receipt",
@@ -510,6 +510,129 @@
     ]
    },
    "expected_action_digest": "sha256:7089173267e6045a811606c243eba79c225180e9642fc717ad8538f961190d32"
+  },
+  {
+   "id": "reject_presenter_weak_bar_rp_bar_unsatisfied",
+   "description": "The presenter's policy-plus-human bar passes, but the relying party also requires a quorum; the missing RP-required leg must deny.",
+   "expect": {
+    "valid": false
+   },
+   "stub_types": [
+    "policy_decision"
+   ],
+   "policies_by_type": {
+    "ep-receipt": {
+     "approver_keys": {
+      "ep:key:dir#1": {
+       "approver_id": "ep:approver:dir",
+       "public_key": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE4n2RFQvvopHFJi8fCYtkrdyph-tys8vl0aiJVPlz-w4xWL46MGB0BXH8bSJg0STtpcLv2Kbn8sQfMrW4IWXbHg",
+       "key_class": "A",
+       "valid_from": "2026-01-01T00:00:00Z",
+       "valid_to": "2036-01-01T00:00:00Z",
+       "status": "active",
+       "revoked_at": null
+      }
+     },
+     "log_public_key": "MCowBQYDK2VwAyEAyK10hXGANWcpBdpoIw6_ouOZ1930uz3CLIzL7y3fr2s",
+     "rp_id": "rp",
+     "allowed_origins": [
+      "https://test.emilia"
+     ],
+     "expected_policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+     "max_age_sec": 3600,
+     "registry_checked_at": "2026-06-13T11:30:00.000Z",
+     "max_registry_age_sec": 300
+    }
+   },
+   "verification_time": "2026-06-13T11:31:00.000Z",
+   "aec_chain": {
+    "@version": "EP-AEC-v1",
+    "action": {
+     "action_type": "payment.release",
+     "policy_id": "pol:test",
+     "initiator": "ep:agent:1",
+     "params": {
+      "amount": 82000,
+      "currency": "USD"
+     }
+    },
+    "requirement": "policy_decision AND ep-receipt",
+    "components": [
+     {
+      "type": "policy_decision",
+      "evidence": {
+       "valid": true,
+       "action_digest": "sha256:48525ea7dd5e494830b4be7f12357fa90d8e3f6675c0c0acf36d9f7c117725ae"
+      }
+     },
+     {
+      "type": "ep-receipt",
+      "evidence": {
+       "receipt_id": "ep:receipt:RNlsitrr43o",
+       "action": {
+        "action_type": "payment.release",
+        "policy_id": "pol:test",
+        "initiator": "ep:agent:1",
+        "params": {
+         "amount": 82000,
+         "currency": "USD"
+        }
+       },
+       "action_hash": "sha256:48525ea7dd5e494830b4be7f12357fa90d8e3f6675c0c0acf36d9f7c117725ae",
+       "contexts": [
+        {
+         "ep_version": "1.0",
+         "context_type": "ep.signoff.v1",
+         "action_hash": "sha256:48525ea7dd5e494830b4be7f12357fa90d8e3f6675c0c0acf36d9f7c117725ae",
+         "policy_id": "pol:test",
+         "policy_hash": "sha256:8393f47e2f9be84c5554320f805f5a6eae81e7bfb9e9bd45efb60953d094e3a9",
+         "initiator": "ep:agent:1",
+         "approver": "ep:approver:dir",
+         "approver_index": 1,
+         "required_approvals": 1,
+         "nonce": "ivIla0JjJme8gipML6JB_A",
+         "issued_at": "2026-06-13T11:00:00.000Z",
+         "expires_at": "2026-06-13T18:00:00.000Z"
+        }
+       ],
+       "signoffs": [
+        {
+         "context_hash": "sha256:a208b3ad5b508f7e2abca1ec2447c4d3fea41e7425ca89dcbeda6f450585e484",
+         "key_class": "A",
+         "approver_key_id": "ep:key:dir#1",
+         "signed_at": "2026-06-13T11:00:00.000Z",
+         "webauthn": {
+          "authenticator_data": "eW6Ax-W_ikjLYD8inu7FeOxyRD2_43cQzIDeZyKMZxMFAAAAAQ",
+          "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoib2dpenJWdFFqMzRxdktIc0pFZkUwXzZrSG5RbHlvbmN2dHB2UlFXRjVJUSIsIm9yaWdpbiI6Imh0dHBzOi8vdGVzdC5lbWlsaWEiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+          "signature": "MEUCIGv6H4XVGeDMX-0UymuGb0mxsEC3VoeEJW0pVHACkPuHAiEAkpiKHC49XpOt8w7jWRkqE8z1xQIIUMZNgFuL1vUhb-M"
+         },
+         "signature": "MEUCIGv6H4XVGeDMX-0UymuGb0mxsEC3VoeEJW0pVHACkPuHAiEAkpiKHC49XpOt8w7jWRkqE8z1xQIIUMZNgFuL1vUhb-M"
+        }
+       ],
+       "consumption": {
+        "nonce": "k-z6nL7MSFwA718JTU_8Rw",
+        "state": "COMMITTED",
+        "committed_at": "2026-06-13T11:30:00.000Z"
+       },
+       "log_proof": {
+        "alg": "EP-MERKLE-v2",
+        "leaf_hash": "sha256:8bd48bfc856ea03cb6c6b2e55a3fe4645cef7703ee20b821601b774fce972129",
+        "leaf_index": 0,
+        "inclusion_path": [],
+        "checkpoint": {
+         "tree_size": 1,
+         "root_hash": "sha256:8bd48bfc856ea03cb6c6b2e55a3fe4645cef7703ee20b821601b774fce972129",
+         "log_key_id": "ep:log:test#1",
+         "merkle_alg": "EP-MERKLE-v2",
+         "log_signature": "ecRokoGQD8GVuP_av2DG62pKZl1Nl3fjdQFhd1ZWLBqJHlUMgyeMItEheTgb5rnRWmVr42WZXWpAPKh6rtpwDA"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "requirement": "policy_decision AND ep-receipt AND ep-quorum",
+   "expected_action_digest": "sha256:48525ea7dd5e494830b4be7f12357fa90d8e3f6675c0c0acf36d9f7c117725ae"
   },
   {
    "id": "reject_missing_expected_action",

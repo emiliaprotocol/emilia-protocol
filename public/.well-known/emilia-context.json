@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-12T15:11:05.414Z",
+  "evidence_snapshot_at": "2026-07-12T16:23:16.779Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "9b2fc654f48291e29c66a4b934e4775e8003f0e23a7dd39728c9816d6bbefea7",
+    "input_digest_sha256": "2db59405bd4529a36dcbf1a355ec611f68e301a7284301bd6cd06aeddc1ae9a5",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "06a43ee6044c062e23725b40a1ab7b904fb4ee1e28ba250526df9740c684beb6",
+        "sha256": "d2d30449b3707ef9622d7fb0b54361955d08bda45ccae4c340e09c2cc7b29edc",
         "bytes": 1067
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "867af2744010cc9d172fd2796cbb45348eaf1c447acb40ea62712f40a3853908",
+        "sha256": "3fa976b6e701aa49e321d7db5a32f94db5450ca2f3732a4d2d51c3defecead3c",
         "bytes": 5446
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "50667c563c859c805252960b9440f25f78fde0ca08951e577405ca8a30495d2a",
-        "bytes": 64825
+        "sha256": "e0d7fe11acf6ab9ac5870e7f4e30dfaa597563d42e01986c08ae5a4fd7be61a4",
+        "bytes": 65044
       },
       {
         "path": "security/security-case.json",
-        "sha256": "bbfb9f524bc612f22c788ac64700cfc5b88d76855464bc588f34bc775eeca7a6",
-        "bytes": 106953
+        "sha256": "75b5866ef86ea584c6d190b4dff09f22c8c5dec57841fcdb461748c25e4a33ef",
+        "bytes": 107332
       }
     ],
     "freshness_command": "npm run check:llm-context"
@@ -113,17 +113,17 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 5542,
-      "files": 276,
+      "total": 5549,
+      "files": 277,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
       "suites": 17,
-      "vectors": 192,
+      "vectors": 193,
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "69c7873a30dc967a056bb76608e644e356b8571dfbbf9fd5fa0a02a935c31f53",
+      "manifest_sha256": "dd38e9e4065274612a966d3a6ef3936638dcb53030262201616a5a9774e50475",
       "vector_bundle_sha256": "7606d60a22ef12587d19c4d90d626976523ed9dab3542b76911580ae9d93a563"
     },
     "formal": {
@@ -145,7 +145,7 @@
       "status": "passed",
       "claims": 16,
       "evidence_files": 73,
-      "evidence_bundle_sha256": "e51c53b5c98ccba1fcbed6b65351e44d3656f9a3a4eb3a5488b1e69bd294c043"
+      "evidence_bundle_sha256": "5c58f8e8d050526f84470a220b6678558c4f08655bf3f4a6c17361e5fa02f9ef"
     }
   },
   "external_implementation": {
@@ -171,7 +171,7 @@
       "manifest_sha256": "b7a312a5ad5fe41f66f5e97ae795bf20d4281a5a4f6da0211d579144021fbbfc",
       "scope": "time_pinned_vector_set",
       "relation_to_current_bundle": "time_pinned_prior_vector_set",
-      "current_vectors": 192
+      "current_vectors": 193
     },
     "hostility": {
       "suite": "EP-DIFFERENTIAL-HOSTILITY-v2",
@@ -1301,6 +1301,11 @@
         {
           "suite": "conformance/vectors/aec-role.v1.json",
           "case_id": "reject_presenter_chosen_requirement",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_presenter_weak_bar_rp_bar_unsatisfied",
           "polarity": "negative"
         },
         {

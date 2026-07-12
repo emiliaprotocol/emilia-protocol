@@ -3,17 +3,17 @@ import { auditClaimText } from '../scripts/check-public-conformance-claims.mjs';
 
 describe('public conformance claim guard', () => {
   it('accepts the current evidence boundary', () => {
-    const text = 'Three same-team ports agree over 17 conformance suites and 192 vectors. The external Rust verifier passes the pinned 16-suite/164-vector clean-room bundle; strict independent construction attestation remains pending.';
+    const text = 'Three same-team ports agree over 17 conformance suites and 193 vectors. The external Rust verifier passes the pinned 16-suite/164-vector clean-room bundle; strict independent construction attestation remains pending.';
     expect(auditClaimText(text, 'current.md', {
-      suites: 17, vectors: 192, externalSuites: 16, externalVectors: 164,
+      suites: 17, vectors: 193, externalSuites: 16, externalVectors: 164,
       tests: 5334, testFiles: 264,
     })).toEqual([]);
   });
 
   it('refuses inflation of the externally pinned corpus', () => {
-    const text = 'The external Rust verifier passes the pinned 17-suite/192-vector clean-room bundle.';
+    const text = 'The external Rust verifier passes the pinned 17-suite/193-vector clean-room bundle.';
     const findings = auditClaimText(text, 'external-overclaim.md', {
-      suites: 17, vectors: 192, externalSuites: 16, externalVectors: 164,
+      suites: 17, vectors: 193, externalSuites: 16, externalVectors: 164,
       tests: 5334, testFiles: 264,
     });
     expect(findings.map((item) => item.message)).toEqual([

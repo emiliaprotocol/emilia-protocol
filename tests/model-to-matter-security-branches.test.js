@@ -468,8 +468,26 @@ describe('Model-to-Matter defensive branch contract', () => {
     expect(malformed.verdict).toBe('do_not_execute_malformed');
     expect(malformed.reasons.join(' ')).toMatch(/revocation state/i);
 
+    const unavailableChallenge = await registered(a, p, 'm2m-unavailable-challenge-store');
+    const challengeFailure = await evaluateRegisteredModelToMatterPresentation({
+      action: a,
+      profile: p,
+      challenge: unavailableChallenge.challenge,
+      graph,
+      as_of: NOW,
+      challengeStore: { consume: async () => { throw new Error('storage unavailable'); } },
+      clearanceStore: clearanceStore(),
+      revokedEvidenceDigests: new Set(),
+    });
+    expect(challengeFailure).toMatchObject({
+      verdict: 'do_not_execute_refused',
+      clear_to_execute: false,
+      reconciliation_required: true,
+    });
+    expect(challengeFailure.reasons.join(' ')).toMatch(/challenge storage.*indeterminate/i);
+
     const unavailable = await registered(a, p, 'm2m-unavailable-clearance-store');
-    await expect(evaluateRegisteredModelToMatterPresentation({
+    const clearanceFailure = await evaluateRegisteredModelToMatterPresentation({
       action: a,
       profile: p,
       challenge: unavailable.challenge,
@@ -478,7 +496,31 @@ describe('Model-to-Matter defensive branch contract', () => {
       challengeStore: unavailable.store,
       clearanceStore: { consume: async () => { throw new Error('storage unavailable'); } },
       revokedEvidenceDigests: new Set(),
-    })).rejects.toThrow(/storage unavailable/i);
+    });
+    expect(clearanceFailure).toMatchObject({
+      verdict: 'do_not_execute_refused',
+      clear_to_execute: false,
+      reconciliation_required: true,
+    });
+    expect(clearanceFailure.reasons.join(' ')).toMatch(/action-consumption storage.*indeterminate/i);
+
+    const ambiguous = await registered(a, p, 'm2m-ambiguous-clearance-store');
+    const ambiguousClearance = await evaluateRegisteredModelToMatterPresentation({
+      action: a,
+      profile: p,
+      challenge: ambiguous.challenge,
+      graph,
+      as_of: NOW,
+      challengeStore: ambiguous.store,
+      clearanceStore: { consume: async () => undefined },
+      revokedEvidenceDigests: new Set(),
+    });
+    expect(ambiguousClearance).toMatchObject({
+      verdict: 'do_not_execute_refused',
+      clear_to_execute: false,
+      reconciliation_required: true,
+    });
+    expect(ambiguousClearance.reasons.join(' ')).toMatch(/ambiguous result/i);
   });
 
   it('rejects invalid effect inputs, bindings, status, time, executor, and key type', () => {

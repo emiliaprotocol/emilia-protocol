@@ -101,7 +101,8 @@
       cluster described above. This document fills that gap.</t>
       <section anchor="scope"><name>Scope and non-goals</name>
         <t>EP-AEC defines (1) a composition object that references
-        component receipts and declares a requirement over them, and (2)
+        component receipts and can record the presenter's descriptive
+        requirement over them, and (2)
         an offline verification algorithm. EP-AEC does NOT define any
         component receipt format, does not require any particular
         component to be present, and does not bless any component
@@ -173,11 +174,13 @@
         (string), "evidence" (object), and optional "label" (string).
         Labels are display metadata and MUST NOT satisfy a requirement
         identifier.</li>
-        <li>"requirement" (string, REQUIRED) -- a Boolean expression
+        <li>"requirement" (string, OPTIONAL) -- a Boolean expression
         (<xref target="requirement"/>). NOTE (changed in -01): this
         member is PRESENTER-SUPPLIED -- a claim of what the chain
         satisfies, never the relying party's sufficiency bar; see
-        <xref target="whose-requirement"/>.</li>
+        <xref target="whose-requirement"/>. Its absence has no effect on
+        ALLOW when the verifier has an out-of-band relying-party
+        requirement.</li>
       </ul>
       <t>The chain carries the Action Object once; components reference
       the same action by digest rather than re-embedding it. This is what
@@ -207,8 +210,8 @@
       by type. Given a chain C, the verifier MUST proceed fail-closed:</t>
       <ol>
         <li>If C is malformed (missing "@version", wrong version, missing
-        or non-object "action", empty "components", or missing
-        "requirement"), or exceeds the implementation's documented
+        or non-object "action", or empty "components"), or exceeds the
+        implementation's documented
         depth, node, component, expression, or string-byte limits,
         return DENY.</li>
         <li>Compute chain_digest = canonical action digest of C.action. If
@@ -290,13 +293,16 @@ term := '(' expr ')' | IDENT
       result MUST record which source was evaluated
       (requirement_source: "relying_party" or "presenter"), and SHOULD
       note when a presenter requirement was ignored in favor of a
-      pinned one. The document member remains REQUIRED for
-      self-describing interchange, but relying parties SHOULD pin their
-      own bar before any ALLOW decision. The reference
+      pinned one. The document member is OPTIONAL descriptive metadata;
+      omission MUST NOT weaken, replace, or prevent evaluation of the
+      out-of-band relying-party requirement. If no relying-party
+      requirement is supplied, the verifier MUST return DENY whether or
+      not the document member is present. The reference
       implementations (JavaScript, Python, Go) implement this behavior
       and agree on shared conformance vectors covering both sources,
-      including a vector where the presenter's weak bar would pass and
-      the relying party's pinned bar correctly fails.</t>
+      including <tt>reject_presenter_weak_bar_rp_bar_unsatisfied</tt> in
+      the EP-AEC-ROLE-v1 suite, where the presenter's weak bar would pass
+      and the relying party's pinned bar correctly fails.</t>
       <t>The generalization of this principle -- the entire sufficiency
       policy (requirement, freshness, revocation, required bindings)
       supplied by the relying party, with a purpose-relative classified

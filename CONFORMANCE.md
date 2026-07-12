@@ -53,20 +53,20 @@ EP-PROVENANCE-CHAIN-v1         —  7 vectors   JavaScript ✓   Python ✓   Go
 EP-EVIDENCE-RECORD-v1          —  5 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-CANONICALIZATION-v1         — 35 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-BOUNDARY-v1                 —  5 vectors   JavaScript ✓   Python ✓   Go ✓
-EP-AEC-ROLE-v1                 — 27 vectors   JavaScript ✓   Python ✓   Go ✓
+EP-AEC-ROLE-v1                 — 28 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-CURRENCY-v1                 — 12 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-INITIATOR-ATTESTATION-v1    — 11 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-SMT-CONSUME-v1              —  6 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-WITNESS-v1                  —  6 vectors   JavaScript ✓   Python ✓   Go ✓
 EP-TIMESTAMP-PROOF-v1          — 13 vectors   JavaScript ✓   Python ✓   Go ✓
 
-✅ 192 vectors · 17 suites — JavaScript, Python, and Go verifiers agree.
+✅ 193 vectors · 17 suites — JavaScript, Python, and Go verifiers agree.
    (One team's three-language ports in one repository: a consistency check,
     not independent reimplementations.)
 ```
 
 The externally portable clean-room bundle remains a separately pinned
-16-suite/164-vector baseline; the new 27-vector AEC acceptance suite has not
+16-suite/164-vector baseline; the new 28-vector AEC acceptance suite has not
 been attributed to that external implementation. An externally authored Rust
 verifier is evaluated in a separate CI lane from
 the immutable source commit pinned in

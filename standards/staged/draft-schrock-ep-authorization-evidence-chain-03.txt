@@ -95,7 +95,7 @@ Table of Contents
      1.1.  Scope and non-goals . . . . . . . . . . . . . . . . . . .   4
    2.  Terminology . . . . . . . . . . . . . . . . . . . . . . . . .   4
    3.  The Authorization Evidence Chain object . . . . . . . . . . .   4
-   4.  Relying-party acceptance inputs . . . . . . . . . . . . . . .   5
+   4.  Relying-party acceptance inputs . . . . . . . . . . . . . . .   6
    5.  Verification algorithm  . . . . . . . . . . . . . . . . . . .   6
    6.  Requirement expressions . . . . . . . . . . . . . . . . . . .   7
    7.  Whose requirement is it? (changed in -01) . . . . . . . . . .   8
@@ -173,12 +173,13 @@ Internet-Draft        Authorization Evidence Chains            July 2026
 1.1.  Scope and non-goals
 
    EP-AEC defines (1) a composition object that references component
-   receipts and declares a requirement over them, and (2) an offline
-   verification algorithm.  EP-AEC does NOT define any component receipt
-   format, does not require any particular component to be present, and
-   does not bless any component specification.  It is deliberately
-   minimal: its only novel normative content is the same-action binding
-   check and the requirement evaluation.
+   receipts and can record the presenter's descriptive requirement over
+   them, and (2) an offline verification algorithm.  EP-AEC does NOT
+   define any component receipt format, does not require any particular
+   component to be present, and does not bless any component
+   specification.  It is deliberately minimal: its only novel normative
+   content is the same-action binding check and the requirement
+   evaluation.
 
 2.  Terminology
 
@@ -209,7 +210,6 @@ Internet-Draft        Authorization Evidence Chains            July 2026
       determines ALLOW.
 
 3.  The Authorization Evidence Chain object
-
 
 
 
@@ -258,22 +258,22 @@ Internet-Draft        Authorization Evidence Chains            July 2026
       Labels are display metadata and MUST NOT satisfy a requirement
       identifier.
 
-   *  "requirement" (string, REQUIRED) -- a Boolean expression
+   *  "requirement" (string, OPTIONAL) -- a Boolean expression
       (Section 6).  NOTE (changed in -01): this member is PRESENTER-
       SUPPLIED -- a claim of what the chain satisfies, never the relying
-      party's sufficiency bar; see Section 7.
+      party's sufficiency bar; see Section 7.  Its absence has no effect
+      on ALLOW when the verifier has an out-of-band relying-party
+      requirement.
 
    The chain carries the Action Object once; components reference the
    same action by digest rather than re-embedding it.  This is what
    makes the same-action binding check possible and is the heart of the
    format.
 
-4.  Relying-party acceptance inputs
 
-   Internal agreement among presenter-supplied artifacts is
-   verification, not acceptance.  Before returning ALLOW, the verifier
-   MUST receive the following values from relying-party-controlled
-   configuration:
+
+
+
 
 
 
@@ -281,6 +281,13 @@ Schrock                  Expires 12 January 2027                [Page 5]
 
 Internet-Draft        Authorization Evidence Chains            July 2026
 
+
+4.  Relying-party acceptance inputs
+
+   Internal agreement among presenter-supplied artifacts is
+   verification, not acceptance.  Before returning ALLOW, the verifier
+   MUST receive the following values from relying-party-controlled
+   configuration:
 
    *  the requirement expression;
 
@@ -302,9 +309,9 @@ Internet-Draft        Authorization Evidence Chains            July 2026
    type.  Given a chain C, the verifier MUST proceed fail-closed:
 
    1.  If C is malformed (missing "@version", wrong version, missing or
-       non-object "action", empty "components", or missing
-       "requirement"), or exceeds the implementation's documented depth,
-       node, component, expression, or string-byte limits, return DENY.
+       non-object "action", or empty "components"), or exceeds the
+       implementation's documented depth, node, component, expression,
+       or string-byte limits, return DENY.
 
    2.  Compute chain_digest = canonical action digest of C.action.  If
        C.action_digest is present and does not equal chain_digest,
@@ -322,6 +329,15 @@ Internet-Draft        Authorization Evidence Chains            July 2026
        2.  Invoke the verifier on k.evidence.  It returns valid and
            action_digest.  Any exception marks k unsatisfied.
 
+
+
+
+
+Schrock                  Expires 12 January 2027                [Page 6]
+
+Internet-Draft        Authorization Evidence Chains            July 2026
+
+
        3.  k is SATISFIED iff valid is true AND the returned
            action_digest equals chain_digest.  A valid component that
            binds a different action MUST be treated as unsatisfied
@@ -330,13 +346,6 @@ Internet-Draft        Authorization Evidence Chains            July 2026
 
        4.  If satisfied, add k.type to the satisfied set. k.label MUST
            NOT be added; it is presenter-controlled display metadata.
-
-
-
-Schrock                  Expires 12 January 2027                [Page 6]
-
-Internet-Draft        Authorization Evidence Chains            July 2026
-
 
    5.  Evaluate only the requirement supplied by the relying party over
        the satisfied set (Section 6).  If no relying-party requirement
@@ -377,15 +386,6 @@ Internet-Draft        Authorization Evidence Chains            July 2026
    expression with a bounded parser and MUST NOT use a general-purpose
    evaluator.  AND and OR have EQUAL binding strength and are evaluated
    strictly left to right; implementations MUST NOT assume AND binds
-   tighter than OR.  Parentheses group explicitly and are the only
-   precedence mechanism.  Example: "ep-quorum AND (policy-permit OR
-   delegation)" requires a human quorum plus either a policy permit or a
-   delegation receipt, all bound to the same action.
-
-
-
-
-
 
 
 
@@ -393,6 +393,11 @@ Schrock                  Expires 12 January 2027                [Page 7]
 
 Internet-Draft        Authorization Evidence Chains            July 2026
 
+
+   tighter than OR.  Parentheses group explicitly and are the only
+   precedence mechanism.  Example: "ep-quorum AND (policy-permit OR
+   delegation)" requires a human quorum plus either a policy permit or a
+   delegation receipt, all bound to the same action.
 
 7.  Whose requirement is it? (changed in -01)
 
@@ -409,12 +414,16 @@ Internet-Draft        Authorization Evidence Chains            July 2026
    record which source was evaluated (requirement_source:
    "relying_party" or "presenter"), and SHOULD note when a presenter
    requirement was ignored in favor of a pinned one.  The document
-   member remains REQUIRED for self-describing interchange, but relying
-   parties SHOULD pin their own bar before any ALLOW decision.  The
-   reference implementations (JavaScript, Python, Go) implement this
-   behavior and agree on shared conformance vectors covering both
-   sources, including a vector where the presenter's weak bar would pass
-   and the relying party's pinned bar correctly fails.
+   member is OPTIONAL descriptive metadata; omission MUST NOT weaken,
+   replace, or prevent evaluation of the out-of-band relying-party
+   requirement.  If no relying-party requirement is supplied, the
+   verifier MUST return DENY whether or not the document member is
+   present.  The reference implementations (JavaScript, Python, Go)
+   implement this behavior and agree on shared conformance vectors
+   covering both sources, including
+   reject_presenter_weak_bar_rp_bar_unsatisfied in the EP-AEC-ROLE-v1
+   suite, where the presenter's weak bar would pass and the relying
+   party's pinned bar correctly fails.
 
    The generalization of this principle -- the entire sufficiency policy
    (requirement, freshness, revocation, required bindings) supplied by
@@ -433,15 +442,6 @@ Internet-Draft        Authorization Evidence Chains            July 2026
    composing it with machine-side delegation and permit receipts.  The
    built-in component verifiers "ep-quorum" and "ep-receipt" are defined
    by [EP-QUORUM] and [EP-RECEIPTS] respectively; all other types are
-   supplied by the relying party.
-
-
-
-
-
-
-
-
 
 
 
@@ -449,6 +449,8 @@ Schrock                  Expires 12 January 2027                [Page 8]
 
 Internet-Draft        Authorization Evidence Chains            July 2026
 
+
+   supplied by the relying party.
 
    A generic operator signature is not a human ceremony.  The "ep-
    receipt" built-in MUST accept only the Trust Receipt of [EP-RECEIPTS]
@@ -496,8 +498,6 @@ Internet-Draft        Authorization Evidence Chains            July 2026
    *  The record MUST carry the receipt identifier of the authorization
       it attests and the digest of the observed effect, and MUST be
       signed by the executor.  The component verifier for this type
-      returns, alongside "valid" and "action_digest", the fields
-      "receipt_id", "observed_effect_digest", and, where the verifier
 
 
 
@@ -506,6 +506,8 @@ Schrock                  Expires 12 January 2027                [Page 9]
 Internet-Draft        Authorization Evidence Chains            July 2026
 
 
+      returns, alongside "valid" and "action_digest", the fields
+      "receipt_id", "observed_effect_digest", and, where the verifier
       could read the approved effect out of the referenced
       authorization, "committed_effect_digest".  Digest values are
       compared as lowercase hexadecimal after removal of an optional
@@ -547,8 +549,6 @@ Internet-Draft        Authorization Evidence Chains            July 2026
    records is checkable offline by any third party holding both.  How
    the observed effect is represented and digested is action-family
    specific and out of scope for this document.
-
-
 
 
 

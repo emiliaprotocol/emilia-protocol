@@ -86,7 +86,7 @@ Table of Contents
    9.  HTTP Integration  . . . . . . . . . . . . . . . . . . . . . .   9
    10. Executor Effect Statement . . . . . . . . . . . . . . . . . .   9
    11. Security Considerations . . . . . . . . . . . . . . . . . . .   9
-   12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  10
+   12. Privacy Considerations  . . . . . . . . . . . . . . . . . . .  11
    13. IANA Considerations . . . . . . . . . . . . . . . . . . . . .  11
    14. Implementation Status . . . . . . . . . . . . . . . . . . . .  11
    15. Normative References  . . . . . . . . . . . . . . . . . . . .  11
@@ -397,7 +397,11 @@ Internet-Draft               Model-to-Matter                   July 2026
    Challenge state MUST provide atomic first-presentation consumption
    across all executor replicas.  Storage unavailability, rollback, or
    an ambiguous consumption result MUST yield refusal.  An
-   implementation MUST NOT fall back to process-local state.
+   implementation MUST NOT fall back to process-local state.  At the
+   clearance API boundary, storage exceptions and ambiguous consume
+   results MUST be mapped to do_not_execute_refused; they MUST NOT
+   escape as an untyped result that a caller could mistake for
+   authorization.
 
    A missing-evidence refusal MAY include a new registered challenge
    that names only the missing types.  A follow-up challenge is a new
@@ -441,10 +445,6 @@ Internet-Draft               Model-to-Matter                   July 2026
 
 
 
-
-
-
-
 Schrock                  Expires 13 January 2027                [Page 8]
 
 Internet-Draft               Model-to-Matter                   July 2026
@@ -460,8 +460,13 @@ Internet-Draft               Model-to-Matter                   July 2026
 
    Consumption of the action digest MUST be non-expiring for as long as
    the action can be presented.  An unavailable response after
-   consumption is an indeterminate outcome that requires reconciliation;
-   availability MUST NOT silently become a second clearance.
+   consumption is an indeterminate outcome that requires reconciliation.
+   The executor MUST return do_not_execute_refused, mark reconciliation
+   as required, and freeze execution; availability MUST NOT silently
+   become a second clearance.  After an indeterminate storage outcome,
+   the enforcing executor MUST remain fail-stop and MUST NOT issue
+   another challenge or evaluate another presentation until an operator
+   has reconciled the durable challenge and action-consumption state.
 
 9.  HTTP Integration
 
@@ -492,11 +497,6 @@ Internet-Draft               Model-to-Matter                   July 2026
    instruments, privileged maintenance paths, or direct backend access
    remain part of the trusted computing base.
 
-   *Presenter-selected policy.* Verifier code, issuer keys, profiles,
-   revocation rules, and requirements MUST be pinned before a
-   transaction.  Accepting them beside evidence lets a presenter define
-   the proof that its own evidence must pass.
-
 
 
 
@@ -505,6 +505,11 @@ Schrock                  Expires 13 January 2027                [Page 9]
 
 Internet-Draft               Model-to-Matter                   July 2026
 
+
+   *Presenter-selected policy.* Verifier code, issuer keys, profiles,
+   revocation rules, and requirements MUST be pinned before a
+   transaction.  Accepting them beside evidence lets a presenter define
+   the proof that its own evidence must pass.
 
    *Cross-action splicing.* Every evidence artifact, challenge,
    clearance, consumption key, and effect statement MUST bind the
@@ -544,14 +549,9 @@ Internet-Draft               Model-to-Matter                   July 2026
    count, string bytes, evidence count, identifier length, and parser
    work before signature or graph evaluation.
 
-12.  Privacy Considerations
 
-   Action, evidence, and effect objects can reveal model use,
-   institution, facility, principal, approver, purpose, destination, and
-   timing.  Profiles SHOULD minimize identifiers and use pairwise or
-   pseudonymous values when accountability requirements permit.  Logs
-   require retention and access controls appropriate to their
-   jurisdiction.
+
+
 
 
 
@@ -561,6 +561,15 @@ Schrock                  Expires 13 January 2027               [Page 10]
 
 Internet-Draft               Model-to-Matter                   July 2026
 
+
+12.  Privacy Considerations
+
+   Action, evidence, and effect objects can reveal model use,
+   institution, facility, principal, approver, purpose, destination, and
+   timing.  Profiles SHOULD minimize identifiers and use pairwise or
+   pseudonymous values when accountability requirements permit.  Logs
+   require retention and access controls appropriate to their
+   jurisdiction.
 
    Digests do not automatically provide confidentiality.  Low-entropy or
    enumerable inputs can be recovered by guessing.  Deployments handling
@@ -602,6 +611,13 @@ Internet-Draft               Model-to-Matter                   July 2026
               Timestamps", RFC 3339, DOI 10.17487/RFC3339, July 2002,
               <https://www.rfc-editor.org/info/rfc3339>.
 
+
+
+Schrock                  Expires 13 January 2027               [Page 11]
+
+Internet-Draft               Model-to-Matter                   July 2026
+
+
    [RFC7493]  Bray, T., Ed., "The I-JSON Message Format", RFC 7493,
               DOI 10.17487/RFC7493, March 2015,
               <https://www.rfc-editor.org/info/rfc7493>.
@@ -610,13 +626,6 @@ Internet-Draft               Model-to-Matter                   July 2026
               Signature Algorithm (EdDSA)", RFC 8032,
               DOI 10.17487/RFC8032, January 2017,
               <https://www.rfc-editor.org/info/rfc8032>.
-
-
-
-Schrock                  Expires 13 January 2027               [Page 11]
-
-Internet-Draft               Model-to-Matter                   July 2026
-
 
    [RFC8174]  Leiba, B., "Ambiguity of Uppercase vs Lowercase in RFC
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
@@ -654,15 +663,6 @@ Author's Address
    EMILIA Protocol, Inc.
    United States of America
    Email: team@emiliaprotocol.ai
-
-
-
-
-
-
-
-
-
 
 
 

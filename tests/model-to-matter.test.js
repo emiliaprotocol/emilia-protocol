@@ -666,6 +666,42 @@ describe('EP Model-to-Matter pinned executor boundary', () => {
     });
   });
 
+  it('latches the executor closed after an indeterminate storage outcome', async () => {
+    const a = action();
+    const challengeStore = store();
+    const gate = executor({
+      challengeStore,
+      clearanceStore: { consume: async () => { throw new Error('response lost'); } },
+    });
+    const challenge = await gate.issueChallenge(a, { nonce: 'm2m-storage-freeze' });
+    let effects = 0;
+    const result = await gate.run({
+      action: a,
+      challenge,
+      graph: buildModelToMatterGraph(a, evidenceSet(a)),
+    }, async () => { effects++; });
+
+    expect(result).toMatchObject({
+      ok: false,
+      allow: false,
+      clearance: {
+        verdict: 'do_not_execute_refused',
+        clear_to_execute: false,
+        reconciliation_required: true,
+      },
+    });
+    expect(effects).toBe(0);
+    expect(gate.status()).toMatchObject({ frozen: true, reconciliation_required: true });
+
+    const frozen = await gate.evaluate({ action: a, challenge, graph: buildModelToMatterGraph(a, evidenceSet(a)) });
+    expect(frozen).toMatchObject({
+      verdict: 'do_not_execute_refused',
+      clear_to_execute: false,
+      reconciliation_required: true,
+    });
+    await expect(gate.issueChallenge(a, { nonce: 'm2m-after-freeze' })).rejects.toThrow(/frozen/i);
+  });
+
   it('requires explicit durable custody in production mode', () => {
     const p = profile();
     const revocationProvider = async () => new Set();

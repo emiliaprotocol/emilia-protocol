@@ -168,6 +168,7 @@ describe('Model-to-Matter mutation oracles', () => {
         replay_digest: null,
         reasons: [],
         next_challenge: null,
+        reconciliation_required: false,
         graph: null,
       });
     }
@@ -176,12 +177,14 @@ describe('Model-to-Matter mutation oracles', () => {
       replay_digest: digest('b'),
       reasons: ['reason'],
       next_challenge: { id: 'next' },
+      reconciliation_required: true,
       result: { graph: { nodes: 6 } },
     })).toMatchObject({
       action_digest: digest('a'),
       replay_digest: digest('b'),
       reasons: ['reason'],
       next_challenge: { id: 'next' },
+      reconciliation_required: true,
       graph: { nodes: 6 },
     });
   });
