@@ -18,9 +18,13 @@ if (write === check) {
 const INPUT_PATHS = {
   catalog: 'standards/observatory/catalog.source.v1.json',
   sourceLock: 'standards/observatory/source-lock.v1.json',
-  recon: 'standards/observatory/recon-index.v1.json',
+  recon: 'standards/observatory/recon-summary.v1.json',
   generator: 'scripts/build-standards-observatory.mjs',
 };
+// The full per-artifact recon index is PRIVATE and never published. It lives at a
+// gitignored path and is used only for a local integrity cross-check of the committed
+// aggregate summary. Public artifacts carry aggregate counts and the corpus digest only.
+const PRIVATE_RECON_INDEX = 'docs/strategy-private/observatory/recon-index.v1.json';
 const OUTPUT_PATHS = {
   snapshot: 'lib/standards-observatory.snapshot.json',
   publicJson: 'public/.well-known/standards-observatory.json',
@@ -70,7 +74,7 @@ const recon = readJson(INPUT_PATHS.recon);
 
 assert(catalog['@version'] === 'EMILIA-STANDARDS-OBSERVATORY-SOURCE-v1', 'unsupported observatory catalog');
 assert(sourceLock['@version'] === 'EMILIA-STANDARDS-SOURCE-LOCK-v1', 'unsupported source lock');
-assert(recon['@version'] === 'EMILIA-STANDARDS-RECON-INDEX-v1', 'unsupported recon index');
+assert(recon['@version'] === 'EMILIA-STANDARDS-RECON-SUMMARY-v1', 'unsupported recon summary');
 assert(catalog.as_of === sourceLock.retrieved_at, 'catalog and source lock timestamps differ');
 assert(catalog.as_of === recon.as_of, 'catalog and recon timestamps differ');
 assert(Array.isArray(catalog.dimensions) && catalog.dimensions.length > 0, 'guarantee dimensions are missing');
@@ -113,14 +117,25 @@ for (const source of catalog.sources) {
   assert(/^[0-9a-f]{64}$/.test(lock.sha256), `${source.id}: invalid source digest`);
 }
 
+assert(recon['@version'] === 'EMILIA-STANDARDS-RECON-SUMMARY-v1', 'recon must be the aggregate summary, not the raw index');
 assert(recon.review_model === 'correlated_agent_assisted_discovery', 'recon must remain labeled as correlated discovery');
 assert(recon.metrics.declared_agent_reads === catalog.methodology.declared_agent_reads, 'declared recon count differs from catalog');
-assert(recon.metrics.recovered_structured_reports === recon.reports.length, 'recovered recon count differs from report array');
-assert(recon.metrics.unrecovered_reports === recon.metrics.declared_agent_reads - recon.reports.length, 'unrecovered recon count is invalid');
-assert(recon.corpus_sha256 === sha256(Buffer.from(JSON.stringify(recon.reports), 'utf8')), 'recon corpus digest is invalid');
-assertUnique(recon.reports.map((item) => item.id), 'recon report ids');
-for (const report of recon.reports) {
-  assert(report.review_state === 'agent_analyzed_unverified', `${report.id}: recon result is overstated`);
+assert(recon.metrics.unrecovered_reports === recon.metrics.declared_agent_reads - recon.metrics.recovered_structured_reports, 'unrecovered recon count is invalid');
+assert(/^[0-9a-f]{64}$/.test(recon.corpus_sha256), 'recon corpus digest is invalid');
+// The summary MUST NOT carry per-artifact records. That data stays private.
+assert(!('reports' in recon), 'recon summary must not embed the raw per-artifact index');
+
+// Local-only integrity cross-check: if the private full index is present, confirm the
+// committed aggregate summary matches it exactly. Absent in CI and on fresh clones by design.
+if (fs.existsSync(absolute(PRIVATE_RECON_INDEX))) {
+  const privateIndex = readJson(PRIVATE_RECON_INDEX);
+  assert(privateIndex.metrics.recovered_structured_reports === privateIndex.reports.length, 'private recon report count differs from its metrics');
+  assert(recon.metrics.recovered_structured_reports === privateIndex.reports.length, 'summary count differs from private index');
+  assert(recon.corpus_sha256 === sha256(Buffer.from(JSON.stringify(privateIndex.reports), 'utf8')), 'summary corpus digest differs from private index');
+  assertUnique(privateIndex.reports.map((item) => item.id), 'recon report ids');
+  for (const report of privateIndex.reports) {
+    assert(report.review_state === 'agent_analyzed_unverified', `${report.id}: recon result is overstated`);
+  }
 }
 
 for (const event of catalog.events) {
@@ -176,9 +191,12 @@ const core = {
     claim_boundary: recon.claim_boundary,
     metrics: recon.metrics,
     corpus_sha256: recon.corpus_sha256,
-    reports: recon.reports,
   },
 };
+// Publication boundary: the served snapshot exposes exactly the curated matrix and
+// aggregate recon counts. No per-artifact recon record is ever placed in a public output.
+assert(!('reports' in core.recon), 'public snapshot must not carry recon reports');
+assert(core.sources.length === catalog.sources.length, 'public snapshot source count drifted');
 const snapshot = { ...core, snapshot_sha256: sha256(Buffer.from(JSON.stringify(core), 'utf8')) };
 const snapshotBody = stableJson(snapshot);
 
@@ -210,7 +228,7 @@ function renderLlmsText() {
     '',
     '## Broad Recon Boundary',
     '',
-    `The discovery sweep declared ${recon.metrics.declared_agent_reads} reads. ${recon.metrics.recovered_structured_reports} structured reports were recovered, ${recon.metrics.unrecovered_reports} were not recovered, and ${recon.metrics.fetch_failures_in_recovered_reports} recovered reports marked a fetch failure. Every entry remains agent_analyzed_unverified until promoted through the source-lock process.`,
+    `The discovery sweep declared ${recon.metrics.declared_agent_reads} reads. ${recon.metrics.recovered_structured_reports} structured reports were recovered, ${recon.metrics.unrecovered_reports} were not recovered, and ${recon.metrics.fetch_failures_in_recovered_reports} recovered reports marked a fetch failure. The per-artifact index is held privately and never published; every entry remains unverified until promoted through the source-lock process, at which point the effort is named in the matrix above. Aggregate corpus digest sha256:${recon.corpus_sha256}.`,
     '',
     '## Machine-Readable Forms',
     '',
@@ -257,5 +275,5 @@ if (write) {
     console.error('Fix: npm run observatory:sync');
     process.exit(1);
   }
-  console.log(`STANDARDS OBSERVATORY: PASS (${curatedSources.length} verified sources; ${recon.reports.length}/${recon.metrics.declared_agent_reads} recon reports)`);
+  console.log(`STANDARDS OBSERVATORY: PASS (${curatedSources.length} verified sources; ${recon.metrics.recovered_structured_reports}/${recon.metrics.declared_agent_reads} recon reads, aggregate only)`);
 }

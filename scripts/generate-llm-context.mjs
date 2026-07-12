@@ -29,6 +29,7 @@ const PATHS = {
   external: 'conformance/external/rust-cleanroom-jdieselny.v1.json',
   claimSource: 'security/claims.v1.json',
   securityCase: 'security/security-case.json',
+  observatory: 'lib/standards-observatory.snapshot.json',
 };
 const INPUTS = Object.values(PATHS);
 const GENERATED_PATHS = new Set([
@@ -76,12 +77,14 @@ const conformance = readJson(PATHS.conformance);
 const external = readJson(PATHS.external);
 const claimSource = readJson(PATHS.claimSource);
 const securityCase = readJson(PATHS.securityCase);
+const observatory = readJson(PATHS.observatory);
 
 assert(source['@version'] === 'EMILIA-LLM-CONTEXT-SOURCE-v1', 'unsupported LLM context source');
 assert(conformance['@version'] === 'EP-CONFORMANCE-MANIFEST-v1', 'unsupported conformance manifest');
 assert(external['@version'] === 'EP-EXTERNAL-IMPLEMENTATION-PIN-v1', 'unsupported external implementation pin');
 assert(claimSource['@version'] === 'EP-SECURITY-CASE-SOURCE-v2', 'unsupported security claim source');
 assert(securityCase['@version'] === 'EP-SECURITY-CASE-RESOLVED-v2', 'unsupported resolved security case');
+assert(observatory['@version'] === 'EMILIA-STANDARDS-OBSERVATORY-v1', 'unsupported standards observatory snapshot');
 assert(securityCase.execution?.status === 'passed', 'resolved security case does not report a passed execution');
 assert(securityCase.claim_count === claimSource.claims?.length, 'security-case claim count differs from source');
 assert(conformance.implementations?.every((item) => item.relationship === 'one_team_port'), 'reference ports are not uniformly labeled one_team_port');
@@ -89,6 +92,8 @@ assert(external.conformance?.status === 'pass', 'external conformance pin does n
 assert(Number.isInteger(external.conformance?.vectors), 'external conformance vector count is missing');
 assert(external.conformance.vectors <= conformance.totals.vectors, 'external result cannot cover more vectors than the current bundle');
 assert(external.construction_evidence?.strict_clean_room_acceptance === false, 'strict clean-room status changed; update context doctrine deliberately');
+assert(observatory.metrics?.primary_sources_verified > 0, 'standards observatory has no verified primary sources');
+assert(observatory.recon?.review_model === 'correlated_agent_assisted_discovery', 'standards recon independence boundary changed');
 
 for (const entry of source.code_entry_points || []) {
   assert(fs.existsSync(absolute(entry.path)), `missing code entry point: ${entry.path}`);
@@ -188,6 +193,17 @@ const context = {
     ...standard,
     status_rule: 'Check the live IETF Datatracker URL; do not infer status or revision from a local filename.',
   })),
+  standards_observatory: {
+    as_of: observatory.as_of,
+    snapshot_sha256: observatory.snapshot_sha256,
+    primary_sources_verified: observatory.metrics.primary_sources_verified,
+    declared_agent_reads: observatory.metrics.declared_agent_reads,
+    recovered_structured_reports: observatory.metrics.recovered_structured_reports,
+    review_model: observatory.recon.review_model,
+    claim_boundary: observatory.recon.claim_boundary,
+    public_json: `${BASE_URL}/.well-known/standards-observatory.json`,
+    public_ui: `${BASE_URL}/observatory`,
+  },
   code_entry_points: source.code_entry_points,
   commands: source.commands,
   answering_rules: source.answering_rules,
@@ -245,6 +261,18 @@ function renderFull(web = false) {
   lines.push('## What Must Not Be Claimed');
   lines.push('');
   for (const item of source.non_claims) lines.push(`- ${item}`);
+  lines.push('');
+  lines.push('## Standards Observatory');
+  lines.push('');
+  lines.push(`The revision-aware Observatory locks ${observatory.metrics.primary_sources_verified} primary sources by exact revision, excerpt, and SHA-256. Its broad recon recovered ${observatory.metrics.recovered_structured_reports} of ${observatory.metrics.declared_agent_reads} declared reports, but those entries remain correlated agent-assisted discovery and do not drive the guarantee matrix.`);
+  lines.push('');
+  lines.push(web
+    ? `- [Interactive standards map](${BASE_URL}/observatory)`
+    : `- [Standards Observatory](${BASE_URL}/observatory)`);
+  lines.push(web
+    ? `- [Machine-readable standards snapshot](${BASE_URL}/.well-known/standards-observatory.json)`
+    : `- [lib/standards-observatory.snapshot.json](lib/standards-observatory.snapshot.json)`);
+  lines.push(`- Snapshot integrity: sha256:${observatory.snapshot_sha256}.`);
   lines.push('');
   lines.push('## Machine-Verifiable Security Claims');
   lines.push('');
@@ -308,6 +336,8 @@ function renderIndex() {
     '',
     `- [Full LLM context](${BASE_URL}/llms-full.txt): Definitions, layer map, current evidence, non-claims, source precedence, standards, and code entry points.`,
     `- [Machine-readable repository context](${BASE_URL}/.well-known/emilia-context.json): EMILIA-REPO-CONTEXT-v1 with input hashes, evidence counts, security claims, assumptions, and freshness metadata.`,
+    `- [Standards Observatory](${BASE_URL}/observatory): Revision-aware guarantee map, standards movement, and open interoperability frontiers.`,
+    `- [Machine-readable standards snapshot](${BASE_URL}/.well-known/standards-observatory.json): Source locks, operative-status rationale, exact quotes, and the correlated-recon boundary.`,
     `- [Repository AI context](${REPO_URL}/blob/main/AI_CONTEXT.md): The same generated context beside the source code.`,
     '',
     '## Specifications',

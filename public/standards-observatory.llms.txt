@@ -1,6 +1,6 @@
 # EMILIA Standards Observatory
 
-Source-locked snapshot as of July 12, 2026. Snapshot sha256:4fdcd08580564929ceb800d01f6ad150f5fd880ab96741d7216cb162ff01a879.
+Source-locked snapshot as of July 12, 2026. Snapshot sha256:23efb7e98b88176a069fb83cdd5425b7dc12745dd6c288e0b7e63130b9b54d17.
 
 ## Truth Rules
 
@@ -46,7 +46,7 @@ Source-locked snapshot as of July 12, 2026. Snapshot sha256:4fdcd08580564929ceb8
 
 ## Broad Recon Boundary
 
-The discovery sweep declared 294 reads. 291 structured reports were recovered, 3 were not recovered, and 0 recovered reports marked a fetch failure. Every entry remains agent_analyzed_unverified until promoted through the source-lock process.
+The discovery sweep declared 294 reads. 291 structured reports were recovered, 3 were not recovered, and 0 recovered reports marked a fetch failure. The per-artifact index is held privately and never published; every entry remains unverified until promoted through the source-lock process, at which point the effort is named in the matrix above. Aggregate corpus digest sha256:9fc130a7ce66205fe48a9c66d48e1041fea5c4baaa236091408159a2762864ed.
 
 ## Machine-Readable Forms
 

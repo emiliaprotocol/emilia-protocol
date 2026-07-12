@@ -7,7 +7,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const DEFAULT_OUTPUT = path.join(ROOT, 'standards/observatory/recon-index.v1.json');
+// The raw per-artifact recon index is PRIVATE and gitignored. It must never be written
+// under a tracked public path; the published surface carries aggregate counts only
+// (see standards/observatory/recon-summary.v1.json and build-standards-observatory.mjs).
+const DEFAULT_OUTPUT = path.join(ROOT, 'docs/strategy-private/observatory/recon-index.v1.json');
 const CATALOG = path.join(ROOT, 'standards/observatory/catalog.source.v1.json');
 
 function parseArgs(argv) {

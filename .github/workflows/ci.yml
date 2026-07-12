@@ -165,6 +165,8 @@ jobs:
         run: npm run check:proof-stats
       - name: Check generated LLM context against current evidence manifests
         run: npm run check:llm-context
+      - name: Check standards observatory snapshot freshness
+        run: npm run observatory:check
 
   # ── Job 6a: License headers ──────────────────────────────────────
   license-headers:

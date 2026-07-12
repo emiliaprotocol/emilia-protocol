@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-12T16:23:16.779Z",
+  "evidence_snapshot_at": "2026-07-12T17:06:14.785Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "2db59405bd4529a36dcbf1a355ec611f68e301a7284301bd6cd06aeddc1ae9a5",
+    "input_digest_sha256": "29a0adc48c990ecb26a031f3f95e3e7cb8ec47a9498f2578157919b702d08967",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -12,12 +12,12 @@
       },
       {
         "path": "scripts/generate-llm-context.mjs",
-        "sha256": "93016be78325cab4c10f192cd8ebc75b9b6bc50d93bf21acf9493fdbe97c1b75",
-        "bytes": 19050
+        "sha256": "2274a26a5545fe0f1634b627130d8a8b82fe02556be15047944b593aea52c570",
+        "bytes": 21345
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "d2d30449b3707ef9622d7fb0b54361955d08bda45ccae4c340e09c2cc7b29edc",
+        "sha256": "9a4b05a6b7c79f2d8900fabc953b999b6f507e94f2c97a33a98c567b1806cc20",
         "bytes": 1067
       },
       {
@@ -39,6 +39,11 @@
         "path": "security/security-case.json",
         "sha256": "75b5866ef86ea584c6d190b4dff09f22c8c5dec57841fcdb461748c25e4a33ef",
         "bytes": 107332
+      },
+      {
+        "path": "lib/standards-observatory.snapshot.json",
+        "sha256": "f9ec810022f821dbfd176f11d23898e03b6b840f9c6ff843925d2284d27e4c56",
+        "bytes": 58722
       }
     ],
     "freshness_command": "npm run check:llm-context"
@@ -113,8 +118,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 5549,
-      "files": 277,
+      "total": 5563,
+      "files": 278,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -1491,6 +1496,17 @@
       "status_rule": "Check the live IETF Datatracker URL; do not infer status or revision from a local filename."
     }
   ],
+  "standards_observatory": {
+    "as_of": "2026-07-12T17:00:00Z",
+    "snapshot_sha256": "23efb7e98b88176a069fb83cdd5425b7dc12745dd6c288e0b7e63130b9b54d17",
+    "primary_sources_verified": 17,
+    "declared_agent_reads": 294,
+    "recovered_structured_reports": 291,
+    "review_model": "correlated_agent_assisted_discovery",
+    "claim_boundary": "Aggregate counts only. The per-artifact recon index is held privately and never published; entries are discovery leads, not publication-grade claims, and do not drive the guarantee matrix. Individual efforts are named publicly only after promotion into the source-locked 17-source matrix.",
+    "public_json": "https://www.emiliaprotocol.ai/.well-known/standards-observatory.json",
+    "public_ui": "https://www.emiliaprotocol.ai/observatory"
+  },
   "code_entry_points": [
     {
       "path": "packages/verify/index.js",
