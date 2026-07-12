@@ -75,8 +75,12 @@ const epReceiptDoc = {
 };
 
 // Relying-party pinning: the machine key is pinned ONLY for its policy role via
-// the custom verifier; the human key is the one pinned for ep-receipt.
-const opts = { verifiers: { policy_decision: policyDecisionVerifier }, keys: { [human.pub]: human.pub } };
+// the custom verifier; the human key is the one pinned FOR THE ep-receipt ROLE.
+// The machine key is deliberately NOT in keysByType['ep-receipt'].
+const opts = {
+  verifiers: { policy_decision: policyDecisionVerifier },
+  keysByType: { 'ep-receipt': { [human.pub]: human.pub } },
+};
 const pinnedBar = 'policy_decision AND ep-receipt';
 
 describe('role non-substitution: machine policy allowed is never named human approved', () => {
@@ -128,6 +132,53 @@ describe('role non-substitution: machine policy allowed is never named human app
     // Signature is valid, but the SIGNED payload binds a different action, so the
     // leg is not bound to this chain and cannot satisfy the requirement.
     expect(r.components[0].bound).toBe(false);
+    expect(r.allow).toBe(false);
+  });
+
+  it('NEGATIVE (cross-role key confusion): a machine key pinned for ANOTHER role cannot fill ep-receipt', () => {
+    // The machine's policy key IS pinned — but only for the 'policy_decision'
+    // role. The attacker relabels the machine's own signed object EP-RECEIPT-v1,
+    // names its (globally trusted) key, and binds this action in the signed
+    // payload. Under a flat key bag this passed; role-scoped pins refuse it.
+    const smuggledPayload = { ...policyDecisionDoc.payload };
+    const smuggled = {
+      '@version': 'EP-RECEIPT-v1',
+      payload: smuggledPayload, // payload.action_digest === DIGEST (this action)
+      signature: { algorithm: 'Ed25519', value: signCanonical(smuggledPayload, machine.privateKey) },
+      operator_public_key: machine.pub,
+    };
+    const r = verifyAuthorizationChain({
+      '@version': AEC_VERSION, action, requirement: 'ep-receipt',
+      components: [{ type: 'ep-receipt', evidence: smuggled }],
+    }, {
+      verifiers: { policy_decision: policyDecisionVerifier },
+      // Machine key pinned for policy_decision, human key for ep-receipt.
+      keysByType: {
+        'ep-receipt': { [human.pub]: human.pub },
+        policy_decision: { [machine.pub]: machine.pub },
+      },
+    });
+    expect(r.components[0].valid).toBe(false);
+    expect(r.allow).toBe(false);
+  });
+
+  it('NEGATIVE (forged quorum): a quorum built from keys not pinned for ep-quorum fails closed', () => {
+    // The stronger human leg. verifyQuorum only checks internal consistency
+    // against the quorum's OWN declared keys, so an attacker can forge an entire
+    // distinct-human quorum under keys it generated. The ep-quorum leg must
+    // refuse it because none of the member keys is pinned under keysByType['ep-quorum'].
+    const a = ed25519();
+    const b = ed25519();
+    const forged = {
+      '@type': 'ep.quorum', action_hash: DIGEST,
+      policy: { mode: 'threshold', required: 2, distinct_humans: true, window_sec: 172800, approvers: [{ role: 'a', approver: 'ep:approver:attacker-a' }, { role: 'b', approver: 'ep:approver:attacker-b' }] },
+      members: [{ role: 'a', approver_public_key: a.pub, signoff: {} }, { role: 'b', approver_public_key: b.pub, signoff: {} }],
+    };
+    const r = verifyAuthorizationChain({
+      '@version': AEC_VERSION, action, requirement: 'ep-quorum',
+      components: [{ type: 'ep-quorum', evidence: forged }],
+    }, { keysByType: { 'ep-quorum': { [human.pub]: human.pub } } }); // attacker member keys are pinned nowhere
+    expect(r.components[0].valid).toBe(false);
     expect(r.allow).toBe(false);
   });
 

@@ -1,13 +1,32 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "001433d830c4166e5e7735d67f965497cd8413a3998f4c42fd11a544f3d4d829",
-  "claim_count": 14,
-  "evidence_file_count": 64,
+  "evidence_bundle_sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db",
+  "claim_count": 15,
+  "evidence_file_count": 68,
   "execution": {
     "required": true,
     "status": "passed",
     "evidence": [
+      {
+        "runner": "cross-language",
+        "suite": "conformance/vectors/aec-role.v1.json",
+        "cases": [
+          "accept_pinned_human_receipt",
+          "accept_policy_plus_human",
+          "reject_cross_role_key",
+          "reject_forged_quorum_unpinned_keys",
+          "reject_label_collision",
+          "reject_unpinned_key",
+          "reject_unsigned_binding"
+        ],
+        "languages": [
+          "javascript",
+          "python",
+          "go"
+        ],
+        "result": "passed"
+      },
       {
         "runner": "cross-language",
         "suite": "conformance/vectors/quorum.v1.json",
@@ -220,6 +239,14 @@
           "rely_full_packet_composes → rely"
         ],
         "result": "passed"
+      },
+      {
+        "runner": "vitest",
+        "file": "tests/role-non-substitution.test.js",
+        "titles": [
+          "NEGATIVE (cross-role key confusion): a machine key pinned for ANOTHER role cannot fill ep-receipt"
+        ],
+        "result": "passed"
       }
     ]
   },
@@ -236,8 +263,8 @@
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "001433d830c4166e5e7735d67f965497cd8413a3998f4c42fd11a544f3d4d829",
-      "file_count": 64
+      "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db",
+      "file_count": 68
     },
     "verify-sdk": {
       "kind": "npm-tarball",
@@ -353,7 +380,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "001433d830c4166e5e7735d67f965497cd8413a3998f4c42fd11a544f3d4d829"
+          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
         }
       ]
     },
@@ -475,7 +502,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "001433d830c4166e5e7735d67f965497cd8413a3998f4c42fd11a544f3d4d829"
+          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
         }
       ]
     },
@@ -619,7 +646,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "001433d830c4166e5e7735d67f965497cd8413a3998f4c42fd11a544f3d4d829"
+          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
         }
       ]
     },
@@ -765,7 +792,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "001433d830c4166e5e7735d67f965497cd8413a3998f4c42fd11a544f3d4d829"
+          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
         }
       ]
     },
@@ -874,7 +901,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "001433d830c4166e5e7735d67f965497cd8413a3998f4c42fd11a544f3d4d829"
+          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
         }
       ]
     },
@@ -983,7 +1010,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "001433d830c4166e5e7735d67f965497cd8413a3998f4c42fd11a544f3d4d829"
+          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
         }
       ]
     },
@@ -1115,7 +1142,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "001433d830c4166e5e7735d67f965497cd8413a3998f4c42fd11a544f3d4d829"
+          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
         }
       ]
     },
@@ -1222,7 +1249,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "001433d830c4166e5e7735d67f965497cd8413a3998f4c42fd11a544f3d4d829"
+          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
         }
       ]
     },
@@ -1325,7 +1352,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "001433d830c4166e5e7735d67f965497cd8413a3998f4c42fd11a544f3d4d829"
+          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
         }
       ]
     },
@@ -1459,7 +1486,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "001433d830c4166e5e7735d67f965497cd8413a3998f4c42fd11a544f3d4d829"
+          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
         }
       ]
     },
@@ -1575,7 +1602,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "001433d830c4166e5e7735d67f965497cd8413a3998f4c42fd11a544f3d4d829"
+          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
         }
       ]
     },
@@ -1709,7 +1736,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "001433d830c4166e5e7735d67f965497cd8413a3998f4c42fd11a544f3d4d829"
+          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
         }
       ]
     },
@@ -1961,7 +1988,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "001433d830c4166e5e7735d67f965497cd8413a3998f4c42fd11a544f3d4d829"
+          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
         }
       ]
     },
@@ -2085,7 +2112,165 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "001433d830c4166e5e7735d67f965497cd8413a3998f4c42fd11a544f3d4d829"
+          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
+        }
+      ]
+    },
+    {
+      "claim_id": "aec-role-substitution-refused",
+      "statement": "In the EP-AEC composition verifier, an attacker cannot satisfy a human-authorization requirement without a relying-party-pinned human: a presenter label cannot impersonate a registered verifier type (type provenance); BOTH built-in human-authorization legs are role-scoped — the ep-receipt signing key must be pinned under keysByType['ep-receipt'] and every ep-quorum approver key must be pinned under keysByType['ep-quorum'], so a forged quorum built entirely from attacker-generated device keys fails closed; and the ep-receipt leg binds the exact action from the SIGNED receipt payload — verified identically in JavaScript, Python, and Go.",
+      "acceptance_roots": [
+        "single human-authorization keys pinned per role via keysByType['ep-receipt']",
+        "quorum approver keys pinned per role via keysByType['ep-quorum']",
+        "the exact canonical action digest carried in the signed receipt payload"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/evidence-chain.js",
+          "symbol": "verifyAuthorizationChain",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/evidence-chain.js",
+          "export": "verifyAuthorizationChain"
+        },
+        {
+          "language": "python",
+          "file": "packages/python-verify/emilia_verify/__init__.py",
+          "symbol": "verify_authorization_chain"
+        },
+        {
+          "language": "go",
+          "file": "packages/go-verify/evidence_chain.go",
+          "symbol": "VerifyAuthorizationChain"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/aec-role.v1.json"
+        },
+        "python": {
+          "status": "covered",
+          "evidence": "conformance/vectors/aec-role.v1.json"
+        },
+        "go": {
+          "status": "covered",
+          "evidence": "conformance/vectors/aec-role.v1.json"
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "accept_pinned_human_receipt",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "accept_policy_plus_human",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_cross_role_key",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_unpinned_key",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_unsigned_binding",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_label_collision",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_forged_quorum_unpinned_keys",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "tests/role-non-substitution.test.js",
+          "title": "NEGATIVE (cross-role key confusion): a machine key pinned for ANOTHER role cannot fill ep-receipt",
+          "runner": "vitest"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The AEC composition and role-scoping logic is outside the Tamarin/TLA+ models; it is covered by cross-language conformance vectors (aec-role.v1.json) and per-port unit tests."
+        }
+      ],
+      "assumptions": [
+        "the relying party pins single-human keys under keysByType['ep-receipt'] and quorum approver keys under keysByType['ep-quorum'], and pins no attacker-controlled key",
+        "verifyReceipt's Ed25519-over-JCS signature check and verifyQuorum's per-member device-assertion checks are sound"
+      ],
+      "exclusions": [
+        "a key the relying party itself pins for a role is trusted for that role by definition; misconfiguration of role scoping is out of scope",
+        "this claim covers the AEC composition verifier, not the standalone reliance kernel",
+        "quorum POLICY pinning (roster/threshold) is the relying party's responsibility; this claim anchors the approver KEYS, so a forged roster under unpinned keys is already refused"
+      ],
+      "release_artifacts": [
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
         }
       ]
     }
@@ -2138,6 +2323,10 @@
     {
       "path": "conformance/runners/strict-json.mjs",
       "sha256": "5b2e52e7fc84e81fe5e37228b2ba5e078c8ee1a3754b00d453f07781035ab040"
+    },
+    {
+      "path": "conformance/vectors/aec-role.v1.json",
+      "sha256": "8935324478c0c4d648be70ea8060b7911f3787c2f708b31e499ccbe12aace359"
     },
     {
       "path": "conformance/vectors/authority.v1.json",
@@ -2220,6 +2409,10 @@
       "sha256": "32b4a721cfda7fcf8a41a1db9721c52d473c7523490393f8647f90cd61b0cfca"
     },
     {
+      "path": "packages/go-verify/evidence_chain.go",
+      "sha256": "e620355443c9630763fa7c8bf9ab8c8e2d367a7a546a319b30047b5506449be2"
+    },
+    {
       "path": "packages/go-verify/revocation.go",
       "sha256": "c8380d5c60948a392a79240c54528b9dce789f6b04bc63f9e3ecc6dbb875f9d8"
     },
@@ -2237,11 +2430,15 @@
     },
     {
       "path": "packages/python-verify/emilia_verify/__init__.py",
-      "sha256": "9e1e52ae1964919d905ef6d622c75c70c5ecdddd139731429d48807a7bcd8a67"
+      "sha256": "deb047c69f3157550532c299192c407edf005252de5a2308ee126c1fba690c2b"
     },
     {
       "path": "packages/verify/authority-proof.js",
       "sha256": "7b0882964ac0d7284c785a8295f4352778d3b61c8110d13f8a69bf9c87dbf62f"
+    },
+    {
+      "path": "packages/verify/evidence-chain.js",
+      "sha256": "bc11bd050e61cca78c2b052d21c55b0127d649e2bd95d14234f83e18997ad810"
     },
     {
       "path": "packages/verify/index.js",
@@ -2309,7 +2506,7 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "31ffa53c4b9086e497a5a9e4a3e22f361399952d37c64d166a9220d250ec68ae"
+      "sha256": "1ce603c63a3acfbc3b52b6154a892c82d3c6f3779be2ae76c882ac9a00ca7ebb"
     },
     {
       "path": "security/vectors.v1.json",
@@ -2345,7 +2542,11 @@
     },
     {
       "path": "tests/reliance-kernel.test.js",
-      "sha256": "fc9311f5757b6e2c2f2664a7cf73837f34698c725b33c38b1095666f46ada725"
+      "sha256": "9469c3a20fe7d5bc27a0a0cb1950cba4cd709f359ea3092ed9de8c3da9471412"
+    },
+    {
+      "path": "tests/role-non-substitution.test.js",
+      "sha256": "065159c0a88b3e4ff7a1149f1d6016d2347896bc515b9d9ee27c96cf75227057"
     }
   ]
 }

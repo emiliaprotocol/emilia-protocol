@@ -1190,20 +1190,36 @@ def _norm_digest(d: Any) -> Optional[str]:
 
 def _builtin_aec_verifiers() -> dict:
     def ep_quorum(ev, ctx):
+        # Every counted approver key MUST be pinned FOR the ep-quorum role.
+        # verify_quorum checks only INTERNAL consistency against the quorum's OWN
+        # declared keys and policy; without pinning an attacker forges an entire
+        # distinct-human quorum under device keys it generated. Require every member
+        # key to be pinned under keysByType['ep-quorum']; fail closed otherwise.
+        scoped = (ctx.get("keysByType") or {}).get("ep-quorum") or {}
+        members = (ev or {}).get("members")
+        if not scoped or not isinstance(members, list) or not members:
+            return {"valid": False, "action_digest": None}
+        for m in members:
+            k = (m or {}).get("approver_public_key")
+            if not isinstance(k, str) or k not in scoped:
+                return {"valid": False, "action_digest": None}
+        # Keys are pinned humans; verify_quorum then confirms threshold, distinct
+        # humans, initiator exclusion, ordering/window, and action_binding.
         r = verify_quorum(ev) or {}
-        # verify_quorum enforces action_binding: every signoff is over THIS
-        # action_hash, so once valid the top-level digest is cryptographically
-        # bound. Surface it only on success, so a failed leg asserts no binding.
         valid = bool(r.get("valid"))
         return {"valid": valid, "action_digest": ((ev or {}).get("action_hash") if valid else None)}
 
     def ep_receipt(ev, ctx):
-        # The signing key MUST be relying-party-pinned. A key named inside the
-        # evidence is never trusted on its own: a machine could otherwise relabel
-        # its own signed object EP-RECEIPT-v1, name its own key, and fill the
-        # human-authorization role. No pinned key => fail closed.
+        # The signing key MUST be pinned FOR THE ep-receipt ROLE. A globally pinned
+        # key is not enough: a relying party that also pins its policy engine's key
+        # would otherwise let that machine relabel its own signed object
+        # EP-RECEIPT-v1, name its own (pinned) key, and fill the human role
+        # (cross-role key confusion). Trust anchors are role-scoped: keysByType maps
+        # a component type to the keys accepted FOR THAT ROLE ONLY. No key pinned for
+        # ep-receipt => fail closed.
         named = (ev or {}).get("operator_public_key")
-        pinned = (ctx.get("keys") or {}).get(named) if isinstance(named, str) else None
+        scoped = (ctx.get("keysByType") or {}).get("ep-receipt") or {}
+        pinned = scoped.get(named) if isinstance(named, str) else None
         if not pinned:
             return {"valid": False, "action_digest": None}
         try:
@@ -1259,7 +1275,8 @@ def _eval_requirement(expr: str, satisfied: set) -> bool:
         return False
 
 
-def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None, keys: Optional[dict] = None,
+def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None,
+                                keys_by_type: Optional[dict] = None,
                                 requirement: Optional[str] = None) -> dict:
     """Verify an EP-AEC chain offline. Fail-closed. Mirrors JS verifyAuthorizationChain().
 
@@ -1267,6 +1284,10 @@ def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None, keys:
     claim of what the bundle satisfies, never the relying party's bar. Pass
     ``requirement=`` to pin the RELYING PARTY's own requirement; it takes
     precedence and the result records ``requirement_source``.
+
+    TRUST ANCHORS ARE ROLE-SCOPED: ``keys_by_type`` maps a component type to the
+    keys accepted FOR THAT ROLE ONLY, e.g. ``{"ep-receipt": {spki: spki}}``. A key
+    pinned for one role cannot satisfy another (no cross-role key confusion).
     """
     reasons: list = []
     pinned = requirement if isinstance(requirement, str) and requirement.strip() else None
@@ -1307,7 +1328,7 @@ def verify_authorization_chain(aec: Any, verifiers: Optional[dict] = None, keys:
             components.append(row)
             continue
         try:
-            res = v(c.get("evidence"), {"keys": keys, "action": aec["action"]}) or {}
+            res = v(c.get("evidence"), {"keysByType": keys_by_type, "action": aec["action"]}) or {}
         except Exception as e:
             row["reason"] = f"verifier raised: {e}"
             components.append(row)

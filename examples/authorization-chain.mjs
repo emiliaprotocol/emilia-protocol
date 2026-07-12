@@ -82,7 +82,11 @@ const makeChain = (permitDigest) => ({
     { type: 'policy-permit', label: 'machine policy permit', evidence: mintPermit(permitDigest) },
   ],
 });
-const opts = { verifiers: { 'policy-permit': permitVerifier } };
+// Role-scoped trust anchors: the relying party pins the enrolled human device
+// keys FOR the ep-quorum role. The built-in quorum leg refuses any member key it
+// did not pin, so an attacker cannot forge a quorum under keys it generated.
+const quorumKeys = Object.fromEntries(quorum.members.map((m) => [m.approver_public_key, m.approver_public_key]));
+const opts = { verifiers: { 'policy-permit': permitVerifier }, keysByType: { 'ep-quorum': quorumKeys } };
 
 const C = { g: '\x1b[32m', r: '\x1b[31m', d: '\x1b[2m', b: '\x1b[1m', x: '\x1b[0m' };
 const show = (title, res) => {

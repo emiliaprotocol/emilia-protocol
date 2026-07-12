@@ -51,19 +51,20 @@ func TestRoleNonSubstitution(t *testing.T) {
 		return ComponentResult{Valid: ok, ActionDigest: ad}
 	}
 	verifiers := map[string]ComponentVerifier{"policy_decision": policyVerifier}
-	keys := map[string]string{humanKey: humanKey} // only the human key is pinned for ep-receipt
+	// Role-scoped pins: the human key is pinned ONLY for the ep-receipt role.
+	keysByType := map[string]map[string]string{"ep-receipt": {humanKey: humanKey}}
 	bar := "policy_decision AND ep-receipt"
 
 	// POSITIVE: the machine decision verifies in its own role.
 	r := VerifyAuthorizationChain(map[string]any{"@version": AECVersion, "action": action, "requirement": "policy_decision",
-		"components": []any{map[string]any{"type": "policy_decision", "evidence": policyDoc}}}, verifiers, keys)
+		"components": []any{map[string]any{"type": "policy_decision", "evidence": policyDoc}}}, verifiers, keysByType)
 	if !r.Allow {
 		t.Errorf("POSITIVE: want allow; reasons=%v", r.Reasons)
 	}
 
 	// NEGATIVE: presenter label 'ep-receipt' on a policy leg must not fill the human token.
 	r = VerifyAuthorizationChain(map[string]any{"@version": AECVersion, "action": action, "requirement": "policy_decision",
-		"components": []any{map[string]any{"type": "policy_decision", "label": "ep-receipt", "evidence": policyDoc}}}, verifiers, keys, bar)
+		"components": []any{map[string]any{"type": "policy_decision", "label": "ep-receipt", "evidence": policyDoc}}}, verifiers, keysByType, bar)
 	if r.Allow {
 		t.Errorf("NEGATIVE label: substitution allowed")
 	}
@@ -80,7 +81,7 @@ func TestRoleNonSubstitution(t *testing.T) {
 	smuggled["operator_public_key"] = machineKey
 	smuggled["action_hash"] = digest
 	r = VerifyAuthorizationChain(map[string]any{"@version": AECVersion, "action": action, "requirement": "ep-receipt",
-		"components": []any{map[string]any{"type": "ep-receipt", "evidence": smuggled}}}, verifiers, keys)
+		"components": []any{map[string]any{"type": "ep-receipt", "evidence": smuggled}}}, verifiers, keysByType)
 	if r.Allow || r.Components[0].Valid {
 		t.Errorf("NEGATIVE relabel: unpinned machine key accepted as ep-receipt")
 	}
@@ -94,9 +95,49 @@ func TestRoleNonSubstitution(t *testing.T) {
 		"signature":           map[string]any{"algorithm": "Ed25519", "value": roleSign(otherPayload, humanPriv)},
 		"operator_public_key": humanKey, "action_hash": digest}
 	r = VerifyAuthorizationChain(map[string]any{"@version": AECVersion, "action": action, "requirement": "ep-receipt",
-		"components": []any{map[string]any{"type": "ep-receipt", "evidence": spoofed}}}, verifiers, keys)
+		"components": []any{map[string]any{"type": "ep-receipt", "evidence": spoofed}}}, verifiers, keysByType)
 	if r.Allow || r.Components[0].Bound {
 		t.Errorf("NEGATIVE unsigned binding: receipt over a different action bound to this one")
+	}
+
+	// NEGATIVE: cross-role key confusion — the machine key IS pinned, but only for
+	// the policy_decision role. Relabeled EP-RECEIPT-v1 with a payload binding this
+	// action, it must not fill the human role under role-scoped pins.
+	confused := map[string]any{}
+	for k, v := range policyDoc {
+		confused[k] = v
+	}
+	confused["@version"] = "EP-RECEIPT-v1"
+	confused["operator_public_key"] = machineKey
+	confusedKeys := map[string]map[string]string{
+		"ep-receipt":      {humanKey: humanKey},
+		"policy_decision": {machineKey: machineKey},
+	}
+	r = VerifyAuthorizationChain(map[string]any{"@version": AECVersion, "action": action, "requirement": "ep-receipt",
+		"components": []any{map[string]any{"type": "ep-receipt", "evidence": confused}}}, verifiers, confusedKeys)
+	if r.Allow || r.Components[0].Valid {
+		t.Errorf("NEGATIVE cross-role: machine key pinned for another role accepted as ep-receipt")
+	}
+
+	// NEGATIVE: forged quorum — an attacker builds a distinct-human quorum under
+	// keys it generated. VerifyQuorum only checks internal consistency, so the
+	// ep-quorum leg must refuse it because no member key is pinned for ep-quorum.
+	aPub, _, _ := ed25519.GenerateKey(rand.Reader)
+	bPub, _, _ := ed25519.GenerateKey(rand.Reader)
+	forgedQuorum := map[string]any{
+		"@type": "ep.quorum", "action_hash": digest,
+		"policy": map[string]any{"mode": "threshold", "required": 2.0, "distinct_humans": true, "window_sec": 172800.0,
+			"approvers": []any{map[string]any{"role": "a", "approver": "ep:approver:attacker-a"}, map[string]any{"role": "b", "approver": "ep:approver:attacker-b"}}},
+		"members": []any{
+			map[string]any{"role": "a", "approver_public_key": roleKeyB64u(aPub), "signoff": map[string]any{}},
+			map[string]any{"role": "b", "approver_public_key": roleKeyB64u(bPub), "signoff": map[string]any{}},
+		},
+	}
+	quorumKeys := map[string]map[string]string{"ep-quorum": {humanKey: humanKey}}
+	r = VerifyAuthorizationChain(map[string]any{"@version": AECVersion, "action": action, "requirement": "ep-quorum",
+		"components": []any{map[string]any{"type": "ep-quorum", "evidence": forgedQuorum}}}, verifiers, quorumKeys)
+	if r.Allow || r.Components[0].Valid {
+		t.Errorf("NEGATIVE forged quorum: attacker-forged quorum accepted as ep-quorum")
 	}
 
 	// CONTROL: a genuine human receipt with a pinned key satisfies the same bar.
@@ -107,7 +148,7 @@ func TestRoleNonSubstitution(t *testing.T) {
 		"operator_public_key": humanKey}
 	r = VerifyAuthorizationChain(map[string]any{"@version": AECVersion, "action": action, "requirement": "policy_decision",
 		"components": []any{map[string]any{"type": "policy_decision", "evidence": policyDoc},
-			map[string]any{"type": "ep-receipt", "evidence": receipt}}}, verifiers, keys, bar)
+			map[string]any{"type": "ep-receipt", "evidence": receipt}}}, verifiers, keysByType, bar)
 	if !r.Allow {
 		t.Errorf("CONTROL: pinned human receipt should satisfy the bar; reasons=%v", r.Reasons)
 	}

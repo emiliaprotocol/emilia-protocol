@@ -3,6 +3,7 @@
 // Polymorphic: receipt (document) | signoff | quorum.
 import { verifyReceipt, verifyWebAuthnSignoff, verifyQuorum, verifyRevocation, verifyTimeAttestation, verifyTrustReceipt, verifyProvenanceOffline, verifyEvidenceRecord, canonicalize, isCanonicalizable, evaluateCurrency, validateInitiatorAttestation, verifyConsumptionProof, requireWitnessQuorum } from '../../packages/verify/index.js';
 import { verifyTimestampProof } from '../../packages/verify/timestamp-proof.js';
+import { verifyAuthorizationChain } from '../../packages/verify/evidence-chain.js';
 import { strictParseGate } from './strict-json.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -47,6 +48,15 @@ const out = vectors.map((v) => {
   // EP-TIMESTAMP-PROOF-v1 (RFC 3161): valid iff the pinned TSA's TimeStampToken
   // verifies over the expected digest (fail-closed on any refusal).
   if (v.timestamp_proof !== undefined) return { id: v.id, valid: verifyTimestampProof(v.timestamp_proof, v.expected_digest, v.pinned_tsa_keys).verified };
+  // EP-AEC-ROLE-v1: valid iff verifyAuthorizationChain ALLOWs, with the built-in
+  // ep-receipt using role-scoped pins (keys_by_type) and a permissive stub for
+  // each stub_type. Exercises real signatures, role scoping, and signed binding.
+  if (v.aec_chain) {
+    const stub = (ev) => ({ valid: ev?.valid !== false, action_digest: ev?.action_digest });
+    const verifiers = {};
+    for (const t of (v.stub_types || [])) verifiers[t] = stub;
+    return { id: v.id, valid: verifyAuthorizationChain(v.aec_chain, { keysByType: v.keys_by_type, verifiers, requirement: v.requirement }).allow };
+  }
   return { id: v.id, valid: false };
 });
 process.stdout.write(JSON.stringify(out));

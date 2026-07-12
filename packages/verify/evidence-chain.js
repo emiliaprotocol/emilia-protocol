@@ -58,26 +58,47 @@ function normDigest(d) {
 function builtinVerifiers() {
   return {
     // A distinct-human quorum (EP-QUORUM-v1) — the two-person-rule leg.
-    'ep-quorum': (evidence) => {
+    'ep-quorum': (evidence, ctx) => {
+      // Every counted approver key MUST be pinned FOR THE ep-quorum role.
+      // verifyQuorum checks only INTERNAL consistency against the quorum's OWN
+      // declared keys and policy — its own docstring warns callers to source the
+      // policy and every approver_public_key out of band, "never from the
+      // receipt/quorum document." Without pinning, an attacker forges an entire
+      // distinct-human quorum under device keys it generated. Require every member
+      // key to be pinned under keysByType['ep-quorum']; fail closed otherwise.
+      const scoped = ctx?.keysByType?.['ep-quorum'];
+      const members = Array.isArray(evidence?.members) ? evidence.members : null;
+      if (!scoped || !members || members.length === 0) {
+        return { valid: false, action_digest: null, detail: { reason: 'no approver key pinned for the ep-quorum role' } };
+      }
+      for (const m of members) {
+        const k = m?.approver_public_key;
+        if (typeof k !== 'string' || !scoped[k]) {
+          return { valid: false, action_digest: null, detail: { reason: 'a quorum member key is not pinned for the ep-quorum role' } };
+        }
+      }
+      // Keys are pinned humans; verifyQuorum then confirms threshold, distinct
+      // humans, initiator exclusion, ordering/window, and action_binding (every
+      // signoff over THIS action_hash), so the top-level digest is bound on success.
       const r = verifyQuorum(evidence) || {};
-      // verifyQuorum enforces action_binding: every member's device signoff is
-      // over THIS quorum's action_hash, so once valid the top-level action_hash
-      // is cryptographically bound (tampering it fails action_binding). Only
-      // surface the digest on success, so a failed leg cannot assert a binding.
       return { valid: !!r.valid, action_digest: r.valid ? (evidence?.action_hash ?? null) : null, detail: r.checks };
     },
     // A single named-human authorization receipt (EP-RECEIPT-v1).
     'ep-receipt': (evidence, ctx) => {
-      // The signing key MUST be relying-party-pinned. A presenter-named key is
-      // never trusted on its own: a machine (or any) signer could otherwise
-      // relabel its own signed object as EP-RECEIPT-v1, name its own key, and
-      // fill the human-authorization role. Without a pinned key set, or when the
-      // named key is not in it, this leg fails closed. (verifyReceipt then still
-      // checks the signature against the PINNED value, so naming someone else's
-      // pinned key does not help an attacker who cannot sign under it.)
+      // The signing key MUST be pinned FOR THE ep-receipt ROLE. A globally pinned
+      // key is not enough: a relying party that also pins its policy engine's key
+      // (in a flat bag) would otherwise let that machine relabel its own signed
+      // object EP-RECEIPT-v1, name its own — pinned — key, and fill the human role
+      // (cross-role key confusion). Trust anchors are role-scoped: keysByType maps
+      // a component type to the keys the relying party accepts FOR THAT ROLE ONLY.
+      // No key pinned for ep-receipt => fail closed. (verifyReceipt still checks the
+      // signature against the pinned value, so naming a key pinned for another role
+      // does not help an attacker who cannot sign under it — and even a valid
+      // signature under such a key is refused here because it is out of scope.)
       const named = evidence?.operator_public_key;
-      const pinned = ctx?.keys && typeof named === 'string' ? ctx.keys[named] : undefined;
-      if (!pinned) return { valid: false, action_digest: null, detail: { reason: 'operator key is not relying-party-pinned' } };
+      const scoped = ctx?.keysByType?.['ep-receipt'];
+      const pinned = scoped && typeof named === 'string' ? scoped[named] : undefined;
+      if (!pinned) return { valid: false, action_digest: null, detail: { reason: 'operator key is not pinned for the ep-receipt role' } };
       let r = {};
       try { r = verifyReceipt(evidence, pinned) || {}; } catch { r = { valid: false }; }
       // The bound digest MUST come from the SIGNED payload, never an unsigned
@@ -134,8 +155,15 @@ function evalRequirement(expr, satisfied) {
  * (`requirement_source: 'relying_party' | 'presenter'`). Same discipline as
  * pinned quorum policies and pinned federation issuers.
  *
+ * TRUST ANCHORS ARE ROLE-SCOPED. `opts.keysByType` maps a component type to the
+ * keys the relying party accepts FOR THAT ROLE ONLY, e.g.
+ * `{ 'ep-receipt': { [humanSpki]: humanSpki } }`. A key pinned for one role (a
+ * policy engine's key) can never satisfy another (the human-authorization role):
+ * that would be cross-role key confusion. There is deliberately no flat global
+ * key bag for the built-in verifiers.
+ *
  * @param {object} aec  { '@version', action, action_digest?, components:[{type,label?,evidence}], requirement }
- * @param {object} opts { verifiers?: {[type]:fn}, keys?: {[spki]:spki}, requirement?: string }
+ * @param {object} opts { verifiers?: {[type]:fn}, keysByType?: {[type]:{[spki]:spki}}, requirement?: string }
  * @returns {{allow:boolean, action_digest:string|null, components:Array, reasons:string[], requirement_source:string}}
  */
 export function verifyAuthorizationChain(aec, opts = {}) {
@@ -165,7 +193,7 @@ export function verifyAuthorizationChain(aec, opts = {}) {
     const v = verifiers[c.type];
     if (typeof v !== 'function') { row.reason = `no verifier registered for type "${c.type}"`; return row; }
     let res;
-    try { res = v(c.evidence, { keys: opts.keys, action: aec.action }) || {}; }
+    try { res = v(c.evidence, { keysByType: opts.keysByType, action: aec.action }) || {}; }
     catch (e) { row.reason = `verifier threw: ${e.message}`; return row; }
     row.valid = !!res.valid;
     row.bound = normDigest(res.action_digest) === chainDigest;

@@ -59,7 +59,8 @@ def _policy_verifier(ev, ctx):
 
 
 VERIFIERS = {"policy_decision": _policy_verifier}
-KEYS = {HUMAN_PUB: HUMAN_PUB}          # only the human key is pinned for ep-receipt
+# Role-scoped pins: the human key is pinned ONLY for the ep-receipt role.
+KEYS_BY_TYPE = {"ep-receipt": {HUMAN_PUB: HUMAN_PUB}}
 BAR = "policy_decision AND ep-receipt"
 
 
@@ -67,7 +68,7 @@ def test_positive_policy_in_own_role():
     r = verify_authorization_chain(
         {"@version": AEC, "action": ACTION, "requirement": "policy_decision",
          "components": [{"type": "policy_decision", "evidence": POLICY_DOC}]},
-        verifiers=VERIFIERS, keys=KEYS)
+        verifiers=VERIFIERS, keys_by_type=KEYS_BY_TYPE)
     assert r["allow"] is True
     assert r["components"][0]["valid"] and r["components"][0]["bound"]
 
@@ -76,7 +77,7 @@ def test_negative_label_collision():
     r = verify_authorization_chain(
         {"@version": AEC, "action": ACTION, "requirement": "policy_decision",
          "components": [{"type": "policy_decision", "label": "ep-receipt", "evidence": POLICY_DOC}]},
-        verifiers=VERIFIERS, keys=KEYS, requirement=BAR)
+        verifiers=VERIFIERS, keys_by_type=KEYS_BY_TYPE, requirement=BAR)
     assert r["components"][0]["valid"] and r["components"][0]["bound"]
     assert r["allow"] is False
 
@@ -89,7 +90,7 @@ def test_negative_version_relabel_unpinned_key():
     r = verify_authorization_chain(
         {"@version": AEC, "action": ACTION, "requirement": "ep-receipt",
          "components": [{"type": "ep-receipt", "evidence": smuggled}]},
-        verifiers=VERIFIERS, keys=KEYS)
+        verifiers=VERIFIERS, keys_by_type=KEYS_BY_TYPE)
     assert r["components"][0]["valid"] is False
     assert r["allow"] is False
 
@@ -105,8 +106,47 @@ def test_negative_unsigned_binding():
     r = verify_authorization_chain(
         {"@version": AEC, "action": ACTION, "requirement": "ep-receipt",
          "components": [{"type": "ep-receipt", "evidence": spoofed}]},
-        verifiers=VERIFIERS, keys=KEYS)
+        verifiers=VERIFIERS, keys_by_type=KEYS_BY_TYPE)
     assert r["components"][0]["bound"] is False
+    assert r["allow"] is False
+
+
+def test_negative_cross_role_key_confusion():
+    # The machine's policy key IS pinned, but only for the policy_decision role.
+    # Relabeled EP-RECEIPT-v1 with a payload binding this action, it must not fill
+    # the human role: role-scoped pins refuse a key trusted for another role.
+    smuggled = dict(POLICY_DOC)
+    smuggled["@version"] = "EP-RECEIPT-v1"
+    smuggled["operator_public_key"] = MACHINE_PUB
+    keys = {"ep-receipt": {HUMAN_PUB: HUMAN_PUB}, "policy_decision": {MACHINE_PUB: MACHINE_PUB}}
+    r = verify_authorization_chain(
+        {"@version": AEC, "action": ACTION, "requirement": "ep-receipt",
+         "components": [{"type": "ep-receipt", "evidence": smuggled}]},
+        verifiers=VERIFIERS, keys_by_type=keys)
+    assert r["components"][0]["valid"] is False
+    assert r["allow"] is False
+
+
+def test_negative_forged_quorum_unpinned_keys():
+    # verify_quorum checks only internal consistency against the quorum's OWN
+    # declared keys, so an attacker forges an entire distinct-human quorum under
+    # keys it generated. The ep-quorum leg must refuse it: no member key is pinned
+    # under keysByType['ep-quorum'].
+    _a, a_pub = _keypair()
+    _b, b_pub = _keypair()
+    forged = {
+        "@type": "ep.quorum", "action_hash": DIGEST,
+        "policy": {"mode": "threshold", "required": 2, "distinct_humans": True, "window_sec": 172800,
+                   "approvers": [{"role": "a", "approver": "ep:approver:attacker-a"},
+                                 {"role": "b", "approver": "ep:approver:attacker-b"}]},
+        "members": [{"role": "a", "approver_public_key": a_pub, "signoff": {}},
+                    {"role": "b", "approver_public_key": b_pub, "signoff": {}}],
+    }
+    r = verify_authorization_chain(
+        {"@version": AEC, "action": ACTION, "requirement": "ep-quorum",
+         "components": [{"type": "ep-quorum", "evidence": forged}]},
+        keys_by_type={"ep-quorum": {HUMAN_PUB: HUMAN_PUB}})
+    assert r["components"][0]["valid"] is False
     assert r["allow"] is False
 
 
@@ -120,7 +160,7 @@ def test_control_pinned_human_receipt():
         {"@version": AEC, "action": ACTION, "requirement": "policy_decision",
          "components": [{"type": "policy_decision", "evidence": POLICY_DOC},
                         {"type": "ep-receipt", "evidence": receipt}]},
-        verifiers=VERIFIERS, keys=KEYS, requirement=BAR)
+        verifiers=VERIFIERS, keys_by_type=KEYS_BY_TYPE, requirement=BAR)
     assert r["allow"] is True
 
 

@@ -64,10 +64,25 @@ func builtinAECVerifiers() map[string]ComponentVerifier {
 	return map[string]ComponentVerifier{
 		"ep-quorum": func(ev any, ctx map[string]any) ComponentResult {
 			m, _ := ev.(map[string]any)
+			// Every counted approver key MUST be pinned for the ep-quorum role.
+			// VerifyQuorum checks only INTERNAL consistency against the quorum's OWN
+			// declared keys and policy; without pinning an attacker forges an entire
+			// distinct-human quorum under device keys it generated. Require every
+			// member key pinned under keysByType["ep-quorum"]; fail closed otherwise.
+			byType, _ := ctx["keysByType"].(map[string]map[string]string)
+			scoped := byType["ep-quorum"]
+			membersRaw, _ := m["members"].([]any)
+			if scoped == nil || len(membersRaw) == 0 {
+				return ComponentResult{Valid: false, ActionDigest: ""}
+			}
+			for _, mr := range membersRaw {
+				mm, _ := mr.(map[string]any)
+				k, _ := mm["approver_public_key"].(string)
+				if k == "" || scoped[k] == "" {
+					return ComponentResult{Valid: false, ActionDigest: ""}
+				}
+			}
 			r := VerifyQuorum(m, "")
-			// VerifyQuorum enforces action_binding: every signoff is over THIS
-			// action_hash, so once valid the top-level digest is cryptographically
-			// bound. Surface it only on success, so a failed leg asserts no binding.
 			if !r.Valid {
 				return ComponentResult{Valid: false, ActionDigest: ""}
 			}
@@ -76,13 +91,16 @@ func builtinAECVerifiers() map[string]ComponentVerifier {
 		},
 		"ep-receipt": func(ev any, ctx map[string]any) ComponentResult {
 			m, _ := ev.(map[string]any)
-			// The signing key MUST be relying-party-pinned. A key named inside the
-			// evidence is never trusted on its own: a machine could otherwise relabel
-			// its own signed object EP-RECEIPT-v1, name its own key, and fill the
-			// human-authorization role. No pinned key => fail closed.
+			// The signing key MUST be pinned FOR THE ep-receipt ROLE. A globally
+			// pinned key is not enough: a relying party that also pins its policy
+			// engine's key would otherwise let that machine relabel its own signed
+			// object EP-RECEIPT-v1, name its own (pinned) key, and fill the human
+			// role (cross-role key confusion). Trust anchors are role-scoped:
+			// keysByType maps a component type to the keys accepted FOR THAT ROLE
+			// ONLY. No key pinned for ep-receipt => fail closed.
 			named, _ := m["operator_public_key"].(string)
-			keys, _ := ctx["keys"].(map[string]string)
-			pinned, ok := keys[named]
+			byType, _ := ctx["keysByType"].(map[string]map[string]string)
+			pinned, ok := byType["ep-receipt"][named]
 			if named == "" || !ok || pinned == "" {
 				return ComponentResult{Valid: false, ActionDigest: ""}
 			}
@@ -193,10 +211,12 @@ func aecEvalRequirement(expr string, satisfied map[string]bool) bool {
 // claim of what the bundle satisfies, never the relying party's bar. Pass an
 // optional relying-party requirement as the trailing argument to pin it; it
 // takes precedence and RequirementSource records which was used.
-// keys is the relying party's pinned key set for built-in verifiers that require
-// pinning (ep-receipt): a map from a signer's SPKI (base64url) to the trusted SPKI
-// the relying party accepts. Pass nil when only custom/stub verifiers are used.
-func VerifyAuthorizationChain(aec map[string]any, verifiers map[string]ComponentVerifier, keys map[string]string, relyingPartyRequirement ...string) AECResult {
+// keysByType is the relying party's ROLE-SCOPED pinned key set for built-in
+// verifiers that require pinning (ep-receipt): keysByType["ep-receipt"] maps a
+// signer's SPKI (base64url) to the trusted SPKI the relying party accepts FOR THAT
+// ROLE. A key pinned for one role cannot satisfy another (no cross-role key
+// confusion). Pass nil when only custom/stub verifiers are used.
+func VerifyAuthorizationChain(aec map[string]any, verifiers map[string]ComponentVerifier, keysByType map[string]map[string]string, relyingPartyRequirement ...string) AECResult {
 	pinned := ""
 	if len(relyingPartyRequirement) > 0 {
 		pinned = strings.TrimSpace(relyingPartyRequirement[0])
@@ -260,7 +280,7 @@ func VerifyAuthorizationChain(aec map[string]any, verifiers map[string]Component
 			res.Components = append(res.Components, row)
 			continue
 		}
-		cr := v(c["evidence"], map[string]any{"action": action, "keys": keys})
+		cr := v(c["evidence"], map[string]any{"action": action, "keysByType": keysByType})
 		row.Valid = cr.Valid
 		row.Bound = aecNormDigest(cr.ActionDigest) == chainDigest
 		if !row.Valid {

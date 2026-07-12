@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-12T04:12:24.325Z",
+  "evidence_snapshot_at": "2026-07-12T05:30:21.598Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "1ca29cbbb916c3aa953ab248e1231f50e30cfae7079d826f9fd50b3b42c8beb5",
+    "input_digest_sha256": "e02a333e0b545d1b61210c9aadbffef9e9fce7386e3605aafe327f6c1ec7a690",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,12 +17,12 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "133920ee1dbd92ee0af9bfea4a47d2a06cea889b9b406f57ea661a1265069326",
+        "sha256": "60a6492f528626cb9c8e6630fbd9c0c688d6ed8d82352f00056e4c12844e59c4",
         "bytes": 364
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "47e45cfff5c84f073b4bb34a6358ebd905d5009f208792ab196d306987eb7e3e",
+        "sha256": "26030b7114b7517394789be4f287f43e0f949f2641274b516be805a931cefd96",
         "bytes": 5282
       },
       {
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "31ffa53c4b9086e497a5a9e4a3e22f361399952d37c64d166a9220d250ec68ae",
-        "bytes": 49507
+        "sha256": "1ce603c63a3acfbc3b52b6154a892c82d3c6f3779be2ae76c882ac9a00ca7ebb",
+        "bytes": 54373
       },
       {
         "path": "security/security-case.json",
-        "sha256": "5a362d30fe52cff30365bdd900805ffac76ed1db50339f7681439a1918c45e1b",
-        "bytes": 83483
+        "sha256": "0960f2529f1cc20ced2d40841b2d7fb326149e4569a2d379b3b68d044a5a2a89",
+        "bytes": 90751
       }
     ],
     "freshness_command": "npm run check:llm-context"
@@ -113,7 +113,7 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 5425,
+      "total": 5427,
       "files": 268,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
@@ -123,7 +123,7 @@
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "4f5d75f121ae9836e9f0eb280b074c53d4427166e73d30e8a95795bd22ea4abc",
+      "manifest_sha256": "b3d4494ab74559c4f65259fff55a4129009e78e1929c0e7a1cfd781651240f61",
       "vector_bundle_sha256": "b884c727a51da1a7d12e234a119020430526fadd73e0f86eff1ded3e063e72f5"
     },
     "formal": {
@@ -136,9 +136,9 @@
     "red_team_cases": 85,
     "security_case": {
       "status": "passed",
-      "claims": 14,
-      "evidence_files": 64,
-      "evidence_bundle_sha256": "001433d830c4166e5e7735d67f965497cd8413a3998f4c42fd11a544f3d4d829"
+      "claims": 15,
+      "evidence_files": 68,
+      "evidence_bundle_sha256": "12b0c2bc6b9687314c08a1f74fa13ae62d5955df7ce4b8f3b87e6e218717a0db"
     }
   },
   "external_implementation": {
@@ -1155,6 +1155,89 @@
         "signature acceptance does not establish issuer judgment quality or physical truth",
         "this version does not authenticate or prove completeness of the host's non-revocation view",
         "no Python or Go implementation, wet-lab deployment, or external scientific validation is claimed"
+      ]
+    },
+    {
+      "claim_id": "aec-role-substitution-refused",
+      "statement": "In the EP-AEC composition verifier, an attacker cannot satisfy a human-authorization requirement without a relying-party-pinned human: a presenter label cannot impersonate a registered verifier type (type provenance); BOTH built-in human-authorization legs are role-scoped — the ep-receipt signing key must be pinned under keysByType['ep-receipt'] and every ep-quorum approver key must be pinned under keysByType['ep-quorum'], so a forged quorum built entirely from attacker-generated device keys fails closed; and the ep-receipt leg binds the exact action from the SIGNED receipt payload — verified identically in JavaScript, Python, and Go.",
+      "acceptance_roots": [
+        "single human-authorization keys pinned per role via keysByType['ep-receipt']",
+        "quorum approver keys pinned per role via keysByType['ep-quorum']",
+        "the exact canonical action digest carried in the signed receipt payload"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/evidence-chain.js",
+          "symbol": "verifyAuthorizationChain",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/aec-role.v1.json"
+        },
+        "python": {
+          "status": "covered",
+          "evidence": "conformance/vectors/aec-role.v1.json"
+        },
+        "go": {
+          "status": "covered",
+          "evidence": "conformance/vectors/aec-role.v1.json"
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "accept_pinned_human_receipt",
+          "polarity": "positive"
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "accept_policy_plus_human",
+          "polarity": "positive"
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_cross_role_key",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_unpinned_key",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_unsigned_binding",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_label_collision",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/aec-role.v1.json",
+          "case_id": "reject_forged_quorum_unpinned_keys",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The AEC composition and role-scoping logic is outside the Tamarin/TLA+ models; it is covered by cross-language conformance vectors (aec-role.v1.json) and per-port unit tests."
+        }
+      ],
+      "assumptions": [
+        "the relying party pins single-human keys under keysByType['ep-receipt'] and quorum approver keys under keysByType['ep-quorum'], and pins no attacker-controlled key",
+        "verifyReceipt's Ed25519-over-JCS signature check and verifyQuorum's per-member device-assertion checks are sound"
+      ],
+      "exclusions": [
+        "a key the relying party itself pins for a role is trusted for that role by definition; misconfiguration of role scoping is out of scope",
+        "this claim covers the AEC composition verifier, not the standalone reliance kernel",
+        "quorum POLICY pinning (roster/threshold) is the relying party's responsibility; this claim anchors the approver KEYS, so a forged roster under unpinned keys is already refused"
       ]
     }
   ],

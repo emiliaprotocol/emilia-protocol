@@ -521,6 +521,77 @@
         "no Python or Go implementation, wet-lab deployment, or external scientific validation is claimed"
       ],
       "release_artifacts": ["security-evidence"]
+    },
+    {
+      "claim_id": "aec-role-substitution-refused",
+      "statement": "In the EP-AEC composition verifier, an attacker cannot satisfy a human-authorization requirement without a relying-party-pinned human: a presenter label cannot impersonate a registered verifier type (type provenance); BOTH built-in human-authorization legs are role-scoped — the ep-receipt signing key must be pinned under keysByType['ep-receipt'] and every ep-quorum approver key must be pinned under keysByType['ep-quorum'], so a forged quorum built entirely from attacker-generated device keys fails closed; and the ep-receipt leg binds the exact action from the SIGNED receipt payload — verified identically in JavaScript, Python, and Go.",
+      "acceptance_roots": [
+        "single human-authorization keys pinned per role via keysByType['ep-receipt']",
+        "quorum approver keys pinned per role via keysByType['ep-quorum']",
+        "the exact canonical action digest carried in the signed receipt payload"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/evidence-chain.js",
+          "symbol": "verifyAuthorizationChain",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/evidence-chain.js",
+          "export": "verifyAuthorizationChain"
+        },
+        {
+          "language": "python",
+          "file": "packages/python-verify/emilia_verify/__init__.py",
+          "symbol": "verify_authorization_chain"
+        },
+        {
+          "language": "go",
+          "file": "packages/go-verify/evidence_chain.go",
+          "symbol": "VerifyAuthorizationChain"
+        }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "conformance/vectors/aec-role.v1.json" },
+        "python": { "status": "covered", "evidence": "conformance/vectors/aec-role.v1.json" },
+        "go": { "status": "covered", "evidence": "conformance/vectors/aec-role.v1.json" }
+      },
+      "vectors": [
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "accept_pinned_human_receipt", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "accept_policy_plus_human", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_cross_role_key", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_unpinned_key", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_unsigned_binding", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_label_collision", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/aec-role.v1.json", "case_id": "reject_forged_quorum_unpinned_keys", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } }
+      ],
+      "tests": [
+        {
+          "file": "tests/role-non-substitution.test.js",
+          "title": "NEGATIVE (cross-role key confusion): a machine key pinned for ANOTHER role cannot fill ep-receipt",
+          "runner": "vitest"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The AEC composition and role-scoping logic is outside the Tamarin/TLA+ models; it is covered by cross-language conformance vectors (aec-role.v1.json) and per-port unit tests."
+        }
+      ],
+      "assumptions": [
+        "the relying party pins single-human keys under keysByType['ep-receipt'] and quorum approver keys under keysByType['ep-quorum'], and pins no attacker-controlled key",
+        "verifyReceipt's Ed25519-over-JCS signature check and verifyQuorum's per-member device-assertion checks are sound"
+      ],
+      "exclusions": [
+        "a key the relying party itself pins for a role is trusted for that role by definition; misconfiguration of role scoping is out of scope",
+        "this claim covers the AEC composition verifier, not the standalone reliance kernel",
+        "quorum POLICY pinning (roster/threshold) is the relying party's responsibility; this claim anchors the approver KEYS, so a forged roster under unpinned keys is already refused"
+      ],
+      "release_artifacts": ["security-evidence"]
     }
   ]
 }

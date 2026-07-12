@@ -9,7 +9,7 @@ from emilia_verify import (verify_receipt, verify_webauthn_signoff, verify_quoru
                             canonicalize, is_canonicalizable,
                             evaluate_currency, validate_initiator_attestation,
                             verify_consumption_proof, require_witness_quorum,
-                            verify_timestamp_proof)
+                            verify_timestamp_proof, verify_authorization_chain)
 # EP-CANONICALIZATION-v1 differential branch. Same gate as the JS runner
 # (conformance/runners/strict-json.mjs) and the Go runner: standard parse, then
 # duplicate member names / unpaired surrogates / depth > 64 reject, then the EP
@@ -92,6 +92,16 @@ def _run(v):
     # verifies over the expected digest (fail-closed on any refusal).
     if "timestamp_proof" in v:
         return verify_timestamp_proof(v["timestamp_proof"], v.get("expected_digest"), v.get("pinned_tsa_keys"))["verified"]
+    # EP-AEC-ROLE-v1: valid iff verify_authorization_chain ALLOWs, with the built-in
+    # ep-receipt using role-scoped pins (keys_by_type) and a permissive stub for each
+    # stub_type. Exercises real signatures, role scoping, and signed action binding.
+    if "aec_chain" in v:
+        def _stub(ev, ctx):
+            return {"valid": (ev or {}).get("valid") is not False, "action_digest": (ev or {}).get("action_digest")}
+        verifiers = {t: _stub for t in (v.get("stub_types") or [])}
+        return verify_authorization_chain(v["aec_chain"], verifiers=verifiers,
+                                          keys_by_type=v.get("keys_by_type"),
+                                          requirement=v.get("requirement"))["allow"]
     return False
 
 def run(v):

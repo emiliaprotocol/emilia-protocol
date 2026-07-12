@@ -82,6 +82,12 @@ type vec struct {
 	TimestampProof json.RawMessage `json:"timestamp_proof"`
 	ExpectedDigest string          `json:"expected_digest"`
 	PinnedTSAKeys  json.RawMessage `json:"pinned_tsa_keys"`
+	// EP-AEC-ROLE-v1: a chain run through the built-in ep-receipt with role-scoped
+	// pins (keys_by_type maps type -> {spki: spki}) and a permissive stub per type.
+	AECChain    map[string]any               `json:"aec_chain"`
+	KeysByType  map[string]map[string]string `json:"keys_by_type"`
+	StubTypes   []string                     `json:"stub_types"`
+	Requirement string                       `json:"requirement"`
 }
 
 // pinnedTSAKeysFromRaw normalizes the polymorphic `pinned_tsa_keys` vector field
@@ -443,6 +449,24 @@ func main() {
 			_ = json.Unmarshal(v.TimestampProof, &token)
 			keys := pinnedTSAKeysFromRaw(v.PinnedTSAKeys)
 			valid = emiliaverify.VerifyTimestampProof(token, v.ExpectedDigest, keys).Verified
+		case v.AECChain != nil:
+			// EP-AEC-ROLE-v1: valid iff VerifyAuthorizationChain ALLOWs, with the
+			// built-in ep-receipt using role-scoped pins (keys_by_type) and a
+			// permissive stub per stub_type. Real signatures, role scoping, binding.
+			stub := func(ev any, ctx map[string]any) emiliaverify.ComponentResult {
+				m, _ := ev.(map[string]any)
+				ok := true
+				if b, has := m["valid"].(bool); has {
+					ok = b
+				}
+				ad, _ := m["action_digest"].(string)
+				return emiliaverify.ComponentResult{Valid: ok, ActionDigest: ad}
+			}
+			verifiers := map[string]emiliaverify.ComponentVerifier{}
+			for _, t := range v.StubTypes {
+				verifiers[t] = stub
+			}
+			valid = emiliaverify.VerifyAuthorizationChain(v.AECChain, verifiers, v.KeysByType, v.Requirement).Allow
 		}
 		out = append(out, map[string]any{"id": v.ID, "valid": valid})
 	}

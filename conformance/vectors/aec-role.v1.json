@@ -1,0 +1,333 @@
+{
+ "suite": "EP-AEC-ROLE-v1",
+ "vectors_version": "1.0.0",
+ "description": "EP-AEC role-substitution suite with REAL Ed25519 signatures and role-scoped pins, run cross-language through the built-in ep-receipt verifier. Each vector: build the stub verifiers named in stub_types (permissive: valid iff evidence.valid !== false, digest = evidence.action_digest), run verifyAuthorizationChain(aec_chain, { keysByType: keys_by_type, verifiers, requirement }), and compare allow to expect.valid.",
+ "algorithm": "Ed25519 over RFC 8785 (JCS) canonical payload bytes; role-scoped trust anchors",
+ "count": 7,
+ "vectors": [
+  {
+   "id": "accept_pinned_human_receipt",
+   "description": "A genuine EP-RECEIPT-v1 signed by the human key pinned FOR the ep-receipt role, binding this action in its signed payload, verifies.",
+   "expect": {
+    "valid": true
+   },
+   "stub_types": [],
+   "keys_by_type": {
+    "ep-receipt": {
+     "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+    }
+   },
+   "aec_chain": {
+    "@version": "EP-AEC-v1",
+    "action": {
+     "action_type": "wire.release",
+     "target": "treasury.example/wire/8841",
+     "amount": "25000.00",
+     "currency": "USD"
+    },
+    "requirement": "ep-receipt",
+    "components": [
+     {
+      "type": "ep-receipt",
+      "evidence": {
+       "@version": "EP-RECEIPT-v1",
+       "payload": {
+        "receipt_id": "tr_role",
+        "issuer": "ep:approver:cfo",
+        "subject": "wire-8841",
+        "action_digest": "sha256:7089173267e6045a811606c243eba79c225180e9642fc717ad8538f961190d32",
+        "created_at": "2026-07-11T12:00:02Z"
+       },
+       "signature": {
+        "algorithm": "Ed25519",
+        "value": "I_5S2cG-wGQEDKnptS-lBqHsVjOo8Pw_aMAbfFzZ18ml_sCXZiMROVOJ7tA4F_itd5N_RFDwjBpXHtSXHfcPBg"
+       },
+       "operator_public_key": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "reject_unpinned_key",
+   "description": "A validly signed receipt whose operator key is pinned for NO role is refused (fail closed without a role-scoped anchor).",
+   "expect": {
+    "valid": false
+   },
+   "stub_types": [],
+   "keys_by_type": {
+    "ep-receipt": {
+     "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+    }
+   },
+   "aec_chain": {
+    "@version": "EP-AEC-v1",
+    "action": {
+     "action_type": "wire.release",
+     "target": "treasury.example/wire/8841",
+     "amount": "25000.00",
+     "currency": "USD"
+    },
+    "requirement": "ep-receipt",
+    "components": [
+     {
+      "type": "ep-receipt",
+      "evidence": {
+       "@version": "EP-RECEIPT-v1",
+       "payload": {
+        "receipt_id": "tr_role",
+        "issuer": "ep:approver:cfo",
+        "subject": "wire-8841",
+        "action_digest": "sha256:7089173267e6045a811606c243eba79c225180e9642fc717ad8538f961190d32",
+        "created_at": "2026-07-11T12:00:02Z"
+       },
+       "signature": {
+        "algorithm": "Ed25519",
+        "value": "mBmjbYQCrF7AWWBNCv_X0HJJ5ytaX8QRIULiDwsJ_RYV5-8VlH0ri_R-Byi6dJqY3DE0zrO8U3DPAmZvuEi1AA"
+       },
+       "operator_public_key": "MCowBQYDK2VwAyEAoJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "reject_cross_role_key",
+   "description": "CROSS-ROLE KEY CONFUSION: the machine key is pinned, but only for the policy_decision role. Its own signed object, relabeled EP-RECEIPT-v1 and binding this action, must not fill the human role.",
+   "expect": {
+    "valid": false
+   },
+   "stub_types": [],
+   "keys_by_type": {
+    "ep-receipt": {
+     "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+    },
+    "policy_decision": {
+     "MCowBQYDK2VwAyEAoJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA": "MCowBQYDK2VwAyEAoJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA"
+    }
+   },
+   "aec_chain": {
+    "@version": "EP-AEC-v1",
+    "action": {
+     "action_type": "wire.release",
+     "target": "treasury.example/wire/8841",
+     "amount": "25000.00",
+     "currency": "USD"
+    },
+    "requirement": "ep-receipt",
+    "components": [
+     {
+      "type": "ep-receipt",
+      "evidence": {
+       "@version": "EP-RECEIPT-v1",
+       "payload": {
+        "receipt_id": "tr_role",
+        "issuer": "ep:approver:cfo",
+        "subject": "wire-8841",
+        "action_digest": "sha256:7089173267e6045a811606c243eba79c225180e9642fc717ad8538f961190d32",
+        "created_at": "2026-07-11T12:00:02Z"
+       },
+       "signature": {
+        "algorithm": "Ed25519",
+        "value": "mBmjbYQCrF7AWWBNCv_X0HJJ5ytaX8QRIULiDwsJ_RYV5-8VlH0ri_R-Byi6dJqY3DE0zrO8U3DPAmZvuEi1AA"
+       },
+       "operator_public_key": "MCowBQYDK2VwAyEAoJql9HpnWYAv-VX43C0qFKXJnSO-l_hkEn_5ODRVpPA"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "reject_unsigned_binding",
+   "description": "A receipt validly signed over a DIFFERENT action, with only the unsigned top-level action_hash spoofed to this action, does not bind this action.",
+   "expect": {
+    "valid": false
+   },
+   "stub_types": [],
+   "keys_by_type": {
+    "ep-receipt": {
+     "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+    }
+   },
+   "aec_chain": {
+    "@version": "EP-AEC-v1",
+    "action": {
+     "action_type": "wire.release",
+     "target": "treasury.example/wire/8841",
+     "amount": "25000.00",
+     "currency": "USD"
+    },
+    "requirement": "ep-receipt",
+    "components": [
+     {
+      "type": "ep-receipt",
+      "evidence": {
+       "@version": "EP-RECEIPT-v1",
+       "payload": {
+        "receipt_id": "tr_role",
+        "issuer": "ep:approver:cfo",
+        "subject": "wire-8841",
+        "action_digest": "sha256:9d0d348c4e4dfe8ff01061c197b3471b26aa734f39bab3ca9883bcf889086457",
+        "created_at": "2026-07-11T12:00:02Z"
+       },
+       "signature": {
+        "algorithm": "Ed25519",
+        "value": "HcvFHGhb035w_AAPYI-BYSMs1yK72Gt-31jSMmrn7sFvh2L3u7Q6TCcNpmJznfX9rT9d1QsEdMKqpOYFvH4JAw"
+       },
+       "operator_public_key": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc",
+       "action_hash": "sha256:7089173267e6045a811606c243eba79c225180e9642fc717ad8538f961190d32"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "reject_label_collision",
+   "description": "A policy_decision leg (a permissive stub) LABELED \"ep-receipt\" must not satisfy the registered ep-receipt requirement token.",
+   "expect": {
+    "valid": false
+   },
+   "stub_types": [
+    "policy_decision"
+   ],
+   "keys_by_type": {
+    "ep-receipt": {
+     "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+    }
+   },
+   "aec_chain": {
+    "@version": "EP-AEC-v1",
+    "action": {
+     "action_type": "wire.release",
+     "target": "treasury.example/wire/8841",
+     "amount": "25000.00",
+     "currency": "USD"
+    },
+    "requirement": "policy_decision AND ep-receipt",
+    "components": [
+     {
+      "type": "policy_decision",
+      "label": "ep-receipt",
+      "evidence": {
+       "valid": true,
+       "action_digest": "sha256:7089173267e6045a811606c243eba79c225180e9642fc717ad8538f961190d32"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "accept_policy_plus_human",
+   "description": "CONTROL: a policy leg plus a genuine human receipt (pinned for ep-receipt) satisfies \"policy_decision AND ep-receipt\".",
+   "expect": {
+    "valid": true
+   },
+   "stub_types": [
+    "policy_decision"
+   ],
+   "keys_by_type": {
+    "ep-receipt": {
+     "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+    }
+   },
+   "aec_chain": {
+    "@version": "EP-AEC-v1",
+    "action": {
+     "action_type": "wire.release",
+     "target": "treasury.example/wire/8841",
+     "amount": "25000.00",
+     "currency": "USD"
+    },
+    "requirement": "policy_decision AND ep-receipt",
+    "components": [
+     {
+      "type": "policy_decision",
+      "evidence": {
+       "valid": true,
+       "action_digest": "sha256:7089173267e6045a811606c243eba79c225180e9642fc717ad8538f961190d32"
+      }
+     },
+     {
+      "type": "ep-receipt",
+      "evidence": {
+       "@version": "EP-RECEIPT-v1",
+       "payload": {
+        "receipt_id": "tr_role",
+        "issuer": "ep:approver:cfo",
+        "subject": "wire-8841",
+        "action_digest": "sha256:7089173267e6045a811606c243eba79c225180e9642fc717ad8538f961190d32",
+        "created_at": "2026-07-11T12:00:02Z"
+       },
+       "signature": {
+        "algorithm": "Ed25519",
+        "value": "I_5S2cG-wGQEDKnptS-lBqHsVjOo8Pw_aMAbfFzZ18ml_sCXZiMROVOJ7tA4F_itd5N_RFDwjBpXHtSXHfcPBg"
+       },
+       "operator_public_key": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "reject_forged_quorum_unpinned_keys",
+   "description": "FORGED QUORUM: an attacker builds an entire distinct-human quorum under device keys it generated. No member key is pinned under keysByType[\"ep-quorum\"], so the ep-quorum leg fails closed BEFORE any signature check — verifyQuorum only checks internal consistency against the quorum's own declared keys and must never be trusted without pinned approvers.",
+   "expect": {
+    "valid": false
+   },
+   "stub_types": [],
+   "keys_by_type": {
+    "ep-quorum": {
+     "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc": "MCowBQYDK2VwAyEA0EqyMnQrtKs6E2i9RhXk5tAiSrcaAWuvhSCjMsl3hzc"
+    }
+   },
+   "aec_chain": {
+    "@version": "EP-AEC-v1",
+    "action": {
+     "action_type": "wire.release",
+     "target": "treasury.example/wire/8841",
+     "amount": "25000.00",
+     "currency": "USD"
+    },
+    "requirement": "ep-quorum",
+    "components": [
+     {
+      "type": "ep-quorum",
+      "label": "two-person-rule",
+      "evidence": {
+       "@type": "ep.quorum",
+       "action_hash": "sha256:7089173267e6045a811606c243eba79c225180e9642fc717ad8538f961190d32",
+       "policy": {
+        "mode": "threshold",
+        "required": 2,
+        "distinct_humans": true,
+        "window_sec": 172800,
+        "approvers": [
+         {
+          "role": "a",
+          "approver": "ep:approver:attacker-a"
+         },
+         {
+          "role": "b",
+          "approver": "ep:approver:attacker-b"
+         }
+        ]
+       },
+       "members": [
+        {
+         "role": "a",
+         "approver_public_key": "MCowBQYDK2VwAyEAF8t5-ytBIPKx7GXkGY1uCLKOgT_rAeSkAIObheGAgM4",
+         "signoff": {}
+        },
+        {
+         "role": "b",
+         "approver_public_key": "MCowBQYDK2VwAyEA11l5O7wTooGagnx2rbb7qKSa7gB_SfLQmS2ZuCWtLEg",
+         "signoff": {}
+        }
+       ]
+      }
+     }
+    ]
+   }
+  }
+ ]
+}
