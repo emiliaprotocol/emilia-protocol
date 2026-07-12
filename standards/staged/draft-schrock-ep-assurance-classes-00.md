@@ -104,13 +104,17 @@ Table of Contents
 3.  The Assurance Classes
 
    Four assurance classes are defined, in increasing order of assurance.
-   Each maps to a concrete assurance value carried in a receipt's
-   assurance field.  The identifiers are mnemonic (S for software, H for
-   authenticated human, V for device-verified human, Q for quorum) and
-   are deliberately disjoint from the key-custody classes (Class A,
-   Class B, Class C) of [I-D.schrock-ep-authorization-receipts], which
-   classify who holds the approver's signing key, not how strong the
-   authorization ceremony behind a receipt was.
+   Three of the four map to a concrete assurance value string carried in
+   a receipt; the member that carries the value is defined by the
+   receipt profile in use, not by this document, which defines only the
+   class identifiers, their order, and the value set.  Class H is
+   RESERVED and has no value assigned.  The identifiers are mnemonic (S
+   for software, H for authenticated human, V for device-verified human,
+   Q for quorum) and are deliberately disjoint from the key-custody
+   classes (Class A, Class B, Class C) of
+   [I-D.schrock-ep-authorization-receipts], which classify who holds the
+   approver's signing key, not how strong the authorization ceremony
+   behind a receipt was.
 
    Class S — software / automation signer (receipt assurance value:
    "software")  The authorization is asserted by a software component or
@@ -139,7 +143,6 @@ Table of Contents
 
    Class Q — quorum of distinct humans (receipt assurance value:
    "quorum")  Two or more distinct humans, each meeting at least Class
-
       V, authorized the same action under an m-of-n rule with distinct-
       human enforcement.  Class Q is the highest class and the
       appropriate floor for critical, separation-of-duties actions.

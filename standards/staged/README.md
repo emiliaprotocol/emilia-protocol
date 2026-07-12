@@ -6,8 +6,11 @@ decision — several overlap or are superseded by filed work:
 - `draft-schrock-ep-authority-registry-00` — the registry concept; **largely
   superseded** by `draft-schrock-ep-authority-introduction-00` (filed). Salvage
   parts, don't file as-is.
-- `draft-schrock-ep-assurance-classes-00` — HELD; owns the Class A/B/C rename
-  that resolves the key-custody-vs-assurance collision noted in receipts-05.
+- `draft-schrock-ep-assurance-classes-00` — staged for the July 18 window;
+  defines the assurance taxonomy Class S < Class H < Class V < Class Q,
+  renamed from C/B/A/Q on 2026-07-12 so the identifiers stay disjoint from
+  the key-custody Classes A/B/C, honoring the receipts-06 Section 5.1
+  collision-avoidance promise.
 - `draft-schrock-ep-agent-trust-stack-00` — overlaps the architecture draft.
 - `draft-schrock-ep-human-oversight-profile-00`, `draft-schrock-ep-pqc-00` —
   fast-follow candidates, unscheduled.

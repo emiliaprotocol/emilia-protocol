@@ -57,7 +57,7 @@ substrate. 131 adds the scope/limit/delegation/policy columns:
 |---|---|
 | `subject_type`, `subject_ref`, `organization_id` | who the grant is for, in which org |
 | `role` | the role the grant confers |
-| `assurance_class` | highest assurance the subject may act at (`A`/`B`/`C`) |
+| `assurance_class` | highest assurance the subject may act at. Stored values are the legacy letters `A`/`B`/`C` (ordered `C` < `B` < `A`), predating the Class S/H/V/Q taxonomy of draft-schrock-ep-assurance-classes: stored `A` = Class V, `B` = Class H, `C` = Class S. These are stored registry values, not the key-custody classes of receipts-06 Section 5.1; migration to the new letters is planned (docs/ASSURANCE-LETTER-MIGRATION.md) |
 | `status`, `valid_from`, `valid_to`, `revoked_at` | lifecycle and window |
 | `action_scopes TEXT[]` | action_type values this grant covers; NULL = unscoped |
 | `max_amount_usd NUMERIC` | amount ceiling in `currency`; NULL = unbounded |

@@ -75,8 +75,12 @@
     <section anchor="classes">
       <name>The Assurance Classes</name>
       <t>Four assurance classes are defined, in increasing order of
-      assurance. Each maps to a concrete assurance value carried in a
-      receipt's assurance field. The identifiers are mnemonic (S for
+      assurance. Three of the four map to a concrete assurance value
+      string carried in a receipt; the member that carries the value is
+      defined by the receipt profile in use, not by this document, which
+      defines only the class identifiers, their order, and the value
+      set. Class H is RESERVED and has no value assigned. The
+      identifiers are mnemonic (S for
       software, H for authenticated human, V for device-verified human,
       Q for quorum) and are deliberately disjoint from the key-custody
       classes (Class A, Class B, Class C) of
