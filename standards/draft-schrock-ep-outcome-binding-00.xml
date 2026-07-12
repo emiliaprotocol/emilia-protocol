@@ -300,11 +300,10 @@
       approved bounds" becomes a claim any third party can recompute from
       the signed receipt, the signed attestation, and the policy, with no
       trust in the party that first noticed. Which action classes require
-      an effect attestation at all, and within what deadline after
-      execution, is declared per action in the action manifest
-      <xref target="I-D.schrock-agent-action-manifest"/>; an attestation
-      that never arrives is missing evidence under the relying party's
-      policy, not an in-bounds outcome.</t>
+      an effect attestation at all is declared per action in the action
+      manifest <xref target="I-D.schrock-agent-action-manifest"/>; an
+      attestation that never arrives is missing evidence under the relying
+      party's policy, not an in-bounds outcome.</t>
     </section>
     <section anchor="prior">
       <name>Relationship to Prior Work</name>
@@ -439,9 +438,9 @@
           <front>
             <title>Authorization Receipts for High-Risk Agent Actions</title>
             <author fullname="Iman Schrock"><organization>EMILIA Protocol, Inc.</organization></author>
-            <date year="2026" month="June"/>
+            <date year="2026" month="July"/>
           </front>
-          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-00"/>
+          <seriesInfo name="Internet-Draft" value="draft-schrock-ep-authorization-receipts-06"/>
         </reference>
         <reference anchor="I-D.schrock-ep-action-evidence-graph" target="https://datatracker.ietf.org/doc/draft-schrock-ep-action-evidence-graph/">
           <front>

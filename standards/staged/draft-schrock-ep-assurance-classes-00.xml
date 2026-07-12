@@ -27,12 +27,12 @@
       software signer asserting a policy decision, an authenticated human
       clicking approve, a human completing a device user-verification
       ceremony, and a quorum of distinct humans each doing so are four
-      materially different levels of assurance — and a policy for a
+      materially different levels of assurance -- and a policy for a
       consequential action needs to say which level it demands.</t>
       <t>This document defines a small, ordered taxonomy of assurance
       classes for authorization receipts
-      <xref target="I-D.schrock-ep-authorization-receipts"/> — Class S,
-      Class H, Class V, and Class Q — the monotonic comparison rule by
+      <xref target="I-D.schrock-ep-authorization-receipts"/> -- Class S,
+      Class H, Class V, and Class Q -- the monotonic comparison rule by
       which a required class is satisfied, and the central anti-forgery
       invariant that a class asserted in a receipt payload is treated as
       the lowest class until it is proof-backed. The taxonomy is the
@@ -88,20 +88,20 @@
       classify who holds the approver's signing key, not how strong the
       authorization ceremony behind a receipt was.</t>
       <dl>
-        <dt>Class S — software / automation signer (receipt assurance value: "software")</dt>
+        <dt>Class S -- software / automation signer (receipt assurance value: "software")</dt>
         <dd>The authorization is asserted by a software component or
         automation key, not by a human completing an interactive
         ceremony. This is the lowest class and the default floor
         (<xref target="floor"/>). Appropriate for low-risk or read-mostly
         actions.</dd>
-        <dt>Class H — authenticated human, no device user verification (RESERVED, OPTIONAL)</dt>
+        <dt>Class H -- authenticated human, no device user verification (RESERVED, OPTIONAL)</dt>
         <dd>A human authenticated to the approving system approved the
         action, but without a hardware user-verification ceremony bound
         to the signing key. Class H is defined for deployments that
         distinguish an authenticated-human approval from a device-verified
         one; a deployment that does not make this distinction need not
         implement Class H.</dd>
-        <dt>Class V — device user-verified human (receipt assurance value: "class_a")</dt>
+        <dt>Class V -- device user-verified human (receipt assurance value: "class_a")</dt>
         <dd>A named human completed a device user-verification ceremony
         (for example WebAuthn user verification / passkey with a local
         gesture) whose result is bound to the signing key that produced
@@ -112,7 +112,7 @@
         <xref target="I-D.schrock-ep-authorization-receipts"/> that
         proves this assurance class, and is a value string, not an
         identifier of this taxonomy.</dd>
-        <dt>Class Q — quorum of distinct humans (receipt assurance value: "quorum")</dt>
+        <dt>Class Q -- quorum of distinct humans (receipt assurance value: "quorum")</dt>
         <dd>Two or more distinct humans, each meeting at least Class V,
         authorized the same action under an m-of-n rule with distinct-human
         enforcement. Class Q is the highest class and the appropriate
@@ -140,7 +140,7 @@
       Therefore:</t>
       <t>A verifier MUST treat a claimed assurance class as the lowest
       class (Class S) until the class is proof-backed by evidence the
-      verifier independently checks — for example a device
+      verifier independently checks -- for example a device
       user-verification attestation for Class V, or the required number
       of distinct, individually verified human signatures for Class Q. A
       receipt that asserts Class V or Class Q without the corresponding
@@ -171,8 +171,8 @@
       payload field and act on it without verifying the underlying
       evidence.</t>
       <t><strong>Fail closed on ambiguity.</strong> If a verifier cannot
-      establish the proven class — missing attestation, unrecognized
-      evidence, partial quorum — it MUST treat the receipt as failing the
+      establish the proven class -- missing attestation, unrecognized
+      evidence, partial quorum -- it MUST treat the receipt as failing the
       requirement, never as provisionally meeting it.</t>
       <t><strong>Quorum distinctness.</strong> Class Q depends on the
       distinctness of the humans in the quorum; a quorum satisfied by one

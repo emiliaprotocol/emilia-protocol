@@ -404,11 +404,10 @@ Internet-Draft             EP Outcome Binding                  July 2026
    approved bounds" becomes a claim any third party can recompute from
    the signed receipt, the signed attestation, and the policy, with no
    trust in the party that first noticed.  Which action classes require
-   an effect attestation at all, and within what deadline after
-   execution, is declared per action in the action manifest
-   [I-D.schrock-agent-action-manifest]; an attestation that never
-   arrives is missing evidence under the relying party's policy, not an
-   in-bounds outcome.
+   an effect attestation at all is declared per action in the action
+   manifest [I-D.schrock-agent-action-manifest]; an attestation that
+   never arrives is missing evidence under the relying party's policy,
+   not an in-bounds outcome.
 
 6.  Relationship to Prior Work
 
@@ -440,8 +439,9 @@ Internet-Draft             EP Outcome Binding                  July 2026
    carrier for this evaluation, provided its claims map to (effect_type,
    target, value) and its executor key is pinned by the relying party.
 
-
-
+   Checkout-mandate protocols in the payments space bind an exact cart,
+   which is the eq case over one composite value; they do not express
+   bounds, counts, or required absence.  And as noted in Section 4, the
 
 
 
@@ -450,9 +450,6 @@ Schrock                  Expires 9 January 2027                 [Page 8]
 Internet-Draft             EP Outcome Binding                  July 2026
 
 
-   Checkout-mandate protocols in the payments space bind an exact cart,
-   which is the eq case over one composite value; they do not express
-   bounds, counts, or required absence.  And as noted in Section 4, the
    "bounded divergence" of [BOUNDED-DIV] is a replay-determinism
    property, not this document's approved-prediction-versus-observed-
    effect relation.
@@ -495,6 +492,9 @@ Internet-Draft             EP Outcome Binding                  July 2026
    conditions may crash the evaluator or pass silently.  Implementations
    MUST prove this against hostile input; the conformance suite for the
    reference implementation includes each such case as a reject vector.
+
+
+
 
 
 
@@ -588,7 +588,7 @@ Internet-Draft             EP Outcome Binding                  July 2026
    [I-D.schrock-ep-authorization-receipts]
               Schrock, I., "Authorization Receipts for High-Risk Agent
               Actions", Work in Progress, Internet-Draft, draft-schrock-
-              ep-authorization-receipts-00, June 2026,
+              ep-authorization-receipts-06, July 2026,
               <https://datatracker.ietf.org/doc/draft-schrock-ep-
               authorization-receipts/>.
 
