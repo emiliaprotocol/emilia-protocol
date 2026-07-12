@@ -1,0 +1,55 @@
+# EMILIA Standards Observatory
+
+Source-locked snapshot as of July 12, 2026. Snapshot sha256:4fdcd08580564929ceb800d01f6ad150f5fd880ab96741d7216cb162ff01a879.
+
+## Truth Rules
+
+- Broad agent recon is correlated discovery, not independent review and not evidence that a guarantee is absent.
+- Only exact-revision primary sources with verified excerpts drive the guarantee matrix.
+- Historical text is never presented as operative when a current artifact is known.
+- A submitted agenda request is not an accepted slot, working-group adoption, or IETF endorsement.
+- Shared cryptography or a shared digest does not make two protocols semantically equivalent.
+
+## Current Movement
+
+- 2026-07-12 | WIMSE | Agenda request submitted for the WIMSE and EMILIA two-row composition | status=pending_public_archive. This records a request, not agenda acceptance, working-group adoption, or IETF endorsement.
+- 2026-07-07 | WIMSE | Condition-Bounded Credentials advances to revision 01 | status=public_verified. Individual Internet-Draft discussed in WIMSE; not a working-group-adopted document.
+- 2026-07-05 | WIMSE | WIMSE architecture key-management issue 85 closes | status=public_verified. Issue closure is a repository event, not proof of consensus on every proposed lifecycle model.
+- 2026-06-26 | WIMSE | WIMSE receives a two-hour IETF 126 session | status=public_verified. The session is scheduled; individual presentation requests remain subject to the chairs' agenda decisions.
+- 2026-07-12 | SCITT | SCRAPI reaches the RFC Editor queue | status=public_verified. The document is not an RFC until publication; its state can continue to change.
+
+## Publication-Grade Source Map
+
+- agentproto merged charter | git:29837db3271195f43eee0e6da321252286f75ab4 | operative | host_socket | https://raw.githubusercontent.com/jdrosen/aiproto-wg/29837db3271195f43eee0e6da321252286f75ab4/Charter_Merge.md | quote sha256:5c3b4d3f67729976f5cfa6237c46cccc093f8f8859606e297cdcd3f4839f8a9b
+- agentproto original charter | git:8046314f089600e635232d5f020fda86a1af4038 | historical_nonoperative | historical_precedent | https://raw.githubusercontent.com/jdrosen/aiproto-wg/8046314f089600e635232d5f020fda86a1af4038/charter.md | quote sha256:1e119cc22183222b9b3aa96570750c3a6251adfb8c1c90310ed66ab9bea03426
+- FIDO Verifiable Intent | web-snapshot:2026-07-12 | current_primary | overlap_competitor | https://fidoalliance.org/building-the-trust-layer-for-agentic-payments-with-ap2-and-verifiable-intent/ | quote sha256:5f44d2f40d0e1b58ddb0ab41c0d5be5d7de9d87e3429f7b547aef836d334343c
+- AP2 Checkout Mandate | v0.2:web-snapshot:2026-07-12 | current_primary | complement_overlap | https://ap2-protocol.org/ap2/checkout_mandate/ | quote sha256:dfdbaa112e0a11b088da90037fafecd5d487d1efbbe199814f6bf8b928e3b17e
+- WIMSE Workload Credentials | draft-ietf-wimse-workload-creds-02 | current_draft | complement | https://www.ietf.org/archive/id/draft-ietf-wimse-workload-creds-02.txt | quote sha256:115be423eb5385929e65c42e3752a3ab5affd6f836c5356375ce1b494f549ba6
+- WIMSE Condition-Bounded Credentials | draft-winmagic-wimse-condition-bounded-credentials-01 | current_draft | complement_socket | https://www.ietf.org/archive/id/draft-winmagic-wimse-condition-bounded-credentials-01.txt | quote sha256:b612f80a6fbfa97352218a93f2c23d7d915cab0054a0b51303a3b7d412be196c
+- SCITT SCRAPI | draft-ietf-scitt-scrapi-11 | current_draft | complement | https://www.ietf.org/archive/id/draft-ietf-scitt-scrapi-11.txt | quote sha256:b88fbcf165722f23a56a3905ef5acde127b2512d1112cac837f5c3aab306332b
+- AI Agent Audit Architecture | draft-kuehlewind-audit-architecture-00 | current_draft | host_socket | https://www.ietf.org/archive/id/draft-kuehlewind-audit-architecture-00.txt | quote sha256:b00d0fa928546b247bc0c37291ce02b4a5354bb7f97337cae104adca729f21b1
+- Agent Operation Authorization | draft-liu-agent-operation-authorization-02 | current_draft | overlap | https://www.ietf.org/archive/id/draft-liu-agent-operation-authorization-02.txt | quote sha256:303b996f818f6771c88a3d81738efdae298c7178b98faee9f45e9dbdecb1d04d
+- CHEQ | draft-rosenberg-aiproto-cheq-00 | expired_draft | overlap | https://www.ietf.org/archive/id/draft-rosenberg-aiproto-cheq-00.txt | quote sha256:ea8036d565d473b6dfddf7acfdb92ae49de3c8c7b1e65c7d8743149c0fa90c97
+- ORPRG Permit Receipts | draft-lee-orprg-permit-receipts-00 | current_draft | complement | https://www.ietf.org/archive/id/draft-lee-orprg-permit-receipts-00.txt | quote sha256:1536ff98c0d36f2c47b6161ac4d6028651645e87ce47bf98cf73e15cd19efd2a
+- ACTA Signed Decision Receipts | draft-farley-acta-signed-receipts-02 | current_draft | complement_overlap | https://www.ietf.org/archive/id/draft-farley-acta-signed-receipts-02.txt | quote sha256:f557d4108f807094cadedced7bf558a5c94d480f37af7e9046ccef004ab2ac40
+- Delegation Receipt Protocol | draft-nelson-agent-delegation-receipts-10 | current_draft | complement_overlap | https://www.ietf.org/archive/id/draft-nelson-agent-delegation-receipts-10.txt | quote sha256:f899366acac090ede9772ccdec5431ae7310fe41eff0f10adc25fafda53fe46c
+- AgentROA | draft-nivalto-agentroa-route-authorization-01 | current_draft | host_socket | https://www.ietf.org/archive/id/draft-nivalto-agentroa-route-authorization-01.txt | quote sha256:6fde423381dc7a943d32a7da47e0cbe209fc89331157bf4b28b32e1a439a9eb7
+- EP Authorization Receipts | draft-schrock-ep-authorization-receipts-06 | current_draft | native | https://www.ietf.org/archive/id/draft-schrock-ep-authorization-receipts-06.txt | quote sha256:61d929717d649d11b769243ac09de5d075b8a98a8db8927a3d2f0b4a3d4897f7
+- EP-QUORUM | draft-schrock-ep-quorum-02 | current_draft | native | https://www.ietf.org/archive/id/draft-schrock-ep-quorum-02.txt | quote sha256:29ba746cab0e8fc1ff6d1b0c6ff072ef99eb0a62f6c7627a5e67f98f842b21ef
+- EP-AEC | draft-schrock-ep-authorization-evidence-chain-02 | current_draft | native | https://www.ietf.org/archive/id/draft-schrock-ep-authorization-evidence-chain-02.txt | quote sha256:c507e982338a7801af91426ec60cf87d4aa31a7cf36a6fed901ddd8bef49cbd1
+
+## Open Frontiers
+
+- 1. CAID Action-Mapping Profile | open_buildable | A signed crosswalk proves who asserted that two native digests co-refer; it does not prove the source objects carry materially equivalent action semantics.
+- 2. Modular Confirmation-Evidence Work Item | political_window | The operative agentproto charter mentions confirmation and evidence but no longer has the original standalone artifact deliverable.
+- 3. WIMSE Two-Row Composition Profile | external_interest | WIMSE proves the live workload possesses its protected key; a relying party still needs separate evidence that a named human authorized this exact operation.
+
+## Broad Recon Boundary
+
+The discovery sweep declared 294 reads. 291 structured reports were recovered, 3 were not recovered, and 0 recovered reports marked a fetch failure. Every entry remains agent_analyzed_unverified until promoted through the source-lock process.
+
+## Machine-Readable Forms
+
+- https://www.emiliaprotocol.ai/.well-known/standards-observatory.json
+- https://www.emiliaprotocol.ai/observatory
+

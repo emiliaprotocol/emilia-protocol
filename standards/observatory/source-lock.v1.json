@@ -1,0 +1,314 @@
+{
+  "@version": "EMILIA-STANDARDS-SOURCE-LOCK-v1",
+  "retrieved_at": "2026-07-12T17:00:00Z",
+  "source_count": 17,
+  "sources": [
+    {
+      "id": "agentproto-charter-merge",
+      "revision": "git:29837db3271195f43eee0e6da321252286f75ab4",
+      "source_url": "https://raw.githubusercontent.com/jdrosen/aiproto-wg/29837db3271195f43eee0e6da321252286f75ab4/Charter_Merge.md",
+      "final_url": "https://raw.githubusercontent.com/jdrosen/aiproto-wg/29837db3271195f43eee0e6da321252286f75ab4/Charter_Merge.md",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "W/\"92983bbbd5485500dce71abc2b7ab40ab9e33a8c1fbe172ef746530b170c3d73\"",
+      "last_modified": null,
+      "bytes": 9408,
+      "sha256": "10d69f153bab868ed137e54f9cef84fa711deefc9e9dc9584ce36469efffcabc",
+      "quote": {
+        "locator": "lines 49-50",
+        "text": "including the confirmation and evidence requirements for AI agent operations"
+      },
+      "quote_sha256": "5c3b4d3f67729976f5cfa6237c46cccc093f8f8859606e297cdcd3f4839f8a9b",
+      "quote_verified": true
+    },
+    {
+      "id": "agentproto-charter-original",
+      "revision": "git:8046314f089600e635232d5f020fda86a1af4038",
+      "source_url": "https://raw.githubusercontent.com/jdrosen/aiproto-wg/8046314f089600e635232d5f020fda86a1af4038/charter.md",
+      "final_url": "https://raw.githubusercontent.com/jdrosen/aiproto-wg/8046314f089600e635232d5f020fda86a1af4038/charter.md",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "W/\"e25f623eedba1ea5d8fb0df6c06d1c1c3245da5ad605a6c9df57bb204c3efbe7\"",
+      "last_modified": null,
+      "bytes": 5070,
+      "sha256": "678819985df58e5194c9deafb0e446b07a547864fe5d32d9d17182d7d138041e",
+      "quote": {
+        "locator": "deliverable 3",
+        "text": "It must provide cryptographic attestation of what the user has confirmed"
+      },
+      "quote_sha256": "1e119cc22183222b9b3aa96570750c3a6251adfb8c1c90310ed66ab9bea03426",
+      "quote_verified": true
+    },
+    {
+      "id": "fido-verifiable-intent",
+      "revision": "web-snapshot:2026-07-12",
+      "source_url": "https://fidoalliance.org/building-the-trust-layer-for-agentic-payments-with-ap2-and-verifiable-intent/",
+      "final_url": "https://fidoalliance.org/building-the-trust-layer-for-agentic-payments-with-ap2-and-verifiable-intent/",
+      "http_status": 200,
+      "content_type": "text/html; charset=UTF-8",
+      "etag": null,
+      "last_modified": null,
+      "bytes": 258803,
+      "sha256": "d807e181731826073518fd00ac99975ff9709344e4d8fbb22520a3e8b599999d",
+      "quote": {
+        "locator": "Verifiable Intent section",
+        "text": "transforms user authorization into portable, verifiable evidence"
+      },
+      "quote_sha256": "5f44d2f40d0e1b58ddb0ab41c0d5be5d7de9d87e3429f7b547aef836d334343c",
+      "quote_verified": true
+    },
+    {
+      "id": "ap2-checkout-mandate",
+      "revision": "v0.2:web-snapshot:2026-07-12",
+      "source_url": "https://ap2-protocol.org/ap2/checkout_mandate/",
+      "final_url": "https://ap2-protocol.org/ap2/checkout_mandate/",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "etag": "W/\"69f0a91e-24a55\"",
+      "last_modified": "Tue, 28 Apr 2026 12:33:34 GMT",
+      "bytes": 150101,
+      "sha256": "2abe1cc50583615e53a69f2238969c2aad50c0285cbb854d0c184f9ba841fbf0",
+      "quote": {
+        "locator": "checkout_hash field",
+        "text": "checkout_hash is the base64url-encoded hash of the value of checkout_jwt"
+      },
+      "quote_sha256": "dfdbaa112e0a11b088da90037fafecd5d487d1efbbe199814f6bf8b928e3b17e",
+      "quote_verified": true
+    },
+    {
+      "id": "wimse-workload-creds",
+      "revision": "draft-ietf-wimse-workload-creds-02",
+      "source_url": "https://www.ietf.org/archive/id/draft-ietf-wimse-workload-creds-02.txt",
+      "final_url": "https://www.ietf.org/archive/id/draft-ietf-wimse-workload-creds-02.txt",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "W/\"6a464dfa-e42d\"",
+      "last_modified": "Thu, 02 Jul 2026 11:39:38 GMT",
+      "bytes": 58413,
+      "sha256": "b111e4e85a7f3bc5c844560db87276c184a04db28ffeaccb057c13eb034dbed5",
+      "quote": {
+        "locator": "abstract",
+        "text": "This document focuses on the credentials alone, independent of the proof-of-possession mechanism"
+      },
+      "quote_sha256": "115be423eb5385929e65c42e3752a3ab5affd6f836c5356375ce1b494f549ba6",
+      "quote_verified": true
+    },
+    {
+      "id": "wimse-condition-bounded",
+      "revision": "draft-winmagic-wimse-condition-bounded-credentials-01",
+      "source_url": "https://www.ietf.org/archive/id/draft-winmagic-wimse-condition-bounded-credentials-01.txt",
+      "final_url": "https://www.ietf.org/archive/id/draft-winmagic-wimse-condition-bounded-credentials-01.txt",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "W/\"6a4bbcd7-cb33\"",
+      "last_modified": "Mon, 06 Jul 2026 14:33:59 GMT",
+      "bytes": 52019,
+      "sha256": "b58c82056bfb7fb86d96a5442d434e8a8909ae711633b6d6c863db67091c7bb3",
+      "quote": {
+        "locator": "section 14",
+        "text": "This profile is an authentication input, not an authorization one"
+      },
+      "quote_sha256": "b612f80a6fbfa97352218a93f2c23d7d915cab0054a0b51303a3b7d412be196c",
+      "quote_verified": true
+    },
+    {
+      "id": "scitt-scrapi",
+      "revision": "draft-ietf-scitt-scrapi-11",
+      "source_url": "https://www.ietf.org/archive/id/draft-ietf-scitt-scrapi-11.txt",
+      "final_url": "https://www.ietf.org/archive/id/draft-ietf-scitt-scrapi-11.txt",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "W/\"6a3ead89-c5d0\"",
+      "last_modified": "Fri, 26 Jun 2026 16:49:13 GMT",
+      "bytes": 50640,
+      "sha256": "9eb8b068e4d89223c9100502c4dbea61b6912771123d30776bdb468aeb78d0ca",
+      "quote": {
+        "locator": "section 1.1",
+        "text": "registration of Signed Statements, the issuance and validation of Receipts"
+      },
+      "quote_sha256": "b88fbcf165722f23a56a3905ef5acde127b2512d1112cac837f5c3aab306332b",
+      "quote_verified": true
+    },
+    {
+      "id": "audit-architecture",
+      "revision": "draft-kuehlewind-audit-architecture-00",
+      "source_url": "https://www.ietf.org/archive/id/draft-kuehlewind-audit-architecture-00.txt",
+      "final_url": "https://www.ietf.org/archive/id/draft-kuehlewind-audit-architecture-00.txt",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "W/\"6a0b8039-ca84\"",
+      "last_modified": "Mon, 18 May 2026 21:10:17 GMT",
+      "bytes": 51844,
+      "sha256": "43a68f99f4b9457b2074711b630c9f8e3a57ce9766947e5d833f1899384731ef",
+      "quote": {
+        "locator": "section 7",
+        "text": "The exact field names, claim names, and encodings shown here are placeholders"
+      },
+      "quote_sha256": "b00d0fa928546b247bc0c37291ce02b4a5354bb7f97337cae104adca729f21b1",
+      "quote_verified": true
+    },
+    {
+      "id": "liu-agent-operation-authorization",
+      "revision": "draft-liu-agent-operation-authorization-02",
+      "source_url": "https://www.ietf.org/archive/id/draft-liu-agent-operation-authorization-02.txt",
+      "final_url": "https://www.ietf.org/archive/id/draft-liu-agent-operation-authorization-02.txt",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "W/\"69b79b5a-d487\"",
+      "last_modified": "Mon, 16 Mar 2026 05:55:38 GMT",
+      "bytes": 54407,
+      "sha256": "db06d7b5ff69bf2b521f0d1df67794eba86bba3a646ea5451d13d3b12d8cd6ea",
+      "quote": {
+        "locator": "section 1",
+        "text": "ensure cryptographic verification of user intent"
+      },
+      "quote_sha256": "303b996f818f6771c88a3d81738efdae298c7178b98faee9f45e9dbdecb1d04d",
+      "quote_verified": true
+    },
+    {
+      "id": "cheq",
+      "revision": "draft-rosenberg-aiproto-cheq-00",
+      "source_url": "https://www.ietf.org/archive/id/draft-rosenberg-aiproto-cheq-00.txt",
+      "final_url": "https://www.ietf.org/archive/id/draft-rosenberg-aiproto-cheq-00.txt",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "W/\"68f59c1f-7a1d\"",
+      "last_modified": "Mon, 20 Oct 2025 02:19:11 GMT",
+      "bytes": 31261,
+      "sha256": "3ab415e44adbd90e25ffe3b766e1b67bd143632b6355ac5d95f2f2fbedd9a384",
+      "quote": {
+        "locator": "section 2",
+        "text": "The protocol must provide cryptographic assurances that the human being approves the action"
+      },
+      "quote_sha256": "ea8036d565d473b6dfddf7acfdb92ae49de3c8c7b1e65c7d8743149c0fa90c97",
+      "quote_verified": true
+    },
+    {
+      "id": "orprg-permit-receipts",
+      "revision": "draft-lee-orprg-permit-receipts-00",
+      "source_url": "https://www.ietf.org/archive/id/draft-lee-orprg-permit-receipts-00.txt",
+      "final_url": "https://www.ietf.org/archive/id/draft-lee-orprg-permit-receipts-00.txt",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "W/\"6a222313-84f1\"",
+      "last_modified": "Fri, 05 Jun 2026 01:14:59 GMT",
+      "bytes": 34033,
+      "sha256": "ea164cf92f89490f8b9ad6c7accf0726f6b33cd72925c3bcc148cb7c65286bac",
+      "quote": {
+        "locator": "section 1",
+        "text": "does not select a mandatory wire format"
+      },
+      "quote_sha256": "1536ff98c0d36f2c47b6161ac4d6028651645e87ce47bf98cf73e15cd19efd2a",
+      "quote_verified": true
+    },
+    {
+      "id": "acta-signed-receipts",
+      "revision": "draft-farley-acta-signed-receipts-02",
+      "source_url": "https://www.ietf.org/archive/id/draft-farley-acta-signed-receipts-02.txt",
+      "final_url": "https://www.ietf.org/archive/id/draft-farley-acta-signed-receipts-02.txt",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "W/\"6a41e788-ecad\"",
+      "last_modified": "Mon, 29 Jun 2026 03:33:28 GMT",
+      "bytes": 60589,
+      "sha256": "14501a68a86e3cc403f56967b19b732316ad3cc2fc011ce3d14aec9c1de68bd2",
+      "quote": {
+        "locator": "section 8.1",
+        "text": "Receipts include an issued_at timestamp but do not include a nonce or sequence number"
+      },
+      "quote_sha256": "f557d4108f807094cadedced7bf558a5c94d480f37af7e9046ccef004ab2ac40",
+      "quote_verified": true
+    },
+    {
+      "id": "delegation-receipts",
+      "revision": "draft-nelson-agent-delegation-receipts-10",
+      "source_url": "https://www.ietf.org/archive/id/draft-nelson-agent-delegation-receipts-10.txt",
+      "final_url": "https://www.ietf.org/archive/id/draft-nelson-agent-delegation-receipts-10.txt",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "W/\"6a2dd22e-2bdfa\"",
+      "last_modified": "Sat, 13 Jun 2026 21:57:02 GMT",
+      "bytes": 179706,
+      "sha256": "08ba640802f461ed30e66f9b2cd7a50a3570b5838c39bf012c2b039ee2ed68bb",
+      "quote": {
+        "locator": "verification check 10",
+        "text": "CHECK 10: Replay Detection"
+      },
+      "quote_sha256": "f899366acac090ede9772ccdec5431ae7310fe41eff0f10adc25fafda53fe46c",
+      "quote_verified": true
+    },
+    {
+      "id": "agentroa",
+      "revision": "draft-nivalto-agentroa-route-authorization-01",
+      "source_url": "https://www.ietf.org/archive/id/draft-nivalto-agentroa-route-authorization-01.txt",
+      "final_url": "https://www.ietf.org/archive/id/draft-nivalto-agentroa-route-authorization-01.txt",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "W/\"69e056ca-1511c\"",
+      "last_modified": "Thu, 16 Apr 2026 03:26:02 GMT",
+      "bytes": 86300,
+      "sha256": "4f91821e4e77dd9a65cca5ab9f71408caf702fcf41d0e705d5203cd7954abb11",
+      "quote": {
+        "locator": "approval fields",
+        "text": "Reference to the signed approval artifact"
+      },
+      "quote_sha256": "6fde423381dc7a943d32a7da47e0cbe209fc89331157bf4b28b32e1a439a9eb7",
+      "quote_verified": true
+    },
+    {
+      "id": "ep-authorization-receipts",
+      "revision": "draft-schrock-ep-authorization-receipts-06",
+      "source_url": "https://www.ietf.org/archive/id/draft-schrock-ep-authorization-receipts-06.txt",
+      "final_url": "https://www.ietf.org/archive/id/draft-schrock-ep-authorization-receipts-06.txt",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "W/\"6a4bdc97-1178a\"",
+      "last_modified": "Mon, 06 Jul 2026 16:49:27 GMT",
+      "bytes": 71562,
+      "sha256": "c02556a380398edbce300a682f44ca589db2df2fa994439e595aace7bbc154e8",
+      "quote": {
+        "locator": "abstract",
+        "text": "binds a named, accountable human approver to one exact high-risk action"
+      },
+      "quote_sha256": "61d929717d649d11b769243ac09de5d075b8a98a8db8927a3d2f0b4a3d4897f7",
+      "quote_verified": true
+    },
+    {
+      "id": "ep-quorum",
+      "revision": "draft-schrock-ep-quorum-02",
+      "source_url": "https://www.ietf.org/archive/id/draft-schrock-ep-quorum-02.txt",
+      "final_url": "https://www.ietf.org/archive/id/draft-schrock-ep-quorum-02.txt",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "W/\"6a4bdcc3-9b6e\"",
+      "last_modified": "Mon, 06 Jul 2026 16:50:11 GMT",
+      "bytes": 39790,
+      "sha256": "263ca172b65a156475dbe5c92cd088ce2b730927c165a1b0c4ac5e6f17bf87c8",
+      "quote": {
+        "locator": "abstract",
+        "text": "binds a set of distinct accountable humans"
+      },
+      "quote_sha256": "29ba746cab0e8fc1ff6d1b0c6ff072ef99eb0a62f6c7627a5e67f98f842b21ef",
+      "quote_verified": true
+    },
+    {
+      "id": "ep-evidence-chain",
+      "revision": "draft-schrock-ep-authorization-evidence-chain-02",
+      "source_url": "https://www.ietf.org/archive/id/draft-schrock-ep-authorization-evidence-chain-02.txt",
+      "final_url": "https://www.ietf.org/archive/id/draft-schrock-ep-authorization-evidence-chain-02.txt",
+      "http_status": 200,
+      "content_type": "text/plain; charset=utf-8",
+      "etag": "W/\"6a4bdcf4-808d\"",
+      "last_modified": "Mon, 06 Jul 2026 16:51:00 GMT",
+      "bytes": 32909,
+      "sha256": "4bfc3b3479c79629b4d7163e06ab969e83373ab56f106241682ba5163a56095d",
+      "quote": {
+        "locator": "abstract",
+        "text": "checks that every component binds one canonical action digest"
+      },
+      "quote_sha256": "c507e982338a7801af91426ec60cf87d4aa31a7cf36a6fed901ddd8bef49cbd1",
+      "quote_verified": true
+    }
+  ],
+  "lock_sha256": "dedcb9e0e8f24844c337876f4d9f16d22f5fffdf66f168f2a8fce7f58780924e"
+}
