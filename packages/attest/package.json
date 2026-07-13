@@ -39,5 +39,8 @@
   "author": "EMILIA Protocol, Inc.",
   "scripts": {
     "test": "node --test test.js"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
