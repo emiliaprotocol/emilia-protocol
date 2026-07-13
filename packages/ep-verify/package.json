@@ -1,7 +1,7 @@
 {
   "name": "ep-verify",
-  "version": "0.1.0",
-  "description": "One-command offline check of an EP authorization receipt (EP-RECEIPT-v1) against issuer keys you pin. Prints VERIFIED or REFUSED with a machine-readable reason and exits 0/1; fails closed on any error. A thin CLI over @emilia-protocol/verify — it proves signature, binding, and (when present) anchor integrity, never business correctness.",
+  "version": "0.1.1",
+  "description": "One-command offline check of an EP authorization receipt (EP-RECEIPT-v1) against issuer keys you pin. Prints VERIFIED or REFUSED with a machine-readable reason and exits 0/1; fails closed on any error. A thin CLI over @emilia-protocol/verify \u2014 it proves signature, binding, and (when present) anchor integrity, never business correctness.",
   "license": "Apache-2.0",
   "type": "module",
   "bin": {

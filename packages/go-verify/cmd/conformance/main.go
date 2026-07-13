@@ -14,7 +14,7 @@ import (
 	"unicode/utf16"
 	"unicode/utf8"
 
-	emiliaverify "github.com/emiliaprotocol/emilia-protocol/packages/go-verify"
+	emiliaverify "github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2"
 )
 
 // canonVec is one EP-CANONICALIZATION-v1 vector body.

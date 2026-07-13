@@ -1,7 +1,7 @@
 {
   "name": "@emilia-protocol/crash-test",
-  "version": "0.3.0",
-  "description": "The EMILIA crash test: one command shows a high-risk action blocked, dual-approved by two named humans on their own devices, issued as an authorization receipt, then verified OFFLINE with EMILIA gone — and a forged copy rejected. Produces an audit-grade Workpaper Package. Runs the real EP-QUORUM-v1 predicate. Scenarios: default finance, --scenario clinical (high-alert medication double-check), --scenario procurement (hospital capital purchase).",
+  "version": "0.3.1",
+  "description": "The EMILIA crash test: one command shows a high-risk action blocked, dual-approved by two named humans on their own devices, issued as an authorization receipt, then verified OFFLINE with EMILIA gone \u2014 and a forged copy rejected. Produces an audit-grade Workpaper Package. Runs the real EP-QUORUM-v1 predicate. Scenarios: default finance, --scenario clinical (high-alert medication double-check), --scenario procurement (hospital capital purchase).",
   "license": "Apache-2.0",
   "type": "module",
   "bin": {
@@ -18,7 +18,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@emilia-protocol/verify": "^1.5.0"
+    "@emilia-protocol/verify": "^3.8.1"
   },
   "keywords": [
     "emilia-protocol",

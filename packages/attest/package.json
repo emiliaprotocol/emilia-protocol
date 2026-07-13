@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@emilia-protocol/issue": "^0.4.0",
-    "@emilia-protocol/verify": "^2.2.0"
+    "@emilia-protocol/verify": "^3.8.1"
   },
   "keywords": [
     "emilia-protocol",

@@ -7,7 +7,7 @@ It is a faithful port of [`@emilia-protocol/verify`](https://www.npmjs.com/packa
 ## Install
 
 ```bash
-go get github.com/emiliaprotocol/emilia-protocol/packages/go-verify
+go get github.com/emiliaprotocol/emilia-protocol/packages/go-verify/v2
 ```
 
 ## Use
