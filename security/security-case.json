@@ -304,9 +304,9 @@
     "gate-sdk": {
       "kind": "npm-tarball",
       "package": "@emilia-protocol/gate",
-      "version": "0.9.3",
-      "filename": "emilia-protocol-gate-0.9.3.tgz",
-      "sha256": "9795f4d49f7acb7cc340db28d3b3e153d2e8220fb938f902f1f5525bb8939ffd",
+      "version": "0.9.4",
+      "filename": "emilia-protocol-gate-0.9.4.tgz",
+      "sha256": "aff1a9b4d1bea16dfb763e591173136ac5e90b48ac40fe8d406cc060681872ac",
       "file_count": 62
     },
     "security-evidence": {
@@ -318,9 +318,9 @@
     "verify-sdk": {
       "kind": "npm-tarball",
       "package": "@emilia-protocol/verify",
-      "version": "3.8.0",
-      "filename": "emilia-protocol-verify-3.8.0.tgz",
-      "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96",
+      "version": "3.8.1",
+      "filename": "emilia-protocol-verify-3.8.1.tgz",
+      "sha256": "033dd2ff1f9d6e2635e6f41a95daff97b9a1c90fcb4880656f79be75511fd103",
       "file_count": 28
     }
   },
@@ -425,7 +425,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96"
+          "sha256": "033dd2ff1f9d6e2635e6f41a95daff97b9a1c90fcb4880656f79be75511fd103"
         },
         {
           "artifact_id": "security-evidence",
@@ -547,7 +547,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96"
+          "sha256": "033dd2ff1f9d6e2635e6f41a95daff97b9a1c90fcb4880656f79be75511fd103"
         },
         {
           "artifact_id": "security-evidence",
@@ -837,7 +837,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96"
+          "sha256": "033dd2ff1f9d6e2635e6f41a95daff97b9a1c90fcb4880656f79be75511fd103"
         },
         {
           "artifact_id": "security-evidence",
@@ -946,7 +946,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96"
+          "sha256": "033dd2ff1f9d6e2635e6f41a95daff97b9a1c90fcb4880656f79be75511fd103"
         },
         {
           "artifact_id": "security-evidence",
@@ -1055,7 +1055,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96"
+          "sha256": "033dd2ff1f9d6e2635e6f41a95daff97b9a1c90fcb4880656f79be75511fd103"
         },
         {
           "artifact_id": "security-evidence",
@@ -1187,7 +1187,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "9795f4d49f7acb7cc340db28d3b3e153d2e8220fb938f902f1f5525bb8939ffd"
+          "sha256": "aff1a9b4d1bea16dfb763e591173136ac5e90b48ac40fe8d406cc060681872ac"
         },
         {
           "artifact_id": "security-evidence",
@@ -1294,7 +1294,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "9795f4d49f7acb7cc340db28d3b3e153d2e8220fb938f902f1f5525bb8939ffd"
+          "sha256": "aff1a9b4d1bea16dfb763e591173136ac5e90b48ac40fe8d406cc060681872ac"
         },
         {
           "artifact_id": "security-evidence",
@@ -1418,7 +1418,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "9795f4d49f7acb7cc340db28d3b3e153d2e8220fb938f902f1f5525bb8939ffd"
+          "sha256": "aff1a9b4d1bea16dfb763e591173136ac5e90b48ac40fe8d406cc060681872ac"
         },
         {
           "artifact_id": "security-evidence",
@@ -1592,7 +1592,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "gate-sdk",
-          "sha256": "9795f4d49f7acb7cc340db28d3b3e153d2e8220fb938f902f1f5525bb8939ffd"
+          "sha256": "aff1a9b4d1bea16dfb763e591173136ac5e90b48ac40fe8d406cc060681872ac"
         },
         {
           "artifact_id": "security-evidence",
@@ -1842,7 +1842,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "18b96f052b00546d78269ed534e25922c95b95e6133f7a9dc95e8b4564a47f96"
+          "sha256": "033dd2ff1f9d6e2635e6f41a95daff97b9a1c90fcb4880656f79be75511fd103"
         },
         {
           "artifact_id": "security-evidence",
