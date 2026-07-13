@@ -60,8 +60,10 @@ const RETIRED_PHRASES = [
 // Exclusions
 // ---------------------------------------------------------------------------
 
-/** Directories to skip entirely */
-const EXCLUDED_DIRS = new Set(['node_modules', '.git', '.next', 'archive']);
+/** Directories to skip entirely.
+ * strategy-private is gitignored business material (never checked out on CI and
+ * not public-facing), so scanning it only produces local-only false failures. */
+const EXCLUDED_DIRS = new Set(['node_modules', '.git', '.next', 'archive', 'strategy-private']);
 
 /** Relative paths of files that discuss retired phrases in deprecation context */
 const EXCLUDED_FILES = new Set([
