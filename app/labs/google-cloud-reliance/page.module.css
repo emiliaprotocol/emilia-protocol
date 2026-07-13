@@ -1,0 +1,36 @@
+.heroTitle {
+  max-width: 970px;
+  margin: 0 0 16px;
+  color: #f8f5ef;
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: 0;
+}
+
+.controlRow {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.7fr) minmax(0, 2fr);
+  gap: 28px;
+  padding: 22px 0;
+  border-bottom: 1px solid #e7e5e4;
+}
+
+.caseGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: 14px;
+  margin-top: 26px;
+}
+
+@media (max-width: 640px) {
+  .heroTitle {
+    font-size: 42px;
+    line-height: 1.06;
+  }
+
+  .controlRow {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}

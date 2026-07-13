@@ -38,6 +38,7 @@ export default function sitemap() {
     { path: '/quorum',                priority: 0.9, changeFrequency: 'monthly' },
     { path: '/evidence-chain',        priority: 0.9, changeFrequency: 'monthly' },
     { path: '/mcp',                   priority: 0.9, changeFrequency: 'monthly' },
+    { path: '/labs/google-cloud-reliance', priority: 0.85, changeFrequency: 'monthly' },
     { path: '/for-ai-companies',      priority: 0.9, changeFrequency: 'monthly' },
     { path: '/sovereignty',           priority: 0.9, changeFrequency: 'monthly' },
     { path: '/quickstart',            priority: 0.85, changeFrequency: 'monthly' },

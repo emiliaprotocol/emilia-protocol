@@ -50,3 +50,14 @@ describe('crash-test reaches a verified, offline receipt', () => {
     expect(out).not.toMatch(/Error:|unhandled/i);
   });
 });
+
+describe('Google Cloud external reliance lab runs the real MCP boundary', () => {
+  it('allows local controls, refuses five evidence failures, and executes exactly once', () => {
+    const out = run('examples/google-cloud-reliance/demo.mjs');
+    expect(out).toMatch(/IAM ALLOW · Model Armor ALLOW/);
+    expect(out.match(/REFUSE ·/g)).toHaveLength(5);
+    expect(out).toMatch(/RELY\s+· exact-quorum-evidence-runs-once/);
+    expect(out).toMatch(/Real mutation count: 1 \(expected exactly 1\)/);
+    expect(out).toMatch(/execution binds authorization: yes/);
+  });
+});
