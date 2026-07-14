@@ -38,3 +38,25 @@ Six cases, one executor, exactly one execution:
 
 The gate instances share nothing: not a trust store, not a consumption
 ledger, not an evidence log. The artifact travels; the trust does not have to.
+
+## DMSC physical-action companion
+
+The companion scenario applies the same boundary to Sections 6.9 and 7.7 of
+`draft-dunbar-dmsc-gw-scenarios-gap-analysis-02`. Port Gateway B computes an
+exact crane operation, issues an action-bound challenge, and treats Gateway A
+only as the carrier of a named supervisor's Class-A approval. Gateway B then
+verifies under its own pinned keys and local policy, consumes the action once,
+and signs a separate reliance decision that an auditor can re-perform offline.
+
+```zsh
+node examples/cross-gateway/dmsc-physical-action.mjs
+```
+
+The run allows the exact approved operation and refuses missing or revoked
+approval, an expired challenge, challenge-store outage, action substitution,
+an unpinned signer, challenge replay, a fresh challenge for an already-cleared
+action, and mutation of the offline audit bundle. The in-memory stores are
+explicitly demo-only; deployment requires shared durable stores.
+
+Proposed DMSC text and precise non-claims are in
+[`docs/standards-engagement/DMSC-ACTION-LEVEL-AUTHORIZATION.md`](../../docs/standards-engagement/DMSC-ACTION-LEVEL-AUTHORIZATION.md).

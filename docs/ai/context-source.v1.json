@@ -185,6 +185,10 @@
       "purpose": "action-bound evidence challenge registration and evaluation"
     },
     {
+      "path": "examples/cross-gateway",
+      "purpose": "runnable cross-domain gateway labs: independent verification under each gateway's trust anchors, plus receiver-computed physical-action challenges, one-time consumption, and offline decision replay"
+    },
+    {
       "path": "lib/frontier/model-to-matter.js",
       "purpose": "executor-side Model-to-Matter clearance profile"
     }
@@ -201,6 +205,10 @@
     {
       "command": "npm run check:public-conformance-claims",
       "purpose": "reject stale or overstated public conformance language"
+    },
+    {
+      "command": "node examples/cross-gateway/dmsc-physical-action.mjs",
+      "purpose": "run the DMSC Sections 6.9 and 7.7 physical-action composition and its fail-closed cases"
     },
     {
       "command": "npm run sync:llm-context",

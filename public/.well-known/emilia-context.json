@@ -1,14 +1,14 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-14T00:28:10.620Z",
+  "evidence_snapshot_at": "2026-07-14T00:44:35.247Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "17866896a8dafec4fe4d498a30caed083dc7ffdfe9e588f27e1cb663d8524385",
+    "input_digest_sha256": "f829dde569ce8348dc6f0c8b15e628aee6e6ac2e98ebb8e3ec9a0d212a5640ef",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
-        "sha256": "f0a58b3bc0cd50348cc79a660c822aaff529f23aaf52f7eae1eac956e58d268e",
-        "bytes": 11850
+        "sha256": "6e8e83ae976ca0842802f618411f32589b2b52ee6e17b4364e7287c469b53013",
+        "bytes": 12313
       },
       {
         "path": "scripts/generate-llm-context.mjs",
@@ -17,7 +17,7 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "a3f8dd202c59dd713ddcd53dbaf357e5ed818c06e76d672db89c32c13be9bd31",
+        "sha256": "7c0409e7124ac459da0cce69626caf0cf97b76371f9245c1ea84e4f1912ba730",
         "bytes": 1067
       },
       {
@@ -118,8 +118,8 @@
   ],
   "current_evidence": {
     "automated_tests": {
-      "total": 5568,
-      "files": 280,
+      "total": 5569,
+      "files": 281,
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
@@ -1529,6 +1529,10 @@
       "purpose": "action-bound evidence challenge registration and evaluation"
     },
     {
+      "path": "examples/cross-gateway",
+      "purpose": "runnable cross-domain gateway labs: independent verification under each gateway's trust anchors, plus receiver-computed physical-action challenges, one-time consumption, and offline decision replay"
+    },
+    {
       "path": "lib/frontier/model-to-matter.js",
       "purpose": "executor-side Model-to-Matter clearance profile"
     }
@@ -1545,6 +1549,10 @@
     {
       "command": "npm run check:public-conformance-claims",
       "purpose": "reject stale or overstated public conformance language"
+    },
+    {
+      "command": "node examples/cross-gateway/dmsc-physical-action.mjs",
+      "purpose": "run the DMSC Sections 6.9 and 7.7 physical-action composition and its fail-closed cases"
     },
     {
       "command": "npm run sync:llm-context",
