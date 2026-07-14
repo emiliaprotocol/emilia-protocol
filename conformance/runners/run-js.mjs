@@ -4,6 +4,7 @@
 import { verifyReceipt, verifyWebAuthnSignoff, verifyQuorum, verifyRevocation, verifyTimeAttestation, verifyTrustReceipt, verifyProvenanceOffline, verifyEvidenceRecord, canonicalize, isCanonicalizable, evaluateCurrency, validateInitiatorAttestation, verifyConsumptionProof, requireWitnessQuorum } from '../../packages/verify/index.js';
 import { verifyTimestampProof } from '../../packages/verify/timestamp-proof.js';
 import { verifyAuthorizationChain } from '../../packages/verify/evidence-chain.js';
+import { verifyResolutionReceipt } from '../../packages/verify/resolution.js';
 import { strictParseGate } from './strict-json.mjs';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -29,6 +30,21 @@ function runCanonicalization(c) {
 }
 const out = vectors.map((v) => {
   if (v.document) return { id: v.id, valid: verifyReceipt(v.document, v.public_key).valid };
+  if (v.resolution_receipt !== undefined || v.resolution_authorization !== undefined) {
+    const receipt = v.resolution_receipt ?? v.resolution_authorization;
+    const result = verifyResolutionReceipt(receipt, {
+      bindingMoment: v.binding_moment,
+      expectedActionHash: v.expected_action_hash,
+      expectedSelectedOption: v.expected_selected_option,
+      expectedNonce: v.expected_nonce,
+      expectedInitiator: v.expected_initiator,
+      evaluationTime: v.evaluation_time,
+      principalKeys: v.principal_keys,
+      rpId: v.rp_id,
+      allowedOrigins: v.allowed_origins,
+    });
+    return { id: v.id, valid: v.resolution_authorization !== undefined ? result.valid && result.authorizes_action : result.valid };
+  }
   if (v.signoff) return { id: v.id, valid: verifyWebAuthnSignoff(v.signoff, v.approver_public_key, { rpId: v.rp_id }).valid };
   if (v.quorum) return { id: v.id, valid: verifyQuorum(v.quorum, { rpId: 'emiliaprotocol.ai' }).valid };
   if (v.revocation) return { id: v.id, valid: verifyRevocation(v.target, v.revocation, { revokerKeys: v.revoker_keys, maxAgeSeconds: v.max_age_seconds, now: v.now }).valid };

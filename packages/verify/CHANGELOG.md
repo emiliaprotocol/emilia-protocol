@@ -3,6 +3,17 @@
 All notable changes to `@emilia-protocol/verify` are documented here.
 This package follows [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+- Additive `EP-RESOLUTION-v1` verifier for durable, device-signed
+  `approved | declined | amended | rejected` binding-moment outcomes. Receipt
+  validity is separate from execution authority: only an authentic approval
+  under a complete relying-party-pinned acceptance context (role key, RP ID,
+  origin, option mapping, nonce, initiator, and in-window evaluation time) sets
+  `authorizes_action: true`.
+
 ## 3.8.0 (2026-07-09)
 
 ### Security (please upgrade)

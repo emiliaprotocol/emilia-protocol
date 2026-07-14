@@ -52,6 +52,54 @@
       "release_artifacts": ["verify-sdk", "security-evidence"]
     },
     {
+      "claim_id": "four-outcome-resolution-preserves-meaning",
+      "statement": "A binding-moment resolution preserves approved, declined, amended, and rejected as distinct device-signed outcomes bound to the exact well-formed source envelope and action; no negative outcome authorizes the original action, and an approval authorizes only under a complete relying-party-pinned acceptance context.",
+      "acceptance_roots": ["role-scoped principal key and principal identity pinned by the relying party", "exact source binding-moment envelope and action digest supplied by the relying party", "WebAuthn RP ID and exact origin allowlist pinned by the relying party", "option-to-action mapping, nonce, initiator, and evaluation time pinned by the relying party"],
+      "enforcement_path": [
+        { "language": "javascript", "file": "packages/verify/resolution.js", "symbol": "verifyResolutionReceipt", "exported": true },
+        { "language": "python", "file": "packages/python-verify/emilia_verify/__init__.py", "symbol": "verify_resolution_receipt", "exported": true },
+        { "language": "go", "file": "packages/go-verify/resolution.go", "symbol": "VerifyResolutionReceipt", "exported": true }
+      ],
+      "implementations": [
+        { "language": "javascript", "file": "packages/verify/resolution.js", "export": "verifyResolutionReceipt" },
+        { "language": "python", "file": "packages/python-verify/emilia_verify/__init__.py", "symbol": "verify_resolution_receipt" },
+        { "language": "go", "file": "packages/go-verify/resolution.go", "symbol": "VerifyResolutionReceipt" }
+      ],
+      "language_coverage": {
+        "javascript": { "status": "covered", "evidence": "conformance/vectors/resolution.v1.json" },
+        "python": { "status": "covered", "evidence": "conformance/vectors/resolution.v1.json" },
+        "go": { "status": "covered", "evidence": "conformance/vectors/resolution.v1.json" }
+      },
+      "vectors": [
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "accept_approved", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "accept_declined", "polarity": "positive", "expect": { "valid": true }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "refuse_declined_as_authorization", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "refuse_approved_without_option_binding", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "refuse_approved_without_nonce_pin", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "refuse_approved_without_initiator_pin", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "refuse_approved_without_evaluation_time", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "reject_outcome_relabel", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "reject_cross_principal_key", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "reject_wrong_origin", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "reject_malformed_binding_moment", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "reject_noncanonical_binding_moment", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } },
+        { "suite": "conformance/vectors/resolution.v1.json", "case_id": "reject_impossible_calendar_date", "polarity": "negative", "expect": { "valid": false }, "execution": { "runner": "cross-language" } }
+      ],
+      "tests": [
+        { "file": "packages/verify/resolution.test.js", "title": "all four authentic outcomes verify while only approved authorizes", "runner": "node-test" },
+        { "file": "packages/verify/resolution.test.js", "title": "an approved receipt does not authorize until the relying party pins the option-to-action mapping", "runner": "node-test" },
+        { "file": "packages/verify/resolution.test.js", "title": "changing a signed outcome from declined to approved fails", "runner": "node-test" },
+        { "file": "packages/verify/resolution.test.js", "title": "a presenter-supplied or cross-principal key cannot establish authority", "runner": "node-test" },
+        { "file": "packages/verify/resolution.test.js", "title": "malformed envelopes and cross-language-unsafe signed values fail before digest credit", "runner": "node-test" }
+      ],
+      "formal": [
+        { "status": "not_modeled", "gap": "The exact four-outcome discriminated union, complete acceptance-context rule, source-envelope grammar, origin check, envelope digest, and WebAuthn challenge bytes are covered by executable cross-language vectors but are not yet represented in TLA+, Alloy, or Tamarin." }
+      ],
+      "assumptions": ["the relying party maps the selected option to the exact action correctly", "the role-pinned principal key, RP ID, origin allowlist, nonce, initiator, and evaluation time are authentic", "the consuming surface faithfully presents the envelope and action that the signed digests denote"],
+      "exclusions": ["the profile does not prove the briefing was truthful or unbiased", "the profile does not prove display faithfulness without separate presentation evidence", "the profile does not provide exactly-once consumption, revocation currency, trusted time, or quorum by itself"],
+      "release_artifacts": ["verify-sdk", "security-evidence"]
+    },
+    {
       "claim_id": "class-a-downgrade-refused",
       "statement": "A receipt cannot turn a relying-party-pinned Class-A approver key into a bare Class-B signature path by self-declaring a weaker key class.",
       "acceptance_roots": ["approver credential key and key class pinned from enrollment"],

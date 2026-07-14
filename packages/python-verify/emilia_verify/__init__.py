@@ -298,6 +298,274 @@ def verify_webauthn_signoff(signoff: Any, approver_public_key_spki_b64u: str, op
     return {"valid": valid, "checks": checks}
 
 
+# =============================================================================
+# EP-RESOLUTION-v1 -- four-outcome binding-moment resolution
+# =============================================================================
+RESOLUTION_VERSION = "EP-RESOLUTION-v1"
+RESOLUTION_CONTEXT_TYPE = "ep.resolution.v1"
+RESOLUTION_OUTCOMES = ("approved", "declined", "amended", "rejected")
+
+
+def _resolution_is_hash(value: Any) -> bool:
+    import re
+    return isinstance(value, str) and re.fullmatch(r"sha256:[0-9a-f]{64}", value) is not None
+
+
+def _resolution_hash(value: Any):
+    try:
+        if not is_canonicalizable(value):
+            return None
+        return "sha256:" + hashlib.sha256(canonicalize(value).encode("utf-8")).hexdigest()
+    except Exception:
+        return None
+
+
+def compute_binding_moment_hash(binding_moment: Any):
+    """Hash the exact value of the Morrison draft's binding_moment field."""
+    return _resolution_hash(binding_moment) if isinstance(binding_moment, dict) else None
+
+
+def compute_resolution_response_hash(response: Any):
+    """Hash a principal-authored amendment or objection without disclosing it."""
+    return _resolution_hash(response)
+
+
+def _resolution_exact_keys(value: Any, allowed: set, required=None) -> bool:
+    if not isinstance(value, dict):
+        return False
+    required = allowed if required is None else required
+    return set(value.keys()).issubset(allowed) and set(required).issubset(value.keys())
+
+
+def _resolution_binding_moment_shape_valid(binding_moment: Any) -> bool:
+    outer_allowed = {"synopsis", "findings", "recommendations", "offer", "question", "meta"}
+    outer_required = {"synopsis", "findings", "recommendations", "offer", "question"}
+    if not _resolution_exact_keys(binding_moment, outer_allowed, outer_required):
+        return False
+    if (not isinstance(binding_moment.get("synopsis"), str)
+            or not isinstance(binding_moment.get("findings"), list)
+            or not all(isinstance(x, str) for x in binding_moment["findings"])
+            or not isinstance(binding_moment.get("recommendations"), list)
+            or not all(isinstance(x, str) for x in binding_moment["recommendations"])
+            or not isinstance(binding_moment.get("offer"), str)):
+        return False
+    question = binding_moment.get("question")
+    question_keys = {"stem", "options", "recommended_idx", "hatches"}
+    if not _resolution_exact_keys(question, question_keys) or not isinstance(question.get("stem"), str):
+        return False
+    options = question.get("options")
+    option_keys = {"label", "reasoning"}
+    if (not isinstance(options, list) or not 2 <= len(options) <= 4
+            or not all(_resolution_exact_keys(option, option_keys)
+                       and isinstance(option.get("label"), str)
+                       and isinstance(option.get("reasoning"), str) for option in options)):
+        return False
+    recommended = question.get("recommended_idx")
+    if (not isinstance(recommended, int) or isinstance(recommended, bool)
+            or recommended < 0 or recommended >= len(options)):
+        return False
+    hatches = question.get("hatches")
+    hatch_keys = {"free_text", "dialogue"}
+    if (not _resolution_exact_keys(hatches, hatch_keys)
+            or not isinstance(hatches.get("free_text"), bool)
+            or not isinstance(hatches.get("dialogue"), bool)):
+        return False
+    if "meta" in binding_moment:
+        meta = binding_moment.get("meta")
+        if (not _resolution_exact_keys(meta, {"decision_class", "calibration_note"}, set())
+                or not all(isinstance(value, str) for value in meta.values())):
+            return False
+    return True
+
+
+def _resolution_signed_origin(signoff: Any):
+    try:
+        encoded = signoff["webauthn"]["client_data_json"]
+        client = json.loads(_b64url_decode(encoded).decode("utf-8"))
+        origin = client.get("origin") if isinstance(client, dict) else None
+        return origin if isinstance(origin, str) and origin else None
+    except Exception:
+        return None
+
+
+def _resolution_shape_valid(resolution: Any, binding_moment: Any, current_envelope_hash: str) -> bool:
+    if not isinstance(resolution, dict) or resolution.get("outcome") not in RESOLUTION_OUTCOMES:
+        return False
+    outcome = resolution["outcome"]
+    allowed = {
+        "approved": {"outcome", "selected_option"},
+        "declined": {"outcome"},
+        "amended": {"outcome", "response_hash", "successor_envelope_hash"},
+        "rejected": {"outcome", "objection_hash", "successor_envelope_hash"},
+    }[outcome]
+    if not set(resolution.keys()).issubset(allowed):
+        return False
+    if outcome == "approved":
+        selected = resolution.get("selected_option")
+        options = ((binding_moment or {}).get("question") or {}).get("options") if isinstance(binding_moment, dict) else None
+        return (isinstance(selected, int) and not isinstance(selected, bool) and selected >= 0
+                and isinstance(options, list) and selected < len(options))
+    if outcome == "declined":
+        return set(resolution.keys()) == {"outcome"}
+    if outcome == "amended" and not _resolution_is_hash(resolution.get("response_hash")):
+        return False
+    if outcome == "rejected" and "objection_hash" in resolution and not _resolution_is_hash(resolution.get("objection_hash")):
+        return False
+    if "successor_envelope_hash" in resolution:
+        successor = resolution.get("successor_envelope_hash")
+        if not _resolution_is_hash(successor) or successor == current_envelope_hash:
+            return False
+    return True
+
+
+def _resolution_structure_valid(receipt: Any) -> bool:
+    receipt_keys = {"profile", "signoff"}
+    signoff_keys = {"@type", "context", "webauthn"}
+    context_keys = {
+        "ep_version", "context_type", "envelope_hash", "action_hash", "principal",
+        "principal_key_id", "initiator", "nonce", "issued_at", "expires_at", "resolution",
+    }
+    webauthn_keys = {"authenticator_data", "client_data_json", "signature"}
+    if not _resolution_exact_keys(receipt, receipt_keys) or receipt.get("profile") != RESOLUTION_VERSION:
+        return False
+    signoff = receipt.get("signoff")
+    if not _resolution_exact_keys(signoff, signoff_keys) or signoff.get("@type") != "ep.signoff":
+        return False
+    context = signoff.get("context")
+    if not _resolution_exact_keys(context, context_keys):
+        return False
+    if not _resolution_exact_keys(signoff.get("webauthn"), webauthn_keys):
+        return False
+    return (context.get("ep_version") == "1.0"
+            and context.get("context_type") == RESOLUTION_CONTEXT_TYPE
+            and _resolution_is_hash(context.get("envelope_hash"))
+            and _resolution_is_hash(context.get("action_hash"))
+            and all(isinstance(context.get(k), str) and context.get(k)
+                    for k in ("principal", "principal_key_id", "initiator", "nonce")))
+
+
+def _resolution_refuse(reason: str, checks: dict, outcome=None) -> dict:
+    return {"valid": False, "authorizes_action": False, "outcome": outcome,
+            "requires_successor": False, "checks": checks, "reason": reason}
+
+
+def verify_resolution_receipt(receipt: Any, opts: Optional[dict] = None) -> dict:
+    """Verify EP-RESOLUTION-v1 against RP-supplied envelope, action, RP ID,
+    and role-pinned principal keys. Never raises; all hostile input refuses."""
+    opts = opts or {}
+    checks = {k: False for k in (
+        "structure", "outcome_shape", "envelope_binding", "action_binding",
+        "canonical_profile", "binding_moment_shape", "principal_pin",
+        "selected_option_binding", "authorization_context", "initiator_binding",
+        "nonce_binding", "time_window", "evaluation_time", "rp_id", "origin", "webauthn",
+    )}
+    try:
+        checks["structure"] = _resolution_structure_valid(receipt)
+        if not checks["structure"]:
+            return _resolution_refuse("malformed_resolution_receipt", checks)
+        signoff = receipt["signoff"]
+        context = signoff["context"]
+        outcome = (context.get("resolution") or {}).get("outcome")
+
+        checks["canonical_profile"] = (is_canonicalizable(context)
+                                         and is_canonicalizable(opts.get("bindingMoment")))
+        if not checks["canonical_profile"]:
+            return _resolution_refuse("resolution_outside_canonicalization_profile", checks, outcome)
+
+        checks["binding_moment_shape"] = _resolution_binding_moment_shape_valid(opts.get("bindingMoment"))
+        if not checks["binding_moment_shape"]:
+            return _resolution_refuse("malformed_binding_moment", checks, outcome)
+
+        envelope_hash = compute_binding_moment_hash(opts.get("bindingMoment"))
+        checks["outcome_shape"] = _resolution_shape_valid(
+            context.get("resolution"), opts.get("bindingMoment"), context.get("envelope_hash"))
+        if not checks["outcome_shape"]:
+            return _resolution_refuse("invalid_outcome_shape", checks, outcome)
+
+        checks["envelope_binding"] = envelope_hash is not None and context.get("envelope_hash") == envelope_hash
+        if not checks["envelope_binding"]:
+            return _resolution_refuse("envelope_binding_mismatch", checks, outcome)
+
+        expected_action = opts.get("expectedActionHash")
+        checks["action_binding"] = _resolution_is_hash(expected_action) and context.get("action_hash") == expected_action
+        if not checks["action_binding"]:
+            return _resolution_refuse("action_binding_mismatch", checks, outcome)
+
+        expected_option = opts.get("expectedSelectedOption")
+        checks["selected_option_binding"] = (outcome != "approved"
+                                               or (isinstance(expected_option, int)
+                                                   and not isinstance(expected_option, bool)
+                                                   and expected_option >= 0
+                                                   and context["resolution"].get("selected_option") == expected_option))
+
+        pins = opts.get("principalKeys")
+        pin = pins.get(context.get("principal_key_id")) if isinstance(pins, dict) else None
+        checks["principal_pin"] = (isinstance(pin, dict)
+                                   and isinstance(pin.get("public_key"), str) and bool(pin.get("public_key"))
+                                   and pin.get("principal") == context.get("principal"))
+        if not checks["principal_pin"]:
+            return _resolution_refuse("principal_key_not_pinned_for_role", checks, outcome)
+
+        expected_initiator = opts.get("expectedInitiator")
+        initiator_pinned = isinstance(expected_initiator, str) and bool(expected_initiator)
+        checks["initiator_binding"] = ("expectedInitiator" not in opts
+                                       or (initiator_pinned and context.get("initiator") == expected_initiator))
+        if not checks["initiator_binding"]:
+            return _resolution_refuse("initiator_binding_mismatch", checks, outcome)
+        expected_nonce = opts.get("expectedNonce")
+        nonce_pinned = isinstance(expected_nonce, str) and bool(expected_nonce)
+        checks["nonce_binding"] = ("expectedNonce" not in opts
+                                   or (nonce_pinned and context.get("nonce") == expected_nonce))
+        if not checks["nonce_binding"]:
+            return _resolution_refuse("nonce_binding_mismatch", checks, outcome)
+
+        import datetime as _dt
+        import re as _regex
+        ts_re = _regex.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$")
+        def parse_ts(value):
+            if not isinstance(value, str) or not ts_re.fullmatch(value):
+                return None
+            try:
+                return _dt.datetime.fromisoformat(value.replace("Z", "+00:00")).timestamp() * 1000
+            except Exception:
+                return None
+        issued, expires = parse_ts(context.get("issued_at")), parse_ts(context.get("expires_at"))
+        checks["time_window"] = issued is not None and expires is not None and issued < expires
+        if checks["time_window"] and "evaluationTime" in opts:
+            value = opts.get("evaluationTime")
+            evaluation = value if isinstance(value, (int, float)) and not isinstance(value, bool) else parse_ts(value)
+            checks["evaluation_time"] = evaluation is not None and issued <= evaluation <= expires
+            if not checks["evaluation_time"]:
+                return _resolution_refuse("resolution_outside_validity_window", checks, outcome)
+        if not checks["time_window"]:
+            return _resolution_refuse("resolution_outside_validity_window", checks, outcome)
+
+        rp_id = opts.get("rpId")
+        checks["rp_id"] = isinstance(rp_id, str) and bool(rp_id)
+        if not checks["rp_id"]:
+            return _resolution_refuse("rp_id_required", checks, outcome)
+
+        allowed_origins = opts.get("allowedOrigins")
+        origin = _resolution_signed_origin(signoff)
+        checks["origin"] = (isinstance(allowed_origins, list) and bool(allowed_origins)
+                            and all(isinstance(item, str) and bool(item) for item in allowed_origins)
+                            and origin in allowed_origins)
+        if not checks["origin"]:
+            return _resolution_refuse("webauthn_origin_not_allowed", checks, outcome)
+
+        webauthn = verify_webauthn_signoff(signoff, pin["public_key"], {"rpId": rp_id})
+        checks["webauthn"] = webauthn.get("valid") is True
+        if not checks["webauthn"]:
+            return _resolution_refuse("webauthn_verification_failed", checks, outcome)
+        checks["authorization_context"] = (checks["selected_option_binding"]
+                                             and initiator_pinned and nonce_pinned
+                                             and checks["evaluation_time"])
+        return {"valid": True, "authorizes_action": outcome == "approved" and checks["authorization_context"], "outcome": outcome,
+                "requires_successor": outcome in ("amended", "rejected"), "checks": checks}
+    except Exception:
+        return _resolution_refuse("malformed_resolution_receipt", checks)
+
+
 def verify_quorum(quorum: Any, opts: Optional[dict] = None) -> dict:
     """Verify an EP-QUORUM-v1 multi-party approval. Mirrors JS quorum.js;
     fail-closed; composes verify_webauthn_signoff per member."""

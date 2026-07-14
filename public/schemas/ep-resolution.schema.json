@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://emiliaprotocol.ai/schemas/ep-resolution.schema.json",
+  "title": "EP-RESOLUTION-v1",
+  "description": "A device-signed, four-outcome resolution of an exact binding-moment envelope for an exact action. The principal key is never carried by this object; a verifier supplies a role-pinned key independently.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profile", "signoff"],
+  "properties": {
+    "profile": { "const": "EP-RESOLUTION-v1" },
+    "signoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["@type", "context", "webauthn"],
+      "properties": {
+        "@type": { "const": "ep.signoff" },
+        "context": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ep_version",
+            "context_type",
+            "envelope_hash",
+            "action_hash",
+            "principal",
+            "principal_key_id",
+            "initiator",
+            "nonce",
+            "issued_at",
+            "expires_at",
+            "resolution"
+          ],
+          "properties": {
+            "ep_version": { "const": "1.0" },
+            "context_type": { "const": "ep.resolution.v1" },
+            "envelope_hash": { "$ref": "#/$defs/sha256" },
+            "action_hash": { "$ref": "#/$defs/sha256" },
+            "principal": { "type": "string", "minLength": 1 },
+            "principal_key_id": { "type": "string", "minLength": 1 },
+            "initiator": { "type": "string", "minLength": 1 },
+            "nonce": { "type": "string", "minLength": 1 },
+            "issued_at": { "type": "string", "format": "date-time" },
+            "expires_at": { "type": "string", "format": "date-time" },
+            "resolution": { "$ref": "#/$defs/resolution" }
+          }
+        },
+        "webauthn": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["authenticator_data", "client_data_json", "signature"],
+          "properties": {
+            "authenticator_data": { "type": "string", "minLength": 1 },
+            "client_data_json": { "type": "string", "minLength": 1 },
+            "signature": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "resolution": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["outcome", "selected_option"],
+          "properties": {
+            "outcome": { "const": "approved" },
+            "selected_option": { "type": "integer", "minimum": 0 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["outcome"],
+          "properties": {
+            "outcome": { "const": "declined" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["outcome", "response_hash"],
+          "properties": {
+            "outcome": { "const": "amended" },
+            "response_hash": { "$ref": "#/$defs/sha256" },
+            "successor_envelope_hash": { "$ref": "#/$defs/sha256" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["outcome"],
+          "properties": {
+            "outcome": { "const": "rejected" },
+            "objection_hash": { "$ref": "#/$defs/sha256" },
+            "successor_envelope_hash": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      ]
+    }
+  }
+}

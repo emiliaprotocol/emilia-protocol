@@ -4,7 +4,7 @@
   "vector_bundle": {
     "version": "EP-LIVE-CONFORMANCE-CATALOG-v1",
     "path": "conformance/suites.mjs",
-    "sha256": "7606d60a22ef12587d19c4d90d626976523ed9dab3542b76911580ae9d93a563"
+    "sha256": "b18451d2cd36e6469b6a656ac79b67bcb0b2f601b55fd42e06027f8207180394"
   },
   "suites": [
     {
@@ -16,6 +16,11 @@
       "path": "conformance/vectors/signoffs.v1.json",
       "sha256": "836bb3c742b625ffdea3b82cdba4e0e3a1a87635522bfbc4de447e977a62ab05",
       "vectors": 9
+    },
+    {
+      "path": "conformance/vectors/resolution.v1.json",
+      "sha256": "a91183e2acde1707080b279fab029fc72157bc6d6a15ba744bca185dcfbc4ed0",
+      "vectors": 32
     },
     {
       "path": "conformance/vectors/quorum.v1.json",
@@ -94,8 +99,8 @@
     }
   ],
   "totals": {
-    "suites": 17,
-    "vectors": 193,
+    "suites": 18,
+    "vectors": 225,
     "implementations": 3
   },
   "implementations": [
@@ -105,16 +110,16 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "conformance/runners/run-js.mjs",
-        "sha256": "a30043c2b51a685083c51eb2125b9466461ee1c182557bfdbb1ca51012ce174d"
+        "sha256": "4b14ba147aa3b9695efc73da34133927f8774f9dda14846a24e7c4a4da9e80d1"
       },
       "source": {
-        "files": 50,
-        "bytes": 771256,
-        "tree_sha256": "6d657c6c780c8ed33c48e5db389da376cbeca50696d3f397051b4b5dba790e84"
+        "files": 52,
+        "bytes": 797358,
+        "tree_sha256": "d266492a1c812ad1e1a766225a1c584ce36483537d053777e375daca54bbafaa"
       },
-      "suites": 17,
-      "vectors": 193,
-      "normalized_results_sha256": "508721930f9b9b4187995511853b97825808a71456683a6931feb4f515407c93",
+      "suites": 18,
+      "vectors": 225,
+      "normalized_results_sha256": "48088d652f6a5fe4459d0769ac890e87019fc226615a52f61aeee5909f8159d1",
       "status": "pass"
     },
     {
@@ -123,16 +128,16 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "conformance/runners/run_py.py",
-        "sha256": "3d6a7f8c088999dc086e68c62d6c3285542c81f9928d84b02ce97c628bec01fe"
+        "sha256": "5026f6cf6d0bd6fc367fd38ae1fe8833f47ee02c2476fb135cae05e8104fe3e4"
       },
       "source": {
         "files": 1,
-        "bytes": 142494,
-        "tree_sha256": "ab1a4fb3c0671282fff7771a439807c0445efa9ee04d94f4d469d1de0b937b28"
+        "bytes": 156723,
+        "tree_sha256": "df84c63f42eb8384f2bbf2aec7f03e22cb646aa8569377ccaa49acefc6128b48"
       },
-      "suites": 17,
-      "vectors": 193,
-      "normalized_results_sha256": "508721930f9b9b4187995511853b97825808a71456683a6931feb4f515407c93",
+      "suites": 18,
+      "vectors": 225,
+      "normalized_results_sha256": "48088d652f6a5fe4459d0769ac890e87019fc226615a52f61aeee5909f8159d1",
       "status": "pass"
     },
     {
@@ -141,18 +146,18 @@
       "relationship": "one_team_port",
       "runner": {
         "path": "packages/go-verify/cmd/conformance/main.go",
-        "sha256": "afb678fe06dcad9545537e2aec25762140ac64e37d807eb73e178662d11c970e"
+        "sha256": "6334db0e309b8d99cf340f8d603fa8cf615056f4ab65c2678f7f85f18c606979"
       },
       "source": {
-        "files": 30,
-        "bytes": 251043,
-        "tree_sha256": "8e0c98972fc051b010757892cf3197abf06ec1ea803dcb07a344cc20cfd46ac2"
+        "files": 31,
+        "bytes": 266635,
+        "tree_sha256": "72f96230b289074d137540937fcab3b3446bdad8a85adc7b59f169d1df6a745f"
       },
-      "suites": 17,
-      "vectors": 193,
-      "normalized_results_sha256": "508721930f9b9b4187995511853b97825808a71456683a6931feb4f515407c93",
+      "suites": 18,
+      "vectors": 225,
+      "normalized_results_sha256": "48088d652f6a5fe4459d0769ac890e87019fc226615a52f61aeee5909f8159d1",
       "status": "pass"
     }
   ],
-  "manifest_sha256": "dd38e9e4065274612a966d3a6ef3936638dcb53030262201616a5a9774e50475"
+  "manifest_sha256": "74b84cd10500405b3e99bbb2016f1ee4b453b276748fc19d02ea6427e7ee4f96"
 }

@@ -1,9 +1,9 @@
 {
   "@version": "EP-SECURITY-CASE-RESOLVED-v2",
   "source": "security/claims.v1.json",
-  "evidence_bundle_sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412",
-  "claim_count": 17,
-  "evidence_file_count": 82,
+  "evidence_bundle_sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d",
+  "claim_count": 18,
+  "evidence_file_count": 86,
   "execution": {
     "required": true,
     "status": "passed",
@@ -44,6 +44,31 @@
         "cases": [
           "accept_threshold_2of3",
           "reject_initiator_is_approver"
+        ],
+        "languages": [
+          "javascript",
+          "python",
+          "go"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "cross-language",
+        "suite": "conformance/vectors/resolution.v1.json",
+        "cases": [
+          "accept_approved",
+          "accept_declined",
+          "refuse_approved_without_evaluation_time",
+          "refuse_approved_without_initiator_pin",
+          "refuse_approved_without_nonce_pin",
+          "refuse_approved_without_option_binding",
+          "refuse_declined_as_authorization",
+          "reject_cross_principal_key",
+          "reject_impossible_calendar_date",
+          "reject_malformed_binding_moment",
+          "reject_noncanonical_binding_moment",
+          "reject_outcome_relabel",
+          "reject_wrong_origin"
         ],
         "languages": [
           "javascript",
@@ -139,6 +164,18 @@
         "titles": [
           "EP-QUORUM-v1: initiator sitting in an approver seat is rejected",
           "EP-QUORUM-v1: one key in two seats is rejected even with distinct_humans:false"
+        ],
+        "result": "passed"
+      },
+      {
+        "runner": "node-test",
+        "file": "packages/verify/resolution.test.js",
+        "titles": [
+          "a presenter-supplied or cross-principal key cannot establish authority",
+          "all four authentic outcomes verify while only approved authorizes",
+          "an approved receipt does not authorize until the relying party pins the option-to-action mapping",
+          "changing a signed outcome from declined to approved fails",
+          "malformed envelopes and cross-language-unsafe signed values fail before digest credit"
         ],
         "result": "passed"
       },
@@ -345,16 +382,16 @@
     "security-evidence": {
       "kind": "content-addressed-evidence-bundle",
       "filename": "security-case-evidence.v1",
-      "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412",
-      "file_count": 82
+      "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d",
+      "file_count": 86
     },
     "verify-sdk": {
       "kind": "npm-tarball",
       "package": "@emilia-protocol/verify",
       "version": "3.8.1",
       "filename": "emilia-protocol-verify-3.8.1.tgz",
-      "sha256": "0026b883bd448601a0f8f880ce19785b1f619acecaf7b1f2dd9e6e10215df8fa",
-      "file_count": 28
+      "sha256": "0d677cdd9b4e5329e774fe8ea257036fde96f9d0a14916530a0fa4fc164be864",
+      "file_count": 29
     }
   },
   "claims": [
@@ -505,11 +542,274 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "0026b883bd448601a0f8f880ce19785b1f619acecaf7b1f2dd9e6e10215df8fa"
+          "sha256": "0d677cdd9b4e5329e774fe8ea257036fde96f9d0a14916530a0fa4fc164be864"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
+          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
+        }
+      ]
+    },
+    {
+      "claim_id": "four-outcome-resolution-preserves-meaning",
+      "statement": "A binding-moment resolution preserves approved, declined, amended, and rejected as distinct device-signed outcomes bound to the exact well-formed source envelope and action; no negative outcome authorizes the original action, and an approval authorizes only under a complete relying-party-pinned acceptance context.",
+      "acceptance_roots": [
+        "role-scoped principal key and principal identity pinned by the relying party",
+        "exact source binding-moment envelope and action digest supplied by the relying party",
+        "WebAuthn RP ID and exact origin allowlist pinned by the relying party",
+        "option-to-action mapping, nonce, initiator, and evaluation time pinned by the relying party"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/resolution.js",
+          "symbol": "verifyResolutionReceipt",
+          "exported": true
+        },
+        {
+          "language": "python",
+          "file": "packages/python-verify/emilia_verify/__init__.py",
+          "symbol": "verify_resolution_receipt",
+          "exported": true
+        },
+        {
+          "language": "go",
+          "file": "packages/go-verify/resolution.go",
+          "symbol": "VerifyResolutionReceipt",
+          "exported": true
+        }
+      ],
+      "implementations": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/resolution.js",
+          "export": "verifyResolutionReceipt"
+        },
+        {
+          "language": "python",
+          "file": "packages/python-verify/emilia_verify/__init__.py",
+          "symbol": "verify_resolution_receipt"
+        },
+        {
+          "language": "go",
+          "file": "packages/go-verify/resolution.go",
+          "symbol": "VerifyResolutionReceipt"
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/resolution.v1.json"
+        },
+        "python": {
+          "status": "covered",
+          "evidence": "conformance/vectors/resolution.v1.json"
+        },
+        "go": {
+          "status": "covered",
+          "evidence": "conformance/vectors/resolution.v1.json"
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "accept_approved",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "accept_declined",
+          "polarity": "positive",
+          "expect": {
+            "valid": true
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "refuse_declined_as_authorization",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "refuse_approved_without_option_binding",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "refuse_approved_without_nonce_pin",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "refuse_approved_without_initiator_pin",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "refuse_approved_without_evaluation_time",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "reject_outcome_relabel",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "reject_cross_principal_key",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "reject_wrong_origin",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "reject_malformed_binding_moment",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "reject_noncanonical_binding_moment",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "reject_impossible_calendar_date",
+          "polarity": "negative",
+          "expect": {
+            "valid": false
+          },
+          "execution": {
+            "runner": "cross-language"
+          }
+        }
+      ],
+      "tests": [
+        {
+          "file": "packages/verify/resolution.test.js",
+          "title": "all four authentic outcomes verify while only approved authorizes",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/resolution.test.js",
+          "title": "an approved receipt does not authorize until the relying party pins the option-to-action mapping",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/resolution.test.js",
+          "title": "changing a signed outcome from declined to approved fails",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/resolution.test.js",
+          "title": "a presenter-supplied or cross-principal key cannot establish authority",
+          "runner": "node-test"
+        },
+        {
+          "file": "packages/verify/resolution.test.js",
+          "title": "malformed envelopes and cross-language-unsafe signed values fail before digest credit",
+          "runner": "node-test"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The exact four-outcome discriminated union, complete acceptance-context rule, source-envelope grammar, origin check, envelope digest, and WebAuthn challenge bytes are covered by executable cross-language vectors but are not yet represented in TLA+, Alloy, or Tamarin."
+        }
+      ],
+      "assumptions": [
+        "the relying party maps the selected option to the exact action correctly",
+        "the role-pinned principal key, RP ID, origin allowlist, nonce, initiator, and evaluation time are authentic",
+        "the consuming surface faithfully presents the envelope and action that the signed digests denote"
+      ],
+      "exclusions": [
+        "the profile does not prove the briefing was truthful or unbiased",
+        "the profile does not prove display faithfulness without separate presentation evidence",
+        "the profile does not provide exactly-once consumption, revocation currency, trusted time, or quorum by itself"
+      ],
+      "release_artifacts": [
+        "verify-sdk",
+        "security-evidence"
+      ],
+      "release_artifact_hashes": [
+        {
+          "artifact_id": "verify-sdk",
+          "sha256": "0d677cdd9b4e5329e774fe8ea257036fde96f9d0a14916530a0fa4fc164be864"
+        },
+        {
+          "artifact_id": "security-evidence",
+          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
         }
       ]
     },
@@ -613,11 +913,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "0026b883bd448601a0f8f880ce19785b1f619acecaf7b1f2dd9e6e10215df8fa"
+          "sha256": "0d677cdd9b4e5329e774fe8ea257036fde96f9d0a14916530a0fa4fc164be864"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
+          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
         }
       ]
     },
@@ -735,11 +1035,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "0026b883bd448601a0f8f880ce19785b1f619acecaf7b1f2dd9e6e10215df8fa"
+          "sha256": "0d677cdd9b4e5329e774fe8ea257036fde96f9d0a14916530a0fa4fc164be864"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
+          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
         }
       ]
     },
@@ -883,7 +1183,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
+          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
         }
       ]
     },
@@ -1025,11 +1325,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "0026b883bd448601a0f8f880ce19785b1f619acecaf7b1f2dd9e6e10215df8fa"
+          "sha256": "0d677cdd9b4e5329e774fe8ea257036fde96f9d0a14916530a0fa4fc164be864"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
+          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
         }
       ]
     },
@@ -1134,11 +1434,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "0026b883bd448601a0f8f880ce19785b1f619acecaf7b1f2dd9e6e10215df8fa"
+          "sha256": "0d677cdd9b4e5329e774fe8ea257036fde96f9d0a14916530a0fa4fc164be864"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
+          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
         }
       ]
     },
@@ -1243,11 +1543,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "0026b883bd448601a0f8f880ce19785b1f619acecaf7b1f2dd9e6e10215df8fa"
+          "sha256": "0d677cdd9b4e5329e774fe8ea257036fde96f9d0a14916530a0fa4fc164be864"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
+          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
         }
       ]
     },
@@ -1379,7 +1679,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
+          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
         }
       ]
     },
@@ -1486,7 +1786,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
+          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
         }
       ]
     },
@@ -1610,7 +1910,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
+          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
         }
       ]
     },
@@ -1784,7 +2084,7 @@
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
+          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
         }
       ]
     },
@@ -1918,7 +2218,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
+          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
         }
       ]
     },
@@ -2030,11 +2330,11 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "verify-sdk",
-          "sha256": "0026b883bd448601a0f8f880ce19785b1f619acecaf7b1f2dd9e6e10215df8fa"
+          "sha256": "0d677cdd9b4e5329e774fe8ea257036fde96f9d0a14916530a0fa4fc164be864"
         },
         {
           "artifact_id": "security-evidence",
-          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
+          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
         }
       ]
     },
@@ -2168,7 +2468,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
+          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
         }
       ]
     },
@@ -2420,7 +2720,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
+          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
         }
       ]
     },
@@ -2571,7 +2871,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
+          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
         }
       ]
     },
@@ -2855,7 +3155,7 @@
       "release_artifact_hashes": [
         {
           "artifact_id": "security-evidence",
-          "sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
+          "sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
         }
       ]
     }
@@ -2932,6 +3232,10 @@
     {
       "path": "conformance/vectors/reliance.v1.json",
       "sha256": "450a9324d19120e38237a5403731ddd199f0b4940777dc669c9b3d601982b326"
+    },
+    {
+      "path": "conformance/vectors/resolution.v1.json",
+      "sha256": "a91183e2acde1707080b279fab029fc72157bc6d6a15ba744bca185dcfbc4ed0"
     },
     {
       "path": "conformance/vectors/revocation.exec.v1.json",
@@ -3030,6 +3334,10 @@
       "sha256": "2c1416ad111780b6004e5fd91d084ea0f58ab4456022f26623d61b8304f2028d"
     },
     {
+      "path": "packages/go-verify/resolution.go",
+      "sha256": "76ed5560764b3468815dfaebaf4c0a034c5de8904474945c1613c365993337e5"
+    },
+    {
       "path": "packages/go-verify/revocation.go",
       "sha256": "c8380d5c60948a392a79240c54528b9dce789f6b04bc63f9e3ecc6dbb875f9d8"
     },
@@ -3047,7 +3355,7 @@
     },
     {
       "path": "packages/python-verify/emilia_verify/__init__.py",
-      "sha256": "df7db65d9d95df54c478c0ae1f5a06b05c7551cc7fdc0038df7e5b0eefc2cf20"
+      "sha256": "fa987f89679d83b03c0da67ee479bba13d3be5d4b88b50ea41377ad5333b4157"
     },
     {
       "path": "packages/verify/authority-proof.js",
@@ -3072,6 +3380,14 @@
     {
       "path": "packages/verify/reliance.js",
       "sha256": "f07a59767667ba688c33bd36c763b84d963b67e026962fcdabaa8ebdea053445"
+    },
+    {
+      "path": "packages/verify/resolution.js",
+      "sha256": "3de99c1bd714d73f48edfa712be30091bf1033fdc15fa157089287fbbd68f36f"
+    },
+    {
+      "path": "packages/verify/resolution.test.js",
+      "sha256": "e217df92aa0282964e629720bd672038c265e31bfcb330ed93cfa5ea54ce58f6"
     },
     {
       "path": "packages/verify/revocation.js",
@@ -3123,7 +3439,7 @@
     },
     {
       "path": "security/claims.v1.json",
-      "sha256": "b86cc7abacc21406e63aad968353eb8d5d4ac327d41eed41860c007e4b89e587"
+      "sha256": "346fdc16f4f2ba94d17e787144d1fbade1c6930f0b3a03e48fc71a217a6b8094"
     },
     {
       "path": "security/vectors.v1.json",

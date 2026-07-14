@@ -9,7 +9,8 @@ from emilia_verify import (verify_receipt, verify_webauthn_signoff, verify_quoru
                             canonicalize, is_canonicalizable,
                             evaluate_currency, validate_initiator_attestation,
                             verify_consumption_proof, require_witness_quorum,
-                            verify_timestamp_proof, verify_authorization_chain)
+                            verify_timestamp_proof, verify_authorization_chain,
+                            verify_resolution_receipt)
 # EP-CANONICALIZATION-v1 differential branch. Same gate as the JS runner
 # (conformance/runners/strict-json.mjs) and the Go runner: standard parse, then
 # duplicate member names / unpaired surrogates / depth > 64 reject, then the EP
@@ -70,6 +71,25 @@ def run_canonicalization(c):
     return digest == c.get("expected_digest")
 def _run(v):
     if "document" in v: return verify_receipt(v["document"], v["public_key"]).valid
+    if "resolution_receipt" in v or "resolution_authorization" in v:
+        receipt = v.get("resolution_receipt", v.get("resolution_authorization"))
+        resolution_opts = {
+            "bindingMoment": v.get("binding_moment"),
+            "expectedActionHash": v.get("expected_action_hash"),
+            "principalKeys": v.get("principal_keys"),
+            "rpId": v.get("rp_id"),
+            "allowedOrigins": v.get("allowed_origins"),
+        }
+        for wire_name, option_name in (
+            ("expected_selected_option", "expectedSelectedOption"),
+            ("expected_nonce", "expectedNonce"),
+            ("expected_initiator", "expectedInitiator"),
+            ("evaluation_time", "evaluationTime"),
+        ):
+            if wire_name in v:
+                resolution_opts[option_name] = v.get(wire_name)
+        result = verify_resolution_receipt(receipt, resolution_opts)
+        return bool(result["valid"] and result["authorizes_action"]) if "resolution_authorization" in v else result["valid"]
     if "signoff" in v: return verify_webauthn_signoff(v["signoff"], v["approver_public_key"], {"rpId": v.get("rp_id")})["valid"]
     if "quorum" in v: return verify_quorum(v["quorum"], {"rpId": "emiliaprotocol.ai"})["valid"]
     if "revocation" in v: return verify_revocation(v["target"], v["revocation"], {"revokerKeys": v.get("revoker_keys"), "maxAgeSeconds": v.get("max_age_seconds"), "now": v.get("now")})["valid"]

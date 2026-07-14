@@ -1,9 +1,9 @@
 {
   "@version": "EMILIA-REPO-CONTEXT-v1",
-  "evidence_snapshot_at": "2026-07-14T03:54:33.639Z",
+  "evidence_snapshot_at": "2026-07-14T06:40:43.541Z",
   "provenance": {
     "generator": "scripts/generate-llm-context.mjs",
-    "input_digest_sha256": "8e48635e1ca28dc4e5dbb96a06cb0e70f60314e3a99dc8594d62c4495ebd86bf",
+    "input_digest_sha256": "180c0206182e41f1f85913df2445b9fe5af8c871cc4e0bef7770da3c39493134",
     "generated_from": [
       {
         "path": "docs/ai/context-source.v1.json",
@@ -17,13 +17,13 @@
       },
       {
         "path": "lib/proof-stats.json",
-        "sha256": "6dbbcd1b6e27e3f3b774880d7c942ee15220d627d83a9848ebf564eb18c8ee58",
+        "sha256": "82a441bb485026d3558987023f075c1ea6ed44685c97b58c57538d32fd6b5c9e",
         "bytes": 1067
       },
       {
         "path": "conformance/conformance-manifest.json",
-        "sha256": "3fa976b6e701aa49e321d7db5a32f94db5450ca2f3732a4d2d51c3defecead3c",
-        "bytes": 5446
+        "sha256": "f2021d639df52f8ac1a2a25c970eab5428f1eeb625e24c4c10f80ebe829eb7c1",
+        "bytes": 5619
       },
       {
         "path": "conformance/external/rust-cleanroom-jdieselny.v1.json",
@@ -32,13 +32,13 @@
       },
       {
         "path": "security/claims.v1.json",
-        "sha256": "b86cc7abacc21406e63aad968353eb8d5d4ac327d41eed41860c007e4b89e587",
-        "bytes": 69201
+        "sha256": "346fdc16f4f2ba94d17e787144d1fbade1c6930f0b3a03e48fc71a217a6b8094",
+        "bytes": 75725
       },
       {
         "path": "security/security-case.json",
-        "sha256": "258e667a84293818d96f676f9c4e69e40fa92d051ab2dacfa0bb6994b74990a7",
-        "bytes": 115146
+        "sha256": "757a653baab9a27bfe5fb2e9711115c0620746899a4aff2c4eba25ae7470639f",
+        "bytes": 126034
       },
       {
         "path": "lib/standards-observatory.snapshot.json",
@@ -123,13 +123,13 @@
       "policy": "all platform-applicable cases must pass; platform-specific cases may skip"
     },
     "cross_language_conformance": {
-      "suites": 17,
-      "vectors": 193,
+      "suites": 18,
+      "vectors": 225,
       "implementations": 3,
       "relationship": "same_team_ports",
       "claim_scope": "current same-team cross-language consistency; not independent implementation evidence",
-      "manifest_sha256": "dd38e9e4065274612a966d3a6ef3936638dcb53030262201616a5a9774e50475",
-      "vector_bundle_sha256": "7606d60a22ef12587d19c4d90d626976523ed9dab3542b76911580ae9d93a563"
+      "manifest_sha256": "74b84cd10500405b3e99bbb2016f1ee4b453b276748fc19d02ea6427e7ee4f96",
+      "vector_bundle_sha256": "b18451d2cd36e6469b6a656ac79b67bcb0b2f601b55fd42e06027f8207180394"
     },
     "formal": {
       "tla_invariants": 26,
@@ -148,9 +148,9 @@
     "red_team_cases": 85,
     "security_case": {
       "status": "passed",
-      "claims": 17,
-      "evidence_files": 82,
-      "evidence_bundle_sha256": "8b5baad59a95ad429f077ffa468250ef970e3e512c2bd089ee3267f254df3412"
+      "claims": 18,
+      "evidence_files": 86,
+      "evidence_bundle_sha256": "a00650b80859714c5a8338b0b1d96b00c0ccc1ec816b13f28a06248b9e6c914d"
     }
   },
   "external_implementation": {
@@ -176,7 +176,7 @@
       "manifest_sha256": "b7a312a5ad5fe41f66f5e97ae795bf20d4281a5a4f6da0211d579144021fbbfc",
       "scope": "time_pinned_vector_set",
       "relation_to_current_bundle": "time_pinned_prior_vector_set",
-      "current_vectors": 193
+      "current_vectors": 225
     },
     "hostility": {
       "suite": "EP-DIFFERENTIAL-HOSTILITY-v2",
@@ -292,6 +292,133 @@
         "the verifier does not infer why a human denied",
         "a compromised authentic device can still sign a harmful outcome",
         "legacy lower-assurance denial events are not represented as Class-A evidence"
+      ]
+    },
+    {
+      "claim_id": "four-outcome-resolution-preserves-meaning",
+      "statement": "A binding-moment resolution preserves approved, declined, amended, and rejected as distinct device-signed outcomes bound to the exact well-formed source envelope and action; no negative outcome authorizes the original action, and an approval authorizes only under a complete relying-party-pinned acceptance context.",
+      "acceptance_roots": [
+        "role-scoped principal key and principal identity pinned by the relying party",
+        "exact source binding-moment envelope and action digest supplied by the relying party",
+        "WebAuthn RP ID and exact origin allowlist pinned by the relying party",
+        "option-to-action mapping, nonce, initiator, and evaluation time pinned by the relying party"
+      ],
+      "enforcement_path": [
+        {
+          "language": "javascript",
+          "file": "packages/verify/resolution.js",
+          "symbol": "verifyResolutionReceipt",
+          "exported": true
+        },
+        {
+          "language": "python",
+          "file": "packages/python-verify/emilia_verify/__init__.py",
+          "symbol": "verify_resolution_receipt",
+          "exported": true
+        },
+        {
+          "language": "go",
+          "file": "packages/go-verify/resolution.go",
+          "symbol": "VerifyResolutionReceipt",
+          "exported": true
+        }
+      ],
+      "language_coverage": {
+        "javascript": {
+          "status": "covered",
+          "evidence": "conformance/vectors/resolution.v1.json"
+        },
+        "python": {
+          "status": "covered",
+          "evidence": "conformance/vectors/resolution.v1.json"
+        },
+        "go": {
+          "status": "covered",
+          "evidence": "conformance/vectors/resolution.v1.json"
+        }
+      },
+      "vectors": [
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "accept_approved",
+          "polarity": "positive"
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "accept_declined",
+          "polarity": "positive"
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "refuse_declined_as_authorization",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "refuse_approved_without_option_binding",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "refuse_approved_without_nonce_pin",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "refuse_approved_without_initiator_pin",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "refuse_approved_without_evaluation_time",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "reject_outcome_relabel",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "reject_cross_principal_key",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "reject_wrong_origin",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "reject_malformed_binding_moment",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "reject_noncanonical_binding_moment",
+          "polarity": "negative"
+        },
+        {
+          "suite": "conformance/vectors/resolution.v1.json",
+          "case_id": "reject_impossible_calendar_date",
+          "polarity": "negative"
+        }
+      ],
+      "formal": [
+        {
+          "status": "not_modeled",
+          "gap": "The exact four-outcome discriminated union, complete acceptance-context rule, source-envelope grammar, origin check, envelope digest, and WebAuthn challenge bytes are covered by executable cross-language vectors but are not yet represented in TLA+, Alloy, or Tamarin."
+        }
+      ],
+      "assumptions": [
+        "the relying party maps the selected option to the exact action correctly",
+        "the role-pinned principal key, RP ID, origin allowlist, nonce, initiator, and evaluation time are authentic",
+        "the consuming surface faithfully presents the envelope and action that the signed digests denote"
+      ],
+      "exclusions": [
+        "the profile does not prove the briefing was truthful or unbiased",
+        "the profile does not prove display faithfulness without separate presentation evidence",
+        "the profile does not provide exactly-once consumption, revocation currency, trusted time, or quorum by itself"
       ]
     },
     {

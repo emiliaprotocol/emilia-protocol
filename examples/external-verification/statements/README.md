@@ -86,13 +86,13 @@ Internet-Drafts and the vector schemas, without reading this repository's
 verifier code, is the implementer's stated construction process. Publishing the
 source makes that claim auditable by anyone; no output can prove it.
 
-### Rust verifier / J Diesel NY — 2026-07-13 (current-set statement)
+### Rust verifier / J Diesel NY — 2026-07-13 (historical pinned-input statement)
 
 - File: [`rust-cleanroom/statement-2026-07-13.json`](rust-cleanroom/statement-2026-07-13.json),
   published as received.
 - Verifier: `ext:verifier:emilia-cleanroom-rust` (J Diesel NY), same key_id
   `ep:external-verifier-key:sha256:87c8c5029475f53a` as the 2026-07-07 statement.
-- Signed result: `verified`, all 17 suites, 193 of 193 vectors, bound to this
+- Signed result for this historical input: `verified`, all 17 suites, 193 of 193 vectors, bound to this
   repository's commit `a904480` by per-suite `suite_digests`.
 
 **Verified by the maintainer 2026-07-13, each step re-run here.** The statement
@@ -113,6 +113,6 @@ the maintainer's independent re-run closes that distance for the same source
 tree. Construction independence remains the implementer's attestation, auditable
 in the public source. Stated precisely: one implementation set from this
 repository (JavaScript, Python, Go, one team) and one externally authored
-from-spec Rust implementation agree on all 193 current vectors; the original
+from-spec Rust implementation agree on the 193-vector historical input set; the original
 signed statement remains bound to its 162-vector input set, and this one is
 bound to the 193-vector set at `a904480`.

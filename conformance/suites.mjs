@@ -4,6 +4,7 @@
 export const LIVE_SUITE_FILES = Object.freeze([
   'receipts.v1.json',
   'signoffs.v1.json',
+  'resolution.v1.json',
   'quorum.v1.json',
   'revocation.exec.v1.json',
   'time-attestation.v1.json',

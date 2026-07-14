@@ -17,6 +17,7 @@ if (suiteFiles.length === 0) {
 const tableLabels = new Map([
   ['receipts.v1.json', 'EP-RECEIPT-v1'],
   ['signoffs.v1.json', 'EP-SIGNOFF-v1'],
+  ['resolution.v1.json', 'EP-RESOLUTION-v1'],
   ['quorum.v1.json', 'EP-QUORUM-v1'],
   ['revocation.exec.v1.json', 'EP-REVOCATION-v1'],
   ['time-attestation.v1.json', 'EP-TIME-ATTESTATION-v1'],
