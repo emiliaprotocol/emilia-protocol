@@ -83,6 +83,26 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       fi
       ;;
   esac
+
+  # LLM-context staleness guard. CI's language-governance job runs
+  # check:llm-context, which reds main whenever a push changes any generator
+  # input (standards/, examples/, conformance counts, ...) without regenerating
+  # the four derived artifacts (AI_CONTEXT.md, public/llms*.txt,
+  # public/.well-known/emilia-context.json). This redded main twice on
+  # 2026-07-13 alone (a904480, 8f200ca). The check is a hash comparison over
+  # the working tree (~1s, no build), so just run it; same escape hatch above.
+  if ! npm run --silent check:llm-context >/dev/null 2>&1; then
+    echo "" >&2
+    echo "✗ pre-push BLOCKED — generated llm-context artifacts are stale." >&2
+    echo "  CI (language-governance -> check:llm-context) will red main." >&2
+    echo "" >&2
+    echo "  Fix (one command):" >&2
+    echo "    npm run sync:llm-context && git add -A && git commit --amend --no-edit" >&2
+    echo "    # or a fresh 'chore: sync llm-context' commit, then re-push" >&2
+    echo "  Deliberate override: EP_ALLOW_MAIN_PUSH=1 git push ..." >&2
+    echo "" >&2
+    exit 1
+  fi
 done
 
 exit 0
